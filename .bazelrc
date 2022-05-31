@@ -1,0 +1,44 @@
+# Linux
+build:linux --cxxopt=-std=c++17
+build:linux --host_cxxopt=-std=c++17
+build:linux --copt=-w
+build:linux --linkopt=-lstdc++fs
+
+# Enable remote execution so actions are performed on the remote systems.
+build:remote --remote_executor=grpc://118.190.39.100:27941
+
+# windows
+build:windows --cxxopt=/std:c++14
+build:windows --host_cxxopt=/std:c++14
+build:windows --copt=/w
+# For using M_* math constants on Windows with MSVC.
+build:windows --copt=/D_USE_MATH_DEFINES
+build:windows --host_copt=/D_USE_MATH_DEFINES
+
+# macOS
+build:macos --cxxopt=-std=c++17
+build:macos --host_cxxopt=-std=c++17
+build:macos --copt=-w
+build:macos --copt=-force_flat_namespace
+
+# Sets the default Apple platform to macOS.
+build --apple_platform_type=macos
+
+# Allow debugging with XCODE
+build --apple_generate_dsym
+
+
+# MacOS configs.
+build:darwin_x86_64 --apple_platform_type=macos
+build:darwin_x86_64 --macos_minimum_os=10.16    
+build:darwin_x86_64 --cpu=darwin_x86_64
+
+# MacOS Big Sur with Apple Silicon M1
+build:darwin_arm64 --apple_platform_type=macos
+build:darwin_arm64 --macos_minimum_os=10.16
+build:darwin_arm64 --cpu=darwin_arm64
+
+# MacOS Monterey with Apple M1
+build:darwin --apple_platform_type=macos
+build:darwin --macos_minimum_os=12.3.1
+build:darwin --cpu=darwin

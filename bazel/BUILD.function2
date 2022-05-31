@@ -1,0 +1,22 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "function2",
+    hdrs = ["function2/function2.hpp"],
+    includes = ["function2/function2.hpp"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "function2-build",
+    srcs = glob(["**"]),
+    outs = [
+        "function2/function2.hpp",
+    ],
+    cmd = """
+        set -x
+        FUNCTION2_ROOT=$$(dirname $(location CMakeLists.txt))
+        cp $$FUNCTION2_ROOT/include/function2/function2.hpp $(location function2/function2.hpp)
+    """,
+    visibility = ["//visibility:public"],
+)

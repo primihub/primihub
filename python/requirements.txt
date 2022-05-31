@@ -1,0 +1,7 @@
+setuptools==41.0.0
+pyarrow
+pandas
+pytest
+numpy
+functools
+dill==0.3.5.1

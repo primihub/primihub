@@ -1,0 +1,99 @@
+version: '3.9'
+services:
+  node0:
+    image: primihub/primihub-node:1.0.3
+    restart: "no"
+    hostname: node0_primihub
+    container_name: node0_primihub
+    ports:
+      - "8050:50050"
+      - "10120:12120"
+      - "10121:12121"
+    volumes:
+      - ./config:/app/config
+    extra_hosts:
+      - "node0_primihub:172.28.1.10"
+      - "node1_primihub:172.28.1.11"
+      - "node2_primihub:172.28.1.12"
+    working_dir: /app
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.10
+    depends_on:
+      - simple_bootstrap_node
+
+  node1:
+    image: primihub/primihub-node:1.0.3
+    restart: "no"
+    hostname: node1_primihub
+    container_name: node1_primihub
+    ports:
+      - "8051:50050"
+      - "11120:12120"
+      - "11121:12121"
+    volumes:
+      - ./config:/app/config
+    extra_hosts:
+      - "node0_primihub:172.28.1.10"
+      - "node1_primihub:172.28.1.11"
+      - "node2_primihub:172.28.1.12"
+    working_dir: /app
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "./primihub-node --service_port=50050 --node_id=node1 --config=/app/config/primihub_node1.yaml"
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.11
+    depends_on:
+      - simple_bootstrap_node
+
+  node2:
+    image: primihub/primihub-node:1.0.3
+    restart: "no"
+    hostname: node2_primihub
+    container_name: node2_primihub
+    ports:
+      - "8052:50050"
+      - "12120:12120"
+      - "12121:12121"
+    volumes:
+      - ./config:/app/config
+    extra_hosts:
+      - "node0_primihub:172.28.1.10"
+      - "node1_primihub:172.28.1.11"
+      - "node2_primihub:172.28.1.12"
+    working_dir: /app
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "./primihub-node --service_port=50050 --node_id=node2 --config=/app/config/primihub_node2.yaml"
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.12
+    depends_on:
+      - simple_bootstrap_node
+
+  simple_bootstrap_node:
+    image: primihub/simple-bootstrap-node:1.0 
+    container_name: simple_bootstrap_node
+    restart: "always"
+    ports:
+      - "4001:4001"
+    entrypoint: 
+      - "/app/simple-bootstrap-node"
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.13
+
+networks:
+  testing_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1

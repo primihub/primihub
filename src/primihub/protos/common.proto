@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package primihub.rpc;
+
+enum Language {
+  PYTHON = 0;
+  JAVA = 1;
+  CPP = 2;
+  PROTO = 3;
+}
+
+enum WorkerType {
+  WORKER = 0;
+  DRIVER = 1;
+}
+  
+enum TaskType {
+  ACTOR_TASK = 0;
+  NODE_TASK = 1;
+  PIR_TASK = 2;
+  PSI_TASK = 3;
+}
+
+enum VarType {
+  INT32 = 0;
+  INT64 = 1;
+  STRING = 2;
+  FLOAT = 3;
+  DOUBLE = 4;
+  CHAR = 5;
+  BYTE = 6;
+}
+
+enum PsiType {
+  INTERSECTION = 0;
+  DIFFERENCE = 1;
+}
+
+message int32_array {
+  repeated int32 value_int32_array = 1;
+}
+
+message string_array {
+  repeated int32 value_string_array = 1;
+}
+
+message ParamValue {
+  VarType var_type = 1;
+  bool is_array = 2;
+  oneof oneof_value {
+    int32 value_int32 = 3;
+    string value_string = 4;
+    int32_array value_int32_array = 5;
+    string_array value_string_array = 6;
+  }
+}
+
+message Params {
+  map<string, ParamValue> param_map = 1;
+}
+
+enum LinkType {
+  SERVER = 0;
+  CLIENT = 1;
+}
+
+message EndPoint {
+  bytes ip = 1;
+  int32 port = 2;
+  bytes name = 3;
+  LinkType link_type = 4;
+}
+
+message VirtualMachine {
+  int32 party_id = 1;
+  EndPoint next = 2;
+  EndPoint prev = 3;
+}
+
+message Node {
+  bytes node_id = 1;
+  bytes ip = 2;
+  int32 port = 3;
+  int32 data_port = 4;
+  repeated VirtualMachine vm = 5;
+}
+
+
+message Task {
+  TaskType type = 1;
+  string name = 2;
+  Language language = 3;
+  Params params = 4;
+  bytes code = 5;
+  map<string, Node> node_map = 6; // key: node_id
+  repeated string input_datasets = 7; 
+  bytes job_id = 8;
+  bytes task_id = 9;
+}

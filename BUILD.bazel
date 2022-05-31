@@ -1,0 +1,1055 @@
+package(default_visibility = ["//visibility:public",],)
+load("//bazel:prim.bzl", "COPTS", "PYX_COPTS", "PYX_SRCS", "copy_to_workspace")
+
+config_setting(
+    name = "msvc-cl",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "msvc-cl"},
+)
+
+config_setting(
+    name = "clang-cl",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "clang-cl"},
+)
+
+config_setting(
+    name = "opt",
+    values = {"compilation_mode": "opt"},
+)
+
+config_setting(
+    name = "wolfssl",
+    values = {"define": "ssl=wolfssl"},
+)
+
+config_setting(
+   name = "openssl",
+   values = {"define": "ssl=openssl"},
+)
+
+DEFAULT_LINK_OPTS = [
+    "-pthread",
+    "-ldl",
+]
+
+DEFINES = [
+  "ENABLE_FULL_GSL",
+  "ENABLE_BOOST",
+  "ENABLE_RELIC",
+  "ENABLE_CIRCUITS",
+  "ENABLE_NASM",
+  "OC_ENABLE_PORTABLE_AES",
+  "USE_JSON",
+  "NDEBUG",
+  "TEST_LIBP2P",
+]
+
+LINK_OPTS = select({
+    ":wolfssl": DEFAULT_LINK_OPTS + ["-lwolfssl"],
+    ":openssl": DEFAULT_LINK_OPTS + ["-lopenssl"],
+    "//conditions:default": DEFAULT_LINK_OPTS,
+})
+
+
+C_OPT = [
+    "-O0",
+    "-g",
+    "-Wall",
+    "-ggdb",
+    "-rdynamic",
+    "-maes",
+    "-mpclmul",
+    "-Wno-reserved-user-defined-literal",
+]
+
+## start of primihub
+load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
+
+
+alias(
+    name = "soralog",
+    actual = "@soralog//:soralog",
+)
+
+
+# proto
+grpc_proto_library(
+    name = "route_guide",
+    srcs = ["src/primihub/protos/route_guide.proto"],
+)
+
+grpc_proto_library(
+    name = "worker_proto",
+    srcs = ["src/primihub/protos/worker.proto"],
+    deps = [
+            ":common_proto",
+            ":grpc_psi_proto",
+	    ":grpc_pir_proto",
+           ],
+)
+
+grpc_proto_library(
+    name = "common_proto",
+    srcs = ["src/primihub/protos/common.proto"],
+)
+
+grpc_proto_library(
+    name = "grpc_psi_proto",
+    srcs = ["src/primihub/protos/psi.proto"],
+)
+
+grpc_proto_library(
+    name = "grpc_pir_proto",
+    srcs = ["src/primihub/protos/pir.proto"],
+)
+
+cc_library(
+    name = "common_lib",
+    srcs = glob([
+            "src/primihub/common/defines.cc",
+            "src/primihub/common/clp.cc",
+            "src/primihub/common/config/config.cc",
+            "src/primihub/common/type/type.cc",
+            "src/primihub/common/type/fixed_point.cc",
+    ]),
+    hdrs = glob([
+            "src/primihub/common/defines.h",
+            "src/primihub/common/finally.h",
+            "src/primihub/common/clp.h",
+            "src/primihub/common/config/config.h",
+            "src/primihub/common/type/type.h",
+            "src/primihub/common/type/fixed_point.h",
+            "src/primihub/common/type/matrix.h",
+            "src/primihub/common/type/matrix_view.h",
+    ]),
+    textual_hdrs = [
+              "src/primihub/common/gsl/span",
+              "src/primihub/common/gsl/gsl_assert",
+              "src/primihub/common/gsl/gsl_util",
+              "src/primihub/common/gsl/gsl_byte",
+              "src/primihub/common/gsl/gsl_algorithm",
+              "src/primihub/common/gsl/gsl",
+              "src/primihub/common/gsl/multi_span",
+              "src/primihub/common/gsl/string_span",
+              "src/primihub/common/gsl/gls-lite.hpp",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+                "@eigen//:eigen",
+                "@boost//:multiprecision",
+                "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        ],
+)
+
+cc_library(
+    name = "share_lib",
+    srcs = glob([
+            "src/primihub/protocol/aby3/share.cc",
+    ]),
+    hdrs = glob([
+            "src/primihub/protocol/aby3/share.h",
+            "src/primihub/protocol/aby3/rand_ring_buffer.h",
+    ]),
+    textual_hdrs = [
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@boost//:fiber",
+            "@boost//:multiprecision",
+            "@boost//:asio",
+            "@boost//:system",
+            "@boost//:circular_buffer",
+            "@boost//:variant",
+            "@lib_function2//:function2",
+            ":common_lib",
+            ":prng_lib",
+            ":network_lib",
+        ],
+)
+
+cc_library(
+  name = "network_lib",
+  srcs = glob([
+      "src/primihub/util/network/socket/commpkg.cc",
+      "src/primihub/util/network/socket/acceptor.cc",
+      "src/primihub/util/network/socket/channel_base.cc",
+      "src/primihub/util/network/socket/channel.cc",
+      "src/primihub/util/network/socket/chl_operation.cc",
+      "src/primihub/util/network/socket/iobuffer.cc",
+      "src/primihub/util/network/socket/ioservice.cc",
+      "src/primihub/util/network/socket/session_base.cc",
+      "src/primihub/util/network/socket/session.cc",
+      "src/primihub/util/network/socket/tls.cc",
+  ]),
+  hdrs = glob([
+      "src/primihub/util/network/socket/commpkg.h",
+      "src/primihub/util/network/socket/acceptor.h",
+      "src/primihub/util/network/socket/channel_base.h",
+      "src/primihub/util/network/socket/channel.h",
+      "src/primihub/util/network/socket/chl_operation.h",
+      "src/primihub/util/network/socket/iobuffer.h",
+      "src/primihub/util/network/socket/ioservice.h",
+      "src/primihub/util/network/socket/session_base.h",
+      "src/primihub/util/network/socket/session.h",
+      "src/primihub/util/network/socket/socketadapter.h",
+      "src/primihub/util/network/socket/tls.h",
+  ]),
+  copts = C_OPT,
+  defines = DEFINES,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+          "@boost//:fiber",
+          "@boost//:multiprecision",
+          "@boost//:asio",
+          "@boost//:system",
+          "@boost//:circular_buffer",
+          "@boost//:variant",
+          ":common_lib",
+          ":util_lib",
+          ":crypto_lib",
+      ],
+)
+
+cc_library(
+  name = "protocol_base_lib",
+  srcs = glob([
+      "src/primihub/protocol/task.cc",
+      "src/primihub/protocol/sh_task.cc",
+      "src/primihub/protocol/scheduler.cc",
+      "src/primihub/protocol/runtime.cc",
+  ]),
+  hdrs = glob([
+      "src/primihub/protocol/task.h",
+      "src/primihub/protocol/sh_task.h",
+      "src/primihub/protocol/scheduler.h",
+      "src/primihub/protocol/runtime.h",
+  ]),
+  copts = C_OPT,
+  defines = DEFINES,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+          "@lib_function2//:function2",
+          ":common_lib",
+          ":util_lib",
+          ":network_lib",
+      ],
+)
+
+cc_library(
+  name = "protocol_aby3_lib",
+  srcs = glob([
+      "src/primihub/protocol/aby3/evaluator/evaluator.cc",
+      "src/primihub/protocol/aby3/evaluator/binary_evaluator.cc",
+      "src/primihub/protocol/aby3/transpose.cc",
+      "src/primihub/protocol/aby3/evaluator/piecewise.cc",
+      "src/primihub/protocol/aby3/runtime.cc",
+      "src/primihub/protocol/aby3/encryptor.cc",
+  ]),
+  hdrs = glob([
+      "src/primihub/protocol/aby3/evaluator/evaluator.h",
+      "src/primihub/protocol/aby3/evaluator/binary_evaluator.h",
+      "src/primihub/protocol/aby3/evaluator/piecewise.h",
+      "src/primihub/protocol/aby3/evaluator/converter.h",
+      "src/primihub/protocol/aby3/transpose.h",
+      "src/primihub/protocol/aby3/runtime.h",
+      "src/primihub/protocol/aby3/encryptor.h",
+      "src/primihub/protocol/aby3/sh3_gen.h",
+  ]),
+  copts = C_OPT,
+  defines = DEFINES,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+          "@eigen//:eigen",
+          "@lib_function2//:function2",
+          "@com_github_glog_glog//:glog",
+          ":common_lib",
+          ":protocol_base_lib",
+          ":util_lib",
+          ":primitive_lib",
+          "crypto_lib",
+      ],
+)
+
+cc_library(
+    name = "primitive_lib",
+    srcs = glob([
+          "src/primihub/primitive/ot/share_ot.cc",
+          "src/primihub/primitive/circuit/garble.cc",
+          "src/primihub/primitive/circuit/circuit_library.cc",
+          "src/primihub/primitive/circuit/beta_circuit.cc",
+          "src/primihub/primitive/circuit/beta_library.cc",
+          "src/primihub/primitive/ppa/kogge_stone.cpp",
+    ]),
+    hdrs = glob([
+          "src/primihub/primitive/ot/share_ot.h",
+          "src/primihub/primitive/circuit/garble.h",
+          "src/primihub/primitive/circuit/gate.h",
+          "src/primihub/primitive/circuit/circuit_library.h",
+          "src/primihub/primitive/circuit/beta_circuit.h",
+          "src/primihub/primitive/circuit/beta_library.h",
+          "src/primihub/primitive/ppa/kogge_stone.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@eigen//:eigen",
+            "@nlohmann_json",
+            ":common_lib",
+            ":crypto_lib",
+            ":network_lib",
+        ],
+)
+
+
+cc_library(
+    name = "algorithm_lib",
+    srcs = glob([
+            "src/primihub/algorithm/aby3ML.cc",
+            "src/primihub/algorithm/linear_model_gen.cc",
+            "src/primihub/algorithm/logistic.cc",
+            "src/primihub/algorithm/logistic_plain.cc",
+            "src/primihub/algorithm/plainML.cc",
+    ]),
+    hdrs = glob([
+            "src/primihub/algorithm/base.h",
+            "src/primihub/algorithm/aby3ML.h",
+            "src/primihub/algorithm/linear_model_gen.h",
+            "src/primihub/algorithm/logistic.h",
+            "src/primihub/algorithm/logistic_plain.h",
+            "src/primihub/algorithm/plainML.h",
+            "src/primihub/algorithm/regression.h",
+            "src/primihub/service/dataset/localkv/storage_default.h",
+            "src/primihub/service/dataset/storage_backend.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+          "@eigen//:eigen",
+          ":common_lib",
+          ":protocol_aby3_lib",
+          ":data_store_lib",
+          ":model_util_lib",
+          ":util_lib",
+          ":dataset_service"
+    ],
+)
+
+cc_library(
+    name = "task_lib",
+    srcs = glob([
+            "src/primihub/task/**/*.cc",
+    ]),
+    hdrs = glob([
+             "src/primihub/task/**/*.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib/ -lpython3.9 -ldl -framework CoreFoundation"],
+    linkstatic = False,
+    deps = [
+          "@com_github_glog_glog//:glog",
+          "@com_github_grpc_grpc//:grpc++",
+          "@com_google_absl//absl/base",
+          "@com_google_absl//absl/flags:flag",
+          "@com_google_absl//absl/flags:parse",
+          "@com_google_absl//absl/memory",
+          "@pybind11",
+          ":util_lib",
+          ":common_lib",
+          ":protocol_aby3_lib",
+          ":algorithm_lib",
+          "dataset_service",
+    ],
+)
+
+cc_library(
+    name = "node_lib",
+    srcs = glob([
+            "src/primihub/node/worker/worker.cc",
+            
+            "src/primihub/algorithm/dataload.cpp",
+    ]),
+    hdrs = glob([
+            "src/primihub/node/worker/worker.h",
+            
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_google_absl//absl/memory",
+            "@com_github_glog_glog//:glog",
+            ":worker_proto",
+            ":algorithm_lib",
+            ":task_lib",
+            ":network_lib",
+            ":nodelet",
+            "@org_openmined_psi//private_set_intersection/cpp:psi_client",
+            "@org_openmined_psi//private_set_intersection/cpp:psi_server",
+            "@org_openmined_pir//pir/cpp:pir",
+            
+    ],
+)
+
+cc_library(
+    name = "util_lib",
+    srcs = glob([
+              "src/primihub/util/util.cc",
+              "src/primihub/util/log.cc",
+              "src/primihub/util/timer.cc",
+              "src/primihub/util/file_util.cc",
+              "src/primihub/util/eigen_util.cc",
+    ]),
+    hdrs = glob([
+              "src/primihub/util/util.h",
+              "src/primihub/util/log.h",
+              "src/primihub/util/timer.h",
+              "src/primihub/util/file_util.h",
+              "src/primihub/util/eigen_util.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_github_glog_glog//:glog",
+            "@boost//:asio",
+            "@boost//:circular_buffer",
+            ":worker_proto",
+            ":common_lib",
+    ],
+)
+
+cc_library(
+    name = "model_util_lib",
+    srcs = glob([
+              "src/primihub/util/model_util.cc",
+    ]),
+    hdrs = glob([
+              "src/primihub/util/model_util.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_github_glog_glog//:glog",
+            "@eigen//:eigen",
+            "@boost//:asio",
+            "@boost//:circular_buffer",
+            ":common_lib",
+            ":prng_lib",
+            ":util_lib",
+    ],
+)
+
+cc_library(
+    name = "crypto_lib",
+    srcs = glob([
+      "src/primihub/util/crypto/Blake2.cc",
+
+      "src/primihub/util/crypto/blake2/c/blake2bp-ref.c",
+      "src/primihub/util/crypto/blake2/c/blake2b-ref.c",
+      "src/primihub/util/crypto/blake2/c/blake2sp-ref.c",
+      "src/primihub/util/crypto/blake2/c/blake2s-ref.c",
+      "src/primihub/util/crypto/blake2/c/blake2xb-ref.c",
+      "src/primihub/util/crypto/blake2/c/blake2xs-ref.c",
+      "src/primihub/util/crypto/blake2/sse/blake2b.c",
+      "src/primihub/util/crypto/blake2/sse/blake2bp.c",
+      "src/primihub/util/crypto/blake2/sse/blake2xb.c",
+    ]),
+    hdrs = glob([
+      "src/primihub/util/crypto/hashable.h",
+      "src/primihub/util/crypto/Blake2.h",
+      "src/primihub/util/crypto/random_oracle.h",
+
+      "src/primihub/util/crypto/blake2/c/blake2.h",
+      "src/primihub/util/crypto/blake2/c/blake2-impl.h",
+      "src/primihub/util/crypto/blake2/sse/blake2b-load-sse2.h",
+      "src/primihub/util/crypto/blake2/sse/blake2b-load-sse41.h",
+      "src/primihub/util/crypto/blake2/sse/blake2b-round.h",
+      "src/primihub/util/crypto/blake2/sse/blake2-config.h",
+      "src/primihub/util/crypto/blake2/sse/blake2.h",
+      "src/primihub/util/crypto/blake2/sse/blake2-impl.h",
+    ]),
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":util_lib",
+            ":prng_lib",
+    ],
+)
+
+
+cc_library(
+    name = "prng_lib",
+    srcs = glob([
+      "src/primihub/util/crypto/aes/aes.cc",
+      "src/primihub/util/crypto/aes/aes_dec.cc",
+      "src/primihub/util/crypto/prng.cc",
+      "src/primihub/util/crypto/bit_vector.cc",
+      "src/primihub/util/crypto/block.cc",
+    ]),
+    hdrs = glob([
+      "src/primihub/util/crypto/aes/aes.h",
+      "src/primihub/util/crypto/aes/aes_dec.h",
+      "src/primihub/util/crypto/aes/multikey_aes.h",
+      "src/primihub/util/crypto/prng.h",
+      "src/primihub/util/crypto/bit_iterator.h",
+      "src/primihub/util/crypto/bit_vector.h",
+      "src/primihub/util/crypto/block.h",
+    ]),
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":util_lib",
+    ],
+)
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+
+cc_library(
+    name = "data_store_lib",
+    srcs = [
+            "src/primihub/data_store/driver.cc",
+            "src/primihub/data_store/csv/csv_driver.cc",
+            # "src/primihub/data_store/hdfs/hdfs_driver.cc",
+
+
+    ],
+    hdrs = [
+            "src/primihub/data_store/factory.h",
+            "src/primihub/data_store/dataset.h",
+            "src/primihub/data_store/driver.h",
+
+            "src/primihub/data_store/csv/csv_driver.h",
+            "src/primihub/data_store/hdfs/hdfs_driver.h",
+            
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@arrow",
+        "@com_github_glog_glog//:glog",
+        "@eigen//:eigen",
+        
+        ":common_lib",
+        ":crypto_lib",
+        ":network_lib",
+        ":util_lib",
+    ],
+    linkstatic = False,
+    visibility = ["//visibility:public"],
+)
+
+
+cc_library(
+    name = "p2p_lib",
+    srcs = [
+            "src/primihub/p2p/node_stub.cc",
+    ],
+    hdrs = [
+            "src/primihub/p2p/node_stub.h",
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@libp2p//:p2p",
+        "@boost//:thread",
+    ],
+    linkstatic = False,
+    visibility = ["//visibility:public"],   
+)
+
+cc_library(
+    name = "service_base",
+    srcs = [
+            "src/primihub/service/error.cpp",
+    ],
+    hdrs = [
+            "src/primihub/service/error.hpp",
+            "src/primihub/service/outcome.hpp",
+            "src/primihub/service/outcome_reg.hpp",
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@arrow",
+        "@nlohmann_json",
+        "@libp2p//:p2p",
+        "@openssl",
+        "@boost//:asio",
+        "@boost//:thread",
+        "@boost//:outcome",
+    ],
+    linkstatic = False,
+    visibility = ["//visibility:public"],   
+)
+
+cc_library(
+    name = "dataset_service",
+    srcs = [
+            "src/primihub/service/dataset/model.cc",
+            "src/primihub/service/dataset/service.cc",
+            "src/primihub/service/dataset/localkv/storage_default.cc",
+    ],
+    hdrs = [
+            "src/primihub/service/dataset/auth.h",
+            "src/primihub/service/dataset/model.h",
+            "src/primihub/service/dataset/service.h",                 
+            "src/primihub/service/dataset/storage_backend.h",
+            "src/primihub/service/dataset/localkv/storage_default.h",    
+            "src/primihub/service/dataset/util.hpp",     
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_glog_glog//:glog",
+        "@arrow",
+        "@nlohmann_json",
+        "@libp2p//:p2p",
+        "@openssl",
+        "@boost//:asio",
+        "@boost//:thread",
+        "@boost//:outcome",
+        ":common_lib",
+        ":p2p_lib",
+        ":data_store_lib",
+        ":util_lib",
+        "service_base",
+    ],
+    linkstatic = False,
+    visibility = ["//visibility:public"],   
+)
+
+
+cc_library(
+    name = "nodelet",
+    srcs = [
+            "src/primihub/node/nodelet.cc",
+    ],
+    hdrs = [
+            "src/primihub/node/nodelet.h",
+    ],
+    copts = C_OPT,
+    linkstatic = False,
+    linkopts = LINK_OPTS ,
+    deps = [
+        ":p2p_lib",
+        ":dataset_service",
+    ],
+)
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+
+pybind_extension(
+    name = "primihub_channel", 
+    srcs = [
+            "src/primihub/pybind_warpper/channel_warpper.cc",
+    ],
+
+    deps = [
+        ":util_lib",
+        ":network_lib",
+    ],
+)
+
+py_library(
+    name = "primihub_channel",
+    data = ["primihub_channel.so"],
+)
+
+
+
+
+cc_binary(
+    name = "node",
+    srcs = glob([
+                  "src/primihub/node/node.cc",
+                  "src/primihub/node/node.h",
+            ]),
+    copts = C_OPT,
+    includes = [    
+    ],
+    linkstatic = False,
+    linkopts = LINK_OPTS ,
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@toolkit_relic//:relic",
+        ":worker_proto",
+        ":common_lib",
+        ":node_lib",
+        ":nodelet",
+        ":algorithm_lib",
+        ":util_lib",
+    ],
+)
+
+cc_binary(
+    name = "cli",
+    srcs = [
+        "src/primihub/cli/cli.cc",
+        "src/primihub/cli/cli.h",
+    ],
+    copts = C_OPT,
+    includes = [
+    ],
+    linkstatic = False,
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@toolkit_relic//:relic",
+        ":worker_proto",
+        ":common_lib",
+        ":util_lib",
+    ],
+)
+
+
+## end of primihub
+
+## unit tests
+
+cc_binary(
+    name = "task_lib_test",
+    srcs = [
+        "test/primihub/task/fl_task_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":task_lib"
+    ],
+)
+
+
+cc_binary(
+    name = "dataset_service_test",
+    srcs = [
+        "test/primihub/service/dataset/dataset_service_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@openssl",
+        ":dataset_service",
+        ":p2p_lib"
+    ],
+)
+
+
+cc_test(
+    name = "common_test",
+    srcs = [
+        "test/primihub/common/type/type_test.cc",
+        "test/primihub/common/type/fixed_point_test.cc"
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":common_lib",
+    ],
+)
+
+cc_test(
+    name = "primitive_test",
+    srcs = [
+        "test/primihub/primitive/ot/share_ot_test.cc",
+        "test/primihub/primitive/circuit/circuit_test.cc"
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":primitive_lib",
+    ],
+)
+
+cc_test(
+    name = "algorithm_test",
+    srcs = [
+        "test/primihub/algorithm/logistic_test.cc",
+        # TODO: Ignore it when test arrow usage, recover it.
+        # "test/primihub/algorithm/logistic_plain_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":crypto_lib",
+        ":algorithm_lib",
+    ],
+)
+
+# Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
+# or error, so this rule will not build all test case.
+cc_test(
+    name = "protocol_aby3_test",
+    srcs = [
+      # "test/primihub/protocol/aby3/evaluator/evaluator_test.cc",
+      "test/primihub/protocol/aby3/evaluator/binary_evaluator_test.cc",
+      # "test/primihub/protocol/aby3/evaluator/piecewise_test.cc",
+      # "test/primihub/protocol/aby3/encryptor_test.cc",
+      # "test/primihub/protocol/aby3/runtime_test.cc",
+      # "test/primihub/protocol/aby3/sh3_gen_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":protocol_aby3_lib",
+    ],
+)
+
+
+cc_test(
+    name = "util_test",
+    srcs = [
+        #"test/primihub/util/model_util_test.cc",
+        "test/primihub/util/eigen_util_test.cc",
+    ],
+    defines = ["BAZEL_BUILD"],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_github_glog_glog//:glog",
+        ":util_lib",
+        ":model_util_lib",
+    ],
+)
+
+cc_test(
+    name = "network_test",
+    srcs = [
+        "test/primihub/util/network/socket/channel_test.cc",
+        "test/primihub/util/util_test.h",
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_google_googletest//:gtest_main",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":primitive_lib",
+            ":network_lib",
+            ":protocol_aby3_lib",
+    ],
+)
+
+cc_test(
+    name = "wolfssl_test",
+    srcs = [
+        "test/primihub/util/network/socket/wolfssl_test.cc",
+        "test/primihub/util/test_util.h",
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_google_googletest//:gtest_main",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":primitive_lib",
+            ":network_lib",
+            ":protocol_aby3_lib",
+    ],
+)
+
+cc_test(
+    name = "prng_test",
+    srcs = [
+        "test/primihub/util/crypto/aes_test.cc",
+        "test/primihub/util/crypto/prng_test.cc",
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_google_googletest//:gtest_main",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":prng_lib",
+    ],
+)
+
+
+cc_test(
+    name = "share_test",
+    srcs = [
+        "test/primihub/protocol/aby3/share_test.cc",
+        "test/primihub/test_util.h",
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_google_googletest//:gtest_main",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_github_glog_glog//:glog",
+            ":common_lib",
+            ":network_lib",
+            ":share_lib",
+    ],
+)
+
+
+## paillier
+cc_library(
+    name = "lib_miracl",
+    srcs = glob(["thirdparty/miracl/mr_src/*.c"],),
+    hdrs = glob(
+      include = ["thirdparty/miracl/mr_include/*.h"],
+    ),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "lib_paillier",
+    srcs = glob(
+        [
+            "src/primihub/primitive/paillier/*.cpp",
+        ],
+    ),
+    hdrs = glob([
+        "src/primihub/primitive/paillier/*.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":lib_miracl",
+    ],
+    includes = ["thirdparty/miracl/mr_include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "paillier_test",
+    srcs = [
+        "test/primihub/primitive/paillier_test.cpp",
+    ],
+    includes = [
+        "src/primihub/primitive/paillier"
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":lib_paillier",
+    ],
+)
+
+# test
+cc_test(
+    name = "test",
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            ":common_test",
+            ":primitive_test",
+            ":network_test",
+            ":protocol_aby3_test",
+            ":util_test",
+            ":algorithm_test",
+            ":prng_test",
+            ":share_test",
+            ":paillier_test",
+    ],
+)
+
+
+genrule(
+    name = "prim_pkg",
+    srcs = [
+        ":cp_redis",
+    ],
+    outs = ["primi_pkg.out"],
+    cmd = """
+        #if [ "$${OSTYPE-}" = "msys" ]; then
+        #    ln -P -f -- python/ray/_raylet.so python/ray/_raylet.pyd
+        #fi
+        echo "$${PWD}" > $@
+    """,
+    local = 1,
+)
+

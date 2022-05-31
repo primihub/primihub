@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package primihub.rpc;
+
+// A set of ciphertexts, used for queries or responses.
+message Ciphertexts {
+  repeated bytes ct = 1;
+}
+
+// Request sent from the client to the server. Includes 1 or more query
+// ciphertexts and a set of galois keys to be used.
+message PirRequest {
+  // Each query may have 1 or more ciphertexts.
+  repeated Ciphertexts query = 1;
+
+  // Galois keys, needed to compute substitution operation on ciphertexts.
+  bytes galois_keys = 2;
+
+  // Relinearization keys, only needed for recursion depths more than 1.
+  bytes relin_keys = 3;
+}
+
+// Response to a query, a set of ciphertexts.
+message PirResponse {
+  // Reply to query as a set of 1 or more serialized ciphertexts.
+  repeated Ciphertexts reply = 1;
+}

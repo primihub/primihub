@@ -1,0 +1,43 @@
+syntax = "proto3";
+package primihub.rpc;
+
+import "src/primihub/protos/common.proto";
+import "src/primihub/protos/psi.proto";
+import "src/primihub/protos/pir.proto";
+
+message PushTaskRequest {
+  bytes intended_worker_id = 1;
+  Task task = 2;
+  int64 sequence_number = 3;
+  int64 client_processed_up_to = 4;
+}
+
+
+message PushTaskReply {
+  int32 ret_code = 1;  // 0: success  1: doing  2: error
+  bytes job_id = 2;
+}
+
+message ExecuteTaskRequest {
+  oneof algorithm_request {
+    PsiRequest psi_request = 1;
+    PirRequest pir_request = 2;
+  }
+
+  Params params = 3;
+}
+
+message ExecuteTaskResponse {
+  oneof algorithm_response {
+    PsiResponse psi_response = 1;
+    PirResponse pir_response = 2;
+  }
+}
+
+service VMNode {
+  rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
+  rpc SubmitPsiTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc SubmitPirTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+}
+
