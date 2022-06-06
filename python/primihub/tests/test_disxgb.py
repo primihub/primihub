@@ -1,23 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# test_disxgb.py
-# @Author : Victory (lzw9560@163.com)
-# @Link   : 
-# @Date   : 5/27/2022, 10:37:57 AM
+"""
+ Copyright 2022 Primihub
 
-import sys
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ """
+
 from os import path
 import threading
 import primihub as ph
-import pandas as pd
-import numpy as np
 
-sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
+from primihub.examples.disxgb import xgb_host_logic, xgb_guest_logic
 
+HOST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/breast-cancer-wisconsin-label.data"))  # noqa
+GUEST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/breast-cancer-wisconsin.data"))  # noqa
 
-from examples.disxgb import xgb_host_logic, xgb_guest_logic
-
+ph.context.Context.dataset_map = {
+    'label_data': HOST_DATA_PATH,
+    'guest_data': GUEST_DATA_PATH
+}
 
 def run_xgb_host_logic():
     xgb_host_logic()
@@ -29,9 +40,6 @@ def run_xgb_guest_logic():
 if __name__ == "__main__":
     print("- " * 30)
      
-        
-    # xgb_host_logic()
-    # xgb_guest_logic()
     host = threading.Thread(target=run_xgb_host_logic)
     guest = threading.Thread(target=run_xgb_guest_logic)
     

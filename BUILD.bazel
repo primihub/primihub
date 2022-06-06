@@ -27,8 +27,10 @@ config_setting(
 )
 
 DEFAULT_LINK_OPTS = [
+    "-L/opt/homebrew/Cellar/gmp/6.2.1_1/lib",
     "-pthread",
     "-ldl",
+    "-lgmp",
 ]
 
 DEFINES = [
@@ -277,6 +279,90 @@ cc_library(
 )
 
 cc_library(
+  name = "protocol_cryptflow2_ot_lib",
+  srcs = glob([
+      "src/primihub/protocol/cryptflow2/*.cpp",
+      "src/primihub/protocol/cryptflow2/BuildingBlocks/*.cpp",
+      "src/primihub/protocol/cryptflow2/FloatingPoint/*.cpp",
+      "src/primihub/protocol/cryptflow2/GC/*.cpp",
+      "src/primihub/protocol/cryptflow2/LinearHE/*.cpp",
+      "src/primihub/protocol/cryptflow2/LinearOT/*.cpp",
+      "src/primihub/protocol/cryptflow2/Math/*.cpp",
+      "src/primihub/protocol/cryptflow2/Millionaire/*.cpp",
+      "src/primihub/protocol/cryptflow2/NonLinear/*.cpp",
+      "src/primihub/protocol/cryptflow2/OT/*.cpp",
+  ],
+  exclude = [
+    "src/primihub/protocol/cryptflow2/globals_float.cpp", 
+    "src/primihub/protocol/cryptflow2/library_float.cpp"]),
+  hdrs = glob([
+    "src/primihub/protocol/cryptflow2/*.h",
+    "src/primihub/protocol/cryptflow2/utils/*.h",
+    "src/primihub/protocol/cryptflow2/BuildingBlocks/*.h",
+    "src/primihub/protocol/cryptflow2/FloatingPoint/*.h",
+    "src/primihub/protocol/cryptflow2/GC/*.h",
+    "src/primihub/protocol/cryptflow2/LinearHE/*.h",
+    "src/primihub/protocol/cryptflow2/LinearOT/*.h",
+    "src/primihub/protocol/cryptflow2/Math/*.h",
+    "src/primihub/protocol/cryptflow2/Millionaire/*.h",
+    "src/primihub/protocol/cryptflow2/NonLinear/*.h",
+    "src/primihub/protocol/cryptflow2/OT/*.h",
+    "src/primihub/protocol/cryptflow2/utils/*.hpp",
+    "src/primihub/protocol/cryptflow2/GC/integer.hpp",
+    "src/primihub/protocol/cryptflow2/GC/bit.hpp",
+    "src/primihub/protocol/cryptflow2/utils/ArgMapping/*",
+  ],
+  exclude = ["src/primihub/protocol/cryptflow2/globals_float.h"]),
+  linkstatic = False,
+  copts = [
+    "-I src/primihub/protocol/cryptflow2/",
+    "-I src/primihub/protocol/cryptflow2/BuildingBlocks/",
+    "-I src/primihub/protocol/cryptflow2/FloatingPoint/",
+    "-I src/primihub/protocol/cryptflow2/GC/",
+    "-I src/primihub/protocol/cryptflow2/LinearHE/",
+    "-I src/primihub/protocol/cryptflow2/LinearOT/",
+    "-I src/primihub/protocol/cryptflow2/Math/",
+    "-I src/primihub/protocol/cryptflow2/Millionaire/",
+    "-I src/primihub/protocol/cryptflow2/NonLinear/",
+    "-I src/primihub/protocol/cryptflow2/OT/",
+    "-I src/primihub/protocol/cryptflow2/utils/",
+    "-D SCI_OT",
+    "-maes",
+    "-msse4.1",
+    "-mavx",
+    "-mavx2",
+    "-pthread",
+    "-mrdseed",
+  ],
+  deps = ["@com_microsoft_seal//:seal",
+	  "@eigen//:eigen"]
+)
+
+cc_library(
+    name = "protocol_falcon_lib",
+    srcs = glob([
+            "src/primihub/protocol/falcon-public/*.cpp",
+            "src/primihub/protocol/falcon-public/util/*.cpp"
+    ]),
+    hdrs = glob([
+            "src/primihub/protocol/falcon-public/*.h",
+            "src/primihub/protocol/falcon-public/util/*.h",
+    ]),
+    copts = [
+            "-I src/primihub/protocol/falcon-public/",
+            "-I src/primihub/protocol/falcon-public/util/",
+            "-msse4.1",
+            "-mpclmul",
+            "-maes",
+            "-msse2",
+            "-fpic",
+            "-lcrypto ",
+            "-lssl"],
+    linkstatic = False,
+    deps = ["@eigen//:eigen"]
+)
+
+cc_library(
     name = "primitive_lib",
     srcs = glob([
           "src/primihub/primitive/ot/share_ot.cc",
@@ -307,7 +393,6 @@ cc_library(
         ],
 )
 
-
 cc_library(
     name = "algorithm_lib",
     srcs = glob([
@@ -316,6 +401,8 @@ cc_library(
             "src/primihub/algorithm/logistic.cc",
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
+            # "src/primihub/algorithm/cryptflow2_maxpool.cc",
+            # "src/primihub/algorithm/falcon_lenet.cc",
     ]),
     hdrs = glob([
             "src/primihub/algorithm/base.h",
@@ -325,10 +412,18 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
+            # "src/primihub/algorithm/cryptflow2_maxpool.h",
+            # "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h"
     ]),
-    copts = C_OPT,
+    copts = C_OPT + [
+      "-maes",
+      "-msse4.1",
+      "-mavx",
+      # "-mavx2",
+      "-mrdseed",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
@@ -338,7 +433,9 @@ cc_library(
           ":data_store_lib",
           ":model_util_lib",
           ":util_lib",
-          ":dataset_service"
+          ":dataset_service",
+	  # ":protocol_cryptflow2_ot_lib",
+          # ":protocol_falcon_lib"
     ],
 )
 
@@ -351,7 +448,7 @@ cc_library(
              "src/primihub/task/**/*.h",
     ]),
     copts = C_OPT,
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib/ -lpython3.9 -ldl -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -lpython3.9 -ldl -framework CoreFoundation"],
     linkstatic = False,
     deps = [
           "@com_github_glog_glog//:glog",
@@ -366,6 +463,9 @@ cc_library(
           ":protocol_aby3_lib",
           ":algorithm_lib",
           "dataset_service",
+	  "@org_openmined_psi//private_set_intersection/cpp:psi_client",
+	  "@org_openmined_psi//private_set_intersection/cpp:psi_server",
+	  "@org_openmined_pir//pir/cpp:pir",
     ],
 )
 
@@ -395,10 +495,35 @@ cc_library(
             ":task_lib",
             ":network_lib",
             ":nodelet",
-            "@org_openmined_psi//private_set_intersection/cpp:psi_client",
-            "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-            "@org_openmined_pir//pir/cpp:pir",
+    ],
+)
+
+cc_library(
+    name = "node_lib_aux",
+    srcs = glob([
+            "src/primihub/node/worker/worker.cc",
             
+            "src/primihub/algorithm/dataload.cpp",
+    ]),
+    hdrs = glob([
+            "src/primihub/node/worker/worker.h",
+            
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+            "@com_github_grpc_grpc//:grpc++",
+            "@com_google_absl//absl/base",
+            "@com_google_absl//absl/flags:flag",
+            "@com_google_absl//absl/flags:parse",
+            "@com_google_absl//absl/memory",
+            "@com_github_glog_glog//:glog",
+            ":worker_proto",
+            ":algorithm_lib",
+            ":task_lib",
+            ":network_lib",
+            ":nodelet",
     ],
 )
 
@@ -708,6 +833,34 @@ cc_binary(
 )
 
 cc_binary(
+    name = "node_aux",
+    srcs = glob([
+                  "src/primihub/node/node.cc",
+                  "src/primihub/node/node.h",
+            ]),
+    copts = C_OPT,
+    includes = [    
+    ],
+    linkstatic = False,
+    linkopts = LINK_OPTS ,
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@toolkit_relic//:relic",
+        ":worker_proto",
+        ":common_lib",
+        ":node_lib_aux",
+        ":nodelet",
+        ":algorithm_lib",
+        ":util_lib",
+    ],
+)
+
+cc_binary(
     name = "cli",
     srcs = [
         "src/primihub/cli/cli.cc",
@@ -967,7 +1120,6 @@ cc_test(
     ],
 )
 
-
 ## paillier
 cc_library(
     name = "lib_miracl",
@@ -1014,6 +1166,103 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":lib_paillier",
+    ],
+)
+
+cc_library(
+    name = "lib_opt_paillier",
+    srcs = glob(
+        [
+            "src/primihub/primitive/opt_paillier/src/*.cc",
+        ],
+    ),
+    hdrs = glob([
+        "src/primihub/primitive/opt_paillier/include/*.h",
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "opt_paillier_test",
+    srcs = [
+        "test/primihub/primitive/opt_paillier_test.cc",
+    ],
+    includes = [
+        "src/primihub/primitive/opt_paillier/include"
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":lib_opt_paillier",
+    ],
+)
+
+cc_binary(
+    name = "opt_paillier_pack_test",
+    srcs = [
+        "test/primihub/primitive/opt_paillier_pack_test.cc",
+    ],
+    includes = [
+        "src/primihub/primitive/opt_paillier/include"
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":lib_opt_paillier",
+    ],
+)
+
+pybind_extension(
+    name = "opt_paillier_c2py",  # This name is not actually created!
+    srcs = ["src/primihub/pybind_warpper/primitive/opt_paillier_c2py.cc",
+            "src/primihub/pybind_warpper/primitive/opt_paillier_c2py.hpp",
+    ],
+    includes = [
+        "src/primihub/primitive/opt_paillier/include"
+    ],
+    deps = [
+        ":lib_opt_paillier",
+    ],
+)
+
+py_library(
+    name = "opt_paillier_c2py",
+    data = ["opt_paillier_c2py.so"],
+)
+
+py_library(
+    name = "opt_paillier_c2py_warpper",
+    srcs = [
+        "python/primihub/primitive/opt_paillier_c2py_warpper.py",
+        "python/primihub/primitive/opt_paillier_batch_c2py_warpper.py"
+        ],
+    deps = [
+        ":opt_paillier_c2py"
+    ],
+)
+
+py_test(
+    name = "opt_paillier_c2py_test",
+    srcs = [
+        "python/primihub/tests/opt_paillier_c2py_test.py"
+    ],
+    deps = [
+        ":opt_paillier_c2py_warpper"
+    ],
+)
+
+py_test(
+    name = "opt_paillier_batch_c2py_test",
+    srcs = [
+        "python/primihub/tests/opt_paillier_batch_c2py_test.py"
+    ],
+    deps = [
+        ":opt_paillier_c2py_warpper"
     ],
 )
 

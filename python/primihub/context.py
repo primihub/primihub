@@ -1,20 +1,19 @@
-
 import functools
 from typing import Callable
 from dill import dumps, loads
-# from pickle import dumps, loads
 
 
 class NodeContext:
-    def __init__(self, role, protocol, datasets, func=None):
+    def __init__(self, role, protocol, datasets, func=None, next_peer=None):
         self.role = role
         self.protocol = protocol
         self.datasets = datasets
+        self.next_peer = next_peer
         print("func type: ", type(func))
 
         self.dumps_func = None
         if isinstance(func, Callable):
-            # pikle dumps func 
+            # pikle dumps func
             self.dumps_func = dumps(func)
         elif type(func) == str:
             self.dumps_func = func
@@ -51,16 +50,18 @@ class TaskContext:
 
     def get_datasets(self):
         return self.datasets
-    
-    
+
+
 Context = TaskContext()
 
-def set_node_context(role, protocol, datasets):
+
+def set_node_context(role, protocol, datasets, next_peer):
     print("========", role, protocol, datasets)
-    n = NodeContext(role, protocol, datasets)
-    # Context.nodes_context[role] = NodeContext(role, protocol, datasets)
+    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
+    # TODO set dataset map, key dataset name, value dataset meta information
 
 
+# For test
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 
@@ -68,22 +69,26 @@ def set_text(role, protocol, datasets, dumps_func):
 #     Context.nodes_context[node_context.role] = node_context
 
 # Register dataset decorator
+
+
 def reg_dataset(func):
     @functools.wraps(func)
     def reg_dataset_decorator(dataset):
         print("Register dataset:", dataset)
-        Context.datasets.append(dataset)        
+        Context.datasets.append(dataset)
         return func(dataset)
     return reg_dataset_decorator
 
 
 # Register task decorator
-def function(protocol, role, datasets):
+def function(protocol, role, datasets, next_peer):
     def function_decorator(func):
         print("Register task:", func.__name__)
-        Context.nodes_context[role] = NodeContext(role, protocol, datasets, func)
+        Context.nodes_context[role] = NodeContext(
+            role, protocol, datasets, func, next_peer)
+
         @functools.wraps(func)
-        def wapper(*args, **kwargs):   
+        def wapper(*args, **kwargs):
             return func(*args, **kwargs)
         return wapper
     return function_decorator

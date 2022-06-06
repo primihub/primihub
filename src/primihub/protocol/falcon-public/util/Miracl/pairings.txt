@@ -1,0 +1,290 @@
+
+A new High level interface for pairings has now been implemented.
+It works with type-1 and type-3 pairings. In the former case it
+uses the eta_T pairing (for GF(2^m) and the Tate pairing (for GF(p)), 
+and in the latter it always uses the optimal ate pairing. It can be 
+used to implement a pairing-based protocol in almost the same amount 
+of space it takes to describe it.
+
+This is particularly useful for the protocol developer who wants
+to test their protocol in a few lines of code, while exploiting
+all of the latest optimizations. The timings achieved are realistic
+and close to what can be expected from a real implementation.
+
+Sixteen example programs are supplied, which implement many of the schemes
+proposed in the P1363.3 standard. These are all written to use type-3 
+pairings
+
+ake.cpp  - Scott's key exchange 
+bls.cpp  - Boneh-Lynn-Shacham short signature
+bmc.cpp  - Barreto & McCullagh signcryption
+blmq.cpp - BLMQ signcryption
+bb1.cpp  - Boneh-Boyen BB1 IBE
+fuzzy.cpp - Sahai-Waters Fuzzy IBE
+peks.cpp - Public Key Encryption with keyword search
+sk_3.cpp - Sakai-Kasahara IBE
+cpabe.cpp - Waters Attribute Based Cryptography
+hibe.cpp  - Hierarchical IBE (Lewko-Waters)
+ipe.cpp  - Inner-product Predicate Encryption
+
+These last four instead use a type-1 pairing
+
+sok.cpp  - Sakai-Ohgishi-Kasahara non-interactive key exchange
+bgw.cpp  - Boneh-Gentry-Waters broadcast encryption
+sk_1.cpp - Sakai-Kasahara IBE
+wang.cpp - Wang interactive key exchange
+
+The details of the pairing implementation are now hidden away.
+The implementor decides on one of 4 levels of security, corresponding
+to AES-80, AES-128, AES-192 and AES-256. However currently only the 
+first two are supported for type-1 pairings. These choices do not affect 
+the application code, which is written using an intuitive and very 
+high level interface.
+
+
+Type-1 pairings are implemented on a super-singular curve defined over 
+GF(2^m) (implementation in ss2_pair.cpp) or a super-singular curve 
+over GF(p) (implementation is ssp_pair.cpp). The former implements
+the eta_T pairing, and the latter the Tate pairing.
+
+Here the pairing is GT=e(G1,G1), where G1 and GT classes are defined in
+pairing_1.h
+
+Note that for type-1 pairings it is almost impossible to get a perfect match
+between parameter sizes and security levels. Indeed there is no known 
+efficient way to get AES-256 security from type-1 pairings on elliptic curves.
+
+For Type-3 pairings, the ate pairing is always used. Curves are chosen
+for optimal match to the required security level.
+
+AES-80 security uses an MNT k=6 curve
+(implementation in mnt_pair.cpp)
+
+AES-128 security uses a BN k=12 curve
+(implementation in bn_pair.cpp)
+
+AES-192 security uses a KSS k=18 curve
+(implementation in kss_pair.cpp)
+
+AES-256 security uses a BLS k=24 curve
+(implementation in bls_pair.cpp)
+
+For the ate pairing GT=e(G2,G1), where G1, G2 and GT classes are defined
+in pairing_3.h
+
+All known optimizations are used for the pairing itself and
+manipulation of instances of G1, G2 and GT.
+
+Precomputation optimizations are fully supported for type-3 pairings.
+Precomputation is of much less benefit for type-1 pairings over GF(2^m)
+When a point instance is precomputed on, it becomes read-only.
+
+If an element of G1, G2 or GT is fixed, then it can be 
+precomputed on, using pfc.precomp_for_mult() for G1 and G2
+and pfc.precomp_for_power() for GT
+
+If an element of G2 is fixed, and it appears in the context
+of e(G2,.), then precomputation can greatly speed up the 
+calculation of the pairing. For this use pfc.precomp_for_pairing().
+In general the first parameter to the pairing can be pre-computed
+on. This also applies to type-1 pairings over GF(p).
+
+Fast techniques for products of pairings are also supported - see 
+pfc.multi_pairing()
+
+For arithmetic in Zr, the pairing friendly group of order r, use
+the Big functions modmult(x,y,r) (returns x*y mod r), moddiv(x,y,r) 
+and inverse(x,r) to avoid overflow.  
+
+To print out an instance of G1, G2 or GT, then simply print the instance's
+member g. So if W is an instance of GT, cout << W.g << endl; Note that
+the g member is public (C++ purists will kill me!) and all available 
+MIRACL methods can be applied to it.
+
+Please examine the example programs to see how it works, and 
+to fully appreciate how easy it is to use.
+
+NEW FEATURE
+
+It is now possible to spill and restore precomputed values to a
+byte array. See members spill() and restore() in G1, G2 and GT
+definitions. Also G2 precomputation for the pairing can be spilled
+and restored via member functions of class PFC.
+
+For example:-
+
+pfc.precomp_for_mult(Q);  // precomputation based on fixed point Q
+char *bytes;             
+int len=Q.spill(bytes);   // allocates byte array of length len
+..                        // ..and spills precomputation into it  
+Q.restore(bytes);         // restores Q from byte array (and deletes array)
+
+
+Note that all MIRACL library optimizations can be used for further
+speed-up. In particular COMBA builds of the library will be much faster.
+Also compilation with the flag /DZZNS=n, where n is the value of
+the variable words calculated in the PFC() constructor will also be faster. 
+Use /DGF2MS=n for supersingular curves over GF(2^m)
+
+Which is best, type-1 or type-3?
+
+This is a bit complicated. Most protocol designers specify their protocols 
+on a type-1 pairing, because its less complicated, because they are lazy, 
+and because the security reduction is to a "more natural" security assumption. 
+However type-3 pairings are much more efficient in practise. 
+ 
+Some protocols require a type-1 or a type-3 pairing to work properly as 
+originally described, but many can work equally well on both. 
+Some protocols like BLMQ signcryption work easily on a type-1 pairing, 
+but need to be changed significantly to work correctly on a type-3 pairing. 
+In some cases its quite hard to tell if a protocol will work on a type-3 
+pairing. Sometimes the security proof would have to be changed.
+
+For more discussion, see http://eprint.iacr.org/2010/388 and the papers
+referenced there.
+
+
+--------------------------------------------------------
+
+MIRACL contains several optimized implementations of pairings over various 
+fields.
+
+*** Legacy pairings stuff here
+
+The fastest pairing code over F_p can be found in the files ake2cpt.cpp and
+ake2sst.cpp, which implements a simple key exchange protocol, using non-
+supersingular and supersingular curves respectively. 
+This uses an embedding degree of k=2, so the pairing e(P,Q) evaluates 
+naturally as an element in F_p^2. P is a point on the elliptic curve E(Fp) and 
+Q is a point on E'(F_p^{k/2}), or in this case E'(F_p) where E' is the twisted 
+curve. Using compression the pairing evaluates as an element in F_p^{k/2}, or 
+just Fp in this case.
+
+For higher levels of security it is recommended to increase the embedding 
+degree and use non-supersingular curves - see ake4cpt.cpp and ake8cpt.cpp for 
+examples. We use a "tower of extensions" to build an Fp^4 class on top of an 
+Fp^2 class - see zzn2.h and zzn4.h
+
+Recommendations: 
+
+For AES-80  security see ake6mntx.cpp
+For AES-128 security see ake12bnx.cpp
+For AES-192 security see ake18kssx.cpp
+For AES-256 security see ake24blsa.cpp
+
+The pairing-relevant files..
+
+DL.CPP -  This implements the eta pairing on supersingular curves over 
+F_{2^m}
+
+DL2.CPP - This implements the eta_T pairing over F_{2^m}. This is possibly 
+the fastest known pairing. See Barreto, Galbraith, O'hEigeartaigh and Scott 
+- http://eprint.iacr.org/2004/375
+
+etat271.c - A C version of the above - particularly useful for constrained 
+            environments. A good example program for embedded implementations
+
+BANDW.CPP - This is actually an NTL program (!) which finds Brezing & Weng 
+pairing friendly curves.
+
+MNT.CPP - Finds MNT non-supersingular pairing-friendly curves for k=3,4 or 6
+
+FREEMAN.CPP - Finds k=10 ideal pairing-friendly curves
+
+FOLKLORE.CPP - Finds pairing friendly curves using Cocks-Pinch method.
+
+FINDBASE.CPP - Finds suitable basis for F_{2^m} fields
+
+IRRED.CPP - Finds a suitable irreducible polynomial for Fp^n
+
+WEIL.CPP - Finds the number of points on E(F_p^k)
+
+CM.CPP - Finds elliptic curve parameters using the method of Complex
+Multiplication
+
+Note the name AKE2CPT means AKE protocol, on a K=2 curve. The curve is found 
+by the Cocks-Pinch Method, and it implements the Tate pairing.
+
+AKE1KMT.CPP -  Implements Authenticated Key Exchange using k=1 non-supersingular curve, using an efficient endomorphism
+
+AKE2CPT.CPP -  Implements Authenticated Key Exchange using k=2 non-supersingular curve
+
+AKE2SST.CPP  - Implements Authenticated Key Exchange using k=2 supersingular curve
+
+AKE2CPT2.CPP - Implements Authenticated Key Exchange using Trace map homomorphism
+
+AKE4CPT.CPP  - Implements AKE using Cocks-Pinch k=4 curve
+
+AKE6MNTT.CPP - Implements AKE using MNT k=6 curve, DL 1024-bit security, 1-3-6 tower
+
+AKE6MNTX.CPP - Implements AKE using MNT k=6 curve, DL 1024-bit security, and a "compositum" tower (1-3-6 and 1-2-6)
+
+AKE6MNTA.CPP - Implements AKE using MNT k=6 curve, DL 1024-bit security, and a "compositum" tower (1-3-6 and 1-2-6)
+
+AKE6MNTT.C   - A partial C implementation of ake6mntt.cpp - particularly useful for constrained 
+               environments. A good example program for embedded implementations
+
+AKE4MNTT.CPP - Implements AKE using MNT k=4 curve, Tate pairing, DL 640-bit security.
+
+AKE4MNTT.C   - A partial C implementation of the above
+
+AKE4MNTA.CPP - Implements AKE using MNT k=4 curve, Ate pairing, DL 640-bit security.
+
+AKE4MNTA.C   - A partial C implementation of the above
+
+AKE6FSTA.CPP - Implements AKE using sextic twist on a D=3, k=6 curve, using Ate pairing.
+
+AKE2NSST.CPP - Faster pairings on a curve with an efficient endomorphism - see 
+               Scott Indocrypt 2005
+
+AKE2CPW.CPP -  Uses a modified and optimized version of the Weil pairing
+
+BN.CPP      -  Program to find suitable BN curves - see below
+
+AKE12BNE.CPP - Implements AKE using Eta pairing on BN curves (k=12) 1-2-6-12 tower of extensions
+
+AKE12BNA.CPP - Implements AKE using Ate pairing on BN curves (k=12) 1-2-6-12 tower of extensions
+
+AKE12BNR.CPP - Implements AKE using R-ate pairing on BN curves (k=12) 1-2-6-12 tower of extensions
+
+AKE12BNX.CPP - Implements AKE using R-ate pairing on BN curves (k=12) 1-2-4-12 tower of extensions (NEW - fastest!)
+
+AKE12BLSA.CPP - Implements AKE using Ate pairing on a k=12, rho=1.5 Barreto-Lynn-Scott curve
+
+KSS18.CPP    -  Program to find suitable KSS k=18 curves - see below
+
+AKE18KSSX.CPP - Implements AKE using R-ate pairing on a k=18, rho=4/3 Kachisa-Schaefer-Scott curve
+
+BLS24.CPP    -  Program to find suitable BLS k=12 curves - see below
+
+AKE24BLSA.CPP - Implements AKE using ate pairing on a k=24, rho=5/4 Barreto-Lynn-Scott curve
+
+The Boneh-Lynn-Shachem short signature scheme
+
+BLS_GEN.CPP  - Generate the public and private parameters from an MNT curve
+
+BLS_SIGN.CPP - create a BLS short signature
+
+BLS_VER.CPP  - verify a BLS short signature
+
+These example programs use the power-pairing idea, which calculates
+E(P,Q,e) = e(P,Q)^e at no (significant) extra cost. See comments in programs.
+
+AKE8BWT.CPP - Implements the AKE using a low-rho Brezing & Weng k=8 curve.
+
+AKE4SBT.CPP - Implements AKE using a low-rho k=4 curve.
+
+AKE8CPT.CPP  - Implements AKE using a Cocks-Pinch k=8 curve
+
+AKE4FSTA.CPP - Implements AKE using ATE pairing - see The Eta Pairing Revisited by Hess, Smart, Vercauteren
+
+
+For more details on the evolution and implementation of these pairing algorithms, see 
+ftp://ftp.computing.dcu.ie/pub/crypto/pairings.pdf
+
+See also
+
+ftp://ftp.computing.dcu.ie/pub/crypto/twists.pdf
+
+----------------------------------------------------------
+

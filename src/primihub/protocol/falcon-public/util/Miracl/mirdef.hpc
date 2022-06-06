@@ -1,0 +1,27 @@
+/* 
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ *   This version suitable for use with computer such as IBM PC in which
+ *   32-bit longs can be manipulated directly, typically if the PC is 
+ *   80386 based.
+ *
+ *   Suitable assembly language versions of muldiv, muldvm, muldvd and muldvd2
+ *   will be necessary. See mrmuldv.any for details
+ */
+
+#define MIRACL 32
+                            /* pseudo 32-bit working */
+#define MR_LITTLE_ENDIAN    /* This may need to be changed        */
+#define mr_utype long
+                            /* the underlying type is usually int *
+                             * but see mrmuldv.any                */
+#define mr_unsign32 unsigned long
+                            /* 32-bit unsigned type               */
+#define MR_IBITS      16    /* bits in int  */
+#define MR_LBITS      32    /* bits in long */
+#define MR_FLASH      52      
+                            /* delete this definition if integer  *
+                             * only version of MIRACL required    */
+                            /* Number of bits per double mantissa */
+
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+

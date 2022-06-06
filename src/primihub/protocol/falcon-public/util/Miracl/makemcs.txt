@@ -1,0 +1,396 @@
+This file offers some guidance for developers who need to create assembly 
+language Macros for an unsupported processor to support the Comba or KCM 
+methods for modular multiplication. Note that the "standard" C build of MIRACL 
+may be fast enough, or else the provided C macros may be sufficient. Use c.mcs
+or c1.mcs, but if mr_qltype is defined in mirdef.h, use c3.mcs
+
+An .mcs file contains C or assembly language macros to implement some simple
+operations on big number digits. On most modern Load/Store RISC processors
+the optimal assembly language required is fortunately quite generic - and  
+that's why this approach is possible. The Instruction set need only support 
+unsigned multiply, add and subtract. It should also support standard indexed 
+addressing modes, where the effective memory address is calculated by adding 
+an offset to a register. The compiler should ideally support in-line assembly.
+
+Correct memory address offsets and label names are automatically inserted by 
+the mex utility. It uses the standard C function "fprintf" to expand the
+macros, and hence inserts appropriate numbers where-ever %d appears in the 
+macro. This implies that if the symbol % should be part of assembly language 
+syntax, it must be replaced by %%.
+
+These macros when extracted by the mex.c program from the specified .mcs 
+file are used to implement some fast algorithms.
+
+MULTIPLY
+
+                a2    a1    a0
+                b2    b1    b0
+                --------------
+             a2.b0 a1.b0 a0.b0
+       a2.b1 a1.b1 a0.b1
+ a2.b2 a1.b2 a0.b2
+ ------------------------------
+    c4    c3    c2    c1   c0
+
+
+Here (a1.b0) is a partial product. As we add up each column, the result is
+accumulated in a triple-precision register x|y|z. When the column is totalled
+z is written to memory and 0|x|y becomes the "carry" to the next column. Note
+that x will always be "small", less than the number of partial products in
+the longest column.
+
+The algorithm for fast multi-precision multiplication multiplies a*b=c and
+requires the following macros.
+
+        MUL_START
+
+        Push any registers if necessary, Initialise pointers to a, b and c, 
+        and zero the triple-precision register required to accumulate the 
+        partial products.
+
+        STEP
+
+        Calculate a partial product and add it to the triple-register.
+        The array offsets from the pointers to a and b are inserted 
+        automatically by the mex utility.
+
+        MFIN
+
+        Store total for this column z, and calculate the carry for the next.
+
+        MUL_END
+
+        Store the left over carry in the left-most column, and pop registers
+        if necessary.
+
+
+MULTUP
+
+Here we just need the first (lower) half of c=a*b; So we use the same 
+MUL_START, STEP, and MFIN macros as above. However no carry is needed from 
+the last column, so a simpler LAST macro is employed here.
+
+SQUARE
+
+Multiprecision squaring can be done nearly twice as fast, as partial products
+appear twice in most columns, but only need to be calculated once. Observe
+that if a=b in the above example then a2.b0 = a0.b2 in the third column.
+
+This algorithm finds c=a*a
+
+        SQR_START
+
+        Push registers, form pointers to a and c, zeroise triple register 
+        
+        DSTEP
+
+        Calculate a partial product and add it twice to column total in
+        the triple register.
+
+        SELF
+
+        Calculate a "diagonal element", e.g. (a1.a1) and add to total.
+
+        SFIN
+
+        Store total for this column z, and calculate the carry for the next 
+
+        SQR_END
+
+        Store the left over carry in the left-most column, and pop registers
+        if necessary.
+
+REDC
+
+Montgomery's modular reduction algorithm calculates a%=b; It also accesses
+the pre-computed variable "ndash".
+
+        REDC_START
+
+        Push registers, get pointers to a and b, and put ndash in a register.
+        Initialise the triple register x|y|z to 0|0|a[0]
+
+        RFINU
+
+        Multiply ndash*z and store lower half of result in a[i] for i-th
+        column. Multiply this number now by b[0]. Add the result to the 
+        triple register x|y|z. Set the triple register to reflect the 
+        "carry" to the next column 0|x|y. Add a[i+1] to the triple register.
+
+        RFIND
+
+        Store z into a[i]. Set triple register to reflect the "carry"
+        to the next column. Add a[i+1] to the triple register.
+
+        REDC_END
+
+        Store the left-over carry in the left-most two columns.
+
+This algorithm also uses the STEP macro as described above.
+
+ADDITION
+
+This algorithm does a simple element-by-element adition c=a+b, 
+propagating the carries.
+
+        ADD_START
+
+        Gets pointers to a, b and c. Adds the first two elements 
+        c[0]=a[0]+b[0]
+
+        ADD
+
+        Adds-with-carry c[i]=a[i]+b[i]
+
+        ADD_END
+
+        If the carry flag is still set, set the variable "carry"=1, 
+        otherwise =0
+
+INCREMENT
+
+Very similar to the above, but this time calculates a+=b
+
+        INC_START
+
+        Gets pointers to a and b. Adds the first elements a[0]+=b[0]
+
+        INC
+
+        Adds-with-carry a[i]+=b[i]
+
+        INC_END
+
+        If the carry flag is still set, set the variable "carry=1", 
+        otherwise 0
+
+SUBTRACTION
+
+Find c=a-b, propagating borrows
+
+        SUB_START
+
+        Gets pointers to a, b and c. Subtracts the first two elements 
+        c[0]=a[0]-b[0]
+
+        SUB
+
+        Subtracts-with-borrow c[i]=a[i]-b[i]
+
+        SUB_END
+
+        If there is a "borrow" outstanding, set the variable "carry"=1, 
+        otherwise =0. **NOTE** This MAY be indicated by carry flag=1 OR
+        by carry flag=0 - it depends on architecture, so be careful.
+
+DECREMENT
+
+Find a-=b, propagating borrows
+
+        DEC_START
+
+        Gets pointers to a and b. Subtracts the first two elements 
+        a[0]-=b[0]
+
+        DEC
+
+        Subtracts-with-borrow a[i]-=b[i]
+
+        DEC_END
+
+        If there is a "borrow" outstanding, set the variable "carry"=1, 
+        otherwise =0. **NOTE** This MAY be indicated by carry flag=1 OR
+        by carry flag=0 - it depends on architecture, so be careful.
+
+SUMMATION
+
+Adds c=a+b in a "for" loop. Each time around the loop a fixed block of
+digits are added. A total of n such blocks are to be added.
+
+        KADD_START
+
+        Initialise pointers to a, b and c. Move n into a register. Set
+        the carry flag to zero. Provide a label for looping back to. Note
+        that label numbers are automatically inserted by the mex utility.
+
+        KASL
+
+        Decrement the n register. If its zero jump to label at the end of 
+        this macro. If its not, advance the pointer registers to point to
+        the next block, and branch back to label in KADD_START. 
+        **NOTE** It is vitally important that this macro does NOT affect 
+        the carry flag
+
+        KADD_END
+
+        If the carry flag is still set, set the variable "carry=1", 
+        otherwise 0
+
+This algorithm also uses the ADD macro. See above
+
+
+INCREMENTATION
+
+Adds a+=b in a "for" loop. Each time around the loop a fixed block of
+digits are added. A total of n such blocks are to be added.
+
+        KINC_START
+
+        Initialise pointers to a and b. Move n into a register. Set
+        the carry flag to zero. Provide a label for looping back to. Note
+        that label numbers are automatically inserted by the mex utility.
+
+        KIDL
+
+        Decrement the n register. If its zero jump to label at the end of 
+        this macro. If its not, advance the pointer registers to point to
+        the next block, and branch back to label in KINC_START. 
+        **NOTE** It is vitally important that this macro does NOT affect 
+        the carry flag
+
+        KINC_END
+
+        If the carry flag is still set, set the variable "carry=1", 
+        otherwise 0
+
+This algorithm also uses the INC macro. See above
+
+
+DECREMENTATION
+
+Subtracts a-=b in a "for" loop. Each time around the loop a fixed block of
+digits are subtracted. A total of n such blocks are to be subtracted.
+
+        KDEC_START
+
+        Initialise pointers to a and b. Move n into a register. Set
+        the carry flag to that state which indicates no borrow. Provide a 
+        label for looping back to. Note that label numbers are automatically 
+        inserted by the mex utility.
+
+        KDEC_END
+
+        Set the variable "carry"  to 1 if the carry flag is in that state
+        which reflects an outstanding "borrow", otherwise 0
+
+This algorithm also uses the KIDL and DEC macros. See above.
+
+
+NEW! - April 2002
+
+Interleaved steps can be used in multiplication to allow for improved 
+instruction scheduling. This could be a lot faster if the multiply unit takes 
+more than 1 clock cycle. The idea is to expose more ILP (Instruction Level 
+Parallelism) for a modern pipelined (and possibly super-scaler) load-store 
+processor to chew on.
+
+In the calculation of the sum of partial products in a column, replace
+
+ STEPM - Multiply
+ STEPA - Add
+ STEPM - Multiply
+ STEPA - Add
+ STEPM - Multiply
+ STEPA - Add
+ STEPM - Multiply
+ STEPA - Add
+
+with the interleaved
+
+ STEP1M - Multiply 1
+
+ STEP2M - Multiply 2
+ STEP1A - Add 1
+ STEP1M - Multiply 1
+ STEP2A - Add 2
+ STEP2M - Multiply 2
+ STEP1A - Add 1
+
+ STEP2A - Add 2
+
+The same applies to DSTEP for squaring.
+
+In this way the multiply instruction gets more time to complete to its 
+destination registers.
+
+If the MEX program sees that STEP1M macro is present as well as STEP, 
+it will permit scheduling with the -s flag as above. Of course this requires 
+that there to be enough registers - STEP1x and STEP2x should ideally use 
+different registers. 
+
+If this is going to help it is particularly important that the destination 
+registers of the multiply steps STEP1M and STEP2M be distinct.
+
+Many processors use hardware dynamic scheduling (like the Pentium II). 
+For such a processor scheduling the code like this will have little 
+effect. The ARM assembler re-orders the code automatically for 
+optimum scheduling, so again scheduling the code like this will have little 
+impact.
+
+Some example *.mcs files in this format are included - see c.mcs and
+arm.mcs for example.
+
+This idea could be extended in a fairly obvious way, for example
+
+ STEP1M - Multiply 1
+ STEP2M - Multiply 2
+ STEP3M - Multiply 3
+ 
+ STEP1A - Add 1
+ STEP1M - Multiply 1
+ STEP2A - Add 2
+ STEP2M - Multiply 2
+ STEP3A - Add 3
+ STEP3M - Multiply 3
+ STEP1A - Add 1
+ STEP1M - Multiply 1
+
+ STEP2A - Add 2
+ STEP3A - Add 3
+ STEP1A - Add 1
+
+This is currently NOT supported, it would require a relatively simple 
+modification to mex.c
+
+This might be justified in the case of a very deeply pipelined multiplier.
+The idea would be that Multiply 1, 2, and 3 might all be active 
+simultaneously.
+
+
+
+New features 12/10/2007
+
+NEW: PMUL, PMUL_START and PMUL_END macros to support fast reduction for 
+pseudo mersenne prime moduli. 
+
+
+PMULT
+
+When reducing modulo p=2^m-d, where m is a multiple of the word length and
+d is single precision, we have the useful identity 2^m=d mod p. The product 
+of two field elements can be considered as 2^m.U+L, where U is the upper 
+half of the product, and L is the lower half. Therefore the reduced value 
+is 2^m.U+L mod p = dU+L. The dU component can in turn be considered as 
+2^m.x+Y, where x will be single precision. So the final result is d.x+Y+L. 
+Finally a couple of subtractions of p might be required to get a result 
+less than p. The function PMULT calculates d.x and Y
+
+        PMUL_START 
+
+        Initialises pointers to the top half of the product a[], and arrays 
+        to hold d.x (b[]) and Y (c[]). Moves d to a register.
+
+        PMUL
+
+        Sets c[i]=a[i]*d and propagates carries. Sets b[i]=0
+
+        PMUL_END
+
+        Sets b[0] (and b[1]) to d.x
+
+NEW: Macros to support Hybrid method - see http://eprint.iacr.org/2007/299
+Basically a 2x2 or 4x4 block of partial products are calculated together
+which reduces memory accesses. Uses more registers.
+
+
+

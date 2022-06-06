@@ -1,0 +1,176 @@
+
+NOTE: On Sparcs with hardware support for quad-precision long doubles,
+it may be optimal to build a MIRACL library using a "double" underlying 
+type rather than use the approach described here. See double.txt
+
+*************************************
+
+
+These comments apply to the standard 32-bit SPARC (Version 8) processor with 
+hardware 32-bit multiplication.  For 64-bit SPARC (Version 9) see below.
+
+
+*************************************
+
+If developing for the SPARC, or indeed any other new processor, you should 
+first build a C-only library.
+
+For the SPARC, this mirdef.h header would be appropriate for an integer-
+only build of the library.
+
+--------------------------------------
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+
+#define MIRACL 32
+#define MR_BIG_ENDIAN      
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_dltype long long
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long long
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+
+
+#define MR_NOASM
+
+---------------------------------------------
+
+Assuming that the mirdef.h, miracl.h and mr*.c files are all in the same
+directory, then a suitable batch file for building a MIRACL library might 
+look like this:-
+
+-------------------------------
+
+gcc -I. -c -O2 mrcore.c
+gcc -I. -c -O2 mrarth0.c
+gcc -I. -c -O2 mrarth1.c
+gcc -I. -c -O2 mrarth2.c
+gcc -I. -c -O2 mralloc.c
+gcc -I. -c -O2 mrsmall.c
+gcc -I. -c -O2 mrio1.c
+gcc -I. -c -O2 mrio2.c
+gcc -I. -c -O2 mrgcd.c
+gcc -I. -c -O2 mrjack.c
+gcc -I. -c -O2 mrxgcd.c
+gcc -I. -c -O2 mrarth3.c
+gcc -I. -c -O2 mrbits.c
+gcc -I. -c -O2 mrrand.c
+gcc -I. -c -O2 mrprime.c
+gcc -I. -c -O2 mrcrt.c
+gcc -I. -c -O2 mrscrt.c
+gcc -I. -c -O2 mrmonty.c
+gcc -I. -c -O2 mrpower.c
+gcc -I. -c -O2 mrsroot.c
+gcc -I. -c -O2 mrcurve.c
+gcc -I. -c -O2 mrfast.c
+gcc -I. -c -O2 mrzzn2.c
+gcc -I. -c -O2 mrzzn2b.c
+gcc -I. -c -O2 mrzzn3.c
+gcc -I. -c -O2 mrecn2.c
+gcc -I. -c -O2 mrshs.c
+gcc -I. -c -O2 mrshs256.c
+gcc -I. -c -O2 mrshs512.c
+gcc -I. -c -O2 mraes.c
+gcc -I. -c -O2 mrlucas.c
+gcc -I. -c -O2 mrstrong.c
+gcc -I. -c -O2 mrbrick.c
+gcc -I. -c -O2 mrebrick.c
+gcc -I. -c -O2 mrec2m.c
+gcc -I. -c -O2 mrgf2m.c
+ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o
+ar r  miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrsroot.o
+ar r  miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o 
+ar r  miracl.a mrfast.o mrshs.o mraes.o mrlucas.o mrstrong.o mrbrick.o 
+ar r  miracl.a mrebrick.o mrgf2m.o mrec2m.o mrpower.o mrzzn2b.o
+ar r  miracl.a mrshs256.o mrshs512.o mrbits.o mrzzn2.o mrzzn3.o mrecn2.o
+del mr*.o
+gcc -I.-O2 pk-demo.c miracl.a -o pk-demo
+
+--------------------------------------------
+
+This may be fast enough for you. If its not you can use the assembly language
+macros provided in sparc32.mcs for greater speed. See kcmcomba.txt.
+
+For faster RSA and DH implementations replace the MR_NOASM definition with
+MR_KCM n (where n is usually 4, 8 or 16 - experiment. n*MIRACL must divide the 
+modulus size in bits exactly, which it will for standard moduli of 1024 bit 
+for example). Compile and run the utility mex.c
+
+c:\miracl>mex n sparc32 mrkcm
+
+(Yes its the same n). Rebuild the MIRACL library, but this time include the 
+modules mrkcm.c and mrmuldv.c (you can find the latter as mrmuldv.ccc This
+standard C version will do, although the SPARC asm versions from mrmuldv.any 
+are faster. These would need to be assembled rather than compiled)
+
+For fast GF(p) elliptic curves, replace MR_NOASM with MR_COMBA n. This time 
+32*n is exactly the size of p in bits (assuming 32-bit processor).
+
+c:\miracl>mex n sparc32 mrcomba
+
+Rebuild the MIRACL library, but this time include the modules mrcomba.c and 
+mrmuldv.c.
+
+Still not fast enough? If the prime p is of a "special" form, define in 
+mirdef.h MR_SPECIAL. Edit mrcomba.tpl to insert "special" code for modular 
+reduction - its quite easy and you will find examples there already. Run 
+mex as before, and rebuild MIRACL again.
+
+For processors other than the SPARC, the basic procedure is the same. A C-only 
+build is always possible. To go faster you will need to create a .mcs file 
+for your processor, and then you can proceed as above.
+
+An alternative is to do a C-only build and then go in and optimise the 
+generated assembly language. The time-critical routines are usually 
+multiply() and redc() which can be found in mrarth2.c and mrmonty.c
+
+This will probably not be as fast as the highly optimised approach outlined
+above.
+
+
+----------------------------------------------------------
+
+64-bit SPARC (Version 9). Alas not a "real" 64-bit processor in the sense that 
+there is no 64x64=128 bit multiply instruction.
+
+
+The standard C header files mirdef.h should in this case look like
+
+
+--------------------------------------
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+
+#define MIRACL 32
+#define MR_BIG_ENDIAN      
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_dltype long
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long 
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+
+
+#define MR_NOASM
+
+---------------------------------------------
+
+
+Compile as above, but include compiler flag -m64. Also you may need to change 
+-O2 to -O1 - when I tried it -O2 optimization was broken.
+
+
+For faster assembly language implementation proceed as above, but this time 
+use macros from sparc64.mcs
+
+____________________________________________
+

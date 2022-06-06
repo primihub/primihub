@@ -1,0 +1,22 @@
+It is quite easy to build MIRACL to work with Cygwin.
+
+Basically follow the intructions in linux.txt, except first
+
+(1) Copy mrmuldv.gcc to mrmuldv.c, and 
+
+(2) Change the file linux to replace the line
+
+as mrmuldv.s -o mrmuldv.o
+
+with the line 
+
+gcc -O2 -c mrmuldv.c
+
+Then build the library and applications as usual with
+
+$bash linux
+
+(Make sure that the file "linux" has the correct Unix file format 
+for CR/LF - not Windows format)
+
+

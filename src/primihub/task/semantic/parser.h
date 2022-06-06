@@ -51,6 +51,13 @@ class ProtocolSemanticParser {
 
     ~ProtocolSemanticParser() {}
     void parseTaskSyntaxTree(std::shared_ptr<LanguageParser> lan_parser);
+    void schedulePirTask(std::shared_ptr<LanguageParser> lan_parser,
+                         std::string node_id,
+                         std::string node_ip,
+                         int node_port);
+    void schedulePsiTask(std::shared_ptr<LanguageParser> lan_parser);
+    int transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
+                            PushTaskRequest &taskRequest);
 
   private:
     void scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);

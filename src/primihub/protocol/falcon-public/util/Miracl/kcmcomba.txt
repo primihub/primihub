@@ -1,0 +1,104 @@
+In embedded applications on low-powered processors, performance is a big
+issue. Using either the KCM or Comba methods as described here can increase
+speeds 4-fold.
+
+To use the super-fast KCM (for 2048-bit RSA 1024-bit DH and DSS) and Comba 
+(for 1024 bit RSA and GF(p) Elliptic curves) methods you will need to create 
+the file mrkcm.c or the file mrcomba.c for inclusion in the MIRACL library. 
+This is done by inserting 'macros' from a ?.mcs file into the template files 
+mrkcm.tpl, or mrcomba.tpl. This is done automatically using the MEX utility.
+
+A c.mcs file is supplied, which contains C macros. Also c1.mcs which uses
+an alternate approach. See also cs.mcs (read the comments at the top).
+If a quad-length type is available (mr_qltype defined in mirdef.h), 
+use c2.mcs
+
+However the best performance is usually achieved by 
+using assembly language macros. This requires your compiler to support in-line 
+assembly. For example the file ms86.mcs inserts Pentium assembly language 
+macros for use with Microsoft or Borland compilers. The file gcc386.mcs does 
+the same for the gcc compiler. If your PC supports SSE2 extensions, for 
+example if it is a Pentium 4, then instead use either sse2.mcs or gccsse2.mcs 
+(see sse2.txt). The file arm.mcs does the same for the popular 32-bit ARM 
+processor. Other .mcs files for other processors/compilers may be available. 
+See makemcs.txt for instructions for creating your own.
+
+New! The files c.mcs and arm.mcs now allow "interleaved" multiplication steps 
+to facilitate improved processor scheduling - see makemcs.txt.
+
+The macro expansion is carried out automatically by the supplied program 
+MEX.C. You must compile and run this program. If you use the config.c 
+utility it will advise you on the parameters to use. Note that although 
+config.c should be compiled and run on the target processor, mex.c can be 
+compiled and run on any workstation.
+
+For example
+
+c:>mex 6 ms86 mrcomba
+
+creates a file mrcomba.c from mrcomba.tpl and ms86.mcs. The Comba method will
+then be optimised for a modulus of 6*32 = 192 bits on a Pentium computer. 
+Typically this might be used for an implementation of elliptic curves over 
+GF(p) for p a 192 bit prime. Note that the code generated in mrcomba.c or 
+mrkcm.c may benefit to a small extent from some manual post-optimisation. 
+Re-ordering instructions may help for certain processors.
+
+c:>mex 16 ms86 mrkcm
+
+creates a file mrkcm.c from mrkcm.tpl and ms86.mcs. The KCM method will then 
+be optimised for moduli of sizes 512, 1024, 2048 bits etc. Typically this 
+might be used for a fast implementation of RSA, DSS or Diffie-Hellman. 
+
+For the Comba method only it is possible to implement special modular 
+reduction methods for a modulus p of a particular form. Two types of special 
+modulus are supported, Generalised Mersenne Primes, and Pseudo-Mersenne
+Primes. To make use of this feature MR_SPECIAL must be defined in mirdef.h.
+
+Generalised Mersenne Primes are also known as Solinas primes. These are of a 
+form like for example 2#224-2#96+1. Note that the exponents are multiples of 
+a 32-bit word length. Many of the NIST recommended primes are of this form.
+In the file mrcomba.tpl code can be found to implement fast reduction with
+respect to many different GM primes, and for many different word lengths.
+If the particular one you want is not there, it is not hard to implement it 
+yourself by manually editing the file mrcomba.tpl
+
+Pseudo Mersenne Primes are also known as Crandall Primes. These are of a form
+like for example 2^160-57, where 160 is a multiple of the word length, and the
+constant 57 is small enough to fit into one computer word. Moduli of this 
+form are automatically supported if you define MR_PSEUDO_MERSENNE in mirdef.h
+
+As always it is best to use config.c, which guides you through all of this. 
+
+
+You will find it valuable to run through this whole process on a standard PC
+using perhaps the Microsoft C/C++ compiler, just to get familiar with the 
+config.c and mex.c utilities.
+
+If you are embarking on an embedded project using a processor for which a 
+.mcs file does not exist, you will have to write your own, or be content with 
+the C macros. Note that this approach is likely to be optimal only on 
+processors that support an unsigned multiply instruction. 
+This is probably the case with the majority of embedded processors (e.g. ARM, 
+68000 variants etc). It is also important that the compiler support inline 
+assembly, via something like
+
+asm("  ");
+
+or
+
+__asm
+
+{
+}
+
+constructs in C. However other approaches are possible, for example using C 
+"intrinsics" works well for the itanium - see itanium.mcs
+
+To write your own .mcs file, use c.mcs or arm.mcs as models. For more 
+background read the article ftp.computing.dcu.ie/pub/crypto/timings.doc
+
+The macro-expansion mechanism has been designed to make it as easy as 
+possible for the developer to write optimal code for best performance.
+See makemcs.txt
+
+

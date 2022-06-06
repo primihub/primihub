@@ -1,0 +1,471 @@
+; Comba/KCM Macros for TI msp430
+;
+; The latest version of the IAR Workbench C compiler seems to have forgotten how to 
+; handle local variables in inline assembly language, so you might have to go and 
+; change a, b, c and carry in mrcomba.c to the actual registers assigned by the 
+; compiler. Look at the assembler .s output file to figure this. 
+;
+; Alternatively replace a, b, c and carry with globals g_a, g_b, g_c and g_carry, as 
+; the compiler inline assembly does seem to recognise global variables. So at file 
+; scope of mrcomba.c place
+;
+; static mr_small *g_a,*g_b,*g_c,g_carry;
+;
+; and modify all references to a, b, c and carry in mrcomba.c to g_a,g_b,g_c and g_carry
+;
+; See ecdhp16.c for an example that uses this file
+;
+; Triple register is r8|r7|r6
+;
+; See makemcs.txt for more information about this file
+;
+; Contributed by Piotr Szczechowiak
+; (uses hardware multiplier)
+; 
+MACRO MUL_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r12\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &c,r12\n"
+  "PUSH r8\n"
+  "PUSH r7\n"
+  "PUSH r6\n"
+  "PUSH r5\n"
+
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  "MOV (2*%d)(r10),r15\n"
+  "MOV r15,&0130h\n"
+  "MOV (2*%d)(r11),r15\n"
+  "MOV r15,&0138h\n"
+  "ADD &013Ah,r6\n"
+  "ADDC &013Ch,r7\n"
+  "ADDC r5,r8\n"
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  "MOV r6,(2*%d)(r12)\n"
+  "MOV r7,r6\n"
+  "MOV r8,r7\n"
+  "CLR r8\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "MOV (2*%d)(r10),r15\n"
+  "MOV r15,&0130h\n"
+  "MOV (2*%d)(r11),r15\n"
+  "MOV r15,&0138h\n"
+  "ADD &013Ah,r6\n"
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  "MOV r6,(2*%d)(r12)\n"
+  "POP r5\n"
+  "POP r6\n"
+  "POP r7\n"
+  "POP r8\n"
+  "POP r12\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r12\n"
+  "MOV &a,r10\n"
+  "MOV &c,r12\n"
+  "PUSH r8\n"
+  "PUSH r7\n"
+  "PUSH r6\n"
+  "PUSH r5\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  "MOV (2*%d)(r10),r15\n"
+  "MOV r15,&0130h\n"
+  "MOV (2*%d)(r10),r15\n"
+  "MOV r15,&0138h\n"
+  "ADD &013Ah,r6\n"
+  "ADDC &013Ch,r7\n"
+  "ADDC r5,r8\n"
+  "ADD &013Ah,r6\n"
+  "ADDC &013Ch,r7\n"
+  "ADDC r5,r8\n"
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  "MOV (2*%d)(r10),r15\n"
+  "MOV r15,&0130h\n"
+  "MOV r15,&0138h\n"
+  "ADD &013Ah,r6\n"
+  "ADDC &013Ch,r7\n"
+  "ADDC r5,r8\n"
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  "MOV r6,(2*%d)(r12)\n"
+  "MOV r7,r6\n"
+  "MOV r8,r7\n"
+  "CLR r8\n"
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  "MOV r6,(2*%d)(r12)\n"
+  "POP r5\n"
+  "POP r6\n"
+  "POP r7\n"
+  "POP r8\n"
+  "POP r12\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r12\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &ndash,r12\n"
+  "PUSH r8\n"
+  "PUSH r7\n"
+  "PUSH r6\n"
+  "PUSH r5\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "MOV r10,r6\n"
+  "CLR r5\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "MOV r6,&0130h\n"
+  "MOV r12,&0138h\n"
+  "MOV &013Ah,(2*%d)(r10)\n"
+  "MOV r11,&0130h\n"
+  "MOV &013Ah,&0138h\n"
+  "ADD &013Ah,r6\n"
+  "ADDC &013Ch,r7\n"
+  "ADDC r5,r8\n"
+  "MOV r7,r6\n"
+  "MOV r8,r7\n"
+  "CLR r8\n"
+  "MOV (2*(%d+1))(r10),r15\n"
+  "ADD r15,r6\n"
+  "ADDC r5,r7\n"
+  "CLR r8\n"
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  "MOV r6,(2*%d)(r10)\n"
+  "MOV r7,r6\n"
+  "MOV r8,r7\n"
+  "CLR r8\n"
+  "MOV (2*(%d+1))(r10),r15\n"
+  "ADD r15,r6\n"
+  "ADDC r5,r7\n"
+  "CLR r8\n"
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  "MOV r6,(2*%d)(r10)\n"
+  "MOV r7,(2*(%d+1))(r10)\n"
+  "POP r5\n"
+  "POP r6\n"
+  "POP r7\n"
+  "POP r8\n"
+  "POP r12\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r12\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &c,r12\n"
+  "MOV (2*0)(r10),r15\n"
+  "MOV (2*0)(r11),r13\n"
+  "ADD r13,r15\n"
+  "MOV r15,(2*0)(r12)\n"
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD
+  "MOV (2*%d)(r10),r15\n"
+  "MOV (2*%d)(r11),r13\n"
+  "ADDC r13,r15\n"
+  "MOV r15,(2*%d)(r12)\n"
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r12\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV (2*0)(r10),r15\n"
+  "MOV (2*0)(r11),r13\n"
+  "ADD r13,r15\n"
+  "MOV r15,(2*0)(r10)\n"
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  "MOV (2*%d)(r10),r15\n"
+  "MOV (2*%d)(r11),r13\n"
+  "ADDC r13,r15\n"
+  "MOV r15,(2*%d)(r10)\n"
+ENDM
+MACRO INC_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+MACRO SUB_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r12\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &c,r12\n"
+  "MOV (2*0)(r10),r15\n"
+  "MOV (2*0)(r11),r13\n"
+  "SUB r13,r15\n"
+  "MOV r15,(2*0)(r12)\n"
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  "MOV (2*%d)(r10),r15\n"
+  "MOV (2*%d)(r11),r13\n"
+  "SUBC r13,r15\n"
+  "MOV r15,(2*%d)(r12)\n"
+ENDM
+MACRO SUB_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "XOR.B #1,r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r12\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  __asm (
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV (2*0)(r10),r15\n"
+  "MOV (2*0)(r11),r13\n"
+  "SUB r13,r15\n"
+  "MOV r15,(2*0)(r10)\n"
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  "MOV (2*%d)(r10),r15\n"
+  "MOV (2*%d)(r11),r13\n"
+  "SUBC r13,r15\n"
+  "MOV r15,(2*%d)(r10)\n"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "XOR.B #1,r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r11\n"
+  "POP r10\n"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r12\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &c,r12\n"
+  "MOV &n,r13\n"
+  "CLRC\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+  "DEC r13\n"
+  "JZ k%d\n"
+  "CLR r15\n"
+  "ADC r15\n"
+  "ADD #(2*%d),r10\n"
+  "ADD #(2*%d),r11\n"
+  "ADD #(2*%d),r12\n"
+  "RRC r15\n"
+  "JMP k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r12\n"
+  "POP r11\n"
+  "POP r10\n"
+  ); 
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &n,r13\n"
+  "CLRC\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "DEC r13\n"
+  "JZ k%d\n"
+  "CLR r15\n"
+  "ADC r15\n"
+  "ADD #(2*%d),r10\n"
+  "ADD #(2*%d),r11\n"
+  "RRC r15\n"
+  "JMP k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r11\n"
+  "POP r10\n"
+  ); 
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  "PUSH r10\n"
+  "PUSH r11\n"
+  "PUSH r13\n"
+  "MOV &a,r10\n"
+  "MOV &b,r11\n"
+  "MOV &n,r13\n"
+  "CLRC\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "CLR r15\n"
+  "ADC r15\n"
+  "MOV r15,&carry\n"
+  "POP r13\n"
+  "POP r11\n"
+  "POP r10\n"
+  ); 
+ENDM

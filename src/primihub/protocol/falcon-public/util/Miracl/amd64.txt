@@ -1,0 +1,179 @@
+
+AMD64 processor now fully supported using Intel GCC Compiler
+
+Use a header file like 
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 64
+#define mr_utype long
+#define MR_IBITS 32
+#define MR_LBITS 64
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long
+#define MR_FLASH 52
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define BITSINCHAR 8
+
+and use assembly language file mrmuldv.s64
+
+Note that the above header file assumes an LP64-compatible compiler. 
+For an LLP64 compiler, change mr_utype to a 64-bit "long long" or __int64
+
+To build the miracl library, extract below into a file "amd64" and execute
+
+bash amd64
+
+
+-------------------------------
+
+rm miracl.a
+gcc -I. -c -O2 mrcore.c
+gcc -I. -c -O2 mrarth0.c
+gcc -I. -c -O2 mrarth1.c
+gcc -I. -c -O2 mrarth2.c
+gcc -I. -c -O2 mralloc.c
+gcc -I. -c -O2 mrsmall.c
+gcc -I. -c -O2 mrio1.c
+gcc -I. -c -O2 mrio2.c
+gcc -I. -c -O2 mrgcd.c
+gcc -I. -c -O2 mrjack.c
+gcc -I. -c -O2 mrxgcd.c
+gcc -I. -c -O2 mrarth3.c
+gcc -I. -c -O2 mrbits.c
+gcc -I. -c -O2 mrrand.c
+gcc -I. -c -O2 mrprime.c
+gcc -I. -c -O2 mrcrt.c
+gcc -I. -c -O2 mrscrt.c
+gcc -I. -c -O2 mrmonty.c
+gcc -I. -c -O2 mrpower.c
+gcc -I. -c -O2 mrcurve.c
+gcc -I. -c -O2 mrfast.c
+gcc -I. -c -O2 mrzzn2.c
+gcc -I. -c -O2 mrzzn2b.c
+gcc -I. -c -O2 mrzzn3.c
+gcc -I. -c -O2 mrecn2.c
+gcc -I. -c -O2 mrshs.c
+gcc -I. -c -O2 mrshs256.c
+gcc -I. -c -O2 mrshs512.c
+gcc -I. -c -O2 mraes.c
+gcc -I. -c -O2 mrgcm.c
+gcc -I. -c -O2 mrlucas.c
+gcc -I. -c -O2 mrstrong.c
+gcc -I. -c -O2 mrbrick.c
+gcc -I. -c -O2 mrebrick.c
+gcc -I. -c -O2 mrec2m.c
+gcc -I. -c -O2 mrgf2m.c
+gcc -I. -c -O2 mrflash.c
+gcc -I. -c -O2 mrfrnd.c
+gcc -I. -c -O2 mrdouble.c
+gcc -I. -c -O2 mrround.c
+gcc -I. -c -O2 mrbuild.c
+gcc -I. -c -O2 mrflsh1.c
+gcc -I. -c -O2 mrpi.c
+gcc -I. -c -O2 mrflsh2.c
+gcc -I. -c -O2 mrflsh3.c
+gcc -I. -c -O2 mrflsh4.c
+as mrmuldv.s64 -o mrmuldv.o
+ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o mrecn2.o
+ar r miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrbits.o mrzzn3.o
+ar r miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o mrzzn2.o mrzzn2b.o
+ar r miracl.a mrpower.o mrfast.o mrshs.o mrshs256.o mraes.o mrlucas.o mrstrong.o mrgcm.o      
+ar r miracl.a mrflash.o mrfrnd.o mrdouble.o mrround.o mrbuild.o
+ar r miracl.a mrflsh1.o mrpi.o mrflsh2.o mrflsh3.o mrflsh4.o
+ar r miracl.a mrbrick.o mrebrick.o mrec2m.o mrgf2m.o mrshs512.o mrmuldv.o
+gcc -I. -O2 factor.c miracl.a -lm -o factor
+rm mr*.o
+
+----------------------------------------------------
+
+There is also a macro file amd64.mcs  - see kcmcomba.txt and makemcs.txt
+
+
+For example use the following to build a very fast version of ake12t.cpp
+
+(  But first change
+
+Miracl precision(8,0); 
+
+to
+
+Miracl precision(4,0); 
+
+And execute
+
+mex 4 amd64 mrcomba
+
+to create the module mrcomba.c    )
+
+/*
+   AMD64 mirdef.h file
+   optimized for a 256 (=4x64) bit modulus, using COMBA method
+*/
+#define MR_LITTLE_ENDIAN
+#define MIRACL 64
+#define mr_utype long
+#define MR_IBITS 32
+#define MR_LBITS 64
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long
+#define MR_ALWAYS_BINARY
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+#define MR_COMBA 4
+
+rm *.exe
+rm *.lib
+rm miracl.a
+gcc -I. -c -O2 mrcore.c
+gcc -I. -c -O2 mrarth0.c
+gcc -I. -c -O2 mrarth1.c
+gcc -I. -c -O2 mrarth2.c
+gcc -I. -c -O2 mralloc.c
+gcc -I. -c -O2 mrsmall.c
+gcc -I. -c -O2 mrio1.c
+gcc -I. -c -O2 mrio2.c
+gcc -I. -c -O2 mrgcd.c
+gcc -I. -c -O2 mrjack.c
+gcc -I. -c -O2 mrxgcd.c
+gcc -I. -c -O2 mrarth3.c
+gcc -I. -c -O2 mrbits.c
+gcc -I. -c -O2 mrrand.c
+gcc -I. -c -O2 mrprime.c
+gcc -I. -c -O2 mrcrt.c
+gcc -I. -c -O2 mrscrt.c
+gcc -I. -c -O2 mrmonty.c
+gcc -I. -c -O2 mrpower.c
+gcc -I. -c -O2 mrsroot.c
+gcc -I. -c -O2 mrcurve.c
+gcc -I. -c -O2 mrfast.c
+gcc -I. -c -O2 mrshs.c
+gcc -I. -c -O2 mrshs256.c
+gcc -I. -c -O2 mrshs512.c
+gcc -I. -c -O2 mraes.c
+gcc -I. -c -O2 mrgcm.c
+gcc -I. -c -O2 mrlucas.c
+gcc -I. -c -O2 mrzzn2.c
+gcc -I. -c -O2 mrstrong.c
+gcc -I. -c -O2 mrbrick.c
+gcc -I. -c -O2 mrebrick.c
+gcc -I. -c -O2 mrec2m.c
+gcc -I. -c -O2 mrgf2m.c
+gcc -I. -c -O2 mrcomba.c
+
+
+as mrmuldv.s64 -o mrmuldv.o
+ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o mrzzn2.o
+ar r miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrbits.o mrgcm.o
+ar r miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o mrsroot.o
+ar r miracl.a mrpower.o mrfast.o mrshs.o mrshs256.o mraes.o mrlucas.o mrstrong.o       
+ar r miracl.a mrbrick.o mrebrick.o mrec2m.o mrgf2m.o mrmuldv.o mrshs512.o mrcomba.o
+rm mr*.o
+
+g++  -I. -c -O2 -DZZNS=4 zzn.cpp
+g++  -I. -c -O2 -DZZNS=4 big.cpp
+g++ -I. -c -O2 -DZZNS=4 zzn12.cpp
+g++ -I. -c -O2 -DZZNS=4 zzn6a.cpp
+g++ -I. -c -O2 -DZZNS=4 zzn2.cpp
+g++ -I. -c -O2 -DZZNS=4 ecn2.cpp
+g++ -I. -c -O2 -DZZNS=4 ecn.cpp
+g++  -I. -O2 -DZZNS=4 ake12t.cpp zzn12.o zzn6a.o zzn2.o ecn2.o ecn.o zzn.o big.o miracl.a -o ake12t

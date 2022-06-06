@@ -1,0 +1,46 @@
+RedHat Linux 6.0+ MIRACL i386 x86-32 installation
+
+Also works OK for Solaris if its x386/Pentium based.
+
+1. Unzip the MIRACL.ZIP file using the utility unzip, into an empty directory
+
+unzip -j -aa -L miracl.zip
+
+The -j ignores the directory structure inside MIRACL.ZIP. The -aa converts all 
+text files to Unix format, and -L ensures that all filenames are lower-case.
+
+
+2. Perform a tailored build of the MIRACL library by opening a terminal 
+window, and typing
+
+bash linux
+
+3. All the MIRACL applications (except RATCALC) can then be built, as 
+   desired. Remember to link all C applications to the miracl.a library.
+   C++ applications must be linked as well to one or more of big.o zzn.o 
+   ecn.o crt.o flash.o object files etc. 
+   See the xxx.bat files for examples. Some applications that require 
+   floating-point support may also require -lm in the compile command line.
+
+
+Make sure that your Linux PATH points to the current directory, so that 
+executables can be run.
+
+Some programs may require some small changes. For example in schoof.cpp search 
+for the comment about "platforms". 
+
+Note that Linux already has (a rather pathetic) factor program. To avoid name 
+clashes you might rename MIRACL's "factor" program to "facter", or somesuch.
+
+
+
+For a 64-bit build, on for example an AMD64 or a Core 2 processor (x86-64), use
+
+bash linux64
+
+
+IMPORTANT
+
+Some files might have to be changed from Windows File format, to Unix file format
+in order for programs to work correctly.
+

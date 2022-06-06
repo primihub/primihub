@@ -1,0 +1,96 @@
+To build an example application using the Dev-CPP development tool on a PC
+
+
+Use this mirdef.h
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 32
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_dltype long long
+#define mr_unsign64 unsigned long long
+#define MR_NOASM
+#define MR_FLASH 52
+#define MR_ALWAYS_BINARY
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+
+
+Create a "Static Library" C project called miracl, and "Add to Project" this 
+mirdef.h, miracl.h, and all of these files
+
+mrcore.c
+mrarth0.c
+mrarth1.c
+mrarth2.c
+mrsmall.c
+mrio1.c
+mrio2.c
+mrgcd.c
+mrjack.c
+mrxgcd.c
+mrarth3.c
+mrbits.c
+mrrand.c
+mrprime.c
+mrcrt.c
+mrscrt.c
+mrmonty.c
+mrpower.c
+mrsroot.c
+mrlucas.c
+mrshs.c
+mrshs256.c
+mraes.c
+mrgcm.c
+mrstrong.c
+mrcurve.c
+mrbrick.c
+mrebrick.c
+mrzzn2.c
+mrzzn2b.c
+mrzzn3.c
+mrecn2.c
+mrfast.c
+mralloc.c
+mrshs512.c
+mrflash.c
+mrfrnd.c
+mrdouble.c
+mrround.c
+mrbuild.c
+mrflsh1.c
+mrpi.c
+mrflsh2.c
+mrflsh3.c
+mrflsh4.c
+mrec2m.c
+mrgf2m.c
+
+Compile this project to create the static library file miracl.a
+
+Close this project, and open a new C++ console application called demo.
+
+Remove the default main program main.cpp from the project, and "Add to Project" the files
+
+big.h
+big.cpp
+ecn.h
+ecn.cpp
+pk-demo.cpp
+
+Now click on "Project Options", and click on the "Parameters" Tab. 
+Then click on "Add Library or Object", and find the miracl.a file created earlier.
+
+Now compile and run the program. One problem - it runs very fast and then exits. So
+edit pk-demo.cpp and and just before the final "return 0;" statement add the line "cin >> ia;"
+
+Now try again...
+
+

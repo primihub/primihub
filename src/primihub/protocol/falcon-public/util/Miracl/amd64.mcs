@@ -1,0 +1,583 @@
+; MCS file for Gnu GCC AMD64 compiler
+;
+; Sorry about all the %'s! Each % must be input here as %%
+
+; Hybrid x2 step
+;
+; "Triple" register is now rcx|r11|r10|r9|r8
+; registers bh and bl are employed as "carry catchers"
+;
+;MACRO H2_MUL_START
+;  ASM (
+;  "movq %%0,%%%%r15\n"
+;  "movq %%1,%%%%rsi\n"
+;  "movq %%2,%%%%rdi\n"
+;  "xorq %%%%rcx,%%%%rcx\n"
+;  "xorq %%%%r8,%%%%r8\n"
+;  "xorq %%%%r9,%%%%r9\n"
+;  "xorq %%%%r10,%%%%r10\n"
+;  "xorq %%%%r11,%%%%r11\n"
+;  "xorq %%%%rbx,%%%%rbx\n"  
+;ENDM
+;MACRO H2_STEP
+;  "movq 8*%d(%%%%r15),%%%%r12\n"
+;  "movq 8*(%d+1)(%%%%r15),%%%%r13\n"
+;  "movq 8*%d(%%%%rsi),%%%%r14\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r12\n"
+;  "addq %%%%rax,%%%%r8\n"
+;  "adcq %%%%rdx,%%%%r9\n"
+;  "adc %%%%ch,%%%%bl\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r13\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "movq 8*(%d+1)(%%%%rsi),%%%%r14\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r12\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r13\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "adcq %%%%rdx,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;ENDM
+;MACRO H2_MFIN
+;  "movq %%%%r8,8*%d(%%%%rdi)\n"
+;  "movq %%%%r9,8*%d(%%%%rdi)\n"
+;  "movzbq %%%%bl,%%%%rax\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "mov %%%%bh,%%%%al\n"
+;  "movzbq %%%%al,%%%%rax\n"
+;  "adcq %%%%rax,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;  "movq %%%%r10,%%%%r8\n"
+;  "movq %%%%r11,%%%%r9\n"
+;  "xorq %%%%rbx,%%%%rbx\n"
+;  "mov %%%%cl,%%%%bl\n"
+;  "xorq %%%%rcx,%%%%rcx\n"
+;  "xorq %%%%r10,%%%%r10\n"
+;  "xorq %%%%r11,%%%%r11\n"
+;ENDM
+;MACRO H2_MUL_END
+;  "movq %%%%r8,8*%d(%%%%rdi)\n"
+;  "movq %%%%r9,8*%d(%%%%rdi)\n"
+;   :
+;   :"m"(a),"m"(b),"m"(c)
+;   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","r10","r11","r12","r13","r14","r15","memory"
+;  );
+;ENDM
+
+;MACRO H2_SQR_START
+;  ASM (
+;  "movq %%0,%%%%rsi\n"
+;  "movq %%1,%%%%rdi\n"
+;  "xorq %%%%rcx,%%%%rcx\n"
+;  "xorq %%%%r8,%%%%r8\n"
+;  "xorq %%%%r9,%%%%r9\n"
+;  "xorq %%%%r10,%%%%r10\n"
+;  "xorq %%%%r11,%%%%r11\n"
+;  "xorq %%%%rbx,%%%%rbx\n"  
+;ENDM
+;MACRO H2_DSTEP
+;  "movq 8*%d(%%%%rsi),%%%%r12\n"
+;  "movq 8*(%d+1)(%%%%rsi),%%%%r13\n"
+;  "movq 8*%d(%%%%rsi),%%%%r14\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r12\n"
+;  "addq %%%%rax,%%%%r8\n"
+;  "adcq %%%%rdx,%%%%r9\n"
+;  "adc %%%%ch,%%%%bl\n"
+;  "addq %%%%rax,%%%%r8\n"
+;  "adcq %%%%rdx,%%%%r9\n"
+;  "adc %%%%ch,%%%%bl\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r13\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "movq 8*(%d+1)(%%%%rsi),%%%%r14\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r12\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "movq %%%%r14,%%%%rax\n"
+;  "mulq %%%%r13\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "adcq %%%%rdx,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "adcq %%%%rdx,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;ENDM
+;MACRO H2_SELF
+;  "movq 8*%d(%%%%rsi),%%%%r12\n"
+;  "movq 8*(%d+1)(%%%%rsi),%%%%r13\n"
+;  "movq %%%%r12,%%%%rax\n"
+;  "mulq %%%%rax\n"
+;  "addq %%%%rax,%%%%r8\n"
+;  "adcq %%%%rdx,%%%%r9\n"
+;  "adc %%%%ch,%%%%bl\n"
+;  "movq %%%%r13,%%%%rax\n"
+;  "mulq %%%%r12\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "addq %%%%rax,%%%%r9\n"
+;  "adcq %%%%rdx,%%%%r10\n"
+;  "adc %%%%ch,%%%%bh\n"
+;  "movq %%%%r13,%%%%rax\n"
+;  "mulq %%%%rax\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "adcq %%%%rdx,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;ENDM
+;MACRO H2_SFIN
+;  "movq %%%%r8,8*%d(%%%%rdi)\n"
+;  "movq %%%%r9,8*%d(%%%%rdi)\n"
+;  "movzbq %%%%bl,%%%%rax\n"
+;  "addq %%%%rax,%%%%r10\n"
+;  "mov %%%%bh,%%%%al\n"
+;  "movzbq %%%%al,%%%%rax\n"
+;  "adcq %%%%rax,%%%%r11\n"
+;  "adc %%%%ch,%%%%cl\n"
+;  "movq %%%%r10,%%%%r8\n"
+;  "movq %%%%r11,%%%%r9\n"
+;  "xorq %%%%rbx,%%%%rbx\n"
+;  "mov %%%%cl,%%%%bl\n"
+;  "xorq %%%%rcx,%%%%rcx\n"
+;  "xorq %%%%r10,%%%%r10\n"
+;  "xorq %%%%r11,%%%%r11\n"
+;ENDM
+;MACRO H2_SQR_END
+;  "movq %%%%r8,8*%d(%%%%rdi)\n"
+;  "movq %%%%r9,8*%d(%%%%rdi)\n"
+;   :
+;   :"m"(a),"m"(c)
+;   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","r10","r11","r12","r13","r14","memory"
+;  );
+;ENDM
+
+
+MACRO PMUL_START
+  ASM (
+  "movq %%0,%%%%rbx\n"
+  "movq %%1,%%%%rsi\n"
+  "movq %%2,%%%%rdi\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "xorq %%%%r9,%%%%r9\n"
+  "movq %%3,%%%%r8\n"
+ENDM
+
+MACRO PMUL
+  "movq %%%%r8,%%%%rax\n"
+  "mulq 8*%d(%%%%rbx)\n"
+  "addq %%%%rcx,%%%%rax\n"
+  "adcq %%%%r9,%%%%rdx\n"
+  "movq %%%%rdx,%%%%rcx\n"
+  "movq %%%%r9,8*%d(%%%%rsi)\n"
+  "movq %%%%rax,8*%d(%%%%rdi)\n"
+ENDM
+
+MACRO PMUL_END
+  "movq %%%%r8,%%%%rax\n"
+  "mulq %%%%rcx\n"
+  "movq %%%%rax,(%%%%rsi)\n"
+  "movq %%%%rdx,8(%%%%rsi)\n"
+   :
+   :"m"(a),"m"(b),"m"(c),"m"(sn)
+   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","memory"
+  );
+
+ENDM
+
+; Triple register is cl|r9|r8
+; MUL_START. Initialise registers. Make rbx and rsi point to multipliers a 
+; and b. rdi points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+; 
+MACRO MUL_START
+  ASM (
+  "movq %%0,%%%%rbx\n"
+  "movq %%1,%%%%rsi\n"
+  "movq %%2,%%%%rdi\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "xorq %%%%r9,%%%%r9\n"
+  "xorq %%%%r8,%%%%r8\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "mulq 8*%d(%%%%rsi)\n"
+  "addq %%%%rax,%%%%r8\n"
+  "adcq %%%%rdx,%%%%r9\n"
+  "adc %%%%ch,%%%%cl\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "mulq 8*%d(%%%%rsi)\n"
+  "addq %%%%rax,%%%%r8\n"
+ENDM
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "movq %%%%r8,8*%d(%%%%rdi)\n"
+  "movq %%%%r9,%%%%r8\n"
+  "movq %%%%rcx,%%%%r9\n"
+  "xor %%%%cl,%%%%cl\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END 
+  "movq %%%%r8,8*%d(%%%%rdi)\n"
+   :
+   :"m"(a),"m"(b),"m"(c)
+   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","memory"
+  );
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM (
+  "movq %%0,%%%%rbx\n"
+  "movq %%1,%%%%rsi\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "xorq %%%%r9,%%%%r9\n"
+  "xorq %%%%r8,%%%%r8\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "mulq 8*%d(%%%%rbx)\n"
+  "addq %%%%rax,%%%%r8\n"
+  "adcq %%%%rdx,%%%%r9\n"
+  "adc  %%%%ch,%%%%cl\n"
+  "addq %%%%rax,%%%%r8\n"
+  "adcq %%%%rdx,%%%%r9\n"
+  "adc  %%%%ch,%%%%cl\n"
+ENDM
+;
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "mulq %%%%rax\n"
+  "addq %%%%rax,%%%%r8\n"
+  "adcq %%%%rdx,%%%%r9\n"
+  "adc  %%%%ch,%%%%cl\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "movq %%%%r8,8*%d(%%%%rsi)\n"
+  "movq %%%%r9,%%%%r8\n"
+  "movq %%%%rcx,%%%%r9\n"
+  "xor  %%%%cl,%%%%cl\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "movq %%%%r8,8*%d(%%%%rsi)\n"
+   :
+   :"m"(a),"m"(c)
+   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","memory"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  ASM (
+  "movq %%0,%%%%rbx\n"
+  "movq %%1,%%%%rsi\n"
+  "movq %%2,%%%%rdi\n"
+  "xorq %%%%r9,%%%%r9\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "movq (%%%%rbx),%%%%r8\n"
+  "movq (%%%%rsi),%%%%r10\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "movq %%%%r8,%%%%rax\n"
+  "mulq %%%%rdi\n"
+  "movq %%%%rax,8*%d(%%%%rbx)\n"
+  "mulq %%%%r10\n"
+  "addq %%%%rax,%%%%r8\n"
+  "adcq %%%%rdx,%%%%r9\n"
+  "adc  %%%%ch,%%%%cl\n"
+  "movq %%%%r9,%%%%r8\n"
+  "movq %%%%rcx,%%%%r9\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "addq 8*(%d+1)(%%%%rbx),%%%%r8\n"
+  "adcq %%%%rcx,%%%%r9\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "movq %%%%r8,8*%d(%%%%rbx)\n"
+  "movq %%%%r9,%%%%r8\n"
+  "movq %%%%rcx,%%%%r9\n"
+  "xorq %%%%rcx,%%%%rcx\n"
+  "addq 8*(%d+1)(%%%%rbx),%%%%r8\n"
+  "adcq %%%%rcx,%%%%r9\n"
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "movq %%%%r8,8*%d(%%%%rbx)\n"
+  "movq %%%%r9,8*(%d+1)(%%%%rbx)\n"
+   :
+   :"m"(a),"m"(b),"m"(ndash)
+   :"rax","rdi","rsi","rbx","rcx","rdx","r8","r9","r10","memory"
+  );
+ENDM
+;
+; ADD_START macro - initialise for add. Do first one
+;
+MACRO ADD_START
+  ASM (
+  "movq %%0,%%%%rsi\n"
+  "movq %%1,%%%%rbx\n"
+  "movq %%3,%%%%rdi\n"
+  "movq (%%%%rsi),%%%%rax\n"
+  "addq (%%%%rbx),%%%%rax\n"
+  "movq %%%%rax,(%%%%rdi)\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "movq 8*%d(%%%%rsi),%%%%rax\n"
+  "adcq 8*%d(%%%%rbx),%%%%rax\n"
+  "movq %%%%rax,8*%d(%%%%rdi)\n"
+ENDM
+;
+; ADD_END macro. Catch Carry
+;
+MACRO ADD_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c)
+   :"rax","rdi","rsi","rbx","memory"
+  );
+ENDM
+;
+; INC_START macro
+;
+MACRO INC_START
+  ASM (
+  "movq %%0,%%%%rdi\n"
+  "movq %%1,%%%%rbx\n"
+  "movq (%%%%rbx),%%%%rax\n"
+  "addq %%%%rax,(%%%%rdi)\n"
+ENDM
+;
+; INC macro. Increment number in memory. Don't forget carry
+;
+MACRO INC
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "adcq %%%%rax,8*%d(%%%%rdi)\n"
+ENDM
+;
+; INC_END macro. Catch Carry
+;
+MACRO INC_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry)
+   :"rax","rdi","rbx","memory"
+  );
+ENDM
+;
+; SUB_START macro. Do first one.
+;
+MACRO SUB_START
+  ASM (
+  "movq %%0,%%%%rsi\n"
+  "movq %%1,%%%%rbx\n"
+  "movq %%3,%%%%rdi\n"
+  "movq (%%%%rsi),%%%%rax\n"
+  "subq (%%%%rbx),%%%%rax\n"
+  "movq %%%%rax,(%%%%rdi)\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "movq 8*%d(%%%%rsi),%%%%rax\n"
+  "sbbq 8*%d(%%%%rbx),%%%%rax\n"
+  "movq %%%%rax,8*%d(%%%%rdi)\n"
+ENDM
+;
+; SUB_END macro. Catch Carry
+;
+MACRO SUB_END   
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c)
+   :"rax","rdi","rsi","rbx","memory"
+  );
+ENDM
+;
+; DEC_START macro. Do first one.
+;
+MACRO DEC_START
+  ASM (
+  "movq %%0,%%%%rdi\n"
+  "movq %%1,%%%%rbx\n"
+  "movq (%%%%rbx),%%%%rax\n"
+  "subq %%%%rax,(%%%%rdi)\n"
+ENDM
+;
+; DEC macro. Decrement from number in memory. Don't forget borrow.
+;
+MACRO DEC
+  "movq 8*%d(%%%%rbx),%%%%rax\n"
+  "sbbq %%%%rax,8*%d(%%%%rdi)\n"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry)
+   :"rax","rdi","rbx","memory"
+  );
+ENDM
+;
+; KADD_START macro
+;
+MACRO KADD_START
+  ASM (
+  "movq %%0,%%%%rsi\n"
+  "movq %%1,%%%%rbx\n"
+  "movq %%3,%%%%rdi\n"
+  "movl %%4,%%%%ecx\n"
+  "xorq %%%%rax,%%%%rax\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+  "decl %%%%ecx\n"  
+  "je k%d\n"
+  "leaq 8*%d(%%%%rsi),%%%%rsi\n"
+  "leaq 8*%d(%%%%rbx),%%%%rbx\n"
+  "leaq 8*%d(%%%%rdi),%%%%rdi\n"
+  "jmp k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END  macro
+;
+MACRO KADD_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c),"m"(n)
+   :"rax","rdi","rsi","rbx","ecx","memory"
+  );
+ENDM
+;
+; KINC_START macro. Zero carry flag. 
+;
+MACRO KINC_START
+  ASM (
+  "movq %%0,%%%%rdi\n"
+  "movq %%1,%%%%rbx\n"
+  "movl %%3,%%%%ecx\n"
+  "xorq %%%%rax,%%%%rax\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "decl %%%%ecx\n"
+  "je k%d\n"
+  "leaq 8*%d(%%%%rbx),%%%%rbx\n"
+  "leaq 8*%d(%%%%rdi),%%%%rdi\n"
+  "jmp k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(n)
+   :"rax","rdi","rbx","ecx","memory"
+  );
+ENDM
+;
+; KDEC_START macro
+;
+MACRO KDEC_START
+  ASM (
+  "movq %%0,%%%%rdi\n"
+  "movq %%1,%%%%rbx\n"
+  "movl %%3,%%%%ecx\n"
+  "xorq %%%%rax,%%%%rax\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "movq $0,%%%%rax\n"
+  "adcq %%%%rax,%%%%rax\n"
+  "movq %%%%rax,%%2\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(n)
+   :"rax","rdi","rbx","ecx","memory"
+  );
+ENDM
+

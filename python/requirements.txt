@@ -1,7 +1,7 @@
-setuptools==41.0.0
-pyarrow
+setuptools
+pyarrow==4.0.0
 pandas
 pytest
 numpy
-functools
 dill==0.3.5.1
+pyzmq

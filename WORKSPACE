@@ -301,7 +301,6 @@ http_archive(
     ],
 )
 
-
 http_archive(
     name = "xz",
     build_file = "//bazel:xz.BUILD",
@@ -400,8 +399,6 @@ new_git_repository(
     branch="master",
 )
 
-
-
 # boost di, used by libp2p
 http_archive(
     name = "com_github_masterjedy_di",
@@ -412,6 +409,16 @@ http_archive(
         "https://primihub.oss-cn-beijing.aliyuncs.com/di-1.1.0.tar.gz"
     ],
 )
+
+# seal 3.3.2, used by crypTFlow2
+http_archive(
+  name = "com_microsoft_seal_3.3.2",
+  sha256 = "7e29c36c81f2061b0680002fbb869cb9756ca7896b768a1f5d97d5dd08fc43a2",
+  build_file = "//bazel:BUILD.seal",
+  strip_prefix = "SEAL-3.3.2/native/src/",
+  urls = ["https://github.com/microsoft/SEAL/archive/refs/tags/v3.3.2.zip"],
+)
+
 
 
 #PSI

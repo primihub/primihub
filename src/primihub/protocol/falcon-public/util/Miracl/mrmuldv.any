@@ -1,0 +1,2779 @@
+/*
+ *  MIRACL - various implementations of routines muldiv, muldvm, muldvd
+ *           muldvd2 and imuldiv
+ *  mrmuldv.c
+ *
+ *  THIS FILE CONTAINS MANY VERSIONS OF THESE ROUTINES
+ *  COPY THIS FILE TO MRMULDV.C AND DELETE THOSE PARTS IRRELEVANT TO
+ *  YOUR REQUIREMENTS. 
+ *
+ *  NOTE: - This file and its contents are not needed 
+ *  if MR_NOASM is defined in mirdef.h
+ * 
+ *  muldiv() calculates (a*b+c)/m and (a*b+c)%m as quickly as possible. Should 
+ *  ideally be written in assembly language of target machine for speed 
+ *  The problem is to avoid overflow in the calculation of the intermediate 
+ *  product a*b+c. 
+ *
+ *  If using a floating-point underlying type, and rounding can be 
+ *  controlled, it makes sense to pre-calculate
+ *  the inverse of the modulus m, and multiply instead of divide
+ *  In this situation a function imuldiv() is also needed.
+ *
+ *  muldvm() and muldvd() routines are necessary to support full-width number 
+ *  base working. They are not needed if MR_NOFULLWIDTH is defined in mirdef.h.
+ *
+ *  muldvm - returns (a*base+c)/m and remainder
+ *  muldvd - returns (a*b+c)/base and remainder 
+ *
+ *  NOTE: New to version 4.2, new routine muldvd2() is required.
+ *  See C version below for specification
+ *  Versions of this are easily developed from existing muldvd() programs
+ *
+ *  In most applications muldvd2() will be the time critical routine.
+ *
+ *  Note that full-width base working may not be possible for all processors. 
+ *  For example it cannot be used on a VAX, or RS/6000 with mr_utypes defined  
+ *  as ints. This is because the instruction set does not support 
+ *  unsigned multiply and divide instructions. In such cases ALWAYS use a 
+ *  maximum base of MAXBASE in mirsys(), rather than 0.
+ *
+ *  Since parameter passing and returning is time-consuming, these routines 
+ *  should be generated 'inline', if compiler allows it. Parameter passing
+ *  by register will also be faster than via the stack. For even faster 
+ *  operation, use in-line assembly to speed up the inner loops of routines 
+ *  pmul(), sdiv(), multiply() and divide(). See these routines for details 
+ *  of Microsoft/Borland C inline 80x86 assembly, which gives a substantial speed-up.
+ *
+ *  NOTE: All other things being equal, versions of MIRACL with 32-bit mr_utypes
+ *  will run 3-4 times faster than versions with 16-bit mr_utypes, even for medium
+ *  precision arithmetic, such as used in Public Key systems. 
+ *  
+ *  Note that a portable C version of 'muldiv' may not possible with some 
+ *  32-bit compilers if ints and longs are both 32-bits and there is no 
+ *  64-bit type. Fortunately these days there usually is such a type - called 
+ *  perhaps long long, or maybe __int64. See also the Blakely-Sloan 
+ *  method below. In any case the portable versions may be used if mr_utypes 
+ *  are defined as shorts, usually 16 bits. This would amount however to 
+ *  using the 32-bit processor in a 16 bit mode and would be very inefficient 
+ *  - up to 4 times slower. See mirdef.haf 
+ *
+ *  First the standard portable versions, for use when there is a double 
+ *  length type capable of holding the product of two mr_utype types.
+ *  For example 32 and 16 bits types respectively. 
+ *  Note that if MR_NOASM is defined in mirdef.h, these routines are 
+ *  implemented in mrcore.c, and do not need to be extracted from here.
+ * 
+ *  This is followed by various other assembly language implementations for 
+ *  popular processors, computers and compilers.
+ *
+
+
+**************************************************************
+
+/* Standard C version of mrmuldv.c */
+
+#include <stdio.h>
+#include "miracl.h"
+
+mr_small muldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_small *rp)
+{
+    mr_small q;
+    mr_large ldres,dble=(mr_large)a*b+c;
+    q=(mr_small)MR_LROUND(dble/m);
+    *rp=(mr_small)(dble-(mr_large)q*m);
+    return q;
+}
+
+#ifdef MR_FP_ROUNDING
+
+mr_small imuldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_large im,mr_small *rp)
+{
+    mr_small q;
+    mr_large ldres,dble=(mr_large)a*b+c;
+    q=(mr_small)MR_LROUND(dble*im);
+    *rp=(mr_small)(dble-(mr_large)q*m);
+    return q;
+}
+
+#endif
+
+
+#ifndef MR_NOFULLWIDTH
+
+mr_small muldvm(mr_small a,mr_small c,mr_small m,mr_small *rp)
+{
+    mr_small q;
+    union doubleword dble;
+    dble.h[MR_BOT]=c;
+    dble.h[MR_TOP]=a;
+    q=(mr_small)(dble.d/m);
+    *rp=(mr_small)(dble.d-(mr_large)q*m);
+    return q;
+}
+
+mr_small muldvd(mr_small a,mr_small b,mr_small c,mr_small *rp)
+{
+    union doubleword dble; 
+    dble.d=(mr_large)a*b+c;
+    *rp=dble.h[MR_BOT];
+    return dble.h[MR_TOP];
+}
+
+void muldvd2(mr_small a,mr_small b,mr_small *c,mr_small *rp)
+{
+    union doubleword dble; 
+    dble.d=(mr_large)a*b+*c+*rp;
+    *rp=dble.h[MR_BOT];
+    *c=dble.h[MR_TOP];
+}
+
+#endif
+
+/* version for PowerPC (64-bit G5). Use with Blakely-Sloan C versions of muldiv(.) and muldvm(.) - see below */
+
+void muldvd2(mr_small a,mr_small b,mr_small *c,mr_small *rp)
+{
+    __asm__ __volatile__ (
+    "mulld  %%r16,%0,%1\n"
+    "mulhdu %%r17,%0,%1\n"
+    "ld     %%r18,0(%2)\n" 
+    "addc   %%r16,%%r18,%%r16\n"
+    "addze  %%r17,%%r17\n"
+    "ld     %%r19,0(%3)\n" 
+    "addc   %%r16,%%r19,%%r16\n"
+    "addze  %%r17,%%r17\n"
+    "std    %%r16,0(%3)\n"
+    "std    %%r17,0(%2)\n"
+    : 
+    : "r"(a),"r"(b),"r"(c),"r"(rp)
+    : "r16","r17","r18","r19","memory"
+    );
+    
+}
+
+mr_small muldvd(mr_small a,mr_small b,mr_small c,mr_small *rp)
+{
+    mr_small q;
+    __asm__ __volatile__ (
+    "mulld  %%r16,%1,%2\n"
+    "mulhdu %%r17,%1,%2\n"
+    "addc   %%r16,%3,%%r16\n"
+    "addze  %%r17,%%r17\n" 
+    "std    %%r16,0(%4)\n" 
+    "or     %0,%%r17,%%r17\n"
+    : "=r"(q)
+    : "r"(a),"r"(b),"r"(c),"r"(rp)
+    : "r16","r17","memory"
+    );
+    return q;
+}
+
+
+****************************************************************
+
+//
+// Version of muldiv() for use with underlying type a double
+// and using the FP co-processor on a Pentium, and the gcc compiler.
+// In this case MR_NOFULLWIDTH is defined.
+// This is much better than compiling the above, but fprem and fdiv 
+// are still very slow. 
+//
+
+        .file   "mrmuldv.s"
+.text
+.globl _muldiv
+_muldiv:
+
+        pushl %ebx
+       
+        fldl 8(%esp)
+        fmull 16(%esp)
+        movl 40(%esp),%ebx
+        faddl 24(%esp)
+        fldl 32(%esp)
+        fld %st(1)
+
+// NOTE: If rounding control is possible, set rounding to "chop"
+//       and replace lines below with these
+//       In this case #define MR_FP_ROUNDING will be defined in mirdef.h
+//
+//        fdiv %st(1),%st
+//        fistpq 8(%esp)
+//        fildq 8(%esp)
+//        fmul %st,%st(1)
+//        fxch %st(2)
+//        fsubp %st,%st(1)
+//        fstpl (%ebx)
+
+        fprem
+        fstl (%ebx)
+        fsubrp %st,%st(2)
+        fdivrp %st,%st(1)
+
+        popl %ebx
+        ret
+
+//
+// If MR_FP_ROUNDING is defined, this function will be needed for Pentium
+//
+.globl _imuldiv
+_imuldiv:
+
+        pushl %ebx
+       
+        fldl 8(%esp)
+        fmull 16(%esp)
+        movl 52(%esp),%ebx
+        faddl 24(%esp)
+        fldl 32(%esp)
+        fld %st(1)
+
+        fldt 40(%esp)
+        fmulp %st,%st(1) 
+        fistpq 8(%esp)
+        fildq 8(%esp)
+        fmul %st,%st(1)
+        fxch %st(2)
+        fsubp %st,%st(1)
+        fstpl (%ebx)
+
+        popl %ebx
+        ret
+
+
+************************************************************************
+
+/*
+ *  Borland C++ 32-bit compiler (BCC32) version of the above. 
+ *  Uses inline assembly feature. Suitable for Win32 Apps
+ *  Also compatible with Microsoft Visual C++ 32-bit compiler
+ *  BUT change TBYTE to QWORD
+ */
+#include "mirdef.h"
+
+#define ASM _asm
+
+double muldiv(double a,double b,double c,double m,double *rp)
+{
+        ASM fld   QWORD PTR a
+        ASM fmul  QWORD PTR b
+        ASM mov   ebx,DWORD PTR rp
+        ASM fadd  QWORD PTR c
+        ASM fld   QWORD PTR m
+        ASM fld   st(1)
+
+#ifdef MR_FP_ROUNDING
+        ASM fdiv  st,st(1)
+        ASM fistp QWORD PTR [ebx]
+        ASM fild  QWORD PTR [ebx]
+        ASM fmul  st(1),st
+        ASM fxch  st(2)
+        ASM fsubrp st(1),st
+        ASM fstp   QWORD PTR [ebx]
+#else 
+        ASM fprem       
+        ASM fst   QWORD PTR [ebx]
+        ASM fsubp st(2),st
+        ASM fdivp st(1),st
+#endif
+}
+
+#ifdef MR_FP_ROUNDING
+
+double imuldiv(double a,double b,double c,double m,long double im,double *rp)
+{
+        ASM fld   QWORD PTR a
+        ASM fmul  QWORD PTR b
+        ASM fld   QWORD PTR m
+        ASM fxch  st(1) 
+        ASM fadd  QWORD PTR c
+        ASM mov   ebx,DWORD PTR rp
+        ASM fxch  st(1) 
+        ASM fld   st(1)
+
+        ASM fld   TBYTE PTR im   /* QWORD for Microsoft */
+        ASM fmulp st(1),st
+        ASM fistp QWORD PTR [ebx]
+        ASM fild  QWORD PTR [ebx]
+        ASM fmul  st(1),st
+        ASM fxch  st(2)
+        ASM fsubrp st(1),st
+        ASM fstp   QWORD PTR [ebx]
+}
+
+#endif
+
+
+*********************************************************************
+
+;
+;   VAX11 version for Dec C compiler
+;   with 32 bit int using 64-bit quadword
+;   for the intermediate product. 
+;
+;   Use with mirdef.h32 - but define MR_NOFULLWIDTH 
+;   Use mirsys(...,MAXBASE) instead of mirsys(...,0) in your programs. 
+;   
+;   Why ...(MIRACL-2) instead of ...(MIRACL-1) ? That's a negative
+;   number for division by mr_base!
+;
+;   The problem is that the emul and ediv instructions work only
+;   for signed types
+;
+    .entry muldiv,0
+    subl   #4,sp
+    emul   4(ap),8(ap),12(ap),r0   ;a*b+c
+    ediv   16(ap),r0,r0,@20(ap)    ;quo. in r0, rem. in *rp
+    ret
+    .end
+;
+;   Fullwidth base working not possible on VAX, so no muldvm() or muldvd()
+;
+;
+
+
+**********************************************************************
+
+
+#
+#    Version of muldiv.c for IBM RS/6000
+#    This processor has no unsigned multiply/divide
+#    so full-width base not possible, so no muldvm() or muldvd()
+#
+#    Use with mirdef.h32 but define MR_NOFULLWIDTH definition.
+#    Use mirsys(...,MAXBASE) instead of mirsys(...,0) in your programs. 
+#
+#    Note this version was developed from very inadequate RS/6000
+#    documentation. It may not be optimal, and it may not always work
+#    (although it works fine for me!)
+#    
+
+                                   
+        .file   "mrmuldv.s"
+        .globl  .muldiv[PR]
+        .csect  .muldiv[PR]
+
+# parameters are passed in registers 3,4,5,6 and 7
+# the mq register holds the low 32-bits for mul/div
+
+        mul     3,4,3          # q=a*b
+        mfmq    4              # get low part from mq
+        a       4,5,4          # add in c
+        aze     3,3            # add carry to high part
+        mtmq    4              # move low part to mq
+        div     3,3,6          # q=(a*b+c)/m
+        mfmq    4              # get remainder 
+        st      4,0(7)         # store remainder
+
+# quotient is returned in register 3
+
+        brl
+
+************************************************************************
+
+/* Here's another portable method which might be considered for processors
+ * like the VAX and RS6000. The idea is due to Peter Montgomery.  */
+
+    #include "mirdef.h"
+
+    typedef unsigned mr_utype uint;
+
+    uint muldiv(a,b,c,m,rp)
+    uint a,b,c,m,*rp;
+    {
+        int q,r;
+        q=(int)(0.5+((double)a*(double)b+(double)c)/(double)m);
+        r=(int)(((uint)a*(uint)b+(uint)c)-(uint)m*(uint)q);
+        if (r < 0)
+        {
+            r+=m;
+            q--;
+        }
+        *rp=r;
+        return q;
+    }
+
+**********************************************************************
+
+
+;
+;  IBM-PC versions - small memory model only
+;  Easily modified for other memory models
+;
+;  For large code models (e.g. medium)
+;
+;           change    _TEXT    to    mrmuldv_TEXT  (in three places)
+;           change    NEAR     to    FAR
+;           change    [bp+4]   to    [bp+6]
+;           change    [bp+6]   to    [bp+8]
+;           change    [bp+8]   to    [bp+10]
+;           change    [bp+10]  to    [bp+12]
+;           change    [bp+12]  to    [bp+14]
+;
+;  For large data models, see Turbo C version below for required modification
+;
+;  Microsoft C compiler V4.0+
+;  Written for MS macro-assembler
+;
+        ASSUME CS:_TEXT
+_TEXT   SEGMENT BYTE PUBLIC 'CODE'
+
+        PUBLIC _muldiv
+_muldiv PROC NEAR
+        push bp                 ;standard C linkage
+        mov  bp,sp
+
+        mov  ax,[bp+4]          ;get a
+        mul  WORD PTR [bp+6]    ;multiply by b
+        add  ax,[bp+8]          ;add c to low word
+        adc  dx,0h              ;add carry to high word
+        div  WORD PTR [bp+10]   ;divide by m
+        mov  bx,[bp+12]         ;get address for remainder
+        mov  [bx],dx            ;store remainder
+
+        pop  bp                 ;standard C return
+        ret                     ;quotient in ax
+
+_muldiv endP
+
+        PUBLIC _muldvm
+_muldvm PROC NEAR
+        push bp                 ;standard C linkage
+        mov  bp,sp
+
+        mov  dx,[bp+4]          ;get a
+        mov  ax,[bp+6]          ;add in c
+        div  WORD PTR [bp+8]    ;divide by m
+        mov  bx,[bp+10]         ;get address for remainder
+        mov  [bx],dx            ;store remainder
+
+        pop  bp                 ;standard C return
+        ret                     ;quotient in ax
+
+_muldvm endP
+
+        PUBLIC _muldvd
+_muldvd PROC NEAR
+        push bp                 ;standard C linkage
+        mov  bp,sp
+
+        mov  ax,[bp+4]          ;get a
+        mul  WORD PTR [bp+6]    ;multiply by b
+        add  ax,[bp+8]          ;add c to low word
+        adc  dx,0h              ;add carry to high word
+        mov  bx,[bp+10]         ;get address for remainder
+        mov  [bx],ax            ;store remainder
+        mov  ax,dx
+        pop  bp                 ;standard C return
+        ret                     ;quotient in ax
+
+_muldvd endP
+
+        PUBLIC _muldvd2
+_muldvd2 PROC NEAR
+        push bp                 ;standard C linkage
+        mov  bp,sp
+        push si
+
+        mov  ax,[bp+4]          ;get a
+        mul  WORD PTR [bp+6]    ;multiply by b
+        mov  bx,[bp+8]          ;get address for c
+        add  ax,[bx]            ;add c
+        adc  dx,0h              ;add carry to high word
+
+        mov  si,[bp+10]         ;get address for remainder
+        add  ax,[si]            ;add rp
+        adc  dx,0h              ;add carry to high word
+
+        mov  [si],ax            ;store remainder
+        mov  [bx],dx            ;store carry
+
+        pop  si
+        pop  bp                 ;standard C return
+        ret  
+
+_muldvd2 endP
+
+
+
+_TEXT   ENDS
+END
+
+
+***********************************************************************
+
+
+/*
+ *  Turbo C compiler V1.5+, Turbo/Borland C++. Microsoft C/C++ 
+ *  Uses inline assembly feature
+ *  Generates code identical to above version, and
+ *  can be used instead. 
+ */
+
+#define ASM asm
+
+/* or perhaps #define ASM _asm  */
+
+unsigned int muldiv(a,b,c,m,rp)
+unsigned int a,b,c,m,*rp;
+{
+    ASM mov  ax,a             ;/* get a                     */
+    ASM mul  WORD PTR b       ;/* multiply by b             */
+    ASM add  ax,c             ;/* add c to low word         */
+    ASM adc  dx,0h            ;/* add carry to high word    */
+    ASM div  WORD PTR m       ;/* divide by m               */
+    ASM mov  bx,rp            ;/* get address for remainder */
+    ASM mov  [bx],dx          ;/* store remainder           */
+}
+/*    Replace last two ASM lines when using large data memory models */
+/*    ASM les  bx, DWORD PTR rp          ; get address for remainder */
+/*    ASM mov  WORD PTR es:[bx],dx       ; store remainder           */
+
+unsigned int muldvm(a,c,m,rp)
+unsigned int a,c,m,*rp;
+{
+    ASM mov dx,a              ;/* get a                     */
+    ASM mov ax,c              ;/* add in c to low word      */
+    ASM div WORD PTR m        ;/* divide by m               */
+    ASM mov bx,rp             ;/* get address for remainder */
+    ASM mov [bx],dx           ;/* store remainder           */
+}
+/*    Replace last two ASM lines when using large data memory models */
+/*    ASM les  bx, DWORD PTR rp          ; get address for remainder */
+/*    ASM mov  WORD PTR es:[bx],dx       ; store remainder           */
+
+unsigned int muldvd(a,b,c,rp)
+unsigned int a,b,c,*rp;
+{
+    ASM mov  ax,a             ;/* get a                     */
+    ASM mul  WORD PTR b       ;/* multiply by b             */
+    ASM add  ax,c             ;/* add c to low word         */
+    ASM adc  dx,0h            ;/* add carry to high word    */
+    ASM mov  bx,rp            ;/* get address for remainder */
+    ASM mov  [bx],ax          ;/* store remainder           */
+    ASM mov  ax,dx
+}
+/*    Replace second and third last lines if using large data memory models */
+/*    ASM les  bx, DWORD PTR rp          ; get address for remainder */
+/*    ASM mov  WORD PTR es:[bx],ax       ; store remainder           */
+
+void muldvd2(a,b,c,rp)
+unsigned int a,b,*c,*rp;
+{
+    ASM mov  ax,a             ;/* get a                     */
+    ASM mul  WORD PTR b       ;/* multiply by b             */
+    ASM mov  bx,c
+    ASM add  ax,[bx]
+    ASM adc  dx,0h            ;/* add carry to high word    */
+    ASM mov  si,rp
+    ASM add  ax,[si]
+    ASM adc  dx,0h
+    ASM mov  [si],ax
+    ASM mov  [bx],dx
+}
+
+/* for large memory model ....
+    ASM mov  ax,a             ;/* get a                     */
+    ASM mul  WORD PTR b       ;/* multiply by b             */
+    ASM les  bx, DWORD PTR c
+    ASM add  ax, WORD PTR es:[bx]
+    ASM adc  dx,0h            ;/* add carry to high word    */
+    ASM les  si,DWORD PTR rp
+    ASM add  ax,WORD PTR es:[si]
+    ASM adc  dx,0h
+    ASM mov  WORD PTR es:[si],ax
+    ASM les  bx,DWORD PTR c
+    ASM mov  WORD PTR es:[bx],dx
+*/
+
+
+
+**********************************************************************
+
+
+;
+;  IBM-PC-8087 for Microsoft C compiler V4.0+
+;  with 'mr_utype' defined as 'long' (32 bit). See mirdef.hpc
+;  This allows IBM-PC XT to look a bit like a 32-bit computer
+;  (which it isn't). To make use of this option:
+;
+;  (1) Must have 8087 Maths Co-processor (for speed and to hold 64-bit
+;      intermediate product).
+;
+;  (2) Must use 'ANSI' enhanced type C compiler, e.g. Microsoft V3.0+
+;      and must use header 'miracl.h' which declares function
+;      parameter types. 
+;
+;      Note: some compilation warnings may be generated - ignore them.  
+;
+;  Note: This is NOT, in most cases, faster, but it does allow
+;        very high precision calculations, e.g. 1000!
+;
+;  Note: No versions of muldvm(), muldvd() or muldvd2() yet written for 
+;  this method.
+;
+        ASSUME CS:_TEXT
+_TEXT   SEGMENT BYTE PUBLIC 'CODE'
+
+        PUBLIC _muldiv
+_muldiv PROC NEAR
+        push si                 ;standard C linkage
+        push bp          
+        mov  bp,sp
+
+        finit                   ;initialise 8087
+        fild  DWORD PTR [bp+6]  ;get a
+        fimul DWORD PTR [bp+0ah];multiply by b
+        fiadd DWORD PTR [bp+0eh];add c
+        fild  DWORD PTR [bp+12h];get m
+        fld st(1)               ;duplicate a*b+c on stack
+        fprem                   ;get remainder
+        fist  DWORD PTR [bp+0ah];store remainder in b
+        fsubr st,st(2)          ;subtract rem from total
+        fdiv st,st(1)           ;divide by m
+        fist  DWORD PTR [bp+6]  ;store quotient in a
+        wait
+
+        mov  si,[bp+22]         ;get address for remainder
+        mov  ax,[bp+10]
+        mov  dx,[bp+12]         ;get remainder
+        mov  [si],ax
+        mov  [si+2],dx          ;store remainder
+        mov  ax,[bp+6]
+        mov  dx,[bp+8]          ;get quotient in dx:ax
+
+        pop  bp                 ;standard C return
+        pop  si
+        ret
+
+_muldiv endP
+
+_TEXT   ENDS
+END
+
+
+
+**************************************************************************
+
+
+;
+;  Intel-80386 pseudo-32 bit version - for Microsoft C V5.0+
+;  Written for MS macro-assembler V5.0+ by Andrej Sauer 
+;  with 'mr_utype' defined as 'long' (32 bit). See mirdef.hpc
+;  Same comments apply as above (except for 8087 requirement)   
+;  Note that this version will also work with the latest Zortech and
+;  Borland 16-bit compilers, specifically Borland C++ V3.1+
+;
+;  For large code models (e.g. medium)
+;
+;           change    _TEXT    to    mrmuldv_TEXT  (in three places)
+;           change    NEAR     to    FAR
+;           change    [bp+4]   to    [bp+6]
+;           change    [bp+8]   to    [bp+10]
+;           change    [bp+12]   to   [bp+14]
+;           change    [bp+16]  to    [bp+18]
+;           change    [bp+20]  to    [bp+22]
+;           etc
+;
+        .386
+        ASSUME CS:_TEXT
+_TEXT   SEGMENT USE16 PUBLIC 'CODE'
+
+        PUBLIC _muldiv
+_muldiv PROC  NEAR
+        push  bp                    ;standard C linkage
+        mov   bp,sp
+
+        mov   eax,[bp+4]            ;get a
+        mul   DWORD PTR [bp+8]      ;multiply by b
+        add   eax,DWORD PTR [bp+12] ;add c to low word
+        adc   edx,0h                ;add carry to high word
+        div   DWORD PTR [bp+16]     ;divide by m
+        mov   bx,WORD PTR [bp+20]  ;get address for remainder
+        mov   [bx],edx             ;store remainder
+        shld  edx,eax,16            ;shift higher half of quotient
+                                    ;into lower half of edx
+
+        pop   bp                    ;standard C return
+        ret                         ;quotient: high bits in dx, lows in ax
+
+_muldiv endP
+
+        PUBLIC _muldvm
+_muldvm PROC  NEAR
+        push  bp                    ;standard C linkage
+        mov   bp,sp
+
+        mov   edx,[bp+4]            ;get a
+        mov   eax,[bp+8]            ;add in c
+        div   DWORD PTR [bp+12]     ;divide by m
+        mov   bx,WORD PTR [bp+16]   ;get address for remainder
+        mov   [bx],edx              ;store remainder
+        shld  edx,eax,16            ;shift higher half of quotient
+                                    ;into lower half of edx
+        pop   bp                    ;standard C return
+        ret                         ;quotient: high bits in dx, lows in ax
+
+_muldvm endP
+
+
+        PUBLIC _muldvd
+_muldvd PROC  NEAR
+        push  bp                    ;standard C linkage
+        mov   bp,sp
+
+        mov   eax,[bp+4]            ;get a
+        mul   DWORD PTR [bp+8]      ;multiply by b
+        add   eax,DWORD PTR [bp+12] ;add c to low word
+        adc   edx,0h                ;add carry to high word
+        mov   bx,WORD PTR [bp+16]   ;get address for remainder
+        mov   [bx],eax              ;store remainder
+        mov   eax,edx
+        shld  edx,eax,16            ;shift higher half of quotient
+                                    ;into lower half of edx
+
+        pop   bp                    ;standard C return
+        ret                         ;quotient: high bits in dx, lows in ax
+
+_muldvd endP
+
+
+        PUBLIC _muldvd2
+_muldvd2 PROC  NEAR
+        push  bp                    ;standard C linkage
+        mov   bp,sp
+        push si
+
+        mov   eax,[bp+4]            ;get a
+        mul   DWORD PTR [bp+8]      ;multiply by b
+        les   bx,DWORD PTR [bp+12]
+        add   eax,DWORD PTR es:[bx]
+        adc   edx,0h                ;add carry to high word
+        les   si,DWORD PTR [bp+16]
+        add   eax,DWORD PTR es:[si]
+        adc   edx,0h                ;add carry to high word
+
+        mov   DWORD PTR es:[si],eax              ;store remainder
+        les   bx,DWORD PTR [bp+12]
+        mov   DWORD PTR es:[bx],edx
+        pop   si
+        pop   bp                    ;standard C return
+        ret           
+
+_muldvd2 endP
+
+_TEXT   ENDS
+END
+
+
+***********************************************************************
+
+
+;
+; Large Memory model version of the above. Useful
+; for creating 16-bit DLL on 386+. Microsoft/Borland compatible
+;
+        .386
+        ASSUME CS:mrmuldv_TEXT
+mrmuldv_TEXT   SEGMENT USE16 PUBLIC 'CODE'
+
+        PUBLIC _muldiv
+_muldiv PROC  FAR
+        push  bp                     ;standard C linkage
+        mov   bp,sp
+
+        mov   eax,[bp+6]             ;get a
+        mul   DWORD PTR [bp+10]      ;multiply by b
+        add   eax,DWORD PTR [bp+14]  ;add c to low word
+        adc   edx,0h                 ;add carry to high word
+        div   DWORD PTR [bp+18]      ;divide by m
+        les   bx,DWORD PTR [bp+22]
+        mov   DWORD PTR es:[bx],edx
+        shld  edx,eax,16             ;shift higher half of quotient
+                                     ;into lower half of edx
+        pop   bp                     ;standard C return
+        ret                          ;quotient: high bits in dx, lows in ax
+
+_muldiv endP
+
+        PUBLIC _muldvm
+_muldvm PROC  FAR
+        push  bp                     ;standard C linkage
+        mov   bp,sp
+
+        mov   edx,[bp+6]            ;get a
+        mov   eax,[bp+10]           ;add in c
+        div   DWORD PTR [bp+14]     ;divide by m
+        les   bx,DWORD PTR [bp+18]
+        mov   DWORD PTR es:[bx],edx
+        shld  edx,eax,16            ;shift higher half of quotient
+                                    ;into lower half of edx
+        pop   bp                    ;standard C return
+        ret                         ;quotient: high bits in dx, lows in ax
+
+_muldvm endP
+
+
+        PUBLIC _muldvd
+_muldvd PROC  FAR
+        push  bp                     ;standard C linkage
+        mov   bp,sp
+
+        mov   eax,[bp+6]            ;get a
+        mul   DWORD PTR [bp+10]      ;multiply by b
+        add   eax,DWORD PTR [bp+14] ;add c to low word
+        adc   edx,0h                 ;add carry to high word
+        les   bx,DWORD PTR [bp+18]
+        mov   DWORD PTR es:[bx],eax
+        mov   eax,edx
+        shld  edx,eax,16             ;shift higher half of quotient
+                                     ;into lower half of edx
+
+        pop   bp                     ;standard C return
+        ret                          ;quotient: high bits in dx, lows in ax
+
+_muldvd endP
+
+        PUBLIC _muldvd2
+_muldvd2 PROC  FAR
+        push  bp                     ;standard C linkage
+        mov   bp,sp
+        push  si
+
+        mov   eax,[bp+6]            ;get a
+        mul   DWORD PTR [bp+10]      ;multiply by b
+        les   bx,DWORD PTR [bp+14]
+        add   eax,DWORD PTR es:[bx]
+        adc   edx,0h                 ;add carry to high word
+
+        les   si,DWORD PTR [bp+18]
+        add   eax,DWORD PTR es:[si]
+        adc   edx,0h                 ;add carry to high word
+
+        mov   DWORD PTR es:[si],eax
+        les   bx,DWORD PTR [bp+14]
+        mov   DWORD PTR es:[bx],edx
+        pop   si
+        pop   bp                     ;standard C return
+        ret                       
+
+_muldvd2 endP
+
+mrmuldv_TEXT   ENDS
+END
+
+
+****************************************************************************
+
+
+/* 
+   Borland in-line pseudo-32 bit version of the above
+   Large memory model version.
+   Use with mirdef.hpc
+
+   Unfortunately this cannot be used with Microsoft C, 
+   as its 16 bit compiler will not allow inline 386 opcodes
+*/
+
+#define ASM _asm
+
+long muldiv(a,b,c,m,rp)
+long a,b,c,m,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM add   eax,DWORD PTR c      
+        ASM adc   edx,0h                 
+        ASM div   DWORD PTR m          
+        ASM les   bx,DWORD PTR rp     
+        ASM mov   DWORD PTR es:[bx],edx              
+        ASM shld  edx,eax,16
+}
+
+long muldvm(a,c,m,rp)
+long a,c,m,*rp;
+{
+        ASM mov   edx,DWORD PTR a      
+        ASM mov   eax,DWORD PTR c      
+        ASM div   DWORD PTR m          
+        ASM les   bx,DWORD PTR rp     
+        ASM mov   DWORD PTR es:[bx],edx              
+        ASM shld  edx,eax,16
+}
+
+long muldvd(a,b,c,rp)
+long a,b,c,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM add   eax,DWORD PTR c      
+        ASM adc   edx,0h                 
+        ASM les   bx,DWORD PTR rp     
+        ASM mov   DWORD PTR es:[bx],eax              
+        ASM mov   eax,edx
+        ASM shld  edx,eax,16
+}
+
+void muldvd2(a,b,c,rp)
+long a,b,*c,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM les   bx,DWORD PTR c
+        ASM add   eax,DWORD PTR es:[bx]
+        ASM adc   edx,0h                 
+        ASM les   si,DWORD PTR rp     
+        ASM add   eax,DWORD PTR es:[si]
+        ASM adc   edx,0h                 
+        ASM mov   DWORD PTR es:[si],eax
+        ASM les   bx,DWORD PTR c
+        ASM mov   DWORD PTR es:[bx],edx              
+}
+
+
+
+***********************************************************************
+
+
+/*
+ *  Borland C++ 32-bit compiler (BCC32). Use with mirdef.h32 
+ *  Uses inline assembly feature. Suitable for Win32 Apps
+ *  Also compatible with Microsoft Visual C++ 32-bit compiler
+*/
+
+#define ASM _asm
+
+int muldiv(a,b,c,m,rp)
+int a,b,c,m,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM add   eax,DWORD PTR c      
+        ASM adc   edx,0h                 
+        ASM div   DWORD PTR m          
+        ASM mov   ebx,DWORD PTR rp     
+        ASM mov   [ebx],edx              
+}
+
+int muldvm(a,c,m,rp)
+int a,c,m,*rp;
+{
+        ASM mov   edx,DWORD PTR a      
+        ASM mov   eax,DWORD PTR c      
+        ASM div   DWORD PTR m          
+        ASM mov   ebx,DWORD PTR rp     
+        ASM mov   [ebx],edx              
+}
+
+int muldvd(a,b,c,rp)
+int a,b,c,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM add   eax,DWORD PTR c      
+        ASM adc   edx,0h                 
+        ASM mov   ebx,DWORD PTR rp     
+        ASM mov   [ebx],eax              
+        ASM mov   eax,edx
+}
+
+
+void muldvd2(a,b,c,rp)
+int a,b,*c,*rp;
+{
+        ASM mov   eax,DWORD PTR a      
+        ASM mul   DWORD PTR b          
+        ASM mov   ebx,DWORD PTR c
+        ASM add   eax,[ebx]
+        ASM adc   edx,0h
+        ASM mov   esi,DWORD PTR rp
+        ASM add   eax,[esi]
+        ASM adc   edx,0h
+        ASM mov   [esi],eax              
+        ASM mov   [ebx],edx
+}
+
+
+*************************************************************************
+
+
+
+/
+/  Version for 32-bit Sun 386i Workstation
+/
+        .file   "mrmuldv.c"
+        .version        "sun386-1.0"
+        .text
+        .globl  muldiv
+muldiv:
+        pushl   %ebp
+        movl    %esp,%ebp
+
+        movl    8(%ebp),%eax         /get a
+        mull    12(%ebp)             /multiply by b
+        addl    16(%ebp),%eax        /add c to low word
+        adcl    $0,%edx              /add carry to high word
+
+        divl    20(%ebp)             /divide by m 
+        movl    24(%ebp),%ebx        /get address for remainder
+        movl    %edx,(%ebx)          /store remainder
+
+        popl    %ebp
+        ret
+
+        .text
+        .globl  muldvm
+muldvm:
+        pushl   %ebp
+        movl    %esp,%ebp
+
+        movl    8(%ebp),%edx       /get a
+        movl    12(%ebp),%eax      /add in c
+        divl    16(%ebp)           /divide by m
+
+        movl    20(%ebp),%ebx      /get address for remainder
+        movl    %edx,(%ebx)        /store remainder
+
+        popl    %ebp
+        ret
+
+        .text
+        .globl  muldvd
+muldvd:
+        pushl   %ebp
+        movl    %esp,%ebp
+
+        movl    8(%ebp),%eax       /get a
+        mull    12(%ebp)           /multiply by b
+        addl    16(%ebp),%eax      /add c to low word
+        adcl    $0,%edx            /add carry to high word
+        movl    20(%ebp),%ebx      /get address for remainder
+        movl    %eax,(%ebx)        /store remainder
+        movl    %edx,%eax          /get quotient
+
+        popl    %ebp
+        ret
+
+
+**************************************************************************
+
+
+/
+/ DJGPP GNU C version for DOS
+/ M. Scott 22/3/98
+/
+
+
+        .file   "mrmuldv.c"
+.text
+.globl  _muldiv
+_muldiv:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)      
+        addl    16(%ebp),%eax 
+        adcl    $0,%edx       
+
+        divl    20(%ebp)       
+        movl    24(%ebp),%ebx 
+        movl    %edx,(%ebx)
+    
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  _muldvm
+_muldvm:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+        movl    8(%ebp),%edx  
+        movl    12(%ebp),%eax 
+        divl    16(%ebp)      
+
+        movl    20(%ebp),%ebx 
+        movl    %edx,(%ebx)   
+
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  _muldvd
+_muldvd:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)      
+        addl    16(%ebp),%eax 
+        adcl    $0,%edx       
+        movl    20(%ebp),%ebx 
+        movl    %eax,(%ebx)   
+        movl    %edx,%eax     
+
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  _muldvd2
+_muldvd2:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+        pushl   %esi
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)
+        movl    16(%ebp),%ebx
+        addl    (%ebx),%eax
+        adcl    $0,%edx       
+        movl    20(%ebp),%esi
+        addl    (%esi),%eax
+        adcl    $0,%edx
+
+        movl    %eax,(%esi)   
+        movl    %edx,(%ebx)     
+
+        popl    %esi
+        popl    %ebx
+        popl    %ebp
+        ret
+
+
+*************************************************************************
+
+/
+/ GNU C for Linux (and other 386 based Linux/Unix??) 
+/
+/
+
+        .file   "mrmuldv.s"
+.text
+.globl  muldiv
+muldiv:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)      
+        addl    16(%ebp),%eax 
+        adcl    $0,%edx       
+
+        divl    20(%ebp)       
+        movl    24(%ebp),%ebx 
+        movl    %edx,(%ebx)
+    
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  muldvm
+muldvm:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+        movl    8(%ebp),%edx  
+        movl    12(%ebp),%eax 
+        divl    16(%ebp)      
+
+        movl    20(%ebp),%ebx 
+        movl    %edx,(%ebx)   
+
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  muldvd
+muldvd:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)      
+        addl    16(%ebp),%eax 
+        adcl    $0,%edx       
+        movl    20(%ebp),%ebx 
+        movl    %eax,(%ebx)   
+        movl    %edx,%eax     
+
+        popl    %ebx
+        popl    %ebp
+        ret
+
+        .globl  muldvd2
+muldvd2:
+        pushl   %ebp
+        movl    %esp,%ebp
+        pushl   %ebx
+        pushl   %esi
+
+        movl    8(%ebp),%eax  
+        mull    12(%ebp)
+        movl    16(%ebp),%ebx
+        addl    (%ebx),%eax
+        adcl    $0,%edx       
+        movl    20(%ebp),%esi
+        addl    (%esi),%eax
+        adcl    $0,%edx
+
+        movl    %eax,(%esi)   
+        movl    %edx,(%ebx)     
+
+        popl    %esi
+        popl    %ebx
+        popl    %ebp
+        ret
+
+
+*************************************************************************
+
+
+/* GCC inline assembly version for Linux/DJGPP */
+
+#include "miracl.h"
+
+
+mr_small muldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_small *rp)
+{
+    mr_small q;
+    __asm__ __volatile__ (
+    "movl %1,%%eax\n"
+    "mull %2\n"
+    "addl %3,%%eax\n"
+    "adcl $0,%%edx\n"
+    "divl %4\n"
+    "movl %5,%%ebx\n"
+    "movl %%edx,(%%ebx)\n"
+    "movl %%eax,%0\n"
+    : "=m"(q)
+    : "m"(a),"m"(b),"m"(c),"m"(m),"m"(rp)
+    : "eax","ebx","memory"
+    );
+    return q;
+}
+
+mr_small muldvm(mr_small a,mr_small c,mr_small m,mr_small *rp)
+{
+    mr_small q;
+    __asm__ __volatile__ (
+    "movl %1,%%edx\n"
+    "movl %2,%%eax\n"
+    "divl %3\n"
+    "movl %4,%%ebx\n"
+    "movl %%edx,(%%ebx)\n"
+    "movl %%eax,%0\n"
+    : "=m"(q)
+    : "m"(a),"m"(c),"m"(m),"m"(rp)
+    : "eax","ebx","memory"
+    );        
+    return q;
+}
+
+mr_small muldvd(mr_small a,mr_small b,mr_small c,mr_small *rp)
+{
+    mr_small q;
+    __asm__ __volatile__ (
+    "movl %1,%%eax\n"
+    "mull %2\n"
+    "addl %3,%%eax\n"
+    "adcl $0,%%edx\n"
+    "movl %4,%%ebx\n"
+    "movl %%eax,(%%ebx)\n"
+    "movl %%edx,%0\n"
+    : "=m"(q)
+    : "m"(a),"m"(b),"m"(c),"m"(rp)
+    : "eax","ebx","memory"
+    );
+    return q;
+}
+
+void muldvd2(mr_small a,mr_small b,mr_small *c,mr_small *rp)
+{
+    __asm__ __volatile__ (
+    "movl %0,%%eax\n"
+    "mull %1\n"
+    "movl %2,%%ebx\n"
+    "addl (%%ebx),%%eax\n"
+    "adcl $0,%%edx\n"
+    "movl %3,%%esi\n"
+    "addl (%%esi),%%eax\n"
+    "adcl $0,%%edx\n"
+    "movl %%eax,(%%esi)\n"
+    "movl %%edx,(%%ebx)\n"
+    : 
+    : "m"(a),"m"(b),"m"(c),"m"(rp)
+    : "eax","ebx","esi","memory"
+    );
+    
+}
+
+***********************************************************
+
+;
+;  Watcom C/386 32-bit compiler V7.0. Use with mirdef.h32
+;  Most parameters passed in registers
+;  Written for Phar Lap 386ASM macro-assembler
+;
+;   V4.0 NOTE! Inline assembly versions of these routines, 
+;   are also available. See miracl.h for details
+;
+
+        .386
+        ASSUME CS:_TEXT
+_TEXT   SEGMENT BYTE PUBLIC 'CODE'
+
+        PUBLIC muldiv_
+muldiv_ PROC NEAR
+
+        mul     edx                 ;multiply a*b
+        add     eax,ebx             ;add in c
+        adc     edx,0               ;carry
+        div     ecx                 ;divide by m
+        mov     ebx,[esp+4]
+        mov     [ebx],edx           ;remainder
+        ret     4                   ;quotient in eax
+
+muldiv_ endP
+
+        PUBLIC muldvm_
+muldvm_ PROC NEAR
+
+        xchg    eax,edx       ;a*base+c
+        div     ebx           ;divide by m
+        mov     [ecx],edx     ;store remainder
+        ret                   ;quotient in eax
+
+muldvm_ endP
+
+        PUBLIC muldvd_
+muldvd_ PROC NEAR
+
+        mul     edx           ;multiply a*b
+        add     eax,ebx       ;add in c
+        adc     edx,0
+        mov     [ecx],eax     ;store remainder
+        mov     eax,edx       ;get quotient
+        ret                   ;quotient in eax
+
+muldvd_ endP
+
+_TEXT   ENDS
+END
+
+
+*******************************************************************
+
+
+;
+;  Zortech C/386 32-bit compiler V2.1
+;  Use with mirdef.h32
+;  Written for Phar lap 386ASM macro-assembler
+;
+
+        .386
+        ASSUME CS:_TEXT
+_TEXT   SEGMENT BYTE PUBLIC 'CODE'
+
+        PUBLIC _muldiv
+_muldiv PROC NEAR
+
+        mov     eax,DWORD PTR [esp+4]
+        mul     DWORD PTR [esp+8]
+        add     eax,DWORD PTR [esp+12]
+        adc     edx,0         
+        div     DWORD PTR [esp+16]
+        mov     ebx,DWORD PTR [esp+20]
+        mov     [ebx],edx         
+        ret
+
+_muldiv endP
+
+        PUBLIC _muldvm
+_muldvm PROC NEAR
+
+        mov     edx,DWORD PTR [esp+4]
+        mov     eax,DWORD PTR [esp+8]
+        div     DWORD PTR [esp+12]
+        mov     ebx,DWORD PTR [esp+16]
+        mov     [ebx],edx
+        ret              
+
+_muldvm endP
+
+        PUBLIC _muldvd
+_muldvd PROC NEAR
+
+        mov     eax,DWORD PTR [esp+4]
+        mul     DWORD PTR [esp+8]
+        add     eax,DWORD PTR [esp+12]
+        adc     edx,0
+        mov     ebx,DWORD PTR [esp+16]
+        mov     [ebx],eax
+        mov     eax,edx
+        ret        
+
+_muldvd endP
+
+_TEXT   ENDS
+END
+
+
+
+************************************************************************
+
+
+unsigned int muldiv(a,b,c,m,rp)
+unsigned int a,b,c,m,*rp;
+{
+    asm
+    {
+    ;
+    ;  MACintosh version for Megamax or Lightspeed  Think C compiler
+    ;  with 16-bit int, 68000 processor
+    ;  For a 32 bit version for the 68020, see below 
+    ;
+        move   a(A6),D1      ;get a
+        mulu   b(A6),D1      ;multiply by b
+        clr.l  D0
+        move   c(A6),D0      ;get c
+        add.l  D0,D1         ;D1 contains a*b+c
+        divu   m(A6),D1      ;divide by m
+        move   D1,D0         ;return with quotient in D0
+        swap   D1            ;get remainder
+        move.l rp(A6),A0     ;get address for remainder
+        move   D1,(A0)       ;store remainder
+    }
+}
+
+unsigned int muldvm(a,c,m,rp)
+unsigned int a,c,m,*rp;
+{
+    asm
+    {
+    ; 
+    ; Version of muldvm for Apple MAC
+    ;
+        clr.l  D1
+        move   a(A6),D1      ;get a
+        swap   D1            ;move a to high word
+        move   c(A6),D1      ;add in c
+        divu   m(A6),D1      ;divide by m
+        move   D1,D0         ;return quotient in D0
+        swap   D1            ;get remainder
+        move.l rp(A6),A0     ;get address for remainder
+        move   D1,(A0)       ;store remainder
+    }
+}
+
+unsigned int muldvd(a,b,c,rp)
+unsigned int a,b,c,*rp;
+{
+    asm
+    {
+    ;
+    ; Version of muldvd for Apple MAC
+    ;
+        move   a(A6),D1      ;get a
+        mulu   b(a6),D1      ;multiply by b
+        clr.l  D0
+        move   c(A6),D0      ;get c
+        add.l  D0,D1         ;add in c
+        move.l D1,D0         
+        swap   D0            ;return quotient in D0
+        move.l rp(A6),A0     ;get address for remainder
+        move   D1,(A0)       ;store remainder
+    }
+}
+
+
+**********************************************************************
+
+
+#
+# 68020+ versions for Next, and for new 32-bit Macs
+# Parameters come off the stack
+#
+
+.globl _muldiv,_muldvm,_muldvd
+
+_muldiv:
+    movel sp@(4),d0
+    mulul sp@(8),d1:d0
+    addl  sp@(12),d0
+    negxl d1          # tricky stuff!
+    negl  d1
+    divul sp@(16),d1:d0
+    movel sp@(20),a0
+    movel d1,a0@
+    rts
+
+_muldvm:
+    movel sp@(4),d1
+    movel sp@(8),d0
+    divul sp@(12),d1:d0
+    movel sp@(16),a0
+    movel d1,a0@
+    rts
+
+_muldvd:
+    movel sp@(4),d1
+    mulul sp@(8),d0:d1
+    addl  sp@(12),d1
+    negxl d0
+    negl  d0
+    movel sp@(16),a0
+    movel d1,a0@
+    rts
+
+
+
+*************************************************************************
+
+
+unsigned int muldiv(a,b,c,m,rp)
+unsigned int a,b,c,m,*rp;
+{
+    asm
+    {
+    ;
+    ; 32016 processor version for BBC Master Scientific
+    ; with 32-bit int, by Dudley Long, Rutherford-Appleton Labs.
+    ; No muldvm() or muldvd()
+    ;
+        movd   a,0           ;move a to R0
+        meid   b,0           ;multiply  by b, result extended
+        addd   c,0           ;add c to extended number in R0 & R1
+        addcd  #0,1
+        deid   m,0           ;divide by m
+        movd   0,0(rp)       ;remainder to *rp
+        movd   1,0           ;quotient returned in R0
+    }
+}
+
+
+*******************************************************************
+
+
+; 
+; MOTE! This code is obsolete. Newer ARMs support a 32x32 UMULL instruction
+; The ARM compiler supports a long long type, so a C only version may be 
+; faster
+;
+; Acorn ARM Risc version (32-bit) for Archimedes micro
+; Wingpass Macro Assembler
+; Use with mirdef.h32
+;
+.INCLUDE "A.REGNAMES"
+
+.AREA C$$code, .CODE, .READONLY
+
+muldiv::
+         MOV     ip, sp             ;standard linkage
+         STMFD   sp!, {v1-v4}
+
+         CMPS    a2,#0x80000000     ;check for b=MAXBASE
+         MOVEQ   v3,a1,LSL #31      ;this idea is quicker because
+         MOVEQ   v4,a1,LSR #1       ;of ARM barrel shifting capability
+         BEQ     addin
+         MOV     v1,a1,LSR #16      ;do it the hard way
+         MOV     v2,a2,LSR #16
+         BIC     a1,a1,v1,LSL #16
+         BIC     a2,a2,v2,LSL #16
+         MUL     v3,a1,a2           ;form partial products of a*b
+         MUL     v4,v1,v2
+         SUB     v1,v1,a1
+         SUB     v2,a2,v2
+         MLA     v1,v2,v1,v3        ;look - only 3 MULs!
+         ADD     v1,v1,v4
+         ADDS    v3,v3,v1,LSL #16
+         ADC     v4,v4,v1,LSR #16
+addin:
+         ADDS    v3,v3,a3           ;now add in c
+         ADCCS   v4,v4,#0
+
+         CMPS    a4,#0x80000000     ;check for m=MAXBASE
+         MOVEQ   a1,v3,LSR #31
+         ADDEQ   a1,a1,v4,LSL #1
+         BICEQ   v4,v3,#0x80000000
+         BEQ     leave
+         MOV     a1,#0              ;do long division by m
+
+divlp:
+
+.REPEAT 32                          ;2xfaster than a loop!
+         MOVS    v3,v3,ASL #1       ;get next bit into carry
+         ADC     v4,v4,v4           ;accumulate remainder
+         CMPS    v4,a4
+         SUBCS   v4,v4,a4
+         ADC     a1,a1,a1           ;accumulate quotient
+.ENDREPEAT
+
+leave:
+         LDR     v3,[ip]
+         STR     v4,[v3]       ;store remainder
+         LDMFD   sp!, {v1-v4}
+         MOVS pc,lr
+
+muldvm::
+         STMFD   sp!, {v1-v2}
+
+         MOV     v2,a1              ;'multiply' by 2^32
+         MOV     v1,a2              ;add in c
+
+         MOV     a1,#0              ;do long division by m
+
+.REPEAT 32                          ;2xfaster than a loop!
+         MOVS    v1,v1,ASL #1       ;get next bit into carry
+         ADCS    v2,v2,v2           ;accumulate remainder
+         CMPCCS  v2,a3
+         SUBCS   v2,v2,a3
+         ADC     a1,a1,a1           ;accumulate quotient
+.ENDREPEAT
+
+         STR     v2,[a4]       ;store remainder
+         LDMFD   sp!, {v1-v2}
+         MOVS    pc,lr
+
+
+muldvd::
+         STMFD   sp!, {v1-v2}
+
+         MOV     ip,a1,LSR #16      ;do it the hard way
+         MOV     v2,a2,LSR #16
+         BIC     a1,a1,ip,LSL #16
+         BIC     a2,a2,v2,LSL #16
+         MUL     v1,a1,a2           ;form partial products of a*b
+         MUL     a2,ip,a2
+         MUL     a1,v2,a1
+         MUL     v2,ip,v2
+         ADDS    a1,a2,a1
+         ADDCS   v2,v2,#0x10000
+         ADDS    v1,v1,a1,LSL #16
+         ADC     v2,v2,a1,LSR #16
+         
+         ADDS    v1,v1,a3           ;now add in c
+         ADCCS   v2,v2,#0
+         MOV     a1,v2              ;get quotient
+
+         STR     v1,[a4]            ;store remainder
+         LDMFD   sp!, {v1-v2}
+         MOVS    pc,lr
+
+
+
+********************************************************************
+
+
+;
+;  Version for Pyramid 90x and 98x computers
+;  from Rod Worley, Monash University, Victoria, Australia
+;
+;  No muldvm() or muldvd()
+;
+        .text 0
+        .globl _muldiv
+_muldiv:
+        movw    pr0,pr8             ;save a in reg 8
+        movw    $0x0,pr0            ;zero reg0 so long reg 0,1 is b
+        emul    pr8,pr0             ;extended multiply by a
+        addw    pr2,pr1             ;add c to extended result
+        addwc   $0x0,pr0         
+        ediv    pr3,pr0             ;extended div by m
+        movw    pr1,(pr4)           ;store remainder
+        ret                         ;return qotient in pr0
+
+
+************************************************************************
+
+
+/* This is the transputer version, by A.H. Pepperdine   */
+/* Assumes that the result will fit into a 32-bit word  */
+/* The error flag will be set if                        */
+/*           (a*b+c)/m >= 2**32                         */
+/* ie. equivalently, if                                 */
+/*           ( (a*b+c) >> 32) >= m                      */
+
+unsigned int muldiv(unsigned int a, unsigned int b, unsigned int c,
+                    unsigned int m, unsigned int * rp)
+{
+    unsigned int q;
+    __asm
+    {
+      ldabc a, b, c;
+      lmul  ;
+      ld    m;
+      ldiv  ;
+      stab  q, *rp;
+    }
+    return q;
+}
+
+/* The base is 2**32, ie a full 32-bit unsigned integer */
+/* The error flag will be set if the result will not fit*/
+/* into a word, ie.                                     */
+/* for muldvm that is if (a >= m)                       */
+/* and for muldvd it cannot happen                      */
+
+unsigned int muldvm(unsigned int a, unsigned int c,
+                    unsigned int m, unsigned int * rp)
+{
+    unsigned int q;
+    __asm
+    {
+      ldabc m, c, a;
+      ldiv ;
+      stab q, *rp;
+    }
+    return q;
+}
+
+unsigned int muldvd(unsigned int a, unsigned int b, unsigned int c,
+                    unsigned int * rp)
+{
+    unsigned int q;
+    __asm
+    {
+      ldabc a, b, c;
+      lmul ;
+      stab *rp, q;
+    }
+    return q;
+}
+
+
+*********************************************************************
+
+
+/*  Now ... just to confuse you even more ....
+
+    Blakeley/Sloan 'portable' method for Modular multiplication IEEE Trans 
+    Computers C-34 March 1985 pp 290-292 eliminates need for double length 
+    product - but will be slow. Might suit some RISC computers with no 
+    multiply/divide instructions. To speed up try completely unravelling for() 
+    loops.       
+    
+    This method should only be used if the mr_utype data type is twice the size 
+    of a "mr_hltype" data-type. This must be defined below.
+
+    Note: DON't define MR_NOASM in mirdef.h if using this method.
+
+    */ 
+
+#include <stdio.h>
+#include "miracl.h"
+
+mr_small muldiv(a,b,c,m,rp)
+mr_small a,b,c,m;
+mr_small *rp;
+{
+    int i;
+    mr_small d,q=0,r=0;
+    d=m-a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+    }
+    *rp=r;
+    return q;
+}
+
+mr_small muldvm(a,c,m,rp)
+mr_small a,c,m;
+mr_small *rp;
+{ /* modified Blakely-Sloan */
+    register int i,carry;
+    register mr_small q=0,r=0;
+    r=a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+    }
+    *rp=r;
+    return q;
+}
+
+/* define mr_hltype as that C type that is half the size in bits of the 
+   underlying type (mr_utype in mirdef.h). Perhaps short if mr_utype is long? 
+   Possible int if mr_utype is 64-bit long long ?? */
+
+#define mr_hltype short
+
+mr_small muldvd(a,b,c,rp)
+mr_small a,b,c;
+mr_small *rp;
+{ /* multiply by parts */
+    mr_small middle,middle2;
+    mr_small q,r;
+    unsigned mr_hltype am,al,bm,bl;
+    int hshift=(MIRACL>>1);
+    am=(unsigned mr_hltype)(a>>hshift);
+    al=(unsigned mr_hltype)a;
+    bm=(unsigned mr_hltype)(b>>hshift);
+    bl=(unsigned mr_hltype)b;
+/* form partial products */
+    r= (mr_small)al*bl;  
+    q= (mr_small)am*bm;
+    middle=(mr_small)al*bm;
+    middle2=(mr_small)bl*am;
+    middle+=middle2;                        /* combine them - carefully */
+    if (middle<middle2) q+=((mr_small)1<<hshift);
+    r+=(middle << hshift);
+    if ((r>>hshift)<(unsigned mr_hltype)middle) q++;
+    q+=(middle>>hshift);
+    r+=c;
+    if (r<c) q++;
+    *rp=r;
+    return q;
+}   
+
+void muldvd2(a,b,c,rp)
+mr_small a,b;
+mr_small *c,*rp;
+{ /* multiply by parts */
+    mr_small middle,middle2;
+    mr_small q,r;
+    unsigned mr_hltype am,al,bm,bl;
+    int hshift=(MIRACL>>1);
+    am=(unsigned mr_hltype)(a>>hshift);
+    al=(unsigned mr_hltype)a;
+    bm=(unsigned mr_hltype)(b>>hshift);
+    bl=(unsigned mr_hltype)b;
+/* form partial products */
+    r= (mr_small)al*bl;  
+    q= (mr_small)am*bm;
+    middle=(mr_small)al*bm;
+    middle2=(mr_small)bl*am;
+    middle+=middle2;                        /* combine them - carefully */
+    if (middle<middle2) q+=((mr_small)1<<hshift);
+    r+=(middle << hshift);
+    if ((r>>hshift)<(unsigned mr_hltype)middle) q++;
+    q+=(middle>>hshift);
+    r+=*c;
+    if (r<*c) q++;
+    r+=*rp;
+    if (r<*rp) q++;
+    *rp=r;
+    *c=q;
+}   
+
+*************************************************************************
+
+
+/* SPARC assembler version of above. Note that when Full-width base 
+   working is used, then muldvd() is the most time-critical of these
+   three routines. Use with above Blakely-Sloan C versions of muldvm 
+   and muldiv (Assumes mr_utype is 32 bit int) */
+          .global _muldvd
+_muldvd:
+          mov    %o1,%y       
+          andcc  %g0,%g0,%o4  
+          nop                  
+          nop                 
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+	  mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%o0,%o4  
+          mulscc %o4,%g0,%o4
+          tst    %o0          
+          bge 1f
+          nop
+          add    %o4,%o1,%o4
+1:
+          rd     %y,%o1       
+          addcc  %o1,%o2,%o1  
+          st     %o1,[%o3]    
+          retl          
+          addxcc %o4,%g0,%o0  
+
+
+**************************************************************************
+
+
+/* If you have a "decent" SPARC which supports UMUL and UDIV instructions
+   then the following will be much faster. Cut and paste what follows 
+   into mrmuldv.s. See miracl.mak make file 
+
+   Aside: God, I hate the Sparc, with its slippery ill-defined Instruction 
+          set. Not all implementations support UMUL and UDIV, so its safer 
+          to use the method above. 
+
+   Note: Sometimes the routine name needs a preceding underscore,
+         so it may be necessary to change for example muldvd to _muldvd
+         through-out. Depends on the Unix version
+*/
+
+          .global muldvd
+muldvd:
+          umul   %o0,%o1,%o0              
+          rd     %y,%o1       
+          addcc  %o0,%o2,%o0  
+          st     %o0,[%o3]    
+          retl          
+          addx   %o1,%g0,%o0 
+
+          .global muldvd2
+muldvd2:
+          umul   %o0,%o1,%o0              
+          rd     %y,%o1   
+          ld     [%o2],%o5
+          addcc  %o0,%o5,%o0 
+          ld     [%o3],%o5
+          addx   %o1,%g0,%o1
+          addcc  %o0,%o5,%o0 
+          st     %o0,[%o3]    
+          addx   %o1,%g0,%o1 
+          retl          
+          st     %o1,[%o2]
+
+         .global muldvm
+muldvm:
+          mov %o0,%y
+          nop
+          nop
+          nop
+          udiv %o1,%o2,%o0
+          umul %o0,%o2,%o2
+          sub  %o1,%o2,%o1
+          retl
+          st  %o1,[%o3]
+          
+          .global muldiv
+muldiv:
+           umul  %o0,%o1,%o1
+           rd    %y,%o0
+           addcc %o1,%o2,%o1
+           addx  %o0,%g0,%o0
+           mov %o0,%y
+           nop
+           nop
+           nop
+           udiv %o1,%o3,%o0
+           umul %o0,%o3,%o2
+           sub  %o1,%o2,%o1
+           retl
+           st %o1,[%o4]
+
+
+/* In-line assembly for SPARC using double type */
+
+#include <stdio.h>
+#include "miracl.h"
+
+mr_small muldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_small *rp)
+{
+    mr_small q;
+    mr_large ldres,dble;
+    static mr_small magic=MR_MAGIC;
+    __asm__ __volatile__ (
+    "fdmulq %1,%2,%%f0\n"
+    "fdtoq  %3,%%f4\n"
+    "faddq  %%f0,%%f4,%%f0\n"
+    "fdtoq  %4,%%f4\n"
+    "fdivq  %%f0,%%f4,%%f4\n"   
+    "fdtoq  %5,%%f8\n"
+    "faddq  %%f4,%%f8,%%f4\n"
+    "fsubq  %%f4,%%f8,%%f4\n"
+    "fqtod  %%f4,%0\n"
+    "fdmulq %0,%4,%%f8\n"
+    "fsubq  %%f0,%%f8,%%f0\n"
+    "fqtod  %%f0,%%f10\n"
+    "std    %%f10,[%6]\n"
+    : "=f"(q)
+    : "f"(a),"f"(b),"f"(c),"f"(m),"f"(magic),"r"(rp)
+    : "f0","f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","memory"
+    );
+    return q;
+}
+
+#ifdef MR_FP_ROUNDING
+
+mr_small imuldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_large im,mr_small *rp)
+{
+    mr_small q;
+    mr_large ldres,dble;
+    static mr_small magic=MR_MAGIC;
+    __asm__ __volatile__ (
+    "fdmulq %1,%2,%%f0\n"
+    "fdtoq  %3,%%f4\n"
+    "faddq  %%f0,%%f4,%%f0\n"
+
+    "fmulq  %4,%%f0,%%f4\n"
+    "fdtoq  %6,%%f8\n"
+    "faddq  %%f4,%%f8,%%f4\n"
+    "fsubq  %%f4,%%f8,%%f4\n"
+    "fqtod  %%f4,%0\n"
+
+    "fdmulq %0,%5,%%f8\n"
+    "fsubq  %%f0,%%f8,%%f0\n"
+    "fqtod  %%f0,%%f10\n"
+    "std    %%f10,[%7]\n"
+    : "=f"(q)
+    : "f"(a),"f"(b),"f"(c),"f"(im),"f"(m),"f"(magic),"r"(rp)
+    : "f0","f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","memory"
+    );
+    return q;
+}
+
+#endif
+
+
+
+/* before leaving the SPARC, here is an interesting idea
+   Specify the underlying type as the 64-bit long long, as supported by the
+   GCC compiler. Use the Blakely-Sloan Portable Code above, with mr_hltype
+   defined as a long. This has been tried and works, getting 64-bit 
+   behaviour from a 32-bit processor! Its slower than the 32-bit code above,
+   but if the 64-bit mrmuldvd() were rewritten in fast assembler.....? */ 
+
+
+************************************************************************
+
+#########################################################################################
+#
+# mrmuldv.s
+# author: G. Garth Feb 1996
+# 
+# implementation of modular multiplication for smalls
+# using Blakely-Sloan division algorithm
+# for Motorola 601 and 604 RISC PowerPC 32-bit processors
+# see IEEE trans. Computers C-34, No. 3, March 1985 pp. 290-292
+#
+# see also PowerPC Microprocessor Developer's guide
+# by Bunda, Potter & Shadowen, SAMS 1995, Appendix A p. 177
+#
+# intended for use in MIRACL library as assembly language implementation
+# of routines muldiv, muldvm and muldvd
+# written for Apple MPW PPC Assembler for Macintosh PPC computers
+#
+# Division Algorithm Pseudo Code
+# given: integers A,B,C,D and M where D = A * B + C
+# this algorithm computes Q and R such that
+# D = M * Q + R
+# Constraints:
+# A,B,C,M < 2^H where H is word length in bits 
+# 0 <= Q,R < M; 0 < D < 2^(2*H)
+# 
+# let K = # of bits in D
+#
+# R = Q = 0;
+# for(T = K - 1; T >= 0; T--)
+# {
+#       R <<= 1;
+#       Q <<= 1;
+#       if(D[T] == 1)
+#       {
+#               R += 1;
+#       }
+#       while(R >= M)
+#       {
+#               R -= M;
+#               Q += 1;
+#       }
+# }
+#
+#########################################################################################
+
+        export muldiv[DS]
+        export .muldiv[PR]
+        export muldvm[DS]
+        export .muldvm[PR]
+        export muldvd[DS]
+        export .muldvd[PR]
+
+        toc
+                tc muldiv[TC],muldiv[DS]
+                tc muldvm[TC],muldvm[DS]
+                tc muldvd[TC],muldvd[DS]
+        
+        csect muldiv[DS]
+                dc.l .muldiv[PR]
+                dc.l TOC[tc0]
+        csect muldvm[DS]
+                dc.l .muldvm[PR]
+                dc.l TOC[tc0]
+        csect muldvd[DS]
+                dc.l .muldvd[PR]
+                dc.l TOC[tc0]
+                
+#
+# unsigned int muldiv(a,b,c,m,rp)
+# unsigned int a,b,c,m,*rp;
+# returns q = int[(a*b+c)/m] and *rp = (a*b+c) mod m
+# when called a -> (r3), b -> (r4), c -> (r5), m -> (r6), rp -> (r7)
+# upon return q -> (r3), *rp -> [(r12)]
+# registers used: r3 thru r12
+#
+
+        csect .muldiv[PR]
+        function .muldiv[PR]
+        
+        or r12,r7,r7           ;(r12) <- remainder address
+        mulhwu r8,r3,r4        ;(r8) <- a * b  high word
+        mullw r9,r3,r4         ;(r9 ) <- a * b  low word
+        addc r4,r5,r9          ;(r4) <- a * b + c  dividend.lo
+        addze r3,r8            ;(r3) <- (r8) + XERca  dividend.hi
+        subic. r5,r3,0         ;test for zero dividend.hi
+        bne divlong            ;
+                               ;here if dividend is single word
+        divwu r3,r4,r6         ;(r3) <- quotient
+        mullw r7,r6,r3;        ;(r7) <- r6 * int (r4 / r6)
+        subf r5,r7,r4          ;(r5) <- remainder.lo
+        stw r5,0x0000(r12)     ;[(r12)] <- remainder
+        blr                    ;that's all for single word division
+                               
+divlong:
+        xor r7,r7,r7           ;zero divisor.hi
+        nor r7,r7,r7           ;calc ~divisor.hi
+        subfic r8,r6,0         ;(r8) <- -divisor.lo, set CA
+        addze r7,r7            ;(r7) <- ~divisor.hi + CA
+        or r11,r4,r4           ;(r11) <- dividend.lo
+        or r4,r3,r3            ;(r4) <- dividend.hi
+                               ;try to shift ahead, skipping unnecessary
+                               ;shifting loops
+        cntlzw r10,r4          ;find order of dividend.hi
+        subfic r9,r10,32       ;calc shift = 32 - order
+        slw r4,r4,r10          ;shift ahead dividend.hi
+        srw r3,r11,r9          ;get shifted part of dividend.lo
+        or r4,r4,r3            ;combine with dividend.hi
+        slw r11,r11,r10        ;shift ahead dividend.lo
+        addi r9,r9,33          ;setup for looping
+        mtctr r9               ;
+        xor r3,r3,r3           ;clear quotient.lo
+        xor r5,r5,r5           ;clear shift.hi
+        xor r6,r6,r6           ;clear shift.lo
+        b ldiff                ;skip first round of shifting
+        align 6                ;align loop to 64-byte boundary
+lshift:
+        rlwinm r5,r5,1,0,30    ;shift.hi <<= 1
+        rlwimi r5,r6,1,31,31   ;shift.hi[31] = shift.lo[0]
+        rlwinm r6,r6,1,0,30    ;shift.lo <<= 1
+        rlwimi r6,r4,1,31,31   ;shift.lo[31] = dividend.hi[0]
+        rlwinm r4,r4,1,0,30    ;dividend.hi <<= 1
+        rlwimi r4,r11,1,31,31  ;dividend.hi[31] = dividend.lo[0]
+        rlwinm r11,r11,1,0,30  ;dividend.lo <<= 1
+        rlwinm r3,r3,1,0,30    ;quotient.lo <<=1
+ldiff:
+        addc r10,r6,r8         ;diff.lo = shift.lo - divisor.lo, set CA
+        adde. r9,r5,r7         ;diff.hi = shift.hi - divisor.hi + CA
+        blt lloop              ;loop if diff < 0
+        or r6,r10,r10          ;shift.lo = diff.lo
+        or r5,r9,r9            ;shift.hi = diff.hi
+        ori r3,r3,1            ;set bit in quotient
+lloop:
+        bdnz lshift             ;loop until done
+        stw r6,0x0000(r12)     ;store remainder in rp address
+        blr                    ;return  
+
+#
+# unsigned int muldvm(a,c,m,rp)
+# unsigned int a,c,m,*rp;
+# returns q = int[(a*base+c)/m] and *rp = (a*base+c) mod m
+# when called a -> (r3), c -> (r4), m -> (r5), rp -> (r6)
+# upon return q -> (r3), *rp -> [(r12)]
+# registers used: r3 thru r12 
+#
+
+        csect .muldvm[PR]
+        function .muldvm[PR]
+        
+        or r12,r6,r6           ;(r12) <- remainder address
+        or r6,r5,r5            ;(r6) <- m
+        xor r7,r7,r7           ;zero divisor.hi
+        nor r7,r7,r7           ;calc ~divisor.hi
+        subfic r8,r6,0         ;(r8) <- calc -divisor.lo, set CA
+        addze r7,r7            ;(r7) <- ~divisor.hi += CA
+        or r11,r4,r4           ;(r11) <- dividend.lo
+        or r4,r3,r3            ;(r4) <- dividend.hi
+                               ;try to shift ahead, skipping unnecessary
+                               ;shifting loops
+        cntlzw r10,r4          ;find order of dividend.hi
+        subfic r9,r10,32       ;calc shift = 32 - order
+        slw r4,r4,r10          ;shift ahead dividend.hi
+        srw r3,r11,r9          ;get shifted part of dividend.lo
+        or r4,r4,r3            ;combine with dividend.hi
+        slw r11,r11,r10        ;shift ahead dividend.lo
+        addi r9,r9,33          ;setup for looping
+        mtctr r9               ;
+        xor r3,r3,r3           ;clear quotient.lo
+        xor r5,r5,r5           ;clear shift.hi
+        xor r6,r6,r6           ;clear shift.lo
+        b sdiff                ;skip first round of shifting
+        align 6                ;align loop to 64-byte boundary
+sshift:
+        rlwinm r5,r5,1,0,30    ;shift.hi <<= 1
+        rlwimi r5,r6,1,31,31   ;shift.hi[31] = shift.lo[0]
+        rlwinm r6,r6,1,0,30    ;shift.lo <<= 1
+        rlwimi r6,r4,1,31,31   ;shift.lo[31] = dividend.hi[0]
+        rlwinm r4,r4,1,0,30    ;dividend.hi <<= 1
+        rlwimi r4,r11,1,31,31  ;dividend.hi[31] = dividend.lo[0]
+        rlwinm r11,r11,1,0,30  ;dividend.lo <<= 1
+        rlwinm r3,r3,1,0,30    ;quotient.lo <<=1
+sdiff:
+        addc r10,r6,r8         ;diff.lo = shift.lo - divisor.lo, set CA
+        adde. r9,r5,r7         ;diff.hi = shift.hi - divisor.hi + CA
+        blt sloop              ;loop if diff < 0
+        or r6,r10,r10          ;shift.lo = diff.lo
+        or r5,r9,r9            ;shift.hi = diff.hi
+        ori r3,r3,1            ;set bit in quotient
+sloop:
+        bdnz sshift
+        stw r6,0x0000(r12)     ;store remainder in rp address
+        blr                    ;return  
+
+#
+# unsigned int muldvd(a,b,c,rp)
+# unsigned int a,b,c,*rp;
+# returns q = int[(a*b+c)/base] and *rp = (a*b+c) mod base
+# when called a -> (r3), b -> (r4), c -> (r5), rp -> (r6)
+# upon return q -> (r3), *rp -> [(r6)]
+# registers used: r3 thru r8
+#
+
+        csect .muldvd[PR]
+        function .muldvd[PR]
+                               
+        mulhwu r7,r3,r4        ;(r7) <- a * b  high word
+        mullw r8,r3,r4         ;(r8) <- a * b  low word
+        addc r4,r8,r5          ;(r4) <- a * b + c
+        addze r3,r7            ;(r3) <- (r7) + XERca
+        stw r4,0x0000(r6)      ;store remainder -> (r6)
+        blr                    ;return
+        
+
+
+*****************************************************************************/
+
+
+/*  Itanium code for Intel compiler, with mr_small a 64-bit long */
+
+#include "miracl.h"
+
+mr_small muldiv(a,b,c,m,rp)
+mr_small a,b,c,m;
+mr_small *rp;
+{ /* Blakely-Sloan */
+    int i;
+    mr_small d,q=0,r=0;
+    d=m-a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+    }
+    *rp=r;
+    return q;
+}
+
+mr_small muldvm(a,c,m,rp)
+mr_small a,c,m;
+mr_small *rp;
+{ /* modified Blakely-Sloan */
+    register int i,carry;
+    register mr_small q=0,r=0;
+    r=a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+    }
+    *rp=r;
+    return q;
+}
+
+/* use intrinsics for speed */
+
+/* These are now in-lined - see miracl.h */
+
+/*
+
+#include <ia64intrin.h>
+
+mr_small muldvd(a,b,c,rp)
+mr_small a,b,c;
+mr_small *rp;
+{ 
+    *rp=_m64_xmalu(a,b,c);
+    return _m64_xmahu(a,b,c);
+}   
+
+void muldvd2(a,b,c,rp)
+mr_small a,b;
+mr_small *c,*rp;
+{
+    mr_small bot;
+    bot=_m64_xmalu(a,b,*c);
+    *c=_m64_xmahu(a,b,*c);
+    bot+=*rp;
+    if (bot<*rp) (*c)++;
+    *rp=bot;
+}   
+
+*/
+
+
+/
+/ GNU C for Linux (AMD64) 
+/ Parameters are passed in rdi,rsi,rdx,rcx,r8....
+/
+
+        .file   "mrmuldv.s"
+.text
+	.globl  muldiv
+muldiv:
+
+        pushq   %rbx
+        movq    %rdi,%rax
+        movq    %rdx,%rbx
+        mulq    %rsi
+        addq    %rbx,%rax
+        adcq    $0,%rdx
+
+        divq    %rcx
+        movq    %r8,%rbx
+        movq    %rdx,(%rbx)
+        popq    %rbx
+
+        ret
+
+        .globl muldvm
+muldvm:
+   
+        pushq   %rbx
+        movq %rdx,%rbx
+        movq %rdi,%rdx
+        movq %rsi,%rax
+        divq %rbx
+
+        movq %rcx,%rbx
+        movq %rdx,(%rbx)
+        popq    %rbx
+
+        ret
+
+        .globl muldvd
+muldvd:
+          
+        pushq   %rbx
+        movq %rdi,%rax
+        movq %rdx,%rbx
+        mulq %rsi
+        addq %rbx,%rax
+        adcq $0,%rdx
+
+        movq %rcx,%rbx
+        movq %rax,(%rbx)
+        movq %rdx,%rax
+        popq    %rbx
+
+        ret
+
+        .globl muldvd2
+muldvd2:
+
+        pushq   %rbx
+        movq %rdi,%rax
+        movq %rdx,%rbx
+        mulq %rsi
+        addq (%rbx),%rax
+        adcq $0,%rdx
+        addq (%rcx),%rax
+        adcq $0,%rdx
+
+        movq %rax,(%rcx)
+        movq %rdx,(%rbx)
+        popq    %rbx
+
+        ret
+
+;  Written by Ed Runnion with full rights granted to Shamus Software.
+;
+;  An implementation of mrmuldv routines for miracl
+; for ml64 assembler used by Microsoft Visual Studio (VC8) and X64 processor (AMD 64) 
+; X64 arguments are passed in RCX, RDX, R8, R9, Stack...
+
+;/*
+; *   MIRACL compiler/hardware definitions - mirdef.h
+; *   Copyright (c) 1988-2006 Shamus Software Ltd.
+; */
+;#define MR_LITTLE_ENDIAN
+;#define MIRACL 64
+;#define mr_utype __int64
+;#define mr_unsign64 unsigned __int64
+;#define MR_IBITS 32
+;#define MR_LBITS 32
+;#define mr_unsign32 unsigned int
+;#define MR_FLASH 52
+;#define MAXBASE ((mr_small)1<<(MIRACL-1))
+;#define MR_BITSINCHAR 8
+
+.code
+
+ALIGN 16
+PUBLIC muldiv
+muldiv PROC
+
+        mov      rax,rcx
+        mul       rdx
+        add      rax,r8
+        adc      rdx,0
+        div       r9
+        mov     r10, QWORD PTR [rsp+28h]
+        mov     QWORD PTR[r10],rdx
+        
+        ret
+muldiv  ENDP
+
+ALIGN 16
+PUBLIC muldvm
+muldvm PROC 
+   
+        mov		rax,rdx 
+        mov     rdx,rcx
+        div       r8
+        mov     QWORD PTR[r9],rdx
+
+        ret
+muldvm ENDP
+
+
+ALIGN 16
+PUBLIC muldvd
+muldvd PROC 
+          
+        mov    rax,rcx
+        mul    rdx
+        add    rax,r8
+        adc    rdx,0
+        mov    QWORD PTR[r9],rax
+        mov    rax,rdx
+
+        ret
+muldvd ENDP
+
+ALIGN 16
+PUBLIC muldvd2
+muldvd2 PROC 
+
+        mov    rax,rcx
+        mul    rdx
+        add    rax,QWORD PTR[r8]
+        adc    rdx,0
+        add    rax,QWORD PTR[r9]
+        adc    rdx,0
+        mov    QWORD PTR[r9],rax
+        mov    QWORD PTR[r8],rdx
+
+        ret
+muldvd2 ENDP
+	
+	end
+
+
+/* Win64 C version of mrmuldv.c, for 64-bit Visual Studio apps */
+
+#include "miracl.h"
+
+mr_small muldiv(mr_small a,mr_small b,mr_small c,mr_small m,mr_small *rp)
+{
+    int i;
+    mr_small d,q=0,r=0;
+    d=m-a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if ((mr_utype)b<0)
+        {
+            if (r>=m) { r-=d; q++; }
+            else        r+=a;
+        }
+        if (r>=m) { r-=m; q++; }
+        b<<=1;
+    }
+    *rp=r;
+    return q;
+}
+
+mr_small muldvm(mr_small a,mr_small c,mr_small m,mr_small *rp)
+{ /* modified Blakely-Sloan */
+    register int i,carry;
+    register mr_small q=0,r=0;
+    r=a;
+    for (i=MIRACL/4;i>0;i--)
+    { /* do it bit by bit */
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+        carry=0;
+        if ((mr_utype)r<0) carry=1;
+        r<<=1;
+        if ((mr_utype)c<0) r++;
+        c<<=1;
+        q<<=1;
+        if (carry || r>=m) { r-=m; q++; }
+    }
+    *rp=r;
+    return q;
+}
+
+#ifndef MR_NOFULLWIDTH
+
+/* These are now in-lined - see miracl.h */
+
+/*
+
+mr_small muldvd(mr_small a,mr_small b,mr_small c,mr_small *rp)
+{
+    mr_small q,r;
+    r=_umul128(a,b,&q);
+    r+=c;
+    q+=(r<c);
+    *rp=r;
+    return q;
+}
+
+void muldvd2(mr_small a,mr_small b,mr_small *c,mr_small *rp)
+{
+    mr_small q,r;
+    r=_umul128(a,b,&q);
+    r+=*c;
+    q+=(r<*c);
+    r+=*rp;
+    q+=(r<*rp);
+    *rp=r;
+    *c=q;
+}
+*/
+#endif
+
+

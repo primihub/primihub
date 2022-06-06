@@ -1,0 +1,407 @@
+; Comba/KCM Macros for TI msp430
+;
+; Triple register is r11|r10|r9
+;
+; See makemcs.txt for more information about this file
+;
+; Contributed by Piotr Szczechowiak
+; (uses hardware multiplier)
+; 
+MACRO MUL_START
+  asm(
+  "mov %%[a],r13\n\t"
+  "mov %%[b],r14\n\t"
+  "mov %%[c],r15\n\t"
+  "clr r9\n\t"
+  "clr r10\n\t"
+  "clr r11\n\t"
+  "clr r12\n\t"
+  "push r2\n\t"
+  "dint\n\t"
+  "nop\n\t"
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  "mov 2*%d(r13),&__MPY\n\t"
+  "mov 2*%d(r14),&__OP2\n\t"
+  "add &__RESLO,r9\n\t"
+  "addc &__RESHI,r10\n\t"
+  "addc r12,r11\n\t"
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  "mov r9,2*%d(r15)\n\t"
+  "mov r10,r9\n\t"
+  "mov r11,r10\n\t"
+  "clr r11\n\t"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "mov 2*%d(r13),&__MPY\n\t"
+  "mov 2*%d(r14),&__OP2\n\t"
+  "add &__RESLO,r9\n\t"
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  "mov r9,2*%d(r15)\n\t"
+  "pop r2\n\t"
+  "eint\n\t"
+  :  
+  : [a] "m" (a), [b] "m" (b), [c] "m" (c)
+  :"r9","r10","r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  asm(
+  "mov %%[a],r14\n\t"
+  "mov %%[c],r15\n\t"
+  "clr r10\n\t"
+  "clr r11\n\t"
+  "clr r12\n\t"
+  "clr r13\n\t"
+  "push r2\n\t"
+  "dint\n\t"
+  "nop\n\t"
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  "mov 2*%d(r14),&__MPY\n\t"
+  "mov 2*%d(r14),&__OP2\n\t"
+  "add &__RESLO,r10\n\t"
+  "addc &__RESHI,r11\n\t"
+  "addc r13,r12\n\t"  
+  "add &__RESLO,r10\n\t"
+  "addc &__RESHI,r11\n\t"
+  "addc r13,r12\n\t"  
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  "mov 2*%d(r14),&__MPY\n\t"
+  "mov 2*%d(r14),&__OP2\n\t"
+  "add &__RESLO,r10\n\t"
+  "addc &__RESHI,r11\n\t"
+  "addc r13,r12\n\t"  
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  "mov r10,2*%d(r15)\n\t"
+  "mov r11,r10\n\t"
+  "mov r12,r11\n\t"
+  "clr r12\n\t"
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  "mov r10,2*%d(r15)\n\t"
+  "pop r2\n\t"
+  "eint\n\t"
+  :  
+  : [a] "m" (a), [c] "m" (c)
+  :"r10","r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  asm(
+  "mov %%[a],r13\n\t"
+  "mov %%[b],r14\n\t"
+  "mov %%[ndash],r15\n\t"
+  "clr r9\n\t"
+  "clr r10\n\t"
+  "clr r11\n\t"
+  "clr r12\n\t"
+  "mov @r13,r9\n\t"
+  "push r2\n\t"
+  "dint\n\t"
+  "nop\n\t"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "mov r9,&__MPY\n\t"
+  "mov @r15,&__OP2\n\t"
+  "add &__RESLO,2*%d(r13)\n\t"
+  "mov @r14,&__MPY\n\t"
+  "mov &__RESLO,&__OP2\n\t"
+  "add &__RESLO,r9\n\t"
+  "addc &__RESHI,r10\n\t"
+  "addc r12,r11\n\t"
+  "mov r10,r9\n\t"
+  "mov r11,r10\n\t"
+  "clr r11\n\t"
+  "add 2*%d+1(r13),r9\n\t"
+  "addc r12,r10\n\t"
+  "clr r11\n\t"
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  "mov r9,2*%d(r13)\n\t"
+  "mov r10,r9\n\t"
+  "mov r11,r10\n\t"
+  "clr r11\n\t"
+  "add 2*%d+1(r13),r9\n\t"
+  "addc r12,r10\n\t"
+  "clr r11\n\t"
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  "mov r9,2*%d(r15)\n\t"
+  "mov r10,2*%d+1(r15)\n\t"
+  "pop r2\n\t"
+  "eint\n\t"
+  :  
+  : [a] "m" (a), [b] "m" (b), [ndash] "m" (ndash)
+  :"r9","r10","r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  asm(
+  "mov %%[a],r11\n\t"
+  "mov %%[b],r12\n\t"
+  "mov @r11+,r13\n\t"
+  "mov @r12+,r14\n\t"
+  "add r14,r13\n\t"
+  "mov %%[c],r15\n\t"
+  "mov r13,2*0(r15)\n\t"
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD
+  "mov @r11+,r13\n\t"
+  "mov @r12+,r14\n\t"
+  "addc r14,r13\n\t"
+  "mov r13,2*%d(r15)\n\t"
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+  "clr r14\n\t"
+  "adc r14\n\t"
+  "mov r14,%%[carry]\n\t"
+  : [carry] "=m" (carry) 
+  : [a] "m" (a), [b] "m" (b), [c] "m" (c), "[carry]" (carry) 
+  :"r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  asm(
+  "mov %%[a],r12\n\t"
+  "mov %%[b],r13\n\t"
+  "mov 2*0(r12),r14\n\t"
+  "mov @r13+,r15\n\t"
+  "add r15,r14\n\t"
+  "mov r14,2*0(r12)\n\t"
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  "mov 2*%d(r12),r14\n\t"
+  "mov @r13+,r15\n\t"
+  "addc r15,r14\n\t"
+  "mov r14,2*%d(r12)\n\t"
+ENDM
+MACRO INC_END
+  "clr r15\n\t"
+  "adc r15\n\t"
+  "mov r15,%%[carry]\n\t"
+  : [carry] "=m" (carry) 
+  : [a] "m" (a), [b] "m" (b), "[carry]" (carry) 
+  :"r12","r13","r14","r15"
+  );
+ENDM
+MACRO SUB_START
+  asm(
+  "mov %%[a],r11\n\t"
+  "mov %%[b],r12\n\t"
+  "mov @r11+,r13\n\t"
+  "mov @r12+,r14\n\t"
+  "sub r14,r13\n\t"
+  "mov %%[c],r15\n\t"
+  "mov r13,2*0(r15)\n\t"
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  "mov @r11+,r13\n\t"
+  "mov @r12+,r14\n\t"
+  "subc r14,r13\n\t"
+  "mov r13,2*%d(r15)\n\t"
+ENDM
+MACRO SUB_END
+  "clr r14\n\t"
+  "adc r14\n\t"
+  "xor.b #1,r14\n\t"
+  "mov r14,%%[carry]\n\t"
+  : [carry] "=m" (carry) 
+  : [a] "m" (a), [b] "m" (b), [c] "m" (c), "[carry]" (carry) 
+  :"r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  asm(
+  "mov %%[a],r12\n\t"
+  "mov %%[b],r13\n\t"
+  "mov 2*0(r12),r14\n\t"
+  "mov @r13+,r15\n\t"
+  "sub r15,r14\n\t"
+  "mov r14,2*0(r12)\n\t"
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  "mov 2*%d(r12),r14\n\t"
+  "mov @r13+,r15\n\t"
+  "subc r15,r14\n\t"
+  "mov r14,2*%d(r12)\n\t"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "clr r15\n\t"
+  "adc r15\n\t"
+  "xor.b #1,r15\n\t"
+  "mov r15,%%[carry]\n\t"
+  : [carry] "=m" (carry) 
+  : [a] "m" (a), [b] "m" (b), "[carry]" (carry) 
+  :"r12","r13","r14","r15"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  asm(
+  "mov %%[a],r12\n\t"
+  "mov %%[b],r13\n\t"
+  "mov %%[c],r14\n\t"
+  "mov %%[n],r15\n\t"
+  "clrc\n\t"
+  "k%d:\n"
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+  "dec r15\n\t"
+  "jz k%d\n\t"
+  "clr r11\n\t"
+  "adc r11\n\t"
+  "add #2*%d,r12\n\t"
+  "add #2*%d,r13\n\t"
+  "add #2*%d,r14\n\t"
+  "rrc r11\n\t"
+  "jmp k%d\n\t"
+  "k%d:\n\t"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END
+  "clr r11\n\t"
+  "adc r11\n\t"
+  "mov r11,%%[carry]\n\t"
+  : [carry] "=m" (carry)   
+  : [a] "m" (a), [b] "m" (b), [c] "m" (c) , [n] "m" (n), "[carry]" (carry) 
+  :"r11","r12","r13","r14","r15"
+  );
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  asm(
+  "mov %%[a],r12\n\t"
+  "mov %%[b],r13\n\t"
+  "mov %%[n],r15\n\t"
+  "clrc\n\t"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "dec r15\n\t"
+  "jz k%d\n\t"
+  "clr r14\n\t"
+  "adc r14\n\t"
+  "add #2*%d,r12\n\t"
+  "add #2*%d,r13\n\t"
+  "rrc r14\n\t"
+  "jmp k%d\n\t"
+  "k%d:\n\t"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "clr r14\n\t"
+  "adc r14\n\t"
+  "mov r14,%%[carry]\n\t"
+  : [carry] "=m" (carry)   
+  : [a] "m" (a), [b] "m" (b), [n] "m" (n), "[carry]" (carry) 
+  :"r12","r13","r14","r15"
+  );
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  asm(
+  "mov %%[a],r12\n\t"
+  "mov %%[b],r13\n\t"
+  "mov %%[n],r15\n\t"
+  "clrc\n\t"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "clr r14\n\t"
+  "adc r14\n\t"
+  "mov r14,%%[carry]\n\t"
+  : [carry] "=m" (carry)    
+  : [a] "m" (a), [b] "m" (b), [n] "m" (n), "[carry]" (carry) 
+  :"r12","r13","r14","r15"
+  );
+ENDM

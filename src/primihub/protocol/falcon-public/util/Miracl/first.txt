@@ -1,0 +1,65 @@
+MIRACL is a highly efficient and portable Multiprecision Integer and Rational 
+Arithmetic C/C++ Library. Full source code is provided. Its main area of 
+application is in the implementation of Public Key Cryptography systems and
+protocols. Many example programs are provide. 
+
+To access the software, download the file miracl.zip.
+
+If using Windows decompress all files into a single DOS directory MIRACL
+
+To build the standard library in this directory using the Microsoft compiler, 
+first make sure that paths are set up correctly by running the Microsoft 
+supplied batch files vcvars32 or vcvars64 (for 32-bit or 64-bit environments 
+respectively), or vcvarsall <param> to set up a named environment
+
+Then execute either ms32doit.bat or ms64doit.bat (for 32-bit or 64-bit builds resp.)
+
+
+If using Linux, read the following carefully
+
+
+------------------------------------------------
+RedHat Linux 6.0 MIRACL i386 installation
+
+Download the MIRACL.ZIP file, and save it into an otherwise empty MIRACL directory.
+
+1. Unzip the MIRACL.ZIP file using the unix utility unzip
+
+unzip -j -aa -L miracl.zip
+
+The -j ignores the directory structure inside MIRACL.ZIP. The -aa converts all 
+text files to Unix format, and -L ensures that all filenames are lower-case.
+
+
+2. Perform a tailored build of the MIRACL library by opening an X-Term, and 
+   typing
+
+bash linux
+
+   Alternatively if your system is 64-bit
+
+bash linux64
+
+3. All the MIRACL applications (except RATCALC) can be then be built, as 
+   desired. Remember to link all C applications to the miracl.a library.
+   C++ applications must be linked as well to one or more of big.o monty.o 
+   elliptic.o crt.o flash.o object files etc. 
+   Some applications (like factor.c) that require floating-point support 
+   may also require -lm in the compile command line.
+
+Make sure that your Linux PATH points to the current directory, so that 
+exectables can be run.
+
+Note that Linux already has (a rather pathetic) factor program. To avoid name 
+clashes you might rename MIRACL's "factor" program to "facter", or somesuch.
+
+
+------------------------------------------------
+
+
+The manual is available in MS Word format as MANUAL.DOC
+
+The text file UPDATE.TXT describes the latest changes and additions
+
+Latest Version - V5.6.1   Last updated June 2012
+

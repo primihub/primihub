@@ -1,0 +1,34 @@
+To build the Schoof2 application, you must compile and link the modules 
+together, with MIRACL C++ classes, and with the MIRACL library.
+
+A precompiled Windows executable is available from
+ftp://ftp.compapp.dcu.ie/pub/crypto/schoof2.exe
+
+So for Borland C++ (although MS C++ is a fair bit quicker)
+
+bcc32 schoof2.cpp poly2.cpp poly2mod.cpp ec2.cpp big.cpp gf2m.cpp crt.cpp
+miracl.lib
+
+For MS C
+
+cl /O2 /GX schoof2.cpp poly2.cpp poly2mod.cpp ec2.cpp big.cpp gf2m.cpp crt.cpp
+miracl.lib
+
+On UNIX using g++, something like
+
+g++ -I. -c poly2.cpp
+g++ -I. -c poly2mod.cpp
+
+
+g++ -I. schoof2.cpp poly2.o poly2mod.o big.o gf2m.o ec2.o crt.o 
+miracl.a /usr/lib/libm.a -o schoof2
+
+should work
+
+
+Note that the headers poly2.h and poly2mod.h are assumed to be in 
+the local directory.
+
+To find a suitable polynomial basis refer to the table providing in
+IEEE-P1363 Annex A, or compile and run the example program findbase.cpp
+

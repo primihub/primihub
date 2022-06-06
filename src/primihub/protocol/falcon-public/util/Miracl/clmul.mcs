@@ -1,0 +1,18 @@
+;
+; Binary Macros to exploit the Intel PCLMULQDQ instruction
+; for use by Microsoft Visual C++ compiler.
+;
+MACRO MULB_START
+sum=_mm_setzero_si128();
+ENDM
+MACRO STEPB
+m1=_mm_loadl_epi64((__m128i *)&a[%d]);
+m2=_mm_loadl_epi64((__m128i *)&b[%d]);
+sum=_mm_xor_si128(sum,_mm_clmulepi64_si128( m1, m2, 0));
+ENDM
+MACRO MBFIN
+c[%d]=((mr_unsign64 *)&sum)[0];
+sum=_mm_srli_si128(sum,8);
+ENDM
+MACRO MULB_END  
+ENDM

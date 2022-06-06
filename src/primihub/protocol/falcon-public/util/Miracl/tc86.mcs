@@ -1,0 +1,409 @@
+; MCS macro file for Turbo C 16-bit compiler
+;
+; Triple register is cl|DDI|DBP
+; MUL_START. Initialise registers. Make PBX and PSI point to multipliers a 
+; and b. PDI points at result c. Note PDI is shared.
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file.
+; 
+MACRO PMUL_START
+  ASM push PBP
+  ASM push DDI
+  ASM push DSI
+  ASM mov PBX,a
+  ASM mov DSI,b
+  ASM mov PDI,c
+  ASM xor DCX,DCX
+  ASM mov DBP,sn
+ENDM
+
+MACRO PMUL
+  ASM mov DAX,DBP
+  ASM mul POINTER [PBX+N*%d]
+  ASM add DAX,DCX
+  ASM adc DDX,0
+  ASM mov DCX,DDX
+  ASM mov POINTER [PSI+N*%d],0
+  ASM mov [PDI+N*%d],DAX
+ENDM
+
+MACRO PMUL_END
+  ASM mov DAX,DBP
+  ASM mul DCX
+  ASM mov [PSI],DAX
+  ASM mov [PSI+N],DDX
+  ASM pop DSI
+  ASM pop DDI
+  ASM pop PBP
+ENDM
+
+MACRO MUL_START
+  ASM push PBP
+  ASM push DDI
+  ASM push DSI
+  ASM mov PBX,a
+  ASM mov PSI,b
+  ASM mov PDI,c
+  ASM push PDI
+  ASM xor DCX,DCX
+  ASM xor DDI,DDI
+  ASM xor DBP,DBP
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  ASM mov DAX,[PBX+N*%d]
+  ASM mul POINTER [PSI+N*%d]
+  ASM add DBP,DAX  
+  ASM adc DDI,DDX
+  ASM adc cl,ch
+ENDM
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  ASM mov DDX,DDI
+  ASM pop PDI
+  ASM mov [PDI+N*%d],DBP
+  ASM push PDI
+  ASM mov DBP,DDX
+  ASM mov DDI,DCX
+  ASM xor cl,cl
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END  
+  ASM pop PDI
+  ASM mov [PDI+N*%d],DBP
+  ASM pop DSI
+  ASM pop DDI
+  ASM pop PBP
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  ASM mov DAX,[PBX+N*%d]
+  ASM mul POINTER [PSI+N*%d]
+  ASM add DBP,DAX  
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM push PBP
+  ASM push DDI
+  ASM push DSI
+  ASM mov PBX,a
+  ASM mov PSI,c
+  ASM xor DCX,DCX
+  ASM xor DDI,DDI
+  ASM xor DBP,DBP
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  ASM mov DAX,[PBX+N*%d]
+  ASM mul POINTER [PBX+N*%d]
+  ASM add DBP,DAX
+  ASM adc DDI,DDX
+  ASM adc cl,ch
+  ASM add DBP,DAX
+  ASM adc DDI,DDX
+  ASM adc cl,ch
+ENDM
+;
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  ASM mov DAX,[PBX+N*%d]
+  ASM mul DAX
+  ASM add DBP,DAX
+  ASM adc DDI,DDX
+  ASM adc cl,ch
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  ASM mov [PSI+N*%d],DBP
+  ASM mov DBP,DDI
+  ASM mov DDI,DCX
+  ASM xor cl,cl
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  ASM mov [PSI+N*%d],DBP
+  ASM pop DSI
+  ASM pop DDI
+  ASM pop PBP
+ENDM
+;
+; REDC_START macro
+; 
+MACRO REDC_START
+  ASM push PBP
+  ASM push DDI
+  ASM push DSI
+  ASM mov PBX,a
+  ASM mov PSI,b
+  ASM mov DDX,ndash
+  ASM push DDX
+  ASM xor DDI,DDI
+  ASM xor DCX,DCX
+  ASM mov DBP,[PBX]
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  ASM mov DAX,DBP
+  ASM pop DDX
+  ASM push DDX
+  ASM mul DDX
+  ASM mov [PBX+N*%d],DAX
+  ASM mul POINTER [PSI]
+  ASM add DBP,DAX
+  ASM adc DDI,DDX
+  ASM adc cl,ch
+  ASM mov DBP,DDI
+  ASM mov DDI,DCX
+  ASM xor DCX,DCX
+  ASM add DBP,[PBX+N*(%d+1)]
+  ASM adc DDI,DCX
+ENDM
+; 
+; RFIND macro
+;
+MACRO RFIND
+  ASM mov [PBX+N*%d],DBP
+  ASM mov DBP,DDI
+  ASM mov DDI,DCX
+  ASM xor DCX,DCX
+  ASM add DBP,[PBX+N*(%d+1)]
+  ASM adc DDI,DCX
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  ASM mov [PBX+N*%d],DBP
+  ASM mov [PBX+N*(%d+1)],DDI
+  ASM pop DDX
+  ASM pop DSI
+  ASM pop DDI
+  ASM pop PBP
+ENDM
+;
+; ADD_START macro - initialise for add/subtract. Do the first one.
+;
+MACRO ADD_START
+  ASM push PSI
+  ASM push PDI
+  ASM mov PSI,a
+  ASM mov PBX,b
+  ASM mov PDI,c
+  ASM mov DAX,[PSI]
+  ASM add DAX,[PBX]
+  ASM mov [PDI],DAX
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  ASM mov DAX,[PSI+N*%d]
+  ASM adc DAX,[PBX+N*%d]
+  ASM mov [PDI+N*%d],DAX
+ENDM
+;
+; ADD_END macro. Catch Carry
+;
+MACRO ADD_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+  ASM pop PSI
+ENDM
+;
+; INC_START macro - initialise for increment/decrement. Do first one.
+; decrement b from a
+MACRO INC_START
+  ASM push PDI
+  ASM mov PBX,b
+  ASM mov PDI,a
+  ASM mov DAX,[PBX]
+  ASM add [PDI],DAX
+ENDM
+;
+; INC macro. Increment number in memory. Don't forget carry
+;
+MACRO INC
+  ASM mov DAX,[PBX+N*%d]
+  ASM adc [PDI+N*%d],DAX
+ENDM
+;
+; INC_END macro. Catch Carry
+;
+MACRO INC_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+ENDM
+;
+; SUB_START macro. Do first one
+;
+MACRO SUB_START
+  ASM push PSI
+  ASM push PDI
+  ASM mov PSI,a
+  ASM mov PBX,b
+  ASM mov PDI,c
+  ASM mov DAX,[PSI]
+  ASM sub DAX,[PBX]
+  ASM mov [PDI],DAX
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  ASM mov DAX,[PSI+N*%d]
+  ASM sbb DAX,[PBX+N*%d]
+  ASM mov [PDI+N*%d],DAX
+ENDM
+;
+; SUB_END macro
+;
+MACRO SUB_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+  ASM pop PSI
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM push PDI
+  ASM mov PBX,b
+  ASM mov PDI,a
+  ASM mov DAX,[PBX]
+  ASM sub [PDI],DAX
+ENDM
+;
+; DEC macro. Decrement from number in memory. Don't forget borrow.
+;
+MACRO DEC
+  ASM mov DAX,[PBX+N*%d]
+  ASM sbb [PDI+N*%d],DAX
+ENDM
+;
+; DEC_END macro. Catch carry
+;
+MACRO DEC_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+ENDM
+;
+; KADD_START macro. Zero carry flag.
+;
+MACRO KADD_START
+  ASM push PSI
+  ASM push PDI
+  ASM mov PSI,a
+  ASM mov PBX,b
+  ASM mov PDI,c
+  ASM mov PCX,n
+  ASM xor DAX,DAX
+  k%d:
+ENDM
+;
+; KASL macro. Important that carry flag is undisturbed
+;
+MACRO KASL
+  ASM dec PCX
+  ASM je k%d
+  ASM lea PSI,[PSI+N*%d]
+  ASM lea PBX,[PBX+N*%d]
+  ASM lea PDI,[PDI+N*%d]
+  ASM jmp k%d
+  k%d:
+ENDM
+;
+; KADD_END  macro
+;
+MACRO KADD_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+  ASM pop PSI
+ENDM
+;
+; KINC_START macro. Zero Carry Flag 
+;
+MACRO KINC_START
+  ASM push PDI
+  ASM mov PDI,a
+  ASM mov PBX,b
+  ASM mov PCX,n
+  ASM xor DAX,DAX
+  k%d:
+ENDM
+;
+; KIDL macro. Important that carry flag is undisturbed!
+;
+MACRO KIDL
+  ASM dec PCX
+  ASM je k%d
+  ASM lea PBX,[PBX+N*%d]
+  ASM lea PDI,[PDI+N*%d]
+  ASM jmp k%d
+  k%d:
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+ENDM
+;
+; KDEC_START macro. Zero Carry flag
+;
+MACRO KDEC_START
+  ASM push PDI
+  ASM mov PDI,a
+  ASM mov PBX,b
+  ASM mov PCX,n
+  ASM xor DAX,DAX
+  k%d:
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  ASM mov DAX,0
+  ASM adc DAX,DAX
+  ASM mov carry,DAX
+  ASM pop PDI
+ENDM
+

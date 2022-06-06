@@ -1,0 +1,442 @@
+
+Version 4.0
+
+The main changes from the earlier version 3.xx is the introduction of the
+MIP, Miracl Instance Pointer. This is to facilitate the development of
+multi-threaded applications. The manual has been updated, and a few small 
+bugs dealt with.
+
+From a programmers point of view, the main change is that previously Global
+variables like IOBASE, must now be accessed via the MIP, so
+
+    IOBASE=16;
+
+gets replaced by
+
+    mip->IOBASE=16;
+
+The MIP itself is returned by mirsys(), so
+
+    mirsys(200,256);
+
+now becomes
+
+    miracl *mip=mirsys(200,256); 
+
+
+Version 4.01
+
+New example programs pk-demo.c and pk-demo.cpp demonstrate popular public key
+methods, viz. The Diffie-Hellman key exchange, and the RSA public key system
+
+
+Version 4.1
+
+Support for Elliptic Curve PK Crypto systems. New fast Elliptic Curve module 
+mrcurve.c. This will be very fast on an 32-bit Pentium+ if for example MR_COMBA
+is defined as 5 in mirdef.h for 160-bit curve (5*32 = 160)
+
+Implementation of Elliptic Curve variant of the Digital Signature Standard.
+
+Montgomery arithmetic now used more extensively internally. 
+
+pk-demo.c/cpp now also implements Elliptic Curve key exchange, and the El 
+Gamal PK method.
+
+
+Version 4.1.1
+
+In mrprime.c -
+New trial_divison() function - dual purpose routine to quickly test primality 
+status of a big integer.
+New nxsafeprime() function - speeds up search for so-called safe primes,
+for example a prime p for which (p-1)/2 is also prime.
+
+New Lucus exponentiation module mrlucas.c
+
+
+Version 4.1.2
+
+Implementation of Complex Multiplication method for the generation of Elliptic
+curves (the previously used method has been shown to generate weak curves).
+
+This was implemented from description in Annex to IEEE P1363
+
+Note the free executable CM.EXE
+
+Version V4.1.3
+
+Inline assembly support for DJGPP C/C++ Compiler. 
+
+
+Version V4.1.4
+
+New module for implementing Brickell et al's method for exponentiation with
+precomputation.
+
+New facility for user-specified function called periodically by time-
+consuming MIRACL functions. Useful for doing a Windows message-pump, or
+responding to real-time events. See set_user_function().
+
+
+Version V4.1.5
+
+New multiple-exponentiation program powmodn(), calculates 
+a^b.c^d.e^f....x^y mod n. Also ecurve_multn() which does the same for 
+elliptic curves.
+
+Brickel et al method extended to Elliptic curves.
+
+
+Version V4.2.0
+
+C version of KCM method implemented. Might be advantageous for extreme RISC
+processors with no integer multiply instruction. Ask for C only build in 
+config program (you will need to specify a double length type), and follow 
+instructions.
+
+Elliptic curve point multiplication speeded up a bit.
+
+C only code improved. Interesting to note that the 32-bit Microsoft C compiler
+- using __int64 as a double length type - now generates code that is nearly as 
+fast as optimized assembly language (with /O2 flag).
+
+New low level routine muldvd2() introduced - speeds up time critical loops.
+See mrmuldv.any
+
+
+
+Version V4.2.1
+
+New bmark.c benchmarking program. Shows timings for typical public key crypto 
+methods. Useful for comparing MIRACL with other Libraries, and for determining 
+the optimal MIRACL build for a particular application.
+
+MIRACL routine entry and exit tidied up, and skipped if MR_STRIPPED_DOWN
+is defined.
+
+
+Version 4.2.2
+
+Implementation of AES encryption algorithm (in fact RIJNDAEL). This is a 
+"place-holder" for now until actual AES winner is decided.
+
+Implementation of Cramer-Shoup PK algorithm - see files
+crencode.cpp/crdecode.cpp/crsetup.cpp/crgen.cpp
+
+.. and Schoof's algorithm! Counts number of rational points
+on an elliptic curve defined over the field GF(p).
+
+Note the free Windows Command Prompt executable SCHOOF.EXE, available from 
+download site
+
+Version 4.2.3
+
+Implementation of Schoof-Elkies-Atkin algorithm , for more efficient
+elliptic curve point-counting. Again free Windows Command Prompt executables 
+(MUELLER.EXE, PROCESS.EXE and SEA.EXE) are available for download.
+
+Version 4.2.4
+
+Schoof and Schoof-Elkies-Atkin algorithm implementations greatly optimized.
+
+
+Version 4.3.0
+
+Support for Elliptic Curve Cryptography over GF(2^m). ECDSA implemented for 
+same - see ecsgen2.c ecsign2.c ecsver2.c. 
+The C++ class is implemented in ec2.h and ec2.cpp
+
+Also Schoof's algorithm for point-counting over GF(2^m) curves
+
+
+Version 4.4.0
+
+By popular demand! Multi-threaded support. Read the new section in the manual
+
+
+Version 4.4.1
+
+new routines bytes_to_big(), big_to_bytes() for easy conversion between pure 
+binary and bigs. Also strong_bigrand() for ease of access to cryptographically 
+strong big numbers
+
+
+Version 4.4.2
+
+New P1363 wrapper/DLL introduced. Lim-Lee prime generation. General tidy-up, 
+and more installation help.
+
+
+Version 4.4.3
+
+Fuller support for new AES (we were right - it was Rijndael). Also 
+implemenations of the Lim-Lee algorithm for generating primes, and 
+implementations of the new SHA-256, SHA-384 and SHA512 hashing algorithms.
+
+
+Version 4.4.3a
+
+Maintainance release. A few bug fixes. Domain data in 
+common.dss/common.ecs/common2.ecs is now in Hex, as Hex is used in the 
+standards documents. Schoof fixed for anomalous curves.
+
+New section on error messages in the manual. I/O buffer size is now set
+dynamically via set_io_buffer_size() routine - no longer fixed in mirdef.h
+
+Version 4.5
+
+New mechanisms for implementing fastest embedded code. The Comba and KCM
+methods have been extended and supported for more compiler/processor
+combinations. Through the use of the Macro EXpansion program MEX.C macros
+can be inserted into supplied templates. If your compiler supports in-line 
+assembly, this is probably the mechanism to use for best performance on
+embedded processors. See kcmcomba.txt for more details.
+
+Version 4.6
+
+Internal structure of big numbers changed, from an array to a simple 
+struct. Memory alignment problems solved. Support for use of floating-point 
+"double" type - see double.txt. More IEEE 1363 and P1363a support.
+  
+
+Version 4.6.1
+
+Implementation of Boneh & Franklin's IBE Identity Based Encryption
+
+
+Version 4.6.2
+
+Extended GCD algorithm speeded by 70%. Some minor bugs dealt with.
+
+
+Version 4.6.3
+
+Jacobi symbol algorithm substantially speeded up. New program imratio.c
+calculates S/M, I/M and J/M ratios
+
+Version 4.6.4
+
+New fast method for assigning C++ Big objects from the stack
+
+Version 4.6.5
+
+New alternative Comba/Kcm macros that "interleave" multiplication steps. This 
+should be faster on modern load/store architectures. See makemcs.txt
+Complex Multiplication utility for counting points on elliptic curves greatly 
+improved. Comba/Kcm macros for 32-bit SPARC implemented - see sparc.txt and 
+sparc.mcs. Double base-type code debugged/optimized. Optimizer problem with 
+Gnu GCC solved.
+
+
+Version 4.7
+
+New improved and updated IEEE 1363 support.
+
+Version 4.7.1
+
+New P1363a primitives and methods -  DLPSP-NR2/PV, DLSP-NR2, DLVP-NR2, 
+DLSP-PV, DLVP-PV, ECPSP-NR2/PV, ECSP-NR2, ECVP-NR2, ECSP-PV, ECVP-PV, 
+EMSA4, EMSR1, EMSR2, EMSR3, DLSSR, DLSSR-PV, IFSSR
+
+New functions memalloc,memkill and mirvar_mem. When many big variables need to 
+be created in a C program multiple calls to mirvar can be slow. Better to 
+allocate space for all in one heap access. See brent.c and p1363.c for an 
+example of use.
+
+
+Version 4.7.2
+
+Cryptographically Strong Pseudo Random Number Generator interface improved. 
+See test1363.c and p1363.c for example of use. It is now possible to allocate 
+bigs in C programs from the stack - see brute.c for an example
+
+
+Version 4.7.3
+
+New style C++ I/O headers supported. C function "round" renamed to "mround", 
+"negate" to "negify", to avoid GCC 3.2 name clashes
+
+Version 4.7.4
+
+Base64 I/O supported. Just set IOBASE=64 before input/output
+
+Version 4.7.5
+
+config.c fixed for chars > 8 bits. Elliptic curve point comparison speeded up.
+Minor bug fixes. GCC 3.3 support
+
+Version 4.8
+
+Miracl header files now accessed via "*.h" rather than <*.h> (following 
+numerous complaints!) Very minor changes... Example implementation of Cock's 
+ID based PK scheme 
+
+Version 4.8.1
+
+New Floating Point class - see float.h and float.cpp, and read float.txt. Uses 
+asymptotically fast FFT methods, so efficient for very high precision 
+calculation. New CM program - see cm.cpp and cm.txt. Up to 50 times faster.
+
+Version 4.8.2
+
+Full support for Itanium processor.
+
+Version 4.8.3
+
+Support for AMD64 processor. Problem with GCC -O2 optimizer fixed. Some new 
+experimental code for pairings - see ake.txt
+
+Version 4.8.4
+
+Support for SSE2 Pentium 4 extensions. Up to 60% faster on a PC! See sse2.txt
+For example use sse2.mcs to create much faster CM.EXE utility - see cm.txt
+New support for ARM using GCC compiler.
+
+Version 4.8.5
+
+Faster C++ wrapper code. Compiler flags /DGF2MS=n and /DZZNS=n speed up
+programs substantially by allocating from the stack. Some files renamed.
+
+Version 5.0.0
+
+New support for very constrained environments. It is now possible to build 
+a miracl library which does not require a heap. Space for big variables can
+now be claimed from the stack. Internal functions have been reorganised to 
+facilitate these changes. More #define options now allow for a smaller 
+library to be built. These changes apply to both C and C++ programs. See
+section 2.4 of the manual for more details.
+
+Version 5.0.1
+
+Minor bug fixes
+
+Version 5.0.2
+
+Precomputation methods updated and improved. Now uses the standard Comb 
+method, as described in Handbook of Applied Cryptography. Much faster.
+When using precomputation the user now specifies the window size -
+which allows control over the time-space trade-off.
+
+Version 5.1.0
+
+Support for Koblitz curves. This is completely transparent - the user does 
+nothing. See the output of bmark program to see speed-up acheived. Change 
+from IEEE to Lopez-Dahab coordinates for EC(F_2^m}. Significantly faster.
+
+Version 5.2.0
+
+ZZn2 arithmetic now absorbed into MIRACL C library, resulting in faster 
+pairings. New Lazy reduction algorithm for ZZn2 multiplications, fully 
+supported by COMBA mechanisms.
+
+Version 5.2.1
+
+Full support for PowerPC G5 64-bit processor
+
+Version 5.2.2
+
+OpenMP supported for multi-core programming - see threadmp.cpp. New small, 
+fast ECDH example programs ecdh2m.c ecdhp.c (for 32-bit processors) and 
+ecdh2m16.c (for 16-bit processors). This last is ideal for low powered 
+wireless sensor networks.
+
+Version 5.3
+
+New program irp.cpp to automatically generate optimal code for insertion
+in the reduce2(.) function in mrecgf2m.c
+The program findbase.cpp to find the "best" irreducible polynomial, has
+been updated.
+New program newbasis.cpp converts a value from one irreducible polynomial
+representation to another.
+New support for 8-bit MIRACL, and for tiny architectures like Atmel AVR 
+ATmega128. This Atmel device is commonly used in Wireless Sensor Networks.
+See ecdh2m8.c and ecdhp8.c and avr.mcs
+New mirdef.h option #define MR_SMALL_EWINDOW which if defined uses a
+smaller sliding window for elliptic curve point multiplication, which is a 
+space-time trade off. Useful when RAM is under pressure..
+Also MR_SIMPLE_IO for simple input/output (no base changes, no file I/O,
+only input from ROM, and I/O as binary bytes)
+And MR_NO_RAND to disable and remove the built in random number generator.
+MR_STATIC is now interpreted as a request for the minimum possible code 
+size, and if it is defined, many rarely used routines are removed.
+
+Version 5.3.1
+
+Module mrecgf2m.c split into mrgf2m.c and mrec2m.c
+New amd64.mcs file for very fast 64-bit performance on AMD and newer Intel 
+processors. See amd64.txt. New Hybrid method for multiplication - experimental.
+See amd64.mcs, avr2.mcs and avr4.mcs for some example code.
+
+Version 5.3.2
+
+Support for Pseudo Mersenne Prime moduli of the form 2^n-c, where n is a 
+multiple of the word length, and c is a small constant. See ecdhp32.c 
+for an example of use. Improved support for ARM processor.
+
+Version 5.3.3
+
+Solinas's Joint Sparse Form now used for elliptic curve double addition.
+New C support for E(Fp^2) elliptic curves. Implementation of the R-ate pairing.
+New smaller/faster jacobi symbol code. New utilities romaker.c and romaker2.c
+to automatically generate ROMs and precomputed values for elliptic curves.
+
+Version 5.4
+
+Edwards Curves now supported - see edwards.txt
+Full support for Win64 applications (64-bit windows)
+Some minor improvements to pairings. Some new pairings supported.
+
+Version 5.4.1
+
+New faster pairing implementations - using better extension field towerings. 
+Some bug fixes
+
+Version 5.4.2
+
+New pairing implementation at high security levels (AES-192 -ake18kssx.cpp). 
+Some bug fixes. Support for .NET managed code - see managed.txt
+
+Version 5.4.3
+
+Support for AES-GCM mode of operation. See aesgcm.txt and new module mrgcm.c
+Precompiled libraries are no longer included in the distribution.
+
+Version 5.4.4
+
+New pairing implementation at high security levels (AES-256 - ake24blsa.cpp). 
+Some bug fixes in pairing code.
+
+Version 5.5
+
+New high level interface for implementing pairing-based protocols. 
+See pairings.txt
+Protocols can be implemented very succinctly, at various security levels,
+and with realistic timings. All known optimizations used.
+Many example schemes from P1363.3 implemented.
+
+Version 5.5.1
+
+Improved high-level pairing interface. More options
+
+Version 5.5.2
+
+Support for Analog Devices Blackfin processor
+
+Version 5.5.3
+
+Improved high level interface for pairing-based protocols, with new features.
+
+Version 5.5.4
+
+More example pairings protocols - Attribute-Based, Predicate Based, HIBE
+See pairings.txt. Support for Microchip PIC32, see pic32.txt
+
+Version 5.6
+
+Some minor bug fixes. New licensing terms.
+
+Version 5.6.1
+
+New MIRACL module mrzzn4.c
+

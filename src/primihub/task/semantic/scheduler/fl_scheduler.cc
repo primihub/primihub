@@ -104,21 +104,23 @@ namespace primihub::task {
                 nodePushTaskRequest.mutable_task()->mutable_node_map();
             nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_TASK);
             
-            
+            // role: host -> party 0   role: guest -> party 1
             for (size_t i = 0; i < this->peers_with_tag_.size(); i++) {
                 Node single_node;
 
                 single_node.CopyFrom(this->peers_with_tag_[i].first);
                 std::string node_id = this->peers_with_tag_[i].first.node_id();
-                if (singleton_) {
-                    for (size_t j = 0; j < peers_with_tag_.size(); j++) {
-                        add_vm(&single_node, j, 2, &nodePushTaskRequest);
-                    }
-                    (*mutable_node_map)[node_id] = single_node;
-                    break;
-                } else {
-                    add_vm(&single_node, i, 2, &nodePushTaskRequest);
+                std::string role = this->peers_with_tag_[i].second;
+                
+                int party_id = 0;
+                if (role == "host") {
+                   party_id = 0;
+                } else if (role == "guest") {
+                    party_id = 1;
                 }
+                (*mutable_node_map)[node_id] = single_node;
+                add_vm(&single_node, party_id, 2, &nodePushTaskRequest);
+
                 (*mutable_node_map)[node_id] = single_node;
             }
         }

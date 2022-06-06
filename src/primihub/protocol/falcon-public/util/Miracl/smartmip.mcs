@@ -1,0 +1,506 @@
+;
+; SmartMips Macros file for GCC compiler
+;
+; Triple register is ACX|HI|LO
+; MUL_START. Initialise registers. Make $5 and $6 point to multipliers a 
+; and b. $7 points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+; 
+;
+
+MACRO PMUL_START
+  ASM (
+  "ADDU $5,$0,%%0\n"
+  "ADDU $6,$0,%%1\n"
+  "ADDU $7,$0,%%2\n"
+  "ADDU $4,$0,%%3\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+ENDM
+
+MACRO PMUL
+  "LW $3,4*%d($5)\n"  
+  "MADDU $3,$4\n"
+  "SW $0,4*%d($6)\n"
+  "MFLHXU $3\n"
+  "SW $3,4*%d($7)\n"
+ENDM
+
+MACRO PMUL_END
+  "MFLHXU $3\n"
+  "MULTU $3,$4\n"
+  "MFLXHU $3\n"
+  "SW $3,0($6)\n"
+  "MFLXHU $3\n"
+  "SW $3,4($6)\n"
+  :
+  :"r"(a),"r"(b),"r"(c),"r"(sn)
+  :"$3","$4","$5","$6","$7","memory" 
+  );
+ENDM
+
+
+MACRO MUL_START
+  ASM (
+  "ADDU $5,$0,%%0\n"
+  "ADDU $6,$0,%%1\n"
+  "ADDU $7,$0,%%2\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+; STEP 1 even
+MACRO STEP
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($6)\n"
+  "MADDU $2,$3\n"
+ENDM
+MACRO STEP1M
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($6)\n"
+ENDM
+MACRO STEP1A
+  "MADDU $2,$3\n"
+ENDM
+MACRO STEP2M
+  "LW $8,4*%d($5)\n"  
+  "LW $9,4*%d($6)\n"
+ENDM
+MACRO STEP2A
+  "MADDU $8,$9\n"
+ENDM
+
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "MFLHXU $2\n"
+  "SW $2,4*%d($7)\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($6)\n"
+  "MADDU $2,$3\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END  
+  "MFLHXU $2\n"
+  "SW $2,4*%d($7)\n"
+  :
+  :"r"(a),"r"(b),"r"(c)
+  :"$2","$3","$4","$5","$6","$7","$8","$9","memory" 
+  );
+ENDM
+;
+; Binary Macros
+;
+MACRO MULB_START
+  ASM (
+  "ADDU $5,$0,%%0\n"
+  "ADDU $6,$0,%%1\n"
+  "ADDU $7,$0,%%2\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+ENDM
+MACRO STEPB
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($6)\n"
+  "MADDP $2,$3\n"
+ENDM
+MACRO STEPB1M
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($6)\n"
+ENDM
+MACRO STEPB1A
+  "MADDP $2,$3\n"
+ENDM
+MACRO STEPB2M
+  "LW $8,4*%d($5)\n"  
+  "LW $9,4*%d($6)\n"
+ENDM
+MACRO STEPB2A
+  "MADDP $8,$9\n"
+ENDM
+MACRO MBFIN
+  "MFLHXU $2\n"
+  "SW $2,4*%d($7)\n"
+ENDM
+MACRO MULB_END  
+  :
+  :"r"(a),"r"(b),"r"(c)
+  :"$2","$3","$4","$5","$6","$7","$8","$9","memory" 
+  );
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM (
+  "ADDU $5,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($5)\n"
+  "MADDU $2,$3\n"
+  "MADDU $2,$3\n"
+ENDM
+MACRO DSTEP1M
+  "LW $2,4*%d($5)\n"  
+  "LW $3,4*%d($5)\n"
+ENDM
+MACRO DSTEP1A
+  "MADDU $2,$3\n"
+  "MADDU $2,$3\n"
+ENDM
+MACRO DSTEP2M
+  "LW $8,4*%d($5)\n"  
+  "LW $9,4*%d($5)\n"
+ENDM
+MACRO DSTEP2A
+  "MADDU $8,$9\n"
+  "MADDU $8,$9\n"
+ENDM
+;                
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "LW $2,4*%d($5)\n"
+  "MADDU $2,$2\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "MFLHXU $2\n"
+  "SW $2,4*%d($7)\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "MFLHXU $2\n"
+  "SW $2,4*%d($7)\n"
+  :
+  :"r"(a),"r"(c)
+  :"$2","$3","$4","$5","$6","$7","8","9","memory"  
+  );
+ENDM
+;
+; REDC_START macro
+;
+MACRO REDC_START
+  ASM (
+  "ADDU $5,$0,%%0\n"
+  "ADDU $6,$0,%%1\n"
+  "ADDU $7,$0,%%2\n"
+  "MTLHX $0\n"
+  "MTLHX $0\n"
+  "LW $2,($5)\n"
+  "MTLHX $2\n"
+ENDM
+;
+; RFINU macro - this is terrible! Note that mul instruction is signed, and therefore no good here.
+; The ACX|HI|LO register must be saved, as it will be overwritten by MULTU
+;
+MACRO RFINU
+  "MFLHXU $4\n"       /* extract ACX|HI|LO */
+  "MFLHXU $8\n"
+  "MFLHXU $9\n"
+  "MULTU $4,$7\n"     /* sp=LO*ndash */
+  "MFLHXU $3\n"       /* $3 = LO */
+  "LW $2,($6)\n"      /* get b[0]  */
+  "SW $3,4*%d($5)\n"  /* store in a[.] */
+  "MTLHX $9\n"	      /* restore ACX|HI|LO */
+  "MTLHX $8\n"
+  "MTLHX $4\n"
+  "MADDU $2,$3\n"     /* += sp*b[0] */
+  "MFLHXU $0\n"       /* shift out LO */
+  "LW $3,4*(%d+1)($5)\n"
+  "ADDIU $2,$0,1\n"
+  "MADDU $3,$2\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "MFLHXU $3\n"
+  "SW $3,4*%d($5)\n"
+  "LW $3,4*(%d+1)($5)\n"
+  "ADDIU $2,$0,1\n"
+  "MADDU $3,$2\n"
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "MFLHXU $3\n"
+  "MFLHXU $2\n"
+  "SW $3,4*%d($5)\n"  
+  "SW $2,4*(%d+1)($5)\n"
+  :
+  :"r"(a),"r"(b),"r"(ndash)
+  :"$2","$3","$4","$5","$6","$7","8","9","memory"  
+  );
+ENDM
+;
+; ADD_START macro - initialise for add/subtract, do first one
+; $4 holds the carry bit
+;
+MACRO ADD_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "ADDU $8,$0,%%3\n"
+  "LW $2,($6)\n"
+  "LW $3,($7)\n"
+  "ADDU $5,$3,$2\n"
+  "SW $5,($8)\n"
+  "SLTU $4,$5,$3\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "LW $3,4*%d($6)\n"
+  "LW $2,4*%d($7)\n"
+  "ADDU $5,$3,$2\n"
+  "SLTU $9,$5,$3\n"
+  "ADDU $2,$5,$4\n"
+  "SLTU $4,$2,$5\n"
+  "OR $4,$9,$4\n"
+  "SW $2,4*%d($8)\n"
+ENDM
+;
+; ADD_END macro. Catch carry
+;
+MACRO ADD_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry),"r"(c)
+  :"$2","$3","$4","$5","$6","$7","$8","9","memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one
+;
+MACRO INC_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "LW $3,($6)\n"
+  "LW $2,($7)\n"
+  "ADDU $5,$2,$3\n"
+  "SW $5,($6)\n"
+  "SLTU $4,$5,$3\n"
+ENDM
+;
+; INC macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO INC
+  "LW $3,4*%d($6)\n"
+  "LW $2,4*%d($7)\n"
+  "ADDU $5,$3,$2\n"
+  "SLTU $8,$5,$3\n"
+  "ADDU $2,$5,$4\n"
+  "SLTU $4,$2,$5\n"
+  "OR $4,$8,$4\n"
+  "SW $2,4*%d($6)\n"
+ENDM
+;
+; INC_END macro. Catch carry
+;
+MACRO INC_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry)
+  :"$2","$3","$4","$5","$6","$7","$8","memory"
+  );
+ENDM
+;
+; SUB_START macro
+;
+MACRO SUB_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "ADDU $8,$0,%%3\n"
+  "LW $3,($6)\n"
+  "LW $2,($7)\n"
+  "SUBU $5,$3,$2\n"
+  "SW $5,($8)\n"
+  "SLTU $4,$3,$5\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "LW $3,4*%d($6)\n"
+  "LW $2,4*%d($7)\n"
+  "SUBU $5,$3,$2\n"
+  "SLTU $9,$3,$5\n"
+  "SUBU $2,$5,$4\n"
+  "SLTU $4,$5,$2\n"
+  "OR $4,$9,$4\n"
+  "SW $2,4*%d($8)\n"
+ENDM
+;
+; SUB_END macro. Catch carry
+;
+MACRO SUB_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry),"r"(c)
+  :"$2","$3","$4","$5","$6","$7","$8","9","memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "LW $3,($6)\n"
+  "LW $2,($7)\n"
+  "SUBU $5,$3,$2\n"
+  "SW $5,($6)\n"
+  "SLTU $4,$3,$5\n"
+ENDM
+;
+; DEC macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO DEC
+  "LW $3,4*%d($6)\n"
+  "LW $2,4*%d($7)\n"
+  "SUBU $5,$3,$2\n"
+  "SLTU $8,$3,$5\n"
+  "SUBU $2,$5,$4\n"
+  "SLTU $4,$5,$2\n"
+  "OR $4,$8,$4\n"
+  "SW $2,4*%d($6)\n"
+ENDM
+;
+; DEC_END macro. Catch carry
+;
+MACRO DEC_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry)
+  :"$2","$3","$4","$5","$6","$7","8","memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry flag
+;
+MACRO KADD_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "ADDU $8,$0,%%3\n"
+  "ADDU $9,$0,%%4\n"
+  "ADDU $4,$0,$0\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro. Important that carry flag is undisturbed!
+;
+MACRO KASL
+  "SUBIU $9,$9,1\n"
+  "BLEZ $9,k%d\n"
+  "NOP\n"
+  "ADDIU $6,$6,4*%d\n"
+  "ADDIU $7,$7,4*%d\n"
+  "J k%d\n"
+  "ADDIU $8,$8,4*%d\n"
+  "k%d\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry),"r"(c),"r"(n)
+  :"$2","$3","$4","$5","$6","$7","$8","$9","memory" 
+  );
+ENDM
+;
+; KINC_START macro. Set carry to Zero 
+;
+MACRO KINC_START
+  __asm {
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "ADDU $9,$0,%%4\n"
+  "ADDU $4,$0,$0\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro. Important that carry flag is undisturbed!
+;
+MACRO KIDL
+  "SUBIU $9,$9,1\n"
+  "BLEZ $9,k%d\n"
+  "NOP\n"
+  "ADDIU $6,$6,4*%d\n"
+  "J k%d\n"
+  "ADDIU $7,$7,4*%d\n"
+  "k%d\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry),"r"(n)
+  :"$2","$3","$4","$5","$6","$7","$8","$9","memory"
+  );
+ENDM
+;
+; KDEC_START macro. Set carry
+;
+MACRO KDEC_START
+  ASM (
+  "ADDU $6,$0,%%0\n"
+  "ADDU $7,$0,%%1\n"
+  "ADDU $9,$0,%%4\n"
+  "ADDU $4,$0,$0\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "ADDU %%2,$0,$4\n"
+  :
+  :"r"(a),"r"(b),"r"(carry),"r"(n)
+  :"$2","$3","$4","$5","$6","$7","$8","$9","memory"
+  );
+ENDM
+

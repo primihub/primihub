@@ -1,0 +1,31 @@
+
+With the introduction of Intel 32nm i5/i7 processors, there
+is support for a "carry-less" multiplication, also known as
+"binary polynomial" multiplication. This support is in the form 
+of the new 64-bit PCLMULQDQ instruction.
+
+In fact such an instruction is also supported by some Sun and
+Mips processors.
+
+Support for this operation gives a big boost to the performance 
+of any method that uses arithmetic over GF(2^m), in particular
+elliptic curve cryptography, and pairing-based crypto using 
+supersingular curves over GF(2^m).
+
+To exploit the PCLMULQDQ instruction, using the Microsoft C
+compiler, use the macro file clmul.mcs with the mex utility
+to create the module mrcomba2.c, and define MR_COMBA2 in mirdef.h 
+to the number of words required to represent m. Then link this 
+module into the MIRACL library, and to your application.
+
+For example if implementing standard elliptic curves over GF(2^283)
+on a 64-bit PC, using MS C tools, then
+
+c:\miracl>>mex 5 clmul mrcomba2
+
+to create mrcomba2.c, and include into mirdef.h
+
+#define MR_COMBA2 5
+
+Then build a MIRACL library to include mrcomba2.c, and build and
+link your application as normal, for an impressive speed boost.

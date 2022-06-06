@@ -1,0 +1,950 @@
+; Comba/KCM Macros for Atmel AVR
+;
+; Triple register is r8|r7|r6
+;
+; Must remember to clear r1 - compiler expects it!
+;
+; *** Must use -fno-inline for mrkcm.c module
+;
+; See makemcs.txt for more information about this file
+; 
+; Hybrid x4 step
+;
+; "Triple" register is now r22||r15|r14|r13|r12||r11|r10|r9|r8||
+; registers r16 to r21 are employed as "carry catchers"
+;
+
+MACRO PMUL_START
+  ASM (  
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "MOV r6,%%3\n"
+  "CLR r8\n"
+  "CLR r7\n"
+ENDM
+
+MACRO PMUL
+  "LDD r0,Y+%d\n"
+  "MUL r0,r6\n"
+  "ADD r0,r8\n"
+  "ADC r1,r7\n"
+  "MOV r8,r1\n"
+  "STD %%a1+%d,r7\n"
+  "ST  %%a2+,r0  ;%d \n"
+ENDM
+
+MACRO PMUL_END
+  "MUL r6,r8\n"
+  "ST  %%a1,r0\n"
+  "STD %%a1+1,r1\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"w"(a),"z"(b),"x"(c),"r"(sn)
+  :"r6","r7","r8","memory"  
+  );
+ENDM
+
+MACRO H4_MUL_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "CLR r2\n"
+  "CLR r3\n"
+  "CLR r7\n"
+  "CLR r22\n"
+  "MOVW r8,r2\n"
+  "MOVW r10,r2\n"
+  "MOVW r12,r2\n"
+  "MOVW r14,r2\n"
+  "MOVW r16,r2\n"
+  "MOVW r18,r2\n"
+  "MOVW r20,r2\n"
+ENDM
+MACRO H4_STEP
+    "LDD r2,Y+%d\n"
+    "LDD r3,Y+%d+1\n"
+    "LDD r4,Y+%d+2\n"
+    "LDD r5,Y+%d+3\n"
+    "LDD r6,%%a1+%d\n"
+    "MUL r6,r2\n"
+    "ADD r8,r0\n"
+    "ADC r9,r1\n"
+    "ADC r16,r7\n"
+    "MUL r6,r3\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r7\n"
+    "MUL r6,r4\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r7\n"
+    "MUL r6,r5\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r7\n"
+    "LDD r6,%%a1+%d+1\n"
+    "MUL r6,r2\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r7\n"
+    "MUL r6,r3\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r7\n"
+    "MUL r6,r4\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r7\n"
+    "MUL r6,r5\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r7\n"
+    "LDD r6,%%a1+%d+2\n"
+    "MUL r6,r2\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r7\n"
+    "MUL r6,r3\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r7\n"
+    "MUL r6,r4\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r7\n"
+    "MUL r6,r5\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r7\n"
+    "LDD r6,%%a1+%d+3\n"
+    "MUL r6,r2\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r7\n"
+    "MUL r6,r3\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r7\n"
+    "MUL r6,r4\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r7\n"
+    "MUL r6,r5\n"
+    "ADD r14,r0\n"
+    "ADC r15,r1\n"
+    "ADC r22,r7\n"
+ENDM
+MACRO H4_LAST
+    "LDD r2,Y+%d\n"
+    "LDD r3,Y+%d+1\n"
+    "LDD r4,Y+%d+2\n"
+    "LDD r5,Y+%d+3\n"
+    "LDD r6,%%a1+%d\n"
+    "MUL r6,r2\n"
+    "ADD r8,r0\n"
+    "ADC r9,r1\n"
+    "ADC r16,r7\n"
+    "MUL r6,r3\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r7\n"
+    "MUL r6,r4\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "MUL r6,r5\n"
+    "ADD r11,r0\n"
+    "LDD r6,%%a1+%d+1\n"
+    "MUL r6,r2\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r7\n"
+    "MUL r6,r3\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "MUL r6,r4\n"
+    "ADD r11,r0\n"
+    "LDD r6,%%a1+%d+2\n"
+    "MUL r6,r2\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "MUL r6,r3\n"
+    "ADD r11,r0\n"
+    "LDD r6,%%a1+%d+3\n"
+    "MUL r6,r2\n"
+    "ADD r11,r0\n"
+ENDM
+MACRO H4_MFIN
+    "ADD r10,r16\n"
+    "ADC r11,r17\n"
+    "ADC r12,r18\n"
+    "ADC r13,r19\n"
+    "ADC r14,r20\n"
+    "ADC r15,r21\n"
+    "ADC r22,r7\n"
+    "ST %%a2+,r8 ;%d \n"
+    "ST %%a2+,r9 ;%d \n"
+    "ST %%a2+,r10 ;%d \n"
+    "ST %%a2+,r11 ;%d \n"
+    "MOVW r8,r12\n"
+    "MOVW r10,r14\n"
+    "MOV r12,r22\n"
+    "CLR r13\n"
+    "CLR r2\n"
+    "CLR r3\n"
+    "MOVW r14,r2\n"
+    "MOVW r16,r2\n"
+    "MOVW r18,r2\n"
+    "MOVW r20,r2\n"
+    "CLR r22\n"
+ENDM
+MACRO H4_MUL_END
+  "ADD r10,r16\n"
+  "ADC r11,r17\n"
+  "ST %%a2+,r8 ;%d \n"
+  "ST %%a2+,r9 ;%d \n"
+  "ST %%a2+,r10 ;%d \n"
+  "ST %%a2,r11 ;%d \n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"w"(a),"z"(b),"x"(c)
+  :"r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","r13","r14","r15","r16","r17","r18","r19","r20","r21","r22","memory"  
+  );
+ENDM
+MACRO H4_SQR_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "CLR r24\n"
+  "CLR r25\n"
+  "CLR r22\n"
+  "MOVW r8,r24\n"
+  "MOVW r10,r24\n"
+  "MOVW r12,r24\n"
+  "MOVW r14,r24\n"
+  "MOVW r16,r24\n"
+  "MOVW r18,r24\n"
+  "MOVW r20,r24\n"
+ENDM
+MACRO H4_DSTEP
+  "LDD r2,%%a0+%d\n"
+  "LDD r3,%%a0+%d+1\n" 
+  "LDD r4,%%a0+%d+2\n"
+  "LDD r5,%%a0+%d+3\n"
+  "LDD r6,%%a0+%d\n"
+    "MUL r6,r2\n"
+    "ADD r8,r0\n"
+    "ADC r9,r1\n"
+    "ADC r16,r25\n"
+    "ADD r8,r0\n"
+    "ADC r9,r1\n"
+    "ADC r16,r25\n"
+    "MUL r6,r3\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r25\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r25\n"
+    "MUL r6,r4\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "MUL r6,r5\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "LDD r6,%%a0+%d+1\n"
+    "MUL r6,r2\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r25\n"
+    "ADD r9,r0\n"
+    "ADC r10,r1\n"
+    "ADC r17,r25\n"
+    "MUL r6,r3\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "MUL r6,r4\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "MUL r6,r5\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "LDD r6,%%a0+%d+2\n"
+    "MUL r6,r2\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "ADD r10,r0\n"
+    "ADC r11,r1\n"
+    "ADC r18,r25\n"
+    "MUL r6,r3\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "MUL r6,r4\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "MUL r6,r5\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r25\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r25\n"
+    "LDD r6,%%a0+%d+3\n"
+    "MUL r6,r2\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "ADD r11,r0\n"
+    "ADC r12,r1\n"
+    "ADC r19,r25\n"
+    "MUL r6,r3\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "ADD r12,r0\n"
+    "ADC r13,r1\n"
+    "ADC r20,r25\n"
+    "MUL r6,r4\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r25\n"
+    "ADD r13,r0\n"
+    "ADC r14,r1\n"
+    "ADC r21,r25\n"
+    "MUL r6,r5\n"
+    "ADD r14,r0\n"
+    "ADC r15,r1\n"
+    "ADC r22,r25\n"
+    "ADD r14,r0\n"
+    "ADC r15,r1\n"
+    "ADC r22,r25\n"
+ENDM
+MACRO H4_SELF
+  "LDD r2,%%a0+%d\n"
+  "LDD r3,%%a0+%d+1\n"
+  "LDD r4,%%a0+%d+2\n"
+  "LDD r5,%%a0+%d+3\n"
+  "MUL r2,r2\n"
+  "ADD r8,r0\n"
+  "ADC r9,r1\n"
+  "ADC r16,r25\n"
+  "MUL r2,r3\n"
+  "ADD r9,r0\n"
+  "ADC r10,r1\n"
+  "ADC r17,r25\n"
+  "ADD r9,r0\n"
+  "ADC r10,r1\n"
+  "ADC r17,r25\n"
+  "MUL r2,r4\n"
+  "ADD r10,r0\n"
+  "ADC r11,r1\n"
+  "ADC r18,r25\n"
+  "ADD r10,r0\n"
+  "ADC r11,r1\n"
+  "ADC r18,r25\n"
+  "MUL r2,r5\n"
+  "ADD r11,r0\n"
+  "ADC r12,r1\n"
+  "ADC r19,r25\n"
+  "ADD r11,r0\n"
+  "ADC r12,r1\n"
+  "ADC r19,r25\n"
+  "MUL r3,r3\n"
+  "ADD r10,r0\n"
+  "ADC r11,r1\n"
+  "ADC r18,r25\n"
+  "MUL r3,r4\n"
+  "ADD r11,r0\n"
+  "ADC r12,r1\n"
+  "ADC r19,r25\n"
+  "ADD r11,r0\n"
+  "ADC r12,r1\n"
+  "ADC r19,r25\n"
+  "MUL r3,r5\n"
+  "ADD r12,r0\n"
+  "ADC r13,r1\n"
+  "ADC r20,r25\n"
+  "ADD r12,r0\n"
+  "ADC r13,r1\n"
+  "ADC r20,r25\n"
+  "MUL r4,r4\n"
+  "ADD r12,r0\n"
+  "ADC r13,r1\n"
+  "ADC r20,r25\n"
+  "MUL r4,r5\n"
+  "ADD r13,r0\n"
+  "ADC r14,r1\n"
+  "ADC r21,r25\n"
+  "ADD r13,r0\n"
+  "ADC r14,r1\n"
+  "ADC r21,r25\n"
+  "MUL r5,r5\n"
+  "ADD r14,r0\n"
+  "ADC r15,r1\n"
+  "ADC r22,r25\n"
+ENDM
+MACRO H4_SFIN
+  "ADD r10,r16\n"
+  "ADC r11,r17\n"
+  "ADC r12,r18\n"
+  "ADC r13,r19\n"
+  "ADC r14,r20\n"
+  "ADC r15,r21\n"
+  "ADC r22,r25\n"
+  "ST %%a1+,r8 ;%d \n"
+  "ST %%a1+,r9 ;%d \n"  
+  "ST %%a1+,r10 ;%d \n"
+  "ST %%a1+,r11 ;%d \n"  
+  "MOVW r8,r12\n"
+  "MOVW r10,r14\n"
+  "MOV r12,r22\n"
+  "CLR r13\n"
+  "MOVW r14,r24\n"
+  "MOVW r16,r24\n"
+  "MOVW r18,r24\n"
+  "MOVW r20,r24\n"
+  "CLR r22\n"
+ENDM
+MACRO H4_SQR_END
+  "ADD r10,r16\n"
+  "ADC r11,r17\n"
+  "ST %%a1+,r8  ;%d \n" 
+  "ST %%a1+,r9  ;%d \n" 
+  "ST %%a1+,r10  ;%d \n" 
+  "ST %%a1+,r11  ;%d \n" 
+  "CLR r1\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"z"(a),"x"(c)
+  :"r2","r3","r4","r5","r6","r8","r9","r10","r11","r12","r13","r14","r15","r16","r17","r18","r19","r20","r21","r22","r24","r25","memory"  
+  );
+ENDM
+
+MACRO MUL_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a1+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  "ST %%a2+,r6   ;%d \n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a1+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  "ST %%a2,r6  ;%d \n" 
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"w"(a),"z"(b),"x"(c)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  "LDD r0,%%a0+%d\n"
+  "LDD r1,%%a0+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  "LDD r0,%%a0+%d\n"
+  "MUL r0,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  "ST %%a1+,r6   ;%d \n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  "ST %%a1,r6  ;%d \n" 
+  "CLR r1\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"z"(a),"x"(c)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; REDC_START macro
+;
+MACRO REDC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "LD r6,Y\n"
+  "CLR r5\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+
+  "MUL r6,%%2\n"
+  "STD Y+%d,r0\n"
+  "LD r1,%%a1\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+  "LDD r0,Y+%d+1\n"
+  "ADD r6,r0\n"
+  "ADC r7,r5\n"
+  "CLR r8\n"
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  "STD Y+%d,r6\n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+  "LDD r0,Y+%d+1\n"
+  "ADD r6,r0\n"
+  "ADC r7,r5\n"
+  "CLR r8\n"
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  "STD Y+%d,r6\n"
+  "STD Y+%d+1,r7\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :
+  :"w"(a),"z"(b),"r"(ndash)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "ADD r1,r0\n"
+  "ST %%a3+,r1\n"   
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "ADC r1,r0\n"
+  "ST %%a3+,r1  ;%d\n" 
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c)
+  :"memory"
+  );
+ENDM
+;
+; DOUBLE_START macro
+;
+MACRO DOUBLE_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"  
+  "ADD r0,r0\n"
+  "ST Y,r0\n"  
+ENDM
+;
+; DOUBLE macro
+;
+MACRO DOUBLE
+  "LDD r0,Y+%d\n"
+  "ADC r0,r0\n"
+  "STD Y+%d,r0\n" 
+ENDM
+;
+; DOUBLE_END
+;
+MACRO DOUBLE_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a)
+  :"memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "ADD r1,r0\n"
+  "ST Y,r1\n"   
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "ADC r1,r0\n"
+  "STD Y+%d,r1\n" 
+ENDM
+MACRO INC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b)
+  :"memory"
+  );
+ENDM
+;
+; SUB macro  - c[.]=a[.]-b[.]
+;
+MACRO SUB_START
+  ASM (  
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "SUB r0,r1\n"
+  "ST %%a3+,r0\n"   
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "SBC r0,r1\n"
+  "ST %%a3+,r0  ;%d\n"
+ENDM
+MACRO SUB_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c)
+  :"memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "SUB r0,r1\n"
+  "ST Y,r0\n"   
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "SBC r0,r1\n"
+  "STD Y+%d,r0\n" 
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b)
+  :"memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  ASM(
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%4\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro - Important that carry flag is undisturbed
+;
+MACRO KASL
+ "DEC r5\n"
+ "BREQ k%d\n"
+ "CLR r0\n"
+ "ADC r0,r0\n"
+ "ADIW r28,%d\n"
+ "ADIW r30,%d ;%d \n"
+ "ROR r0\n"
+ "RJMP k%d\n"
+ "k%d:\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END  
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  ASM(
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%3\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro - Important that carry flag is undisturbed
+;
+MACRO KIDL
+ "DEC r5\n"
+ "BREQ k%d\n"
+ "CLR r0\n"
+ "ADC r0,r0\n"
+ "ADIW r28,%d\n"
+ "ADIW r30,%d\n"
+ "ROR r0\n"
+ "RJMP k%d\n"
+ "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  ASM(
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%3\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+

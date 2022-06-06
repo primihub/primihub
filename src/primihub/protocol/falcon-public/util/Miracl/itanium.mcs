@@ -1,0 +1,390 @@
+; Comba/KCM Macros for 64-bit Itanium
+;
+; Scheduled Version
+;
+; Note that: 
+; mr_small is a 64-bit unsigned long
+;
+; Triple register is extra|sumh1|sumlo
+;
+; See makemcs.txt for more information about this file
+; 
+
+MACRO PMUL_START
+  carry=0;
+ENDM
+
+MACRO PMUL
+  ma=a[%d];
+  u=_m64_xmalu(ma,sn,carry);
+  carry=_m64_xmahu(ma,sn,carry);
+  b[%d]=0;
+  c[%d]=u;
+ENDM
+
+MACRO PMUL_END
+  b[0]=_m64_xmalu(carry,sn,0);
+  b[1]=_m64_xmahu(carry,sn,0);
+ENDM
+
+
+MACRO MUL_START
+  extra=sumhi=sumlo=0;
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  ma=a[%d]; mb=b[%d];
+  hi1=_m64_xmahu(ma,mb,sumlo);
+  lo1=_m64_xmalu(ma,mb,sumlo); 
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  sumlo=lo1;
+ENDM
+MACRO STEP1M
+  ma=a[%d]; mb=b[%d];
+  hi1=_m64_xmahu(ma,mb,0);
+  lo1=_m64_xmalu(ma,mb,0);
+ENDM
+MACRO STEP1A
+  sumlo+=lo1;
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  if (sumlo<lo1)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+ENDM
+MACRO STEP2M
+  ma=a[%d]; mb=b[%d];
+  hi2=_m64_xmahu(ma,mb,0);
+  lo2=_m64_xmalu(ma,mb,0);
+ENDM
+MACRO STEP2A
+  sumlo+=lo2;
+  sumhi+=hi2;
+  extra+=(sumhi<hi2);
+  if (sumlo<lo2)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  c[%d]=sumlo;
+  sumlo=sumhi;
+  sumhi=extra;
+  extra=0;
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  ma=a[%d]; mb=b[%d];
+  sumlo=_m64_xmalu(ma,mb,sumlo); 
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  c[%d]=sumlo;
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  extra=sumlo=sumhi=0;
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  ma=a[%d]; mb=a[%d];
+  hi1=_m64_xmahu(ma,mb,0);
+  lo1=_m64_xmalu(ma,mb,0);
+
+  sumlo+=lo1;
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  if (sumlo<lo1)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+  sumlo+=lo1;
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  if (sumlo<lo1)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+ENDM
+MACRO DSTEP1M
+  ma=a[%d]; mb=a[%d];
+  hi1=_m64_xmahu(ma,mb,0);
+  lo1=_m64_xmalu(ma,mb,0);
+ENDM
+MACRO DSTEP1A
+  sumlo+=lo1;
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  if (sumlo<lo1)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+  sumlo+=lo1;
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  if (sumlo<lo1)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+ENDM
+MACRO DSTEP2M
+  ma=a[%d]; mb=a[%d];
+  hi2=_m64_xmahu(ma,mb,0);
+  lo2=_m64_xmalu(ma,mb,0);
+ENDM
+MACRO DSTEP2A
+  sumlo+=lo2;
+  sumhi+=hi2;
+  extra+=(sumhi<hi2);
+  if (sumlo<lo2)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+  sumlo+=lo2;
+  sumhi+=hi2;
+  extra+=(sumhi<hi2);
+  if (sumlo<lo2)
+  {
+      sumhi++;
+      extra+=(sumhi==0);
+  }
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  ma=a[%d];
+  hi1=_m64_xmahu(ma,ma,sumlo);
+  lo1=_m64_xmalu(ma,ma,sumlo);
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+  sumlo=lo1;
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  c[%d]=sumlo;
+  sumlo=sumhi;
+  sumhi=extra;
+  extra=0;
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  c[%d]=sumlo;
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  sumhi=extra=0;
+  sumlo=a[0];
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  sp=_m64_xmalu(sumlo,ndash,0);
+  a[%d]=sp;
+
+  hi1=_m64_xmahu(sp,b[0],sumlo);
+  lo1=_m64_xmalu(sp,b[0],sumlo);
+  sumhi+=hi1;
+  extra+=(sumhi<hi1);
+
+  sumlo=sumhi;
+  sumhi=extra;
+  extra=0;
+
+  lo1=a[%d+1];
+  sumlo+=lo1;
+  sumhi+=(sumlo<lo1);
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  a[%d]=sumlo;
+
+  sumlo=sumhi;
+  sumhi=extra;
+  extra=0;
+
+  lo1=a[%d+1];
+  sumlo+=lo1;
+  sumhi+=(sumlo<lo1);
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  a[%d]=sumlo;
+  a[%d+1]=sumhi;
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  u=a[0]+b[0];
+  carry=(u<a[0]);
+  c[0]=u;
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  ma=a[%d];
+  u=carry+ma+b[%d];
+  if (u>ma) carry=0;
+  else if (u<ma) carry=1;
+  c[%d]=u;
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  u=a[0]+b[0];
+  carry=(u<b[0]);
+  a[0]=u;
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  ma=a[%d];
+  u=carry+ma+b[%d];
+  if (u>ma) carry=0;
+  else if (u<ma) carry=1;
+  a[%d]=u;
+ENDM
+MACRO INC_END
+ENDM
+MACRO SUB_START
+  u=a[0]-b[0];
+  carry=(u>a[0]);
+  c[0]=u;
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  ma=a[%d];
+  u=ma-b[%d]-carry;
+  if (u<ma) carry=0;
+  else if (u>ma) carry=1;
+  c[%d]=u;
+ENDM
+MACRO SUB_END
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  u=a[0]-b[0];
+  carry=(u>a[0]);
+  a[0]=u;
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  ma=a[%d];
+  u=ma-b[%d]-carry;
+  if (u<ma) carry=0;
+  else if (u>ma) carry=1;
+  a[%d]=u;
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ c+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END   
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+ENDM
+

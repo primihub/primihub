@@ -29,8 +29,8 @@ datasets:
     source: "/tmp/test_party_1.csv" 
   - description: "guest_dataset"
     model: "csv"
-    source: "/tmp/test_party_1.csv"   
-  
+    source: "/tmp/breast-cancer-wisconsin.data"  
+
 
 # p2p paramaters
 p2p:

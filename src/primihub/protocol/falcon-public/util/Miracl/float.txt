@@ -1,0 +1,42 @@
+
+A new experimental fast multiprecison floating-point module is now available, 
+implemented in float.cpp and float.h. The motivation was to speed up the CM 
+program fir elliptic curves - see cm.txt
+
+A new C++ class Float is defined, which can be used instead of Flash. The 
+main advantage is that it uses asymptotically fast methods. If MR_KCM is 
+defined in mirdef.h, then Karatsuba's method is used, otherwise FFT methods 
+(see mrfast.c). Karatsuba is faster with precisions up to several thousands of 
+words, beyond that the FFT is to be preferred.
+
+A simple example is shown in the file fsample.cpp. Compare with sample.cpp 
+which uses Flash arithmetic.
+
+For a more useful example of use see cm.cpp, a fast replacement for the 
+original cm.cpp which used Flash arithmetic. To support this application 
+modules flpoly.h/.cpp and complex.h/.cpp have also been created, for Float 
+polynomials and Complex arithmetic respectively.
+
+There are a few restrictions:-
+
+1) A full width base must be used.
+2) The precision of FP arithmetic must be specified by a call to 
+   setprecision(n). The precision will be 2^n words. Miracl must be 
+   initialised to at least 2^n+2 words per big, either by mirsys(2^n+2,0) or 
+   Miracl precision=2^n+2;
+3) The basic miracl library must support flash arithmetic - that is MR_FLASH 
+   must be defined in mirdef.h
+4) Only very basic numeric output is supported. Output attempts to print a 
+   decimal, but if the number x is very large or very small it will be output
+   as x.2^n.
+
+See float.h for the functions currently implemented.
+
+Note that this class has been designed simply for raw speed. No particular 
+care has been taken with respect to rounding errors. The rounding method is 
+simple truncation. The last few digits of any calculation are probably in 
+error.
+
+A rudimentary Complex class based on Float can be found in complex.h and 
+complex.cpp 
+

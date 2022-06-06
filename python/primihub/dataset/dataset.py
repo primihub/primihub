@@ -131,9 +131,8 @@ def read(dataset_key: str = None,
          skiprows=None,
          nrows=None, **kwargs):
     dataset_path = Context.dataset_map.get(dataset_key, None)
-    print(dataset_path)
     d = driver(name="csv")
-    f = d().read(path=dataset_path)
-    dataset = f.read(names=names, usecols=usecols, skiprows=skiprows, nrows=nrows)
+    cursor = d().read(path=dataset_path)
+    dataset = cursor.read(names=names, usecols=usecols, skiprows=skiprows, nrows=nrows)
     return dataset
 

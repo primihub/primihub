@@ -1,0 +1,25 @@
+To build the Schoof application, you must compile and link the modules 
+together, with MIRACL C++ classes, and with the MIRACL library.
+
+A precompiled Windows executable is available from
+ftp://ftp.compapp.dcu.ie/pub/crypto/schoof.exe
+
+So for Borland C++ (although MS C++ is a fair bit quicker)
+
+bcc32 schoof.cpp poly.cpp polymod.cpp ecn.cpp big.cpp zzn.cpp crt.cpp
+miracl.lib
+
+On UNIX using g++, something like
+
+g++ -I. -c poly.cpp
+g++ -I. -c polymod.cpp
+
+
+g++ -I. schoof.cpp poly.o polymod.o big.o zzn.o ecn.o crt.o 
+miracl.a /usr/lib/libm.a -o schoof
+
+should work
+
+Note that the headers poly.h and polymod.h are assumed to be in 
+the local directiory
+

@@ -1,0 +1,72 @@
+
+ID-PKC
+
+This Identity Based Encryption method was invented by Cliff Cocks
+See http://www.cesg.gov.uk/technology/id-pkc/index.htm for more details.
+
+This demonstration implementation consists of four programs that implement 
+each of the four steps in the algorithm. The source code is intended to be 
+read in conjunction with the academic paper which describes the method. The 
+clarity of C++ makes the code very readable, and easy to associate with the 
+mathematical description.
+
+NOTE: This method is patented! Do not deploy before checking with the patent 
+holders. This is just a demonstration of the method, and lacks some
+functionality in its current state.
+
+Tested with MS C++, Borland C++ and the DJGPP port of gcc
+
+
+Function: SETUP
+
+Source File: ipk_set.cpp
+
+This program generates suitable random global domain parameters, and stores 
+them in the file common.ipk. The Master key is stored in master.ipk
+
+Compile as (for example with MS C++)
+
+cl /O2 ipk_set.cpp big.cpp miracl.lib
+
+
+
+Function: EXTRACT
+
+Source File: ipk_ext.cpp
+
+This program extracts a private (secret) key from the proffered identity 
+string, and stores it in the file private.ipk
+
+Compile as 
+
+cl /O2 ipk_ext.cpp big.cpp crt.cpp miracl.lib
+
+
+
+Function: ENCRYPT
+
+Source File: ipk_enc.cpp
+
+This program accepts the identity of the recipient (which is his public key), 
+and encrypts a file.
+
+Compile as 
+
+cl /O2 ipk_enc.cpp big.cpp miracl.lib
+
+
+
+Function: DECRYPT
+
+Source File: ipk_dec.cpp
+
+This program decrypts a file using the private key from private.ipk
+
+Compile as (for example with MS C++)
+
+cl /O2 ipk_dec.cpp big.cpp miracl.lib
+
+
+Run the four programs in the order above, and encrypt a file to yourself!
+
+

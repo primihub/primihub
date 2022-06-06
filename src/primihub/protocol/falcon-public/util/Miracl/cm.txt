@@ -1,0 +1,131 @@
+
+NOTE: as of version 4.81 the CM program has been much improved. It is now up 
+to 100 times faster than the original. See comments in cm.cpp
+
+A precompiled Windows executable is available from 
+ftp://ftp.compapp.dcu.ie/pub/crypto/cm.exe
+
+To build the CM application, you must compile and link the modules 
+together, and with the MIRACL library.
+
+So for Borland C++
+
+bcc32 cm.cpp poly.cpp flpoly.cpp complex.cpp floating.cpp big.cpp zzn.cpp 
+ecn.cpp miracl.lib
+
+On UNIX using g++, something like
+
+g++ -I. -c poly.cpp
+g++ -I. -c flpoly.cpp
+g++ -I. -c complex.cpp
+g++ -I. -c floating.cpp
+
+g++ -I. cm.cpp poly.o flpoly.o complex.o floating.o big.o zzn.o ecn.o
+miracl.a /usr/lib/libm.a -o cm
+
+should work
+
+
+For best performance, use a KCM build of MIRACL, with MR_KCM defined in 
+mirdef.h to be a power of 2, for example 8.
+
+
+For example on a PC use this mirdef.h file
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 32
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_dltype __int64
+#define mr_unsign64 unsigned __int64
+#define MR_FLASH 52
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_KCM 16
+#define MR_BITSINCHAR 8
+
+
+and compile and run the mex utility
+
+mex 16 ms86 mrkcm
+
+This creates mrkcm.c
+
+
+IMPORTANT!
+
+If you have a Pentium 4 processor (which has SSE2 extensions), use
+
+mex 16 sse2 mrkcm 
+
+to create mrkcm.c This will be much faster.
+
+
+Remember to include the module mrkcm.obj in the library - using MS C 
+execute
+
+
+cl /c /O2 /W3 mrcore.c
+cl /c /O2 /W3 mrarth0.c
+cl /c /O2 /W3 mrarth1.c
+cl /c /O2 /W3 mrarth2.c
+cl /c /O2 /W3 mralloc.c
+cl /c /O2 /W3 mrsmall.c
+cl /c /O2 /W3 mrio1.c
+cl /c /O2 /W3 mrio2.c
+cl /c /O2 /W3 mrgcd.c
+cl /c /O2 /W3 mrjack.c
+cl /c /O2 /W3 mrxgcd.c
+cl /c /O2 /W3 mrarth3.c
+cl /c /O2 /W3 mrrand.c
+cl /c /O2 /W3 mrprime.c
+cl /c /O2 /W3 mrcrt.c
+cl /c /O2 /W3 mrscrt.c
+cl /c /O2 /W3 mrmonty.c
+cl /c /O2 /W3 mrpower.c
+cl /c /O2 /W3 mrsroot.c
+cl /c /O2 /W3 mrbits.c
+cl /c /O2 /W3 mrcurve.c
+cl /c /O2 /W3 mrfast.c
+cl /c /O2 /W3 mrlucas.c
+cl /c /O2 /W3 mrshs.c
+cl /c /O2 /W3 mrshs256.c
+cl /c /O2 /W3 mrshs512.c
+cl /c /O2 /W3 mraes.c
+cl /c /O2 /W3 mrgcm.c
+cl /c /O2 /W3 mrstrong.c
+cl /c /O2 /W3 mrbrick.c
+cl /c /O2 /W3 mrebrick.c
+cl /c /O2 /W3 mrec2m.c
+cl /c /O2 /W3 mrgf2m.c
+cl /c /O2 /W3 mrflash.c
+cl /c /O2 /W3 mrfrnd.c
+cl /c /O2 /W3 mrdouble.c
+cl /c /O2 /W3 mrround.c
+cl /c /O2 /W3 mrbuild.c
+cl /c /O2 /W3 mrflsh1.c
+cl /c /O2 /W3 mrpi.c
+cl /c /O2 /W3 mrflsh2.c
+cl /c /O2 /W3 mrflsh3.c
+cl /c /O2 /W3 mrflsh4.c
+cl /c /O2 /W3 mrkcm.c
+cl /c /O2 /W3 mrmuldv.c
+
+del miracl.lib
+
+lib /OUT:miracl.lib mrflsh4.obj mrflsh3.obj mrflsh2.obj mrpi.obj mrflsh1.obj
+lib /OUT:miracl.lib miracl.lib mrdouble.obj mrflash.obj mrfrnd.obj mrround.obj mrbuild.obj
+lib /OUT:miracl.lib miracl.lib mrio2.obj mrio1.obj mrrand.obj mrprime.obj mrcrt.obj mrscrt.obj mrbits.obj mrfast.obj
+lib /OUT:miracl.lib miracl.lib mrjack.obj mrxgcd.obj mrgcd.obj  mrarth3.obj mrarth2.obj mrpower.obj mrsroot.obj
+lib /OUT:miracl.lib miracl.lib mrmonty.obj mralloc.obj mrarth1.obj mrarth0.obj mrsmall.obj mrcore.obj mrmuldv.obj
+lib /OUT:miracl.lib miracl.lib mrcurve.obj mrshs.obj mraes.obj mrlucas.obj mrstrong.obj mrbrick.obj mrgcm.obj
+lib /OUT:miracl.lib miracl.lib mrshs256.obj mrshs512.obj mrebrick.obj mrgf2m.obj mrec2m.obj mrkcm.obj
+del mr*.obj
+
+cl /O2 /GX cm.cpp poly.cpp flpoly.cpp complex.cpp floating.cpp big.cpp zzn.cpp ecn.cpp miracl.lib
+

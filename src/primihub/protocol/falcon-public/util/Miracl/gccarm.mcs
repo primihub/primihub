@@ -1,0 +1,602 @@
+;
+; ARM Macros file for GCC compiler
+;
+; Triple register is R4|R3|R2
+; MUL_START. Initialise registers. Make R5 and R6 point to multipliers a 
+; and b. R7 points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+;
+; File fixed for new GCC versions
+; Hybrid method implemented - note the need to push r11 and r12 in H2_MUL_START
+; 
+;
+MACRO PMUL_START
+  ASM (
+  "MOV r5,%%0\n"
+  "MOV r6,%%1\n"
+  "MOV r7,%%2\n"
+  "MOV r4,%%3\n"
+  "MOV r3,#0\n"
+  "MOV r2,#0\n"
+ENDM
+
+MACRO PMUL
+  "LDR r0,[r5,#(4*%d)]\n"
+  "UMULL r8,r9,r0,r4\n"
+  "ADDS r8,r8,r3\n"
+  "ADC r3,r9,r2\n"
+  "STR r2,[r6,#(4*%d)]\n"
+  "STR r8,[r7,#(4*%d)]\n"
+ENDM
+
+MACRO PMUL_END
+  "UMULL r8,r9,r3,r4\n"
+  "STR r8,[r6]\n"
+  "STR r9,[r6,#4]\n"
+  :
+  :"r"(a),"r"(b),"r"(c),"r"(sn)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory" 
+  );
+ENDM
+;
+; H2_MUL_START macro
+; for hybrid method - process elements 2x2
+;
+MACRO H2_MUL_START
+  ASM (
+  "LDR r5,%%0\n"
+  "LDR r6,%%1\n"
+  "LDR r7,%%2\n"
+  "PUSH {r11,r12}\n"
+  "MOV r4,#0\n"
+  "MOV r3,#0\n"
+  "MOV r2,#0\n"
+  "MOV r10,#0\n"
+  "MOV r11,#0\n"
+ENDM
+
+MACRO H2_STEP
+    "LDR r8,[r5,#(4*%d)]\n"
+    "LDR r9,[r5,#(4*%d+4)]\n"
+    "LDR r12,[r6,#(4*%d)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADDS r2,r2,r0\n"
+    "ADCS r3,r3,r1\n"
+    "ADC r11,r11,#0\n"
+    "UMULL r0,r1,r9,r12\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "LDR r12,[r6,#(4*%d+4)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "UMULL r0,r1,r9,r12\n"
+    "ADDS r4,r4,r0\n"
+    "ADCS r10,r10,r1\n"
+    "ADDCS r11,r11,#0x10000\n"
+ENDM
+
+MACRO H2_LAST
+    "LDR r8,[r5,#(4*%d)]\n"
+    "LDR r9,[r5,#(4*%d+4)]\n"
+    "LDR r12,[r6,#(4*%d)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADDS r2,r2,r0\n"
+    "ADCS r3,r3,r1\n"
+    "UMULL r0,r1,r9,r12\n"
+    "ADD r3,r3,r0\n"
+    "LDR r12,[r6,#(4*%d+4)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADD r3,r3,r0\n"
+ENDM
+
+MACRO H2_MFIN
+     "STR r2,[r7,#(4*%d)]\n"
+     "STR r3,[r7,#(4*%d)]\n"
+     "AND r0,r11,#0xFF\n"
+     "ADDS r2,r4,r0\n"
+     "AND r0,r11,#0xFF00\n"
+     "ADCS r3,r10,r0,LSR#8\n"
+     "ADDCS r11,r11,#0x10000\n"
+     "MOV r4,r11,LSR#16\n"
+     "MOV r10,#0\n"
+     "MOV r11,#0\n"
+ENDM
+
+MACRO H2_MUL_END
+   "STR r2,[r7,#(4*%d)]\n"
+   "STR r3,[r7,#(4*%d)]\n" 
+   "POP {r11,r12}\n"
+     :
+  :"m"(a),"m"(b),"m"(c)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","memory" 
+ );
+ENDM
+
+MACRO MUL_START
+  ASM (
+  "MOV r5,%%0\n"
+  "MOV r6,%%1\n"
+  "MOV r7,%%2\n"
+  "MOV r4,#0\n"
+  "MOV r3,#0\n"
+  "MOV r2,#0\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+
+MACRO STEP
+  "LDR r0,[r5,#(4*%d)]\n"
+  "LDR r1,[r6,#(4*%d)]\n"
+  "UMULL r8,r9,r0,r1\n"
+  "ADDS r2,r2,r8\n"
+  "ADCS r3,r3,r9\n"
+  "ADC  r4,r4,#0\n"
+ENDM
+
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+
+MACRO MFIN
+  "STR r2,[r7,#(4*%d)]\n"
+  "MOV r2,r3\n"
+  "MOV r3,r4\n"
+  "MOV r4,#0\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "LDR r0,[r5,#(4*%d)]\n"
+  "LDR r1,[r6,#(4*%d)]\n"
+  "MLA r2,r0,r1,r2\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END  
+  "STR r2,[r7,#(4*%d)]\n"
+  :
+  :"r"(a),"r"(b),"r"(c)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory" 
+  );
+ENDM
+
+MACRO H2_SQR_START
+  ASM (
+  "LDR r5,%%0\n"
+  "LDR r7,%%1\n"
+  "PUSH {r11,r12}\n"
+  "MOV r4,#0\n"
+  "MOV r3,#0\n"
+  "MOV r2,#0\n"
+  "MOV r10,#0\n"
+  "MOV r11,#0\n"
+ENDM
+
+MACRO H2_DSTEP
+    "LDR r8,[r5,#(4*%d)]\n"
+    "LDR r9,[r5,#(4*%d+4)]\n"
+    "LDR r12,[r5,#(4*%d)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADDS r2,r2,r0\n"
+    "ADCS r3,r3,r1\n"
+    "ADC r11,r11,#0\n"
+    "ADDS r2,r2,r0\n"
+    "ADCS r3,r3,r1\n"
+    "ADC r11,r11,#0\n"
+    "UMULL r0,r1,r9,r12\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "LDR r12,[r5,#(4*%d+4)]\n"
+    "UMULL r0,r1,r8,r12\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "UMULL r0,r1,r9,r12\n"
+    "ADDS r4,r4,r0\n"
+    "ADCS r10,r10,r1\n"
+    "ADDCS r11,r11,#0x10000\n"
+    "ADDS r4,r4,r0\n"
+    "ADCS r10,r10,r1\n"
+    "ADDCS r11,r11,#0x10000\n"
+ENDM
+
+MACRO H2_SELF
+    "LDR r8,[r5,#(4*%d)]\n"
+    "LDR r9,[r5,#(4*%d+4)]\n"
+    "UMULL r0,r1,r8,r8\n"
+    "ADDS r2,r2,r0\n"
+    "ADCS r3,r3,r1\n"
+    "ADC r11,r11,#0\n"
+    "UMULL r0,r1,r8,r9\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "ADDS r3,r3,r0\n"
+    "ADCS r4,r4,r1\n"
+    "ADDCS r11,r11,#0x100\n"
+    "UMULL r0,r1,r9,r9\n"
+    "ADDS r4,r4,r0\n"
+    "ADCS r10,r10,r1\n"
+    "ADDCS r11,r11,#0x10000\n"
+ENDM
+
+MACRO H2_SFIN
+     "STR r2,[r7,#(4*%d)]\n"
+     "STR r3,[r7,#(4*%d)]\n"
+     "AND r0,r11,#0xFF\n"
+     "ADDS r2,r4,r0\n"
+     "AND r0,r11,#0xFF00\n"
+     "ADCS r3,r10,r0,LSR#8\n"
+     "ADDCS r11,r11,#0x10000\n"
+     "MOV r4,r11,LSR#16\n"
+     "MOV r10,#0\n"
+     "MOV r11,#0\n"
+ENDM
+
+MACRO H2_SQR_END
+   "STR r2,[r7,#(4*%d)]\n"
+   "STR r3,[r7,#(4*%d)]\n" 
+   "POP {r11,r12}\n"
+  :
+  :"m"(a),"m"(c)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","memory"  
+  );
+ENDM
+
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM (
+  "MOV r5,%%0\n"
+  "MOV r7,%%1\n"
+  "MOV r4,#0\n"
+  "MOV r3,#0\n"
+  "MOV r2,#0\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "LDR  r0,[r5,#(4*%d)]\n"
+  "LDR  r1,[r5,#(4*%d)]\n"
+  "UMULL r8,r9,r0,r1\n"
+  "ADDS r2,r2,r8\n"
+  "ADCS r3,r3,r9\n"
+  "ADC  r4,r4,#0\n"
+  "ADDS r2,r2,r8\n"
+  "ADCS r3,r3,r9\n"
+  "ADC  r4,r4,#0\n"
+ENDM
+;                
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "LDR r0,[r5,#(4*%d)]\n"
+  "UMULL r8,r9,r0,r0\n"
+  "ADDS r2,r2,r8\n"
+  "ADCS r3,r3,r9\n"
+  "ADC  r4,r4,#0\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "STR r2,[r7,#(4*%d)]\n"
+  "MOV r2,r3\n"
+  "MOV r3,r4\n"
+  "MOV r4,#0\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "STR r2,[r7,#(4*%d)]\n"
+  :
+  :"r"(a),"r"(c)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory"  
+  );
+ENDM
+;
+; REDC_START macro
+;
+MACRO REDC_START
+  ASM (
+  "MOV r5,%%0\n"
+  "MOV r6,%%1\n"
+  "MOV r7,%%2\n"
+  "MOV r4,#0\n"
+  "MOV r3,#0\n"
+  "LDR r2,[r5]\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "MUL r1,r7,r2\n"  
+  "STR r1,[r5,#(4*%d)]\n"
+  "LDR r0,[r6]\n"
+  "UMULL r8,r9,r0,r1\n"
+  "ADDS r0,r2,r8\n"
+  "ADCS r2,r3,r9\n"
+  "ADC  r3,r4,#0\n"
+  "LDR  r0,[r5,#(4*(%d+1))]\n"
+  "ADDS r2,r2,r0\n"
+  "ADC  r3,r3,#0\n"
+  "MOV  r4,#0\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "STR  r2,[r5,#(4*%d)]\n"
+  "LDR  r0,[r5,#(4*(%d+1))]\n"
+  "ADDS r2,r3,r0\n"
+  "ADC  r3,r4,#0\n"
+  "MOV  r4,#0\n"  
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "STR  r2,[r5,#(4*%d)]\n"
+  "STR  r3,[r5,#(4*(%d+1))]\n"
+  :
+  :"r"(a),"r"(b),"r"(ndash)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory"  
+  );
+ENDM
+;
+; ADD_START macro - initialise for add/subtract, do first one
+;
+MACRO ADD_START
+  ASM (
+  "MOV  r6,%%1\n"
+  "MOV  r7,%%2\n"
+  "MOV  r8,%%3\n"
+  "LDR  r0,[r6]\n"
+  "LDR  r1,[r7]\n"
+  "ADDS r0,r0,r1\n"
+  "STR  r0,[r8]\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "LDR  r0,[r6,#(4*%d)]\n"
+  "LDR  r1,[r7,#(4*%d)]\n"
+  "ADCS r0,r0,r1\n"
+  "STR  r0,[r8,#(4*%d)]\n"
+ENDM
+;
+; ADD_END macro. Catch carry
+;
+MACRO ADD_END
+  "MOV  r0,#0\n"
+  "MOVCS r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(c)
+  :"r0","r1","r6","r7","r8","memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one
+;
+MACRO INC_START
+  ASM (
+  "MOV  r6,%%1\n"
+  "MOV  r7,%%2\n"
+  "LDR  r0,[r6]\n"
+  "LDR  r1,[r7]\n"
+  "ADDS r0,r0,r1\n"
+  "STR  r0,[r6]\n"
+ENDM
+;
+; INC macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO INC
+  "LDR  r0,[r6,#(4*%d)]\n"
+  "LDR  r1,[r7,#(4*%d)]\n"
+  "ADCS r0,r0,r1\n"
+  "STR  r0,[r6,#(4*%d)]\n"
+ENDM
+;
+; INC_END macro. Catch carry
+;
+MACRO INC_END
+  "MOV   r0,#0\n"
+  "MOVCS r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b)
+  :"r0","r1","r6","r7","memory"
+  );
+ENDM
+;
+; SUB_START macro
+;
+MACRO SUB_START
+  ASM (
+  "MOV r6,%%1\n"
+  "MOV r7,%%2\n"
+  "MOV r8,%%3\n"
+  "LDR  r0,[r6]\n"
+  "LDR  r1,[r7]\n"
+  "SUBS r0,r0,r1\n"
+  "STR  r0,[r8]\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "LDR  r0,[r6,#(4*%d)]\n"
+  "LDR  r1,[r7,#(4*%d)]\n"
+  "SBCS r0,r0,r1\n"
+  "STR  r0,[r8,#(4*%d)]\n"
+ENDM
+;
+; SUB_END macro. Catch carry
+;
+MACRO SUB_END
+  "MOV r0,#0\n"
+  "MOVCC r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(c)
+  :"r0","r1","r6","r7","r8","memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM (
+  "MOV r6,%%1\n"
+  "MOV r7,%%2\n"
+  "LDR  r0,[r6]\n"
+  "LDR  r1,[r7]\n"
+  "SUBS r0,r0,r1\n"
+  "STR  r0,[r6]\n"
+ENDM
+;
+; DEC macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO DEC
+  "LDR  r0,[r6,#(4*%d)]\n"
+  "LDR  r1,[r7,#(4*%d)]\n"
+  "SBCS r0,r0,r1\n"
+  "STR  r0,[r6,#(4*%d)]\n"
+ENDM
+;
+; DEC_END macro. Catch carry
+;
+MACRO DEC_END
+  "MOV r0,#0\n"
+  "MOVCC r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b)
+  :"r0","r1","r6","r7","memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry flag
+;
+MACRO KADD_START
+  ASM (
+  "LDR r6,%%1\n"
+  "LDR r7,%%2\n"
+  "LDR r8,%%3\n"
+  "LDR r9,%%4\n"
+  "MOV r0,#0\n"
+  "ADDS r0,r0,r0\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro. Important that carry flag is undisturbed!
+;
+MACRO KASL
+  "SUB r9,r9,#1\n"
+  "TEQ r9,#0\n"
+  "BEQ k%d\n"
+  "ADD r6,r6,#(4*%d)\n"
+  "ADD r7,r7,#(4*%d)\n"
+  "ADD r8,r8,#(4*%d)\n"
+  "B k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END
+  "MOV r0,#0\n"
+  "MOVCS r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"m"(a),"m"(b),"m"(c),"m"(n)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory" 
+  );
+ENDM
+;
+; KINC_START macro. Set carry to Zero 
+;
+MACRO KINC_START
+  ASM (
+  "LDR r6,%%1\n"
+  "LDR r7,%%2\n"
+  "LDR r9,%%3\n"
+  "MOV r0,#0\n"
+  "ADDS r0,r0,r0\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro. Important that carry flag is undisturbed!
+;
+MACRO KIDL
+  "SUB r9,r9,#1\n"
+  "TEQ r9,#0\n"
+  "BEQ k%d\n"
+  "ADD r6,r6,#(4*%d)\n"
+  "ADD r7,r7,#(4*%d)\n"
+  "B k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "MOV r0,#0\n"
+  "MOVCS r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"m"(a),"m"(b),"m"(n)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory"
+  );
+ENDM
+;
+; KDEC_START macro. Set carry
+;
+MACRO KDEC_START
+  ASM (
+  "LDR r6,%%1\n"
+  "LDR r7,%%2\n"
+  "LDR r9,%%3\n"
+  "SUBS r0,r0,r0\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "MOV r0,#0\n"
+  "MOVCC r0,#1\n"
+  "MOV %%0,r0\n"
+  :"=r"(carry)
+  :"m"(a),"m"(b),"m"(n)
+  :"r0","r1","r2","r3","r4","r5","r6","r7","r8","r9","memory"
+  );
+ENDM
+

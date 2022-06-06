@@ -1,0 +1,490 @@
+; MCS file for Gnu GCC 3.3+ 80386-Pentium compiler
+;
+; Sorry about all the %'s! Each % must be input here as %%
+; Triple register is xmm0
+; MUL_START. Initialise registers. Make ebx and esi point to multipliers a 
+; and b. edi points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+; 
+
+MACRO PMUL_START
+  ASM (
+  "pushl %%%%ebp\n"
+  "pushl %%%%edi\n"
+  "pushl %%%%esi\n"
+  "movl %%0,%%%%ebx\n"
+  "movl %%1,%%%%esi\n"
+  "movl %%2,%%%%edi\n"
+  "xorl %%%%ecx,%%%%ecx\n"
+  "movl %%3,%%%%ebp\n"
+ENDM
+
+MACRO PMUL
+  "movl %%%%ebp,%%%%eax\n"
+  "mull 4*%d(%%%%ebx)\n"
+  "addl %%%%ecx,%%%%eax\n"
+  "adcl $0,%%%%edx\n"
+  "movl %%%%edx,%%%%ecx\n"
+  "movl $0,4*%d(%%%%esi)\n"
+  "movl %%%%eax,4*%d(%%%%edi)\n"
+ENDM
+
+MACRO PMUL_END
+  "movl %%%%ebp,%%%%eax\n"
+  "mull %%%%ecx\n"
+  "movl %%%%eax,(%%%%esi)\n"
+  "movl %%%%edx,4(%%%%esi)\n"
+  "popl %%%%esi\n"
+  "popl %%%%edi\n"
+  "popl %%%%ebp\n"
+   :
+   :"m"(a),"m"(b),"m"(c),"m"(sn)
+   :"eax","edi","esi","ebx","ecx","edx","ebp","memory"
+  );
+
+ENDM
+
+MACRO MUL_START
+  ASM (
+  "pushl %%%%edi\n"
+  "pushl %%%%esi\n"
+  "movl %%0,%%%%ebx\n"
+  "movl %%1,%%%%esi\n"
+  "movl %%2,%%%%edi\n"
+  "pxor %%%%xmm0,%%%%xmm0\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "movd 4*%d(%%%%esi),%%%%xmm2\n"
+  "pmuludq %%%%xmm2,%%%%xmm1\n"
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+MACRO STEP1M
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "movd 4*%d(%%%%esi),%%%%xmm2\n"
+  "pmuludq %%%%xmm2,%%%%xmm1\n"
+ENDM
+MACRO STEP1A
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+MACRO STEP2M
+  "movd 4*%d(%%%%ebx),%%%%xmm3\n"
+  "movd 4*%d(%%%%esi),%%%%xmm4\n"
+  "pmuludq %%%%xmm4,%%%%xmm3\n"
+ENDM
+MACRO STEP2A
+  "pshufd $0xd8,%%%%xmm3,%%%%xmm3\n"
+  "paddq %%%%xmm3,%%%%xmm0\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "movd 4*%d(%%%%esi),%%%%xmm2\n"
+  "pmuludq %%%%xmm2,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "movd %%%%xmm0,4*%d(%%%%edi)\n"
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "psrlq $32,%%%%xmm7\n"
+  "psrldq $8,%%%%xmm0\n"
+  "paddq %%%%xmm7,%%%%xmm0\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END 
+  "movd %%%%xmm0,4*%d(%%%%edi)\n"
+  "popl %%%%esi\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(c)
+   :"edi","esi","ebx","xmm0","xmm1","xmm2","xmm3","xmm4","xmm7","memory"
+  );
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM (
+  "pushl %%%%edi\n"
+  "pushl %%%%esi\n"
+  "movl %%0,%%%%ebx\n"
+  "movl %%1,%%%%esi\n"
+  "pxor %%%%xmm0,%%%%xmm0\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "movd 4*%d(%%%%ebx),%%%%xmm2\n"
+  "pmuludq %%%%xmm2,%%%%xmm1\n"
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+MACRO DSTEP1M
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "movd 4*%d(%%%%ebx),%%%%xmm2\n"
+  "pmuludq %%%%xmm2,%%%%xmm1\n"
+ENDM
+MACRO DSTEP1A
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+MACRO DSTEP2M
+  "movd 4*%d(%%%%ebx),%%%%xmm3\n"
+  "movd 4*%d(%%%%ebx),%%%%xmm4\n"
+  "pmuludq %%%%xmm4,%%%%xmm3\n"
+ENDM
+MACRO DSTEP2A
+  "pshufd $0xd8,%%%%xmm3,%%%%xmm3\n"
+  "paddq %%%%xmm3,%%%%xmm0\n"
+  "paddq %%%%xmm3,%%%%xmm0\n"
+ENDM
+;
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "movd 4*%d(%%%%ebx),%%%%xmm1\n"
+  "pmuludq %%%%xmm1,%%%%xmm1\n"
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "movd %%%%xmm0,4*%d(%%%%esi)\n"
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "psrlq $32,%%%%xmm7\n"
+  "psrldq $8,%%%%xmm0\n"
+  "paddq %%%%xmm7,%%%%xmm0\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "movd %%%%xmm0,4*%d(%%%%esi)\n"
+  "popl %%%%esi\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(c)
+   :"edi","esi","ebx","xmm0","xmm1","xmm2","xmm3","xmm4","xmm7","memory"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  ASM (
+  "pushl %%%%edi\n"
+  "pushl %%%%esi\n"
+  "movl %%0,%%%%ebx\n"
+  "movl %%1,%%%%esi\n"
+  "movd %%2,%%%%xmm6\n"
+  "movd (%%%%ebx),%%%%xmm0\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "pmuludq %%%%xmm6,%%%%xmm7\n"
+  "movd %%%%xmm7,4*%d(%%%%ebx)\n"
+  "movd (%%%%esi),%%%%xmm1\n"
+  "pmuludq %%%%xmm7,%%%%xmm1\n"
+  "pshufd $0xd8,%%%%xmm1,%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "psrlq $32,%%%%xmm7\n"
+  "psrldq $8,%%%%xmm0\n"
+  "paddq %%%%xmm7,%%%%xmm0\n"
+  "movd 4*(%d+1)(%%%%ebx),%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "movd %%%%xmm0,4*%d(%%%%ebx)\n"
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "psrlq $32,%%%%xmm7\n"
+  "psrldq $8,%%%%xmm0\n"
+  "paddq %%%%xmm7,%%%%xmm0\n"
+  "movd 4*(%d+1)(%%%%ebx),%%%%xmm1\n"
+  "paddq %%%%xmm1,%%%%xmm0\n"
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "movd %%%%xmm0,4*%d(%%%%ebx)\n"
+  "movq %%%%xmm0,%%%%xmm7\n"
+  "psrlq $32,%%%%xmm7\n"
+  "psrldq $8,%%%%xmm0\n"
+  "paddq %%%%xmm7,%%%%xmm0\n"
+  "movd %%%%xmm0,4*(%d+1)(%%%%ebx)\n"
+  "popl %%%%esi\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(ndash)
+   :"edi","esi","ebx","xmm0","xmm1","xmm2","xmm3","xmm4","xmm7","memory"
+  );
+ENDM
+;
+; ADD_START macro - initialise for add. Do first one
+;
+MACRO ADD_START
+  ASM (
+  "pushl %%%%esi\n"
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%esi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl %%3,%%%%edi\n"
+  "movl (%%%%esi),%%%%eax\n"
+  "addl (%%%%ebx),%%%%eax\n"
+  "movl %%%%eax,(%%%%edi)\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "movl 4*%d(%%%%esi),%%%%eax\n"
+  "adcl 4*%d(%%%%ebx),%%%%eax\n"
+  "movl %%%%eax,4*%d(%%%%edi)\n"
+ENDM
+;
+; ADD_END macro. Catch Carry
+;
+MACRO ADD_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+  "popl %%%%esi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c)
+   :"eax","edi","esi","ebx","memory"
+  );
+ENDM
+;
+; INC_START macro
+;
+MACRO INC_START
+  ASM (
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%edi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl (%%%%ebx),%%%%eax\n"
+  "addl %%%%eax,(%%%%edi)\n"
+ENDM
+;
+; INC macro. Increment number in memory. Don't forget carry
+;
+MACRO INC
+  "movl 4*%d(%%%%ebx),%%%%eax\n"
+  "adcl %%%%eax,4*%d(%%%%edi)\n"
+ENDM
+;
+; INC_END macro. Catch Carry
+;
+MACRO INC_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry)
+   :"eax","edi","ebx","memory"
+  );
+ENDM
+;
+; SUB_START macro. Do first one.
+;
+MACRO SUB_START
+  ASM (
+  "pushl %%%%esi\n"
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%esi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl %%3,%%%%edi\n"
+  "movl (%%%%esi),%%%%eax\n"
+  "subl (%%%%ebx),%%%%eax\n"
+  "movl %%%%eax,(%%%%edi)\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "movl 4*%d(%%%%esi),%%%%eax\n"
+  "sbbl 4*%d(%%%%ebx),%%%%eax\n"
+  "movl %%%%eax,4*%d(%%%%edi)\n"
+ENDM
+;
+; SUB_END macro. Catch Carry
+;
+MACRO SUB_END   
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+  "popl %%%%esi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c)
+   :"eax","edi","esi","ebx","memory"
+  );
+ENDM
+;
+; DEC_START macro. Do first one.
+;
+MACRO DEC_START
+  ASM (
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%edi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl (%%%%ebx),%%%%eax\n"
+  "subl %%%%eax,(%%%%edi)\n"
+ENDM
+;
+; DEC macro. Decrement from number in memory. Don't forget borrow.
+;
+MACRO DEC
+  "movl 4*%d(%%%%ebx),%%%%eax\n"
+  "sbbl %%%%eax,4*%d(%%%%edi)\n"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry)
+   :"eax","edi","ebx","memory"
+  );
+ENDM
+;
+; KADD_START macro
+;
+MACRO KADD_START
+  ASM (
+  "pushl %%%%esi\n"
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%esi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl %%3,%%%%edi\n"
+  "movl %%4,%%%%ecx\n"
+  "xorl %%%%eax,%%%%eax\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+  "decl %%%%ecx\n"  
+  "je k%d\n"
+  "leal 4*%d(%%%%esi),%%%%esi\n"
+  "leal 4*%d(%%%%ebx),%%%%ebx\n"
+  "leal 4*%d(%%%%edi),%%%%edi\n"
+  "jmp k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END  macro
+;
+MACRO KADD_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+  "popl %%%%esi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(c),"m"(n)
+   :"eax","edi","esi","ebx","ecx","memory"
+  );
+ENDM
+;
+; KINC_START macro. Zero carry flag. 
+;
+MACRO KINC_START
+  ASM (
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%edi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl %%3,%%%%ecx\n"
+  "xorl %%%%eax,%%%%eax\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "decl %%%%ecx\n"
+  "je k%d\n"
+  "leal 4*%d(%%%%ebx),%%%%ebx\n"
+  "leal 4*%d(%%%%edi),%%%%edi\n"
+  "jmp k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(n)
+   :"eax","edi","ebx","ecx","memory"
+  );
+ENDM
+;
+; KDEC_START macro
+;
+MACRO KDEC_START
+  ASM (
+  "pushl %%%%edi\n"
+  "movl %%0,%%%%edi\n"
+  "movl %%1,%%%%ebx\n"
+  "movl %%3,%%%%ecx\n"
+  "xorl %%%%eax,%%%%eax\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "movl $0,%%%%eax\n"
+  "adcl %%%%eax,%%%%eax\n"
+  "movl %%%%eax,%%2\n"
+  "popl %%%%edi\n"
+   :
+   :"m"(a),"m"(b),"m"(carry),"m"(n)
+   :"eax","edi","ebx","ecx","memory"
+  );
+ENDM
+

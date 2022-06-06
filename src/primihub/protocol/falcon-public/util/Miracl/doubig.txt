@@ -1,0 +1,65 @@
+
+One of the basic design "features" of MIRACL is that all big number types are 
+of the same size, defined either at run time, or at compile time. 
+
+This means that all big types are of the same size, and in the vast majority 
+of cases this is just fine, and very efficient.
+
+However there are some situations where, while most of the variable should be 
+of size n bits, some are naturally required to be of size 2*n bits. One
+way around this is to make all big variables 2*n in size, but this can
+be wastful of space.
+
+Consider for example Elliptic curves over a quadratic extension, as suggested
+by Galbraith, Lin and Scott, and as supported by functions in the module 
+mrecn2.c
+
+While all of the field variables are of a size n, the group size is of size 
+2*n. In this case it makes sense for the vast majority of operations on field 
+elements, to be on elements of size n, while allowing the much simpler group
+operations to be on variables of size 2*n.
+
+Here is how to do it (for C programs only).
+
+(1) Assign space for big variables from a block of memory
+
+#ifndef MR_STATIC
+    char *mem = memalloc(_MIPP_ M);
+#else
+    char mem[MR_BIG_RESERVE(M)];       
+ 	memset(mem, 0, MR_BIG_RESERVE(M));   
+#endif
+
+where M are the total number of big variables required. Recall that if 
+MR_STATIC is defined, bigs are assigned at compile time from the stack. If it
+is not defined, bigs are assigned at run time from the heap. In either
+case if a double sized variable is required...
+
+
+(2) Assign space for big variable like this...
+
+    int j=0;
+    c=mirvar_mem(mip, mem, j); j+=2;
+    d=mirvar_mem(mip, mem, j); j+=2;
+    r=mirvar_mem(mip, mem, j); j+=2;
+    v1=mirvar_mem(mip, mem, j++);
+    v2=mirvar_mem(mip, mem, j++);
+    det=mirvar_mem(mip, mem, j); j+=2;
+    p=mirvar_mem(mip, mem, j++);
+ 
+Observe how space for a double big is assigned to variables c,d,r and det, with
+v1,v2 and p being assigned space for a regular big. Note that the final value j
+here indicates the value that should be used for M above.
+
+(3) Into mirdef.h, put
+
+#define MR_DOUBLE_BIG
+
+This tells MIRACL to assign double-width space to the internal work variables
+w0-w7. All functions that just use these work variables will now work correctly 
+with the double-sized bigs.
+
+Note that only simple arithmetic functions can be used with these double big 
+variables. But that should be OK, as group operations are usually very simple.
+Note also that overflow checking is turned off when MR_DOUBLE_BIG is defined,
+so use this feature with extreme caution!

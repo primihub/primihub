@@ -1,0 +1,174 @@
+Microchip PIC32 advice
+
+This chip is supported by the MPLAB IDE and the MPLAB SIMulator.
+These comments apply to version 8.73, Windows Version
+
+A suitable mirdef.h file would be 
+
+#define MIRACL 32
+#define MR_LITTLE_ENDIAN 
+#define mr_utype int                           
+#define mr_unsign32 unsigned int
+#define MR_IBITS 32    
+#define MR_LBITS 32   
+#define mr_dltype long long 
+#define mr_unsign64 unsigned long long
+#define MR_NOASM
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+
+
+To get started, first build the miracl library from the command line
+by executing this batch file
+
+copy mirdef.pic mirdef.h
+pic32-gcc -c -O2 -g mrcore.c
+pic32-gcc -c -O2 -g mrarth0.c
+pic32-gcc -c -O2 -g mrarth1.c
+pic32-gcc -c -O2 -g mrarth2.c
+pic32-gcc -c -O2 -g mralloc.c
+pic32-gcc -c -O2 -g mrsmall.c
+pic32-gcc -c -O2 -g mrio1.c
+pic32-gcc -c -O2 -g mrio2.c
+pic32-gcc -c -O2 -g mrgcd.c
+pic32-gcc -c -O2 -g mrjack.c
+pic32-gcc -c -O2 -g mrxgcd.c
+pic32-gcc -c -O2 -g mrarth3.c
+pic32-gcc -c -O2 -g mrbits.c
+pic32-gcc -c -O2 -g mrrand.c
+pic32-gcc -c -O2 -g mrprime.c
+pic32-gcc -c -O2 -g mrcrt.c
+pic32-gcc -c -O2 -g mrscrt.c
+pic32-gcc -c -O2 -g mrmonty.c
+pic32-gcc -c -O2 -g mrpower.c
+pic32-gcc -c -O2 -g mrsroot.c
+pic32-gcc -c -O2 -g mrcurve.c
+pic32-gcc -c -O2 -g mrfast.c
+pic32-gcc -c -O2 -g mrlucas.c
+pic32-gcc -c -O2 -g mrzzn2.c
+pic32-gcc -c -O2 -g mrzzn2b.c
+pic32-gcc -c -O2 -g mrzzn3.c
+pic32-gcc -c -O2 -g mrshs.c
+pic32-gcc -c -O2 -g mrshs256.c
+pic32-gcc -c -O2 -g mrshs512.c
+pic32-gcc -c -O2 -g mraes.c
+pic32-gcc -c -O2 -g mrgcm.c
+pic32-gcc -c -O2 -g mrstrong.c
+pic32-gcc -c -O2 -g mrbrick.c
+pic32-gcc -c -O2 -g mrebrick.c
+pic32-gcc -c -O2 -g mrgf2m.c
+pic32-gcc -c -O2 -g mrec2m.c
+pic32-gcc -c -O2 -g mrecn2.c
+rem copy mrmuldv.ccc mrmuldv.c
+rem pic32-gcc -c -O2 -g mrmuldv.c
+
+rem
+rem Create library 'miracl.lib'
+del miracl.a
+pic32-ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o mrgcm.o
+pic32-ar r  miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrbits.o mrzzn2.o mrzzn3.o
+pic32-ar r  miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o mrpower.o mrsroot.o
+pic32-ar r  miracl.a mrfast.o mrshs.o mraes.o mrlucas.o mrstrong.o mrbrick.o mrecn2.o
+pic32-ar r  miracl.a mrshs256.o mrshs512.o mrebrick.o mrgf2m.o mrec2m.o mrzzn2b.o
+rem pic32-ar r  miracl.a mrmuldv.o
+
+del mr*.o
+
+Then fire up the MPLAB IDE, and create a project called demo. 
+Choose one of the most powerful members of the PIC32 families to start
+with, for example PIC32MX795F512L
+
+Copy pk-demo.c to demo.c and add this to the project. 
+Add the Headers miracl.h and mirdef.h
+Add the library file miracl.a
+
+Edit demo.c to include at the start
+
+#include <p32xxxx.h> 
+#include <stdio.h>  
+
+void _mon_putc (char c) 
+{   
+	while (U1STAbits.UTXBF);   
+	U1TXREG = c; 
+} 
+
+At the very start of the main() program add
+
+	U1MODEbits.UARTEN = 0x01;   
+	U1STAbits.UTXEN = 0x01;  
+ 
+This magic is required to redirect printf() to UART1
+
+Click on Debugger->Settings and the UART1 IO Tab. Enable UART1 IO
+and redirect the output to a window.
+
+Click on Project->Build options->project and the Linker Tab.
+Create a heap of 65536 bytes and a stack of 1024 bytes
+
+Build and Run the program. You should see the output in the Output Window, 
+SIM Uart1 Tab
+
+The PIC32 uses a MIPS core. This architecture does not support a carry flag
+and so Assembly language implementation will not be much faster than 
+C generated code.
+
+To run the application ecdhp32.c, add the same "magic" as before
+to redirect printf to UART1.
+
+Use as mirdef.h
+
+#define MIRACL 32
+#define MR_LITTLE_ENDIAN 
+#define mr_utype int                          
+#define mr_unsign32 unsigned int
+#define MR_IBITS      32    
+#define MR_LBITS      32  
+#define mr_dltype long long
+#define mr_unsign64 unsigned long long
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_COMBA 5
+#define MR_STATIC 5
+#define MR_ALWAYS_BINARY
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT
+#define MR_PSEUDO_MERSENNE
+#define MR_SPECIAL
+#define MR_NOASM
+
+And build the library from the command line
+
+mex 5 c mrcomba
+pic32-gcc -c -g mrcore.c
+pic32-gcc -c -g mrarth0.c
+pic32-gcc -c -g mrarth1.c
+pic32-gcc -c -g mrarth2.c
+pic32-gcc -c -g mrsmall.c
+pic32-gcc -c -g mrio1.c
+pic32-gcc -c -g mrjack.c
+pic32-gcc -c -g mrbits.c
+pic32-gcc -c -g mrxgcd.c
+pic32-gcc -c -g mrmonty.c
+pic32-gcc -c -g mrsroot.c
+pic32-gcc -c -g mrcurve.c
+pic32-gcc -c -g mrlucas.c
+pic32-gcc -c -g mrebrick.c
+pic32-gcc -c -g mrcomba.c
+
+pic32-ar -rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mrsmall.o
+pic32-ar -r  miracl.a mrio1.o mrjack.o mrxgcd.o 
+pic32-ar -r  miracl.a mrmonty.o mrcurve.o 
+pic32-ar -r  miracl.a mrebrick.o mrsroot.o mrlucas.o
+pic32-ar -r  miracl.a mrbits.o mrcomba.o
+del mr*.o
+
+This time no heap is required.
+
+Note that -O2 optimization causes a problem. However introducing
+each individual optimization from 
+
+http://gcc.gnu.org/onlinedocs/gcc-3.4.4/gcc/Optimize-Options.html
+
+works fine. 
+
+Note that -O2 optimization works OK with MicroChip's newer MPLAB-X tool, 
+which uses a more up-to-date version 4.5 of the GCC compiler.

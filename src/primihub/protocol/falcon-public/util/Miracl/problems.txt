@@ -1,0 +1,94 @@
+MIRACL - Bug warnings
+
+The MIRACL library is written in standard C and has been tested on many
+combinations of computer and compiler. It should work on any system which 
+supports C as defined by Kernighan and Richie. The author is interested to 
+hear of any problems that arise with other configurations.  
+
+**** NOTE: If upgrading an old version of MIRACL, make sure to replace all old 
+files with new ones. In particular make sure to replace headers, such as 
+MIRACL.H. Newer versions of this header may have extensions to the "miracl" 
+structure. If an old MIRACL.H header is inadvertently used, the offsets 
+within this structure will be wrong, and all sorts of obscure run-time errors 
+will ensue.
+
+Remember - not all compilers are perfect! MIRACL already contains work-
+arounds which were necessary to circumvent bugs in certain compilers. 
+Some of the routines in MIRACL stretch a compiler's completeness to
+the limit. 
+
+Some drastic bugs, however, cannot be avoided.
+
+For example the early Microsoft C Version 5.0 (not to be confused with the 
+current C++ compiler), sometimes got the wrong
+answer when dividing two unsigned longs. For example try dividing 4294967167 
+by 71583361. It gets 60. The correct answer is 59. This problem makes it 
+impossible to use a full-width base using this compiler with 'mr_utypes' defined
+as 'long'. This problem was fixed in version 5.1 (but think of
+Star Wars - the Strategic Defence Initiative - and worry).
+
+Other possible problems:
+
+Remember that the example programs must be linked to a pre-compiled MIRACL 
+library, so that the MIRACL routines can be incorporated into the executables. 
+
+Most 32-bit compilers now support a 64-bit type. But unfortunately some call
+it "long long", while others call it "__int64". Make sure the right name is
+used in mirdef.h
+
+C programs need only be linked to the MIRACL library.
+
+But note that C++ programs need also to be linked to at least one or more of 
+the object files created by compiling big.cpp, zzn.cpp, crt.cpp, 
+ecn.cpp or flash.cpp. See the xxDOIT.BAT files for examples. 
+
+When using RATCALC.EXE on an IBM PC or compatible, be sure to set up your
+system to use US Code Page 437, otherwise certain graphics characters will 
+appear incorrectly on the screen. See your DOS documentation for details. 
+
+Remember to include stdio.h BEFORE including miracl.h in your C programs.
+Similarly include I/O libraries before big.h, number.h or flash.h in C++ 
+programs. This is important as certain types (such as FILE *) need to be 
+defined before the MIRACL headers are included.
+
+Most user problems arise due to building the MIRACL library with the wrong
+MIRDEF.H file, or by inclusion of the wrong assembly language routines
+from mrmuldv.any. Be careful. Only use MIRDEF.H32 if you have both a true 32-
+bit CPU *AND* a true 32-bit compiler. 
+
+If for example you wish to use the pseudo-32-bit mode of operation on a 386 
+based PC you will have to (1) copy MIRDEF.HPC to MIRDEF.H (2) recompile 
+MIRACL.LIB using this new header, and (3) ensure that you are using the 
+appropriate versions of muldiv, muldvd, muldvd2 and muldvm from MRMULDV.ANY. 
+The Microsoft 80386 versions will also work with the Zortech, and Borland 
+compilers.  
+
+The "fast" code for modular exponentiation is NOT included in
+the precompiled libraries. To use this code the individual module e.g.
+mrkcm.c must be seperately created using the mex utility, compiled and linked
+in. Note also that only one of these methods can be used at a time. 
+Whenever possible use config.c to generate a valid MIRDEF.H
+
+The current GCC compiler does not seem to like the generated mrcomba.c and 
+mrkcm.c files. If it objects switch off optimization - the inline assembly is
+optimized enough. Or try -fomit-frame-pointer
+
+If using MIRACL on a DEC VAX or an IBM RS6000, which do not support a 
+fullwidth number base, remember to (a) #define MR_NOFULLWIDTH in
+mirdef.h, and (b) use mirsys(...,MAXBASE) instead of mirsys(...,0) in all
+your programs. 
+
+Try using the config.c program to automatically generate a mirdef.h
+file for you.
+
+If you have any other problems with MIRACL, please let us know. Email to 
+mscott@indigo.ie
+
+DISCLAIMER
+
+In no event will the Authors be liable to you for any damages, including 
+any lost profits, lost savings or other incidental or consequential 
+damages arising out of the use of or inability to use these programs, 
+even if the Authors have been advised of the possibility of such damages, 
+or for any claim by any other party.  
+

@@ -1,0 +1,9 @@
+Although MIRACL is a C library, it can also be built as an entirely C++ library.
+This can be quite convenient for general purpose use. Some of the common
+C++ modules like big.cpp can now be included into the library.
+
+On 64-bit Windows using Microsoft C++, build using the batch file ms64doit_cpp.bat
+
+On 64-bit Linux build using "bash linux64_cpp"
+
+The same approach can be adopted on other platforms.

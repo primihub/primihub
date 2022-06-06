@@ -1,0 +1,537 @@
+; Comba/KCM Macros for Atmel AVR
+;
+; Triple register is r8|r7|r6
+;
+; X = r26|r27
+; Y = r28|r29
+; Z = r30|r31
+;
+; Must remember to clear r1 - compiler expects it!
+;
+; *** Must use -fno-inline for mrkcm.c module
+;
+; See makemcs.txt for more information about this file
+; 
+;
+
+MACRO PMUL_START
+  ASM (  
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "MOV r6,%%3\n"
+  "CLR r8\n"
+  "CLR r7\n"
+ENDM
+
+MACRO PMUL
+  "LDD r0,Y+%d\n"
+  "MUL r0,r6\n"
+  "ADD r0,r8\n"
+  "ADC r1,r7\n"
+  "MOV r8,r1\n"
+  "STD %%a1+%d,r7\n"
+  "ST  %%a2+,r0  ;%d \n"
+ENDM
+
+MACRO PMUL_END
+  "MUL r6,r8\n"
+  "ST  %%a1,r0\n"
+  "STD %%a1+1,r1\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"w"(a),"z"(b),"x"(c),"r"(sn)
+  :"r6","r7","r8","memory"  
+  );
+ENDM
+
+MACRO MUL_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a1+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  "ST %%a2+,r6   ;%d \n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a1+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+ENDM
+;
+; MULE
+;
+
+MACRO MUL_END
+  "ST %%a2,r6  ;%d \n" 
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"w"(a),"z"(b),"x"(c)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "CLR r6\n"
+  "CLR r5\n"
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  "LDD r0,%%a0+%d\n"
+  "LDD r1,%%a0+%d\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  "LDD r0,%%a0+%d\n"
+  "MUL r0,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  "ST %%a1+,r6   ;%d \n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  "ST %%a1,r6  ;%d \n" 
+  "CLR r1\n"
+  "POP r27\n"
+  "POP r26\n"
+  :
+  :"z"(a),"x"(c)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; RFINU macro
+;
+MACRO REDC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%0\n"
+  "CLR r8\n"
+  "CLR r7\n"
+  "LD r6,Y\n"
+  "CLR r5\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "MUL r6,%%2\n"
+  "STD Y+%d,r0\n"
+  "LD r1,%%a1\n"
+  "MUL r1,r0\n"
+  "ADD r6,r0\n"
+  "ADC r7,r1\n"
+  "ADC r8,r5\n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+  "LDD r0,Y+%d+1\n"
+  "ADD r6,r0\n"
+  "ADC r7,r5\n"
+  "CLR r8\n"
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  "STD Y+%d,r6\n"
+  "MOV r6,r7\n"
+  "MOV r7,r8\n"
+  "CLR r8\n"
+  "LDD r0,Y+%d+1\n"
+  "ADD r6,r0\n"
+  "ADC r7,r5\n"
+  "CLR r8\n"
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  "STD Y+%d,r6\n"
+  "STD Y+%d+1,r7\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :
+  :"w"(a),"z"(b),"r"(ndash)
+  :"r5","r6","r7","r8","memory"  
+  );
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  ASM (
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "ADD r1,r0\n"
+  "ST %%a3+,r1\n"   
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "ADC r1,r0\n"
+  "ST %%a3+,r1  ;%d\n" 
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c)
+  :"memory"
+  );
+ENDM
+;
+; DOUBLE_START macro
+;
+MACRO DOUBLE_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"  
+  "ADD r0,r0\n"
+  "ST Y,r0\n"  
+ENDM
+;
+; DOUBLE macro
+;
+MACRO DOUBLE
+  "LDD r0,Y+%d\n"
+  "ADC r0,r0\n"
+  "STD Y+%d,r0\n" 
+ENDM
+;
+; DOUBLE_END
+;
+MACRO DOUBLE_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a)
+  :"memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "ADD r1,r0\n"
+  "ST Y,r1\n"   
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "ADC r1,r0\n"
+  "STD Y+%d,r1\n" 
+ENDM
+MACRO INC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b)
+  :"memory"
+  );
+ENDM
+;
+; SUB macro  - c[.]=a[.]-b[.]
+;
+MACRO SUB_START
+  ASM (  
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "SUB r0,r1\n"
+  "ST %%a3+,r0\n"   
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "SBC r0,r1\n"
+  "ST %%a3+,r0  ;%d\n"
+ENDM
+MACRO SUB_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c)
+  :"memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM (
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "MOVW r28,%%1\n"
+  "LD r0,Y\n"
+  "LD r1,%%a2\n"
+  "SUB r0,r1\n"
+  "ST Y,r0\n"   
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  "LDD r0,Y+%d\n"
+  "LDD r1,%%a2+%d\n"
+  "SBC r0,r1\n"
+  "STD Y+%d,r0\n" 
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b)
+  :"memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  ASM(
+  "PUSH r26\n"
+  "PUSH r27\n"
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%4\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro - Important that carry flag is undisturbed
+;
+MACRO KASL
+ "DEC r5\n"
+ "BREQ k%d\n"
+ "CLR r0\n"
+ "ADC r0,r0\n"
+ "ADIW r28,%d\n"
+ "ADIW r30,%d ;%d \n"
+ "ROR r0\n"
+ "RJMP k%d\n"
+ "k%d:\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END  
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  "POP r27\n"
+  "POP r26\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"x"(c),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  ASM(
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%3\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro - Important that carry flag is undisturbed
+;
+MACRO KIDL
+ "DEC r5\n"
+ "BREQ k%d\n"
+ "CLR r0\n"
+ "ADC r0,r0\n"
+ "ADIW r28,%d\n"
+ "ADIW r30,%d\n"
+ "ROR r0\n"
+ "RJMP k%d\n"
+ "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  ASM(
+  "PUSH r28\n"
+  "PUSH r29\n"
+  "PUSH r30\n"
+  "PUSH r31\n"
+  "MOVW r28,%%1\n"
+  "MOV r5,%%3\n"
+  "CLC\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "CLR r0\n"
+  "ADC r0,r0\n"
+  "MOV %%0,r0\n"
+  "CLR r1\n"
+  "POP r31\n"
+  "POP r30\n"
+  "POP r29\n"
+  "POP r28\n"
+  :"=r"(carry)
+  :"w"(a),"z"(b),"r"(n)
+  :"r5","memory"
+  );
+ENDM
+

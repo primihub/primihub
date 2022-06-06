@@ -1,0 +1,32 @@
+/* 
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ *   This version suitable for use some 32-bit compilers
+ *   which don't have a 64-bit type and for which assembly language versions 
+ *   of muldiv, muldvd, muldvm and muldvd2 are not available. 
+ *   See mrmuldv.any for details.
+ *   This mode of operation is not recommended.
+ *
+ */
+
+#define MIRACL 16
+#define MR_LITTLE_ENDIAN    /* This may need to be changed        */
+
+#define mr_utype short
+                            /* the underlying type is usually int *
+                             * but see mrmuldv.any                */
+#define mr_dltype long
+                            /* double length type     */
+#define mr_unsign32 unsigned int
+                            /* 32 bit unsigned type               */
+#define MR_IBITS      32    /* bits in int  */
+#define MR_LBITS      32    /* bits in long */
+#define MR_FLASH      52      
+                            /* delete this definition if integer  *
+                             * only version of MIRACL required    */
+                            /* Number of bits per double mantissa */
+
+#define MR_NOASM            /* define this if using C code only   *
+                             * mr_dltype must be defined          */
+
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+

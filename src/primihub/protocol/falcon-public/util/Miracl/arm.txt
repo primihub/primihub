@@ -1,0 +1,219 @@
+If developing for the ARM, or indeed any other new processor, you should 
+first build a C-only library.
+
+For the ARM, this mirdef.h header would be appropriate for an integer-
+only build of the library.
+
+--------------------------------------
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+
+#define MIRACL 32
+#define MR_LITTLE_ENDIAN      
+
+/* or possibly 
+#define MR_BIG_ENDIAN      
+*/
+
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_dltype long long
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long long
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+
+
+#define MR_NOASM
+
+---------------------------------------------
+
+Assuming that the mirdef.h, miracl.h and mr*.c files are all in the same
+directory, then a suitable batch file for building a MIRACL library might 
+look like this:-
+
+-------------------------------
+
+armcc -I. -c -O2 mrcore.c
+armcc -I. -c -O2 mrarth0.c
+armcc -I. -c -O2 mrarth1.c
+armcc -I. -c -O2 mrarth2.c
+armcc -I. -c -O2 mralloc.c
+armcc -I. -c -O2 mrsmall.c
+armcc -I. -c -O2 mrio1.c
+armcc -I. -c -O2 mrio2.c
+armcc -I. -c -O2 mrgcd.c
+armcc -I. -c -O2 mrjack.c
+armcc -I. -c -O2 mrbits.c
+armcc -I. -c -O2 mrxgcd.c
+armcc -I. -c -O2 mrarth3.c
+armcc -I. -c -O2 mrrand.c
+armcc -I. -c -O2 mrprime.c
+armcc -I. -c -O2 mrcrt.c
+armcc -I. -c -O2 mrscrt.c
+armcc -I. -c -O2 mrmonty.c
+armcc -I. -c -O2 mrpower.c
+armcc -I. -c -O2 mrsroot.c
+armcc -I. -c -O2 mrcurve.c
+armcc -I. -c -O2 mrfast.c
+armcc -I. -c -O2 mrshs.c
+armcc -I. -c -O2 mrshs256.c
+armcc -I. -c -O2 mrshs512.c
+armcc -I. -c -O2 mraes.c
+armcc -I. -c -O2 mrgcm.c
+armcc -I. -c -O2 mrlucas.c
+armcc -I. -c -O2 mrstrong.c
+armcc -I. -c -O2 mrbrick.c
+armcc -I. -c -O2 mrebrick.c
+armcc -I. -c -O2 mrgf2m.c
+armcc -I. -c -O2 mrec2m.c
+armcc -I. -c -O2 mrzzn2.c
+armcc -I. -c -O2 mrzzn2b.c
+armcc -I. -c -O2 mrzzn3.c
+armcc -I. -c -O2 mrecn2.c
+armar -rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o
+armar -r  miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrgcm.o
+armar -r  miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o 
+armar -r  miracl.a mrfast.o mrshs.o mraes.o mrlucas.o mrstrong.o mrbrick.o 
+armar -r  miracl.a mrebrick.o mrec2m.o mrgf2m.o mrpower.o mrsroot.o mrzzn2b.o
+armar -r  miracl.a mrshs256.o mrshs512.o mrbits.o mrzzn2.o mrzzn3.o mrecn2.o
+del mr*.o
+armcc -I. -c pk-demo.c
+armlink pk-demo.o miracl.a -o pk-demo.axf
+
+--------------------------------------------
+
+This may be fast enough for you. If its not you can use the assembly language
+macros provided in arm.mcs or gccarm.mcs for greater speed. See kcmcomba.txt.
+
+For faster RSA and DH implementations replace the MR_NOASM definition with
+MR_KCM n (where n is usually 4, 8 or 16 - experiment. n*MIRACL must divide the 
+modulus size in bits exactly, which it will for standard moduli of 1024 bit 
+for example). Compile and run the utility mex.c
+
+c:\miracl>mex n arm mrkcm
+
+(Yes its the same n). Rebuild the MIRACL library, but this time include the 
+modules mrkcm.c and mrmuldv.c (you can find the latter in mrmuldv.ccc This
+standard C version will do.)
+
+For fast GF(p) elliptic curves, replace MR_NOASM with MR_COMBA n. This time 
+32*n is exactly the size of p in bits (assuming 32-bit processor).
+
+This approach is also optimal for 1024-bit RSA decryption using the Chinese 
+Remainder Theorem. Set n=16 (512=16*32)
+
+c:\miracl>mex n arm mrcomba
+
+Rebuild the MIRACL library, but this time include the modules mrcomba.c and 
+mrmuldv.c.
+
+Still not fast enough? If the prime p is of a "special" form for an Elliptic 
+curve, define in mirdef.h MR_SPECIAL. Edit mrcomba.tpl to insert "special" code
+for modular reduction - its quite easy and you will find examples there 
+already. Run mex as before, and rebuild MIRACL again.
+
+
+See ecdhp32.c for a worked example.
+
+
+For processors other than the ARM, the basic procedure is the same. A C-only 
+build is always possible. To go faster you will need to create a .mcs file 
+for your processor, and then you can proceed as above.
+
+An alternative is to do a C-only build and then go in and optimise the 
+generated assembly language. The time-critical routines are usually 
+multiply() and redc() which can be found in mrarth2.c and mrmonty.c
+
+This will probably not be as fast as the highly optimised approach outlined
+above.
+
+
+NOTE: There is a nasty ARM compiler bug in the version I am using. It can 
+cause problems, if for example using the C-only macros from c.mcs or c1.mcs
+
+Use this program to illustrate the bug, or to see if your Compiler is 
+affected.
+
+/* Short program to illustrate ARM compiler bug
+   works fine with -O0, gets wrong answer for -O1 and -O2 optimization 
+   Answer should be 0xffffffff00000001 but it gets 0x1 
+*/  
+
+#include <stdio.h>
+
+int main()
+{
+    unsigned long long x;
+    unsigned long a,b;
+    a=0;
+    b=0xFFFFFFFF;
+    x=(unsigned long long)a-b;
+    printf("x= %llx\n",x);    
+    return 0;
+}
+
+
+Another problem may arise with systems that do not fully support unsigned long 
+long arithmetic (you may be getting linker errors with names like __udivdi3 
+functions not found). In this case for a C only build delete the #define 
+MR_NOASM from mirdef.h and use the blakely-sloan versions of mrmuldiv and 
+mrmuldvm with the standard versions of mrmuldvd and mrmuldvd2 (from 
+mrmuldv.ccc) to create a file mrmuldv.c which should then be included in the 
+library. Also insert an #undef mr_dltype at the start of mrxgcd.c
+
+
+If using GCC under winARM to build ARM application, try this example
+
+/* Header mirdef.h */
+
+#define MIRACL 32
+#define MR_LITTLE_ENDIAN      
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_dltype long long
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long long
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_COMBA 6
+#define MR_STATIC 6
+#define MR_ALWAYS_BINARY
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT
+#define MR_SPECIAL
+#define MR_NO_STANDARD_IO 
+#define MR_NO_FILE_IO
+
+
+/* batch file */
+
+mex 6 gccarm mrcomba
+copy mrmuldv.ccc mrmuldv.c
+arm-elf-gcc -I. -c -O2 mrcore.c
+arm-elf-gcc -I. -c -O2 mrarth0.c
+arm-elf-gcc -I. -c -O2 mrarth1.c
+arm-elf-gcc -I. -c -O2 mrarth2.c
+arm-elf-gcc -I. -c -O2 mrsmall.c
+arm-elf-gcc -I. -c -O2 mrjack.c
+arm-elf-gcc -I. -c -O2 mrbits.c
+arm-elf-gcc -I. -c -O2 mrxgcd.c
+arm-elf-gcc -I. -c -O2 mrmonty.c
+arm-elf-gcc -I. -c -O2 mrsroot.c
+arm-elf-gcc -I. -c -O2 mrcurve.c
+arm-elf-gcc -I. -c -O2 mrlucas.c
+arm-elf-gcc -I. -c -O2 mrebrick.c
+arm-elf-gcc -I. -O2 -c mrcomba.c
+arm-elf-gcc -I. -c -O2 mrmuldv.c
+
+arm-elf-ar -rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mrsmall.o
+arm-elf-ar -r  miracl.a mrjack.o mrxgcd.o 
+arm-elf-ar -r  miracl.a mrmonty.o mrcurve.o 
+arm-elf-ar -r  miracl.a mrebrick.o mrsroot.o mrlucas.o
+arm-elf-ar -r  miracl.a mrbits.o mrcomba.o mrmuldv.o
+del mr*.o
+arm-elf-gcc -I. --debug -c  ecdhp.c
+arm-elf-ld ecdhp.o miracl.a libgcc.a  -lc -lm -o ecdhp.axf 

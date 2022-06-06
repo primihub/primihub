@@ -1,0 +1,64 @@
+
+The files AKEnGNt.CPP implement variations of the ake protocol described in 
+http://eprint.iacr.org/2002/164/, where n is the embedding degree, GN
+is the curve generation method (SS for supersingular, CP for Cocks-Pinch,
+MNT for MNT curves, BW for Brezing and Weng, FST for Freeman-Scott-Teske, KM
+for Koblitz-Menezes), and t is the pairing type (t=A for Ate, T for tate, 
+E for eta and R for r-ate pairings).
+
+This authenticated key exchange algorithm is used as a test-bed for testing 
+fast implementations of pairings.
+
+AKE2CPT.CPP contains an implementation that uses a non-supersingular curve with 
+a 160-bit group order whose security depends on the difficulty of a 1024-bit 
+discrete logarithm problem. The prime modulus is 512 bits. The "security 
+multiplier" is 2. The curve parameters are in the file k2.ecs
+
+AKE2SST.CPP implements the same protocol, but this time using a supersingular
+curve.
+
+AKE6MNTT.CPP contains an implementation that uses a non-supersingular curve 
+with a 160-bit group order whose security depends on the difficulty of a 960-bit 
+discrete logarithm problem. The prime modulus is 160 bits. The "security 
+multiplier" is 6. The curve parameters are in the file mnt.ecs
+
+AKE4CPT.CPP contains an implementation that uses a non-supersingular curve with 
+a 192-bit group order whose security depends on the difficulty of a 2048-bit 
+discrete logarithm problem. The prime modulus is 512 bits. The "security 
+multiplier" is 4. The curve parameters are in the file k4.ecs
+
+AKE8CPT.CPP contains an implementation that uses a non-supersingular curve with 
+a 224-bit group order whose security depends on the difficulty of a 4096-bit 
+discrete logarithm problem. The prime modulus is 512 bits. The "security 
+multiplier" is 8. The curve parameters are in the file k8.ecs
+                     
+The implementations AKE2CPT.CPP, AKE4CPT.CPP and AKE8CPT.CPP use a "twisted" 
+curve, and compress the output of the pairing. See 
+http://eprint.iacr.org/2004/032/
+
+AKE4CPT.CPP and AKE8CPT.CPP uses a "tower extension field" as a simple way of 
+moving from k=2 to k=4 and k=8. See ZZn4.CPP/ZZn8.CPP
+
+By using a series of such extensions, higher and higher security levels can 
+be reached. This is thought to be a nice way of scaling security for pairing-
+based protocols. These implementations all depend on the same fast 512-bit 
+modular multiplier.
+
+AKE4FSTA contains an implementation that uses a non-supersingular curve with a 
+165-bit group order whose security depends on the difficulty of a 1024-bit 
+discrete logarithm problem. The prime modulus is 255 bits. The "security 
+multiplier" is 4. The curve parameters are in the file kw4.ecs. Note that the 
+group order is of a low hamming weight.
+
+AKE8BWT.CPP contains an implementation that uses a non-supersingular curve with a 
+192-bit group order whose security depends on the difficulty of a 2048-bit 
+discrete logarithm problem. The prime modulus is 256 bits. The "security 
+multiplier" is 8. The curve parameters are in the file weng.ecs. This curve 
+was constructed using a method due to Brezing & Weng. See 
+http://eprint.iacr.org/2003/143/
+
+The files k2.ecs, k4.ecs and k8.ecs are created by the utility folklore.cpp
+The file mnt.ecs is created by the mnt.cpp utility.
+
+See pairings.txt for more details.
+

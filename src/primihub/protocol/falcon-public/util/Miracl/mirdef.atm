@@ -1,0 +1,48 @@
+/*
+  mirdef.h file for Atmeg128
+
+*/
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 8
+#define mr_utype char /* wordlength of processor */
+#define MR_IBITS 16  /* number of bits in int  */
+#define MR_LBITS 32  /* number of bits in long */
+#define mr_unsign32 unsigned long /* unsigned 32-bit type */
+#define mr_dltype short /* double-length type (twice the number of bits of mr_utype) */
+#define MR_STATIC 21 /* 21*8 > 163 bits */
+#define MR_ALWAYS_BINARY
+#define MR_NOASM     /* no assembly language */
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT /* multi-threaded */
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+#define MR_SHORT_OF_MEMORY
+#define MR_NO_STANDARD_IO /* no printf support */
+#define MR_NO_FILE_IO     /* no file support */
+
+/* 
+
+Delete the lines
+
+printf("Alice's Key= ");
+otnum(mip,key,stdout);
+
+ and 
+
+printf("Bob's Key=   ");
+otnum(mip,key,stdout);
+
+from ecdh2m8.c
+
+Build a library from only
+
+   mrcore.c
+   mrarth0.c
+   mrarth1.c
+   mrbits.c
+   mrecgf2m.c
+
+To find out basic RAM requirement, watch sizeof(miracl)
+
+*/

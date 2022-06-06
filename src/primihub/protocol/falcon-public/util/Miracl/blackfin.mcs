@@ -1,0 +1,358 @@
+; MCS file for VisualDSP++ compiler
+; 16-bit MIRACL
+;
+; Sorry about all the %'s! Each % must be input here as %%
+; Triple register is A0
+; MUL_START.  
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+;
+; It would be worth experimenting with generated code to see where parallel issue of instructions
+; might be exploited
+; 
+MACRO PMUL_START
+  asm (
+  "R1=R1-R1;\n"
+  "R2=R2-R2;\n"
+ENDM
+MACRO PMUL
+  "R3=W[%%0+2*%d] (Z);\n"
+  "R3=%%3.L*R3.L (FU);\n"
+  "R3=R1+R3 (NS);\n"
+  "R1=R3>>16;\n"
+  "W[%%1+2*%d]=R2;\n"
+  "W[%%2+2*%d]=R3;\n"	
+ENDM
+MACRO PMUL_END
+  "R3=%%3.L*R1.L (FU);\n"
+  "W[%%1]=R3;\n"
+  "R2=R3>>16;\n"
+  "W[%%1+2]=R2;\n"
+   :
+   :"a"(a),"a"(b),"a"(c),"d"(sn)
+   :"R1","R2","R3","A0","A1","memory"
+  );
+ENDM
+MACRO MUL_START
+  asm (
+  "A1=A0=0;\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  "R3=W[%%0+2*%d] (Z);\n"
+  "R4=W[%%1+2*%d] (Z);\n"
+  "A0+=R3.L*R4.L (FU);\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "R3=W[%%0+2*%d] (Z);\n"
+  "R4=W[%%1+2*%d] (Z);\n"
+  "A0+=R3.L*R4.L (FU);\n"
+ENDM
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "R4=A0.W;\n"
+  "W[%%2+2*%d]=R4;\n"
+  "A0=A0>>16;\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END 
+  "R4=A0.W;\n"
+  "W[%%2+2*%d]=R4;\n"
+   :
+   :"a"(a),"a"(b),"a"(c)
+   :"R3","R4","A0","A1","memory"
+  );
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  asm (
+  "A0=0;\n"
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  "R3=W[%%0+2*%d] (Z);\n"
+  "R4=W[%%0+2*%d] (Z);\n"
+  "A0+=R3.L*R4.L (FU);\n"
+  "A0+=R3.L*R4.L (FU);\n"
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  "R4=W[%%0+2*%d] (Z);\n"
+  "A0+=R4.L*R4.L (FU);\n"
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  "R4=A0.W;\n"
+  "W[%%1+2*%d]=R4;\n"
+  "A0=A0>>16;\n"
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  "R4=A0.W;\n"
+  "W[%%1+2*%d]=R4;\n"
+   :
+   :"a"(a),"a"(c)
+   :"R3","R4","A0","memory"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  asm (
+  "A1=A0=0;\n"
+  "R4=W[%%0] (Z);\n"
+  "A0.L=R4.L;\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "R4=A0.W;\n"
+  "R3=R4.L*%%2.L (FU);\n"
+  "W[%%0+2*%d]=R3;\n"
+  "R4=W[%%1] (Z);\n"
+  "A0+=R3.L*R4.L (FU);\n"
+  "A0=A0>>16;\n"
+  "R3=W[%%0+2*%d+2] (Z);\n"
+  "A1.L=R3.L ;\n"
+  "A0+=A1 ;\n"
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  "R4=A0.W;\n"
+  "W[%%0+2*%d]=R4;\n"
+  "A0=A0>>16;\n"
+  "R3=W[%%0+2*%d+2] (Z);\n"
+  "A1.L=R3.L ;\n"
+  "A0+=A1 ;\n"
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  "R4=A0.W;\n"
+  "W[%%0+2*%d]=R4;\n"
+  "A0=A0>>16;\n"
+  "R4=A0.W;\n"
+  "W[%%0+2*%d+2]=R4;\n" 
+   :
+   :"a"(a),"a"(b),"d"(ndash)
+   :"R3","R4","A0","A1","memory"
+  );
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  asm (
+  "R3=W[%%1] (Z);\n"
+  "R4=W[%%2] (Z);\n"
+  "R3=R4+R3;\n"
+  "W[%%3]=R3;\n"
+  "%%0=R3>>16;\n"
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  "R3=W[%%1+2*%d] (Z);\n"
+  "R4=W[%%2+2*%d] (Z);\n"
+  "R3=R4+R3;\n"
+  "R3=%%0+R3;\n"
+  "W[%%3+2*%d]=R3;\n"
+  "%%0=R3>>16;\n"
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+  :"=d"(carry)
+  :"a"(a),"a"(b),"a"(c)
+  :"R3","R4","memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  asm (
+  "R3=W[%%1] (Z);\n"
+  "R4=W[%%2] (Z);\n"
+  "R3=R4+R3;\n"
+  "W[%%1]=R3;\n"
+  "%%0=R3>>16;\n"
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  "R3=W[%%1+2*%d] (Z);\n"
+  "R4=W[%%2+2*%d] (Z);\n"
+  "R3=R4+R3;\n"
+  "R3=%%0+R3;\n"
+  "W[%%1+2*%d]=R3;\n"
+  "%%0=R3>>16;\n"
+ENDM
+MACRO INC_END
+  :"=d"(carry)
+  :"a"(a),"a"(b)
+  :"R3","R4","memory"
+  );
+ENDM
+MACRO SUB_START
+  asm (
+  "R3=W[%%1] (Z);\n"
+  "R4=W[%%2] (Z);\n"
+  "R3=R3-R4;\n"
+  "W[%%3]=R3;\n"
+  "%%0=R3>>>16;\n"
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  "R3=W[%%1+2*%d] (Z);\n"
+  "R4=W[%%2+2*%d] (Z);\n"
+  "R3=R3-R4;\n"
+  "R3=%%0+R3;\n"
+  "W[%%3+2*%d]=R3;\n"
+  "%%0=R3>>>16;\n"
+ENDM
+MACRO SUB_END
+  "%%0=-%%0;\n"
+  :"=d"(carry)
+  :"a"(a),"a"(b),"a"(c)
+  :"R3","R4","memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  asm (
+  "R3=W[%%1] (Z);\n"
+  "R4=W[%%2] (Z);\n"
+  "R3=R3-R4;\n"
+  "W[%%1]=R3;\n"
+  "%%0=R3>>>16;\n"
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  "R3=W[%%1+2*%d] (Z);\n"
+  "R4=W[%%2+2*%d] (Z);\n"
+  "R3=R3-R4;\n"
+  "R3=%%0+R3;\n"
+  "W[%%1+2*%d]=R3;\n"
+  "%%0=R3>>>16;\n"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "%%0=-%%0;\n"
+  :"=d"(carry)
+  :"a"(a),"a"(b)
+  :"R3","R4","memory"
+  );
+ENDM
+;
+; KADD_START macro
+;
+MACRO KADD_START
+  asm (
+  "k%d:\n"
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+  "%%4+= -1;\n"
+  "CC=%%4;\n"
+  "IF !CC JUMP k%d;\n"
+  "%%1+=2*%d;\n"
+  "%%2+=2*%d;\n"
+  "%%3+=2*%d;\n"
+  "JUMP k%d;\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END  macro
+;
+MACRO KADD_END
+   :"=d"(carry)
+   :"a"(a),"a"(b),"a"(c),"d"(n)
+   :"R3","R4","memory"
+  );
+ENDM
+;
+; KINC_START macro. Zero carry flag. 
+;
+MACRO KINC_START
+  asm (
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "%%3+= -1;\n"
+  "CC=%%3;\n"
+  "IF !CC JUMP k%d;\n"
+  "%%1+=2*%d;\n"
+  "%%2+=2*%d;\n"
+  "JUMP k%d;\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+   :"=d"(carry)
+   :"a"(a),"a"(b),"d"(n)
+   :"R3","R4","memory"
+  );
+ENDM
+;
+; KDEC_START macro
+;
+MACRO KDEC_START
+  asm (
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+   "%%0=-%%0;\n"
+   :"=d"(carry)
+   :"a"(a),"a"(b),"d"(n)
+   :"R3","R4","memory"
+  );
+ENDM

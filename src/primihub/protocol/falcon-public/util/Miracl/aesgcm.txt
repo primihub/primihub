@@ -1,0 +1,22 @@
+There is a new simple implementation of the AES-GCM Encryption/Authentication mode.
+See new module mrgcm.c
+To test uncomment example program at the bottom of mrgcm.c and link with mraes.c 
+
+This version is not the fastest possible, but it does use only
+a small amount of memory. Only 2k bytes of RAM are required for
+precomputed tables.
+
+Some restrictions.. 
+1. Only for use with AES
+2. 96-bit IV only supported
+3. Returned tag is always 128-bits. Truncate at your own risk.
+4. The order of function calls must follow some rules
+
+Typical sequence of calls..
+1. call gcm_init
+2. call gcm_add_header any number of times, as long as length of header is multiple of 16 bytes (block size)
+3. call gcm_add_header one last time with any length of header
+4. call gcm_add_cipher any number of times, as long as length of cipher/plaintext is multiple of 16 bytes
+5. call gcm_add_cipher one last time with any length of cipher/plaintext
+6. call gcm_finish to extract the tag.
+See full description at http://www.mindspring.com/~dmcgrew/gcm-nist-6.pdf

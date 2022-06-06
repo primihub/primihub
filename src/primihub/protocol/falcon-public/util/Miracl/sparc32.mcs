@@ -1,0 +1,486 @@
+;
+; 32-bit SPARC v8 version. Don't forget the delay slot!
+;
+; Sorry about all the %'s! Each % must be input here as %%
+; Triple register is %l2|%l1|%l0
+; MUL_START. Initialise registers. Make %o0 and %o1 point to multipliers a 
+; and b. %o2 points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+; 
+
+MACRO PMUL_START
+  __asm__ __volatile__ (
+  "mov %%0,%%%%o0\n"
+  "mov %%1,%%%%o1\n"
+  "mov %%2,%%%%o2\n"
+  "mov %%3,%%%%o3\n"
+  "mov %%%%g0,%%%%l0\n"
+ENDM
+
+MACRO PMUL
+  "ld     [%%%%o0+4*%d],%%%%l1\n"
+  "umul   %%%%l1,%%%%o3,%%%%l1\n"
+  "rd     %%%%y,%%%%l2\n"
+  "addcc  %%%%l1,%%%%l0,%%%%l1\n"
+  "addxcc %%%%l2,%%%%g0,%%%%l0\n"
+  "st     %%%%g0,[%%%%o1+4*%d]\n"
+  "st     %%%%l1,[%%%%o2+4*%d]\n"
+ENDM
+
+MACRO PMUL_END
+  "umul %%%%l0,%%%%o3,%%%%l1\n"
+  "rd   %%%%y,%%%%l2\n"
+  "st   %%%%l1,[%%%%o1]\n"
+  "st   %%%%l2,[%%%%o1+4]\n"
+   :
+   :"r"(a),"r"(b),"r"(c),"r"(sn)
+   :"l0","l1","l2","o0","o1","o2","o3","memory"
+  );
+ENDM
+
+
+MACRO MUL_START
+  __asm__ __volatile__ (
+  "mov    %%0,%%%%o0\n"
+  "mov    %%1,%%%%o1\n"
+  "mov    %%2,%%%%o2\n"
+  "mov    %%%%g0,%%%%l0\n"
+  "mov    %%%%g0,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "ld     [%%%%o1+4*%d],%%%%l4\n"
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+MACRO STEP1M
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "ld     [%%%%o1+4*%d],%%%%l4\n"
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+ENDM
+MACRO STEP1A
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+MACRO STEP2M
+  "ld     [%%%%o0+4*%d],%%%%l5\n"
+  "ld     [%%%%o1+4*%d],%%%%l6\n"
+  "umul   %%%%l5,%%%%l6,%%%%l5\n"
+  "rd     %%%%y,%%%%l6\n"
+ENDM
+MACRO STEP2A
+  "addcc  %%%%l0,%%%%l5,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l6,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "ld     [%%%%o1+4*%d],%%%%l4\n" 
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "add    %%%%l0,%%%%l3,%%%%l0\n"
+ENDM
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+  "mov    %%%%l1,%%%%l0\n"
+  "mov    %%%%l2,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END  
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+   :
+   :"r"(a),"r"(b),"r"(c)
+   :"l0","l1","l2","l3","l4","l5","l6","o0","o1","o2","memory"
+  );
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  __asm__ __volatile__ (
+  "mov    %%0,%%%%o0\n"
+  "mov    %%1,%%%%o2\n"
+  "mov    %%%%g0,%%%%l0\n"
+  "mov    %%%%g0,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "ld     [%%%%o0+4*%d],%%%%l4\n"
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+MACRO DSTEP1M
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "ld     [%%%%o0+4*%d],%%%%l4\n"
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+ENDM
+MACRO DSTEP1A
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+MACRO DSTEP2M
+  "ld     [%%%%o0+4*%d],%%%%l5\n"
+  "ld     [%%%%o0+4*%d],%%%%l6\n"
+  "umul   %%%%l5,%%%%l6,%%%%l5\n"
+  "rd     %%%%y,%%%%l6\n"
+ENDM
+MACRO DSTEP2A
+  "addcc  %%%%l0,%%%%l5,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l6,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+  "addcc  %%%%l0,%%%%l5,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l6,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+;
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "ld     [%%%%o0+4*%d],%%%%l3\n"
+  "umul   %%%%l3,%%%%l3,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+  "mov    %%%%l1,%%%%l0\n"
+  "mov    %%%%l2,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+   :
+   :"r"(a),"r"(c)
+   :"l0","l1","l2","l3","l4","l5","l6","o0","o2","memory"
+  );
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  __asm__ __volatile__ (
+  "mov    %%0,%%%%o0\n"
+  "mov    %%1,%%%%o1\n"
+  "mov    %%2,%%%%o2\n"
+  "mov    %%%%g0,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+  "ld     [%%%%o0],%%%%l0\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "umul   %%%%l0,%%%%o2,%%%%l3\n"
+  "st     %%%%l3,[%%%%o0+4*%d]\n"
+  "ld     [%%%%o1],%%%%l4\n"
+  "umul   %%%%l3,%%%%l4,%%%%l3\n"
+  "rd     %%%%y,%%%%l4\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addxcc %%%%l1,%%%%l4,%%%%l1\n"
+  "addx   %%%%l2,%%%%g0,%%%%l2\n"
+  "mov    %%%%l1,%%%%l0\n"
+  "mov    %%%%l2,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+  "ld     [%%%%o0+4*(%d+1)],%%%%l3\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addx   %%%%l1,%%%%l2,%%%%l1\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "st     %%%%l0,[%%%%o0+4*%d]\n"
+  "mov    %%%%l1,%%%%l0\n"
+  "mov    %%%%l2,%%%%l1\n"
+  "mov    %%%%g0,%%%%l2\n"
+  "ld     [%%%%o0+4*(%d+1)],%%%%l3\n"
+  "addcc  %%%%l0,%%%%l3,%%%%l0\n"
+  "addx   %%%%l1,%%%%l2,%%%%l1\n"
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "st     %%%%l0,[%%%%o0+4*%d]\n"
+  "st     %%%%l1,[%%%%o0+4*(%d+1)]\n"
+   :
+   :"r"(a),"r"(b),"r"(ndash)
+   :"l0","l1","l2","l3","l4","l5","l6","o0","o1","o2","memory"
+  );
+ENDM
+;
+; ADD_START macro - initialise for add. Do first one
+;
+MACRO ADD_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "mov    %%3,%%%%o2\n"
+  "ld     [%%%%o0],%%%%l0\n"
+  "ld     [%%%%o1],%%%%l1\n"
+  "addcc  %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o2]\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "ld     [%%%%o0+4*%d],%%%%l0\n"
+  "ld     [%%%%o1+4*%d],%%%%l1\n"
+  "addxcc %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+ENDM
+;
+; ADD_END macro. Catch Carry
+;
+MACRO ADD_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b),"r"(c)
+   :"o0","o1","o2","l0","l1","memory"
+  );
+ENDM
+;
+; INC_START macro
+;
+MACRO INC_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "ld     [%%%%o0],%%%%l0\n"
+  "ld     [%%%%o1],%%%%l1\n"
+  "addcc  %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o0]\n"
+ENDM
+;
+; INC macro. Increment number in memory. Don't forget carry
+;
+MACRO INC
+  "ld     [%%%%o0+4*%d],%%%%l0\n"
+  "ld     [%%%%o1+4*%d],%%%%l1\n"
+  "addxcc %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o0+4*%d]\n"
+ENDM
+;
+; INC_END macro. Catch Carry
+;
+MACRO INC_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b)
+   :"o0","o1","l0","l1","memory"
+  );
+ENDM
+;
+; SUB_START macro. Do first one.
+;
+MACRO SUB_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "mov    %%3,%%%%o2\n"
+  "ld     [%%%%o0],%%%%l0\n"
+  "ld     [%%%%o1],%%%%l1\n"
+  "subcc  %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o2]\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "ld     [%%%%o0+4*%d],%%%%l0\n"
+  "ld     [%%%%o1+4*%d],%%%%l1\n"
+  "subxcc %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o2+4*%d]\n"
+ENDM
+;
+; SUB_END macro. Catch Carry
+;
+MACRO SUB_END  
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b),"r"(c)
+   :"o0","o1","o2","l0","l1","memory"
+  );
+ENDM
+;
+; DEC_START macro. Do first one.
+;
+MACRO DEC_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "ld     [%%%%o0],%%%%l0\n"
+  "ld     [%%%%o1],%%%%l1\n"
+  "subcc  %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o0]\n"
+ENDM
+;
+; DEC macro. Decrement from number in memory. Don't forget borrow.
+;
+MACRO DEC
+  "ld     [%%%%o0+4*%d],%%%%l0\n"
+  "ld     [%%%%o1+4*%d],%%%%l1\n"
+  "subxcc %%%%l0,%%%%l1,%%%%l0\n"
+  "st     %%%%l0,[%%%%o0+4*%d]\n"
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b) 
+   :"o0","o1","l0","l1","memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero carry flag
+;
+MACRO KADD_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "mov    %%3,%%%%o2\n"
+  "mov    %%4,%%%%o3\n"
+  "addcc  %%%%g0,%%%%g0,%%%%g0\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro. Leave carry flag undisturbed
+; Save carry in l0, and then restore it in delay slot
+;
+MACRO KASL
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "subcc  %%%%o3,1,%%%%o3\n"
+  "be     k%d\n"
+  "addcc  %%%%l0,-1,%%%%g0\n"
+  "add    %%%%o0,4*%d,%%%%o0\n"
+  "add    %%%%o1,4*%d,%%%%o1\n"
+  "add    %%%%o2,4*%d,%%%%o2\n"
+  "ba     k%d\n"
+  "add    %%%%g0,%%%%g0,%%%%g0\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END  macro
+;
+MACRO KADD_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b),"r"(c),"r"(n)
+   :"o0","o1","o2","o3","l0","l1","memory"
+  );
+ENDM
+;
+; KINC_START macro. Zero carry flag. 
+;
+MACRO KINC_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "mov    %%3,%%%%o3\n"
+  "addcc  %%%%g0,%%%%g0,%%%%g0\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "subcc  %%%%o3,1,%%%%o3\n"
+  "be     k%d\n"
+  "addcc  %%%%l0,-1,%%%%g0\n"
+  "add    %%%%o0,4*%d,%%%%o0\n"
+  "add    %%%%o1,4*%d,%%%%o1\n"
+  "ba     k%d\n"
+  "add    %%%%g0,%%%%g0,%%%%g0\n"
+  "k%d:\n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"      
+   :"=r"(carry)
+   :"r"(a),"r"(b),"r"(n)
+   :"o0","o1","o3","l0","l1","memory"
+  );
+ENDM
+;
+; KDEC_START macro
+;
+MACRO KDEC_START
+  __asm__ __volatile__ (
+  "mov    %%1,%%%%o0\n"
+  "mov    %%2,%%%%o1\n"
+  "mov    %%3,%%%%o3\n"
+  "addcc  %%%%g0,%%%%g0,%%%%g0\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "addx   %%%%g0,%%%%g0,%%%%l0\n"
+  "mov    %%%%l0,%%0\n"
+   :"=r"(carry)
+   :"r"(a),"r"(b),"r"(n)
+   :"o0","o1","o3","l0","l1","memory"
+  );
+ENDM
+

@@ -1,0 +1,100 @@
+ST22 32-bit smart-card processor
+
+Supported by the files
+
+mrmuldv.st2
+st22.mcs
+st22_new.mcs
+mrkcmx.tpl
+mrcombax.tpl
+mrcomb2x.tpl
+
+(To obtain these files, please contact us directly at mscott@indigo.ie)
+
+The Comba and KCM methods are fully supported. Also support for GF(2^m) 
+methods, so MR_COMBA2 can be defined.
+
+The alternative st22_new.mcs file implements the slightly faster hybrid method.
+
+The inline assembly feature in the compiler is not as powerful as the GCC 
+compilers, and so special template files are needed to support this 
+processor (the .tpl files above)
+
+Note the type "unsigned long long" does not work with the compiler. This 
+program outputs u=0 while the correct answer is u=0xfffffffe.
+
+#include <stdio.h>
+
+int main()
+{
+    unsigned int a,b;
+    unsigned long long u;
+
+    a=0xFFFFFFFF; b=0xFFFFFFFF;
+	 
+    u=(unsigned long long)a*b;
+    printf("u= %x\n",(unsigned int)(u>>32));
+
+    return 0;
+}
+
+This can be fixed by inserting asm("mov $dspmode,1") before the 
+multiplication.
+
+
+For a quick-start example extract all the miracl files into 
+a single directory, and use this mirdef.h header file
+
+#define MR_BIG_ENDIAN
+#define MIRACL 32
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_dltype long long
+#define mr_unsign64 unsigned long long
+#define MR_STATIC 6
+#define MR_ALWAYS_BINARY
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+#define MR_SHORT_OF_MEMORY
+#define MR_COMBA 6
+#define MR_SPECIAL
+
+Next compile the standalone utility mex.c
+
+Then build the miracl library using 
+
+del miracl.a
+mex 6 st22 mrcombax
+copy mrmuldv.st2 mrmuldv.c
+sjcc -c -O3 mrcore.c
+sjcc -c -O3 mrarth0.c
+sjcc -c -O3 mrarth1.c
+sjcc -c -O3 mrarth2.c
+sjcc -c -O3 mrio1.c
+sjcc -c -O3 mrxgcd.c
+sjcc -c -O3 mrbits.c
+sjcc -c -O3 mrmonty.c
+sjcc -c -O3 mrsroot.c
+sjcc -c -O3 mrcurve.c
+sjcc -c -O3 mrjack.c
+sjcc -c -O3 mrlucas.c
+sjcc -c -O3 mrebrick.c
+sjcc -c -O3 mrsmall.c
+sjcc -c -O3 mrmuldv.c
+sjcc -c -O3 mrcombax.c
+
+sjar rc miracl.a mrcore.obj mrarth0.obj mrarth1.obj mrarth2.obj
+sjar r  miracl.a mrio1.obj mrxgcd.obj mrbits.obj mrjack.obj 
+sjar r  miracl.a mrmonty.obj mrcurve.obj mrsroot.obj
+sjar r  miracl.a mrebrick.obj mrmuldv.obj mrlucas.obj
+sjar r  miracl.a mrcombax.obj mrsmall.obj
+del mr*.obj
+
+Create a project using the program ecdhp.c, the above mirdef.h header, 
+the header miracl.h and the miracl.a library
+
+

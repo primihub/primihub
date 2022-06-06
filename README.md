@@ -1,6 +1,6 @@
 # Primihub 
 ## Feature
-Primihub is a platform that supports Multi-Party Computing(MPC), Federated Learning, Privacy Intersection (PSI), and Privacy Query (PIR) features, and supports extensions of data source access, data consumption, access application, syntax, semantic and security protocols. For details, see Primihub [Core Feature](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
+Primihub is a platform that supports Multi-Party Computing(MPC), Federated Learning, Private set intersection (PSI), and Private Information Retrieval (PIR) features, and supports extensions of data source access, data consumption, access application, syntax, semantic and security protocols. For details, see Primihub [Core Feature](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
 
 ## Quick start
 
@@ -32,7 +32,7 @@ Start three docker containers using docker-compose.
   $ docker-compose up
   ```
 
-Check out the running docker container
+Check out the running docker **container**
 
 ```bash
 $ docker ps

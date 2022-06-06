@@ -93,12 +93,7 @@ class VMNodeImpl final : public VMNode::Service {
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
                       PushTaskReply *pushTaskReply) override;
-    Status SubmitPsiTask(ServerContext *context,
-                         const ExecuteTaskRequest *taskRequest,
-                         ExecuteTaskResponse *taskResponse) override;
-    Status SubmitPirTask(ServerContext *context,
-                         const ExecuteTaskRequest *taskRequest,
-                         ExecuteTaskResponse *taskResponse) override;
+    
     Status ExecuteTask(ServerContext *context,
                        const ExecuteTaskRequest *taskRequest,
                        ExecuteTaskResponse *taskResponse) override;

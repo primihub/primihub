@@ -1,0 +1,34 @@
+Edwards curves are now supported for ECC.
+
+There are some limitations. In particular the pairings programs will NOT
+work with Edwards curves. However for ECC programs they will be faster 
+than using the standard Jacobian/Weierstrass method.
+
+To enable Edwards curves (and disable standard curves), simply insert
+
+#define MR_EDWARDS
+
+into mirdef.h
+
+and recompile the MIRACL library
+
+Note that the SCHOOF and SEA applications have now been modified to 
+accept a flag -E which now looks for curves in Edwards form. Note that
+these programs must be compiled *without" setting MR_EDWARDS. (They accept
+the curve in twisted inverted Edwards form, convert to Weierstrass form, 
+and count the points on that, before converting back to Edwards). 
+
+An example parameter file describing an edwards curve is in the file 
+edwards.ecs
+
+If MR_EDWARDS is defined, alternative code to support edwards curves is
+used in modules mrcurve.c and mrecn2.c. Note that curves over 2^m are not
+affected.
+
+To test, proceed as above to build the MIRACL library, compile and run 
+the ECDSA (Elliptic Curve Digital Signature) test programs ecsgen.c, 
+ecsign.c and ecsver.c, and also the ebrick.c program
+
+Note that some programs like pk-demo.c are "hard-wired" to a non-edwards
+curve, and will not work in this way. The CM program will not work with 
+Edwards curves.

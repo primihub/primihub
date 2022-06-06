@@ -74,14 +74,44 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         
         // Construct protocol semantic parser
         auto _psp = ProtocolSemanticParser(this->node_id,
-                                            this->singleton, 
-                                            this->nodelet->getDataService());
+                                           this->singleton, 
+                                           this->nodelet->getDataService());
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
 
-    } else if (pushTaskRequest->task().type() ==
-               primihub::rpc::TaskType::PSI_TASK) {
-        LOG(INFO) << "start to schedule psi task";
+    } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
+               pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
+        LOG(INFO) << "start to schedule schedule task";
+        absl::MutexLock lock(&parser_mutex_);
+        std::shared_ptr<LanguageParser> lan_parser_ = LanguageParserFactory::Create(*pushTaskRequest);
+        if (lan_parser_ == nullptr) {
+            pushTaskReply->set_ret_code(1);
+            return Status::OK;
+        }
+        lan_parser_->parseDatasets();
+
+        // Construct protocol semantic parser
+        auto _psp = ProtocolSemanticParser(this->node_id,
+                                           this->singleton, 
+                                           this->nodelet->getDataService());
+        // Parse and dispathc pir task.
+        if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK) {
+            _psp.schedulePirTask(lan_parser_, this->node_id, this->node_ip, this->service_port);
+            PushTaskRequest _1NodePushTaskRequest;
+            int ret = _psp.transformPirRequest(lan_parser_, _1NodePushTaskRequest);
+            if (ret) {
+                pushTaskReply->set_ret_code(1);
+                return Status::OK;
+            }
+            LOG(INFO) << "start to create worker for pir task";
+            running_set.insert(job_task);
+            std::shared_ptr<Worker> worker = CreateWorker();
+            worker->execute(&_1NodePushTaskRequest);
+            running_set.erase(job_task);
+        } else {
+            _psp.schedulePsiTask(lan_parser_);
+        }
+
     } else {
         LOG(INFO) << "start to create worker for task";
         running_set.insert(job_task);
@@ -97,26 +127,42 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
  * method runs on the node as psi server
  *
  * **************************************/
-Status VMNodeImpl::SubmitPsiTask(ServerContext *context,
-                                 const ExecuteTaskRequest *taskRequest,
-                                 ExecuteTaskResponse *taskResponse) {
-
-    return Status::OK;
-}
-
-Status VMNodeImpl::SubmitPirTask(ServerContext *context,
-                                 const ExecuteTaskRequest *taskRequest,
-                                 ExecuteTaskResponse *taskResponse) {}
-
 Status VMNodeImpl::ExecuteTask(ServerContext *context,
                                const ExecuteTaskRequest *taskRequest,
                                ExecuteTaskResponse *taskResponse) {
+    std::string job_task = "";
+    primihub::rpc::TaskType taskType;
     if (taskRequest->algorithm_request_case() ==
-        ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
-        return SubmitPsiTask(context, taskRequest, taskResponse);
+            ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+        taskType = primihub::rpc::TaskType::NODE_PSI_TASK;
+        job_task = taskRequest->psi_request().job_id() +
+	           taskRequest->psi_request().task_id();
+        if (running_set.find(job_task) != running_set.end()) {
+            taskResponse->mutable_psi_response()->set_ret_code(1);
+            return Status::OK;
+	}
     } else if (taskRequest->algorithm_request_case() ==
-               ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
-        return SubmitPirTask(context, taskRequest, taskResponse);
+	          ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+        taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
+        job_task = taskRequest->pir_request().job_id() +
+                   taskRequest->pir_request().task_id();
+        if (running_set.find(job_task) != running_set.end()) {
+            taskResponse->mutable_pir_response()->set_ret_code(1);
+            return Status::OK;
+        }
+    }
+
+    if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
+            taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
+        LOG(INFO) << "start to create server for task.";
+        running_set.insert(job_task);
+        std::shared_ptr<Worker> worker = CreateWorker();
+        worker->execute(taskRequest, taskResponse);
+        running_set.erase(job_task);
+
+        return Status::OK;
+    } else {
+        return Status::OK;
     }
 }
 
@@ -135,6 +181,7 @@ void RunServer(primihub::VMNodeImpl *service, int service_port) {
     builder.AddListeningPort(absl::StrCat("0.0.0.0:", service_port),
                              grpc::InsecureServerCredentials());
     builder.RegisterService(service);
+    builder.SetMaxReceiveMessageSize(128 * 1024 * 1024);
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
     LOG(INFO) << " 💻 Node listening on port: " << service_port;

@@ -1,0 +1,13 @@
+
+Running gcc under Snow Leopard requires an under-score in front of the function names in mrmuldv.s64
+
+So muldiv becomes _muldiv, etc.
+
+
+On a MAC using GCC, use the flag
+
+-mdynamic-no-pic
+
+when compiling MIRACL assembly language modules..
+
+(Thanks Augusto)

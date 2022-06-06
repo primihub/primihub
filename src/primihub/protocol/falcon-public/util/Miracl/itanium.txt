@@ -1,0 +1,96 @@
+
+Itanium processor now fully supported using Intel C/C++ Compiler
+
+Use a header file like 
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 64
+#define mr_utype long
+#define MR_IBITS 32
+#define MR_LBITS 64
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long
+#define MR_FLASH 52
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define BITSINCHAR 8
+
+and create file mrmuldv.c from Itanium source code in mrmuldv.any
+
+Note that this mrmuldv.c file only implements muldiv(.) and muldvm(.)
+The other two functions - the time critical ones - muldvd(.) and muldvd2(.)
+are inlined - see miracl.h
+
+Note that the above header file assumes an LP64-compatible compiler. 
+For an LLP64 compiler, change mr_utype to a 64-bit "long long" or __int64
+
+There is also a macro file itanium.mcs  - see kcmcomba.txt and makemcs.txt
+
+
+To build the miracl library, extract below into a file "itanium" and execute
+
+bash itanium
+
+
+-------------------------------
+
+rm miracl.a
+icc -I. -c -O3 mrcore.c
+icc -I. -c -O3 mrarth0.c
+icc -I. -c -O3 mrarth1.c
+icc -I. -c -O3 mrarth2.c
+icc -I. -c -O3 mralloc.c
+icc -I. -c -O3 mrsmall.c
+icc -I. -c -O3 mrio1.c
+icc -I. -c -O3 mrio2.c
+icc -I. -c -O3 mrgcd.c
+icc -I. -c -O3 mrjack.c
+icc -I. -c -O3 mrxgcd.c
+icc -I. -c -O3 mrarth3.c
+icc -I. -c -O3 mrbits.c
+icc -I. -c -O3 mrrand.c
+icc -I. -c -O3 mrprime.c
+icc -I. -c -O3 mrcrt.c
+icc -I. -c -O3 mrscrt.c
+icc -I. -c -O3 mrmonty.c
+icc -I. -c -O3 mrpower.c
+icc -I. -c -O3 mrcurve.c
+icc -I. -c -O3 mrfast.c
+icc -I. -c -O3 mrzzn2.c
+icc -I. -c -O3 mrzzn2b.c
+icc -I. -c -O3 mrzzn3.c
+icc -I. -c -O3 mrecn2.c
+icc -I. -c -O3 mrshs.c
+icc -I. -c -O3 mrshs256.c
+icc -I. -c -O3 mrshs512.c
+icc -I. -c -O3 mraes.c
+icc -I. -c -O3 mrgcm.c
+icc -I. -c -O3 mrlucas.c
+icc -I. -c -O3 mrstrong.c
+icc -I. -c -O3 mrbrick.c
+icc -I. -c -O3 mrebrick.c
+icc -I. -c -O3 mrec2m.c
+icc -I. -c -O3 mrgf2m.c
+icc -I. -c -O3 mrflash.c
+icc -I. -c -O3 mrfrnd.c
+icc -I. -c -O3 mrdouble.c
+icc -I. -c -O3 mrround.c
+icc -I. -c -O3 mrbuild.c
+icc -I. -c -O3 mrflsh1.c
+icc -I. -c -O3 mrpi.c
+icc -I. -c -O3 mrflsh2.c
+icc -I. -c -O3 mrflsh3.c
+icc -I. -c -O3 mrflsh4.c
+icc -I. -c -O3 mrmuldv.c
+ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o mrgcm.o
+ar r miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrbits.o mrzzn2b.o
+ar r miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o mrzzn2.o mrzzn3.o
+ar r miracl.a mrpower.o mrfast.o mrshs.o mrshs256.o mraes.o mrlucas.o mrstrong.o mrecn2.o      
+ar r miracl.a mrflash.o mrfrnd.o mrdouble.o mrround.o mrbuild.o
+ar r miracl.a mrflsh1.o mrpi.o mrflsh2.o mrflsh3.o mrflsh4.o
+ar r miracl.a mrbrick.o mrebrick.o mrgf2m.o mrec2m.o mrshs512.o mrmuldv.o
+icc -I. -O3 factor.c miracl.a -lm -o factor
+rm mr*.o
+
+----------------------------------------------------
+
+

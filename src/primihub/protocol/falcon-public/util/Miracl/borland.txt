@@ -1,0 +1,40 @@
+You have just downloaded the "free" and excellent Borland Compiler from 
+www.borland.com, and you want to compile the MIRACL library and create some 
+applications. If so, read on....
+
+If you have the TASM assembler (which is not free) then unzip all the MIRACL 
+files into one directory, read the comments at the start of bc32doit.bat
+and if happy execute the batch file. Some example commands to build some 
+representative applications are at the end of the batch file.
+
+If you don't have TASM then you can still build a C-only library (which will 
+be slower). Proceed as follows..
+
+1. Unzip MIRACL into a single directory - do not tick the Use Folder Names
+   box if using WinZip
+
+2. Use this header for mirdef.h. Note that Borland now supports a 64-bit data 
+   type called __int64 (compatible with Microsoft C)
+
+#define MIRACL 32
+#define MR_LITTLE_ENDIAN
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_dltype __int64
+#define mr_unsign64 unsigned __int64
+#define MR_NOASM
+#define MR_FLASH 52
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+
+
+3. Copy all the miracl header files into the directory where Borland C
+   puts its standard headers. This may be c:\borland\bcc55\include
+
+4. Edit bc32doit.bat. Read the comments at the start. Remove all -B compiler 
+   flags (these invoke TASM, and you haven't got TASM). 
+   Delete all references to mrmuldv.c
+
+5. Run the batch file.
+

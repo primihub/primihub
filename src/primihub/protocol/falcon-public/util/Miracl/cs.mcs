@@ -1,0 +1,276 @@
+; Comba/KCM Macros for C
+;
+; This version assumes the use of a base in the call to mirsys(.)
+; which allows the sum of partial products to be stored in an mr_large
+; for example 2^26 for a 32-bit processor (like a Pentium)
+;
+; In mirdef.h -
+; #define MR_NOASM
+; #define MR_NOFULLWIDTH
+;
+; Note that: 
+; mr_small is a word length unsigned type
+; mr_large is a double word length unsigned type
+;
+; In this case the Triple register is just the variable sum
+; 
+; See makemcs.txt for more information about this file
+; 
+MACRO MUL_START
+  sum=0;
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  sum+=(mr_large)a[%d]*b[%d];
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  c[%d]=(mr_small)sum&mr_mip->base_mask;
+  sum>>=mr_mip->lg2b;
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  sum+=(mr_large)a[%d]*b[%d];
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  c[%d]=(mr_small)sum&mr_mip->base_mask;
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  sum=0;
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  pp1=(mr_large)a[%d]*a[%d];
+  sum+=pp1;
+  sum+=pp1;
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  pp1=(mr_large)a[%d];
+  pp1*=pp1;
+  sum+=pp1;
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  c[%d]=(mr_small)sum&mr_mip->base_mask;
+  sum>>=mr_mip->lg2b;
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  c[%d]=(mr_small)sum&mr_mip->base_mask;
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  sum=a[0];
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  sp=(mr_small)sum*ndash;
+  sp&=mr_mip->base_mask;
+  a[%d]=sp;
+
+  sum+=(mr_large)sp*b[0];
+ 
+  sum>>=mr_mip->lg2b;
+
+  sum+=(mr_large)a[%d+1];
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  a[%d]=(mr_small)sum&mr_mip->base_mask;
+  sum>>=mr_mip->lg2b;
+  sum+=(mr_large)a[%d+1];
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  a[%d]=(mr_small)sum&mr_mip->base_mask;
+  a[%d+1]=(mr_small)(sum>>mr_mip->lg2b);
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+
+  c[0]=a[0]+b[0];
+  carry=(c[0]>>mr_mip->lg2b);
+  c[0]&=mr_mip->base_mask;
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  su=a[%d]+b[%d]+carry;
+  c[%d]=su&mr_mip->base_mask;
+  carry=(su>>mr_mip->lg2b);
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+ENDM
+;
+; DOUBLE_START macro
+;
+MACRO DOUBLE_START
+  a[0]+=a[0];
+  carry=(a[0]>>mr_mip->lg2b);
+  a[0]&=mr_mip->base_mask;
+ENDM
+;
+; DOUBLE macro
+;
+MACRO DOUBLE
+  su=a[%d];
+  su+=su;
+  su+=carry;
+  a[%d]=su&mr_mip->base_mask;
+  carry=(su>>mr_mip->lg2b);
+ENDM
+;
+; DOUBLE_END
+;
+MACRO DOUBLE_END
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  a[0]+=b[0];
+  carry=(a[0]>>mr_mip->lg2b);
+  a[0]&=mr_mip->base_mask;
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  su=a[%d]+b[%d]+carry;
+  a[%d]=su&mr_mip->base_mask;
+  carry=(su>>mr_mip->lg2b);
+ENDM
+MACRO INC_END
+ENDM
+MACRO SUB_START
+  c[0]=a[0]-b[0];
+  carry=(c[0]>>mr_mip->lg2b)&1;
+  c[0]&=mr_mip->base_mask;
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  su=a[%d]-b[%d]-carry;
+  c[%d]=su&mr_mip->base_mask;
+  carry=(su>>mr_mip->lg2b)&1;
+ENDM
+MACRO SUB_END
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  a[0]-=b[0];
+  carry=(a[0]>>mr_mip->lg2b)&1;
+  a[0]&=mr_mip->base_mask;
+
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  su=a[%d]-b[%d]-carry;
+  a[%d]=su&mr_mip->base_mask;
+  carry=(su>>mr_mip->lg2b)&1;
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ c+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END   
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+ENDM
+

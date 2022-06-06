@@ -18,10 +18,14 @@ message PirRequest {
 
   // Relinearization keys, only needed for recursion depths more than 1.
   bytes relin_keys = 3;
+  bytes job_id = 4;
+  bytes task_id = 5;
 }
 
 // Response to a query, a set of ciphertexts.
 message PirResponse {
+  int32 ret_code = 1;  // 0: success  1: doing  2: error
+
   // Reply to query as a set of 1 or more serialized ciphertexts.
-  repeated Ciphertexts reply = 1;
+  repeated Ciphertexts reply = 2;
 }

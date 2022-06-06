@@ -36,8 +36,6 @@ message ExecuteTaskResponse {
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
-  rpc SubmitPsiTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
-  rpc SubmitPirTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
 }
 

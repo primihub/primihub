@@ -54,6 +54,8 @@ using namespace std;
 using namespace Eigen;
 
 using primihub::rpc::PushTaskRequest;
+using primihub::rpc::ExecuteTaskRequest;
+using primihub::rpc::ExecuteTaskResponse;
 
 namespace primihub {
 
@@ -64,6 +66,9 @@ class Worker {
         : node_id(node_id_), nodelet(nodelet_) {}
 
     void execute(const PushTaskRequest* pushTaskRequest);
+
+    void execute(const ExecuteTaskRequest *taskRequest,
+                 ExecuteTaskResponse *taskResponse);
 
  private:
   std::unordered_map<std::string, std::shared_ptr<Worker>> workers_

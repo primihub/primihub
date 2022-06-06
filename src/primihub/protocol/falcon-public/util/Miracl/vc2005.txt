@@ -1,0 +1,114 @@
+To build the MIRACL library with Visual C++ V8.0
+
+Select New Project, Console Application
+
+Name: miracl
+Location: d:\myprojects (for example)
+Solution name: miracl
+
+Click OK
+
+Click Application settings
+Click on Static library.
+Disable precompiled headers
+Click on Finish
+
+Click on Header Files in the left hand pane
+Click on Project, and Add Existing Item
+Add miracl.h and mirdef.h from wherever you have unzipped the miracl 
+distribution
+
+Click on Source Files in the left hand pane
+Click on Project, and Add Existing Item
+Add the following MIRACL source files from the miracl distribution 
+to the project
+
+mraes.c
+mralloc.c
+mrarth0.c
+mrarth1.c
+mrarth2.c
+mrarth3.c
+mrbits.c
+mrbrick.c
+mrbuild.c
+mrcore.c
+mrcrt.c
+mrcurve.c
+mrdouble.c
+mrebrick.c
+mrec2m.c
+mrgf2m.c
+mrfast.c
+mrflash.c
+mrflsh1.c
+mrflsh2.c
+mrflsh3.c
+mrflsh4.c
+mrfrnd.c
+mrgcd.c
+mrgcm.c
+mrio1.c
+mrio2.c
+mrjack.c
+mrlucas.c
+mrmonty.c
+mrmuldv.c
+mrpi.c
+mrpower.c
+mrprime.c
+mrrand.c
+mrround.c
+mrscrt.c
+mrshs.c
+mrshs256.c
+mrshs512.c
+mrsmall.c
+mrsroot.c
+mrstrong.c
+mrxgcd.c
+mrzzn2.c
+mrzzn2b.c
+mrzzn3.c
+mrecn2.c
+
+Then Click on Build miracl. The library is created in directory 
+d:\myprojects\miracl\debug\miracl.lib
+
+Alternatively create a release version in the obvious way (if desired).
+Close this project
+
+Again Select New Project, Win32 Console Application
+
+Name: brent
+Location: d:\myprojects
+Solution name: brent
+
+Click on OK, click on Application Settings, leave it as Console Application, 
+and again disable precompiled headers.
+Click on Finish.
+
+
+Click on Header Files in the left hand pane
+Click on Project, and Add Existing Item
+Add miracl.h and mirdef.h from wherever you have unzipped the miracl 
+distribution
+Also add zzn.h and big.h (the files required here are indicated in the 
+comment /* Requires: big.cpp zzn.cpp */ at the start of brent.cpp)
+
+Click on Source Files in the left hand pane
+Right click on the automatically generated file brent.cpp, and exclude it 
+from the project.
+Click on Project, and Add Existing Item
+Add the file brent.cpp from the miracl distribution
+Add the files zzn.cpp and big.cpp from the miracl distribution
+
+Click on Project, and Add Existing Item. Navigate to where-ever the miracl 
+library has been created (d:\myprojects\miracl\debug\) and add miracl.lib 
+to the project. Answer No to the dialog that appears.
+
+Click on Build brent
+
+The source files are compiled and linked to the miracl library. To run the 
+program Click on Debug, and then on Start without Debugging.
+

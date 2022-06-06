@@ -1,0 +1,23 @@
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 8
+#define mr_utype char
+#define MR_IBITS 16  /**/
+#define MR_LBITS 32
+#define mr_unsign32 unsigned long
+#define mr_dltype int /**/
+#define mr_qltype long
+#define MR_STATIC 128
+#define MR_ALWAYS_BINARY
+#define MR_NOASM
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_KCM 16
+#define MR_BITSINCHAR 8
+#define MR_NO_STANDARD_IO
+#define MR_NO_FILE_IO
+

@@ -1,0 +1,436 @@
+;
+; powerPC Macros file for GCC compiler
+;
+; Triple register is R20|R19|R18
+; MUL_START. Initialise registers. Make R21 and R22 point to multipliers a 
+; and b. R23 points at result c. 
+; Initialise Triple register to 0
+; See makemcs.txt for more information about this file
+;
+
+MACRO PMUL_START
+  ASM (
+  "mr %%%%r21,%%0\n"
+  "mr %%%%r22,%%1\n"
+  "mr %%%%r23,%%2\n"
+  "mr %%%%r18,%%3\n"
+  "xor %%%%r19,%%%%r19,%%%%r19\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+
+MACRO PMUL
+  "ld %%%%r16,8*%d(%%%%r21)\n"
+  "mulld  %%%%r24,%%%%r16,%%%%r18\n"
+  "mulhdu %%%%r25,%%%%r16,%%%%r18\n"
+  "addc  %%%%r24,%%%%r19,%%%%r24\n"
+  "addze %%%%r19,%%%%r25\n"
+  "std  %%%%r20,8*%d(%%%%r22)\n"
+  "std  %%%%r24,8*%d(%%%%r23)\n"
+ENDM
+
+MACRO PMUL_END
+  "mulld  %%%%r24,%%%%r18,%%%%r19\n"
+  "mulhdu %%%%r25,%%%%r18,%%%%r19\n"
+  "std %%%%r24,0(%%%%r22)\n"
+  "std %%%%r25,8(%%%%r22)\n"
+  :
+  :"r"(a),"r"(b),"r"(c),"r"(sn)
+  :"r18","r19","r20","r21","r22","r23","r24","r25","memory" 
+  );
+ENDM
+
+MACRO MUL_START
+  ASM (
+  "mr %%%%r21,%%0\n"
+  "mr %%%%r22,%%1\n"
+  "mr %%%%r23,%%2\n"
+  "xor %%%%r18,%%%%r18,%%%%r18\n"
+  "xor %%%%r19,%%%%r19,%%%%r19\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; STEP macro. Calculates a double-register partial product
+; and adds it to the triple register total
+; Parameters 1 & 2: Indices i and j for partial product multipliers a[i] 
+; and b[j]
+MACRO STEP
+  "ld %%%%r16,8*%d(%%%%r21)\n"
+  "ld %%%%r17,8*%d(%%%%r22)\n"
+  "mulld  %%%%r24,%%%%r16,%%%%r17\n"
+  "mulhdu %%%%r25,%%%%r16,%%%%r17\n"
+  "addc   %%%%r18,%%%%r18,%%%%r24\n"
+  "adde   %%%%r19,%%%%r19,%%%%r25\n"
+  "addze  %%%%r20,%%%%r20\n"
+ENDM
+
+;
+; MFIN macro. Finish column calculation. Store Sum for this column
+; and get Carry for next
+; Parameter 1: Index k for Column Sum c[k]
+MACRO MFIN
+  "std %%%%r18,8*%d(%%%%r23)\n"
+  "mr  %%%%r18,%%%%r19\n"
+  "mr  %%%%r19,%%%%r20\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  "ld  %%%%r16,8*%d(%%%%r21)\n"
+  "ld  %%%%r17,8*%d(%%%%r22)\n"
+  "mulld %%%%r24,%%%%r16,%%%%r17\n"
+  "add   %%%%r18,%%%%r24,%%%%r18\n"
+ENDM
+;
+; MUL_END
+; Parameter 1: Index for final carry c[.]
+MACRO MUL_END  
+  "std  %%%%r18,8*%d(%%%%r23)\n"
+  :
+  :"r"(a),"r"(b),"r"(c)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory" 
+  );
+ENDM
+;
+; SQR_START
+; 
+MACRO SQR_START
+  ASM (
+  "mr %%%%r21,%%0\n"
+  "mr %%%%r23,%%1\n"
+  "xor %%%%r18,%%%%r18,%%%%r18\n"
+  "xor %%%%r19,%%%%r19,%%%%r19\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; DSTEP macro. Calculates a double-register partial product
+; and add it twice to a triple register total
+; Parameters 1 & 2 : Indices of partial product multipliers
+MACRO DSTEP
+  "ld %%%%r16,8*%d(%%%%r21)\n"
+  "ld %%%%r17,8*%d(%%%%r21)\n"
+  "mulld  %%%%r24,%%%%r16,%%%%r17\n"
+  "mulhdu %%%%r25,%%%%r16,%%%%r17\n"
+  "addc   %%%%r18,%%%%r18,%%%%r24\n"
+  "adde   %%%%r19,%%%%r19,%%%%r25\n"
+  "addze  %%%%r20,%%%%r20\n"
+  "addc   %%%%r18,%%%%r18,%%%%r24\n"
+  "adde   %%%%r19,%%%%r19,%%%%r25\n"
+  "addze  %%%%r20,%%%%r20\n"
+ENDM
+;                
+; SELF macro. Calculate the double-register square and
+; add it to a triple register total
+; Parameter 1 : Index of diagonal element
+MACRO SELF
+  "ld %%%%r16,8*%d(%%%%r21)\n"
+  "mulld  %%%%r24,%%%%r16,%%%%r16\n"
+  "mulhdu %%%%r25,%%%%r16,%%%%r16\n"
+  "addc   %%%%r18,%%%%r18,%%%%r24\n"
+  "adde   %%%%r19,%%%%r19,%%%%r25\n"
+  "addze  %%%%r20,%%%%r20\n"
+ENDM
+;
+; SFIN macro. Finish column calculation for squaring. Store Sum
+; and get Carry for next column.
+; Parameter 1: Index of Column Sum
+MACRO SFIN
+  "std %%%%r18,8*%d(%%%%r23)\n"
+  "mr  %%%%r18,%%%%r19\n"
+  "mr  %%%%r19,%%%%r20\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; SQR_END
+; Parameter 1: Index for final carry
+MACRO SQR_END
+  "std %%%%r18,8*%d(%%%%r23)\n"
+  :
+  :"r"(a),"r"(c)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory"  
+  );
+ENDM
+;
+; REDC_START macro
+;
+MACRO REDC_START
+  ASM (
+  "mr %%%%r21,%%0\n"
+  "mr %%%%r22,%%1\n"
+  "mr %%%%r23,%%2\n"
+  "xor %%%%r20,%%%%r20,%%%%r20\n"
+  "xor %%%%r19,%%%%r19,%%%%r19\n"
+  "ld  %%%%r18,0(%%%%r21)\n"
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  "mulld  %%%%r17,%%%%r23,%%%%r18\n"
+  "std    %%%%r17,8*%d(%%%%r21)\n"
+  "ld     %%%%r16,0(%%%%r22)\n"
+  "mulld  %%%%r24,%%%%r16,%%%%r17\n"
+  "mulhdu %%%%r25,%%%%r16,%%%%r17\n"
+  "addc   %%%%r16,%%%%r18,%%%%r24\n"
+  "adde   %%%%r18,%%%%r19,%%%%r25\n"
+  "addze  %%%%r19,%%%%r20\n"
+  "ld     %%%%r16,8*(%d+1)(%%%%r21)\n"
+  "addc   %%%%r18,%%%%r18,%%%%r16\n"
+  "addze  %%%%r19,%%%%r19\n"
+  "xor    %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; RFIND macro
+;
+MACRO RFIND
+  "std   %%%%r18,8*%d(%%%%r21)\n"
+  "ld    %%%%r16,8*(%d+1)(%%%%r21)\n"
+  "addc  %%%%r18,%%%%r19,%%%%r16\n"
+  "addze %%%%r19,%%%%r20\n"
+  "xor   %%%%r20,%%%%r20,%%%%r20\n"
+ENDM
+;
+; REDC_END
+;
+MACRO REDC_END
+  "std  %%%%r18,8*%d(%%%%r21)\n"
+  "std  %%%%r19,8*(%d+1)(%%%%r21)\n"
+  :
+  :"r"(a),"r"(b),"r"(ndash)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory"  
+  );
+ENDM
+;
+; ADD_START macro - initialise for add/subtract, do first one
+;
+MACRO ADD_START
+  ASM (
+  "mr   %%%%r22,%%1\n"
+  "mr   %%%%r23,%%2\n"
+  "mr   %%%%r24,%%3\n"
+  "ld   %%%%r16,0(%%%%r22)\n"
+  "ld   %%%%r17,0(%%%%r23)\n"
+  "addc %%%%r16,%%%%r16,%%%%r17\n"
+  "std  %%%%r16,0(%%%%r24)\n"
+ENDM
+;
+; ADD macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO ADD
+  "ld   %%%%r16,8*%d(%%%%r22)\n"
+  "ld   %%%%r17,8*%d(%%%%r23)\n"
+  "adde %%%%r16,%%%%r16,%%%%r17\n"
+  "std  %%%%r16,8*%d(%%%%r24)\n"
+ENDM
+;
+; ADD_END macro. Catch carry
+;
+MACRO ADD_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "mr    %%0,%%%%r16\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(c)
+  :"r16","r17","r22","r23","r24","memory"
+  );
+ENDM
+;
+; INC_START macro. Do first one
+;
+MACRO INC_START
+  ASM (
+  "mr   %%%%r22,%%1\n"
+  "mr   %%%%r23,%%2\n"
+  "ld   %%%%r16,0(%%%%r22)\n"
+  "ld   %%%%r17,0(%%%%r23)\n"
+  "addc %%%%r16,%%%%r16,%%%%r17\n"
+  "std  %%%%r16,0(%%%%r22)\n"
+ENDM
+;
+; INC macro. Add two numbers from memory and store result in memory.
+; Don't forget carry bit
+;
+MACRO INC
+  "ld   %%%%r16,8*%d(%%%%r22)\n"
+  "ld   %%%%r17,8*%d(%%%%r23)\n"
+  "adde %%%%r16,%%%%r16,%%%%r17\n"
+  "std  %%%%r16,8*%d(%%%%r22)\n"
+ENDM
+;
+; INC_END macro. Catch carry
+;
+MACRO INC_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "mr    %%0,%%%%r16\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b)
+  :"r16","r17","r22","r23","memory"
+  );
+ENDM
+;
+; SUB_START macro
+;
+MACRO SUB_START
+  ASM (
+  "mr   %%%%r22,%%1\n"
+  "mr   %%%%r23,%%2\n"
+  "mr   %%%%r24,%%3\n"
+  "ld   %%%%r16,0(%%%%r22)\n"
+  "ld   %%%%r17,0(%%%%r23)\n"
+  "subfc %%%%r16,%%%%r17,%%%%r16\n"
+  "std   %%%%r16,0(%%%%r24)\n"
+ENDM
+;
+; SUB macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO SUB
+  "ld   %%%%r16,8*%d(%%%%r22)\n"
+  "ld   %%%%r17,8*%d(%%%%r23)\n"
+  "subfe %%%%r16,%%%%r17,%%%%r16\n"
+  "std  %%%%r16,8*%d(%%%%r24)\n"
+ENDM
+;
+; SUB_END macro. Catch carry
+;
+MACRO SUB_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "subfic %%%%r17,%%%%r16,1\n"
+  "mr    %%0,%%%%r17\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(c)
+  :"r16","r17","r22","r23","r24","memory"
+  );
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  ASM (
+  "mr  %%%%r22,%%1\n"
+  "mr  %%%%r23,%%2\n"
+  "ld  %%%%r16,0(%%%%r22)\n"
+  "ld  %%%%r17,0(%%%%r23)\n"
+  "subfc %%%%r16,%%%%r17,%%%%r16\n"
+  "std  %%%%r16,0(%%%%r22)\n"
+ENDM
+;
+; DEC macro. Subtract two numbers in memory and store result in memory.
+;
+MACRO DEC
+  "ld   %%%%r16,8*%d(%%%%r22)\n"
+  "ld   %%%%r17,8*%d(%%%%r23)\n"
+  "subfe %%%%r16,%%%%r17,%%%%r16\n"
+  "std  %%%%r16,8*%d(%%%%r22)\n"
+ENDM
+;
+; DEC_END macro. Catch carry
+;
+MACRO DEC_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "subfic %%%%r17,%%%%r16,1\n"
+  "mr    %%0,%%%%r17\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b)
+  :"r16","r17","r22","r23","memory"
+  );
+ENDM
+;
+; KADD_START macro. Zero Carry flag
+;
+MACRO KADD_START
+  ASM (
+  "mr   %%%%r22,%%1\n"
+  "mr   %%%%r23,%%2\n"
+  "mr   %%%%r24,%%3\n"
+  "mtctr %%4\n"
+  "xor  %%%%r16,%%%%r16,%%%%r16\n"
+  "addc %%%%r16,%%%%r16,%%%%r16\n"
+  "k%d:\n"
+ENDM
+;
+; KASL macro. Important that carry flag is undisturbed!
+;
+MACRO KASL
+  "bdz   k%d\n"
+  "addi  %%%%r22,%%%%r22,8*%d\n"
+  "addi  %%%%r23,%%%%r23,8*%d\n"
+  "addi  %%%%r24,%%%%r24,8*%d\n"
+  "b k%d\n"
+  "k%d:\n"
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "mr    %%0,%%%%r16\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(c),"r"(n)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory" 
+  );
+ENDM
+;
+; KINC_START macro. Set carry to Zero 
+;
+MACRO KINC_START
+  ASM (
+  "mr   %%%%r22,%%1\n"
+  "mr   %%%%r23,%%2\n"
+  "mtctr %%3\n"
+  "xor  %%%%r16,%%%%r16,%%%%r16\n"
+  "addc %%%%r16,%%%%r16,%%%%r16\n"
+  "k%d:\n"
+ENDM
+;
+; KIDL macro. Important that carry flag is undisturbed!
+;
+MACRO KIDL
+  "bdz k%d\n"
+  "addi %%%%r22,%%%%r22,8*%d\n"
+  "addi %%%%r23,%%%%r23,8*%d\n"
+  "b k%d\n"
+  "k%d: \n"
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "mr    %%0,%%%%r16\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(n)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory"
+  );
+ENDM
+;
+; KDEC_START macro. Set carry
+;
+MACRO KDEC_START
+  ASM (
+  "mr %%%%r22,%%1\n"
+  "mr %%%%r23,%%2\n"
+  "mtctr %%3\n"
+  "subfc %%%%r16,%%%%r16,%%%%r16\n"
+  "k%d:\n"
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+  "xor   %%%%r16,%%%%r16,%%%%r16\n"
+  "addze %%%%r16,%%%%r16\n"
+  "subfic %%%%r17,%%%%r16,1\n"
+  "mr    %%0,%%%%r17\n"
+  :"=r"(carry)
+  :"r"(a),"r"(b),"r"(n)
+  :"r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","memory"
+  );
+ENDM
+

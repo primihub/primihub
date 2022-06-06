@@ -19,6 +19,8 @@ enum TaskType {
   NODE_TASK = 1;
   PIR_TASK = 2;
   PSI_TASK = 3;
+  NODE_PIR_TASK = 4;
+  NODE_PSI_TASK = 5;
 }
 
 enum VarType {

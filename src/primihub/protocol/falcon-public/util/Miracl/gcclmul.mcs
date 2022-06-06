@@ -1,0 +1,29 @@
+; MCS file for Gnu GCC AMD64 compiler
+;
+; Sorry about all the %'s! Each % must be input here as %%
+;
+; "Triple register" is %xmm2
+;
+MACRO MULB_START
+  ASM (
+  "movq %%0,%%%%rbx\n"
+  "movq %%1,%%%%rsi\n"
+  "movq %%2,%%%%rdi\n"
+  "pxor %%%%xmm2,%%%%xmm2\n"
+ENDM
+MACRO STEPB
+ "movq 8*%d(%%%%rbx),%%%%xmm0\n"
+ "movq 8*%d(%%%%rsi),%%%%xmm1\n"
+ "pclmulqdq $0,%%%%xmm0,%%%%xmm1\n"
+ "pxor %%%%xmm1,%%%%xmm2\n"
+ENDM
+MACRO MBFIN
+ "movq %%%%xmm2,8*%d(%%%%rdi)\n"
+ "psrldq $8,%%%%xmm2\n"
+ENDM
+MACRO MULB_END  
+   :
+   :"m"(a),"m"(b),"m"(c)
+   :"rdi","rsi","rbx","xmm0","xmm1","xmm2","memory"
+  );
+ENDM

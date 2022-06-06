@@ -1,0 +1,82 @@
+If you have a Pentium 4 or clone processor that supports the SSE2 
+extensions, then using these instructions can be faster.
+
+The file sse2.mcs is provided as a plug-in alternative for ms86.mcs, and 
+gccsse2.mcs is provided as an alternative for gcc386.mcs
+
+Using the COMBA or KCM methods and these provided macros, PCs will execute 
+big number code up to 60% faster. Ideal for a Pentium 4 based Crypto server. 
+See kcmcomba.txt
+
+It is the programmers responsibility to ensure that their hardware and their 
+compiler supports SSE2 extensions.
+
+Tested with latest Microsoft (use sse2.mcs) and GCC compilers (V3.3 or greater 
+- use gccsse2.mcs)
+
+The key instruction is PMULUDQ which multiplies two pairs of 32-bit numbers in 
+a single instruction. Unfortunately trying to exploit this capability is very 
+difficult. But even just using it for a single multiplication is faster than 
+the standard x386 MUL instruction. However SSE2 instructions do not support a 
+carry flag :(. But the PADDQ instruction adds 64-bit numbers.
+
+Consider the following trick:-
+
+The 64-bit result of a PMULUDQ is written to a 128-bit SSE2 register thus
+
+< 32 bits >
+
++--------+---------+----------+-----------+
+|        |         |          |           |
+|00000000|000000000|   Hi     |     Lo    |
+|        |         |          |           |
++--------+---------+----------+-----------+
+
+<---------------- 128 bits --------------->
+
+
+Now shuffle this (using PSHUFD) so it becomes
+
+
++--------+---------+----------+-----------+
+|        |         |          |           |
+|00000000|    Hi   |0000000000|     Lo    |
+|        |         |          |           |
++--------+---------+----------+-----------+
+
+
+Now accumulate (by simple addition) partial products like these 
+(see makemcs.txt) in an SSE2 register, using the PADDQ instruction
+
++--------+---------+----------+-----------+
+|        |         |          |           |
+|00000CHi|  SumHi  |0000000CLo|   SumLo   |
+|        |         |          |           |
++--------+---------+----------+-----------+
+
+
+where CHi and CLo are accumulated carries from each half
+
+At the bottom of each column of partial products, the sum for the column is 
+SumLo, and the Carry for the next column is the sum of
+
+
++--------+---------+----------+-----------+
+|        |         |          |           |
+|   0    |    0    |0000000CHi|   SumHi   |
+|        |         |          |           |
++--------+---------+----------+-----------+
+
+and
+
+
++--------+---------+----------+-----------+
+|        |         |          |           |
+|   0    |    0    |    0     |00000000Clo|
+|        |         |          |           |
++--------+---------+----------+-----------+
+
+
+This can easily be achieved using the available shift instructions and PADDQ. 
+
+

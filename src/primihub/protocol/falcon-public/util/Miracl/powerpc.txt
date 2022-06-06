@@ -1,0 +1,76 @@
+
+64-bit PowerPC G5 processor now fully supported using GCC Compiler
+
+Use a header file like 
+
+#define MR_BIG_ENDIAN
+#define MIRACL 64
+#define mr_utype long
+#define MR_IBITS 32
+#define MR_LBITS 64
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned long
+#define MR_ALWAYS_BINARY
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+
+and use assembly language file mrmuldv.ppc renamed to mrmuldv.c
+Or extract it from mrmuldv.any
+
+To build the miracl library, extract below into a file "powerpc" and execute
+
+bash powerpc
+
+-------------------------------
+
+rm miracl.a
+gcc  -m64 -c -O2 mrcore.c
+gcc  -m64 -c -O2 mrarth0.c
+gcc  -m64 -c -O2 mrarth1.c
+gcc  -m64 -c -O2 mrarth2.c
+gcc  -m64 -c -O2 mralloc.c
+gcc  -m64 -c -O2 mrsmall.c
+gcc  -m64 -c -O2 mrbits.c
+gcc  -m64 -c -O2 mrio1.c
+gcc  -m64 -c -O2 mrio2.c
+gcc  -m64 -c -O2 mrgcd.c
+gcc  -m64 -c -O2 mrjack.c
+gcc  -m64 -c -O2 mrxgcd.c
+gcc  -m64 -c -O2 mrarth3.c
+gcc  -m64 -c -O2 mrrand.c
+gcc  -m64 -c -O2 mrprime.c
+gcc  -m64 -c -O2 mrcrt.c
+gcc  -m64 -c -O2 mrscrt.c
+gcc  -m64 -c -O2 mrmonty.c
+gcc  -m64 -c -O2 mrpower.c
+gcc  -m64 -c -O2 mrcurve.c
+gcc  -m64 -c -O2 mrfast.c
+gcc  -m64 -c -O2 mrzzn2.c
+gcc  -m64 -c -O2 mrzzn2b.c
+gcc  -m64 -c -O2 mrzzn3.c
+gcc  -m64 -c -O2 mrecn2.c
+gcc  -m64 -c -O2 mrshs.c
+gcc  -m64 -c -O2 mrshs256.c
+gcc  -m64 -c -O2 mrshs512.c
+gcc  -m64 -c -O2 mraes.c
+gcc  -m64 -c -O2 mrgcm.c
+gcc  -m64 -c -O2 mrlucas.c
+gcc  -m64 -c -O2 mrstrong.c
+gcc  -m64 -c -O2 mrbrick.c
+gcc  -m64 -c -O2 mrebrick.c
+gcc  -m64 -c -O2 mrgf2m.c
+gcc  -m64 -c -O2 mrec2m.c
+gcc  -m64 -c -O2 mrmuldv.c
+ar rc miracl.a mrcore.o mrarth0.o mrarth1.o mrarth2.o mralloc.o mrsmall.o mrgcm.o
+ar r miracl.a mrio1.o mrio2.o mrjack.o mrgcd.o mrxgcd.o mrarth3.o mrbits.o mrzzn3.o
+ar r miracl.a mrrand.o mrprime.o mrcrt.o mrscrt.o mrmonty.o mrcurve.o mrzzn2.o mrzzn2b.o
+ar r miracl.a mrpower.o mrfast.o mrshs.o mrshs256.o mraes.o mrlucas.o mrstrong.o       
+ar r miracl.a mrbrick.o mrebrick.o mrec2m.o mrgf2m.o mrshs512.o mrmuldv.o mrecn2.o
+gcc -I. -O2 -m64 brent.c miracl.a -o brent
+rm mr*.o
+
+----------------------------------------------------
+
+
+There is also a macro file gccppc.mcs  - see kcmcomba.txt and makemcs.txt
+

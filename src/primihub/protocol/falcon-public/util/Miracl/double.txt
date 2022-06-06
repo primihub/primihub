@@ -1,0 +1,44 @@
+
+With version 4.6 it is now possible to use a floating-point "double"
+as the underlying type used to store the digits of a multi-precision number.
+This is fully supported by the "config" utility.
+
+Some new processors implement integer multiplication using the floating-point 
+multiplier. On processors like these it may be advantageous to 
+work directly with doubles. Other processors support Floating point 
+multiplication, but not integer multiplication.
+
+In many cases however this approach will NOT be optimal, and using an integer 
+type as the underlying type is still recommended for the majority of cases.
+
+To properly use a double type, the program must ideally be able to control the 
+"rounding" behaviour of the floating-point processor. By default this may 
+implement "round to nearest" which is wrong for integer arithmetic where 
+"round to zero" is appropriate. Since no standard C constructs exist to 
+control rounding, a small bit of assembly language may be required - see the 
+function mr_invert() in the module mrarth1.c. Note however that some compilers 
+like GNU C do allow control of rounding via functions declared in ieeefp.h
+
+The compiler must properly support the Ansi Standard "long double" type. It 
+should also implement the standard "modfl()" function for truncation to an 
+integer.
+
+In mirdef.h MR_FP is defined if a double type is to be used. MR_FP_ROUNDING is 
+defined if rounding control can be exercised.
+
+On the Pentium using a double is potentially optimal. See the experimental 
+code in mr87f.c and mr87v.c, which can be used with the Borland C 
+compiler/TASM macro assember combination. The floating point fmul instruction 
+can be executed in just 1 cycle under ideal circumstances, but it requires 
+some very complex code ordering to fully leverage this advantage.
+
+See the ZMODEXP and NISTP224 programs by D. J. Bernstein at 
+http://cr.yp.to/software.html for more optimal examples of this approach.
+
+Note that GF(2^m) arithmetic, which requires bit shifting, and logical 
+operations like XOR and AND, would be hopelessly inefficient using floating-
+point, and so it is not supported with a double underlying type.
+
+See mrmuldv.any for assembly language support...
+
+

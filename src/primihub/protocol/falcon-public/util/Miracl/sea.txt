@@ -1,0 +1,88 @@
+Schoof-Elkies-Atkin-Mueller program for counting points on a GF(p) elliptic
+curve y^2=x^3+Ax+B mod p. 
+
+Precompiled Windows executables of these programs may be downloaded from
+ftp://ftp.compapp.dcu.ie/pub/crypto
+
+To build the mueller/process/sea applications, you must compile and link the 
+modules together, with MIRACL C++ classes , and with the MIRACL library.
+
+So for MS C++ 
+
+cl /c /O2 /GX ps_big.cpp
+cl /c /O2 /GX big.cpp
+cl /c /O2 /GX mueller.cpp
+link mueller.obj ps_big.obj big.obj miracl.lib
+
+cl /c /O2 /GX process.cpp
+link process.obj big.obj miracl.lib
+
+cl /c /O2 /GX modpol.cpp
+cl /c /O2 /GX ps_zzn.cpp
+cl /c /O2 /GX zzn.cpp
+link modpol.obj ps_zzn.obj zzn.obj big.obj miracl.lib
+
+cl /c /O2 /GX sea.cpp
+cl /c /O2 /GX poly.cpp
+cl /c /O2 /GX polymod.cpp
+cl /c /O2 /GX polyxy.cpp
+cl /c /O2 /GX ecn.cpp
+cl /c /O2 /GX crt.cpp
+link sea.obj poly.obj polymod.obj polyxy.obj big.obj zzn.obj ecn.obj 
+crt.obj miracl.lib
+
+For Linux GCC
+
+g++ -I. -c -O2 ps_big.cpp
+g++ -I. -c -O2 big.cpp
+g++ -I. mueller.cpp ps_big.o big.o miracl.a -o mueller
+
+etc.
+
+
+Note that the headers ps_big.h, ps_zzn.h, poly.h, polymod.h and polyxy.h are 
+assumed to be in the local directiory
+
+
+Instructions for use
+
+First run the utility "mueller" to build up a collection of Modular 
+Polynomials. This needs to be done once only - ever, but you can from time 
+augment your collection of Polynomials by running it again. Its quite time
+consuming, but in less than an hour you should have enough to get started. The
+more you have, the bigger the prime modulus that you can use.
+
+Then run the utility "process" to process the raw polynomial file with 
+respect to your chosen prime modulus. This need to be done just once for
+every prime modulus of interest to you. This takes only a few minutes at 
+most.
+
+Alternatively use "modpol", which is a composite of "mueller" and "process".
+This may be better if you have difficulty running the memory hungry "mueller"
+
+Finally run this program "sea" specifying the A and B parameters of the 
+particular curve. This program can also search through many curves for 
+a curve ideal for cryptographic use (with a prime number of points).
+
+For example try:-
+
+mueller 0 120 -o mueller.raw
+process -f 65112*2#144-1 -i mueller.raw -o test160.pol
+sea -3 49 -i test160.pol
+
+or
+
+modpol -f 65112*2#144-1 0 120 -o test160.pol
+sea -3 49 -i test160.pol
+
+(In Unix, use . and ^ instead of * and #)
+
+When using the "sea" program, the -s option is particularly useful
+and allows automatic search for an "ideal" curve. If a curve order is
+exactly divisible by a small prime, that curve is immediately abandoned, 
+and the program moves on to the next, incrementing the B parameter of 
+the curve. 
+
+
+For more information, see the comments at the head of the source file sea.cpp
+

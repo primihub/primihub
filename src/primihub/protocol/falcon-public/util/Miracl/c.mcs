@@ -1,0 +1,335 @@
+; Comba/KCM Macros for C
+;
+; ** if mr_qltype is defined in mirdef.h use c2.mcs  **
+;
+; Scheduled Version
+;
+; Note that: 
+; mr_small is a word length unsigned type
+; mr_large is a double word length unsigned type
+;
+; Triple register is extra|sum
+; The test "extra+=(sum<pp1);" checks whether the carry bit was set
+; Note that this maps nicely to the MIPs SLT (Set if Less Than)
+; assembly language instruction
+; See makemcs.txt for more information about this file
+; 
+MACRO PMUL_START
+  carry=0;
+ENDM
+
+MACRO PMUL
+  u=(mr_large)a[%d]*sn+carry;
+  carry=(mr_small)(u>>MIRACL);
+  b[%d]=0;
+  c[%d]=(mr_small)u;
+ENDM
+
+MACRO PMUL_END
+  u=(mr_large)carry*sn;
+  b[0]=(mr_small)u;
+  b[1]=(mr_small)(u>>MIRACL);
+ENDM
+
+MACRO MUL_START
+  extra=0;
+  sum=0;
+ENDM
+;
+; STEP macros
+;
+MACRO STEP
+  pp1=(mr_large)a[%d]*b[%d];
+  sum+=pp1;
+  extra+=(sum<pp1);
+ENDM
+MACRO STEP1M
+  pp1=(mr_large)a[%d]*b[%d];
+ENDM
+MACRO STEP1A
+  sum+=pp1;
+  extra+=(sum<pp1);
+ENDM
+MACRO STEP2M
+  pp2=(mr_large)a[%d]*b[%d];
+ENDM
+MACRO STEP2A
+  sum+=pp2;
+  extra+=(sum<pp2);
+ENDM
+;
+; MFIN macro
+;
+MACRO MFIN
+  c[%d]=(mr_small)sum;  
+  sum=(sum>>MIRACL)|((mr_large)extra<<MIRACL);
+  extra=0;
+ENDM
+;
+; LAST
+;
+MACRO LAST
+  pp1=(mr_large)a[%d]*b[%d];
+  sum+=pp1;
+ENDM
+;
+; MULE
+;
+MACRO MUL_END
+  c[%d]=(mr_small)sum;
+ENDM
+;
+; SQR_START
+;
+MACRO SQR_START
+  extra=0;
+  sum=0;
+ENDM
+;
+; DSTEP
+;
+MACRO DSTEP
+  pp1=(mr_large)a[%d]*a[%d];
+  sum+=pp1;
+  extra+=(sum<pp1);
+  sum+=pp1;
+  extra+=(sum<pp1);
+ENDM
+MACRO DSTEP1M
+  pp1=(mr_large)a[%d]*a[%d];
+ENDM
+MACRO DSTEP1A
+  sum+=pp1;
+  extra+=(sum<pp1);
+  sum+=pp1;
+  extra+=(sum<pp1);
+ENDM
+MACRO DSTEP2M
+  pp2=(mr_large)a[%d]*a[%d];
+ENDM
+MACRO DSTEP2A
+  sum+=pp2;
+  extra+=(sum<pp2);
+  sum+=pp2;
+  extra+=(sum<pp2);
+ENDM
+;
+; SELF
+;
+MACRO SELF
+  pp1=(mr_large)a[%d];
+  pp1*=pp1;
+  sum+=pp1;
+  extra+=(sum<pp1);
+ENDM
+;
+; SFIN
+;
+MACRO SFIN
+  c[%d]=(mr_small)sum;
+  sum=(sum>>MIRACL)|((mr_large)extra<<MIRACL);
+  extra=0;
+ENDM
+;
+; SQR_END
+;
+MACRO SQR_END
+  c[%d]=(mr_small)sum;
+ENDM
+;
+; REDC_START
+;
+MACRO REDC_START
+  extra=0;
+  sum=a[0];
+ENDM
+;
+; RFINU macro
+;
+MACRO RFINU
+  sp=(mr_small)sum*ndash;
+  a[%d]=sp;
+
+  pp1=(mr_large)sp*b[0];
+  sum+=pp1;
+  extra+=(sum<pp1);
+
+  sum=(sum>>MIRACL)|((mr_large)extra<<MIRACL);
+  extra=0;
+
+  sum+=(mr_large)a[%d+1];
+ENDM
+;  
+; RFIND macro
+;
+MACRO RFIND
+  a[%d]=(mr_small)sum;
+  sum=(sum>>MIRACL)|((mr_large)extra<<MIRACL);
+  extra=0;
+
+  sum+=(mr_large)a[%d+1];
+ENDM
+;
+; REDC_END macro
+;
+MACRO REDC_END
+  a[%d]=(mr_small)sum;
+  a[%d+1]=(mr_small)(sum>>MIRACL);
+ENDM
+;
+; ADD_START macro
+;
+MACRO ADD_START
+  u=(mr_large)a[0]+b[0];
+  c[0]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);   
+ENDM
+;
+; ADD macro  - c[.]=a[.]+b[.]
+;
+MACRO ADD 
+  u=(mr_large)carry+a[%d]+b[%d];
+  c[%d]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);
+ENDM
+;
+; ADD_END macro.
+;
+MACRO ADD_END
+ENDM
+;
+; DOUBLE_START macro
+;
+MACRO DOUBLE_START
+  u=(mr_large)a[0]+a[0];
+  a[0]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);  
+ENDM
+;
+; DOUBLE macro
+;
+MACRO DOUBLE
+  u=(mr_large)a[%d];
+  u+=u;  u+=carry;
+  a[%d]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);
+ENDM
+;
+; DOUBLE_END
+;
+MACRO DOUBLE_END
+ENDM
+;
+; INC_START macro. Do first one.
+;
+MACRO INC_START
+  u=(mr_large)a[0]+b[0];
+  a[0]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);
+ENDM
+;
+; INC macro  a[.]+=b[.]
+;
+MACRO INC
+  u=(mr_large)carry+a[%d]+b[%d];
+  a[%d]=(mr_small)u;
+  carry=(mr_small)(u>>MIRACL);
+ENDM
+MACRO INC_END
+ENDM
+MACRO SUB_START
+  u=(mr_large)a[0]-b[0];
+  c[0]=(mr_small)u;
+  carry=0-(mr_small)(u>>MIRACL);
+ENDM
+;
+; SUB macro - c[.]=a[.]-b[.]
+;
+MACRO SUB
+  u=(mr_large)a[%d]-b[%d]-carry;
+  c[%d]=(mr_small)u;
+  carry=0-(mr_small)(u>>MIRACL);
+ENDM
+MACRO SUB_END
+ENDM
+;
+; DEC_START macro
+;
+MACRO DEC_START
+  u=(mr_large)a[0]-b[0];
+  a[0]=(mr_small)u;
+  carry=0-(mr_small)(u>>MIRACL);
+ENDM
+; 
+; DEC macro  a[.]-=b[.]
+;
+MACRO DEC
+  u=(mr_large)a[%d]-b[%d]-carry;
+  a[%d]=(mr_small)u;
+  carry=0-(mr_small)(u>>MIRACL);
+ENDM
+;
+; DEC_END macro
+;
+MACRO DEC_END
+ENDM
+;
+; KADD_START macro. Zero Carry
+;
+MACRO KADD_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KASL macro
+;
+MACRO KASL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ c+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KADD_END macro
+;
+MACRO KADD_END   
+ENDM
+;
+; KINC_START macro
+;
+MACRO KINC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KIDL macro
+;
+MACRO KIDL
+ n--;
+ if (n==0) goto k%d;
+ a+=%d;
+ b+=%d;
+ goto k%d;
+ k%d:
+ENDM
+;
+; KINC_END macro
+;
+MACRO KINC_END
+ENDM
+;
+; KDEC_START macro. Zero carry
+;
+MACRO KDEC_START
+  carry=0;
+  k%d:
+ENDM
+;
+; KDEC_END macro
+;
+MACRO KDEC_END
+ENDM
+

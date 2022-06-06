@@ -41,15 +41,32 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
     for (auto &input_dataset : input_datasets) {
         this->node_context_.datasets.push_back(input_dataset);
     }
-    // TODO get datasets meta from dataset_service
+    // get next peer address
+    auto node_it = task_param->node_map().find(node_id);
+    if (node_it == task_param->node_map().end()) {
+        LOG(ERROR) << "Failed to find node: " << node_id;
+        return;
+    }
+    auto vm_list = node_it->second.vm();
+    if (vm_list.empty()) {
+        LOG(ERROR) << "Failed to find vm list for node: " << node_id;
+        return;
+    }
+    for (auto &vm : vm_list) {
+        auto ip = vm.next().ip();
+        auto port = vm.next().port();
+        next_peer_address_ = ip + ":" + std::to_string(port);
+        LOG(INFO) << "Next peer address: " << next_peer_address_;
+        break;
+    }
+
+
 }
 
 FLTask::~FLTask() {
-    // py::gil_scoped_release release;
     set_node_context_.release();
     ph_context_m.release();
     ph_exec_m.release();
-//     py::gil_scoped_release release;
 
 }
 
@@ -65,12 +82,12 @@ int FLTask::execute() {
 
           set_node_context_(node_context_.role, 
                     node_context_.protocol, 
-                    py::cast(node_context_.datasets));
+                    py::cast(node_context_.datasets),
+                    this->next_peer_address_);
           
           LOG(INFO) << node_context_.dumps_func;
           // Execute python code.
           ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
-          // py::gil_scoped_release release;
     
      } catch (std::exception &e) {
           LOG(ERROR) << "Failed to excute python: " << e.what();

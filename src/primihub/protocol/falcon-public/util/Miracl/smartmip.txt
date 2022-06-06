@@ -1,0 +1,65 @@
+
+The SmartMips is an example of the new generation of 32-bit smart cards. 
+Rather than support specialised crypographic co-processors, these smart 
+cards deploy enhanced instruction sets with instructions specially tailored 
+to the requirements of multi-precision arithmetic over GF(p) and GF(2^m). 
+This is a viable approach due to the increased speed and power of these 
+devices. (Smart cards are NOT low powered devices. Power is taken from
+the card reader, and is thus not particularly limited)
+
+These smart cards also support impressive amounts of ROM, Flash memory, 
+EEPROM and RAM. Nonetheless the environment is heavily constrained compared 
+to a desktop workstation, or even a PDA or hand-held mobile device.
+
+One major constraint is a limited amount of RAM - typically just 16K bytes.
+In this context it does not make sense to divide this limited resource between
+static memory, a heap and a stack. Therefore a MIRACL build which requires 
+only a stack is appropriate. Many big number libraries support elaborate 
+mechanisms so that big numbers can grow without limit. In contrast MIRACL 
+has always supported fixed size big numbers, and this is particularly
+appropriate in this context. By fixing big number sizes at compile time, 
+memory for big numbers can be allocated very quickly from the stack, with
+minimal overhead. To do this define
+
+#define MR_STATIC X
+
+in mirdef.h, where X is the fixed size of the big numbers in 32-bit words.
+
+A file smartmip.mcs is supplied so that optimal assembly language can be 
+generated for big number modular multiplication, using the MIRACL macro 
+mechansism (see makemcs.txt and kcmcomba.txt). This also supports very fast 
+GF(2^m) polynomial multiplication, using a special instruction. By setting
+
+#define MR_COMBA2 X
+
+in mirdef.h, and running the mex utility, very fast code will be generated to
+the file mrcomba2.c, which can be integrated into the MIRACL library. Here X 
+is again the fixed size of the big numbers in 32-bit words (rounded up).
+
+An example mirdef.h configuration header for implementing a fast elliptic 
+curve cryptosystem over GF(2^283) might look like this...
+
+
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ */
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 32
+#define mr_utype int
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_dltype long long
+#define mr_unsign64 unsigned long long
+#define MR_STATIC 9
+#define MR_NOASM
+#define MR_ALWAYS_BINARY
+#define MR_STRIPPED_DOWN
+#define MR_GENERIC_MT
+#define MR_NO_STANDARD_IO
+#define MR_NO_FILE_IO
+#define MR_COMBA2 9
+#define MAXBASE ((mr_small)1<<(MIRACL-1))
+#define MR_BITSINCHAR 8
+#define MR_SHORT_OF_MEMORY

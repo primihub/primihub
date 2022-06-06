@@ -1,0 +1,24 @@
+/*
+ *   MIRACL compiler/hardware definitions - mirdef.h
+ *
+ *   This version of mirdef.h is for use with the Borland C compiler
+ *   It uses a double underlying type, and using fast floating-point
+ *   arithmetic (include mr87f.c in the library build)
+ *   This will be fast for 512-bit arithmetic
+ */
+
+#define MR_LITTLE_ENDIAN
+#define MIRACL 64
+#define mr_utype double
+#define mr_dltype long double
+#define MR_NOFULLWIDTH
+#define MR_FP
+#define MR_IBITS 32
+#define MR_LBITS 32
+#define mr_unsign32 unsigned int
+#define mr_unsign64 unsigned __int64
+#define MR_FP_ROUNDING
+#define MR_FLASH 52
+#define MR_PENTIUM 18
+#define MAXBASE      536870912.0
+

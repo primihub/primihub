@@ -28,6 +28,8 @@ message ServerSetup {
 message PsiRequest {
   bool reveal_intersection = 1;
   repeated bytes encrypted_elements = 2;
+  bytes job_id = 3;
+  bytes task_id = 4;
 }
 
 // Server response after encrypting client elements under the
@@ -38,8 +40,9 @@ message EncrytDataResponse {
 }
 
 message PsiResponse {
-    ServerSetup server_setup = 1;
-    repeated bytes encrypted_elements = 2;
+    int32 ret_code = 1;  // 0: success  1: doing  2: error
+    ServerSetup server_setup = 2;
+    repeated bytes encrypted_elements = 3;
 }
 
 message PsiResult {

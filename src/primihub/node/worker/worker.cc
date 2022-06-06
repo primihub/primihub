@@ -46,6 +46,68 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         int ret = pTask->execute();
         if (ret != 0)
             LOG(ERROR) << "Error occurs during execute task.";
+
+        return;
+    } else if (type == rpc::TaskType::NODE_PSI_TASK || 
+               type == rpc::TaskType::NODE_PIR_TASK) {
+        if (pushTaskRequest->task().node_map().size() < 2) {
+            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
+            return;
+        }
+
+        auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
+        if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
+            return;
+        }
+
+        auto dataset_service = nodelet->getDataService();
+        auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+        if (pTask == nullptr) {
+            LOG(ERROR) << "Woker create psi/pir task failed.";
+            return;
+        }
+        int ret = pTask->execute();
+        if (ret != 0)
+            LOG(ERROR) << "Error occurs during execute psi/pir task.";
+    }  else {
+        LOG(WARNING) << "Requested task type is not supported.";
+    }
+}
+
+void Worker::execute(const ExecuteTaskRequest *taskRequest,
+                     ExecuteTaskResponse *taskResponse) {
+    //primihub::rpc::TaskType type;
+
+    if (taskRequest->algorithm_request_case() ==
+        ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+        auto dataset_service = nodelet->getDataService();
+        auto pTask = TaskFactory::Create(this->node_id,
+			                             rpc::TaskType::NODE_PSI_TASK,
+			                             *taskRequest,
+                                         taskResponse,
+					                     dataset_service);
+        if (pTask == nullptr) {
+            LOG(ERROR) << "Woker create server node task failed.";
+            return;
+        }
+        int ret = pTask->execute();
+        if (ret != 0)
+            LOG(ERROR) << "Error occurs during server node execute task.";
+    } else if (taskRequest->algorithm_request_case() ==
+	           ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+        auto dataset_service = nodelet->getDataService();
+        auto pTask = TaskFactory::Create(this->node_id,
+			                             rpc::TaskType::NODE_PIR_TASK,
+			                             *taskRequest,
+                                         taskResponse,
+					                     dataset_service);
+        if (pTask == nullptr) {
+            LOG(ERROR) << "Woker create server node task failed.";
+            return;
+        }
+        int ret = pTask->execute();
+        if (ret != 0)
+            LOG(ERROR) << "Error occurs during server node execute task.";
     } else {
         LOG(WARNING) << "Requested task type is not supported.";
     }

@@ -42,6 +42,7 @@ namespace primihub::task {
             std::string py_code_;
             NodeContext node_context_;
             py::object set_node_context_,  ph_exec_m, ph_context_m;
+            std::string next_peer_address_;
 
     };
 
