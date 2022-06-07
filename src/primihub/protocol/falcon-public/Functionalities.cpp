@@ -1683,8 +1683,15 @@ void debugMatMul()
 //Float(exact)	: [0.21069336, 0.26293945, 0.19445801, 0.37463379]
 //Float(MPC)	: [0.21078883, 0.26298349, 0.19449629, 0.37465578]
 //Rel error (%)	: [0.04531312, 0.01674641, 0.01968604, 0.00587083] --> 0.022% error
-	vector<myType> data_a = {-718,-4293,-3175,-3393};
-	vector<myType> data_b = {718,4293,3175,3393};
+	vector<myType> data_a = {static_cast<myType>(-718),
+                                 static_cast<myType>(-4293),
+                                 static_cast<myType>(-3175),
+                                 static_cast<myType>(-3393)};
+
+	vector<myType> data_b = {static_cast<myType>(718),
+                                 static_cast<myType>(4293),
+                                 static_cast<myType>(3175),
+                                 static_cast<myType>(3393)};
 	funcGetShares(a, data_a);
 	funcGetShares(b, data_b);
 
@@ -1857,7 +1864,11 @@ void debugWrap()
 
 void debugReLUPrime()
 {
-	vector<myType> data_a = {1, 2, -1, -2, 3};
+	vector<myType> data_a = {static_cast<myType>(1), 
+                                 static_cast<myType>(2), 
+                                 static_cast<myType>(-1), 
+                                 static_cast<myType>(-2), 
+                                 static_cast<myType>(3)};
 	size_t size = data_a.size();
 	RSSVectorMyType a(size);
 	RSSVectorSmallType b(size);
@@ -1974,10 +1985,35 @@ void debugSSBits()
 
 void debugSS()
 {
+	// vector<smallType> bits = {1,0,0,1,1,1,0,1,1,0};
+        // Make clang happy.
+        vector<smallType> bits;
+        bits.push_back(1);
+        bits.push_back(0);
+        bits.push_back(0);
+        bits.push_back(1);
+        bits.push_back(1);
+        bits.push_back(1);
+        bits.push_back(0);
+        bits.push_back(1);
+        bits.push_back(1);
+        bits.push_back(0);
 
-	vector<smallType> bits = {1,0,0,1,1,1,0,1,1,0};
 	size_t size = bits.size();
-	vector<myType> data = {1,29,10,2938,27,-1,-23,12,2,571}, reconst(size);
+	// vector<myType> data = {1,29,10,2938,27,-1,-23,12,2,571}, reconst(size);
+	vector<myType> data, reconst(size);
+        // Make clang happy.
+        data.push_back(1);
+        data.push_back(29);
+        data.push_back(10);
+        data.push_back(2938);
+        data.push_back(27);
+        data.push_back(-1);
+        data.push_back(-23);
+        data.push_back(12);
+        data.push_back(2);
+        data.push_back(571);
+
 	assert(size == data.size() && "Size mismatch");
 	RSSVectorMyType a(size), selection(size);
 	RSSVectorSmallType b(size);
@@ -1994,19 +2030,34 @@ void debugSS()
 #endif	
 }
 
-
-
-
 void debugMaxpool()
 {
-	size_t rows = 5;
+        size_t rows = 5;
 	size_t columns = 3;
 	size_t size = rows*columns;
-	vector<myType> data = {1,2,3,
-						   3,1,2,
-						   1,5,3,
-						   5,1,6,
-						   6,3,9}, reconst(size);
+	// vector<myType> data = {1,2,3,
+	// 					   3,1,2,
+	// 					   1,5,3,
+	// 					   5,1,6,
+	// 					   6,3,9}, reconst(size);
+        // Make clang happy.
+        vector<myType> data, reconst(size);
+        data.push_back(1);
+        data.push_back(2);
+        data.push_back(3);
+        data.push_back(3);
+        data.push_back(1);
+        data.push_back(2);
+        data.push_back(1);
+        data.push_back(5);
+        data.push_back(3);
+        data.push_back(5);
+        data.push_back(1);
+        data.push_back(6);
+        data.push_back(6);
+        data.push_back(3);
+        data.push_back(9);
+
 	RSSVectorMyType a(size), max(rows);
 	RSSVectorSmallType maxPrime(rows*columns);
 	vector<smallType> reconst_maxPrime(maxPrime.size());

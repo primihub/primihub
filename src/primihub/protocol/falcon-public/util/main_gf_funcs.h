@@ -2,9 +2,15 @@
 #include <stdio.h> 
 #include <chrono>
 #include <iostream>
+
+#ifdef ENABLE_SSE
 #include <wmmintrin.h>
 #include <emmintrin.h>
 #include <smmintrin.h>
+#else
+#include "block.h"
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 

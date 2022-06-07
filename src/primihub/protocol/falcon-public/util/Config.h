@@ -22,7 +22,12 @@
 * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 * 
 */
+
+#ifdef ENABLE_SSE
 #include <emmintrin.h>
+#else
+#include "block.h"
+#endif
 
 /**
 * A configuration file that uses defines used by other files in the project.

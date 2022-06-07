@@ -16,6 +16,7 @@ using namespace std;
 
 void THREE_GFMUL_naive(__m128i &A, __m128i &B, __m128i &C, __m128i &D, __m128i &E, __m128i &F, __m128i *HIGH, __m128i *LOW)
 {
+#ifdef ENABLE_SSE
 	__m128i tmp1_1, tmp1_2, tmp1_3, tmp1_4;
 	__m128i tmp2_1, tmp2_2, tmp2_3, tmp2_4;
 	__m128i tmp3_1, tmp3_2, tmp3_3, tmp3_4;
@@ -52,13 +53,16 @@ void THREE_GFMUL_naive(__m128i &A, __m128i &B, __m128i &C, __m128i &D, __m128i &
 	
 	*LOW = _mm_xor_si128(acc1, acc3);
 	*HIGH = _mm_xor_si128(acc2, acc4);
+#else
+    TODO("Implement it.");
+#endif
 }
 
 void THREE_GFMUL_accumulated(__m128i &A, __m128i &B, __m128i &C, __m128i &D, __m128i &E, __m128i &F, __m128i *HIGH, __m128i *LOW)
 {
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
-	
+#ifdef ENABLE_SSE
 	acc1 = _mm_clmulepi64_si128(A, B, 0x00); 
     acc2 = _mm_clmulepi64_si128(A, B, 0x10);
     acc3 = _mm_clmulepi64_si128(A, B, 0x01);
@@ -90,10 +94,13 @@ void THREE_GFMUL_accumulated(__m128i &A, __m128i &B, __m128i &C, __m128i &D, __m
 	
 	*LOW = _mm_xor_si128(acc1, acc3);
 	*HIGH = _mm_xor_si128(acc2, acc4);
+#else
+    TODO("Implement it.");
+#endif
 }
 
 void gfmul3(__m128i A, __m128i B, __m128i *RES) {
-
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -122,10 +129,13 @@ void gfmul3(__m128i A, __m128i B, __m128i *RES) {
 	//phase 2
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 	*RES = _mm_xor_si128(tmp3, acc2);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void gfmul3HalfZeros(__m128i A, __m128i B, __m128i *RES) {
-
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -154,6 +164,9 @@ void gfmul3HalfZeros(__m128i A, __m128i B, __m128i *RES) {
 	//phase 2
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 	*RES = _mm_xor_si128(tmp3, acc2);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 __m128i gfmul3(__m128i A, __m128i B)
@@ -171,7 +184,7 @@ __m128i gfmul3HalfZeros(__m128i A, __m128i B)
 }
 
 void THREE_GFMUL_accumulated_REDUCED(__m128i &A, __m128i &B, __m128i &C, __m128i &D, __m128i &E, __m128i &F, __m128i *RES){
-	
+#ifdef ENABLE_SSE	
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -220,10 +233,13 @@ void THREE_GFMUL_accumulated_REDUCED(__m128i &A, __m128i &B, __m128i &C, __m128i
 	//phase 2
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);			
 	*RES = _mm_xor_si128(tmp3, acc2);		
+#else
+        TODO("Implement it.");
+#endif
 }		
 
 void REDUCE(__m128i high, __m128i low, __m128i *RES){
-	
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);			
 	__m128i xmm4, xmm3, xmm2;
 	__m128i left, right;
@@ -240,12 +256,16 @@ void REDUCE(__m128i high, __m128i low, __m128i *RES){
 	//phase 2
 	xmm4 = _mm_clmulepi64_si128(xmm2, POLY, 0x00);			
 	*RES = _mm_xor_si128(xmm3, xmm4);						
+#else
+        TODO("Implement it.");
+#endif
 }
 
 
 //Dot product
 void gfDotProductPiped(__m128i* vec1, __m128i* vec2, int length, __m128i* ans)
 {
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -287,10 +307,14 @@ void gfDotProductPiped(__m128i* vec1, __m128i* vec2, int length, __m128i* ans)
 	//phase 2
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 	ans[0]= _mm_xor_si128(tmp3, acc2);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void gfDotProductPipedHZ(__m128i* vec1, __m128i* vec2, int length, __m128i* ans)
 {
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -333,6 +357,9 @@ void gfDotProductPipedHZ(__m128i* vec1, __m128i* vec2, int length, __m128i* ans)
 	//phase 2
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 	ans[0] = _mm_xor_si128(tmp3, acc2);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 __m128i gfmulNew(__m128i A, __m128i B)
@@ -348,7 +375,7 @@ __m128i gfmulNew(__m128i A, __m128i B)
 void Add_Pointwise_4_Multiplication(__m128i *A, __m128i *B, __m128i *C,
 	__m128i *D, __m128i *E, __m128i *F, __m128i *G, __m128i *H,
 	__m128i *RES0, __m128i *RES1, __m128i *RES2, __m128i *RES3) {
-
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -450,11 +477,14 @@ void Add_Pointwise_4_Multiplication(__m128i *A, __m128i *B, __m128i *C,
 	*RES3 = _mm_xor_si128(tmp3, *RES3);
 	acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 	*RES3 = _mm_xor_si128(*RES3, acc2);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void Pointwise_vec_Multiplication(__m128i* vec1, __m128i* vec2,
 	int length, __m128i* resVec) {
-
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);
 	__m128i tmp1, tmp2, tmp3, tmp4;
 	__m128i acc1, acc2, acc3, acc4;
@@ -484,11 +514,14 @@ void Pointwise_vec_Multiplication(__m128i* vec1, __m128i* vec2,
 		acc2 = _mm_clmulepi64_si128(tmp2, POLY, 0x00);
 		resVec[i] = _mm_xor_si128(tmp3, acc2);
 	}
+#else
+        TODO("Implement it.");
+#endif
 }
 
 //PRINT Variants
 void REDUCE_printable(__m128i high, __m128i low, __m128i *RES){
-	
+#ifdef ENABLE_SSE
 	__m128i POLY = _mm_setr_epi32(0x87, 0, 0, 0);			print_m128i_with_string_le("POLY                 =  ", POLY);
 	__m128i xmm5, xmm4, xmm3, xmm2;
 	__m128i left, right;
@@ -506,6 +539,9 @@ void REDUCE_printable(__m128i high, __m128i low, __m128i *RES){
 	xmm4 = _mm_clmulepi64_si128(xmm2, POLY, 0x00);			print_m128i_with_string_le("CLMUL = A*poly       =  ", xmm4);
 	xmm5 = _mm_xor_si128(xmm3, xmm4);						print_m128i_with_string_le("REDUCE = CLMUL_xor_B =  ", xmm5);
 	*RES = xmm5;				
+#else
+        TODO("Implement it.");
+#endif
 }	
 
 void print_m128i_with_string_le(char* string,__m128i data)
@@ -517,14 +553,3 @@ void print_m128i_with_string_le(char* string,__m128i data)
         printf("%02x",pointer[15-i]);
     printf("]\n");
 }
-
-
-
-
-
-
-
-
-
-
-

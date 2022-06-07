@@ -15,9 +15,16 @@
 #ifndef TED_FILE
 #define TED_FILE
 
+#ifdef ENABLE_SSE
 #include <wmmintrin.h>
+#endif 
+
 #include "Config.h"
 #include "src/primihub/protocol/falcon-public/globals.h"
+
+#ifndef ENABLE_SSE
+#include "block.h"
+#endif
 
 #define _aligned_malloc(size,alignment) aligned_alloc(alignment,size)
 #define _aligned_free free
@@ -26,6 +33,7 @@
 typedef struct { block rd_key[15]; int rounds; } AES_KEY_TED;
 #define ROUNDS(ctx) ((ctx)->rounds)
 
+#ifdef ENABLE_SSE
 #define EXPAND_ASSIST(v1,v2,v3,v4,shuff_const,aes_const)                    \
     v2 = _mm_aeskeygenassist_si128(v4,aes_const);                           \
     v3 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(v3),              \
@@ -49,7 +57,10 @@ typedef struct { block rd_key[15]; int rounds; } AES_KEY_TED;
     x3 = _mm_xor_si128(x3,_mm_slli_si128 (x3, 4));                          \
     x3 = _mm_xor_si128(x3,_mm_shuffle_epi32(x0, 255));                      \
     kp[idx+2] = x0; tmp = x3
-
+#else
+#define EXPAND_ASSIST(v1,v2,v3,v4,shuff_const,aes_const) TODO("Implement it.")
+#define EXPAND192_STEP(idx,aes_const) TODO("Implement it.")
+#endif
 
 extern AES_KEY_TED fixed_aes_key;
 

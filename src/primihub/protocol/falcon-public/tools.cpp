@@ -32,6 +32,7 @@ __m128i BGWconst;
 
 __m128i* sharesTest;
 
+#ifdef ENABLE_SSE
 void gfmul(__m128i a, __m128i b, __m128i *res) {
 	__m128i tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6,
 		tmp7, tmp8, tmp9, tmp10, tmp11, tmp12;
@@ -69,8 +70,15 @@ void gfmul(__m128i a, __m128i b, __m128i *res) {
 
 	*res = _mm_xor_si128(tmp3, tmp6);
 }
+#else 
+void gfmul(__m128i a, __m128i b, __m128i *res) 
+{
+  TODO("Implement it.");
+}
+#endif
 
 //this function works correctly only if all the upper half of b is zeros
+#ifdef ENABLE_SSE
 void gfmulHalfZeros(__m128i a, __m128i b, __m128i *res) {
 	__m128i tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6,
 		tmp7, tmp8, tmp9, tmp10, tmp11, tmp12;
@@ -103,6 +111,12 @@ void gfmulHalfZeros(__m128i a, __m128i b, __m128i *res) {
 	tmp3 = _mm_xor_si128(tmp3, tmp12);
 	*res = _mm_xor_si128(tmp3, tmp6);
 }
+#else
+void gfmulHalfZeros(__m128i a, __m128i b, __m128i *res)
+{
+  TODO("Implement it.");
+}
+#endif
 
 //multiplies a and b
 __m128i gfmul(__m128i a, __m128i b)

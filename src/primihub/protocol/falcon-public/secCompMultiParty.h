@@ -15,12 +15,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#ifdef ENABLE_SSE
 #include <emmintrin.h>
+#else
+#include "util/block.h"
+#endif
+
 #include <iomanip>  //cout
 #include <iostream>
 #include "util/aes.h"
 #include "util/TedKrovetzAesNiWrapperC.h"
 #include  "src/primihub/protocol/falcon-public/globals.h"
+
+#ifndef ENABLE_SSE
+#include "util/block.h"
+#endif
 
 void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length);
 

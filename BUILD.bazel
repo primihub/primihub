@@ -27,10 +27,8 @@ config_setting(
 )
 
 DEFAULT_LINK_OPTS = [
-    "-L/opt/homebrew/Cellar/gmp/6.2.1_1/lib",
     "-pthread",
     "-ldl",
-    "-lgmp",
 ]
 
 DEFINES = [
@@ -347,19 +345,24 @@ cc_library(
     hdrs = glob([
             "src/primihub/protocol/falcon-public/*.h",
             "src/primihub/protocol/falcon-public/util/*.h",
+	    "src/primihub/common/defines.h",
+	    "src/primihub/common/gsl/*.h",
+	    "src/primihub/common/gsl/*.hpp"
     ]),
     copts = [
+	    # TODO: Consider to remove -I flag.
             "-I src/primihub/protocol/falcon-public/",
             "-I src/primihub/protocol/falcon-public/util/",
-            "-msse4.1",
             "-mpclmul",
             "-maes",
-            "-msse2",
             "-fpic",
-            "-lcrypto ",
-            "-lssl"],
+	    "-Wno-narrowing",
+    ],
     linkstatic = False,
-    deps = ["@eigen//:eigen"]
+    deps = [
+	    "@eigen//:eigen",
+	    "@openssl",
+    ]
 )
 
 cc_library(
@@ -402,7 +405,7 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
             # "src/primihub/algorithm/cryptflow2_maxpool.cc",
-            # "src/primihub/algorithm/falcon_lenet.cc",
+            "src/primihub/algorithm/falcon_lenet.cc",
     ]),
     hdrs = glob([
             "src/primihub/algorithm/base.h",
@@ -413,7 +416,7 @@ cc_library(
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
             # "src/primihub/algorithm/cryptflow2_maxpool.h",
-            # "src/primihub/algorithm/falcon_lenet.h",
+            "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h"
     ]),
@@ -423,6 +426,7 @@ cc_library(
       "-mavx",
       # "-mavx2",
       "-mrdseed",
+      #"-fopenmp"
     ],
     linkopts = LINK_OPTS,
     linkstatic = False,
@@ -435,7 +439,7 @@ cc_library(
           ":util_lib",
           ":dataset_service",
 	  # ":protocol_cryptflow2_ot_lib",
-          # ":protocol_falcon_lib"
+          ":protocol_falcon_lib"
     ],
 )
 
@@ -448,8 +452,8 @@ cc_library(
              "src/primihub/task/**/*.h",
     ]),
     copts = C_OPT,
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -lpython3.9 -ldl -framework CoreFoundation"],
-    linkstatic = False,
+    linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
+    linkstatic = True,
     deps = [
           "@com_github_glog_glog//:glog",
           "@com_github_grpc_grpc//:grpc++",
@@ -463,6 +467,7 @@ cc_library(
           ":protocol_aby3_lib",
           ":algorithm_lib",
           "dataset_service",
+          "@openssl",
 	  "@org_openmined_psi//private_set_intersection/cpp:psi_client",
 	  "@org_openmined_psi//private_set_intersection/cpp:psi_server",
 	  "@org_openmined_pir//pir/cpp:pir",
@@ -813,7 +818,7 @@ cc_binary(
     copts = C_OPT,
     includes = [    
     ],
-    linkstatic = False,
+    linkstatic = True,
     linkopts = LINK_OPTS ,
     deps = [
         "@com_github_grpc_grpc//:grpc++",
@@ -869,7 +874,7 @@ cc_binary(
     copts = C_OPT,
     includes = [
     ],
-    linkstatic = False,
+    linkstatic = True,
     linkopts = LINK_OPTS,
     deps = [
         "@com_github_grpc_grpc//:grpc++",
@@ -882,6 +887,7 @@ cc_binary(
         ":worker_proto",
         ":common_lib",
         ":util_lib",
+        "@openssl",
     ],
 )
 
@@ -1127,7 +1133,7 @@ cc_library(
     hdrs = glob(
       include = ["thirdparty/miracl/mr_include/*.h"],
     ),
-    copts = C_OPT,
+    copts = C_OPT + ["-mdynamic-no-pic"],
     linkopts = LINK_OPTS,
     linkstatic = False,
     visibility = ["//visibility:public"],
@@ -1143,7 +1149,7 @@ cc_library(
     hdrs = glob([
         "src/primihub/primitive/paillier/*.h",
     ]),
-    copts = C_OPT,
+    copts = C_OPT + ["-mdynamic-no-pic"],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
@@ -1161,7 +1167,7 @@ cc_binary(
     includes = [
         "src/primihub/primitive/paillier"
     ],
-    copts = C_OPT,
+    copts = C_OPT + ["-mdynamic-no-pic"],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
@@ -1182,6 +1188,9 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
     visibility = ["//visibility:public"],
 )
 

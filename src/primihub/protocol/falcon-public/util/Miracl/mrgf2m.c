@@ -57,6 +57,8 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 
 #include <stdlib.h> 
 #include "miracl.h"
+#include "src/primihub/protocol/falcon-public/util/block.h"
+
 #ifdef MR_STATIC
 #include <string.h>
 #endif
@@ -310,6 +312,7 @@ static mr_small mr_mul2(mr_small a,mr_small b,mr_small *r)
     int i,j;
 	__m128i pp,tt[16],m;
 
+#ifdef ENABLE_SSE 
     m=_mm_set_epi32(0,0,0xf0<<24,0);  
 
     tt[0]=_mm_setzero_si128();
@@ -370,6 +373,9 @@ static mr_small mr_mul2(mr_small a,mr_small b,mr_small *r)
         _mm_or_si128(_mm_slli_epi64(tt[j],4),
         _mm_srli_epi64(_mm_slli_si128(tt[j],8), 60))  
         )   ,7) );
+#else
+    TODO("Implement it.");
+#endif
 
     *r=((unsigned long long *)&pp)[0];
     return ((unsigned long long *)&pp)[1];
@@ -2029,7 +2035,7 @@ fpm2++;
     m=_mm_set_epi32(0,0,0xff<<24,0);    /* shifting mask */
 
 /* precompute a small table */
-
+#ifdef ENABLE_SSE 
     t[0]=_mm_set1_epi32(0);
     xe=_mm_set_epi32(0,x->w[2],0,x->w[0]);
     xo=_mm_set_epi32(0,x->w[3],0,x->w[1]);
@@ -2161,6 +2167,9 @@ fpm2++;
     a1=_mm_movepi64_pi64(_mm_srli_si128(p,8));
     a2=_mm_movepi64_pi64(q);
     a3=_mm_movepi64_pi64(_mm_srli_si128(q,8));
+#else
+    TODO("Implement it.");
+#endif
 
     a2=_m_pxor(a2,_m_psrlqi(a3,39));
     a2=_m_pxor(a2,_m_psrlqi(a3,30));
@@ -2190,6 +2199,7 @@ fpm2++;
     w->len=4;
     if (w->w[3]==0) mr_lzero(w);
     _m_empty();
+
 }
 
 #endif
@@ -2225,6 +2235,7 @@ fpm2++;
         return;
     }
 
+#ifdef ENABLE_SSE 
     m=_mm_set_epi32(0,0,0xff<<24,0);    /* shifting mask */
 
 /* precompute a small table */
@@ -2336,6 +2347,9 @@ fpm2++;
     a0=_mm_movepi64_pi64(p);
     a1=_mm_movepi64_pi64(_mm_srli_si128(p,8));
     a2=_mm_movepi64_pi64(q);
+#else
+    TODO("Implement it.");
+#endif
 
     a1=_m_pxor(a1,_m_psrlqi(a2,15));
     a1=_m_pxor(a1,_m_psrlqi(a2,6));
