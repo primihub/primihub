@@ -2,6 +2,7 @@ _OPTS = [
     "-Werror",
     "-pedantic-errors",
     "-Weverything",
+    "-fPIC",
     "--system-header-prefix=gmp",
 ]
 
