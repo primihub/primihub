@@ -41,7 +41,15 @@ using namespace std;
 	#define close closesocket
 	#define Sockwrite(sock, data, size) send(sock, (char*)data, size, 0)
 	#define Sockread(sock, buff, bufferSize) recv(sock, (char*)buff, bufferSize, 0)
-	
+#elif __APPLE__
+	// These code is the same as linux, and maybe inproper in macos.
+	#include <unistd.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+	#define Sockwrite(sock, data, size) write(sock, data, size) 
+	#define Sockread(sock, buff, bufferSize) read(sock, buff, bufferSize)
+	//#define socklen_t int
 #endif
 
 /*GLOBAL VARIABLES - LIST OF IP ADDRESSES*/
@@ -216,7 +224,8 @@ bool BmrNet::listenNow(){
 	}
 	
 	int testCounter=0;//
-	while (bind(serverSockFd, (struct sockaddr *) &serv_addr,
+	// Fix type mismatch.
+	while (::bind(serverSockFd, (struct sockaddr *) &serv_addr,
 			sizeof(serv_addr)) < 0 && testCounter<10){
 		cout<<"ERROR on binding: "<< port <<endl;
 		cout<<"Count: "<< testCounter<<endl;///

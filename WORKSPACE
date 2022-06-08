@@ -18,14 +18,13 @@ load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_depende
 
 rules_foreign_cc_dependencies()
 
-
-#openssl-1.1.1L , need by libp2p, must be before boost_deps()
-load("//bazel:repos.bzl", openssl_repos="repos")
-openssl_repos()
-
-load("//bazel:deps.bzl", openssl_deps="deps")
-openssl_deps()
-
+http_archive(
+    name = "openssl",
+    url = "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1o.tar.gz",
+    #sha256 = "f56dd7d81ce8d3e395f83285bd700a1098ed5a4cb0a81ce9522e41e6db7e0389",
+    strip_prefix = "openssl-OpenSSL_1_1_1o",
+    build_file = "//bazel:openssl.BUILD",
+)
 
 git_repository(
     name = "com_github_nelhage_rules_boost",
@@ -80,7 +79,7 @@ new_git_repository(
 git_repository(
     name = "com_github_grpc_grpc",
     remote = "https://github.com/primihub/grpc.git",
-    commit = "b115c27f91c7ecee03838ab625032a50b9434678",
+    commit = "8838117b07a4faac3a6baaf645a490987b2a12b1",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -146,6 +145,10 @@ http_archive(
     url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
     sha256 = "97e70364e9249702246c0e9444bccdc4b847bed1eb03c5a3ece4f83dfe6abc44",
 )
+
+load("@bazel_skylib//lib:versions.bzl", "versions")
+
+versions.check(minimum_bazel_version = "5.0.0")
 
 # json
 http_archive(
@@ -419,7 +422,13 @@ http_archive(
   urls = ["https://github.com/microsoft/SEAL/archive/refs/tags/v3.3.2.zip"],
 )
 
-
+http_archive(
+    name = "com_github_gmp",
+    build_file = "//bazel:gmp.BUILD",
+    #sha256 = "87b565e89a9a684fe4ebeeddb8399dce2599f9c9049854ca8c0dfbdea0e21912",
+    strip_prefix = "gmp-6.2.1",
+    urls = ["https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz"],
+)
 
 #PSI
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")

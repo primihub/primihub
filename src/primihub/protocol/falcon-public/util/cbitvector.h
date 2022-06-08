@@ -213,7 +213,19 @@ public:
 		return val;
 	}
 	//NEW
-	__m128i GetBlock(int pos){return _mm_set_epi32(GetInt(pos * 128 + 96, 32), GetInt(pos * 128 + 64, 32), GetInt(pos * 128 + 32, 32), GetInt(pos * 128, 32));}
+	__m128i GetBlock(int pos){
+
+          __m128i val;
+#ifdef ENABLE_SSE
+          val = _mm_set_epi32(GetInt(pos * 128 + 96, 32), 
+                               GetInt(pos * 128 + 64, 32), 
+                               GetInt(pos * 128 + 32, 32), 
+                               GetInt(pos * 128, 32));
+#else
+          TODO("Implement it.");
+#endif
+          return val;
+        }
 
 
 	/*

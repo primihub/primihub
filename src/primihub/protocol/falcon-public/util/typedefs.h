@@ -112,7 +112,7 @@ static int otextaesencdummy;
 #define OTEXT_HASH_FINAL(sha, sha_buf) sha1_finish(sha, sha_buf)
 
 #define OTEXT_AES_KEY_INIT(ctx, buf) private_AES_set_encrypt_key(buf, AES_KEY_BITS, ctx)
-#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) AES_encrypt(inbuf, outbuf, keyctx)
+#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) falcon_AES_encrypt(inbuf, outbuf, keyctx)
 //#else
 //#define AES_KEY_CTX AES_KEY_TED
 //#define OTEXT_HASH_INIT(sha) sha1_starts(sha)

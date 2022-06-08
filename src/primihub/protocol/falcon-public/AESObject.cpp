@@ -1,6 +1,7 @@
 
 #pragma once
 #include "util/TedKrovetzAesNiWrapperC.h"
+#include "util/block.h"
 #include <cstring>
 #include <iostream>
 #include <fstream>
@@ -28,7 +29,11 @@ __m128i AESObject::newRandomNumber()
 	if (rCounter % RANDOM_COMPUTE == 0)//generate more random seeds
 	{
 		for (int i = 0; i < RANDOM_COMPUTE; i++)
+#ifdef ENABLE_SSE
 			tempSecComp[i] = _mm_set1_epi32(rCounter+i);//not exactly counter mode - (rcounter+i,rcouter+i,rcounter+i,rcounter+i)
+#else
+                        TODO("Implement it.");
+#endif
 		AES_ecb_encrypt_chunk_in_out(tempSecComp, pseudoRandomString, RANDOM_COMPUTE, &aes_key);
 	}
 	return pseudoRandomString[rCounter%RANDOM_COMPUTE];

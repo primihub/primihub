@@ -11,13 +11,16 @@ void (*myAES) (block *in, block *out, int nblks, AES_KEY_TED *aesKey);
 
 AES_KEY_TED fixed_aes_key;
 
-
 void AES_128_Key_Expansion(const unsigned char *userkey, AES_KEY_TED *aesKey)
 {
     block x0,x1,x2;
     //block *kp = (block *)&aesKey;
+#ifdef ENABLE_SSE
 	aesKey->rd_key[0] = x0 = _mm_loadu_si128((block*)userkey);
     x2 = _mm_setzero_si128();
+#else
+  TODO("Implement it.");
+#endif
 	EXPAND_ASSIST(x0, x1, x2, x0, 255, 1);   aesKey->rd_key[1] = x0;
 	EXPAND_ASSIST(x0, x1, x2, x0, 255, 2);   aesKey->rd_key[2] = x0;
 	EXPAND_ASSIST(x0, x1, x2, x0, 255, 4);   aesKey->rd_key[3] = x0;
@@ -30,14 +33,16 @@ void AES_128_Key_Expansion(const unsigned char *userkey, AES_KEY_TED *aesKey)
 	EXPAND_ASSIST(x0, x1, x2, x0, 255, 54);  aesKey->rd_key[10] = x0;
 }
 
-
-
 void AES_192_Key_Expansion(const unsigned char *userkey, AES_KEY_TED *aesKey)
 {
     __m128i x0,x1,x2,x3,tmp,*kp = (block *)&aesKey;
+#ifdef ENABLE_SSE
     kp[0] = x0 = _mm_loadu_si128((block*)userkey);
     tmp = x3 = _mm_loadu_si128((block*)(userkey+16));
     x2 = _mm_setzero_si128();
+#else
+    TODO("Implement it.");
+#endif
     EXPAND192_STEP(1,1);
     EXPAND192_STEP(4,4);
     EXPAND192_STEP(7,16);
@@ -47,10 +52,14 @@ void AES_192_Key_Expansion(const unsigned char *userkey, AES_KEY_TED *aesKey)
 void AES_256_Key_Expansion(const unsigned char *userkey, AES_KEY_TED *aesKey)
 {
 	__m128i x0, x1, x2, x3;/* , *kp = (block *)&aesKey;*/
+#ifdef ENABLE_SSE
 	aesKey->rd_key[0] = x0 = _mm_loadu_si128((block*)userkey);
 	aesKey->rd_key[1] = x3 = _mm_loadu_si128((block*)(userkey + 16));
-    x2 = _mm_setzero_si128();
-    EXPAND_ASSIST(x0, x1, x2, x3, 255, 1);  aesKey->rd_key[2] = x0;
+        x2 = _mm_setzero_si128();
+#else
+        TODO("Implement it.");
+#endif
+        EXPAND_ASSIST(x0, x1, x2, x3, 255, 1);  aesKey->rd_key[2] = x0;
 	EXPAND_ASSIST(x3, x1, x2, x0, 170, 1);  aesKey->rd_key[3] = x3;
 	EXPAND_ASSIST(x0, x1, x2, x3, 255, 2);  aesKey->rd_key[4] = x0;
 	EXPAND_ASSIST(x3, x1, x2, x0, 170, 2);  aesKey->rd_key[5] = x3;
@@ -82,28 +91,35 @@ void AES_set_encrypt_key(const unsigned char *userKey, const int bits, AES_KEY_T
 void AES_encryptC(block *in, block *out,  AES_KEY_TED *aesKey)
 {
 	int j, rnds = ROUNDS(aesKey);
+#ifdef ENABLE_SSE
 	const __m128i *sched = ((__m128i *)(aesKey->rd_key));
 	__m128i tmp = _mm_loadu_si128((__m128i*)in);
 	tmp = _mm_xor_si128(tmp, sched[0]);
 	for (j = 1; j<rnds; j++)  tmp = _mm_aesenc_si128(tmp, sched[j]);
 	tmp = _mm_aesenclast_si128(tmp, sched[j]);
 	_mm_storeu_si128((__m128i*)out, tmp);
+#else
+        TODO("Implement it.");
+#endif
 }
-
 
 void AES_ecb_encrypt(block *blk,  AES_KEY_TED *aesKey) {
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
-
+#ifdef ENABLE_SSE
 	*blk = _mm_xor_si128(*blk, sched[0]);
 	for (j = 1; j<rnds; ++j)
 		*blk = _mm_aesenc_si128(*blk, sched[j]);
 	*blk = _mm_aesenclast_si128(*blk, sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void AES_ecb_encrypt_blks(block *blks, unsigned nblks,  AES_KEY_TED *aesKey) {
     unsigned i,j,rnds=ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
+#ifdef ENABLE_SSE
 	for (i=0; i<nblks; ++i)
 	    blks[i] =_mm_xor_si128(blks[i], sched[0]);
 	for(j=1; j<rnds; ++j)
@@ -111,11 +127,15 @@ void AES_ecb_encrypt_blks(block *blks, unsigned nblks,  AES_KEY_TED *aesKey) {
 		    blks[i] = _mm_aesenc_si128(blks[i], sched[j]);
 	for (i=0; i<nblks; ++i)
 	    blks[i] =_mm_aesenclast_si128(blks[i], sched[j]);
+#else 
+        TODO("Implement it.");
+#endif
 }
 
 void AES_ecb_encrypt_blks_4(block *blks,  AES_KEY_TED *aesKey) {
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
+#ifdef ENABLE_SSE
 	blks[0] = _mm_xor_si128(blks[0], sched[0]);
 	blks[1] = _mm_xor_si128(blks[1], sched[0]);
 	blks[2] = _mm_xor_si128(blks[2], sched[0]);
@@ -131,13 +151,16 @@ void AES_ecb_encrypt_blks_4(block *blks,  AES_KEY_TED *aesKey) {
 	blks[1] = _mm_aesenclast_si128(blks[1], sched[j]);
 	blks[2] = _mm_aesenclast_si128(blks[2], sched[j]);
 	blks[3] = _mm_aesenclast_si128(blks[3], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void AES_ecb_encrypt_blks_4_in_out(block *in, block *out,  AES_KEY_TED *aesKey) {
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
-
+#ifdef ENABLE_SSE
 	out[0] = _mm_xor_si128(in[0], sched[0]);
 	out[1] = _mm_xor_si128(in[1], sched[0]);
 	out[2] = _mm_xor_si128(in[2], sched[0]);
@@ -153,6 +176,9 @@ void AES_ecb_encrypt_blks_4_in_out(block *in, block *out,  AES_KEY_TED *aesKey) 
 	out[1] = _mm_aesenclast_si128(out[1], sched[j]);
 	out[2] = _mm_aesenclast_si128(out[2], sched[j]);
 	out[3] = _mm_aesenclast_si128(out[3], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void AES_ecb_encrypt_chunk_in_out(block *in, block *out, unsigned nblks, AES_KEY_TED *aesKey) {
@@ -163,6 +189,8 @@ void AES_ecb_encrypt_chunk_in_out(block *in, block *out, unsigned nblks, AES_KEY
 
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
+
+#ifdef ENABLE_SSE
 	for (int i = 0; i < numberOfLoops; i++){
 		out[0 + i * 8] = _mm_xor_si128(in[0 + i * 8], sched[0]);
 		out[1 + i * 8] = _mm_xor_si128(in[1 + i * 8], sched[0]);
@@ -199,11 +227,15 @@ void AES_ecb_encrypt_chunk_in_out(block *in, block *out, unsigned nblks, AES_KEY
 			out[i] = _mm_aesenc_si128(out[i], sched[j]);
 	for (int i = blocksPipeLined; i<blocksPipeLined+remainingEncrypts; ++i)
 		out[i] = _mm_aesenclast_si128(out[i], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 
 void AES_ctr_hash_gate(block *in, block *out, int gate, int numOfParties, AES_KEY_TED *aesKey)
 {
+#ifdef ENABLE_SSE
 	__m128i counter,temp;
 	for (int i = 0; i < numOfParties; i++)
 	{
@@ -211,6 +243,9 @@ void AES_ctr_hash_gate(block *in, block *out, int gate, int numOfParties, AES_KE
 		AES_encryptC(&temp, &counter, aesKey);
 		out[i] = _mm_xor_si128(in[i],temp);
 	}
+#else
+        TODO("Implement it.");
+#endif
 }
 
 void AES_ctr_hash_gate(block *in, block *out, int gate, int numOfParties, __m128i seedIn1,__m128i seedIn2)
@@ -223,9 +258,13 @@ void AES_ctr_hash_gate(block *in, block *out, int gate, int numOfParties, __m128
 	AES_set_encrypt_key((unsigned char*)seed, 256, &aes_key);
 	for (int i = 0; i < numOfParties; i++)
 	{
+#ifdef ENABLE_SSE
 		temp = _mm_set1_epi32(gate*numOfParties + i);
 		AES_encryptC(&temp, &counter, &aes_key);
 		out[i] = _mm_xor_si128(in[i], temp);
+#else
+                TODO("Implement it.");
+#endif
 	}
 }
 
@@ -240,7 +279,11 @@ __m128i* pseudoRandomFunction(__m128i seed1, __m128i seed2, int gate, int numOfP
 	int init = gate*numOfParties;
 	for (int i = 0; i < numOfParties; i++)
 	{
+#ifdef ENABLE_SSE
 		counter = _mm_set1_epi32(init + i);
+#else
+                TODO("Implement it.");
+#endif
 		AES_encryptC(&counter, &temp, &aes_key);
 		result[i] = temp;
 	}
@@ -258,7 +301,11 @@ void pseudoRandomFunctionNew(__m128i seed1, __m128i seed2, int gate, int numOfPa
 	int init = gate*numOfParties;
 	for (int i = 0; i < numOfParties; i++)
 	{
+#ifdef ENABLE_SSE
 		counter = _mm_set1_epi32(init + i);
+#else
+                TODO("Implement it.");
+#endif
 		AES_encryptC(&counter, &temp, &aes_key);
 		out[i] = temp;
 	}
@@ -295,7 +342,12 @@ void AES_free()
 bool firstBit(__m128i input)
 {
 	char *inp = (char *)&input;
+#ifdef ENABLE_SSE
 	return (input[0] & 0x80 > 0);
+#else
+        TODO("Implement it.");
+        return false;
+#endif
 }
 
 bool pseudoRandomFunctionwPipelining(__m128i seed1, __m128i seed2, int gate, int numOfParties, __m128i* out)
@@ -310,7 +362,11 @@ bool pseudoRandomFunctionwPipelining(__m128i seed1, __m128i seed2, int gate, int
 	__m128i *temp_out = static_cast<__m128i*>(_aligned_malloc(sizeof(__m128i)*(numOfParties+1), 16));
 	for (int i = 0; i < numOfParties+1; i++)
 	{
+#ifdef ENABLE_SSE
 		temp_in[i] = _mm_set_epi32(0,0,gate,i);
+#else
+                TODO("Implement it.");
+#endif
 	}
 	if (numOfParties == 4) AES_ecb_encrypt_for_5(temp_in, temp_out, numOfParties+1, &aes_key);
 	else AES_ecb_encrypt_chunk_in_out(temp_in, temp_out, numOfParties+1, &aes_key);
@@ -328,20 +384,33 @@ void XORvectors2(__m128i *vec1, __m128i *vec2, __m128i *out, int length)
 {
 	for (int p = 0; p < length; p++)
 	{
+#ifdef ENABLE_SSE
 		out[p] = _mm_xor_si128(vec1[p], vec2[p]);
+#else
+                TODO("Implement it.");
+#endif
 	}
 }
 
 bool fixedKeyPseudoRandomFunctionwPipelining(__m128i seed1, __m128i seed2, int gate, int numOfParties, __m128i* out)
 {
 	__m128i counter = {0};
+
+#ifdef ENABLE_SSE
 	__m128i dseed1 = _mm_slli_epi64(seed1, 1);
 	__m128i ddseed2 = _mm_slli_epi64(seed2, 2);
+#else
+        TODO("Implement it.");
+#endif
 	__m128i *temp_in = static_cast<__m128i*>(_aligned_malloc(sizeof(__m128i)*(numOfParties+1), 16));
 	__m128i *temp_out = static_cast<__m128i*>(_aligned_malloc(sizeof(__m128i)*(numOfParties+1), 16));
 	for (int i = 0; i < numOfParties+1; i++)
 	{
+#ifdef ENABLE_SSE
 		temp_in[i] = _mm_xor_si128(_mm_xor_si128(_mm_set_epi32(0,0,gate,i),dseed1),ddseed2);
+#else
+                TODO("Implement it.");
+#endif
 	}
 	if (numOfParties == 4) AES_ecb_encrypt_for_5(temp_in, temp_out, numOfParties+1, &fixed_aes_key);
 	else AES_ecb_encrypt_chunk_in_out(temp_in, temp_out, numOfParties+1, &fixed_aes_key);
@@ -361,6 +430,7 @@ void AES_ecb_encrypt_for_7(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
+#ifdef ENABLE_SSE
 	out[0 ] = _mm_xor_si128(in[0 ], sched[0]);
 	out[1 ] = _mm_xor_si128(in[1 ], sched[0]);
 	out[2 ] = _mm_xor_si128(in[2 ], sched[0]);
@@ -385,6 +455,9 @@ void AES_ecb_encrypt_for_7(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	out[4 ] = _mm_aesenclast_si128(out[4 ], sched[j]);
 	out[5 ] = _mm_aesenclast_si128(out[5 ], sched[j]);
 	out[6 ] = _mm_aesenclast_si128(out[6 ], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 //assumes nblks==5
@@ -393,6 +466,7 @@ void AES_ecb_encrypt_for_5(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
+  #ifdef ENABLE_SSE
 	out[0 ] = _mm_xor_si128(in[0 ], sched[0]);
 	out[1 ] = _mm_xor_si128(in[1 ], sched[0]);
 	out[2 ] = _mm_xor_si128(in[2 ], sched[0]);
@@ -412,6 +486,9 @@ void AES_ecb_encrypt_for_5(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	out[2 ] = _mm_aesenclast_si128(out[2 ], sched[j]);
 	out[3 ] = _mm_aesenclast_si128(out[3 ], sched[j]);
 	out[4 ] = _mm_aesenclast_si128(out[4 ], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 //assumes nblks==3
@@ -420,6 +497,7 @@ void AES_ecb_encrypt_for_3(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
+#ifdef ENABLE_SSE
 	out[0 ] = _mm_xor_si128(in[0 ], sched[0]);
 	out[1 ] = _mm_xor_si128(in[1 ], sched[0]);
 	out[2 ] = _mm_xor_si128(in[2 ], sched[0]);
@@ -433,6 +511,9 @@ void AES_ecb_encrypt_for_3(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	out[0 ] = _mm_aesenclast_si128(out[0 ], sched[j]);
 	out[1 ] = _mm_aesenclast_si128(out[1 ], sched[j]);
 	out[2 ] = _mm_aesenclast_si128(out[2 ], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 }
 
 //assumes nblks==3
@@ -442,13 +523,25 @@ block AES_ecb_encrypt_for_1(block in, AES_KEY_TED *aesKey)
 	block out;
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
+#ifdef ENABLE_SSE
 	out = _mm_xor_si128(in, sched[0]);
+#else
+        TODO("Implement it.");
+#endif
 	
+
 	for (j = 1; j < rnds; ++j){
+#ifdef ENABLE_SSE
 	  out = _mm_aesenc_si128(out, sched[j]);
+#else
+          TODO("Implement it.");
+#endif
 	}
-	
+#ifdef ENABLE_SSE	
 	out = _mm_aesenclast_si128(out, sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 	return out;
 }
 
@@ -458,6 +551,7 @@ void AES_ecb_encrypt_for_4(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	unsigned j, rnds = ROUNDS(aesKey);
 	const block *sched = ((block *)(aesKey->rd_key));
 	//block temp[4];
+#ifdef ENABLE_SSE
 	out[0 ] = _mm_xor_si128(in[0 ], sched[0]);
 	out[1 ] = _mm_xor_si128(in[1 ], sched[0]);
 	out[2 ] = _mm_xor_si128(in[2 ], sched[0]);
@@ -474,5 +568,8 @@ void AES_ecb_encrypt_for_4(block *in, block *out, int nblks,  AES_KEY_TED *aesKe
 	out[1 ] = _mm_aesenclast_si128(out[1 ], sched[j]);
 	out[2 ] = _mm_aesenclast_si128(out[2 ], sched[j]);
 	out[3 ] = _mm_aesenclast_si128(out[3 ], sched[j]);
+#else
+        TODO("Implement it.");
+#endif
 
 }

@@ -10,10 +10,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include "secCompMultiParty.h"
+
+#ifdef ENABLE_SSE
 #include <emmintrin.h>
 #include <smmintrin.h>
-#include <stdint.h>
+#else
 
+#include <stdint.h>
 __m128i pseudoRandomString[RANDOM_COMPUTE];
 __m128i tempSecComp[RANDOM_COMPUTE];
 
@@ -24,6 +27,7 @@ unsigned long rCounter;
 using namespace std;
 
 //XORs 2 vectors
+#ifdef ENABLE_SSE
 void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length)
 {
 	for (int p = 0; p < length; p++)
@@ -31,6 +35,12 @@ void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length)
 		out[p] = _mm_xor_si128(vec1[p], vec2[p]);
 	}
 }
+#else 
+void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length) 
+{
+	TODO("Add more general implement.");
+}
+#endif
 
 //creates a cryptographic(pseudo)random 128bit number
 __m128i LoadSeedNew()
@@ -39,12 +49,17 @@ __m128i LoadSeedNew()
 	if (rCounter % RANDOM_COMPUTE == 0)//generate more random seeds
 	{
 		for (int i = 0; i < RANDOM_COMPUTE; i++)
+#ifdef ENABLE_SSE
 			tempSecComp[i] = _mm_set1_epi32(rCounter+i);//not exactly counter mode - (rcounter+i,rcouter+i,rcounter+i,rcounter+i)
+#else
+                        TODO("Implement it.");
+#endif
 		AES_ecb_encrypt_chunk_in_out(tempSecComp, pseudoRandomString, RANDOM_COMPUTE, &aes_key);
 	}
 	return pseudoRandomString[rCounter%RANDOM_COMPUTE];
 }
 
+#ifdef ENABLE_SSE
 bool LoadBool()
 {
 	__m128i mask = _mm_setr_epi32(0,0,0,1);
@@ -52,6 +67,13 @@ bool LoadBool()
 	bool ans = !_mm_testz_si128(t,t);
 	return ans;
 }
+#else
+bool LoadBool()
+{
+	TODO("Add more general implement.");
+	return false;
+}
+#endif
 
 void initializeRandomness(char* key, int numOfParties)
 {
@@ -72,3 +94,5 @@ int getrCounter()
 {
 	return rCounter;
 }
+
+#endif

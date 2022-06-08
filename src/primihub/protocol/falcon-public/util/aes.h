@@ -82,9 +82,10 @@ int private_AES_set_encrypt_key(const unsigned char *userKey, const int bits,
 int private_AES_set_decrypt_key(const unsigned char *userKey, const int bits,
                                 F_AES_KEY *key);
 
-void AES_encrypt(const unsigned char *in, unsigned char *out,
+// Origin function name is conflict with openssl, so change them.
+void falcon_AES_encrypt(const unsigned char *in, unsigned char *out,
                  const F_AES_KEY *key);
-void AES_decrypt(const unsigned char *in, unsigned char *out,
+void falcon_AES_decrypt(const unsigned char *in, unsigned char *out,
                  const F_AES_KEY *key);
 
 #ifdef __cplusplus
