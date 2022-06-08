@@ -29,6 +29,7 @@ config_setting(
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
+    "-lgmp",
 ]
 
 DEFINES = [
@@ -1191,9 +1192,9 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
-    deps = [
-        "@com_github_gmp//:gmp",
-    ],
+    # deps = [
+    #     "@com_github_gmp//:gmp",
+    # ],
     visibility = ["//visibility:public"],
 )
 
