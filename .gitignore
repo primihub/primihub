@@ -1,5 +1,4 @@
 *.DS_Store
-*.csv
 .idea/
 *cbp
 *.aux
@@ -19,7 +18,7 @@
 
 .vscode/
 
-data/
+
 /lib/
 /bin/
 
