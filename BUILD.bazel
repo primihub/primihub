@@ -29,7 +29,6 @@ config_setting(
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
-    "-lgmp",
 ]
 
 DEFINES = [
@@ -133,7 +132,9 @@ cc_library(
               "src/primihub/common/gsl/string_span",
               "src/primihub/common/gsl/gls-lite.hpp",
     ],
-    copts = C_OPT,
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
@@ -1192,9 +1193,9 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
-    # deps = [
-    #     "@com_github_gmp//:gmp",
-    # ],
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
     visibility = ["//visibility:public"],
 )
 
