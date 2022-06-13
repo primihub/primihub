@@ -27,7 +27,7 @@ config_setting(
 )
 
 DEFAULT_LINK_OPTS = [
-    "-L/usr/local/Cellar/gmp/6.2.1_1/lib/"
+    "-L/usr/local/Cellar/gmp/6.2.1_1/lib/",
     "-pthread",
     "-ldl",
     "-lgmp",
