@@ -4,7 +4,7 @@ on:
   push:
     branches: 
       - develop
-      - feature/workflows
+      - feature/workflow
 
 jobs:
   job-build-on-ubuntu:
