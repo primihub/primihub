@@ -1,0 +1,25 @@
+name: primihub github bazel actions
+
+on:
+  push:
+    branches: [ feature/workflows ]
+
+jobs:
+  job-build-on-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.20.2'
+    - uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - run: |
+        # cc_binary
+        bazel build --config=linux :node
+      
