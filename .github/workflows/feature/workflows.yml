@@ -2,7 +2,7 @@ name: primihub github bazel actions
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ feature/workflows ]
 
 jobs:
   job-build-on-ubuntu:
