@@ -27,6 +27,7 @@ config_setting(
 )
 
 DEFAULT_LINK_OPTS = [
+    "-L/usr/local/Cellar/gmp/6.2.1_1/lib/"
     "-pthread",
     "-ldl",
     "-lgmp",
@@ -456,7 +457,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
     linkstatic = True,
     deps = [
           "@com_github_glog_glog//:glog",
