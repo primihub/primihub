@@ -19,6 +19,10 @@ jobs:
       with:
         python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - name: Install gcc-8
+      run: |
+         sudo apt install -y gcc-8  g++-8 \
+          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
     - name: Install python-devel
       run: sudo apt install python-dev
     - uses: actions/checkout@v3
