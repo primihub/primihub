@@ -36,7 +36,7 @@ jobs:
       run: ./pre_build.sh
       shell: bash
     - name: bazel build
-    - run: |
+      run: |
         # cc_binary
         bazel build --config=linux :node
       
