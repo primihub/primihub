@@ -10,7 +10,7 @@ jobs:
   job-build-on-ubuntu:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v1.12
       with:
@@ -21,7 +21,14 @@ jobs:
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
     - name: Install python-devel
       run: sudo apt install python-dev
-    - uses: bazelbuild/setup-bazelisk@v2
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
     - run: |
         # cc_binary
         bazel build --config=linux :node
