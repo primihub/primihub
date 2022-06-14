@@ -24,7 +24,7 @@ SOFTWARE.
 #include "library_fixed_common.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 #define START_IDX 0
 #define print_vec(vec, bw, N)                                                  \
@@ -42,7 +42,7 @@ void initialize() {
   assert(num_threads <= MAX_THREADS);
 
   for (int i = 0; i < num_threads; i++) {
-    iopackArr[i] = new sci::IOPack(party, port + i, address);
+    iopackArr[i] = new primihub::sci::IOPack(party, port + i, address);
     ioArr[i] = iopackArr[i]->io;
     if (i & 1) {
       otpackArr[i] = new OTPack(iopackArr[i], 3 - party);
@@ -291,7 +291,7 @@ void reconstruct(int64_t *A, int64_t *B, int32_t I, int32_t J, int bwA) {
 
 void reconstruct(int dim, uint64_t *x, uint64_t *y, int bw_x) {
   uint64_t mask = (bw_x == 64 ? -1 : ((1ULL << bw_x) - 1));
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE) {
     io->send_data(x, dim * sizeof(uint64_t));
     for (int i = 0; i < dim; i++) {
       y[i] = 0;

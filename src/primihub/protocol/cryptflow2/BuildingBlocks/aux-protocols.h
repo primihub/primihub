@@ -30,12 +30,12 @@ SOFTWARE.
 class AuxProtocols {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   MillionaireProtocol *mill;
   MillionaireWithEquality *mill_and_eq;
 
-  AuxProtocols(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+  AuxProtocols(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
   ~AuxProtocols();
 

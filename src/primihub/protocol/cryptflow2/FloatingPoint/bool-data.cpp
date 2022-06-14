@@ -23,7 +23,7 @@ SOFTWARE.
 #include "omp.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 BoolArray BoolArray::subset(int i, int j) {
   assert(i >= 0 && j <= size && i < j);
@@ -76,15 +76,15 @@ BoolArray BoolOp::output(int party_, const BoolArray& x) {
 #pragma omp parallel num_threads(2)
   {
     if (omp_get_thread_num() == 1 && party_ != BOB) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io_rev->recv_data(ret.data, sz * sizeof(uint8_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io_rev->send_data(x.data, sz * sizeof(uint8_t));
       }
     } else if (omp_get_thread_num() == 0 && party_ != ALICE) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io->send_data(x.data, sz * sizeof(uint8_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io->recv_data(ret.data, sz * sizeof(uint8_t));
       }
     }

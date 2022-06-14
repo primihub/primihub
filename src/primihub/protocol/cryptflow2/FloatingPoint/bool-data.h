@@ -37,14 +37,14 @@ SOFTWARE.
 // Else, the underlying array is secret-shared and the class instance will hold the party's share of the secret array. In this case, the party data member denotes which party this share belongs to.
 class BoolArray {
 public:
-  int party = sci::PUBLIC;
+  int party = primihub::sci::PUBLIC;
   int size = 0;            // size of array
   uint8_t *data = nullptr; // data
 
   BoolArray(){};
 
   BoolArray(int party_, int sz) {
-    assert(party_ == sci::PUBLIC || party_ == sci::ALICE || party_ == sci::BOB);
+    assert(party_ == primihub::sci::PUBLIC || party_ == primihub::sci::ALICE || party_ == primihub::sci::BOB);
     assert(sz > 0);
     this->party = party_;
     this->size = sz;
@@ -107,7 +107,7 @@ class BoolOp {
 public:
   int party;
 
-  BoolOp(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
+  BoolOp(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->iopack = iopack;
     this->otpack = otpack;
@@ -154,8 +154,8 @@ public:
   BoolArray OR(const BoolArray &x, const BoolArray &y);
 
 private:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   AuxProtocols *aux;
 };
 

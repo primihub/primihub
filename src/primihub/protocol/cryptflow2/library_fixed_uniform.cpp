@@ -23,7 +23,7 @@ SOFTWARE.
 #include "functionalities_uniform.h"
 #include "library_fixed_common.h"
 #ifdef SCI_HE
-uint64_t prime_mod = sci::default_prime_mod.at(bitlength);
+uint64_t prime_mod = primihub::sci::default_prime_mod.at(bitlength);
 #elif SCI_OT
 uint64_t prime_mod = (bitlength == 64 ? 0ULL : 1ULL << bitlength);
 uint64_t moduloMask = prime_mod - 1;
@@ -63,25 +63,25 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 
   // By default, the model is A and server/Alice has it
   // So, in the AB mult, party with A = server and party with B = client.
-  int partyWithAInAB_mul = sci::ALICE; 
-  int partyWithBInAB_mul = sci::BOB;
+  int partyWithAInAB_mul = primihub::sci::ALICE; 
+  int partyWithBInAB_mul = primihub::sci::BOB;
   if (!modelIsA) {
     // Model is B
-    partyWithAInAB_mul = sci::BOB;
-    partyWithBInAB_mul = sci::ALICE;
+    partyWithAInAB_mul = primihub::sci::BOB;
+    partyWithBInAB_mul = primihub::sci::ALICE;
   }
 
 #if defined(SCI_OT)
 #ifndef MULTITHREADED_MATMUL
 #ifdef USE_LINEAR_UNIFORM
-  if (partyWithAInAB_mul == sci::ALICE) {
-    if (party == sci::ALICE) {
+  if (partyWithAInAB_mul == primihub::sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       multUniform->funcOTSenderInputA(s1, s2, s3, A, C, iknpOT);
     } else {
       multUniform->funcOTReceiverInputB(s1, s2, s3, B, C, iknpOT);
     }
   } else {
-    if (party == sci::BOB) {
+    if (party == primihub::sci::BOB) {
       multUniform->funcOTSenderInputA(s1, s2, s3, A, C, iknpOTRoleReversed);
     } else {
       multUniform->funcOTReceiverInputB(s1, s2, s3, B, C, iknpOTRoleReversed);
@@ -102,7 +102,7 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 #endif
 #endif // USE_LINEAR_UNIFORM
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE) {
     // Now irrespective of whether A is the model or B is the model and whether
     //	server holds A or B, server should add locally A*B.
     //
@@ -113,7 +113,7 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 #else  // USE_LINEAR_UNIFORM
     mult->matmul_cleartext(s1, s2, s3, A, B, CTemp, true);
 #endif // USE_LINEAR_UNIFORM
-    sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
     delete[] CTemp;
   } else {
     // For minionn kind of hacky runs, switch this off
@@ -154,14 +154,14 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
     delete[] C_ans_arr[i];
   }
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE) {
     intType *CTemp = new intType[s1 * s3];
 #ifdef USE_LINEAR_UNIFORM
     multUniform->ideal_func(s1, s2, s3, A, B, CTemp);
 #else  // USE_LINEAR_UNIFORM
     mult->matmul_cleartext(s1, s2, s3, (intType*)A, (intType*)B, CTemp, true);
 #endif // USE_LINEAR_UNIFORM
-    sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
     delete[] CTemp;
   } else {
     // For minionn kind of hacky runs, switch this off
@@ -946,7 +946,7 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
   std::cout << "Relu " << ctr << " called size=" << size << std::endl;
   ctr++;
 
-  intType moduloMask = sci::all1Mask(bitlength);
+  intType moduloMask = primihub::sci::all1Mask(bitlength);
   uint8_t *msbShare = new uint8_t[size];
   intType *tempOutp = new intType[size];
 
@@ -1102,7 +1102,7 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
             << ", ksizeW=" << ksizeW << std::endl;
   ctr++;
 
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   int rows = N * H * W * C;
   int cols = ksizeH * ksizeW;
 
@@ -1285,7 +1285,7 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
             << ", ksizeW=" << ksizeW << std::endl;
   ctr++;
 
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   int rows = N * H * W * C;
   intType *filterSum = new intType[rows];
   intType *filterAvg = new intType[rows];
@@ -1318,7 +1318,7 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
               curFilterSum += temp;
 #else
               curFilterSum =
-                  sci::neg_mod(curFilterSum + temp, (int64_t)prime_mod);
+                  primihub::sci::neg_mod(curFilterSum + temp, (int64_t)prime_mod);
 #endif
             }
           }
@@ -1340,7 +1340,7 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
   funcAvgPoolTwoPowerRingWrapper(rows, filterSum, filterAvg, ksizeH * ksizeW);
 #else
   for (int i = 0; i < rows; i++) {
-    filterSum[i] = sci::neg_mod(filterSum[i], (int64_t)prime_mod);
+    filterSum[i] = primihub::sci::neg_mod(filterSum[i], (int64_t)prime_mod);
   }
   funcFieldDivWrapper<intType>(rows, filterSum, filterAvg,
                                ksizeH * ksizeW, nullptr);
@@ -1454,14 +1454,14 @@ void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
   intType *outp = new intType[size];
 
 #ifdef SCI_OT
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   for (int i = 0; i < size; i++) {
     inArr[i] = inArr[i] & moduloMask;
   }
   truncation->truncate(size, inArr, outp, sf, bitlength, true);
 #else
   for (int i = 0; i < size; i++) {
-    inArr[i] = sci::neg_mod(inArr[i], (int64_t)prime_mod);
+    inArr[i] = primihub::sci::neg_mod(inArr[i], (int64_t)prime_mod);
   }
   funcFieldDivWrapper<intType>(size, inArr, outp, 1ULL << sf, nullptr);
 #endif
@@ -1525,7 +1525,7 @@ void ScaleUp(int32_t size, intType *arr, int32_t sf) {
 #ifdef SCI_OT
     arr[i] = (arr[i] << sf);
 #else
-    arr[i] = sci::neg_mod(arr[i] << sf, (int64_t)prime_mod);
+    arr[i] = primihub::sci::neg_mod(arr[i] << sf, (int64_t)prime_mod);
 #endif
   }
 }
@@ -1534,7 +1534,7 @@ void StartComputation() {
   assert(bitlength < 64 && bitlength > 0);
   assert(num_threads <= MAX_THREADS);
 #ifdef SCI_HE
-  prime_mod = sci::default_prime_mod.at(bitlength);
+  prime_mod = primihub::sci::default_prime_mod.at(bitlength);
 #elif SCI_OT
   prime_mod = (bitlength == 64 ? 0ULL : 1ULL << bitlength);
   moduloMask = prime_mod - 1;
@@ -1544,20 +1544,20 @@ void StartComputation() {
   std::cout << "prime_mod: " << prime_mod << std::endl;
   checkIfUsingEigen();
   for (int i = 0; i < num_threads; i++) {
-    iopackArr[i] = new sci::IOPack(party, port + i, address);
+    iopackArr[i] = new primihub::sci::IOPack(party, port + i, address);
     ioArr[i] = iopackArr[i]->io;
-    otInstanceArr[i] = new sci::IKNP<sci::NetIO>(ioArr[i]);
-    prgInstanceArr[i] = new sci::PRG128();
-    kkotInstanceArr[i] = new sci::KKOT<sci::NetIO>(ioArr[i]);
+    otInstanceArr[i] = new primihub::sci::IKNP<primihub::sci::NetIO>(ioArr[i]);
+    prgInstanceArr[i] = new primihub::sci::PRG128();
+    kkotInstanceArr[i] = new primihub::sci::KKOT<primihub::sci::NetIO>(ioArr[i]);
 #ifdef SCI_OT
     multUniformArr[i] =
-        new MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>(
+        new MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>(
             party, bitlength, ioArr[i], otInstanceArr[i], nullptr);
 #endif
     if (i & 1) {
-      otpackArr[i] = new sci::OTPack(iopackArr[i], 3 - party);
+      otpackArr[i] = new primihub::sci::OTPack(iopackArr[i], 3 - party);
     } else {
-      otpackArr[i] = new sci::OTPack(iopackArr[i], party);
+      otpackArr[i] = new primihub::sci::OTPack(iopackArr[i], party);
     }
   }
 
@@ -1565,14 +1565,14 @@ void StartComputation() {
   iopack = iopackArr[0];
   otpack = otpackArr[0];
   iknpOT = otInstanceArr[0];
-  iknpOTRoleReversed = new sci::IKNP<sci::NetIO>(io);
+  iknpOTRoleReversed = new primihub::sci::IKNP<primihub::sci::NetIO>(io);
   kkot = kkotInstanceArr[0];
   prg128Instance = prgInstanceArr[0];
 
 #ifdef SCI_OT
   mult = new LinearOT(party, iopack, otpack);
   truncation = new Truncation(party, iopack, otpack);
-  multUniform = new MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>(
+  multUniform = new MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>(
       party, bitlength, io, iknpOT, iknpOTRoleReversed);
   relu = new ReLURingProtocol<intType>(party, RING, iopack, bitlength,
                                        MILL_PARAM, otpack);
@@ -1661,10 +1661,10 @@ void StartComputation() {
   math = mathArr[0];
 #endif
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE) {
     iknpOT->setup_send();
     iknpOTRoleReversed->setup_recv();
-  } else if (party == sci::BOB) {
+  } else if (party == primihub::sci::BOB) {
     iknpOT->setup_recv();
     iknpOTRoleReversed->setup_send();
   }
@@ -1963,7 +1963,7 @@ intType SecretAdd(intType x, intType y) {
 #ifdef SCI_OT
   return (x + y);
 #else
-  return sci::neg_mod(x + y, (int64_t)prime_mod);
+  return primihub::sci::neg_mod(x + y, (int64_t)prime_mod);
 #endif
 }
 
@@ -1971,7 +1971,7 @@ intType SecretSub(intType x, intType y) {
 #ifdef SCI_OT
   return (x - y);
 #else
-  return sci::neg_mod(x - y, (int64_t)prime_mod);
+  return primihub::sci::neg_mod(x - y, (int64_t)prime_mod);
 #endif
 }
 

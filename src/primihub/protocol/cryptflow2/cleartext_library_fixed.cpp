@@ -22,7 +22,7 @@ SOFTWARE.
 #include "cleartext_library_fixed.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 inline int64_t Saturate(int32_t inp) { return (int64_t)inp; }
 

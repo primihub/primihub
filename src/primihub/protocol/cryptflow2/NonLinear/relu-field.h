@@ -30,8 +30,8 @@ SOFTWARE.
 
 template <typename type> class ReLUFieldProtocol : public ReLUProtocol<type> {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   DReLUFieldProtocol *relu_triple_compare_oracle;
   int party;
@@ -47,8 +47,8 @@ public:
   uint8_t zero_small = 0;
 
   // Constructor
-  ReLUFieldProtocol(int party, int algeb_str, sci::IOPack *iopack, int l, int b,
-                    uint64_t mod, sci::OTPack *otpack) {
+  ReLUFieldProtocol(int party, int algeb_str, primihub::sci::IOPack *iopack, int l, int b,
+                    uint64_t mod, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->algeb_str = algeb_str;
     this->iopack = iopack;
@@ -89,12 +89,12 @@ public:
     actual_drelu = new uint8_t[num_relu];
     for (int i = 0; i < num_relu; i++) {
       wrap[i] = greater_than_wrap(
-          sh1[i], sci::neg_mod((int64_t)(this->rhs_wrap - sh2[i]), this->p));
+          sh1[i], primihub::sci::neg_mod((int64_t)(this->rhs_wrap - sh2[i]), this->p));
       relu_wrap_off[i] = greater_than_relu_wrap_off(
           sh1[i],
-          sci::neg_mod((int64_t)(this->rhs_wrap_off - sh2[i]), this->p));
+          primihub::sci::neg_mod((int64_t)(this->rhs_wrap_off - sh2[i]), this->p));
       relu_wrap_on[i] = greater_than_relu_wrap_on(
-          sh1[i], sci::neg_mod((int64_t)(this->rhs_wrap_on - sh2[i]), this->p));
+          sh1[i], primihub::sci::neg_mod((int64_t)(this->rhs_wrap_on - sh2[i]), this->p));
       expected_drelu[i] =
           (relu_wrap_on[i] & wrap[i]) ^ ((1 ^ wrap[i]) & relu_wrap_off[i]);
       expected_drelu[i] = 1 ^ expected_drelu[i];
@@ -166,16 +166,16 @@ public:
 #pragma omp parallel num_threads(2)
     {
       if (omp_get_thread_num() == 1) {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           otpack->iknp_reversed->recv(received_shares, drelu_ans, num_relu,
                                       this->l);
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           otpack->iknp_reversed->send(ot_messages, num_relu, this->l);
         }
       } else {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           otpack->iknp_straight->send(ot_messages, num_relu, this->l);
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           otpack->iknp_straight->recv(received_shares, drelu_ans, num_relu,
                                       this->l);
         }
@@ -197,9 +197,9 @@ public:
   void set_relu_end_ot_messages(uint64_t *ot_messages, type *value_share,
                                 uint8_t *xor_share, type *additive_mask) {
     type temp0, temp1;
-    temp0 = sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
+    temp0 = primihub::sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
                          this->p);
-    temp1 = sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0], this->p);
+    temp1 = primihub::sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0], this->p);
     if (*xor_share == zero_small) {
       ot_messages[0] = 0ULL + temp0;
       ot_messages[1] = 0ULL + temp1;

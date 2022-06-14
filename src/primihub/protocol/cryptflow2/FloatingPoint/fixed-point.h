@@ -41,7 +41,7 @@ SOFTWARE.
 // If s is set to 0, the FixArray will behave like an IntegerArray
 class FixArray {
 public:
-  int party = sci::PUBLIC;
+  int party = primihub::sci::PUBLIC;
   int size = 0;             // size of array
   uint64_t *data = nullptr; // data (ell-bit integers)
   bool signed_;             // signed? (1: signed; 0: unsigned)
@@ -51,7 +51,7 @@ public:
   FixArray(){};
 
   FixArray(int party_, int sz, bool signed__, int ell_, int s_ = 0) {
-    assert(party_ == sci::PUBLIC || party_ == sci::ALICE || party_ == sci::BOB);
+    assert(party_ == primihub::sci::PUBLIC || party_ == primihub::sci::ALICE || party_ == primihub::sci::BOB);
     assert(sz > 0);
     assert(ell_ <= 64 && ell_ > 0);
     this->party = party_;
@@ -131,8 +131,8 @@ FixArray concat(const vector<FixArray>& x);
 class FixOp {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   Equality *eq;
   MillionaireWithEquality *mill_eq;
   AuxProtocols *aux;
@@ -142,7 +142,7 @@ public:
   BoolOp *bool_op;
   FixOp *fix;
 
-  FixOp(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
+  FixOp(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->iopack = iopack;
     this->otpack = otpack;
@@ -332,7 +332,7 @@ public:
   // Most Significant Bit: returns MSB of x in the form of BoolArray
   // x must be secret-shared
   BoolArray MSB(const FixArray &x) {
-      assert(x.party != sci::PUBLIC);
+      assert(x.party != primihub::sci::PUBLIC);
       return fix->LT(x, 0);
   }
 

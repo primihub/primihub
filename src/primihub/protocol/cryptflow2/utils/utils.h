@@ -41,7 +41,7 @@ using std::string;
 using std::chrono::high_resolution_clock;
 using std::chrono::time_point;
 
-namespace sci {
+namespace primihub::sci {
 template <typename T> void inline delete_array_null(T *ptr);
 
 inline void error(const char *s, int line = 0, const char *file = nullptr);
@@ -85,5 +85,5 @@ inline void parse_party_and_port(char **arg, int *party, int *port) {
 }
 
 #include "src/primihub/protocol/cryptflow2/utils/utils.hpp"
-} // namespace sci
+} // namespace primihub::sci
 #endif // UTILS_H__

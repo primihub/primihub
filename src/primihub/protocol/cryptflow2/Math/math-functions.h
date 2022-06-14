@@ -30,14 +30,14 @@ SOFTWARE.
 class MathFunctions {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   AuxProtocols *aux;
   XTProtocol *xt;
   Truncation *trunc;
   LinearOT *mult;
 
-  MathFunctions(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+  MathFunctions(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
   ~MathFunctions();
 

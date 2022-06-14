@@ -23,7 +23,7 @@ SOFTWARE.
 #include "library_float.h"
 
 using namespace std ;
-using namespace sci ;
+using namespace primihub::sci ;
 
 #define WHICHPARTY tid&1?3-__party:__party
 

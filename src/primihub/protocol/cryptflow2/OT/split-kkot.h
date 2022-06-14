@@ -33,7 +33,7 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 #include "src/primihub/protocol/cryptflow2/OT/split-utils.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class SplitKKOT : public OT<SplitKKOT<IO>> {
 public:
   OTNP<IO> *base_ot;
@@ -361,7 +361,7 @@ public:
   template <typename T> void got_send_online(T **data, int length) {
     const int bsize = length; // ro_batch_size;
     uint32_t y_size = (uint32_t)ceil((N * bsize * l) / ((float)sizeof(T) * 8));
-    int bits_in_sel_input = sci::bitlen(N);
+    int bits_in_sel_input = primihub::sci::bitlen(N);
     uint32_t a_size = (uint32_t)ceil((bsize * bits_in_sel_input) /
                                      ((float)sizeof(uint8_t) * 8));
     T y[y_size];
@@ -420,7 +420,7 @@ public:
     const int bsize = length;
     uint32_t res_size =
         (uint32_t)ceil((N * length * l) / ((float)sizeof(T) * 8));
-    int bits_in_sel_input = sci::bitlen(N);
+    int bits_in_sel_input = primihub::sci::bitlen(N);
     uint32_t a_size = (uint32_t)ceil((length * bits_in_sel_input) /
                                      ((float)sizeof(uint8_t) * 8));
     T res[res_size];
@@ -600,5 +600,5 @@ public:
     }
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // SPLIT_OT_KKOT_H__

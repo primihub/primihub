@@ -22,7 +22,7 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/Math/math-functions.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 #define KKOT_LIMIT 8
 #define SQRT_LOOKUP_SCALE 2

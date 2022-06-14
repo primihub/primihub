@@ -31,8 +31,8 @@ SOFTWARE.
 
 template <typename type> class ReLURingProtocol : public ReLUProtocol<type> {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   MillionaireProtocol *millionaire;
   int party;
@@ -51,8 +51,8 @@ public:
   type msb_one_type;
 
   // Constructor
-  ReLURingProtocol(int party, int algeb_str, sci::IOPack *iopack, int l, int b,
-                   sci::OTPack *otpack) {
+  ReLURingProtocol(int party, int algeb_str, primihub::sci::IOPack *iopack, int l, int b,
+                   primihub::sci::OTPack *otpack) {
     this->party = party;
     this->algeb_str = algeb_str;
     this->iopack = iopack;
@@ -152,13 +152,13 @@ public:
     type temp;
 
     switch (this->party) {
-    case sci::ALICE: {
+    case primihub::sci::ALICE: {
       for (int i = 0; i < num_relu; i++) {
         array64[i] = array_type[i] + 0ULL;
       }
       break;
     }
-    case sci::BOB: {
+    case primihub::sci::BOB: {
       for (int i = 0; i < num_relu; i++) {
         temp = this->relu_comparison_rhs_type -
                array_type[i]; // This value is never negative.
@@ -201,16 +201,16 @@ public:
 #pragma omp parallel num_threads(2)
     {
       if (omp_get_thread_num() == 1) {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           otpack->iknp_reversed->recv(received_shares, msb_local_share,
                                       num_relu, this->l);
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           otpack->iknp_reversed->send(ot_messages, num_relu, this->l);
         }
       } else {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           otpack->iknp_straight->send(ot_messages, num_relu, this->l);
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           otpack->iknp_straight->recv(received_shares, msb_local_share,
                                       num_relu, this->l);
         }

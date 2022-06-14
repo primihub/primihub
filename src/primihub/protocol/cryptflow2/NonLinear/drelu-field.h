@@ -29,8 +29,8 @@ SOFTWARE.
 
 class DReLUFieldProtocol {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   MillionaireProtocol *millionaire;
   int party;
@@ -41,8 +41,8 @@ public:
   uint64_t p, p_2;
 
   DReLUFieldProtocol(int party, int bitlength, int log_radix_base,
-                     uint64_t prime_mod, sci::IOPack *iopack,
-                     sci::OTPack *otpack) {
+                     uint64_t prime_mod, primihub::sci::IOPack *iopack,
+                     primihub::sci::OTPack *otpack) {
     assert(log_radix_base <= 8);
     assert(bitlength <= 64);
     this->party = party;
@@ -60,7 +60,7 @@ public:
   void configure() {
     this->num_digits = ceil((double)l / beta);
     this->r = l % beta;
-    this->log_alpha = sci::bitlen(num_digits) - 1;
+    this->log_alpha = primihub::sci::bitlen(num_digits) - 1;
     this->log_num_digits = log_alpha + 1;
     this->num_triples_corr = 2 * num_digits - 2 - 2 * log_num_digits;
     this->num_triples_std = log_num_digits;
@@ -113,7 +113,7 @@ public:
 
     // Extract radix-digits from data
     assert((beta <= 8) && "Base beta > 8 is not implemented");
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       for (int j = 0; j < num_relu; j++) {
         uint64_t input_wrap_cmp = (p - 1 - share_ext[j]) + p_2;
         uint64_t input_drelu_cmp;
@@ -137,7 +137,7 @@ public:
           }
         }
       }
-    } else // party = sci::BOB
+    } else // party = primihub::sci::BOB
     {
       for (int j = 0; j < num_relu; j++) {
         uint64_t input_cmp = p_2 + share_ext[j];
@@ -154,7 +154,7 @@ public:
       }
     }
 
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       uint8_t *
           *leaf_ot_messages; // (num_digits * num_relu) X beta_pow (=2^beta)
       // Do the two relu_comparisons together in 1 leaf OT.
@@ -224,7 +224,7 @@ public:
       delete[] leaf_ot_messages;
       // Alice's shares are: cmp1, cmp2 and cmp3 are at leaf_res_cmp[0+3*j],
       // leaf_res_cmp[1+3*j] and leaf_res_cmp[2+3*j]
-    } else // party = sci::BOB
+    } else // party = primihub::sci::BOB
     {
       // Perform Leaf OTs
       uint8_t *leaf_ot_recvd = new uint8_t[num_digits * num_relu];
@@ -272,7 +272,7 @@ public:
     // comparsions
     millionaire->traverse_and_compute_ANDs(num_cmps, leaf_res_eq, leaf_res_cmp);
 
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       uint8_t **mux_ot_messages = new uint8_t *[num_relu];
       for (int j = 0; j < num_relu; j++) {
         mux_ot_messages[j] = new uint8_t[4];
@@ -289,7 +289,7 @@ public:
         delete[] mux_ot_messages[j];
       }
       delete[] mux_ot_messages;
-    } else // sci::BOB
+    } else // primihub::sci::BOB
     {
       uint8_t *mux_ot_selection = new uint8_t[num_relu];
       for (int j = 0; j < num_relu; j++) {
@@ -340,7 +340,7 @@ public:
                            uint8_t drelu_mask, bool neg_share) {
     uint8_t bits_i[2];
     for (int i = 0; i < 4; i++) {
-      sci::uint8_to_bool(bits_i, i, 2); // wrap_cmp || !drelu_cmp
+      primihub::sci::uint8_to_bool(bits_i, i, 2); // wrap_cmp || !drelu_cmp
       uint8_t drelu_cmp = bits_i[1] ^ cmp_results[1];
       uint8_t wrap = bits_i[0] ^ cmp_results[0];
       if (neg_share) {

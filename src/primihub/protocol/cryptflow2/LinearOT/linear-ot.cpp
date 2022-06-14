@@ -31,7 +31,7 @@ SOFTWARE.
 #endif
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 #define START_IDX 0
 #define print_vec(ot, vec, bw, N)                                              \
@@ -57,7 +57,7 @@ using namespace sci;
 
 void reconstruct(LinearOT* ot, int dim, uint64_t *x, uint64_t *y, int bw_x) {
   uint64_t mask = (bw_x == 64 ? -1 : ((1ULL << bw_x) - 1));
-  if (ot->party == sci::ALICE) {
+  if (ot->party == primihub::sci::ALICE) {
     ot->iopack->io->send_data(x, dim * sizeof(uint64_t));
     for (int i = 0; i < dim; i++) {
       y[i] = 0;
@@ -297,7 +297,7 @@ void LinearOT::matmul_cross_terms(int32_t dim1, int32_t dim2, int32_t dim3,
 #pragma omp parallel num_threads(2)
     {
       if (omp_get_thread_num() == 1 && use_reversed_ot) {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           if (batch_size <= num_ot - i) {
             otpack->iknp_reversed->recv_batched_cot(ABr, choice, msg_len,
                                                     batch_size, msgs_per_ot);
@@ -305,7 +305,7 @@ void LinearOT::matmul_cross_terms(int32_t dim1, int32_t dim2, int32_t dim3,
             otpack->iknp_reversed->recv_batched_cot(ABr, choice, msg_len,
                                                     num_ot - i, msgs_per_ot);
           }
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           if (batch_size <= num_ot - i) {
             otpack->iknp_reversed->send_batched_cot(ABs, corr, msg_len,
                                                     batch_size, msgs_per_ot);
@@ -315,7 +315,7 @@ void LinearOT::matmul_cross_terms(int32_t dim1, int32_t dim2, int32_t dim3,
           }
         }
       } else if (omp_get_thread_num() == 0 && use_straight_ot) {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           if (batch_size <= num_ot - i) {
             otpack->iknp_straight->send_batched_cot(ABs, corr, msg_len,
                                                     batch_size, msgs_per_ot);
@@ -323,7 +323,7 @@ void LinearOT::matmul_cross_terms(int32_t dim1, int32_t dim2, int32_t dim3,
             otpack->iknp_straight->send_batched_cot(ABs, corr, msg_len,
                                                     num_ot - i, msgs_per_ot);
           }
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           if (batch_size <= num_ot - i) {
             otpack->iknp_straight->recv_batched_cot(ABr, choice, msg_len,
                                                     batch_size, msgs_per_ot);
@@ -496,16 +496,16 @@ void LinearOT::matmul_multiplexer(int32_t dim1, int32_t dim2, int32_t dim3,
 #pragma omp parallel num_threads(2)
   {
     if (omp_get_thread_num() == 1 && use_reversed_ot) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         otpack->iknp_reversed->recv_batched_got(ABr, choice, dim, bwC,
                                                 msgs_per_ot);
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         otpack->iknp_reversed->send_batched_got(data, dim, bwC, msgs_per_ot);
       }
     } else if (omp_get_thread_num() == 0 && use_straight_ot) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         otpack->iknp_straight->send_batched_got(data, dim, bwC, msgs_per_ot);
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         otpack->iknp_straight->recv_batched_got(ABr, choice, dim, bwC,
                                                 msgs_per_ot);
       }

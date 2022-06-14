@@ -30,7 +30,7 @@ Modified by Nishant Kumar
 #include "src/primihub/protocol/cryptflow2/OT/np.h"
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 #include <algorithm>
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class IKNP : public OT<IKNP<IO>> {
 public:
   OTNP<IO> *base_ot;
@@ -779,5 +779,5 @@ public:
   }
 };
 
-} // namespace sci
+} // namespace primihub::sci
 #endif // IKNP_H__

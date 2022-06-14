@@ -36,7 +36,7 @@
 #include <thread>
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 #define MAX_THREADS 4
 

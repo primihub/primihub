@@ -31,7 +31,7 @@ Modified by Deevashwer Rathee
 /** @addtogroup OT
         @{
 */
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class OTNP : public OT<OTNP<IO>> {
 public:
   IO *io;
@@ -214,5 +214,5 @@ public:
   }
 };
 /**@}*/
-} // namespace sci
+} // namespace primihub::sci
 #endif // OT_NP_H__

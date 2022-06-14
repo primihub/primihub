@@ -24,7 +24,7 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/OT/np.h"
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class KKOT : public OT<KKOT<IO>> {
 public:
   OTNP<IO> *base_ot;
@@ -235,5 +235,5 @@ public:
   }
 };
 
-} // namespace sci
+} // namespace primihub::sci
 #endif // OT_KKOT_H__

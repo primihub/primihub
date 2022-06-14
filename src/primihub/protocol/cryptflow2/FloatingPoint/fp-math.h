@@ -28,13 +28,13 @@ SOFTWARE.
 class FPMath {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   BoolOp *bool_op;
   FixOp *fix;
   FPOp *fp_op;
 
-  FPMath(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
+  FPMath(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->iopack = iopack;
     this->otpack = otpack;

@@ -25,7 +25,7 @@ SOFTWARE.
 #define CHUNK_SIZE (1 << 20)
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 FPArray FPArray::subset(int i, int j) {
   assert(i >= 0 && j <= size && i < j);
@@ -339,24 +339,24 @@ FPArray FPOp::output(int party_, const FPArray& x) {
 #pragma omp parallel num_threads(2)
   {
     if (omp_get_thread_num() == 1 && party_ != BOB) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io_rev->recv_data(ret.s, sz * sizeof(uint8_t));
         iopack->io_rev->recv_data(ret.z, sz * sizeof(uint8_t));
         iopack->io_rev->recv_data(ret.m, sz * sizeof(uint64_t));
         iopack->io_rev->recv_data(ret.e, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io_rev->send_data(x.s, sz * sizeof(uint8_t));
         iopack->io_rev->send_data(x.z, sz * sizeof(uint8_t));
         iopack->io_rev->send_data(x.m, sz * sizeof(uint64_t));
         iopack->io_rev->send_data(x.e, sz * sizeof(uint64_t));
       }
     } else if (omp_get_thread_num() == 0 && party_ != ALICE) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io->send_data(x.s, sz * sizeof(uint8_t));
         iopack->io->send_data(x.z, sz * sizeof(uint8_t));
         iopack->io->send_data(x.m, sz * sizeof(uint64_t));
         iopack->io->send_data(x.e, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io->recv_data(ret.s, sz * sizeof(uint8_t));
         iopack->io->recv_data(ret.z, sz * sizeof(uint8_t));
         iopack->io->recv_data(ret.m, sz * sizeof(uint64_t));
@@ -569,15 +569,15 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
 #pragma omp parallel num_threads(2)
   {
     if (omp_get_thread_num() == 1) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         otpack->iknp_reversed->recv_impl(recv_data, cond.data, x.size, ret_ell);
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         otpack->iknp_reversed->send_impl(send_data, x.size, ret_ell);
       }
     } else {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         otpack->iknp_straight->send_impl(send_data, x.size, ret_ell);
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         otpack->iknp_straight->recv_impl(recv_data, cond.data, x.size, ret_ell);
       }
     }

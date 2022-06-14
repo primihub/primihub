@@ -38,13 +38,13 @@ enum class MultMode {
 class LinearOT {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   AuxProtocols *aux;
   Truncation *trunc;
   XTProtocol *xt;
 
-  LinearOT(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+  LinearOT(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
   ~LinearOT();
 

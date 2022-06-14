@@ -10,7 +10,7 @@
 #include "src/primihub/service/dataset/model.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 using namespace Eigen;
 using arrow::Array;
 using arrow::Table;
@@ -187,13 +187,13 @@ namespace primihub
 
     switch (party)
     {
-    case sci::ALICE:
+    case primihub::sci::ALICE:
     {
       iopackArr[0]->io->send_data(x, sizeof(uint64_t) * num_rows * num_cols);
       iopackArr[0]->io->send_data(z, sizeof(uint64_t) * num_rows);
       break;
     }
-    case sci::BOB:
+    case primihub::sci::BOB:
     {
       uint64_t *xi = new uint64_t[num_rows * num_cols];
       uint64_t *zi = new uint64_t[num_rows];

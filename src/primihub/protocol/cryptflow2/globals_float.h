@@ -26,7 +26,7 @@ SOFTWARE.
 #include "FloatingPoint/floating-point.h"
 #include "FloatingPoint/fp-math.h"
 
-using namespace sci ;
+using namespace primihub::sci ;
 using namespace std ;
 
 extern IOPack *iopackArr[MAX_THREADS] ;

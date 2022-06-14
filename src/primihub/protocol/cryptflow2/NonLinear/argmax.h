@@ -27,8 +27,8 @@ SOFTWARE.
 
 template <typename type> class ArgMaxProtocol {
 public:
-  sci::IOPack *iopack = nullptr;
-  sci::OTPack *otpack = nullptr;
+  primihub::sci::IOPack *iopack = nullptr;
+  primihub::sci::OTPack *otpack = nullptr;
   ReLURingProtocol<type> *relu_oracle = nullptr;
   ReLUFieldProtocol<type> *relu_field_oracle = nullptr;
   int party;
@@ -44,8 +44,8 @@ public:
   type mask_l;
 
   // Constructor
-  ArgMaxProtocol(int party, int algeb_str, sci::IOPack *iopack, int l, int b,
-                 uint64_t prime, sci::OTPack *otpack) {
+  ArgMaxProtocol(int party, int algeb_str, primihub::sci::IOPack *iopack, int l, int b,
+                 uint64_t prime, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->algeb_str = algeb_str;
     this->iopack = iopack;
@@ -100,7 +100,7 @@ public:
       input_temp[i] = inpArr[i];
       input_argmax_temp[i] = 0;
     }
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       for (type i = 0; i < (type)size; i++) {
         input_argmax_temp[i] = i;
       }
@@ -143,9 +143,9 @@ public:
       }
       if (this->algeb_str == FIELD) {
         for (int i = 0; i < (pad2); i += 2) {
-          compare_with[i / 2] = sci::neg_mod(
+          compare_with[i / 2] = primihub::sci::neg_mod(
               (int64_t)(input_temp[i] - input_temp[i + 1]), this->prime_mod);
-          compare_with_argmax[i / 2] = sci::neg_mod(
+          compare_with_argmax[i / 2] = primihub::sci::neg_mod(
               (int64_t)(input_argmax_temp[i] - input_argmax_temp[i + 1]),
               this->prime_mod);
         }
@@ -213,11 +213,11 @@ public:
 
     // Now perform x.msb(x)
     // 2 OTs required with reversed roles
-    sci::block128 *ot_messages_0 = new sci::block128[num_relu];
-    sci::block128 *ot_messages_1 = new sci::block128[num_relu];
+    primihub::sci::block128 *ot_messages_0 = new primihub::sci::block128[num_relu];
+    primihub::sci::block128 *ot_messages_1 = new primihub::sci::block128[num_relu];
 
     uint64_t *additive_masks = new uint64_t[num_relu * 2];
-    sci::block128 *received_shares = new sci::block128[num_relu];
+    primihub::sci::block128 *received_shares = new primihub::sci::block128[num_relu];
     uint64_t *received_shares_0 = new uint64_t[num_relu];
     uint64_t *received_shares_1 = new uint64_t[num_relu];
 
@@ -239,7 +239,7 @@ public:
 #pragma omp parallel num_threads(2)
     {
       if (omp_get_thread_num() == 1) {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           if (this->algeb_str == FIELD) {
             relu_field_oracle->otpack->iknp_reversed->recv(
                 received_shares, (bool *)drelu_ans, num_relu);
@@ -247,7 +247,7 @@ public:
             relu_oracle->otpack->iknp_reversed->recv(
                 received_shares, (bool *)drelu_ans, num_relu);
           }
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           if (this->algeb_str == FIELD) {
             relu_field_oracle->otpack->iknp_reversed->send(
                 ot_messages_0, ot_messages_1, num_relu);
@@ -257,7 +257,7 @@ public:
           }
         }
       } else {
-        if (party == sci::ALICE) {
+        if (party == primihub::sci::ALICE) {
           if (this->algeb_str == FIELD) {
             relu_field_oracle->otpack->iknp_straight->send(
                 ot_messages_0, ot_messages_1, num_relu);
@@ -265,7 +265,7 @@ public:
             relu_oracle->otpack->iknp_straight->send(ot_messages_0,
                                                      ot_messages_1, num_relu);
           }
-        } else { // party == sci::BOB
+        } else { // party == primihub::sci::BOB
           if (this->algeb_str == FIELD) {
             relu_field_oracle->otpack->iknp_straight->recv(
                 received_shares, (bool *)drelu_ans, num_relu);
@@ -300,21 +300,21 @@ public:
     delete[] drelu_ans;
   }
 
-  void set_argmax_end_ot_messages_super_32(sci::block128 *ot_messages_0,
-                                           sci::block128 *ot_messages_1,
+  void set_argmax_end_ot_messages_super_32(primihub::sci::block128 *ot_messages_0,
+                                           primihub::sci::block128 *ot_messages_1,
                                            type *value_share, type *index_share,
                                            uint8_t *xor_share,
                                            type *additive_mask, int num_relu) {
     type temp0, temp1, temp2, temp3;
     if (this->algeb_str == FIELD) {
-      temp0 = sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
+      temp0 = primihub::sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
                            this->prime_mod);
-      temp1 = sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0],
+      temp1 = primihub::sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0],
                            this->prime_mod);
-      temp2 = sci::neg_mod((int64_t)index_share[0] -
+      temp2 = primihub::sci::neg_mod((int64_t)index_share[0] -
                                (int64_t)additive_mask[0 + num_relu],
                            this->prime_mod);
-      temp3 = sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0 + num_relu],
+      temp3 = primihub::sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0 + num_relu],
                            this->prime_mod);
     } else { // RING
       temp0 = (value_share[0] - additive_mask[0]);
@@ -323,11 +323,11 @@ public:
       temp3 = (0 - additive_mask[0 + num_relu]);
     }
     if (*xor_share == zero_small) {
-      ot_messages_0[0] = sci::makeBlock128(0ULL + temp0, 0ULL + temp2);
-      ot_messages_1[0] = sci::makeBlock128(0ULL + temp1, 0ULL + temp3);
+      ot_messages_0[0] = primihub::sci::makeBlock128(0ULL + temp0, 0ULL + temp2);
+      ot_messages_1[0] = primihub::sci::makeBlock128(0ULL + temp1, 0ULL + temp3);
     } else {
-      ot_messages_0[0] = sci::makeBlock128(0ULL + temp1, 0ULL + temp3);
-      ot_messages_1[0] = sci::makeBlock128(0ULL + temp0, 0ULL + temp2);
+      ot_messages_0[0] = primihub::sci::makeBlock128(0ULL + temp1, 0ULL + temp3);
+      ot_messages_1[0] = primihub::sci::makeBlock128(0ULL + temp0, 0ULL + temp2);
     }
   }
 
@@ -363,7 +363,7 @@ public:
       this->relu_oracle->triple_gen->prg->random_data(
           additive_masks, 2 * num_relu * sizeof(type));
     }
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       for (int i = 0; i < num_relu; i++) {
         set_argmax_end_ot_messages_sub_32(
             ot_messages[i], share + i, indexshare + i, drelu_ans + i,
@@ -379,7 +379,7 @@ public:
         relu_oracle->otpack->iknp_reversed->recv(received_shares, drelu_ans,
                                                  num_relu, 64);
       }
-    } else // party = sci::BOB
+    } else // party = primihub::sci::BOB
     {
       for (int i = 0; i < num_relu; i++) {
         set_argmax_end_ot_messages_sub_32(
@@ -436,14 +436,14 @@ public:
     uint64_t temp0, temp1, temp2, temp3;
     uint64_t mask_upper_general, mask_lower_general;
     if (this->algeb_str == FIELD) {
-      temp0 = sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
+      temp0 = primihub::sci::neg_mod((int64_t)value_share[0] - (int64_t)additive_mask[0],
                            this->prime_mod);
-      temp1 = sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0],
+      temp1 = primihub::sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0],
                            this->prime_mod);
-      temp2 = sci::neg_mod((int64_t)index_share[0] -
+      temp2 = primihub::sci::neg_mod((int64_t)index_share[0] -
                                (int64_t)additive_mask[0 + num_relu],
                            this->prime_mod);
-      temp3 = sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0 + num_relu],
+      temp3 = primihub::sci::neg_mod((int64_t)0LL - (int64_t)additive_mask[0 + num_relu],
                            this->prime_mod);
       temp0 = temp0 << this->l;
       temp1 = temp1 << this->l;

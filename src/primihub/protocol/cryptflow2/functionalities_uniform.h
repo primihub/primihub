@@ -87,7 +87,7 @@ void funcReconstruct2PCCons(signedIntType *y, const intType *x, int len) {
     for (int i = 0; i < len; i++) {
       temp = y[i] + x[i];
       if (!isNativeRing) {
-        temp = sci::neg_mod(temp,
+        temp = primihub::sci::neg_mod(temp,
                             (int64_t)prime_mod); // cast temp to signed int and
                                                  // then take a proper modulo p
         y[i] = getAnyRingSignedVal(temp);
@@ -107,7 +107,7 @@ signedIntType funcReconstruct2PCCons(intType x, int revealParty) {
   assert(revealParty == 2 && "Reveal to only client is supported right now.");
   intType temp = 0;
   signedIntType ans = 0;
-  static const uint64_t moduloMask = sci::all1Mask(bitlength);
+  static const uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   if (party == SERVER) {
     io->send_data(&x, sizeof(intType));
   } else if (party == CLIENT) {
@@ -115,7 +115,7 @@ signedIntType funcReconstruct2PCCons(intType x, int revealParty) {
     temp = temp + x;
     if (!isNativeRing) {
       temp =
-          sci::neg_mod(temp, (int64_t)prime_mod); // cast temp to signed int and
+          primihub::sci::neg_mod(temp, (int64_t)prime_mod); // cast temp to signed int and
                                                   // then take a proper modulo p
       ans = getAnyRingSignedVal(temp);
     } else {
@@ -145,7 +145,7 @@ void funcTruncationIdeal(int size, intType *arr, int consSF) {
       signedIntType ans;
       intType temp = arr[i] + arrOther[i];
       if (!isNativeRing) {
-        temp = sci::neg_mod(temp, (int64_t)prime_mod);
+        temp = primihub::sci::neg_mod(temp, (int64_t)prime_mod);
         ans = getAnyRingSignedVal(temp);
         ans = div_floor(ans, 1ULL << consSF);
       } else {
@@ -170,7 +170,7 @@ void printAllReconstructedValuesSigned(int size, intType *arr) {
       signedIntType ans;
       intType temp = arr[i] + arrOther[i];
       if (!isNativeRing) {
-        temp = sci::neg_mod(temp, (int64_t)prime_mod);
+        temp = primihub::sci::neg_mod(temp, (int64_t)prime_mod);
         ans = getAnyRingSignedVal(temp);
       } else {
         ans = temp;
@@ -245,7 +245,7 @@ void funcMatmulThread(int tid, int N, int s1, int s2, int s3, intType *A,
 #ifdef USE_LINEAR_UNIFORM
   assert(s2EndIdx > s2StartIdx);
   bool useBobAsSender = tid & 1;
-  if (partyWithAInAB_mul == sci::BOB)
+  if (partyWithAInAB_mul == primihub::sci::BOB)
     useBobAsSender = !useBobAsSender;
   if (useBobAsSender) {
     // Odd tid, use Bob (holding B) as sender and Alice (holding A) as receiver
@@ -272,12 +272,12 @@ void funcMatmulThread(int tid, int N, int s1, int s2, int s3, intType *A,
   mode = MultMode::None;
 #else
   if (tid & 1) {
-    if (partyWithAInAB_mul == sci::ALICE)
+    if (partyWithAInAB_mul == primihub::sci::ALICE)
       mode = MultMode::Bob_has_A;
     else
       mode = MultMode::Bob_has_B;
   } else {
-    if (partyWithAInAB_mul == sci::ALICE)
+    if (partyWithAInAB_mul == primihub::sci::ALICE)
       mode = MultMode::Alice_has_A;
     else
       mode = MultMode::Alice_has_B;
@@ -327,14 +327,14 @@ void funcDotProdThread(int tid, int N, int size, intType *multiplyArr,
    interface.
 */
 void funcTruncateTwoPowerRing(
-    int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
-    sci::IKNP<sci::NetIO> *curiknp, ReLUProtocol<intType> *curReluImpl,
-    sci::PRG128 *curPrgInstance, int size, intType *inp, intType *outp,
+    int curParty, primihub::sci::IOPack *curiopack, primihub::sci::OTPack *curotpack,
+    primihub::sci::IKNP<primihub::sci::NetIO> *curiknp, ReLUProtocol<intType> *curReluImpl,
+    primihub::sci::PRG128 *curPrgInstance, int size, intType *inp, intType *outp,
     int consSF, uint8_t *msbShare, bool doCarryBitCalculation = true) {
   static const int rightShiftForMsb = bitlength - 1;
   uint64_t *carryBitCompArr;
   uint8_t *carryBitCompAns;
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
 
   for (int i = 0; i < size; i++) {
     assert(inp[i] <= moduloMask);
@@ -344,9 +344,9 @@ void funcTruncateTwoPowerRing(
     carryBitCompArr = new uint64_t[size];
     carryBitCompAns = new uint8_t[size];
     for (int i = 0; i < size; i++) {
-      carryBitCompArr[i] = (inp[i] & sci::all1Mask(consSF));
-      if (curParty == sci::BOB) {
-        carryBitCompArr[i] = (sci::all1Mask(consSF)) - carryBitCompArr[i];
+      carryBitCompArr[i] = (inp[i] & primihub::sci::all1Mask(consSF));
+      if (curParty == primihub::sci::BOB) {
+        carryBitCompArr[i] = (primihub::sci::all1Mask(consSF)) - carryBitCompArr[i];
       }
     }
     MillionaireProtocol millionaire(curParty, curiopack, curotpack);
@@ -360,7 +360,7 @@ void funcTruncateTwoPowerRing(
     createdMsbSharesHere = true;
   }
 
-  if (curParty == sci::ALICE) {
+  if (curParty == primihub::sci::ALICE) {
     uint64_t **otMessages1oo4 = new uint64_t *[size];
     intType *otMessages1oo2Data = new intType[size];
     intType *otMessages1oo2Corr = new intType[size];
@@ -506,18 +506,18 @@ void funcTruncateTwoPowerRingWrapper(int size, intType *inp, intType *outp,
         - The last COT being performed is also not using packing for bitlenth !=
    32/64.
 */
-void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
-                             sci::OTPack *curotpack,
-                             sci::IKNP<sci::NetIO> *curiknp,
-                             sci::KKOT<sci::NetIO> *curkkot,
+void funcAvgPoolTwoPowerRing(int curParty, primihub::sci::IOPack *curiopack,
+                             primihub::sci::OTPack *curotpack,
+                             primihub::sci::IKNP<primihub::sci::NetIO> *curiknp,
+                             primihub::sci::KKOT<primihub::sci::NetIO> *curkkot,
                              ReLUProtocol<intType> *curReluImpl,
-                             sci::PRG128 *curPrgInstance, int size,
+                             primihub::sci::PRG128 *curPrgInstance, int size,
                              intType *inp, intType *outp, intType divisor) {
   assert(inp != outp &&
          "Assumption is there is a separate array for input and output");
   assert(divisor > 0 && "working with positive divisor");
   static const int rightShiftForMsb = bitlength - 1;
-  assert(sci::all1Mask(bitlength) >
+  assert(primihub::sci::all1Mask(bitlength) >
          (6 * divisor - 1)); // 2^l-1 > 6d-1 => 2^l > 6d
   intType ringRem, ringQuot;
   if (bitlength == 64) {
@@ -528,7 +528,7 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
     ringQuot = prime_mod / divisor;
   }
   uint8_t *msbShare = new uint8_t[size];
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
 
   for (int i = 0; i < size; i++) {
     inp[i] = inp[i] & moduloMask;
@@ -537,17 +537,17 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
     intType shareTerm2 = div_floor(
         (signedIntType)((inp[i] % divisor) - localShareMSB * ringRem), divisor);
     outp[i] = shareTerm1 - shareTerm2;
-    if (curParty == sci::ALICE)
+    if (curParty == primihub::sci::ALICE)
       outp[i] += 1;
   }
 
   curReluImpl->relu(nullptr, inp, size, msbShare, true);
 
   const uint64_t bitsForA = std::ceil(std::log2(6 * divisor));
-  uint64_t totalRandomBytesForLargeRing = sci::ceil_val(bitlength * size, 8);
+  uint64_t totalRandomBytesForLargeRing = primihub::sci::ceil_val(bitlength * size, 8);
   uint8_t *localShareCorrPacked = new uint8_t[totalRandomBytesForLargeRing];
   intType *localShareCorr = new intType[size];
-  int totalRandomBytesForSmallRing = sci::ceil_val(bitsForA * size, 8);
+  int totalRandomBytesForSmallRing = primihub::sci::ceil_val(bitsForA * size, 8);
   uint8_t *localShareCorrSmallRingPacked =
       new uint8_t[totalRandomBytesForSmallRing];
   uint64_t *localShareCorrSmallRing = new uint64_t[size];
@@ -555,16 +555,16 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
   intType *otMsgCorrSmallRing = new intType[4 * size];
 
   bool OT1oo4FitsIn64Bits = ((bitsForA + bitlength) <= 64);
-  if (curParty == sci::ALICE) {
+  if (curParty == primihub::sci::ALICE) {
     curPrgInstance->random_data(localShareCorrPacked,
                                 totalRandomBytesForLargeRing);
     curPrgInstance->random_data(localShareCorrSmallRingPacked,
                                 totalRandomBytesForSmallRing);
     for (int i = 0; i < size; i++) {
-      localShareCorr[i] = sci::readFromPackedArr(localShareCorrPacked,
+      localShareCorr[i] = primihub::sci::readFromPackedArr(localShareCorrPacked,
                                                  totalRandomBytesForLargeRing,
                                                  i * (bitlength), bitlength);
-      localShareCorrSmallRing[i] = sci::readFromPackedArr(
+      localShareCorrSmallRing[i] = primihub::sci::readFromPackedArr(
           localShareCorrSmallRingPacked, totalRandomBytesForSmallRing,
           i * bitsForA, bitsForA);
       uint8_t localShareMSB = ((uint8_t)(inp[i] >> rightShiftForMsb));
@@ -587,7 +587,7 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
           curMsgSmallRing += 1;
         }
         curMsg = curMsg & moduloMask;
-        curMsgSmallRing = curMsgSmallRing & sci::all1Mask(bitsForA);
+        curMsgSmallRing = curMsgSmallRing & primihub::sci::all1Mask(bitsForA);
         otMsgCorrRing[i * 4 + j] = curMsg;
         otMsgCorrSmallRing[i * 4 + j] = curMsgSmallRing;
       }
@@ -609,9 +609,9 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
       }
       delete[] otMessages1oo4;
     } else {
-      sci::block128 **otMessages1oo4 = new sci::block128 *[size];
+      primihub::sci::block128 **otMessages1oo4 = new primihub::sci::block128 *[size];
       for (int i = 0; i < size; i++) {
-        otMessages1oo4[i] = new sci::block128[4];
+        otMessages1oo4[i] = new primihub::sci::block128[4];
         for (int j = 0; j < 4; j++)
           otMessages1oo4[i][j] = _mm_set_epi64x(otMsgCorrSmallRing[i * 4 + j],
                                                 otMsgCorrRing[i * 4 + j]);
@@ -637,12 +637,12 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
       curotpack->kkot[1]->recv_impl(otRecvMsg1oo4, choiceBits, size,
                                     (bitlength + bitsForA));
       for (int i = 0; i < size; i++) {
-        otMsgCorrRing[i] = otRecvMsg1oo4[i] & sci::all1Mask(bitlength);
+        otMsgCorrRing[i] = otRecvMsg1oo4[i] & primihub::sci::all1Mask(bitlength);
         otMsgCorrSmallRing[i] = otRecvMsg1oo4[i] >> bitlength;
       }
       delete[] otRecvMsg1oo4;
     } else {
-      sci::block128 *otRecvMsg1oo4 = new sci::block128[size];
+      primihub::sci::block128 *otRecvMsg1oo4 = new primihub::sci::block128[size];
       curkkot->recv_impl(otRecvMsg1oo4, choiceBits, size, 4);
       for (int i = 0; i < size; i++) {
         uint64_t temp = _mm_extract_epi64(otRecvMsg1oo4[i], 0);
@@ -664,8 +664,8 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
 
   intType *localShareA_all3 = new intType[3 * size];
   uint8_t *localShareA_all3_drelu = new uint8_t[3 * size];
-  uint64_t bitsAmask = sci::all1Mask(bitsForA);
-  uint64_t bitsAMinusOneMask = sci::all1Mask((bitsForA - 1));
+  uint64_t bitsAmask = primihub::sci::all1Mask(bitsForA);
+  uint64_t bitsAMinusOneMask = primihub::sci::all1Mask((bitsForA - 1));
   uint64_t *radixCompValues = new uint64_t[3 * size];
   uint8_t *carryBit = new uint8_t[3 * size];
 
@@ -687,7 +687,7 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
       localShareA_all3[compPerElt * i + j] = localShareA;
     }
 
-    if (curParty == sci::ALICE) {
+    if (curParty == primihub::sci::ALICE) {
       if (compPerElt == 3) {
         localShareA_all3[3 * i] =
             (localShareA_all3[3 * i] - divisor) & bitsAmask;
@@ -704,7 +704,7 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
           (localShareA_all3[compPerElt * i + j] & bitsAMinusOneMask);
       localShareA_all3_drelu[compPerElt * i + j] =
           (localShareA_all3[compPerElt * i + j] >> (bitsForA - 1));
-      if (curParty == sci::BOB) {
+      if (curParty == primihub::sci::BOB) {
         radixCompValues[compPerElt * i + j] =
             bitsAMinusOneMask - radixCompValues[compPerElt * i + j];
       }
@@ -717,7 +717,7 @@ void funcAvgPoolTwoPowerRing(int curParty, sci::IOPack *curiopack,
     localShareA_all3_drelu[i] = (localShareA_all3_drelu[i] + carryBit[i]) & 1;
   }
 
-  if (curParty == sci::ALICE) {
+  if (curParty == primihub::sci::ALICE) {
     intType *cotData = new intType[totalComp];
     intType *cotCorr = new intType[totalComp];
     for (int i = 0; i < totalComp; i++) {
@@ -811,11 +811,11 @@ void funcAvgPoolTwoPowerRingWrapper(int size, intType *inp, intType *outp,
    with no packing.
 */
 template <typename intType>
-void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
-                  sci::IKNP<sci::NetIO> *curiknp,
-                  sci::KKOT<sci::NetIO> *curkkot,
+void funcFieldDiv(int curParty, primihub::sci::IOPack *curiopack, primihub::sci::OTPack *curotpack,
+                  primihub::sci::IKNP<primihub::sci::NetIO> *curiknp,
+                  primihub::sci::KKOT<primihub::sci::NetIO> *curkkot,
                   ReLUProtocol<intType> *curReluImpl,
-                  sci::PRG128 *curPrgInstance, int size, intType *inp,
+                  primihub::sci::PRG128 *curPrgInstance, int size, intType *inp,
                   intType *outp, intType divisor, uint8_t *msbShare) {
   assert(inp != outp &&
          "Assumption is there is a separate array for input and output");
@@ -836,9 +836,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
     signedIntType shareTerm2 = div_floor(
         (signedIntType)((inp[i] % divisor) - localShareMSB * ringRem), divisor);
     signedIntType temp = shareTerm1 - shareTerm2;
-    if (curParty == sci::BOB)
+    if (curParty == primihub::sci::BOB)
       temp += 1;
-    outp[i] = sci::neg_mod(temp, (int64_t)prime_mod);
+    outp[i] = primihub::sci::neg_mod(temp, (int64_t)prime_mod);
   }
 
   if (doMSBComputation) {
@@ -851,19 +851,19 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
   bool OT1oo4FitsIn64Bits = (totalBitlen <= 64);
 
   intType *localShareCorr = new intType[size];
-  int totalRandomBytesForSmallRing = sci::ceil_val(bitsForA * size, 8);
+  int totalRandomBytesForSmallRing = primihub::sci::ceil_val(bitsForA * size, 8);
   uint8_t *localShareCorrSmallRingPacked =
       new uint8_t[totalRandomBytesForSmallRing];
   uint64_t *localShareCorrSmallRing = new uint64_t[size];
   intType *otMsgCorrField = new intType[4 * size];
   intType *otMsgCorrSmallRing = new intType[4 * size];
 
-  if (curParty == sci::ALICE) {
+  if (curParty == primihub::sci::ALICE) {
     curPrgInstance->random_mod_p<intType>(localShareCorr, size, prime_mod);
     curPrgInstance->random_data(localShareCorrSmallRingPacked,
                                 totalRandomBytesForSmallRing);
     for (int i = 0; i < size; i++) {
-      localShareCorrSmallRing[i] = sci::readFromPackedArr(
+      localShareCorrSmallRing[i] = primihub::sci::readFromPackedArr(
           localShareCorrSmallRingPacked, totalRandomBytesForSmallRing,
           i * bitsForA, bitsForA);
       uint8_t localShareMSB = getFieldMsb(inp[i]);
@@ -885,8 +885,8 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
           curMsg += 1;
           curMsgSmallRing += 1;
         }
-        intType curMsgField = sci::neg_mod(curMsg, (int64_t)prime_mod);
-        curMsgSmallRing = curMsgSmallRing & sci::all1Mask(bitsForA);
+        intType curMsgField = primihub::sci::neg_mod(curMsg, (int64_t)prime_mod);
+        curMsgSmallRing = curMsgSmallRing & primihub::sci::all1Mask(bitsForA);
         otMsgCorrField[i * 4 + j] = curMsgField;
         otMsgCorrSmallRing[i * 4 + j] = curMsgSmallRing;
       }
@@ -906,9 +906,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       }
       delete[] otMessages1oo4;
     } else {
-      sci::block128 **otMessages1oo4 = new sci::block128 *[size];
+      primihub::sci::block128 **otMessages1oo4 = new primihub::sci::block128 *[size];
       for (int i = 0; i < size; i++) {
-        otMessages1oo4[i] = new sci::block128[4];
+        otMessages1oo4[i] = new primihub::sci::block128[4];
         for (int j = 0; j < 4; j++)
           otMessages1oo4[i][j] = _mm_set_epi64x(otMsgCorrSmallRing[i * 4 + j],
                                                 otMsgCorrField[i * 4 + j]);
@@ -924,9 +924,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       intType temp =
           (((__int128)localShareCorr[i]) * ((__int128)ringQuot)) % prime_mod;
 #else
-      intType temp = sci::moduloMult(localShareCorr[i], ringQuot, prime_mod);
+      intType temp = primihub::sci::moduloMult(localShareCorr[i], ringQuot, prime_mod);
 #endif
-      outp[i] = sci::neg_mod(outp[i] + temp, (int64_t)prime_mod);
+      outp[i] = primihub::sci::neg_mod(outp[i] + temp, (int64_t)prime_mod);
     }
   } else {
     uint8_t *choiceBits = new uint8_t[size];
@@ -940,12 +940,12 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       curotpack->kkot[1]->recv_impl(otRecvMsg1oo4, choiceBits, size,
                                     totalBitlen);
       for (int i = 0; i < size; i++) {
-        otMsgCorrField[i] = otRecvMsg1oo4[i] & sci::all1Mask(fieldBits);
+        otMsgCorrField[i] = otRecvMsg1oo4[i] & primihub::sci::all1Mask(fieldBits);
         otMsgCorrSmallRing[i] = otRecvMsg1oo4[i] >> fieldBits;
       }
       delete[] otRecvMsg1oo4;
     } else {
-      sci::block128 *otRecvMsg1oo4 = new sci::block128[size];
+      primihub::sci::block128 *otRecvMsg1oo4 = new primihub::sci::block128[size];
       curkkot->recv_impl(otRecvMsg1oo4, choiceBits, size, 4);
       for (int i = 0; i < size; i++) {
         uint64_t temp = _mm_extract_epi64(otRecvMsg1oo4[i], 0);
@@ -963,9 +963,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       intType temp =
           (((__int128)localShareCorr[i]) * ((__int128)ringQuot)) % prime_mod;
 #else
-      intType temp = sci::moduloMult(localShareCorr[i], ringQuot, prime_mod);
+      intType temp = primihub::sci::moduloMult(localShareCorr[i], ringQuot, prime_mod);
 #endif
-      outp[i] = sci::neg_mod(outp[i] + temp, (int64_t)prime_mod);
+      outp[i] = primihub::sci::neg_mod(outp[i] + temp, (int64_t)prime_mod);
     }
 
     delete[] choiceBits;
@@ -981,8 +981,8 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
 
   intType *localShareA_all3 = new intType[3 * size];
   uint8_t *localShareA_all3_drelu = new uint8_t[3 * size];
-  uint64_t bitsAmask = sci::all1Mask(bitsForA);
-  uint64_t bitsAMinusOneMask = sci::all1Mask((bitsForA - 1));
+  uint64_t bitsAmask = primihub::sci::all1Mask(bitsForA);
+  uint64_t bitsAMinusOneMask = primihub::sci::all1Mask((bitsForA - 1));
   uint64_t *radixCompValues = new uint64_t[3 * size];
   uint8_t *carryBit = new uint8_t[3 * size];
   for (int i = 0; i < size; i++) {
@@ -993,7 +993,7 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       localShareA_all3[compPerElt * i + j] = localShareA;
     }
 
-    if (curParty == sci::ALICE) {
+    if (curParty == primihub::sci::ALICE) {
       if (compPerElt == 3) {
         localShareA_all3[3 * i] =
             (localShareA_all3[3 * i] - divisor) & bitsAmask;
@@ -1009,7 +1009,7 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
           (localShareA_all3[compPerElt * i + j] & bitsAMinusOneMask);
       localShareA_all3_drelu[compPerElt * i + j] =
           (localShareA_all3[compPerElt * i + j] >> (bitsForA - 1));
-      if (curParty == sci::BOB) {
+      if (curParty == primihub::sci::BOB) {
         radixCompValues[compPerElt * i + j] =
             bitsAMinusOneMask - radixCompValues[compPerElt * i + j];
       }
@@ -1022,7 +1022,7 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
     localShareA_all3_drelu[i] = (localShareA_all3_drelu[i] + carryBit[i]) & 1;
   }
 
-  if (curParty == sci::ALICE) {
+  if (curParty == primihub::sci::ALICE) {
     uint64_t **otMsg = new uint64_t *[totalComp];
     intType *localShareDRelu = new intType[totalComp];
     curPrgInstance->random_mod_p<intType>(localShareDRelu, totalComp,
@@ -1030,9 +1030,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
     for (int i = 0; i < totalComp; i++) {
       otMsg[i] = new uint64_t[2];
       otMsg[i][0] =
-          sci::neg_mod(-localShareDRelu[i] + (localShareA_all3_drelu[i]),
+          primihub::sci::neg_mod(-localShareDRelu[i] + (localShareA_all3_drelu[i]),
                        (int64_t)prime_mod);
-      otMsg[i][1] = sci::neg_mod(-localShareDRelu[i] +
+      otMsg[i][1] = primihub::sci::neg_mod(-localShareDRelu[i] +
                                      ((localShareA_all3_drelu[i] + 1) & 1),
                                  (int64_t)prime_mod);
     }
@@ -1041,10 +1041,10 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       intType curCTermShare = 0;
       for (int j = 0; j < compPerElt; j++) {
         curCTermShare =
-            sci::neg_mod(curCTermShare + localShareDRelu[compPerElt * i + j],
+            primihub::sci::neg_mod(curCTermShare + localShareDRelu[compPerElt * i + j],
                          (int64_t)prime_mod);
       }
-      outp[i] = sci::neg_mod(outp[i] - curCTermShare, (int64_t)prime_mod);
+      outp[i] = primihub::sci::neg_mod(outp[i] - curCTermShare, (int64_t)prime_mod);
       delete[] otMsg[i];
     }
     delete[] otMsg;
@@ -1058,9 +1058,9 @@ void funcFieldDiv(int curParty, sci::IOPack *curiopack, sci::OTPack *curotpack,
       for (int j = 0; j < compPerElt; j++) {
         uint64_t curDReluAns = otDataRecvd[compPerElt * i + j];
         curCTermShare =
-            sci::neg_mod(curCTermShare + curDReluAns, (int64_t)prime_mod);
+            primihub::sci::neg_mod(curCTermShare + curDReluAns, (int64_t)prime_mod);
       }
-      outp[i] = sci::neg_mod(outp[i] - curCTermShare, (int64_t)prime_mod);
+      outp[i] = primihub::sci::neg_mod(outp[i] - curCTermShare, (int64_t)prime_mod);
     }
     delete[] otDataRecvd;
   }

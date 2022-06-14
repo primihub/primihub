@@ -48,9 +48,9 @@ SOFTWARE.
 
 #define MAX_THREADS 4
 
-extern sci::NetIO *io;
-extern sci::IOPack *iopack;
-extern sci::OTPack *otpack;
+extern primihub::sci::NetIO *io;
+extern primihub::sci::IOPack *iopack;
+extern primihub::sci::OTPack *otpack;
 
 extern AuxProtocols *aux;
 extern Truncation *truncation;
@@ -64,21 +64,21 @@ extern ReLUProtocol<intType> *relu;
 extern MaxPoolProtocol<intType> *maxpool;
 // Additional classes for Athos
 #ifdef SCI_OT
-extern MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>> *multUniform;
+extern MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>> *multUniform;
 #endif
 #ifdef SCI_HE
 extern ConvField *he_conv;
 extern FCField *he_fc;
 extern ElemWiseProdField *he_prod;
 #endif
-extern sci::IKNP<sci::NetIO> *iknpOT;
-extern sci::IKNP<sci::NetIO> *iknpOTRoleReversed;
-extern sci::KKOT<sci::NetIO> *kkot;
-extern sci::PRG128 *prg128Instance;
+extern primihub::sci::IKNP<primihub::sci::NetIO> *iknpOT;
+extern primihub::sci::IKNP<primihub::sci::NetIO> *iknpOTRoleReversed;
+extern primihub::sci::KKOT<primihub::sci::NetIO> *kkot;
+extern primihub::sci::PRG128 *prg128Instance;
 
-extern sci::NetIO *ioArr[MAX_THREADS];
-extern sci::IOPack *iopackArr[MAX_THREADS];
-extern sci::OTPack *otpackArr[MAX_THREADS];
+extern primihub::sci::NetIO *ioArr[MAX_THREADS];
+extern primihub::sci::IOPack *iopackArr[MAX_THREADS];
+extern primihub::sci::OTPack *otpackArr[MAX_THREADS];
 extern MathFunctions *mathArr[MAX_THREADS];
 #ifdef SCI_OT
 extern LinearOT *multArr[MAX_THREADS];
@@ -90,12 +90,12 @@ extern ReLUProtocol<intType> *reluArr[MAX_THREADS];
 extern MaxPoolProtocol<intType> *maxpoolArr[MAX_THREADS];
 // Additional classes for Athos
 #ifdef SCI_OT
-extern MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>
+extern MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>
     *multUniformArr[MAX_THREADS];
 #endif
-extern sci::IKNP<sci::NetIO> *otInstanceArr[MAX_THREADS];
-extern sci::KKOT<sci::NetIO> *kkotInstanceArr[MAX_THREADS];
-extern sci::PRG128 *prgInstanceArr[MAX_THREADS];
+extern primihub::sci::IKNP<primihub::sci::NetIO> *otInstanceArr[MAX_THREADS];
+extern primihub::sci::KKOT<primihub::sci::NetIO> *kkotInstanceArr[MAX_THREADS];
+extern primihub::sci::PRG128 *prgInstanceArr[MAX_THREADS];
 
 extern std::chrono::time_point<std::chrono::high_resolution_clock> st_time;
 extern uint64_t comm_threads[MAX_THREADS];

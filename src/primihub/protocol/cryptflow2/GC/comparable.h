@@ -28,7 +28,7 @@ Modified by Deevashwer Rathee
 #ifndef EMP_COMPARABLE_H__
 #define EMP_COMPARABLE_H__
 
-namespace sci {
+namespace primihub::sci {
 template <typename T> class Comparable {
 public:
   Bit operator>=(const T &rhs) const {
@@ -53,5 +53,5 @@ public:
     return !(*static_cast<const T *>(this) == rhs);
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif

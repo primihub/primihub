@@ -27,15 +27,15 @@ SOFTWARE.
 
 class XTProtocol {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   MillionaireProtocol *millionaire;
   AuxProtocols *aux;
   int party;
 
   // Constructor
-  XTProtocol(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+  XTProtocol(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
   // Destructor
   ~XTProtocol();

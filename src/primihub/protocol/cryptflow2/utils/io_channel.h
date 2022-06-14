@@ -34,7 +34,7 @@ Modified by Deevashwer Rathee
   @{
  */
 
-namespace sci {
+namespace primihub::sci {
 template <typename T> class IOChannel {
 public:
   void send_data(const void *data, int nbyte) {
@@ -80,5 +80,5 @@ private:
   T &derived() { return *static_cast<T *>(this); }
 };
 /**@}*/
-} // namespace sci
+} // namespace primihub::sci
 #endif // IO_CHANNEL_H__

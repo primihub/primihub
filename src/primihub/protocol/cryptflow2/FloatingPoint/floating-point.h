@@ -42,7 +42,7 @@ SOFTWARE.
 // For efficiency reasons, we maintain the sign-bit (s; BoolArray), exponent (e; FixArray with ell = e_bits + 2 and s = 0) and mantissa (m; FixArray with ell = m_bits + 1 and s = m_bits) in different secret-shared arrays, and additionally maintain a zero-bit (z; BoolArray)
 class FPArray {
 public:
-  int party = sci::PUBLIC;
+  int party = primihub::sci::PUBLIC;
   int size = 0;          // size of array
   uint8_t *s = nullptr;  // sign
   uint8_t *z = nullptr;  // is_zero?
@@ -55,7 +55,7 @@ public:
 
   FPArray(int party_, int sz, uint8_t m_bits_ = FP32_M_BITS,
           uint8_t e_bits_ = FP32_E_BITS) {
-    assert(party_ == sci::PUBLIC || party_ == sci::ALICE || party_ == sci::BOB);
+    assert(party_ == primihub::sci::PUBLIC || party_ == primihub::sci::ALICE || party_ == primihub::sci::BOB);
     assert(sz > 0);
     assert(m_bits_ > 0);
     assert(e_bits_ > 0);
@@ -250,13 +250,13 @@ std::ostream &operator<<(std::ostream &os, FPMatrix &other);
 class FPOp {
 public:
   int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   FixOp *fix;
   BoolOp *bool_op;
   FPOp *fp_op;
 
-  FPOp(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
+  FPOp(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->iopack = iopack;
     this->otpack = otpack;

@@ -22,7 +22,7 @@ SOFTWARE.
 #include "FloatingPoint/fixed-point.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 FixArray FixArray::subset(int i, int j) {
   assert(i >= 0 && j <= size && i < j);
@@ -134,15 +134,15 @@ FixArray FixOp::output(int party_, const FixArray& x) {
 #pragma omp parallel num_threads(2)
   {
     if (omp_get_thread_num() == 1 && party_ != BOB) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io_rev->recv_data(ret.data, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io_rev->send_data(x.data, sz * sizeof(uint64_t));
       }
     } else if (omp_get_thread_num() == 0 && party_ != ALICE) {
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         iopack->io->send_data(x.data, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      } else { // party == primihub::sci::BOB
         iopack->io->recv_data(ret.data, sz * sizeof(uint64_t));
       }
     }
@@ -735,16 +735,16 @@ FixArray FixOp::LUT(const vector<uint64_t> &spec_vec, const FixArray &x,
         spec[i][j] = (lout[idx].data[i] - ret_send.data[i]) & ret_mask;
       }
     }
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       aux->lookup_table<uint64_t>(spec, nullptr, nullptr, x.size, l_rem, l_out);
-      aux->party = sci::BOB;
+      aux->party = primihub::sci::BOB;
       aux->lookup_table<uint64_t>(nullptr, x_hi.data, ret_recv.data, x.size, l_rem, l_out);
-      aux->party = sci::ALICE;
-    } else { // party == sci::BOB
+      aux->party = primihub::sci::ALICE;
+    } else { // party == primihub::sci::BOB
       aux->lookup_table<uint64_t>(nullptr, x_hi.data, ret_recv.data, x.size, l_rem, l_out);
-      aux->party = sci::ALICE;
+      aux->party = primihub::sci::ALICE;
       aux->lookup_table<uint64_t>(spec, nullptr, nullptr, x.size, l_rem, l_out);
-      aux->party = sci::BOB;
+      aux->party = primihub::sci::BOB;
     }
     for (int i = 0; i < x.size; i++)
       delete[] spec[i];

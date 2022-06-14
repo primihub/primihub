@@ -34,8 +34,8 @@ SOFTWARE.
 template <typename IO, typename intType, typename otType> class MatMulUniform {
 public:
   IO *io = nullptr;
-  sci::OT<otType> *otImpl = nullptr;
-  sci::OT<otType> *otImplRoleReversed = nullptr;
+  primihub::sci::OT<otType> *otImpl = nullptr;
+  primihub::sci::OT<otType> *otImplRoleReversed = nullptr;
   int party;
   int bitlength;
   const uint32_t batchSizeOTs =
@@ -47,8 +47,8 @@ public:
   const uint64_t MaxMemToUseInBytes = 2.5 * (1 << 30); // 2.5 GiB
   intType moduloMask;
 
-  MatMulUniform(int party, int bitlength, IO *io, sci::OT<otType> *otImpl,
-                sci::OT<otType> *otImplRoleReversed) {
+  MatMulUniform(int party, int bitlength, IO *io, primihub::sci::OT<otType> *otImpl,
+                primihub::sci::OT<otType> *otImplRoleReversed) {
     this->party = party;
     assert(((party == 1) || (party == 2)) && "PartyNum should be 1 or 2.");
     this->bitlength = bitlength;
@@ -113,7 +113,7 @@ public:
 
   void verifyMatmulShares(int s1, int s2, int s3, const intType *A_share,
                           const intType *B_share, const intType *C_share) {
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       intType *A_temp_share = new intType[s1 * s2];
       intType *B_temp_share = new intType[s2 * s3];
       intType *C_temp_share = new intType[s1 * s3];
@@ -121,9 +121,9 @@ public:
       io->recv_data(A_temp_share, sizeof(intType) * s1 * s2);
       io->recv_data(B_temp_share, sizeof(intType) * s2 * s3);
       io->recv_data(C_temp_share, sizeof(intType) * s1 * s3);
-      sci::elemWiseAdd<intType>(s1 * s2, A_share, A_temp_share, A_temp_share);
-      sci::elemWiseAdd<intType>(s2 * s3, B_share, B_temp_share, B_temp_share);
-      sci::elemWiseAdd<intType>(s1 * s3, C_share, C_temp_share, C_temp_share);
+      primihub::sci::elemWiseAdd<intType>(s1 * s2, A_share, A_temp_share, A_temp_share);
+      primihub::sci::elemWiseAdd<intType>(s2 * s3, B_share, B_temp_share, B_temp_share);
+      primihub::sci::elemWiseAdd<intType>(s1 * s3, C_share, C_temp_share, C_temp_share);
       ideal_func(s1, s2, s3, A_temp_share, B_temp_share, C_clear);
       for (int i = 0; i < s1; i++) {
         for (int j = 0; j < s3; j++) {
@@ -135,7 +135,7 @@ public:
       delete[] B_temp_share;
       delete[] C_temp_share;
       delete[] C_clear;
-    } else if (party == sci::BOB) {
+    } else if (party == primihub::sci::BOB) {
       io->send_data(A_share, sizeof(intType) * s1 * s2);
       io->send_data(B_share, sizeof(intType) * s2 * s3);
       io->send_data(C_share, sizeof(intType) * s1 * s3);
@@ -145,13 +145,13 @@ public:
   }
 
   void fillInSimpleValues(int s1, int s2, intType *arr) {
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       for (int i = 0; i < s1; i++) {
         for (int j = 0; j < s2; j++) {
           Arr2DIdxRowM(arr, s1, s2, i, j) = i + j + 1;
         }
       }
-    } else if (party == sci::BOB) {
+    } else if (party == primihub::sci::BOB) {
       for (int i = 0; i < s1; i++) {
         for (int j = 0; j < s2; j++) {
           Arr2DIdxRowM(arr, s1, s2, i, j) = 0;
@@ -167,7 +167,7 @@ public:
           - outp is the share of the result of size (s1,s3)
   */
   void funcOTSenderNonBatched(int s1, int s2, int s3, const intType *inp,
-                              intType *outp, sci::OT<otType> *otInstance) {
+                              intType *outp, primihub::sci::OT<otType> *otInstance) {
     uint64_t *corrData = new uint64_t[s1 * s2 * bitlength * s3];
     uint64_t *rData = new uint64_t[s1 * s2 * bitlength * s3];
     uint64_t *chunkSizes = new uint64_t[s2 * bitlength * s3];
@@ -175,7 +175,7 @@ public:
 
     intType *inpColumnMajor = new intType[s1 * s2];
     intType *outpColumnMajor = new intType[s1 * s3];
-    sci::convertRowToColMajor<intType>(s1, s2, inp, inpColumnMajor);
+    primihub::sci::convertRowToColMajor<intType>(s1, s2, inp, inpColumnMajor);
 
     for (int i = 0; i < s1 * s3; i++) {
       outpColumnMajor[i] = 0;
@@ -214,7 +214,7 @@ public:
       }
     }
 
-    sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
+    primihub::sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
     for (int i = 0; i < s1 * s3; i++) {
       outp[i] = outp[i] & moduloMask;
     }
@@ -233,7 +233,7 @@ public:
      (s1,s3)
   */
   void funcOTReceiverNonBatched(int s1, int s2, int s3, const intType *inp,
-                                intType *outp, sci::OT<otType> *otInstance) {
+                                intType *outp, primihub::sci::OT<otType> *otInstance) {
     // copy inp from row to column and outp from column to row major
     uint8_t *choiceBitArr = new uint8_t[s2 * bitlength * s3];
     uint64_t *recv_data = new uint64_t[s1 * s2 * bitlength * s3];
@@ -242,7 +242,7 @@ public:
 
     intType *inpColumnMajor = new intType[s2 * s3];
     intType *outpColumnMajor = new intType[s1 * s3];
-    sci::convertRowToColMajor<intType>(s2, s3, inp, inpColumnMajor);
+    primihub::sci::convertRowToColMajor<intType>(s2, s3, inp, inpColumnMajor);
 
     for (int j = 0; j < s3; j++) {
       for (int i = 0; i < s2; i++) {
@@ -275,7 +275,7 @@ public:
       }
     }
 
-    sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
+    primihub::sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
     for (int i = 0; i < s1 * s3; i++) {
       outp[i] = outp[i] & moduloMask;
     }
@@ -301,12 +301,12 @@ public:
           - outp is the share of the result of size (s1,s3)
   */
   void funcOTSenderInputA(int s1, int s2, int s3, const intType *inp,
-                          intType *outp, sci::OT<otType> *otInstance,
+                          intType *outp, primihub::sci::OT<otType> *otInstance,
                           bool inpAlreadyColumnMajor = false) {
     intType *inpColumnMajor = const_cast<intType *>(inp);
     if (!inpAlreadyColumnMajor) {
       inpColumnMajor = new intType[s1 * s2];
-      sci::convertRowToColMajor<intType>(s1, s2, inp, inpColumnMajor);
+      primihub::sci::convertRowToColMajor<intType>(s1, s2, inp, inpColumnMajor);
     }
     intType *outpColumnMajor = new intType[s1 * s3];
     int curBatchSizeOTs = chooseOptimalBatchSize(s1);
@@ -325,7 +325,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
                                       rowIdxRecv, bitIdxRecv);
         for (int k = 0; k < s1; k++) {
           corrData[(j - i) * s1 + k] =
@@ -340,7 +340,7 @@ public:
                                                     numChunks, j - i, s1);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
                                       rowIdxRecv, bitIdxRecv);
         for (int k = 0; k < s1; k++) {
           Arr2DIdxColM(outpColumnMajor, s1, s3, k, colIdxRecv) -=
@@ -350,7 +350,7 @@ public:
       }
     }
 
-    sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
+    primihub::sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
     for (int i = 0; i < s1 * s3; i++) {
       outp[i] = outp[i] & moduloMask;
     }
@@ -372,14 +372,14 @@ public:
      (s1,s3)
   */
   void funcOTReceiverInputB(int s1, int s2, int s3, const intType *inp,
-                            intType *outp, sci::OT<otType> *otInstance,
+                            intType *outp, primihub::sci::OT<otType> *otInstance,
                             bool inpAlreadyColumnMajor = false) {
     // copy inp from row to column and outp from column to row major
     intType *inpColumnMajor = const_cast<intType *>(inp);
     intType *outpColumnMajor = new intType[s1 * s3];
     if (!inpAlreadyColumnMajor) {
       inpColumnMajor = new intType[s2 * s3];
-      sci::convertRowToColMajor<intType>(s2, s3, inp, inpColumnMajor);
+      primihub::sci::convertRowToColMajor<intType>(s2, s3, inp, inpColumnMajor);
     }
     uint64_t masks[64];
     for (int i = 0; i < 64; i++) {
@@ -403,7 +403,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
                                       rowIdxRecv, bitIdxRecv);
         choiceBitArr[j - i] =
             (Arr2DIdxColM(inpColumnMajor, s2, s3, rowIdxRecv, colIdxRecv) &
@@ -416,7 +416,7 @@ public:
           data, choiceBitArr, chunkSizes, numChunks, j - i, s1);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s3, s2, bitlength, colIdxRecv,
                                       rowIdxRecv, bitIdxRecv);
         for (int k = 0; k < s1; k++) {
           Arr2DIdxColM(outpColumnMajor, s1, s3, k, colIdxRecv) +=
@@ -426,7 +426,7 @@ public:
       }
     }
 
-    sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
+    primihub::sci::convertColToRowMajor<intType>(s1, s3, outpColumnMajor, outp);
     for (int i = 0; i < s1 * s3; i++) {
       outp[i] = outp[i] & moduloMask;
     }
@@ -447,7 +447,7 @@ public:
           - outp is the share of the result of size (s1,s3)
   */
   void funcOTSenderInputB(int s1, int s2, int s3, const intType *inp,
-                          intType *outp, sci::OT<otType> *otInstance) {
+                          intType *outp, primihub::sci::OT<otType> *otInstance) {
     int curBatchSizeOTs = chooseOptimalBatchSize(s3);
 
     intType *corrData = new intType[curBatchSizeOTs * s3];
@@ -465,7 +465,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
                                       colIdxRecv, bitIdxRecv);
         for (int k = 0; k < s3; k++) {
           corrData[(j - i) * s3 + k] =
@@ -480,7 +480,7 @@ public:
                                                     numChunks, j - i, s3);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
                                       colIdxRecv, bitIdxRecv);
         for (int k = 0; k < s3; k++) {
           Arr2DIdxRowM(outp, s1, s3, rowIdxRecv, k) -=
@@ -506,7 +506,7 @@ public:
      (s1,s3)
   */
   void funcOTReceiverInputA(int s1, int s2, int s3, const intType *inp,
-                            intType *outp, sci::OT<otType> *otInstance) {
+                            intType *outp, primihub::sci::OT<otType> *otInstance) {
     uint64_t masks[64];
     for (int i = 0; i < 64; i++) {
       masks[i] = 1ULL << i;
@@ -529,7 +529,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
                                       colIdxRecv, bitIdxRecv);
         choiceBitArr[j - i] =
             (Arr2DIdxRowM(inp, s1, s2, rowIdxRecv, colIdxRecv) &
@@ -542,7 +542,7 @@ public:
           data, choiceBitArr, chunkSizes, numChunks, j - i, s3);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, s1, s2, bitlength, rowIdxRecv,
                                       colIdxRecv, bitIdxRecv);
         for (int k = 0; k < s3; k++) {
           Arr2DIdxRowM(outp, s1, s3, rowIdxRecv, k) +=
@@ -566,7 +566,7 @@ public:
           - Sender has input 'inp' of size 'size'
   */
   void funcDotProdOTSender(int size, const intType *inp, intType *outp,
-                           sci::OT<otType> *otInstance) {
+                           primihub::sci::OT<otType> *otInstance) {
     for (int i = 0; i < size; i++) {
       outp[i] = 0;
     }
@@ -581,7 +581,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
                                       bitIdxRecv);
         curCorrData[j - i] =
             (((intType)inp[cellIdxRecv]) << bitIdxRecv) >> bitIdxRecv;
@@ -592,7 +592,7 @@ public:
           curData, curCorrData, curChunkSizes, curNumChunks, j - i, size);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
                                       bitIdxRecv);
         outp[cellIdxRecv] -= (((intType)curData[j - i]) << bitIdxRecv);
       }
@@ -612,7 +612,7 @@ public:
           - Receiver has input 'inp' of size 'size'
   */
   void funcDotProdOTReceiver(int size, const intType *inp, intType *outp,
-                             sci::OT<otType> *otInstance) {
+                             primihub::sci::OT<otType> *otInstance) {
     uint64_t masks[64];
     for (int i = 0; i < 64; i++) {
       masks[i] = 1ULL << i;
@@ -631,7 +631,7 @@ public:
       int j;
       for (j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
                                       bitIdxRecv);
         curChoiceBits[j - i] =
             (inp[cellIdxRecv] & masks[bitIdxRecv]) >> bitIdxRecv;
@@ -642,7 +642,7 @@ public:
           curData, curChoiceBits, curChunkSizes, curNumChunks, j - i, size);
       for (int j = i; (j < numOTs) && (j < i + curBatchSizeOTs); j++) {
         // current OT# is j
-        sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
+        primihub::sci::linIdxRowMInverseMapping(j, size, bitlength, cellIdxRecv,
                                       bitIdxRecv);
         outp[cellIdxRecv] += (curData[j - i] << bitIdxRecv);
       }
@@ -665,27 +665,27 @@ public:
           - shape(B_share) = (s2,s3)
           - shape(C_share) = (s1,s3)
   */
-  void generateBeaverMatrixTriplet(int s1, int s2, int s3, sci::PRG128 prg,
+  void generateBeaverMatrixTriplet(int s1, int s2, int s3, primihub::sci::PRG128 prg,
                                    intType *A_share, intType *B_share,
                                    intType *C_share) {
     assert(otImplRoleReversed != nullptr);
     prg.random_data(A_share, s1 * s2 * sizeof(intType));
     prg.random_data(B_share, s2 * s3 * sizeof(intType));
     intType *temp = new intType[s1 * s3];
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       // The OTs can be done in parallel
       funcOTSenderInputA(s1, s2, s3, A_share, C_share, otImpl);
       funcOTReceiverInputB(s1, s2, s3, B_share, temp, otImplRoleReversed);
-    } else if (party == sci::BOB) {
+    } else if (party == primihub::sci::BOB) {
       funcOTReceiverInputB(s1, s2, s3, B_share, C_share, otImpl);
       funcOTSenderInputA(s1, s2, s3, A_share, temp, otImplRoleReversed);
     } else {
       assert(false);
     }
 
-    sci::elemWiseAdd<intType>(s1 * s3, C_share, temp, C_share);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C_share, temp, C_share);
     ideal_func(s1, s2, s3, A_share, B_share, temp);
-    sci::elemWiseAdd<intType>(s1 * s3, C_share, temp, C_share);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C_share, temp, C_share);
   }
 
   /*
@@ -706,15 +706,15 @@ public:
     intType *E_temp_share = new intType[s1 * s2];
     intType *F_temp_share = new intType[s2 * s3];
     intType *Z_temp_share = new intType[s1 * s3];
-    sci::elemWiseSub<intType>(s1 * s2, X_share, A_share, E_share);
-    sci::elemWiseSub<intType>(s2 * s3, Y_share, B_share, F_share);
+    primihub::sci::elemWiseSub<intType>(s1 * s2, X_share, A_share, E_share);
+    primihub::sci::elemWiseSub<intType>(s2 * s3, Y_share, B_share, F_share);
 
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       io->send_data(E_share, sizeof(intType) * s1 * s2);
       io->send_data(F_share, sizeof(intType) * s2 * s3);
       io->recv_data(E_temp_share, sizeof(intType) * s1 * s2);
       io->recv_data(F_temp_share, sizeof(intType) * s2 * s3);
-    } else if (party == sci::BOB) {
+    } else if (party == primihub::sci::BOB) {
       io->recv_data(E_temp_share, sizeof(intType) * s1 * s2);
       io->recv_data(F_temp_share, sizeof(intType) * s2 * s3);
       io->send_data(E_share, sizeof(intType) * s1 * s2);
@@ -724,20 +724,20 @@ public:
     }
 
     // Add the shares of E and F to get E and F in the clear
-    sci::elemWiseAdd<intType>(s1 * s2, E_share, E_temp_share, E_share);
-    sci::elemWiseAdd<intType>(s2 * s3, F_share, F_temp_share, F_share);
+    primihub::sci::elemWiseAdd<intType>(s1 * s2, E_share, E_temp_share, E_share);
+    primihub::sci::elemWiseAdd<intType>(s2 * s3, F_share, F_temp_share, F_share);
 
     // Now E_share and F_share hold the clear values of E & F
     ideal_func(s1, s2, s3, E_share, Y_share, Z_temp_share);
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       ideal_func(s1, s2, s3, X_share, F_share, Z_share);
-    } else if (party == sci::BOB) {
-      sci::elemWiseSub<intType>(s1 * s2, X_share, E_share, E_temp_share);
+    } else if (party == primihub::sci::BOB) {
+      primihub::sci::elemWiseSub<intType>(s1 * s2, X_share, E_share, E_temp_share);
       ideal_func(s1, s2, s3, E_temp_share, F_share, Z_share);
     }
 
-    sci::elemWiseAdd<intType>(s1 * s3, Z_share, Z_temp_share, Z_share);
-    sci::elemWiseAdd<intType>(s1 * s3, C_share, Z_share, Z_share);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, Z_share, Z_temp_share, Z_share);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C_share, Z_share, Z_share);
 
     delete[] E_share;
     delete[] F_share;

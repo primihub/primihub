@@ -23,7 +23,7 @@ SOFTWARE.
 #include "FloatingPoint/fp-math-coeffs.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 #define FRAC_RANGE 9
 #define FP_INTMD_M_BITS 27

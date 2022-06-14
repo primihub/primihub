@@ -28,8 +28,8 @@ SOFTWARE.
 
 class Truncation {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   MillionaireProtocol *mill;
   MillionaireWithEquality *mill_eq;
@@ -38,7 +38,7 @@ public:
   int party;
 
   // Constructor
-  Truncation(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+  Truncation(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
   // Destructor
   ~Truncation();

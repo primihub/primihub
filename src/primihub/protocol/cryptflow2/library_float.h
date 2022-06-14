@@ -27,7 +27,7 @@ SOFTWARE.
 #include "FloatingPoint/fp-math.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 // Packs
 extern IOPack *__iopack ;

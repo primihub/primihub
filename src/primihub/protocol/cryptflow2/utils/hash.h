@@ -36,7 +36,7 @@ Modified by Deevashwer Rathee
 /** @addtogroup BP
   @{
  */
-namespace sci {
+namespace primihub::sci {
 class Hash {
 public:
   SHA256_CTX hash;
@@ -110,6 +110,6 @@ public:
     return ret;
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 /**@}*/
 #endif // HASH_H__

@@ -22,7 +22,7 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/BuildingBlocks/value-extension.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 
 XTProtocol::XTProtocol(int party, IOPack *iopack, OTPack *otpack) {
   this->party = party;

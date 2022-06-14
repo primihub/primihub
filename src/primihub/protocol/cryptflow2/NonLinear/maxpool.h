@@ -27,8 +27,8 @@ SOFTWARE.
 
 template <typename type> class MaxPoolProtocol {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   ReLURingProtocol<type> *relu_oracle;
   ReLUFieldProtocol<type> *relu_field_oracle;
@@ -40,8 +40,8 @@ public:
   type mask_l;
 
   // Constructor
-  MaxPoolProtocol(int party, int algeb_str, sci::IOPack *iopack, int l, int b,
-                  uint64_t prime, sci::OTPack *otpack) {
+  MaxPoolProtocol(int party, int algeb_str, primihub::sci::IOPack *iopack, int l, int b,
+                  uint64_t prime, primihub::sci::OTPack *otpack) {
     this->party = party;
     this->algeb_str = algeb_str;
     this->iopack = iopack;
@@ -87,7 +87,7 @@ public:
       }
       for (int c = 1; c < cols; c++) {
         for (int r = 0; r < rows; r++) {
-          compare_with[r] = sci::neg_mod(
+          compare_with[r] = primihub::sci::neg_mod(
               (int64_t)((int64_t)max_temp[r] - (int64_t)inpArr[r * cols + c]),
               this->prime_mod);
         }
