@@ -29,7 +29,6 @@ config_setting(
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
-    "-lgmp",
 ]
 
 DEFINES = [
@@ -333,6 +332,7 @@ cc_library(
     "-pthread",
     "-mrdseed",
   ],
+  linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
 	  "@eigen//:eigen"]
 )
@@ -405,7 +405,7 @@ cc_library(
             "src/primihub/algorithm/logistic.cc",
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
-            # "src/primihub/algorithm/cryptflow2_maxpool.cc",
+            "src/primihub/algorithm/cryptflow2_maxpool.cc",
             "src/primihub/algorithm/falcon_lenet.cc",
     ]),
     hdrs = glob([
@@ -416,7 +416,7 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
-            # "src/primihub/algorithm/cryptflow2_maxpool.h",
+            "src/primihub/algorithm/cryptflow2_maxpool.h",
             "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h"
@@ -425,7 +425,7 @@ cc_library(
       "-maes",
       "-msse4.1",
       "-mavx",
-      # "-mavx2",
+      "-mavx2",
       "-mrdseed",
       #"-fopenmp"
     ],
@@ -439,7 +439,7 @@ cc_library(
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-	  # ":protocol_cryptflow2_ot_lib",
+	      ":protocol_cryptflow2_ot_lib",
           ":protocol_falcon_lib"
     ],
 )
@@ -456,7 +456,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
     linkstatic = True,
     deps = [
           "@com_github_glog_glog//:glog",
@@ -1192,9 +1192,9 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
-    # deps = [
-    #     "@com_github_gmp//:gmp",
-    # ],
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
     visibility = ["//visibility:public"],
 )
 
