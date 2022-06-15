@@ -24,12 +24,11 @@ SOFTWARE.
 
 #include "defines.h"
 #include <cassert>
-#include <chrono> //Keep the local repo based headers below, once constants are defined
+#include <chrono>  //Keep the local repo based headers below, once constants are defined
 #include <cstdint> //Only keep standard headers over here
 #include <iostream>
 #include <map>
 #include <thread>
-
 typedef uint64_t intType;
 typedef int64_t signedIntType;
 
@@ -71,7 +70,8 @@ Bitlength 40 prime: 1099510054913
 Bitlength 41 prime: 2199023190017
 */
 
-static void checkIfUsingEigen() {
+static void checkIfUsingEigen()
+{
 #ifdef USE_EIGEN
   std::cout << "Using Eigen for Matmul" << std::endl;
 #else
@@ -79,7 +79,8 @@ static void checkIfUsingEigen() {
 #endif
 }
 
-static void assertFieldRun() {
+static void assertFieldRun()
+{
   assert(sizeof(intType) == sizeof(uint64_t));
   assert(sizeof(signedIntType) == sizeof(int64_t));
   assert(bitlength >= 32 && bitlength <= 41);

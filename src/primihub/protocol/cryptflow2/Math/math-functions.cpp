@@ -23,6 +23,7 @@ SOFTWARE.
 
 using namespace std;
 using namespace primihub::sci;
+using namespace primihub::cryptflow2;
 
 #define KKOT_LIMIT 8
 #define SQRT_LOOKUP_SCALE 2

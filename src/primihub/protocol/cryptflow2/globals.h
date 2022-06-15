@@ -52,24 +52,24 @@ extern primihub::sci::NetIO *io;
 extern primihub::sci::IOPack *iopack;
 extern primihub::sci::OTPack *otpack;
 
-extern AuxProtocols *aux;
-extern Truncation *truncation;
-extern XTProtocol *xt;
+extern primihub::cryptflow2::AuxProtocols *aux;
+extern primihub::cryptflow2::Truncation *truncation;
+extern primihub::cryptflow2::XTProtocol *xt;
 #ifdef SCI_OT
-extern LinearOT *mult;
+extern primihub::cryptflow2::LinearOT *mult;
 #endif
-extern MathFunctions *math;
-extern ArgMaxProtocol<intType> *argmax;
-extern ReLUProtocol<intType> *relu;
-extern MaxPoolProtocol<intType> *maxpool;
+extern primihub::cryptflow2::MathFunctions *math;
+extern primihub::cryptflow2::ArgMaxProtocol<intType> *argmax;
+extern primihub::cryptflow2::ReLUProtocol<intType> *relu;
+extern primihub::cryptflow2::MaxPoolProtocol<intType> *maxpool;
 // Additional classes for Athos
 #ifdef SCI_OT
-extern MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>> *multUniform;
+extern primihub::cryptflow2::MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>> *multUniform;
 #endif
 #ifdef SCI_HE
-extern ConvField *he_conv;
-extern FCField *he_fc;
-extern ElemWiseProdField *he_prod;
+extern primihub::cryptflow2::ConvField *he_conv;
+extern primihub::cryptflow2::FCField *he_fc;
+extern primihub::cryptflow2::ElemWiseProdField *he_prod;
 #endif
 extern primihub::sci::IKNP<primihub::sci::NetIO> *iknpOT;
 extern primihub::sci::IKNP<primihub::sci::NetIO> *iknpOTRoleReversed;
@@ -79,18 +79,18 @@ extern primihub::sci::PRG128 *prg128Instance;
 extern primihub::sci::NetIO *ioArr[MAX_THREADS];
 extern primihub::sci::IOPack *iopackArr[MAX_THREADS];
 extern primihub::sci::OTPack *otpackArr[MAX_THREADS];
-extern MathFunctions *mathArr[MAX_THREADS];
+extern primihub::cryptflow2::MathFunctions *mathArr[MAX_THREADS];
 #ifdef SCI_OT
-extern LinearOT *multArr[MAX_THREADS];
+extern primihub::cryptflow2::LinearOT *multArr[MAX_THREADS];
 #endif
-extern AuxProtocols *auxArr[MAX_THREADS];
-extern Truncation *truncationArr[MAX_THREADS];
-extern XTProtocol *xtArr[MAX_THREADS];
-extern ReLUProtocol<intType> *reluArr[MAX_THREADS];
-extern MaxPoolProtocol<intType> *maxpoolArr[MAX_THREADS];
+extern primihub::cryptflow2::AuxProtocols *auxArr[MAX_THREADS];
+extern primihub::cryptflow2::Truncation *truncationArr[MAX_THREADS];
+extern primihub::cryptflow2::XTProtocol *xtArr[MAX_THREADS];
+extern primihub::cryptflow2::ReLUProtocol<intType> *reluArr[MAX_THREADS];
+extern primihub::cryptflow2::MaxPoolProtocol<intType> *maxpoolArr[MAX_THREADS];
 // Additional classes for Athos
 #ifdef SCI_OT
-extern MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>
+extern primihub::cryptflow2::MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>
     *multUniformArr[MAX_THREADS];
 #endif
 extern primihub::sci::IKNP<primihub::sci::NetIO> *otInstanceArr[MAX_THREADS];

@@ -20,7 +20,7 @@ SOFTWARE.
 */
 
 #include "globals.h"
-
+using namespace primihub::cryptflow2;
 primihub::sci::NetIO *io;
 primihub::sci::IOPack *iopack;
 primihub::sci::OTPack *otpack;

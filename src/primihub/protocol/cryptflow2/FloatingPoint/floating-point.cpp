@@ -26,6 +26,7 @@ SOFTWARE.
 
 using namespace std;
 using namespace primihub::sci;
+using namespace primihub::cryptflow2;
 
 FPArray FPArray::subset(int i, int j) {
   assert(i >= 0 && j <= size && i < j);

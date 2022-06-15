@@ -11,6 +11,7 @@
 
 using namespace std;
 using namespace primihub::sci;
+using namespace primihub::cryptflow2;
 using namespace Eigen;
 using arrow::Array;
 using arrow::Table;
