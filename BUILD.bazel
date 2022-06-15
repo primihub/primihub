@@ -29,7 +29,6 @@ config_setting(
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
-    "-lgmp",
 ]
 
 DEFINES = [
@@ -101,6 +100,11 @@ grpc_proto_library(
 grpc_proto_library(
     name = "grpc_pir_proto",
     srcs = ["src/primihub/protos/pir.proto"],
+)
+
+grpc_proto_library(
+    name = "service_proto",
+    srcs = ["src/primihub/protos/service.proto"],
 )
 
 cc_library(
@@ -818,6 +822,8 @@ cc_binary(
     srcs = glob([
                   "src/primihub/node/node.cc",
                   "src/primihub/node/node.h",
+                  "src/primihub/node/ds.cc",
+                  "src/primihub/node/ds.h",
             ]),
     copts = C_OPT,
     includes = [    
@@ -833,6 +839,7 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":node_lib",
         ":nodelet",
@@ -889,6 +896,7 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":util_lib",
         "@openssl",
@@ -1191,11 +1199,11 @@ cc_library(
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
-    linkstatic = False,
-    # deps = [
-    #     "@com_github_gmp//:gmp",
-    # ],
+    linkstatic = True,
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
 )
 
 cc_binary(

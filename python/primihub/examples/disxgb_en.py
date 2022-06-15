@@ -78,7 +78,8 @@ def xgb_host_logic():
                 if GH_guest_en.loc[index, item] == 0:
                     GH_guest.loc[index, item] = 0
                 else:
-                    GH_guest.loc[index, item] = opt_paillier_decrypt_crt(xgb_host.pub, xgb_host.prv, GH_guest_en.loc[index, item])
+                    GH_guest.loc[index, item] = opt_paillier_decrypt_crt(xgb_host.pub, xgb_host.prv,
+                                                                         GH_guest_en.loc[index, item])
         for item in [x for x in GH_guest_en.columns if x not in ['G_left', 'G_right', 'H_left', 'H_right']]:
             for index in GH_guest_en.index:
                 GH_guest.loc[index, item] = GH_guest_en.loc[index, item]
@@ -86,10 +87,9 @@ def xgb_host_logic():
         xgb_host.tree_structure[t + 1] = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
-    print(xgb_host.tree_structure[1])
-    print("start predict")
-    print(xgb_host.predict_prob(data).head())
-
+    output_path = ph.context.Context.get_output()
+    return xgb_host.predict_prob(data).to_csv(output_path)
+    
 
 @ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def xgb_guest_logic():

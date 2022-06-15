@@ -1,0 +1,17 @@
+syntax = "proto3";
+package primihub.rpc;
+
+message NewDatasetRequest {
+    string driver = 1;
+    string path = 2;
+    string fid = 3;  
+}
+
+message NewDatasetResponse {
+    int32 ret_code = 1;  // 0: success  1: doing  2: error
+    string dataset_url = 2;
+}
+
+service DataService {
+    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+}

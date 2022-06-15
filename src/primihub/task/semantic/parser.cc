@@ -107,10 +107,11 @@ void ProtocolSemanticParser::schedulePythonTask(
                   << metas_with_param_tag.size();
 
         metasToPeerWithTagList(metas_with_param_tag, peers_with_role_tag_);
-        // TODO(chenhongbo) put metas into scheduler, and scheduler will
-        // dispatch to nodes Generate FL scheduler
         std::shared_ptr<VMScheduler> scheduler = std::make_shared<FLScheduler>(
-            node_id_, singleton_, peers_with_role_tag_, peer_context_map_);
+                        node_id_, singleton_, 
+                        peers_with_role_tag_, 
+                        peer_context_map_, 
+                        metas_with_param_tag);
 
         // Dispatch task to worker nodes
         auto pushTaskRequest = _python_parser->getPushTaskRequest();

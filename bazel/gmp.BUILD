@@ -2,13 +2,12 @@ _OPTS = [
     "-Werror",
     "-pedantic-errors",
     "-Weverything",
-    "-fPIC",
     "--system-header-prefix=gmp",
 ]
 
-_COPTS = _OPTS + ["-std=c11"]
+_COPTS = _OPTS + ["-std=c17"]
 
-_CXXOPTS = _OPTS + ["-std=c++11"]
+_CXXOPTS = _OPTS + ["-std=c++17"]
 
 cc_library(
     name = "gmp",
