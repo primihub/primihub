@@ -1,13 +1,14 @@
-name: primihub github bazel actions
+name: primihub build actions
 
 on:
   push:
     branches: 
+      - master
       - develop
       - feature/workflow
 
 jobs:
-  job-build-on-ubuntu:
+  build-on-ubuntu:
     runs-on: ubuntu-latest
     steps:
     - name: Setup cmake
@@ -38,9 +39,9 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node
+        bazel build --config=linux :node :cli ::lib_opt_paillier 
   
-  job-build-on-mac:
+  build-on-mac_x86_64:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
@@ -51,12 +52,9 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    
     - name: get python ldflags
       run: python3.9-config --ldflags
-    - name: Install gmp
-      run: brew install gmp && brew list gmp
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 --config=macos :node 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli ::lib_opt_paillier 
