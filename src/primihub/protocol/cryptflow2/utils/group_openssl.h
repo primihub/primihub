@@ -25,7 +25,7 @@ Enquiries about further applications and development opportunities are welcome.
 #ifndef EMP_GROUP_OPENSSL_H__
 #define EMP_GROUP_OPENSSL_H__
 
-namespace emp {
+namespace primihub::emp {
 inline BigInt::BigInt() { n = BN_new(); }
 inline BigInt::BigInt(const BigInt &oth) {
   n = BN_new();
@@ -212,5 +212,5 @@ inline Point Group::mul_gen(const BigInt &m) {
     primihub::sci::error("ECC GEN MUL");
   return res;
 }
-} // namespace emp
+} // namespace primihub::emp
 #endif

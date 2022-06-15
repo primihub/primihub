@@ -36,7 +36,7 @@ Enquiries about further applications and development opportunities are welcome.
 //#else
 //#include "group_relic.h"
 //#endif
-namespace emp {
+namespace primihub::emp {
 class BigInt {
 public:
   BIGNUM *n = nullptr;
@@ -93,7 +93,7 @@ public:
   Point mul_gen(const BigInt &m);
 };
 
-} // namespace emp
+} // namespace primihub::emp
 #include "group_openssl.h"
 
 #endif
