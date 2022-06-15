@@ -137,7 +137,9 @@ cc_library(
               "src/primihub/common/gsl/string_span",
               "src/primihub/common/gsl/gls-lite.hpp",
     ],
-    copts = C_OPT,
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [

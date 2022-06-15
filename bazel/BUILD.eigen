@@ -1,38 +1,1240 @@
-licenses([
-    # Note: Eigen is an MPL2 library that includes GPL v3 and LGPL v2.1+ code.
-    #       We've taken special care to not reference any restricted code.
-    "reciprocal",  # MPL2
-    "notice",  # Portions BSD
-])
 
-exports_files(["COPYING.MPL2"])
+# https://groups.google.com/g/bazel-discuss/c/vzTWpVUH6Ik
+
+config_setting(
+  name = "darwin_arm64",
+  values = {
+    "cpu": "darwin_arm64"
+  }
+)
+
+
+config_setting(
+  name = "darwin_x86_64",
+  values = {
+    "cpu": "darwin_x86_64"
+  }
+)
 
 EIGEN_FILES = [
-  "Eigen/**",
-  "unsupported/Eigen/CXX11/**",
-  "unsupported/Eigen/FFT",
-  "unsupported/Eigen/KroneckerProduct",
-  "unsupported/Eigen/src/FFT/**",
-  "unsupported/Eigen/src/KroneckerProduct/**",
-  "unsupported/Eigen/MatrixFunctions",
-  "unsupported/Eigen/SpecialFunctions",
-  "unsupported/Eigen/src/MatrixFunctions/**",
-  "unsupported/Eigen/src/SpecialFunctions/**",
+"eigen3/unsupported/Eigen/MatrixFunctions",
+"eigen3/unsupported/Eigen/AdolcForward",
+"eigen3/unsupported/Eigen/AlignedVector3",
+"eigen3/unsupported/Eigen/OpenGLSupport",
+"eigen3/unsupported/Eigen/LevenbergMarquardt",
+"eigen3/unsupported/Eigen/CXX11/ThreadPool",
+"eigen3/unsupported/Eigen/CXX11/TensorSymmetry",
+"eigen3/unsupported/Eigen/CXX11/Tensor",
+"eigen3/unsupported/Eigen/CXX11/src/util/EmulateCXX11Meta.h",
+"eigen3/unsupported/Eigen/CXX11/src/util/MaxSizeVector.h",
+"eigen3/unsupported/Eigen/CXX11/src/util/CXX11Meta.h",
+"eigen3/unsupported/Eigen/CXX11/src/util/CXX11Workarounds.h",
+"eigen3/unsupported/Eigen/CXX11/src/util/EmulateArray.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadEnvironment.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/SimpleThreadPool.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/NonBlockingThreadPool.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/Barrier.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadLocal.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/RunQueue.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadPoolInterface.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadCancel.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadYield.h",
+"eigen3/unsupported/Eigen/CXX11/src/ThreadPool/EventCount.h",
+"eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/util/TemplateGroupTheory.h",
+"eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/DynamicSymmetry.h",
+"eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/StaticSymmetry.h",
+"eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/Symmetry.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorUInt128.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConversion.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExprConstructor.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvalTo.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMorphing.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractAccessor.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCostModel.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContraction.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFunctors.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionCuda.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExpr.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionThreadPool.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInflation.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRef.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFixedSize.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMacros.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBroadcasting.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCustomOp.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorArgMax.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIndexList.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorImagePatch.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIntDiv.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorShuffling.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclPlaceHolderExpr.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclRun.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReverse.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceCuda.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInitializer.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionBlocking.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGenerator.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolution.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTrace.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvaluator.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForwardDeclarations.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMeta.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPadding.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFFT.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorLayoutSwap.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclConvertToDeviceExpression.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMap.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExecutor.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStriding.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclLeafCount.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPatch.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclTuple.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGlobalFunctions.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScan.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceThreadPool.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBase.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStorage.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorChipping.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionMapper.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTraits.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDevice.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolutionSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScanSycl.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionCuda.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensionList.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/Tensor.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorVolumePatch.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractFunctors.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForcedEval.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIO.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConcatenation.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorAssign.h",
+"eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaUndefines.h",
+"eigen3/unsupported/Eigen/AutoDiff",
+"eigen3/unsupported/Eigen/NumericalDiff",
+"eigen3/unsupported/Eigen/NonLinearOptimization",
+"eigen3/unsupported/Eigen/ArpackSupport",
+"eigen3/unsupported/Eigen/Skyline",
+"eigen3/unsupported/Eigen/BVH",
+"eigen3/unsupported/Eigen/SpecialFunctions",
+"eigen3/unsupported/Eigen/Splines",
+"eigen3/unsupported/Eigen/KroneckerProduct",
+"eigen3/unsupported/Eigen/IterativeSolvers",
+"eigen3/unsupported/Eigen/FFT",
+"eigen3/unsupported/Eigen/EulerAngles",
+"eigen3/unsupported/Eigen/SparseExtra",
+"eigen3/unsupported/Eigen/Polynomials",
+"eigen3/unsupported/Eigen/MoreVectorization",
+"eigen3/unsupported/Eigen/MPRealSupport",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/StemFunction.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixFunction.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixExponential.h",
+"eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMcovar.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/LevenbergMarquardt.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMpar.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMqrsolv.h",
+"eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMonestep.h",
+"eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffJacobian.h",
+"eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffScalar.h",
+"eigen3/unsupported/Eigen/src/AutoDiff/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffVector.h",
+"eigen3/unsupported/Eigen/src/NumericalDiff/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/NumericalDiff/NumericalDiff.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/chkder.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/rwupdt.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/fdjac1.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/dogleg.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/r1updt.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/qrsolv.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/HybridNonLinearSolver.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/LevenbergMarquardt.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/lmpar.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/r1mpyq.h",
+"eigen3/unsupported/Eigen/src/NonLinearOptimization/covar.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineMatrix.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineStorage.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineUtil.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineMatrixBase.h",
+"eigen3/unsupported/Eigen/src/Skyline/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineInplaceLU.h",
+"eigen3/unsupported/Eigen/src/Skyline/SkylineProduct.h",
+"eigen3/unsupported/Eigen/src/BVH/BVAlgorithms.h",
+"eigen3/unsupported/Eigen/src/BVH/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/BVH/KdBVH.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsArrayAPI.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsPacketMath.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsFunctors.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsHalf.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsImpl.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsBFloat16.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsHalf.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/HipVectorCompatibility.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/GPU/SpecialFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/CUDA/CudaSpecialFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/BesselFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/SpecialFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/BesselFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/SpecialFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/BesselFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/SpecialFunctions.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsBFloat16.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsPacketMath.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsArrayAPI.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h",
+"eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsFunctors.h",
+"eigen3/unsupported/Eigen/src/Splines/SplineFwd.h",
+"eigen3/unsupported/Eigen/src/Splines/Spline.h",
+"eigen3/unsupported/Eigen/src/Splines/SplineFitting.h",
+"eigen3/unsupported/Eigen/src/Splines/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/KroneckerProduct/KroneckerTensorProduct.h",
+"eigen3/unsupported/Eigen/src/KroneckerProduct/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/MINRES.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/IncompleteLU.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/IterationController.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/ConstrainedConjGrad.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/Scaling.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/IDRS.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/GMRES.h",
+"eigen3/unsupported/Eigen/src/IterativeSolvers/DGMRES.h",
+"eigen3/unsupported/Eigen/src/FFT/ei_kissfft_impl.h",
+"eigen3/unsupported/Eigen/src/FFT/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/FFT/ei_fftw_impl.h",
+"eigen3/unsupported/Eigen/src/EulerAngles/EulerAngles.h",
+"eigen3/unsupported/Eigen/src/EulerAngles/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/EulerAngles/EulerSystem.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/MarketIO.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/RandomSetter.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/MatrixMarketIterator.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/BlockOfDynamicSparseMatrix.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/DynamicSparseMatrix.h",
+"eigen3/unsupported/Eigen/src/SparseExtra/BlockSparseMatrix.h",
+"eigen3/unsupported/Eigen/src/Polynomials/Companion.h",
+"eigen3/unsupported/Eigen/src/Polynomials/PolynomialSolver.h",
+"eigen3/unsupported/Eigen/src/Polynomials/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/Polynomials/PolynomialUtils.h",
+"eigen3/unsupported/Eigen/src/MoreVectorization/MathFunctions.h",
+"eigen3/unsupported/Eigen/src/MoreVectorization/InternalHeaderCheck.h",
+"eigen3/unsupported/Eigen/src/Eigenvalues/ArpackSelfAdjointEigenSolver.h",
+"eigen3/unsupported/Eigen/src/Eigenvalues/InternalHeaderCheck.h",
+"eigen3/Eigen/CholmodSupport",
+"eigen3/Eigen/StdVector",
+"eigen3/Eigen/StdDeque",
+"eigen3/Eigen/Core",
+"eigen3/Eigen/SparseLU",
+"eigen3/Eigen/OrderingMethods",
+"eigen3/Eigen/QtAlignedMalloc",
+"eigen3/Eigen/Householder",
+"eigen3/Eigen/PardisoSupport",
+"eigen3/Eigen/SparseCore",
+"eigen3/Eigen/Jacobi",
+"eigen3/Eigen/Dense",
+"eigen3/Eigen/SPQRSupport",
+"eigen3/Eigen/QR",
+"eigen3/Eigen/Eigen",
+"eigen3/Eigen/SparseQR",
+"eigen3/Eigen/SVD",
+"eigen3/Eigen/Cholesky",
+"eigen3/Eigen/UmfPackSupport",
+"eigen3/Eigen/IterativeLinearSolvers",
+"eigen3/Eigen/LU",
+"eigen3/Eigen/Sparse",
+"eigen3/Eigen/Geometry",
+"eigen3/Eigen/SuperLUSupport",
+"eigen3/Eigen/StdList",
+"eigen3/Eigen/MetisSupport",
+"eigen3/Eigen/SparseCholesky",
+"eigen3/Eigen/Eigenvalues",
+"eigen3/Eigen/PaStiXSupport",
+"eigen3/Eigen/src/CholmodSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/CholmodSupport/CholmodSupport.h",
+"eigen3/Eigen/src/misc/blas.h",
+"eigen3/Eigen/src/misc/lapacke.h",
+"eigen3/Eigen/src/misc/InternalHeaderCheck.h",
+"eigen3/Eigen/src/misc/Kernel.h",
+"eigen3/Eigen/src/misc/RealSvd2x2.h",
+"eigen3/Eigen/src/misc/Image.h",
+"eigen3/Eigen/src/misc/lapack.h",
+"eigen3/Eigen/src/misc/lapacke_mangling.h",
+"eigen3/Eigen/src/Core/Reverse.h",
+"eigen3/Eigen/src/Core/ConditionEstimator.h",
+"eigen3/Eigen/src/Core/PermutationMatrix.h",
+"eigen3/Eigen/src/Core/Assign.h",
+"eigen3/Eigen/src/Core/MathFunctionsImpl.h",
+"eigen3/Eigen/src/Core/CwiseUnaryOp.h",
+"eigen3/Eigen/src/Core/DiagonalMatrix.h",
+"eigen3/Eigen/src/Core/StlIterators.h",
+"eigen3/Eigen/src/Core/VectorBlock.h",
+"eigen3/Eigen/src/Core/ReturnByValue.h",
+"eigen3/Eigen/src/Core/Solve.h",
+"eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h",
+"eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular_BLAS.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixMatrix_BLAS.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixVector_BLAS.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixMatrix.h",
+"eigen3/Eigen/src/Core/products/Parallelizer.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h",
+"eigen3/Eigen/src/Core/products/TriangularMatrixVector.h",
+"eigen3/Eigen/src/Core/products/SelfadjointMatrixVector.h",
+"eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h",
+"eigen3/Eigen/src/Core/products/GeneralMatrixVector.h",
+"eigen3/Eigen/src/Core/products/SelfadjointProduct.h",
+"eigen3/Eigen/src/Core/products/TriangularMatrixVector_BLAS.h",
+"eigen3/Eigen/src/Core/products/TriangularMatrixMatrix_BLAS.h",
+"eigen3/Eigen/src/Core/products/SelfadjointMatrixVector_BLAS.h",
+"eigen3/Eigen/src/Core/products/TriangularSolverMatrix_BLAS.h",
+"eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix_BLAS.h",
+"eigen3/Eigen/src/Core/products/TriangularSolverVector.h",
+"eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h",
+"eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h",
+"eigen3/Eigen/src/Core/ArithmeticSequence.h",
+"eigen3/Eigen/src/Core/Product.h",
+"eigen3/Eigen/src/Core/util/NonMPL2.h",
+"eigen3/Eigen/src/Core/util/ReshapedHelper.h",
+"eigen3/Eigen/src/Core/util/BlasUtil.h",
+"eigen3/Eigen/src/Core/util/StaticAssert.h",
+"eigen3/Eigen/src/Core/util/Constants.h",
+"eigen3/Eigen/src/Core/util/XprHelper.h",
+"eigen3/Eigen/src/Core/util/MKL_support.h",
+"eigen3/Eigen/src/Core/util/Serializer.h",
+"eigen3/Eigen/src/Core/util/Macros.h",
+"eigen3/Eigen/src/Core/util/DisableStupidWarnings.h",
+"eigen3/Eigen/src/Core/util/SymbolicIndex.h",
+"eigen3/Eigen/src/Core/util/ForwardDeclarations.h",
+"eigen3/Eigen/src/Core/util/Memory.h",
+"eigen3/Eigen/src/Core/util/Meta.h",
+"eigen3/Eigen/src/Core/util/ConfigureVectorization.h",
+"eigen3/Eigen/src/Core/util/IntegralConstant.h",
+"eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h",
+"eigen3/Eigen/src/Core/util/IndexedViewHelper.h",
+"eigen3/Eigen/src/Core/MatrixBase.h",
+"eigen3/Eigen/src/Core/Stride.h",
+"eigen3/Eigen/src/Core/Map.h",
+"eigen3/Eigen/src/Core/ForceAlignedAccess.h",
+"eigen3/Eigen/src/Core/MathFunctions.h",
+"eigen3/Eigen/src/Core/functors/UnaryFunctors.h",
+"eigen3/Eigen/src/Core/functors/TernaryFunctors.h",
+"eigen3/Eigen/src/Core/functors/AssignmentFunctors.h",
+"eigen3/Eigen/src/Core/functors/BinaryFunctors.h",
+"eigen3/Eigen/src/Core/functors/StlFunctors.h",
+"eigen3/Eigen/src/Core/functors/NullaryFunctors.h",
+"eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h",
+"eigen3/Eigen/src/Core/BandMatrix.h",
+"eigen3/Eigen/src/Core/Inverse.h",
+"eigen3/Eigen/src/Core/Assign_MKL.h",
+"eigen3/Eigen/src/Core/Swap.h",
+"eigen3/Eigen/src/Core/ProductEvaluators.h",
+"eigen3/Eigen/src/Core/MapBase.h",
+"eigen3/Eigen/src/Core/Matrix.h",
+"eigen3/Eigen/src/Core/EigenBase.h",
+"eigen3/Eigen/src/Core/StableNorm.h",
+"eigen3/Eigen/src/Core/GenericPacketMath.h",
+"eigen3/Eigen/src/Core/CwiseBinaryOp.h",
+"eigen3/Eigen/src/Core/Visitor.h",
+"eigen3/Eigen/src/Core/DenseStorage.h",
+"eigen3/Eigen/src/Core/DiagonalProduct.h",
+"eigen3/Eigen/src/Core/CwiseUnaryView.h",
+"eigen3/Eigen/src/Core/NoAlias.h",
+"eigen3/Eigen/src/Core/DenseCoeffsBase.h",
+"eigen3/Eigen/src/Core/PartialReduxEvaluator.h",
+"eigen3/Eigen/src/Core/IndexedView.h",
+"eigen3/Eigen/src/Core/Fuzzy.h",
+"eigen3/Eigen/src/Core/InternalHeaderCheck.h",
+"eigen3/Eigen/src/Core/TriangularMatrix.h",
+"eigen3/Eigen/src/Core/IO.h",
+"eigen3/Eigen/src/Core/arch/SSE/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/SSE/Complex.h",
+"eigen3/Eigen/src/Core/arch/GPU/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/GPU/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/GPU/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/GPU/Tuple.h",
+"eigen3/Eigen/src/Core/arch/MSA/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/MSA/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/MSA/Complex.h",
+"eigen3/Eigen/src/Core/arch/CUDA/Half.h",
+"eigen3/Eigen/src/Core/arch/CUDA/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/CUDA/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/CUDA/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/CUDA/PacketMathHalf.h",
+"eigen3/Eigen/src/Core/arch/CUDA/Complex.h",
+"eigen3/Eigen/src/Core/arch/ZVector/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/ZVector/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/ZVector/Complex.h",
+"eigen3/Eigen/src/Core/arch/Default/Half.h",
+"eigen3/Eigen/src/Core/arch/Default/Settings.h",
+"eigen3/Eigen/src/Core/arch/Default/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/Default/BFloat16.h",
+"eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h",
+"eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h",
+"eigen3/Eigen/src/Core/arch/Default/ConjHelper.h",
+"eigen3/Eigen/src/Core/arch/AVX512/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/AVX512/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/AVX512/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/AVX512/Complex.h",
+"eigen3/Eigen/src/Core/arch/SVE/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/SVE/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/SVE/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/HIP/hcc/math_constants.h",
+"eigen3/Eigen/src/Core/arch/AVX/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/AVX/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/AVX/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/AVX/Complex.h",
+"eigen3/Eigen/src/Core/arch/SYCL/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/SYCL/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/SYCL/SyclMemoryModel.h",
+"eigen3/Eigen/src/Core/arch/SYCL/InteropHeaders.h",
+"eigen3/Eigen/src/Core/arch/SYCL/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/NEON/GeneralBlockPanelKernel.h",
+"eigen3/Eigen/src/Core/arch/NEON/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/NEON/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/NEON/TypeCasting.h",
+"eigen3/Eigen/src/Core/arch/NEON/Complex.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/PacketMath.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/MathFunctions.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/MatrixProduct.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductMMA.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductCommon.h",
+"eigen3/Eigen/src/Core/arch/AltiVec/Complex.h",
+"eigen3/Eigen/src/Core/Array.h",
+"eigen3/Eigen/src/Core/SolverBase.h",
+"eigen3/Eigen/src/Core/AssignEvaluator.h",
+"eigen3/Eigen/src/Core/Replicate.h",
+"eigen3/Eigen/src/Core/CoreIterators.h",
+"eigen3/Eigen/src/Core/ArrayBase.h",
+"eigen3/Eigen/src/Core/Block.h",
+"eigen3/Eigen/src/Core/Dot.h",
+"eigen3/Eigen/src/Core/PlainObjectBase.h",
+"eigen3/Eigen/src/Core/SelfAdjointView.h",
+"eigen3/Eigen/src/Core/GeneralProduct.h",
+"eigen3/Eigen/src/Core/SolveTriangular.h",
+"eigen3/Eigen/src/Core/CoreEvaluators.h",
+"eigen3/Eigen/src/Core/CwiseNullaryOp.h",
+"eigen3/Eigen/src/Core/VectorwiseOp.h",
+"eigen3/Eigen/src/Core/ArrayWrapper.h",
+"eigen3/Eigen/src/Core/BooleanRedux.h",
+"eigen3/Eigen/src/Core/Transpositions.h",
+"eigen3/Eigen/src/Core/NestByValue.h",
+"eigen3/Eigen/src/Core/Ref.h",
+"eigen3/Eigen/src/Core/Reshaped.h",
+"eigen3/Eigen/src/Core/Transpose.h",
+"eigen3/Eigen/src/Core/Redux.h",
+"eigen3/Eigen/src/Core/NumTraits.h",
+"eigen3/Eigen/src/Core/CommaInitializer.h",
+"eigen3/Eigen/src/Core/GlobalFunctions.h",
+"eigen3/Eigen/src/Core/Random.h",
+"eigen3/Eigen/src/Core/Diagonal.h",
+"eigen3/Eigen/src/Core/DenseBase.h",
+"eigen3/Eigen/src/Core/CwiseTernaryOp.h",
+"eigen3/Eigen/src/Core/Select.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_Utils.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_kernel_bmod.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_column_bmod.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_gemm_kernel.h",
+"eigen3/Eigen/src/SparseLU/SparseLU.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_column_dfs.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_panel_dfs.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_relax_snode.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_heap_relax_snode.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_panel_bmod.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_Structs.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_pruneL.h",
+"eigen3/Eigen/src/SparseLU/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_copy_to_ucol.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_Memory.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_pivotL.h",
+"eigen3/Eigen/src/SparseLU/SparseLUImpl.h",
+"eigen3/Eigen/src/SparseLU/SparseLU_SupernodalMatrix.h",
+"eigen3/Eigen/src/OrderingMethods/Ordering.h",
+"eigen3/Eigen/src/OrderingMethods/InternalHeaderCheck.h",
+"eigen3/Eigen/src/OrderingMethods/Eigen_Colamd.h",
+"eigen3/Eigen/src/OrderingMethods/Amd.h",
+"eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h",
+"eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h",
+"eigen3/Eigen/src/plugins/BlockMethods.h",
+"eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h",
+"eigen3/Eigen/src/plugins/InternalHeaderCheck.h",
+"eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h",
+"eigen3/Eigen/src/plugins/IndexedViewMethods.h",
+"eigen3/Eigen/src/plugins/CommonCwiseBinaryOps.h",
+"eigen3/Eigen/src/plugins/ReshapedMethods.h",
+"eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h",
+"eigen3/Eigen/src/Householder/HouseholderSequence.h",
+"eigen3/Eigen/src/Householder/Householder.h",
+"eigen3/Eigen/src/Householder/InternalHeaderCheck.h",
+"eigen3/Eigen/src/Householder/BlockHouseholder.h",
+"eigen3/Eigen/src/PardisoSupport/PardisoSupport.h",
+"eigen3/Eigen/src/PardisoSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SparseCore/SparseSelfAdjointView.h",
+"eigen3/Eigen/src/SparseCore/SparseMatrix.h",
+"eigen3/Eigen/src/SparseCore/CompressedStorage.h",
+"eigen3/Eigen/src/SparseCore/SparseCwiseBinaryOp.h",
+"eigen3/Eigen/src/SparseCore/SparseView.h",
+"eigen3/Eigen/src/SparseCore/SparseColEtree.h",
+"eigen3/Eigen/src/SparseCore/SparseMatrixBase.h",
+"eigen3/Eigen/src/SparseCore/SparseDiagonalProduct.h",
+"eigen3/Eigen/src/SparseCore/SparseTriangularView.h",
+"eigen3/Eigen/src/SparseCore/SparseAssign.h",
+"eigen3/Eigen/src/SparseCore/SparsePermutation.h",
+"eigen3/Eigen/src/SparseCore/SparseCwiseUnaryOp.h",
+"eigen3/Eigen/src/SparseCore/SparseMap.h",
+"eigen3/Eigen/src/SparseCore/SparseDenseProduct.h",
+"eigen3/Eigen/src/SparseCore/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SparseCore/SparseRef.h",
+"eigen3/Eigen/src/SparseCore/SparseFuzzy.h",
+"eigen3/Eigen/src/SparseCore/MappedSparseMatrix.h",
+"eigen3/Eigen/src/SparseCore/SparseSparseProductWithPruning.h",
+"eigen3/Eigen/src/SparseCore/SparseSolverBase.h",
+"eigen3/Eigen/src/SparseCore/SparseBlock.h",
+"eigen3/Eigen/src/SparseCore/TriangularSolver.h",
+"eigen3/Eigen/src/SparseCore/SparseVector.h",
+"eigen3/Eigen/src/SparseCore/SparseCompressedBase.h",
+"eigen3/Eigen/src/SparseCore/SparseTranspose.h",
+"eigen3/Eigen/src/SparseCore/SparseProduct.h",
+"eigen3/Eigen/src/SparseCore/AmbiVector.h",
+"eigen3/Eigen/src/SparseCore/SparseRedux.h",
+"eigen3/Eigen/src/SparseCore/ConservativeSparseSparseProduct.h",
+"eigen3/Eigen/src/SparseCore/SparseUtil.h",
+"eigen3/Eigen/src/SparseCore/SparseDot.h",
+"eigen3/Eigen/src/Jacobi/InternalHeaderCheck.h",
+"eigen3/Eigen/src/Jacobi/Jacobi.h",
+"eigen3/Eigen/src/SPQRSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SPQRSupport/SuiteSparseQRSupport.h",
+"eigen3/Eigen/src/QR/FullPivHouseholderQR.h",
+"eigen3/Eigen/src/QR/HouseholderQR.h",
+"eigen3/Eigen/src/QR/CompleteOrthogonalDecomposition.h",
+"eigen3/Eigen/src/QR/ColPivHouseholderQR_LAPACKE.h",
+"eigen3/Eigen/src/QR/ColPivHouseholderQR.h",
+"eigen3/Eigen/src/QR/InternalHeaderCheck.h",
+"eigen3/Eigen/src/QR/HouseholderQR_LAPACKE.h",
+"eigen3/Eigen/src/SparseQR/SparseQR.h",
+"eigen3/Eigen/src/SparseQR/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SVD/JacobiSVD_LAPACKE.h",
+"eigen3/Eigen/src/SVD/SVDBase.h",
+"eigen3/Eigen/src/SVD/JacobiSVD.h",
+"eigen3/Eigen/src/SVD/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SVD/BDCSVD.h",
+"eigen3/Eigen/src/SVD/UpperBidiagonalization.h",
+"eigen3/Eigen/src/Cholesky/LLT_LAPACKE.h",
+"eigen3/Eigen/src/Cholesky/LDLT.h",
+"eigen3/Eigen/src/Cholesky/LLT.h",
+"eigen3/Eigen/src/Cholesky/InternalHeaderCheck.h",
+"eigen3/Eigen/src/UmfPackSupport/UmfPackSupport.h",
+"eigen3/Eigen/src/UmfPackSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/BasicPreconditioners.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/IncompleteCholesky.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/SolveWithGuess.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/IncompleteLUT.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/InternalHeaderCheck.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/LeastSquareConjugateGradient.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/ConjugateGradient.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/BiCGSTAB.h",
+"eigen3/Eigen/src/IterativeLinearSolvers/IterativeSolverBase.h",
+"eigen3/Eigen/src/LU/PartialPivLU_LAPACKE.h",
+"eigen3/Eigen/src/LU/InverseImpl.h",
+"eigen3/Eigen/src/LU/Determinant.h",
+"eigen3/Eigen/src/LU/InternalHeaderCheck.h",
+"eigen3/Eigen/src/LU/arch/Inverse_SSE.h",
+"eigen3/Eigen/src/LU/arch/InverseSize4.h",
+"eigen3/Eigen/src/LU/PartialPivLU.h",
+"eigen3/Eigen/src/LU/FullPivLU.h",
+"eigen3/Eigen/src/Geometry/AngleAxis.h",
+"eigen3/Eigen/src/Geometry/RotationBase.h",
+"eigen3/Eigen/src/Geometry/EulerAngles.h",
+"eigen3/Eigen/src/Geometry/Hyperplane.h",
+"eigen3/Eigen/src/Geometry/Homogeneous.h",
+"eigen3/Eigen/src/Geometry/AlignedBox.h",
+"eigen3/Eigen/src/Geometry/Quaternion.h",
+"eigen3/Eigen/src/Geometry/Umeyama.h",
+"eigen3/Eigen/src/Geometry/Translation.h",
+"eigen3/Eigen/src/Geometry/Scaling.h",
+"eigen3/Eigen/src/Geometry/OrthoMethods.h",
+"eigen3/Eigen/src/Geometry/Rotation2D.h",
+"eigen3/Eigen/src/Geometry/InternalHeaderCheck.h",
+"eigen3/Eigen/src/Geometry/arch/Geometry_SSE.h",
+"eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h",
+"eigen3/Eigen/src/Geometry/Transform.h",
+"eigen3/Eigen/src/Geometry/ParametrizedLine.h",
+"eigen3/Eigen/src/SuperLUSupport/SuperLUSupport.h",
+"eigen3/Eigen/src/SuperLUSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/MetisSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/MetisSupport/MetisSupport.h",
+"eigen3/Eigen/src/StlSupport/StdList.h",
+"eigen3/Eigen/src/StlSupport/StdDeque.h",
+"eigen3/Eigen/src/StlSupport/details.h",
+"eigen3/Eigen/src/StlSupport/StdVector.h",
+"eigen3/Eigen/src/SparseCholesky/SimplicialCholesky_impl.h",
+"eigen3/Eigen/src/SparseCholesky/InternalHeaderCheck.h",
+"eigen3/Eigen/src/SparseCholesky/SimplicialCholesky.h",
+"eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h",
+"eigen3/Eigen/src/Eigenvalues/EigenSolver.h",
+"eigen3/Eigen/src/Eigenvalues/RealSchur_LAPACKE.h",
+"eigen3/Eigen/src/Eigenvalues/RealSchur.h",
+"eigen3/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h",
+"eigen3/Eigen/src/Eigenvalues/Tridiagonalization.h",
+"eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h",
+"eigen3/Eigen/src/Eigenvalues/ComplexEigenSolver.h",
+"eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h",
+"eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h",
+"eigen3/Eigen/src/Eigenvalues/InternalHeaderCheck.h",
+"eigen3/Eigen/src/Eigenvalues/ComplexSchur.h",
+"eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h",
+"eigen3/Eigen/src/Eigenvalues/RealQZ.h",
+"eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h",
+"eigen3/Eigen/src/PaStiXSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/PaStiXSupport/PaStiXSupport.h",
+"eigen3/Eigen/src/KLUSupport/InternalHeaderCheck.h",
+"eigen3/Eigen/src/KLUSupport/KLUSupport.h",
+"eigen3/Eigen/KLUSupport",
 ]
-
-# List of files picked up by glob but actually part of another target.
-EIGEN_EXCLUDE_FILES = [
-  "Eigen/src/Core/arch/AVX/PacketMathGoogleTest.cc",
-]
-
-EIGEN_MPL2_HEADER_FILES = glob(
-  EIGEN_FILES,
-  exclude = EIGEN_EXCLUDE_FILES,
-)
 
 cc_library(
   name = "eigen",
-  hdrs = EIGEN_MPL2_HEADER_FILES,
-  includes = ["."],
+  hdrs = EIGEN_FILES,
+  #includes = ["."],
+  strip_include_prefix = "eigen3",
   visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "eigen-build",
+    srcs = glob(["**/*"]),
+    outs = EIGEN_FILES,
+    cmd = """
+        CONFIGURE_LOG=$$(mktemp)
+        MAKE_LOG=$$(mktemp)
+        EIGEN_ROOT=$$(dirname $(location CMakeLists.txt))
+        pushd $$EIGEN_ROOT > /dev/null
+            mkdir -p /tmp
+            mkdir build
+            cd build
+            if ! cmake -DCMAKE_INSTALL_PREFIX=/tmp -DEIGEN_DONT_VECTORIZE=1 ../ > $$MAKE_LOG; then
+                cat $$MAKE_LOG
+            fi
+            if ! make install > $$MAKE_LOG; then
+                cat $$MAKE_LOG
+            fi
+        popd > /dev/null
+        cp /tmp/include/eigen3/unsupported/Eigen/MatrixFunctions                                        $(location eigen3/unsupported/Eigen/MatrixFunctions)
+        cp /tmp/include/eigen3/unsupported/Eigen/AdolcForward                                           $(location eigen3/unsupported/Eigen/AdolcForward)
+        cp /tmp/include/eigen3/unsupported/Eigen/AlignedVector3                                         $(location eigen3/unsupported/Eigen/AlignedVector3)
+        cp /tmp/include/eigen3/unsupported/Eigen/OpenGLSupport                                          $(location eigen3/unsupported/Eigen/OpenGLSupport)
+        cp /tmp/include/eigen3/unsupported/Eigen/LevenbergMarquardt                                     $(location eigen3/unsupported/Eigen/LevenbergMarquardt)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/ThreadPool                                       $(location eigen3/unsupported/Eigen/CXX11/ThreadPool)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/TensorSymmetry                                   $(location eigen3/unsupported/Eigen/CXX11/TensorSymmetry)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/Tensor                                           $(location eigen3/unsupported/Eigen/CXX11/Tensor)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/util/EmulateCXX11Meta.h                      $(location eigen3/unsupported/Eigen/CXX11/src/util/EmulateCXX11Meta.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/util/MaxSizeVector.h                         $(location eigen3/unsupported/Eigen/CXX11/src/util/MaxSizeVector.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/util/CXX11Meta.h                             $(location eigen3/unsupported/Eigen/CXX11/src/util/CXX11Meta.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/util/CXX11Workarounds.h                      $(location eigen3/unsupported/Eigen/CXX11/src/util/CXX11Workarounds.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/util/EmulateArray.h                          $(location eigen3/unsupported/Eigen/CXX11/src/util/EmulateArray.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadEnvironment.h               $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadEnvironment.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/SimpleThreadPool.h                $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/SimpleThreadPool.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/NonBlockingThreadPool.h           $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/NonBlockingThreadPool.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/Barrier.h                         $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/Barrier.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadLocal.h                     $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadLocal.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/RunQueue.h                        $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/RunQueue.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/InternalHeaderCheck.h             $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadPoolInterface.h             $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadPoolInterface.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadCancel.h                    $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadCancel.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadYield.h                     $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/ThreadYield.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/ThreadPool/EventCount.h                      $(location eigen3/unsupported/Eigen/CXX11/src/ThreadPool/EventCount.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/util/TemplateGroupTheory.h    $(location eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/util/TemplateGroupTheory.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/InternalHeaderCheck.h         $(location eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/DynamicSymmetry.h             $(location eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/DynamicSymmetry.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/StaticSymmetry.h              $(location eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/StaticSymmetry.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/Symmetry.h                    $(location eigen3/unsupported/Eigen/CXX11/src/TensorSymmetry/Symmetry.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorUInt128.h                       $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorUInt128.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h                  $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConversion.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConversion.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExprConstructor.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExprConstructor.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvalTo.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvalTo.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionSycl.h               $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSycl.h                          $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMorphing.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMorphing.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractAccessor.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractAccessor.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCostModel.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCostModel.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContraction.h                   $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContraction.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFunctors.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFunctors.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionCuda.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionCuda.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExpr.h                          $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExpr.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionThreadPool.h         $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionThreadPool.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInflation.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInflation.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRef.h                           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorRef.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFixedSize.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFixedSize.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMacros.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMacros.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBroadcasting.h                  $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBroadcasting.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCustomOp.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorCustomOp.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorArgMax.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorArgMax.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIndexList.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIndexList.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorImagePatch.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorImagePatch.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIntDiv.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIntDiv.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorShuffling.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorShuffling.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclPlaceHolderExpr.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclPlaceHolderExpr.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclRun.h                       $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclRun.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReverse.h                       $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReverse.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReduction.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceCuda.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceCuda.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInitializer.h                   $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorInitializer.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionBlocking.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionBlocking.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGenerator.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGenerator.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolution.h                   $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolution.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTrace.h                         $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTrace.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvaluator.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorEvaluator.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForwardDeclarations.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForwardDeclarations.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMeta.h                          $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMeta.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPadding.h                       $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPadding.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceSycl.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFFT.h                           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorFFT.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorLayoutSwap.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorLayoutSwap.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/InternalHeaderCheck.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h             $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaDefines.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclConvertToDeviceExpression.h $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclConvertToDeviceExpression.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMap.h                           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorMap.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExecutor.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorExecutor.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStriding.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStriding.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclLeafCount.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclLeafCount.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPatch.h                         $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorPatch.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclTuple.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclTuple.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h                         $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGlobalFunctions.h               $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGlobalFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScan.h                          $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScan.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceThreadPool.h              $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceThreadPool.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBase.h                          $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorBase.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h                     $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceGpu.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStorage.h                       $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorStorage.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorChipping.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorChipping.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionMapper.h             $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionMapper.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTraits.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorTraits.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionSycl.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDevice.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDevice.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h                $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolutionSycl.h               $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConvolutionSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScanSycl.h                      $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorScanSycl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionCuda.h               $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorContractionCuda.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensionList.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorDimensionList.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/Tensor.h                              $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/Tensor.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorVolumePatch.h                   $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorVolumePatch.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractFunctors.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorSyclExtractFunctors.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForcedEval.h                    $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorForcedEval.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIO.h                            $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorIO.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConcatenation.h                 $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorConcatenation.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorAssign.h                        $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorAssign.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaUndefines.h           $(location eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorGpuHipCudaUndefines.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/AutoDiff                                               $(location eigen3/unsupported/Eigen/AutoDiff)
+        cp /tmp/include/eigen3/unsupported/Eigen/NumericalDiff                                          $(location eigen3/unsupported/Eigen/NumericalDiff)
+        cp /tmp/include/eigen3/unsupported/Eigen/NonLinearOptimization                                  $(location eigen3/unsupported/Eigen/NonLinearOptimization)
+        cp /tmp/include/eigen3/unsupported/Eigen/ArpackSupport                                          $(location eigen3/unsupported/Eigen/ArpackSupport)
+        cp /tmp/include/eigen3/unsupported/Eigen/Skyline                                                $(location eigen3/unsupported/Eigen/Skyline)
+        cp /tmp/include/eigen3/unsupported/Eigen/BVH                                                    $(location eigen3/unsupported/Eigen/BVH)
+        cp /tmp/include/eigen3/unsupported/Eigen/SpecialFunctions                                       $(location eigen3/unsupported/Eigen/SpecialFunctions)
+        cp /tmp/include/eigen3/unsupported/Eigen/Splines                                                $(location eigen3/unsupported/Eigen/Splines)
+        cp /tmp/include/eigen3/unsupported/Eigen/KroneckerProduct                                       $(location eigen3/unsupported/Eigen/KroneckerProduct)
+        cp /tmp/include/eigen3/unsupported/Eigen/IterativeSolvers                                       $(location eigen3/unsupported/Eigen/IterativeSolvers)
+        cp /tmp/include/eigen3/unsupported/Eigen/FFT                                                    $(location eigen3/unsupported/Eigen/FFT)
+        cp /tmp/include/eigen3/unsupported/Eigen/EulerAngles                                            $(location eigen3/unsupported/Eigen/EulerAngles)
+        cp /tmp/include/eigen3/unsupported/Eigen/SparseExtra                                            $(location eigen3/unsupported/Eigen/SparseExtra)
+        cp /tmp/include/eigen3/unsupported/Eigen/Polynomials                                            $(location eigen3/unsupported/Eigen/Polynomials)
+        cp /tmp/include/eigen3/unsupported/Eigen/MoreVectorization                                      $(location eigen3/unsupported/Eigen/MoreVectorization)
+        cp /tmp/include/eigen3/unsupported/Eigen/MPRealSupport                                          $(location eigen3/unsupported/Eigen/MPRealSupport)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/StemFunction.h                     $(location eigen3/unsupported/Eigen/src/MatrixFunctions/StemFunction.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h                  $(location eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/InternalHeaderCheck.h              $(location eigen3/unsupported/Eigen/src/MatrixFunctions/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixFunction.h                   $(location eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixFunction.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h                      $(location eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixExponential.h                $(location eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixExponential.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h                 $(location eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMcovar.h                       $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMcovar.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/LevenbergMarquardt.h            $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/LevenbergMarquardt.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMpar.h                         $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMpar.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/InternalHeaderCheck.h           $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMqrsolv.h                      $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMqrsolv.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMonestep.h                     $(location eigen3/unsupported/Eigen/src/LevenbergMarquardt/LMonestep.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffJacobian.h                        $(location eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffJacobian.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffScalar.h                          $(location eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffScalar.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/AutoDiff/InternalHeaderCheck.h                     $(location eigen3/unsupported/Eigen/src/AutoDiff/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffVector.h                          $(location eigen3/unsupported/Eigen/src/AutoDiff/AutoDiffVector.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NumericalDiff/InternalHeaderCheck.h                $(location eigen3/unsupported/Eigen/src/NumericalDiff/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NumericalDiff/NumericalDiff.h                      $(location eigen3/unsupported/Eigen/src/NumericalDiff/NumericalDiff.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/chkder.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/chkder.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/rwupdt.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/rwupdt.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/fdjac1.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/fdjac1.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/dogleg.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/dogleg.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/r1updt.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/r1updt.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/qrsolv.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/qrsolv.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/HybridNonLinearSolver.h      $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/HybridNonLinearSolver.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/LevenbergMarquardt.h         $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/LevenbergMarquardt.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/lmpar.h                      $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/lmpar.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/InternalHeaderCheck.h        $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/r1mpyq.h                     $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/r1mpyq.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/covar.h                      $(location eigen3/unsupported/Eigen/src/NonLinearOptimization/covar.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineMatrix.h                            $(location eigen3/unsupported/Eigen/src/Skyline/SkylineMatrix.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineStorage.h                           $(location eigen3/unsupported/Eigen/src/Skyline/SkylineStorage.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineUtil.h                              $(location eigen3/unsupported/Eigen/src/Skyline/SkylineUtil.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineMatrixBase.h                        $(location eigen3/unsupported/Eigen/src/Skyline/SkylineMatrixBase.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/InternalHeaderCheck.h                      $(location eigen3/unsupported/Eigen/src/Skyline/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineInplaceLU.h                         $(location eigen3/unsupported/Eigen/src/Skyline/SkylineInplaceLU.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Skyline/SkylineProduct.h                           $(location eigen3/unsupported/Eigen/src/Skyline/SkylineProduct.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/BVH/BVAlgorithms.h                                 $(location eigen3/unsupported/Eigen/src/BVH/BVAlgorithms.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/BVH/InternalHeaderCheck.h                          $(location eigen3/unsupported/Eigen/src/BVH/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/BVH/KdBVH.h                                        $(location eigen3/unsupported/Eigen/src/BVH/KdBVH.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsArrayAPI.h        $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsArrayAPI.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsPacketMath.h       $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsPacketMath.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsFunctors.h        $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsFunctors.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsHalf.h            $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsHalf.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsImpl.h             $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsImpl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsBFloat16.h         $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsBFloat16.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsHalf.h             $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsHalf.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/InternalHeaderCheck.h             $(location eigen3/unsupported/Eigen/src/SpecialFunctions/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/HipVectorCompatibility.h          $(location eigen3/unsupported/Eigen/src/SpecialFunctions/HipVectorCompatibility.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/GPU/SpecialFunctions.h       $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/GPU/SpecialFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/CUDA/CudaSpecialFunctions.h  $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/CUDA/CudaSpecialFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/BesselFunctions.h     $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/BesselFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/SpecialFunctions.h    $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX512/SpecialFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/BesselFunctions.h        $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/BesselFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/SpecialFunctions.h       $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/SpecialFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/BesselFunctions.h       $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/BesselFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/SpecialFunctions.h      $(location eigen3/unsupported/Eigen/src/SpecialFunctions/arch/NEON/SpecialFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsBFloat16.h        $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsBFloat16.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsPacketMath.h      $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsPacketMath.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsArrayAPI.h         $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsArrayAPI.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h            $(location eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsFunctors.h         $(location eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsFunctors.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Splines/SplineFwd.h                                $(location eigen3/unsupported/Eigen/src/Splines/SplineFwd.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Splines/Spline.h                                   $(location eigen3/unsupported/Eigen/src/Splines/Spline.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Splines/SplineFitting.h                            $(location eigen3/unsupported/Eigen/src/Splines/SplineFitting.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Splines/InternalHeaderCheck.h                      $(location eigen3/unsupported/Eigen/src/Splines/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/KroneckerProduct/KroneckerTensorProduct.h          $(location eigen3/unsupported/Eigen/src/KroneckerProduct/KroneckerTensorProduct.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/KroneckerProduct/InternalHeaderCheck.h             $(location eigen3/unsupported/Eigen/src/KroneckerProduct/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/MINRES.h                          $(location eigen3/unsupported/Eigen/src/IterativeSolvers/MINRES.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/IncompleteLU.h                    $(location eigen3/unsupported/Eigen/src/IterativeSolvers/IncompleteLU.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/IterationController.h             $(location eigen3/unsupported/Eigen/src/IterativeSolvers/IterationController.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/ConstrainedConjGrad.h             $(location eigen3/unsupported/Eigen/src/IterativeSolvers/ConstrainedConjGrad.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/Scaling.h                         $(location eigen3/unsupported/Eigen/src/IterativeSolvers/Scaling.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/InternalHeaderCheck.h             $(location eigen3/unsupported/Eigen/src/IterativeSolvers/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/IDRS.h                            $(location eigen3/unsupported/Eigen/src/IterativeSolvers/IDRS.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/GMRES.h                           $(location eigen3/unsupported/Eigen/src/IterativeSolvers/GMRES.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/IterativeSolvers/DGMRES.h                          $(location eigen3/unsupported/Eigen/src/IterativeSolvers/DGMRES.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/FFT/ei_kissfft_impl.h                              $(location eigen3/unsupported/Eigen/src/FFT/ei_kissfft_impl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/FFT/InternalHeaderCheck.h                          $(location eigen3/unsupported/Eigen/src/FFT/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/FFT/ei_fftw_impl.h                                 $(location eigen3/unsupported/Eigen/src/FFT/ei_fftw_impl.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/EulerAngles/EulerAngles.h                          $(location eigen3/unsupported/Eigen/src/EulerAngles/EulerAngles.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/EulerAngles/InternalHeaderCheck.h                  $(location eigen3/unsupported/Eigen/src/EulerAngles/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/EulerAngles/EulerSystem.h                          $(location eigen3/unsupported/Eigen/src/EulerAngles/EulerSystem.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/MarketIO.h                             $(location eigen3/unsupported/Eigen/src/SparseExtra/MarketIO.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/RandomSetter.h                         $(location eigen3/unsupported/Eigen/src/SparseExtra/RandomSetter.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/MatrixMarketIterator.h                 $(location eigen3/unsupported/Eigen/src/SparseExtra/MatrixMarketIterator.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/InternalHeaderCheck.h                  $(location eigen3/unsupported/Eigen/src/SparseExtra/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/BlockOfDynamicSparseMatrix.h           $(location eigen3/unsupported/Eigen/src/SparseExtra/BlockOfDynamicSparseMatrix.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/DynamicSparseMatrix.h                  $(location eigen3/unsupported/Eigen/src/SparseExtra/DynamicSparseMatrix.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/SparseExtra/BlockSparseMatrix.h                    $(location eigen3/unsupported/Eigen/src/SparseExtra/BlockSparseMatrix.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Polynomials/Companion.h                            $(location eigen3/unsupported/Eigen/src/Polynomials/Companion.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Polynomials/PolynomialSolver.h                     $(location eigen3/unsupported/Eigen/src/Polynomials/PolynomialSolver.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Polynomials/InternalHeaderCheck.h                  $(location eigen3/unsupported/Eigen/src/Polynomials/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Polynomials/PolynomialUtils.h                      $(location eigen3/unsupported/Eigen/src/Polynomials/PolynomialUtils.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MoreVectorization/MathFunctions.h                  $(location eigen3/unsupported/Eigen/src/MoreVectorization/MathFunctions.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/MoreVectorization/InternalHeaderCheck.h            $(location eigen3/unsupported/Eigen/src/MoreVectorization/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Eigenvalues/ArpackSelfAdjointEigenSolver.h         $(location eigen3/unsupported/Eigen/src/Eigenvalues/ArpackSelfAdjointEigenSolver.h)
+        cp /tmp/include/eigen3/unsupported/Eigen/src/Eigenvalues/InternalHeaderCheck.h                  $(location eigen3/unsupported/Eigen/src/Eigenvalues/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/CholmodSupport                                                     $(location eigen3/Eigen/CholmodSupport)
+        cp /tmp/include/eigen3/Eigen/StdVector                                                          $(location eigen3/Eigen/StdVector)
+        cp /tmp/include/eigen3/Eigen/StdDeque                                                           $(location eigen3/Eigen/StdDeque)
+        cp /tmp/include/eigen3/Eigen/Core                                                               $(location eigen3/Eigen/Core)
+        cp /tmp/include/eigen3/Eigen/SparseLU                                                           $(location eigen3/Eigen/SparseLU)
+        cp /tmp/include/eigen3/Eigen/OrderingMethods                                                    $(location eigen3/Eigen/OrderingMethods)
+        cp /tmp/include/eigen3/Eigen/QtAlignedMalloc                                                    $(location eigen3/Eigen/QtAlignedMalloc)
+        cp /tmp/include/eigen3/Eigen/Householder                                                        $(location eigen3/Eigen/Householder)
+        cp /tmp/include/eigen3/Eigen/PardisoSupport                                                     $(location eigen3/Eigen/PardisoSupport)
+        cp /tmp/include/eigen3/Eigen/SparseCore                                                         $(location eigen3/Eigen/SparseCore)
+        cp /tmp/include/eigen3/Eigen/Jacobi                                                             $(location eigen3/Eigen/Jacobi)
+        cp /tmp/include/eigen3/Eigen/Dense                                                              $(location eigen3/Eigen/Dense)
+        cp /tmp/include/eigen3/Eigen/SPQRSupport                                                        $(location eigen3/Eigen/SPQRSupport)
+        cp /tmp/include/eigen3/Eigen/QR                                                                 $(location eigen3/Eigen/QR)
+        cp /tmp/include/eigen3/Eigen/Eigen                                                              $(location eigen3/Eigen/Eigen)
+        cp /tmp/include/eigen3/Eigen/SparseQR                                                           $(location eigen3/Eigen/SparseQR)
+        cp /tmp/include/eigen3/Eigen/SVD                                                                $(location eigen3/Eigen/SVD)
+        cp /tmp/include/eigen3/Eigen/Cholesky                                                           $(location eigen3/Eigen/Cholesky)
+        cp /tmp/include/eigen3/Eigen/UmfPackSupport                                                     $(location eigen3/Eigen/UmfPackSupport)
+        cp /tmp/include/eigen3/Eigen/IterativeLinearSolvers                                             $(location eigen3/Eigen/IterativeLinearSolvers)
+        cp /tmp/include/eigen3/Eigen/LU                                                                 $(location eigen3/Eigen/LU)
+        cp /tmp/include/eigen3/Eigen/Sparse                                                             $(location eigen3/Eigen/Sparse)
+        cp /tmp/include/eigen3/Eigen/Geometry                                                           $(location eigen3/Eigen/Geometry)
+        cp /tmp/include/eigen3/Eigen/SuperLUSupport                                                     $(location eigen3/Eigen/SuperLUSupport)
+        cp /tmp/include/eigen3/Eigen/StdList                                                            $(location eigen3/Eigen/StdList)
+        cp /tmp/include/eigen3/Eigen/MetisSupport                                                       $(location eigen3/Eigen/MetisSupport)
+        cp /tmp/include/eigen3/Eigen/SparseCholesky                                                     $(location eigen3/Eigen/SparseCholesky)
+        cp /tmp/include/eigen3/Eigen/Eigenvalues                                                        $(location eigen3/Eigen/Eigenvalues)
+        cp /tmp/include/eigen3/Eigen/PaStiXSupport                                                      $(location eigen3/Eigen/PaStiXSupport)
+        cp /tmp/include/eigen3/Eigen/src/CholmodSupport/InternalHeaderCheck.h                           $(location eigen3/Eigen/src/CholmodSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/CholmodSupport/CholmodSupport.h                                $(location eigen3/Eigen/src/CholmodSupport/CholmodSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/blas.h                                                    $(location eigen3/Eigen/src/misc/blas.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/lapacke.h                                                 $(location eigen3/Eigen/src/misc/lapacke.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/InternalHeaderCheck.h                                     $(location eigen3/Eigen/src/misc/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/Kernel.h                                                  $(location eigen3/Eigen/src/misc/Kernel.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/RealSvd2x2.h                                              $(location eigen3/Eigen/src/misc/RealSvd2x2.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/Image.h                                                   $(location eigen3/Eigen/src/misc/Image.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/lapack.h                                                  $(location eigen3/Eigen/src/misc/lapack.h)
+        cp /tmp/include/eigen3/Eigen/src/misc/lapacke_mangling.h                                        $(location eigen3/Eigen/src/misc/lapacke_mangling.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Reverse.h                                                 $(location eigen3/Eigen/src/Core/Reverse.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ConditionEstimator.h                                      $(location eigen3/Eigen/src/Core/ConditionEstimator.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/PermutationMatrix.h                                       $(location eigen3/Eigen/src/Core/PermutationMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Assign.h                                                  $(location eigen3/Eigen/src/Core/Assign.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/MathFunctionsImpl.h                                       $(location eigen3/Eigen/src/Core/MathFunctionsImpl.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CwiseUnaryOp.h                                            $(location eigen3/Eigen/src/Core/CwiseUnaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/DiagonalMatrix.h                                          $(location eigen3/Eigen/src/Core/DiagonalMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/StlIterators.h                                            $(location eigen3/Eigen/src/Core/StlIterators.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/VectorBlock.h                                             $(location eigen3/Eigen/src/Core/VectorBlock.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ReturnByValue.h                                           $(location eigen3/Eigen/src/Core/ReturnByValue.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Solve.h                                                   $(location eigen3/Eigen/src/Core/Solve.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h                         $(location eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h                        $(location eigen3/Eigen/src/Core/products/GeneralBlockPanelKernel.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular_BLAS.h             $(location eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrix_BLAS.h                       $(location eigen3/Eigen/src/Core/products/GeneralMatrixMatrix_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector_BLAS.h                       $(location eigen3/Eigen/src/Core/products/GeneralMatrixVector_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrix.h                            $(location eigen3/Eigen/src/Core/products/GeneralMatrixMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/Parallelizer.h                                   $(location eigen3/Eigen/src/Core/products/Parallelizer.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h                  $(location eigen3/Eigen/src/Core/products/GeneralMatrixMatrixTriangular.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularMatrixVector.h                         $(location eigen3/Eigen/src/Core/products/TriangularMatrixVector.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixVector.h                        $(location eigen3/Eigen/src/Core/products/SelfadjointMatrixVector.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h                         $(location eigen3/Eigen/src/Core/products/TriangularSolverMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h                            $(location eigen3/Eigen/src/Core/products/GeneralMatrixVector.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointProduct.h                             $(location eigen3/Eigen/src/Core/products/SelfadjointProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularMatrixVector_BLAS.h                    $(location eigen3/Eigen/src/Core/products/TriangularMatrixVector_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix_BLAS.h                    $(location eigen3/Eigen/src/Core/products/TriangularMatrixMatrix_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixVector_BLAS.h                   $(location eigen3/Eigen/src/Core/products/SelfadjointMatrixVector_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularSolverMatrix_BLAS.h                    $(location eigen3/Eigen/src/Core/products/TriangularSolverMatrix_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix_BLAS.h                   $(location eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix_BLAS.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularSolverVector.h                         $(location eigen3/Eigen/src/Core/products/TriangularSolverVector.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h                         $(location eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h                        $(location eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ArithmeticSequence.h                                      $(location eigen3/Eigen/src/Core/ArithmeticSequence.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Product.h                                                 $(location eigen3/Eigen/src/Core/Product.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/NonMPL2.h                                            $(location eigen3/Eigen/src/Core/util/NonMPL2.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/ReshapedHelper.h                                     $(location eigen3/Eigen/src/Core/util/ReshapedHelper.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/BlasUtil.h                                           $(location eigen3/Eigen/src/Core/util/BlasUtil.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/StaticAssert.h                                       $(location eigen3/Eigen/src/Core/util/StaticAssert.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/Constants.h                                          $(location eigen3/Eigen/src/Core/util/Constants.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/XprHelper.h                                          $(location eigen3/Eigen/src/Core/util/XprHelper.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/MKL_support.h                                        $(location eigen3/Eigen/src/Core/util/MKL_support.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/Serializer.h                                         $(location eigen3/Eigen/src/Core/util/Serializer.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/Macros.h                                             $(location eigen3/Eigen/src/Core/util/Macros.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h                              $(location eigen3/Eigen/src/Core/util/DisableStupidWarnings.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/SymbolicIndex.h                                      $(location eigen3/Eigen/src/Core/util/SymbolicIndex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/ForwardDeclarations.h                                $(location eigen3/Eigen/src/Core/util/ForwardDeclarations.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/Memory.h                                             $(location eigen3/Eigen/src/Core/util/Memory.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/Meta.h                                               $(location eigen3/Eigen/src/Core/util/Meta.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h                             $(location eigen3/Eigen/src/Core/util/ConfigureVectorization.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/IntegralConstant.h                                   $(location eigen3/Eigen/src/Core/util/IntegralConstant.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h                             $(location eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/util/IndexedViewHelper.h                                  $(location eigen3/Eigen/src/Core/util/IndexedViewHelper.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/MatrixBase.h                                              $(location eigen3/Eigen/src/Core/MatrixBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Stride.h                                                  $(location eigen3/Eigen/src/Core/Stride.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Map.h                                                     $(location eigen3/Eigen/src/Core/Map.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ForceAlignedAccess.h                                      $(location eigen3/Eigen/src/Core/ForceAlignedAccess.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/MathFunctions.h                                           $(location eigen3/Eigen/src/Core/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/UnaryFunctors.h                                  $(location eigen3/Eigen/src/Core/functors/UnaryFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/TernaryFunctors.h                                $(location eigen3/Eigen/src/Core/functors/TernaryFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h                             $(location eigen3/Eigen/src/Core/functors/AssignmentFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/BinaryFunctors.h                                 $(location eigen3/Eigen/src/Core/functors/BinaryFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/StlFunctors.h                                    $(location eigen3/Eigen/src/Core/functors/StlFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/functors/NullaryFunctors.h                                $(location eigen3/Eigen/src/Core/functors/NullaryFunctors.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h                                       $(location eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/BandMatrix.h                                              $(location eigen3/Eigen/src/Core/BandMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Inverse.h                                                 $(location eigen3/Eigen/src/Core/Inverse.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Assign_MKL.h                                              $(location eigen3/Eigen/src/Core/Assign_MKL.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Swap.h                                                    $(location eigen3/Eigen/src/Core/Swap.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ProductEvaluators.h                                       $(location eigen3/Eigen/src/Core/ProductEvaluators.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/MapBase.h                                                 $(location eigen3/Eigen/src/Core/MapBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Matrix.h                                                  $(location eigen3/Eigen/src/Core/Matrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/EigenBase.h                                               $(location eigen3/Eigen/src/Core/EigenBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/StableNorm.h                                              $(location eigen3/Eigen/src/Core/StableNorm.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/GenericPacketMath.h                                       $(location eigen3/Eigen/src/Core/GenericPacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h                                           $(location eigen3/Eigen/src/Core/CwiseBinaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Visitor.h                                                 $(location eigen3/Eigen/src/Core/Visitor.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/DenseStorage.h                                            $(location eigen3/Eigen/src/Core/DenseStorage.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/DiagonalProduct.h                                         $(location eigen3/Eigen/src/Core/DiagonalProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CwiseUnaryView.h                                          $(location eigen3/Eigen/src/Core/CwiseUnaryView.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/NoAlias.h                                                 $(location eigen3/Eigen/src/Core/NoAlias.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h                                         $(location eigen3/Eigen/src/Core/DenseCoeffsBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h                                   $(location eigen3/Eigen/src/Core/PartialReduxEvaluator.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/IndexedView.h                                             $(location eigen3/Eigen/src/Core/IndexedView.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Fuzzy.h                                                   $(location eigen3/Eigen/src/Core/Fuzzy.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/InternalHeaderCheck.h                                     $(location eigen3/Eigen/src/Core/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/TriangularMatrix.h                                        $(location eigen3/Eigen/src/Core/TriangularMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/IO.h                                                      $(location eigen3/Eigen/src/Core/IO.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SSE/PacketMath.h                                     $(location eigen3/Eigen/src/Core/arch/SSE/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h                                  $(location eigen3/Eigen/src/Core/arch/SSE/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h                                    $(location eigen3/Eigen/src/Core/arch/SSE/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h                                        $(location eigen3/Eigen/src/Core/arch/SSE/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/GPU/PacketMath.h                                     $(location eigen3/Eigen/src/Core/arch/GPU/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/GPU/MathFunctions.h                                  $(location eigen3/Eigen/src/Core/arch/GPU/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/GPU/TypeCasting.h                                    $(location eigen3/Eigen/src/Core/arch/GPU/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/GPU/Tuple.h                                          $(location eigen3/Eigen/src/Core/arch/GPU/Tuple.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/MSA/PacketMath.h                                     $(location eigen3/Eigen/src/Core/arch/MSA/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/MSA/MathFunctions.h                                  $(location eigen3/Eigen/src/Core/arch/MSA/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/MSA/Complex.h                                        $(location eigen3/Eigen/src/Core/arch/MSA/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/Half.h                                          $(location eigen3/Eigen/src/Core/arch/CUDA/Half.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/PacketMath.h                                    $(location eigen3/Eigen/src/Core/arch/CUDA/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/MathFunctions.h                                 $(location eigen3/Eigen/src/Core/arch/CUDA/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/TypeCasting.h                                   $(location eigen3/Eigen/src/Core/arch/CUDA/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/PacketMathHalf.h                                $(location eigen3/Eigen/src/Core/arch/CUDA/PacketMathHalf.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/CUDA/Complex.h                                       $(location eigen3/Eigen/src/Core/arch/CUDA/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/ZVector/PacketMath.h                                 $(location eigen3/Eigen/src/Core/arch/ZVector/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/ZVector/MathFunctions.h                              $(location eigen3/Eigen/src/Core/arch/ZVector/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/ZVector/Complex.h                                    $(location eigen3/Eigen/src/Core/arch/ZVector/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/Half.h                                       $(location eigen3/Eigen/src/Core/arch/Default/Half.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/Settings.h                                   $(location eigen3/Eigen/src/Core/arch/Default/Settings.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/TypeCasting.h                                $(location eigen3/Eigen/src/Core/arch/Default/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/BFloat16.h                                   $(location eigen3/Eigen/src/Core/arch/Default/BFloat16.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h              $(location eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h                 $(location eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h                                 $(location eigen3/Eigen/src/Core/arch/Default/ConjHelper.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX512/PacketMath.h                                  $(location eigen3/Eigen/src/Core/arch/AVX512/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX512/MathFunctions.h                               $(location eigen3/Eigen/src/Core/arch/AVX512/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX512/TypeCasting.h                                 $(location eigen3/Eigen/src/Core/arch/AVX512/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX512/Complex.h                                     $(location eigen3/Eigen/src/Core/arch/AVX512/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SVE/PacketMath.h                                     $(location eigen3/Eigen/src/Core/arch/SVE/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SVE/MathFunctions.h                                  $(location eigen3/Eigen/src/Core/arch/SVE/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SVE/TypeCasting.h                                    $(location eigen3/Eigen/src/Core/arch/SVE/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/HIP/hcc/math_constants.h                             $(location eigen3/Eigen/src/Core/arch/HIP/hcc/math_constants.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX/PacketMath.h                                     $(location eigen3/Eigen/src/Core/arch/AVX/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX/MathFunctions.h                                  $(location eigen3/Eigen/src/Core/arch/AVX/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX/TypeCasting.h                                    $(location eigen3/Eigen/src/Core/arch/AVX/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AVX/Complex.h                                        $(location eigen3/Eigen/src/Core/arch/AVX/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SYCL/PacketMath.h                                    $(location eigen3/Eigen/src/Core/arch/SYCL/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SYCL/MathFunctions.h                                 $(location eigen3/Eigen/src/Core/arch/SYCL/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SYCL/SyclMemoryModel.h                               $(location eigen3/Eigen/src/Core/arch/SYCL/SyclMemoryModel.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SYCL/InteropHeaders.h                                $(location eigen3/Eigen/src/Core/arch/SYCL/InteropHeaders.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/SYCL/TypeCasting.h                                   $(location eigen3/Eigen/src/Core/arch/SYCL/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/NEON/GeneralBlockPanelKernel.h                       $(location eigen3/Eigen/src/Core/arch/NEON/GeneralBlockPanelKernel.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/NEON/PacketMath.h                                    $(location eigen3/Eigen/src/Core/arch/NEON/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/NEON/MathFunctions.h                                 $(location eigen3/Eigen/src/Core/arch/NEON/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/NEON/TypeCasting.h                                   $(location eigen3/Eigen/src/Core/arch/NEON/TypeCasting.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/NEON/Complex.h                                       $(location eigen3/Eigen/src/Core/arch/NEON/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/PacketMath.h                                 $(location eigen3/Eigen/src/Core/arch/AltiVec/PacketMath.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/MathFunctions.h                              $(location eigen3/Eigen/src/Core/arch/AltiVec/MathFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/MatrixProduct.h                              $(location eigen3/Eigen/src/Core/arch/AltiVec/MatrixProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductMMA.h                           $(location eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductMMA.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductCommon.h                        $(location eigen3/Eigen/src/Core/arch/AltiVec/MatrixProductCommon.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/arch/AltiVec/Complex.h                                    $(location eigen3/Eigen/src/Core/arch/AltiVec/Complex.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Array.h                                                   $(location eigen3/Eigen/src/Core/Array.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/SolverBase.h                                              $(location eigen3/Eigen/src/Core/SolverBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/AssignEvaluator.h                                         $(location eigen3/Eigen/src/Core/AssignEvaluator.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Replicate.h                                               $(location eigen3/Eigen/src/Core/Replicate.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CoreIterators.h                                           $(location eigen3/Eigen/src/Core/CoreIterators.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ArrayBase.h                                               $(location eigen3/Eigen/src/Core/ArrayBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Block.h                                                   $(location eigen3/Eigen/src/Core/Block.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Dot.h                                                     $(location eigen3/Eigen/src/Core/Dot.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/PlainObjectBase.h                                         $(location eigen3/Eigen/src/Core/PlainObjectBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/SelfAdjointView.h                                         $(location eigen3/Eigen/src/Core/SelfAdjointView.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/GeneralProduct.h                                          $(location eigen3/Eigen/src/Core/GeneralProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/SolveTriangular.h                                         $(location eigen3/Eigen/src/Core/SolveTriangular.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CoreEvaluators.h                                          $(location eigen3/Eigen/src/Core/CoreEvaluators.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CwiseNullaryOp.h                                          $(location eigen3/Eigen/src/Core/CwiseNullaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/VectorwiseOp.h                                            $(location eigen3/Eigen/src/Core/VectorwiseOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/ArrayWrapper.h                                            $(location eigen3/Eigen/src/Core/ArrayWrapper.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/BooleanRedux.h                                            $(location eigen3/Eigen/src/Core/BooleanRedux.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Transpositions.h                                          $(location eigen3/Eigen/src/Core/Transpositions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/NestByValue.h                                             $(location eigen3/Eigen/src/Core/NestByValue.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Ref.h                                                     $(location eigen3/Eigen/src/Core/Ref.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Reshaped.h                                                $(location eigen3/Eigen/src/Core/Reshaped.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Transpose.h                                               $(location eigen3/Eigen/src/Core/Transpose.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Redux.h                                                   $(location eigen3/Eigen/src/Core/Redux.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/NumTraits.h                                               $(location eigen3/Eigen/src/Core/NumTraits.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CommaInitializer.h                                        $(location eigen3/Eigen/src/Core/CommaInitializer.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/GlobalFunctions.h                                         $(location eigen3/Eigen/src/Core/GlobalFunctions.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Random.h                                                  $(location eigen3/Eigen/src/Core/Random.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Diagonal.h                                                $(location eigen3/Eigen/src/Core/Diagonal.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/DenseBase.h                                               $(location eigen3/Eigen/src/Core/DenseBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h                                          $(location eigen3/Eigen/src/Core/CwiseTernaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/Core/Select.h                                                  $(location eigen3/Eigen/src/Core/Select.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_Utils.h                                      $(location eigen3/Eigen/src/SparseLU/SparseLU_Utils.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_kernel_bmod.h                                $(location eigen3/Eigen/src/SparseLU/SparseLU_kernel_bmod.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_column_bmod.h                                $(location eigen3/Eigen/src/SparseLU/SparseLU_column_bmod.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_gemm_kernel.h                                $(location eigen3/Eigen/src/SparseLU/SparseLU_gemm_kernel.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU.h                                            $(location eigen3/Eigen/src/SparseLU/SparseLU.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_column_dfs.h                                 $(location eigen3/Eigen/src/SparseLU/SparseLU_column_dfs.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_panel_dfs.h                                  $(location eigen3/Eigen/src/SparseLU/SparseLU_panel_dfs.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_relax_snode.h                                $(location eigen3/Eigen/src/SparseLU/SparseLU_relax_snode.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_heap_relax_snode.h                           $(location eigen3/Eigen/src/SparseLU/SparseLU_heap_relax_snode.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_panel_bmod.h                                 $(location eigen3/Eigen/src/SparseLU/SparseLU_panel_bmod.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_Structs.h                                    $(location eigen3/Eigen/src/SparseLU/SparseLU_Structs.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_pruneL.h                                     $(location eigen3/Eigen/src/SparseLU/SparseLU_pruneL.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/InternalHeaderCheck.h                                 $(location eigen3/Eigen/src/SparseLU/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_copy_to_ucol.h                               $(location eigen3/Eigen/src/SparseLU/SparseLU_copy_to_ucol.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_Memory.h                                     $(location eigen3/Eigen/src/SparseLU/SparseLU_Memory.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_pivotL.h                                     $(location eigen3/Eigen/src/SparseLU/SparseLU_pivotL.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLUImpl.h                                        $(location eigen3/Eigen/src/SparseLU/SparseLUImpl.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseLU/SparseLU_SupernodalMatrix.h                           $(location eigen3/Eigen/src/SparseLU/SparseLU_SupernodalMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/OrderingMethods/Ordering.h                                     $(location eigen3/Eigen/src/OrderingMethods/Ordering.h)
+        cp /tmp/include/eigen3/Eigen/src/OrderingMethods/InternalHeaderCheck.h                          $(location eigen3/Eigen/src/OrderingMethods/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/OrderingMethods/Eigen_Colamd.h                                 $(location eigen3/Eigen/src/OrderingMethods/Eigen_Colamd.h)
+        cp /tmp/include/eigen3/Eigen/src/OrderingMethods/Amd.h                                          $(location eigen3/Eigen/src/OrderingMethods/Amd.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h                                   $(location eigen3/Eigen/src/plugins/ArrayCwiseUnaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h                                  $(location eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/BlockMethods.h                                         $(location eigen3/Eigen/src/plugins/BlockMethods.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h                                  $(location eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/InternalHeaderCheck.h                                  $(location eigen3/Eigen/src/plugins/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h                                 $(location eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h                                   $(location eigen3/Eigen/src/plugins/IndexedViewMethods.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/CommonCwiseBinaryOps.h                                 $(location eigen3/Eigen/src/plugins/CommonCwiseBinaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/ReshapedMethods.h                                      $(location eigen3/Eigen/src/plugins/ReshapedMethods.h)
+        cp /tmp/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h                                  $(location eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h)
+        cp /tmp/include/eigen3/Eigen/src/Householder/HouseholderSequence.h                              $(location eigen3/Eigen/src/Householder/HouseholderSequence.h)
+        cp /tmp/include/eigen3/Eigen/src/Householder/Householder.h                                      $(location eigen3/Eigen/src/Householder/Householder.h)
+        cp /tmp/include/eigen3/Eigen/src/Householder/InternalHeaderCheck.h                              $(location eigen3/Eigen/src/Householder/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/Householder/BlockHouseholder.h                                 $(location eigen3/Eigen/src/Householder/BlockHouseholder.h)
+        cp /tmp/include/eigen3/Eigen/src/PardisoSupport/PardisoSupport.h                                $(location eigen3/Eigen/src/PardisoSupport/PardisoSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/PardisoSupport/InternalHeaderCheck.h                           $(location eigen3/Eigen/src/PardisoSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseSelfAdjointView.h                             $(location eigen3/Eigen/src/SparseCore/SparseSelfAdjointView.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseMatrix.h                                      $(location eigen3/Eigen/src/SparseCore/SparseMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/CompressedStorage.h                                 $(location eigen3/Eigen/src/SparseCore/CompressedStorage.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseCwiseBinaryOp.h                               $(location eigen3/Eigen/src/SparseCore/SparseCwiseBinaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseView.h                                        $(location eigen3/Eigen/src/SparseCore/SparseView.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseColEtree.h                                    $(location eigen3/Eigen/src/SparseCore/SparseColEtree.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseMatrixBase.h                                  $(location eigen3/Eigen/src/SparseCore/SparseMatrixBase.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseDiagonalProduct.h                             $(location eigen3/Eigen/src/SparseCore/SparseDiagonalProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseTriangularView.h                              $(location eigen3/Eigen/src/SparseCore/SparseTriangularView.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseAssign.h                                      $(location eigen3/Eigen/src/SparseCore/SparseAssign.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparsePermutation.h                                 $(location eigen3/Eigen/src/SparseCore/SparsePermutation.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseCwiseUnaryOp.h                                $(location eigen3/Eigen/src/SparseCore/SparseCwiseUnaryOp.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseMap.h                                         $(location eigen3/Eigen/src/SparseCore/SparseMap.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseDenseProduct.h                                $(location eigen3/Eigen/src/SparseCore/SparseDenseProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/InternalHeaderCheck.h                               $(location eigen3/Eigen/src/SparseCore/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseRef.h                                         $(location eigen3/Eigen/src/SparseCore/SparseRef.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseFuzzy.h                                       $(location eigen3/Eigen/src/SparseCore/SparseFuzzy.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/MappedSparseMatrix.h                                $(location eigen3/Eigen/src/SparseCore/MappedSparseMatrix.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseSparseProductWithPruning.h                    $(location eigen3/Eigen/src/SparseCore/SparseSparseProductWithPruning.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseSolverBase.h                                  $(location eigen3/Eigen/src/SparseCore/SparseSolverBase.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseBlock.h                                       $(location eigen3/Eigen/src/SparseCore/SparseBlock.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/TriangularSolver.h                                  $(location eigen3/Eigen/src/SparseCore/TriangularSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseVector.h                                      $(location eigen3/Eigen/src/SparseCore/SparseVector.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseCompressedBase.h                              $(location eigen3/Eigen/src/SparseCore/SparseCompressedBase.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseTranspose.h                                   $(location eigen3/Eigen/src/SparseCore/SparseTranspose.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseProduct.h                                     $(location eigen3/Eigen/src/SparseCore/SparseProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/AmbiVector.h                                        $(location eigen3/Eigen/src/SparseCore/AmbiVector.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseRedux.h                                       $(location eigen3/Eigen/src/SparseCore/SparseRedux.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/ConservativeSparseSparseProduct.h                   $(location eigen3/Eigen/src/SparseCore/ConservativeSparseSparseProduct.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseUtil.h                                        $(location eigen3/Eigen/src/SparseCore/SparseUtil.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCore/SparseDot.h                                         $(location eigen3/Eigen/src/SparseCore/SparseDot.h)
+        cp /tmp/include/eigen3/Eigen/src/Jacobi/InternalHeaderCheck.h                                   $(location eigen3/Eigen/src/Jacobi/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/Jacobi/Jacobi.h                                                $(location eigen3/Eigen/src/Jacobi/Jacobi.h)
+        cp /tmp/include/eigen3/Eigen/src/SPQRSupport/InternalHeaderCheck.h                              $(location eigen3/Eigen/src/SPQRSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SPQRSupport/SuiteSparseQRSupport.h                             $(location eigen3/Eigen/src/SPQRSupport/SuiteSparseQRSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/FullPivHouseholderQR.h                                      $(location eigen3/Eigen/src/QR/FullPivHouseholderQR.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/HouseholderQR.h                                             $(location eigen3/Eigen/src/QR/HouseholderQR.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/CompleteOrthogonalDecomposition.h                           $(location eigen3/Eigen/src/QR/CompleteOrthogonalDecomposition.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/ColPivHouseholderQR_LAPACKE.h                               $(location eigen3/Eigen/src/QR/ColPivHouseholderQR_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/ColPivHouseholderQR.h                                       $(location eigen3/Eigen/src/QR/ColPivHouseholderQR.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/InternalHeaderCheck.h                                       $(location eigen3/Eigen/src/QR/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/QR/HouseholderQR_LAPACKE.h                                     $(location eigen3/Eigen/src/QR/HouseholderQR_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseQR/SparseQR.h                                            $(location eigen3/Eigen/src/SparseQR/SparseQR.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseQR/InternalHeaderCheck.h                                 $(location eigen3/Eigen/src/SparseQR/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/JacobiSVD_LAPACKE.h                                        $(location eigen3/Eigen/src/SVD/JacobiSVD_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/SVDBase.h                                                  $(location eigen3/Eigen/src/SVD/SVDBase.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/JacobiSVD.h                                                $(location eigen3/Eigen/src/SVD/JacobiSVD.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/InternalHeaderCheck.h                                      $(location eigen3/Eigen/src/SVD/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/BDCSVD.h                                                   $(location eigen3/Eigen/src/SVD/BDCSVD.h)
+        cp /tmp/include/eigen3/Eigen/src/SVD/UpperBidiagonalization.h                                   $(location eigen3/Eigen/src/SVD/UpperBidiagonalization.h)
+        cp /tmp/include/eigen3/Eigen/src/Cholesky/LLT_LAPACKE.h                                         $(location eigen3/Eigen/src/Cholesky/LLT_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/Cholesky/LDLT.h                                                $(location eigen3/Eigen/src/Cholesky/LDLT.h)
+        cp /tmp/include/eigen3/Eigen/src/Cholesky/LLT.h                                                 $(location eigen3/Eigen/src/Cholesky/LLT.h)
+        cp /tmp/include/eigen3/Eigen/src/Cholesky/InternalHeaderCheck.h                                 $(location eigen3/Eigen/src/Cholesky/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/UmfPackSupport/UmfPackSupport.h                                $(location eigen3/Eigen/src/UmfPackSupport/UmfPackSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/UmfPackSupport/InternalHeaderCheck.h                           $(location eigen3/Eigen/src/UmfPackSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/BasicPreconditioners.h                  $(location eigen3/Eigen/src/IterativeLinearSolvers/BasicPreconditioners.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/IncompleteCholesky.h                    $(location eigen3/Eigen/src/IterativeLinearSolvers/IncompleteCholesky.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/SolveWithGuess.h                        $(location eigen3/Eigen/src/IterativeLinearSolvers/SolveWithGuess.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/IncompleteLUT.h                         $(location eigen3/Eigen/src/IterativeLinearSolvers/IncompleteLUT.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/InternalHeaderCheck.h                   $(location eigen3/Eigen/src/IterativeLinearSolvers/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/LeastSquareConjugateGradient.h          $(location eigen3/Eigen/src/IterativeLinearSolvers/LeastSquareConjugateGradient.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/ConjugateGradient.h                     $(location eigen3/Eigen/src/IterativeLinearSolvers/ConjugateGradient.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/BiCGSTAB.h                              $(location eigen3/Eigen/src/IterativeLinearSolvers/BiCGSTAB.h)
+        cp /tmp/include/eigen3/Eigen/src/IterativeLinearSolvers/IterativeSolverBase.h                   $(location eigen3/Eigen/src/IterativeLinearSolvers/IterativeSolverBase.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/PartialPivLU_LAPACKE.h                                      $(location eigen3/Eigen/src/LU/PartialPivLU_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/InverseImpl.h                                               $(location eigen3/Eigen/src/LU/InverseImpl.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/Determinant.h                                               $(location eigen3/Eigen/src/LU/Determinant.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/InternalHeaderCheck.h                                       $(location eigen3/Eigen/src/LU/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/arch/Inverse_SSE.h                                          $(location eigen3/Eigen/src/LU/arch/Inverse_SSE.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/arch/InverseSize4.h                                         $(location eigen3/Eigen/src/LU/arch/InverseSize4.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/PartialPivLU.h                                              $(location eigen3/Eigen/src/LU/PartialPivLU.h)
+        cp /tmp/include/eigen3/Eigen/src/LU/FullPivLU.h                                                 $(location eigen3/Eigen/src/LU/FullPivLU.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/AngleAxis.h                                           $(location eigen3/Eigen/src/Geometry/AngleAxis.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/RotationBase.h                                        $(location eigen3/Eigen/src/Geometry/RotationBase.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/EulerAngles.h                                         $(location eigen3/Eigen/src/Geometry/EulerAngles.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Hyperplane.h                                          $(location eigen3/Eigen/src/Geometry/Hyperplane.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Homogeneous.h                                         $(location eigen3/Eigen/src/Geometry/Homogeneous.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/AlignedBox.h                                          $(location eigen3/Eigen/src/Geometry/AlignedBox.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Quaternion.h                                          $(location eigen3/Eigen/src/Geometry/Quaternion.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Umeyama.h                                             $(location eigen3/Eigen/src/Geometry/Umeyama.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Translation.h                                         $(location eigen3/Eigen/src/Geometry/Translation.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Scaling.h                                             $(location eigen3/Eigen/src/Geometry/Scaling.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/OrthoMethods.h                                        $(location eigen3/Eigen/src/Geometry/OrthoMethods.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Rotation2D.h                                          $(location eigen3/Eigen/src/Geometry/Rotation2D.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/InternalHeaderCheck.h                                 $(location eigen3/Eigen/src/Geometry/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/arch/Geometry_SSE.h                                   $(location eigen3/Eigen/src/Geometry/arch/Geometry_SSE.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h                                  $(location eigen3/Eigen/src/Geometry/arch/Geometry_SIMD.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/Transform.h                                           $(location eigen3/Eigen/src/Geometry/Transform.h)
+        cp /tmp/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h                                    $(location eigen3/Eigen/src/Geometry/ParametrizedLine.h)
+        cp /tmp/include/eigen3/Eigen/src/SuperLUSupport/SuperLUSupport.h                                $(location eigen3/Eigen/src/SuperLUSupport/SuperLUSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/SuperLUSupport/InternalHeaderCheck.h                           $(location eigen3/Eigen/src/SuperLUSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/MetisSupport/InternalHeaderCheck.h                             $(location eigen3/Eigen/src/MetisSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/MetisSupport/MetisSupport.h                                    $(location eigen3/Eigen/src/MetisSupport/MetisSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/StlSupport/StdList.h                                           $(location eigen3/Eigen/src/StlSupport/StdList.h)
+        cp /tmp/include/eigen3/Eigen/src/StlSupport/StdDeque.h                                          $(location eigen3/Eigen/src/StlSupport/StdDeque.h)
+        cp /tmp/include/eigen3/Eigen/src/StlSupport/details.h                                           $(location eigen3/Eigen/src/StlSupport/details.h)
+        cp /tmp/include/eigen3/Eigen/src/StlSupport/StdVector.h                                         $(location eigen3/Eigen/src/StlSupport/StdVector.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCholesky/SimplicialCholesky_impl.h                       $(location eigen3/Eigen/src/SparseCholesky/SimplicialCholesky_impl.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCholesky/InternalHeaderCheck.h                           $(location eigen3/Eigen/src/SparseCholesky/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/SparseCholesky/SimplicialCholesky.h                            $(location eigen3/Eigen/src/SparseCholesky/SimplicialCholesky.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h                           $(location eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/EigenSolver.h                                      $(location eigen3/Eigen/src/Eigenvalues/EigenSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/RealSchur_LAPACKE.h                                $(location eigen3/Eigen/src/Eigenvalues/RealSchur_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/RealSchur.h                                        $(location eigen3/Eigen/src/Eigenvalues/RealSchur.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h                             $(location eigen3/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/Tridiagonalization.h                               $(location eigen3/Eigen/src/Eigenvalues/Tridiagonalization.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h                          $(location eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/ComplexEigenSolver.h                               $(location eigen3/Eigen/src/Eigenvalues/ComplexEigenSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h                $(location eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h                   $(location eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/InternalHeaderCheck.h                              $(location eigen3/Eigen/src/Eigenvalues/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/ComplexSchur.h                                     $(location eigen3/Eigen/src/Eigenvalues/ComplexSchur.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h                           $(location eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h                                           $(location eigen3/Eigen/src/Eigenvalues/RealQZ.h)
+        cp /tmp/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h                            $(location eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h)
+        cp /tmp/include/eigen3/Eigen/src/PaStiXSupport/InternalHeaderCheck.h                            $(location eigen3/Eigen/src/PaStiXSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/PaStiXSupport/PaStiXSupport.h                                  $(location eigen3/Eigen/src/PaStiXSupport/PaStiXSupport.h)
+        cp /tmp/include/eigen3/Eigen/src/KLUSupport/InternalHeaderCheck.h                               $(location eigen3/Eigen/src/KLUSupport/InternalHeaderCheck.h)
+        cp /tmp/include/eigen3/Eigen/src/KLUSupport/KLUSupport.h                                        $(location eigen3/Eigen/src/KLUSupport/KLUSupport.h)
+        cp /tmp/include/eigen3/Eigen/KLUSupport                                                         $(location eigen3/Eigen/KLUSupport)
+    """,
 )
