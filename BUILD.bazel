@@ -64,6 +64,17 @@ C_OPT = [
 ## start of primihub
 load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
 
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+cmake(
+    name = "eigen",
+    cache_entries = {
+        "CMAKE_C_FLAGS": "-fPIC",
+    },
+    lib_source = "@eigen//:all_srcs",
+    out_headers_only = True,
+    includes = ["eigen3/",],
+    install = True,
+)
 
 alias(
     name = "soralog",
@@ -143,7 +154,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-                "@eigen//:eigen",
+                ":eigen",
                 "@boost//:multiprecision",
                 "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         ],
@@ -272,7 +283,7 @@ cc_library(
   linkopts = LINK_OPTS,
   linkstatic = False,
   deps = [
-          "@eigen//:eigen",
+          ":eigen",
           "@lib_function2//:function2",
           "@com_github_glog_glog//:glog",
           ":common_lib",
@@ -340,7 +351,7 @@ cc_library(
     "-mrdseed",
   ],
   deps = ["@com_microsoft_seal//:seal",
-	  "@eigen//:eigen"]
+	  ":eigen"]
 )
 
 cc_library(
@@ -367,7 +378,7 @@ cc_library(
     ],
     linkstatic = False,
     deps = [
-	    "@eigen//:eigen",
+	    ":eigen",
 	    "@openssl",
     ]
 )
@@ -395,7 +406,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-            "@eigen//:eigen",
+            ":eigen",
             "@nlohmann_json",
             ":common_lib",
             ":crypto_lib",
@@ -438,7 +449,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-          "@eigen//:eigen",
+          ":eigen",
           ":common_lib",
           ":protocol_aby3_lib",
           ":data_store_lib",
@@ -462,7 +473,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib/ -ldl -lpython3.9 -framework CoreFoundation"],
     linkstatic = True,
     deps = [
           "@com_github_glog_glog//:glog",
@@ -585,7 +596,7 @@ cc_library(
     deps = [
             "@com_github_grpc_grpc//:grpc++",
             "@com_github_glog_glog//:glog",
-            "@eigen//:eigen",
+            ":eigen",
             "@boost//:asio",
             "@boost//:circular_buffer",
             ":common_lib",
@@ -691,7 +702,7 @@ cc_library(
     deps = [
         "@arrow",
         "@com_github_glog_glog//:glog",
-        "@eigen//:eigen",
+        ":eigen",
         
         ":common_lib",
         ":crypto_lib",
