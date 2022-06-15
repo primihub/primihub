@@ -68,6 +68,7 @@ using primihub::rpc::PsiRequest;
 using primihub::rpc::PsiResponse;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
+
 using primihub::rpc::VMNode;
 using primihub::service::DatasetMetaWithParamTag;
 using primihub::task::LanguageParser;
@@ -76,18 +77,15 @@ namespace py = pybind11;
 
 namespace primihub {
 
-class VMNodeImpl final : public VMNode::Service {
+class VMNodeImpl final: public VMNode::Service {
   public:
     explicit VMNodeImpl(const std::string &node_id_,
                         const std::string &node_ip_, int service_port_,
                         bool singleton_, const std::string &config_file_path_)
         : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
           singleton(singleton_), config_file_path(config_file_path_) {
-        
-     
         running_set.clear();
         nodelet = std::make_shared<Nodelet>(config_file_path);
-       
     }
 
     Status SubmitTask(ServerContext *context,
@@ -105,6 +103,8 @@ class VMNodeImpl final : public VMNode::Service {
     }
 
     std::string get_node_id() { return this->node_id; }
+
+    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
 
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>

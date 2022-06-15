@@ -59,11 +59,24 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         LOG(INFO) << "Next peer address: " << next_peer_address_;
         break;
     }
-
-
+    // Set datasets meta list in context
+    for (auto &input_dataset : input_datasets) { 
+        // Get dataset path from task params map
+        auto data_meta = param_map.find(input_dataset);
+        if (data_meta == param_map.end()) {
+            LOG(ERROR) << "Failed to find dataset: " << input_dataset;
+            return;
+        }
+        std::string data_path = data_meta->second.value_string();
+        this->dataset_meta_map_.insert(std::make_pair(input_dataset, data_path));
+    }
+    // output file path
+    this->output_file_path_ = param_map["outputFullFilename"].value_string();
 }
 
 FLTask::~FLTask() {
+    set_task_context_output_file_.release();
+    set_task_context_dataset_map_.release();
     set_node_context_.release();
     ph_context_m.release();
     ph_exec_m.release();
@@ -85,6 +98,14 @@ int FLTask::execute() {
                     py::cast(node_context_.datasets),
                     this->next_peer_address_);
           
+          set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
+          for (auto &dataset_meta : this->dataset_meta_map_) {
+              set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
+          }
+
+          set_task_context_output_file_ = ph_context_m.attr("set_task_context_output_file");
+          set_task_context_output_file_(this->output_file_path_);
+
           LOG(INFO) << node_context_.dumps_func;
           // Execute python code.
           ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
