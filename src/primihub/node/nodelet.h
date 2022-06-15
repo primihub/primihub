@@ -37,6 +37,7 @@ class Nodelet {
     explicit Nodelet(const std::string &config_file_path);
     ~Nodelet();
     std::shared_ptr<primihub::service::DatasetService> &getDataService();
+    std::string getNodeletAddr();
 
   private:
     void loadConifg(const std::string &config_file_path);
@@ -45,6 +46,7 @@ class Nodelet {
     std::shared_ptr<primihub::service::StorageBackend> local_kv_;
     // protocols, servcies, etc.
     std::shared_ptr<primihub::service::DatasetService> dataset_service_;
+    std::string nodelet_addr_;
 };
 
 } // namespace primihub

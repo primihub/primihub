@@ -8,8 +8,8 @@ fi
 
 TargetLine=`expr $PrevLineNum + 3`
 
-CONFIG=`python3.9-config --ldflags` \
-  && NEWLINE="\ \ \ \ linkopts = LINK_OPTS + [\"${CONFIG} -lpython3.9\"]," \
+CONFIG=`python3.8-config --ldflags` \
+  && NEWLINE="\ \ \ \ linkopts = LINK_OPTS + [\"${CONFIG} -lpython3.8\"]," \
   && sed -i "${TargetLine}c ${NEWLINE}" BUILD.bazel
 
 echo "done"
