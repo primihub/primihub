@@ -1,4 +1,7 @@
 # Primihub 
+![build workflow](https://github.com/primihub/primihub/actions/workflows/main.yml/badge.svg?branch=master)
+[![Gitter](https://badges.gitter.im/primihub/community.svg)](https://gitter.im/primihub/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 ## Feature
 Primihub is a platform that supports Multi-Party Computing(MPC), Federated Learning, Private set intersection (PSI), and Private Information Retrieval (PIR) features, and supports extensions of data source access, data consumption, access application, syntax, semantic and security protocols. For details, see Primihub [Core Feature](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
 
