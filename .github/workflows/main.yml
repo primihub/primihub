@@ -39,7 +39,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli ::lib_opt_paillier 
+        bazel build --config=linux :node :cli :lib_opt_paillier 
   
   build-on-mac_x86_64:
     runs-on: macos-latest
@@ -57,4 +57,4 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 --config=macos :node :cli ::lib_opt_paillier 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :lib_opt_paillier 
