@@ -139,6 +139,12 @@ namespace primihub::service {
         }
     }
 
+    void DatasetService::setMetaSearchTimeout(unsigned int timeout) {
+       if (metaService_) {
+          metaService_->setMetaSearchTimeout(timeout);
+       }
+    }
+
     //  void DatasetService::findPeerListFromDatasets(const std::vector<std::string>& dataset_name_list, 
     //                                                 FoundMetaListHandler handler) {
     //     std::vector<std::shared_ptr<DatasetMeta>> meta_list;                                             
@@ -222,7 +228,15 @@ namespace primihub::service {
         std::vector<DatasetMetaWithParamTag> meta_list;
         std::lock_guard<std::mutex> lock(meta_map_mutex_);
         meta_map_.clear();
-        for (;;) {                                             
+        auto t_start = std::chrono::high_resolution_clock::now();
+        for (;;) {
+            // TODO timeout guard
+            auto t_now = std::chrono::high_resolution_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(t_now - t_start).count() > this->meta_search_timeout_) {
+                LOG(ERROR) << " 🔍⏱️ Timeout while searching meta list.";
+                break;
+            }
+
             for (auto dataset_item : datasets_with_tag) {
                 auto dataset_name = std::get<0>(dataset_item);
                 auto dataset_tag = std::get<1>(dataset_item);

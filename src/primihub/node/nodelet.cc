@@ -39,7 +39,8 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_);
 
-    loadConifg(config_file_path);
+    auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
+    loadConifg(config_file_path, timeout);
     
 }
 
@@ -56,8 +57,10 @@ std::string Nodelet::getNodeletAddr() {
 }
 
 // Load config file and load default datasets
-void Nodelet::loadConifg(const std::string &config_file_path) {
+void Nodelet::loadConifg(const std::string &config_file_path, unsigned int dht_get_value_timeout) {
     dataset_service_->loadDefaultDatasets(config_file_path);
+    dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
+    
     // TODO other service load config
 }
 
