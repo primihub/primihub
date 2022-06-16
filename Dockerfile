@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-FROM ubuntu:18.04
+FROM ubuntu:18.04 as builder
 
 ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
