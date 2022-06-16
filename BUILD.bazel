@@ -473,7 +473,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-        linkopts = LINK_OPTS + ["-L/usr/lib/python3.9/config-3.9-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu  -lcrypt -lpthread -ldl  -lutil -lm -lm -lpython3.9"],
+    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
     linkstatic = True,
     deps = [
           "@com_github_glog_glog//:glog",
