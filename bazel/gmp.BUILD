@@ -3,6 +3,7 @@ _OPTS = [
     "-pedantic-errors",
     "-Weverything",
     "--system-header-prefix=gmp",
+    "-fPIC",
 ]
 
 _COPTS = _OPTS + ["-std=c17"]
