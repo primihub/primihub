@@ -38,8 +38,8 @@ ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
 ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
 
 ABSL_FLAG(std::string, task_lang, "proto", "task language, proto or python");
-// ABSL_FLAG(std::string, task_code, "logistic_regression", "task code");
-ABSL_FLAG(std::string, task_code, "/Users/chb/Projects/primihub/python/primihub/examples/disxgb.py", "task code");
+ABSL_FLAG(std::string, task_code, "logistic_regression", "task code");
+
 
 namespace primihub {
 
