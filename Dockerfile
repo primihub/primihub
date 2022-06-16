@@ -37,7 +37,7 @@ RUN apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg
 RUN apt-get install -y npm
 
 # install cmake
-RUN wget https://primihub.oss-cn-beijing.aliyuncs.com/cmake-3.20.2-linux-x86_64.tar.gz \
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz \
   && tar -zxf cmake-3.20.2-linux-x86_64.tar.gz \
   && chmod +x cmake-3.20.2-linux-x86_64/bin/cmake \
   && ln -s `pwd`/cmake-3.20.2-linux-x86_64/bin/cmake /usr/bin/cmake \
