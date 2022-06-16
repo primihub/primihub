@@ -229,11 +229,13 @@ namespace primihub::service {
         std::lock_guard<std::mutex> lock(meta_map_mutex_);
         meta_map_.clear();
         auto t_start = std::chrono::high_resolution_clock::now();
+        bool is_timeout = false;
         for (;;) {
             // TODO timeout guard
             auto t_now = std::chrono::high_resolution_clock::now();
             if (std::chrono::duration_cast<std::chrono::seconds>(t_now - t_start).count() > this->meta_search_timeout_) {
-                LOG(ERROR) << " 🔍⏱️ Timeout while searching meta list.";
+                LOG(ERROR) << " 🔍 ⏱️  Timeout while searching meta list.";
+                is_timeout = true;
                 break;
             }
 
@@ -277,6 +279,9 @@ namespace primihub::service {
             } else {
                 break;
             }
+        }
+        if (is_timeout) {
+            return outcome::success();
         }
         for (auto& meta : meta_map_) {
             meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));

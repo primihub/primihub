@@ -40,7 +40,7 @@ class Nodelet {
     std::string getNodeletAddr();
 
   private:
-    void loadConifg(const std::string &config_file_path);
+    void loadConifg(const std::string &config_file_path, unsigned int timeout);
 
     std::shared_ptr<primihub::p2p::NodeStub> p2p_node_stub_;
     std::shared_ptr<primihub::service::StorageBackend> local_kv_;
