@@ -9,7 +9,9 @@
 #include <limits.h>
 #include <array>
 
-
+namespace primihub{
+    namespace falcon
+{
 /********************* Macros *********************/
 #define _aligned_malloc(size,alignment) aligned_alloc(alignment,size)
 #define _aligned_free free
@@ -64,4 +66,6 @@ const myType LARGEST_NEG = ((myType)1 << (BIT_SIZE - 1));
 const myType MINUS_ONE = (myType)-1;
 const smallType BOUNDARY = (256/PRIME_NUMBER) * PRIME_NUMBER;
 
+}// namespace primihub{
+}
 #endif

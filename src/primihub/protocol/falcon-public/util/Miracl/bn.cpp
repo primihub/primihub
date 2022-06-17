@@ -10,7 +10,9 @@
 //#include "zzn12.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=100;
 
 int main()
@@ -189,4 +191,5 @@ int main()
     }
     return 0;
 }
-
+}
+}//primihub

@@ -10,7 +10,9 @@
 #include "floating.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define TAN 1
 #define SIN 2
 #define COS 3
@@ -674,4 +676,5 @@ ostream& operator<<(ostream& s,const Float &f)
 {
     return otfloat(s,f.m,f.e);
 }
-
+}
+}//primihub

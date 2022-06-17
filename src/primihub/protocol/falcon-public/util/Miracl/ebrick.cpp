@@ -17,7 +17,9 @@
 #include "ebrick.h"   /* include MIRACL system */
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=50;
 
 int main()
@@ -55,4 +57,5 @@ int main()
     cout << x << endl;
     return 0;
 }
-
+}
+}//primihub

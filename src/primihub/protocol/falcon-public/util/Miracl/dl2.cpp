@@ -9,7 +9,9 @@
 #include "gf2m.h"
 #include "gf2m4x.h"
 #include "ec2.h"
-
+namespace primihub{
+    namespace falcon
+{
 // set TYPE = 1 if B=0 && (M=1 or 7 mod 8), else TYPE = 2
 // set TYPE = 1 if B=1 && (M=3 or 5 mod 8), else TYPE = 2 
 
@@ -415,3 +417,5 @@ exit(0);
 
     return 0;
 }
+}
+}//primihub

@@ -42,7 +42,7 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
   } else if (function_name == "lenet") {
     PartyConfig config(node_id, task_param_);
     algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-        std::make_shared<primihub::FalconLenetExecutor>(config,
+        std::make_shared<primihub::falcon::FalconLenetExecutor>(config,
                                                         dataset_service));
   } else if (function_name == "decision_tree") {
     // TODO: implement decision tree

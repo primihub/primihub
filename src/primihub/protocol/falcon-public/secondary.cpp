@@ -1,13 +1,17 @@
 
 #include "connect.h" 
 #include "secondary.h"
+#include "FCLayer.h"
+#include "CNNLayer.h"
+using namespace std;
+namespace primihub{
+    namespace falcon
+{
+extern std::string file_train_data_self_;
+extern std::string file_train_data_next_;
+extern std::string file_train_label_self_;
+extern std::string file_train_label_next_;
 
-extern string train_data_A;
-extern string train_data_B;
-extern string train_data_C;
-extern string train_labels_A; 
-extern string train_labels_B;
-extern string train_labels_C;
 
 extern CommunicationObject commObject;
 extern int partyNum;
@@ -134,8 +138,7 @@ void generate_zeros(string name, size_t number, string network)
 
 
 extern size_t nextParty(size_t party);
-#include "FCLayer.h"
-#include "CNNLayer.h"
+
 void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 {
 	log_print("preload_network");
@@ -840,15 +843,15 @@ void loadData(string net, string dataset)
 	if (partyNum == PARTY_A)
 	{
 		// filename_train_data_next = "files/train_data_A";
-		filename_train_data_next = train_data_A;
+		filename_train_data_next = file_train_data_self_;
 		//filename_train_data_prev = "files/train_data_B";
-		filename_train_data_prev = train_data_B;
+		filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_A";
 		filename_test_data_prev = "files/test_data_B";
 		//filename_train_labels_next = "files/train_labels_A";
-		filename_train_labels_next = train_labels_A;
+		filename_train_labels_next = file_train_label_self_;
 		//filename_train_labels_prev = "files/train_labels_B";
-		filename_train_labels_prev = train_labels_B;
+		filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_A";
 		filename_test_labels_prev = "files/test_labels_B";
 	}
@@ -856,35 +859,35 @@ void loadData(string net, string dataset)
 	if (partyNum == PARTY_B)
 	{
 		//filename_train_data_next = "files/train_data_B";
-		filename_train_data_next = train_data_B;
+		filename_train_data_next = file_train_data_self_;
 		//filename_train_data_prev = "files/train_data_C";
-		filename_train_data_prev = train_data_C;
+		filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_B";
 		filename_test_data_prev = "files/test_data_C";
 		//filename_train_labels_next = "files/train_labels_B";
-		filename_train_labels_next = train_labels_B;
+		filename_train_labels_next = file_train_label_self_;
 		//filename_train_labels_prev = "files/train_labels_C";
-		filename_train_labels_prev = train_labels_C;
+		filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_B";
 		filename_test_labels_prev = "files/test_labels_C";
 	}
 
 	if (partyNum == PARTY_C)
 	{
-		filename_train_data_next = "files/train_data_C";
-		//filename_train_data_next = train_data_C;
-		filename_train_data_prev = "files/train_data_A";
-		//filename_train_data_prev = train_data_A;
+		//filename_train_data_next = "files/train_data_C";
+		filename_train_data_next = file_train_data_self_;
+		//filename_train_data_prev = "files/train_data_A";
+		filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_C";
 		filename_test_data_prev = "files/test_data_A";
-		filename_train_labels_next = "files/train_labels_C";
-		//filename_train_labels_next = train_labels_C;
-		filename_train_labels_prev = "files/train_labels_A";
-		//filename_train_labels_prev = train_labels_A;
+		//filename_train_labels_next = "files/train_labels_C";
+		filename_train_labels_next = file_train_label_self_;
+		//filename_train_labels_prev = "files/train_labels_A";
+		filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_C";
 		filename_test_labels_prev = "files/test_labels_A";
 	}	
-
+	
 	float temp_next = 0, temp_prev = 0;
 	ifstream f_next(filename_train_data_next);
 	ifstream f_prev(filename_train_data_prev);
@@ -1676,3 +1679,5 @@ void deleteObjects()
 // config->addLayer(l34);
 // config->addLayer(l35);
 // config->addLayer(l36);
+}// namespace primihub{
+}

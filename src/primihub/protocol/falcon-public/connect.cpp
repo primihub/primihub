@@ -8,6 +8,9 @@
 
 using namespace std;
 
+namespace primihub{
+    namespace falcon
+{
 #define STRING_BUFFER_SIZE 256
 extern void error(string str);
 
@@ -215,4 +218,6 @@ void end_communication(string str)
 		 << commObject.getRoundsRecv() << "(recvs)" << endl; 
 	cout << "----------------------------------------------" << endl;	
 	commObject.reset();
+}
+}// namespace primihub{
 }

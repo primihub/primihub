@@ -11,7 +11,9 @@
 #include "zzn.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define mr_min(a,b) ((a) < (b)? (a) : (b))
 
 #ifndef MR_NOFULLWIDTH
@@ -83,4 +85,5 @@ int main()
     cout << n << endl;
     return 0;
 }
-
+}
+}//primihub

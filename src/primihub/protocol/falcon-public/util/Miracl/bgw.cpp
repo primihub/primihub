@@ -40,7 +40,9 @@
 #define NS 5             // number of recipients for this broadcast
 int S[NS]={2,4,5,6,14};  // group of recipients
 #define PERSON 6		 // sample recipient
-
+namespace primihub{
+    namespace falcon
+{
 int main()
 {   
 	PFC pfc(AES_SECURITY);  // initialise pairing-friendly curve
@@ -101,4 +103,6 @@ int main()
 	cout << "Decryption Key= " << pfc.hash_to_aes_key(K) << endl;
 
     return 0;
+}
+}
 }

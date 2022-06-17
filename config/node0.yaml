@@ -25,24 +25,34 @@ grpc_port: 50050
 
 # load datasets
 datasets:
+  - description: "train_party_0_data_self"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/train_data_A" 
+  - description: "train_party_0_label_self"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/train_labels_A"
+  - description: "train_party_0_data_next"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/train_data_B" 
+  - description: "train_party_0_label_next"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/train_labels_B" 
   - description: "train_party_0"
     model: "csv"
     source: "/tmp/train_party_0.csv" 
   - description: "test_party_0"
     model: "csv"
     source: "/tmp/test_party_0.csv" 
-  
+
     # Dataset authorization
     # authorization:
     #   - node:
     #     task:
-        
 
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
+    - "/ip4/127.0.0.1/tcp/10080/ipfs/QmYp9xmGgjVzJomWfEe87EPrVSY6jjAV5MMCWCCn4Fqu2A"
   multi_addr: "/ip4/127.0.0.1/tcp/8886"
 
 
