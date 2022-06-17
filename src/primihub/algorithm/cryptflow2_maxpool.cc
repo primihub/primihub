@@ -8,6 +8,7 @@
 #include <glog/logging.h>
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
+#include "src/primihub/util/cpu_check.h"
 
 using namespace std;
 using namespace primihub::sci;
@@ -22,6 +23,10 @@ namespace primihub
       PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
       : AlgorithmBase(dataset_service)
   {
+    if (checkInstructionSupport("avx2")) {
+      throw std::runtime_error("avx2 is required but not support in this platform.");
+    } 
+
     this->algorithm_name_ = "maxpool";
     // set the party id to be 1,2.
     uint16_t party_index = 0;
