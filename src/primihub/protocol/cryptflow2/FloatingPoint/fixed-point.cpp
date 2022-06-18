@@ -34,7 +34,7 @@ FixArray FixArray::subset(int i, int j)
   return ret;
 }
 
-FixArray concat(const vector<FixArray> &x)
+FixArray primihub::cryptflow2::concat(const vector<FixArray> &x)
 {
   int N = x.size();
   int sz = x[0].size;
@@ -79,7 +79,7 @@ std::vector<T> FixArray::get_native_type()
   return ret;
 }
 
-std::ostream &operator<<(std::ostream &os, FixArray &other)
+std::ostream &primihub::cryptflow2::operator<<(std::ostream &os, FixArray &other)
 {
   assert(other.party == PUBLIC);
   vector<double> dbl_other = other.get_native_type<double>();

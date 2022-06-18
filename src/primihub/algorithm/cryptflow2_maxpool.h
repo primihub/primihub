@@ -40,7 +40,7 @@ using namespace primihub::sci;
 
 #define MAX_THREADS 4
 
-namespace primihub
+namespace primihub::cryptflow2
 {
   class MaxPoolExecutor : public AlgorithmBase
   {
@@ -55,24 +55,26 @@ namespace primihub
     int saveModel(void);
 
   private:
-    int num_rows = 35;                          // Row num of maxpool
-    int num_cols = 1 << 6;                      // Col num of maxpool
-    int b = 4;                                  // Radix Base
-    int batch_size = 0;                         // Batch size
-    string node_id;                             // node id
-    string input_filepath_;                     // input data file directory(path)
-    uint64_t mask_l;                            // mask
-    uint64_t *x;                                // input
-    uint64_t *z;                                // output
+    int num_rows = 35;     // Row num of maxpool
+    int num_cols = 1 << 6; // Col num of maxpool
+    int b = 4;             // Radix Base
+    int batch_size = 0;    // Batch size
+
+    string node_id;         // node id
+    string input_filepath_; // input data file directory(path)
+    uint64_t mask_l;        // mask
+    uint64_t *x;            // input
+    uint64_t *z;            // output
+
     IOPack *iopackArr[MAX_THREADS];
     OTPack *otpackArr[MAX_THREADS];
     void ring_maxpool_thread(int, uint64_t *, uint64_t *, int, int);
 
-    int party = 0;                              // party ID
-    int bitlength = 32;                         // bitlength of input
-    int num_threads = 1;                        // thread_number
-    string address = "127.0.0.1";               // network address
-    int port = 32000;                           // network port
+    int __party = 0;                // __party ID
+    int __bitlength = 32;           // __bitlength of input
+    int __num_threads = 1;          // thread_number
+    string __address = "127.0.0.1"; // network __address
+    int __port = 32000;             // network ports
   };
 } // namespace primihub
 

@@ -4,6 +4,7 @@
 #include "src/primihub/service/dataset/localkv/storage_default.h"
 
 using namespace primihub;
+using namespace primihub::cryptflow2;
 
 static void RunMaxpool(std::string node_id, rpc::Task &task,
                        std::shared_ptr<DatasetService> data_service) {

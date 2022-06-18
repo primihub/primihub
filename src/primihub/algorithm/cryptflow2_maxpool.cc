@@ -16,11 +16,23 @@ using namespace Eigen;
 using arrow::Array;
 using arrow::Table;
 
-namespace primihub {
+namespace primihub::cryptflow2
+{
+
+  int party = 0;                // __party ID
+  int bitlength = 32;           // __bitlength of input
+  int num_threads = 1;          // thread_number
+  string address = "127.0.0.1"; // network __address
+  int port = 32000;             // network ports
+
+}
+
 MaxPoolExecutor::MaxPoolExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
-  if (checkInstructionSupport("avx2")) {
+    : AlgorithmBase(dataset_service)
+{
+  if (checkInstructionSupport("avx2"))
+  {
     throw std::runtime_error(
         "avx2 is required but not support in this platform.");
   }
@@ -29,7 +41,8 @@ MaxPoolExecutor::MaxPoolExecutor(
   // set the party id to be 1,2.
   uint16_t party_index = 0;
   std::map<std::string, Node> &node_map = config.node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+  for (auto iter = node_map.begin(); iter != node_map.end(); iter++)
+  {
     rpc::Node &node = iter->second;
     auto *vm = node.mutable_vm();
     auto target = vm->begin();
@@ -41,9 +54,11 @@ MaxPoolExecutor::MaxPoolExecutor(
   node_id = config.node_id;
 }
 
-int MaxPoolExecutor::loadParams(primihub::rpc::Task &task) {
+int MaxPoolExecutor::loadParams(primihub::rpc::Task &task)
+{
   auto iter = task.node_map().find(node_id);
-  if (iter == task.node_map().end()) {
+  if (iter == task.node_map().end())
+  {
     LOG(ERROR) << "Can't find node config with node id " << node_id;
     return -1;
   }
@@ -52,34 +67,38 @@ int MaxPoolExecutor::loadParams(primihub::rpc::Task &task) {
   const rpc::VirtualMachine &vm = node.vm(0);
   auto param_map = task.params().param_map();
 
-  try {
+  try
+  {
     input_filepath_ = param_map["TrainData"].value_string();
-  } catch (std::exception &e) {
+  }
+  catch (std::exception &e)
+  {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;
   }
-  party = vm.party_id() + 1;
+  __party = vm.party_id() + 1;
 
   rpc::EndPoint ep = vm.next();
-  address = ep.ip();
-  port = ep.port();
+  __address = ep.ip();
+  __port = ep.port();
 
-  LOG(INFO) << "Notice: node " << node_id << ", party id " << party << ", host "
-            << address << ", port " << port << ".";
+  LOG(INFO) << "Notice: node " << node_id << ", party id " << __party << ", host "
+            << __address << ", port " << __port << ".";
 
   LOG(INFO) << "Input data " << input_filepath_ << ".";
 
   return 0;
 }
 
-int MaxPoolExecutor::loadDataset() {
+int MaxPoolExecutor::loadDataset()
+{
   /************ Generate Test Data ************/
   /********************************************/
   mask_l;
-  if (bitlength == 64)
+  if (__bitlength == 64)
     mask_l = -1;
   else
-    mask_l = (1ULL << bitlength) - 1;
+    mask_l = (1ULL << __bitlength) - 1;
   // generate fake data
   // PRG128 prg;
   // x = new uint64_t[this->num_rows * this->num_cols];
@@ -107,9 +126,11 @@ int MaxPoolExecutor::loadDataset() {
   num_rows = array->length();
 
   // Force the same value count in every column.
-  for (int i = 0; i < num_cols - 1; i++) {
+  for (int i = 0; i < num_cols - 1; i++)
+  {
     auto array = table->column(i)->chunk(0);
-    if (array->length() != num_rows) {
+    if (array->length() != num_rows)
+    {
       LOG(ERROR) << "row length doesn't match";
       errors = true;
       break;
@@ -123,7 +144,8 @@ int MaxPoolExecutor::loadDataset() {
   z = new uint64_t[this->num_rows];
 
   // x = new uint64_t[this->num_rows * this->num_cols];
-  for (int i = 0; i < num_cols; i++) {
+  for (int i = 0; i < num_cols; i++)
+  {
     auto array =
         std::static_pointer_cast<arrow::Int64Array>(table->column(i)->chunk(0));
     for (int64_t j = 0; j < array->length(); j++)
@@ -133,15 +155,20 @@ int MaxPoolExecutor::loadDataset() {
   return 0;
 }
 
-int MaxPoolExecutor::initPartyComm() {
+int MaxPoolExecutor::initPartyComm()
+{
   /********** Setup IO and Base OTs ***********/
   /********************************************/
-  for (int i = 0; i < num_threads; i++) {
-    iopackArr[i] = new IOPack(party, port + i, address);
-    if (i & 1) {
-      otpackArr[i] = new OTPack(iopackArr[i], 3 - party);
-    } else {
-      otpackArr[i] = new OTPack(iopackArr[i], party);
+  for (int i = 0; i < __num_threads; i++)
+  {
+    iopackArr[i] = new IOPack(__party, __port + i, __address);
+    if (i & 1)
+    {
+      otpackArr[i] = new OTPack(iopackArr[i], 3 - __party);
+    }
+    else
+    {
+      otpackArr[i] = new OTPack(iopackArr[i], __party);
     }
   }
 
@@ -149,15 +176,20 @@ int MaxPoolExecutor::initPartyComm() {
   return 0;
 }
 
-int MaxPoolExecutor::execute() {
+int MaxPoolExecutor::execute()
+{
   auto start = clock_start();
-  int chunk_size = num_rows / num_threads;
-  for (int i = 0; i < num_threads; ++i) {
+  int chunk_size = num_rows / __num_threads;
+  for (int i = 0; i < __num_threads; ++i)
+  {
     int offset = i * chunk_size;
     int lnum_rows;
-    if (i == (num_threads - 1)) {
+    if (i == (__num_threads - 1))
+    {
       lnum_rows = num_rows - offset;
-    } else {
+    }
+    else
+    {
       lnum_rows = chunk_size;
     }
     ring_maxpool_thread(i, z + offset, x + offset * num_cols, lnum_rows,
@@ -169,28 +201,34 @@ int MaxPoolExecutor::execute() {
   /************** Verification ****************/
   /********************************************/
 
-  switch (party) {
-  case primihub::sci::ALICE: {
+  switch (__party)
+  {
+  case primihub::sci::ALICE:
+  {
     iopackArr[0]->io->send_data(x, sizeof(uint64_t) * num_rows * num_cols);
     iopackArr[0]->io->send_data(z, sizeof(uint64_t) * num_rows);
     break;
   }
-  case primihub::sci::BOB: {
+  case primihub::sci::BOB:
+  {
     uint64_t *xi = new uint64_t[num_rows * num_cols];
     uint64_t *zi = new uint64_t[num_rows];
     iopackArr[0]->io->recv_data(xi, sizeof(uint64_t) * num_rows * num_cols);
     iopackArr[0]->io->recv_data(zi, sizeof(uint64_t) * num_rows);
 
-    for (int i = 0; i < num_rows; i++) {
+    for (int i = 0; i < num_rows; i++)
+    {
       zi[i] = (zi[i] + z[i]) & mask_l;
-      for (int c = 0; c < num_cols; c++) {
+      for (int c = 0; c < num_cols; c++)
+      {
         xi[i * num_cols + c] =
             (xi[i * num_cols + c] + x[i * num_cols + c]) & mask_l;
       }
       uint64_t maxpool_output = xi[i * num_cols];
-      for (int c = 1; c < num_cols; c++) {
+      for (int c = 1; c < num_cols; c++)
+      {
         maxpool_output = ((maxpool_output - xi[i * num_cols + c]) & mask_l) >=
-                                 (1ULL << (bitlength - 1))
+                                 (1ULL << (__bitlength - 1))
                              ? xi[i * num_cols + c]
                              : maxpool_output;
       }
@@ -205,18 +243,20 @@ int MaxPoolExecutor::execute() {
 
   LOG(INFO) << "Number of Maxpool rows (num_cols=" << num_cols << ")/s:\t"
             << (double(num_rows) / t) * 1e6 << std::endl;
-  LOG(INFO) << "Maxpool Time (bitlength=" << bitlength << "; b=" << b << ")\t"
+  LOG(INFO) << "Maxpool Time (bitlength=" << __bitlength << "; b=" << b << ")\t"
             << t << " mus" << endl;
 
   delete[] x;
   delete[] z;
 }
 
-int MaxPoolExecutor::finishPartyComm() {
+int MaxPoolExecutor::finishPartyComm()
+{
   /******************* Cleanup ****************/
   /********************************************/
 
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < __num_threads; i++)
+  {
     delete iopackArr[i];
     delete otpackArr[i];
   }
@@ -224,34 +264,45 @@ int MaxPoolExecutor::finishPartyComm() {
 }
 
 void MaxPoolExecutor::ring_maxpool_thread(int tid, uint64_t *z, uint64_t *x,
-                                          int lnum_rows, int lnum_cols) {
+                                          int lnum_rows, int lnum_cols)
+{
   MaxPoolProtocol<uint64_t> *maxpool_oracle;
-  if (tid & 1) {
+  if (tid & 1)
+  {
     maxpool_oracle = new MaxPoolProtocol<uint64_t>(
-        3 - party, RING, iopackArr[tid], bitlength, b, 0, otpackArr[tid]);
-  } else {
-    maxpool_oracle = new MaxPoolProtocol<uint64_t>(
-        party, RING, iopackArr[tid], bitlength, b, 0, otpackArr[tid]);
+        3 - __party, RING, iopackArr[tid], __bitlength, b, 0, otpackArr[tid]);
   }
-  if (batch_size) {
-    for (int j = 0; j < lnum_rows; j += batch_size) {
-      if (batch_size <= lnum_rows - j) {
+  else
+  {
+    maxpool_oracle = new MaxPoolProtocol<uint64_t>(
+        __party, RING, iopackArr[tid], __bitlength, b, 0, otpackArr[tid]);
+  }
+  if (batch_size)
+  {
+    for (int j = 0; j < lnum_rows; j += batch_size)
+    {
+      if (batch_size <= lnum_rows - j)
+      {
         maxpool_oracle->funcMaxMPC(batch_size, lnum_cols, x + j, z + j,
                                    nullptr);
-      } else {
+      }
+      else
+      {
         maxpool_oracle->funcMaxMPC(lnum_rows - j, lnum_cols, x + j, z + j,
                                    nullptr);
       }
     }
-  } else {
+  }
+  else
+  {
     maxpool_oracle->funcMaxMPC(lnum_rows, lnum_cols, x, z, nullptr);
   }
 
   delete maxpool_oracle;
 }
 
-int MaxPoolExecutor::saveModel(void) {
+int MaxPoolExecutor::saveModel(void)
+{
   // Do nothing.
   return 0;
 }
-} // namespace primihub

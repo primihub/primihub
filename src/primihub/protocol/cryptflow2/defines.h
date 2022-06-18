@@ -44,6 +44,7 @@ SOFTWARE.
 #define GREEN "\033[32m" /* Green */
 namespace primihub::cryptflow2
 {
+
     const int SERVER = 1;
     const int CLIENT = 2;
 
