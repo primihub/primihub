@@ -15,7 +15,7 @@
  */
 
 #include "src/primihub/task/semantic/mpc_task.h"
-// #include "src/primihub/algorithm/cryptflow2_maxpool.h"
+#include "src/primihub/algorithm/cryptflow2_maxpool.h"
 #include "src/primihub/algorithm/falcon_lenet.h"
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/util/network/socket/session.h"
@@ -35,10 +35,10 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     // TODO: implement linear regression
 
   } else if (function_name == "maxpool") {
-    // PartyConfig config(node_id, task_param_);
-    // algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-    //     std::make_shared<primihub::MaxPoolExecutor>(config,
-    //     dataset_service));
+    PartyConfig config(node_id, task_param_);
+    algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+        std::make_shared<primihub::MaxPoolExecutor>(config,
+        dataset_service));
   } else if (function_name == "lenet") {
     PartyConfig config(node_id, task_param_);
     algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
