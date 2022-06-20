@@ -20,10 +20,10 @@ SOFTWARE.
 */
 
 #include "globals.h"
-
-sci::NetIO *io;
-sci::IOPack *iopack;
-sci::OTPack *otpack;
+using namespace primihub::cryptflow2;
+primihub::sci::NetIO *io;
+primihub::sci::IOPack *iopack;
+primihub::sci::OTPack *otpack;
 
 AuxProtocols *aux;
 Truncation *truncation;
@@ -37,21 +37,21 @@ ReLUProtocol<intType> *relu;
 MaxPoolProtocol<intType> *maxpool;
 // Additional classes for Athos
 #ifdef SCI_OT
-MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>> *multUniform;
+MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>> *multUniform;
 #endif
 #ifdef SCI_HE
 ConvField *he_conv;
 FCField *he_fc;
 ElemWiseProdField *he_prod;
 #endif
-sci::IKNP<sci::NetIO> *iknpOT;
-sci::IKNP<sci::NetIO> *iknpOTRoleReversed;
-sci::KKOT<sci::NetIO> *kkot;
-sci::PRG128 *prg128Instance;
+primihub::sci::IKNP<primihub::sci::NetIO> *iknpOT;
+primihub::sci::IKNP<primihub::sci::NetIO> *iknpOTRoleReversed;
+primihub::sci::KKOT<primihub::sci::NetIO> *kkot;
+primihub::sci::PRG128 *prg128Instance;
 
-sci::NetIO *ioArr[MAX_THREADS];
-sci::IOPack *iopackArr[MAX_THREADS];
-sci::OTPack *otpackArr[MAX_THREADS];
+primihub::sci::NetIO *ioArr[MAX_THREADS];
+primihub::sci::IOPack *iopackArr[MAX_THREADS];
+primihub::sci::OTPack *otpackArr[MAX_THREADS];
 MathFunctions *mathArr[MAX_THREADS];
 #ifdef SCI_OT
 LinearOT *multArr[MAX_THREADS];
@@ -63,12 +63,12 @@ ReLUProtocol<intType> *reluArr[MAX_THREADS];
 MaxPoolProtocol<intType> *maxpoolArr[MAX_THREADS];
 // Additional classes for Athos
 #ifdef SCI_OT
-MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>
+MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>
     *multUniformArr[MAX_THREADS];
 #endif
-sci::IKNP<sci::NetIO> *otInstanceArr[MAX_THREADS];
-sci::KKOT<sci::NetIO> *kkotInstanceArr[MAX_THREADS];
-sci::PRG128 *prgInstanceArr[MAX_THREADS];
+primihub::sci::IKNP<primihub::sci::NetIO> *otInstanceArr[MAX_THREADS];
+primihub::sci::KKOT<primihub::sci::NetIO> *kkotInstanceArr[MAX_THREADS];
+primihub::sci::PRG128 *prgInstanceArr[MAX_THREADS];
 
 std::chrono::time_point<std::chrono::high_resolution_clock> st_time;
 uint64_t comm_threads[MAX_THREADS];

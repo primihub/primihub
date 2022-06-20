@@ -28,9 +28,9 @@ datasets:
   - description: "train_party_0"
     model: "csv"
     source: "/tmp/train_party_0.csv" 
-  - description: "test_party_0"
-    model: "csv"
-    source: "/tmp/test_party_0.csv" 
+  # - description: "test_party_0"
+  #   model: "csv"
+  #   source: "/tmp/test_party_0.csv" 
   
     # Dataset authorization
     # authorization:
@@ -42,7 +42,6 @@ datasets:
 p2p:
   bootstrap_nodes:
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8886"
   dht_get_value_timeout:  60
 

@@ -42,13 +42,15 @@ SOFTWARE.
 #define RESET "\033[0m"
 #define RED "\033[31m"   /* Red */
 #define GREEN "\033[32m" /* Green */
+namespace primihub::cryptflow2
+{
 
-const int SERVER = 1;
-const int CLIENT = 2;
+    const int SERVER = 1;
+    const int CLIENT = 2;
 
-extern int party;
-extern std::string address;
-extern int port;
-extern int num_threads;
-
+    extern int party;
+    extern std::string address;
+    extern int port;
+    extern int num_threads;
+}
 #endif

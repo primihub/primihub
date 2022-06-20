@@ -29,7 +29,7 @@ Modified by Deevashwer Rathee
 #define EMP_F2K_H__
 #include "src/primihub/protocol/cryptflow2/utils/block.h"
 
-namespace sci {
+namespace primihub::sci {
 /* multiplication in galois field without reduction */
 #ifdef __x86_64__
 __attribute__((target("sse2,pclmul"))) inline void
@@ -228,5 +228,5 @@ inline void vector_self_xor(block128 *sum, block128 *data, int sz) {
 template <int N> inline void vector_self_xor(block128 *sum, block128 *data) {
   vector_self_xor(sum, data, N);
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif

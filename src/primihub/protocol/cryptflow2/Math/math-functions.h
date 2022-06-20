@@ -27,56 +27,59 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/BuildingBlocks/value-extension.h"
 #include "src/primihub/protocol/cryptflow2/LinearOT/linear-ot.h"
 
-class MathFunctions {
-public:
-  int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
-  AuxProtocols *aux;
-  XTProtocol *xt;
-  Truncation *trunc;
-  LinearOT *mult;
+namespace primihub::cryptflow2
+{
+  class MathFunctions
+  {
+  public:
+    int party;
+    primihub::sci::IOPack *iopack;
+    primihub::sci::OTPack *otpack;
+    AuxProtocols *aux;
+    XTProtocol *xt;
+    Truncation *trunc;
+    LinearOT *mult;
 
-  MathFunctions(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+    MathFunctions(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
-  ~MathFunctions();
+    ~MathFunctions();
 
-  // Current implementation assumes that dn is always of the form 1.y1y2y3..yn
-  void reciprocal_approximation(int32_t dim, int32_t m, uint64_t *dn,
-                                uint64_t *out, int32_t bw_dn, int32_t bw_out,
-                                int32_t s_dn, int32_t s_out);
+    // Current implementation assumes that dn is always of the form 1.y1y2y3..yn
+    void reciprocal_approximation(int32_t dim, int32_t m, uint64_t *dn,
+                                  uint64_t *out, int32_t bw_dn, int32_t bw_out,
+                                  int32_t s_dn, int32_t s_out);
 
-  // If compute_msnzb = false, dn = 1.y1y2y3....
-  // Else if compute_msnzb = true, dn is always positive
-  void div(int32_t dim,
-           // numerator
-           uint64_t *nm,
-           // denominator
-           uint64_t *dn,
-           // output
-           uint64_t *out,
-           // bitwidths
-           int32_t bw_nm, int32_t bw_dn, int32_t bw_out,
-           // scales
-           int32_t s_nm, int32_t s_dn, int32_t s_out, bool signed_nm = true,
-           bool compute_msnzb = false);
+    // If compute_msnzb = false, dn = 1.y1y2y3....
+    // Else if compute_msnzb = true, dn is always positive
+    void div(int32_t dim,
+             // numerator
+             uint64_t *nm,
+             // denominator
+             uint64_t *dn,
+             // output
+             uint64_t *out,
+             // bitwidths
+             int32_t bw_nm, int32_t bw_dn, int32_t bw_out,
+             // scales
+             int32_t s_nm, int32_t s_dn, int32_t s_out, bool signed_nm = true,
+             bool compute_msnzb = false);
 
-  // Assumes x is always negative
-  void lookup_table_exp(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
-                        int32_t bw_y, int32_t s_x, int32_t s_y);
+    // Assumes x is always negative
+    void lookup_table_exp(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
+                          int32_t bw_y, int32_t s_x, int32_t s_y);
 
-  void sigmoid(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
-               int32_t bw_y, int32_t s_x, int32_t s_y);
+    void sigmoid(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
+                 int32_t bw_y, int32_t s_x, int32_t s_y);
 
-  void tanh(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x, int32_t bw_y,
-            int32_t s_x, int32_t s_y);
+    void tanh(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x, int32_t bw_y,
+              int32_t s_x, int32_t s_y);
 
-  void sqrt(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x, int32_t bw_y,
-            int32_t s_x, int32_t s_y, bool inverse = false);
+    void sqrt(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x, int32_t bw_y,
+              int32_t s_x, int32_t s_y, bool inverse = false);
 
-  // bw_y = bw_x
-  void ReLU(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
-            uint64_t six = 0);
-};
-
+    // bw_y = bw_x
+    void ReLU(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
+              uint64_t six = 0);
+  };
+}
 #endif

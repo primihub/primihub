@@ -28,7 +28,7 @@ Modified by Deevashwer Rathee, Nishant Kumar, Mayank Rathee
 #ifndef OT_H__
 #define OT_H__
 #include "src/primihub/protocol/cryptflow2/utils/emp-tool.h"
-namespace sci {
+namespace primihub::sci {
 template <typename T> class OT {
 public:
   void send(const block128 *data0, const block128 *data1, int length) {
@@ -120,5 +120,5 @@ public:
     static_cast<T *>(this)->recv_impl(data, b, length, l, type);
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // OT_H__
