@@ -160,6 +160,7 @@ int FalconLenetExecutor::execute() {
   }
 
   end_m(network);
+  printNetwork(net_lenet);
 
   LOG(INFO) << "----------------------------------------------" << endl;
   LOG(INFO) << "Run details: " << NUM_OF_PARTIES << "PC (P" << partyNum << "), "
