@@ -23,7 +23,7 @@ jobs:
   build-on-ubuntu:
     runs-on: ubuntu-latest
     steps:  
-      - uses: primihub/primihub/.github/workflows/ubuntu-pre-build.yml
+      - uses: ./.github/workflows/ubuntu-pre-build.yml
       - name: bazel build
         run: |
           # cc_binary
