@@ -47,6 +47,8 @@ genrule(
         "include/gmpxx.h",
     ],
     cmd = """
+	export CFLAGS="-fPIC"
+	export CXXFLAGS="-fPIC"
         CONFIGURE_LOG=$$(mktemp)
         MAKE_LOG=$$(mktemp)
         GMP_ROOT=$$(dirname $(location configure))
