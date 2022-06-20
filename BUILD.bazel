@@ -947,33 +947,35 @@ cc_test(
     ],
 )
 
-DEFAULT_TEST_SRCS = ["test/primihub/algorithm/logistic_test.cc"]
-TEST_SRCS = select({
-    ":macos-build": DEFAULT_TEST_SRCS,
-    "//conditions:default": DEFAULT_TEST_SRCS + ["test/primihub/algorithm/maxpool_test.cc"]
-})
-
-DEFAULT_TEST_DEPS = [
-  "@com_google_googletest//:gtest_main",
-  "@com_google_absl//absl/base",
-  "@com_google_absl//absl/flags:flag",
-  "@com_google_absl//absl/flags:parse",
-  ":crypto_lib",
-  ":algorithm_lib",
-]
-
-TEST_DEPS = select({
-    ":macos-build": DEFAULT_TEST_DEPS,
-    "//conditions:default": DEFAULT_TEST_DEPS + ["cryptflow2_algorithm_lib"]
-})
-
 cc_test(
-    name = "algorithm_test",
-    srcs = TEST_SRCS,
+    name = "logistic_test",
+    srcs = ["test/primihub/algorithm/logistic_test.cc"],
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
-    deps = TEST_DEPS
+    deps = [
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      ":crypto_lib",
+      ":algorithm_lib",
+    ]
+)
+
+cc_test(
+    name = "maxpool_test",
+    srcs = ["test/primihub/algorithm/maxpool_test.cc"],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      "cryptflow2_algorithm_lib"
+    ]
 )
 
 # Some test case not in 'binary_evaluator_test.cc' will run into segment fault 

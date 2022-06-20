@@ -93,22 +93,20 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
     // Child process.  
     sleep(1);
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/8889");
+    stub->start("/ip4/127.0.0.1/tcp/65533");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
     
-    google::InitGoogleLogging("crypTFlow2-party2");
     RunMaxpool("node_2", task2, service);
     return;
   }
   
   // Parent process.
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/8890");
+  stub->start("/ip4/127.0.0.1/tcp/65534");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       stub, std::make_shared<service::StorageBackendDefault>());
   
-  google::InitGoogleLogging("crypTFlow2-party1");
   RunMaxpool("node_1", task1, service);
   return;
 }

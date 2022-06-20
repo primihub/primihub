@@ -137,11 +137,10 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 0.
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/8888");
+    stub->start("/ip4/127.0.0.1/tcp/65530");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
 
-    google::InitGoogleLogging("LR-Party0");
     RunLogistic("node_1", task1, service);
     return;
   }
@@ -151,11 +150,10 @@ TEST(logistic, logistic_3pc_test) {
     // Child process as party 1.
     sleep(1);
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/8889");
+    stub->start("/ip4/127.0.0.1/tcp/65531");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
 
-    google::InitGoogleLogging("LR-party1");
     RunLogistic("node_2", task2, service);
     return;
   }
@@ -163,11 +161,10 @@ TEST(logistic, logistic_3pc_test) {
   // Parent process as party 2.
   sleep(3);
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/8890");
+  stub->start("/ip4/127.0.0.1/tcp/65532");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       stub, std::make_shared<service::StorageBackendDefault>());
 
-  google::InitGoogleLogging("LR-party2");
   RunLogistic("node_3", task3, service);
   return;
 }
