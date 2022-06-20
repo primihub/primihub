@@ -2,12 +2,10 @@ import numpy as np
 import pandas as pd
 
 
-class ZscoreStandard():
+class MinMaxStandard():
     def __init__(self):
-        self.mean = 0
-        self.std = 0
-        self.dev = 0
-        self.num = 0
+        self.min = None
+        self.max = None
 
     def _check_data(self, np_data):
         if isinstance(np_data, np.ndarray):
@@ -33,50 +31,43 @@ class ZscoreStandard():
             raise ValueError("idxs may be int | list | tuple")
 
     def _fit(self, data, idxs):
-        self.mean = np.mean(data[:, idxs].astype(float), axis=0)
-        self.std = np.std(data[:, idxs].astype(float), axis=0)
-        self.dev = np.power(self.std, 2)
-        self.num = data.shape[0]
-        return self.mean, self.std
+        self.min = np.amin(data[:, idxs].astype(float), axis=0)
+        self.max = np.amax(data[:, idxs].astype(float), axis=0)
+        return self.min, self.max
 
     def __call__(self, data, idxs):
         data = self._check_data(data)
-        idxs = self._check_idxs(idxs)
-        self._fit(data, idxs)
-        data[:, idxs] = (data[:, idxs] - self.mean) / self.std
+        idxs_nd = self._check_idxs(idxs)
+        self._fit(data, idxs_nd)
+        data[:, idxs_nd] = (data[:, idxs_nd] - self.min) / \
+            (self.max - self.min)
         return data
 
 
-class HorZscoreStandard(ZscoreStandard):
+class HorMinMaxStandard(MinMaxStandard):
     def __init__(self):
         super().__init__()
         self.union_flag = False
 
     def stat_union(self, other_stats):
         num_client = len(other_stats) + 1
-        ratio_list = np.zeros(num_client)
-        ratio_list[0] = self.num
-        for i, (_, _, num) in enumerate(other_stats):
-            ratio_list[i+1] = num
-        sum_num = np.sum(ratio_list)
-        ratio_list /= sum_num
-
-        self.mean = self.mean * ratio_list[0]
-        self.dev = self.dev * ratio_list[0]
-        for i, (mean, std, _) in enumerate(other_stats):
-            self.mean += mean * ratio_list[i+1]
-            self.dev += np.power(std, 2) * ratio_list[i+1]
-        self.std = np.sqrt(self.dev)
+        ratio = 1 / num_client
+        self.min *= ratio
+        for min, max in other_stats:
+            self.min += min * ratio
+            self.max += max * ratio
         self.union_flag = True
 
     def fit(self, data, idxs):
         data = self._check_data(data)
-        idxs = self._check_idxs(idxs)
-        mean, std = self._fit(data, idxs)
-        return mean, std, data.shape[0]
+        idxs_nd = self._check_idxs(idxs)
+        min, max = self._fit(data, idxs_nd)
+        return min, max
 
     def __call__(self, data, idxs):
+        data = self._check_data(data)
+        idxs_nd = self._check_idxs(idxs)
         if self.union_flag == False:
             raise ValueError("horizontal standard must do after stat_union")
-        data[:, idxs] = (data[:, idxs] - self.mean) / self.std
+        data[:, idxs] = (data[:, idxs_nd] - self.min) / (self.max - self.min)
         return data
