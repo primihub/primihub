@@ -1,7 +1,12 @@
+
 name: primihub github bazel actions
 
 on:
   push:
+    branches: 
+      - develop
+      - feature/workflow
+  pull_request: 
     branches: 
       - develop
       - feature/workflow
@@ -35,7 +40,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux common_test
         
@@ -67,7 +72,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux primitive_test
         
@@ -99,7 +104,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux algorithm_test
         
@@ -131,7 +136,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux protocol_aby3_test
   
@@ -163,7 +168,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux util_test
         
@@ -195,7 +200,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux network_test
  
@@ -227,7 +232,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux wolfssl_test 
   
@@ -259,7 +264,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux prng_test
         
@@ -291,7 +296,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux share_test
         
@@ -323,7 +328,7 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=linux test
   
@@ -344,7 +349,7 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos common_test
         
@@ -364,7 +369,7 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos primitive_test
         
@@ -384,7 +389,7 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos algorithm_test
         
@@ -404,10 +409,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
-
   util_test-on-mac:
     runs-on: macos-latest
     steps:
@@ -424,10 +428,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos util_test
-
   network_test-on-mac:
     runs-on: macos-latest
     steps:
@@ -444,11 +447,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos network_test
-
-
   wolfssl_test-on-mac:
     runs-on: macos-latest
     steps:
@@ -465,10 +466,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos wolfssl_test
-
   prng_test-on-mac:
     runs-on: macos-latest
     steps:
@@ -485,10 +485,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos prng_test
-
   share_test-on-mac:
     runs-on: macos-latest
     steps:
@@ -505,10 +504,9 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos share_test
-
   test-on-mac:
     runs-on: macos-latest
     steps:
@@ -525,8 +523,6 @@ jobs:
       run: python3.9-config --ldflags
     - name: Install gmp
       run: brew install gmp && brew list gmp
-    - name: bazel test
+    - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos test
-
-        
