@@ -69,6 +69,17 @@ C_OPT = [
 ## start of primihub
 load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
 
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+cmake(
+    name = "eigen",
+    cache_entries = {
+        "CMAKE_C_FLAGS": "-fPIC",
+    },
+    lib_source = "@eigen//:all_srcs",
+    out_headers_only = True,
+    includes = ["eigen3/",],
+    install = True,
+)
 
 alias(
     name = "soralog",
@@ -107,6 +118,11 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/pir.proto"],
 )
 
+grpc_proto_library(
+    name = "service_proto",
+    srcs = ["src/primihub/protos/service.proto"],
+)
+
 cc_library(
     name = "common_lib",
     srcs = glob([
@@ -137,11 +153,13 @@ cc_library(
               "src/primihub/common/gsl/string_span",
               "src/primihub/common/gsl/gls-lite.hpp",
     ],
-    copts = C_OPT,
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-                "@eigen//:eigen",
+                ":eigen",
                 "@boost//:multiprecision",
                 "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         ],
@@ -270,7 +288,7 @@ cc_library(
   linkopts = LINK_OPTS,
   linkstatic = False,
   deps = [
-          "@eigen//:eigen",
+          ":eigen",
           "@lib_function2//:function2",
           "@com_github_glog_glog//:glog",
           ":common_lib",
@@ -338,7 +356,7 @@ cc_library(
   ],
   linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
-	  "@eigen//:eigen"]
+	  ":eigen"]
 )
 
 cc_library(
@@ -365,7 +383,7 @@ cc_library(
     ],
     linkstatic = False,
     deps = [
-	    "@eigen//:eigen",
+	    ":eigen",
 	    "@openssl",
     ]
 )
@@ -393,7 +411,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-            "@eigen//:eigen",
+            ":eigen",
             "@nlohmann_json",
             ":common_lib",
             ":crypto_lib",
@@ -459,7 +477,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-          "@eigen//:eigen",
+          ":eigen",
           ":common_lib",
           ":protocol_aby3_lib",
           ":data_store_lib",
@@ -505,6 +523,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
+
     linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
@@ -582,7 +601,7 @@ cc_library(
     deps = [
             "@com_github_grpc_grpc//:grpc++",
             "@com_github_glog_glog//:glog",
-            "@eigen//:eigen",
+            ":eigen",
             "@boost//:asio",
             "@boost//:circular_buffer",
             ":common_lib",
@@ -688,7 +707,7 @@ cc_library(
     deps = [
         "@arrow",
         "@com_github_glog_glog//:glog",
-        "@eigen//:eigen",
+        ":eigen",
         
         ":common_lib",
         ":crypto_lib",
@@ -819,6 +838,8 @@ cc_binary(
     srcs = glob([
                   "src/primihub/node/node.cc",
                   "src/primihub/node/node.h",
+                  "src/primihub/node/ds.cc",
+                  "src/primihub/node/ds.h",
             ]),
     copts = C_OPT,
     includes = [    
@@ -834,12 +855,13 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":node_lib",
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-	":opt_paillier_c2py",
+	      ":opt_paillier_c2py",
     ],
 )
 
@@ -863,6 +885,7 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":util_lib",
         "@openssl",
@@ -1181,6 +1204,9 @@ cc_library(
         "@com_github_gmp//:gmp",
     ],
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
 )
 
 cc_binary(

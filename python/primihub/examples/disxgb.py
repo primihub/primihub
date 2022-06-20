@@ -23,18 +23,13 @@ from primihub.FL.model.xgboost.xgb_host import XGB_HOST
 import pandas as pd
 import numpy as np
 
-
+# define dataset
 ph.dataset.define("guest_dataset")
 ph.dataset.define("label_dataset")
 
+
 @ph.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
 def xgb_host_logic():
-
-    LABEL_DATA_PATH = "/tmp/breast-cancer-wisconsin-label.data"
-    ph.context.Context.dataset_map = {
-        'label_dataset': LABEL_DATA_PATH,
-    }
-
     print("start xgb host logic...")
     columnNames = (
         'Sample code number',
@@ -76,19 +71,14 @@ def xgb_host_logic():
 
     print(xgb_host.tree_structure[1])
     print("start predict")
-    print(xgb_host.predict_prob(data).head())
+    # print(xgb_host.predict_prob(data).head())
+    output_path = ph.context.Context.get_output()
+    return xgb_host.predict_prob(data).to_csv(output_path)
 
 
 @ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def xgb_guest_logic():
-    
-    DATA_PATH = "/tmp/breast-cancer-wisconsin.data"
-
-    ph.context.Context.dataset_map = {
-        'guest_dataset': DATA_PATH
-    }
-
-    print("start xgx guest logic...")
+    print("start xgb guest logic...")
     columnNames = (
         'Sample code number',
         'Clump Thickness',

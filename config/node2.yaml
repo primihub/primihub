@@ -26,12 +26,13 @@ datasets:
     source: "/tmp/train_party_2.csv" 
   - description: "test_party_2"
     model: "csv"
-    source: "/tmp/test_party_2.csv" 
+    source: "/tmp/test_party_2.csv"
   - description: "label_dataset"
     model: "csv"
     source: "/tmp/breast-cancer-wisconsin-label.data"   
-  
-  
+  - description: "psi_client_data"
+    model: "csv"
+    source: "/tmp/client_e.csv" 
 
 # p2p paramaters
 p2p:
@@ -39,5 +40,6 @@ p2p:
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8889"
+  dht_get_value_timeout:  60
 
 

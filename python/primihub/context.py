@@ -1,6 +1,7 @@
 import functools
 from typing import Callable
 from dill import dumps, loads
+import os
 
 
 class NodeContext:
@@ -29,6 +30,10 @@ class TaskContext:
     datasets = []
     # dataset meta information
     dataset_map = dict()
+    output_path = "/data/result/xgb_prediction.csv"
+
+    def __init__(self) -> None:
+        pass
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -51,6 +56,11 @@ class TaskContext:
     def get_datasets(self):
         return self.datasets
 
+    def get_output(self):
+        output_dir = os.path.dirname(self.output_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return self.output_path
 
 Context = TaskContext()
 
@@ -59,6 +69,14 @@ def set_node_context(role, protocol, datasets, next_peer):
     print("========", role, protocol, datasets)
     Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
+
+
+def set_task_context_dataset_map(k, v):
+    Context.dataset_map[k] = v
+
+
+def set_task_context_output_file(f):
+    Context.output_path = f
 
 
 # For test
