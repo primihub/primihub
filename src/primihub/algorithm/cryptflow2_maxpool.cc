@@ -234,6 +234,13 @@ int MaxPoolExecutor::execute()
       }
       assert((zi[i] == maxpool_output) && "MaxPool output is incorrect");
     }
+    LOG(INFO) << "Maxpool output:";
+    cout << "[";
+    for (int i = 0; i < num_rows; i++)
+    {
+      std::cout << zi[i] << ", ";
+    }
+    std::cout << "] \n";
     delete[] xi;
     delete[] zi;
     LOG(INFO) << "Maxpool Passed.";
