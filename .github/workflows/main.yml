@@ -143,7 +143,7 @@ jobs:
         bazel build --config=darwin_x86_64 --config=macos :node :cli :lib_opt_paillier 
   
   docker-image-build-and-publish:
-    needs: unit-test-on-macos_x86_64
+    needs: unit-test-on-ubuntu
     runs-on: ubuntu-latest
     permissions:
       contents: read
