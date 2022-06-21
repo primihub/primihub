@@ -62,7 +62,7 @@ jobs:
         bazel test --config=linux share_test
   
 
-  unit-test-on-:
+  unit-test-on-macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
