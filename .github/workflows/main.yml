@@ -53,11 +53,13 @@ jobs:
     - name: bazel test
       run: |
         bazel test --config=linux common_test
-        bazel test --config=linux primitive_test
-        bazel test --config=linux protocol_aby3_test
-        bazel test --config=linux prng_test
-        bazel test --config=linux logistic_test
-        bazel test --config=linux maxpool_test
+
+
+        # bazel test --config=linux primitive_test
+        # bazel test --config=linux protocol_aby3_test
+        # bazel test --config=linux prng_test
+        # bazel test --config=linux logistic_test
+        # bazel test --config=linux maxpool_test
 
   
 
@@ -78,11 +80,11 @@ jobs:
     - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos common_test
-        bazel test --config=darwin_x86_64 --config=macos primitive_test
-        bazel test --config=darwin_x86_64 --config=macos logistic_test
-        bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
-        bazel test --config=darwin_x86_64 --config=macos prng_test
-        bazel test --config=darwin_x86_64 --config=macos share_test
+        # bazel test --config=darwin_x86_64 --config=macos primitive_test
+        # bazel test --config=darwin_x86_64 --config=macos logistic_test
+        # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
+        # bazel test --config=darwin_x86_64 --config=macos prng_test
+        # bazel test --config=darwin_x86_64 --config=macos share_test
   
   build-on-ubuntu:
     needs: unit-test-on-ubuntu
