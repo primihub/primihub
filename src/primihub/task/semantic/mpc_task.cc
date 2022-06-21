@@ -50,8 +50,8 @@ namespace primihub::task
       try
       {
         algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::MaxPoolExecutor>(config,
-                                                        dataset_service));
+            std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(
+		    config, dataset_service));
       }
       catch (const std::runtime_error &error)
       {
