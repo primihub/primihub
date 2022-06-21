@@ -127,10 +127,16 @@ TEST(logistic, logistic_3pc_test) {
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
+  std::vector<std::string> addresses = {
+                // clang-format off
+                "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd",
+                "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA",
+                // clang-format on
+            };
   pid_t pid = fork();
   if (pid != 0) {
     // Child process as party 0.
-    auto stub = std::make_shared<p2p::NodeStub>();
+    auto stub = std::make_shared<p2p::NodeStub>(addresses);
     stub->start("/ip4/127.0.0.1/tcp/8888");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
@@ -144,7 +150,7 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>();
+    auto stub = std::make_shared<p2p::NodeStub>(addresses);
     stub->start("/ip4/127.0.0.1/tcp/8889");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
@@ -156,7 +162,7 @@ TEST(logistic, logistic_3pc_test) {
 
   // Parent process as party 2.
   sleep(3);
-  auto stub = std::make_shared<p2p::NodeStub>();
+  auto stub = std::make_shared<p2p::NodeStub>(addresses);
   stub->start("/ip4/127.0.0.1/tcp/8890");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       stub, std::make_shared<service::StorageBackendDefault>());
