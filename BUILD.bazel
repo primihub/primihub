@@ -1204,9 +1204,6 @@ cc_library(
         "@com_github_gmp//:gmp",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_gmp//:gmp",
-    ],
 )
 
 cc_binary(
