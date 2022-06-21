@@ -1,8 +1,10 @@
 _OPTS = [
-    "-Werror",
-    "-pedantic-errors",
-    "-Weverything",
-    "--system-header-prefix=gmp",
+    "-fPIC",
+    "-m64",
+     "-pthread",
+    "-Wl",
+    "--allow-shlib-undefined",
+     "-g",
 ]
 
 _COPTS = _OPTS + ["-std=c17"]
