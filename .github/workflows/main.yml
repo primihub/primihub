@@ -21,6 +21,78 @@ env:
 
 
 jobs:
+  
+  cc_test_on-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.20.2'
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - name: Install gcc-8
+      run: |
+         sudo apt install -y gcc-8  g++-8 \
+          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - name: Install python-devel
+      run: sudo apt install python-dev
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+    - name: bazel test
+      run: |
+        bazel test --config=linux common_test
+        bazel test --config=linux primitive_test
+        bazel test --config=linux protocol_aby3_test
+        bazel test --config=linux network_test
+        bazel test --config=linux prng_test
+        bazel test --config=linux algorithm_test
+        bazel test --config=linux util_test
+        bazel test --config=linux wolfssl_test
+        bazel test --config=linux share_test
+        bazel test --config=linux test
+  
+
+  cc_test-on-mac:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    
+    - name: get python ldflags
+      run: python3.9-config --ldflags
+    - name: Install gmp
+      run: brew install gmp && brew list gmp
+    - name: bazel build
+      run: |
+        bazel test --config=darwin_x86_64 --config=macos common_test
+        bazel test --config=darwin_x86_64 --config=macos primitive_test
+        bazel test --config=darwin_x86_64 --config=macos algorithm_test
+        bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
+        bazel test --config=darwin_x86_64 --config=macos util_test
+        bazel test --config=darwin_x86_64 --config=macos network_test
+        bazel test --config=darwin_x86_64 --config=macos wolfssl_test
+        bazel test --config=darwin_x86_64 --config=macos prng_test
+        bazel test --config=darwin_x86_64 --config=macos share_test
+        bazel test --config=darwin_x86_64 --config=macos test
+  
   build-on-ubuntu:
     runs-on: ubuntu-latest
     steps:
