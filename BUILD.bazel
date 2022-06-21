@@ -356,6 +356,7 @@ cc_library(
   ],
   linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
+	  "@com_github_gmp//:gmp",
 	  ":eigen"]
 )
 
@@ -439,11 +440,11 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-           "@eigen//:eigen",
+           ":eigen",
            ":common_lib",
            ":data_store_lib",
            ":dataset_service",
-	       ":protocol_cryptflow2_ot_lib",
+	   ":protocol_cryptflow2_ot_lib",
     ],
 )
 
@@ -832,7 +833,6 @@ py_library(
     data = ["primihub_channel.so"],
 )
 
-
 cc_binary(
     name = "node",
     srcs = glob([
@@ -844,7 +844,7 @@ cc_binary(
     copts = C_OPT,
     includes = [    
     ],
-    linkstatic = True,
+    linkstatic = False,
     linkopts = LINK_OPTS ,
     deps = [
         "@com_github_grpc_grpc//:grpc++",
@@ -861,7 +861,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-	      ":opt_paillier_c2py",
+	# ":opt_paillier_c2py",
     ],
 )
 
@@ -1204,9 +1204,6 @@ cc_library(
         "@com_github_gmp//:gmp",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_gmp//:gmp",
-    ],
 )
 
 cc_binary(
