@@ -27,9 +27,9 @@ Modified by Deevashwer Rathee
 
 #include "src/primihub/protocol/cryptflow2/GC/halfgate_gen.h"
 
-using namespace sci;
+using namespace primihub::sci;
 
-block128 sci::halfgates_garble(block128 LA0, block128 A1, block128 LB0,
+block128 primihub::sci::halfgates_garble(block128 LA0, block128 A1, block128 LB0,
                                block128 B1, block128 delta, block128 *table,
                                MITCCRH<8> *mitccrh) {
   bool pa = getLSB(LA0);

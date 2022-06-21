@@ -2,7 +2,7 @@
 #define EMP_CCRH_H__
 #include "src/primihub/protocol/cryptflow2/utils/prp.h"
 #include <stdio.h>
-namespace emp {
+namespace primihub::emp {
 
 /*
  * By default, CRH use zero_block as the AES key.
@@ -61,5 +61,5 @@ public:
   }
 };
 
-} // namespace emp
+} // namespace primihub::emp
 #endif // CCRH_H__

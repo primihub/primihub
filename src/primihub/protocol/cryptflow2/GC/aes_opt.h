@@ -30,7 +30,7 @@ Modified by Deevashwer Rathee
 
 #include "src/primihub/protocol/cryptflow2/utils/aes.h"
 
-namespace sci {
+namespace primihub::sci {
 template <int NumKeys>
 static inline void ks_rounds(AES_KEY *keys, block128 con, block128 con3,
                              block128 mask, int r) {
@@ -148,5 +148,5 @@ static inline void ParaEnc(block128 *_blks, AES_KEY *keys) {
 }
 #endif
 
-} // namespace sci
+} // namespace primihub::sci
 #endif

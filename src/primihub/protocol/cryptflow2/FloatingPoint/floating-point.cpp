@@ -25,9 +25,11 @@ SOFTWARE.
 #define CHUNK_SIZE (1 << 20)
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
+using namespace primihub::cryptflow2;
 
-FPArray FPArray::subset(int i, int j) {
+FPArray FPArray::subset(int i, int j)
+{
   assert(i >= 0 && j <= size && i < j);
   int sz = j - i;
   FPArray ret(this->party, sz, this->m_bits, this->e_bits);
@@ -39,17 +41,20 @@ FPArray FPArray::subset(int i, int j) {
   return ret;
 }
 
-BoolArray concat(const vector<BoolArray>& x) {
+BoolArray concat(const vector<BoolArray> &x)
+{
   int N = x.size();
   int sz = x[0].size;
   int party = x[0].party;
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     sz += x[i].size;
     assert(party == x[i].party);
   }
   BoolArray ret(party, sz);
   int offset = 0;
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N; i++)
+  {
     int n = x[i].size;
     memcpy(ret.data + offset, x[i].data, n * sizeof(uint8_t));
     offset += n;
@@ -57,13 +62,15 @@ BoolArray concat(const vector<BoolArray>& x) {
   return ret;
 }
 
-FPArray concat(const vector<FPArray>& x) {
+FPArray primihub::cryptflow2::concat(const vector<FPArray> &x)
+{
   int N = x.size();
   int sz = x[0].size;
   int m_bits = x[0].m_bits;
   int e_bits = x[0].e_bits;
   int party = x[0].party;
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     sz += x[i].size;
     assert(m_bits == x[i].m_bits);
     assert(e_bits == x[i].e_bits);
@@ -71,7 +78,8 @@ FPArray concat(const vector<FPArray>& x) {
   }
   FPArray ret(party, sz, m_bits, e_bits);
   int offset = 0;
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N; i++)
+  {
     int n = x[i].size;
     memcpy(ret.s + offset, x[i].s, n * sizeof(uint8_t));
     memcpy(ret.z + offset, x[i].z, n * sizeof(uint8_t));
@@ -82,27 +90,33 @@ FPArray concat(const vector<FPArray>& x) {
   return ret;
 }
 
-uint64_t RoundTiesToEven(uint64_t x, int32_t shift_amt) {
+uint64_t RoundTiesToEven(uint64_t x, int32_t shift_amt)
+{
   assert(shift_amt > 0);
   bool a = (x >> (shift_amt - 1)) & 1;
   bool b = (x & ((1ULL << (shift_amt - 1)) - 1)) != 0;
   bool c = (x >> shift_amt) & 1;
   uint64_t y = x >> shift_amt;
-  if (a && (b || c)) {
+  if (a && (b || c))
+  {
     y += 1;
   }
   return y;
 }
 
-template <class T> vector<T> FPArray::get_native_type() {
+template <class T>
+vector<T> FPArray::get_native_type()
+{
   assert(this->party == PUBLIC);
   vector<T> ret(this->size);
   uint8_t T_m_bits, T_e_bits;
-  if constexpr (is_same_v<T, float>) {
+  if constexpr (is_same_v<T, float>)
+  {
     T_m_bits = 23;
     T_e_bits = 8;
   }
-  if constexpr (is_same_v<T, double>) {
+  if constexpr (is_same_v<T, double>)
+  {
     T_m_bits = 52;
     T_e_bits = 11;
   }
@@ -113,33 +127,42 @@ template <class T> vector<T> FPArray::get_native_type() {
   uint64_t *e_ = new uint64_t[this->size];
   uint64_t m_mask_ = (this->m_mask() >> 1);
   uint64_t e_bias_ = this->e_bias();
-  for (int i = 0; i < this->size; i++) {
+  for (int i = 0; i < this->size; i++)
+  {
     uint64_t ret_int = 0;
     uint64_t m_ = this->m[i];
     int64_t e_ = this->e[i] - e_bias_;
-    if (m_bits <= T_m_bits) {
+    if (m_bits <= T_m_bits)
+    {
       m_ <<= (T_m_bits - m_bits);
-    } else {
+    }
+    else
+    {
       // m_ >>= (m_bits - T_m_bits);
       m_ = RoundTiesToEven(m_, m_bits - T_m_bits);
     }
-    if (e_ == (e_bias_ + 1)) {
+    if (e_ == (e_bias_ + 1))
+    {
       e_ = T_e_bias + 1;
     }
-    if (e_ == (-1 * int64_t(e_bias_))) {
+    if (e_ == (-1 * int64_t(e_bias_)))
+    {
       e_ = -1 * T_e_bias;
       m_ = 0;
     }
-    if (m_ == (1ULL << (T_m_bits + 1))) {
+    if (m_ == (1ULL << (T_m_bits + 1)))
+    {
       e_ = e_ + 1;
       m_ >>= 1;
     }
     m_ &= T_m_mask;
-    if (e_ > int64_t(T_e_bias)) {
+    if (e_ > int64_t(T_e_bias))
+    {
       e_ = T_e_bias + 1;
       m_ = 0;
     }
-    if ((z[i] & 1) || e_ < 1 - int64_t(T_e_bias)) {
+    if ((z[i] & 1) || e_ < 1 - int64_t(T_e_bias))
+    {
       e_ = -1 * T_e_bias;
       m_ = 0;
     }
@@ -147,12 +170,14 @@ template <class T> vector<T> FPArray::get_native_type() {
     assert(e_ >= 0);
     ret_int |= m_;
     ret_int |= (uint64_t(e_) << T_m_bits);
-    if constexpr (is_same_v<T, float>) {
+    if constexpr (is_same_v<T, float>)
+    {
       ret_int |= (uint64_t(this->s[i] & 1) << 31);
       uint32_t tmp = ret_int;
       ret[i] = *((T *)&tmp);
     }
-    if constexpr (is_same_v<T, double>) {
+    if constexpr (is_same_v<T, double>)
+    {
       ret_int |= (uint64_t(this->s[i] & 1) << 63);
       ret[i] = *((T *)&ret_int);
     }
@@ -160,25 +185,30 @@ template <class T> vector<T> FPArray::get_native_type() {
   return ret;
 }
 
-FPMatrix FPMatrix::transpose() {
+FPMatrix FPMatrix::transpose()
+{
   FPMatrix ret(this->party, dim2, dim1, m_bits, e_bits);
-  for (int i = 0; i < dim2; i++) {
-    for (int j = 0; j < dim1; j++) {
-      ret.m[i*dim1 + j] = this->m[j*dim2 + i];
-      ret.e[i*dim1 + j] = this->e[j*dim2 + i];
-      ret.s[i*dim1 + j] = this->s[j*dim2 + i];
-      ret.z[i*dim1 + j] = this->z[j*dim2 + i];
+  for (int i = 0; i < dim2; i++)
+  {
+    for (int j = 0; j < dim1; j++)
+    {
+      ret.m[i * dim1 + j] = this->m[j * dim2 + i];
+      ret.e[i * dim1 + j] = this->e[j * dim2 + i];
+      ret.s[i * dim1 + j] = this->s[j * dim2 + i];
+      ret.z[i * dim1 + j] = this->z[j * dim2 + i];
     }
   }
   return ret;
 }
 
-std::ostream &operator<<(std::ostream &os, FPArray &other) {
+std::ostream &primihub::cryptflow2::operator<<(std::ostream &os, FPArray &other)
+{
   assert(other.party == PUBLIC);
   uint64_t m_mask_ = (other.m_mask() >> 1);
   os << "[";
   auto dbl_other = other.get_native_type<double>();
-  for (int i = 0; i < other.size; i++) {
+  for (int i = 0; i < other.size; i++)
+  {
     uint64_t m_ = other.m[i] & m_mask_;
     uint64_t e_ = other.e[i];
     std::string tmp_m = std::bitset<64>(m_).to_string();
@@ -192,21 +222,24 @@ std::ostream &operator<<(std::ostream &os, FPArray &other) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, FPMatrix &other) {
+std::ostream &primihub::cryptflow2::operator<<(std::ostream &os, FPMatrix &other)
+{
   assert(other.party == PUBLIC);
   uint64_t m_mask_ = (other.m_mask() >> 1);
   os << "[";
   auto dbl_other = other.get_native_type<double>();
-  for (int i = 0; i < other.dim1; i++) {
+  for (int i = 0; i < other.dim1; i++)
+  {
     os << "[";
-    for (int j = 0; j < other.dim2; j++) {
-    uint64_t m_ = other.m[i*other.dim2+j] & m_mask_;
-    uint64_t e_ = other.e[i*other.dim2+j];
-    std::string tmp_m = std::bitset<64>(m_).to_string();
-    std::string tmp_e = std::bitset<16>(e_).to_string();
-    os << dbl_other[i*other.dim2+j] << " s=" << uint16_t(other.s[i*other.dim2+j]) << " e=" << signed_val(e_, other.e_bits + 2) << " ("
-       << tmp_e.substr(16 - other.e_bits, 16) << ") m=" << m_ << " ("
-       << tmp_m.substr(64 - other.m_bits, 64) << ")\t";
+    for (int j = 0; j < other.dim2; j++)
+    {
+      uint64_t m_ = other.m[i * other.dim2 + j] & m_mask_;
+      uint64_t e_ = other.e[i * other.dim2 + j];
+      std::string tmp_m = std::bitset<64>(m_).to_string();
+      std::string tmp_e = std::bitset<16>(e_).to_string();
+      os << dbl_other[i * other.dim2 + j] << " s=" << uint16_t(other.s[i * other.dim2 + j]) << " e=" << signed_val(e_, other.e_bits + 2) << " ("
+         << tmp_e.substr(16 - other.e_bits, 16) << ") m=" << m_ << " ("
+         << tmp_m.substr(64 - other.m_bits, 64) << ")\t";
     }
     os << "]\n";
   }
@@ -218,26 +251,32 @@ std::ostream &operator<<(std::ostream &os, FPMatrix &other) {
 template vector<float> FPArray::get_native_type();
 template vector<double> FPArray::get_native_type();
 
-FPArray FPOp::input(int party_, int sz, uint8_t* s_, uint8_t* z_, uint64_t* m_,
-        uint64_t* e_, uint8_t m_bits_, uint8_t e_bits_) {
+FPArray FPOp::input(int party_, int sz, uint8_t *s_, uint8_t *z_, uint64_t *m_,
+                    uint64_t *e_, uint8_t m_bits_, uint8_t e_bits_)
+{
   FPArray ret((party_ == PUBLIC ? party_ : this->party), sz, m_bits_, e_bits_);
   uint64_t m_mask_ = ret.m_mask();
   uint64_t e_mask_ = ret.e_mask();
-  if ((this->party == party_) || (party_ == PUBLIC)) {
+  if ((this->party == party_) || (party_ == PUBLIC))
+  {
     memcpy(ret.s, s_, sz * sizeof(uint8_t));
     memcpy(ret.z, z_, sz * sizeof(uint8_t));
     memcpy(ret.m, m_, sz * sizeof(uint64_t));
     memcpy(ret.e, e_, sz * sizeof(uint64_t));
-    for (int i = 0; i < sz; i++) {
+    for (int i = 0; i < sz; i++)
+    {
       ret.s[i] &= 1;
       ret.z[i] &= 1;
       ret.m[i] &= m_mask_;
       ret.e[i] &= e_mask_;
     }
-  } else {
+  }
+  else
+  {
     memset(ret.s, 0, sz * sizeof(uint8_t));
     memset(ret.z, 0, sz * sizeof(uint8_t));
-    for (int i = 0; i < sz; i++) {
+    for (int i = 0; i < sz; i++)
+    {
       ret.m[i] = 0;
       ret.e[i] = 0;
     }
@@ -246,13 +285,16 @@ FPArray FPOp::input(int party_, int sz, uint8_t* s_, uint8_t* z_, uint64_t* m_,
 }
 
 template <class T>
-FPArray FPOp::input(int party_, int sz, T* data_, uint8_t m_bits_,
-        uint8_t e_bits_, bool check_params) {
+FPArray FPOp::input(int party_, int sz, T *data_, uint8_t m_bits_,
+                    uint8_t e_bits_, bool check_params)
+{
   FPArray ret((party_ == PUBLIC ? party_ : this->party), sz, m_bits_, e_bits_);
-  if ((this->party != party_) && (party_ != PUBLIC)) {
+  if ((this->party != party_) && (party_ != PUBLIC))
+  {
     memset(ret.s, 0, sz * sizeof(uint8_t));
     memset(ret.z, 0, sz * sizeof(uint8_t));
-    for (int i = 0; i < sz; i++) {
+    for (int i = 0; i < sz; i++)
+    {
       ret.m[i] = 0;
       ret.e[i] = 0;
     }
@@ -260,30 +302,38 @@ FPArray FPOp::input(int party_, int sz, T* data_, uint8_t m_bits_,
   }
   uint64_t *data_int = new uint64_t[sz];
   uint8_t T_m_bits, T_e_bits;
-  if constexpr (is_same_v<T, float>) {
-    for (int i = 0; i < sz; i++) {
+  if constexpr (is_same_v<T, float>)
+  {
+    for (int i = 0; i < sz; i++)
+    {
       uint32_t tmp = ((uint32_t *)data_)[i];
       data_int[i] = tmp;
     }
     T_m_bits = 23;
     T_e_bits = 8;
-    if (m_bits_ == 0) {
+    if (m_bits_ == 0)
+    {
       m_bits_ = 23;
     }
-    if (e_bits_ == 0) {
+    if (e_bits_ == 0)
+    {
       e_bits_ = 8;
     }
   }
-  if constexpr (is_same_v<T, double>) {
-    for (int i = 0; i < sz; i++) {
+  if constexpr (is_same_v<T, double>)
+  {
+    for (int i = 0; i < sz; i++)
+    {
       data_int[i] = ((uint64_t *)data_)[i];
     }
     T_m_bits = 52;
     T_e_bits = 11;
-    if (m_bits_ == 0) {
+    if (m_bits_ == 0)
+    {
       m_bits_ = 52;
     }
-    if (e_bits_ == 0) {
+    if (e_bits_ == 0)
+    {
       e_bits_ = 11;
     }
   }
@@ -293,26 +343,33 @@ FPArray FPOp::input(int party_, int sz, T* data_, uint8_t m_bits_,
   uint64_t T_e_bias = (uint64_t(1) << (T_e_bits - 1)) - 1;
   uint64_t e_mask = (uint64_t(1) << e_bits_) - 1;
 
-  for (int i = 0; i < sz; i++) {
+  for (int i = 0; i < sz; i++)
+  {
     ret.z[i] = (data_int[i] == 0 || data_int[i] == (1ULL << (sizeof(T) * 8 - 1)));
     ret.s[i] = data_int[i] >= (1ULL << (sizeof(T) * 8 - 1));
     ret.m[i] = (data_int[i] & T_m_mask) | (ret.z[i] ? 0 : 1ULL << T_m_bits);
-    if (m_bits_ >= T_m_bits) {
+    if (m_bits_ >= T_m_bits)
+    {
       ret.m[i] <<= (m_bits_ - T_m_bits);
-    } else {
+    }
+    else
+    {
       ret.m[i] = RoundTiesToEven(ret.m[i], T_m_bits - m_bits_);
     }
     ret.e[i] = ((data_int[i] >> T_m_bits) & T_e_mask) - T_e_bias;
-    if (ret.e[i] == (T_e_bias + 1)) {
+    if (ret.e[i] == (T_e_bias + 1))
+    {
       ret.e[i] = ret.e_bias() + 1;
     }
     ret.e[i] += ret.e_bias();
-    if (ret.m[i] == (1ULL << (m_bits_ + 1))) {
+    if (ret.m[i] == (1ULL << (m_bits_ + 1)))
+    {
       ret.m[i] >>= 1;
       ret.e[i] += 1;
     }
   }
-  if (check_params) ret.check_bounds();
+  if (check_params)
+    ret.check_bounds();
   delete[] data_int;
 
   return ret;
@@ -320,17 +377,21 @@ FPArray FPOp::input(int party_, int sz, T* data_, uint8_t m_bits_,
 
 template <class T>
 FPArray FPOp::input(int party_, int sz, T data_, uint8_t m_bits_,
-        uint8_t e_bits_, bool check_params) {
+                    uint8_t e_bits_, bool check_params)
+{
   vector<T> data_vec(sz);
-  for (int i = 0; i < sz; i++) {
+  for (int i = 0; i < sz; i++)
+  {
     data_vec[i] = data_;
   }
   FPArray ret = this->input<T>(party_, sz, data_vec.data(), m_bits_, e_bits_, check_params);
   return ret;
 }
 
-FPArray FPOp::output(int party_, const FPArray& x) {
-  if (x.party == PUBLIC) {
+FPArray FPOp::output(int party_, const FPArray &x)
+{
+  if (x.party == PUBLIC)
+  {
     return x;
   }
   int sz = x.size;
@@ -338,25 +399,34 @@ FPArray FPOp::output(int party_, const FPArray& x) {
   FPArray ret(ret_party, sz, x.m_bits, x.e_bits);
 #pragma omp parallel num_threads(2)
   {
-    if (omp_get_thread_num() == 1 && party_ != BOB) {
-      if (party == sci::ALICE) {
+    if (omp_get_thread_num() == 1 && party_ != BOB)
+    {
+      if (party == primihub::sci::ALICE)
+      {
         iopack->io_rev->recv_data(ret.s, sz * sizeof(uint8_t));
         iopack->io_rev->recv_data(ret.z, sz * sizeof(uint8_t));
         iopack->io_rev->recv_data(ret.m, sz * sizeof(uint64_t));
         iopack->io_rev->recv_data(ret.e, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      }
+      else
+      { // party == primihub::sci::BOB
         iopack->io_rev->send_data(x.s, sz * sizeof(uint8_t));
         iopack->io_rev->send_data(x.z, sz * sizeof(uint8_t));
         iopack->io_rev->send_data(x.m, sz * sizeof(uint64_t));
         iopack->io_rev->send_data(x.e, sz * sizeof(uint64_t));
       }
-    } else if (omp_get_thread_num() == 0 && party_ != ALICE) {
-      if (party == sci::ALICE) {
+    }
+    else if (omp_get_thread_num() == 0 && party_ != ALICE)
+    {
+      if (party == primihub::sci::ALICE)
+      {
         iopack->io->send_data(x.s, sz * sizeof(uint8_t));
         iopack->io->send_data(x.z, sz * sizeof(uint8_t));
         iopack->io->send_data(x.m, sz * sizeof(uint64_t));
         iopack->io->send_data(x.e, sz * sizeof(uint64_t));
-      } else { // party == sci::BOB
+      }
+      else
+      { // party == primihub::sci::BOB
         iopack->io->recv_data(ret.s, sz * sizeof(uint8_t));
         iopack->io->recv_data(ret.z, sz * sizeof(uint8_t));
         iopack->io->recv_data(ret.m, sz * sizeof(uint64_t));
@@ -366,7 +436,8 @@ FPArray FPOp::output(int party_, const FPArray& x) {
   }
   uint64_t m_mask_ = x.m_mask();
   uint64_t e_mask_ = x.e_mask();
-  for (int i = 0; i < sz; i++) {
+  for (int i = 0; i < sz; i++)
+  {
     ret.s[i] = ret.s[i] ^ x.s[i];
     ret.z[i] = ret.z[i] ^ x.z[i];
     ret.m[i] = (ret.m[i] + x.m[i]) & m_mask_;
@@ -376,16 +447,17 @@ FPArray FPOp::output(int party_, const FPArray& x) {
 }
 
 // To avoid linkage failure
-template FPArray FPOp::input(int party_, int sz, float* data_,
-        uint8_t m_bits_, uint8_t e_bits_, bool check_params);
+template FPArray FPOp::input(int party_, int sz, float *data_,
+                             uint8_t m_bits_, uint8_t e_bits_, bool check_params);
 template FPArray FPOp::input(int party_, int sz, float data_,
-        uint8_t m_bits_, uint8_t e_bits_, bool check_params);
-template FPArray FPOp::input(int party_, int sz, double* data_,
-        uint8_t m_bits_, uint8_t e_bits_, bool check_params);
+                             uint8_t m_bits_, uint8_t e_bits_, bool check_params);
+template FPArray FPOp::input(int party_, int sz, double *data_,
+                             uint8_t m_bits_, uint8_t e_bits_, bool check_params);
 template FPArray FPOp::input(int party_, int sz, double data_,
-        uint8_t m_bits_, uint8_t e_bits_, bool check_params);
+                             uint8_t m_bits_, uint8_t e_bits_, bool check_params);
 
-tuple<BoolArray,BoolArray,FixArray,FixArray> FPOp::get_components(const FPArray &x) {
+tuple<BoolArray, BoolArray, FixArray, FixArray> FPOp::get_components(const FPArray &x)
+{
   BoolArray x_s = bool_op->input(x.party, x.size, x.s);
   BoolArray x_z = bool_op->input(x.party, x.size, x.z);
   FixArray x_m = fix->input(x.party, x.size, x.m, false, x.m_bits + 1, x.m_bits);
@@ -393,7 +465,8 @@ tuple<BoolArray,BoolArray,FixArray,FixArray> FPOp::get_components(const FPArray 
   return make_tuple(x_s, x_z, x_m, x_e);
 }
 
-FPArray FPOp::check_bounds(const FPArray &x) {
+FPArray FPOp::check_bounds(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   BoolArray x_s, x_z;
   FixArray x_m, x_e;
@@ -425,12 +498,13 @@ FPArray FPOp::check_bounds(const FPArray &x) {
   BoolArray ret_z = underflow_check;
 
   FPArray ret = this->input(x.party, x.size, x_s.data, ret_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                            ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-BoolArray FPOp::LT(const FPArray &x, const FPArray &y, bool equal_sign) {
+BoolArray FPOp::LT(const FPArray &x, const FPArray &y, bool equal_sign)
+{
   assert(x.party != PUBLIC || y.party != PUBLIC);
   assert(x.size == y.size);
   assert(x.m_bits == y.m_bits);
@@ -474,37 +548,48 @@ BoolArray FPOp::LT(const FPArray &x, const FPArray &y, bool equal_sign) {
   return ret;
 }
 
-BoolArray FPOp::GT(const FPArray &x, const FPArray &y, bool equal_sign) {
+BoolArray FPOp::GT(const FPArray &x, const FPArray &y, bool equal_sign)
+{
   return this->LT(y, x, equal_sign);
 }
 
-BoolArray FPOp::LE(const FPArray &x, const FPArray &y, bool equal_sign) {
+BoolArray FPOp::LE(const FPArray &x, const FPArray &y, bool equal_sign)
+{
   return bool_op->NOT(this->LT(y, x, equal_sign));
 }
 
-BoolArray FPOp::GE(const FPArray &x, const FPArray &y, bool equal_sign) {
+BoolArray FPOp::GE(const FPArray &x, const FPArray &y, bool equal_sign)
+{
   return bool_op->NOT(this->LT(x, y, equal_sign));
 }
 
-template <class T> BoolArray FPOp::LT(const FPArray &x, T y, bool equal_sign) {
+template <class T>
+BoolArray FPOp::LT(const FPArray &x, T y, bool equal_sign)
+{
   assert(x.party != PUBLIC);
   FPArray fp_y = this->input<T>(PUBLIC, x.size, y, x.m_bits, x.e_bits);
   return this->LT(x, fp_y, equal_sign);
 }
 
-template <class T> BoolArray FPOp::GT(const FPArray &x, T y, bool equal_sign) {
+template <class T>
+BoolArray FPOp::GT(const FPArray &x, T y, bool equal_sign)
+{
   assert(x.party != PUBLIC);
   FPArray fp_y = this->input<T>(PUBLIC, x.size, y, x.m_bits, x.e_bits);
   return this->GT(x, fp_y, equal_sign);
 }
 
-template <class T> BoolArray FPOp::LE(const FPArray &x, T y, bool equal_sign) {
+template <class T>
+BoolArray FPOp::LE(const FPArray &x, T y, bool equal_sign)
+{
   assert(x.party != PUBLIC);
   FPArray fp_y = this->input<T>(PUBLIC, x.size, y, x.m_bits, x.e_bits);
   return this->LE(x, fp_y, equal_sign);
 }
 
-template <class T> BoolArray FPOp::GE(const FPArray &x, T y, bool equal_sign) {
+template <class T>
+BoolArray FPOp::GE(const FPArray &x, T y, bool equal_sign)
+{
   assert(x.party != PUBLIC);
   FPArray fp_y = this->input<T>(PUBLIC, x.size, y, x.m_bits, x.e_bits);
   return this->GE(x, fp_y, equal_sign);
@@ -521,7 +606,8 @@ template BoolArray FPOp::LE(const FPArray &x, double y, bool equal_sign);
 template BoolArray FPOp::GE(const FPArray &x, double y, bool equal_sign);
 
 FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
-                      const FPArray &y) {
+                      const FPArray &y)
+{
   assert(cond.party != PUBLIC);
   assert(x.party != PUBLIC && y.party != PUBLIC);
   assert(cond.size == x.size && cond.size == y.size);
@@ -538,7 +624,8 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
   uint64_t *recv_data = new uint64_t[x.size];
   PRG128 prg;
   prg.random_data(r, x.size * sizeof(uint64_t));
-  for (int i = 0; i < x.size; i++) {
+  for (int i = 0; i < x.size; i++)
+  {
     r[i] &= ret_mask;
     uint64_t r_data = r[i];
     uint64_t ret_x = (x.m[i] - r_data) & m_mask;
@@ -558,32 +645,45 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
     r_data >>= 1;
     ret_y |= ((y.z[i] - r_data) & 1) << (x.m_bits + x.e_bits + 4);
     send_data[i] = new uint64_t[2];
-    if (cond.data[i]) {
+    if (cond.data[i])
+    {
       send_data[i][0] = ret_x;
       send_data[i][1] = ret_y;
-    } else {
+    }
+    else
+    {
       send_data[i][0] = ret_y;
       send_data[i][1] = ret_x;
     }
   }
 #pragma omp parallel num_threads(2)
   {
-    if (omp_get_thread_num() == 1) {
-      if (party == sci::ALICE) {
+    if (omp_get_thread_num() == 1)
+    {
+      if (party == primihub::sci::ALICE)
+      {
         otpack->iknp_reversed->recv_impl(recv_data, cond.data, x.size, ret_ell);
-      } else { // party == sci::BOB
+      }
+      else
+      { // party == primihub::sci::BOB
         otpack->iknp_reversed->send_impl(send_data, x.size, ret_ell);
       }
-    } else {
-      if (party == sci::ALICE) {
+    }
+    else
+    {
+      if (party == primihub::sci::ALICE)
+      {
         otpack->iknp_straight->send_impl(send_data, x.size, ret_ell);
-      } else { // party == sci::BOB
+      }
+      else
+      { // party == primihub::sci::BOB
         otpack->iknp_straight->recv_impl(recv_data, cond.data, x.size, ret_ell);
       }
     }
   }
   FPArray ret(this->party, x.size, x.m_bits, x.e_bits);
-  for (int i = 0; i < x.size; i++) {
+  for (int i = 0; i < x.size; i++)
+  {
     uint64_t r_data = r[i];
     uint64_t rcv_data = recv_data[i];
     ret.m[i] = (r_data + rcv_data) & m_mask;
@@ -600,7 +700,8 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
 
   delete[] r;
   delete[] recv_data;
-  for (int i = 0; i < x.size; i++) {
+  for (int i = 0; i < x.size; i++)
+  {
     delete[] send_data[i];
   }
   delete[] send_data;
@@ -608,7 +709,8 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x,
   return ret;
 }
 
-FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, float y) {
+FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, float y)
+{
   assert(cond.party != PUBLIC && x.party != PUBLIC);
   assert(cond.size == x.size);
   // Setting input party to ALICE so that fp_y is interpreted as a secret-shared value
@@ -617,7 +719,8 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, float y) {
   return this->if_else(cond, x, fp_y);
 }
 
-FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, double y) {
+FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, double y)
+{
   assert(cond.party != PUBLIC && x.party != PUBLIC);
   assert(cond.size == x.size);
   // Setting input party to ALICE so that fp_y is interpreted as a secret-shared value
@@ -627,7 +730,8 @@ FPArray FPOp::if_else(const BoolArray &cond, const FPArray &x, double y) {
 }
 
 FPArray FPOp::LUT(const std::vector<uint64_t> &spec_vec, const FixArray &x,
-                  uint8_t m_bits, uint8_t e_bits) {
+                  uint8_t m_bits, uint8_t e_bits)
+{
   assert(spec_vec.size() <= (1 << x.ell));
   assert(x.party != PUBLIC);
   assert(x.ell <= 8);
@@ -639,15 +743,18 @@ FPArray FPOp::LUT(const std::vector<uint64_t> &spec_vec, const FixArray &x,
   uint64_t m_mask = (1ULL << (m_bits + 1)) - 1;
   uint64_t e_mask = (1ULL << (e_bits + 2)) - 1;
   uint64_t *ret_int64 = new uint64_t[x.size];
-  if (party == ALICE) {
+  if (party == ALICE)
+  {
     uint64_t **spec;
     spec = new uint64_t *[x.size];
     PRG128 prg;
     prg.random_data(ret_int64, x.size * sizeof(uint64_t));
-    for (int i = 0; i < x.size; i++) {
+    for (int i = 0; i < x.size; i++)
+    {
       spec[i] = new uint64_t[spec_pow2.size()];
       ret_int64[i] &= ret_mask;
-      for (int j = 0; j < spec_pow2.size(); j++) {
+      for (int j = 0; j < spec_pow2.size(); j++)
+      {
         int idx = (x.data[i] + j) & x_mask;
         uint64_t spec_data = spec_pow2[idx];
         uint64_t ret_data = ret_int64[i];
@@ -678,7 +785,9 @@ FPArray FPOp::LUT(const std::vector<uint64_t> &spec_vec, const FixArray &x,
     for (int i = 0; i < x.size; i++)
       delete[] spec[i];
     delete[] spec;
-  } else {
+  }
+  else
+  {
     fix->aux->lookup_table<uint64_t>(nullptr, x.data, ret_int64, x.size, x.ell,
                                      ret_ell);
   }
@@ -686,7 +795,8 @@ FPArray FPOp::LUT(const std::vector<uint64_t> &spec_vec, const FixArray &x,
   uint8_t *ret_z = new uint8_t[x.size];
   uint64_t *ret_e = new uint64_t[x.size];
   uint64_t *ret_m = new uint64_t[x.size];
-  for (int i = 0; i < x.size; i++) {
+  for (int i = 0; i < x.size; i++)
+  {
     uint64_t ret_data = ret_int64[i];
     ret_m[i] = ret_data & m_mask;
     ret_data >>= (m_bits + 1);
@@ -710,47 +820,60 @@ FPArray FPOp::LUT(const std::vector<uint64_t> &spec_vec, const FixArray &x,
 vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
                                 const vector<uint64_t> &knots_bits,
                                 const FixArray &x, int n, uint8_t m_bits,
-                                uint8_t e_bits) {
+                                uint8_t e_bits)
+{
   assert(x.party != PUBLIC);
   assert(x.ell <= 8);
   assert(n <= (1 << x.ell));
   assert((knots_bits.size() == n - 1) || (knots_bits.size() == n) || (knots_bits.size() == n + 1));
-  for (int i = 0; i < spec_coeff.size(); i++) {
+  for (int i = 0; i < spec_coeff.size(); i++)
+  {
     assert(spec_coeff[i].size() == n);
   }
-  if (n > 64) {
+  if (n > 64)
+  {
     int d = spec_coeff.size();
-    int num_iters = ceil(n/double(64));
+    int num_iters = ceil(n / double(64));
     vector<vector<uint64_t>> lspec_coeff(d);
     vector<uint64_t> lknots_bits;
     vector<vector<FPArray>> lret(num_iters);
     vector<FPArray> ret(d);
-    for (int i = 0; i < n; i += 64) {
-      int ln = std::min(64, n-i);
-      for (int j = 0; j < d; j++) {
+    for (int i = 0; i < n; i += 64)
+    {
+      int ln = std::min(64, n - i);
+      for (int j = 0; j < d; j++)
+      {
         lspec_coeff[j].resize(ln);
-        for (int k = 0; k < ln; k++) {
-          lspec_coeff[j][k] = spec_coeff[j][i+k];
+        for (int k = 0; k < ln; k++)
+        {
+          lspec_coeff[j][k] = spec_coeff[j][i + k];
         }
       }
-      int lln = (i/64 == (num_iters - 1))? ln: ln + 1;
+      int lln = (i / 64 == (num_iters - 1)) ? ln : ln + 1;
       lknots_bits.resize(lln);
-      if (i) {
-        lknots_bits[0] = knots_bits[i-1];
-      } else {
+      if (i)
+      {
+        lknots_bits[0] = knots_bits[i - 1];
+      }
+      else
+      {
         lknots_bits[0] = 0;
       }
-      for (int k = 0; k < ln && i+k < n; k++) {
-        lknots_bits[k+1] = knots_bits[i+k];
+      for (int k = 0; k < ln && i + k < n; k++)
+      {
+        lknots_bits[k + 1] = knots_bits[i + k];
       }
-      lret[i/64] = this->GetCoeffs(lspec_coeff, lknots_bits, x, ln, m_bits, e_bits);
+      lret[i / 64] = this->GetCoeffs(lspec_coeff, lknots_bits, x, ln, m_bits, e_bits);
     }
     uint64_t m_mask = (1ULL << (m_bits + 1)) - 1;
     uint64_t e_mask = (1ULL << (e_bits + 2)) - 1;
-    for (int k = 0; k < d; k++) {
+    for (int k = 0; k < d; k++)
+    {
       ret[k] = lret[0][k];
-      for (int i = 1; i < num_iters; i++) {
-        for (int j = 0; j < x.size; j++) {
+      for (int i = 1; i < num_iters; i++)
+      {
+        for (int j = 0; j < x.size; j++)
+        {
           ret[k].s[j] ^= lret[i][k].s[j];
           ret[k].z[j] ^= lret[i][k].z[j];
           ret[k].m[j] = (ret[k].m[j] + lret[i][k].m[j]) & m_mask;
@@ -766,47 +889,59 @@ vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
   uint64_t e_mask = (1ULL << (e_bits + 2)) - 1;
   uint64_t LUT_out_mask = (1ULL << n) - 1;
   uint64_t *LUT_out = new uint64_t[x.size];
-  if (party == ALICE) {
+  if (party == ALICE)
+  {
     uint64_t **spec;
     spec = new uint64_t *[x.size];
     PRG128 prg;
     prg.random_data(LUT_out, x.size * sizeof(uint64_t));
-    for (int i = 0; i < x.size; i++) {
+    for (int i = 0; i < x.size; i++)
+    {
       spec[i] = new uint64_t[1 << x.ell];
       LUT_out[i] &= LUT_out_mask;
-      for (int j = 0; j < (1 << x.ell); j++) {
+      for (int j = 0; j < (1 << x.ell); j++)
+      {
         int idx = (x.data[i] + j) & x_mask;
         vector<uint8_t> spec_active_interval(n, 0);
         vector<uint8_t> u(n, 0);
         // n-1 knots specified
-        if (knots_bits.size() == n-1) {
+        if (knots_bits.size() == n - 1)
+        {
           spec_active_interval[0] = u[0] = (idx < knots_bits[0]);
-          for (int k = 1; k < n - 1; k++) {
+          for (int k = 1; k < n - 1; k++)
+          {
             u[k] = (idx < knots_bits[k]);
             spec_active_interval[k] = u[k] ^ u[k - 1];
           }
           spec_active_interval[n - 1] = u[n - 2] ^ 1;
-        // n knots specified (lb specified)
-        } else if (knots_bits.size() == n) {
+          // n knots specified (lb specified)
+        }
+        else if (knots_bits.size() == n)
+        {
           u[0] = (idx < knots_bits[1]);
           spec_active_interval[0] = u[0] && (idx >= knots_bits[0]);
-          for (int k = 1; k < n - 1; k++) {
-            u[k] = (idx < knots_bits[k+1]);
+          for (int k = 1; k < n - 1; k++)
+          {
+            u[k] = (idx < knots_bits[k + 1]);
             spec_active_interval[k] = u[k] ^ u[k - 1];
           }
           spec_active_interval[n - 1] = u[n - 2] ^ 1;
-        // n+1 knots specified (both lb and ub specified)
-        } else if (knots_bits.size() == n+1) {
+          // n+1 knots specified (both lb and ub specified)
+        }
+        else if (knots_bits.size() == n + 1)
+        {
           u[0] = (idx < knots_bits[1]);
           spec_active_interval[0] = u[0] && (idx >= knots_bits[0]);
-          for (int k = 1; k < n; k++) {
-            u[k] = (idx < knots_bits[k+1]);
+          for (int k = 1; k < n; k++)
+          {
+            u[k] = (idx < knots_bits[k + 1]);
             spec_active_interval[k] = u[k] ^ u[k - 1];
           }
         }
         uint64_t spec_data = 0;
         uint64_t LUT_out_data = LUT_out[i];
-        for (int k = 0; k < n; k++) {
+        for (int k = 0; k < n; k++)
+        {
           spec_data |= (((spec_active_interval[k] ^ LUT_out_data) & 1) << k);
           LUT_out_data >>= 1;
         }
@@ -818,14 +953,18 @@ vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
     for (int i = 0; i < x.size; i++)
       delete[] spec[i];
     delete[] spec;
-  } else {
+  }
+  else
+  {
     fix->aux->lookup_table<uint64_t>(nullptr, x.data, LUT_out, x.size, x.ell,
                                      n);
   }
   uint8_t *v = new uint8_t[x.size * n];
   uint64_t *V = new uint64_t[x.size * n];
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < x.size; j++) {
+  for (int i = 0; i < n; i++)
+  {
+    for (int j = 0; j < x.size; j++)
+    {
       v[i * x.size + j] = LUT_out[j] & 1;
       LUT_out[j] >>= 1;
     }
@@ -842,8 +981,10 @@ vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
   uint64_t theta_m[d][n];
   uint64_t theta_e[d][n];
   vector<FPArray> ret(d);
-  for (int h = 0; h < d; h++) {
-    for (int k = 0; k < n; k++) {
+  for (int h = 0; h < d; h++)
+  {
+    for (int k = 0; k < n; k++)
+    {
       uint64_t coeff = spec_coeff[h][k];
       theta_m[h][k] = coeff & m_mask;
       coeff >>= (m_bits + 1);
@@ -853,12 +994,14 @@ vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
       coeff >>= 1;
       theta_z[h][k] = coeff & 1;
     }
-    for (int i = 0; i < x.size; i++) {
+    for (int i = 0; i < x.size; i++)
+    {
       s[i] = 0;
       z[i] = 0;
       m[i] = 0;
       e[i] = 0;
-      for (int k = 0; k < n; k++) {
+      for (int k = 0; k < n; k++)
+      {
         s[i] ^= (theta_s[h][k] & v[k * x.size + i]);
         z[i] ^= (theta_z[h][k] & v[k * x.size + i]);
         m[i] += (theta_m[h][k] * V[k * x.size + i]);
@@ -882,14 +1025,16 @@ vector<FPArray> FPOp::GetCoeffs(const vector<vector<uint64_t>> &spec_coeff,
 }
 
 FPArray FPOp::mulpow2(const FPArray &x, const FixArray &exp,
-                      bool check_bounds) {
+                      bool check_bounds)
+{
   assert(x.party != PUBLIC);
   assert(x.size == exp.size);
   assert(exp.ell <= x.e_bits + 2);
   assert(exp.signed_ == true);
 
   FixArray exp_ext = exp;
-  if (exp_ext.ell < x.e_bits + 2) {
+  if (exp_ext.ell < x.e_bits + 2)
+  {
     fix->extend(exp_ext, x.e_bits + 2, nullptr);
   }
   BoolArray x_s, x_z;
@@ -899,22 +1044,25 @@ FPArray FPOp::mulpow2(const FPArray &x, const FixArray &exp,
   FixArray ret_e = fix->add(x_e, exp_ext);
 
   FPArray ret = this->input(x.party, x.size, x_s.data, x_z.data, x_m.data,
-          ret_e.data, x.m_bits, x.e_bits);
+                            ret_e.data, x.m_bits, x.e_bits);
 
-  if (check_bounds) {
+  if (check_bounds)
+  {
     ret = this->check_bounds(ret);
   }
 
   return ret;
 }
 
-FPArray FPOp::mulpow2(const FPArray &x, int exp, bool check_bounds) {
+FPArray FPOp::mulpow2(const FPArray &x, int exp, bool check_bounds)
+{
   assert(x.party != PUBLIC);
   FixArray fp_exp = fix->input(PUBLIC, x.size, int64_t(exp), true, x.e_bits + 2, 0);
   return this->mulpow2(x, fp_exp, check_bounds);
 }
 
-FPArray FPOp::mul(const FPArray &x, const FPArray &y, bool check_bounds) {
+FPArray FPOp::mul(const FPArray &x, const FPArray &y, bool check_bounds)
+{
   assert(x.party != PUBLIC || y.party != PUBLIC);
   assert(x.size == y.size);
   assert(x.m_bits == y.m_bits);
@@ -954,43 +1102,47 @@ FPArray FPOp::mul(const FPArray &x, const FPArray &y, bool check_bounds) {
   BoolArray ret_z = bool_op->OR(x_z, y_z);
 
   FPArray ret = this->input(this->party, sz, ret_s.data, ret_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                            ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
-  if (check_bounds) {
+  if (check_bounds)
+  {
     ret = this->check_bounds(ret);
   }
 
   return ret;
 }
 
-vector<FPArray> FPOp::mul(const vector<FPArray> &x, const vector<FPArray> &y) {
-  FPArray concat_x = concat(x) ;
-  FPArray concat_y = concat(y) ;
-  FPArray concat_mul = this->mul(concat_x, concat_y) ;
+vector<FPArray> FPOp::mul(const vector<FPArray> &x, const vector<FPArray> &y)
+{
+  FPArray concat_x = concat(x);
+  FPArray concat_y = concat(y);
+  FPArray concat_mul = this->mul(concat_x, concat_y);
 
-  int N = x.size() ;
-  int m_bits = x[0].m_bits ;
-  int e_bits = x[0].e_bits ; 
-  vector<FPArray> ret ;
-  int offset = 0 ;
+  int N = x.size();
+  int m_bits = x[0].m_bits;
+  int e_bits = x[0].e_bits;
+  vector<FPArray> ret;
+  int offset = 0;
 
-  for (int i = 0 ; i < N ; i++) {
-    int n = x[i].size ;
-    FPArray retvec(party, n, m_bits, e_bits) ;
-    
-    memcpy(retvec.s, concat_mul.s + offset, n*sizeof(uint8_t)) ;
-    memcpy(retvec.z, concat_mul.z + offset, n*sizeof(uint8_t)) ;
-    memcpy(retvec.m, concat_mul.m + offset, n*sizeof(uint64_t)) ;
-    memcpy(retvec.e, concat_mul.e + offset, n*sizeof(uint64_t)) ;
+  for (int i = 0; i < N; i++)
+  {
+    int n = x[i].size;
+    FPArray retvec(party, n, m_bits, e_bits);
 
-    offset += n ;
-    ret.push_back(retvec) ;
+    memcpy(retvec.s, concat_mul.s + offset, n * sizeof(uint8_t));
+    memcpy(retvec.z, concat_mul.z + offset, n * sizeof(uint8_t));
+    memcpy(retvec.m, concat_mul.m + offset, n * sizeof(uint64_t));
+    memcpy(retvec.e, concat_mul.e + offset, n * sizeof(uint64_t));
+
+    offset += n;
+    ret.push_back(retvec);
   }
 
-  return ret ;
+  return ret;
 }
 
-void FPOp::normalize(FixArray &m, FixArray &e, int e_offset, int ell) {
+void FPOp::normalize(FixArray &m, FixArray &e, int e_offset, int ell)
+{
   assert(m.party != PUBLIC);
   assert(m.size == e.size);
   assert(ell <= m.ell);
@@ -1007,10 +1159,12 @@ void FPOp::normalize(FixArray &m, FixArray &e, int e_offset, int ell) {
   FixArray e_adj(m.party, m.size, e.signed_, e.ell, e.s);
   uint64_t m_mask_ = m.ell_mask();
   uint64_t e_mask_ = e.ell_mask();
-  for (int i = 0; i < m.size; i++) {
+  for (int i = 0; i < m.size; i++)
+  {
     k.data[i] = 0;
     e_adj.data[i] = 0;
-    for (int j = 0; j < m.ell; j++) {
+    for (int j = 0; j < m.ell; j++)
+    {
       k.data[i] += (1ULL << (ell - 1 - j)) * m_one_hot_64[i * m.ell + j];
       e_adj.data[i] += (j - e_offset) * m_one_hot_64[i * m.ell + j];
     }
@@ -1026,7 +1180,8 @@ void FPOp::normalize(FixArray &m, FixArray &e, int e_offset, int ell) {
   return;
 }
 
-void FPOp::round_and_check(FixArray &m, FixArray &e, int s) {
+void FPOp::round_and_check(FixArray &m, FixArray &e, int s)
+{
   assert(m.party != PUBLIC && e.party != PUBLIC);
   assert(m.size == e.size);
   assert(m.s == m.ell - 1);
@@ -1040,24 +1195,28 @@ void FPOp::round_and_check(FixArray &m, FixArray &e, int s) {
   return;
 }
 
-FPArray FPOp::flip_sign(const FPArray &x) {
+FPArray FPOp::flip_sign(const FPArray &x)
+{
   BoolArray x_s, x_z;
   FixArray x_m, x_e;
   tie(x_s, x_z, x_m, x_e) = get_components(x);
   BoolArray not_x_s = bool_op->NOT(x_s);
   FPArray neg_x = this->input(x.party, x.size, not_x_s.data, x_z.data,
-          x_m.data, x_e.data, x.m_bits, x.e_bits);
+                              x_m.data, x_e.data, x.m_bits, x.e_bits);
   return neg_x;
 }
 
 FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
-                  bool compare_and_swap, bool check_bounds, int output_m_bits) {
+                  bool compare_and_swap, bool check_bounds, int output_m_bits)
+{
   assert(x.party != PUBLIC && y.party != PUBLIC);
   assert(x.size == y.size);
   assert(x.m_bits == y.m_bits);
   assert(x.e_bits == y.e_bits);
-  if (output_m_bits == -1) output_m_bits = x.m_bits;
-  if (cheap_variant) assert(x.m_bits == output_m_bits);
+  if (output_m_bits == -1)
+    output_m_bits = x.m_bits;
+  if (cheap_variant)
+    assert(x.m_bits == output_m_bits);
 
   BoolArray x_s, x_z;
   FixArray x_m, x_e;
@@ -1074,7 +1233,8 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
   FPArray a = x;
   FPArray b = y;
   FixArray e_diff = fix->sub(x_e, y_e);
-  if (compare_and_swap) {
+  if (compare_and_swap)
+  {
     /* FixArray x_em = fix->extend(x_m, x_m.ell + x_e.ell - 1, all_1.data); */
     FixArray x_em = fix->extend(x_m, x_m.ell + x_e.ell - 1, msb_x_m.data);
     x_e.signed_ = false;
@@ -1104,10 +1264,13 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
 
   BoolArray msb_a_m = bool_op->NOT(a_z);
   BoolArray msb_b_m = bool_op->NOT(b_z);
-  if (!cheap_variant) {
+  if (!cheap_variant)
+  {
     a_m = fix->extend(a_m, 2 * x.m_bits + 3, msb_a_m.data);
     b_m = fix->extend(b_m, 2 * x.m_bits + 3, msb_b_m.data);
-  } else {
+  }
+  else
+  {
     a_m = fix->extend(a_m, x.m_bits + 2, msb_a_m.data);
     b_m = fix->extend(b_m, x.m_bits + 2, msb_b_m.data);
   }
@@ -1118,10 +1281,13 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
   FixArray ret_e_if = a_e;
 
   FixArray a_m_prime, b_m_prime;
-  if (cheap_variant) {
+  if (cheap_variant)
+  {
     a_m_prime = a_m;
     b_m_prime = fix->right_shift(b_m, e_diff, x.m_bits + 2, all_0.data);
-  } else {
+  }
+  else
+  {
     a_m_prime = fix->left_shift(a_m, e_diff, 2 * x.m_bits + 3, x.m_bits + 1);
     b_m_prime = b_m;
   }
@@ -1131,23 +1297,32 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
 
   FixArray ret_m = fix->if_else(cond, ret_m_if, ret_m_else);
   FixArray ret_e;
-  if (cheap_variant) {
+  if (cheap_variant)
+  {
     ret_e = a_e;
-  } else {
+  }
+  else
+  {
     ret_e = fix->if_else(cond, ret_e_if, ret_e_else);
   }
 
-  if (!cheap_variant) {
+  if (!cheap_variant)
+  {
     this->normalize(ret_m, ret_e, x.m_bits, 2 * x.m_bits + 2);
-  } else {
+  }
+  else
+  {
     this->normalize(ret_m, ret_e, x.m_bits);
   }
 
-  if (!cheap_variant) {
+  if (!cheap_variant)
+  {
     ret_m = fix->reduce(ret_m, 2 * x.m_bits + 2);
     // fp_op->round_and_check(ret_m, ret_e, x.m_bits + 1);
     fp_op->round_and_check(ret_m, ret_e, 2 * x.m_bits + 1 - output_m_bits);
-  } else {
+  }
+  else
+  {
     ret_m = fix->truncate_reduce(ret_m, 1);
   }
 
@@ -1155,12 +1330,13 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
   BoolArray ret_s = a_s;
 
   FPArray ret = this->input(this->party, x.size, ret_s.data, ret_z.data,
-          ret_m.data, ret_e.data, output_m_bits, x.e_bits);
+                            ret_m.data, ret_e.data, output_m_bits, x.e_bits);
 
   // ret = this->if_else(x_z, y, ret);
   // ret = this->if_else(y_z, x, ret);
 
-  if (check_bounds) {
+  if (check_bounds)
+  {
     ret = this->check_bounds(ret);
   }
 
@@ -1168,7 +1344,8 @@ FPArray FPOp::add(const FPArray &x, const FPArray &y, bool cheap_variant,
 }
 
 FPArray FPOp::sub(const FPArray &x, const FPArray &y, bool cheap_variant,
-                  bool compare_and_swap, bool check_bounds) {
+                  bool compare_and_swap, bool check_bounds)
+{
   assert(x.party != PUBLIC && y.party != PUBLIC);
   assert(x.size == y.size);
   assert(x.m_bits == y.m_bits);
@@ -1178,12 +1355,14 @@ FPArray FPOp::sub(const FPArray &x, const FPArray &y, bool cheap_variant,
 }
 
 vector<FixArray> quotient_mantissa(FixOp *fix, const vector<FixArray> &m1, const FixArray &m2,
-                           bool cheap_variant) {
+                                   bool cheap_variant)
+{
   assert(m1[0].party != PUBLIC && m2.party != PUBLIC);
   assert(m1[0].size == m2.size);
   assert(m1[0].ell == (m2.ell + 2));
   int N = m1.size();
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     assert(m1[0].party == m1[i].party);
     assert(m1[0].size == m1[i].size);
     assert(m1[0].ell == m1[i].ell);
@@ -1201,13 +1380,15 @@ vector<FixArray> quotient_mantissa(FixOp *fix, const vector<FixArray> &m1, const
   int k = 1 << p;
   vector<uint64_t> spec_vec_r(1 << p);
   int32_t scale_curr = p + 1;
-  for (int i = 0; i < (1 << p); i++) {
+  for (int i = 0; i < (1 << p); i++)
+  {
     double u = (1.0 + (double(i) / double(k)));
     double Y = 1.0 / u;
     spec_vec_r[i] = (Y * (1ULL << scale_curr));
   }
   FixArray r = fix->LUT(spec_vec_r, idx, false, scale_curr + 2, scale_curr, p);
-  for (int i = 1; i <= num_iter; i++) {
+  for (int i = 1; i <= num_iter; i++)
+  {
     int32_t scale_next = (1 << i) * (p - 1) + 3;
     FixArray m2r =
         fix->mul(m2, r, scale_curr + m_bits + 2, all_1.data, all_0.data);
@@ -1223,29 +1404,35 @@ vector<FixArray> quotient_mantissa(FixOp *fix, const vector<FixArray> &m1, const
     scale_curr = scale_next;
   }
 
-  FixArray r_replicated(r.party, N*r.size, r.signed_, r.ell, r.s);
-  FixArray m2_replicated(m2.party, N*m2.size, m2.signed_, m2.ell, m2.s);
-  for (int i = 0; i < N; i++) {
-    memcpy(r_replicated.data + i*r.size, r.data, r.size * sizeof(uint64_t));
-    memcpy(m2_replicated.data + i*m2.size, m2.data, m2.size * sizeof(uint64_t));
+  FixArray r_replicated(r.party, N * r.size, r.signed_, r.ell, r.s);
+  FixArray m2_replicated(m2.party, N * m2.size, m2.signed_, m2.ell, m2.s);
+  for (int i = 0; i < N; i++)
+  {
+    memcpy(r_replicated.data + i * r.size, r.data, r.size * sizeof(uint64_t));
+    memcpy(m2_replicated.data + i * m2.size, m2.data, m2.size * sizeof(uint64_t));
   }
-  FixArray m2_ext_replicated(m2.party, N*m2.size, m2.signed_, m_bits+3, m2.s);
-  if (!cheap_variant) {
-      FixArray m2_ext = fix->extend(m2, m_bits + 3, all_1.data);
-      for (int i = 0; i < N; i++) {
-        memcpy(m2_ext_replicated.data + i*m2.size, m2_ext.data, m2.size * sizeof(uint64_t));
-      }
-      m2_ext_replicated.s = 2 * m_bits;
+  FixArray m2_ext_replicated(m2.party, N * m2.size, m2.signed_, m_bits + 3, m2.s);
+  if (!cheap_variant)
+  {
+    FixArray m2_ext = fix->extend(m2, m_bits + 3, all_1.data);
+    for (int i = 0; i < N; i++)
+    {
+      memcpy(m2_ext_replicated.data + i * m2.size, m2_ext.data, m2.size * sizeof(uint64_t));
+    }
+    m2_ext_replicated.s = 2 * m_bits;
   }
-  BoolArray all_0_flat = fix->bool_op->input(ALICE, N*m2.size, uint8_t(0));
-  BoolArray all_1_flat = fix->bool_op->input(ALICE, N*m2.size, 1);
+  BoolArray all_0_flat = fix->bool_op->input(ALICE, N * m2.size, uint8_t(0));
+  BoolArray all_1_flat = fix->bool_op->input(ALICE, N * m2.size, 1);
 
   FixArray q_flat;
   FixArray m1_flat = concat(m1);
-  if (cheap_variant) {
+  if (cheap_variant)
+  {
     q_flat = fix->mul(m1_flat, r_replicated, scale_curr + m_bits + 1, all_0_flat.data, all_0_flat.data);
     q_flat = fix->truncate_reduce(q_flat, scale_curr);
-  } else {
+  }
+  else
+  {
     q_flat = fix->mul(m1_flat, r_replicated, scale_curr + m_bits + 2, all_0_flat.data, all_0_flat.data);
     q_flat = fix->truncate_reduce(q_flat, scale_curr);
     FixArray m2q = fix->mul(m2_replicated, q_flat, m_bits + 3, all_1_flat.data, all_0_flat.data);
@@ -1261,22 +1448,25 @@ vector<FixArray> quotient_mantissa(FixOp *fix, const vector<FixArray> &m1, const
   q_flat = fix->reduce(q_flat, m_bits + 1);
 
   vector<FixArray> q(N);
-  for (int i = 0; i < N; i++) {
-    q[i] = q_flat.subset(i*m2.size, (i+1)*m2.size);
+  for (int i = 0; i < N; i++)
+  {
+    q[i] = q_flat.subset(i * m2.size, (i + 1) * m2.size);
   }
 
   return q;
 }
 
 vector<FPArray> FPOp::div(const vector<FPArray> &x, const FPArray &y, bool cheap_variant,
-                  bool check_bounds) {
+                          bool check_bounds)
+{
   assert(x[0].party != PUBLIC && y.party != PUBLIC);
   assert(x[0].size == y.size);
   assert(x[0].m_bits == y.m_bits);
   assert(x[0].e_bits == y.e_bits);
   int N = x.size();
   int n = x[0].size;
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     assert(x[0].party == x[i].party);
     assert(x[0].size == x[i].size);
     assert(x[0].m_bits == x[i].m_bits);
@@ -1295,15 +1485,16 @@ vector<FPArray> FPOp::div(const vector<FPArray> &x, const FPArray &y, bool cheap
 
   BoolArray msb_x_m_flat = bool_op->NOT(x_z_flat);
 
-  BoolArray y_s_replicated = BoolArray(y_s.party, N*y_s.size);
-  BoolArray y_z_replicated = BoolArray(y_z.party, N*y_z.size);
-  FixArray y_m_replicated = FixArray(y_m.party, N*y_m.size, y_m.signed_, y_m.ell, y_m.s);
-  FixArray y_e_replicated = FixArray(y_e.party, N*y_e.size, y_e.signed_, y_e.ell, y_e.s);
-  for (int i = 0; i < N; i++) {
-    memcpy(y_s_replicated.data + i*n, y_s.data, n*sizeof(uint8_t));
-    memcpy(y_z_replicated.data + i*n, y_z.data, n*sizeof(uint8_t));
-    memcpy(y_m_replicated.data + i*n, y_m.data, n*sizeof(uint64_t));
-    memcpy(y_e_replicated.data + i*n, y_e.data, n*sizeof(uint64_t));
+  BoolArray y_s_replicated = BoolArray(y_s.party, N * y_s.size);
+  BoolArray y_z_replicated = BoolArray(y_z.party, N * y_z.size);
+  FixArray y_m_replicated = FixArray(y_m.party, N * y_m.size, y_m.signed_, y_m.ell, y_m.s);
+  FixArray y_e_replicated = FixArray(y_e.party, N * y_e.size, y_e.signed_, y_e.ell, y_e.s);
+  for (int i = 0; i < N; i++)
+  {
+    memcpy(y_s_replicated.data + i * n, y_s.data, n * sizeof(uint8_t));
+    memcpy(y_z_replicated.data + i * n, y_z.data, n * sizeof(uint8_t));
+    memcpy(y_m_replicated.data + i * n, y_m.data, n * sizeof(uint64_t));
+    memcpy(y_e_replicated.data + i * n, y_e.data, n * sizeof(uint64_t));
   }
   FixArray ret_e_flat = fix->sub(x_e_flat, y_e_replicated);
   ret_e_flat = fix->add(ret_e_flat, y.e_bias());
@@ -1316,8 +1507,9 @@ vector<FPArray> FPOp::div(const vector<FPArray> &x, const FPArray &y, bool cheap
   ret_e_flat = fix->if_else(denormal_m_flat, ret_e_if_flat, ret_e_flat);
 
   vector<FixArray> x_m(N);
-  for (int i = 0; i < N; i++) {
-    x_m[i] = x_m_flat.subset(i*n, (i+1)*n);
+  for (int i = 0; i < N; i++)
+  {
+    x_m[i] = x_m_flat.subset(i * n, (i + 1) * n);
   }
 
   vector<FixArray> q = quotient_mantissa(fix, x_m, y_m, cheap_variant);
@@ -1327,21 +1519,24 @@ vector<FPArray> FPOp::div(const vector<FPArray> &x, const FPArray &y, bool cheap
   BoolArray ret_z_flat = x_z_flat;
 
   FPArray ret_flat = this->input(this->party, x_flat.size, ret_s_flat.data, ret_z_flat.data,
-          q_flat.data, ret_e_flat.data, y.m_bits, y.e_bits);
+                                 q_flat.data, ret_e_flat.data, y.m_bits, y.e_bits);
 
-  if (check_bounds) {
+  if (check_bounds)
+  {
     ret_flat = this->check_bounds(ret_flat);
   }
 
   vector<FPArray> ret(N);
-  for (int i = 0; i < N; i++) {
-    ret[i] = ret_flat.subset(i*n, (i+1)*n);
+  for (int i = 0; i < N; i++)
+  {
+    ret[i] = ret_flat.subset(i * n, (i + 1) * n);
   }
 
   return ret;
 }
 
-FixArray sqrt_mantissa(FixOp *fix, const BoolArray &oddExp, const FixArray &m) {
+FixArray sqrt_mantissa(FixOp *fix, const BoolArray &oddExp, const FixArray &m)
+{
   assert(m.party != PUBLIC && oddExp.party != PUBLIC);
   assert(oddExp.size == m.size);
   int m_bits = m.ell - 1;
@@ -1363,7 +1558,8 @@ FixArray sqrt_mantissa(FixOp *fix, const BoolArray &oddExp, const FixArray &m) {
   vector<uint64_t> spec_vec_r(1 << p);
   int m_msb_mask = k - 1;
   int32_t scale_curr = p + 1;
-  for (int i = 0; i < (1 << p); i++) {
+  for (int i = 0; i < (1 << p); i++)
+  {
     int exp_parity = i >> (p - 1);
     int m_msb = i & m_msb_mask;
     double u = (1.0 + (double(m_msb) / double(k))) * (1 << exp_parity);
@@ -1371,7 +1567,8 @@ FixArray sqrt_mantissa(FixOp *fix, const BoolArray &oddExp, const FixArray &m) {
     spec_vec_r[i] = (Y * (1ULL << scale_curr));
   }
   FixArray r = fix->LUT(spec_vec_r, idx, false, scale_curr + 2, scale_curr, p);
-  for (int i = 1; i <= num_iter; i++) {
+  for (int i = 1; i <= num_iter; i++)
+  {
     int32_t scale_next = (1 << i) * (p - 1) + 5;
     FixArray r_sq = fix->mul(r, r, 2 * scale_curr + 2, all_0.data, all_0.data);
     FixArray mr_sq = fix->mul(m_prime, r_sq, 2 * scale_curr + m_bits + 2,
@@ -1407,7 +1604,8 @@ FixArray sqrt_mantissa(FixOp *fix, const BoolArray &oddExp, const FixArray &m) {
   return fix->reduce(q, m_bits + 1);
 }
 
-FPArray FPOp::sqrt(const FPArray &x) {
+FPArray FPOp::sqrt(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   BoolArray all_0 = bool_op->input(ALICE, x.size, uint8_t(0));
   BoolArray all_1 = bool_op->input(ALICE, x.size, 1);
@@ -1434,12 +1632,13 @@ FPArray FPOp::sqrt(const FPArray &x) {
   ret_e = fix->if_else(ret_z, ret_e_if, ret_e);
 
   FPArray ret = this->input(x.party, x.size, all_0.data, ret_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                            ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-FPArray FPOp::int_to_float(const FixArray &x, int m_bits, int e_bits) {
+FPArray FPOp::int_to_float(const FixArray &x, int m_bits, int e_bits)
+{
   assert(x.party != PUBLIC);
   assert(x.s == 0);
   assert(x.ell <= (1 << (e_bits - 1)) - 1);
@@ -1447,11 +1646,14 @@ FPArray FPOp::int_to_float(const FixArray &x, int m_bits, int e_bits) {
   BoolArray all_0 = bool_op->input(ALICE, x.size, uint8_t(0));
   FixArray f;
   BoolArray msb_x, f_eq_0;
-  if (x.signed_ == true) {
+  if (x.signed_ == true)
+  {
     tie(msb_x, f_eq_0) = fix->MSB_and_zero_test(x);
     f = fix->reduce(fix->if_else(msb_x, fix->mul(x, -1), x), x.ell - 1);
     f.signed_ = false;
-  } else {
+  }
+  else
+  {
     f = x;
     msb_x = all_0;
     f_eq_0 = fix->EQ(f, 0);
@@ -1463,18 +1665,20 @@ FPArray FPOp::int_to_float(const FixArray &x, int m_bits, int e_bits) {
   round_and_check(delta_m, delta_e, f.ell - 1 - m_bits);
   delta_e = fix->if_else(f_eq_0, 0, delta_e);
   FPArray delta = this->input(x.party, x.size, msb_x.data, f_eq_0.data,
-          delta_m.data, delta_e.data, m_bits, e_bits);
+                              delta_m.data, delta_e.data, m_bits, e_bits);
 
   return delta;
 }
 
-FPArray FPOp::max(const vector<FPArray>& x) {
+FPArray FPOp::max(const vector<FPArray> &x)
+{
   int N = x.size();
   int n = x[0].size;
   int party = x[0].party;
   int m_bits = x[0].m_bits;
   int e_bits = x[0].e_bits;
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     assert(x[i].party == party);
     assert(x[i].m_bits == m_bits);
     assert(x[i].e_bits == e_bits);
@@ -1482,43 +1686,53 @@ FPArray FPOp::max(const vector<FPArray>& x) {
   }
 
   vector<FPArray> x_tr(n);
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++)
+  {
     x_tr[i] = FPArray(party, N, m_bits, e_bits);
-    for (int j = 0; j < N; j++) {
+    for (int j = 0; j < N; j++)
+    {
       x_tr[i].s[j] = x[j].s[i];
       x_tr[i].z[j] = x[j].z[i];
       x_tr[i].m[j] = x[j].m[i];
       x_tr[i].e[j] = x[j].e[i];
     }
   }
-  int num_cmps_old = n; int num_cmps_curr = n/2;
-  while(num_cmps_old > 1) {
+  int num_cmps_old = n;
+  int num_cmps_curr = n / 2;
+  while (num_cmps_old > 1)
+  {
     int odd_num_cmps = num_cmps_old & 1;
-    vector<FPArray> lhs(num_cmps_curr); vector<FPArray> rhs(num_cmps_curr);
-    for (int j = odd_num_cmps; j < num_cmps_old && j + 1 < num_cmps_old; j += 2) {
-      lhs[j/2] = x_tr[j]; rhs[j/2] = x_tr[j+1];
+    vector<FPArray> lhs(num_cmps_curr);
+    vector<FPArray> rhs(num_cmps_curr);
+    for (int j = odd_num_cmps; j < num_cmps_old && j + 1 < num_cmps_old; j += 2)
+    {
+      lhs[j / 2] = x_tr[j];
+      rhs[j / 2] = x_tr[j + 1];
     }
     FPArray lhs_concat = concat(lhs);
     FPArray rhs_concat = concat(rhs);
     BoolArray cond = fp_op->GT(lhs_concat, rhs_concat);
     lhs_concat = fp_op->if_else(cond, lhs_concat, rhs_concat);
-    for (int j = 0; j < num_cmps_old && j + 1 < num_cmps_old; j += 2) {
-      x_tr[odd_num_cmps + (j/2)] = lhs_concat.subset((j/2)*N, (j/2)*N + N);
+    for (int j = 0; j < num_cmps_old && j + 1 < num_cmps_old; j += 2)
+    {
+      x_tr[odd_num_cmps + (j / 2)] = lhs_concat.subset((j / 2) * N, (j / 2) * N + N);
     }
     num_cmps_old = num_cmps_curr + odd_num_cmps;
-    num_cmps_curr = num_cmps_old/2;
+    num_cmps_curr = num_cmps_old / 2;
   }
 
   return x_tr[0];
 }
 
-FPArray FPOp::treesum(const vector<FPArray> &x) {
+FPArray FPOp::treesum(const vector<FPArray> &x)
+{
   int N = x.size();
   int n = x[0].size;
   int party = x[0].party;
   int m_bits = x[0].m_bits;
   int e_bits = x[0].e_bits;
-  for (int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     assert(x[i].party == party);
     assert(x[i].m_bits == m_bits);
     assert(x[i].e_bits == e_bits);
@@ -1526,86 +1740,108 @@ FPArray FPOp::treesum(const vector<FPArray> &x) {
   }
 
   vector<FPArray> x_tr(n);
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++)
+  {
     x_tr[i] = FPArray(party, N, m_bits, e_bits);
-    for (int j = 0; j < N; j++) {
+    for (int j = 0; j < N; j++)
+    {
       x_tr[i].s[j] = x[j].s[i];
       x_tr[i].z[j] = x[j].z[i];
       x_tr[i].m[j] = x[j].m[i];
       x_tr[i].e[j] = x[j].e[i];
     }
   }
-  int num_cmps_old = n; int num_cmps_curr = n/2;
-  while(num_cmps_old > 1) {
+  int num_cmps_old = n;
+  int num_cmps_curr = n / 2;
+  while (num_cmps_old > 1)
+  {
     int odd_num_cmps = num_cmps_old & 1;
-    vector<FPArray> lhs(num_cmps_curr); vector<FPArray> rhs(num_cmps_curr);
-    for (int j = odd_num_cmps; j < num_cmps_old && j + 1 < num_cmps_old; j += 2) {
-      lhs[j/2] = x_tr[j]; rhs[j/2] = x_tr[j+1];
+    vector<FPArray> lhs(num_cmps_curr);
+    vector<FPArray> rhs(num_cmps_curr);
+    for (int j = odd_num_cmps; j < num_cmps_old && j + 1 < num_cmps_old; j += 2)
+    {
+      lhs[j / 2] = x_tr[j];
+      rhs[j / 2] = x_tr[j + 1];
     }
     FPArray lhs_concat = concat(lhs);
     FPArray rhs_concat = concat(rhs);
-    lhs_concat = this->add(lhs_concat, rhs_concat) ;
-    for (int j = 0; j < num_cmps_old && j + 1 < num_cmps_old; j += 2) {
-      x_tr[odd_num_cmps + (j/2)] = lhs_concat.subset((j/2)*N, (j/2)*N + N);
+    lhs_concat = this->add(lhs_concat, rhs_concat);
+    for (int j = 0; j < num_cmps_old && j + 1 < num_cmps_old; j += 2)
+    {
+      x_tr[odd_num_cmps + (j / 2)] = lhs_concat.subset((j / 2) * N, (j / 2) * N + N);
     }
     num_cmps_old = num_cmps_curr + odd_num_cmps;
-    num_cmps_curr = num_cmps_old/2;
+    num_cmps_curr = num_cmps_old / 2;
   }
 
   return x_tr[0];
 }
 
-vector<FPArray> enlist_products(FPOp* fp_op, const FPMatrix &x, const FPMatrix &y) {
-  assert(x.party != PUBLIC); assert(y.party != PUBLIC);
+vector<FPArray> enlist_products(FPOp *fp_op, const FPMatrix &x, const FPMatrix &y)
+{
+  assert(x.party != PUBLIC);
+  assert(y.party != PUBLIC);
   assert(x.dim2 == y.dim1);
-  assert(x.m_bits == y.m_bits); assert(x.e_bits == y.e_bits);
+  assert(x.m_bits == y.m_bits);
+  assert(x.e_bits == y.e_bits);
 
-  int N = x.dim1*y.dim2; int n = x.dim2;
-  int m_bits = x.m_bits; int e_bits = x.e_bits;
+  int N = x.dim1 * y.dim2;
+  int n = x.dim2;
+  int m_bits = x.m_bits;
+  int e_bits = x.e_bits;
 
-  vector<FPArray> prod_x(N), prod_y(N) ;
-  for (int i = 0 ; i < x.dim1 ; i++) {
-    for (int j = 0 ; j < y.dim2 ; j++) {
-      int ind = i*y.dim2 + j ;
-      prod_x[ind] = FPArray(fp_op->party, n, m_bits, e_bits) ; 
-      prod_y[ind] = FPArray(fp_op->party, n, m_bits, e_bits) ;
+  vector<FPArray> prod_x(N), prod_y(N);
+  for (int i = 0; i < x.dim1; i++)
+  {
+    for (int j = 0; j < y.dim2; j++)
+    {
+      int ind = i * y.dim2 + j;
+      prod_x[ind] = FPArray(fp_op->party, n, m_bits, e_bits);
+      prod_y[ind] = FPArray(fp_op->party, n, m_bits, e_bits);
 
-      for (int k = 0 ; k < n ; k++) {
-        prod_x[ind].s[k] = x.s[i*x.dim2+k] ;
-        prod_x[ind].z[k] = x.z[i*x.dim2+k] ;
-        prod_x[ind].m[k] = x.m[i*x.dim2+k] ;
-        prod_x[ind].e[k] = x.e[i*x.dim2+k] ;
+      for (int k = 0; k < n; k++)
+      {
+        prod_x[ind].s[k] = x.s[i * x.dim2 + k];
+        prod_x[ind].z[k] = x.z[i * x.dim2 + k];
+        prod_x[ind].m[k] = x.m[i * x.dim2 + k];
+        prod_x[ind].e[k] = x.e[i * x.dim2 + k];
 
-        prod_y[ind].s[k] = y.s[k*y.dim2+j] ;
-        prod_y[ind].z[k] = y.z[k*y.dim2+j] ;
-        prod_y[ind].m[k] = y.m[k*y.dim2+j] ;
-        prod_y[ind].e[k] = y.e[k*y.dim2+j] ;
+        prod_y[ind].s[k] = y.s[k * y.dim2 + j];
+        prod_y[ind].z[k] = y.z[k * y.dim2 + j];
+        prod_y[ind].m[k] = y.m[k * y.dim2 + j];
+        prod_y[ind].e[k] = y.e[k * y.dim2 + j];
       }
     }
   }
 
-  return fp_op->mul(prod_x, prod_y) ;
+  return fp_op->mul(prod_x, prod_y);
 }
 
-FPMatrix FPOp::matrix_multiplication(const FPMatrix &x, const FPMatrix &y) {
-  assert(x.party != PUBLIC); assert(y.party != PUBLIC);
+FPMatrix FPOp::matrix_multiplication(const FPMatrix &x, const FPMatrix &y)
+{
+  assert(x.party != PUBLIC);
+  assert(y.party != PUBLIC);
   assert(x.dim2 == y.dim1);
-  assert(x.m_bits == y.m_bits); assert(x.e_bits == y.e_bits);
+  assert(x.m_bits == y.m_bits);
+  assert(x.e_bits == y.e_bits);
 
-  int N = x.dim1*y.dim2; int n = x.dim2;
-  int m_bits = x.m_bits; int e_bits = x.e_bits;
-  
-  vector<FPArray> prod = enlist_products(this, x, y) ;
-  FPMatrix ret(this->party, x.dim1, y.dim2, m_bits, e_bits) ;
-  int rows_per_batch = ceil(CHUNK_SIZE/double(n));
-  for (int i = 0; i < N; i += rows_per_batch) {
+  int N = x.dim1 * y.dim2;
+  int n = x.dim2;
+  int m_bits = x.m_bits;
+  int e_bits = x.e_bits;
+
+  vector<FPArray> prod = enlist_products(this, x, y);
+  FPMatrix ret(this->party, x.dim1, y.dim2, m_bits, e_bits);
+  int rows_per_batch = ceil(CHUNK_SIZE / double(n));
+  for (int i = 0; i < N; i += rows_per_batch)
+  {
     int j = std::min(i + rows_per_batch, N);
     vector<FPArray> prod_i = {prod.begin() + i, prod.begin() + j};
     FPArray ret_i = treesum(prod_i);
-    memcpy(ret.s + i, ret_i.s, (j-i) * sizeof(uint8_t));
-    memcpy(ret.z + i, ret_i.z, (j-i) * sizeof(uint8_t));
-    memcpy(ret.m + i, ret_i.m, (j-i) * sizeof(uint64_t));
-    memcpy(ret.e + i, ret_i.e, (j-i) * sizeof(uint64_t));
+    memcpy(ret.s + i, ret_i.s, (j - i) * sizeof(uint8_t));
+    memcpy(ret.z + i, ret_i.z, (j - i) * sizeof(uint8_t));
+    memcpy(ret.m + i, ret_i.m, (j - i) * sizeof(uint64_t));
+    memcpy(ret.e + i, ret_i.e, (j - i) * sizeof(uint64_t));
   }
-  return ret ;
+  return ret;
 }

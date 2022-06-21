@@ -23,36 +23,40 @@ SOFTWARE.
 #include "FloatingPoint/fp-math-coeffs.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
+using namespace primihub::cryptflow2;
 
 #define FRAC_RANGE 9
 #define FP_INTMD_M_BITS 27
 #define FP_INTMD_E_BITS 8
-#define PI_DOUBLE                                                              \
+#define PI_DOUBLE \
   3.1415926535897932384626433832795028841971693993751058209749445923078164062
-#define LOG2E                                                                  \
+#define LOG2E \
   1.44269504088896340735992468100189213742664595415298593413544940693110921918118507988552662289350634449699
-#define LOGE2                                                                  \
+#define LOGE2 \
   0.693147180559945309417232121458176568075500134360255254120680009493393621969694715605863326996418687
-#define TWO_INV_SQRT_PI                                                        \
+#define TWO_INV_SQRT_PI \
   1.128379167095512573896158903121545171688101258657997713688171443421284936882
 
 FixArray get_idx_from_input(FixOp *fix, const FixArray &delta_m,
                             const FixArray &delta_e, int idx_m_bits,
-                            int idx_e_bits, int e_offset) {
+                            int idx_e_bits, int e_offset)
+{
   assert(delta_m.party != PUBLIC && delta_e.party != PUBLIC);
   assert(delta_m.size == delta_e.size);
   assert(idx_m_bits + idx_e_bits <= delta_e.ell);
   FixArray idx_hi =
       fix->reduce(fix->add(delta_e, e_offset), idx_m_bits + idx_e_bits);
   idx_hi.signed_ = false;
-  if (idx_m_bits == 0) {
+  if (idx_m_bits == 0)
+  {
     return idx_hi;
   }
   idx_hi = fix->mul(idx_hi, 1 << idx_m_bits, idx_m_bits + idx_e_bits);
   FixArray idx_lo = fix->truncate_reduce(delta_m, delta_m.ell - 1 - idx_m_bits);
   idx_lo = fix->sub(idx_lo, 1 << idx_m_bits);
-  if (idx_m_bits + idx_e_bits < idx_m_bits + 1) {
+  if (idx_m_bits + idx_e_bits < idx_m_bits + 1)
+  {
     idx_lo = fix->reduce(idx_lo, idx_m_bits + idx_e_bits);
   }
   idx_lo.s = 0;
@@ -62,7 +66,8 @@ FixArray get_idx_from_input(FixOp *fix, const FixArray &delta_m,
   return idx;
 }
 
-FPArray FPMath::tanpi(const FPArray &x) {
+FPArray FPMath::tanpi(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -75,7 +80,7 @@ FPArray FPMath::tanpi(const FPArray &x) {
   BoolArray all_0 = bool_op->input(ALICE, x.size, uint8_t(0));
   BoolArray all_1 = bool_op->input(ALICE, x.size, 1);
   FPArray pos_x = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m.data, x_e.data, x.m_bits, x.e_bits);
+                               x_m.data, x_e.data, x.m_bits, x.e_bits);
 
   // Range Reduction:
   // Input: [2^-14, 2^23)
@@ -86,7 +91,7 @@ FPArray FPMath::tanpi(const FPArray &x) {
   FixArray shift_amt = fix->add(x_e, FRAC_RANGE - x.e_bias());
   shift_amt.signed_ = false;
   FixArray N__ = fix->left_shift(x_m, shift_amt, x.m_bits + FRAC_RANGE + 1,
-              22 + FRAC_RANGE, all_1.data);
+                                 22 + FRAC_RANGE, all_1.data);
   N__.s += FRAC_RANGE;
   FixArray N_ = fix->reduce(N__, FRAC_RANGE + x.m_bits);
   // f1 = N_ >= 2^(FRAC_RANGE + x.m_bits - 1)
@@ -135,14 +140,14 @@ FPArray FPMath::tanpi(const FPArray &x) {
   // increasing precision of f
   f_m = fix->scale_up(f_m, FP_INTMD_M_BITS + 1, FP_INTMD_M_BITS);
   FPArray f = fp_op->input(x.party, x.size, f_s.data, f_z.data,
-          f_m.data, f_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                           f_m.data, f_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
 
   // Spline Evaluation on f
   BoolArray cond1 = fix->LT(f_e, -14 + f.e_bias());
 
   // if f < 2^-14, f_tan = pi * f
   FPArray pi = fp_op->input<double>(PUBLIC, x.size, PI_DOUBLE,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   FPArray f_tan_if = fp_op->mul(f, pi, true);
 
   // else spline evaluation on f
@@ -162,7 +167,7 @@ FPArray FPMath::tanpi(const FPArray &x) {
   FPArray prod = fp_op->mul(f_tan, N_tan, false);
   // secret-sharing one as fp_op add does not support PUBLIC FPArrays
   FPArray one = fp_op->input<float>(ALICE, x.size, 1.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   prod = fp_op->sub(one, prod, true, false, false);
 
   FPArray num = fp_op->if_else(f2, prod, sum);
@@ -174,7 +179,7 @@ FPArray FPMath::tanpi(const FPArray &x) {
   BoolArray cond2 = fix->GE(x_e, 23 + x.e_bias());
   // secret-sharing zero as fp_op if_else does not support PUBLIC FPArrays
   FPArray zero = fp_op->input<double>(ALICE, x.size, 0.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                      FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   z = fp_op->if_else(cond2, zero, z);
 
   // Case II
@@ -183,7 +188,7 @@ FPArray FPMath::tanpi(const FPArray &x) {
   FixArray x_m_prec = fix->scale_up(x_m, FP_INTMD_M_BITS + 1, FP_INTMD_M_BITS);
   FixArray x_e_prec = x_e;
   FPArray pos_x_prec = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                                    x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   FPArray pos_x_prec_pi = fp_op->mul(pos_x_prec, pi, true);
   z = fp_op->if_else(cond3, pos_x_prec_pi, z);
 
@@ -200,14 +205,15 @@ FPArray FPMath::tanpi(const FPArray &x) {
 
   BoolArray ret_s = bool_op->XOR(f1, x_s);
   FPArray ret = fp_op->input(x.party, x.size, ret_s.data, z_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                             ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   delete[] wrap_f_m_;
 
   return ret;
 }
 
-FPArray FPMath::exp2(const FPArray &x) {
+FPArray FPMath::exp2(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -242,13 +248,13 @@ FPArray FPMath::exp2(const FPArray &x) {
   delta_m = fix->truncate_reduce(delta_m, 24 + x.m_bits - FP_INTMD_M_BITS);
   delta_e = fix->if_else(f_eq_0, 0, delta_e);
   FPArray delta = fp_op->input(x.party, x.size, all_0.data, f_eq_0.data,
-          delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                               delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
 
   // if delta < 2^-14, mu = 1.0
   BoolArray cond = fix->LT(delta_e, -24 + delta.e_bias());
   // secret-sharing one as fp_op else_if does not support PUBLIC FPArrays
   FPArray one = fp_op->input<float>(ALICE, x.size, 1.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   FPArray mu_if = one;
 
   // else evaluate spline
@@ -278,7 +284,7 @@ FPArray FPMath::exp2(const FPArray &x) {
   FixArray gamma_m = fix->if_else(rnd_no_oflow, gamma_m_if, (1ULL << x.m_bits));
   gamma_e = fix->if_else(rnd_no_oflow, gamma_e, fix->add(gamma_e, 1));
   FPArray gamma = fp_op->input(x.party, x.size, all_0.data, all_0.data,
-          gamma_m.data, gamma_e.data, x.m_bits, x.e_bits);
+                               gamma_m.data, gamma_e.data, x.m_bits, x.e_bits);
 
   // Special Cases
   // Case I
@@ -306,7 +312,8 @@ FPArray FPMath::exp2(const FPArray &x) {
 }
 
 FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
-                 bool base_2 = false) {
+                 bool base_2 = false)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -332,7 +339,7 @@ FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   delta_e = fix->if_else(a, fix->sub(delta_e, 1), delta_e);
   delta_e = fix->if_else(f_eq_0, 0, delta_e);
   FPArray delta = fp_op->input(x.party, x.size, all_0.data, f_eq_0.data,
-          delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                               delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
 
   // if delta < 2^-5
   BoolArray cond1 = fix->LT(delta_e, -5 + delta.e_bias());
@@ -341,12 +348,15 @@ FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   FixArray idx_2 = get_idx_from_input(fix, delta_m_low_prec, delta_e, 4, 3,
                                       5 - delta.e_bias());
   vector<FPArray> theta_1, theta_2;
-  if (base_2) {
+  if (base_2)
+  {
     theta_1 = fp_op->GetCoeffs(log2_coeffs_1, log_knots_bits_1, idx_1, 19,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
     theta_2 = fp_op->GetCoeffs(log2_coeffs_2, log_knots_bits_2, idx_2, 35,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
-  } else {
+  }
+  else
+  {
     theta_1 = fp_op->GetCoeffs(ln_coeffs_1, log_knots_bits_1, idx_1, 19,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
     theta_2 = fp_op->GetCoeffs(ln_coeffs_2, log_knots_bits_2, idx_2, 35,
@@ -356,10 +366,12 @@ FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   assert(theta_1.size() == theta_2.size());
   assert(theta_1.size() == 8);
   vector<FPArray> theta(theta_1.size());
-  for (int i = 0; i < theta_1.size(); i++) {
+  for (int i = 0; i < theta_1.size(); i++)
+  {
     theta[i] = fp_op->if_else(cond1, theta_1[i], theta_2[i]);
   }
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++)
+  {
     theta[i] = fp_op->if_else(a, theta[i], theta[i + 4]);
   }
   FPArray mu = fp_op->mul(theta[3], delta, false);
@@ -372,22 +384,26 @@ FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   // else (delta == 0, mu = 0.0)
   // secret-sharing zero as fp_op if_else does not support PUBLIC FPArrays
   FPArray zero = fp_op->input<double>(ALICE, x.size, 0.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                      FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   mu = fp_op->if_else(f_eq_0, zero, mu);
 
   FixArray N = fix->reduce(x_e, 8);
   FPArray beta;
-  if (base_2) {
+  if (base_2)
+  {
     beta = fp_op->LUT(log2_int_to_float, N, 6, FP_INTMD_E_BITS);
-    for (int i = 0; i < x.size; i++) {
+    for (int i = 0; i < x.size; i++)
+    {
       beta.m[i] <<= (FP_INTMD_M_BITS - 6);
     }
     beta.m_bits = FP_INTMD_M_BITS;
-  } else {
+  }
+  else
+  {
     beta = fp_op->LUT(ln_int_to_float, N, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   }
   FPArray neg_mu = fp_op->input(mu.party, mu.size, all_1.data, mu.z,
-          mu.m, mu.e, mu.m_bits, mu.e_bits);
+                                mu.m, mu.e, mu.m_bits, mu.e_bits);
 
   // reduce precision to normal
   FPArray gamma =
@@ -404,23 +420,26 @@ FPArray log_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   FixArray ret_e = fix->if_else(rnd_no_oflow, gamma_e, fix->add(gamma_e, 1));
 
   FPArray ret = fp_op->input(x.party, x.size, gamma_s.data, gamma_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                             ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-FPArray FPMath::log2(const FPArray &x) {
+FPArray FPMath::log2(const FPArray &x)
+{
   return log_core(fp_op, fix, bool_op, x, true);
 }
 
-FPArray FPMath::ln(const FPArray &x) {
+FPArray FPMath::ln(const FPArray &x)
+{
   return log_core(fp_op, fix, bool_op, x, false);
 }
 
 // returns mu
 FPArray sinpi_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
                    const FixArray &m, FPArray &delta, BoolArray &a,
-                   bool cos_invocation = false) {
+                   bool cos_invocation = false)
+{
   assert(x.party != PUBLIC && m.party != PUBLIC);
   assert(x.size == m.size);
   BoolArray all_0 = bool_op->input(ALICE, m.size, uint8_t(0));
@@ -443,17 +462,20 @@ FPArray sinpi_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   delta_m = fix->truncate_reduce(delta_m, x.m_bits + 14 - FP_INTMD_M_BITS);
   delta_e = fix->if_else(f_eq_0, 0, delta_e);
   delta = fp_op->input(x.party, x.size, all_0.data, f_eq_0.data,
-          delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                       delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
 
   // if delta < 2^-5
   BoolArray cond1 = fix->LT(delta_e, -5 + delta.e_bias());
   FixArray idx_1 =
       get_idx_from_input(fix, delta_m, delta_e, 0, 4, 14 - delta.e_bias());
   vector<FPArray> theta_1;
-  if (cos_invocation) {
+  if (cos_invocation)
+  {
     theta_1 = fp_op->GetCoeffs(cos_coeffs_1, sin_knots_bits_1, idx_1, 9,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
-  } else {
+  }
+  else
+  {
     theta_1 = fp_op->GetCoeffs(sin_coeffs_1, sin_knots_bits_1, idx_1, 9,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   }
@@ -464,17 +486,21 @@ FPArray sinpi_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
       get_idx_from_input(fix, delta_m, delta_e, 5, 2, 5 - delta.e_bias());
   idx_2 = fix->if_else(e_eq_neg_1, (1ULL << 7) - 1, idx_2);
   vector<FPArray> theta_2;
-  if (cos_invocation) {
+  if (cos_invocation)
+  {
     theta_2 = fp_op->GetCoeffs(cos_coeffs_2, sin_knots_bits_2, idx_2, 34,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
-  } else {
+  }
+  else
+  {
     theta_2 = fp_op->GetCoeffs(sin_coeffs_2, sin_knots_bits_2, idx_2, 34,
                                FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   }
   assert(theta_1.size() == theta_2.size());
   assert(theta_1.size() == 3);
   vector<FPArray> theta(theta_1.size());
-  for (int i = 0; i < theta_1.size(); i++) {
+  for (int i = 0; i < theta_1.size(); i++)
+  {
     theta[i] = fp_op->if_else(cond1, theta_1[i], theta_2[i]);
   }
   FPArray delta_sq = fp_op->mul(delta, delta, false);
@@ -489,7 +515,8 @@ FPArray sinpi_core(FPOp *fp_op, FixOp *fix, BoolOp *bool_op, const FPArray &x,
   return mu;
 }
 
-FPArray FPMath::sinpi(const FPArray &x) {
+FPArray FPMath::sinpi(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -517,13 +544,13 @@ FPArray FPMath::sinpi(const FPArray &x) {
   // else (delta < 2^-14, mu = pi * delta) and Special Case (x < 2^-14)
   BoolArray cond2 = fix->LT(delta_e, -14 + delta.e_bias());
   FPArray pi = fp_op->input<double>(PUBLIC, x.size, PI_DOUBLE,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   BoolArray cond3 = fix->LT(x_e, x.e_bias() - 14);
   // higher precision x
   FixArray x_m_prec = fix->scale_up(x_m, FP_INTMD_M_BITS + 1, FP_INTMD_M_BITS);
   FixArray x_e_prec = x_e;
   FPArray pos_x_prec = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                                    x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   FPArray y = fp_op->if_else(cond3, pos_x_prec, delta);
   BoolArray cond_23 = bool_op->if_else(cond3, cond3, cond2);
   mu = fp_op->if_else(cond_23, fp_op->mul(y, pi, true), mu);
@@ -534,7 +561,7 @@ FPArray FPMath::sinpi(const FPArray &x) {
   BoolArray cond4 = fix->GE(x_e, 23 + x.e_bias());
   // secret-sharing zero as fp_op if_else does not support PUBLIC FPArrays
   FPArray zero = fp_op->input<double>(ALICE, x.size, 0.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                      FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   FPArray gamma = fp_op->if_else(cond4, zero, mu);
 
   // reduce precision to normal
@@ -551,12 +578,13 @@ FPArray FPMath::sinpi(const FPArray &x) {
   BoolArray ret_s = bool_op->XOR(a, x_s);
 
   FPArray ret = fp_op->input(x.party, x.size, ret_s.data, gamma_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                             ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-FPArray FPMath::cospi(const FPArray &x) {
+FPArray FPMath::cospi(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -585,16 +613,17 @@ FPArray FPMath::cospi(const FPArray &x) {
   // else (delta < 2^-14, mu = pi * delta)
   BoolArray cond2 = fix->LT(delta_e, -14 + delta.e_bias());
   FPArray pi = fp_op->input<double>(PUBLIC, x.size, PI_DOUBLE,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   mu = fp_op->if_else(cond2, fp_op->mul(delta, pi, true), mu);
-  for (int i = 0; i < x.size; i++) {
+  for (int i = 0; i < x.size; i++)
+  {
     mu.s[i] = a.data[i];
   }
 
   // Special Cases
   // secret-sharing one as fp_op add does not support PUBLIC FPArrays
   FPArray one = fp_op->input<float>(ALICE, x.size, 1.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
 
   // Case I (x >= 2^23)
   BoolArray x_e_eq_23, x_e_gt_23;
@@ -623,12 +652,13 @@ FPArray FPMath::cospi(const FPArray &x) {
   BoolArray ret_s = bool_op->XOR(case_1_s, gamma_s);
 
   FPArray ret = fp_op->input(x.party, x.size, ret_s.data, gamma_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                             ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-FPArray FPMath::exp(const FPArray &x) {
+FPArray FPMath::exp(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -642,7 +672,7 @@ FPArray FPMath::exp(const FPArray &x) {
   BoolArray all_1 = bool_op->input(ALICE, x.size, 1);
 
   FPArray pos_x = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m.data, x_e.data, x.m_bits, x.e_bits);
+                               x_m.data, x_e.data, x.m_bits, x.e_bits);
   BoolArray pos_x_ge_LOGE2 = fp_op->GE<double>(pos_x, double(LOGE2));
   FixArray shift_amt = fix->add(x_e, 1 - x.e_bias());
   shift_amt.signed_ = false;
@@ -670,13 +700,13 @@ FPArray FPMath::exp(const FPArray &x) {
   delta_m = fix->truncate_reduce(delta_m, 7);
   delta_e = fix->if_else(zero_f, 0, delta_e);
   FPArray delta = fp_op->input(x.party, x.size, all_0.data, zero_f.data,
-          delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                               delta_m.data, delta_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
 
   // if x < LOGE2, a = x_s, N = 0, delta = x
   FixArray x_m_prec = fix->scale_up(x_m, FP_INTMD_M_BITS + 1, FP_INTMD_M_BITS);
   FixArray x_e_prec = x_e;
   FPArray pos_x_prec = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                                    x_m_prec.data, x_e_prec.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   a = bool_op->if_else(pos_x_ge_LOGE2, a, x_s);
   N = fix->if_else(pos_x_ge_LOGE2, N, 0);
   delta = fp_op->if_else(pos_x_ge_LOGE2, delta, pos_x_prec);
@@ -687,7 +717,7 @@ FPArray FPMath::exp(const FPArray &x) {
   BoolArray cond = fix->LT(delta_e, -24 + delta.e_bias());
   // secret-sharing one as fp_op add does not support PUBLIC FPArrays
   FPArray one = fp_op->input<float>(ALICE, x.size, 1.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                    FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   FPArray mu_if = one;
 
   // else evaluate spline
@@ -709,10 +739,12 @@ FPArray FPMath::exp(const FPArray &x) {
   assert(theta_1.size() == theta_2.size());
   assert(theta_1.size() == 6);
   vector<FPArray> theta(theta_1.size());
-  for (int i = 0; i < theta_1.size(); i++) {
+  for (int i = 0; i < theta_1.size(); i++)
+  {
     theta[i] = fp_op->if_else(cond1, theta_1[i], theta_2[i]);
   }
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++)
+  {
     theta[i] = fp_op->if_else(a, theta[i + 3], theta[i]);
   }
   FPArray mu_else = fp_op->mul(theta[2], delta, false);
@@ -734,7 +766,7 @@ FPArray FPMath::exp(const FPArray &x) {
   FixArray gamma_m = fix->if_else(rnd_no_oflow, gamma_m_if, (1ULL << x.m_bits));
   gamma_e = fix->if_else(rnd_no_oflow, gamma_e, fix->add(gamma_e, 1));
   FPArray gamma = fp_op->input(x.party, x.size, all_0.data, all_0.data,
-          gamma_m.data, gamma_e.data, x.m_bits, x.e_bits);
+                               gamma_m.data, gamma_e.data, x.m_bits, x.e_bits);
 
   // Special Cases
   // Case I
@@ -758,7 +790,8 @@ FPArray FPMath::exp(const FPArray &x) {
   return gamma;
 }
 
-FPArray FPMath::erf(const FPArray &x) {
+FPArray FPMath::erf(const FPArray &x)
+{
   assert(x.party != PUBLIC);
   assert(x.m_bits == 23);
   assert(x.e_bits == 8);
@@ -772,7 +805,7 @@ FPArray FPMath::erf(const FPArray &x) {
 
   FixArray x_m_prec = fix->scale_up(x_m, FP_INTMD_M_BITS + 1, FP_INTMD_M_BITS);
   FPArray delta = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m_prec.data, x_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
+                               x_m_prec.data, x_e.data, FP_INTMD_M_BITS, FP_INTMD_E_BITS);
   BoolArray delta_s, delta_z;
   FixArray delta_m, delta_e;
   tie(delta_s, delta_z, delta_m, delta_e) = fp_op->get_components(delta);
@@ -797,7 +830,8 @@ FPArray FPMath::erf(const FPArray &x) {
   assert(theta_1.size() == theta_2.size());
   assert(theta_1.size() == 4);
   vector<FPArray> theta(theta_1.size());
-  for (int i = 0; i < theta_1.size(); i++) {
+  for (int i = 0; i < theta_1.size(); i++)
+  {
     theta[i] = fp_op->if_else(cond1, theta_1[i], theta_2[i]);
   }
   FPArray mu = fp_op->mul(theta[3], delta, false);
@@ -811,16 +845,16 @@ FPArray FPMath::erf(const FPArray &x) {
   // Special Case I (x < 2^-12)
   BoolArray cond2 = fix->LT(x_e, -12 + delta.e_bias());
   FPArray two_inv_sqrt_pi = fp_op->input<double>(PUBLIC, x.size, TWO_INV_SQRT_PI,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                                 FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   mu = fp_op->if_else(cond2, fp_op->mul(delta, two_inv_sqrt_pi, true), mu);
 
   // Case I (x >= 3.875)
   FPArray pos_x = fp_op->input(x.party, x.size, all_0.data, x_z.data,
-          x_m.data, x_e.data, x.m_bits, x.e_bits);
+                               x_m.data, x_e.data, x.m_bits, x.e_bits);
   BoolArray cond3 = fp_op->GE(pos_x, 3.875);
   // secret-sharing one as fp_op add does not support PUBLIC FPArrays
   FPArray one = fp_op->input<double>(ALICE, x.size, 1.0,
-          FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
+                                     FP_INTMD_M_BITS, FP_INTMD_E_BITS, false);
   FPArray gamma = fp_op->if_else(cond3, one, mu);
 
   // reduce precision to normal
@@ -837,31 +871,35 @@ FPArray FPMath::erf(const FPArray &x) {
   BoolArray ret_s = x_s;
 
   FPArray ret = fp_op->input(x.party, x.size, ret_s.data, gamma_z.data,
-          ret_m.data, ret_e.data, x.m_bits, x.e_bits);
+                             ret_m.data, ret_e.data, x.m_bits, x.e_bits);
 
   return ret;
 }
 
-vector<FPArray> FPMath::softmax(const vector<FPArray>& x) {
+vector<FPArray> FPMath::softmax(const vector<FPArray> &x)
+{
   int N = x.size();
   int n = x[0].size;
   int m_bits = x[0].m_bits;
   int e_bits = x[0].e_bits;
   assert(m_bits > 0);
-  for(int i = 1; i < N; i++) {
+  for (int i = 1; i < N; i++)
+  {
     assert(x[i].party != PUBLIC);
     assert(x[i].m_bits == m_bits);
     assert(x[i].e_bits == e_bits);
     assert(x[i].size == n);
   }
   FPArray x_max = fp_op->max(x);
-  FPArray x_max_flat(party, N*n, m_bits, e_bits);
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < n; j++) {
-      x_max_flat.s[i*n + j] = x_max.s[i];
-      x_max_flat.z[i*n + j] = x_max.z[i];
-      x_max_flat.m[i*n + j] = x_max.m[i];
-      x_max_flat.e[i*n + j] = x_max.e[i];
+  FPArray x_max_flat(party, N * n, m_bits, e_bits);
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
+      x_max_flat.s[i * n + j] = x_max.s[i];
+      x_max_flat.z[i * n + j] = x_max.z[i];
+      x_max_flat.m[i * n + j] = x_max.m[i];
+      x_max_flat.e[i * n + j] = x_max.e[i];
     }
   }
 
@@ -871,54 +909,65 @@ vector<FPArray> FPMath::softmax(const vector<FPArray>& x) {
   FPArray e_x_flat = this->exp(shifted_x_flat);
 
   vector<FPArray> e_x_tr(n);
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++)
+  {
     e_x_tr[i] = FPArray(party, N, m_bits, e_bits);
-    for (int j = 0; j < N; j++) {
-      e_x_tr[i].s[j] = e_x_flat.s[j*n + i];
-      e_x_tr[i].z[j] = e_x_flat.z[j*n + i];
-      e_x_tr[i].m[j] = e_x_flat.m[j*n + i];
-      e_x_tr[i].e[j] = e_x_flat.e[j*n + i];
+    for (int j = 0; j < N; j++)
+    {
+      e_x_tr[i].s[j] = e_x_flat.s[j * n + i];
+      e_x_tr[i].z[j] = e_x_flat.z[j * n + i];
+      e_x_tr[i].m[j] = e_x_flat.m[j * n + i];
+      e_x_tr[i].e[j] = e_x_flat.e[j * n + i];
     }
   }
   FPArray sum_e_x;
   {
     vector<FPArray> tmp = e_x_tr;
-    int num_adds_old = n; int num_adds_curr = n/2;
-    while(num_adds_old > 1) {
+    int num_adds_old = n;
+    int num_adds_curr = n / 2;
+    while (num_adds_old > 1)
+    {
       int odd_num_adds = num_adds_old & 1;
-      vector<FPArray> lhs(num_adds_curr); vector<FPArray> rhs(num_adds_curr);
-      for (int j = odd_num_adds; j < num_adds_old && j + 1 < num_adds_old; j += 2) {
-        lhs[j/2] = tmp[j]; rhs[j/2] = tmp[j+1];
+      vector<FPArray> lhs(num_adds_curr);
+      vector<FPArray> rhs(num_adds_curr);
+      for (int j = odd_num_adds; j < num_adds_old && j + 1 < num_adds_old; j += 2)
+      {
+        lhs[j / 2] = tmp[j];
+        rhs[j / 2] = tmp[j + 1];
       }
       FPArray lhs_concat = concat(lhs);
       FPArray rhs_concat = concat(rhs);
       lhs_concat = fp_op->add(lhs_concat, rhs_concat);
-      for (int j = 0; j < num_adds_old && j + 1 < num_adds_old; j += 2) {
-        tmp[odd_num_adds + (j/2)] = lhs_concat.subset((j/2)*N, (j/2)*N + N);
+      for (int j = 0; j < num_adds_old && j + 1 < num_adds_old; j += 2)
+      {
+        tmp[odd_num_adds + (j / 2)] = lhs_concat.subset((j / 2) * N, (j / 2) * N + N);
       }
       num_adds_old = num_adds_curr + odd_num_adds;
-      num_adds_curr = num_adds_old/2;
+      num_adds_curr = num_adds_old / 2;
     }
     sum_e_x = tmp[0];
   }
-  FPArray sum_e_x_replicated(party, N*n, m_bits, e_bits);
-  for(int i = 0; i < N; i++) {
-    for (int j = 0; j < n; j++) {
-      sum_e_x_replicated.s[i*n + j] = sum_e_x.s[i];
-      sum_e_x_replicated.z[i*n + j] = sum_e_x.z[i];
-      sum_e_x_replicated.m[i*n + j] = sum_e_x.m[i];
-      sum_e_x_replicated.e[i*n + j] = sum_e_x.e[i];
+  FPArray sum_e_x_replicated(party, N * n, m_bits, e_bits);
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
+      sum_e_x_replicated.s[i * n + j] = sum_e_x.s[i];
+      sum_e_x_replicated.z[i * n + j] = sum_e_x.z[i];
+      sum_e_x_replicated.m[i * n + j] = sum_e_x.m[i];
+      sum_e_x_replicated.e[i * n + j] = sum_e_x.e[i];
     }
   }
 
   FPArray ret_flat = fp_op->div(e_x_flat, sum_e_x_replicated);
   vector<FPArray> ret(N);
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N; i++)
+  {
     ret[i] = FPArray(party, n, m_bits, e_bits);
-    memcpy(ret[i].s, ret_flat.s + i*n, n*sizeof(uint8_t));
-    memcpy(ret[i].z, ret_flat.z + i*n, n*sizeof(uint8_t));
-    memcpy(ret[i].m, ret_flat.m + i*n, n*sizeof(uint64_t));
-    memcpy(ret[i].e, ret_flat.e + i*n, n*sizeof(uint64_t));
+    memcpy(ret[i].s, ret_flat.s + i * n, n * sizeof(uint8_t));
+    memcpy(ret[i].z, ret_flat.z + i * n, n * sizeof(uint8_t));
+    memcpy(ret[i].m, ret_flat.m + i * n, n * sizeof(uint64_t));
+    memcpy(ret[i].e, ret_flat.e + i * n, n * sizeof(uint64_t));
   }
   return ret;
 }

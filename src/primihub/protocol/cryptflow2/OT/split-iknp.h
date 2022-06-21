@@ -30,7 +30,7 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 #include "split-utils.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class SplitIKNP : public OT<SplitIKNP<IO>> {
 public:
   OTNP<IO> *base_ot;
@@ -1019,5 +1019,5 @@ public:
     cot_recv_post(data, b, length);
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // SPLIT_OT_IKNP_H__

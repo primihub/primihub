@@ -28,7 +28,7 @@ SOFTWARE.
 /** @addtogroup BP
   @{
   */
-namespace sci {
+namespace primihub::sci {
 
 inline void CCRF(block128 *y, block256 *k, int n) {
   AESNI_KEY aes[8];
@@ -53,6 +53,6 @@ inline void CCRF(block128 *y, block256 *k, int n) {
   }
 }
 
-} // namespace sci
+} // namespace primihub::sci
 /**@}*/
 #endif // CCRF_H__

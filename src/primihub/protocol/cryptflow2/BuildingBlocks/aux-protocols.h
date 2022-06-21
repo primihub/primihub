@@ -27,141 +27,145 @@ SOFTWARE.
 #include "src/primihub/protocol/cryptflow2/OT/emp-ot.h"
 #include "src/primihub/protocol/cryptflow2/GC/emp-sh2pc.h"
 
-class AuxProtocols {
-public:
-  int party;
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
-  MillionaireProtocol *mill;
-  MillionaireWithEquality *mill_and_eq;
+namespace primihub::cryptflow2
+{
 
-  AuxProtocols(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+    class AuxProtocols
+    {
+    public:
+        int party;
+        primihub::sci::IOPack *iopack;
+        primihub::sci::OTPack *otpack;
+        MillionaireProtocol *mill;
+        MillionaireWithEquality *mill_and_eq;
 
-  ~AuxProtocols();
+        AuxProtocols(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
-  void wrap_computation(
-      // input vector
-      uint64_t *x,
-      // wrap-bit of shares of x
-      uint8_t *y,
-      // size of input vector
-      int32_t size,
-      // bitwidth of x
-      int32_t bw_x);
+        ~AuxProtocols();
 
-  // y = sel * x
-  void multiplexer(
-      // selection bits
-      uint8_t *sel,
-      // input vector
-      uint64_t *x,
-      // output vector
-      uint64_t *y,
-      // size of vectors
-      int32_t size,
-      // bitwidth of x
-      int32_t bw_x,
-      // bitwidth of y
-      int32_t bw_y);
+        void wrap_computation(
+            // input vector
+            uint64_t *x,
+            // wrap-bit of shares of x
+            uint8_t *y,
+            // size of input vector
+            int32_t size,
+            // bitwidth of x
+            int32_t bw_x);
 
-  // Boolean to Arithmetic Shares
-  void B2A(
-      // input (boolean) vector
-      uint8_t *x,
-      // output vector
-      uint64_t *y,
-      // size of vector
-      int32_t size,
-      // bitwidth of y
-      int32_t bw_y);
+        // y = sel * x
+        void multiplexer(
+            // selection bits
+            uint8_t *sel,
+            // input vector
+            uint64_t *x,
+            // output vector
+            uint64_t *y,
+            // size of vectors
+            int32_t size,
+            // bitwidth of x
+            int32_t bw_x,
+            // bitwidth of y
+            int32_t bw_y);
 
-  template <typename T>
-  void lookup_table(
-      // table specification
-      T **spec,
-      // input vector
-      T *x,
-      // output vector
-      T *y,
-      // size of vector
-      int32_t size,
-      // bitwidth of input to LUT
-      int32_t bw_x,
-      // bitwidth of output of LUT
-      int32_t bw_y);
+        // Boolean to Arithmetic Shares
+        void B2A(
+            // input (boolean) vector
+            uint8_t *x,
+            // output vector
+            uint64_t *y,
+            // size of vector
+            int32_t size,
+            // bitwidth of y
+            int32_t bw_y);
 
-  // MSB computation
-  void MSB(
-      // input vector
-      uint64_t *x,
-      // shares of MSB(x)
-      uint8_t *msb_x,
-      // size of input vector
-      int32_t size,
-      // bitwidth of x
-      int32_t bw_x);
+        template <typename T>
+        void lookup_table(
+            // table specification
+            T **spec,
+            // input vector
+            T *x,
+            // output vector
+            T *y,
+            // size of vector
+            int32_t size,
+            // bitwidth of input to LUT
+            int32_t bw_x,
+            // bitwidth of output of LUT
+            int32_t bw_y);
 
-  // MSB to Wrap computation
-  void MSB_to_Wrap(
-      // input vector
-      uint64_t *x,
-      // shares of MSB(x)
-      uint8_t *msb_x,
-      // output shares of Wrap(x)
-      uint8_t *wrap_x,
-      // size of input vector
-      int32_t size,
-      // bitwidth of x
-      int32_t bw_x);
+        // MSB computation
+        void MSB(
+            // input vector
+            uint64_t *x,
+            // shares of MSB(x)
+            uint8_t *msb_x,
+            // size of input vector
+            int32_t size,
+            // bitwidth of x
+            int32_t bw_x);
 
-  // Bitwise AND
-  void AND(
-      // input A (boolean) vector
-      uint8_t *x,
-      // input B (boolean) vector
-      uint8_t *y,
-      // output vector
-      uint8_t *z,
-      // size of vector
-      int32_t size);
+        // MSB to Wrap computation
+        void MSB_to_Wrap(
+            // input vector
+            uint64_t *x,
+            // shares of MSB(x)
+            uint8_t *msb_x,
+            // output shares of Wrap(x)
+            uint8_t *wrap_x,
+            // size of input vector
+            int32_t size,
+            // bitwidth of x
+            int32_t bw_x);
 
-  void digit_decomposition(int32_t dim, uint64_t *x, uint64_t *x_digits,
-                           int32_t bw_x, int32_t digit_size);
+        // Bitwise AND
+        void AND(
+            // input A (boolean) vector
+            uint8_t *x,
+            // input B (boolean) vector
+            uint8_t *y,
+            // output vector
+            uint8_t *z,
+            // size of vector
+            int32_t size);
 
-  void digit_decomposition_sci(
-      int32_t dim, uint64_t *x, uint64_t *x_digits, int32_t bw_x,
-      int32_t digit_size,
-      // set true if the bitlength of all output digits is digit_size
-      // leave false, if the last digit is output over <= digit_size bits
-      bool all_digit_size = false);
+        void digit_decomposition(int32_t dim, uint64_t *x, uint64_t *x_digits,
+                                 int32_t bw_x, int32_t digit_size);
 
-  void reduce(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
-              int32_t bw_y);
+        void digit_decomposition_sci(
+            int32_t dim, uint64_t *x, uint64_t *x_digits, int32_t bw_x,
+            int32_t digit_size,
+            // set true if the bitlength of all output digits is digit_size
+            // leave false, if the last digit is output over <= digit_size bits
+            bool all_digit_size = false);
 
-  // Make x positive: pos_x = x * (1 - 2*MSB(x))
-  void make_positive(
-      // input vector
-      uint64_t *x,
-      // input (boolean) vector containing MSB(x)
-      uint8_t *msb_x,
-      // output vector
-      uint64_t *pos_x,
-      // size of vector
-      int32_t size);
+        void reduce(int32_t dim, uint64_t *x, uint64_t *y, int32_t bw_x,
+                    int32_t bw_y);
 
-  // Outputs index and not one-hot vector
-  void msnzb_sci(uint64_t *x, uint64_t *msnzb_index, int32_t bw_x, int32_t size,
-                 int32_t digit_size = 8);
+        // Make x positive: pos_x = x * (1 - 2*MSB(x))
+        void make_positive(
+            // input vector
+            uint64_t *x,
+            // input (boolean) vector containing MSB(x)
+            uint8_t *msb_x,
+            // output vector
+            uint64_t *pos_x,
+            // size of vector
+            int32_t size);
 
-  // Wrapper over msnzb_sci. Outputs one-hot vector
-  void msnzb_one_hot(uint64_t *x,
-                     // size: bw_x * size
-                     uint8_t *one_hot_vector, int32_t bw_x, int32_t size,
-                     int32_t digit_size = 8);
+        // Outputs index and not one-hot vector
+        void msnzb_sci(uint64_t *x, uint64_t *msnzb_index, int32_t bw_x, int32_t size,
+                       int32_t digit_size = 8);
 
-  void msnzb_GC(uint64_t *x,
-                // size: bw_x * size
-                uint8_t *one_hot_vector, int32_t bw_x, int32_t size);
-};
+        // Wrapper over msnzb_sci. Outputs one-hot vector
+        void msnzb_one_hot(uint64_t *x,
+                           // size: bw_x * size
+                           uint8_t *one_hot_vector, int32_t bw_x, int32_t size,
+                           int32_t digit_size = 8);
 
+        void msnzb_GC(uint64_t *x,
+                      // size: bw_x * size
+                      uint8_t *one_hot_vector, int32_t bw_x, int32_t size);
+    };
+}
 #endif

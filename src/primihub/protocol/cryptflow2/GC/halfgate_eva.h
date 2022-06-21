@@ -31,7 +31,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/mitccrh.h"
 #include "src/primihub/protocol/cryptflow2/utils/utils.h"
 #include <iostream>
-namespace sci {
+namespace primihub::sci {
 
 block128 halfgates_eval(block128 A, block128 B, const block128 *table,
                         MITCCRH<8> *mitccrh);
@@ -62,5 +62,5 @@ public:
   }
   size_t num_and() override { return mitccrh.gid; }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // HALFGATE_EVA_H__

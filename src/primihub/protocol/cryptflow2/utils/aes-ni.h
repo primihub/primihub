@@ -47,7 +47,7 @@
 #define MAXKB (256 / 8)
 #define MAXNR 14
 
-namespace sci {
+namespace primihub::sci {
 
 typedef unsigned char u8;
 
@@ -404,5 +404,5 @@ gid, uint8_t entry, uint8_t pos){
     lb.lo = _mm_xor_si128(counters[0], lb.lo);
 }
 */
-} // namespace sci
+} // namespace primihub::sci
 #endif

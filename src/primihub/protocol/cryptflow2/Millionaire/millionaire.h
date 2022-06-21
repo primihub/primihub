@@ -32,8 +32,8 @@ SOFTWARE.
 
 class MillionaireProtocol {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   int party;
   int l, r, log_alpha, beta, beta_pow;
@@ -41,7 +41,7 @@ public:
   int num_triples;
   uint8_t mask_beta, mask_r;
 
-  MillionaireProtocol(int party, sci::IOPack *iopack, sci::OTPack *otpack,
+  MillionaireProtocol(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack,
                       int bitlength = 32, int radix_base = MILL_PARAM) {
     this->party = party;
     this->iopack = iopack;
@@ -58,7 +58,7 @@ public:
 
     this->num_digits = ceil((double)l / beta);
     this->r = l % beta;
-    this->log_alpha = sci::bitlen(num_digits) - 1;
+    this->log_alpha = primihub::sci::bitlen(num_digits) - 1;
     this->log_num_digits = log_alpha + 1;
     this->num_triples_corr = 2 * num_digits - 2 - 2 * log_num_digits;
     this->num_triples_std = log_num_digits;
@@ -81,8 +81,8 @@ public:
     if (bitlength <= beta) {
       uint8_t N = 1 << bitlength;
       uint8_t mask = N - 1;
-      if (party == sci::ALICE) {
-        sci::PRG128 prg;
+      if (party == primihub::sci::ALICE) {
+        primihub::sci::PRG128 prg;
         prg.random_data(res, num_cmps * sizeof(uint8_t));
         uint8_t **leaf_messages = new uint8_t *[num_cmps];
         for (int i = 0; i < num_cmps; i++) {
@@ -153,7 +153,7 @@ public:
           digits[i * num_cmps + j] =
               (uint8_t)(data_ext[j] >> i * beta) & mask_beta;
 
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       uint8_t *
           *leaf_ot_messages; // (num_digits * num_cmps) X beta_pow (=2^beta)
       leaf_ot_messages = new uint8_t *[num_digits * num_cmps];
@@ -224,7 +224,7 @@ public:
       for (int i = 0; i < num_digits * num_cmps; i++)
         delete[] leaf_ot_messages[i];
       delete[] leaf_ot_messages;
-    } else // party = sci::BOB
+    } else // party = primihub::sci::BOB
     {
       // Perform Leaf OTs
 #ifdef WAN_EXEC
@@ -390,24 +390,24 @@ public:
 #pragma omp parallel num_threads(2)
       {
         if (omp_get_thread_num() == 1) {
-          if (party == sci::ALICE) {
+          if (party == primihub::sci::ALICE) {
             iopack->io_rev->recv_data(e + offset_std, size_std);
             iopack->io_rev->recv_data(e + offset_corr, size_corr);
             iopack->io_rev->recv_data(f + offset_std, size_std);
             iopack->io_rev->recv_data(f + offset_corr, size_corr);
-          } else { // party == sci::BOB
+          } else { // party == primihub::sci::BOB
             iopack->io_rev->send_data(ei + offset_std, size_std);
             iopack->io_rev->send_data(ei + offset_corr, size_corr);
             iopack->io_rev->send_data(fi + offset_std, size_std);
             iopack->io_rev->send_data(fi + offset_corr, size_corr);
           }
         } else {
-          if (party == sci::ALICE) {
+          if (party == primihub::sci::ALICE) {
             iopack->io->send_data(ei + offset_std, size_std);
             iopack->io->send_data(ei + offset_corr, size_corr);
             iopack->io->send_data(fi + offset_std, size_std);
             iopack->io->send_data(fi + offset_corr, size_corr);
-          } else { // party == sci::BOB
+          } else { // party == primihub::sci::BOB
             iopack->io->recv_data(e + offset_std, size_std);
             iopack->io->recv_data(e + offset_corr, size_corr);
             iopack->io->recv_data(f + offset_std, size_std);
@@ -532,8 +532,8 @@ public:
     for (int i = 0; i < num_ANDs; i += 8) {
       ei[i / 8] = ai[i / 8];
       fi[i / 8] = bi[i / 8];
-      ei[i / 8] ^= sci::bool_to_uint8(xi + i, 8);
-      fi[i / 8] ^= sci::bool_to_uint8(yi + i, 8);
+      ei[i / 8] ^= primihub::sci::bool_to_uint8(xi + i, 8);
+      fi[i / 8] ^= primihub::sci::bool_to_uint8(yi + i, 8);
     }
   }
   void AND_step_2(uint8_t *zi, // evaluates batch of 8 ANDs
@@ -542,14 +542,14 @@ public:
     assert(num_ANDs % 8 == 0);
     for (int i = 0; i < num_ANDs; i += 8) {
       uint8_t temp_z;
-      if (party == sci::ALICE)
+      if (party == primihub::sci::ALICE)
         temp_z = e[i / 8] & f[i / 8];
       else
         temp_z = 0;
       temp_z ^= f[i / 8] & ai[i / 8];
       temp_z ^= e[i / 8] & bi[i / 8];
       temp_z ^= ci[i / 8];
-      sci::uint8_to_bool(zi + i, temp_z, 8);
+      primihub::sci::uint8_to_bool(zi + i, temp_z, 8);
     }
   }
 };
