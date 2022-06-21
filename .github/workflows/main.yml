@@ -57,9 +57,9 @@ jobs:
         bazel test --config=linux protocol_aby3_test
         bazel test --config=linux network_test
         bazel test --config=linux prng_test
-        bazel test --config=linux algorithm_test
-        bazel test --config=linux util_test
-        bazel test --config=linux share_test
+        bazel test --config=linux logistic_test
+        bazel test --config=linux maxpool_test
+
   
 
   unit-test-on-macos_x86_64:
@@ -76,15 +76,12 @@ jobs:
     
     - name: get python ldflags
       run: python3.9-config --ldflags
-    - name: Install gmp
-      run: brew install gmp && brew list gmp
     - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos common_test
         bazel test --config=darwin_x86_64 --config=macos primitive_test
-        bazel test --config=darwin_x86_64 --config=macos algorithm_test
+        bazel test --config=darwin_x86_64 --config=macos logistic_test
         bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
-        bazel test --config=darwin_x86_64 --config=macos util_test
         bazel test --config=darwin_x86_64 --config=macos network_test
         bazel test --config=darwin_x86_64 --config=macos prng_test
         bazel test --config=darwin_x86_64 --config=macos share_test

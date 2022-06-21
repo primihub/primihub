@@ -439,7 +439,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-           "@eigen//:eigen",
+           ":eigen",
            ":common_lib",
            ":data_store_lib",
            ":dataset_service",
@@ -523,7 +523,6 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-
     linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
@@ -1204,9 +1203,6 @@ cc_library(
         "@com_github_gmp//:gmp",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_gmp//:gmp",
-    ],
 )
 
 cc_binary(
@@ -1303,7 +1299,7 @@ cc_test(
             ":network_test",
             ":protocol_aby3_test",
             ":util_test",
-            ":algorithm_test",
+            ":logistic_test",
             ":prng_test",
             ":share_test",
             ":paillier_test",
