@@ -18,9 +18,9 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/primihub_node0.yaml"
+      - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.10
     depends_on:
       - simple_bootstrap_node
@@ -31,7 +31,7 @@ services:
     hostname: node1_primihub
     container_name: node1_primihub
     ports:
-      - "8051:50050"
+      - "8051:50051"
       - "11120:12120"
       - "11121:12121"
     volumes:
@@ -44,9 +44,9 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050 --node_id=node1 --config=/app/primihub_node1.yaml"
+      - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.11
     depends_on:
       - simple_bootstrap_node
@@ -57,7 +57,7 @@ services:
     hostname: node2_primihub
     container_name: node2_primihub
     ports:
-      - "8052:50050"
+      - "8052:50052"
       - "12120:12120"
       - "12121:12121"
     volumes:
@@ -70,9 +70,9 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050 --node_id=node2 --config=/app/primihub_node2.yaml"
+      - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.12
     depends_on:
       - simple_bootstrap_node
@@ -86,11 +86,11 @@ services:
     entrypoint: 
       - "/app/simple-bootstrap-node"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.13
 
 networks:
-  testing_net:
+  primihub_net:
     driver: bridge
     ipam:
       config:

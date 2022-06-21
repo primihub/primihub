@@ -76,7 +76,7 @@ RUN cd primihub_python \
 ENV PYTHONPATH=/usr/lib/python3.8/site-packages/:$TARGET_PATH
 
 # gRPC server port
-EXPOSE 50050
+EXPOSE 50050 8888
 # Cryptool port
 EXPOSE 12120
 EXPOSE 12121
