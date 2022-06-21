@@ -860,7 +860,6 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-	      ":opt_paillier_c2py",
     ],
 )
 
