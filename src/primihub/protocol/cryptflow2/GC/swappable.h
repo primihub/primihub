@@ -28,7 +28,7 @@ Modified by Deevashwer Rathee
 #ifndef EMP_SWAPPABLE_H__
 #define EMP_SWAPPABLE_H__
 #include "src/primihub/protocol/cryptflow2/GC/bit.h"
-namespace sci {
+namespace primihub::sci {
 class Bit;
 template <typename T> class Swappable {
 public:
@@ -46,5 +46,5 @@ template <typename T> inline void swap(const Bit &swap, T &o1, T &o2) {
   o1 = o ^ o1;
   o2 = o ^ o2;
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif

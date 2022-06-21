@@ -25,7 +25,7 @@ Enquiries about further applications and development opportunities are welcome.
 #ifndef EMP_GROUP_OPENSSL_H__
 #define EMP_GROUP_OPENSSL_H__
 
-namespace emp {
+namespace primihub::emp {
 inline BigInt::BigInt() { n = BN_new(); }
 inline BigInt::BigInt(const BigInt &oth) {
   n = BN_new();
@@ -98,7 +98,7 @@ inline Point::Point(const Point &p) {
   point = EC_POINT_new(group->ec_group);
   int ret = EC_POINT_copy(point, p.point);
   if (ret == 0)
-    sci::error("ECC COPY");
+    primihub::sci::error("ECC COPY");
 }
 
 inline Point &Point::operator=(Point p) {
@@ -112,7 +112,7 @@ inline void Point::to_bin(unsigned char *buf, size_t buf_len) {
       EC_POINT_point2oct(group->ec_group, point, POINT_CONVERSION_UNCOMPRESSED,
                          buf, buf_len, group->bn_ctx);
   if (ret == 0)
-    sci::error("ECC TO_BIN");
+    primihub::sci::error("ECC TO_BIN");
 }
 
 inline size_t Point::size() {
@@ -120,7 +120,7 @@ inline size_t Point::size() {
       EC_POINT_point2oct(group->ec_group, point, POINT_CONVERSION_UNCOMPRESSED,
                          NULL, 0, group->bn_ctx);
   if (ret == 0)
-    sci::error("ECC SIZE_BIN");
+    primihub::sci::error("ECC SIZE_BIN");
   return ret;
 }
 
@@ -133,7 +133,7 @@ inline void Point::from_bin(Group *g, const unsigned char *buf,
   int ret =
       EC_POINT_oct2point(group->ec_group, point, buf, buf_len, group->bn_ctx);
   if (ret == 0)
-    sci::error("ECC FROM_BIN");
+    primihub::sci::error("ECC FROM_BIN");
 }
 
 inline Point Point::add(Point &rhs) {
@@ -141,7 +141,7 @@ inline Point Point::add(Point &rhs) {
   int res =
       EC_POINT_add(group->ec_group, ret.point, point, rhs.point, group->bn_ctx);
   if (res == 0)
-    sci::error("ECC ADD");
+    primihub::sci::error("ECC ADD");
   return ret;
 }
 
@@ -150,7 +150,7 @@ inline Point Point::mul(const BigInt &m) {
   int res =
       EC_POINT_mul(group->ec_group, ret.point, NULL, point, m.n, group->bn_ctx);
   if (res == 0)
-    sci::error("ECC MUL");
+    primihub::sci::error("ECC MUL");
   return ret;
 }
 
@@ -158,13 +158,13 @@ inline Point Point::inv() {
   Point ret(*this);
   int res = EC_POINT_invert(group->ec_group, ret.point, group->bn_ctx);
   if (res == 0)
-    sci::error("ECC INV");
+    primihub::sci::error("ECC INV");
   return ret;
 }
 inline bool Point::operator==(Point &rhs) {
   int ret = EC_POINT_cmp(group->ec_group, point, rhs.point, group->bn_ctx);
   if (ret == -1)
-    sci::error("ECC CMP");
+    primihub::sci::error("ECC CMP");
   return (ret == 0);
 }
 
@@ -201,7 +201,7 @@ inline Point Group::get_generator() {
   Point res(this);
   int ret = EC_POINT_copy(res.point, EC_GROUP_get0_generator(ec_group));
   if (ret == 0)
-    sci::error("ECC GEN");
+    primihub::sci::error("ECC GEN");
   return res;
 }
 
@@ -209,8 +209,8 @@ inline Point Group::mul_gen(const BigInt &m) {
   Point res(this);
   int ret = EC_POINT_mul(ec_group, res.point, m.n, NULL, NULL, bn_ctx);
   if (ret == 0)
-    sci::error("ECC GEN MUL");
+    primihub::sci::error("ECC GEN MUL");
   return res;
 }
-} // namespace emp
+} // namespace primihub::emp
 #endif

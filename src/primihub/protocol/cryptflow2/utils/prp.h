@@ -31,7 +31,7 @@ Enquiries about further applications and development opportunities are welcome.
 /** @addtogroup BP
   @{
  */
-namespace sci {
+namespace primihub::sci {
 
 class PRP {
 public:
@@ -108,6 +108,6 @@ public:
     }
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 /**@}*/
 #endif // PRP_H__

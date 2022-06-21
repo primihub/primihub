@@ -27,7 +27,7 @@ SOFTWARE.
 class ElemWiseProdField {
 public:
   int party;
-  sci::NetIO *io;
+  primihub::sci::NetIO *io;
   std::shared_ptr<seal::SEALContext> context;
   seal::Encryptor *encryptor;
   seal::Decryptor *decryptor;
@@ -37,7 +37,7 @@ public:
   seal::Ciphertext *zero;
   int slot_count;
 
-  ElemWiseProdField(int party, sci::NetIO *io);
+  ElemWiseProdField(int party, primihub::sci::NetIO *io);
 
   ~ElemWiseProdField();
 

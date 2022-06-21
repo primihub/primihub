@@ -29,7 +29,7 @@ Modified by Deevashwer Rathee
 #define EMP_SEMIHONEST_GEN_H__
 #include "src/primihub/protocol/cryptflow2/GC/sh_party.h"
 
-namespace sci {
+namespace primihub::sci {
 
 template <typename IO> class SemiHonestGen : public SemiHonestParty<IO> {
 public:
@@ -114,5 +114,5 @@ public:
       this->io->recv_data(b, length);
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // SEMIHONEST_GEN_H__

@@ -29,7 +29,7 @@ Modified by Deevashwer Rathee
 #define EMP_NUMBER_H__
 #include "src/primihub/protocol/cryptflow2/GC/bit.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename T, typename D>
 void cmp_swap(T *key, D *data, int i, int j, Bit acc) {
   Bit to_swap = ((key[i] > key[j]) == acc);
@@ -70,5 +70,5 @@ template <typename T, typename D = Bit>
 void sort(T *key, int size, D *data = nullptr, Bit acc = true) {
   bitonic_sort(key, data, 0, size, acc);
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif

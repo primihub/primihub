@@ -30,7 +30,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/sh_eva.h"
 #include "src/primihub/protocol/cryptflow2/GC/sh_gen.h"
 
-namespace sci {
+namespace primihub::sci {
 
 template <typename IO = NetIO>
 inline SemiHonestParty<IO> *setup_semi_honest(IO *io, int party,
@@ -47,5 +47,5 @@ inline SemiHonestParty<IO> *setup_semi_honest(IO *io, int party,
   static_cast<SemiHonestParty<IO> *>(prot_exec)->set_batch_size(batch_size);
   return (SemiHonestParty<IO> *)prot_exec;
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif

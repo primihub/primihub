@@ -30,7 +30,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/aes_opt.h"
 #include <stdio.h>
 
-namespace sci {
+namespace primihub::sci {
 
 /*
  * [REF] Implementation of "Better Concrete Security for Half-Gates Garbling (in
@@ -82,5 +82,5 @@ public:
       blks[i] = blks[i] ^ tmp[i];
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // MITCCRH_H__

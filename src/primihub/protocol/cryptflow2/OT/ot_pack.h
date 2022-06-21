@@ -26,7 +26,7 @@ SOFTWARE.
 
 #define KKOT_TYPES 8
 
-namespace sci {
+namespace primihub::sci {
 class OTPack {
 public:
   SplitKKOT<NetIO> *kkot[KKOT_TYPES];
@@ -120,5 +120,5 @@ public:
     return;
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // OT_PACK_H__

@@ -22,8 +22,9 @@ SOFTWARE.
 #include "library_fixed_uniform.h"
 #include "functionalities_uniform.h"
 #include "library_fixed_common.h"
+using namespace primihub::cryptflow2;
 #ifdef SCI_HE
-uint64_t prime_mod = sci::default_prime_mod.at(bitlength);
+uint64_t prime_mod = primihub::sci::default_prime_mod.at(bitlength);
 #elif SCI_OT
 uint64_t prime_mod = (bitlength == 64 ? 0ULL : 1ULL << bitlength);
 uint64_t moduloMask = prime_mod - 1;
@@ -33,12 +34,17 @@ uint64_t moduloMidPt = prime_mod / 2;
 #include "cleartext_library_fixed_uniform.h"
 #else
 #if defined(SCI_OT)
-inline uint64_t getRingElt(int64_t x) { return ((uint64_t)x) & moduloMask; }
+inline uint64_t getRingElt(int64_t x)
+{
+  return ((uint64_t)x) & moduloMask;
+}
 #else
-uint64_t getRingElt(int64_t x) {
+uint64_t getRingElt(int64_t x)
+{
   if (x > 0)
     return x % prime_mod;
-  else {
+  else
+  {
     int64_t y = -x;
     int64_t temp = prime_mod - y;
     int64_t temp1 = temp % ((int64_t)prime_mod);
@@ -51,8 +57,9 @@ uint64_t getRingElt(int64_t x) {
 
 using namespace std;
 
-void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
-              const intType *B, intType *C, bool modelIsA) {
+void primihub::cryptflow2::MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
+              const intType *B, intType *C, bool modelIsA)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -63,46 +70,60 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 
   // By default, the model is A and server/Alice has it
   // So, in the AB mult, party with A = server and party with B = client.
-  int partyWithAInAB_mul = sci::ALICE; 
-  int partyWithBInAB_mul = sci::BOB;
-  if (!modelIsA) {
+  int partyWithAInAB_mul = primihub::sci::ALICE;
+  int partyWithBInAB_mul = primihub::sci::BOB;
+  if (!modelIsA)
+  {
     // Model is B
-    partyWithAInAB_mul = sci::BOB;
-    partyWithBInAB_mul = sci::ALICE;
+    partyWithAInAB_mul = primihub::sci::BOB;
+    partyWithBInAB_mul = primihub::sci::ALICE;
   }
 
 #if defined(SCI_OT)
 #ifndef MULTITHREADED_MATMUL
 #ifdef USE_LINEAR_UNIFORM
-  if (partyWithAInAB_mul == sci::ALICE) {
-    if (party == sci::ALICE) {
+  if (partyWithAInAB_mul == primihub::sci::ALICE)
+  {
+    if (party == primihub::sci::ALICE)
+    {
       multUniform->funcOTSenderInputA(s1, s2, s3, A, C, iknpOT);
-    } else {
+    }
+    else
+    {
       multUniform->funcOTReceiverInputB(s1, s2, s3, B, C, iknpOT);
     }
-  } else {
-    if (party == sci::BOB) {
+  }
+  else
+  {
+    if (party == primihub::sci::BOB)
+    {
       multUniform->funcOTSenderInputA(s1, s2, s3, A, C, iknpOTRoleReversed);
-    } else {
+    }
+    else
+    {
       multUniform->funcOTReceiverInputB(s1, s2, s3, B, C, iknpOTRoleReversed);
     }
   }
-#else  // USE_LINEAR_UNIFORM
+#else // USE_LINEAR_UNIFORM
 #ifdef TRAINING
   mult->matmul_cross_terms(s1, s2, s3, A, B, C, bitlength, bitlength,
                            bitlength, true, MultMode::None);
 #else
-  if (modelIsA) {
+  if (modelIsA)
+  {
     mult->matmul_cross_terms(s1, s2, s3, A, B, C, bitlength, bitlength,
                              bitlength, true, MultMode::Alice_has_A);
-  } else {
+  }
+  else
+  {
     mult->matmul_cross_terms(s1, s2, s3, A, B, C, bitlength, bitlength,
                              bitlength, true, MultMode::Alice_has_B);
   }
 #endif
 #endif // USE_LINEAR_UNIFORM
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE)
+  {
     // Now irrespective of whether A is the model or B is the model and whether
     //	server holds A or B, server should add locally A*B.
     //
@@ -113,15 +134,20 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 #else  // USE_LINEAR_UNIFORM
     mult->matmul_cleartext(s1, s2, s3, A, B, CTemp, true);
 #endif // USE_LINEAR_UNIFORM
-    sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
     delete[] CTemp;
-  } else {
+  }
+  else
+  {
     // For minionn kind of hacky runs, switch this off
 #ifndef HACKY_RUN
-    if (modelIsA) {
+    if (modelIsA)
+    {
       for (int i = 0; i < s1 * s2; i++)
         assert(A[i] == 0);
-    } else {
+    }
+    else
+    {
       for (int i = 0; i < s1 * s2; i++)
         assert(B[i] == 0);
     }
@@ -130,46 +156,58 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 
 #else // MULTITHREADED_MATMUL is ON
   int required_num_threads = num_threads;
-  if (s2 < num_threads) {
+  if (s2 < num_threads)
+  {
     required_num_threads = s2;
   }
   intType *C_ans_arr[required_num_threads];
   std::thread matmulThreads[required_num_threads];
-  for (int i = 0; i < required_num_threads; i++) {
+  for (int i = 0; i < required_num_threads; i++)
+  {
     C_ans_arr[i] = new intType[s1 * s3];
     matmulThreads[i] = std::thread(funcMatmulThread, i, required_num_threads,
                                    s1, s2, s3, (intType *)A, (intType *)B,
                                    (intType *)C_ans_arr[i], partyWithAInAB_mul);
   }
-  for (int i = 0; i < required_num_threads; i++) {
+  for (int i = 0; i < required_num_threads; i++)
+  {
     matmulThreads[i].join();
   }
-  for (int i = 0; i < s1 * s3; i++) {
+  for (int i = 0; i < s1 * s3; i++)
+  {
     C[i] = 0;
   }
-  for (int i = 0; i < required_num_threads; i++) {
-    for (int j = 0; j < s1 * s3; j++) {
+  for (int i = 0; i < required_num_threads; i++)
+  {
+    for (int j = 0; j < s1 * s3; j++)
+    {
       C[j] += C_ans_arr[i][j];
     }
     delete[] C_ans_arr[i];
   }
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE)
+  {
     intType *CTemp = new intType[s1 * s3];
 #ifdef USE_LINEAR_UNIFORM
     multUniform->ideal_func(s1, s2, s3, A, B, CTemp);
 #else  // USE_LINEAR_UNIFORM
-    mult->matmul_cleartext(s1, s2, s3, (intType*)A, (intType*)B, CTemp, true);
+    mult->matmul_cleartext(s1, s2, s3, (intType *)A, (intType *)B, CTemp, true);
 #endif // USE_LINEAR_UNIFORM
-    sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
+    primihub::sci::elemWiseAdd<intType>(s1 * s3, C, CTemp, C);
     delete[] CTemp;
-  } else {
+  }
+  else
+  {
     // For minionn kind of hacky runs, switch this off
 #ifndef HACKY_RUN
-    if (modelIsA) {
+    if (modelIsA)
+    {
       for (int i = 0; i < s1 * s2; i++)
         assert(A[i] == 0);
-    } else {
+    }
+    else
+    {
       for (int i = 0; i < s1 * s2; i++)
         assert(B[i] == 0);
     }
@@ -179,7 +217,8 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
   intType moduloMask = (1ULL << bitlength) - 1;
   if (bitlength == 64)
     moduloMask = -1;
-  for (int i = 0; i < s1 * s3; i++) {
+  for (int i = 0; i < s1 * s3; i++)
+  {
     C[i] = C[i] & moduloMask;
   }
 
@@ -190,22 +229,28 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
   std::vector<std::vector<intType>> At(s2);
   std::vector<std::vector<intType>> Bt(s3);
   std::vector<std::vector<intType>> Ct(s3);
-  for (int i = 0; i < s2; i++) {
+  for (int i = 0; i < s2; i++)
+  {
     At[i].resize(s1);
-    for (int j = 0; j < s1; j++) {
+    for (int j = 0; j < s1; j++)
+    {
       At[i][j] = getRingElt(Arr2DIdxRowM(A, s1, s2, j, i));
     }
   }
-  for (int i = 0; i < s3; i++) {
+  for (int i = 0; i < s3; i++)
+  {
     Bt[i].resize(s2);
     Ct[i].resize(s1);
-    for (int j = 0; j < s2; j++) {
+    for (int j = 0; j < s2; j++)
+    {
       Bt[i][j] = getRingElt(Arr2DIdxRowM(B, s2, s3, j, i));
     }
   }
   he_fc->matrix_multiplication(s3, s2, s1, Bt, At, Ct);
-  for (int i = 0; i < s1; i++) {
-    for (int j = 0; j < s3; j++) {
+  for (int i = 0; i < s1; i++)
+  {
+    for (int j = 0; j < s3; j++)
+    {
       Arr2DIdxRowM(C, s1, s3, i, j) = getRingElt(Ct[j][i]);
     }
   }
@@ -223,17 +268,22 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < s1; i++) {
-    for (int j = 0; j < s3; j++) {
+  for (int i = 0; i < s1; i++)
+  {
+    for (int j = 0; j < s3; j++)
+    {
       assert(Arr2DIdxRowM(C, s1, s3, i, j) < prime_mod);
     }
   }
 #endif
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, A, s1 * s2);
     funcReconstruct2PCCons(nullptr, B, s2 * s3);
     funcReconstruct2PCCons(nullptr, C, s1 * s3);
-  } else {
+  }
+  else
+  {
     signedIntType *VA = new signedIntType[s1 * s2];
     funcReconstruct2PCCons(VA, A, s1 * s2);
     signedIntType *VB = new signedIntType[s2 * s3];
@@ -248,13 +298,17 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
     VBvec.resize(s2, std::vector<uint64_t>(s3, 0));
     VCvec.resize(s1, std::vector<uint64_t>(s3, 0));
 
-    for (int i = 0; i < s1; i++) {
-      for (int j = 0; j < s2; j++) {
+    for (int i = 0; i < s1; i++)
+    {
+      for (int j = 0; j < s2; j++)
+      {
         VAvec[i][j] = getRingElt(Arr2DIdxRowM(VA, s1, s2, i, j));
       }
     }
-    for (int i = 0; i < s2; i++) {
-      for (int j = 0; j < s3; j++) {
+    for (int i = 0; i < s2; i++)
+    {
+      for (int j = 0; j < s3; j++)
+      {
         VBvec[i][j] = getRingElt(Arr2DIdxRowM(VB, s2, s3, i, j));
       }
     }
@@ -262,9 +316,12 @@ void MatMul2D(int32_t s1, int32_t s2, int32_t s3, const intType *A,
     MatMul2D_pt(s1, s2, s3, VAvec, VBvec, VCvec, 0);
 
     bool pass = true;
-    for (int i = 0; i < s1; i++) {
-      for (int j = 0; j < s3; j++) {
-        if (Arr2DIdxRowM(VC, s1, s3, i, j) != getSignedVal(VCvec[i][j])) {
+    for (int i = 0; i < s1; i++)
+    {
+      for (int j = 0; j < s3; j++)
+      {
+        if (Arr2DIdxRowM(VC, s1, s3, i, j) != getSignedVal(VCvec[i][j]))
+        {
           pass = false;
         }
       }
@@ -285,7 +342,8 @@ static void Conv2D(int32_t N, int32_t H, int32_t W, int32_t CI, int32_t FH,
                    int32_t FW, int32_t CO, int32_t zPadHLeft,
                    int32_t zPadHRight, int32_t zPadWLeft, int32_t zPadWRight,
                    int32_t strideH, int32_t strideW, uint64_t *inputArr,
-                   uint64_t *filterArr, uint64_t *outArr) {
+                   uint64_t *filterArr, uint64_t *outArr)
+{
 
   int32_t reshapedFilterRows = CO;
 
@@ -320,13 +378,14 @@ static void Conv2D(int32_t N, int32_t H, int32_t W, int32_t CI, int32_t FH,
   ClearMemSecret2(reshapedFilterRows, reshapedIPCols, matmulOP);
 }
 
-void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
+void primihub::cryptflow2::Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
                    signedIntType CI, signedIntType FH, signedIntType FW,
                    signedIntType CO, signedIntType zPadHLeft,
                    signedIntType zPadHRight, signedIntType zPadWLeft,
                    signedIntType zPadWRight, signedIntType strideH,
                    signedIntType strideW, intType *inputArr, intType *filterArr,
-                   intType *outArr) {
+                   intType *outArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -365,20 +424,28 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
                           newH, std::vector<std::vector<intType>>(
                                     newW, std::vector<intType>(CO, 0))));
 
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < H; j++) {
-      for (int k = 0; k < W; k++) {
-        for (int p = 0; p < CI; p++) {
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < H; j++)
+    {
+      for (int k = 0; k < W; k++)
+      {
+        for (int p = 0; p < CI; p++)
+        {
           inputVec[i][j][k][p] =
               getRingElt(Arr4DIdxRowM(inputArr, N, H, W, CI, i, j, k, p));
         }
       }
     }
   }
-  for (int i = 0; i < FH; i++) {
-    for (int j = 0; j < FW; j++) {
-      for (int k = 0; k < CI; k++) {
-        for (int p = 0; p < CO; p++) {
+  for (int i = 0; i < FH; i++)
+  {
+    for (int j = 0; j < FW; j++)
+    {
+      for (int k = 0; k < CI; k++)
+      {
+        for (int p = 0; p < CO; p++)
+        {
           filterVec[i][j][k][p] =
               getRingElt(Arr4DIdxRowM(filterArr, FH, FW, CI, CO, i, j, k, p));
         }
@@ -390,10 +457,14 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
                        zPadWLeft, zPadWRight, strideH, strideW, inputVec,
                        filterVec, outputVec);
 
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < newH; j++) {
-      for (int k = 0; k < newW; k++) {
-        for (int p = 0; p < CO; p++) {
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < newH; j++)
+    {
+      for (int k = 0; k < newW; k++)
+      {
+        for (int p = 0; p < CO; p++)
+        {
           Arr4DIdxRowM(outArr, N, newH, newW, CO, i, j, k, p) =
               getRingElt(outputVec[i][j][k][p]);
         }
@@ -415,10 +486,14 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < newH; j++) {
-      for (int k = 0; k < newW; k++) {
-        for (int p = 0; p < CO; p++) {
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < newH; j++)
+    {
+      for (int k = 0; k < newW; k++)
+      {
+        for (int p = 0; p < CO; p++)
+        {
           assert(Arr4DIdxRowM(outArr, N, newH, newW, CO, i, j, k, p) <
                  prime_mod);
         }
@@ -426,11 +501,14 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
     }
   }
 #endif
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inputArr, N * H * W * CI);
     funcReconstruct2PCCons(nullptr, filterArr, FH * FW * CI * CO);
     funcReconstruct2PCCons(nullptr, outArr, N * newH * newW * CO);
-  } else {
+  }
+  else
+  {
     signedIntType *VinputArr = new signedIntType[N * H * W * CI];
     funcReconstruct2PCCons(VinputArr, inputArr, N * H * W * CI);
     signedIntType *VfilterArr = new signedIntType[FH * FW * CI * CO];
@@ -453,20 +531,28 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
                              newH, std::vector<std::vector<uint64_t>>(
                                        newW, std::vector<uint64_t>(CO, 0))));
 
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < H; j++) {
-        for (int k = 0; k < W; k++) {
-          for (int p = 0; p < CI; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < H; j++)
+      {
+        for (int k = 0; k < W; k++)
+        {
+          for (int p = 0; p < CI; p++)
+          {
             VinputVec[i][j][k][p] =
                 getRingElt(Arr4DIdxRowM(VinputArr, N, H, W, CI, i, j, k, p));
           }
         }
       }
     }
-    for (int i = 0; i < FH; i++) {
-      for (int j = 0; j < FW; j++) {
-        for (int k = 0; k < CI; k++) {
-          for (int p = 0; p < CO; p++) {
+    for (int i = 0; i < FH; i++)
+    {
+      for (int j = 0; j < FW; j++)
+      {
+        for (int k = 0; k < CI; k++)
+        {
+          for (int p = 0; p < CO; p++)
+          {
             VfilterVec[i][j][k][p] = getRingElt(
                 Arr4DIdxRowM(VfilterArr, FH, FW, CI, CO, i, j, k, p));
           }
@@ -479,12 +565,17 @@ void Conv2DWrapper(signedIntType N, signedIntType H, signedIntType W,
                      VoutputVec); // consSF = 0
 
     bool pass = true;
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < newH; j++) {
-        for (int k = 0; k < newW; k++) {
-          for (int p = 0; p < CO; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < newH; j++)
+      {
+        for (int k = 0; k < newW; k++)
+        {
+          for (int p = 0; p < CO; p++)
+          {
             if (Arr4DIdxRowM(VoutputArr, N, newH, newW, CO, i, j, k, p) !=
-                getSignedVal(VoutputVec[i][j][k][p])) {
+                getSignedVal(VoutputVec[i][j][k][p]))
+            {
               pass = false;
             }
           }
@@ -511,14 +602,15 @@ void Conv2DGroup(int32_t N, int32_t H, int32_t W, int32_t CI, int32_t FH,
                  intType *filterArr, intType *outArr);
 #endif
 
-void Conv2DGroupWrapper(signedIntType N, signedIntType H, signedIntType W,
+void primihub::cryptflow2::Conv2DGroupWrapper(signedIntType N, signedIntType H, signedIntType W,
                         signedIntType CI, signedIntType FH, signedIntType FW,
                         signedIntType CO, signedIntType zPadHLeft,
                         signedIntType zPadHRight, signedIntType zPadWLeft,
                         signedIntType zPadWRight, signedIntType strideH,
                         signedIntType strideW, signedIntType G,
                         intType *inputArr, intType *filterArr,
-                        intType *outArr) {
+                        intType *outArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -557,17 +649,18 @@ void Conv2DGroupWrapper(signedIntType N, signedIntType H, signedIntType W,
 }
 
 static void ConvTranspose2D(int32_t N, int32_t HPrime, int32_t WPrime,
-                               int32_t CI, int32_t FH, int32_t FW,
-                               int32_t CO, int32_t H, int32_t W,
-                               int32_t zPadTrHLeft, int32_t zPadTrHRight,
-                               int32_t zPadTrWLeft, int32_t zPadTrWRight,
-                               int32_t strideH, int32_t strideW,
-                               uint64_t* inArr, uint64_t* filterArr,
-                               uint64_t* outArr){
-                                  
+                            int32_t CI, int32_t FH, int32_t FW,
+                            int32_t CO, int32_t H, int32_t W,
+                            int32_t zPadTrHLeft, int32_t zPadTrHRight,
+                            int32_t zPadTrWLeft, int32_t zPadTrWRight,
+                            int32_t strideH, int32_t strideW,
+                            uint64_t *inArr, uint64_t *filterArr,
+                            uint64_t *outArr)
+{
+
   uint64_t reshapedFilterRows = CO;
 
-  uint64_t reshapedFilterCols =(( FH * FW ) * CI);
+  uint64_t reshapedFilterCols = ((FH * FW) * CI);
 
   uint64_t reshapedIPRows = ((FH * FW) * CI);
 
@@ -581,29 +674,30 @@ static void ConvTranspose2D(int32_t N, int32_t HPrime, int32_t WPrime,
   uint64_t *matmulOP = make_array<uint64_t>(reshapedFilterRows, reshapedIPCols);
   ConvTranspose2DReshapeFilter(FH, FW, CO, CI, filterArr, filterReshaped);
   ConvTranspose2DReshapeInput(N, HPrime, WPrime, CI, FH, FW, zPadTrHLeft,
-                                zPadTrHRight, zPadTrWLeft, zPadTrWRight,
-                                strideH, strideW, reshapedIPRows,
-                                reshapedIPCols, inArr, inputReshaped);
+                              zPadTrHRight, zPadTrWLeft, zPadTrWRight,
+                              strideH, strideW, reshapedIPRows,
+                              reshapedIPCols, inArr, inputReshaped);
   MatMul2D(reshapedFilterRows, reshapedFilterCols, reshapedIPCols,
-              filterReshaped, inputReshaped, matmulOP, 1);
+           filterReshaped, inputReshaped, matmulOP, 1);
   ConvTranspose2DReshapeMatMulOP(N, H, W, CO, matmulOP, outArr);
   ClearMemSecret2(reshapedFilterRows, reshapedFilterCols, filterReshaped);
   ClearMemSecret2(reshapedIPRows, reshapedIPCols, inputReshaped);
   ClearMemSecret2(reshapedFilterRows, reshapedIPCols, matmulOP);
 }
 
-void ConvTranspose2DWrapper(int32_t N, int32_t HPrime, int32_t WPrime,
-                               int32_t CI, int32_t FH, int32_t FW,
-                               int32_t CO, int32_t H, int32_t W,
-                               int32_t zPadTrHLeft, int32_t zPadTrHRight,
-                               int32_t zPadTrWLeft, int32_t zPadTrWRight,
-                               int32_t strideH, int32_t strideW,
-                               uint64_t* inArr, uint64_t* filterArr,
-                               uint64_t* outArr){
-  #ifdef LOG_LAYERWISE
-    INIT_ALL_IO_DATA_SENT;
-    INIT_TIMER;
-  #endif
+void primihub::cryptflow2::ConvTranspose2DWrapper(int32_t N, int32_t HPrime, int32_t WPrime,
+                            int32_t CI, int32_t FH, int32_t FW,
+                            int32_t CO, int32_t H, int32_t W,
+                            int32_t zPadTrHLeft, int32_t zPadTrHRight,
+                            int32_t zPadTrWLeft, int32_t zPadTrWRight,
+                            int32_t strideH, int32_t strideW,
+                            uint64_t *inArr, uint64_t *filterArr,
+                            uint64_t *outArr)
+{
+#ifdef LOG_LAYERWISE
+  INIT_ALL_IO_DATA_SENT;
+  INIT_TIMER;
+#endif
 
   static int ctr = 1;
   std::cout << "ConvTranspose2DCSF " << ctr << " called N=" << N << ", H=" << H
@@ -614,40 +708,41 @@ void ConvTranspose2DWrapper(int32_t N, int32_t HPrime, int32_t WPrime,
   signedIntType newH = (((H + (zPadTrHLeft + zPadTrHRight) - FH) / strideH) + 1);
   signedIntType newW = (((W + (zPadTrWLeft + zPadTrWRight) - FW) / strideW) + 1);
 
-  #ifdef SCI_OT
-    // If its a ring, then its a OT based -- use the default Conv2DCSF
-    // implementation that comes from the EzPC library
-    ConvTranspose2D(N, HPrime, WPrime, CI, FH, FW, CO, H, W,
-                   zPadTrHLeft, zPadTrHRight, zPadTrWLeft, zPadTrWRight,
-                   strideH, strideW, inArr, filterArr, outArr);
-  #endif
+#ifdef SCI_OT
+  // If its a ring, then its a OT based -- use the default Conv2DCSF
+  // implementation that comes from the EzPC library
+  ConvTranspose2D(N, HPrime, WPrime, CI, FH, FW, CO, H, W,
+                  zPadTrHLeft, zPadTrHRight, zPadTrWLeft, zPadTrWRight,
+                  strideH, strideW, inArr, filterArr, outArr);
+#endif
 
-  #ifdef SCI_HE
-      assert(false && "Conv Transpose2D not implemented in HE");
-  #endif
+#ifdef SCI_HE
+  assert(false && "Conv Transpose2D not implemented in HE");
+#endif
 
-
-  #ifdef LOG_LAYERWISE
-    auto temp = TIMER_TILL_NOW;
-    ConvTimeInMilliSec += temp;
-    std::cout << "Time in sec for current conv = " << (temp / 1000.0)
-              << std::endl;
-    uint64_t curComm;
-    FIND_ALL_IO_TILL_NOW(curComm);
-    ConvCommSent += curComm;
-  #endif
-
+#ifdef LOG_LAYERWISE
+  auto temp = TIMER_TILL_NOW;
+  ConvTimeInMilliSec += temp;
+  std::cout << "Time in sec for current conv = " << (temp / 1000.0)
+            << std::endl;
+  uint64_t curComm;
+  FIND_ALL_IO_TILL_NOW(curComm);
+  ConvCommSent += curComm;
+#endif
 }
 
-void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
-                                intType *multArrVec, intType *outputArr) {
+void primihub::cryptflow2::ElemWiseActModelVectorMult(int32_t size, intType *inArr,
+                                intType *multArrVec, intType *outputArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
 #endif
 
-  if (party == CLIENT) {
-    for (int i = 0; i < size; i++) {
+  if (party == CLIENT)
+  {
+    for (int i = 0; i < size; i++)
+    {
       assert((multArrVec[i] == 0) &&
              "The semantics of ElemWiseActModelVectorMult dictate multArrVec "
              "should be the model and client share should be 0 for it.");
@@ -663,12 +758,16 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
   std::thread dotProdThreads[num_threads];
   int chunk_size = ceil(size / double(num_threads));
   intType *inputArrPtr;
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     inputArrPtr = multArrVec;
-  } else {
+  }
+  else
+  {
     inputArrPtr = inArr;
   }
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < num_threads; i++)
+  {
     int offset = i * chunk_size;
     int curSize;
     curSize =
@@ -685,7 +784,8 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
                                     multArrVec + offset, inArr + offset,
                                     outputArr + offset, false);
   }
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     dotProdThreads[i].join();
   }
 #else
@@ -698,12 +798,17 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
 #endif
 #endif
 
-  if (party == SERVER) {
-    for (int i = 0; i < size; i++) {
+  if (party == SERVER)
+  {
+    for (int i = 0; i < size; i++)
+    {
       outputArr[i] += (inArr[i] * multArrVec[i]);
     }
-  } else {
-    for (int i = 0; i < size; i++) {
+  }
+  else
+  {
+    for (int i = 0; i < size; i++)
+    {
       assert(multArrVec[i] == 0 && "Client's share of model is non-zero.");
     }
   }
@@ -715,14 +820,16 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
   std::vector<uint64_t> tempOutArr(size);
   std::vector<uint64_t> tempMultArr(size);
 
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     tempInArr[i] = getRingElt(inArr[i]);
     tempMultArr[i] = getRingElt(multArrVec[i]);
   }
 
   he_prod->elemwise_product(size, tempInArr, tempMultArr, tempOutArr);
 
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     outputArr[i] = getRingElt(tempOutArr[i]);
   }
 #endif
@@ -737,15 +844,19 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     assert(outputArr[i] < prime_mod);
   }
 #endif
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, size);
     funcReconstruct2PCCons(nullptr, multArrVec, size);
     funcReconstruct2PCCons(nullptr, outputArr, size);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[size];
     funcReconstruct2PCCons(VinArr, inArr, size);
     signedIntType *VmultArr = new signedIntType[size];
@@ -757,7 +868,8 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
     std::vector<uint64_t> VmultVec(size);
     std::vector<uint64_t> VoutputVec(size);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       VinVec[i] = getRingElt(VinArr[i]);
       VmultVec[i] = getRingElt(VmultArr[i]);
     }
@@ -765,8 +877,10 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
     ElemWiseActModelVectorMult_pt(size, VinVec, VmultVec, VoutputVec);
 
     bool pass = true;
-    for (int i = 0; i < size; i++) {
-      if (VoutputArr[i] != getSignedVal(VoutputVec[i])) {
+    for (int i = 0; i < size; i++)
+    {
+      if (VoutputArr[i] != getSignedVal(VoutputVec[i]))
+      {
         pass = false;
       }
     }
@@ -784,7 +898,8 @@ void ElemWiseActModelVectorMult(int32_t size, intType *inArr,
 #endif
 }
 
-void ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr) {
+void primihub::cryptflow2::ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -807,10 +922,13 @@ void ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr) {
 #endif
 
 #ifdef VERIFY_LAYERWISE
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, s1 * s2);
     funcReconstruct2PCCons(nullptr, outArr, s1);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[s1 * s2];
     funcReconstruct2PCCons(VinArr, inArr, s1 * s2);
     signedIntType *VoutArr = new signedIntType[s1];
@@ -820,8 +938,10 @@ void ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr) {
     VinVec.resize(s1, std::vector<uint64_t>(s2, 0));
     std::vector<uint64_t> VoutVec(s1);
 
-    for (int i = 0; i < s1; i++) {
-      for (int j = 0; j < s2; j++) {
+    for (int i = 0; i < s1; i++)
+    {
+      for (int j = 0; j < s2; j++)
+      {
         VinVec[i][j] = getRingElt(Arr2DIdxRowM(VinArr, s1, s2, i, j));
       }
     }
@@ -829,8 +949,10 @@ void ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr) {
     ArgMax_pt(s1, s2, VinVec, VoutVec);
 
     bool pass = true;
-    for (int i = 0; i < s1; i++) {
-      if (VoutArr[i] != getSignedVal(VoutVec[i])) {
+    for (int i = 0; i < s1; i++)
+    {
+      if (VoutArr[i] != getSignedVal(VoutVec[i]))
+      {
         pass = false;
         std::cout << VoutArr[i] << "\t" << getSignedVal(VoutVec[i])
                   << std::endl;
@@ -855,88 +977,103 @@ void ArgMax(int32_t s1, int32_t s2, intType *inArr, intType *outArr) {
 //   delete[] maxIn ;
 // }
 
-void Min(int32_t size, intType *inArr, int32_t alpha, intType *outArr, int32_t sf, bool doTruncation) {
-  intType *tempIn = new intType[size] ;
-  intType *tempOut = new intType[size] ;
+void primihub::cryptflow2::Min(int32_t size, intType *inArr, int32_t alpha, intType *outArr, int32_t sf, bool doTruncation)
+{
+  intType *tempIn = new intType[size];
+  intType *tempOut = new intType[size];
 
-  intType affine ;
-  if (alpha < 0) {
-  	affine = ((intType)((int32_t)(-1)*alpha)) << sf ;
-  	affine = (intType)((-((signedIntType)1))*((signedIntType)affine)) ;
-  } else {
-  	affine = ((intType)alpha) << sf ;
+  intType affine;
+  if (alpha < 0)
+  {
+    affine = ((intType)((int32_t)(-1) * alpha)) << sf;
+    affine = (intType)((-((signedIntType)1)) * ((signedIntType)affine));
+  }
+  else
+  {
+    affine = ((intType)alpha) << sf;
   }
 
-  for (int i = 0 ; i < size ; i++) {
+  for (int i = 0; i < size; i++)
+  {
     if (party == SERVER)
-      tempIn[i] = affine - inArr[i] ;
+      tempIn[i] = affine - inArr[i];
     else
-      tempIn[i] = -inArr[i] ;
+      tempIn[i] = -inArr[i];
   }
-  
-  Relu(size, tempIn, tempOut, sf, doTruncation) ;
 
-  for (int i = 0 ; i < size ; i++) {
+  Relu(size, tempIn, tempOut, sf, doTruncation);
+
+  for (int i = 0; i < size; i++)
+  {
     if (party == SERVER)
-      outArr[i] = affine - tempOut[i] ;
+      outArr[i] = affine - tempOut[i];
     else
-      outArr[i] = -tempOut[i] ;
+      outArr[i] = -tempOut[i];
   }
 
-  delete[] tempIn ;
-  delete[] tempOut ;
+  delete[] tempIn;
+  delete[] tempOut;
 }
 
-void Max(int32_t size, intType *inArr, int32_t alpha, intType *outArr, int32_t sf, bool doTruncation) {
-  intType *tempIn = new intType[size] ;
-  intType *tempOut = new intType[size] ;
+void primihub::cryptflow2::Max(int32_t size, intType *inArr, int32_t alpha, intType *outArr, int32_t sf, bool doTruncation)
+{
+  intType *tempIn = new intType[size];
+  intType *tempOut = new intType[size];
 
-  intType affine ;
-  if (alpha < 0) {
-  	affine = ((intType)((int32_t)(-1)*alpha)) << sf ;
-  	affine = (intType)((-((signedIntType)1))*((signedIntType)affine)) ;
-  } else {
-  	affine = ((intType)alpha) << sf ;
+  intType affine;
+  if (alpha < 0)
+  {
+    affine = ((intType)((int32_t)(-1) * alpha)) << sf;
+    affine = (intType)((-((signedIntType)1)) * ((signedIntType)affine));
   }
-  	
-  for (int i = 0 ; i < size ; i++) {
-  	tempIn[i] = inArr[i] ;
-  	if (party == SERVER)
-  		tempIn[i] = tempIn[i] - affine ;
+  else
+  {
+    affine = ((intType)alpha) << sf;
   }
-  
-  Relu(size, tempIn, tempOut, sf, doTruncation) ;
 
-  for (int i = 0 ; i < size ; i++) {
-  	outArr[i] = tempOut[i] ;
+  for (int i = 0; i < size; i++)
+  {
+    tempIn[i] = inArr[i];
     if (party == SERVER)
-       outArr[i] += affine ; 
+      tempIn[i] = tempIn[i] - affine;
   }
 
-  delete[] tempIn ;
-  delete[] tempOut ;
-}
+  Relu(size, tempIn, tempOut, sf, doTruncation);
 
-void HardSigmoid(int32_t size, intType *inArr, intType *outArr, int32_t sf, bool doTruncation) {
-  intType *tmpIn = new intType[size] ;
-  intType *tmpIn1 = new intType[size] ;
-  for(int i=0;i<size;i++) {
+  for (int i = 0; i < size; i++)
+  {
+    outArr[i] = tempOut[i];
     if (party == SERVER)
-    	tmpIn[i] = inArr[i] + (intType)(3<<sf) ;
-    else 
-    	tmpIn[i] = inArr[i] ;
+      outArr[i] += affine;
   }
 
-  ElemWiseVectorPublicDiv(size,tmpIn,6,tmpIn1);
-  Min(size, tmpIn1, (int32_t)1, tmpIn1, sf, doTruncation) ;
-  Max(size, tmpIn1, (int32_t)0, outArr, sf, doTruncation) ;
-
-  delete[] tmpIn ;
-  delete[] tmpIn1 ;
+  delete[] tempIn;
+  delete[] tempOut;
 }
 
-void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
-          bool doTruncation) {
+void primihub::cryptflow2::HardSigmoid(int32_t size, intType *inArr, intType *outArr, int32_t sf, bool doTruncation)
+{
+  intType *tmpIn = new intType[size];
+  intType *tmpIn1 = new intType[size];
+  for (int i = 0; i < size; i++)
+  {
+    if (party == SERVER)
+      tmpIn[i] = inArr[i] + (intType)(3 << sf);
+    else
+      tmpIn[i] = inArr[i];
+  }
+
+  ElemWiseVectorPublicDiv(size, tmpIn, 6, tmpIn1);
+  Min(size, tmpIn1, (int32_t)1, tmpIn1, sf, doTruncation);
+  Max(size, tmpIn1, (int32_t)0, outArr, sf, doTruncation);
+
+  delete[] tmpIn;
+  delete[] tmpIn1;
+}
+
+void primihub::cryptflow2::Relu(int32_t size, intType *inArr, intType *outArr, int sf,
+          bool doTruncation)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -946,7 +1083,7 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
   std::cout << "Relu " << ctr << " called size=" << size << std::endl;
   ctr++;
 
-  intType moduloMask = sci::all1Mask(bitlength);
+  intType moduloMask = primihub::sci::all1Mask(bitlength);
   uint8_t *msbShare = new uint8_t[size];
   intType *tempOutp = new intType[size];
 
@@ -955,18 +1092,23 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
 #else
   std::thread relu_threads[num_threads];
   int chunk_size = size / num_threads;
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     int offset = i * chunk_size;
     int lnum_relu;
-    if (i == (num_threads - 1)) {
+    if (i == (num_threads - 1))
+    {
       lnum_relu = size - offset;
-    } else {
+    }
+    else
+    {
       lnum_relu = chunk_size;
     }
     relu_threads[i] = std::thread(funcReLUThread, i, tempOutp + offset,
                                   inArr + offset, lnum_relu, nullptr, false);
   }
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     relu_threads[i].join();
   }
 #endif
@@ -981,17 +1123,20 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
   ReluCommSent += curComm;
 #endif
 
-  if (doTruncation) {
+  if (doTruncation)
+  {
 #ifdef LOG_LAYERWISE
     INIT_ALL_IO_DATA_SENT;
     INIT_TIMER;
 #endif
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       msbShare[i] = 0; // After relu, all numbers are +ve
     }
 
 #ifdef SCI_OT
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       tempOutp[i] = tempOutp[i] & moduloMask;
     }
     funcTruncateTwoPowerRingWrapper(size, tempOutp, outArr, sf, msbShare, true);
@@ -1006,31 +1151,39 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
     FIND_ALL_IO_TILL_NOW(curComm);
     TruncationCommSent += curComm;
 #endif
-  } else {
-    for (int i = 0; i < size; i++) {
+  }
+  else
+  {
+    for (int i = 0; i < size; i++)
+    {
       outArr[i] = tempOutp[i];
     }
   }
 
 #ifdef SCI_OT
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     outArr[i] = outArr[i] & moduloMask;
   }
 #endif
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     assert(tempOutp[i] < prime_mod);
     assert(outArr[i] < prime_mod);
   }
 #endif
 
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, size);
     funcReconstruct2PCCons(nullptr, tempOutp, size);
     funcReconstruct2PCCons(nullptr, outArr, size);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[size];
     funcReconstruct2PCCons(VinArr, inArr, size);
     signedIntType *VtempOutpArr = new signedIntType[size];
@@ -1044,15 +1197,18 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
     std::vector<uint64_t> VoutVec;
     VoutVec.resize(size, 0);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       VinVec[i] = getRingElt(VinArr[i]);
     }
 
     Relu_pt(size, VinVec, VoutVec, 0, false); // sf = 0
 
     bool pass = true;
-    for (int i = 0; i < size; i++) {
-      if (VtempOutpArr[i] != getSignedVal(VoutVec[i])) {
+    for (int i = 0; i < size; i++)
+    {
+      if (VtempOutpArr[i] != getSignedVal(VoutVec[i]))
+      {
         pass = false;
       }
     }
@@ -1064,8 +1220,10 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
     ScaleDown_pt(size, VoutVec, sf);
 
     pass = true;
-    for (int i = 0; i < size; i++) {
-      if (VoutArr[i] != getSignedVal(VoutVec[i])) {
+    for (int i = 0; i < size; i++)
+    {
+      if (VoutArr[i] != getSignedVal(VoutVec[i]))
+      {
         pass = false;
       }
     }
@@ -1086,11 +1244,12 @@ void Relu(int32_t size, intType *inArr, intType *outArr, int sf,
   delete[] msbShare;
 }
 
-void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
+void primihub::cryptflow2::MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
              int32_t ksizeW, int32_t zPadHLeft, int32_t zPadHRight,
              int32_t zPadWLeft, int32_t zPadWRight, int32_t strideH,
              int32_t strideW, int32_t N1, int32_t imgH, int32_t imgW,
-             int32_t C1, intType *inArr, intType *outArr) {
+             int32_t C1, intType *inArr, intType *outArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -1102,7 +1261,7 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
             << ", ksizeW=" << ksizeW << std::endl;
   ctr++;
 
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   int rows = N * H * W * C;
   int cols = ksizeH * ksizeW;
 
@@ -1111,17 +1270,23 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
   intType *maxiIdx = new intType[rows];
 
   int rowIdx = 0;
-  for (int n = 0; n < N; n++) {
-    for (int c = 0; c < C; c++) {
+  for (int n = 0; n < N; n++)
+  {
+    for (int c = 0; c < C; c++)
+    {
       int32_t leftTopCornerH = -zPadHLeft;
       int32_t extremeRightBottomCornerH = imgH - 1 + zPadHRight;
-      while ((leftTopCornerH + ksizeH - 1) <= extremeRightBottomCornerH) {
+      while ((leftTopCornerH + ksizeH - 1) <= extremeRightBottomCornerH)
+      {
         int32_t leftTopCornerW = -zPadWLeft;
         int32_t extremeRightBottomCornerW = imgW - 1 + zPadWRight;
-        while ((leftTopCornerW + ksizeW - 1) <= extremeRightBottomCornerW) {
+        while ((leftTopCornerW + ksizeW - 1) <= extremeRightBottomCornerW)
+        {
 
-          for (int fh = 0; fh < ksizeH; fh++) {
-            for (int fw = 0; fw < ksizeW; fw++) {
+          for (int fh = 0; fh < ksizeH; fh++)
+          {
+            for (int fw = 0; fw < ksizeW; fw++)
+            {
               int32_t colIdx = fh * ksizeW + fw;
               int32_t finalIdx = rowIdx * (ksizeH * ksizeW) + colIdx;
 
@@ -1130,9 +1295,12 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 
               intType temp = 0;
               if ((((curPosH < 0) || (curPosH >= imgH)) ||
-                   ((curPosW < 0) || (curPosW >= imgW)))) {
+                   ((curPosW < 0) || (curPosW >= imgW))))
+              {
                 temp = 0;
-              } else {
+              }
+              else
+              {
                 temp = Arr4DIdxRowM(inArr, N, imgH, imgW, C, n, curPosH,
                                     curPosW, c);
               }
@@ -1154,27 +1322,36 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 #else
   std::thread maxpool_threads[num_threads];
   int chunk_size = rows / num_threads;
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     int offset = i * chunk_size;
     int lnum_rows;
-    if (i == (num_threads - 1)) {
+    if (i == (num_threads - 1))
+    {
       lnum_rows = rows - offset;
-    } else {
+    }
+    else
+    {
       lnum_rows = chunk_size;
     }
     maxpool_threads[i] =
         std::thread(funcMaxpoolThread, i, lnum_rows, cols,
                     reInpArr + offset * cols, maxi + offset, maxiIdx + offset);
   }
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     maxpool_threads[i].join();
   }
 #endif
 
-  for (int n = 0; n < N; n++) {
-    for (int c = 0; c < C; c++) {
-      for (int h = 0; h < H; h++) {
-        for (int w = 0; w < W; w++) {
+  for (int n = 0; n < N; n++)
+  {
+    for (int c = 0; c < C; c++)
+    {
+      for (int h = 0; h < H; h++)
+      {
+        for (int w = 0; w < W; w++)
+        {
           int iidx = n * C * H * W + c * H * W + h * W + w;
           Arr4DIdxRowM(outArr, N, H, W, C, n, h, w, c) = getRingElt(maxi[iidx]);
         }
@@ -1198,20 +1375,27 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < H; j++) {
-      for (int k = 0; k < W; k++) {
-        for (int p = 0; p < C; p++) {
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < H; j++)
+    {
+      for (int k = 0; k < W; k++)
+      {
+        for (int p = 0; p < C; p++)
+        {
           assert(Arr4DIdxRowM(outArr, N, H, W, C, i, j, k, p) < prime_mod);
         }
       }
     }
   }
 #endif
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, N * imgH * imgW * C);
     funcReconstruct2PCCons(nullptr, outArr, N * H * W * C);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[N * imgH * imgW * C];
     funcReconstruct2PCCons(VinArr, inArr, N * imgH * imgW * C);
     signedIntType *VoutArr = new signedIntType[N * H * W * C];
@@ -1227,10 +1411,14 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
                           H, std::vector<std::vector<uint64_t>>(
                                  W, std::vector<uint64_t>(C, 0))));
 
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < imgH; j++) {
-        for (int k = 0; k < imgW; k++) {
-          for (int p = 0; p < C; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < imgH; j++)
+      {
+        for (int k = 0; k < imgW; k++)
+        {
+          for (int p = 0; p < C; p++)
+          {
             VinVec[i][j][k][p] =
                 getRingElt(Arr4DIdxRowM(VinArr, N, imgH, imgW, C, i, j, k, p));
           }
@@ -1243,12 +1431,17 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
                VoutVec);
 
     bool pass = true;
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < H; j++) {
-        for (int k = 0; k < W; k++) {
-          for (int p = 0; p < C; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < H; j++)
+      {
+        for (int k = 0; k < W; k++)
+        {
+          for (int p = 0; p < C; p++)
+          {
             if (Arr4DIdxRowM(VoutArr, N, H, W, C, i, j, k, p) !=
-                getSignedVal(VoutVec[i][j][k][p])) {
+                getSignedVal(VoutVec[i][j][k][p]))
+            {
               pass = false;
               // std::cout << i << "\t" << j << "\t" << k << "\t" << p << "\t"
               // << Arr4DIdxRowM(VoutArr,N,H,W,C,i,j,k,p) << "\t" <<
@@ -1269,11 +1462,12 @@ void MaxPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 #endif
 }
 
-void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
+void primihub::cryptflow2::AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
              int32_t ksizeW, int32_t zPadHLeft, int32_t zPadHRight,
              int32_t zPadWLeft, int32_t zPadWRight, int32_t strideH,
              int32_t strideW, int32_t N1, int32_t imgH, int32_t imgW,
-             int32_t C1, intType *inArr, intType *outArr) {
+             int32_t C1, intType *inArr, intType *outArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -1285,32 +1479,41 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
             << ", ksizeW=" << ksizeW << std::endl;
   ctr++;
 
-  uint64_t moduloMask = sci::all1Mask(bitlength);
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
   int rows = N * H * W * C;
   intType *filterSum = new intType[rows];
   intType *filterAvg = new intType[rows];
 
   int rowIdx = 0;
-  for (int n = 0; n < N; n++) {
-    for (int c = 0; c < C; c++) {
+  for (int n = 0; n < N; n++)
+  {
+    for (int c = 0; c < C; c++)
+    {
       int32_t leftTopCornerH = -zPadHLeft;
       int32_t extremeRightBottomCornerH = imgH - 1 + zPadHRight;
-      while ((leftTopCornerH + ksizeH - 1) <= extremeRightBottomCornerH) {
+      while ((leftTopCornerH + ksizeH - 1) <= extremeRightBottomCornerH)
+      {
         int32_t leftTopCornerW = -zPadWLeft;
         int32_t extremeRightBottomCornerW = imgW - 1 + zPadWRight;
-        while ((leftTopCornerW + ksizeW - 1) <= extremeRightBottomCornerW) {
+        while ((leftTopCornerW + ksizeW - 1) <= extremeRightBottomCornerW)
+        {
 
           intType curFilterSum = 0;
-          for (int fh = 0; fh < ksizeH; fh++) {
-            for (int fw = 0; fw < ksizeW; fw++) {
+          for (int fh = 0; fh < ksizeH; fh++)
+          {
+            for (int fw = 0; fw < ksizeW; fw++)
+            {
               int32_t curPosH = leftTopCornerH + fh;
               int32_t curPosW = leftTopCornerW + fw;
 
               intType temp = 0;
               if ((((curPosH < 0) || (curPosH >= imgH)) ||
-                   ((curPosW < 0) || (curPosW >= imgW)))) {
+                   ((curPosW < 0) || (curPosW >= imgW))))
+              {
                 temp = 0;
-              } else {
+              }
+              else
+              {
                 temp = Arr4DIdxRowM(inArr, N, imgH, imgW, C, n, curPosH,
                                     curPosW, c);
               }
@@ -1318,7 +1521,7 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
               curFilterSum += temp;
 #else
               curFilterSum =
-                  sci::neg_mod(curFilterSum + temp, (int64_t)prime_mod);
+                  primihub::sci::neg_mod(curFilterSum + temp, (int64_t)prime_mod);
 #endif
             }
           }
@@ -1334,22 +1537,28 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
   }
 
 #ifdef SCI_OT
-  for (int i = 0; i < rows; i++) {
+  for (int i = 0; i < rows; i++)
+  {
     filterSum[i] = filterSum[i] & moduloMask;
   }
   funcAvgPoolTwoPowerRingWrapper(rows, filterSum, filterAvg, ksizeH * ksizeW);
 #else
-  for (int i = 0; i < rows; i++) {
-    filterSum[i] = sci::neg_mod(filterSum[i], (int64_t)prime_mod);
+  for (int i = 0; i < rows; i++)
+  {
+    filterSum[i] = primihub::sci::neg_mod(filterSum[i], (int64_t)prime_mod);
   }
   funcFieldDivWrapper<intType>(rows, filterSum, filterAvg,
                                ksizeH * ksizeW, nullptr);
 #endif
 
-  for (int n = 0; n < N; n++) {
-    for (int c = 0; c < C; c++) {
-      for (int h = 0; h < H; h++) {
-        for (int w = 0; w < W; w++) {
+  for (int n = 0; n < N; n++)
+  {
+    for (int c = 0; c < C; c++)
+    {
+      for (int h = 0; h < H; h++)
+      {
+        for (int w = 0; w < W; w++)
+        {
           int iidx = n * C * H * W + c * H * W + h * W + w;
           Arr4DIdxRowM(outArr, N, H, W, C, n, h, w, c) = filterAvg[iidx];
 #ifdef SCI_OT
@@ -1376,20 +1585,27 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < H; j++) {
-      for (int k = 0; k < W; k++) {
-        for (int p = 0; p < C; p++) {
+  for (int i = 0; i < N; i++)
+  {
+    for (int j = 0; j < H; j++)
+    {
+      for (int k = 0; k < W; k++)
+      {
+        for (int p = 0; p < C; p++)
+        {
           assert(Arr4DIdxRowM(outArr, N, H, W, C, i, j, k, p) < prime_mod);
         }
       }
     }
   }
 #endif
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, N * imgH * imgW * C);
     funcReconstruct2PCCons(nullptr, outArr, N * H * W * C);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[N * imgH * imgW * C];
     funcReconstruct2PCCons(VinArr, inArr, N * imgH * imgW * C);
     signedIntType *VoutArr = new signedIntType[N * H * W * C];
@@ -1405,10 +1621,14 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
                           H, std::vector<std::vector<uint64_t>>(
                                  W, std::vector<uint64_t>(C, 0))));
 
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < imgH; j++) {
-        for (int k = 0; k < imgW; k++) {
-          for (int p = 0; p < C; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < imgH; j++)
+      {
+        for (int k = 0; k < imgW; k++)
+        {
+          for (int p = 0; p < C; p++)
+          {
             VinVec[i][j][k][p] =
                 getRingElt(Arr4DIdxRowM(VinArr, N, imgH, imgW, C, i, j, k, p));
           }
@@ -1421,12 +1641,17 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
                VoutVec);
 
     bool pass = true;
-    for (int i = 0; i < N; i++) {
-      for (int j = 0; j < H; j++) {
-        for (int k = 0; k < W; k++) {
-          for (int p = 0; p < C; p++) {
+    for (int i = 0; i < N; i++)
+    {
+      for (int j = 0; j < H; j++)
+      {
+        for (int k = 0; k < W; k++)
+        {
+          for (int p = 0; p < C; p++)
+          {
             if (Arr4DIdxRowM(VoutArr, N, H, W, C, i, j, k, p) !=
-                getSignedVal(VoutVec[i][j][k][p])) {
+                getSignedVal(VoutVec[i][j][k][p]))
+            {
               pass = false;
             }
           }
@@ -1445,7 +1670,8 @@ void AvgPool(int32_t N, int32_t H, int32_t W, int32_t C, int32_t ksizeH,
 #endif
 }
 
-void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
+void primihub::cryptflow2::ScaleDown(int32_t size, intType *inArr, int32_t sf)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -1454,14 +1680,16 @@ void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
   intType *outp = new intType[size];
 
 #ifdef SCI_OT
-  uint64_t moduloMask = sci::all1Mask(bitlength);
-  for (int i = 0; i < size; i++) {
+  uint64_t moduloMask = primihub::sci::all1Mask(bitlength);
+  for (int i = 0; i < size; i++)
+  {
     inArr[i] = inArr[i] & moduloMask;
   }
   truncation->truncate(size, inArr, outp, sf, bitlength, true);
 #else
-  for (int i = 0; i < size; i++) {
-    inArr[i] = sci::neg_mod(inArr[i], (int64_t)prime_mod);
+  for (int i = 0; i < size; i++)
+  {
+    inArr[i] = primihub::sci::neg_mod(inArr[i], (int64_t)prime_mod);
   }
   funcFieldDivWrapper<intType>(size, inArr, outp, 1ULL << sf, nullptr);
 #endif
@@ -1476,15 +1704,19 @@ void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
 
 #ifdef VERIFY_LAYERWISE
 #ifdef SCI_HE
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     assert(outp[i] < prime_mod);
   }
 #endif
 
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, size);
     funcReconstruct2PCCons(nullptr, outp, size);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[size];
     funcReconstruct2PCCons(VinArr, inArr, size);
     signedIntType *VoutpArr = new signedIntType[size];
@@ -1493,15 +1725,18 @@ void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
     std::vector<uint64_t> VinVec;
     VinVec.resize(size, 0);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       VinVec[i] = getRingElt(VinArr[i]);
     }
 
     ScaleDown_pt(size, VinVec, sf);
 
     bool pass = true;
-    for (int i = 0; i < size; i++) {
-      if (VoutpArr[i] != getSignedVal(VinVec[i])) {
+    for (int i = 0; i < size; i++)
+    {
+      if (VoutpArr[i] != getSignedVal(VinVec[i]))
+      {
         pass = false;
       }
     }
@@ -1520,21 +1755,24 @@ void ScaleDown(int32_t size, intType *inArr, int32_t sf) {
   delete[] outp;
 }
 
-void ScaleUp(int32_t size, intType *arr, int32_t sf) {
-  for (int i = 0; i < size; i++) {
+void primihub::cryptflow2::ScaleUp(int32_t size, intType *arr, int32_t sf)
+{
+  for (int i = 0; i < size; i++)
+  {
 #ifdef SCI_OT
     arr[i] = (arr[i] << sf);
 #else
-    arr[i] = sci::neg_mod(arr[i] << sf, (int64_t)prime_mod);
+    arr[i] = primihub::sci::neg_mod(arr[i] << sf, (int64_t)prime_mod);
 #endif
   }
 }
 
-void StartComputation() {
+void primihub::cryptflow2::StartComputation()
+{
   assert(bitlength < 64 && bitlength > 0);
   assert(num_threads <= MAX_THREADS);
 #ifdef SCI_HE
-  prime_mod = sci::default_prime_mod.at(bitlength);
+  prime_mod = primihub::sci::default_prime_mod.at(bitlength);
 #elif SCI_OT
   prime_mod = (bitlength == 64 ? 0ULL : 1ULL << bitlength);
   moduloMask = prime_mod - 1;
@@ -1543,21 +1781,25 @@ void StartComputation() {
   std::cout << "bitlength: " << bitlength << std::endl;
   std::cout << "prime_mod: " << prime_mod << std::endl;
   checkIfUsingEigen();
-  for (int i = 0; i < num_threads; i++) {
-    iopackArr[i] = new sci::IOPack(party, port + i, address);
+  for (int i = 0; i < num_threads; i++)
+  {
+    iopackArr[i] = new primihub::sci::IOPack(party, port + i, address);
     ioArr[i] = iopackArr[i]->io;
-    otInstanceArr[i] = new sci::IKNP<sci::NetIO>(ioArr[i]);
-    prgInstanceArr[i] = new sci::PRG128();
-    kkotInstanceArr[i] = new sci::KKOT<sci::NetIO>(ioArr[i]);
+    otInstanceArr[i] = new primihub::sci::IKNP<primihub::sci::NetIO>(ioArr[i]);
+    prgInstanceArr[i] = new primihub::sci::PRG128();
+    kkotInstanceArr[i] = new primihub::sci::KKOT<primihub::sci::NetIO>(ioArr[i]);
 #ifdef SCI_OT
     multUniformArr[i] =
-        new MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>(
+        new MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>(
             party, bitlength, ioArr[i], otInstanceArr[i], nullptr);
 #endif
-    if (i & 1) {
-      otpackArr[i] = new sci::OTPack(iopackArr[i], 3 - party);
-    } else {
-      otpackArr[i] = new sci::OTPack(iopackArr[i], party);
+    if (i & 1)
+    {
+      otpackArr[i] = new primihub::sci::OTPack(iopackArr[i], 3 - party);
+    }
+    else
+    {
+      otpackArr[i] = new primihub::sci::OTPack(iopackArr[i], party);
     }
   }
 
@@ -1565,14 +1807,14 @@ void StartComputation() {
   iopack = iopackArr[0];
   otpack = otpackArr[0];
   iknpOT = otInstanceArr[0];
-  iknpOTRoleReversed = new sci::IKNP<sci::NetIO>(io);
+  iknpOTRoleReversed = new primihub::sci::IKNP<primihub::sci::NetIO>(io);
   kkot = kkotInstanceArr[0];
   prg128Instance = prgInstanceArr[0];
 
 #ifdef SCI_OT
   mult = new LinearOT(party, iopack, otpack);
   truncation = new Truncation(party, iopack, otpack);
-  multUniform = new MatMulUniform<sci::NetIO, intType, sci::IKNP<sci::NetIO>>(
+  multUniform = new MatMulUniform<primihub::sci::NetIO, intType, primihub::sci::IKNP<primihub::sci::NetIO>>(
       party, bitlength, io, iknpOT, iknpOTRoleReversed);
   relu = new ReLURingProtocol<intType>(party, RING, iopack, bitlength,
                                        MILL_PARAM, otpack);
@@ -1597,8 +1839,10 @@ void StartComputation() {
 #endif
 
 #if defined MULTITHREADED_NONLIN && defined SCI_OT
-  for (int i = 0; i < num_threads; i++) {
-    if (i & 1) {
+  for (int i = 0; i < num_threads; i++)
+  {
+    if (i & 1)
+    {
       reluArr[i] = new ReLURingProtocol<intType>(
           3 - party, RING, iopackArr[i], bitlength, MILL_PARAM, otpackArr[i]);
       maxpoolArr[i] =
@@ -1606,7 +1850,9 @@ void StartComputation() {
                                        MILL_PARAM, 0, otpackArr[i]);
       multArr[i] = new LinearOT(3 - party, iopackArr[i], otpackArr[i]);
       truncationArr[i] = new Truncation(3 - party, iopackArr[i], otpackArr[i]);
-    } else {
+    }
+    else
+    {
       reluArr[i] = new ReLURingProtocol<intType>(
           party, RING, iopackArr[i], bitlength, MILL_PARAM, otpackArr[i]);
       maxpoolArr[i] = new MaxPoolProtocol<intType>(
@@ -1618,15 +1864,19 @@ void StartComputation() {
 #endif
 
 #ifdef SCI_HE
-  for (int i = 0; i < num_threads; i++) {
-    if (i & 1) {
+  for (int i = 0; i < num_threads; i++)
+  {
+    if (i & 1)
+    {
       reluArr[i] = new ReLUFieldProtocol<intType>(
           3 - party, FIELD, iopackArr[i], bitlength, MILL_PARAM, prime_mod,
           otpackArr[i]);
       maxpoolArr[i] = new MaxPoolProtocol<intType>(
           3 - party, FIELD, iopackArr[i], bitlength, MILL_PARAM, prime_mod,
           otpackArr[i]);
-    } else {
+    }
+    else
+    {
       reluArr[i] =
           new ReLUFieldProtocol<intType>(party, FIELD, iopackArr[i], bitlength,
                                          MILL_PARAM, prime_mod, otpackArr[i]);
@@ -1639,14 +1889,18 @@ void StartComputation() {
 
 // Math Protocols
 #ifdef SCI_OT
-  for (int i = 0; i < num_threads; i++) {
-    if (i & 1) {
+  for (int i = 0; i < num_threads; i++)
+  {
+    if (i & 1)
+    {
       auxArr[i] = new AuxProtocols(3 - party, iopackArr[i], otpackArr[i]);
       truncationArr[i] =
           new Truncation(3 - party, iopackArr[i], otpackArr[i]);
       xtArr[i] = new XTProtocol(3 - party, iopackArr[i], otpackArr[i]);
       mathArr[i] = new MathFunctions(3 - party, iopackArr[i], otpackArr[i]);
-    } else {
+    }
+    else
+    {
       auxArr[i] = new AuxProtocols(party, iopackArr[i], otpackArr[i]);
       truncationArr[i] =
           new Truncation(party, iopackArr[i], otpackArr[i]);
@@ -1661,10 +1915,13 @@ void StartComputation() {
   math = mathArr[0];
 #endif
 
-  if (party == sci::ALICE) {
+  if (party == primihub::sci::ALICE)
+  {
     iknpOT->setup_send();
     iknpOTRoleReversed->setup_recv();
-  } else if (party == sci::BOB) {
+  }
+  else if (party == primihub::sci::BOB)
+  {
     iknpOT->setup_recv();
     iknpOTRoleReversed->setup_send();
   }
@@ -1673,7 +1930,8 @@ void StartComputation() {
        << endl;
   st_time = std::chrono::high_resolution_clock::now();
   num_rounds = iopack->get_rounds();
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < num_threads; i++)
+  {
     auto temp = iopackArr[i]->get_comm();
     comm_threads[i] = temp;
     std::cout << "Thread i = " << i << ", total data sent till now = " << temp
@@ -1686,14 +1944,16 @@ void StartComputation() {
             << std::endl;
 }
 
-void EndComputation() {
+void primihub::cryptflow2::EndComputation()
+{
   auto endTimer = std::chrono::high_resolution_clock::now();
   auto execTimeInMilliSec =
       std::chrono::duration_cast<std::chrono::milliseconds>(endTimer -
                                                             st_time)
           .count();
   uint64_t totalComm = 0;
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < num_threads; i++)
+  {
     auto temp = iopackArr[i]->get_comm();
     std::cout << "Thread i = " << i << ", total data sent till now = " << temp
               << std::endl;
@@ -1709,12 +1969,15 @@ void EndComputation() {
             << " MiB." << std::endl;
   std::cout << "Number of rounds = " << iopack->get_rounds() - num_rounds
             << std::endl;
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     io->recv_data(&totalCommClient, sizeof(uint64_t));
     std::cout << "Total comm (sent+received) = "
               << ((totalComm + totalCommClient) / (1.0 * (1ULL << 20)))
               << " MiB." << std::endl;
-  } else if (party == CLIENT) {
+  }
+  else if (party == CLIENT)
+  {
     io->send_data(&totalComm, sizeof(uint64_t));
     std::cout << "Total comm (sent+received) = (see SERVER OUTPUT)"
               << std::endl;
@@ -1798,7 +2061,8 @@ void EndComputation() {
             << ((NormaliseL2CommSent) / (1.0 * (1ULL << 20))) << " MiB."
             << std::endl;
   std::cout << "------------------------------------------------------\n";
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     uint64_t ConvCommSentClient = 0;
     uint64_t MatMulCommSentClient = 0;
     uint64_t BatchNormCommSentClient = 0;
@@ -1905,7 +2169,8 @@ void EndComputation() {
     }
     std::fstream result(file_addr.c_str(),
                         std::fstream::out | std::fstream::app);
-    if (write_title) {
+    if (write_title)
+    {
       result << "Algebra,Bitlen,Base,#Threads,Total Time,Total Comm,Conv "
                 "Time,Conv Comm,MatMul Time,MatMul Comm,BatchNorm "
                 "Time,BatchNorm Comm,Truncation Time,Truncation Comm,ReLU "
@@ -1938,7 +2203,9 @@ void EndComputation() {
            << std::endl;
     result.close();
 #endif
-  } else if (party == CLIENT) {
+  }
+  else if (party == CLIENT)
+  {
     io->send_data(&ConvCommSent, sizeof(uint64_t));
     io->send_data(&MatMulCommSent, sizeof(uint64_t));
     io->send_data(&BatchNormCommSent, sizeof(uint64_t));
@@ -1959,29 +2226,33 @@ void EndComputation() {
 #endif
 }
 
-intType SecretAdd(intType x, intType y) {
+intType primihub::cryptflow2::SecretAdd(intType x, intType y)
+{
 #ifdef SCI_OT
   return (x + y);
 #else
-  return sci::neg_mod(x + y, (int64_t)prime_mod);
+  return primihub::sci::neg_mod(x + y, (int64_t)prime_mod);
 #endif
 }
 
-intType SecretSub(intType x, intType y) {
+intType primihub::cryptflow2::SecretSub(intType x, intType y)
+{
 #ifdef SCI_OT
   return (x - y);
 #else
-  return sci::neg_mod(x - y, (int64_t)prime_mod);
+  return primihub::sci::neg_mod(x - y, (int64_t)prime_mod);
 #endif
 }
 
-intType SecretMult(intType x, intType y) {
+intType primihub::cryptflow2::SecretMult(intType x, intType y)
+{
   // Not being used in any of our networks right now
   assert(false);
 }
 
-void ElemWiseVectorPublicDiv(int32_t s1, intType *arr1, int32_t divisor,
-                             intType *outArr) {
+void primihub::cryptflow2::ElemWiseVectorPublicDiv(int32_t s1, intType *arr1, int32_t divisor,
+                             intType *outArr)
+{
   intType *inp = arr1;
   intType *out = outArr;
 
@@ -1996,8 +2267,9 @@ void ElemWiseVectorPublicDiv(int32_t s1, intType *arr1, int32_t divisor,
   return;
 }
 
-void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
-                                    intType *multArrVec, intType *outputArr) {
+void primihub::cryptflow2::ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
+                                    intType *multArrVec, intType *outputArr)
+{
 #ifdef LOG_LAYERWISE
   INIT_ALL_IO_DATA_SENT;
   INIT_TIMER;
@@ -2010,19 +2282,24 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
 #ifdef MULTITHREADED_DOTPROD
   std::thread dotProdThreads[num_threads];
   int chunk_size = (size / num_threads);
-  for (int i = 0; i < num_threads; i++) {
+  for (int i = 0; i < num_threads; i++)
+  {
     int offset = i * chunk_size;
     int curSize;
-    if (i == (num_threads - 1)) {
+    if (i == (num_threads - 1))
+    {
       curSize = size - offset;
-    } else {
+    }
+    else
+    {
       curSize = chunk_size;
     }
     dotProdThreads[i] = std::thread(funcDotProdThread, i, num_threads, curSize,
                                     multArrVec + offset, inArr + offset,
                                     outputArr + offset, true);
   }
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < num_threads; ++i)
+  {
     dotProdThreads[i].join();
   }
 #else
@@ -2030,7 +2307,8 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
                                bitlength, bitlength, MultMode::None);
 #endif
 
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
+  {
     outputArr[i] += (inArr[i] * multArrVec[i]);
   }
 #endif
@@ -2044,11 +2322,14 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
 #endif
 
 #ifdef VERIFY_LAYERWISE
-  if (party == SERVER) {
+  if (party == SERVER)
+  {
     funcReconstruct2PCCons(nullptr, inArr, size);
     funcReconstruct2PCCons(nullptr, multArrVec, size);
     funcReconstruct2PCCons(nullptr, outputArr, size);
-  } else {
+  }
+  else
+  {
     signedIntType *VinArr = new signedIntType[size];
     funcReconstruct2PCCons(VinArr, inArr, size);
     signedIntType *VmultArr = new signedIntType[size];
@@ -2060,7 +2341,8 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
     std::vector<uint64_t> VmultVec(size);
     std::vector<uint64_t> VoutputVec(size);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       VinVec[i] = getRingElt(VinArr[i]);
       VmultVec[i] = getRingElt(VmultArr[i]);
     }
@@ -2068,8 +2350,10 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
     ElemWiseSecretSharedVectorMult_pt(size, VinVec, VmultVec, VoutputVec);
 
     bool pass = true;
-    for (int i = 0; i < size; i++) {
-      if (VoutputArr[i] != getSignedVal(VoutputVec[i])) {
+    for (int i = 0; i < size; i++)
+    {
+      if (VoutputArr[i] != getSignedVal(VoutputVec[i]))
+      {
         pass = false;
       }
     }
@@ -2087,7 +2371,8 @@ void ElemWiseSecretSharedVectorMult(int32_t size, intType *inArr,
 #endif
 }
 
-void Floor(int32_t s1, intType *inArr, intType *outArr, int32_t sf) {
+void primihub::cryptflow2::Floor(int32_t s1, intType *inArr, intType *outArr, int32_t sf)
+{
   // Not being used in any of our networks right now
   assert(false);
 }
