@@ -23,13 +23,13 @@ SOFTWARE.
 #include "FloatingPoint/floating-point.h"
 #include "FloatingPoint/fp-math.h"
 
-using namespace sci ;
-using namespace std ;
+using namespace primihub::sci;
+using namespace std;
+using namespace primihub::cryptflow2;
+IOPack *iopackArr[MAX_THREADS];
+OTPack *otpackArr[MAX_THREADS];
 
-IOPack *iopackArr[MAX_THREADS] ;
-OTPack *otpackArr[MAX_THREADS] ;
-
-BoolOp *boolopArr[MAX_THREADS] ;
-FixOp *fixopArr[MAX_THREADS] ;
-FPOp *fpopArr[MAX_THREADS] ;
-FPMath *fpmathArr[MAX_THREADS] ;
+BoolOp *boolopArr[MAX_THREADS];
+FixOp *fixopArr[MAX_THREADS];
+FPOp *fpopArr[MAX_THREADS];
+FPMath *fpmathArr[MAX_THREADS];

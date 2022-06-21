@@ -29,7 +29,7 @@ Enquiries about further applications and development opportunities are welcome.
 /** @addtogroup BP
   @{
  */
-namespace sci {
+namespace primihub::sci {
 
 class CRH : public PRP {
 public:
@@ -79,6 +79,6 @@ public:
     }
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 /**@}*/
 #endif // CRH_H__

@@ -26,6 +26,11 @@ config_setting(
    values = {"define": "ssl=openssl"},
 )
 
+config_setting(
+   name = "macos-build",
+   values = {"define": "macos-build=true"},
+)
+
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
@@ -345,12 +350,13 @@ cc_library(
     "-D SCI_OT",
     "-maes",
     "-msse4.1",
-    "-mavx",
     "-mavx2",
     "-pthread",
     "-mrdseed",
   ],
+  linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
+	  "@com_github_gmp//:gmp",
 	  ":eigen"]
 )
 
@@ -415,6 +421,34 @@ cc_library(
 )
 
 cc_library(
+    name = "cryptflow2_algorithm_lib",
+    srcs = glob([
+           "src/primihub/algorithm/cryptflow2_maxpool.cc",
+    ]),
+    hdrs = glob([
+           "src/primihub/algorithm/base.h",
+           "src/primihub/algorithm/cryptflow2_maxpool.h",
+           "src/primihub/service/dataset/localkv/storage_default.h",
+           "src/primihub/service/dataset/storage_backend.h",
+	   "src/primihub/util/cpu_check.h"
+    ]),
+    copts = C_OPT + [
+      	   "-maes",
+      	   "-mavx2",
+      	   "-mrdseed",
+    ],
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+           ":eigen",
+           ":common_lib",
+           ":data_store_lib",
+           ":dataset_service",
+	   ":protocol_cryptflow2_ot_lib",
+    ],
+)
+
+cc_library(
     name = "algorithm_lib",
     srcs = glob([
             "src/primihub/algorithm/aby3ML.cc",
@@ -422,8 +456,7 @@ cc_library(
             "src/primihub/algorithm/logistic.cc",
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
-            # "src/primihub/algorithm/cryptflow2_maxpool.cc",
-            "src/primihub/algorithm/falcon_lenet.cc",
+	    "src/primihub/algorithm/falcon_lenet.cc",
     ]),
     hdrs = glob([
             "src/primihub/algorithm/base.h",
@@ -433,18 +466,14 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
-            # "src/primihub/algorithm/cryptflow2_maxpool.h",
-            "src/primihub/algorithm/falcon_lenet.h",
+	    "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
-            "src/primihub/service/dataset/storage_backend.h"
+            "src/primihub/service/dataset/storage_backend.h",
     ]),
     copts = C_OPT + [
       "-maes",
       "-msse4.1",
-      "-mavx",
-      # "-mavx2",
       "-mrdseed",
-      #"-fopenmp"
     ],
     linkopts = LINK_OPTS,
     linkstatic = False,
@@ -456,10 +485,32 @@ cc_library(
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-	  # ":protocol_cryptflow2_ot_lib",
           ":protocol_falcon_lib"
     ],
 )
+
+DEFAULT_TASK_LIB_DEPS = [
+    "@com_github_glog_glog//:glog",
+    "@com_github_grpc_grpc//:grpc++",
+    "@com_google_absl//absl/base",
+    "@com_google_absl//absl/flags:flag",
+    "@com_google_absl//absl/flags:parse",
+    "@com_google_absl//absl/memory",
+    "@pybind11",
+    ":util_lib",
+    ":common_lib",
+    ":algorithm_lib",
+    "dataset_service",
+    "@openssl",
+    "@org_openmined_psi//private_set_intersection/cpp:psi_client",
+    "@org_openmined_psi//private_set_intersection/cpp:psi_server",
+    "@org_openmined_pir//pir/cpp:pir",
+]
+
+TASK_LIB_DEPS = select({
+    ":macos-build": DEFAULT_TASK_LIB_DEPS,
+    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib"],
+})
 
 cc_library(
     name = "task_lib",
@@ -473,59 +524,13 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
-    linkstatic = True,
-    deps = [
-          "@com_github_glog_glog//:glog",
-          "@com_github_grpc_grpc//:grpc++",
-          "@com_google_absl//absl/base",
-          "@com_google_absl//absl/flags:flag",
-          "@com_google_absl//absl/flags:parse",
-          "@com_google_absl//absl/memory",
-          "@pybind11",
-          ":util_lib",
-          ":common_lib",
-          ":protocol_aby3_lib",
-          ":algorithm_lib",
-          "dataset_service",
-          "@openssl",
-	  "@org_openmined_psi//private_set_intersection/cpp:psi_client",
-	  "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-	  "@org_openmined_pir//pir/cpp:pir",
-    ],
+    linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
+    linkstatic = False,
+    deps = TASK_LIB_DEPS,
 )
 
 cc_library(
     name = "node_lib",
-    srcs = glob([
-            "src/primihub/node/worker/worker.cc",
-            
-            "src/primihub/algorithm/dataload.cpp",
-    ]),
-    hdrs = glob([
-            "src/primihub/node/worker/worker.h",
-            
-    ]),
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-            "@com_github_grpc_grpc//:grpc++",
-            "@com_google_absl//absl/base",
-            "@com_google_absl//absl/flags:flag",
-            "@com_google_absl//absl/flags:parse",
-            "@com_google_absl//absl/memory",
-            "@com_github_glog_glog//:glog",
-            ":worker_proto",
-            ":algorithm_lib",
-            ":task_lib",
-            ":network_lib",
-            ":nodelet",
-    ],
-)
-
-cc_library(
-    name = "node_lib_aux",
     srcs = glob([
             "src/primihub/node/worker/worker.cc",
             
@@ -827,9 +832,6 @@ py_library(
     data = ["primihub_channel.so"],
 )
 
-
-
-
 cc_binary(
     name = "node",
     srcs = glob([
@@ -837,35 +839,6 @@ cc_binary(
                   "src/primihub/node/node.h",
                   "src/primihub/node/ds.cc",
                   "src/primihub/node/ds.h",
-            ]),
-    copts = C_OPT,
-    includes = [    
-    ],
-    linkstatic = True,
-    linkopts = LINK_OPTS ,
-    deps = [
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/memory",
-        "@com_github_glog_glog//:glog",
-        "@toolkit_relic//:relic",
-        ":worker_proto",
-        ":service_proto",
-        ":common_lib",
-        ":node_lib",
-        ":nodelet",
-        ":algorithm_lib",
-        ":util_lib",
-    ],
-)
-
-cc_binary(
-    name = "node_aux",
-    srcs = glob([
-                  "src/primihub/node/node.cc",
-                  "src/primihub/node/node.h",
             ]),
     copts = C_OPT,
     includes = [    
@@ -881,8 +854,9 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
-        ":node_lib_aux",
+        ":node_lib",
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
@@ -996,23 +970,34 @@ cc_test(
 )
 
 cc_test(
-    name = "algorithm_test",
-    srcs = [
-        "test/primihub/algorithm/logistic_test.cc",
-        # TODO: Ignore it when test arrow usage, recover it.
-        # "test/primihub/algorithm/logistic_plain_test.cc",
-    ],
+    name = "logistic_test",
+    srcs = ["test/primihub/algorithm/logistic_test.cc"],
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-        "@com_google_googletest//:gtest_main",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        ":crypto_lib",
-        ":algorithm_lib",
-    ],
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      ":crypto_lib",
+      ":algorithm_lib",
+    ]
+)
+
+cc_test(
+    name = "maxpool_test",
+    srcs = ["test/primihub/algorithm/maxpool_test.cc"],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      "cryptflow2_algorithm_lib"
+    ]
 )
 
 # Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
@@ -1212,11 +1197,11 @@ cc_library(
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
-    linkstatic = True,
-    visibility = ["//visibility:public"],
+    linkstatic = False,
     deps = [
         "@com_github_gmp//:gmp",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_binary(
@@ -1313,7 +1298,7 @@ cc_test(
             ":network_test",
             ":protocol_aby3_test",
             ":util_test",
-            ":algorithm_test",
+            ":logistic_test",
             ":prng_test",
             ":share_test",
             ":paillier_test",

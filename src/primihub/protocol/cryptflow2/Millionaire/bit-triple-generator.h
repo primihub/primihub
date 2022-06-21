@@ -67,15 +67,15 @@ public:
 
 class TripleGenerator {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
-  sci::PRG128 *prg;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
+  primihub::sci::PRG128 *prg;
   int party;
 
-  TripleGenerator(int party, sci::IOPack *iopack, sci::OTPack *otpack) {
+  TripleGenerator(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack) {
     this->iopack = iopack;
     this->otpack = otpack;
-    this->prg = new sci::PRG128;
+    this->prg = new primihub::sci::PRG128;
   }
 
   ~TripleGenerator() { delete prg; }
@@ -88,7 +88,7 @@ public:
     switch (method) {
     case Ideal: {
       int num_bytes = ceil((double)num_triples / 8);
-      if (party == sci::ALICE) {
+      if (party == primihub::sci::ALICE) {
         uint8_t *a = new uint8_t[num_bytes];
         uint8_t *b = new uint8_t[num_bytes];
         uint8_t *c = new uint8_t[num_bytes];
@@ -112,13 +112,13 @@ public:
           } else {
             uint8_t temp_a, temp_b, temp_c;
             if (num_triples - i >= 8) {
-              temp_a = sci::bool_to_uint8(ai + i, 8);
-              temp_b = sci::bool_to_uint8(bi + i, 8);
-              temp_c = sci::bool_to_uint8(ci + i, 8);
+              temp_a = primihub::sci::bool_to_uint8(ai + i, 8);
+              temp_b = primihub::sci::bool_to_uint8(bi + i, 8);
+              temp_c = primihub::sci::bool_to_uint8(ci + i, 8);
             } else {
-              temp_a = sci::bool_to_uint8(ai + i, num_triples - i);
-              temp_b = sci::bool_to_uint8(bi + i, num_triples - i);
-              temp_c = sci::bool_to_uint8(ci + i, num_triples - i);
+              temp_a = primihub::sci::bool_to_uint8(ai + i, num_triples - i);
+              temp_b = primihub::sci::bool_to_uint8(bi + i, num_triples - i);
+              temp_c = primihub::sci::bool_to_uint8(ci + i, num_triples - i);
             }
             a[i / 8] ^= temp_a;
             b[i / 8] ^= temp_b;
@@ -146,13 +146,13 @@ public:
 
           for (int i = 0; i < num_triples; i += 8) {
             if (num_triples - i >= 8) {
-              sci::uint8_to_bool(ai + i, a[i / 8], 8);
-              sci::uint8_to_bool(bi + i, b[i / 8], 8);
-              sci::uint8_to_bool(ci + i, c[i / 8], 8);
+              primihub::sci::uint8_to_bool(ai + i, a[i / 8], 8);
+              primihub::sci::uint8_to_bool(bi + i, b[i / 8], 8);
+              primihub::sci::uint8_to_bool(ci + i, c[i / 8], 8);
             } else {
-              sci::uint8_to_bool(ai + i, a[i / 8], num_triples - i);
-              sci::uint8_to_bool(bi + i, b[i / 8], num_triples - i);
-              sci::uint8_to_bool(ci + i, c[i / 8], num_triples - i);
+              primihub::sci::uint8_to_bool(ai + i, a[i / 8], num_triples - i);
+              primihub::sci::uint8_to_bool(bi + i, b[i / 8], num_triples - i);
+              primihub::sci::uint8_to_bool(ci + i, c[i / 8], num_triples - i);
             }
           }
           delete[] a;
@@ -181,7 +181,7 @@ public:
       prg->random_bool((bool *)a, num_triples);
       prg->random_bool((bool *)b, num_triples);
       switch (party) {
-      case sci::ALICE: {
+      case primihub::sci::ALICE: {
         prg->random_bool((bool *)c, num_triples);
         uint8_t **ot_messages; // (num_triples/2) X 16
         ot_messages = new uint8_t *[num_triples / 2];
@@ -189,7 +189,7 @@ public:
           ot_messages[i / 2] = new uint8_t[16];
         for (int j = 0; j < 16; j++) {
           uint8_t bits_j[4]; // a01 || b01 || a11 || b11 (LSB->MSB)
-          sci::uint8_to_bool(bits_j, j, 4);
+          primihub::sci::uint8_to_bool(bits_j, j, 4);
           for (int i = 0; i < num_triples; i += 2) {
             ot_messages[i / 2][j] =
                 ((((a[i + 1] ^ bits_j[2]) & (b[i + 1] ^ bits_j[3])) ^ c[i + 1])
@@ -204,7 +204,7 @@ public:
         delete[] ot_messages;
         break;
       }
-      case sci::BOB: {
+      case primihub::sci::BOB: {
         uint8_t *ot_selection = new uint8_t[(size_t)num_triples / 2];
         uint8_t *ot_result = new uint8_t[(size_t)num_triples / 2];
         for (int i = 0; i < num_triples; i += 2) {
@@ -224,9 +224,9 @@ public:
       }
       if (packed) {
         for (int i = 0; i < num_triples; i += 8) {
-          ai[i / 8] = sci::bool_to_uint8(a + i, 8);
-          bi[i / 8] = sci::bool_to_uint8(b + i, 8);
-          ci[i / 8] = sci::bool_to_uint8(c + i, 8);
+          ai[i / 8] = primihub::sci::bool_to_uint8(a + i, 8);
+          bi[i / 8] = primihub::sci::bool_to_uint8(b + i, 8);
+          ci[i / 8] = primihub::sci::bool_to_uint8(c + i, 8);
         }
         delete[] a;
         delete[] b;
@@ -252,7 +252,7 @@ public:
       }
       prg->random_bool((bool *)b, num_triples);
       switch (party) {
-      case sci::ALICE: {
+      case primihub::sci::ALICE: {
         prg->random_bool((bool *)c, num_triples);
         uint8_t **ot_messages; // (num_triples/2) X 8
         ot_messages = new uint8_t *[num_triples / 2];
@@ -260,7 +260,7 @@ public:
           ot_messages[i / 2] = new uint8_t[8];
         for (int j = 0; j < 8; j++) {
           uint8_t bits_j[3]; // a01 || b01 || b11 (LSB->MSB)
-          sci::uint8_to_bool(bits_j, j, 3);
+          primihub::sci::uint8_to_bool(bits_j, j, 3);
           for (int i = 0; i < num_triples; i += 2 * offset) {
             for (int k = 0; k < offset; k++) {
               ot_messages[i / 2 + k][j] =
@@ -279,7 +279,7 @@ public:
         delete[] ot_messages;
         break;
       }
-      case sci::BOB: {
+      case primihub::sci::BOB: {
         uint8_t *ot_selection = new uint8_t[(size_t)num_triples / 2];
         uint8_t *ot_result = new uint8_t[(size_t)num_triples / 2];
         for (int i = 0; i < num_triples; i += 2 * offset) {
@@ -302,9 +302,9 @@ public:
       }
       if (packed) {
         for (int i = 0; i < num_triples; i += 8) {
-          ai[i / 8] = sci::bool_to_uint8(a + i, 8);
-          bi[i / 8] = sci::bool_to_uint8(b + i, 8);
-          ci[i / 8] = sci::bool_to_uint8(c + i, 8);
+          ai[i / 8] = primihub::sci::bool_to_uint8(a + i, 8);
+          bi[i / 8] = primihub::sci::bool_to_uint8(b + i, 8);
+          ci[i / 8] = primihub::sci::bool_to_uint8(c + i, 8);
         }
         delete[] a;
         delete[] b;

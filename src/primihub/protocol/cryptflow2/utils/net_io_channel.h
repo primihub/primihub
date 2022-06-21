@@ -42,7 +42,7 @@ using std::string;
 
 enum class LastCall { None, Send, Recv };
 
-namespace sci {
+namespace primihub::sci {
 /** @addtogroup IO
   @{
  */
@@ -201,5 +201,5 @@ public:
 };
 /**@}*/
 
-} // namespace sci
+} // namespace primihub::sci
 #endif // NETWORK_IO_CHANNEL

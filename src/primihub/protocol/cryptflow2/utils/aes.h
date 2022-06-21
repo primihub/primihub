@@ -54,7 +54,7 @@
 
 #include "src/primihub/protocol/cryptflow2/utils/block.h"
 
-namespace sci {
+namespace primihub::sci {
 
 typedef struct {
   block128 rd_key[11];
@@ -143,5 +143,5 @@ AES_ecb_decrypt_blks(block128 *blks, unsigned nblks, const AES_KEY *key) {
   for (i = 0; i < nblks; ++i)
     blks[i] = _mm_aesdeclast_si128(blks[i], key->rd_key[j]);
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif

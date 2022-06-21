@@ -29,7 +29,7 @@ Modified by Deevashwer Rathee
 #define CONFIG_H__
 #include <map>
 
-namespace sci {
+namespace primihub::sci {
 const static int AES_BATCH_SIZE = 2048;
 // const static int AES_BATCH_SIZE = 256;
 const static int HASH_BUFFER_SIZE = 1024 * 8;
@@ -569,5 +569,5 @@ const static uint64_t WH_Code[256][4] = {
 #if defined(unix) || defined(__unix__) || defined(__unix) || defined(__APPLE__)
 #define UNIX_PLATFORM
 #endif
-} // namespace sci
+} // namespace primihub::sci
 #endif // CONFIG_H__

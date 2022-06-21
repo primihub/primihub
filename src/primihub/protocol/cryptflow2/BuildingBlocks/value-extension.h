@@ -24,27 +24,30 @@ SOFTWARE.
 
 #include "src/primihub/protocol/cryptflow2/BuildingBlocks/aux-protocols.h"
 #include "src/primihub/protocol/cryptflow2/Millionaire/millionaire.h"
+namespace primihub::cryptflow2
+{
 
-class XTProtocol {
-public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
-  TripleGenerator *triple_gen;
-  MillionaireProtocol *millionaire;
-  AuxProtocols *aux;
-  int party;
+  class XTProtocol
+  {
+  public:
+    primihub::sci::IOPack *iopack;
+    primihub::sci::OTPack *otpack;
+    TripleGenerator *triple_gen;
+    MillionaireProtocol *millionaire;
+    AuxProtocols *aux;
+    int party;
 
-  // Constructor
-  XTProtocol(int party, sci::IOPack *iopack, sci::OTPack *otpack);
+    // Constructor
+    XTProtocol(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack);
 
-  // Destructor
-  ~XTProtocol();
+    // Destructor
+    ~XTProtocol();
 
-  void z_extend(int32_t dim, uint64_t *inA, uint64_t *outB, int32_t bwA,
-                int32_t bwB, uint8_t *msbA = nullptr);
+    void z_extend(int32_t dim, uint64_t *inA, uint64_t *outB, int32_t bwA,
+                  int32_t bwB, uint8_t *msbA = nullptr);
 
-  void s_extend(int32_t dim, uint64_t *inA, uint64_t *outB, int32_t bwA,
-                int32_t bwB, uint8_t *msbA = nullptr);
-};
-
+    void s_extend(int32_t dim, uint64_t *inA, uint64_t *outB, int32_t bwA,
+                  int32_t bwB, uint8_t *msbA = nullptr);
+  };
+}
 #endif // ZERO_EXT_H__
