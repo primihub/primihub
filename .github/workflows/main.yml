@@ -62,7 +62,7 @@ jobs:
         bazel test --config=linux share_test
   
 
-  unit-test-on-macos:
+  unit-test-on-macos_x86_64:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
@@ -90,6 +90,7 @@ jobs:
         bazel test --config=darwin_x86_64 --config=macos share_test
   
   build-on-ubuntu:
+    needs: unit-test-on-ubuntu
     runs-on: ubuntu-latest
     steps:
     - name: Setup cmake
@@ -123,6 +124,7 @@ jobs:
         bazel build --config=linux :node :cli :lib_opt_paillier 
   
   build-on-mac_x86_64:
+    needs: unit-test-on-macos_x86_64
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
@@ -141,7 +143,7 @@ jobs:
         bazel build --config=darwin_x86_64 --config=macos :node :cli :lib_opt_paillier 
   
   docker-image-build-and-publish:
-    # needs: build-on-ubuntu
+    needs: unit-test-on-macos_x86_64
     runs-on: ubuntu-latest
     permissions:
       contents: read
