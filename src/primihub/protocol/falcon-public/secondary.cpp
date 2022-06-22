@@ -103,15 +103,15 @@ void test(bool PRELOADING, string network, NeuralNetwork* net)
 
 		net->forward();
 		// net->predict(maxIndex);
-		// net->getAccuracy(maxIndex, counter);
+		net->getAccuracy(maxIndex, counter);
 	}
-	print_vector((*(net->layers[NUM_LAYERS-1])->getActivation()), "FLOAT", "MPC Output over uint32_t:", 1280);
+	//print_vector((*(net->layers[NUM_LAYERS-1])->getActivation()), "FLOAT", "MPC Output over uint32_t:", 1280);
 
 	// Write output to file
 	if (PRELOADING)
 	{
 		ofstream data_file;
-		data_file.open("files/preload/"+which_network(network)+"/"+which_network(network)+".txt");
+		data_file.open("weights/"+which_network(network)+"/"+which_network(network)+".txt");
 		
 		vector<myType> b(MINI_BATCH_SIZE * LAST_LAYER_SIZE);
 		funcReconstruct((*(net->layers[NUM_LAYERS-1])->getActivation()), b, MINI_BATCH_SIZE * LAST_LAYER_SIZE, "anything", false);
@@ -128,7 +128,7 @@ void test(bool PRELOADING, string network, NeuralNetwork* net)
 // Generate a file with 0's of appropriate size
 void generate_zeros(string name, size_t number, string network)
 {
-	string default_path = "files/preload/"+which_network(network)+"/";
+	string default_path = "weights/"+which_network(network)+"/";
 	ofstream data_file;
 	data_file.open(default_path+name);
 
@@ -145,7 +145,7 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 	assert((PRELOADING) and (NUM_ITERATIONS == 1) and (MINI_BATCH_SIZE == 128) && "Preloading conditions fail");
 
 	float temp_next = 0, temp_prev = 0;
-	string default_path = "files/preload/"+which_network(network)+"/";
+	string default_path = "/weights/"+which_network(network)+"/";
 	//Set to true if you want the zeros files generated.
 	bool ZEROS = false;
 
@@ -598,6 +598,7 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 	else if (which_network(network).compare("LeNet") == 0)
 	{
 		string temp = "LeNet";
+		string default_path = "data/falcon/weights/"+which_network(network)+"/";
 		/************************** Input **********************************/
 		string path_input_1 = default_path+"input_"+to_string(partyNum);
 		string path_input_2 = default_path+"input_"+to_string(nextParty(partyNum));
@@ -616,6 +617,26 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 		}
 
 		// print_vector(net->inputData, "FLOAT", "inputData:", 784);
+
+		/************************** labels for test --ljf**********************************/
+		string path_labels_1 = default_path+"train_labels_"+to_string(partyNum);
+		string path_labels_2 = default_path+"train_labels_"+to_string(nextParty(partyNum));
+		ifstream f_labels_1(path_labels_1), f_labels_2(path_labels_2);
+
+		for (int i = 0; i < LAST_LAYER_SIZE * MINI_BATCH_SIZE; ++i)
+		{
+			f_labels_1 >> temp_next; f_labels_2 >> temp_prev;
+			net->outputData[i] = std::make_pair(floatToMyType(temp_next), floatToMyType(temp_prev));
+		}
+		f_labels_1.close(); f_labels_2.close();
+		if (ZEROS)
+		{
+			generate_zeros("train_labels_1", 10*128, temp);
+			generate_zeros("train_labels_2", 10*128, temp);
+		}
+		cout<<path_labels_1<<endl;
+		print_vector(net->outputData, "FLOAT", "outputData:", 200);
+
 
 		/************************** Weight1 **********************************/
 		string path_weight1_1 = default_path+"weight1_"+to_string(partyNum);

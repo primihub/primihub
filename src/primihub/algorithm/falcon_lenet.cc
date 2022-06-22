@@ -132,7 +132,7 @@ int FalconLenetExecutor::finishPartyComm(void) {
 int FalconLenetExecutor::execute() {
   /****************************** PREPROCESSING ******************************/
   /*for faster module multiply and addition*/
-
+  bool PRELOADING = false;
   for (int i = 0; i < PRIME_NUMBER; ++i)
     for (int j = 0; j < PRIME_NUMBER; ++j) {
       additionModPrime[i][j] = ((i + j) % PRIME_NUMBER);
@@ -150,14 +150,23 @@ int FalconLenetExecutor::execute() {
   config_lenet->checkNetwork();
   net_lenet = new NeuralNetwork(config_lenet);
 
+  //Test config
+  network += " preloaded"; PRELOADING = true;
+    LOG(INFO) << "preloading begin";
+	preload_network(PRELOADING, network, net_lenet);
+    LOG(INFO) << "preloading end";
   start_m();
-  LOG(INFO) << "Training on MNIST using Lenet";
+  // LOG(INFO) << "Training on MNIST using Lenet";
 
-  for (int i = 0; i < num_iter_; ++i) {
-    readMiniBatch(net_lenet, "TRAINING");
-    net_lenet->forward();
-    net_lenet->backward();
-  }
+  // for (int i = 0; i < num_iter_; ++i) {
+  //   readMiniBatch(net_lenet, "TRAINING");
+  //   net_lenet->forward();
+  //   net_lenet->backward();
+  // }
+
+  LOG(INFO) << "Test on MNIST using Lenet";
+	network += " test";
+	test(PRELOADING, network, net_lenet);
 
   end_m(network);
   printNetwork(net_lenet);
