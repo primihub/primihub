@@ -826,11 +826,10 @@ TEST(BtNetwork_bitVector_Test, bit_vector) {
   bb[33] = 1;
    
   // Send.
-  chl1.send(bb);
+  chl1.send(bb.data(), bb.sizeBytes());
 
   // Recv.
-  sleep(1);
-  chl2.recv(bb);
+  chl2.recv(bb.data(), bb.sizeBytes());
 
   if (!bb[55] || !bb[33])
     throw UnitTestFail();
