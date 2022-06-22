@@ -1,10 +1,9 @@
 _OPTS = [
+    "-Werror",
+    "-pedantic-errors",
+    "-Weverything",
+    "--system-header-prefix=gmp",
     "-fPIC",
-    "-m64",
-     "-pthread",
-    "-Wl",
-    "--allow-shlib-undefined",
-     "-g",
 ]
 
 _COPTS = _OPTS + ["-std=c17"]
@@ -48,8 +47,8 @@ genrule(
         "include/gmpxx.h",
     ],
     cmd = """
-	export CFLAGS="-fPIC"
-	export CXXFLAGS="-fPIC"
+        export CFLAGS="-fPIC"
+        export CXXFLAGS="-fPIC"
         CONFIGURE_LOG=$$(mktemp)
         MAKE_LOG=$$(mktemp)
         GMP_ROOT=$$(dirname $(location configure))
