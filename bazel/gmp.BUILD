@@ -54,7 +54,7 @@ genrule(
         GMP_ROOT=$$(dirname $(location configure))
         pushd $$GMP_ROOT > /dev/null
             mkdir -p /tmp/gmp
-            if ! ./configure --prefix=/tmp/gmp --enable-cxx > $$CONFIGURE_LOG; then
+            if ! ./configure --prefix=/tmp/gmp --enable-cxx --disable-assembly > $$CONFIGURE_LOG; then
                 cat $$CONFIGURE_LOG
             fi
             if ! make > $$MAKE_LOG; then
