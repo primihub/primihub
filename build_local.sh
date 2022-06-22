@@ -22,7 +22,7 @@ echo "Done"
 
 #build
 #bazel build --config=linux :node :cli
-bazel build --config=linux :node :cli :opt_paillier_c2py_test
+bazel build --config=linux :node :cli :opt_paillier_c2py
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
