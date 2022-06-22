@@ -356,6 +356,7 @@ cc_library(
   ],
   linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
+	  "@com_github_gmp//:gmp",
 	  ":eigen"]
 )
 
@@ -439,11 +440,11 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-           "@eigen//:eigen",
+           ":eigen",
            ":common_lib",
            ":data_store_lib",
            ":dataset_service",
-	       ":protocol_cryptflow2_ot_lib",
+	   ":protocol_cryptflow2_ot_lib",
     ],
 )
 
@@ -523,7 +524,6 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-
     linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -lpython3.9 -lpthread -ldl  -lutil -lm"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
@@ -832,7 +832,6 @@ py_library(
     data = ["primihub_channel.so"],
 )
 
-
 cc_binary(
     name = "node",
     srcs = glob([
@@ -844,7 +843,7 @@ cc_binary(
     copts = C_OPT,
     includes = [    
     ],
-    linkstatic = True,
+    linkstatic = False,
     linkopts = LINK_OPTS ,
     deps = [
         "@com_github_grpc_grpc//:grpc++",
@@ -861,7 +860,6 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-	      ":opt_paillier_c2py",
     ],
 )
 
@@ -1204,9 +1202,6 @@ cc_library(
         "@com_github_gmp//:gmp",
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_gmp//:gmp",
-    ],
 )
 
 cc_binary(
@@ -1303,7 +1298,7 @@ cc_test(
             ":network_test",
             ":protocol_aby3_test",
             ":util_test",
-            ":algorithm_test",
+            ":logistic_test",
             ":prng_test",
             ":share_test",
             ":paillier_test",

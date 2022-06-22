@@ -127,6 +127,10 @@ TEST(logistic, logistic_3pc_test) {
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
                              "QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd");
@@ -138,6 +142,10 @@ TEST(logistic, logistic_3pc_test) {
     // Child process as party 0.
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/65530");
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -149,8 +157,10 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
+
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/65531");
+
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
 
