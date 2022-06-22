@@ -41,10 +41,11 @@ def submit_task(stub):
         res = stub.SubmitTask(request)
         print(res)
         return res
+
     except Exception as e:
         print(e)
 
-
+        
 
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
