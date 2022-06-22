@@ -53,6 +53,7 @@ jobs:
     - name: bazel test
       run: |
         bazel test --config=linux common_test
+        bazel test --config=linux network_test
         # bazel test --config=linux primitive_test
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
@@ -79,6 +80,7 @@ jobs:
     - name: bazel build
       run: |
         bazel test --config=darwin_x86_64 --config=macos common_test
+        bazel test --config=darwin_x86_64 --config=macos network_test
 
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos logistic_test
