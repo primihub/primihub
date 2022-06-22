@@ -137,7 +137,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py_test 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py_test  --sandbox_debug 
     - name: Release copy
       run : |
         cp ./bazel-bin/node ./bazel-bin/primihub-node
