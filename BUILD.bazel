@@ -1197,7 +1197,7 @@ cc_library(
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
-    linkstatic = False,
+    linkstatic = True,
     deps = [
         "@com_github_gmp//:gmp",
     ],
