@@ -49,14 +49,12 @@ class HorMinMaxStandard(MinMaxStandard):
         super().__init__()
         self.union_flag = False
 
-    def stat_union(self, other_stats):
-        num_client = len(other_stats) + 1
-        ratio = 1 / num_client
-        self.min *= ratio
-        for min, max in other_stats:
-            self.min += min * ratio
-            self.max += max * ratio
-        self.union_flag = True
+    @staticmethod
+    def server_union(*client_stats):
+        for list_min, list_max in zip(*client_stats):
+            stat_min = min(list_min)
+            stat_max = max(list_max)
+        return stat_min, stat_max
 
     def fit(self, data, idxs):
         data = self._check_data(data)
@@ -64,10 +62,14 @@ class HorMinMaxStandard(MinMaxStandard):
         min, max = self._fit(data, idxs_nd)
         return min, max
 
+    def load_union(self, stat_min, stat_max):
+        self.min, self.max = stat_min, stat_max
+        self.union_flag = True
+
     def __call__(self, data, idxs):
         data = self._check_data(data)
         idxs_nd = self._check_idxs(idxs)
         if self.union_flag == False:
-            raise ValueError("horizontal standard must do after stat_union")
+            raise ValueError("horizontal standard must do after server_union")
         data[:, idxs] = (data[:, idxs_nd] - self.min) / (self.max - self.min)
         return data

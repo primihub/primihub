@@ -4,6 +4,8 @@ import pandas as pd
 
 class OneHotEncoder():
     def __init__(self):
+        self.cats_len = None
+        self.cats_idxs = None
         self.categories_ = []
 
     def _check_data(self, np_data):
@@ -67,24 +69,24 @@ class OneHotEncoder():
         last_idx = 0
         tmp_data = np.delete(trans_data, idxs_nd, axis=1)
         tmp_len = tmp_data.shape[1]
-        cats_len = [len(i) for i in self.categories_]
+        # cats_len = [len(i) for i in self.categories_]
         for i, idx in enumerate(idxs_nd):
             # stack onehot_encoded data at the head position
             if idx == 0:
                 tmp_data = np.hstack(
-                    [ohed_data[:, list(range(last_idx, cats_len[i]))].tolist(), tmp_data[:, :]])
+                    [ohed_data[:, list(range(last_idx, self.cats_len[i]))].tolist(), tmp_data[:, :]])
             # stack onehot_encoded data at the tail position
             elif idx == (tmp_len + len(idxs_nd) - 1):
                 tmp_data = np.hstack([tmp_data[:, :], ohed_data[:, list(
-                    range(last_idx, last_idx + cats_len[i]))].tolist()])
+                    range(last_idx, last_idx + self.cats_len[i]))].tolist()])
             else:
                 if i == 0:
                     tmp_idx = idx
                 else:
-                    tmp_idx = idx + sum(cats_len[:i]) - i - 1
+                    tmp_idx = idx + sum(self.cats_len[:i]) - i - 1
                 tmp_data = np.hstack([tmp_data[:, :tmp_idx], ohed_data[:, list(
-                    range(last_idx, cats_len[i]))].tolist(), tmp_data[:, tmp_idx:]])
-            last_idx += cats_len[i]
+                    range(last_idx, self.cats_len[i]))].tolist(), tmp_data[:, tmp_idx:]])
+            last_idx += self.cats_len[i]
         return tmp_data
 
     def __call__(self, fit_data, trans_data, idxs1, idxs2):
@@ -100,21 +102,21 @@ class HorOneHotEncoder(OneHotEncoder):
     def __init__(self):
         super().__init__()
 
-    def cats_union(self, other_cats):
-        self_cats = self.categories_
-        assert len(self_cats) == len(other_cats)
+    @staticmethod
+    def server_union(*client_cats):
         union_cats_len = []
         union_cats_idxs = []
 
-        # Server index the cats in each column
-        for i, (x, y) in enumerate(zip(self_cats, other_cats)):
-            tmp_union = np.union1d(x, y)
-            self.categories_[i] = tmp_union
+        for i, cats in enumerate(zip(*client_cats)):
+            tmp_union = np.array([])
+            for cat in cats:
+                tmp_union = np.union1d(tmp_union, cat)
             idxs_dict = {}
             for idx, k in enumerate(tmp_union):
                 idxs_dict[k] = idx
             union_cats_len.append(len(tmp_union))
             union_cats_idxs.append(idxs_dict)
-        self.cats_len, self.cats_idxs = union_cats_len, union_cats_idxs
-        print(self.cats_len, self.cats_idxs)
         return union_cats_len, union_cats_idxs
+
+    def load_union(self, union_cats_len, union_cats_idxs):
+        self.cats_len, self.cats_idxs = union_cats_len, union_cats_idxs

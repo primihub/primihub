@@ -6,7 +6,6 @@ class ZscoreStandard():
     def __init__(self):
         self.mean = 0
         self.std = 0
-        self.dev = 0
         self.num = 0
 
     def _check_data(self, np_data):
@@ -35,7 +34,6 @@ class ZscoreStandard():
     def _fit(self, data, idxs):
         self.mean = np.mean(data[:, idxs].astype(float), axis=0)
         self.std = np.std(data[:, idxs].astype(float), axis=0)
-        self.dev = np.power(self.std, 2)
         self.num = data.shape[0]
         return self.mean, self.std
 
@@ -52,22 +50,21 @@ class HorZscoreStandard(ZscoreStandard):
         super().__init__()
         self.union_flag = False
 
-    def stat_union(self, other_stats):
-        num_client = len(other_stats) + 1
+    @staticmethod
+    def server_union(*other_stats):
+        num_client = len(other_stats)
         ratio_list = np.zeros(num_client)
-        ratio_list[0] = self.num
         for i, (_, _, num) in enumerate(other_stats):
-            ratio_list[i+1] = num
+            ratio_list[i] = num
         sum_num = np.sum(ratio_list)
         ratio_list /= sum_num
 
-        self.mean = self.mean * ratio_list[0]
-        self.dev = self.dev * ratio_list[0]
+        stat_mean, stat_dev = 0, 0
         for i, (mean, std, _) in enumerate(other_stats):
-            self.mean += mean * ratio_list[i+1]
-            self.dev += np.power(std, 2) * ratio_list[i+1]
-        self.std = np.sqrt(self.dev)
-        self.union_flag = True
+            stat_mean += mean * ratio_list[i]
+            stat_dev += np.power(std, 2) * ratio_list[i]
+        stat_std = np.sqrt(stat_dev)
+        return stat_mean, stat_std
 
     def fit(self, data, idxs):
         data = self._check_data(data)
@@ -75,8 +72,14 @@ class HorZscoreStandard(ZscoreStandard):
         mean, std = self._fit(data, idxs)
         return mean, std, data.shape[0]
 
+    def load_union(self, stat_mean, stat_std):
+        self.mean, self.std = stat_mean, stat_std
+        self.union_flag = True
+
     def __call__(self, data, idxs):
+        data = self._check_data(data)
+        idxs_nd = self._check_idxs(idxs)
         if self.union_flag == False:
-            raise ValueError("horizontal standard must do after stat_union")
+            raise ValueError("horizontal standard must do after server_union")
         data[:, idxs] = (data[:, idxs] - self.mean) / self.std
         return data
