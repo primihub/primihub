@@ -51,8 +51,7 @@ private:
   int batch_size_, num_iter_;
   NeuralNetConfig *config_lenet;
   NeuralNetwork *net_lenet;
-  std::string train_data_filepath_self_, train_data_filepath_next_;
-  std::string train_label_filepath_self_, train_label_filepath_next_;
+  std::string Test_Input_Self_path, Test_Input_Next_path;
 };
 
 } // namespace falcon

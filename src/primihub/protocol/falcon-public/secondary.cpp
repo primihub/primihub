@@ -7,10 +7,13 @@ using namespace std;
 namespace primihub{
     namespace falcon
 {
-extern std::string file_train_data_self_;
-extern std::string file_train_data_next_;
-extern std::string file_train_label_self_;
-extern std::string file_train_label_next_;
+// extern std::string file_train_data_self_;
+// extern std::string file_train_data_next_;
+// extern std::string file_train_label_self_;
+// extern std::string file_train_label_next_;
+
+extern std::string Test_Input_Self_filepath;
+extern std::string Test_Input_Next_filepath;
 
 
 extern CommunicationObject commObject;
@@ -602,8 +605,8 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 		/************************** Input **********************************/
 		string path_input_1 = default_path+"input_"+to_string(partyNum);
 		string path_input_2 = default_path+"input_"+to_string(nextParty(partyNum));
+		//ifstream f_input_1(Test_Input_Self_filepath), f_input_2(Test_Input_Next_filepath); todo :--ljf:fix input_0
 		ifstream f_input_1(path_input_1), f_input_2(path_input_2);
-
 		for (int i = 0; i < INPUT_SIZE * MINI_BATCH_SIZE; ++i)
 		{
 			f_input_1 >> temp_next; f_input_2 >> temp_prev;
@@ -634,8 +637,8 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 			generate_zeros("train_labels_1", 10*128, temp);
 			generate_zeros("train_labels_2", 10*128, temp);
 		}
-		cout<<path_labels_1<<endl;
-		print_vector(net->outputData, "FLOAT", "outputData:", 200);
+		//cout<<path_labels_1<<endl;
+		print_vector(net->outputData, "FLOAT", "OutputLables:", 200);
 
 
 		/************************** Weight1 **********************************/
@@ -863,32 +866,32 @@ void loadData(string net, string dataset)
 	// modified to let each party holding a share of data
 	if (partyNum == PARTY_A)
 	{
-		// filename_train_data_next = "files/train_data_A";
-		filename_train_data_next = file_train_data_self_;
-		//filename_train_data_prev = "files/train_data_B";
-		filename_train_data_prev = file_train_data_next_;
+		filename_train_data_next = "files/train_data_A";
+		// filename_train_data_next = file_train_data_self_;
+		filename_train_data_prev = "files/train_data_B";
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_A";
 		filename_test_data_prev = "files/test_data_B";
-		//filename_train_labels_next = "files/train_labels_A";
-		filename_train_labels_next = file_train_label_self_;
-		//filename_train_labels_prev = "files/train_labels_B";
-		filename_train_labels_prev = file_train_label_next_;
+		filename_train_labels_next = "files/train_labels_A";
+		// filename_train_labels_next = file_train_label_self_;
+		filename_train_labels_prev = "files/train_labels_B";
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_A";
 		filename_test_labels_prev = "files/test_labels_B";
 	}
 
 	if (partyNum == PARTY_B)
 	{
-		//filename_train_data_next = "files/train_data_B";
-		filename_train_data_next = file_train_data_self_;
-		//filename_train_data_prev = "files/train_data_C";
-		filename_train_data_prev = file_train_data_next_;
+		filename_train_data_next = "files/train_data_B";
+		// filename_train_data_next = file_train_data_self_;
+		filename_train_data_prev = "files/train_data_C";
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_B";
 		filename_test_data_prev = "files/test_data_C";
-		//filename_train_labels_next = "files/train_labels_B";
-		filename_train_labels_next = file_train_label_self_;
-		//filename_train_labels_prev = "files/train_labels_C";
-		filename_train_labels_prev = file_train_label_next_;
+		filename_train_labels_next = "files/train_labels_B";
+		// filename_train_labels_next = file_train_label_self_;
+		filename_train_labels_prev = "files/train_labels_C";
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_B";
 		filename_test_labels_prev = "files/test_labels_C";
 	}
@@ -896,15 +899,15 @@ void loadData(string net, string dataset)
 	if (partyNum == PARTY_C)
 	{
 		//filename_train_data_next = "files/train_data_C";
-		filename_train_data_next = file_train_data_self_;
+		// filename_train_data_next = file_train_data_self_;
 		//filename_train_data_prev = "files/train_data_A";
-		filename_train_data_prev = file_train_data_next_;
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_C";
 		filename_test_data_prev = "files/test_data_A";
-		//filename_train_labels_next = "files/train_labels_C";
-		filename_train_labels_next = file_train_label_self_;
-		//filename_train_labels_prev = "files/train_labels_A";
-		filename_train_labels_prev = file_train_label_next_;
+		filename_train_labels_next = "files/train_labels_C";
+		// filename_train_labels_next = file_train_label_self_;
+		filename_train_labels_prev = "files/train_labels_A";
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_C";
 		filename_test_labels_prev = "files/test_labels_A";
 	}	

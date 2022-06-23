@@ -6,10 +6,8 @@ AESObject *aes_next;
 AESObject *aes_prev;
 Precompute PrecomputeObject;
 int partyNum;
-std::string file_train_data_self_;
-std::string file_train_data_next_;
-std::string file_train_label_self_;
-std::string file_train_label_next_;
+std::string Test_Input_Self_filepath;
+std::string Test_Input_Next_filepath;
 // For faster modular operations
 extern smallType additionModPrime[PRIME_NUMBER][PRIME_NUMBER];
 extern smallType subtractModPrime[PRIME_NUMBER][PRIME_NUMBER];
@@ -64,10 +62,8 @@ FalconLenetExecutor::FalconLenetExecutor(
 int FalconLenetExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
-    train_data_filepath_self_ = param_map["Train_Data_Self"].value_string();
-    train_label_filepath_self_ = param_map["Train_Lable_Self"].value_string();
-    train_data_filepath_next_ = param_map["Train_Data_Next"].value_string();
-    train_label_filepath_next_ = param_map["Train_Lable_Next"].value_string();
+    Test_Input_Self_path = param_map["Test_Input_Self"].value_string();
+    Test_Input_Next_path = param_map["Test_Input_Next"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32(); // iteration rounds
   } catch (std::exception &e) {
@@ -81,10 +77,10 @@ int FalconLenetExecutor::loadParams(primihub::rpc::Task &task) {
 }
 
 int FalconLenetExecutor::loadDataset() {
-  file_train_data_self_ = train_data_filepath_self_;
-  file_train_data_next_ = train_data_filepath_next_;
-  file_train_label_self_ = train_label_filepath_self_;
-  file_train_label_next_ = train_label_filepath_next_;
+
+  Test_Input_Self_filepath = Test_Input_Self_path;
+  Test_Input_Next_filepath = Test_Input_Next_path;
+
   return 0;
 }
 
@@ -150,11 +146,11 @@ int FalconLenetExecutor::execute() {
   config_lenet->checkNetwork();
   net_lenet = new NeuralNetwork(config_lenet);
 
-  //Test config
-  network += " preloaded"; PRELOADING = true;
-    LOG(INFO) << "preloading begin";
-	preload_network(PRELOADING, network, net_lenet);
-    LOG(INFO) << "preloading end";
+  // Test config
+  network += " preloaded";
+  PRELOADING = true;
+  LOG(INFO) << "preloading begin";
+  preload_network(PRELOADING, network, net_lenet);
   start_m();
   // LOG(INFO) << "Training on MNIST using Lenet";
 
@@ -165,8 +161,8 @@ int FalconLenetExecutor::execute() {
   // }
 
   LOG(INFO) << "Test on MNIST using Lenet";
-	network += " test";
-	test(PRELOADING, network, net_lenet);
+  network += " test";
+  test(PRELOADING, network, net_lenet);
 
   end_m(network);
   printNetwork(net_lenet);

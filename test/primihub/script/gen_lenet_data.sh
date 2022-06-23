@@ -2,7 +2,8 @@ set -x
 set -e
 
 
-cd ../../../data/falcon/dataset/MNIST
+#cd ../../../data/falcon/dataset/MNIST
+cd /tmp
 
 set +e
 rm -rf test_data_A

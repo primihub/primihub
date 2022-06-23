@@ -127,11 +127,15 @@ TEST(logistic, logistic_3pc_test) {
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
+  std::vector<std::string> bootstrap_ids;
+  bootstrap_ids.emplace_back("/ip4/127.0.0.1/tcp/10080/ipfs/"
+                             "QmYp9xmGgjVzJomWfEe87EPrVSY6jjAV5MMCWCCn4Fqu2A");
+
   pid_t pid = fork();
   if (pid != 0) {
     // Child process as party 0.
-    auto stub = std::make_shared<p2p::NodeStub>();
-    stub->start("/ip4/127.0.0.1/tcp/8888");
+    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
+    stub->start("/ip4/127.0.0.1/tcp/8880");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -144,11 +148,11 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>();
-    stub->start("/ip4/127.0.0.1/tcp/8889");
+    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
+    stub->start("/ip4/127.0.0.1/tcp/8881");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         stub, std::make_shared<service::StorageBackendDefault>());
-    
+
     google::InitGoogleLogging("LR-party1");
     RunLogistic("node_2", task2, service);
     return;
@@ -156,11 +160,11 @@ TEST(logistic, logistic_3pc_test) {
 
   // Parent process as party 2.
   sleep(3);
-  auto stub = std::make_shared<p2p::NodeStub>();
-  stub->start("/ip4/127.0.0.1/tcp/8890");
+  auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
+  stub->start("/ip4/127.0.0.1/tcp/8882");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       stub, std::make_shared<service::StorageBackendDefault>());
-  
+
   google::InitGoogleLogging("LR-party2");
   RunLogistic("node_3", task3, service);
   return;
