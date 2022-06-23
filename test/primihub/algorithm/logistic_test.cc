@@ -164,7 +164,6 @@ TEST(logistic, logistic_3pc_test) {
 
   // Parent process as party 2.
   sleep(3);
-
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/65532");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
