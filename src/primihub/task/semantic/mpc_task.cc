@@ -65,8 +65,8 @@ namespace primihub::task
 #ifndef __APPLE__
       PartyConfig config(node_id, task_param_);
       algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-          std::make_shared<primihub::FalconLenetExecutor>(config,
-                                                          dataset_service));
+          std::make_shared<primihub::falcon::FalconLenetExecutor>(
+		  config, dataset_service));
 #else
       LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple platform.";
 #endif
