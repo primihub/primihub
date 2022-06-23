@@ -28,16 +28,16 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/circuit_execution.h"
 #include "src/primihub/protocol/cryptflow2/GC/protocol_execution.h"
 
-thread_local sci::ProtocolExecution *prot_exec = nullptr;
-thread_local sci::CircuitExecution *circ_exec = nullptr;
+thread_local primihub::sci::ProtocolExecution *prot_exec = nullptr;
+thread_local primihub::sci::CircuitExecution *circ_exec = nullptr;
 /*
 #ifndef THREADING
-// sci::ProtocolExecution* sci::ProtocolExecution::prot_exec = nullptr;
-// sci::CircuitExecution* sci::CircuitExecution::circ_exec = nullptr;
-sci::ProtocolExecution* prot_exec = nullptr;
-sci::CircuitExecution* circ_exec = nullptr;
+// primihub::sci::ProtocolExecution* primihub::sci::ProtocolExecution::prot_exec = nullptr;
+// primihub::sci::CircuitExecution* primihub::sci::CircuitExecution::circ_exec = nullptr;
+primihub::sci::ProtocolExecution* prot_exec = nullptr;
+primihub::sci::CircuitExecution* circ_exec = nullptr;
 #else
-__thread sci::ProtocolExecution* sci::ProtocolExecution::prot_exec = nullptr;
-__thread sci::CircuitExecution* sci::CircuitExecution::circ_exec = nullptr;
+__thread primihub::sci::ProtocolExecution* primihub::sci::ProtocolExecution::prot_exec = nullptr;
+__thread primihub::sci::CircuitExecution* primihub::sci::CircuitExecution::circ_exec = nullptr;
 #endif
 */

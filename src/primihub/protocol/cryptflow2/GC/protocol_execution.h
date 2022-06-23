@@ -31,7 +31,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/utils/constants.h"
 #include <pthread.h>
 
-namespace sci {
+namespace primihub::sci {
 class ProtocolExecution {
 public:
   int cur_party;
@@ -49,7 +49,7 @@ public:
   virtual void reveal(bool *out, int party, const block128 *lbls, int nel) = 0;
   virtual void finalize() {}
 };
-} // namespace sci
-// extern sci::ProtocolExecution* prot_exec;
-thread_local extern sci::ProtocolExecution *prot_exec;
+} // namespace primihub::sci
+// extern primihub::sci::ProtocolExecution* prot_exec;
+thread_local extern primihub::sci::ProtocolExecution *prot_exec;
 #endif

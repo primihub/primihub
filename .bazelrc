@@ -21,6 +21,7 @@ build:macos --cxxopt=-std=c++17
 build:macos --host_cxxopt=-std=c++17
 build:macos --copt=-w
 build:macos --copt=-force_flat_namespace
+build:macos --define macos-build=true
 
 # Sets the default Apple platform to macOS.
 build --apple_platform_type=macos
@@ -34,13 +35,16 @@ build:darwin_x86_64 --apple_platform_type=macos
 build:darwin_x86_64 --macos_minimum_os=10.16    
 build:darwin_x86_64 --cpu=darwin_x86_64
 build:darwin_x86_64 --copt=-DENABLE_SSE
+build:darwin_x86_64 --define macos-build=true
 
 # MacOS Big Sur with Apple Silicon M1
 build:darwin_arm64 --apple_platform_type=macos
 build:darwin_arm64 --macos_minimum_os=10.16
 build:darwin_arm64 --cpu=darwin_arm64
+build:darwin_arm64 --define macos-build=true
 
 # MacOS Monterey with Apple M1
 build:darwin --apple_platform_type=macos
 build:darwin --macos_minimum_os=12.3.1
 build:darwin --cpu=darwin
+build:darwin --define macos-build=true

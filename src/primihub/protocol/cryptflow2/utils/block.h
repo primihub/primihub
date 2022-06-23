@@ -41,7 +41,7 @@ Modified by Deevashwer Rathee
 #include <wmmintrin.h>
 #include <xmmintrin.h>
 
-namespace sci {
+namespace primihub::sci {
 typedef __m128i block128;
 typedef __m256i block256;
 
@@ -389,5 +389,5 @@ __attribute__((target("sse2"))) inline block128 RIGHTSHIFT(block128 bl) {
   bl = _mm_slli_epi64(bl, 1);
   return _mm_xor_si128(bl, tmp);
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif // UTIL_BLOCK_H__

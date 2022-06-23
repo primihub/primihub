@@ -27,6 +27,9 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     YAML::Node config = YAML::LoadFile(config_file_path);
     auto bootstrap_nodes = config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
     p2p_node_stub_ = std::make_shared<primihub::p2p::NodeStub>(std::move(bootstrap_nodes));
+    nodelet_addr_ = config["node"].as<std::string>() + ":"
+        + config["location"].as<std::string>() + ":"
+        + std::to_string(config["grpc_port"].as<uint64_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
     sleep(10);
@@ -36,7 +39,8 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_);
 
-    loadConifg(config_file_path);
+    auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
+    loadConifg(config_file_path, timeout);
     
 }
 
@@ -48,9 +52,15 @@ std::shared_ptr<primihub::service::DatasetService> &Nodelet::getDataService() {
     return dataset_service_;
 }
 
+std::string Nodelet::getNodeletAddr() {
+    return nodelet_addr_;
+}
+
 // Load config file and load default datasets
-void Nodelet::loadConifg(const std::string &config_file_path) {
+void Nodelet::loadConifg(const std::string &config_file_path, unsigned int dht_get_value_timeout) {
     dataset_service_->loadDefaultDatasets(config_file_path);
+    dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
+    
     // TODO other service load config
 }
 

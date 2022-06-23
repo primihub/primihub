@@ -27,9 +27,9 @@ Modified by Deevashwer Rathee
 
 #include "src/primihub/protocol/cryptflow2/GC/halfgate_eva.h"
 
-using namespace sci;
+using namespace primihub::sci;
 
-block128 sci::halfgates_eval(block128 A, block128 B, const block128 *table,
+block128 primihub::sci::halfgates_eval(block128 A, block128 B, const block128 *table,
                              MITCCRH<8> *mitccrh) {
   block128 HA, HB, W;
   int sa, sb;

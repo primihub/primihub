@@ -23,7 +23,7 @@ SOFTWARE.
 #define SPLIT_UTIL_H__
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename basetype>
 void pack_a(basetype *a, basetype *a_unpacked, int asize, int bsize,
             int bitsize) {
@@ -186,5 +186,5 @@ void unpack_messages(basetype *data, const uint8_t *r, basetype *recvd,
     counter++;
   }
 }
-} // namespace sci
+} // namespace primihub::sci
 #endif // SPLIT_UTIL_H__

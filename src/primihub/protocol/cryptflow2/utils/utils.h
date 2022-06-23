@@ -41,49 +41,56 @@ using std::string;
 using std::chrono::high_resolution_clock;
 using std::chrono::time_point;
 
-namespace sci {
-template <typename T> void inline delete_array_null(T *ptr);
+namespace primihub::sci
+{
+  template <typename T>
+  void inline delete_array_null(T *ptr);
 
-inline void error(const char *s, int line = 0, const char *file = nullptr);
+  inline void error(const char *s, int line = 0, const char *file = nullptr);
 
-template <class... Ts> void run_function(void *function, const Ts &... args);
+  template <class... Ts>
+  void run_function(void *function, const Ts &...args);
 
-inline void parse_party_and_port(char **arg, int argc, int *party, int *port);
+  inline void parse_party_and_port(char **arg, int argc, int *party, int *port);
 
-std::string Party(int p);
+  std::string Party(int p);
 
-// Timing related
-inline time_point<high_resolution_clock> clock_start();
-inline double time_from(const time_point<high_resolution_clock> &s);
+  // Timing related
+  inline time_point<high_resolution_clock> clock_start();
+  inline double time_from(const time_point<high_resolution_clock> &s);
 
-// block128 conversions
-template <typename T = uint64_t> std::string m128i_to_string(const __m128i var);
-block128 bool_to128(const bool *data);
+  // block128 conversions
+  template <typename T = uint64_t>
+  std::string m128i_to_string(const __m128i var);
+  block128 bool_to128(const bool *data);
 
-template <typename T> inline void int_to_bool(bool *data, T input, int len);
-void int64_to_bool(bool *data, uint64_t input, int length);
-inline void uint8_to_bool(uint8_t *data, uint8_t input, int length);
+  template <typename T>
+  inline void int_to_bool(bool *data, T input, int len);
+  void int64_to_bool(bool *data, uint64_t input, int length);
+  inline void uint8_to_bool(uint8_t *data, uint8_t input, int length);
 
-// Other conversions
-template <typename T> T bool_to_int(const bool *data, size_t len = 0);
-inline uint8_t bool_to_uint8(const uint8_t *data, size_t len = 0);
-std::string hex_to_binary(std::string hex);
-inline string change_base(string str, int old_base, int new_base);
-inline string dec_to_bin(const string &dec);
-inline string bin_to_dec(const string &bin2);
-inline const char *hex_char_to_bin(char c);
+  // Other conversions
+  template <typename T>
+  T bool_to_int(const bool *data, size_t len = 0);
+  inline uint8_t bool_to_uint8(const uint8_t *data, size_t len = 0);
+  std::string hex_to_binary(std::string hex);
+  inline string change_base(string str, int old_base, int new_base);
+  inline string dec_to_bin(const string &dec);
+  inline string bin_to_dec(const string &bin2);
+  inline const char *hex_char_to_bin(char c);
 
-inline int bitlen(int x);
-inline int bitlen_true(int x);
+  inline int bitlen(int x);
+  inline int bitlen_true(int x);
 
-inline int64_t neg_mod(int64_t val, int64_t mod);
-inline int8_t neg_mod(int8_t val, int8_t mod);
+  inline int64_t neg_mod(int64_t val, int64_t mod);
+  inline int8_t neg_mod(int8_t val, int8_t mod);
 
-// deprecate soon
-inline void parse_party_and_port(char **arg, int *party, int *port) {
-  parse_party_and_port(arg, 2, party, port);
-}
+  // deprecate soon
+  inline void parse_party_and_port(char **arg, int *party, int *port)
+  {
+    parse_party_and_port(arg, 2, party, port);
+  }
 
 #include "src/primihub/protocol/cryptflow2/utils/utils.hpp"
-} // namespace sci
+} // namespace primihub::sci
 #endif // UTILS_H__

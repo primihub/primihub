@@ -60,7 +60,7 @@ Reference code: https://github.com/Shay-Gueron/AES-GCM-SIV
 // number of batched key schedule
 #define KS_BATCH_N 8
 
-namespace sci {
+namespace primihub::sci {
 
 typedef struct KEY_SCHEDULE {
   ALIGN16 unsigned char KEY[16 * 15];
@@ -1048,5 +1048,5 @@ static inline void AES_256_ks8(block256 *user_key, AESNI_KEY *KEYS) {
   KS_round_last_x8(14);
 }
 
-} // namespace sci
+} // namespace primihub::sci
 #endif

@@ -5,3 +5,5 @@ pytest
 numpy
 dill==0.3.5.1
 pyzmq
+bitarray
+mmh3
