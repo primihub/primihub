@@ -127,7 +127,6 @@ TEST(falcon, falcon_lenet_test)
   task1.set_task_id("mpc_lenet"); //
   task1.set_job_id("lenet_job");  //
 
-//add
   rpc::ParamValue pv_train_data_filepath_self_,pv_train_data_filepath_next_;
   rpc::ParamValue pv_train_label_filepath_self_, pv_train_label_filepath_next_;
 
@@ -140,7 +139,6 @@ TEST(falcon, falcon_lenet_test)
   pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_A");
   pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_B");
   pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_B");
-//add
 
   rpc::ParamValue pv_batch_size;
   pv_batch_size.set_var_type(rpc::VarType::INT32);
@@ -151,12 +149,10 @@ TEST(falcon, falcon_lenet_test)
   pv_num_iter.set_value_int32(1);
 
   auto param_map = task1.mutable_params()->mutable_param_map();
-//add
   (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
   (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
   (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
   (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-//add
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
@@ -169,20 +165,16 @@ TEST(falcon, falcon_lenet_test)
   task2.set_task_id("mpc_lenet");
   task2.set_job_id("lenet_job");
 
-//add
   pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_B" );
   pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_B");
   pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_C");
   pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_C");
-//add
 
   param_map = task2.mutable_params()->mutable_param_map();
-//add
   (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
   (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
   (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
   (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-//add
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
@@ -195,31 +187,25 @@ TEST(falcon, falcon_lenet_test)
   task3.set_task_id("mpc_lenet");
   task3.set_job_id("lenet_job");
 
-//add
   pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_C" );
   pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_C" );
   pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_A");
   pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_A");
-//add
 
   param_map = task3.mutable_params()->mutable_param_map();
-//add
   (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
   (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
   (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
   (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-//add
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
+
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
                              "QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd");
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
                              "QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA");
 
-
-
-                         
   pid_t pid = fork();
   if (pid != 0)
   {
