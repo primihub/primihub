@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd
 
 
-class ZscoreStandard():
+class MinMaxStandard():
     def __init__(self):
-        self.mean = 0
-        self.std = 0
-        self.num = 0
+        self.min = None
+        self.max = None
 
     def _check_data(self, np_data):
         if isinstance(np_data, np.ndarray):
@@ -32,48 +31,39 @@ class ZscoreStandard():
             raise ValueError("idxs may be int | list | tuple")
 
     def _fit(self, data, idxs):
-        self.mean = np.mean(data[:, idxs].astype(float), axis=0)
-        self.std = np.std(data[:, idxs].astype(float), axis=0)
-        self.num = data.shape[0]
-        return self.mean, self.std
+        self.min = np.amin(data[:, idxs].astype(float), axis=0)
+        self.max = np.amax(data[:, idxs].astype(float), axis=0)
+        return self.min, self.max
 
     def __call__(self, data, idxs):
         data = self._check_data(data)
-        idxs = self._check_idxs(idxs)
-        self._fit(data, idxs)
-        data[:, idxs] = (data[:, idxs] - self.mean) / self.std
+        idxs_nd = self._check_idxs(idxs)
+        self._fit(data, idxs_nd)
+        data[:, idxs_nd] = (data[:, idxs_nd] - self.min) / \
+            (self.max - self.min)
         return data
 
 
-class HorZscoreStandard(ZscoreStandard):
+class HorMinMaxStandard(MinMaxStandard):
     def __init__(self):
         super().__init__()
         self.union_flag = False
 
     @staticmethod
-    def server_union(*other_stats):
-        num_client = len(other_stats)
-        ratio_list = np.zeros(num_client)
-        for i, (_, _, num) in enumerate(other_stats):
-            ratio_list[i] = num
-        sum_num = np.sum(ratio_list)
-        ratio_list /= sum_num
-
-        stat_mean, stat_dev = 0, 0
-        for i, (mean, std, _) in enumerate(other_stats):
-            stat_mean += mean * ratio_list[i]
-            stat_dev += np.power(std, 2) * ratio_list[i]
-        stat_std = np.sqrt(stat_dev)
-        return stat_mean, stat_std
+    def server_union(*client_stats):
+        for list_min, list_max in zip(*client_stats):
+            stat_min = min(list_min)
+            stat_max = max(list_max)
+        return stat_min, stat_max
 
     def fit(self, data, idxs):
         data = self._check_data(data)
-        idxs = self._check_idxs(idxs)
-        mean, std = self._fit(data, idxs)
-        return mean, std, data.shape[0]
+        idxs_nd = self._check_idxs(idxs)
+        min, max = self._fit(data, idxs_nd)
+        return min, max
 
-    def load_union(self, stat_mean, stat_std):
-        self.mean, self.std = stat_mean, stat_std
+    def load_union(self, stat_min, stat_max):
+        self.min, self.max = stat_min, stat_max
         self.union_flag = True
 
     def __call__(self, data, idxs):
@@ -81,5 +71,5 @@ class HorZscoreStandard(ZscoreStandard):
         idxs_nd = self._check_idxs(idxs)
         if self.union_flag == False:
             raise ValueError("horizontal standard must do after server_union")
-        data[:, idxs] = (data[:, idxs] - self.mean) / self.std
+        data[:, idxs] = (data[:, idxs_nd] - self.min) / (self.max - self.min)
         return data

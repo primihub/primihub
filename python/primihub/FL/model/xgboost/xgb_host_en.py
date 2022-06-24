@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-class XGB_HOST:
+class XGB_HOST_EN:
     def __init__(self,
                  base_score=0.5,
                  max_depth=3,
