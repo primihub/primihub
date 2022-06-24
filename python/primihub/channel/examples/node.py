@@ -32,8 +32,8 @@ async def node():
     
 async def main():
     tasks = [node(), node(), node()]
-    complate, pending = await asyncio.wait(tasks)
-    for i in complate:
+    complete, pending = await asyncio.wait(tasks)
+    for i in complete:
         print("result: ", i.result())
     if pending:
         for p in pending:
