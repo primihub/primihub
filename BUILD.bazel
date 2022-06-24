@@ -760,24 +760,29 @@ cc_library(
     visibility = ["//visibility:public"],   
 )
 
+
+
 cc_library(
     name = "dataset_service",
     srcs = [
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
+             "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
             "src/primihub/service/dataset/model.h",
             "src/primihub/service/dataset/service.h",                 
             "src/primihub/service/dataset/storage_backend.h",
-            "src/primihub/service/dataset/localkv/storage_default.h",    
+            "src/primihub/service/dataset/localkv/storage_default.h",
+            "src/primihub/service/dataset/localkv/storage_leveldb.h",    
             "src/primihub/service/dataset/util.hpp",     
     ],
     linkopts = LINK_OPTS,
     deps = [
         "@com_github_glog_glog//:glog",
+        "@com_github_google_leveldb//:leveldb",
         "@arrow",
         "@nlohmann_json",
         "@libp2p//:p2p",
