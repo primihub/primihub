@@ -51,16 +51,11 @@ jobs:
       run: ./pre_build.sh
       shell: bash
 
-    - name: Checkout primihub
-      uses: actions/checkout@v3
-      with:
-        repository: primihub/primihub
-        ref: falcon_namespace
-        path: primihub
-
     - name: bazel test
+      uses: actions/checkout@v3
       run: |
-        bazel test --test_output=errors --config=linux logistic_test maxpool_test falcon_lenent_test
+        cat data/train_party_0.csv
+        # bazel test --test_output=errors --config=linux logistic_test maxpool_test falcon_lenent_test
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --test_output=errors --config=linux logistic_test
