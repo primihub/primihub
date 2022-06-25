@@ -54,10 +54,10 @@ jobs:
     - name: bazel test
       run: |
         cat data/train_party_0.csv
-        bazel build --config=linux logistic_test maxpool_test falcon_lenent_test
+        bazel build --config=linux logistic_test maxpool_test falcon_lenet_test
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
-        ./bazel-bin/falcon_lenent_test
+        ./bazel-bin/falcon_lenet_test
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --test_output=errors --config=linux logistic_test
