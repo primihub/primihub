@@ -60,9 +60,6 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
-        # bazel test --test_output=errors --config=linux logistic_test
-        # bazel test --test_output=errors --config=linux maxpool_test
-        # bazel test --test_output=errors --config=linux falcon_lenet_test
         # bazel test --config=linux primitive_test
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
@@ -88,12 +85,12 @@ jobs:
     - uses: actions/checkout@v3
     - name: bazel build
       run: |
-        bazel test --test_output=errors --config=darwin_x86_64 --config=macos common_test
+        cat data/train_party_0.csv
+        bazel build --config=darwin_x86_64 --config=macos logistic_test maxpool_test falcon_lenet_test
+        ./bazel-bin/logistic_test
+        ./bazel-bin/maxpool_test
+        ./bazel-bin/falcon_lenet_test
         bazel test --test_output=errors --config=darwin_x86_64 --config=macos network_test
-        bazel test --test_output=errors --config=darwin_x86_64 --config=macos logistic_test
-        bazel test --test_output=errors --config=darwin_x86_64 --config=macos maxpool_test
-        bazel test --test_output=errors --config=darwin_x86_64 --config=macos falcon_lenet_test
-
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
