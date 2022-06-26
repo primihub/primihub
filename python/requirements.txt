@@ -10,3 +10,4 @@ mmh3
 
 grpcio
 grpcio-tools
+pydantic
