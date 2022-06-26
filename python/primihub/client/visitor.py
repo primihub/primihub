@@ -40,6 +40,10 @@ class Visitor(object):
         # print("- * -" * 20)
         sys.exit(0)
 
+    def visit_interactive(self):
+        # TODO
+        pass
+
 
 # ast transformer
 class MyTransformer(ast.NodeTransformer):
