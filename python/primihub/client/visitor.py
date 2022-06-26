@@ -11,8 +11,6 @@ import ast
 import sys
 from os import path
 
-from pyparsing import Any
-
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "..")))
 
 

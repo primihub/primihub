@@ -1,8 +1,10 @@
-from python.primihub.primitive.opt_paillier_c2py_warpper import *
 import random
 import time
 
+from python.primihub.primitive.opt_paillier_c2py_warpper import *
+
 check_list = [0, 0, 0, 0]
+
 
 def random_plaintext(length):
     res = 0
@@ -10,8 +12,9 @@ def random_plaintext(length):
         res = res << 1
         res = res | random.randint(0, 1)
     if random.randint(0, 1) == 0:
-         res = -res
+        res = -res
     return res
+
 
 if __name__ == '__main__':
     keygen_cost = 0
@@ -50,10 +53,10 @@ if __name__ == '__main__':
         add_cost += a_ed - a_st
 
         add_decrypt_text = opt_paillier_decrypt_crt(pub, prv, add_cipher_text)
-        
+
         if not add_decrypt_text == plain_text1 + plain_text2:
             print("Add Error")
-        
+
         if plain_text1 >= 0:
             if plain_text2 >= 0:
                 check_list[0] = 1
@@ -68,11 +71,11 @@ if __name__ == '__main__':
     print("=========================opt test=========================")
     encrypt_cost = 1.0 / _round * encrypt_cost;
     decrypt_cost = 1.0 / _round * decrypt_cost;
-    add_cost     = 1.0 / _round * add_cost;
+    add_cost = 1.0 / _round * add_cost;
 
-    print("The total encryption cost is " + str(encrypt_cost * 1000.0 ) + " ms.")
-    print("The total decryption cost is " + str(decrypt_cost * 1000.0 ) + " ms.")
-    print("The total addition   cost is " + str(add_cost     * 1000.0 ) + " ms.")
+    print("The total encryption cost is " + str(encrypt_cost * 1000.0) + " ms.")
+    print("The total decryption cost is " + str(decrypt_cost * 1000.0) + " ms.")
+    print("The total addition   cost is " + str(add_cost * 1000.0) + " ms.")
     print("checked: " + str(check_list))
 
     print("========================================================")

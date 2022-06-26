@@ -19,8 +19,7 @@ class PIRCli(Cli):
     def __init__(self, node: str, cert: str) -> None:
         super(PIRCli, self).__init__(node, cert)
 
-    def set_task_map(self,):
-
+    def set_task_map(self, ):
         self.task_map = {
             "type": 2,
             "language": common_pb2.Language.PYTHON,

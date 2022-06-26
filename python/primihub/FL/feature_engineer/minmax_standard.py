@@ -40,7 +40,7 @@ class MinMaxStandard():
         idxs_nd = self._check_idxs(idxs)
         self._fit(data, idxs_nd)
         data[:, idxs_nd] = (data[:, idxs_nd] - self.min) / \
-            (self.max - self.min)
+                           (self.max - self.min)
         return data
 
 

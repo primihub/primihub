@@ -16,12 +16,12 @@
  limitations under the License.
  """
 
+import numpy as np
+import pandas as pd
 import primihub as ph
-from primihub.channel.zmq_channel import IOService, Session
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
-import pandas as pd
-import numpy as np
+from primihub.channel.zmq_channel import IOService, Session
 
 # define dataset
 ph.dataset.define("guest_dataset")
@@ -47,7 +47,7 @@ def xgb_host_logic():
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     ip, port = next_peer.split(":")
     ios = IOService()
-    server = Session(ios,  ip, port, "server")
+    server = Session(ios, ip, port, "server")
     channel = server.addChannel()
 
     data = ph.dataset.read(dataset_key="label_dataset", names=columnNames).df_data
@@ -95,12 +95,13 @@ def xgb_guest_logic():
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     ip, port = next_peer.split(":")
-    client = Session(ios,  ip, port, "client")
+    client = Session(ios, ip, port, "client")
     channel = client.addChannel()
     channel.send(b'guest ready')
     data = ph.dataset.read(dataset_key="guest_dataset", names=columnNames).df_data
     X_guest = data[['Clump Thickness', 'Uniformity of Cell Size']]
-    xgb_guest = XGB_GUEST(n_estimators=1, max_depth=2, reg_lambda=1, min_child_weight=1, objective='linear', channel=channel)  # noqa
+    xgb_guest = XGB_GUEST(n_estimators=1, max_depth=2, reg_lambda=1, min_child_weight=1, objective='linear',
+                          channel=channel)  # noqa
 
     for t in range(xgb_guest.n_estimators):
         gh_host = xgb_guest.channel.recv()

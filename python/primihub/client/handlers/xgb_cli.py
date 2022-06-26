@@ -10,7 +10,6 @@ from cli import Cli
 from ph_grpc import common_pb2
 
 
-
 class XGBCli(Cli):
     """XGB client stragegy.
 
@@ -18,12 +17,10 @@ class XGBCli(Cli):
         Cli (_type_): _description_
     """
 
-
     def __init__(self, node: str, cert: str) -> None:
         super(XGBCli, self).__init__(node=node, cert=cert)
-    
-    
-    def set_task_map(self, code_path: str)-> dict():
+
+    def set_task_map(self, code_path: str) -> dict():
         """set tack_map
 
         Args:
@@ -43,7 +40,7 @@ class XGBCli(Cli):
     def set_params(self, *args, **kwargs):
         self.params = dict(**kwargs)
         return self.params
-        
+
     def submit(self):
         return super().submit()
 

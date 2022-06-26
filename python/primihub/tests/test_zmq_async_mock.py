@@ -7,14 +7,9 @@
 # @Date   : 6/23/2022, 6:41:43 PM
 
 import asyncio
-import threading
+
 import zmq
 import zmq.asyncio
-
-import zmq
-
-import asyncio
-import zmq
 import zmq.asyncio
 
 ctx = zmq.asyncio.Context()
@@ -22,17 +17,18 @@ context = zmq.Context()
 
 
 async def async_process(msg):
-    import time
     print("exec will sleep 3...")
     await asyncio.sleep(3)
     print(msg)
     return msg
 
-url = "tcp://127.0.0.1:5557"
 
+url = "tcp://127.0.0.1:5557"
 
 r_socket = ctx.socket(zmq.PULL)
 r_socket.bind("tcp://127.0.0.1:5558")
+
+
 async def node(n):
     print("node waiting...")
     await asyncio.sleep(n)
@@ -42,11 +38,11 @@ async def node(n):
     print("push: ", sock)
     sock.send_json(n)
 
-
     res = r_socket.recv()
     print("recv:--------- ", await res)
 
     return n
+
 
 async def server(node_num=0):
     node_list = []
@@ -60,7 +56,7 @@ async def server(node_num=0):
     print("server rec: ", node_list)
     reply = await async_process(node_list)
     print("reply: ", reply)
-    
+
     consumer_sender = ctx.socket(zmq.PUSH)
     consumer_sender.connect("tcp://127.0.0.1:5558")
     for i in range(node_num):
@@ -80,12 +76,11 @@ async def main():
         for p in pending:
             print(p)
 
+
 if __name__ == "__main__":
 
-    
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(main())
     finally:
         loop.close()
-

@@ -7,9 +7,9 @@
 # @Date   : 5/27/2022, 10:37:57 AM
 
 import sys
-from os import path
 import threading
 import time
+from os import path
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
@@ -20,17 +20,17 @@ def host():
     ios = MockIOService()
     server = MockSession(ios, "localhost:1213", "server", "endpoint1")
     s_channel = server.addChannel("TestChannel", "TestChannel")
-    
+
     client = MockSession(ios, "localhost:1213", "client", "endpoint2")
     c_channel = client.addChannel("TestChannel", "TestChannel")
     # host 拉起首次通讯？
     s_channel.send(1)
     print("- host send: 1  first")
-    
+
     g = [2, 3, 4, 5]
     for t in range(0, 4):
         h = c_channel.recv()
-        
+
         while True:
             if h is not None:
                 break
@@ -44,14 +44,14 @@ def host():
         s_channel.send(g[t])
         print("- host send: ", g[t])
 
-            
+
 def guest():
     time.sleep(3)
     ios = MockIOService()
     # server
     server = MockSession(ios, "localhost:1213", "server", "endpoint2")
     s_channel = server.addChannel("TestChannel", "TestChannel")
-    
+
     # client
     client = MockSession(ios, "localhost:1213", "client", "endpoint1")
     c_channel = client.addChannel("TestChannel", "TestChannel")
@@ -68,7 +68,6 @@ def guest():
         print("+ guest rec host: ", g, " guest cal...")
         s_channel.send(h[t])
         print("guest send: ", h[t])
-
 
 
 send_t = threading.Thread(target=host)

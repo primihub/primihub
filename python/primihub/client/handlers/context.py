@@ -6,16 +6,11 @@
 # @Link   :
 # @Date   : 6/23/2022, 12:36:28 PM
 
-from enum import IntEnum
-import grpc
+from ph_grpc import worker_pb2
+from ph_grpc import worker_pb2_grpc
+from ph_grpc.common_pb2 import Task
 from pydantic import bytes, int
 
-from ph_grpc.common_pb2 import Task
-
-from ph_grpc import worker_pb2_grpc
-from ph_grpc import worker_pb2
-from ph_grpc import common_pb2
-from ph_grpc.worker_pb2 import PushTaskReply
 from python.primihub.client.handlers.cli import Cli
 
 
@@ -25,6 +20,7 @@ class CliContext(object):
     Args:
         object (_type_): _description_
     """
+
     # CLI_TYPE = {
     #    "xgb" XGBCli,
     #    "pir" PRICli,
@@ -32,7 +28,6 @@ class CliContext(object):
     # }
     def __init__(self, cli: Cli) -> None:
         self.cli = cli
-        
 
     # @property
     # def task_map(self):
@@ -56,7 +51,6 @@ class CliContext(object):
 
     #     self._task_map = value
 
-    
     def task_request(self, intended_worker_id: bytes, task: Task, sequence_number: int, client_processed_up_to: int):
         request = worker_pb2.PushTaskRequest(
             intended_worker_id=intended_worker_id,

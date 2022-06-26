@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 class XGB_HOST:
     def __init__(self,
                  base_score=0.5,
@@ -105,9 +106,9 @@ class XGB_HOST:
         GH = pd.concat([GH_host, GH_guest], axis=0, ignore_index=True)
         for item in GH.index:
             gain = GH.loc[item, 'G_left'] ** 2 / (GH.loc[item, 'H_left'] + self.reg_lambda) + \
-                GH.loc[item, 'G_right'] ** 2 / (GH.loc[item, 'H_right'] + self.reg_lambda) - \
-                (GH.loc[item, 'G_left'] + GH.loc[item, 'G_right']) ** 2 / (
-                GH.loc[item, 'H_left'] + GH.loc[item, 'H_right'] + + self.reg_lambda)
+                   GH.loc[item, 'G_right'] ** 2 / (GH.loc[item, 'H_right'] + self.reg_lambda) - \
+                   (GH.loc[item, 'G_left'] + GH.loc[item, 'G_right']) ** 2 / (
+                           GH.loc[item, 'H_left'] + GH.loc[item, 'H_right'] + + self.reg_lambda)
             gain = gain / 2 - self.gamma
             if gain > max_gain:
                 best_var = GH.loc[item, 'var']
@@ -124,10 +125,10 @@ class XGB_HOST:
         # print("++++++host index-1+++++++", len(X.index.tolist()), X.index)
         id_left = X.loc[X[best_var] < best_cut].index.tolist()
         w_left = -GH_best['G_left_best'] / \
-            (GH_best['H_left_best'] + self.reg_lambda)
+                 (GH_best['H_left_best'] + self.reg_lambda)
         id_right = X.loc[X[best_var] >= best_cut].index.tolist()
         w_right = -GH_best['G_right_best'] / \
-            (GH_best['H_right_best'] + self.reg_lambda)
+                  (GH_best['H_right_best'] + self.reg_lambda)
         w[id_left] = w_left
         w[id_right] = w_right
         return w, id_right, id_left, w_right, w_left
@@ -218,11 +219,11 @@ class XGB_HOST:
         '''
 
         X = X.reset_index(drop='True')
-        Y = pd.Series([self.base_score]*X.shape[0])
+        Y = pd.Series([self.base_score] * X.shape[0])
 
         for t in range(self.n_estimators):
-            tree = self.tree_structure[t+1]
-            y_t = pd.Series([0]*X.shape[0])
+            tree = self.tree_structure[t + 1]
+            y_t = pd.Series([0] * X.shape[0])
             self._get_tree_node_w(X, tree, y_t)
             Y = Y + self.learning_rate * y_t
 
@@ -234,7 +235,9 @@ class XGB_HOST:
         '''
 
         Y = self.predict_raw(X)
-        def sigmoid(x): return 1/(1+np.exp(-x))
+
+        def sigmoid(x): return 1 / (1 + np.exp(-x))
+
         Y = Y.apply(sigmoid)
 
         return Y

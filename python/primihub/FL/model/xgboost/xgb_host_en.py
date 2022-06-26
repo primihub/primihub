@@ -1,6 +1,6 @@
-from primihub.primitive.opt_paillier_c2py_warpper import *
 import numpy as np
 import pandas as pd
+from primihub.primitive.opt_paillier_c2py_warpper import *
 
 
 class XGB_HOST_EN:
@@ -39,7 +39,7 @@ class XGB_HOST_EN:
             y_hat = 1.0 / (1.0 + np.exp(-y_hat))
             return y_hat - Y
         elif self.objective == 'linear':
-            return (y_hat - Y) *10000
+            return (y_hat - Y) * 10000
         else:
             raise KeyError('objective must be linear or logistic!')
 

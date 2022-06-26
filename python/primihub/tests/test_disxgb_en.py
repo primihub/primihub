@@ -16,10 +16,10 @@
  limitations under the License.
  """
 
-from os import path
 import threading
-import primihub as ph
+from os import path
 
+import primihub as ph
 from primihub.examples.disxgb_en import xgb_host_logic, xgb_guest_logic
 
 HOST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/wisconsin_host.data"))  # noqa
@@ -35,8 +35,11 @@ ph.context.Context.dataset_map = {
 ph.context.Context.output_path = "/data/result/xgb_prediction.csv"
 
 cry_pri = "plaintext"
+
+
 def run_xgb_host_logic():
     xgb_host_logic(cry_pri)
+
 
 def run_xgb_guest_logic():
     xgb_guest_logic(cry_pri)

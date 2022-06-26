@@ -6,14 +6,12 @@
 # @Link   : 
 # @Date   : 6/24/2022, 7:19:00 AM
 
-import pickle
 from .zmq_channel import IOService, Session
 
 
 class Consumer(object):
-    
 
-    def __init__(self,  ip, port):
+    def __init__(self, ip, port):
         """consumer init
             zmq PULL bind
         Args:
@@ -21,7 +19,7 @@ class Consumer(object):
             port (_type_): _description_
         """
         ios = IOService()
-        session = Session(ios,  ip, port, "consumer") # PULL bind 
+        session = Session(ios, ip, port, "consumer")  # PULL bind
         self.channel = session.addChannel()
 
     async def recv(self):

@@ -1,8 +1,9 @@
 # INPUT
-import pandas as pd
 from os import path
-from python.primihub.FL.model.xgboost.plain_xgb import XGB
 
+import pandas as pd
+
+from python.primihub.FL.model.xgboost.plain_xgb import XGB
 
 # TODO Define input datasets
 # from primihub import dataset
@@ -22,6 +23,8 @@ columnNames = [
     'Mitoses',
     'Class'
 ]
+
+
 def test_xgh():
     data = pd.read_csv(DATA_PATH, names=columnNames)
     X = data[[x for x in data.columns if x != 'Class']]

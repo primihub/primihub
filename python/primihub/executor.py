@@ -14,16 +14,16 @@
  limitations under the License.
  """
 
-from primihub.context import Context
 from dill import loads
+from primihub.context import Context
 
 shared_globals = dict()
 shared_globals['context'] = Context
 
+
 class Executor:
     def __init__(self):
         pass
-    
 
     @staticmethod
     def execute(py_code: str):

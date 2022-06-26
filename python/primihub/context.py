@@ -1,7 +1,8 @@
 import functools
-from typing import Callable
-from dill import dumps, loads
 import os
+from typing import Callable
+
+from dill import dumps
 
 
 class NodeContext:
@@ -84,6 +85,7 @@ def set_task_context_output_file(f):
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 
+
 # def set_node_context(node_context: NodeContext):
 #     Context.nodes_context[node_context.role] = node_context
 
@@ -96,6 +98,7 @@ def reg_dataset(func):
         print("Register dataset:", dataset)
         Context.datasets.append(dataset)
         return func(dataset)
+
     return reg_dataset_decorator
 
 
@@ -109,5 +112,7 @@ def function(protocol, role, datasets, next_peer):
         @functools.wraps(func)
         def wapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wapper
+
     return function_decorator

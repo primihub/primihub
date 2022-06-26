@@ -1,13 +1,14 @@
-from primihub.FL.feature_engineer.zscore_standard import ZscoreStandard, HorZscoreStandard
+from os import path
+
 import numpy as np
-from os import path, stat
+from primihub.FL.feature_engineer.zscore_standard import ZscoreStandard, HorZscoreStandard
 
 dir = path.join(path.dirname(__file__), '../data/pokemon')
 # use horizontal data as simulated vertical data
 with open(path.join(dir, "party1.npy"), "rb") as f:
-    data_p1 = np.load(f,  allow_pickle=True)
+    data_p1 = np.load(f, allow_pickle=True)
 with open(path.join(dir, "party2.npy"), "rb") as f:
-    data_p2 = np.load(f,  allow_pickle=True)
+    data_p2 = np.load(f, allow_pickle=True)
 
 idxs_nd = list(range(2, 10))
 
@@ -36,7 +37,7 @@ def test_hor_union():
     """Test horizontal data z-score standard."""
     zs1 = HorZscoreStandard()
     zs2 = HorZscoreStandard()
-    
+
     other_stat = []
     other_stat.append((zs1.fit(data_p1, idxs_nd)))
     other_stat.append((zs2.fit(data_p2, idxs_nd)))

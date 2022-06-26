@@ -8,7 +8,7 @@
 
 
 from cli import Cli
-from ph_grpc import common_pb2
+
 
 class PSICli(Cli):
     """PSI client stragegy.

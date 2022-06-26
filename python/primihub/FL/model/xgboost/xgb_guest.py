@@ -1,5 +1,5 @@
-
 import time
+
 import pandas as pd
 
 
@@ -96,10 +96,10 @@ class XGB_GUEST:
         # print("=====guest index====", X.index, best_cut)
         id_left = X.loc[X[best_var] < best_cut].index.tolist()
         w_left = -GH_best['G_left_best'] / \
-            (GH_best['H_left_best'] + self.reg_lambda)
+                 (GH_best['H_left_best'] + self.reg_lambda)
         id_right = X.loc[X[best_var] >= best_cut].index.tolist()
         w_right = -GH_best['G_right_best'] / \
-            (GH_best['H_right_best'] + self.reg_lambda)
+                  (GH_best['H_right_best'] + self.reg_lambda)
         w[id_left] = w_left
         w[id_right] = w_right
         return w, id_right, id_left, w_right, w_left
@@ -150,7 +150,7 @@ class XGB_GUEST:
         # left tree
         print("=====guest shape========",
               X_guest_gh.loc[id_left].shape, X_guest_gh.loc[id_right].shape)
-        self.cart_tree(X_guest_gh.loc[id_left], mdep+1)
+        self.cart_tree(X_guest_gh.loc[id_left], mdep + 1)
 
         # right tree
-        self.cart_tree(X_guest_gh.loc[id_right], mdep+1)
+        self.cart_tree(X_guest_gh.loc[id_right], mdep + 1)

@@ -6,9 +6,10 @@
 # @Link   :
 # @Date   : 6/5/2022, 12:41:29 AM
 
-from os import path
 import sys
 import threading
+from os import path
+
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
 from channel.zmq_channel import IOService, Session
@@ -17,11 +18,12 @@ if __name__ == '__main__':
     ios = IOService()
     print(ios)
 
-    server = Session(ios,  "*", "5555", "server")
-    client = Session(ios,  "localhost", "5555", "client")
+    server = Session(ios, "*", "5555", "server")
+    client = Session(ios, "localhost", "5555", "client")
 
     s_channel = server.addChannel()
     c_channel = client.addChannel()
+
 
     def client():
         for i in range(7, 9):
@@ -31,6 +33,7 @@ if __name__ == '__main__':
             message = c_channel.recv()
             print("Received reply: ", message)
         sys.exit()
+
 
     def server():
         for i in range(3):
@@ -43,6 +46,7 @@ if __name__ == '__main__':
             except Exception as e:
                 print('异常:', e)
         sys.exit()
+
 
     send_t = threading.Thread(target=client)
     rcv_t = threading.Thread(target=server)

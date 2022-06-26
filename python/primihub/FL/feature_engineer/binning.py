@@ -1,10 +1,8 @@
 import pandas as pd
-import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 
 
 class BaseBinning:
-
 
     def frequency_binning(self, data, bins):
         bin_result = pd.qcut(data, bins)
@@ -13,7 +11,6 @@ class BaseBinning:
     def equidistance_binning(self, data, bins):
         bin_result = pd.cut(data, bins)
         return bin_result
-
 
     def optimal_binning_boundary(self, x, y):
         boundary = []
@@ -45,4 +42,4 @@ class BaseBinning:
         return boundary
 
     def chi_square(self):
-        pass 
+        pass

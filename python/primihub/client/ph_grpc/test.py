@@ -8,14 +8,13 @@
 
 
 from __future__ import print_function
-import json
 
 import logging
-import grpc
-import worker_pb2_grpc
-import worker_pb2
-import common_pb2
 
+import common_pb2
+import grpc
+import worker_pb2
+import worker_pb2_grpc
 
 params = {
     "mBatchSize": 128,
@@ -45,7 +44,6 @@ def submit_task(stub):
     except Exception as e:
         print(e)
 
-        
 
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be

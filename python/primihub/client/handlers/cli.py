@@ -25,11 +25,10 @@ class Cli(object):
         """
         if node is not None:
             self.channel = grpc.insecure_channel(node)
-            
+
         if cert is not None:
             # TODO
             pass
-
 
     # @property
     # def task_map(self):
@@ -55,7 +54,7 @@ class Cli(object):
 
     def set_task_map(self):
         raise NotImplemented()
-        
+
     def submit(self):
         raise NotImplemented()
 
