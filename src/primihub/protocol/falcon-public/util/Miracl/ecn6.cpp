@@ -48,7 +48,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 #include "ecn6.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 void ECn6::get(ZZn6& a,ZZn6& b) const
 {a=x;b=y;}
 
@@ -237,4 +239,5 @@ BOOL ECn6::add(const ECn6& z,ZZn6& lam)
     marker=MR_EPOINT_GENERAL;    
     return TRUE;
 }
-
+}
+}//primihub

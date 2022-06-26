@@ -4,6 +4,9 @@
 #include "Functionalities.h"
 using namespace std;
 
+namespace primihub{
+    namespace falcon
+{
 ReLULayer::ReLULayer(ReLUConfig* conf, int _layerNum)
 :Layer(_layerNum),
  conf(conf->inputDim, conf->batchSize),
@@ -54,4 +57,6 @@ void ReLULayer::computeDelta(RSSVectorMyType& prevDelta)
 void ReLULayer::updateEquations(const RSSVectorMyType& prevActivations)
 {
 	log_print("ReLU.updateEquations");
+}
+}// namespace primihub{
 }

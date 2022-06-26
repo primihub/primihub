@@ -11,7 +11,9 @@
 #include "crt.h"   /* chinese remainder thereom */
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define NP 2       /* two primes - could be used with more */
 
 Miracl precision=100;
@@ -95,4 +97,5 @@ int main()
     cout << "message ends\n";
     return 0;
 }
-
+}
+}//primihub

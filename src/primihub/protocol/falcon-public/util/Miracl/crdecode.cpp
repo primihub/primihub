@@ -14,7 +14,9 @@
 #include <cstring>
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(300,256);
 
 void strip(char *name)
@@ -137,4 +139,5 @@ int main()
     ct.close();
     return 0;
 }
-
+}
+}//primihub

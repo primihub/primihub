@@ -13,7 +13,9 @@
 #define FPOLY_H
 
 #include "floating.h"
-
+namespace primihub{
+    namespace falcon
+{
 class fterm
 {
 public:
@@ -57,6 +59,7 @@ public:
     ~FPoly();
 };
 
-
+}
+}//primihub
 #endif
 

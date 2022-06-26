@@ -24,7 +24,9 @@
 #include "ecn.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 // if MR_STATIC defined, it should be 20
 
 #ifndef MR_NOFULLWIDTH
@@ -82,4 +84,5 @@ int main()
     private_key << d << endl;
     return 0;
 }
-
+}
+}//primihub

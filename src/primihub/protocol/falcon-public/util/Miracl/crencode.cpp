@@ -16,7 +16,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(300,256);
 
 void strip(char *name)
@@ -132,4 +134,5 @@ int main()
     key_file << v << endl;
     return 0;
 }
-
+}
+}//primihub

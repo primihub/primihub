@@ -31,7 +31,9 @@
 #ifndef ENABLE_SSE
 #include "util/block.h"
 #endif
-
+namespace primihub{
+    namespace falcon
+{
 void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length);
 
 //creates a cryptographic(pseudo)random 128bit number
@@ -42,5 +44,6 @@ bool LoadBool();
 void initializeRandomness(char* key, int numOfParties);
 
 int getrCounter();
-
+}// namespace primihub{
+}
 #endif /* SECCOMPMULTIPARTY_H_ */

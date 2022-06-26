@@ -8,7 +8,9 @@
 
 #include "zzn.h"
 #include "ecn.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef MR_AFFINE_ONLY
 
 extern void force(ZZn&,ZZn&,ZZn&,ECn&);
@@ -18,5 +20,6 @@ extern void extract(ECn&,ZZn&,ZZn&,ZZn&);
 
 extern void force(ZZn&,ZZn&,ECn&);
 extern void extract(ECn&,ZZn&,ZZn&);
-
+}
+}//primihub
 #endif

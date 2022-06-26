@@ -7,7 +7,9 @@
 #include "globals.h"
 using namespace std;
 
-
+namespace primihub{
+    namespace falcon
+{
 class CNNLayer : public Layer
 {
 private:
@@ -34,3 +36,5 @@ public:
 	RSSVectorMyType* getWeights() {return &weights;};
 	RSSVectorMyType* getBias() {return &biases;};
 };
+}// namespace primihub{
+}

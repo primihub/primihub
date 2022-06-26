@@ -49,7 +49,9 @@
 #define CNR 2 // irreducible is x^6-2
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(5,0); 
 
 #ifdef MR_COUNT_OPS
@@ -548,4 +550,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

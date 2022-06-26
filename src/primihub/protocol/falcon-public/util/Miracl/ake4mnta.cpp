@@ -28,7 +28,9 @@
 #include "zzn4.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(10,0);  
 
 // Using SHA-1 as basic hash algorithm
@@ -443,4 +445,5 @@ cout << "t= " << t << endl;
     cout << "Server Key= " << H2(powl(bp,s)) << endl;
 
     return 0;
+}
 }
