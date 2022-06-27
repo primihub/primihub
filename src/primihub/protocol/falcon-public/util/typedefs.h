@@ -10,43 +10,41 @@
 //#define OTEXT_USE_OPENSSL
 #define NUMOTBLOCKS 32
 
-	static int CEIL_LOG2(int bits)
-	{
-		int targetlevel = 0, bitstemp = bits;
-		while (bitstemp >>= 1)
-			++targetlevel;
-		return targetlevel + ((1 << targetlevel) > bits);
-	}
+static int CEIL_LOG2(int bits) {
+  int targetlevel = 0, bitstemp = bits;
+  while (bitstemp >>= 1)
+    ++targetlevel;
+  return targetlevel + ((1 << targetlevel) > bits);
+}
 
-	static int FLOOR_LOG2(int bits)
-	{
-		int targetlevel = 0;
-		while (bits >>= 1)
-			++targetlevel;
-		return targetlevel;
-	}
+static int FLOOR_LOG2(int bits) {
+  int targetlevel = 0;
+  while (bits >>= 1)
+    ++targetlevel;
+  return targetlevel;
+}
 
-	/*static double getMillies(timeval timestart, timeval timeend)
-	{
-		long time1 = (timestart.tv_sec * 1000000) + (timestart.tv_usec );
-		long time2 = (timeend.tv_sec * 1000000) + (timeend.tv_usec );
+/*static double getMillies(timeval timestart, timeval timeend)
+{
+        long time1 = (timestart.tv_sec * 1000000) + (timestart.tv_usec );
+        long time2 = (timeend.tv_sec * 1000000) + (timeend.tv_usec );
 
-		return (double)(time2-time1)/1000000;
-	}*/
+        return (double)(time2-time1)/1000000;
+}*/
 
-	typedef int BOOL;
-	typedef long LONG;
+typedef int BOOL;
+typedef long LONG;
 
-	typedef unsigned char BYTE;
-	typedef unsigned short USHORT;
-	typedef unsigned int UINT;
-	typedef unsigned long ULONG;
-	typedef unsigned long long UINT_64T;
+typedef unsigned char BYTE;
+typedef unsigned short USHORT;
+typedef unsigned int UINT;
+typedef unsigned long ULONG;
+typedef unsigned long long UINT_64T;
 
-	typedef ULONG DWORD;
-	typedef UINT_64T REGISTER_SIZE;
+typedef ULONG DWORD;
+typedef UINT_64T REGISTER_SIZE;
 
-	typedef REGISTER_SIZE REGSIZE;
+typedef REGISTER_SIZE REGSIZE;
 #define LOG2_REGISTER_SIZE CEIL_LOG2(sizeof(REGISTER_SIZE) << 3)
 
 #define SHA1_BYTES 20
@@ -69,7 +67,8 @@
 #define RETRY_CONNECT 1000
 #define CONNECT_TIMEO_MILISEC 10000
 
-#define SYMMETRIC_SECURITY_PARAMETER 80 // security parameter for Yao's garbled circuits
+#define SYMMETRIC_SECURITY_PARAMETER                                           \
+  80 // security parameter for Yao's garbled circuits
 #define SSP SYMMETRIC_SECURITY_PARAMETER
 #define BYTES_SSP SSP / 8
 
@@ -89,15 +88,16 @@
 #define OTEXT_HASH_UPDATE(sha, buf, bufsize) SHA_Update(sha, buf, bufsize)
 #define OTEXT_HASH_FINAL(sha, sha_buf) SHA_Final(sha_buf, sha)
 
-	const BYTE ZERO_IV[AES_BYTES] = {0};
-	static int otextaesencdummy;
+const BYTE ZERO_IV[AES_BYTES] = {0};
+static int otextaesencdummy;
 
-#define OTEXT_AES_KEY_INIT(ctx, buf)                                    \
-	{                                                                   \
-		EVP_CIPHER_CTX_init(ctx);                                       \
-		EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, buf, ZERO_IV); \
-	}
-#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) EVP_EncryptUpdate(keyctx, outbuf, &otextaesencdummy, inbuf, AES_BYTES)
+#define OTEXT_AES_KEY_INIT(ctx, buf)                                           \
+  {                                                                            \
+    EVP_CIPHER_CTX_init(ctx);                                                  \
+    EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, buf, ZERO_IV);            \
+  }
+#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf)                               \
+  EVP_EncryptUpdate(keyctx, outbuf, &otextaesencdummy, inbuf, AES_BYTES)
 
 #else
 // TODO:change to functions using AES-NI
@@ -108,18 +108,22 @@
 #define OTEXT_HASH_UPDATE(sha, buf, bufsize) sha1_update(sha, buf, bufsize)
 #define OTEXT_HASH_FINAL(sha, sha_buf) sha1_finish(sha, sha_buf)
 
-#define OTEXT_AES_KEY_INIT(ctx, buf) private_AES_set_encrypt_key(buf, AES_KEY_BITS, ctx)
-#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) falcon_AES_encrypt(inbuf, outbuf, keyctx)
-	//#else
-	//#define AES_KEY_CTX AES_KEY_TED
-	//#define OTEXT_HASH_INIT(sha) sha1_starts(sha)
-	//#define OTEXT_HASH_UPDATE(sha, buf, bufsize) sha1_update(sha, buf, bufsize)
-	//#define OTEXT_HASH_FINAL(sha, sha_buf) sha1_finish(sha, sha_buf)
-	//
-	// #define OTEXT_AES_KEY_INIT(ctx, buf) {cout<<"set key"<<endl;\
+#define OTEXT_AES_KEY_INIT(ctx, buf)                                           \
+  private_AES_set_encrypt_key(buf, AES_KEY_BITS, ctx)
+#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf)                               \
+  falcon_AES_encrypt(inbuf, outbuf, keyctx)
+//#else
+//#define AES_KEY_CTX AES_KEY_TED
+//#define OTEXT_HASH_INIT(sha) sha1_starts(sha)
+//#define OTEXT_HASH_UPDATE(sha, buf, bufsize) sha1_update(sha, buf, bufsize)
+//#define OTEXT_HASH_FINAL(sha, sha_buf) sha1_finish(sha, sha_buf)
+//
+//   #define OTEXT_AES_KEY_INIT(ctx, buf) {cout<<"set key"<<endl;\
 //	system("PAUSE");\
-//AES_set_encrypt_key(buf, AES_KEY_BITS, ctx);}//{system("PAUSE");AES_set_encrypt_key(buf, AES_KEY_BITS, ctx);system("PAUSE");}
-	//#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) \
+//AES_set_encrypt_key(buf, AES_KEY_BITS,
+// ctx);}//{system("PAUSE");AES_set_encrypt_key(buf, AES_KEY_BITS,
+// ctx);system("PAUSE");}
+//#define OTEXT_AES_ENCRYPT(keyctx, outbuf, inbuf) \
 //{	\
 //	__m128i in=_mm_loadu_si128((const __m128i*)inbuf);	\
 //	__m128i out;	\
@@ -127,8 +131,8 @@
 //	system("PAUSE");\
 //	AES_encryptC(&in,&out, keyctx);\
 //	memcpy(outbuf,&out,sizeof(__m128));\
-//}//{system("PAUSE");AES_encryptC((__m128i*)inbuf,(__m128i*) outbuf, keyctx);system("PAUSE");}//outbuf=	(BYTE*)&out;
-	//#endif
+//}//{system("PAUSE");AES_encryptC((__m128i*)inbuf,(__m128i*) outbuf,
+// keyctx);system("PAUSE");}//outbuf=	(BYTE*)&out; #endif
 
 #endif
 
@@ -144,11 +148,9 @@
 #define MACHINE_SIZE_16
 #endif
 
-	template <class T>
-	T rem(T a, T b)
-	{
-		return ((a) > 0) ? (a) % (b) : (a) % (b) + abs(b);
-	}
+template <class T> T rem(T a, T b) {
+  return ((a) > 0) ? (a) % (b) : (a) % (b) + abs(b);
+}
 
 #define FALSE 0
 #define TRUE 1
@@ -160,26 +162,26 @@
 #include <WinSock2.h>
 #include <windows.h>
 
-	typedef unsigned short USHORT;
-	typedef int socklen_t;
+typedef unsigned short USHORT;
+typedef int socklen_t;
 #pragma comment(lib, "wsock32.lib")
 
 #define SleepMiliSec(x) Sleep(x)
 
 #else // WIN32
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <errno.h>
+#include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-	typedef int SOCKET;
+typedef int SOCKET;
 #define INVALID_SOCKET -1
 
 #define SleepMiliSec(x) usleep((x) << 10)
@@ -191,11 +193,10 @@
 #define PadToMultiple(x, y) ((((x) + (y)-1) / (y)) * (y))
 
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 using namespace std;
 
 #endif //__TYPEDEFS_H__BY_SGCHOI
-
