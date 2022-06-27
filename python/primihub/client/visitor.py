@@ -83,10 +83,11 @@ class MyTransformer(ast.NodeTransformer):
 def upload_code():
     visitor = Visitor()
     code = visitor.visit_file()
-    # grpc_client = GRPCClient(node="127.0.0.1:50051", cert="")
-    grpc_client = GRPCClient(node="127.0.0.1:50051", cert="")
+    grpc_client = GRPCClient(node="localhost:50050", cert="")
     grpc_client.set_task_map(code=code.encode('utf-8'))
-    grpc_client.submit()
+    res = grpc_client.submit()
+    print("- * -")
+    print("res: ",res)
 
 
 # visitor = Visitor()

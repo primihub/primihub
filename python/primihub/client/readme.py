@@ -10,8 +10,9 @@
 
 import time
 
-from visitor import Visitor
+# from visitor import Visitor
 
+import visitor
 
 
 time.sleep(1)
