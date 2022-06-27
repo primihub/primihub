@@ -32,7 +32,9 @@
 
 NTL_CLIENT
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define POWER
 #define MAXK 64
 #define BM 10       // these limits have been tested as sufficient for K<=64
@@ -547,3 +549,5 @@ int main(int argc,char **argv)
 	}
     return 0;
 }
+}
+}//primihub

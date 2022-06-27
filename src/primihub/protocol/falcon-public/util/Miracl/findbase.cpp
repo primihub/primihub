@@ -12,7 +12,9 @@
 #include "gf2m.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=100;
 
 /* Max word size to be supported with irreducible polynomial */
@@ -276,3 +278,5 @@ int main(int argc,char **argv)
 
     return 0;
 }
+}
+}//primihub

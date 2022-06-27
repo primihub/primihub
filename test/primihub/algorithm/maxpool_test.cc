@@ -9,13 +9,19 @@ using namespace primihub::cryptflow2;
 static void RunMaxpool(std::string node_id, rpc::Task &task,
                        std::shared_ptr<DatasetService> data_service) {
   PartyConfig config(node_id, task);
-  MaxPoolExecutor exec(config, data_service);
-  EXPECT_EQ(exec.loadParams(task), 0);
-  EXPECT_EQ(exec.initPartyComm(), 0);
-  EXPECT_EQ(exec.loadDataset(), 0);
-  EXPECT_EQ(exec.execute(), 0);
-  EXPECT_EQ(exec.saveModel(), 0);
-  exec.finishPartyComm();
+
+  try {
+    MaxPoolExecutor exec(config, data_service);
+    EXPECT_EQ(exec.loadParams(task), 0);
+    EXPECT_EQ(exec.initPartyComm(), 0);
+    EXPECT_EQ(exec.loadDataset(), 0);
+    EXPECT_EQ(exec.execute(), 0);
+    EXPECT_EQ(exec.saveModel(), 0);
+    exec.finishPartyComm();
+  } catch (const runtime_error& error) {
+    std::cerr << "Skip maxpool test because this platform "
+	         "don't have avx2 support." << std::endl;
+  }
 }
 
 TEST(cryptflow2_maxpool, maxpool_2pc_test) {
@@ -59,7 +65,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);
-    pv_train_data.set_value_string("/tmp/train_party_0.csv");
+    pv_train_data.set_value_string("data/train_party_0.csv");
 
     auto param_map = task1.mutable_params()->mutable_param_map();
     (*param_map)["TrainData"] = pv_train_data;
@@ -76,7 +82,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);
-    pv_train_data.set_value_string("/tmp/train_party_0.csv");
+    pv_train_data.set_value_string("data/train_party_1.csv");
 
     auto param_map = task2.mutable_params()->mutable_param_map();
     (*param_map)["TrainData"] = pv_train_data;

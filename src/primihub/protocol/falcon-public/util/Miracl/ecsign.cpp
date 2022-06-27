@@ -24,7 +24,9 @@
 #include "ecn.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef MR_NOFULLWIDTH
 Miracl precision(200,256);
 #else
@@ -117,4 +119,5 @@ int main()
     signature << s << endl;
     return 0;
 }
-
+}
+}//primihub

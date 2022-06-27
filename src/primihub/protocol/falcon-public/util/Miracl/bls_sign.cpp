@@ -22,7 +22,9 @@
 #define CNR 2
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(40,16); 
 
 // Using SHA-1 as basic hash algorithm
@@ -104,4 +106,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

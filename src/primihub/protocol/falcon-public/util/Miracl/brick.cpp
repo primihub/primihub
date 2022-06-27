@@ -15,7 +15,9 @@
 #include "brick.h"   /* include MIRACL system */
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=100;
 
 int main()
@@ -49,4 +51,5 @@ int main()
     cout << a << endl;
     return 0;
 }
-
+}
+}//primihub

@@ -16,7 +16,9 @@
 #include <cstring>
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 // #define RSA
 
 Miracl precision=100;
@@ -109,4 +111,5 @@ int main()
     cout << "\nmessage ends\n";
     return 0;
 }
-
+}
+}//primihub

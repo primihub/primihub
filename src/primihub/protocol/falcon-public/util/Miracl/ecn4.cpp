@@ -49,7 +49,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 #include "ecn4.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 void ECn4::get(ZZn4& a,ZZn4& b) const
 {a=x;b=y;}
 
@@ -292,3 +294,5 @@ ECn4 mul(int n,ECn4* P,const Big* b)
 
 #endif
 #endif
+}
+}//primihub

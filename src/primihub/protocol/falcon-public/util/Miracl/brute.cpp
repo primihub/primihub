@@ -8,7 +8,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define LIMIT 10000
 
 #ifndef MR_NOFULLWIDTH
@@ -49,4 +51,5 @@ int main()
     else          cout << "\ncomposite factor " << x << "\n";
     return 0;
 }
-
+}
+}//primihub
