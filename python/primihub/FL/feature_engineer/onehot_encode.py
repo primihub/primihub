@@ -49,7 +49,6 @@ class OneHotEncoder():
         return cats_len, cats_idxs
 
     def onehot_encode(self, trans_data, idxs2):
-        oh_data = []
         for i, idx in enumerate(idxs2):
             tmp_eye = np.eye(self.cats_len[i])
             oh_array = []
@@ -68,24 +67,23 @@ class OneHotEncoder():
 
         last_idx = 0
         tmp_data = np.delete(trans_data, idxs_nd, axis=1)
-        tmp_len = tmp_data.shape[1]
-        # cats_len = [len(i) for i in self.categories_]
+        raw_len = trans_data.shape[1]
         for i, idx in enumerate(idxs_nd):
             # stack onehot_encoded data at the head position
             if idx == 0:
                 tmp_data = np.hstack(
-                    [ohed_data[:, list(range(last_idx, self.cats_len[i]))].tolist(), tmp_data[:, :]])
+                    [ohed_data[:, list(range(self.cats_len[i]))], tmp_data[:, :]])
             # stack onehot_encoded data at the tail position
-            elif idx == (tmp_len + len(idxs_nd) - 1):
+            elif idx == raw_len-1:
                 tmp_data = np.hstack([tmp_data[:, :], ohed_data[:, list(
-                    range(last_idx, last_idx + self.cats_len[i]))].tolist()])
+                    range(last_idx, last_idx + self.cats_len[i]))]])
             else:
                 if i == 0:
                     tmp_idx = idx
                 else:
-                    tmp_idx = idx + sum(self.cats_len[:i]) - i - 1
+                    tmp_idx = idx + sum(self.cats_len[:i]) - i
                 tmp_data = np.hstack([tmp_data[:, :tmp_idx], ohed_data[:, list(
-                    range(last_idx, self.cats_len[i]))].tolist(), tmp_data[:, tmp_idx:]])
+                    range(last_idx, last_idx + self.cats_len[i]))], tmp_data[:, tmp_idx:]])
             last_idx += self.cats_len[i]
         return tmp_data
 

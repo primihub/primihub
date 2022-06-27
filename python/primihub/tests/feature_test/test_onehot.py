@@ -1,4 +1,4 @@
-from primihub.FL.feature_engineer.onehot import OneHotEncoder, HorOneHotEncoder
+from primihub.FL.feature_engineer.onehot_encode import OneHotEncoder, HorOneHotEncoder
 import numpy as np
 from os import path
 
@@ -81,7 +81,3 @@ def test_hor_onehot():
         np.int8).shape == expected_encoded.shape
     assert (out_data[:, expected_idxs_2].astype(
         np.int8) == expected_encoded).all()
-
-
-if __name__ == '__main__':
-    test_hor_onehot()

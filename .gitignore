@@ -103,3 +103,4 @@ output
 # python
 *.egg-info/
 *.pyc
+primihub.code-workspace
