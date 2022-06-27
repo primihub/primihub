@@ -51,8 +51,6 @@
 
 #ifndef HEADER_AES_LOCL_H
 #define HEADER_AES_LOCL_H
-namespace primihub {
-namespace falcon {
 //#include <openssl/e_os2.h>
 
 #ifdef OPENSSL_NO_AES
@@ -62,6 +60,9 @@ namespace falcon {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+namespace primihub {
+namespace falcon {
 
 #if defined(_MSC_VER) &&                                                       \
     (defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64))
