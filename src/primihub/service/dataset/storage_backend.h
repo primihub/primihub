@@ -47,6 +47,7 @@ namespace primihub::service {
 
     /// Removes value corresponded to given @param key.
     virtual outcome::result<void> erase(const Key &key) = 0;
+
   };  // class StorageBackend
 
 

@@ -23,7 +23,7 @@
 namespace primihub::service {
     class StorageBackendLevelDB : public StorageBackend {
       public:
-        StorageBackendLevelDB() = default;
+        StorageBackendLevelDB();
         ~StorageBackendLevelDB() override = default;
 
         outcome::result<void> putValue(Key key, Value value) override;
@@ -36,5 +36,6 @@ namespace primihub::service {
         leveldb::DB *db_;
 
     }; // class StorageBackendLevelDB
-} // namespace primihub:service
+}  // namespace primihub::service
+
 #endif  // SRC_PRIMIHUB_SERVICE_DATASET_LOCALKV_STORAGE_LEVELDB_H_

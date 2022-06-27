@@ -21,7 +21,10 @@
 #include <string>
 #include <glog/logging.h>
 
+#include <libp2p/multi/content_identifier_codec.hpp>
+
 #include "src/primihub/util/util.h"
+#include "src/primihub/service/dataset/storage_backend.h"
 
 namespace primihub::service {
 
@@ -41,6 +44,18 @@ static void DataURLToDetail(const std::string &data_url,
     DLOG(INFO) << "node_id:" << node_id 
                << " ip:"<< node_ip   
                << " port:"<< node_port << std::endl;
+}
+
+static  std::string Key2Str(const Key &key) {
+     auto s = libp2p::multi::ContentIdentifierCodec::toString(
+          libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
+     return s.value();
+}
+
+static Key Str2Key(const std::string &str) {
+     auto k = libp2p::multi::ContentIdentifierCodec::encode(
+          libp2p::multi::ContentIdentifierCodec::fromString(str).value());
+     return Key(k.value());
 }
 
 } // namespace primihub::service
