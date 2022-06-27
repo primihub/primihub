@@ -11,6 +11,8 @@ import ast
 import sys
 from os import path
 
+from grpc_client import GRPCClient
+
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "..")))
 
 
@@ -21,24 +23,21 @@ class Visitor(object):
 
     def visit_file(self):
         cur_path = sys.argv[0]
-        print(cur_path)
-        print(__file__)
-        print("* " * 30)
+        print("current file path is: %s" % cur_path)
         with open(cur_path) as f:
             code = f.read()
-
         node = ast.parse(code)
-
         # do ast manipulation
         node = MyTransformer().visit(node)
         # fix locations
         node = ast.fix_missing_locations(node)
-        # print("- * -" * 20)
         print("Here are the extracted content:")
         code_str = ast.unparse(node)
         print(code_str)
+
         # print("- * -" * 20)
-        sys.exit(0)
+        # sys.exit(0)
+        return code_str
 
     def visit_interactive(self):
         # TODO
@@ -81,5 +80,17 @@ class MyTransformer(ast.NodeTransformer):
             return node
 
 
-visitor = Visitor()
-visitor.visit_file()
+def upload_code():
+    visitor = Visitor()
+    code = visitor.visit_file()
+    # grpc_client = GRPCClient(node="127.0.0.1:50051", cert="")
+    grpc_client = GRPCClient(node="127.0.0.1:50051", cert="")
+    grpc_client.set_task_map(code=code.encode('utf-8'))
+    grpc_client.submit()
+
+
+# visitor = Visitor()
+# code = visitor.visit_file()
+
+
+upload_code()

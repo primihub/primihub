@@ -10,6 +10,10 @@
 
 import time
 
+from visitor import Visitor
+
+
+
 time.sleep(1)
 print("sdfsdfsdfsdfsdf")
 

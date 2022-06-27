@@ -11,10 +11,9 @@ from __future__ import print_function
 
 import logging
 
-import common_pb2
 import grpc
-import worker_pb2
-import worker_pb2_grpc
+
+from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc
 
 params = {
     "mBatchSize": 128,
@@ -49,7 +48,7 @@ def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
     # of the code.
-    with grpc.insecure_channel('localhost:8050') as channel:
+    with grpc.insecure_channel('localhost:50051') as channel:
         # stub = route_guide_pb2_grpc.RouteGuideStub(channel)
         stub = worker_pb2_grpc.VMNodeStub(channel)
         print(channel)
