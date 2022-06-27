@@ -17,7 +17,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=100;
 
 int main()
@@ -55,4 +57,5 @@ int main()
     private_key << x << endl;
     return 0;
 }
-
+}
+}//primihub

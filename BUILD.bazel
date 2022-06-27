@@ -523,7 +523,7 @@ cc_library(
     copts = C_OPT,
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
-    # remove it and DON'T CHANGE below line !!!)
+    # remove it.)
     linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
@@ -999,7 +999,23 @@ cc_test(
       "cryptflow2_algorithm_lib"
     ]
 )
-
+cc_test(
+  name = "falcon_lenet_test",
+  srcs=[
+      "test/primihub/algorithm/falcon_lenet_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+	"@com_google_googletest//:gtest_main",
+	"@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+	":crypto_lib",
+        ":algorithm_lib",
+     ],
+)
 # Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
 # or error, so this rule will not build all test case.
 cc_test(

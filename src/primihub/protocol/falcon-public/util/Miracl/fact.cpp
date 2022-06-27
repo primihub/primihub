@@ -8,7 +8,9 @@
 #include "big.h"   /* include MIRACL system */
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(5000,10);   /* bigs are 5000 decimal digits long */
 
 int main()
@@ -22,4 +24,5 @@ int main()
     cout << "n!= \n" << nf << "\n";
     return 0;
 }
-
+}
+}//primihub

@@ -43,7 +43,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
  */
 
 #include "ec2.h"
-
+namespace primihub{
+    namespace falcon
+{
 int EC2::get(Big& x,Big& y) const 
         {return epoint2_get(p,x.getbig(),y.getbig());}
 int EC2::get(Big& x) const   
@@ -135,7 +137,8 @@ ostream& operator<<(ostream& s,const EC2& b)
     s << "(" << x << "," << y << ")";
     return s;
 }
-
+}
+}//primihub
 #endif
 
 

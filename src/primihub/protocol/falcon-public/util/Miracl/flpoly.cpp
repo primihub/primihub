@@ -13,7 +13,9 @@
 
 #include <iostream>
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 FPoly::FPoly(const FPoly& p)
 {
     fterm *ptr=p.start;
@@ -465,4 +467,5 @@ ostream& operator<<(ostream& s,const FPoly& p)
     }
     return s;
 } 
-
+}
+}//primihub

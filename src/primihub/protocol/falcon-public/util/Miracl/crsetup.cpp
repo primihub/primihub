@@ -12,7 +12,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define PBITS 1024 
 #define QBITS 160
 
@@ -73,4 +75,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

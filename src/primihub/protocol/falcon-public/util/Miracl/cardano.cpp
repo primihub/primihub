@@ -6,7 +6,9 @@
 #include "zzn2.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(50,0);
 
 //
@@ -175,3 +177,5 @@ int main(int argc, char *argv[])
     return 0;
 
 }
+}
+}//primihub

@@ -17,7 +17,9 @@
 
 #define MR_PAIRING_CP
 #include "pairing_3.h"
-
+namespace primihub{
+    namespace falcon
+{
 // Cocks-Pinch curve parameters, A,B and n, where p=3 mod 4
 // AES_SECURITY=80 bit curve
 // Curve E:y^2=x^3-3x+B, #E=COF*order, modulus p
@@ -1054,3 +1056,5 @@ int PFC::precomp_for_power(GT& w,BOOL small)
     }
 	return (1<<WINDOW_SIZE);
 }
+}
+}//primihub

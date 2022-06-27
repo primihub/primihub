@@ -14,7 +14,9 @@
 #define BRICK_H
 
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 class Brick 
 { 
     BOOL created;
@@ -31,6 +33,7 @@ public:
 
     ~Brick() {if (created) brick_end(&b);}
 };
-
+}
+}//primihub
 #endif
 

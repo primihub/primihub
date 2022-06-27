@@ -19,16 +19,17 @@
 #include "src/primihub/protocol/falcon-public/Precompute.h"
 #include "src/primihub/protocol/falcon-public/connect.h"
 #include "src/primihub/protocol/falcon-public/secondary.h"
+#include "src/primihub/protocol/falcon-public/tools.h"
 
 #include "Eigen/Dense"
 #include "assert.h"
-
 #include "src/primihub/common/clp.h"
 #include "src/primihub/common/defines.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/util/network/socket/session.h"
 
 namespace primihub {
+namespace falcon {
 class FalconLenetExecutor : public AlgorithmBase {
 public:
   explicit FalconLenetExecutor(PartyConfig &config,
@@ -38,7 +39,6 @@ public:
   int initPartyComm(void) override;
   int execute() override;
   int finishPartyComm(void) override;
-
   int constructShares(void);
   int saveModel(void) { return 0; }
 
@@ -51,7 +51,10 @@ private:
   int batch_size_, num_iter_;
   NeuralNetConfig *config_lenet;
   NeuralNetwork *net_lenet;
+  std::string Test_Input_Self_path, Test_Input_Next_path;
 };
 
+} // namespace falcon
 } // namespace primihub
+
 #endif // SRC_primihub_ALGORITHM_LOGISTIC_H_

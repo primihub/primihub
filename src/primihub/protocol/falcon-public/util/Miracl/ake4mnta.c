@@ -120,7 +120,9 @@ mex 5 arm mrcomba
 #include <stdio.h>
 #include <stdlib.h>
 #include "miracl.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef MR_COUNT_OPS
 int fpm2,fpi2,fpc,fpa,fpx;
 #endif
@@ -948,4 +950,5 @@ fpa=fpc=fpx=0;
     return 0;
 } 
 
-
+}
+}//primihub
