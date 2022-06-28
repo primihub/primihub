@@ -43,6 +43,9 @@ datasets:
     #   - node:
     #     task:
         
+localkv: 
+  model: "leveldb"
+  path: "./localdb/node0"
 
 # p2p paramaters
 p2p:

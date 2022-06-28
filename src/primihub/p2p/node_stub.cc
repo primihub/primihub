@@ -56,7 +56,7 @@ sinks:
 groups:
   - name: main
     sink: console
-    level: info
+    level: critical
     children:
       - name: libp2p
 # ----------------
@@ -110,7 +110,7 @@ groups:
         }
 
         libp2p::log::setLoggingSystem(logging_system);
-        libp2p::log::setLevelOfGroup("NodeStub", soralog::Level::INFO);
+        libp2p::log::setLevelOfGroup("NodeStub", soralog::Level::CRITICAL);
 
         // resulting PeerId should be
         // 12D3KooWEgUjBV5FJAuBSoNMRYFRHjV7PjZwRQ7b43EKX9g7D6xV
@@ -134,13 +134,6 @@ groups:
         // get boostrap nodes
         bootstrap_nodes_ = [&]
         {
-            // std::vector<std::string> addresses = {
-            //     // clang-format off
-            //     "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd",
-            //     "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA",
-            //     // clang-format on
-            // };
-
             std::unordered_map<libp2p::peer::PeerId,
                                std::vector<libp2p::multi::Multiaddress>>
                 addresses_by_peer_id;

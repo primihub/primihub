@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -e
-
-if [ ! -d function2 ]; then
-    git clone https://github.com/Naios/function2.git
-fi
-
