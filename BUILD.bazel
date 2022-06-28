@@ -524,7 +524,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.9/config-3.9-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu  -lcrypt -lpthread -ldl  -lutil -lm -lm  -lpython3.9"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -830,6 +830,37 @@ pybind_extension(
 py_library(
     name = "primihub_channel",
     data = ["primihub_channel.so"],
+)
+
+cc_binary(
+    name = "libprimihub.so",
+    srcs = glob([
+                  "src/primihub/node/node.cc",
+                  "src/primihub/node/node.h",
+                  "src/primihub/node/ds.cc",
+                  "src/primihub/node/ds.h",
+            ]),
+    copts = C_OPT,
+    includes = [    
+    ],
+    linkstatic = False,
+    linkopts = LINK_OPTS + ["-shared"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@toolkit_relic//:relic",
+        ":worker_proto",
+        ":service_proto",
+        ":common_lib",
+        ":node_lib",
+        ":nodelet",
+        ":algorithm_lib",
+        ":util_lib",
+    ]
 )
 
 cc_binary(
