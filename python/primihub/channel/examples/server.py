@@ -43,8 +43,8 @@ async def server(node_count=0):
 async def main():
 
     tasks = [server(3)]
-    complate, pending = await asyncio.wait(tasks)
-    for i in complate:
+    complete, pending = await asyncio.wait(tasks)
+    for i in complete:
         print("result: ", i.result())
     if pending:
         for p in pending:
