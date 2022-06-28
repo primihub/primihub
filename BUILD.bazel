@@ -833,6 +833,37 @@ py_library(
 )
 
 cc_binary(
+    name = "libprimihub.so",
+    srcs = glob([
+                  "src/primihub/node/node.cc",
+                  "src/primihub/node/node.h",
+                  "src/primihub/node/ds.cc",
+                  "src/primihub/node/ds.h",
+            ]),
+    copts = C_OPT,
+    includes = [
+    ],
+    linkstatic = False,
+    linkopts = LINK_OPTS + ["-shared"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@toolkit_relic//:relic",
+        ":worker_proto",
+        ":service_proto",
+        ":common_lib",
+        ":node_lib",
+        ":nodelet",
+        ":algorithm_lib",
+        ":util_lib",
+    ]
+)
+
+cc_binary(
     name = "node",
     srcs = glob([
                   "src/primihub/node/node.cc",

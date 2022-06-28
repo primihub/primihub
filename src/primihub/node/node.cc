@@ -199,35 +199,39 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
 
 } // namespace primihub
 
-int main(int argc, char **argv) {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    py::scoped_interpreter python;
-    py::gil_scoped_release release;
-    
-    google::InitGoogleLogging(argv[0]);
-    FLAGS_colorlogtostderr = true;
-    FLAGS_alsologtostderr = true;
-    FLAGS_log_dir = "./log";
-    FLAGS_max_log_size = 10;
-    FLAGS_stop_logging_if_full_disk = true;
+int node_main(const std::string &node_id, const std::string &config_file,
+              int service_port) {
 
-    absl::ParseCommandLine(argc, argv);
-    const std::string node_id = absl::GetFlag(FLAGS_node_id);
-    bool singleton = absl::GetFlag(FLAGS_singleton);
+  py::scoped_interpreter python;
+  py::gil_scoped_release release;
 
-    // TODO(chenhongbo) peer_list need to remove. get Peer list from dataset
-    // service.
+  google::InitGoogleLogging("primihub-node");
+  FLAGS_colorlogtostderr = true;
+  FLAGS_alsologtostderr = true;
+  FLAGS_log_dir = "/tmp/log";
+  FLAGS_max_log_size = 10;
+  FLAGS_stop_logging_if_full_disk = true;
 
-    int service_port = absl::GetFlag(FLAGS_service_port);
-    std::string config_file = absl::GetFlag(FLAGS_config);
+  LOG(INFO) << "node_id is " << node_id << ".";
+  LOG(INFO) << "config file is " << config_file << ".";
+  LOG(INFO) << "service port is " << service_port << ".";
 
-    std::string node_ip = "0.0.0.0";
-    primihub::VMNodeImpl node_service(node_id, node_ip, service_port, singleton,
-                                 config_file);
-    primihub::DataServiceImpl data_service(node_service.getNodelet()->getDataService(),
-                                           node_service.getNodelet()->getNodeletAddr());
+  std::string node_ip = "0.0.0.0";
+  primihub::VMNodeImpl node_service(node_id, node_ip, service_port, false,
+                                    config_file);
+  primihub::DataServiceImpl data_service(
+      node_service.getNodelet()->getDataService(),
+      node_service.getNodelet()->getNodeletAddr());
 
-    primihub::RunServer(&node_service, &data_service, service_port);
+  primihub::RunServer(&node_service, &data_service, service_port);
 
-    return 0;
+  return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
