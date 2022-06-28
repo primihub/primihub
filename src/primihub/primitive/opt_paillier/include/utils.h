@@ -62,5 +62,4 @@ uint32_t aby_rand();
  */
 void aby_prng(mpz_t rnd, mp_bitcnt_t len);
 
-
 #endif // _UTILS_H__

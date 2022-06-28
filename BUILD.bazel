@@ -1298,7 +1298,7 @@ py_library(
     name = "opt_paillier_c2py_warpper",
     srcs = [
         "python/primihub/primitive/opt_paillier_c2py_warpper.py",
-        "python/primihub/primitive/opt_paillier_batch_c2py_warpper.py"
+        "python/primihub/primitive/opt_paillier_pack_c2py_warpper.py"
         ],
     deps = [
         ":opt_paillier_c2py"
@@ -1316,9 +1316,9 @@ py_test(
 )
 
 py_test(
-    name = "opt_paillier_batch_c2py_test",
+    name = "opt_paillier_pack_c2py_test",
     srcs = [
-        "python/primihub/tests/opt_paillier_batch_c2py_test.py"
+        "python/primihub/tests/opt_paillier_pack_c2py_test.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"
