@@ -7,30 +7,34 @@
 #include "globals.h"
 using namespace std;
 
-
-class BNLayer : public Layer
+namespace primihub{
+    namespace falcon
 {
-private:
-	BNConfig conf;
-	RSSVectorMyType activations;
-	RSSVectorMyType deltas;
-	RSSVectorMyType gamma;
-	RSSVectorMyType beta;
-	RSSVectorMyType xhat;
-	RSSVectorMyType sigma;
 
-public:
-	//Constructor and initializer
-	BNLayer(BNConfig* conf, int _layerNum);
-	void initialize();
+	class BNLayer : public Layer
+	{
+	private:
+		BNConfig conf;
+		RSSVectorMyType activations;
+		RSSVectorMyType deltas;
+		RSSVectorMyType gamma;
+		RSSVectorMyType beta;
+		RSSVectorMyType xhat;
+		RSSVectorMyType sigma;
 
-	//Functions
-	void printLayer() override;
-	void forward(const RSSVectorMyType& inputActivation) override;
-	void computeDelta(RSSVectorMyType& prevDelta) override;
-	void updateEquations(const RSSVectorMyType& prevActivations) override;
+	public:
+		// Constructor and initializer
+		BNLayer(BNConfig *conf, int _layerNum);
+		void initialize();
 
-	//Getters
-	RSSVectorMyType* getActivation() {return &activations;};
-	RSSVectorMyType* getDelta() {return &deltas;};
-};
+		// Functions
+		void printLayer() override;
+		void forward(const RSSVectorMyType &inputActivation) override;
+		void computeDelta(RSSVectorMyType &prevDelta) override;
+		void updateEquations(const RSSVectorMyType &prevActivations) override;
+
+		// Getters
+		RSSVectorMyType *getActivation() { return &activations; };
+		RSSVectorMyType *getDelta() { return &deltas; };
+	};
+}}

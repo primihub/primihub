@@ -1,0 +1,231 @@
+name: primihub CI/CD actions
+
+on:
+  # schedule:
+  #   - cron: '19 3 * * *'
+  push:
+    branches: 
+      - master
+      - develop
+      - feature/workflow # for test
+    # Publish semver tags as releases.
+    tags: [ '*.*.*' ]
+  pull_request:
+    branches: [ "master", "develop" ]
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: docker.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: primihub/primihub-node
+
+
+jobs:
+  
+  unit-test-on-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.20.2'
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - name: Install gcc-8
+      run: |
+         sudo apt install -y gcc-8  g++-8 \
+          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - name: Install python-devel
+      run: sudo apt install python-dev
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+      
+    - name: bazel test
+      run: |
+        bazel build --config=linux logistic_test maxpool_test falcon_lenet_test common_test network_test
+        ./bazel-bin/logistic_test
+        ./bazel-bin/maxpool_test
+        ./bazel-bin/falcon_lenet_test
+        ./bazel-bin/common_test
+        ./bazel-bin/network_test
+        # bazel test --test_output=errors --config=linux common_test
+        # bazel test --test_output=errors --config=linux network_test
+        # bazel test --config=linux primitive_test
+        # bazel test --config=linux protocol_aby3_test
+        # bazel test --config=linux prng_test
+
+
+  
+
+  unit-test-on-macos_x86_64:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    
+    - name: get python ldflags
+      run: python3.9-config --ldflags
+
+    - uses: actions/checkout@v3
+    - name: bazel build
+      run: |
+        bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+        ./bazel-bin/common_test
+        ./bazel-bin/network_test
+        ./bazel-bin/logistic_test
+        # bazel test --config=darwin_x86_64 --config=macos primitive_test
+        # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
+        # bazel test --config=darwin_x86_64 --config=macos prng_test
+        # bazel test --config=darwin_x86_64 --config=macos share_test
+
+  
+  build-on-ubuntu:
+    needs: unit-test-on-ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.12
+      with:
+        cmake-version: '3.20.2'
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - name: Install gcc-8
+      run: |
+         sudo apt install -y gcc-8  g++-8 \
+          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - name: Install python-devel
+      run: sudo apt install python-dev
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=linux :node :cli :opt_paillier_c2py_test 
+  
+  build-on-mac_x86_64:
+    needs: unit-test-on-macos_x86_64
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: Mount bazel cache  # Optional
+      uses: actions/cache@v3
+      with:
+        path: "~/.cache/bazel"
+        key: bazel
+    - name: get python ldflags
+      run: python3.9-config --ldflags
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py_test  --sandbox_debug 
+    - name: Release copy
+      run : |
+        cp ./bazel-bin/node ./bazel-bin/primihub-node
+        cp ./bazel-bin/cli ./bazel-bin/primihub-cli
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: |
+            ./bazel-bin/primihub-node
+            ./bazel-bin/primihub-cli
+  
+  docker-image-build-and-publish:
+    needs: build-on-ubuntu
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@d6a3abf1bdea83574e28d40543793018b6035605
+        with:
+          cosign-release: 'v1.7.1'
+
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@79abd3f86f79a9d68a23c75a09a9a85889262adf
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # Sign the resulting Docker image digest except on PRs.
+      # This will only write to the public Rekor transparency log when the Docker
+      # repository is public to avoid leaking data.  If you would like to publish
+      # transparency data even for private images, pass --force to cosign below.
+      # https://github.com/sigstore/cosign
+      # - name: Sign the published Docker image
+      #   if: ${{ github.event_name != 'pull_request' }}
+      #   env:
+      #     COSIGN_EXPERIMENTAL: "true"
+      #   # This step uses the identity token to provision an ephemeral certificate
+      #   # against the sigstore community Fulcio instance.
+      #   run: cosign sign --force ${{ steps.meta.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+

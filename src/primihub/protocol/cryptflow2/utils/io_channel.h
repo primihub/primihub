@@ -34,7 +34,7 @@ Modified by Deevashwer Rathee
   @{
  */
 
-namespace sci {
+namespace primihub::sci {
 template <typename T> class IOChannel {
 public:
   void send_data(const void *data, int nbyte) {
@@ -54,7 +54,7 @@ public:
     recv_data(data, nblock * sizeof(block128));
   }
 
-  void send_pt(emp::Point *A, int num_pts = 1) {
+  void send_pt(primihub::emp::Point *A, int num_pts = 1) {
     for (int i = 0; i < num_pts; ++i) {
       size_t len = A[i].size();
       A[i].group->resize_scratch(len);
@@ -65,7 +65,7 @@ public:
     }
   }
 
-  void recv_pt(emp::Group *g, emp::Point *A, int num_pts = 1) {
+  void recv_pt(primihub::emp::Group *g, primihub::emp::Point *A, int num_pts = 1) {
     size_t len = 0;
     for (int i = 0; i < num_pts; ++i) {
       recv_data(&len, 4);
@@ -80,5 +80,5 @@ private:
   T &derived() { return *static_cast<T *>(this); }
 };
 /**@}*/
-} // namespace sci
+} // namespace primihub::sci
 #endif // IO_CHANNEL_H__

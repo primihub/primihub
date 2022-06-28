@@ -32,7 +32,7 @@ SOFTWARE.
               << decryptor->invariant_noise_budget(ct) << " bits" << RESET \
               << std::endl
 
-void generate_new_keys(int party, sci::NetIO *io, int slot_count,
+void generate_new_keys(int party, primihub::sci::NetIO *io, int slot_count,
                        std::shared_ptr<seal::SEALContext> &context_,
                        seal::Encryptor *&encryptor_,
                        seal::Decryptor *&decryptor_,
@@ -46,14 +46,14 @@ void free_keys(int party, seal::Encryptor *&encryptor_,
                seal::BatchEncoder *&encoder_, seal::GaloisKeys *&gal_keys_,
                seal::Ciphertext *&zero_);
 
-void send_encrypted_vector(sci::NetIO *io,
+void send_encrypted_vector(primihub::sci::NetIO *io,
                            std::vector<seal::Ciphertext> &ct_vec);
 
-void recv_encrypted_vector(sci::NetIO *io, std::shared_ptr<seal::SEALContext> context, std::vector<seal::Ciphertext> &ct_vec);
+void recv_encrypted_vector(primihub::sci::NetIO *io, std::shared_ptr<seal::SEALContext> context, std::vector<seal::Ciphertext> &ct_vec);
 
-void send_ciphertext(sci::NetIO *io, seal::Ciphertext &ct);
+void send_ciphertext(primihub::sci::NetIO *io, seal::Ciphertext &ct);
 
-void recv_ciphertext(sci::NetIO *io,std::shared_ptr<seal::SEALContext> context, seal::Ciphertext &ct);
+void recv_ciphertext(primihub::sci::NetIO *io,std::shared_ptr<seal::SEALContext> context, seal::Ciphertext &ct);
 
 void set_poly_coeffs_uniform(
     uint64_t *poly, uint32_t bitlen,

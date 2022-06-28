@@ -2,13 +2,13 @@ _OPTS = [
     "-Werror",
     "-pedantic-errors",
     "-Weverything",
-    "-fPIC",
     "--system-header-prefix=gmp",
+    "-fPIC",
 ]
 
-_COPTS = _OPTS + ["-std=c11"]
+_COPTS = _OPTS + ["-std=c17"]
 
-_CXXOPTS = _OPTS + ["-std=c++11"]
+_CXXOPTS = _OPTS + ["-std=c++17"]
 
 cc_library(
     name = "gmp",
@@ -47,12 +47,14 @@ genrule(
         "include/gmpxx.h",
     ],
     cmd = """
+        export CFLAGS="-fPIC"
+        export CXXFLAGS="-fPIC"
         CONFIGURE_LOG=$$(mktemp)
         MAKE_LOG=$$(mktemp)
         GMP_ROOT=$$(dirname $(location configure))
         pushd $$GMP_ROOT > /dev/null
             mkdir -p /tmp/gmp
-            if ! ./configure --prefix=/tmp/gmp --enable-cxx > $$CONFIGURE_LOG; then
+            if ! ./configure --prefix=/tmp/gmp --enable-cxx --disable-assembly > $$CONFIGURE_LOG; then
                 cat $$CONFIGURE_LOG
             fi
             if ! make > $$MAKE_LOG; then

@@ -36,7 +36,7 @@ Modified by Deevashwer Rathee
 /** @addtogroup BP
   @{
  */
-namespace sci {
+namespace primihub::sci {
 class Hash {
 public:
   SHA256_CTX hash;
@@ -90,7 +90,7 @@ public:
     return _mm256_load_si256((__m256i *)&digest[0]);
   }
 
-  static block128 KDF128(emp::Point &in, uint64_t id = 1) {
+  static block128 KDF128(primihub::emp::Point &in, uint64_t id = 1) {
     size_t len = in.size();
     in.group->resize_scratch(len + 8);
     unsigned char *tmp = in.group->scratch;
@@ -100,7 +100,7 @@ public:
     return ret;
   }
 
-  static block256 KDF256(emp::Point &in, uint64_t id = 1) {
+  static block256 KDF256(primihub::emp::Point &in, uint64_t id = 1) {
     size_t len = in.size();
     in.group->resize_scratch(len + 8);
     unsigned char *tmp = in.group->scratch;
@@ -110,6 +110,6 @@ public:
     return ret;
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 /**@}*/
 #endif // HASH_H__

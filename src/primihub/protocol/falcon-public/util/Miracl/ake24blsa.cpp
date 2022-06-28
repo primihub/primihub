@@ -31,7 +31,9 @@
 #include "zzn24.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef MR_COUNT_OPS
 extern "C"
 {
@@ -709,3 +711,5 @@ int main()
 
 	return 0;
 }
+}
+}//primihub

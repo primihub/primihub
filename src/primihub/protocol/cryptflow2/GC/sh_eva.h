@@ -29,7 +29,7 @@ Modified by Deevashwer Rathee
 #define EMP_SEMIHONEST_EVA_H__
 #include "src/primihub/protocol/cryptflow2/GC/sh_party.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class SemiHonestEva : public SemiHonestParty<IO> {
 public:
   HalfGateEva<IO> *gc;
@@ -107,6 +107,6 @@ public:
       this->io->send_data(b, length);
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 
 #endif // GARBLE_CIRCUIT_SEMIHONEST_H__

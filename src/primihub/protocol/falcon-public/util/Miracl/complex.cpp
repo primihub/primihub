@@ -2,7 +2,9 @@
 
 #include <iostream>
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 BOOL Complex::iszero() const
 { if (x.iszero() && y.iszero()) return TRUE; return FALSE; }
 
@@ -158,3 +160,5 @@ Float norm(const Complex &a)
     f = (a.x * a.x) + (a.y * a.y);
     return sqrt(f);
 }
+}
+}//primihub

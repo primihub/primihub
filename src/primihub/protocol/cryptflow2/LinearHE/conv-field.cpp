@@ -26,7 +26,7 @@ Modified by Deevashwer Rathee
 #include "LinearHE/conv-field.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 using namespace seal;
 using namespace Eigen;
 

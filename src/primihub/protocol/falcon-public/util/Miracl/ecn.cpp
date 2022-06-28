@@ -44,7 +44,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
  */
 
 #include "ecn.h"
-
+namespace primihub{
+    namespace falcon
+{
 int ECn::get(Big& x,Big& y) const 
         {return epoint_get(p,x.getbig(),y.getbig());}
 int ECn::get(Big& x) const   
@@ -192,3 +194,5 @@ BOOL is_on_curve(const Big& a)
 
 #endif
 #endif
+}
+}//primihub

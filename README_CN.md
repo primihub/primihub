@@ -1,4 +1,6 @@
 # Primihub 
+![build workflow](https://github.com/primihub/primihub/actions/workflows/main.yml/badge.svg?branch=master)
+[![Gitter](https://badges.gitter.im/primihub/community.svg)](https://gitter.im/primihub/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ## 特性
  Primihub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 Primihub [核心特性](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
 

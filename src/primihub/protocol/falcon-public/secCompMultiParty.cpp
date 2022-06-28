@@ -25,7 +25,9 @@ AES_KEY_TED aes_key;
 unsigned long rCounter;
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 //XORs 2 vectors
 #ifdef ENABLE_SSE
 void XORvectors(__m128i *vec1, __m128i *vec2, __m128i *out, int length)
@@ -94,5 +96,6 @@ int getrCounter()
 {
 	return rCounter;
 }
-
+}// namespace primihub{
+}
 #endif

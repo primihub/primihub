@@ -8,7 +8,9 @@
 #define COMFLOAT_H
 
 #include "floating.h"
-
+namespace primihub{
+    namespace falcon
+{
 class Complex
 {
     Float x,y;
@@ -49,6 +51,7 @@ public:
     friend ostream& operator<<(ostream&,const Complex&);
     ~Complex() {}
 };
-
+}
+}//primihub
 #endif
 

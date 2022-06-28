@@ -28,8 +28,8 @@ SOFTWARE.
 
 class MillionaireWithEquality {
 public:
-  sci::IOPack *iopack;
-  sci::OTPack *otpack;
+  primihub::sci::IOPack *iopack;
+  primihub::sci::OTPack *otpack;
   TripleGenerator *triple_gen;
   MillionaireProtocol *mill;
   int party;
@@ -37,7 +37,7 @@ public:
   int num_digits, num_triples, log_num_digits;
   uint8_t mask_beta, mask_r;
 
-  MillionaireWithEquality(int party, sci::IOPack *iopack, sci::OTPack *otpack,
+  MillionaireWithEquality(int party, primihub::sci::IOPack *iopack, primihub::sci::OTPack *otpack,
                           int bitlength = 32, int radix_base = MILL_PARAM) {
     this->party = party;
     this->iopack = iopack;
@@ -56,7 +56,7 @@ public:
 
     this->num_digits = ceil((double)l / beta);
     this->r = l % beta;
-    this->log_alpha = sci::bitlen(num_digits) - 1;
+    this->log_alpha = primihub::sci::bitlen(num_digits) - 1;
     this->log_num_digits = log_alpha + 1;
     this->num_triples = 2 * num_digits - 2;
     if (beta == 8)
@@ -74,8 +74,8 @@ public:
                       int radix_base = MILL_PARAM) {
     uint8_t N = 1 << bitlength;
     uint8_t mask = N - 1;
-    if (party == sci::ALICE) {
-      sci::PRG128 prg;
+    if (party == primihub::sci::ALICE) {
+      primihub::sci::PRG128 prg;
       prg.random_data(res_cmp, num_cmps * sizeof(uint8_t));
       prg.random_data(res_eq, num_cmps * sizeof(uint8_t));
       uint8_t **leaf_messages = new uint8_t *[num_cmps];
@@ -161,7 +161,7 @@ public:
     // ======================
 
     // Set leaf OT messages now
-    if (party == sci::ALICE) {
+    if (party == primihub::sci::ALICE) {
       uint8_t *
           *leaf_ot_messages; // (num_digits * num_cmps) X beta_pow (=2^beta)
       leaf_ot_messages = new uint8_t *[num_digits * num_cmps];
@@ -212,7 +212,7 @@ public:
       for (int i = 0; i < num_digits * num_cmps; i++)
         delete[] leaf_ot_messages[i];
       delete[] leaf_ot_messages;
-    } else // party = sci::BOB
+    } else // party = primihub::sci::BOB
     {
       // Perform Leaf OTs
       if (r == 1) {
@@ -309,24 +309,24 @@ public:
 #pragma omp parallel num_threads(2)
       {
         if (omp_get_thread_num() == 1) {
-          if (party == sci::ALICE) {
+          if (party == primihub::sci::ALICE) {
             iopack->io_rev->recv_data(e + offset, size_used);
             iopack->io_rev->recv_data(e + offset, size_used);
             iopack->io_rev->recv_data(f + offset, size_used);
             iopack->io_rev->recv_data(f + offset, size_used);
-          } else { // party == sci::BOB
+          } else { // party == primihub::sci::BOB
             iopack->io_rev->send_data(ei + offset, size_used);
             iopack->io_rev->send_data(ei + offset, size_used);
             iopack->io_rev->send_data(fi + offset, size_used);
             iopack->io_rev->send_data(fi + offset, size_used);
           }
         } else {
-          if (party == sci::ALICE) {
+          if (party == primihub::sci::ALICE) {
             iopack->io->send_data(ei + offset, size_used);
             iopack->io->send_data(ei + offset, size_used);
             iopack->io->send_data(fi + offset, size_used);
             iopack->io->send_data(fi + offset, size_used);
-          } else { // party == sci::BOB
+          } else { // party == primihub::sci::BOB
             iopack->io->recv_data(e + offset, size_used);
             iopack->io->recv_data(e + offset, size_used);
             iopack->io->recv_data(f + offset, size_used);

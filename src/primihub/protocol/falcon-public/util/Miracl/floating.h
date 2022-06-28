@@ -12,7 +12,9 @@
 
 #include <cmath>
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 extern void setprecision(int);
 
 class Float
@@ -89,6 +91,7 @@ public:
 
 extern Float fpi(void);
 extern Float makefloat(int,int);
-
+}
+}//primihub
 #endif
 

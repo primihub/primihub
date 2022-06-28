@@ -1,0 +1,38 @@
+FROM ubuntu:20.04 as runner
+
+ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN  apt-get update \
+  && apt-get install -y python3.9 python3.9-dev libgmp-dev python3-pip git \
+  && rm -rf /var/lib/apt/lists/*
+
+ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
+WORKDIR $TARGET_PATH
+# Copy binaries to TARGET_PATH
+COPY . ./
+# Copy test data files to /tmp/
+COPY ./data/ /tmp/
+# Make symlink to primihub-node & primihub-cli
+RUN mkdir -p /app/config /app/primihub_python && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+
+# Change WorkDir to /app
+WORKDIR /app
+# Copy all test config files to /app
+COPY ./config/ ./config/
+
+# Copy primihub python sources to /app and setup to system python3
+COPY ./python/ ./primihub_python/
+
+RUN cd primihub_python \
+  && python3.9 -m pip install --upgrade pip \
+  && pip3 install -r requirements.txt \
+  && python3.9 setup.py install
+
+ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
+
+# gRPC server port
+EXPOSE 50050 8888
+# Cryptool port
+EXPOSE 12120
+EXPOSE 12121

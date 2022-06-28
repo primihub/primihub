@@ -9,7 +9,9 @@
 #include "floating.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(18,0); // 18=2^4+2
 
 int main()
@@ -22,4 +24,5 @@ int main()
     cout << pow(x,3) << endl;
     return 0;
 }
-
+}
+}//primihub

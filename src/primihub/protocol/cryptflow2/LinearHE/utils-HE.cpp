@@ -23,7 +23,7 @@ SOFTWARE.
 #include "seal/util/polyarithsmallmod.h"
 
 using namespace std;
-using namespace sci;
+using namespace primihub::sci;
 using namespace seal;
 using namespace seal::util;
 

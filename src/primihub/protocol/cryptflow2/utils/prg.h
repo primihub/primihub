@@ -42,7 +42,7 @@ Modified by Deevashwer Rathee
 /** @addtogroup BP
   @{
  */
-namespace sci {
+namespace primihub::sci {
 
 class PRG128 {
 public:
@@ -296,5 +296,5 @@ public:
   }
 };
 
-} // namespace sci
+} // namespace primihub::sci
 #endif // PRG_H__

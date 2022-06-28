@@ -45,128 +45,293 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
  *    PURPOSE : Definition of class zzn6  (Arithmetic over n^6)
  *
  * WARNING: This class has been cobbled together for a specific use with
- * the MIRACL library. It is not complete, and may not work in other 
+ * the MIRACL library. It is not complete, and may not work in other
  * applications
  *
  * p = 1 mod 6
  * irreducible poly is x^6+n
  *
  */
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef ZZN6_H
 #define ZZN6_H
 
 #include "zzn3.h"
 
-class ZZn6
-{
-    ZZn3 a,b;
-    BOOL unitary;
-public:
-    ZZn6()   {unitary=FALSE;}
-    ZZn6(int w) {a=(ZZn3)w; b=0; if (w==1) unitary=TRUE; else unitary=FALSE;}
-    ZZn6(const ZZn6& w) {a=w.a; b=w.b; unitary=w.unitary;}
-    ZZn6(const ZZn3 &x,const ZZn3& y) {a=x; b=y; unitary=FALSE; }
-	ZZn6(const ZZn3 &x) {a=x; b=0; unitary=FALSE; }
-    ZZn6(const ZZn &x) {a=x; b=0; unitary=FALSE;}
-    ZZn6(const Big &x) {a=(ZZn)x; b=0; unitary=FALSE;}
-    
-    void set(const ZZn3 &x,const ZZn3 &y) {a=x; b=y; unitary=FALSE;}
-    void set(const ZZn3 &x) {a=x; b.clear(); unitary=FALSE;}
-    void seti(const ZZn3 &x) {a.clear(); b=x; unitary=FALSE;}
-    void set(const Big &x) {a=(ZZn)x; b.clear(); unitary=FALSE;}
+    class ZZn6
+    {
+        ZZn3 a, b;
+        BOOL unitary;
 
-    void get(ZZn3 &,ZZn3 &) const;
-	void geti(ZZn3&) const;
-    void get(ZZn3 &) const;
-    
-    void clear() {a=0; b=0; unitary=FALSE;}
-    void mark_as_unitary() {unitary=TRUE;}
-    BOOL is_unitary() {return unitary;}
-    
-    BOOL iszero()  const {if (a.iszero() && b.iszero()) return TRUE; return FALSE; }
-    BOOL isunity() const {if (a.isunity() && b.iszero()) return TRUE; return FALSE; }
- //   BOOL isminusone() const {if (a.isminusone() && b.iszero()) return TRUE; return FALSE; }
+    public:
+        ZZn6() { unitary = FALSE; }
+        ZZn6(int w)
+        {
+            a = (ZZn3)w;
+            b = 0;
+            if (w == 1)
+                unitary = TRUE;
+            else
+                unitary = FALSE;
+        }
+        ZZn6(const ZZn6 &w)
+        {
+            a = w.a;
+            b = w.b;
+            unitary = w.unitary;
+        }
+        ZZn6(const ZZn3 &x, const ZZn3 &y)
+        {
+            a = x;
+            b = y;
+            unitary = FALSE;
+        }
+        ZZn6(const ZZn3 &x)
+        {
+            a = x;
+            b = 0;
+            unitary = FALSE;
+        }
+        ZZn6(const ZZn &x)
+        {
+            a = x;
+            b = 0;
+            unitary = FALSE;
+        }
+        ZZn6(const Big &x)
+        {
+            a = (ZZn)x;
+            b = 0;
+            unitary = FALSE;
+        }
 
-    ZZn6& powq(void);
-    ZZn6& operator=(int i) {a=i; b=0; if (i==1) unitary=TRUE; else unitary=FALSE; return *this;}
-    ZZn6& operator=(const ZZn& x) {a=x; b=0; unitary=FALSE; return *this; }
-    ZZn6& operator=(const ZZn3& x) {a=x; b=0; unitary=FALSE; return *this; }
-    ZZn6& operator=(const ZZn6& x) {a=x.a; b=x.b; unitary=x.unitary; return *this; }
-    ZZn6& operator+=(const ZZn& x) {a+=x; unitary=FALSE; return *this; }
-    ZZn6& operator+=(const ZZn3& x) {a+=x; unitary=FALSE; return *this; }
-    ZZn6& operator+=(const ZZn6& x) {a+=x.a; b+=x.b; unitary=FALSE; return *this; }
-    ZZn6& operator-=(const ZZn& x) {a-=x; unitary=FALSE;  return *this; }
-    ZZn6& operator-=(const ZZn3& x) {a-=x; unitary=FALSE; return *this; }
-    ZZn6& operator-=(const ZZn6& x) {a-=x.a; b-=x.b; unitary=FALSE; return *this; }
-    ZZn6& operator*=(const ZZn6&); 
-    ZZn6& operator*=(const ZZn3& x) {a*=x; b*=x; unitary=FALSE; return *this; }
-    ZZn6& operator*=(const ZZn& x) {a*=x; b*=x; unitary=FALSE; return *this; }
-    ZZn6& operator*=(int x) {a*=x; b*=x; unitary=FALSE; return *this;}
-    ZZn6& operator/=(const ZZn6&); 
-    ZZn6& operator/=(const ZZn3&);
-    ZZn6& operator/=(const ZZn&);
-    ZZn6& operator/=(int);
-    ZZn6& conj() {b=-b; return *this;}
+        void set(const ZZn3 &x, const ZZn3 &y)
+        {
+            a = x;
+            b = y;
+            unitary = FALSE;
+        }
+        void set(const ZZn3 &x)
+        {
+            a = x;
+            b.clear();
+            unitary = FALSE;
+        }
+        void seti(const ZZn3 &x)
+        {
+            a.clear();
+            b = x;
+            unitary = FALSE;
+        }
+        void set(const Big &x)
+        {
+            a = (ZZn)x;
+            b.clear();
+            unitary = FALSE;
+        }
 
-    friend ZZn6 operator+(const ZZn6&,const ZZn6&);
-    friend ZZn6 operator+(const ZZn6&,const ZZn3&);
-    friend ZZn6 operator+(const ZZn6&,const ZZn&);
-    friend ZZn6 operator-(const ZZn6&,const ZZn6&);
-    friend ZZn6 operator-(const ZZn6&,const ZZn3&);
-    friend ZZn6 operator-(const ZZn6&,const ZZn&);
-    friend ZZn6 operator-(const ZZn6&);
+        void get(ZZn3 &, ZZn3 &) const;
+        void geti(ZZn3 &) const;
+        void get(ZZn3 &) const;
 
-    friend ZZn6 operator*(const ZZn6&,const ZZn6&);
-    friend ZZn6 operator*(const ZZn6&,const ZZn3&);
-    friend ZZn6 operator*(const ZZn6&,const ZZn&);
-    friend ZZn6 operator*(const ZZn&,const ZZn6&);
-    friend ZZn6 operator*(const ZZn3&,const ZZn6&);
+        void clear()
+        {
+            a = 0;
+            b = 0;
+            unitary = FALSE;
+        }
+        void mark_as_unitary() { unitary = TRUE; }
+        BOOL is_unitary() { return unitary; }
 
-    friend ZZn6 operator*(int,const ZZn6&);
-    friend ZZn6 operator*(const ZZn6&,int);
+        BOOL iszero() const
+        {
+            if (a.iszero() && b.iszero())
+                return TRUE;
+            return FALSE;
+        }
+        BOOL isunity() const
+        {
+            if (a.isunity() && b.iszero())
+                return TRUE;
+            return FALSE;
+        }
+        //   BOOL isminusone() const {if (a.isminusone() && b.iszero()) return TRUE; return FALSE; }
 
-    friend ZZn6 operator/(const ZZn6&,const ZZn6&);
-    friend ZZn6 operator/(const ZZn6&,const ZZn3&);
-    friend ZZn6 operator/(const ZZn6&,const ZZn&);
-    friend ZZn6 operator/(const ZZn6&,int);
+        ZZn6 &powq(void);
+        ZZn6 &operator=(int i)
+        {
+            a = i;
+            b = 0;
+            if (i == 1)
+                unitary = TRUE;
+            else
+                unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator=(const ZZn &x)
+        {
+            a = x;
+            b = 0;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator=(const ZZn3 &x)
+        {
+            a = x;
+            b = 0;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator=(const ZZn6 &x)
+        {
+            a = x.a;
+            b = x.b;
+            unitary = x.unitary;
+            return *this;
+        }
+        ZZn6 &operator+=(const ZZn &x)
+        {
+            a += x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator+=(const ZZn3 &x)
+        {
+            a += x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator+=(const ZZn6 &x)
+        {
+            a += x.a;
+            b += x.b;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator-=(const ZZn &x)
+        {
+            a -= x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator-=(const ZZn3 &x)
+        {
+            a -= x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator-=(const ZZn6 &x)
+        {
+            a -= x.a;
+            b -= x.b;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator*=(const ZZn6 &);
+        ZZn6 &operator*=(const ZZn3 &x)
+        {
+            a *= x;
+            b *= x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator*=(const ZZn &x)
+        {
+            a *= x;
+            b *= x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator*=(int x)
+        {
+            a *= x;
+            b *= x;
+            unitary = FALSE;
+            return *this;
+        }
+        ZZn6 &operator/=(const ZZn6 &);
+        ZZn6 &operator/=(const ZZn3 &);
+        ZZn6 &operator/=(const ZZn &);
+        ZZn6 &operator/=(int);
+        ZZn6 &conj()
+        {
+            b = -b;
+            return *this;
+        }
 
-	friend ZZn6 rhs(const ZZn6&);
+        friend ZZn6 operator+(const ZZn6 &, const ZZn6 &);
+        friend ZZn6 operator+(const ZZn6 &, const ZZn3 &);
+        friend ZZn6 operator+(const ZZn6 &, const ZZn &);
+        friend ZZn6 operator-(const ZZn6 &, const ZZn6 &);
+        friend ZZn6 operator-(const ZZn6 &, const ZZn3 &);
+        friend ZZn6 operator-(const ZZn6 &, const ZZn &);
+        friend ZZn6 operator-(const ZZn6 &);
 
-    friend ZZn3  real(const ZZn6& x)      {return x.a;}
-    friend ZZn3  imaginary(const ZZn6& x) {return x.b;}
+        friend ZZn6 operator*(const ZZn6 &, const ZZn6 &);
+        friend ZZn6 operator*(const ZZn6 &, const ZZn3 &);
+        friend ZZn6 operator*(const ZZn6 &, const ZZn &);
+        friend ZZn6 operator*(const ZZn &, const ZZn6 &);
+        friend ZZn6 operator*(const ZZn3 &, const ZZn6 &);
 
-    friend ZZn6 pow(const ZZn6&,const Big&);
-    friend ZZn6 powu(const ZZn6&,const Big&);
-    friend ZZn6 pow(int,const ZZn6*,const Big*);
-    friend ZZn6 powl(const ZZn6&,const Big&);
-    friend ZZn6 conj(const ZZn6&);
-    friend ZZn6 inverse(const ZZn6&);
-	friend ZZn6 tx(const ZZn6&);
-	friend ZZn6 tx2(const ZZn6&);
-	friend ZZn6 tx4(const ZZn6&);
-	friend ZZn6 txd(const ZZn6&);
+        friend ZZn6 operator*(int, const ZZn6 &);
+        friend ZZn6 operator*(const ZZn6 &, int);
+
+        friend ZZn6 operator/(const ZZn6 &, const ZZn6 &);
+        friend ZZn6 operator/(const ZZn6 &, const ZZn3 &);
+        friend ZZn6 operator/(const ZZn6 &, const ZZn &);
+        friend ZZn6 operator/(const ZZn6 &, int);
+
+        friend ZZn6 rhs(const ZZn6 &);
+
+        friend ZZn3 real(const ZZn6 &x) { return x.a; }
+        friend ZZn3 imaginary(const ZZn6 &x) { return x.b; }
+
+        friend ZZn6 pow(const ZZn6 &, const Big &);
+        friend ZZn6 powu(const ZZn6 &, const Big &);
+        friend ZZn6 pow(int, const ZZn6 *, const Big *);
+        friend ZZn6 powl(const ZZn6 &, const Big &);
+        friend ZZn6 conj(const ZZn6 &);
+        friend ZZn6 inverse(const ZZn6 &);
+        friend ZZn6 tx(const ZZn6 &);
+        friend ZZn6 tx2(const ZZn6 &);
+        friend ZZn6 tx4(const ZZn6 &);
+        friend ZZn6 txd(const ZZn6 &);
 
 #ifndef MR_NO_RAND
-    friend ZZn6 randn6(void);        // random ZZn6
+        friend ZZn6 randn6(void); // random ZZn6
 #endif
-    friend BOOL qr(const ZZn6&);
-    friend ZZn6 sqrt(const ZZn6&);   // square root - 0 if none exists
+        friend BOOL qr(const ZZn6 &);
+        friend ZZn6 sqrt(const ZZn6 &); // square root - 0 if none exists
 
-    friend BOOL operator==(const ZZn6& x,const ZZn6& y)
-    {if (x.a==y.a && x.b==y.b) return TRUE; else return FALSE; }
+        friend BOOL operator==(const ZZn6 &x, const ZZn6 &y)
+        {
+            if (x.a == y.a && x.b == y.b)
+                return TRUE;
+            else
+                return FALSE;
+        }
 
-    friend BOOL operator!=(const ZZn6& x,const ZZn6& y)
-    {if (x.a!=y.a || x.b!=y.b) return TRUE; else return FALSE; }
+        friend BOOL operator!=(const ZZn6 &x, const ZZn6 &y)
+        {
+            if (x.a != y.a || x.b != y.b)
+                return TRUE;
+            else
+                return FALSE;
+        }
 
 #ifndef MR_NO_STANDARD_IO
-    friend ostream& operator<<(ostream&,const ZZn6&);
+        friend ostream &operator<<(ostream &, const ZZn6 &);
 #endif
 
-    ~ZZn6()  {}
-};
+        ~ZZn6()
+        {
+        }
+    };
 #ifndef MR_NO_RAND
-extern ZZn6 randn6(void);  
+    extern ZZn6 randn6(void);
 #endif
 #endif
-
+}
+}

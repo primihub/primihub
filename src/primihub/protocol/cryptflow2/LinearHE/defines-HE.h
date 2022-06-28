@@ -27,12 +27,15 @@ SOFTWARE.
 // #define HE_DEBUG
 
 extern uint64_t prime_mod;
+namespace primihub::cryptflow2{
+
 extern int32_t bitlength;
+}
 extern int32_t num_threads;
 
 const uint64_t POLY_MOD_DEGREE = 8192;
 const uint64_t POLY_MOD_DEGREE_LARGE = 65536;
-const int32_t SMUDGING_BITLEN = 100 - bitlength;
+const int32_t SMUDGING_BITLEN = 100 - primihub::cryptflow2::bitlength;
 
 /* Helper function for rounding to the next power of 2
  * Credit:

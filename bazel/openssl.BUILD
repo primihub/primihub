@@ -1,8 +1,16 @@
 config_setting(
-    name = "darwin",
-    values = {
-        "cpu": "darwin_arm64",
-    },
+  name = "darwin_arm64",
+  values = {
+    "cpu": "darwin_arm64"
+  }
+)
+
+
+config_setting(
+  name = "darwin_x86_64",
+  values = {
+    "cpu": "darwin_x86_64"
+  }
 )
 
 cc_library(
@@ -11,7 +19,7 @@ cc_library(
     srcs = ["libcrypto.a"],
     includes = ["include"],
     linkopts = select({
-        ":darwin": [],
+        ":darwin_arm64": [],
         "//conditions:default": ["-lpthread", "-ldl"],
     }),
     visibility = ["//visibility:public"],

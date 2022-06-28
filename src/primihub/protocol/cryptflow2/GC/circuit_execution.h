@@ -30,7 +30,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/utils/block.h"
 #include "src/primihub/protocol/cryptflow2/utils/constants.h"
 
-namespace sci {
+namespace primihub::sci {
 
 /* Circuit Pipelining
  * [REF] Implementation of "Faster Secure Two-Party Computation Using Garbled
@@ -53,8 +53,8 @@ public:
   virtual ~CircuitExecution() {}
 };
 enum RTCktOpt { on, off };
-} // namespace sci
+} // namespace primihub::sci
 
-// extern sci::CircuitExecution* circ_exec;
-thread_local extern sci::CircuitExecution *circ_exec;
+// extern primihub::sci::CircuitExecution* circ_exec;
+thread_local extern primihub::sci::CircuitExecution *circ_exec;
 #endif

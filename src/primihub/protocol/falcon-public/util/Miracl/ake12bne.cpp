@@ -41,7 +41,9 @@
 // cofactor - number of points on curve=CF.q
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(8,0); 
 
 // Using SHA-256 as basic hash algorithm
@@ -495,4 +497,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

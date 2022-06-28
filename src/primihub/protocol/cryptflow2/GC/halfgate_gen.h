@@ -31,7 +31,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/mitccrh.h"
 #include "src/primihub/protocol/cryptflow2/utils/utils.h"
 #include <iostream>
-namespace sci {
+namespace primihub::sci {
 
 /*
  * The half-gate garbling scheme, with improved hashing
@@ -76,5 +76,5 @@ public:
   }
   size_t num_and() override { return mitccrh.gid; }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // HALFGATE_GEN_H__

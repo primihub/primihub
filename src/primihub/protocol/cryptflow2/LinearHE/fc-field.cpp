@@ -27,7 +27,7 @@ Modified by Deevashwer Rathee
 
 using namespace std;
 using namespace seal;
-using namespace sci;
+using namespace primihub::sci;
 
 Ciphertext preprocess_vec(const uint64_t *input, const FCMetadata &data,
                           Encryptor &encryptor, BatchEncoder &batch_encoder) {
