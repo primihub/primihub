@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# consumer.py
-# @Author :  ()
-# @Link   : 
-# @Date   : 6/24/2022, 7:19:00 AM
-
 from .zmq_channel import IOService, Session
 
 

@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# node.py
-# @Author :  ()
-# @Link   : 
-# @Date   : 6/24/2022, 10:21:52 AM
-
-
 import sys
 from os import path
 

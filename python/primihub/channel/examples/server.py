@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# server.py
-# @Author :  ()
-# @Link   : 
-# @Date   : 6/24/2022, 10:22:05 AM
-
 import sys
 from os import path
 

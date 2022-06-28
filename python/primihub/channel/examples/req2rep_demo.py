@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# test_zmq_channel.py
-# @Author : Victory (lzw9560@163.com)
-# @Link   :
-# @Date   : 6/5/2022, 12:41:29 AM
-
 import sys
 import threading
 from os import path
