@@ -714,7 +714,7 @@ cc_library(
         ":network_lib",
         ":util_lib",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],
 )
 
@@ -756,7 +756,7 @@ cc_library(
         "@boost//:thread",
         "@boost//:outcome",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],   
 )
 
@@ -791,7 +791,7 @@ cc_library(
         ":util_lib",
         "service_base",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],   
 )
 
@@ -874,7 +874,7 @@ cc_binary(
     copts = C_OPT,
     includes = [    
     ],
-    linkstatic = False,
+    linkstatic = True,
     linkopts = LINK_OPTS ,
     deps = [
         "@com_github_grpc_grpc//:grpc++",
