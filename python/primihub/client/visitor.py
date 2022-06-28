@@ -18,7 +18,7 @@ import ast
 import sys
 from os import path
 
-from grpc_client import GRPCClient
+# todo
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "..")))
 
@@ -35,7 +35,7 @@ class Visitor(object):
             code = f.read()
         node = ast.parse(code)
         # do ast manipulation
-        node = MyTransformer().visit(node)
+        node = Transformer().visit(node)
         # fix locations
         node = ast.fix_missing_locations(node)
         print("Here are the extracted content:")
@@ -49,7 +49,7 @@ class Visitor(object):
 
 
 # ast transformer
-class MyTransformer(ast.NodeTransformer):
+class Transformer(ast.NodeTransformer):
 
     def visit_ImportFrom(self, node):
         """for ImportFrom 
@@ -59,12 +59,13 @@ class MyTransformer(ast.NodeTransformer):
         argument -- description
         Return: return_description
         """
-        # print("visiting: "+node.__class__.__name__)
-
         for name in [a.name for a in node.names]:
+            print("name: ", name)
             if "Visitor" == name:
                 print("removing `from visitor import Visitor`")
-                # print(node.__dict__)
+                node = None
+            if "PrimihubClient" == name:
+                print("removing `from primihub.client import PrimihubClient`")
                 node = None
             return node
 
@@ -81,21 +82,7 @@ class MyTransformer(ast.NodeTransformer):
             if "visitor" == name:
                 print("removing `import visitor`")
                 node = None
+            if "primihub.client" == name:
+                print("removing `import primihub_client`")
+                node = None
             return node
-
-
-def upload_code():
-    visitor = Visitor()
-    code = visitor.visit_file()
-    grpc_client = GRPCClient(node="localhost:50050", cert="")
-    grpc_client.set_task_map(code=code.encode('utf-8'))
-    res = grpc_client.submit()
-    print("- * -")
-    print("res: ", res)
-
-
-# visitor = Visitor()
-# code = visitor.visit_file()
-
-
-upload_code()
