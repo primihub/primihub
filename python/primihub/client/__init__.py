@@ -16,17 +16,21 @@
 from primihub.client.grpc_client import GRPCClient
 from primihub.client.visitor import Visitor
 
+# todo
 NODE = "localhost:50050"
 CERT = ""
 
 
 class PrimihubClient(object):
 
-    def __int__(self):
-        code = Visitor().visit_file()
+    def __new__(self):
+        vistitor = Visitor()
+        code = vistitor.visit_file()
         grpc_client = GRPCClient(node=NODE, cert=CERT)
         grpc_client.set_task_map(code=code.encode('utf-8'))
         res = grpc_client.submit()
+        print("res: ", res)
 
 
 PrimihubClient()
+print(NODE, CERT)

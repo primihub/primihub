@@ -4,7 +4,7 @@ import sys
 from distutils.sysconfig import get_python_lib
 from os import path
 from shutil import copy
-
+import site
 import primihub
 from setuptools import setup, find_packages
 from setuptools.command.develop import develop
@@ -55,23 +55,35 @@ class PostDevelopCommand(develop):
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         develop.run(self)
-        SO_LIB = path.abspath(path.join(path.dirname(__file__), "../bazel-bin/*.so"))  # noqa
+        # add ../bazel-bin to PYTHONPATH on LINUX
+        SO_LIB_PATH = path.abspath(path.join(path.dirname(__file__), "../bazel-bin"))  # noqa
         print("* " * 30)
-        target = get_python_lib()
-        for f in glob.glob(SO_LIB):
+        site_packages_path = get_python_lib()
+        print(site_packages_path)
+        pth_file = site_packages_path + "/primihub_so.pth"
+        print(pth_file)
+        site.addsitedir(SO_LIB_PATH)
+        with open(pth_file, "w") as pth:
+            print("--", SO_LIB_PATH)
+            print()
+            pth.write(SO_LIB_PATH)
 
-            dest = os.path.join(target, os.path.basename(f))
-            try:
-                os.remove(dest)
-            except:
-                pass
-
-            try:
-                print("cp {} to {}".format(f, dest))
-                copy(f, target)
-            except:
-                print("Failed to copy file: ", sys.exc_info())
-        print("* " * 30)
+        print("sys path: ", sys.path)
+        # target = get_python_lib()
+        # for f in glob.glob(SO_LIB):
+        #
+        #     dest = os.path.join(target, os.path.basename(f))
+        #     try:
+        #         os.remove(dest)
+        #     except:
+        #         pass
+        #
+        #     try:
+        #         print("cp {} to {}".format(f, dest))
+        #         copy(f, target)
+        #     except:
+        #         print("Failed to copy file: ", sys.exc_info())
+        # print("* " * 30)
 
 
 class PostInstallCommand(install):
