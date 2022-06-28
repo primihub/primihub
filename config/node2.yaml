@@ -34,6 +34,10 @@ datasets:
     model: "csv"
     source: "/tmp/client_e.csv" 
 
+localkv: 
+  model: "leveldb"
+  path: "./localdb/node2"
+
 # p2p paramaters
 p2p:
   bootstrap_nodes:

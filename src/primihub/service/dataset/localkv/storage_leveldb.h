@@ -17,13 +17,14 @@
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_LOCALKV_STORAGE_LEVELDB_H_
 #define SRC_PRIMIHUB_SERVICE_DATASET_LOCALKV_STORAGE_LEVELDB_H_
 
+#include <string>
 #include <leveldb/db.h>
 #include "src/primihub/service/dataset/storage_backend.h"
 
 namespace primihub::service {
     class StorageBackendLevelDB : public StorageBackend {
       public:
-        StorageBackendLevelDB();
+        StorageBackendLevelDB(std::string path);
         ~StorageBackendLevelDB() override = default;
 
         outcome::result<void> putValue(Key key, Value value) override;
@@ -32,7 +33,10 @@ namespace primihub::service {
 
         outcome::result<void> erase(const Key &key) override;
 
+        outcome::result<std::vector<std::pair<Key, Value>>> getAll() const override;
+
       private:
+        std::string path_;
         leveldb::DB *db_;
 
     }; // class StorageBackendLevelDB

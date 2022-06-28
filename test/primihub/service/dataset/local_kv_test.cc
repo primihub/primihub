@@ -5,7 +5,7 @@
 #include "src/primihub/service/error.hpp" 
 
 namespace primihub::service {
-TEST(LocalKVTest, PutGetErase) {
+TEST(LocalKVLeTest, LevelDB_PutGetErase) {
     StorageBackendLevelDB storage;
     Key key("testkey");
     Value value = "testvalue";

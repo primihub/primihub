@@ -24,5 +24,13 @@
     return outcome::success();
   }
 
+  outcome::result<std::vector<std::pair<Key, Value>>> StorageBackendDefault::getAll() const {
+    std::vector<std::pair<Key, Value>> result;
+    for (auto &[key, value] : values_) {
+      result.emplace_back(key, value);
+    }
+    return outcome::success(result);
+  }
+
 
   } // namespace primihub::service
