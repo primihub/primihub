@@ -18,7 +18,6 @@ import ast
 import sys
 from os import path
 
-# todo
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "..")))
 

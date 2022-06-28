@@ -18,7 +18,6 @@ from os import path
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))
 
-# from src.primihub.protos import common_pb2
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc
 
 import grpc
