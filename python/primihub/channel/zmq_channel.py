@@ -16,9 +16,7 @@ class Channel:
         self.socket = session.socket
 
     def send(self, data):
-        # print("send message: ", data)
-        if data != None:
-            self.socket.send(pickle.dumps(data))
+        self.socket.send(pickle.dumps(data))
 
     def recv(self):
         # print("wait for recv ...")
@@ -61,4 +59,5 @@ class Session:
             socket.bind("tcp://{}:{}".format(self.ip, self.port))
 
         self.socket = socket
+        print(self.socket, self.ip, self.port)
         return Channel(self)
