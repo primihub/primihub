@@ -11,3 +11,4 @@ mmh3
 grpcio
 grpcio-tools
 pydantic
+protobuf==3.20.0
