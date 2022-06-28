@@ -918,7 +918,7 @@ cc_binary(
 )
 
 
-cc_binary(
+cc_test(
     name = "dataset_service_test",
     srcs = [
         "test/primihub/service/dataset/dataset_service_test.cc",
@@ -934,6 +934,25 @@ cc_binary(
         "@openssl",
         ":dataset_service",
         ":p2p_lib"
+    ],
+)
+
+
+cc_test(
+    name = "local_kv_test",
+    srcs = [
+        "test/primihub/service/dataset/local_kv_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":dataset_service",
+        
     ],
 )
 
