@@ -42,7 +42,9 @@
 #include "zzn12a.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef MR_COUNT_OPS
 extern "C"
 {
@@ -777,4 +779,5 @@ fpa=fpc=fpx=fpmq=fpsq=fpaq=0;
 
     return 0;
 }
-
+}
+}//primihub

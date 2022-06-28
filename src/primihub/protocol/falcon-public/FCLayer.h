@@ -9,31 +9,35 @@ using namespace std;
 
 extern int partyNum;
 
-
-class FCLayer : public Layer
+namespace primihub
 {
-private:
-	FCConfig conf;
-	RSSVectorMyType activations;
-	RSSVectorMyType deltas;
-	RSSVectorMyType weights;
-	RSSVectorMyType biases;
+	namespace falcon
+	{
+		class FCLayer : public Layer
+		{
+		private:
+			FCConfig conf;
+			RSSVectorMyType activations;
+			RSSVectorMyType deltas;
+			RSSVectorMyType weights;
+			RSSVectorMyType biases;
 
+		public:
+			// Constructor and initializer
+			FCLayer(FCConfig *conf, int _layerNum);
+			void initialize();
 
-public:
-	//Constructor and initializer
-	FCLayer(FCConfig* conf, int _layerNum);
-	void initialize();
+			// Functions
+			void printLayer() override;
+			void forward(const RSSVectorMyType &inputActivation) override;
+			void computeDelta(RSSVectorMyType &prevDelta) override;
+			void updateEquations(const RSSVectorMyType &prevActivations) override;
 
-	//Functions
-	void printLayer() override;
-	void forward(const RSSVectorMyType& inputActivation) override;
-	void computeDelta(RSSVectorMyType& prevDelta) override;
-	void updateEquations(const RSSVectorMyType& prevActivations) override;
-
-	//Getters
-	RSSVectorMyType* getActivation() {return &activations;};
-	RSSVectorMyType* getDelta() {return &deltas;};
-	RSSVectorMyType* getWeights() {return &weights;};
-	RSSVectorMyType* getBias() {return &biases;};
-};
+			// Getters
+			RSSVectorMyType *getActivation() { return &activations; };
+			RSSVectorMyType *getDelta() { return &deltas; };
+			RSSVectorMyType *getWeights() { return &weights; };
+			RSSVectorMyType *getBias() { return &biases; };
+		};
+	}
+}

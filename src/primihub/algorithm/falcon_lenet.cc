@@ -1,23 +1,18 @@
 #include "src/primihub/algorithm/falcon_lenet.h"
-
-int partyNum;
+namespace primihub {
+namespace falcon {
 AESObject *aes_indep;
 AESObject *aes_next;
 AESObject *aes_prev;
 Precompute PrecomputeObject;
-std::string train_data_A = "test/primihub/script/Falcon_Mnist/train_data_A";
-std::string train_data_B = "test/primihub/script/Falcon_Mnist/train_data_B";
-std::string train_data_C = "test/primihub/script/Falcon_Mnist/train_data_C";
-std::string train_labels_A = "test/primihub/script/Falcon_Mnist/train_labels_A";
-std::string train_labels_B = "test/primihub/script/Falcon_Mnist/train_labels_B";
-std::string train_labels_C = "test/primihub/script/Falcon_Mnist/train_labels_C";
-
+int partyNum;
+std::string Test_Input_Self_filepath;
+std::string Test_Input_Next_filepath;
 // For faster modular operations
 extern smallType additionModPrime[PRIME_NUMBER][PRIME_NUMBER];
 extern smallType subtractModPrime[PRIME_NUMBER][PRIME_NUMBER];
 extern smallType multiplicationModPrime[PRIME_NUMBER][PRIME_NUMBER];
 
-namespace primihub {
 FalconLenetExecutor::FalconLenetExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
@@ -40,9 +35,10 @@ FalconLenetExecutor::FalconLenetExecutor(
     const rpc::EndPoint &ep1 = vm.prev();
     listen_addrs_.emplace_back(std::make_pair(ep0.ip(), ep0.port()));
     listen_addrs_.emplace_back(std::make_pair(ep1.ip(), ep1.port()));
-    VLOG(3) << "Addr to listen: " << listen_addrs_[0].first << ":"
-            << listen_addrs_[0].second << ", " << listen_addrs_[1].first << ":"
-            << listen_addrs_[1].second << ".";
+    // VLOG(3) << "Addr to listen: " << listen_addrs_[0].first << ":"
+    //         << listen_addrs_[0].second << ", " << listen_addrs_[1].first <<
+    //         ":"
+    //         << listen_addrs_[1].second << ".";
   }
 
   {
@@ -51,9 +47,9 @@ FalconLenetExecutor::FalconLenetExecutor(
     const rpc::EndPoint &ep1 = vm.prev();
     connect_addrs_.emplace_back(std::make_pair(ep0.ip(), ep0.port()));
     connect_addrs_.emplace_back(std::make_pair(ep1.ip(), ep1.port()));
-    VLOG(3) << "Addr to connect: " << connect_addrs_[0].first << ":"
-            << connect_addrs_[0].second << ", " << connect_addrs_[1].first
-            << ":" << connect_addrs_[1].second << ".";
+    // VLOG(3) << "Addr to connect: " << connect_addrs_[0].first << ":"
+    //         << connect_addrs_[0].second << ", " << connect_addrs_[1].first
+    //         << ":" << connect_addrs_[1].second << ".";
   }
 
   // Key when save model.
@@ -66,6 +62,8 @@ FalconLenetExecutor::FalconLenetExecutor(
 int FalconLenetExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
+    Test_Input_Self_path = param_map["Test_Input_Self"].value_string();
+    Test_Input_Next_path = param_map["Test_Input_Next"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32(); // iteration rounds
   } catch (std::exception &e) {
@@ -78,28 +76,34 @@ int FalconLenetExecutor::loadParams(primihub::rpc::Task &task) {
   return 0;
 }
 
-int FalconLenetExecutor::loadDataset() { return 0; }
+int FalconLenetExecutor::loadDataset() {
+
+  Test_Input_Self_filepath = Test_Input_Self_path;
+  Test_Input_Next_filepath = Test_Input_Next_path;
+
+  return 0;
+}
 
 int FalconLenetExecutor::initPartyComm(void) {
   /****************************** AES SETUP and SYNC
    * ******************************/
   partyNum = local_id_;
   if (local_id_ == PARTY_A) {
-    aes_indep = new AESObject("key/falcon/keyA");
-    aes_next = new AESObject("key/falcon/keyAB");
-    aes_prev = new AESObject("key/falcon/keyAC");
+    aes_indep = new AESObject("data/falcon/key/keyA");
+    aes_next = new AESObject("data/falcon/key/keyAB");
+    aes_prev = new AESObject("data/falcon/key/keyAC");
   }
 
   if (local_id_ == PARTY_B) {
-    aes_indep = new AESObject("key/falcon/keyB");
-    aes_next = new AESObject("key/falcon/keyBC");
-    aes_prev = new AESObject("key/falcon/keyAB");
+    aes_indep = new AESObject("data/falcon/key/keyB");
+    aes_next = new AESObject("data/falcon/key/keyBC");
+    aes_prev = new AESObject("data/falcon/key/keyAB");
   }
 
   if (local_id_ == PARTY_C) {
-    aes_indep = new AESObject("key/falcon/keyC");
-    aes_next = new AESObject("key/falcon/keyAC");
-    aes_prev = new AESObject("key/falcon/keyBC");
+    aes_indep = new AESObject("data/falcon/key/keyC");
+    aes_next = new AESObject("data/falcon/key/keyAC");
+    aes_prev = new AESObject("data/falcon/key/keyBC");
   }
 
   initializeCommunication(listen_addrs_, connect_addrs_);
@@ -124,47 +128,55 @@ int FalconLenetExecutor::finishPartyComm(void) {
 int FalconLenetExecutor::execute() {
   /****************************** PREPROCESSING ******************************/
   /*for faster module multiply and addition*/
-
+  bool PRELOADING = false;
   for (int i = 0; i < PRIME_NUMBER; ++i)
     for (int j = 0; j < PRIME_NUMBER; ++j) {
       additionModPrime[i][j] = ((i + j) % PRIME_NUMBER);
       subtractModPrime[i][j] = ((PRIME_NUMBER + i - j) % PRIME_NUMBER);
       multiplicationModPrime[i][j] = ((i * j) % PRIME_NUMBER);
     }
-  
-
 
   /****************************** SELECT NETWORK ******************************/
   std::string network = "LeNet";
   std::string dataset = "MNIST";
   std::string security = "Semi-honest";
 
-  config_lenet = new NeuralNetConfig(1);
+  config_lenet = new NeuralNetConfig(num_iter_);
   selectNetwork(network, dataset, security, config_lenet);
   config_lenet->checkNetwork();
   net_lenet = new NeuralNetwork(config_lenet);
 
+  // Test config
+  network += " preloaded";
+  PRELOADING = true;
+  LOG(INFO) << "preloading begin";
+  preload_network(PRELOADING, network, net_lenet);
   start_m();
-  LOG(INFO) << "Training on MNIST using Lenet";
-  
-  num_iter_ = 1;
-  for (int i = 0; i < 1; ++i) {
-    readMiniBatch(net_lenet, "TRAINING");
-    net_lenet->forward();
-    net_lenet->backward();
-  }
+  // LOG(INFO) << "Training on MNIST using Lenet";
+
+  // for (int i = 0; i < num_iter_; ++i) {
+  //   readMiniBatch(net_lenet, "TRAINING");
+  //   net_lenet->forward();
+  //   net_lenet->backward();
+  // }
+
+  LOG(INFO) << "Test on MNIST using Lenet";
+  network += " test";
+  test(PRELOADING, network, net_lenet);
 
   end_m(network);
+  printNetwork(net_lenet);
 
   LOG(INFO) << "----------------------------------------------" << endl;
   LOG(INFO) << "Run details: " << NUM_OF_PARTIES << "PC (P" << partyNum << "), "
-       << NUM_ITERATIONS << " iterations, batch size " << MINI_BATCH_SIZE
-       << endl
-       << "Running " << security << " " << network << " on " << dataset
-       << " dataset" << endl;
+            << NUM_ITERATIONS << " iterations, batch size " << MINI_BATCH_SIZE
+            << endl
+            << "Running " << security << " " << network << " on " << dataset
+            << " dataset" << endl;
   LOG(INFO) << "----------------------------------------------" << endl << endl;
 
   LOG(INFO) << "Party " << local_id_ << " train finish.";
   return 0;
 }
+} // namespace falcon
 } // namespace primihub

@@ -35,7 +35,9 @@
 #include <ctime>
 #include "ecn3.h"
 #include "zzn6a.h"
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(5,0); 
 
 #define AFFINE
@@ -507,4 +509,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

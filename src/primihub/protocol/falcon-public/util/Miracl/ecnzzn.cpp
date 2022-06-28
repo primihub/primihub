@@ -4,7 +4,9 @@
 //
 
 #include "ecnzzn.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef MR_AFFINE_ONLY
 
 void force(ZZn& x,ZZn& y,ZZn& z,ECn& A)
@@ -39,3 +41,5 @@ void extract(ECn& A,ZZn& x,ZZn& y)
     x=(A.get_point())->X;
     y=(A.get_point())->Y;
 }
+}
+}//primihub

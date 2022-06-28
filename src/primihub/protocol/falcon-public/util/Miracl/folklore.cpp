@@ -27,7 +27,9 @@
 #include <ctime>
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(100,0);
 
 BOOL sqr_free(Big m)
@@ -222,4 +224,5 @@ int main(int argc,char **argv)
 
     return 0;
 }
-
+}
+}//primihub

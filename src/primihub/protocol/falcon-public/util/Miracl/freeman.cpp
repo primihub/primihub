@@ -19,7 +19,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 // Solve the Pell equation
 
 int pell(int max,Big D,Big F,Big& X,Big& Y,Big *SX,Big *SY,BOOL& complete)
@@ -260,4 +262,5 @@ int main(int argc,char **argv)
 	}		
 	return 0;
 }
-
+}
+}//primihub

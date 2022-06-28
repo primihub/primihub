@@ -53,7 +53,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 #define ECN6_H
 
 #include "zzn6.h"
-
+namespace primihub{
+    namespace falcon
+{
 // Affine Only
 
 class ECn6
@@ -99,6 +101,7 @@ public:
 
     ~ECn6() {}
 };
-
+}
+}//primihub
 #endif
 

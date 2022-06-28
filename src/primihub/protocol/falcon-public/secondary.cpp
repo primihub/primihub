@@ -1,13 +1,20 @@
 
 #include "connect.h" 
 #include "secondary.h"
+#include "FCLayer.h"
+#include "CNNLayer.h"
+using namespace std;
+namespace primihub{
+    namespace falcon
+{
+// extern std::string file_train_data_self_;
+// extern std::string file_train_data_next_;
+// extern std::string file_train_label_self_;
+// extern std::string file_train_label_next_;
 
-extern string train_data_A;
-extern string train_data_B;
-extern string train_data_C;
-extern string train_labels_A; 
-extern string train_labels_B;
-extern string train_labels_C;
+extern std::string Test_Input_Self_filepath;
+extern std::string Test_Input_Next_filepath;
+
 
 extern CommunicationObject commObject;
 extern int partyNum;
@@ -99,15 +106,15 @@ void test(bool PRELOADING, string network, NeuralNetwork* net)
 
 		net->forward();
 		// net->predict(maxIndex);
-		// net->getAccuracy(maxIndex, counter);
+		net->getAccuracy(maxIndex, counter);
 	}
-	print_vector((*(net->layers[NUM_LAYERS-1])->getActivation()), "FLOAT", "MPC Output over uint32_t:", 1280);
+	//print_vector((*(net->layers[NUM_LAYERS-1])->getActivation()), "FLOAT", "MPC Output over uint32_t:", 1280);
 
 	// Write output to file
 	if (PRELOADING)
 	{
 		ofstream data_file;
-		data_file.open("files/preload/"+which_network(network)+"/"+which_network(network)+".txt");
+		data_file.open("weights/"+which_network(network)+"/"+which_network(network)+".txt");
 		
 		vector<myType> b(MINI_BATCH_SIZE * LAST_LAYER_SIZE);
 		funcReconstruct((*(net->layers[NUM_LAYERS-1])->getActivation()), b, MINI_BATCH_SIZE * LAST_LAYER_SIZE, "anything", false);
@@ -124,7 +131,7 @@ void test(bool PRELOADING, string network, NeuralNetwork* net)
 // Generate a file with 0's of appropriate size
 void generate_zeros(string name, size_t number, string network)
 {
-	string default_path = "files/preload/"+which_network(network)+"/";
+	string default_path = "weights/"+which_network(network)+"/";
 	ofstream data_file;
 	data_file.open(default_path+name);
 
@@ -134,15 +141,14 @@ void generate_zeros(string name, size_t number, string network)
 
 
 extern size_t nextParty(size_t party);
-#include "FCLayer.h"
-#include "CNNLayer.h"
+
 void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 {
 	log_print("preload_network");
 	assert((PRELOADING) and (NUM_ITERATIONS == 1) and (MINI_BATCH_SIZE == 128) && "Preloading conditions fail");
 
 	float temp_next = 0, temp_prev = 0;
-	string default_path = "files/preload/"+which_network(network)+"/";
+	string default_path = "/weights/"+which_network(network)+"/";
 	//Set to true if you want the zeros files generated.
 	bool ZEROS = false;
 
@@ -595,11 +601,12 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 	else if (which_network(network).compare("LeNet") == 0)
 	{
 		string temp = "LeNet";
+		string default_path = "data/falcon/weights/"+which_network(network)+"/";
 		/************************** Input **********************************/
 		string path_input_1 = default_path+"input_"+to_string(partyNum);
 		string path_input_2 = default_path+"input_"+to_string(nextParty(partyNum));
+		//ifstream f_input_1(Test_Input_Self_filepath), f_input_2(Test_Input_Next_filepath); todo :--ljf:fix input_0
 		ifstream f_input_1(path_input_1), f_input_2(path_input_2);
-
 		for (int i = 0; i < INPUT_SIZE * MINI_BATCH_SIZE; ++i)
 		{
 			f_input_1 >> temp_next; f_input_2 >> temp_prev;
@@ -613,6 +620,26 @@ void preload_network(bool PRELOADING, string network, NeuralNetwork* net)
 		}
 
 		// print_vector(net->inputData, "FLOAT", "inputData:", 784);
+
+		/************************** labels for test --ljf**********************************/
+		string path_labels_1 = default_path+"train_labels_"+to_string(partyNum);
+		string path_labels_2 = default_path+"train_labels_"+to_string(nextParty(partyNum));
+		ifstream f_labels_1(path_labels_1), f_labels_2(path_labels_2);
+
+		for (int i = 0; i < LAST_LAYER_SIZE * MINI_BATCH_SIZE; ++i)
+		{
+			f_labels_1 >> temp_next; f_labels_2 >> temp_prev;
+			net->outputData[i] = std::make_pair(floatToMyType(temp_next), floatToMyType(temp_prev));
+		}
+		f_labels_1.close(); f_labels_2.close();
+		if (ZEROS)
+		{
+			generate_zeros("train_labels_1", 10*128, temp);
+			generate_zeros("train_labels_2", 10*128, temp);
+		}
+		//cout<<path_labels_1<<endl;
+		print_vector(net->outputData, "FLOAT", "OutputLables:", 200);
+
 
 		/************************** Weight1 **********************************/
 		string path_weight1_1 = default_path+"weight1_"+to_string(partyNum);
@@ -839,52 +866,52 @@ void loadData(string net, string dataset)
 	// modified to let each party holding a share of data
 	if (partyNum == PARTY_A)
 	{
-		// filename_train_data_next = "files/train_data_A";
-		filename_train_data_next = train_data_A;
-		//filename_train_data_prev = "files/train_data_B";
-		filename_train_data_prev = train_data_B;
+		filename_train_data_next = "files/train_data_A";
+		// filename_train_data_next = file_train_data_self_;
+		filename_train_data_prev = "files/train_data_B";
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_A";
 		filename_test_data_prev = "files/test_data_B";
-		//filename_train_labels_next = "files/train_labels_A";
-		filename_train_labels_next = train_labels_A;
-		//filename_train_labels_prev = "files/train_labels_B";
-		filename_train_labels_prev = train_labels_B;
+		filename_train_labels_next = "files/train_labels_A";
+		// filename_train_labels_next = file_train_label_self_;
+		filename_train_labels_prev = "files/train_labels_B";
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_A";
 		filename_test_labels_prev = "files/test_labels_B";
 	}
 
 	if (partyNum == PARTY_B)
 	{
-		//filename_train_data_next = "files/train_data_B";
-		filename_train_data_next = train_data_B;
-		//filename_train_data_prev = "files/train_data_C";
-		filename_train_data_prev = train_data_C;
+		filename_train_data_next = "files/train_data_B";
+		// filename_train_data_next = file_train_data_self_;
+		filename_train_data_prev = "files/train_data_C";
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_B";
 		filename_test_data_prev = "files/test_data_C";
-		//filename_train_labels_next = "files/train_labels_B";
-		filename_train_labels_next = train_labels_B;
-		//filename_train_labels_prev = "files/train_labels_C";
-		filename_train_labels_prev = train_labels_C;
+		filename_train_labels_next = "files/train_labels_B";
+		// filename_train_labels_next = file_train_label_self_;
+		filename_train_labels_prev = "files/train_labels_C";
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_B";
 		filename_test_labels_prev = "files/test_labels_C";
 	}
 
 	if (partyNum == PARTY_C)
 	{
-		filename_train_data_next = "files/train_data_C";
-		//filename_train_data_next = train_data_C;
-		filename_train_data_prev = "files/train_data_A";
-		//filename_train_data_prev = train_data_A;
+		//filename_train_data_next = "files/train_data_C";
+		// filename_train_data_next = file_train_data_self_;
+		//filename_train_data_prev = "files/train_data_A";
+		// filename_train_data_prev = file_train_data_next_;
 		filename_test_data_next = "files/test_data_C";
 		filename_test_data_prev = "files/test_data_A";
 		filename_train_labels_next = "files/train_labels_C";
-		//filename_train_labels_next = train_labels_C;
+		// filename_train_labels_next = file_train_label_self_;
 		filename_train_labels_prev = "files/train_labels_A";
-		//filename_train_labels_prev = train_labels_A;
+		// filename_train_labels_prev = file_train_label_next_;
 		filename_test_labels_next = "files/test_labels_C";
 		filename_test_labels_prev = "files/test_labels_A";
 	}	
-
+	
 	float temp_next = 0, temp_prev = 0;
 	ifstream f_next(filename_train_data_next);
 	ifstream f_prev(filename_train_data_prev);
@@ -1676,3 +1703,5 @@ void deleteObjects()
 // config->addLayer(l34);
 // config->addLayer(l35);
 // config->addLayer(l36);
+}// namespace primihub{
+}

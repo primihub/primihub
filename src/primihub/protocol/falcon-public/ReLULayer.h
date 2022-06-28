@@ -7,6 +7,9 @@
 #include "globals.h"
 using namespace std;
 
+namespace primihub{
+    namespace falcon
+{
 extern int partyNum;
 
 
@@ -32,3 +35,5 @@ public:
 	RSSVectorMyType* getActivation() {return &activations;};
 	RSSVectorMyType* getDelta() {return &deltas;};
 };
+}// namespace primihub{
+}

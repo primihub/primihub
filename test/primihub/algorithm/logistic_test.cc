@@ -73,11 +73,11 @@ TEST(logistic, logistic_3pc_test) {
 
   rpc::ParamValue pv_train_input;
   pv_train_input.set_var_type(rpc::VarType::STRING);
-  pv_train_input.set_value_string("/tmp/train_party_0.csv");
+  pv_train_input.set_value_string("data/train_party_0.csv");
 
   rpc::ParamValue pv_test_input;
   pv_test_input.set_var_type(rpc::VarType::STRING);
-  pv_test_input.set_value_string("/tmp/test_party_0.csv");
+  pv_test_input.set_value_string("data/test_party_0.csv");
 
   rpc::ParamValue pv_batch_size;
   pv_batch_size.set_var_type(rpc::VarType::INT32);
@@ -102,8 +102,8 @@ TEST(logistic, logistic_3pc_test) {
   task2.set_task_id("mpc_lr");
   task2.set_job_id("lr_job");
 
-  pv_train_input.set_value_string("/tmp/train_party_1.csv");
-  pv_test_input.set_value_string("/tmp/test_party_1.csv");
+  pv_train_input.set_value_string("data/train_party_1.csv");
+  pv_test_input.set_value_string("data/test_party_1.csv");
   param_map = task2.mutable_params()->mutable_param_map();
   (*param_map)["TrainData"] = pv_train_input;
   (*param_map)["TestData"] = pv_test_input;
@@ -119,14 +119,13 @@ TEST(logistic, logistic_3pc_test) {
   task3.set_task_id("mpc_lr");
   task3.set_job_id("lr_job");
 
-  pv_train_input.set_value_string("/tmp/train_party_2.csv");
-  pv_test_input.set_value_string("/tmp/test_party_2.csv");
+  pv_train_input.set_value_string("data/train_party_2.csv");
+  pv_test_input.set_value_string("data/test_party_2.csv");
   param_map = task3.mutable_params()->mutable_param_map();
   (*param_map)["TrainData"] = pv_train_input;
   (*param_map)["TestData"] = pv_test_input;
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
-
 
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
@@ -151,7 +150,6 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/65531");
 
@@ -166,6 +164,7 @@ TEST(logistic, logistic_3pc_test) {
   sleep(3);
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/65532");
+
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       stub, std::make_shared<service::StorageBackendDefault>());
 

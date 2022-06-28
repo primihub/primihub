@@ -25,6 +25,12 @@ grpc_port: 50050
 
 # load datasets
 datasets:
+  - description: "test_party_0_self"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_0" 
+  - description: "test_party_0_next"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_1" 
   - description: "train_party_0"
     model: "csv"
     source: "/tmp/train_party_0.csv" 
@@ -48,6 +54,3 @@ p2p:
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8886"
   dht_get_value_timeout:  60
-
-
-
