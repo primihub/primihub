@@ -50,7 +50,7 @@ def xgb_host_logic(cry_pri):
     Y = data['Class'].values
 
     if cry_pri == "paillier":
-        xgb_host = XGB_HOST_EN(n_estimators=1, max_depth=2, reg_lambda=1,
+        xgb_host = XGB_HOST_EN(n_estimators=1, max_depth=3, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
         y_hat = np.array([0.5] * Y.shape[0])
         for t in range(xgb_host.n_estimators):
@@ -92,11 +92,10 @@ def xgb_host_logic(cry_pri):
         for t in range(xgb_host.n_estimators):
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
-
             print("recv guest: ", xgb_host.channel.recv())
             xgb_host.channel.send(gh)
             GH_guest = xgb_host.channel.recv()
-            xgb_host.tree_structure[t + 1] = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
+            xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
         output_path = ph.context.Context.get_output()
@@ -112,14 +111,16 @@ def xgb_guest_logic(cry_pri):
     ip, port = next_peer.split(":")
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
-    channel.send(b'guest ready')
+
+
     X_guest = ph.dataset.read(dataset_key="guest_dataset").df_data
     # X_guest = data[['Clump Thickness', 'Uniformity of Cell Size']]
 
     if cry_pri == "paillier":
-        xgb_guest = XGB_GUEST_EN(n_estimators=1, max_depth=2, reg_lambda=1, min_child_weight=1, objective='linear',
+        xgb_guest = XGB_GUEST_EN(n_estimators=1, max_depth=3, reg_lambda=1, min_child_weight=1, objective='linear',
                               channel=channel)  # noqa
         for t in range(xgb_guest.n_estimators):
+            channel.send(b'guest ready')
             pub = xgb_guest.channel.recv()
             xgb_guest.channel.send(b'recved pub')
             gh_host = xgb_guest.channel.recv()
