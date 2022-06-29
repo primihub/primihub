@@ -42,7 +42,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
  */
 
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 void Big::negate() const
          { negify(fn,fn); }
 big Big::getbig() const         
@@ -446,4 +448,5 @@ void ecurve(const Big& a,const Big& b,const Big& p,int t)
 
 BOOL ecurve2(int m,int a,int b,int c,const Big& a2,const Big& a6,BOOL check,int t)
 { return ecurve2_init(m,a,b,c,a2.fn,a6.fn,check,t);}
-
+}
+}

@@ -472,3 +472,11 @@ pir_preload()
 load("@org_openmined_pir//pir:deps.bzl", "pir_deps")
 
 pir_deps()
+
+
+# leveldb as local kv store
+load("//3rdparty/bazel-rules-leveldb/bazel:repos.bzl", leveldb_repos="repos")
+leveldb_repos()
+
+load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
+leveldb_deps()

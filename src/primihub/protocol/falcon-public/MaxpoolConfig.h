@@ -4,6 +4,9 @@
 #include "globals.h"
 using namespace std;
 
+namespace primihub{
+    namespace falcon
+{
 class MaxpoolConfig : public LayerConfig
 {
 public:
@@ -28,3 +31,5 @@ public:
 		assert((imageHeight - poolSize)%stride == 0 && "Maxpool layer parameters incorrect");
 	};
 };
+}// namespace primihub{
+}

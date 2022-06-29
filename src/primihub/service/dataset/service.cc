@@ -119,6 +119,7 @@ namespace primihub::service {
      * 
      */
     void DatasetService::loadDefaultDatasets(const std::string&  config_file_path) {
+        LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
         YAML::Node config = YAML::LoadFile(config_file_path);
         // strcat nodelet address
         std::string nodelet_addr = config["node"].as<std::string>() + ":"
@@ -129,7 +130,7 @@ namespace primihub::service {
             for (auto dataset : config["datasets"]) {            
                 auto driver = DataDirverFactory::getDriver(
                     std::move(dataset["model"].as<std::string>()), 
-                    nodelet_addr);  // TODO addr
+                    nodelet_addr);  
 
                 auto source = dataset["source"].as<std::string>();
                 [[maybe_unused]] auto cursor = driver->read(source);
@@ -139,45 +140,42 @@ namespace primihub::service {
         }
     }
 
+    // Load dataset from local meta storage.
+    void DatasetService::restoreDatasetFromLocalStorage() {
+        LOG(INFO) << "💾 Restore dataset from local storage...";
+        std::vector<DatasetMeta> metas;
+        metaService_->getAllLocalMetas(metas);
+        for (auto meta : metas) {
+            // Publish dataset meta on libp2p network.
+            metaService_->putMeta(meta);
+        }
+    }
+
     void DatasetService::setMetaSearchTimeout(unsigned int timeout) {
        if (metaService_) {
           metaService_->setMetaSearchTimeout(timeout);
        }
     }
 
-    //  void DatasetService::findPeerListFromDatasets(const std::vector<std::string>& dataset_name_list, 
-    //                                                 FoundMetaListHandler handler) {
-    //     std::vector<std::shared_ptr<DatasetMeta>> meta_list;                                             
-    //     // TODO lock
-    //     for (auto dataset_name : dataset_name_list) {
-    //         DatasetId id(dataset_name);
-    //         metaService_->getMeta(id, [&](std::shared_ptr<DatasetMeta>& meta) {
-    //             LOG(INFO) << "<< Received meta: ";
-    //             meta_list.push_back(std::move(meta));
-    //         });
-    //         break;
-    //     }
-        
-    //     auto future = std::async(std::launch::async, [&](){
-    //         do {
-    //             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    //         } while (meta_list.size() < dataset_name_list.size());
-    //         return meta_list.size();
-    //     });
-    //     DLOG(INFO) << "Waiting for dataset meta list...";
-
-    //     if (future.wait_for(30s) == std::future_status::timeout) {
-    //         std::cout << "timeout" << std::endl;
-    //         return;
-    //     }
-    //     handler(meta_list);
-    //  }
 
     // ======================== DatasetMetaService ====================================
     DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
                                    std::shared_ptr<StorageBackend> localKv) {
         p2pStub_ = p2pStub;
         localKv_ = localKv;
+    }
+
+    // Get all local metas
+    outcome::result<void> DatasetMetaService::getAllLocalMetas(std::vector<DatasetMeta> & metas) {
+        // Get all k, v from local storage
+        auto r = localKv_->getAll();
+        auto rl = r.value();
+        for (auto kv_pair : rl) {
+            // Construct meta from k, v
+            auto meta = DatasetMeta(kv_pair.second);
+            metas.push_back(meta);
+        }
+        return outcome::success();
     }
 
     void DatasetMetaService::putMeta(DatasetMeta& meta) {

@@ -29,7 +29,9 @@
 #include "ec2.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision=20;
 
 int main()
@@ -79,4 +81,5 @@ int main()
     private_key << d << endl;
     return 0;
 }
-
+}
+}//primihub

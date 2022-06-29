@@ -9,39 +9,36 @@
 using namespace std;
 
 #define LOG_DEBUG_UTILS 0
-
-
-
-
-double calculateSD(vector<double> data);
-int printingFunction();
-
-
-
-/**************************************************************************/
-double calculateSD(vector<double> data)
+namespace primihub
 {
-	double sum = 0, mean, standardDeviation = 0;
-    for(int i = 0; i < data.size(); ++i)
-        sum += data[i];
-    mean = sum/data.size();
+    namespace falcon
+    {
+        double calculateSD(vector<double> data);
+        int printingFunction();
 
-    for(int i = 0; i < data.size(); ++i)
-        standardDeviation += (data[i] - mean)*(data[i] - mean);
+        /**************************************************************************/
+        double calculateSD(vector<double> data)
+        {
+            double sum = 0, mean, standardDeviation = 0;
+            for (int i = 0; i < data.size(); ++i)
+                sum += data[i];
+            mean = sum / data.size();
 
-    return sqrt(standardDeviation / 10);
-}
+            for (int i = 0; i < data.size(); ++i)
+                standardDeviation += (data[i] - mean) * (data[i] - mean);
 
+            return sqrt(standardDeviation / 10);
+        }
 
-int printingFunction()
-{
+        int printingFunction()
+        {
 
 #if LOG_DEBUG_UTILS
-	cout << "Hello" << endl;
+            cout << "Hello" << endl;
 #endif
-	return 0;
-}
-
-
+            return 0;
+        }
 
 #endif /* HEADER_UTILS_H_ */
+    }
+} // primihub

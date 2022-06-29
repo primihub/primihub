@@ -7,26 +7,31 @@
 #include "globals.h"
 using namespace std;
 
-
-class MaxpoolLayer : public Layer
+namespace primihub
 {
-private:
-	MaxpoolConfig conf;
-	RSSVectorMyType activations;
-	RSSVectorMyType deltas;
-	RSSVectorSmallType maxPrime;
+	namespace falcon
+	{
+		class MaxpoolLayer : public Layer
+		{
+		private:
+			MaxpoolConfig conf;
+			RSSVectorMyType activations;
+			RSSVectorMyType deltas;
+			RSSVectorSmallType maxPrime;
 
-public:
-	//Constructor and initializer
-	MaxpoolLayer(MaxpoolConfig* conf, int _layerNum);
+		public:
+			// Constructor and initializer
+			MaxpoolLayer(MaxpoolConfig *conf, int _layerNum);
 
-	//Functions
-	void printLayer() override;
-	void forward(const RSSVectorMyType& inputActivation) override;
-	void computeDelta(RSSVectorMyType& prevDelta) override;
-	void updateEquations(const RSSVectorMyType& prevActivations) override;
+			// Functions
+			void printLayer() override;
+			void forward(const RSSVectorMyType &inputActivation) override;
+			void computeDelta(RSSVectorMyType &prevDelta) override;
+			void updateEquations(const RSSVectorMyType &prevActivations) override;
 
-	//Getters
-	RSSVectorMyType* getActivation() {return &activations;};
-	RSSVectorMyType* getDelta() {return &deltas;};
-};
+			// Getters
+			RSSVectorMyType *getActivation() { return &activations; };
+			RSSVectorMyType *getDelta() { return &deltas; };
+		};
+	} // namespace primihub{
+}

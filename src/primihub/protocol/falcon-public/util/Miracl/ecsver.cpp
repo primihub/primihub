@@ -23,7 +23,9 @@
 #include "ecn.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef MR_NOFULLWIDTH
 Miracl precision(200,256);
 #else
@@ -118,4 +120,5 @@ int main()
     else      cout << "Signature is NOT verified\n";
     return 0;
 }
-
+}
+}//primihub

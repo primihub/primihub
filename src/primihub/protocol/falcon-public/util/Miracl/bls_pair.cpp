@@ -55,7 +55,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 
 #define MR_PAIRING_BLS
 #include "pairing_3.h"
-
+namespace primihub{
+    namespace falcon
+{
 // BLS curve
 //static char param[]= "E000000000058400";
 //static char curveB[]="6";
@@ -1675,4 +1677,5 @@ int PFC::precomp_for_power(GT& w,BOOL small)
     }
 	return (1<<WINDOW_SIZE);
 }
-
+}
+}//primihub

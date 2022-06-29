@@ -31,7 +31,9 @@
 #include "zzn12a.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(6,0); 
 /*
 extern "C"
@@ -632,4 +634,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

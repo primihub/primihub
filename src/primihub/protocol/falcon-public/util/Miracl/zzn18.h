@@ -51,7 +51,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
  *          p=5 mod 8
  * Irreducible poly is X^3+n, where n=(-2)^(1/6)
  */
-
+namespace primihub{
+    namespace falcon
+{
 #ifndef ZZn18A_H
 #define ZZn18A_H
 
@@ -152,4 +154,5 @@ public:
 extern ZZn18 randn18(void);   
 #endif
 #endif
-
+}
+}

@@ -19,6 +19,8 @@
 
     outcome::result<void> erase(const Key &key) override;
 
+    outcome::result<std::vector<std::pair<Key, Value>>> getAll() const override;
+
    private:
     std::unordered_map<Key, Value> values_;
     

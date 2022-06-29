@@ -47,7 +47,9 @@
 //*********************************************
 
 #include "pairing_3.h"
-
+namespace primihub{
+    namespace falcon
+{
 // Access structure - crude boolean description of combination of attributes that a recipient must have
 // to be able to reconstruct the secret value
 
@@ -644,3 +646,5 @@ int main()
 
 	return 0;
 }
+}
+}//primihub

@@ -1,7 +1,7 @@
 /**
   \file 		optPaillier.h
   \author 	Jiang Zhengliang
-  \copyright Copyright (C) 2022 Qinghai University
+  \copyright Copyright (C) 2022 Jiang Zhengliang
  */
 
 #ifndef __CRT_DATA_PACK__
@@ -17,8 +17,6 @@
 using ll = long long;
 
 struct CrtMod {
-  // mpz_t muls;
-  // mpz_t* crt_coef;
   mpz_t* crt_half_mod;
   mpz_t* crt_mod;
   size_t crt_size;
@@ -42,8 +40,12 @@ void data_retrieve_crt(
   const mpz_t pack,
   const CrtMod* crtmod,
   const size_t data_size,
-  const size_t str_size,
   const int radix = 10);
+
+// void data_packing_mul(
+//   mpz_t res,
+//   const mpz_t cipher_pack,
+//   const mpz_t constant_op);
 
 void free_crt(
   CrtMod* crtmod);

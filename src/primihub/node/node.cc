@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
+#include <signal.h>
 
 
 #include "src/primihub/node/node.h"
@@ -201,6 +202,13 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
 
 int main(int argc, char **argv) {
 
+
+    // Register SIGINT signal and signal handler
+    signal(SIGINT, [] (int sig) {
+        LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
+        exit(0);
+    });
+
     py::scoped_interpreter python;
     py::gil_scoped_release release;
     
@@ -215,9 +223,6 @@ int main(int argc, char **argv) {
     const std::string node_id = absl::GetFlag(FLAGS_node_id);
     bool singleton = absl::GetFlag(FLAGS_singleton);
 
-    // TODO(chenhongbo) peer_list need to remove. get Peer list from dataset
-    // service.
-
     int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
 
@@ -229,5 +234,5 @@ int main(int argc, char **argv) {
 
     primihub::RunServer(&node_service, &data_service, service_port);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

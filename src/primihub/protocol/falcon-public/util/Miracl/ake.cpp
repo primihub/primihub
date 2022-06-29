@@ -44,7 +44,9 @@
 //*********************************************
 
 #include "pairing_3.h"
-
+namespace primihub{
+    namespace falcon
+{
 int main()
 {   
 	PFC pfc(AES_SECURITY);  // initialise pairing-friendly curve
@@ -129,3 +131,5 @@ int main()
 
     return 0;
 }
+}
+}//primihub

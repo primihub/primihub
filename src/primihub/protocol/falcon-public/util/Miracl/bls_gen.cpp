@@ -18,7 +18,9 @@
 #include <ctime>
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 // cofactor - number of points on curve=CF.q
 
 #define CF 2  
@@ -101,4 +103,5 @@ int main()
  
     return 0;
 }
-
+}
+}//primihub

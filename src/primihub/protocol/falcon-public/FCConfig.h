@@ -4,6 +4,9 @@
 #include "globals.h"
 using namespace std;
 
+namespace primihub{
+    namespace falcon
+{
 class FCConfig : public LayerConfig
 {
 public:
@@ -18,3 +21,5 @@ public:
 	 LayerConfig("FC")
 	{};
 };
+}
+}

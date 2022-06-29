@@ -45,7 +45,9 @@
 //*********************************************
 
 #include "pairing_3.h"
-
+namespace primihub{
+    namespace falcon
+{
 //
 //  Note that in this case Bobs attributes are "close enough" to Alices
 //  so that he can decrypt
@@ -210,3 +212,5 @@ int main()
 
     return 0;
 }
+}
+}//primihub

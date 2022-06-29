@@ -7,8 +7,12 @@
 
 #ifndef ENABLE_SSE
 #include "src/primihub/common/defines.h"
-typedef struct {
-  uint8_t d_[16];
-} __m128i;
+
+
+  typedef struct
+  {
+    uint8_t d_[16];
+  } __m128i;
+
 #endif
 #endif

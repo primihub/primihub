@@ -12,7 +12,9 @@
 #define CRT_H
 
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 #define MR_CRT_BIG   0
 #define MR_CRT_SMALL 1
 
@@ -34,6 +36,7 @@ public:
         if (type==MR_CRT_SMALL) scrt_end(&sc);
     }
 };
-
+}
+}//primihub
 #endif
 

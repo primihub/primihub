@@ -7,7 +7,9 @@
 #include "ecn4.h"
 #include "ecn.h"
 #include "zzn.h"
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(200,0);
 
 int main()
@@ -173,3 +175,5 @@ int main()
 
 	return 0;
 }
+}
+}//primihub
