@@ -150,6 +150,8 @@ class XGB_HOST_EN:
 
         best_var, best_cut, GH_best = self.find_split(GH_host, GH_guest)
         if best_var is None:
+            self.channel.send("True")
+            self.channel.recv()
             return None
         # best_var = best_var.encode("utf-8")
         self.channel.send(best_var)
@@ -240,7 +242,7 @@ class XGB_HOST_EN:
                                                                                      gh.loc[id_right],
                                                                                      f_t,
                                                                                      m_dpth + 1)
-        return tree_structure
+        return tree_structure, f_t
 
     def _get_tree_node_w(self, X, tree, w):
         '''
@@ -248,6 +250,9 @@ class XGB_HOST_EN:
         '''
 
         if not tree is None:
+            print("\n")
+            if isinstance(tree, tuple):
+                tree = tree[0]
             k = list(tree.keys())[0]
             var, cut = k[0], k[1]
             X_left = X.loc[X[var] < cut]

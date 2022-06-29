@@ -127,6 +127,9 @@ class XGB_GUEST_EN:
         if mdep > self.max_depth:
             return
         best_var = self.channel.recv()
+        if best_var == "True":
+            self.channel.send("True")
+            return None
 
         self.channel.send("true")
         if best_var in [x for x in X_guest_gh.columns]:

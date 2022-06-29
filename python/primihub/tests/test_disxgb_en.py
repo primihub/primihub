@@ -34,7 +34,7 @@ ph.context.Context.dataset_map = {
 
 ph.context.Context.output_path = "/data/result/xgb_prediction.csv"
 
-cry_pri = "plaintext"
+cry_pri = "paillier"
 def run_xgb_host_logic():
     xgb_host_logic(cry_pri)
 
