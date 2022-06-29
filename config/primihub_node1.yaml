@@ -27,6 +27,10 @@ datasets:
     model: "csv"
     source: "/tmp/server_e.csv" 
 
+localkv: 
+  model: "leveldb"
+  path: "./localdb"
+
 p2p:
   bootstrap_nodes:
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
