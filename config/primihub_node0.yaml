@@ -7,7 +7,7 @@ grpc_port: 50050
 datasets:
   - description: "test_party_0_self"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_0" 
+    source: "/tmp/falcon/dataset/MNIST/input_0" 
   - description: "test_party_0_next"
     model: "csv"
     source: "data/falcon/dataset/MNIST/input_1" 
