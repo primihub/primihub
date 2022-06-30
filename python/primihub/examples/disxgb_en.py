@@ -82,8 +82,6 @@ def xgb_host_logic(cry_pri):
             print(GH_guest)
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
-        print("树的结构：", xgb_host.tree_structure)
-        print("节点权重：", f_t)
         output_path = ph.context.Context.get_output()
         return xgb_host.predict_prob(data_test).to_csv(output_path)
     elif cry_pri == "plaintext":
