@@ -23,6 +23,7 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/common/config/config.h"
+#include "src/primihub/service/dataset/util.hpp"
 
 using namespace std::chrono_literals;
 
@@ -141,11 +142,17 @@ namespace primihub::service {
     }
 
     // Load dataset from local meta storage.
-    void DatasetService::restoreDatasetFromLocalStorage() {
+    void DatasetService::restoreDatasetFromLocalStorage(const std::string &nodelet_addr) {
         LOG(INFO) << "💾 Restore dataset from local storage...";
         std::vector<DatasetMeta> metas;
         metaService_->getAllLocalMetas(metas);
         for (auto meta : metas) {
+            // Update node let address.
+            std::string node_id, node_ip, dataset_path;
+            int node_port;
+            std::string data_url = meta.getDataURL();
+            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+            meta.setDataURL(nodelet_addr + ":" +dataset_path);
             // Publish dataset meta on libp2p network.
             metaService_->putMeta(meta);
         }

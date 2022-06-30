@@ -137,6 +137,7 @@ class DatasetMeta {
     std::string getDriverType() const { return driver_type; }
     std::string &getDataURL() { return data_url; }
     std::string getDescription()  { return description; }
+    void setDataURL(const std::string &data_url) { this->data_url = data_url; }
     DatasetId id;
 
   private:

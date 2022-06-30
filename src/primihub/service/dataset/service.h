@@ -64,7 +64,7 @@ class DatasetService {
 
     int deleteDataset(const DatasetId &id);
     void loadDefaultDatasets(const std::string &config_file_path);
-    void restoreDatasetFromLocalStorage();
+    void restoreDatasetFromLocalStorage(const std::string &nodelet_addr);
     void setMetaSearchTimeout(unsigned int timeout);
     // void
     // findPeerListFromDatasets(const std::vector<std::string> &dataset_namae_list,
