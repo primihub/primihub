@@ -103,3 +103,6 @@ output
 # python
 *.egg-info/
 *.pyc
+
+# sphinx .rst
+*.rst
