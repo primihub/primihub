@@ -3,7 +3,7 @@
 #include "src/primihub/protocol/cryptflow2/utils/prp.h"
 #include <stdio.h>
 
-namespace emp {
+namespace primihub::emp {
 /*
  * By default, TCCRH use zero_block as the AES key.
  * Here we model f(x) = AES_{00..0}(x) as a random permutation (and thus in the
@@ -69,5 +69,5 @@ public:
     }
   }
 };
-} // namespace emp
+} // namespace primihub::emp
 #endif // TCCRH_H__

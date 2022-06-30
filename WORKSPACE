@@ -2,17 +2,22 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 
-all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+_ALL_CONTENT = """\
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+"""
+
 
 http_archive(
     name = "rules_foreign_cc",
-    sha256 = "33a5690733c5cc2ede39cb62ebf89e751f2448e27f20c8b2fbbc7d136b166804",
-    strip_prefix = "rules_foreign_cc-0.5.1",
-    urls = [ 
-             "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.5.1.tar.gz",
-             "https://primihub.oss-cn-beijing.aliyuncs.com/rules_foreign_cc-0.5.1.tar.gz" 
-           ]
+    sha256 = "6041f1374ff32ba711564374ad8e007aef77f71561a7ce784123b9b4b88614fc",
+    strip_prefix = "rules_foreign_cc-0.8.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.8.0.tar.gz",
 )
+
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
@@ -45,12 +50,13 @@ new_git_repository(
     shallow_since = "1581106153 -0800",
 )
 
-new_git_repository(
-    name = "eigen",
-    build_file = "//bazel:BUILD.eigen",
-    remote = "https://gitlab.com/libeigen/eigen.git",
-    commit = "3dc3a0ea2d0773af4c0ffd7bbcb21c608e28fcef",
-    shallow_since = "1497510620 +0200",
+
+http_archive(
+  name="eigen",
+  build_file_content = _ALL_CONTENT,
+  strip_prefix = "eigen-3.4",
+  urls=["https://gitlab.com/libeigen/eigen/-/archive/3.4/eigen-3.4.tar.bz2"],
+  sha256 = "a6f7aaa7b19c289dfeb33281e1954f19bf2ba1c6cae2c182354d820f535abef8",
 )
 
 new_git_repository(
@@ -466,3 +472,11 @@ pir_preload()
 load("@org_openmined_pir//pir:deps.bzl", "pir_deps")
 
 pir_deps()
+
+
+# leveldb as local kv store
+load("//3rdparty/bazel-rules-leveldb/bazel:repos.bzl", leveldb_repos="repos")
+leveldb_repos()
+
+load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
+leveldb_deps()

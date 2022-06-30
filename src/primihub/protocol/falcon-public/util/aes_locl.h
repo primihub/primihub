@@ -51,7 +51,9 @@
 
 #ifndef HEADER_AES_LOCL_H
 #define HEADER_AES_LOCL_H
-
+namespace primihub{
+    namespace falcon
+{
 //#include <openssl/e_os2.h>
 
 #ifdef OPENSSL_NO_AES
@@ -85,5 +87,6 @@ typedef unsigned char u8;
 
 /* This controls loop-unrolling in aes_core.c */
 #undef FULL_UNROLL
-
+}
+}
 #endif /* !HEADER_AES_LOCL_H */

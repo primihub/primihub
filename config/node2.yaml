@@ -21,17 +21,22 @@ grpc_port: 50052
 
 # load datasets
 datasets: 
-  - description: "train_party_2"
+  - description: "test_party_2_self"
     model: "csv"
-    source: "/tmp/train_party_2.csv" 
-  - description: "test_party_2"
+    source: "data/falcon/dataset/MNIST/input_2" 
+  - description: "test_party_2_next"
     model: "csv"
-    source: "/tmp/test_party_2.csv" 
+    source: "data/falcon/dataset/MNIST/input_0" 
   - description: "label_dataset"
     model: "csv"
-    source: "/tmp/breast-cancer-wisconsin-label.data"   
-  
-  
+    source: "data/breast-cancer-wisconsin-label.data"   
+  - description: "psi_client_data"
+    model: "csv"
+    source: "data/client_e.csv" 
+
+localkv: 
+  model: "leveldb"
+  path: "./localdb/node2"
 
 # p2p paramaters
 p2p:
@@ -39,5 +44,5 @@ p2p:
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8889"
-
+  dht_get_value_timeout:  60
 

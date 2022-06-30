@@ -5,6 +5,12 @@ location: "172.28.1.11"
 grpc_port: 50050
 
 datasets:
+  - description: "test_party_1_self"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
+  - description: "test_party_1_next"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_2" 
   - description: "train_party_1"
     model: "csv"
     source: "/tmp/train_party_1.csv" 
@@ -13,10 +19,21 @@ datasets:
     source: "/tmp/test_party_1.csv"
   - description: "guest_dataset"
     model: "csv"
-    source: "/tmp/breast-cancer-wisconsin.data"   
+    source: "/tmp/breast-cancer-wisconsin.data"
+  - description: "pir_server_data"
+    model: "csv"
+    source: "/tmp/pir_server.csv" 
+  - description: "psi_server_data"
+    model: "csv"
+    source: "/tmp/server_e.csv" 
+
+localkv: 
+  model: "leveldb"
+  path: "./localdb"
 
 p2p:
   bootstrap_nodes:
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/172.28.1.11/tcp/8881"
+  dht_get_value_timeout:  60

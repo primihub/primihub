@@ -18,12 +18,15 @@
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
+#include <signal.h>
 
 
 #include "src/primihub/node/node.h"
+#include "src/primihub/node/ds.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
+#include "src/primihub/data_store/factory.h"
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -32,6 +35,7 @@ using primihub::rpc::PsiType;
 using primihub::rpc::TaskType;
 using primihub::task::LanguageParserFactory;
 using primihub::task::ProtocolSemanticParser;
+
 
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
@@ -122,11 +126,11 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     return Status::OK;
 }
 
-/*****************************************
+/***********************************************
  *
- * method runs on the node as psi server
+ * method runs on the node as psi or pir server
  *
- * **************************************/
+ * *********************************************/
 Status VMNodeImpl::ExecuteTask(ServerContext *context,
                                const ExecuteTaskRequest *taskRequest,
                                ExecuteTaskResponse *taskResponse) {
@@ -140,7 +144,7 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
         if (running_set.find(job_task) != running_set.end()) {
             taskResponse->mutable_psi_response()->set_ret_code(1);
             return Status::OK;
-	}
+        }
     } else if (taskRequest->algorithm_request_case() ==
 	          ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
         taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
@@ -166,6 +170,7 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
     }
 }
 
+
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     auto worker = std::make_shared<Worker>(this->node_id, this->nodelet);
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id;
@@ -176,11 +181,15 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     return worker;
 }
 
-void RunServer(primihub::VMNodeImpl *service, int service_port) {
+void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *dataset_service, int service_port) {
     ServerBuilder builder;
     builder.AddListeningPort(absl::StrCat("0.0.0.0:", service_port),
                              grpc::InsecureServerCredentials());
-    builder.RegisterService(service);
+    
+    builder
+    .RegisterService(node_service)
+    .RegisterService(dataset_service);
+
     builder.SetMaxReceiveMessageSize(128 * 1024 * 1024);
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
@@ -192,6 +201,13 @@ void RunServer(primihub::VMNodeImpl *service, int service_port) {
 } // namespace primihub
 
 int main(int argc, char **argv) {
+
+
+    // Register SIGINT signal and signal handler
+    signal(SIGINT, [] (int sig) {
+        LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
+        exit(0);
+    });
 
     py::scoped_interpreter python;
     py::gil_scoped_release release;
@@ -207,18 +223,16 @@ int main(int argc, char **argv) {
     const std::string node_id = absl::GetFlag(FLAGS_node_id);
     bool singleton = absl::GetFlag(FLAGS_singleton);
 
-    // TODO(chenhongbo) peer_list need to remove. get Peer list from dataset
-    // service.
-
     int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    primihub::VMNodeImpl service(node_id, node_ip, service_port, singleton,
+    primihub::VMNodeImpl node_service(node_id, node_ip, service_port, singleton,
                                  config_file);
+    primihub::DataServiceImpl data_service(node_service.getNodelet()->getDataService(),
+                                           node_service.getNodelet()->getNodeletAddr());
 
+    primihub::RunServer(&node_service, &data_service, service_port);
 
-    primihub::RunServer(&service, service_port);
-
-    return 0;
+    return EXIT_SUCCESS;
 }

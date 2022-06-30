@@ -54,7 +54,9 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 
 #include <cstring>
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef ZZNS
 #define MR_INIT_ECN memset(mem,0,mr_ecp_reserve(1,ZZNS)); p=(epoint *)epoint_init_mem_variable(mem,0,ZZNS); 
 #else
@@ -154,6 +156,7 @@ public:
  }
 
 };
-
+}
+}//primihub
 #endif
 

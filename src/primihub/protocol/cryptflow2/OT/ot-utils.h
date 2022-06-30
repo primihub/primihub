@@ -23,7 +23,7 @@ SOFTWARE.
 #define OT_UTIL_H__
 #include "src/primihub/protocol/cryptflow2/OT/ot.h"
 
-namespace sci {
+namespace primihub::sci {
 template <typename basetype>
 void pack_ot_messages(basetype *y, basetype **data, block128 *pad, int ysize,
                       int bsize, int bitsize, int N) {
@@ -212,6 +212,6 @@ inline void unpack_cot_messages(uint64_t *corr_data, uint64_t *recvd, int bsize,
     }
   }
 }
-} // namespace sci
+} // namespace primihub::sci
 
 #endif // OT_UTIL_H__

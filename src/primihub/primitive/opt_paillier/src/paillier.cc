@@ -1,7 +1,7 @@
 /**
   \file 		paillier.cc
   \author 	Jiang Zhengliang
-  \copyright Jiang Zhengliang
+  \copyright Copyright (C) 2022 Jiang Zhengliang
  */
 
 #include "../include/paillier.h"
@@ -19,7 +19,7 @@ mapTo_nbits_lbits = {
 };
 
 ui
-prob = 46;
+prob = 30;
 
 void opt_paillier_mod_n_squared_crt(
   mpz_t res,
@@ -115,68 +115,38 @@ void opt_paillier_keygen(
     ui n_dividetwo = (*pub)->nbits / 2;
 
     do {
-      do {
-        aby_prng((*prv)->p, l_dividetwo);
-        mpz_setbit((*prv)->p, l_dividetwo);
-        mpz_nextprime((*prv)->p, (*prv)->p);
+      aby_prng((*prv)->p_, n_dividetwo - l_dividetwo - 1);
+      mpz_setbit((*prv)->p_, n_dividetwo - l_dividetwo - 1);
+      mpz_nextprime((*prv)->p_, (*prv)->p_);
 
-        aby_prng((*prv)->q, l_dividetwo);
-        mpz_setbit((*prv)->q, l_dividetwo);
-        mpz_nextprime((*prv)->q, (*prv)->q);
-
-      } while (!mpz_cmp((*prv)->p, (*prv)->q));
-
-      do {
-        aby_prng((*prv)->p_, n_dividetwo - l_dividetwo - 1);
-        mpz_setbit((*prv)->p_, n_dividetwo - l_dividetwo - 1);
-        // make sure p_ is odd number
-        ui is_odd = mpz_mod_ui(temp, (*prv)->p_, 2);
-        if (!is_odd) {
-          mpz_add_ui((*prv)->p_, (*prv)->p_, 1);
-        }
-
-        aby_prng((*prv)->q_, n_dividetwo - l_dividetwo - 1);
-        // set highest bit to 1 to ensure high length
-        mpz_setbit((*prv)->q_, n_dividetwo - l_dividetwo - 1);
-        // make sure q_ is odd number
-        is_odd = mpz_mod_ui(temp, (*prv)->q_, 2);
-        if (!is_odd) {
-          mpz_add_ui((*prv)->q_, (*prv)->q_, 1);
-        }
-
-        mpz_gcd(temp, (*prv)->p_, (*prv)->q_);
-        if (!mpz_cmp_ui(temp, 1)) {
-          break;
-        }
-        
-      } while (true);
-
-      /* test p,q,p_,q_ are co-prime */
-      mpz_gcd(temp, (*prv)->p, (*prv)->p_);
-      if (mpz_cmp_ui(temp, 1)) {
-        continue;
-      }
-
-      mpz_gcd(temp, (*prv)->p, (*prv)->q_);
-      if (mpz_cmp_ui(temp, 1)) {
-        continue;
-      }
-
-      mpz_gcd(temp, (*prv)->q, (*prv)->p_);
-      if (mpz_cmp_ui(temp, 1)) {
-        continue;
-      }
-
-      mpz_gcd(temp, (*prv)->q, (*prv)->q_);
-      if (mpz_cmp_ui(temp, 1)) {
-        continue;
-      }
+      aby_prng((*prv)->q_, n_dividetwo - l_dividetwo - 1);
+      mpz_setbit((*prv)->q_, n_dividetwo - l_dividetwo - 1);
+      mpz_nextprime((*prv)->q_, (*prv)->q_);
       
+    } while (!mpz_cmp((*prv)->p_, (*prv)->q_));
+
+    do {
+      aby_prng((*prv)->p, l_dividetwo);
+      mpz_setbit((*prv)->p, l_dividetwo);
+      mpz_nextprime((*prv)->p, (*prv)->p);
+
       mpz_mul(temp, (*prv)->p, (*prv)->p_);
       mpz_mul_ui(temp, temp, 2);
       mpz_add_ui((*prv)->P, temp, 1);
 
       if (!mpz_probab_prime_p((*prv)->P, prob)) {
+        continue;
+      }
+      break;
+
+    } while (true);
+
+    do {
+      aby_prng((*prv)->q, l_dividetwo);
+      mpz_setbit((*prv)->q, l_dividetwo);
+      mpz_nextprime((*prv)->q, (*prv)->q);
+
+      if (!mpz_cmp((*prv)->p, (*prv)->q)) {
         continue;
       }
 
@@ -187,7 +157,6 @@ void opt_paillier_keygen(
       if (!mpz_probab_prime_p((*prv)->Q, prob)) {
         continue;
       }
-
       break;
 
     } while(true);
@@ -280,7 +249,7 @@ void opt_paillier_set_plaintext(
   }
 
 void opt_paillier_get_plaintext(
-  char*& plaintext,
+  char* &plaintext,
   const mpz_t mpz_plaintext,
   const opt_public_key_t* pub,
   int radix) {
@@ -308,6 +277,26 @@ bool validate_message(
     return true;
   }
 
+void opt_paillier_encrypt(
+  mpz_t res,
+  const opt_public_key_t* pub,
+  const mpz_t plaintext) {
+    /* temp variable */
+    mpz_t r;
+    mpz_init(r);
+    aby_prng(r, pub->lbits);
+    // res = m*n
+    mpz_mul(res, plaintext, pub->n);
+    // res = (1+m*n)
+    mpz_add_ui(res, res, 1);
+    // r = hs^r mod n^2
+    mpz_powm(r, pub->h_s, r, pub->n_squared);
+    // res = (1+m*n)*hs^r mod n^2
+    mpz_mul(res, res, r);
+    mpz_mod(res, res, pub->n_squared);
+    mpz_clear(r);
+  }
+
 void opt_paillier_encrypt_crt(
   mpz_t res,
   const opt_public_key_t* pub,
@@ -319,14 +308,11 @@ void opt_paillier_encrypt_crt(
     aby_prng(r, pub->lbits);
     mpz_mul(res, plaintext, pub->n);
     mpz_add_ui(res, res, 1);
-
     // r=hs^r mod n^2 => hs = hs mod p^2,q^2, r = r mod phi(n^2)
     opt_paillier_mod_n_squared_crt(
       r, pub->h_s, r, pub, prv);
-
     mpz_mul(res, res, r);
     mpz_mod(res, res, pub->n_squared);
-
     mpz_clear(r);
   }
 

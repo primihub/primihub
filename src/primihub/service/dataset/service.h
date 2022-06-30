@@ -64,6 +64,8 @@ class DatasetService {
 
     int deleteDataset(const DatasetId &id);
     void loadDefaultDatasets(const std::string &config_file_path);
+    void restoreDatasetFromLocalStorage(const std::string &nodelet_addr);
+    void setMetaSearchTimeout(unsigned int timeout);
     // void
     // findPeerListFromDatasets(const std::vector<std::string> &dataset_namae_list,
     //                          FoundMetaListHandler handler);
@@ -86,17 +88,21 @@ class DatasetMetaService {
     ~DatasetMetaService() {}
 
     void putMeta(DatasetMeta &meta);
+    outcome::result<void> getAllLocalMetas(std::vector<DatasetMeta> & metas);
     outcome::result<void> getMeta(const DatasetId &id,
                                   FoundMetaHandler handler);
     outcome::result<void>
     findPeerListFromDatasets(const std::vector<DatasetWithParamTag> &datasets_with_tag,
                              FoundMetaListHandler handler);
-
+    void setMetaSearchTimeout(unsigned int timeout) {
+        meta_search_timeout_ = timeout;
+    }
   private:
     std::shared_ptr<StorageBackend> localKv_;
     std::shared_ptr<primihub::p2p::NodeStub> p2pStub_;
     std::map<std::string, DatasetMetaWithParamTag> meta_map_; // key: dataset_id
     std::mutex meta_map_mutex_;
+    unsigned int  meta_search_timeout_ = 60; // seconds
 };
 
 } // namespace primihub::service

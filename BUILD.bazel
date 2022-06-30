@@ -26,10 +26,14 @@ config_setting(
    values = {"define": "ssl=openssl"},
 )
 
+config_setting(
+   name = "macos-build",
+   values = {"define": "macos-build=true"},
+)
+
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
-    "-lgmp",
 ]
 
 DEFINES = [
@@ -65,6 +69,17 @@ C_OPT = [
 ## start of primihub
 load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
 
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+cmake(
+    name = "eigen",
+    cache_entries = {
+        "CMAKE_C_FLAGS": "-fPIC",
+    },
+    lib_source = "@eigen//:all_srcs",
+    out_headers_only = True,
+    includes = ["eigen3/",],
+    install = True,
+)
 
 alias(
     name = "soralog",
@@ -103,6 +118,11 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/pir.proto"],
 )
 
+grpc_proto_library(
+    name = "service_proto",
+    srcs = ["src/primihub/protos/service.proto"],
+)
+
 cc_library(
     name = "common_lib",
     srcs = glob([
@@ -133,11 +153,13 @@ cc_library(
               "src/primihub/common/gsl/string_span",
               "src/primihub/common/gsl/gls-lite.hpp",
     ],
-    copts = C_OPT,
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-                "@eigen//:eigen",
+                ":eigen",
                 "@boost//:multiprecision",
                 "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         ],
@@ -266,7 +288,7 @@ cc_library(
   linkopts = LINK_OPTS,
   linkstatic = False,
   deps = [
-          "@eigen//:eigen",
+          ":eigen",
           "@lib_function2//:function2",
           "@com_github_glog_glog//:glog",
           ":common_lib",
@@ -328,13 +350,14 @@ cc_library(
     "-D SCI_OT",
     "-maes",
     "-msse4.1",
-    "-mavx",
     "-mavx2",
     "-pthread",
     "-mrdseed",
   ],
+  linkopts = ["-fopenmp"],
   deps = ["@com_microsoft_seal//:seal",
-	  "@eigen//:eigen"]
+	  "@com_github_gmp//:gmp",
+	  ":eigen"]
 )
 
 cc_library(
@@ -361,7 +384,7 @@ cc_library(
     ],
     linkstatic = False,
     deps = [
-	    "@eigen//:eigen",
+	    ":eigen",
 	    "@openssl",
     ]
 )
@@ -389,12 +412,40 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-            "@eigen//:eigen",
+            ":eigen",
             "@nlohmann_json",
             ":common_lib",
             ":crypto_lib",
             ":network_lib",
         ],
+)
+
+cc_library(
+    name = "cryptflow2_algorithm_lib",
+    srcs = glob([
+           "src/primihub/algorithm/cryptflow2_maxpool.cc",
+    ]),
+    hdrs = glob([
+           "src/primihub/algorithm/base.h",
+           "src/primihub/algorithm/cryptflow2_maxpool.h",
+           "src/primihub/service/dataset/localkv/storage_default.h",
+           "src/primihub/service/dataset/storage_backend.h",
+	   "src/primihub/util/cpu_check.h"
+    ]),
+    copts = C_OPT + [
+      	   "-maes",
+      	   "-mavx2",
+      	   "-mrdseed",
+    ],
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+           ":eigen",
+           ":common_lib",
+           ":data_store_lib",
+           ":dataset_service",
+	   ":protocol_cryptflow2_ot_lib",
+    ],
 )
 
 cc_library(
@@ -405,8 +456,7 @@ cc_library(
             "src/primihub/algorithm/logistic.cc",
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
-            # "src/primihub/algorithm/cryptflow2_maxpool.cc",
-            "src/primihub/algorithm/falcon_lenet.cc",
+	    "src/primihub/algorithm/falcon_lenet.cc",
     ]),
     hdrs = glob([
             "src/primihub/algorithm/base.h",
@@ -416,33 +466,51 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
-            # "src/primihub/algorithm/cryptflow2_maxpool.h",
-            "src/primihub/algorithm/falcon_lenet.h",
+	    "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
-            "src/primihub/service/dataset/storage_backend.h"
+            "src/primihub/service/dataset/storage_backend.h",
     ]),
     copts = C_OPT + [
       "-maes",
       "-msse4.1",
-      "-mavx",
-      # "-mavx2",
       "-mrdseed",
-      #"-fopenmp"
     ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-          "@eigen//:eigen",
+          ":eigen",
           ":common_lib",
           ":protocol_aby3_lib",
           ":data_store_lib",
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-	  # ":protocol_cryptflow2_ot_lib",
           ":protocol_falcon_lib"
     ],
 )
+
+DEFAULT_TASK_LIB_DEPS = [
+    "@com_github_glog_glog//:glog",
+    "@com_github_grpc_grpc//:grpc++",
+    "@com_google_absl//absl/base",
+    "@com_google_absl//absl/flags:flag",
+    "@com_google_absl//absl/flags:parse",
+    "@com_google_absl//absl/memory",
+    "@pybind11",
+    ":util_lib",
+    ":common_lib",
+    ":algorithm_lib",
+    "dataset_service",
+    "@openssl",
+    "@org_openmined_psi//private_set_intersection/cpp:psi_client",
+    "@org_openmined_psi//private_set_intersection/cpp:psi_server",
+    "@org_openmined_pir//pir/cpp:pir",
+]
+
+TASK_LIB_DEPS = select({
+    ":macos-build": DEFAULT_TASK_LIB_DEPS,
+    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib"],
+})
 
 cc_library(
     name = "task_lib",
@@ -456,59 +524,13 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -lpython3.9 -framework CoreFoundation"],
-    linkstatic = True,
-    deps = [
-          "@com_github_glog_glog//:glog",
-          "@com_github_grpc_grpc//:grpc++",
-          "@com_google_absl//absl/base",
-          "@com_google_absl//absl/flags:flag",
-          "@com_google_absl//absl/flags:parse",
-          "@com_google_absl//absl/memory",
-          "@pybind11",
-          ":util_lib",
-          ":common_lib",
-          ":protocol_aby3_lib",
-          ":algorithm_lib",
-          "dataset_service",
-          "@openssl",
-	  "@org_openmined_psi//private_set_intersection/cpp:psi_client",
-	  "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-	  "@org_openmined_pir//pir/cpp:pir",
-    ],
+    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
+    linkstatic = False,
+    deps = TASK_LIB_DEPS,
 )
 
 cc_library(
     name = "node_lib",
-    srcs = glob([
-            "src/primihub/node/worker/worker.cc",
-            
-            "src/primihub/algorithm/dataload.cpp",
-    ]),
-    hdrs = glob([
-            "src/primihub/node/worker/worker.h",
-            
-    ]),
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-            "@com_github_grpc_grpc//:grpc++",
-            "@com_google_absl//absl/base",
-            "@com_google_absl//absl/flags:flag",
-            "@com_google_absl//absl/flags:parse",
-            "@com_google_absl//absl/memory",
-            "@com_github_glog_glog//:glog",
-            ":worker_proto",
-            ":algorithm_lib",
-            ":task_lib",
-            ":network_lib",
-            ":nodelet",
-    ],
-)
-
-cc_library(
-    name = "node_lib_aux",
     srcs = glob([
             "src/primihub/node/worker/worker.cc",
             
@@ -579,7 +601,7 @@ cc_library(
     deps = [
             "@com_github_grpc_grpc//:grpc++",
             "@com_github_glog_glog//:glog",
-            "@eigen//:eigen",
+            ":eigen",
             "@boost//:asio",
             "@boost//:circular_buffer",
             ":common_lib",
@@ -685,14 +707,14 @@ cc_library(
     deps = [
         "@arrow",
         "@com_github_glog_glog//:glog",
-        "@eigen//:eigen",
+        ":eigen",
         
         ":common_lib",
         ":crypto_lib",
         ":network_lib",
         ":util_lib",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],
 )
 
@@ -734,9 +756,11 @@ cc_library(
         "@boost//:thread",
         "@boost//:outcome",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],   
 )
+
+
 
 cc_library(
     name = "dataset_service",
@@ -744,18 +768,21 @@ cc_library(
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
+             "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
             "src/primihub/service/dataset/model.h",
             "src/primihub/service/dataset/service.h",                 
             "src/primihub/service/dataset/storage_backend.h",
-            "src/primihub/service/dataset/localkv/storage_default.h",    
+            "src/primihub/service/dataset/localkv/storage_default.h",
+            "src/primihub/service/dataset/localkv/storage_leveldb.h",    
             "src/primihub/service/dataset/util.hpp",     
     ],
     linkopts = LINK_OPTS,
     deps = [
         "@com_github_glog_glog//:glog",
+        "@com_github_google_leveldb//:leveldb",
         "@arrow",
         "@nlohmann_json",
         "@libp2p//:p2p",
@@ -769,7 +796,7 @@ cc_library(
         ":util_lib",
         "service_base",
     ],
-    linkstatic = False,
+    linkstatic = True,
     visibility = ["//visibility:public"],   
 )
 
@@ -810,14 +837,13 @@ py_library(
     data = ["primihub_channel.so"],
 )
 
-
-
-
 cc_binary(
     name = "node",
     srcs = glob([
                   "src/primihub/node/node.cc",
                   "src/primihub/node/node.h",
+                  "src/primihub/node/ds.cc",
+                  "src/primihub/node/ds.h",
             ]),
     copts = C_OPT,
     includes = [    
@@ -833,36 +859,9 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":node_lib",
-        ":nodelet",
-        ":algorithm_lib",
-        ":util_lib",
-    ],
-)
-
-cc_binary(
-    name = "node_aux",
-    srcs = glob([
-                  "src/primihub/node/node.cc",
-                  "src/primihub/node/node.h",
-            ]),
-    copts = C_OPT,
-    includes = [    
-    ],
-    linkstatic = False,
-    linkopts = LINK_OPTS ,
-    deps = [
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/memory",
-        "@com_github_glog_glog//:glog",
-        "@toolkit_relic//:relic",
-        ":worker_proto",
-        ":common_lib",
-        ":node_lib_aux",
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
@@ -889,6 +888,7 @@ cc_binary(
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
         ":worker_proto",
+        ":service_proto",
         ":common_lib",
         ":util_lib",
         "@openssl",
@@ -918,7 +918,7 @@ cc_binary(
 )
 
 
-cc_binary(
+cc_test(
     name = "dataset_service_test",
     srcs = [
         "test/primihub/service/dataset/dataset_service_test.cc",
@@ -934,6 +934,25 @@ cc_binary(
         "@openssl",
         ":dataset_service",
         ":p2p_lib"
+    ],
+)
+
+
+cc_test(
+    name = "local_kv_test",
+    srcs = [
+        "test/primihub/service/dataset/local_kv_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":dataset_service",
+        
     ],
 )
 
@@ -975,25 +994,52 @@ cc_test(
 )
 
 cc_test(
-    name = "algorithm_test",
-    srcs = [
-        "test/primihub/algorithm/logistic_test.cc",
-        # TODO: Ignore it when test arrow usage, recover it.
-        # "test/primihub/algorithm/logistic_plain_test.cc",
+    name = "logistic_test",
+    srcs = ["test/primihub/algorithm/logistic_test.cc"],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      ":crypto_lib",
+      ":algorithm_lib",
+    ]
+)
+
+cc_test(
+    name = "maxpool_test",
+    srcs = ["test/primihub/algorithm/maxpool_test.cc"],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+      "@com_google_googletest//:gtest_main",
+      "@com_google_absl//absl/base",
+      "@com_google_absl//absl/flags:flag",
+      "@com_google_absl//absl/flags:parse",
+      "cryptflow2_algorithm_lib"
+    ]
+)
+cc_test(
+  name = "falcon_lenet_test",
+  srcs=[
+      "test/primihub/algorithm/falcon_lenet_test.cc",
     ],
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-        "@com_google_googletest//:gtest_main",
-        "@com_google_absl//absl/base",
+	"@com_google_googletest//:gtest_main",
+	"@com_google_absl//absl/base",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
-        ":crypto_lib",
+	":crypto_lib",
         ":algorithm_lib",
-    ],
+     ],
 )
-
 # Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
 # or error, so this rule will not build all test case.
 cc_test(
@@ -1191,10 +1237,10 @@ cc_library(
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
-    linkstatic = False,
-    # deps = [
-    #     "@com_github_gmp//:gmp",
-    # ],
+    linkstatic = True,
+    deps = [
+        "@com_github_gmp//:gmp",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -1252,7 +1298,7 @@ py_library(
     name = "opt_paillier_c2py_warpper",
     srcs = [
         "python/primihub/primitive/opt_paillier_c2py_warpper.py",
-        "python/primihub/primitive/opt_paillier_batch_c2py_warpper.py"
+        "python/primihub/primitive/opt_paillier_pack_c2py_warpper.py"
         ],
     deps = [
         ":opt_paillier_c2py"
@@ -1270,9 +1316,9 @@ py_test(
 )
 
 py_test(
-    name = "opt_paillier_batch_c2py_test",
+    name = "opt_paillier_pack_c2py_test",
     srcs = [
-        "python/primihub/tests/opt_paillier_batch_c2py_test.py"
+        "python/primihub/tests/opt_paillier_pack_c2py_test.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"
@@ -1292,7 +1338,7 @@ cc_test(
             ":network_test",
             ":protocol_aby3_test",
             ":util_test",
-            ":algorithm_test",
+            ":logistic_test",
             ":prng_test",
             ":share_test",
             ":paillier_test",

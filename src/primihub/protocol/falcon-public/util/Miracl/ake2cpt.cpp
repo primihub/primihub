@@ -33,7 +33,9 @@
 #include "zzn2.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(16,0); 
 
 // Using SHA-512 as basic hash algorithm
@@ -449,3 +451,5 @@ cout << "Server*cof= " << (2*(p+1)-cof*q)*Server << endl;
 
     return 0;
 }
+}
+}//primihub

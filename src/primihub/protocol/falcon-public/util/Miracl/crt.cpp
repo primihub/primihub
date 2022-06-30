@@ -3,7 +3,9 @@
  */
 
 #include "crt.h"
-
+namespace primihub{
+    namespace falcon
+{
 Crt::Crt(int r,Big *moduli)
 { /* constructor */
     big *b=(big *)mr_alloc(r,sizeof(big));
@@ -35,4 +37,5 @@ Big Crt::eval(mr_utype *u)
     scrt(&sc,u,x.getbig());
     return x;
 }
-
+}
+}//primihub

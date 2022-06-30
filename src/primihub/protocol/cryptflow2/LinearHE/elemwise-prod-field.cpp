@@ -23,7 +23,7 @@ SOFTWARE.
 
 using namespace std;
 using namespace seal;
-using namespace sci;
+using namespace primihub::sci;
 
 ElemWiseProdField::ElemWiseProdField(int party, NetIO *io)
 {

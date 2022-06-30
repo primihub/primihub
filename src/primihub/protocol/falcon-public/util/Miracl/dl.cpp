@@ -38,7 +38,9 @@
 // #define TYPE 1
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(15,0);
 
 //
@@ -152,3 +154,5 @@ int main()
 
     return 0;
 }
+}
+}//primihub

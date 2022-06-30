@@ -38,7 +38,9 @@
 #include "poly.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 miracl *mip;
 
 FPoly T[25];  // Reduced class Polynomial. 
@@ -1358,5 +1360,5 @@ int main(int argc,char **argv)
     cout << "No satisfactory curve found" << endl;
     return 0;
 }
-
-
+}
+}//primihub

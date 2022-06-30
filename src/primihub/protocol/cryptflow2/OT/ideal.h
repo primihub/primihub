@@ -32,7 +32,7 @@ Modified by Nishant Kumar, Deevashwer Rathee
 /** @addtogroup OT
     @{
   */
-namespace sci {
+namespace primihub::sci {
 template <typename IO> class OTIdeal : public OT<OTIdeal<IO>> {
 public:
   int cnt = 0;
@@ -155,5 +155,5 @@ public:
     }
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // OT_IDEAL_H__

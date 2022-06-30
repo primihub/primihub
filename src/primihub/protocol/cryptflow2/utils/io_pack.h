@@ -5,7 +5,7 @@
 #define GC_PORT_OFFSET 100
 #define REV_PORT_OFFSET 50
 
-namespace sci {
+namespace primihub::sci {
 class IOPack {
 public:
   NetIO *io;
@@ -40,5 +40,5 @@ public:
     delete io_GC;
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif // IO_PACK_H__

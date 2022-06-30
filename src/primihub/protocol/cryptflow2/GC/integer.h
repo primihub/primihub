@@ -40,7 +40,7 @@ Modified by Deevashwer Rathee
 using std::min;
 using std::vector;
 
-namespace sci {
+namespace primihub::sci {
 class Integer : public Swappable<Integer>, public Comparable<Integer> {
 public:
   std::vector<Bit> bits;
@@ -83,5 +83,5 @@ public:
 };
 
 #include "src/primihub/protocol/cryptflow2/GC/integer.hpp"
-} // namespace sci
+} // namespace primihub::sci
 #endif // INTEGER_H__

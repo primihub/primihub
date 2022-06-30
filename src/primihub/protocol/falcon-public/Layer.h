@@ -2,6 +2,9 @@
 #pragma once
 #include "globals.h"
 
+namespace primihub{
+    namespace falcon
+{
 class Layer
 {
 public: 
@@ -18,3 +21,5 @@ public:
 	virtual RSSVectorMyType* getActivation() {};
 	virtual RSSVectorMyType* getDelta() {};
 };
+}// namespace primihub{
+}

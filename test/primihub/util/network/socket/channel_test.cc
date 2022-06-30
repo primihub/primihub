@@ -6,6 +6,8 @@
 #include <thread>
 #include <memory>
 
+#include <stdlib.h>
+
 #include "gtest/gtest.h"
 
 #include "src/primihub/common/defines.h"
@@ -822,10 +824,12 @@ TEST(BtNetwork_bitVector_Test, bit_vector) {
   BitVector bb(77);
   bb[55] = 1;
   bb[33] = 1;
+   
+  // Send.
+  chl1.send(bb.data(), bb.sizeBytes());
 
-  chl1.send(bb);
-  chl2.recv(bb);
-
+  // Recv.
+  chl2.recv(bb.data(), bb.sizeBytes());
 
   if (!bb[55] || !bb[33])
     throw UnitTestFail();

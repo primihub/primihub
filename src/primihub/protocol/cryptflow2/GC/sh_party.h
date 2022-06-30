@@ -30,7 +30,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/GC/emp-tool.h"
 #include "src/primihub/protocol/cryptflow2/OT/iknp.h"
 
-namespace sci {
+namespace primihub::sci {
 
 template <typename IO> class SemiHonestParty : public ProtocolExecution {
 public:
@@ -64,5 +64,5 @@ public:
     delete ot;
   }
 };
-} // namespace sci
+} // namespace primihub::sci
 #endif

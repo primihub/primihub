@@ -223,6 +223,7 @@ int PSIClientTask::execute() {
         }
     } else {
         LOG(ERROR) << "Node push psi server task rpc failed.";
+        LOG(ERROR) << status.error_code() << ": " << status.error_message();
         return -1;
     }
 

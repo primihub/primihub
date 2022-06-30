@@ -47,6 +47,10 @@ namespace primihub::service {
 
     /// Removes value corresponded to given @param key.
     virtual outcome::result<void> erase(const Key &key) = 0;
+
+    // Get all key and value pairs from the storage.
+    virtual outcome::result<std::vector<std::pair<Key, Value>>> getAll() const = 0;
+
   };  // class StorageBackend
 
 

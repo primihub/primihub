@@ -33,7 +33,7 @@ Modified by Deevashwer Rathee
 #include "src/primihub/protocol/cryptflow2/utils/block.h"
 #include "src/primihub/protocol/cryptflow2/utils/utils.h"
 
-namespace sci {
+namespace primihub::sci {
 class Bit : public Swappable<Bit> {
 public:
   block128 bit;
@@ -64,5 +64,5 @@ public:
 };
 
 #include "src/primihub/protocol/cryptflow2/GC/bit.hpp"
-} // namespace sci
+} // namespace primihub::sci
 #endif

@@ -13,18 +13,53 @@
 # limitations under the License.
 
 
-FROM primihub/primihub-builder:1.0 as builder
+FROM ubuntu:18.04 as builder
 
-# Bazel build primihub-node & primihub-cli & paillier shared library
-RUN bazel build --config=linux :node :cli :opt_paillier_c2py
-
-FROM ubuntu:18.04 as runner
+ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python 3.9
 RUN apt update && apt install -y software-properties-common  
 RUN add-apt-repository ppa:deadsnakes/ppa 
+RUN  apt update \
+  && apt remove -y python3.6 \
+  && apt install -y python3.9 python3.9-dev
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+  && python3 get-pip.py --user \
+  && rm -f get-pip.py
+
+# install other dependencies
+RUN apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg-config python-dev unzip make wget curl zip ninja-build libgmp-dev \
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 
+
+# install npm 
+RUN apt-get install -y npm
+
+# install cmake
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz \
+  && tar -zxf cmake-3.20.2-linux-x86_64.tar.gz \
+  && chmod +x cmake-3.20.2-linux-x86_64/bin/cmake \
+  && ln -s `pwd`/cmake-3.20.2-linux-x86_64/bin/cmake /usr/bin/cmake \
+  && rm -rf /var/lib/apt/lists/* cmake-3.20.2-linux-x86_64.tar.gz 
+
+# install bazelisk
+RUN npm install -g @bazel/bazelisk
+
+WORKDIR /src
+ADD . /src
+
+# Bazel build primihub-node & primihub-cli & paillier shared library
+RUN bash pre_docker_build.sh \
+  && bazel build --config=linux :node :cli :opt_paillier_c2py_test
+
+FROM ubuntu:18.04 as runner
+
+# Install python 3.9 and GCC openmp (Depends with cryptFlow2 library)
+RUN apt update && apt install -y software-properties-common  
+RUN add-apt-repository ppa:deadsnakes/ppa 
 RUN  apt-get update \
-  && apt-get install -y python3.9 python3.9-dev libgmp-dev
+  && apt-get install -y python3.9 python3.9-dev libgomp1
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2
 RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \

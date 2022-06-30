@@ -28,35 +28,38 @@ SOFTWARE.
 #include <iostream>
 #include <fstream>
 
-using namespace std ;
-
-template<typename T>
-vector<T> make_vector(size_t size) {
-return std::vector<T>(size) ;
-}
-
-template <typename T, typename... Args>
-auto make_vector(size_t first, Args... sizes)
+using namespace std;
+namespace primihub::cryptflow2
 {
-auto inner = make_vector<T>(sizes...) ;
-return vector<decltype(inner)>(first, inner) ;
+
+    template <typename T>
+    vector<T> make_vector(size_t size)
+    {
+        return std::vector<T>(size);
+    }
+
+    template <typename T, typename... Args>
+    auto make_vector(size_t first, Args... sizes)
+    {
+        auto inner = make_vector<T>(sizes...);
+        return vector<decltype(inner)>(first, inner);
+    }
+
+    float intToFloat(int32_t m);
+    void Softmax2(int32_t s1, int32_t s2, vector<vector<float>> &inArr, vector<vector<float>> &outArr);
+    void Ln(int32_t s1, vector<float> &inArr, vector<float> &outArr);
+    void getOutDer(int32_t s1, int32_t s2, vector<vector<float>> &batchSoft, vector<vector<float>> &lab, vector<vector<float>> &der);
+    void MatMul(int32_t s1, int32_t s2, int32_t s3, vector<vector<float>> &mat1, vector<vector<float>> &mat2, vector<vector<float>> &mat3);
+    void GemmAdd(int32_t s1, int32_t s2, vector<vector<float>> &prod, vector<float> &bias, vector<vector<float>> &out);
+    void dotProduct2(int32_t s1, int32_t s2, vector<vector<float>> &arr1, vector<vector<float>> &arr2, vector<float> &outArr);
+    void Relu(int32_t s1, vector<float> &inArr, vector<float> &outArr, vector<bool> &hotArr);
+    void getBiasDer(int32_t s1, int32_t s2, vector<vector<float>> &der, vector<float> &biasDer);
+    void IfElse(int32_t s1, vector<float> &dat, vector<bool> &hot, vector<float> &out, bool flip);
+    void updateWeights(int32_t s, float lr, vector<float> &bias, vector<float> &der);
+    void getLoss(int32_t m, vector<float> &lossTerms, vector<float> &loss);
+    void computeMSELoss(int32_t m, int32_t s, vector<vector<float>> &target, vector<vector<float>> &fwdOut, vector<float> &loss);
+
+    void Tanh(int32_t s1, vector<float> &inArr, vector<float> &outArr);
 }
-
-float intToFloat(int32_t m);
-void Softmax2(int32_t s1, int32_t s2, vector<vector<float>>& inArr, vector<vector<float>>& outArr);
-void Ln(int32_t s1, vector<float>& inArr, vector<float>& outArr);
-void getOutDer(int32_t s1, int32_t s2, vector<vector<float>>& batchSoft, vector<vector<float>>& lab, vector<vector<float>>& der);
-void MatMul(int32_t s1, int32_t s2, int32_t s3, vector<vector<float>>& mat1, vector<vector<float>>& mat2, vector<vector<float>>& mat3);
-void GemmAdd(int32_t s1, int32_t s2, vector<vector<float>>& prod, vector<float>& bias, vector<vector<float>>& out);
-void dotProduct2(int32_t s1, int32_t s2, vector<vector<float>>& arr1, vector<vector<float>>& arr2, vector<float>& outArr);
-void Relu(int32_t s1, vector<float>& inArr, vector<float>& outArr, vector<bool>& hotArr);
-void getBiasDer(int32_t s1, int32_t s2, vector<vector<float>>& der, vector<float>& biasDer);
-void IfElse(int32_t s1, vector<float>& dat, vector<bool>& hot, vector<float>& out, bool flip);
-void updateWeights(int32_t s, float lr, vector<float>& bias, vector<float>& der);
-void getLoss(int32_t m, vector<float>& lossTerms, vector<float>& loss);
-void computeMSELoss(int32_t m, int32_t s, vector<vector<float>>& target, vector<vector<float>>& fwdOut, vector<float>& loss);
-
-void Tanh(int32_t s1, vector<float>& inArr, vector<float>& outArr) ;
-
 
 #endif
