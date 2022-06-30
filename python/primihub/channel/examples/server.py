@@ -6,8 +6,11 @@ import asyncio
 from channel.consumer import Consumer
 from channel.producer import Producer
 
-producer = Producer("127.0.0.1", "5558")
-consumer = Consumer("127.0.0.1", "5557")
+def prodocer():
+    return Producer("127.0.0.1", "5558")
+
+def consumer():
+    return Consumer("127.0.0.1", "5557")
 
 
 async def async_process(msg):
@@ -20,6 +23,8 @@ async def async_process(msg):
 
 
 async def server(node_count=0):
+    producer = producer()
+    consumer = consumer()
     node_list = []
     for i in range(node_count):
         print("server watting for node ...", i)

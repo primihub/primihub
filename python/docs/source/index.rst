@@ -11,6 +11,8 @@ Welcome to Primihub-sdk-docs's documentation!
    :caption: Contents:
 
 
+.. .. automodule:: primihub
+..    :members:
 
 Indices and tables
 ==================
