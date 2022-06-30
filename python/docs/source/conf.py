@@ -29,7 +29,7 @@ author = 'primihub'
 # ones.
 extensions = [
     'sphinx.ext.napoleon',
-    # 'sphinx.ext.doctest',
+    'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',

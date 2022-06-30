@@ -1,26 +1,25 @@
 """
- Copyright 2022 Primihub
+Copyright 2022 Primihub
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-      https://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- """
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 import sys
 from os import path
 
-sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))
-
-from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc
-
 import grpc
+
+sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))  # noqa
+from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
 class GRPCClient(object):
@@ -58,16 +57,18 @@ class GRPCClient(object):
                      ):
         """
         set task map
-        :param task_type:
-        :param name:
-        :param language:
-        :param params:
-        :param code:
-        :param node_map:
-        :param input_datasets:
-        :param job_id:
-        :param task_id:
-        :return:
+
+        :param task_type: {}
+        :param name: str
+        :param language: {}
+        :param params: `dict`
+        :param code: bytes
+        :param node_map: `dict`
+        :param input_datasets: 
+        :param job_id: bytes
+        :param task_id: bytes
+
+        :return: `dict` 
         """
 
         task_map = {

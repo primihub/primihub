@@ -13,6 +13,14 @@ Subpackages
 Submodules
 ----------
 
+primihub.client.client module
+-----------------------------
+
+.. automodule:: primihub.client.client
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 primihub.client.grpc\_client module
 -----------------------------------
 
