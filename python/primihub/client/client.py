@@ -13,7 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from primihub.client.visitor import Visitor
 from primihub.client.grpc_client import GRPCClient
+import primihub as ph
+import inspect
+import ast
 
 
 class PrimihubClient(object):
@@ -26,19 +30,13 @@ class PrimihubClient(object):
             cls.__instance = object.__new__(cls)
         return cls.__instance
 
-        # vistitor = Visitor()
-        # code = vistitor.visit_file()
-        # grpc_client = GRPCClient(node=NODE, cert=CERT)
-        # grpc_client.set_task_map(code=code.encode('utf-8'))
-        # res = grpc_client.submit()
-        # print("res: ", res)
-        # return object.__new__(cls)
-
     def __init__(self, *args, **kwargs) -> None:
         if not self.__first_init:
             PrimihubClient.__first_init = True
 
-    def init(self, **config):
+        self.vistitor = Visitor()
+
+    def init(self, config):
         """Client Initialization.
 
         config: `dict` [`str`]
@@ -49,12 +47,46 @@ class PrimihubClient(object):
         >>> from primihub.client import primihub_cli as cli
         >>> cli.init(config={"node": "node_address", "cert": "cert_file_path"})
         """
+        print("***")
+        print(config)
         node = config.get("node", None)
         cert = config.get("cert", None)
 
-        grpc_cli = GRPCClient(node=node, cert=cert)
-        # grpc_client.set_task_map(code=code.encode('utf-8'))
-        return grpc_cli
+        self.grpc_cli = GRPCClient(node=node, cert=cert)
+
+        self.code = self.vistitor.visit_file()
+        # print(self.code)
+
+        return self.grpc_cli
+
+    def submit_task(self, code):
+
+        self.grpc_cli.set_task_map(code=code.encode('utf-8'))
+        res = self.grpc_cli.submit()
+        print("res: ", res)
+        return res
+
+    def remote_execute(self, *args):
+        """Send local functions and parameters to the remote side
+
+        :param args: `list` [`tuple`] (`function`, `args`)
+        """
+        params_map = ph.context.Context.params_map
+        for arg in args:
+            func = arg[0]
+            params = arg[1:]
+            params_map[func.__name__] = params
+
+        print(params_map)
+
+        self.code = self.vistitor.trans_remote_execute(self.code)
+        ph_context_str = "ph.context.Context.params_map = %s" % params_map
+        self.code += "\n"
+        self.code += ph_context_str
+        print(self.code)
+        res = self.submit_task(self.code)
+        print(res)
+        return res
 
 
 # alias

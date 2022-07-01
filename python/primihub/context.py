@@ -32,6 +32,7 @@ class TaskContext:
     # dataset meta information
     dataset_map = dict()
     output_path = "/data/result/xgb_prediction.csv"
+    params_map = dict()
 
     def __init__(self) -> None:
         pass

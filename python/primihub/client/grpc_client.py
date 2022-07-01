@@ -25,16 +25,15 @@ from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 class GRPCClient(object):
     """primihub gRPC client
 
-    Args:
-        object (_type_): _description_
+
+    :param str node: Address of the node.
+    :param str cert: Path of the local cert file path.
+
+    :return: A primihub gRPC client.
     """
 
     def __init__(self, node: str, cert: str) -> None:
         """Constructor
-
-        Keyword arguments:
-        argument --  str: The grpc server address. cert: local cert path.
-        Return: return_description
         """
         self.task_map = {}
         if node is not None:
@@ -55,8 +54,7 @@ class GRPCClient(object):
                      job_id: bytes = None,
                      task_id: bytes = None
                      ):
-        """
-        set task map
+        """set task map
 
         :param task_type: {}
         :param name: str
@@ -118,9 +116,8 @@ class GRPCClient(object):
     #     return request
 
     def submit(self) -> worker_pb2.PushTaskReply:
-        """
-        gRPC submit
-        :param request:
+        """gRPC submit
+
         :return:
         """
         with self.channel:
@@ -135,8 +132,14 @@ class GRPCClient(object):
             print("return: ", reply)
             return reply
 
-    def execute(self, request) -> None:
-        pass
+    # def execute(self, request) -> None:
+    #     pass
 
-    def remote_execute(self):
-        pass
+    # def remote_execute(self, *args):
+    #     """Send local functions and parameters to the remote side
+
+    #     :param args: `list` [`tuple`] (`function`, `args`)
+    #     """
+    #     for arg in args:
+    #         # TODO
+    #         print(arg)
