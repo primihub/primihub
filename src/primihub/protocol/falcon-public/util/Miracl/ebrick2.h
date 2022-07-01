@@ -13,7 +13,9 @@
 #define EBRICK2_H
 
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 class EBrick2 
 { 
     BOOL created;
@@ -31,6 +33,6 @@ public:
 
     ~EBrick2() {if (created) ebrick2_end(&B);}
 };
-
+}
 #endif
 

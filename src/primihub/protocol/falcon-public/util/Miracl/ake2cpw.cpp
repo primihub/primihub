@@ -27,7 +27,9 @@
 #include "zzn2.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(34,0); 
 
 // Using SHA-512 as basic hash algorithm
@@ -281,4 +283,5 @@ int main()
 
     return 0;
 }
-
+}
+}//primihub

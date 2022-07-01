@@ -88,7 +88,6 @@ the CertiVox MIRACL Crypto SDK with a closed source product.               *
 
 #ifndef BIG_H
 #define BIG_H
-
 #include <cstdlib>
 //#include <cmath>
 #include <cstdio>
@@ -425,4 +424,4 @@ extern int to_binary(const Big&,int,char *,BOOL);
 using namespace std;
 
 #endif
-
+}

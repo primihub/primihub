@@ -15,6 +15,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
+import pdb
 
 import primihub as ph
 from primihub.primitive.opt_paillier_c2py_warpper import *
@@ -52,13 +53,13 @@ def xgb_host_logic(cry_pri):
     if cry_pri == "paillier":
         xgb_host = XGB_HOST_EN(n_estimators=1, max_depth=3, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
+        print("recv guest: ", channel.recv())
+        xgb_host.channel.send(xgb_host.pub)
+        print(xgb_host.channel.recv())
         y_hat = np.array([0.5] * Y.shape[0])
         for t in range(xgb_host.n_estimators):
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
-            print("recv guest: ", xgb_host.channel.recv())
-            xgb_host.channel.send(xgb_host.pub)
-            print(xgb_host.channel.recv())
             gh_en = pd.DataFrame(columns=['g', 'h'])
             for item in gh.columns:
                 for index in gh.index:
@@ -79,14 +80,12 @@ def xgb_host_logic(cry_pri):
                 for index in GH_guest_en.index:
                     GH_guest.loc[index, item] = GH_guest_en.loc[index, item]
             print(GH_guest)
-            xgb_host.tree_structure[t + 1] = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
+            xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
-
-
         output_path = ph.context.Context.get_output()
         return xgb_host.predict_prob(data_test).to_csv(output_path)
     elif cry_pri == "plaintext":
-        xgb_host = XGB_HOST(n_estimators=1, max_depth=2, reg_lambda=1,
+        xgb_host = XGB_HOST(n_estimators=1, max_depth=3, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
         y_hat = np.array([0.5] * Y.shape[0])
         for t in range(xgb_host.n_estimators):
@@ -113,16 +112,17 @@ def xgb_guest_logic(cry_pri):
     channel = client.addChannel()
 
 
+
     X_guest = ph.dataset.read(dataset_key="guest_dataset").df_data
     # X_guest = data[['Clump Thickness', 'Uniformity of Cell Size']]
 
     if cry_pri == "paillier":
         xgb_guest = XGB_GUEST_EN(n_estimators=1, max_depth=3, reg_lambda=1, min_child_weight=1, objective='linear',
                               channel=channel)  # noqa
+        channel.send(b'guest ready')
+        pub = xgb_guest.channel.recv()
+        xgb_guest.channel.send(b'recved pub')
         for t in range(xgb_guest.n_estimators):
-            channel.send(b'guest ready')
-            pub = xgb_guest.channel.recv()
-            xgb_guest.channel.send(b'recved pub')
             gh_host = xgb_guest.channel.recv()
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
             print(X_guest_gh)
@@ -130,7 +130,7 @@ def xgb_guest_logic(cry_pri):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
     elif cry_pri == "plaintext":
-        xgb_guest = XGB_GUEST(n_estimators=1, max_depth=2, reg_lambda=1, min_child_weight=1, objective='linear', channel=channel)  # noqa
+        xgb_guest = XGB_GUEST(n_estimators=1, max_depth=3, reg_lambda=1, min_child_weight=1, objective='linear', channel=channel)  # noqa
         for t in range(xgb_guest.n_estimators):
             gh_host = xgb_guest.channel.recv()
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)

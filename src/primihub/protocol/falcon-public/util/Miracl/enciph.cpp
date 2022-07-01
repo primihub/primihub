@@ -23,7 +23,9 @@
 #include <cstring>
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 // #define RSA
 
 Miracl precision=100;
@@ -114,4 +116,5 @@ int main()
     key_file << x << endl;
     return 0;
 }   
-
+}
+}//primihub

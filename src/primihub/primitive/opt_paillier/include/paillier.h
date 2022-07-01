@@ -1,7 +1,7 @@
 /**
   \file 		paillier.h
   \author 	Jiang Zhengliang
-  \copyright Jiang Zhengliang
+  \copyright Copyright (C) 2022 Jiang Zhengliang
  */
 
 #ifndef __OPT_PAILLIER__
@@ -118,7 +118,7 @@ void opt_paillier_set_plaintext(
   int radix = 10);
 
 void opt_paillier_get_plaintext(
-  char*& plaintext,
+  char* &plaintext,
   const mpz_t mpz_plaintext,
   const opt_public_key_t* pub,
   int radix = 10);

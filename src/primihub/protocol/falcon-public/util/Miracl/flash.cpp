@@ -9,7 +9,9 @@
  */
 
 #include "flash.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef MR_FLASH
 
 
@@ -95,4 +97,5 @@ ostream& operator<<(ostream& s, const Flash& x)
 #endif
 
 #endif
-
+}
+}//primihub

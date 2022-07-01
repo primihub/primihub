@@ -12,24 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:20.04 as builder
 
-ENV LANG C.UTF-8 
+FROM ubuntu:18.04 as builder
+
+ENV LANG C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install tools
-RUN apt update \
-  && apt install -y python3 python3-dev python3-distutils libgmp-dev python-dev \
-  && apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm \
-  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
-  && rm -rf /var/lib/apt/lists/*
+# Install python 3.9
+RUN apt update && apt install -y software-properties-common  
+RUN add-apt-repository ppa:deadsnakes/ppa 
+RUN  apt update \
+  && apt remove -y python3.6 \
+  && apt install -y python3.9 python3.9-dev
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+  && python3 get-pip.py --user \
+  && rm -f get-pip.py
+
+# install other dependencies
+RUN apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg-config python-dev unzip make wget curl zip ninja-build libgmp-dev \
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 
+
+# install npm 
+RUN apt-get install -y npm
 
 # install cmake
-RUN wget https://primihub.oss-cn-beijing.aliyuncs.com/cmake-3.20.2-linux-x86_64.tar.gz \
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz \
   && tar -zxf cmake-3.20.2-linux-x86_64.tar.gz \
   && chmod +x cmake-3.20.2-linux-x86_64/bin/cmake \
   && ln -s `pwd`/cmake-3.20.2-linux-x86_64/bin/cmake /usr/bin/cmake \
-  && rm -f cmake-3.20.2-linux-x86_64.tar.gz 
+  && rm -rf /var/lib/apt/lists/* cmake-3.20.2-linux-x86_64.tar.gz 
 
 # install bazelisk
 RUN npm install -g @bazel/bazelisk
@@ -39,16 +51,22 @@ ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_docker_build.sh \
-  && bazel build --config=linux :node :cli :opt_paillier_c2py
+  && bazel build --config=linux :node :cli :opt_paillier_c2py_test
 
-FROM ubuntu:20.04 as runner
+FROM ubuntu:18.04 as runner
 
-ENV LANG C.UTF-8
-ENV DEBIAN_FRONTEND=noninteractive
-
+# Install python 3.9 and GCC openmp (Depends with cryptFlow2 library)
+RUN apt update && apt install -y software-properties-common  
+RUN add-apt-repository ppa:deadsnakes/ppa 
 RUN  apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip git \
-  && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y python3.9 python3.9-dev libgomp1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2
+RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+  && python3 get-pip.py --user \
+  && rm -f get-pip.py
+
+RUN rm -rf /var/lib/apt/lists/*
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/__main__/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
@@ -57,23 +75,24 @@ COPY --from=builder $TARGET_PATH ./
 # Copy test data files to /tmp/
 COPY --from=builder /src/data/ /tmp/
 # Make symlink to primihub-node & primihub-cli
-RUN mkdir /app/config /app/primihub_python -p && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+RUN mkdir /app && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
 
 # Change WorkDir to /app
 WORKDIR /app
-
 # Copy all test config files to /app
-COPY --from=builder /src/config/ ./config/
+COPY --from=builder /src/config ./
 
 # Copy primihub python sources to /app and setup to system python3
+RUN mkdir primihub_python
 COPY --from=builder /src/python/ ./primihub_python/
+COPY --from=builder src/python/primihub/tests/data/ /tmp/
+WORKDIR /app/primihub_python
+RUN python3.9 -m pip install --upgrade pip setuptools
+RUN python3.9 -m pip install -r requirements.txt
+RUN python3.9 setup.py install
+ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
+WORKDIR /app
 
-RUN cd primihub_python \
-  && python3 -m pip install --upgrade pip \
-  && pip3 install -r requirements.txt \
-  && python3 setup.py install
-
-ENV PYTHONPATH=/usr/lib/python3.8/site-packages/:$TARGET_PATH
 
 # gRPC server port
 EXPOSE 50050

@@ -21,7 +21,9 @@
 #include "big.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 #define QBITS 160
 #define PBITS 1024 
 
@@ -74,4 +76,5 @@ int main()
     common << g << endl;
     return 0;
 }
-
+}
+}//primihub

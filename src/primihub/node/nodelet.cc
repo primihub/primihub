@@ -14,11 +14,9 @@
  limitations under the License.
  */
 
-
-
-
 #include "src/primihub/node/nodelet.h"
 #include "src/primihub/service/dataset/localkv/storage_default.h"
+#include "src/primihub/service/dataset/localkv/storage_leveldb.h"
 
 namespace primihub {
 Nodelet::Nodelet(const std::string& config_file_path) {
@@ -32,12 +30,26 @@ Nodelet::Nodelet(const std::string& config_file_path) {
         + std::to_string(config["grpc_port"].as<uint64_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
-    sleep(10);
-    local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
-
+    
+    // Wait for p2p node to start
+    sleep(3);
+    
+    // Create local kv storage defined in config file
+    auto localkv_c = config["localkv"]["model"].as<std::string>();
+    if (localkv_c == "default") {
+        local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
+    } else if (localkv_c == "leveldb") {
+        local_kv_ = std::make_shared<primihub::service::StorageBackendLevelDB>(
+             config["localkv"]["path"].as<std::string>()
+        );
+    } else {
+       local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
+    }
+   
     // Init DatasetService with nodelet as stub
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_);
+    dataset_service_->restoreDatasetFromLocalStorage();
 
     auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
     loadConifg(config_file_path, timeout);

@@ -12,7 +12,9 @@
 #define FLASH_H
 
 #include "big.h"
-
+namespace primihub{
+    namespace falcon
+{
 #ifdef MR_FLASH
 
 #ifdef BIGS
@@ -159,5 +161,7 @@ public:
 extern Flash pi(void); 
 
 #endif
+}
+}//primihub
 #endif
 

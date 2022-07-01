@@ -1,5 +1,10 @@
 #/bin/bash
 
+if [ ! -n "$1" ] ; then
+    echo "Please input 1st arg: docker image tag"
+    exit
+fi
+
 PrevLineNum=`cat BUILD.bazel | grep -n "PLACEHOLDER-PYTHON3.X-CONFIG" | awk -F ":" '{print $1}'`
 if [ -z ${PrevLineNum} ]; then
         echo "Can't find line including 'PLACEHOLDER-PYTHON3.X-CONFIG' in BUILD.bazel."
@@ -17,7 +22,7 @@ echo "Done"
 
 #build
 #bazel build --config=linux :node :cli
-bazel build --config=linux :node :cli :opt_paillier_c2py_test
+bazel build --config=linux :node :cli :opt_paillier_c2py
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
@@ -26,6 +31,8 @@ fi
 
 BASE_DIR=`ls -l | grep bazel-bin | awk '{print $11}'`
 IMAGE_NAME="primihub/primihub_node"
+
+sed -i "10c ARG TARGET_PATH=$BASE_DIR" Dockerfile.local
 
 rm -rf $BASE_DIR/python $BASE_DIR/config
 rm -f $BASE_DIR/Dockerfile.local

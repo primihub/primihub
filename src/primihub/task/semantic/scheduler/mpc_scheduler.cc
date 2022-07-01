@@ -162,7 +162,7 @@ void FalconScheduler::add_vm(Node *node, int i,
     EndPoint *ep_prev = vm0->mutable_prev();
     ep_prev->set_ip(peer_list_[i].ip());
     ep_prev->set_port(32006);
-    ep_prev->set_link_type(LinkType::CLIENT);
+    ep_prev->set_link_type(LinkType::SERVER);
     ep_prev->set_name("Falcon_server_1");
 
     ep_next = vm1->mutable_next();

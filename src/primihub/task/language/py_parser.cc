@@ -70,6 +70,7 @@ void PyParser::parseTask() {
             _node_context.dumps_func = node_context_obj.attr("dumps_func").cast<std::string>();
             auto datasets = node_context_obj.attr("datasets").cast<py::list>();
             for (auto &dataset : datasets) {
+                LOG(INFO) << "Python assign dataset: " << dataset.cast<std::string>();
                 _node_context.datasets.push_back(dataset.cast<std::string>());
                 // Datasets with role tag.
                 this->input_datasets_with_tag_.push_back(std::make_pair(dataset.cast<std::string>(), _node_context.role));

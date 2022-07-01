@@ -38,7 +38,9 @@
 #include "zzn8.h"
 
 using namespace std;
-
+namespace primihub{
+    namespace falcon
+{
 Miracl precision(8,0); 
 
 // Using SHA-1 as basic hash algorithm
@@ -517,4 +519,5 @@ cout << "ii= " << ii << endl;
 
     return 0;
 }
-
+}
+}//primihub
