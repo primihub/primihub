@@ -104,6 +104,7 @@ output
 # python
 *.egg-info/
 *.pyc
+primihub.code-workspace
 
 # leveldb storage
 localdb/

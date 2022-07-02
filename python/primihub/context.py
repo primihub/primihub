@@ -14,7 +14,7 @@ class NodeContext:
 
         self.dumps_func = None
         if isinstance(func, Callable):
-            # pikle dumps func
+            # pickle dumps func
             self.dumps_func = dumps(func)
         elif type(func) == str:
             self.dumps_func = func
@@ -42,7 +42,7 @@ class TaskContext:
         Returns:
             string: protocol string
         """
-        procotol = None
+        protocol = None
         try:
             protocol = list(self.nodes_context.values())[0].protocol
         except IndexError:
@@ -61,6 +61,7 @@ class TaskContext:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         return self.output_path
+
 
 Context = TaskContext()
 

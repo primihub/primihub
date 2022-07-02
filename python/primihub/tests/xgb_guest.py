@@ -43,15 +43,4 @@ def run_xgb_guest_logic():
 
 
 if __name__ == "__main__":
-    print("- " * 30)
-
-    host = threading.Thread(target=run_xgb_host_logic)
-    guest = threading.Thread(target=run_xgb_guest_logic)
-
-    print("* " * 30, host)
-    host.start()
-    print("* " * 30, guest)
-    guest.start()
-
-    host.join()
-    guest.join()
+    run_xgb_guest_logic()
