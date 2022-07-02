@@ -106,7 +106,7 @@ int FLTask::execute() {
           set_task_context_output_file_ = ph_context_m.attr("set_task_context_output_file");
           set_task_context_output_file_(this->output_file_path_);
 
-          LOG(INFO) << node_context_.dumps_func;
+          // LOG(INFO) << node_context_.dumps_func;
           // Execute python code.
           ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
     
