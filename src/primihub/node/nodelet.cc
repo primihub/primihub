@@ -49,7 +49,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     // Init DatasetService with nodelet as stub
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_);
-    dataset_service_->restoreDatasetFromLocalStorage();
+    dataset_service_->restoreDatasetFromLocalStorage(nodelet_addr_);
 
     auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
     loadConifg(config_file_path, timeout);
