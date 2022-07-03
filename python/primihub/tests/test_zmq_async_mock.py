@@ -7,7 +7,6 @@
 # @Date   : 6/23/2022, 6:41:43 PM
 
 import asyncio
-
 import zmq
 import zmq.asyncio
 import zmq.asyncio
@@ -68,9 +67,9 @@ async def server(node_num=0):
 
 
 async def main():
-    tasks = [node(1), node(2), node(4), server(2)]
-    complate, pending = await asyncio.wait(tasks)
-    for i in complate:
+    tasks = [node(1), node(2), node(4), server(3)]
+    complete, pending = await asyncio.wait(tasks)
+    for i in complete:
         print("result: ", i.result())
     if pending:
         for p in pending:

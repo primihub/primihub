@@ -3,8 +3,6 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-size_t max_dimension = 28;// dimension <= 28
-
 py::dict fb_instance_2_pydict(fb_instance fb) {
     py::dict dict = py::dict();
     dict["m_mod"]     = mpz_get_str(nullptr, BASE, fb.m_mod);
@@ -118,6 +116,29 @@ opt_secret_key_t* py_prv_2_cpp_prv(const py::object &py_prv) {
     return res;
 }
 
+void opt_paillier_encrypt_warpper(
+    const py::object &py_cipher_text,
+    const py::object &py_pub, 
+    const std::string py_plain_text) {
+    
+    opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
+
+    mpz_t plain_text;
+    mpz_t cipher_text;
+    mpz_init(plain_text);
+    mpz_init(cipher_text);
+
+    opt_paillier_set_plaintext(plain_text, py_plain_text.c_str(), pub, PYTHON_INPUT_BASE);
+
+    opt_paillier_encrypt(cipher_text, pub, plain_text);
+
+    py::dict py_cipher_text_dict = py_cipher_text.attr("__dict__");
+    py_cipher_text_dict["ciphertext"] = mpz_get_str(nullptr, BASE, cipher_text);
+
+    mpz_clears(plain_text, cipher_text, nullptr);
+    opt_paillier_freepubkey(pub);
+}
+
 void opt_paillier_encrypt_crt_warpper(
     const py::object &py_cipher_text,
     const py::object &py_pub, 
@@ -134,7 +155,7 @@ void opt_paillier_encrypt_crt_warpper(
 
     opt_paillier_set_plaintext(plain_text, py_plain_text.c_str(), pub, PYTHON_INPUT_BASE);
 
-    opt_paillier_encrypt_crt(cipher_text, pub, prv, plain_text);
+    opt_paillier_encrypt_crt_fb(cipher_text, pub, prv, plain_text);
 
     py::dict py_cipher_text_dict = py_cipher_text.attr("__dict__");
     py_cipher_text_dict["ciphertext"] = mpz_get_str(nullptr, BASE, cipher_text);
@@ -234,20 +255,18 @@ CrtMod* dict_2_CrtMod(py::dict py_crtMod) {
     return res;
 }
 
-void opt_paillier_batch_encrypt_crt_warpper(
-    const py::object &py_batch_cipher_text,
+void opt_paillier_pack_encrypt_warpper(
+    const py::object &py_pack_cipher_text,
     const py::object &py_pub, 
-    const py::object &py_prv,
     const py::list &py_plain_texts,
     const py::object &py_crt_mod
     ) {
     
     opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
-    opt_secret_key_t* prv = py_prv_2_cpp_prv(py_prv);
 
     CrtMod* crtmod;
     if (py_crt_mod == py::none()) {
-        init_crt(&crtmod, max_dimension, 70);
+        init_crt(&crtmod, CRT_MOD_MAX_DIMENSION, CRT_MOD_SIZE);
     } else {
         crtmod = dict_2_CrtMod(py::dict(py_crt_mod));
     }
@@ -259,8 +278,63 @@ void opt_paillier_batch_encrypt_crt_warpper(
     mpz_init(pack);
     mpz_t cipher_text;
     mpz_init(cipher_text);
-    for (int pos = 0; pos < plain_texts_dimension; pos += max_dimension) {
-        size_t data_size = std::min(plain_texts_dimension - pos, max_dimension);
+    for (int pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
+        size_t data_size = std::min(plain_texts_dimension - pos, (size_t)CRT_MOD_MAX_DIMENSION);
+        char** nums = (char**)malloc(sizeof(char*) * data_size);
+        for (size_t j = 0; j < data_size; ++j) {
+            std::string py_plain_text = std::string(py::str(py_plain_texts[pos + j]));
+            nums[j] = (char*)malloc(sizeof(char) * (py_plain_text.length() + 1));
+            strcpy(nums[j], py_plain_text.c_str());
+        }
+
+        data_packing_crt(pack, nums, data_size, crtmod, PYTHON_INPUT_BASE);
+        opt_paillier_encrypt(cipher_text, pub, pack);  
+
+        ciphertexts.append(mpz_get_str(nullptr, BASE, cipher_text));
+
+        for (size_t j = 0; j < data_size; ++j) {
+            free(nums[j]);
+        }
+        free(nums);
+    }
+
+    py::dict py_pack_cipher_text_dict = py_pack_cipher_text.attr("__dict__");
+    py_pack_cipher_text_dict["ciphertexts"] = ciphertexts;
+    py_pack_cipher_text_dict["crtMod"] = crtMod_2_dict(crtmod);
+    py_pack_cipher_text_dict["pack_size"] = plain_texts_dimension;
+
+    mpz_clears(pack, cipher_text, nullptr);
+    free_crt(crtmod);
+    opt_paillier_freepubkey(pub);
+}
+
+void opt_paillier_pack_encrypt_crt_warpper(
+    const py::object &py_pack_cipher_text,
+    const py::object &py_pub, 
+    const py::object &py_prv,
+    const py::list &py_plain_texts,
+    const py::object &py_crt_mod
+    ) {
+    
+    opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
+    opt_secret_key_t* prv = py_prv_2_cpp_prv(py_prv);
+
+    CrtMod* crtmod;
+    if (py_crt_mod == py::none()) {
+        init_crt(&crtmod, CRT_MOD_MAX_DIMENSION, CRT_MOD_SIZE);
+    } else {
+        crtmod = dict_2_CrtMod(py::dict(py_crt_mod));
+    }
+
+    size_t plain_texts_dimension = py::len(py_plain_texts);
+
+    py::list ciphertexts = py::list();
+    mpz_t pack;
+    mpz_init(pack);
+    mpz_t cipher_text;
+    mpz_init(cipher_text);
+    for (int pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
+        size_t data_size = std::min(plain_texts_dimension - pos, (size_t)CRT_MOD_MAX_DIMENSION);
         char** nums = (char**)malloc(sizeof(char*) * data_size);
         for (size_t j = 0; j < data_size; ++j) {
             std::string py_plain_text = std::string(py::str(py_plain_texts[pos + j]));
@@ -273,26 +347,16 @@ void opt_paillier_batch_encrypt_crt_warpper(
 
         ciphertexts.append(mpz_get_str(nullptr, BASE, cipher_text));
 
-        mpz_t decrypt_text;
-        mpz_init(decrypt_text);
-        opt_paillier_decrypt_crt(decrypt_text, pub, prv, cipher_text);  
-        
-        // char** test;
-        // data_retrieve_crt(test, decrypt_text, crtmod, data_size, 32, PYTHON_INPUT_BASE);
-
         for (size_t j = 0; j < data_size; ++j) {
-            // if (strcmp(test[j], nums[j])) {
-            //     std::cout << j << " error" << std::endl;
-            // }
             free(nums[j]);
         }
         free(nums);
     }
 
-    py::dict py_batch_cipher_text_dict = py_batch_cipher_text.attr("__dict__");
-    py_batch_cipher_text_dict["ciphertexts"] = ciphertexts;
-    py_batch_cipher_text_dict["crtMod"] = crtMod_2_dict(crtmod);
-    py_batch_cipher_text_dict["batch_size"] = plain_texts_dimension;
+    py::dict py_pack_cipher_text_dict = py_pack_cipher_text.attr("__dict__");
+    py_pack_cipher_text_dict["ciphertexts"] = ciphertexts;
+    py_pack_cipher_text_dict["crtMod"] = crtMod_2_dict(crtmod);
+    py_pack_cipher_text_dict["pack_size"] = plain_texts_dimension;
 
     mpz_clears(pack, cipher_text, nullptr);
     free_crt(crtmod);
@@ -300,19 +364,19 @@ void opt_paillier_batch_encrypt_crt_warpper(
     opt_paillier_freeprvkey(prv);
 }
 
-py::list opt_paillier_batch_decrypt_crt_warpper(
+py::list opt_paillier_pack_decrypt_crt_warpper(
     const py::object &py_pub, 
     const py::object &py_prv,
-    const py::object &py_batch_cipher_text) {
+    const py::object &py_pack_cipher_text) {
     
     opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
     opt_secret_key_t* prv = py_prv_2_cpp_prv(py_prv);
 
-    py::dict py_batch_cipher_text_dict = py_batch_cipher_text.attr("__dict__");
-    py::list py_ciphertexts = py_batch_cipher_text_dict["ciphertexts"];
-    size_t cipher_text_num = py::int_(py_batch_cipher_text_dict["batch_size"]);
+    py::dict py_pack_cipher_text_dict = py_pack_cipher_text.attr("__dict__");
+    py::list py_ciphertexts = py_pack_cipher_text_dict["ciphertexts"];
+    size_t cipher_text_num = py::int_(py_pack_cipher_text_dict["pack_size"]);
 
-    CrtMod* crtmod = dict_2_CrtMod(py_batch_cipher_text_dict["crtMod"]);
+    CrtMod* crtmod = dict_2_CrtMod(py_pack_cipher_text_dict["crtMod"]);
 
     mpz_t cipher_text;
     mpz_t decrypt_text;
@@ -321,14 +385,14 @@ py::list opt_paillier_batch_decrypt_crt_warpper(
 
     py::list res = py::list();
     for (py::handle py_ciphertext : py_ciphertexts) {
-        size_t data_size = std::min(max_dimension, cipher_text_num);
-        cipher_text_num = cipher_text_num - max_dimension;
+        size_t data_size = std::min((size_t)CRT_MOD_MAX_DIMENSION, cipher_text_num);
+        cipher_text_num = cipher_text_num - CRT_MOD_MAX_DIMENSION;
 
         mpz_set_str(cipher_text, std::string(py::str(py_ciphertext)).c_str(), BASE); // 0: success -1:error
         opt_paillier_decrypt_crt(decrypt_text, pub, prv, cipher_text);
 
         char** nums;
-        data_retrieve_crt(nums, decrypt_text, crtmod, data_size, 32, PYTHON_INPUT_BASE);
+        data_retrieve_crt(nums, decrypt_text, crtmod, data_size, PYTHON_INPUT_BASE);
         for (size_t i = 0; i < data_size; i++) {
             res.append(nums[i]);
         }
@@ -347,10 +411,10 @@ py::list opt_paillier_batch_decrypt_crt_warpper(
     return res;
 }
 
-void opt_paillier_batch_add_warpper(
-    const py::object &py_batch_add_res,
-    const py::object &py_batch_op1,
-    const py::object &py_batch_op2,
+void opt_paillier_pack_add_warpper(
+    const py::object &py_pack_add_res,
+    const py::object &py_pack_op1,
+    const py::object &py_pack_op2,
     const py::object &py_pub) {
     
     opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
@@ -362,27 +426,26 @@ void opt_paillier_batch_add_warpper(
     mpz_init(op2);
     mpz_init(res);
 
-    py::dict py_batch_op1_dict = py_batch_op1.attr("__dict__");
-    py::dict py_batch_op2_dict = py_batch_op2.attr("__dict__");
+    py::dict py_pack_op1_dict = py_pack_op1.attr("__dict__");
+    py::dict py_pack_op2_dict = py_pack_op2.attr("__dict__");
 
-    py::list py_batch_op1_ciphertexts = py_batch_op1_dict["ciphertexts"];
-    py::list py_batch_op2_ciphertexts = py_batch_op2_dict["ciphertexts"];
+    py::list py_pack_op1_ciphertexts = py_pack_op1_dict["ciphertexts"];
+    py::list py_pack_op2_ciphertexts = py_pack_op2_dict["ciphertexts"];
     py::list ciphertexts = py::list();
-    size_t cipher_text_num = py::len(py_batch_op1_ciphertexts);
-    py::print(cipher_text_num);
+    size_t cipher_text_num = py::len(py_pack_op1_ciphertexts);
     for (size_t i = 0; i < cipher_text_num; i++) {
-        mpz_set_str(op1, std::string(py::str(py_batch_op1_ciphertexts[i])).c_str(), BASE); // 0: success -1:error
-        mpz_set_str(op2, std::string(py::str(py_batch_op2_ciphertexts[i])).c_str(), BASE); // 0: success -1:error
+        mpz_set_str(op1, std::string(py::str(py_pack_op1_ciphertexts[i])).c_str(), BASE); // 0: success -1:error
+        mpz_set_str(op2, std::string(py::str(py_pack_op2_ciphertexts[i])).c_str(), BASE); // 0: success -1:error
 
         opt_paillier_add(res, op1, op2, pub);
 
         ciphertexts.append(mpz_get_str(nullptr, BASE, res));
     }
 
-    py::dict py_batch_add_res_dict = py_batch_add_res.attr("__dict__");
-    py_batch_add_res_dict["ciphertexts"] = ciphertexts;
-    py_batch_add_res_dict["crtMod"] = py_batch_op1_dict["crtMod"];
-    py_batch_add_res_dict["batch_size"] = py_batch_op1_dict["batch_size"];
+    py::dict py_pack_add_res_dict = py_pack_add_res.attr("__dict__");
+    py_pack_add_res_dict["ciphertexts"] = ciphertexts;
+    py_pack_add_res_dict["crtMod"] = py_pack_op1_dict["crtMod"];
+    py_pack_add_res_dict["pack_size"] = py_pack_op1_dict["pack_size"];
 
     mpz_clears(op1, op2, res, nullptr);
     opt_paillier_freepubkey(pub);
@@ -394,6 +457,10 @@ PYBIND11_MODULE(opt_paillier_c2py, m) {
     m.def("opt_paillier_keygen_warpper",
          &opt_paillier_keygen_warpper, 
          "A function that generate opt paillier publice key and private key");
+
+    m.def("opt_paillier_encrypt_warpper",
+         &opt_paillier_encrypt_warpper, 
+         "A opt paillier encrypt function that encrypt plaintext");
 
     m.def("opt_paillier_encrypt_crt_warpper",
          &opt_paillier_encrypt_crt_warpper, 
@@ -407,15 +474,19 @@ PYBIND11_MODULE(opt_paillier_c2py, m) {
          &opt_paillier_add_warpper, 
          "A opt paillier add function that add two ciphertext");
 
-    m.def("opt_paillier_batch_encrypt_crt_warpper",
-         &opt_paillier_batch_encrypt_crt_warpper, 
-         "A opt paillier encrypt function that batch encrypt plaintext");
+    m.def("opt_paillier_pack_encrypt_warpper",
+         &opt_paillier_pack_encrypt_warpper, 
+         "A opt paillier encrypt function that pack encrypt plaintext");
 
-    m.def("opt_paillier_batch_decrypt_crt_warpper",
-         &opt_paillier_batch_decrypt_crt_warpper, 
-         "A opt paillier decrypt function that batch decrypt ciphertext");
+    m.def("opt_paillier_pack_encrypt_crt_warpper",
+         &opt_paillier_pack_encrypt_crt_warpper, 
+         "A opt paillier encrypt function that pack encrypt plaintext");
+
+    m.def("opt_paillier_pack_decrypt_crt_warpper",
+         &opt_paillier_pack_decrypt_crt_warpper, 
+         "A opt paillier decrypt function that pack decrypt ciphertext");
     
-    m.def("opt_paillier_batch_add_warpper",
-         &opt_paillier_batch_add_warpper, 
-         "A opt paillier add function that add two batch ciphertext");
+    m.def("opt_paillier_pack_add_warpper",
+         &opt_paillier_pack_add_warpper, 
+         "A opt paillier add function that add two pack ciphertext");
 }

@@ -7,17 +7,23 @@ class ZscoreStandard():
         self.mean = 0
         self.std = 0
         self.num = 0
+        self.columns = pd.Index([])
 
-    def _check_data(self, np_data):
-        if isinstance(np_data, np.ndarray):
-            if len(np_data.shape) == 1:
-                return np.reshape(np_data, (-1, 1))
-            elif len(np_data.shape) > 2:
+    def _check_data(self, data, init=True):
+        """
+        We recommend using DataFrame as input.
+        """
+        if isinstance(data, np.ndarray):
+            if len(data.shape) == 1:
+                return np.reshape(data, (-1, 1))
+            elif len(data.shape) > 2:
                 raise ValueError("numpy data array shape should be 2-D")
             else:
-                return np_data
-        elif isinstance(np_data, pd.DataFrame):
-            return np.array(np_data)
+                return data
+        elif isinstance(data, pd.DataFrame):
+            if init:
+                self.columns = data.columns
+            return data.values
         else:
             raise ValueError("data should be numpy data array")
 
@@ -42,7 +48,11 @@ class ZscoreStandard():
         idxs = self._check_idxs(idxs)
         self._fit(data, idxs)
         data[:, idxs] = (data[:, idxs] - self.mean) / self.std
-        return data
+        if self.columns.any():
+            assert data.shape[1] == len(self.columns)
+            return pd.DataFrame(data, columns=self.columns)
+        else:
+            return data
 
 
 class HorZscoreStandard(ZscoreStandard):
@@ -82,4 +92,8 @@ class HorZscoreStandard(ZscoreStandard):
         if self.union_flag == False:
             raise ValueError("horizontal standard must do after server_union")
         data[:, idxs] = (data[:, idxs] - self.mean) / self.std
-        return data
+        if self.columns.any():
+            assert data.shape[1] == len(self.columns)
+            return pd.DataFrame(data, columns=self.columns)
+        else:
+            return data

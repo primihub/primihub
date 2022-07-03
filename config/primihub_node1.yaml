@@ -7,10 +7,10 @@ grpc_port: 50050
 datasets:
   - description: "test_party_1_self"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1" 
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
   - description: "test_party_1_next"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2" 
+    source: "/tmp/falcon/dataset/MNIST/input_2" 
   - description: "train_party_1"
     model: "csv"
     source: "/tmp/train_party_1.csv" 
@@ -26,6 +26,10 @@ datasets:
   - description: "psi_server_data"
     model: "csv"
     source: "/tmp/server_e.csv" 
+
+localkv: 
+  model: "leveldb"
+  path: "./localdb"
 
 p2p:
   bootstrap_nodes:

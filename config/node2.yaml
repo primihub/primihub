@@ -29,10 +29,14 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0" 
   - description: "label_dataset"
     model: "csv"
-    source: "/tmp/breast-cancer-wisconsin-label.data"   
+    source: "data/breast-cancer-wisconsin-label.data"   
   - description: "psi_client_data"
     model: "csv"
-    source: "/tmp/client_e.csv" 
+    source: "data/client_e.csv" 
+
+localkv: 
+  model: "leveldb"
+  path: "./localdb/node2"
 
 # p2p paramaters
 p2p:
