@@ -18,8 +18,7 @@ class Channel:
 
     def send(self, data):
         # print("send message: ", data)
-        if data != None:
-            self.socket.send(pickle.dumps(data))
+        self.socket.send(pickle.dumps(data))
 
     def recv(self, block=True):
         # print("wait for recv ...")
