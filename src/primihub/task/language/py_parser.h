@@ -32,6 +32,7 @@ typedef struct NodeContext {
     std::string protocol;
     std::vector<std::string> datasets;
     std::string dumps_func;
+    // std::map<std::string, std::string> func_params_map;
 } NodeContext;
 
 class PyParser : public LanguageParser {
@@ -54,6 +55,7 @@ class PyParser : public LanguageParser {
     std::string py_code_;
     std::string procotol_;
     std::vector<std::string> roles_;
+    std::vector<std::string> func_params_;
     std::map<std::string, NodeContext> nodes_context_map_;
     
     py::object  ph_context_, ph_exec_m_;

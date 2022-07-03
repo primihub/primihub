@@ -41,7 +41,7 @@ namespace primihub::task {
         private:
             std::string py_code_;
             NodeContext node_context_;
-            py::object set_task_context_output_file_, set_task_context_dataset_map_, set_node_context_,  ph_exec_m, ph_context_m;
+            py::object set_task_context_output_file_, set_task_context_dataset_map_, set_node_context_,  ph_exec_m, ph_context_m, set_task_context_func_params_;
             std::string next_peer_address_;
             std::map<std::string, std::string> dataset_meta_map_;
             std::string output_file_path_;

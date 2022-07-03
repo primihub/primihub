@@ -71,16 +71,16 @@ class PrimihubClient(object):
 
         :param args: `list` [`tuple`] (`function`, `args`)
         """
-        params_map = ph.context.Context.params_map
+        func_params_map = ph.context.Context.func_params_map
         for arg in args:
             func = arg[0]
             params = arg[1:]
-            params_map[func.__name__] = params
+            func_params_map[func.__name__] = params
 
-        print(params_map)
+        print(func_params_map)
 
         self.code = self.vistitor.trans_remote_execute(self.code)
-        ph_context_str = "ph.context.Context.params_map = %s" % params_map
+        ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
         print(self.code)
