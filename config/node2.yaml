@@ -30,7 +30,7 @@ datasets:
   - description: "label_dataset"
     model: "csv"
     source: "data/FL/wisconsin_host.data"   
-  - description: "test_dataset"
+  - description: "xgb_predict_test_data"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
   - description: "psi_client_data"
