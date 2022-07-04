@@ -16,6 +16,7 @@
  limitations under the License.
  """
 import primihub as ph
+from primihub.dataset.dataset import define
 from primihub.primitive.opt_paillier_c2py_warpper import *
 from primihub.channel.zmq_channel import IOService, Session
 from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
@@ -33,12 +34,12 @@ logging.basicConfig(level=logging.DEBUG,
                     format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("xgb")
 
-ph.dataset.define("guest_dataset")
-ph.dataset.define("label_dataset")
-ph.dataset.define("test_dataset")
+ph.dataset.dataset.define("guest_dataset")
+ph.dataset.dataset.define("label_dataset")
+ph.dataset.dataset.define("test_dataset")
 
 
-@ph.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
 def xgb_host_logic(cry_pri="paillier"):
     print("start xgb host logic, cry_pri: %s" % cry_pri)
     next_peer = ph.context.Context.nodes_context["host"].next_peer
@@ -125,7 +126,7 @@ def xgb_host_logic(cry_pri="paillier"):
         return xgb_host.predict_prob(data_test).to_csv(output_path)
 
 
-@ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
+@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic, cry_pri: %s" % cry_pri)
     ios = IOService()
