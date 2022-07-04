@@ -29,7 +29,10 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0" 
   - description: "label_dataset"
     model: "csv"
-    source: "data/breast-cancer-wisconsin-label.data"   
+    source: "data/FL/wisconsin_host.data"   
+  - description: "test_dataset"
+    model: "csv"
+    source: "data/FL/wisconsin_test.data"
   - description: "psi_client_data"
     model: "csv"
     source: "data/client_e.csv" 
@@ -42,7 +45,6 @@ localkv:
 p2p:
   bootstrap_nodes:
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8889"
   dht_get_value_timeout:  60
 
