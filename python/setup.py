@@ -95,9 +95,9 @@ class PostDevelopCommand(develop):
 
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        develop.run(self)
         add_primihub_so_site()
         compile_proto()
-        develop.run(self)
 
 
 class PostInstallCommand(install):
@@ -105,9 +105,9 @@ class PostInstallCommand(install):
 
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        install.run(self)
         add_primihub_so_site()
         compile_proto()
-        install.run(self)
 
 
 setup(
