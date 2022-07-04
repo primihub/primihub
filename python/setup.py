@@ -22,6 +22,7 @@ For Prod:
 python setup.py install
 """
 
+print(sys.executable)
 
 def is_pkg(line):
     return line and not line.startswith(('--', 'git', '#'))
@@ -73,14 +74,14 @@ def compile_proto():
     print(os.getcwd())
     os.chdir("..")
     print(os.getcwd())
-    cmd = shlex.split("""python -m grpc_tools.protoc \
+    cmd = shlex.split("""{pyexe} -m grpc_tools.protoc \
                         --python_out=python/primihub/client/ph_grpc \
                         --grpc_python_out=python/primihub/client/ph_grpc -I. \
                         src/primihub/protos/common.proto  \
                         src/primihub/protos/pir.proto \
                         src/primihub/protos/psi.proto \
                         src/primihub/protos/service.proto \
-                        src/primihub/protos/worker.proto """)
+                        src/primihub/protos/worker.proto """.format(pyexe=sys.executable))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     if p.returncode != 0:
