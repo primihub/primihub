@@ -14,7 +14,8 @@ COPY . ./
 # Copy test data files to /tmp/
 COPY ./data/ /tmp/
 # Make symlink to primihub-node & primihub-cli
-RUN mkdir -p /app/config /app/primihub_python && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+# RUN mkdir -p /app/config /app/primihub_python && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+RUN mkdir -p /app/config && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
 
 # Change WorkDir to /app
 WORKDIR /app
@@ -22,13 +23,29 @@ WORKDIR /app
 COPY ./config/ ./config/
 
 # Copy primihub python sources to /app and setup to system python3
-COPY ./python/ ./primihub_python/
+# COPY ./python/ ./primihub_python/
+COPY ./python/ ./python/
+COPY ./src ./src
 
-RUN cd primihub_python \
+# WORKDIR /app/python
+# RUN pwd \
+#   && python3.9 -m pip install --upgrade pip \
+#   # && pip3 install -r requirements.txt \
+#   && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
+#   # && mkidr -p src/primihub/protos/ \
+#   && python3.9 setup.py install 
+RUN whereis python
+RUN cd python \
   && python3.9 -m pip install --upgrade pip \
-  && pip3 install -r requirements.txt \
-  && python3.9 setup.py install
+  # && pip3 install -r requirements.txt \
+  && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
+  && pip install --no-cache-dir  --force-reinstall -Iv grpcio-tools \
+  # && mkidr -p src/primihub/protos/ \
+  && whereis python \
+  && python3.9 setup.py install 
 
+# WORKDIR /app
+RUN ln -s /app/python /app/primihub_python
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
 # gRPC server port
