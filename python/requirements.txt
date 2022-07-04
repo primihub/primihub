@@ -1,4 +1,3 @@
-setuptools
 pyarrow==4.0.0
 pandas
 pytest
@@ -8,9 +7,9 @@ pyzmq
 bitarray
 mmh3
 
-grpcio
-grpcio-tools
-pydantic
+grpcio==1.47.0
+grpcio-tools==1.47.0
 protobuf==3.20.0
 
+pydantic
 sphinx
