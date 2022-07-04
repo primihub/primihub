@@ -9,6 +9,7 @@
 import asyncio
 import zmq
 import zmq.asyncio
+import zmq.asyncio
 
 ctx = zmq.asyncio.Context()
 context = zmq.Context()
@@ -20,8 +21,8 @@ async def async_process(msg):
     print(msg)
     return msg
 
-url = "tcp://127.0.0.1:5557"
 
+url = "tcp://127.0.0.1:5557"
 
 r_socket = ctx.socket(zmq.PULL)
 r_socket.bind("tcp://127.0.0.1:5558")
@@ -74,7 +75,9 @@ async def main():
         for p in pending:
             print(p)
 
+
 if __name__ == "__main__":
+
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(main())

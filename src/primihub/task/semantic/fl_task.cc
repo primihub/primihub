@@ -77,45 +77,51 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
 FLTask::~FLTask() {
     set_task_context_output_file_.release();
     set_task_context_dataset_map_.release();
+    set_task_context_func_params_.release();
     set_node_context_.release();
     ph_context_m.release();
     ph_exec_m.release();
-
 }
 
 int FLTask::execute() {
-     try {
-          LOG(INFO) << "before gil_scoped_acquire" << std::endl;
-          py::gil_scoped_acquire acquire;
-          LOG(INFO) << "before ph_context" << std::endl;
+    try {
+        LOG(INFO) << "before gil_scoped_acquire" << std::endl;
+        py::gil_scoped_acquire acquire;
+        LOG(INFO) << "before ph_context" << std::endl;
 
-          ph_exec_m = py::module::import("primihub.executor").attr("Executor");
-          ph_context_m = py::module::import("primihub.context");
-          set_node_context_ = ph_context_m.attr("set_node_context");
+        ph_exec_m = py::module::import("primihub.executor").attr("Executor");
+        ph_context_m = py::module::import("primihub.context");
+        set_node_context_ = ph_context_m.attr("set_node_context");
 
-          set_node_context_(node_context_.role, 
-                    node_context_.protocol, 
-                    py::cast(node_context_.datasets),
-                    this->next_peer_address_);
-          
-          set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
-          for (auto &dataset_meta : this->dataset_meta_map_) {
-              set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
-          }
+        set_node_context_(node_context_.role, node_context_.protocol,
+                          py::cast(node_context_.datasets),
+                          this->next_peer_address_);
 
-          set_task_context_output_file_ = ph_context_m.attr("set_task_context_output_file");
-          set_task_context_output_file_(this->output_file_path_);
+        set_task_context_func_params_ = ph_context_m.attr("set_task_context_func_params");
 
-          LOG(INFO) << node_context_.dumps_func;
-          // Execute python code.
-          ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
-    
-     } catch (std::exception &e) {
-          LOG(ERROR) << "Failed to excute python: " << e.what();
-          return -1;
+        set_task_context_dataset_map_ =
+            ph_context_m.attr("set_task_context_dataset_map");
+        for (auto& dataset_meta : this->dataset_meta_map_) {
+            set_task_context_dataset_map_(dataset_meta.first,
+                                          dataset_meta.second);
+        }
+
+        set_task_context_output_file_ =
+            ph_context_m.attr("set_task_context_output_file");
+        set_task_context_output_file_(this->output_file_path_);
+
+        LOG(INFO) << node_context_.dumps_func;
+        // Execute python code.
+        // ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
+
+        // Execute python code with params.
+        ph_exec_m.attr("execute_with_params")(py::bytes(node_context_.dumps_func));
+    } catch (std::exception& e) {
+        LOG(ERROR) << "Failed to excute python: " << e.what();
+        return -1;
     }
-     
+
     return 0;
 }
 
-} // namespace primihub::task
+}  // namespace primihub::task

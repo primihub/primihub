@@ -7,3 +7,10 @@ dill==0.3.5.1
 pyzmq
 bitarray
 mmh3
+
+grpcio
+grpcio-tools
+pydantic
+protobuf==3.20.0
+
+sphinx

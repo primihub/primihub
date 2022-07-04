@@ -1,7 +1,8 @@
 import functools
-from typing import Callable
-from dill import dumps, loads
 import os
+from typing import Callable
+
+from dill import dumps
 
 
 class NodeContext:
@@ -31,6 +32,7 @@ class TaskContext:
     # dataset meta information
     dataset_map = dict()
     output_path = "/data/result/xgb_prediction.csv"
+    func_params_map = dict()
 
     def __init__(self) -> None:
         pass
@@ -56,6 +58,9 @@ class TaskContext:
     def get_datasets(self):
         return self.datasets
 
+    def get_func_params_map(self):
+        return self.func_params_map
+
     def get_output(self):
         output_dir = os.path.dirname(self.output_path)
         if not os.path.exists(output_dir):
@@ -72,6 +77,10 @@ def set_node_context(role, protocol, datasets, next_peer):
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
+def set_task_context_func_params(func_name, func_params):
+    Context.params_map[func_name] = func_params
+
+
 def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
 
@@ -83,6 +92,7 @@ def set_task_context_output_file(f):
 # For test
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
+
 
 # def set_node_context(node_context: NodeContext):
 #     Context.nodes_context[node_context.role] = node_context
@@ -96,6 +106,7 @@ def reg_dataset(func):
         print("Register dataset:", dataset)
         Context.datasets.append(dataset)
         return func(dataset)
+
     return reg_dataset_decorator
 
 
@@ -109,5 +120,7 @@ def function(protocol, role, datasets, next_peer):
         @functools.wraps(func)
         def wapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wapper
+
     return function_decorator

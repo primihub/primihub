@@ -1,6 +1,6 @@
-from primihub.primitive.opt_paillier_c2py_warpper import *
 import numpy as np
 import pandas as pd
+from primihub.primitive.opt_paillier_c2py_warpper import *
 
 
 class XGB_HOST_EN:

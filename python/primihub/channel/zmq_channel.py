@@ -1,9 +1,8 @@
+import pickle
+
 import zmq
-import time
 import zmq.asyncio
 
-import pickle
-import logging
 
 class IOService:
     pass
@@ -17,31 +16,19 @@ class Channel:
         self.socket = session.socket
 
     def send(self, data):
-        # print("send message: ", data)
-        if data != None:
-            self.socket.send(pickle.dumps(data))
+        self.socket.send(pickle.dumps(data))
 
-    def recv(self, block=True):
+    def recv(self):
         # print("wait for recv ...")
-        if block is True:
-            message = self.socket.recv()
-            return pickle.loads(message)
-        else:
-            try:
-                message = self.socket.recv(flags=zmq.NOBLOCK)
-                return pickle.loads(message)
-            except zmq.Again as e:
-                time.sleep(0.1)
-            except Exception as e:
-                raise e
-
-        return None
+        message = self.socket.recv()
+        return pickle.loads(message)
 
     def send_json(self, data):
         self.socket.send_json(data)
 
     def recv_json(self):
         return self.socket.recv_json()
+
 
 class Session:
     def __init__(self, io_service, ip, port, session_mode):
@@ -72,6 +59,5 @@ class Session:
             socket.bind("tcp://{}:{}".format(self.ip, self.port))
 
         self.socket = socket
+        print(self.socket, self.ip, self.port)
         return Channel(self)
-
-
