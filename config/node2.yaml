@@ -16,7 +16,7 @@
 version: 1.0
 
 node: "node2"
-location: "192.168.99.21"
+location: "127.0.0.1"
 grpc_port: 50052
 
 # load datasets
@@ -29,10 +29,10 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0" 
   - description: "label_dataset"
     model: "csv"
-    source: "/tmp/wisconsin_host.data"   
+    source: "data/FL/wisconsin_host.data"   
   - description: "test_dataset"
     model: "csv"
-    source: "/tmp/wisconsin_test.data"
+    source: "data/FL/wisconsin_test.data"
   - description: "psi_client_data"
     model: "csv"
     source: "data/client_e.csv" 
@@ -44,8 +44,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/192.168.99.21/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/192.168.99.21/tcp/8889"
+  multi_addr: "/ip4/127.0.0.1/tcp/8889"
   dht_get_value_timeout:  60
 
