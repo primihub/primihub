@@ -39,8 +39,8 @@ ph.dataset.define("test_dataset")
 
 
 @ph.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
-def xgb_host_logic():
-    cry_pri = "paillier"
+def xgb_host_logic(cry_pri="paillier"):
+    print("start xgb host logic, cry_pri: %s" % cry_pri)
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     ip, port = next_peer.split(":")
 
@@ -59,7 +59,7 @@ def xgb_host_logic():
 
     if cry_pri == "paillier":
         xgb_host = XGB_HOST_EN(n_estimators=1, max_depth=1, reg_lambda=1,
-                            min_child_weight=1, objective='linear', channel=channel)
+                               min_child_weight=1, objective='linear', channel=channel)
         channel.recv()
         xgb_host.channel.send(xgb_host.pub)
         print(xgb_host.channel.recv())
@@ -99,7 +99,7 @@ def xgb_host_logic():
             print(GH_guest)
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
-            
+
             logger.error("Finish to trian tree {}.".format(t))
 
         logger.error("Before get_output")
@@ -123,17 +123,14 @@ def xgb_host_logic():
         output_path = ph.context.Context.get_output()
         print("output_path: ", output_path)
         return xgb_host.predict_prob(data_test).to_csv(output_path)
-    
+
 
 @ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
-def xgb_guest_logic():
-    print("start xgb guest logic...")
-
-    cry_pri = "paillier"
+def xgb_guest_logic(cry_pri="paillier"):
+    print("start xgb guest logic, cry_pri: %s" % cry_pri)
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     ip, port = next_peer.split(":")
-
 
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
@@ -163,4 +160,3 @@ def xgb_guest_logic():
             gh_sum = xgb_guest.get_GH(X_guest_gh)
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)
-
