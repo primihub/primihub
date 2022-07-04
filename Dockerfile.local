@@ -29,8 +29,8 @@ COPY ./src ./src
 
 RUN cd python \
   && python3.9 -m pip install --upgrade pip \
-  && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
-  && pip install --no-cache-dir  --force-reinstall -Iv grpcio-tools \
+  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
+  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio-tools \
   && pip install -r requirements.txt \
   && python3.9 setup.py install 
 
