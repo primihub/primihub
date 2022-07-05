@@ -39,7 +39,8 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2
   && tar -zxf cmake-3.20.2-linux-x86_64.tar.gz \
   && chmod +x cmake-3.20.2-linux-x86_64/bin/cmake \
   && ln -s `pwd`/cmake-3.20.2-linux-x86_64/bin/cmake /usr/bin/cmake \
-  && cmake-3.20.2-linux-x86_64.tar.gz 
+  && cmake-3.20.2-linux-x86_64.tar.gz \
+  && rm -f cmake-3.20.2-linux-x86_64.tar.gz
 
 # install bazelisk
 RUN npm install -g @bazel/bazelisk
