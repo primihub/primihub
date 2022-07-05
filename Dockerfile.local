@@ -13,22 +13,28 @@ WORKDIR $TARGET_PATH
 COPY . ./
 # Copy test data files to /tmp/
 COPY ./data/ /tmp/
-# Make symlink to primihub-node & primihub-cli
-RUN mkdir -p /app/config /app/primihub_python && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
 
 # Change WorkDir to /app
 WORKDIR /app
+
+# Make symlink to primihub-node & primihub-cli
+RUN ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+
 # Copy all test config files to /app
-COPY ./config/ ./config/
+COPY ./config ./config
 
 # Copy primihub python sources to /app and setup to system python3
-COPY ./python/ ./primihub_python/
+COPY ./python ./python
+COPY ./src ./src
 
-RUN cd primihub_python \
+RUN cd python \
   && python3.9 -m pip install --upgrade pip \
-  && pip3 install -r requirements.txt \
-  && python3.9 setup.py install
+  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
+  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio-tools \
+  && pip install -r requirements.txt \
+  && python3.9 setup.py install 
 
+RUN ln -s /app/python /app/primihub_python
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
 # gRPC server port
