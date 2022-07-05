@@ -61,12 +61,16 @@ def add_primihub_so_site():
     site_packages_path = get_python_lib()
     print(site_packages_path)
     pth_file = site_packages_path + "/primihub_so.pth"
-    print(pth_file)
-    with open(pth_file, "w") as pth:
-        print("--", SO_LIB_PATH)
-        pth.write(SO_LIB_PATH)
-    site.addsitedir(SO_LIB_PATH)
-    print("sys path: ", sys.path)
+    print(pth_file) 
+    try:
+        with open(pth_file, "w") as pth:
+            print("--", SO_LIB_PATH)
+            pth.write(SO_LIB_PATH)
+        site.addsitedir(SO_LIB_PATH)
+        print("sys path: ", sys.path)
+    except Exception as e:
+        print(e)
+        
 
 
 def compile_proto():
