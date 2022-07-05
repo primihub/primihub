@@ -57,7 +57,7 @@ FROM ubuntu:18.04 as runner
 RUN apt update && apt install -y software-properties-common  
 RUN add-apt-repository ppa:deadsnakes/ppa 
 RUN  apt-get update \
-  && apt-get install -y python3.9 python3.9-dev libgomp1
+  && apt-get install -y python3.9 python3.9-dev python3-pip libgomp1
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2
 RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
@@ -86,10 +86,10 @@ COPY --from=builder /src/config ./config
 COPY --from=builder /src/python ./python
 COPY --from=builder /src/src ./src
 
-RUN cd python \
-  && python3.9 -m pip install --upgrade pip \
-  && pip install -r requirements.txt \
-  && python3.9 setup.py install 
+WORKDIR /app/python
+RUN python3.9 -m pip install --upgrade pip 
+RUN python3.9 -m pip install -r requirements.txt && python3.9 setup.py install 
+
 
 RUN ln -s /app/python /app/primihub_python
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
