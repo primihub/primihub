@@ -16,13 +16,13 @@
  limitations under the License.
  """
 import primihub as ph
-from primihub.dataset.dataset import define
 from primihub.primitive.opt_paillier_c2py_warpper import *
 from primihub.channel.zmq_channel import IOService, Session
 from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
 from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
+from primihub.FL.model.xgboost.plain_xgb import XGB
 import pandas as pd
 import numpy as np
 
@@ -34,14 +34,36 @@ logging.basicConfig(level=logging.DEBUG,
                     format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("xgb")
 
-ph.dataset.dataset.define("guest_dataset")
-ph.dataset.dataset.define("label_dataset")
-ph.dataset.dataset.define("test_dataset")
+ph.dataset.define("guest_dataset")
+ph.dataset.define("label_dataset")
+ph.dataset.define("test_dataset")
+ph.dataset.define("local_dataset")
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
-def xgb_host_logic(cry_pri="paillier"):
-    print("start xgb host logic, cry_pri: %s" % cry_pri)
+@ph.function(role='local', protocol='xgboost', datasets=["local_dataset", "test_dataset"], next_peer="localhost:5555")
+def xgb_logic():
+    print("start xgb logic...")
+
+    data = ph.dataset.read(dataset_key="local_dataset").df_data
+    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
+
+    labels = ['Class']  # noqa
+    X_host = data[
+        [x for x in data.columns if x not in labels]
+    ]
+    Y = data['Class'].values
+
+    xgb = XGB(n_estimators=5, max_depth=5, reg_lambda=1, min_child_weight=1, objective='linear')  # noqa
+    xgb.fit(X_host, Y)
+    logger.error("Before get_output")
+    output_path = ph.context.Context.get_output()
+    logger.error("Output path is {}".format(output_path))
+    logger.error("Test data path is {}".format(data_test))
+    return xgb.predict_raw(data_test).to_csv(output_path)
+
+
+@ph.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
+def xgb_host_logic(cry_pri):
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     ip, port = next_peer.split(":")
 
@@ -59,7 +81,7 @@ def xgb_host_logic(cry_pri="paillier"):
     Y = data['Class'].values
 
     if cry_pri == "paillier":
-        xgb_host = XGB_HOST_EN(n_estimators=1, max_depth=1, reg_lambda=1,
+        xgb_host = XGB_HOST_EN(n_estimators=5, max_depth=5, reg_lambda=1,
                                min_child_weight=1, objective='linear', channel=channel)
         channel.recv()
         xgb_host.channel.send(xgb_host.pub)
@@ -97,7 +119,6 @@ def xgb_host_logic(cry_pri="paillier"):
                 for index in GH_guest_en.index:
                     GH_guest.loc[index, item] = GH_guest_en.loc[index, item]
 
-            print(GH_guest)
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
@@ -107,28 +128,35 @@ def xgb_host_logic(cry_pri="paillier"):
         output_path = ph.context.Context.get_output()
         logger.error("Output path is {}".format(output_path))
         logger.error("Test data path is {}".format(data_test))
-        return xgb_host.predict_prob(data_test).to_csv(output_path)
+        return xgb_host.predict_raw(data_test).to_csv(output_path)
     elif cry_pri == "plaintext":
-        xgb_host = XGB_HOST(n_estimators=1, max_depth=3, reg_lambda=1,
+        xgb_host = XGB_HOST(n_estimators=5, max_depth=5, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
+        channel.recv()
         y_hat = np.array([0.5] * Y.shape[0])
         for t in range(xgb_host.n_estimators):
+            logger.error("Begin to trian tree {}.".format(t))
+
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
-            print("recv guest: ", xgb_host.channel.recv())
             xgb_host.channel.send(gh)
             GH_guest = xgb_host.channel.recv()
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
+            logger.error("Finish to trian tree {}.".format(t))
+
+        logger.error("Before get_output")
         output_path = ph.context.Context.get_output()
-        print("output_path: ", output_path)
-        return xgb_host.predict_prob(data_test).to_csv(output_path)
+        logger.error("Output path is {}".format(output_path))
+        logger.error("Test data path is {}".format(data_test))
+        return xgb_host.predict_raw(data_test).to_csv(output_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
-def xgb_guest_logic(cry_pri="paillier"):
-    print("start xgb guest logic, cry_pri: %s" % cry_pri)
+@ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
+def xgb_guest_logic(cry_pri):
+    print("start xgb guest logic...")
+
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     ip, port = next_peer.split(":")
@@ -137,11 +165,10 @@ def xgb_guest_logic(cry_pri="paillier"):
     channel = client.addChannel()
 
     X_guest = ph.dataset.read(dataset_key="guest_dataset").df_data
-    # X_guest = data[['Clump Thickness', 'Uniformity of Cell Size']]
 
     if cry_pri == "paillier":
-        xgb_guest = XGB_GUEST_EN(n_estimators=1, max_depth=1, reg_lambda=1, min_child_weight=1, objective='linear',
-                              channel=channel)  # noqa
+        xgb_guest = XGB_GUEST_EN(n_estimators=5, max_depth=5, reg_lambda=1, min_child_weight=1, objective='linear',
+                                 channel=channel)  # noqa
         channel.send(b'guest ready')
         pub = xgb_guest.channel.recv()
         xgb_guest.channel.send(b'recved pub')
@@ -154,10 +181,13 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
     elif cry_pri == "plaintext":
-        xgb_guest = XGB_GUEST(n_estimators=1, max_depth=3, reg_lambda=1, min_child_weight=1, objective='linear', channel=channel)  # noqa
+        xgb_guest = XGB_GUEST(n_estimators=5, max_depth=5, reg_lambda=1, min_child_weight=1, objective='linear',
+                              channel=channel)  # noqa
+        channel.send(b'guest ready')
         for t in range(xgb_guest.n_estimators):
             gh_host = xgb_guest.channel.recv()
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
+            print(X_guest_gh)
             gh_sum = xgb_guest.get_GH(X_guest_gh)
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)

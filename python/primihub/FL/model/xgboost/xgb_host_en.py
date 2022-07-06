@@ -1,6 +1,6 @@
+from primihub.primitive.opt_paillier_c2py_warpper import *
 import numpy as np
 import pandas as pd
-from primihub.primitive.opt_paillier_c2py_warpper import *
 
 
 class XGB_HOST_EN:
@@ -174,26 +174,26 @@ class XGB_HOST_EN:
                 for item in [x for x in gh_sum_right_en.columns if x not in ['cut', 'var']]:
                     for index in gh_sum_right_en.index:
                         if gh_sum_right_en.loc[index, item] == 0:
-                            GH_guest.loc[index, item] = 0
+                            gh_sum_right.loc[index, item] = 0
                         else:
-                            GH_guest.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
+                            gh_sum_right.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
                                                                                  gh_sum_right_en.loc[index, item])
                 for item in [x for x in gh_sum_right_en.columns if x not in ['G_left', 'G_right', 'H_left', 'H_right']]:
                     for index in gh_sum_right_en.index:
-                        GH_guest.loc[index, item] = gh_sum_right_en.loc[index, item]
+                        gh_sum_right.loc[index, item] = gh_sum_right_en.loc[index, item]
                 gh_sum_left_en = id_w_gh['gh_sum_left']
                 gh_sum_left = pd.DataFrame(
                     columns=['G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'])
                 for item in [x for x in gh_sum_left_en.columns if x not in ['cut', 'var']]:
                     for index in gh_sum_left_en.index:
                         if gh_sum_left_en.loc[index, item] == 0:
-                            GH_guest.loc[index, item] = 0
+                            gh_sum_left.loc[index, item] = 0
                         else:
-                            GH_guest.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
+                            gh_sum_left.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
                                                                                  gh_sum_left_en.loc[index, item])
                 for item in [x for x in gh_sum_left_en.columns if x not in ['G_left', 'G_right', 'H_left', 'H_right']]:
                     for index in gh_sum_left_en.index:
-                        GH_guest.loc[index, item] = gh_sum_left_en.loc[index, item]
+                        gh_sum_left.loc[index, item] = gh_sum_left_en.loc[index, item]
             else:
                 f_t, id_right, id_left, w_right, w_left = self.split(
                     X_host, best_var, best_cut, GH_best, f_t)
@@ -207,26 +207,26 @@ class XGB_HOST_EN:
                 for item in [x for x in gh_sum_right_en.columns if x not in ['cut', 'var']]:
                     for index in gh_sum_right_en.index:
                         if gh_sum_right_en.loc[index, item] == 0:
-                            GH_guest.loc[index, item] = 0
+                            gh_sum_right.loc[index, item] = 0
                         else:
-                            GH_guest.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
+                            gh_sum_right.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
                                                                                  gh_sum_right_en.loc[index, item])
                 for item in [x for x in gh_sum_right_en.columns if x not in ['G_left', 'G_right', 'H_left', 'H_right']]:
                     for index in gh_sum_right_en.index:
-                        GH_guest.loc[index, item] = gh_sum_right_en.loc[index, item]
+                        gh_sum_right.loc[index, item] = gh_sum_right_en.loc[index, item]
                 gh_sum_left_en = gh_sum_dic['gh_sum_left']
                 gh_sum_left = pd.DataFrame(
                     columns=['G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'])
                 for item in [x for x in gh_sum_left_en.columns if x not in ['cut', 'var']]:
                     for index in gh_sum_left_en.index:
                         if gh_sum_left_en.loc[index, item] == 0:
-                            GH_guest.loc[index, item] = 0
+                            gh_sum_left.loc[index, item] = 0
                         else:
-                            GH_guest.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
+                            gh_sum_left.loc[index, item] = opt_paillier_decrypt_crt(self.pub, self.prv,
                                                                                  gh_sum_left_en.loc[index, item])
                 for item in [x for x in gh_sum_left_en.columns if x not in ['G_left', 'G_right', 'H_left', 'H_right']]:
                     for index in gh_sum_left_en.index:
-                        GH_guest.loc[index, item] = gh_sum_left_en.loc[index, item]
+                        gh_sum_left.loc[index, item] = gh_sum_left_en.loc[index, item]
 
             print("=====x host index=====", X_host.index)
             print("host shape",
@@ -255,9 +255,6 @@ class XGB_HOST_EN:
         return tree_structure, f_t
 
     def _get_tree_node_w(self, X, tree, w):
-        '''
-        以递归的方法，把树结构解构出来，把权重值赋到w上面
-        '''
 
         if not tree is None:
             if isinstance(tree, tuple):
@@ -280,10 +277,6 @@ class XGB_HOST_EN:
             self._get_tree_node_w(X_right, tree_right, w)
 
     def predict_raw(self, X: pd.DataFrame):
-        '''
-        根据训练结果预测
-        返回原始预测值
-        '''
 
         X = X.reset_index(drop='True')
         Y = pd.Series([self.base_score] * X.shape[0])
@@ -297,9 +290,6 @@ class XGB_HOST_EN:
         return Y
 
     def predict_prob(self, X: pd.DataFrame):
-        '''
-        当指定objective为logistic时，输出概率要做一个logistic转换
-        '''
 
         Y = self.predict_raw(X)
 

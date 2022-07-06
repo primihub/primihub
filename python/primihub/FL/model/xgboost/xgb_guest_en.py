@@ -1,8 +1,9 @@
-import time
+import math
 
-import numpy as np
-import pandas as pd
 from primihub.primitive.opt_paillier_c2py_warpper import *
+import time
+import pandas as pd
+import numpy as np
 
 
 class XGB_GUEST_EN:
@@ -33,7 +34,7 @@ class XGB_GUEST_EN:
 
     def get_GH(self, X, pub):
         # Calculate G_left、G_right、H_left、H_right under feature segmentation
-        arr = np.zeros((X.shape[0] * 4, 6))
+        arr = np.zeros((X.shape[0]*10, 6))
         GH = pd.DataFrame(arr, columns=['G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'])
         i = 0
         for item in [x for x in X.columns if x not in ['g', 'h']]:
