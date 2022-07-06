@@ -20,6 +20,14 @@ primihub.primitive.opt\_paillier\_c2py\_warpper module
    :undoc-members:
    :show-inheritance:
 
+primihub.primitive.opt\_paillier\_pack\_c2py\_warpper module
+------------------------------------------------------------
+
+.. automodule:: primihub.primitive.opt_paillier_pack_c2py_warpper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
