@@ -27,13 +27,12 @@ COPY ./config ./config
 COPY ./python ./python
 COPY ./src ./src
 
-RUN cd python \
-  && python3.9 -m pip install --upgrade pip \
-  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio \
-  # && pip install --no-cache-dir  --force-reinstall -Iv grpcio-tools \
-  && pip install -r requirements.txt \
-  && python3.9 setup.py install 
+WORKDIR /app/python
+RUN python3.9 -m pip install --upgrade pip 
+# RUN python3.9 -m pip install --no-cache-dir  --force-reinstall -Iv grpcio grpcio_tools
+RUN python3.9 -m pip install -r requirements.txt && python3.9 setup.py install 
 
+WORKDIR /app
 RUN ln -s /app/python /app/primihub_python
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
