@@ -16,8 +16,8 @@ limitations under the License.
 
 import primihub as ph
 from primihub.client.client import primihub_cli as cli
-from primihub.context import function
 
+# client init
 cli.init(config={"node": "192.168.99.16:50050", "cert": ""})
 
 

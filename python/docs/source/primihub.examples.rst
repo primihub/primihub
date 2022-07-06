@@ -12,22 +12,6 @@ primihub.examples.disxgb\_en module
    :undoc-members:
    :show-inheritance:
 
-primihub.examples.google\_style module
---------------------------------------
-
-.. automodule:: primihub.examples.google_style
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-primihub.examples.numpy module
-------------------------------
-
-.. automodule:: primihub.examples.numpy
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 primihub.examples.reStructedText module
 ---------------------------------------
 

@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   primihub.FL.model.evaluation
    primihub.FL.model.logistic_regression
    primihub.FL.model.xgboost
 
