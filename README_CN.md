@@ -71,7 +71,7 @@ $ docker run --network=host -it primihub/primihub-node:1.0.5 primihub-cli --serv
 >  2. 使用哪些共享数据集
 >  3. 做什么样的隐私计算任务
  
-在这个例子中primihub-cli会使用默认参数向 *** node 0 *** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见  *** [创建任务](http://docs.primihub.com/docs/advance-usage/create-tasks) ***
+在这个例子中primihub-cli会使用默认参数向 *** node 0 *** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见  *** [创建任务]([http://docs.primihub.com/docs/advance-usage/create-tasks](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)) ***
 
 
 
