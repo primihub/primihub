@@ -83,8 +83,9 @@ WORKDIR /app
 COPY --from=builder /src/config ./
 
 # Copy primihub python sources to /app and setup to system python3
-RUN mkdir python
+RUN mkdir -p src/primihub/protos
 COPY --from=builder /src/python ./python
+COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 COPY --from=builder src/python/primihub/tests/data/ /tmp/
 WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip setuptools
