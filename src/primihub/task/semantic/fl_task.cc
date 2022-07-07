@@ -78,6 +78,8 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
 
 FLTask::~FLTask() {
     set_task_context_output_file_.release();
+    set_task_context_predict_file_.release();
+    set_task_context_indicator_file_.release();
     set_task_context_dataset_map_.release();
     set_task_context_func_params_.release();
     set_node_context_.release();

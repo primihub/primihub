@@ -31,7 +31,7 @@ ABSL_FLAG(std::vector<std::string>, params,
                "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
                "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
 //	       "outputFullFilename:STRING:0:./test.csv"}),
-	       "predictFileName:STRING:0:./prediction.csv"}),
+	       "predictFileName:STRING:0:./prediction.csv",
 	       "indicatorFileName:STRING:0:./indicator.csv"}),
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>, input_datasets,
