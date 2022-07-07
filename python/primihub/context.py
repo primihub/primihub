@@ -31,7 +31,9 @@ class TaskContext:
     datasets = []
     # dataset meta information
     dataset_map = dict()
-    output_path = "/data/result/xgb_prediction.csv"
+    # output_path = "/data/result/xgb_prediction.csv"
+    predict_file_path = "result/xgb_prediction.csv"
+    indicator_file_path = "result/xgb_indicator.csv"
     func_params_map = dict()
 
     def __init__(self) -> None:
@@ -61,11 +63,17 @@ class TaskContext:
     def get_func_params_map(self):
         return self.func_params_map
 
-    def get_output(self):
-        output_dir = os.path.dirname(self.output_path)
+    def get_predict_file_path(self):
+        output_dir = os.path.dirname(self.predict_file_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        return self.output_path
+        return self.predict_file_path
+
+    def get_indicator_file_path(self):
+        output_dir = os.path.dirname(self.indicator_file_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return self.indicator_file_path
 
 
 Context = TaskContext()
@@ -85,8 +93,14 @@ def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
 
 
-def set_task_context_output_file(f):
-    Context.output_path = f
+# def set_task_context_output_file(f):
+#     Context.output_path = f
+
+def set_task_context_predict_file(f):
+    Context.predict_file_path = f
+
+def set_task_context_indicator_file(f):
+    Context.indicator_file_path = f
 
 
 # For test
