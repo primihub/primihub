@@ -2,8 +2,15 @@
 build:linux --cxxopt=-std=c++17
 build:linux --host_cxxopt=-std=c++17
 build:linux --copt=-w
-build:linux --copt=-DENABLE_SSE
 build:linux --linkopt=-lstdc++fs
+
+# Linux gcc x86_64
+build:x86_64 --copt=-DENABLE_SSE
+build:x86_64 --cpu=x86_64
+
+# Linux gcc aarch64
+build:aarch64 --define aarch64-build=true
+build:aarch64 --cpu=aarch64
 
 # Enable remote execution so actions are performed on the remote systems.
 build:remote --remote_executor=grpc://118.190.39.100:27941
