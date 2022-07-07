@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <stdlib.h>
 
 #include "pir/cpp/server.h"
 #include "pir/cpp/database.h"

@@ -121,10 +121,8 @@ void ProtocolSemanticParser::schedulePythonTask(
 
 void ProtocolSemanticParser::schedulePirTask(
         std::shared_ptr<LanguageParser> lan_parser,
-        std::string node_id,
-        std::string node_ip,
-        int node_port) {
-    if (lan_parser == nullptr) {
+        std::string nodelet_attr) {
+    if (lan_parser == nullptr || nodelet_attr == "") {
         return;
     }
 
@@ -140,6 +138,14 @@ void ProtocolSemanticParser::schedulePirTask(
                           << metas_with_param_tag.size();
                 metasToPeerList(metas_with_param_tag, peer_list_);
 
+                std::vector<std::string> addr_info;
+                str_split(nodelet_attr, &addr_info, ':');
+                if (addr_info.size() < 3) {
+                    return;
+                }
+                std::string node_id = addr_info[0];
+                std::string node_ip = addr_info[1];
+                int node_port = stoi(addr_info[2]);
                 Node client_node;
                 client_node.set_node_id(node_id);
                 client_node.set_ip(node_ip);

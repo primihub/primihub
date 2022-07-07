@@ -160,7 +160,7 @@ int PIRClientTask::execute() {
         return ret;
     }
 
-    size_t db_size = 20;
+    size_t db_size = 400;
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE;
     uint32_t plain_mod_bit_size = 28;
@@ -169,8 +169,8 @@ int PIRClientTask::execute() {
     uint32_t bits_per_coeff = 0;
 
     ret = _SetUpDB(db_size, dimensions, elem_size,
-                       plain_mod_bit_size, use_ciphertext_multiplication,
-                       bits_per_coeff);
+                       plain_mod_bit_size, bits_per_coeff,
+                       use_ciphertext_multiplication);
 
     if (ret) {
         LOG(ERROR) << "Failed to initialize pir client.";
