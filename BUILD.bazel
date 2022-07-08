@@ -31,18 +31,6 @@ config_setting(
    values = {"define": "macos-build=true"},
 )
 
-config_setting(
-   name = "x86_64-build",
-   values = {"cpu": "x86_64"},
-)
-
-config_setting(
-   name = "aarch64-build",
-   values = {"cpu": "aarch64"},
-)
-
-
-
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
@@ -66,20 +54,17 @@ LINK_OPTS = select({
     "//conditions:default": DEFAULT_LINK_OPTS,
 })
 
-DEFAULT_C_OPT = [
-     "-O0",
+
+C_OPT = [
+    "-O0",
     "-g",
     "-Wall",
     "-ggdb",
     "-rdynamic",
+    "-maes",
+    "-mpclmul",
     "-Wno-reserved-user-defined-literal",
 ]
-
-C_OPT = select({
-    ":x86_64-build": DEFAULT_C_OPT + ["-maes", "-mpclmul"],
-    ":aarch64-build": DEFAULT_C_OPT,
-    "//conditions:default": DEFAULT_C_OPT,
-})
 
 ## start of primihub
 load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
@@ -114,7 +99,7 @@ grpc_proto_library(
     deps = [
             ":common_proto",
             ":grpc_psi_proto",
-	        ":grpc_pir_proto",
+	    ":grpc_pir_proto",
            ],
 )
 
@@ -392,8 +377,8 @@ cc_library(
 	    # TODO: Consider to remove -I flag.
             "-I src/primihub/protocol/falcon-public/",
             "-I src/primihub/protocol/falcon-public/util/",
-            "-mpclmul",  # TODO fix aarch64 disalbe
-            "-maes",   # TODO fix aarch64 disalbe
+            "-mpclmul",
+            "-maes",
             "-fpic",
 	    "-Wno-narrowing",
     ],
@@ -485,8 +470,11 @@ cc_library(
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h",
     ]),
-    # TODO fix delete copts here
-    copts = C_OPT,
+    copts = C_OPT + [
+      "-maes",
+      "-msse4.1",
+      "-mrdseed",
+    ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
@@ -521,7 +509,6 @@ DEFAULT_TASK_LIB_DEPS = [
 
 TASK_LIB_DEPS = select({
     ":macos-build": DEFAULT_TASK_LIB_DEPS,
-    ":aarch64-build": DEFAULT_TASK_LIB_DEPS,
     "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib"],
 })
 
@@ -537,7 +524,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
