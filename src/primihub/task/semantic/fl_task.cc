@@ -123,7 +123,7 @@ int FLTask::execute() {
           ph_exec_m.attr("execute_with_params")(py::bytes(node_context_.dumps_func));
 
      } catch (std::exception &e) {
-          LOG(ERROR) << "Failed to excute python: " << e.what();
+          LOG(ERROR) << "Failed to execute python: " << e.what();
           return -1;
     }
 
