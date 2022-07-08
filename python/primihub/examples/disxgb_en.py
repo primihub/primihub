@@ -22,7 +22,7 @@ from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
 from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
-from primihub.FL.model.xgboost.plain_xgb import XGB
+from primihub.FL.model.evaluation.evaluation import regression_eva
 import pandas as pd
 import numpy as np
 
@@ -34,32 +34,9 @@ logging.basicConfig(level=logging.DEBUG,
                     format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("xgb")
 
-ph.dataset.define("guest_dataset")
-ph.dataset.define("label_dataset")
-ph.dataset.define("test_dataset")
-ph.dataset.define("local_dataset")
-
-
-@ph.function(role='local', protocol='xgboost', datasets=["local_dataset", "test_dataset"], next_peer="localhost:5555")
-def xgb_logic():
-    print("start xgb logic...")
-
-    data = ph.dataset.read(dataset_key="local_dataset").df_data
-    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
-
-    labels = ['Class']  # noqa
-    X_host = data[
-        [x for x in data.columns if x not in labels]
-    ]
-    Y = data['Class'].values
-
-    xgb = XGB(n_estimators=5, max_depth=5, reg_lambda=1, min_child_weight=1, objective='linear')  # noqa
-    xgb.fit(X_host, Y)
-    logger.error("Before get_output")
-    output_path = ph.context.Context.get_output()
-    logger.error("Output path is {}".format(output_path))
-    logger.error("Test data path is {}".format(data_test))
-    return xgb.predict_raw(data_test).to_csv(output_path)
+ph.dataset.dataset.define("guest_dataset")
+ph.dataset.dataset.define("label_dataset")
+ph.dataset.dataset.define("test_dataset")
 
 
 @ph.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
@@ -72,7 +49,12 @@ def xgb_host_logic(cry_pri):
 
     channel = server.addChannel()
     data = ph.dataset.read(dataset_key="label_dataset").df_data
-    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
+    data_1 = ph.dataset.read(dataset_key="test_dataset").df_data
+    label_true = ['y']
+    data_test = data_1[
+        [x for x in data.columns if x not in label_true]
+    ]
+    y_true = data_1['y'].values
 
     labels = ['Class']  # noqa
     X_host = data[
@@ -125,10 +107,12 @@ def xgb_host_logic(cry_pri):
             logger.error("Finish to trian tree {}.".format(t))
 
         logger.error("Before get_output")
-        output_path = ph.context.Context.get_output()
-        logger.error("Output path is {}".format(output_path))
+        predict_file_path = ph.context.Context.get_predict_file_path()
+        logger.error("Output path is {}".format(predict_file_path))
         logger.error("Test data path is {}".format(data_test))
-        return xgb_host.predict_raw(data_test).to_csv(output_path)
+        y_pre = xgb_host.predict_raw(data_test)
+        regression_eva.getResult(y_true, y_pre)
+        return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=5, max_depth=5, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
@@ -147,10 +131,12 @@ def xgb_host_logic(cry_pri):
             logger.error("Finish to trian tree {}.".format(t))
 
         logger.error("Before get_output")
-        output_path = ph.context.Context.get_output()
-        logger.error("Output path is {}".format(output_path))
+        predict_file_path = ph.context.Context.get_predict_file_path()
+        logger.error("Output path is {}".format(predict_file_path))
         logger.error("Test data path is {}".format(data_test))
-        return xgb_host.predict_raw(data_test).to_csv(output_path)
+        y_pre = xgb_host.predict_raw(data_test)
+        regression_eva.getResult(y_true, y_pre)
+        return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 
 @ph.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
