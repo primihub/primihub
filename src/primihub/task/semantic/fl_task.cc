@@ -71,13 +71,11 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         this->dataset_meta_map_.insert(std::make_pair(input_dataset, data_path));
     }
     // output file path
-    //    this->output_file_path_ = param_map["outputFullFilename"].value_string();
     this->predict_file_path_ = param_map["predictFileName"].value_string();
     this->indicator_file_path_ = param_map["indicatorFileName"].value_string();
 }
 
 FLTask::~FLTask() {
-//    set_task_context_output_file_.release();
     set_task_context_predict_file_.release();
     set_task_context_indicator_file_.release();
     set_task_context_dataset_map_.release();
@@ -107,9 +105,6 @@ int FLTask::execute() {
           for (auto &dataset_meta : this->dataset_meta_map_) {
               set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
           }
-
-//          set_task_context_output_file_ = ph_context_m.attr("set_task_context_output_file");
-//          set_task_context_output_file_(this->output_file_path_);
 
           set_task_context_predict_file_ = ph_context_m.attr("set_task_context_predict_file");
           set_task_context_predict_file_(this->predict_file_path_);

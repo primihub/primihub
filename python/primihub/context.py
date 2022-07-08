@@ -92,26 +92,21 @@ def set_task_context_func_params(func_name, func_params):
 def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
 
+
 def set_task_context_predict_file(f):
     Context.predict_file_path = f
+
 
 def set_task_context_indicator_file(f):
     Context.indicator_file_path = f
 
-# def set_task_context_output_file(f):
-#     Context.output_path = f
 
 # For test
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 
 
-# def set_node_context(node_context: NodeContext):
-#     Context.nodes_context[node_context.role] = node_context
-
 # Register dataset decorator
-
-
 def reg_dataset(func):
     @functools.wraps(func)
     def reg_dataset_decorator(dataset):
