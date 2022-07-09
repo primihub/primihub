@@ -30,7 +30,7 @@ COPY ./src ./src
 WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip \
   && python3.9 -m pip install -r requirements.txt \ 
-  && python3.9 setup.py insta
+  && python3.9 setup.py install
 
 WORKDIR /app
 RUN ln -s /app/python /app/primihub_python
