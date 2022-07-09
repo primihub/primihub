@@ -99,19 +99,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->singleton, 
                                            this->nodelet->getDataService());
         // Parse and dispathc pir task.
+	LOG(INFO) << "node_ip:" << this->node_ip;
         if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK) {
-            _psp.schedulePirTask(lan_parser_, this->node_id, this->node_ip, this->service_port);
-            PushTaskRequest _1NodePushTaskRequest;
-            int ret = _psp.transformPirRequest(lan_parser_, _1NodePushTaskRequest);
-            if (ret) {
-                pushTaskReply->set_ret_code(1);
-                return Status::OK;
-            }
-            LOG(INFO) << "start to create worker for pir task";
-            running_set.insert(job_task);
-            std::shared_ptr<Worker> worker = CreateWorker();
-            worker->execute(&_1NodePushTaskRequest);
-            running_set.erase(job_task);
+            //_psp.schedulePirTask(lan_parser_, this->node_id, this->node_ip, this->service_port);
+            _psp.schedulePirTask(lan_parser_, this->nodelet->getNodeletAddr());
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }

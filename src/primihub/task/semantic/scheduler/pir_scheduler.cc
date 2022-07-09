@@ -153,8 +153,6 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
         nodePushTaskRequest.task().node_map();
     for (auto &pair : node_map) {
         bool is_client = pair.first == node_id_ ? true : false;
-        if (is_client)
-            continue;
 
         std::string dest_node_address(
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
