@@ -1,191 +1,254 @@
 from sklearn import metrics
 
-#混淆矩阵 metrics.confusion_matrix（实际y，预测y）
-#输出：行：实际类别   列：预测类别
+class Evaluator:
+    regression_metrics= ["MEAN SQUARED ERROR","EXPLAINED VARIANCE", "MEAN ABSOLUTE ERROR", "MEAN SQUARED LOG ERROR", "MEDIAN ABSOLUTE ERROR","R2 SCORE","ROOT MEAN SQUARED ERROR"]
+    regression_method =   ["get_mse","get_ev","get_mae","get_msle","get_median_absolute_error","get_r2_score","get_rmse"]
 
-#AUC、Precision、Recall、Accuracy、MSE
-class evaluator:
-    regression_indicator= ["MEAN SQUARED ERROR","EXPLAINED VARIANCE", "MEAN ABSOLUTE ERROR", "MEAN SQUARED LOG ERROR", "MEDIAN ABSOLUTE ERROR","R2 SCORE","ROOT MEAN SQUARED ERROR"]
-    regression_method =   ["getMSE","getEV","getMAE","getMSLE","getMEDIAN_ABSOLUTE_ERROR","getR2_SCORE","getRMSE"]
-
-    classification_indicator = ["ConfusionMatrix","AUC","Precision","Recall","Accuracy","F1_score","KS"]
-    classification_method = ["getConfusionMatrix","getAUC","getPrecision","getRecall","getAccuracy","getF1_score","getKS"]
+    classification_metrics = ["AUC","Precision","Recall","Accuracy","F1_score","KS"]
+    classification_method = ["get_auc","get_precision","get_recall","get_accuracy","get_f1_score","get_ks"]
     need_prob = ["AUC","KS"]
-    #分类模型指标
+
+
+    """
+    evaluation methods for classification:
+        AUC
+        Precision
+        Recall
+        Accuracy
+        MSE
+    """
     @staticmethod
-    def getConfusionMatrix(y,y_hat):
+    def get_confusionMatrix(y,y_hat):
         """
-        :param y: 真实标签
-        :param y_hat: 预测标签
-        :return: 混淆矩阵
+        :param y: real label
+        :param y_hat: predicted label
+        :return: ConfusionMatrix
+                row:real class
+                column:predicted class
         """
         return metrics.confusion_matrix(y,y_hat)
 
     @staticmethod
-    def getAUC(y,y_pred_prob):
+    def get_auc(y,y_pred_prob):
         """
-        :param y: 真实标签
-        :param y_pred_prob: 预测为真的概率
-        :return: 模型的auc指标
+        :param y: real label
+        :param y_pred_prob:  probability of true
+        :return: auc
         """
         return metrics.roc_auc_score(y,y_pred_prob)
 
     @staticmethod
-    def getPrecision(y,y_hat):
+    def get_precision(y,y_hat):
         """
-        :param y: 真实标签
-        :param y_hat: 预测标签
-        :return: Precision精确率
+        :param y: real label
+        :param y_hat: predicted label
+        :return: Precision
         """
         return metrics.precision_score(y,y_hat)
 
     @staticmethod
-    def getRecall(y,y_hat):
+    def get_recall(y,y_hat):
         """
-        :param y: 真实标签
-        :param y_hat: 预测标签
-        :return: Recall召回率
+        :param y: real label
+        :param y_hat: predicted label
+        :return: Recall
         """
         return metrics.recall_score(y,y_hat)
 
     @staticmethod
-    def getAccuracy(y,y_hat):
+    def get_accuracy(y,y_hat):
         """
-        :param y: 真实标签
-        :param y_hat: 预测标签
-        :return: Accuracy准确率
+        :param y: real label
+        :param y_hat: predicted label
+        :return: Accuracy
         """
         return metrics.accuracy_score(y, y_hat)
 
     @staticmethod
-    def getF1_score(y,y_hat):
+    def get_f1_score(y,y_hat):
         """
-        :param y: 真实标签
-        :param y_hat: 预测标签
+        :param y: real label
+        :param y_hat: predicted label
         :return: F1-score
         """
         return metrics.f1_score(y, y_hat)
 
     @staticmethod
-    def getKS(y_test, y_pred_prob):
+    def get_roc(y_test,y_pred_prob):
+        roc = {}
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred_prob)
+        roc["fpr"] = fpr
+        roc["tpr"] = tpr
+        roc["thresholds"] = thresholds
+        return roc
+
+
+    @staticmethod
+    def get_ks(y_test, y_pred_prob):
         '''
-        功能: 计算KS值，输出对应分割点和累计分布函数曲线图
-        输入值:
-        y_pred_prob: 一维数组或series，代表模型得分（一般为预测正类的概率）
-        y_test: 真实值，一维数组或series，代表真实的标签（{0,1}或{-1,1}）
-        返回fpr, tpr, thresholds, 和ks值，根据fpr,tpr和thresholds这三个list可以绘制出roc曲线和ks曲线。
-        ROC曲线：横坐标：fpr  纵坐标：tpr
-        ks曲线：横坐标：thresholds 纵坐标：fpr和tpr 两条曲线
+        calculate value ks, list fpr , list tpr , list thresholds
+
+        y_pred_prob: probability of true
+        y_test: real y
+        return :fpr, tpr, thresholds, ks.
+        ROC curve：abscissa：fpr  ordinate：tpr
+        ks curve：abscissa：thresholds ordinate：fpr and tpr two curves
         '''
         fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred_prob)
         ks = max(tpr - fpr)
-        return fpr, tpr, thresholds, ks
+        return ks
+
 
     """
-    EXPLAINED_VARIANCE
-    MEAN_ABSOLUTE_ERROR
-    MEAN_SQUARED_LOG_ERROR
-    MEDIAN_ABSOLUTE_ERROR
-    R2_SCORE
-    ROOT_MEAN_SQUARED_ERROR
+    evaluation methods for regression :
+        EXPLAINED_VARIANCE
+        MEAN_ABSOLUTE_ERROR
+        MEAN_SQUARED_LOG_ERROR
+        MEDIAN_ABSOLUTE_ERROR
+        R2_SCORE
+        ROOT_MEAN_SQUARED_ERROR
     """
-
     @staticmethod
-    #回归模型指标
-    def getMSE(y, y_hat):
+    def get_mse(y, y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm MEAN_SQUARED_ERROR均方误差,用于评估预测结果和真实数据集的接近程度的程度，其其值越小说明拟合效果越好。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm MEAN_SQUARED_ERROR The mean square error is used to
+                evaluate the degree of closeness between the predicted
+                results and the real data set. The smaller the value,
+                the better the fitting effect.
         """
         return metrics.mean_squared_error(y, y_hat)
     @staticmethod
-    def getEV(y,y_hat):
+    def get_ev(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm EXPLAINED_VARIANCE 解释回归模型的方差得分，其值取值范围是[0,1]，越接近于1说明自变量越能解释因变量
-          的方差变化，值越小则说明效果越差。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm EXPLAINED_VARIANCE To explain the variance score of regression model,
+                its value range is [0,1]. The closer it is to 1, the more independent
+                variable can explain the dependent variable
         """
         return metrics.explained_variance_score(y,y_hat)
 
     @staticmethod
-    def getMAE(y,y_hat):
+    def get_mae(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm MEAN_ABSOLUTE_ERROR 平均绝对误差，用于评估预测结果和真实数据集的接近程度的程度，其其值越小说明拟合效果越好。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm MEAN_ABSOLUTE_ERROR The mean absolute error is used to evaluate the degree
+                of closeness between the predicted results and the real data set. The smaller
+                the value, the better the fitting effect.
         """
         return metrics.mean_absolute_error(y,y_hat)
 
     @staticmethod
-    def getMSLE(y,y_hat):
+    def get_msle(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm MEAN_SQUARED_LOG_ERROR 均方对数误差，用于评估预测结果和真实数据集的接近程度的程度，其其值越小说明拟合效果越好。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm MEAN_SQUARED_LOG_ERROR The mean square logarithmic error is used to evaluate
+                the degree of closeness between the predicted results and the real data set.
+                The smaller the value, the better the fitting effect.
         """
         return metrics.mean_squared_log_error(y,y_hat)
 
     @staticmethod
-    def getMEDIAN_ABSOLUTE_ERROR(y,y_hat):
+    def get_median_absolute_error(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm MEDIAN_ABSOLUTE_ERROR 绝对误差的中位数，用于评估预测结果和真实数据集的接近程度的程度，其其值越小说明拟合效果越好。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm MEDIAN_ABSOLUTE_ERROR The median absolute error is used to evaluate the degree
+                of approximation between the predicted results and the real data set. The smaller
+                the value, the better the fitting effect.
         """
         return metrics.median_absolute_error(y,y_hat)
 
     @staticmethod
-    def getR2_SCORE(y,y_hat):
+    def get_r2_score(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm r2 score 判定系数，其含义是也是解释回归模型的方差得分，其值取值范围是[0,1]，越接近于1说明自变量越能解释因
-         变量的方差变化，值越小则说明效果越差。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm r2 score The meaning of the determination coefficient is also the variance score to
+                explain the regression model, and its value range is [0,1]. The closer it is to 1,
+                the more independent variable can explain the variance change of the dependent variable;
+                the smaller the value is, the worse the effect is.
         """
         return metrics.r2_score(y,y_hat)
 
     @staticmethod
-    def getRMSE(y,y_hat):
+    def get_rmse(y,y_hat):
         """
-        :param y: 真实值
-        :param y_hat: 预测值
-        :returm ROOT_MEAN_SQUARED_ERROR MSE的平方，用于评估预测结果和真实数据集的接近程度的程度，其其值越小说明拟合效果越好。
+        :param y: real y
+        :param y_hat: predicted t
+        :returm ROOT_MEAN_SQUARED_ERROR The square of MSE is used to evaluate the degree of closeness between
+                the predicted results and the real data set. The smaller the value is, the better the fitting
+                effect is.
         """
-        return pow(evaluator.getMSE(y,y_hat),2)
+        return pow(Evaluator.get_mse(y,y_hat),2)
 
-
-class regression_eva:
     @staticmethod
-    def getResult(y,y_hat):
-        res = []
-        for i in range(len(evaluator.regression_indicator)):
-            indicator = evaluator.regression_indicator[i]
-            method = evaluator.regression_method[i]
-            if hasattr(evaluator, method):
-                f = getattr(evaluator, method)
-                re = indicator + ":" + str(f(y, y_hat))
+    def write_csv(path,eval_train,eval_test=None):
+        with open(path,'w') as f:
+            header = list(eval_train.keys())
+            values = []
+            for i in eval_train.values():
+                values.append(str(i))
+            f.write('\t,')
+            f.write(",".join(header))
+            f.write("\n")
+            f.write("train,")
+            f.write(",".join(values))
+            if eval_test:
+                f.write("\n")
+                f.write("test,")
+                values = []
+                for i in eval_test.values():
+                    values.append(str(i))
+                f.write(','.join(values))
+
+
+class Regression_eva:
+    @staticmethod
+    def get_result(y,y_hat,path = "evaluation.csv"):
+        """
+        :param y: real y
+        :param y_hat:predicted y
+        :return:regression metricss all supported.
+        """
+        res = {}
+        for i in range(len(Evaluator.regression_metrics)):
+            metrics = Evaluator.regression_metrics[i]
+            method = Evaluator.regression_method[i]
+            if hasattr(Evaluator, method):
+                f = getattr(Evaluator, method)
+                res[metrics] = f(y, y_hat)
             else:
-                re = f"目前没有{method}指标。"
-            res.append(re)
+                res[metrics] = f"{method} is not support。"
+
+        Evaluator.write_csv(path,res)
         return res
 
-class classification_eva:
+class Classification_eva:
     @staticmethod
-    def getResult(y,y_hat,y_prob):
-        res = []
-        for i in range(len(evaluator.classification_indicator)):
-            indicator = evaluator.classification_indicator[i]
-            method = evaluator.classification_method[i]
-            if hasattr(evaluator, method):
-                f = getattr(evaluator, method)
-                if (indicator in evaluator.need_prob):
-                    mere = str(f(y, y_prob))
+    def get_result(y,y_hat,y_prob,path = "evaluation.csv"):
+        """
+                :param y: real y
+                :param y_hat:predicted y
+                :return:classification metricss all supported.
+                """
+        res = {}
+        for i in range(len(Evaluator.classification_metrics)):
+            metrics = Evaluator.classification_metrics[i]
+            method = Evaluator.classification_method[i]
+            if hasattr(Evaluator, method):
+                f = getattr(Evaluator, method)
+                if (metrics in Evaluator.need_prob):
+                    mere = f(y, y_prob)
                 else:
-                    mere = str(f(y, y_hat))
-                re = indicator + ":" + mere
+                    mere = f(y, y_hat)
+                res[metrics] = mere
             else:
-                re = f"目前没有{method}指标。"
-            res.append(re)
-        return(res)
+                res[metrics] = f"{method} is not support。"
+        Evaluator.write_csv(path,res)
+        return res
+

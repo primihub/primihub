@@ -29,22 +29,6 @@ primihub.client.grpc\_client module
    :undoc-members:
    :show-inheritance:
 
-primihub.client.readme module
------------------------------
-
-.. automodule:: primihub.client.readme
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-primihub.client.readme2 module
-------------------------------
-
-.. automodule:: primihub.client.readme2
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 primihub.client.visitor module
 ------------------------------
 

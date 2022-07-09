@@ -1,6 +1,6 @@
 services:
   node0:
-    image: primihub/primihub-node:1.1.0
+    image: primihub/primihub-node:latest
     restart: "no"
     hostname: node0_primihub
     container_name: node0_primihub
@@ -26,7 +26,7 @@ services:
       - simple_bootstrap_node
 
   node1:
-    image: primihub/primihub-node:1.1.0
+    image: primihub/primihub-node:latest
     restart: "no"
     hostname: node1_primihub
     container_name: node1_primihub
@@ -52,7 +52,7 @@ services:
       - simple_bootstrap_node
 
   node2:
-    image: primihub/primihub-node:1.1.0
+    image: primihub/primihub-node:latest
     restart: "no"
     hostname: node2_primihub
     container_name: node2_primihub

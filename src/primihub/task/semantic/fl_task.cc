@@ -71,11 +71,13 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         this->dataset_meta_map_.insert(std::make_pair(input_dataset, data_path));
     }
     // output file path
-    this->output_file_path_ = param_map["outputFullFilename"].value_string();
+    this->predict_file_path_ = param_map["predictFileName"].value_string();
+    this->indicator_file_path_ = param_map["indicatorFileName"].value_string();
 }
 
 FLTask::~FLTask() {
-    set_task_context_output_file_.release();
+    set_task_context_predict_file_.release();
+    set_task_context_indicator_file_.release();
     set_task_context_dataset_map_.release();
     set_task_context_func_params_.release();
     set_node_context_.release();
@@ -84,41 +86,40 @@ FLTask::~FLTask() {
 }
 
 int FLTask::execute() {
-    try {
-        LOG(INFO) << "before gil_scoped_acquire" << std::endl;
-        py::gil_scoped_acquire acquire;
-        LOG(INFO) << "before ph_context" << std::endl;
 
-        ph_exec_m = py::module::import("primihub.executor").attr("Executor");
-        ph_context_m = py::module::import("primihub.context");
-        set_node_context_ = ph_context_m.attr("set_node_context");
+     try {
+          LOG(INFO) << "before gil_scoped_acquire" << std::endl;
+          py::gil_scoped_acquire acquire;
+          LOG(INFO) << "before ph_context" << std::endl;
 
-        set_node_context_(node_context_.role, node_context_.protocol,
-                          py::cast(node_context_.datasets),
-                          this->next_peer_address_);
+          ph_exec_m = py::module::import("primihub.executor").attr("Executor");
+          ph_context_m = py::module::import("primihub.context");
+          set_node_context_ = ph_context_m.attr("set_node_context");
 
-        set_task_context_func_params_ = ph_context_m.attr("set_task_context_func_params");
+          set_node_context_(node_context_.role,
+                    node_context_.protocol,
+                    py::cast(node_context_.datasets),
+                    this->next_peer_address_);
 
-        set_task_context_dataset_map_ =
-            ph_context_m.attr("set_task_context_dataset_map");
-        for (auto& dataset_meta : this->dataset_meta_map_) {
-            set_task_context_dataset_map_(dataset_meta.first,
-                                          dataset_meta.second);
-        }
+          set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
+          for (auto &dataset_meta : this->dataset_meta_map_) {
+              set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
+          }
 
-        set_task_context_output_file_ =
-            ph_context_m.attr("set_task_context_output_file");
-        set_task_context_output_file_(this->output_file_path_);
+          set_task_context_predict_file_ = ph_context_m.attr("set_task_context_predict_file");
+          set_task_context_predict_file_(this->predict_file_path_);
 
-        LOG(INFO) << node_context_.dumps_func;
-        // Execute python code.
-        // ph_exec_m.attr("execute1")(py::bytes(node_context_.dumps_func));
+          set_task_context_indicator_file_ = ph_context_m.attr("set_task_context_indicator_file");
+          set_task_context_indicator_file_(this->indicator_file_path_);
 
-        // Execute python code with params.
-        ph_exec_m.attr("execute_with_params")(py::bytes(node_context_.dumps_func));
-    } catch (std::exception& e) {
-        LOG(ERROR) << "Failed to excute python: " << e.what();
-        return -1;
+
+          LOG(INFO) << node_context_.dumps_func;
+          // Execute python code.
+          ph_exec_m.attr("execute_with_params")(py::bytes(node_context_.dumps_func));
+
+     } catch (std::exception &e) {
+          LOG(ERROR) << "Failed to execute python: " << e.what();
+          return -1;
     }
 
     return 0;

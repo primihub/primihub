@@ -20,10 +20,18 @@ primihub.FL.feature\_engineer.minmax\_standard module
    :undoc-members:
    :show-inheritance:
 
-primihub.FL.feature\_engineer.onehot module
--------------------------------------------
+primihub.FL.feature\_engineer.onehot\_encode module
+---------------------------------------------------
 
-.. automodule:: primihub.FL.feature_engineer.onehot
+.. automodule:: primihub.FL.feature_engineer.onehot_encode
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+primihub.FL.feature\_engineer.ordinal\_encode module
+----------------------------------------------------
+
+.. automodule:: primihub.FL.feature_engineer.ordinal_encode
    :members:
    :undoc-members:
    :show-inheritance:
