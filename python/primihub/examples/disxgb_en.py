@@ -22,7 +22,7 @@ from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
 from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
-from primihub.FL.model.evaluation.evaluation import regression_eva
+from primihub.FL.model.evaluation.evaluation import Regression_eva
 import pandas as pd
 import numpy as np
 
@@ -111,7 +111,7 @@ def xgb_host_logic(cry_pri):
         logger.error("Output path is {}".format(predict_file_path))
         logger.error("Test data path is {}".format(data_test))
         y_pre = xgb_host.predict_raw(data_test)
-        regression_eva.getResult(y_true, y_pre)
+        Regression_eva.get_result(y_true, y_pre)
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=5, max_depth=5, reg_lambda=1,
@@ -135,7 +135,7 @@ def xgb_host_logic(cry_pri):
         logger.error("Output path is {}".format(predict_file_path))
         logger.error("Test data path is {}".format(data_test))
         y_pre = xgb_host.predict_raw(data_test)
-        regression_eva.getResult(y_true, y_pre)
+        Regression_eva.get_result(y_true, y_pre)
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 
