@@ -13,4 +13,4 @@ protobuf==3.20.0
 
 pydantic
 sphinx
-sklearn==1.1.1
+scikit-learn==1.1.1
