@@ -53,9 +53,10 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         return;
     }
     for (auto &vm : vm_list) {
-        auto ip = vm.next().ip();
-        auto port = vm.next().port();
-        next_peer_address_ = ip + ":" + std::to_string(port);
+        // auto ip = vm.next().ip();
+        // auto port = vm.next().port();
+        // next_peer_address_ = ip + ":" + std::to_string(port);
+        next_peer_address_ = param_map["next_peer"].value_string();
         LOG(INFO) << "Next peer address: " << next_peer_address_;
         break;
     }
