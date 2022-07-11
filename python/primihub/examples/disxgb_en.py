@@ -47,15 +47,6 @@ ph.context.Context.func_params_map = {
 
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
 def xgb_host_logic(cry_pri="paillier"):
-    #LABEL_DATA_PATH = "/tmp/wisconsin_host.data"
-    #TEST_DATA_PATH = "/tmp/wisconsin_test.data"
-    #ph.context.Context.dataset_map = {
-    #    'label_dataset': LABEL_DATA_PATH,
-    #    'test_dataset': TEST_DATA_PATH
-    #}
-    #ph.dataset.dataset.define("guest_dataset")
-    #ph.dataset.dataset.define("label_dataset")
-    #ph.dataset.dataset.define("test_dataset")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     print(ph.context.Context.nodes_context["host"])
     print(ph.context.Context.datasets)
@@ -159,14 +150,6 @@ def xgb_host_logic(cry_pri="paillier"):
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def xgb_guest_logic(cry_pri="paillier"):
-    #DATA_PATH = "/tmp/wisconsin_guest.data"
-
-    #ph.context.Context.dataset_map = {
-    #    'guest_dataset': DATA_PATH
-    #}
-    #ph.dataset.dataset.define("guest_dataset")
-    #ph.dataset.dataset.define("label_dataset")
-    #ph.dataset.dataset.define("test_dataset")
     print("start xgb guest logic...")
 
     ios = IOService()
