@@ -34,7 +34,8 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
-        this->next_peer_address_ = param_map["next_peer"].value_string();
+        this->node_context_.next_peer = param_map["next_peer"].value_string();
+        this->next_peer_address_ = param_map["next_peer"].value_string(); 
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
@@ -55,15 +56,16 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         LOG(ERROR) << "Failed to find vm list for node: " << node_id;
         return;
     }
-    for (auto &vm : vm_list) {
-        auto ip = vm.next().ip();
-        auto port = vm.next().port();
-        // next_peer_address_ = ip + ":" + std::to_string(port);
-        LOG(INFO) << ">>>>>>>>>. param map [next_peer]: " << param_map["next_peer"].value_string();
-        next_peer_address_ = param_map["next_peer"].value_string();
-        LOG(INFO) << "Next peer address: " << next_peer_address_;
-        break;
-    }
+
+    // will remove
+    // for (auto &vm : vm_list) {
+    //     auto ip = vm.next().ip();
+    //     auto port = vm.next().port();
+    //     next_peer_address_ = ip + ":" + std::to_string(port);
+    //     LOG(INFO) << "Next peer address: " << next_peer_address_;
+    //     break;
+    // }
+
     // Set datasets meta list in context
     for (auto &input_dataset : input_datasets) { 
         // Get dataset path from task params map
@@ -101,16 +103,11 @@ int FLTask::execute() {
           ph_context_m = py::module::import("primihub.context");
           set_node_context_ = ph_context_m.attr("set_node_context");
 	  
-          LOG(INFO) << "node context: "<< node_context_.role << std::endl;
-          LOG(INFO) << "node context: "<< node_context_.protocol << std::endl;
-          LOG(INFO) << "node context: "<< "<<<<<<<<<<<<<<<<< " << std::endl;
-          LOG(INFO) << "node context: "<<  std::endl;
-          LOG(INFO) << "node context: "<< this->next_peer_address_ << std::endl;
-
           set_node_context_(node_context_.role,
                     node_context_.protocol,
                     py::cast(node_context_.datasets),
-                    this->next_peer_address_);
+                    node_context_.next_peer);
+                    // this->next_peer_address_);
 
           set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
           for (auto &dataset_meta : this->dataset_meta_map_) {

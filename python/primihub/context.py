@@ -81,7 +81,7 @@ Context = TaskContext()
 
 def set_node_context(role, protocol, datasets,  next_peer):
     print("========", role, protocol, datasets,  next_peer)
-    Context.nodes_context[role] = NodeContext(role, protocol, datasets, func, next_peer)  # noqa
+    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
