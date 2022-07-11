@@ -47,7 +47,3 @@ print(ph.context.Context.output_path)
 print(ph.context.Context.func_params_map)
 # ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
 # map >>> node context
-# map = {
-#     "func1": value,
-#     "func2": value
-# }
