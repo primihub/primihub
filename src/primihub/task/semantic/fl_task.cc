@@ -29,8 +29,11 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
     // Convert TaskParam to NodeContext
     auto param_map = task_param->params().param_map();
     LOG(INFO) << ">>>>>>>>>. param map [role]: " << param_map["role"].value_string();
+    LOG(INFO) << node_context_.role << std::endl;
     LOG(INFO) << ">>>>>>>>>. param map [protocol]: " << param_map["protocol"].value_string();
+    LOG(INFO) << node_context_.proctol << std::endl;
     LOG(INFO) << ">>>>>>>>>. param map [next_peer]: " << param_map["next_peer"].value_string();
+    LOG(INFO) << node_context_.proctol << std::endl;
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();

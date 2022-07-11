@@ -55,7 +55,6 @@ class PyParser : public LanguageParser {
   private:
     std::string py_code_;
     std::string procotol_;
-    std::string next_peer_;
     std::vector<std::string> roles_;
     std::vector<std::string> func_params_;
     std::map<std::string, NodeContext> nodes_context_map_;
