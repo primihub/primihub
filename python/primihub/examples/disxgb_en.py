@@ -37,6 +37,7 @@ def get_logger(name):
     logger = logging.getLogger(name)
     return logger
 
+logger = get_logger("xgb_host")
 
 ph.dataset.dataset.define("guest_dataset")
 ph.dataset.dataset.define("label_dataset")
@@ -56,13 +57,15 @@ max_depth = 5
 
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
 def xgb_host_logic(cry_pri="paillier"):
-    logger = get_logger("xgb_host")
+    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["host"]))
+    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["guest"]))
+    for k, v in ph.context.Context.nodes_context.items():
+        logger.info("role {}: {}".format(k, v.__dict__))
+
     next_peer = ph.context.Context.nodes_context["host"].next_peer
-    print(ph.context.Context.nodes_context["host"])
     print(ph.context.Context.datasets)
     print(ph.context.Context.dataset_map)
     ip, port = next_peer.split(":")
-    print("next peer: ", next_peer)
     ios = IOService()
     server = Session(ios, ip, port, "server")
 
@@ -159,14 +162,19 @@ def xgb_host_logic(cry_pri="paillier"):
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
-
+   
+    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("host", "host>>>>>>>>>.")))
+    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("guest", "guest>>>>>>>>>>>>>")))
+    for k, v in ph.context.Context.nodes_context.items():
+        logger.info("role {}: {}".format(k, v.__dict__))
+        print("role {}: {}".format(k, v.__dict__))
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     print(ph.context.Context.nodes_context["guest"])
     print(ph.context.Context.datasets)
     print(ph.context.Context.dataset_map)
+    print("guest next peer: ", next_peer)
     ip, port = next_peer.split(":")
-    print("next peer: ", next_peer)
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 

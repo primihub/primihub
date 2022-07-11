@@ -125,8 +125,8 @@ int SDKClient::SubmitTask() {
             pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
         }
     } else {
-        std::cerr << "Only PROTO task language support input_datsets " << std::endl;
-        return -1;
+        // std::cerr << "Only PROTO task language support input_datsets " << std::endl;
+        // return -1;
     }
 
     // TODO Generate job id and task id

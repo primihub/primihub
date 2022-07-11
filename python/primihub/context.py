@@ -10,6 +10,7 @@ class NodeContext:
         self.role = role
         self.protocol = protocol
         self.datasets = datasets
+        self.func = func
         self.next_peer = next_peer
         print("func type: ", type(func))
 
@@ -31,7 +32,6 @@ class TaskContext:
     datasets = []
     # dataset meta information
     dataset_map = dict()
-    # output_path = "/data/result/xgb_prediction.csv"
     predict_file_path = "result/xgb_prediction.csv"
     indicator_file_path = "result/xgb_indicator.csv"
     func_params_map = dict()
@@ -79,9 +79,9 @@ class TaskContext:
 Context = TaskContext()
 
 
-def set_node_context(role, protocol, datasets, next_peer):
-    print("========", role, protocol, datasets, next_peer)
-    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
+def set_node_context(role, protocol, datasets,  next_peer):
+    print("========", role, protocol, datasets,  next_peer)
+    Context.nodes_context[role] = NodeContext(role, protocol, datasets, func, next_peer)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
@@ -123,6 +123,10 @@ def function(protocol, role, datasets, next_peer):
         print("Register task:", func.__name__)
         Context.nodes_context[role] = NodeContext(
             role, protocol, datasets, func, next_peer)
+
+        print(">>>>> next peer in {}'s node context is {}.".format(role, Context.nodes_context[role].next_peer)) 
+        print(">>>>> dataset in {}'s node context is {}.".format(role, Context.nodes_context[role].datasets)) 
+        print(">>>>> role in {}'s node context is {}.".format(role, Context.nodes_context[role].role)) 
 
         @functools.wraps(func)
         def wapper(*args, **kwargs):

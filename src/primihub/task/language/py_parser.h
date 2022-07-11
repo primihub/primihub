@@ -30,6 +30,7 @@ namespace primihub::task {
 typedef struct NodeContext {
     std::string role;
     std::string protocol;
+    std::string next_peer;
     std::vector<std::string> datasets;
     std::string dumps_func;
     // std::map<std::string, std::string> func_params_map;
@@ -54,6 +55,7 @@ class PyParser : public LanguageParser {
   private:
     std::string py_code_;
     std::string procotol_;
+    std::string next_peer_;
     std::vector<std::string> roles_;
     std::vector<std::string> func_params_;
     std::map<std::string, NodeContext> nodes_context_map_;
