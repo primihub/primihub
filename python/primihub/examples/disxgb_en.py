@@ -71,13 +71,12 @@ def xgb_host_logic(cry_pri="paillier"):
 
     channel = server.addChannel()
     data = ph.dataset.read(dataset_key="label_dataset").df_data
-    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
     label_true = ['Class']
+    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
+    y_true = data_test['Class'].values
     data_test = data_test[
         [x for x in data_test.columns if x not in label_true]
     ]
-    y_true = data_test['Class'].values
-
     logger.info(data_test.head())
 
     labels = ['Class']  # noqa
