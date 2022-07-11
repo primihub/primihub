@@ -124,7 +124,6 @@ int SDKClient::SubmitTask() {
         for (int i = 0; i < input_datasets.size(); i++) {
             pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
         }
-    } 
     } else {
         std::cerr << "Only PROTO task language support input_datsets " << std::endl;
         return -1;
