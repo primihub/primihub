@@ -119,10 +119,17 @@ int SDKClient::SubmitTask() {
     }
 
     // Setup input datasets
-   // auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
-   // for (int i = 0; i < input_datasets.size(); i++) {
-   //     pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
-   // }
+    if (task_lang == "proto") {
+        auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
+        for (int i = 0; i < input_datasets.size(); i++) {
+            pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
+        }
+    } 
+    } else {
+        std::cerr << "Only PROTO task language support input_datsets " << std::endl;
+        return -1;
+    }
+
     // TODO Generate job id and task id
     pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
     pushTaskRequest.mutable_task()->set_task_id(absl::GetFlag(FLAGS_task_id));
