@@ -103,6 +103,7 @@ int FLTask::execute() {
 
           set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
           for (auto &dataset_meta : this->dataset_meta_map_) {
+	      LOG(INFO) << "<<<<<<< insert DATASET : " << dataset_meta.first << ", "<< dataset_meta.second;
               set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
           }
 

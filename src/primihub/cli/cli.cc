@@ -119,10 +119,10 @@ int SDKClient::SubmitTask() {
     }
 
     // Setup input datasets
-    auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
-    for (int i = 0; i < input_datasets.size(); i++) {
-        pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
-    }
+   // auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
+   // for (int i = 0; i < input_datasets.size(); i++) {
+   //     pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
+   // }
     // TODO Generate job id and task id
     pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
     pushTaskRequest.mutable_task()->set_task_id(absl::GetFlag(FLAGS_task_id));

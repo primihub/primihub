@@ -16,7 +16,7 @@
  limitations under the License.
  """
 import primihub as ph
-from primihub import dataset,context
+from primihub import dataset, context
 from primihub.primitive.opt_paillier_c2py_warpper import *
 from primihub.channel.zmq_channel import IOService, Session
 from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
@@ -39,23 +39,40 @@ ph.dataset.dataset.define("guest_dataset")
 ph.dataset.dataset.define("label_dataset")
 ph.dataset.dataset.define("test_dataset")
 
+ph.context.Context.func_params_map = {
+    "xgb_host_logic": ("paillier", ),
+    "xgb_guest_logic": ("paillier",)
+}
+
 
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
-def xgb_host_logic(cry_pri):
+def xgb_host_logic(cry_pri="paillier"):
+    #LABEL_DATA_PATH = "/tmp/wisconsin_host.data"
+    #TEST_DATA_PATH = "/tmp/wisconsin_test.data"
+    #ph.context.Context.dataset_map = {
+    #    'label_dataset': LABEL_DATA_PATH,
+    #    'test_dataset': TEST_DATA_PATH
+    #}
+    #ph.dataset.dataset.define("guest_dataset")
+    #ph.dataset.dataset.define("label_dataset")
+    #ph.dataset.dataset.define("test_dataset")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
+    print(ph.context.Context.nodes_context["host"])
+    print(ph.context.Context.datasets)
+    print(ph.context.Context.dataset_map)
     ip, port = next_peer.split(":")
-
+    print("next peer: ", next_peer)
     ios = IOService()
     server = Session(ios, ip, port, "server")
 
     channel = server.addChannel()
     data = ph.dataset.read(dataset_key="label_dataset").df_data
     data_1 = ph.dataset.read(dataset_key="test_dataset").df_data
-    label_true = ['y']
+    label_true = ['Class']
     data_test = data_1[
         [x for x in data.columns if x not in label_true]
     ]
-    y_true = data_1['y'].values
+    y_true = data_1['Class'].values
 
     labels = ['Class']  # noqa
     X_host = data[
@@ -141,13 +158,24 @@ def xgb_host_logic(cry_pri):
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
-def xgb_guest_logic(cry_pri):
+def xgb_guest_logic(cry_pri="paillier"):
+    #DATA_PATH = "/tmp/wisconsin_guest.data"
+
+    #ph.context.Context.dataset_map = {
+    #    'guest_dataset': DATA_PATH
+    #}
+    #ph.dataset.dataset.define("guest_dataset")
+    #ph.dataset.dataset.define("label_dataset")
+    #ph.dataset.dataset.define("test_dataset")
     print("start xgb guest logic...")
 
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
+    print(ph.context.Context.nodes_context["guest"])
+    print(ph.context.Context.datasets)
+    print(ph.context.Context.dataset_map)
     ip, port = next_peer.split(":")
-
+    print("next peer: ", next_peer)
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 
