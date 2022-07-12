@@ -49,19 +49,13 @@ ph.context.Context.func_params_map = {
 }
 
 # Number of tree to fit.
-num_tree = 2
-
+num_tree = 1
 # Max depth of each tree.
-max_depth = 2
-
+max_depth = 1
 
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:12120")
 def xgb_host_logic(cry_pri="paillier"):
-    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["host"]))
-    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["guest"]))
-    for k, v in ph.context.Context.nodes_context.items():
-        logger.info("role {}: {}".format(k, v.__dict__))
-
+    print("start xgb host logic...")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     print(ph.context.Context.datasets)
     print(ph.context.Context.dataset_map)
@@ -129,8 +123,9 @@ def xgb_host_logic(cry_pri="paillier"):
             logger.info("Finish to trian tree {}.".format(t))
 
         predict_file_path = ph.context.Context.get_predict_file_path()
+        indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_raw(data_test)
-        Regression_eva.get_result(y_true, y_pre)
+        Regression_eva.get_result(y_true, y_pre, indicator_file_path)
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
@@ -149,24 +144,16 @@ def xgb_host_logic(cry_pri="paillier"):
 
             logger.info("Finish to trian tree {}.".format(t))
 
-        logger.info("Before get_output")
         predict_file_path = ph.context.Context.get_predict_file_path()
-        logger.info("Output path is {}".format(predict_file_path))
-        logger.info("Test data path is {}".format(data_test))
+        indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_raw(data_test)
-        Regression_eva.get_result(y_true, y_pre)
+        Regression_eva.get_result(y_true, y_pre, indicator_file_path)
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
-   
-    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("host", "host>>>>>>>>>.")))
-    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("guest", "guest>>>>>>>>>>>>>")))
-    for k, v in ph.context.Context.nodes_context.items():
-        logger.info("role {}: {}".format(k, v.__dict__))
-        print("role {}: {}".format(k, v.__dict__))
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     print(ph.context.Context.nodes_context["guest"])
