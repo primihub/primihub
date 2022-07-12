@@ -1,8 +1,8 @@
+version: '2'
 services:
   node0:
     image: primihub/primihub-node:latest
-    restart: "no"
-    hostname: node0_primihub
+    restart: "restart"
     container_name: node0_primihub
     ports:
       - "8050:50050"
@@ -10,11 +10,6 @@ services:
       - "10121:12121"
     volumes:
       - ./config:/app/config
-    extra_hosts:
-      - "node0_primihub:172.28.1.10"
-      - "node1_primihub:172.28.1.11"
-      - "node2_primihub:172.28.1.12"
-    working_dir: /app
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -27,8 +22,7 @@ services:
 
   node1:
     image: primihub/primihub-node:latest
-    restart: "no"
-    hostname: node1_primihub
+    restart: "restart"
     container_name: node1_primihub
     ports:
       - "8051:50050"
@@ -36,11 +30,6 @@ services:
       - "11121:12121"
     volumes:
       - ./config:/app/config
-    extra_hosts:
-      - "node0_primihub:172.28.1.10"
-      - "node1_primihub:172.28.1.11"
-      - "node2_primihub:172.28.1.12"
-    working_dir: /app
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -53,8 +42,7 @@ services:
 
   node2:
     image: primihub/primihub-node:latest
-    restart: "no"
-    hostname: node2_primihub
+    restart: "restart"
     container_name: node2_primihub
     ports:
       - "8052:50050"
@@ -62,11 +50,6 @@ services:
       - "12121:12121"
     volumes:
       - ./config:/app/config
-    extra_hosts:
-      - "node0_primihub:172.28.1.10"
-      - "node1_primihub:172.28.1.11"
-      - "node2_primihub:172.28.1.12"
-    working_dir: /app
     entrypoint:
       - "/bin/bash"
       - "-c"
