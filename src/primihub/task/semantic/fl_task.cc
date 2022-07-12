@@ -18,7 +18,7 @@
 #include <pybind11/embed.h>
 // #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
+#include "src/primihub/util/util.h"
 // namespace py = pybind11;
 
 namespace primihub::task {
@@ -60,6 +60,20 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         return;
     }
 
+    std::vector<std::string> t;
+    str_split(this->next_peer_address_, &t,  ':');
+
+    for (auto &vm : vm_list) {
+        auto name = vm.next().name();
+        LOG(INFO) << "vm name is: " << name;
+        auto ip = vm.next().ip();  
+        // auto port = vm.next().port();
+        auto port = t[1]; // get port from not context
+        // next_peer_address_ = ip + ":" + std::to_string(port);
+        next_peer_address_ = ip + ":" + port;
+        LOG(INFO) << "Next peer address: " << next_peer_address_;
+        break;
+    }
     // will remove
     // for (auto &vm : vm_list) {
     //     auto ip = vm.next().ip();
