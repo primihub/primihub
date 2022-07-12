@@ -1,7 +1,7 @@
 from sklearn import metrics
-
+import json
 class Evaluator:
-    regression_metrics= ["MEAN SQUARED ERROR","EXPLAINED VARIANCE", "MEAN ABSOLUTE ERROR", "MEAN SQUARED LOG ERROR", "MEDIAN ABSOLUTE ERROR","R2 SCORE","ROOT MEAN SQUARED ERROR"]
+    regression_metrics= ["MEAN_SQUARED_ERROR","EXPLAINED_VARIANCE", "MEAN_ABSOLUTE_ERROR", "MEAN_SQUARED_LOG_ERROR", "MEDIAN_ABSOLUTE_ERROR","R2_SCORE","ROOT_MEAN_SQUARED_ERROR"]
     regression_method =   ["get_mse","get_ev","get_mae","get_msle","get_median_absolute_error","get_r2_score","get_rmse"]
 
     classification_metrics = ["AUC","Precision","Recall","Accuracy","F1_score","KS"]
@@ -187,29 +187,18 @@ class Evaluator:
         return pow(Evaluator.get_mse(y,y_hat),2)
 
     @staticmethod
-    def write_csv(path,eval_train,eval_test=None):
+    def write_json(path,eval_train,eval_test=None):
+        json_result = {"train":eval_train}
+        if eval_test:
+            json_result["test"] = eval_test
         with open(path,'w') as f:
-            header = list(eval_train.keys())
-            values = []
-            for i in eval_train.values():
-                values.append(str(i))
-            f.write('\t,')
-            f.write(",".join(header))
-            f.write("\n")
-            f.write("train,")
-            f.write(",".join(values))
-            if eval_test:
-                f.write("\n")
-                f.write("test,")
-                values = []
-                for i in eval_test.values():
-                    values.append(str(i))
-                f.write(','.join(values))
+            json.dump(json_result,f)
+
 
 
 class Regression_eva:
     @staticmethod
-    def get_result(y,y_hat,path = "evaluation.csv"):
+    def get_result(y,y_hat,path = "evaluation.json",eval_test = None):
         """
         :param y: real y
         :param y_hat:predicted y
@@ -225,12 +214,12 @@ class Regression_eva:
             else:
                 res[metrics] = f"{method} is not support。"
 
-        Evaluator.write_csv(path,res)
+        Evaluator.write_json(path,res,eval_test)
         return res
 
 class Classification_eva:
     @staticmethod
-    def get_result(y,y_hat,y_prob,path = "evaluation.csv"):
+    def get_result(y,y_hat,y_prob,path = "evaluation.json",eval_test = None):
         """
                 :param y: real y
                 :param y_hat:predicted y
@@ -249,6 +238,12 @@ class Classification_eva:
                 res[metrics] = mere
             else:
                 res[metrics] = f"{method} is not support。"
-        Evaluator.write_csv(path,res)
+        Evaluator.write_json(path,res,eval_test)
         return res
 
+
+if __name__ == "__main__":
+    a = [1,0,1,1,1]
+    b = [1,0,0,1,1]
+    c = [0.8,0.3,0.2,0.9,0.7]
+    Regression_eva.get_result(a,b)
