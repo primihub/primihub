@@ -18,7 +18,7 @@
 #include <pybind11/embed.h>
 // #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
+#include "primihub/util/util.h"
 // namespace py = pybind11;
 
 namespace primihub::task {
@@ -28,17 +28,12 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
 
     // Convert TaskParam to NodeContext
     auto param_map = task_param->params().param_map();
-    LOG(INFO) << ">>>>>>>>>. param map [role]: " << param_map["role"].value_string();
-    LOG(INFO) << node_context_.role << std::endl;
-    LOG(INFO) << ">>>>>>>>>. param map [protocol]: " << param_map["protocol"].value_string();
-    LOG(INFO) << node_context_.protocol << std::endl;
-    LOG(INFO) << ">>>>>>>>>. param map [next_peer]: " << param_map["next_peer"].value_string();
-    LOG(INFO) << node_context_.next_peer << std::endl;
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
         this->node_context_.next_peer = param_map["next_peer"].value_string();
         this->next_peer_address_ = param_map["next_peer"].value_string(); 
+        
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
@@ -60,14 +55,20 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         return;
     }
 
-    // will remove
-    // for (auto &vm : vm_list) {
-    //     auto ip = vm.next().ip();
-    //     auto port = vm.next().port();
-    //     next_peer_address_ = ip + ":" + std::to_string(port);
-    //     LOG(INFO) << "Next peer address: " << next_peer_address_;
-    //     break;
-    // }
+    std::vector<std::string> t;
+    str_split(this->next_peer_address_, &t,  ':');
+
+    for (auto &vm : vm_list) {
+        auto name = vm.next().name()
+        LOG(INFO) << "vm name is: " << name;
+        auto ip = vm.next().ip();  
+        // auto port = vm.next().port();
+        auto port = t[1]; // get port from not context
+        // next_peer_address_ = ip + ":" + std::to_string(port);
+        next_peer_address_ = ip + ":" + port;
+        LOG(INFO) << "Next peer address: " << next_peer_address_;
+        break;
+    }
 
     // Set datasets meta list in context
     for (auto &input_dataset : input_datasets) { 

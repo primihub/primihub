@@ -49,13 +49,13 @@ ph.context.Context.func_params_map = {
 }
 
 # Number of tree to fit.
-num_tree = 5
+num_tree = 2
 
 # Max depth of each tree.
-max_depth = 5
+max_depth = 2
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:5555")
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:12120")
 def xgb_host_logic(cry_pri="paillier"):
     # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["host"]))
     # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["guest"]))
@@ -158,7 +158,7 @@ def xgb_host_logic(cry_pri="paillier"):
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
+@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
    
