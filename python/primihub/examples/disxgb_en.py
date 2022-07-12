@@ -50,18 +50,12 @@ ph.context.Context.func_params_map = {
 
 # Number of tree to fit.
 num_tree = 1
-
 # Max depth of each tree.
 max_depth = 1
 
-
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="192.168.99.21:5555")
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:12120")
 def xgb_host_logic(cry_pri="paillier"):
-    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["host"]))
-    # logger.info("Context of host: {}".format(ph.context.Context.nodes_context["guest"]))
-    for k, v in ph.context.Context.nodes_context.items():
-        logger.info("role {}: {}".format(k, v.__dict__))
-
+    print("start xgb host logic...")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
     print(ph.context.Context.datasets)
     print(ph.context.Context.dataset_map)
@@ -157,15 +151,9 @@ def xgb_host_logic(cry_pri="paillier"):
         return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="192.168.99.21:5555")
+@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
-   
-    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("host", "host>>>>>>>>>.")))
-    logger.info("Context of host: {}".format(ph.context.Context.nodes_context.get("guest", "guest>>>>>>>>>>>>>")))
-    for k, v in ph.context.Context.nodes_context.items():
-        logger.info("role {}: {}".format(k, v.__dict__))
-        print("role {}: {}".format(k, v.__dict__))
     ios = IOService()
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
     print(ph.context.Context.nodes_context["guest"])

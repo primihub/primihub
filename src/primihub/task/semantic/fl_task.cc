@@ -28,17 +28,12 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
 
     // Convert TaskParam to NodeContext
     auto param_map = task_param->params().param_map();
-    LOG(INFO) << ">>>>>>>>>. param map [role]: " << param_map["role"].value_string();
-    LOG(INFO) << node_context_.role << std::endl;
-    LOG(INFO) << ">>>>>>>>>. param map [protocol]: " << param_map["protocol"].value_string();
-    LOG(INFO) << node_context_.protocol << std::endl;
-    LOG(INFO) << ">>>>>>>>>. param map [next_peer]: " << param_map["next_peer"].value_string();
-    LOG(INFO) << node_context_.next_peer << std::endl;
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
         this->node_context_.next_peer = param_map["next_peer"].value_string();
         this->next_peer_address_ = param_map["next_peer"].value_string(); 
+        
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
@@ -74,14 +69,6 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         LOG(INFO) << "Next peer address: " << next_peer_address_;
         break;
     }
-    // will remove
-    // for (auto &vm : vm_list) {
-    //     auto ip = vm.next().ip();
-    //     auto port = vm.next().port();
-    //     next_peer_address_ = ip + ":" + std::to_string(port);
-    //     LOG(INFO) << "Next peer address: " << next_peer_address_;
-    //     break;
-    // }
 
     // Set datasets meta list in context
     for (auto &input_dataset : input_datasets) { 

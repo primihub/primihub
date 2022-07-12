@@ -33,7 +33,7 @@ class TaskContext:
     # dataset meta information
     dataset_map = dict()
     predict_file_path = "result/xgb_prediction.csv"
-    indicator_file_path = "result/xgb_indicator.csv"
+    indicator_file_path = "result/xgb_indicator.json"
     func_params_map = dict()
 
     def __init__(self) -> None:
