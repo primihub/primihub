@@ -227,14 +227,19 @@ namespace primihub
       return -1;
 
     m.resize(array_len, num_col);
-    for (int i = 0; i < num_col; i++)
+    for (int i = 0; i < num_col - 1; i++)
     {
       auto array =
           std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
       for (int64_t j = 0; j < array->length(); j++)
         m(j, i) = array->Value(j);
     }
-
+    auto array_lastCol =
+        std::static_pointer_cast<arrow::Int64Array>(table->column(num_col - 1)->chunk(0));
+    for (int64_t j = 0; j < array_lastCol->length(); j++)
+    {
+      m(j, num_col - 1) = array_lastCol->Value(j);
+    }
     return 0;
   }
 
