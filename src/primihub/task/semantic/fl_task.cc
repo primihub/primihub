@@ -1,5 +1,4 @@
-/*
- Copyright 2022 Primihub
+/* Copyright 2022 Primihub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,7 +18,7 @@
 #include <pybind11/embed.h>
 // #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
+#include "src/primihub/util/util.h"
 // namespace py = pybind11;
 
 namespace primihub::task {
@@ -27,11 +26,34 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
                std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
 
+
     // Convert TaskParam to NodeContext
     auto param_map = task_param->params().param_map();
+
+    auto& node_map_ref = task_param->node_map();
+    std::string server_ip_str;
+    for (auto iter = node_map_ref.begin(); iter != node_map_ref.end(); iter++) {
+	if (!server_ip_str.empty()){
+	    break;
+	}
+        auto& vm_list = iter->second.vm();
+        for (auto& vm : vm_list) {
+            if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
+                server_ip_str = iter->second.ip();
+                break;
+            }
+            LOG(INFO) << "link type: " << vm.next().link_type();
+        }
+        LOG(INFO) << " --- iter first node ip: " << iter->second.ip() << ", port: " << iter->second.port();
+    }
+
+
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
+        this->node_context_.next_peer = param_map["next_peer"].value_string();
+        this->next_peer_address_ = param_map["next_peer"].value_string(); 
+        
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
@@ -52,13 +74,22 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
         LOG(ERROR) << "Failed to find vm list for node: " << node_id;
         return;
     }
+
+    std::vector<std::string> t;
+    str_split(this->next_peer_address_, &t,  ':');
+
     for (auto &vm : vm_list) {
-        auto ip = vm.next().ip();
-        auto port = vm.next().port();
-        next_peer_address_ = ip + ":" + std::to_string(port);
-        LOG(INFO) << "Next peer address: " << next_peer_address_;
+        auto name = vm.next().name();
+        LOG(INFO) << "vm name is: " << name;
+        auto ip = vm.next().ip();  
+        // auto port = vm.next().port();
+        auto port = t[1]; // get port from not context
+        // next_peer_address_ = ip + ":" + std::to_string(port);
+        this->next_peer_address_ = server_ip_str + ":" + port;
+        LOG(INFO) << "Next peer address: " << this->next_peer_address_;
         break;
     }
+
     // Set datasets meta list in context
     for (auto &input_dataset : input_datasets) { 
         // Get dataset path from task params map
@@ -95,14 +126,16 @@ int FLTask::execute() {
           ph_exec_m = py::module::import("primihub.executor").attr("Executor");
           ph_context_m = py::module::import("primihub.context");
           set_node_context_ = ph_context_m.attr("set_node_context");
-
+	  
           set_node_context_(node_context_.role,
                     node_context_.protocol,
                     py::cast(node_context_.datasets),
-                    this->next_peer_address_);
+//                    node_context_.next_peer);
+                     this->next_peer_address_);
 
           set_task_context_dataset_map_ = ph_context_m.attr("set_task_context_dataset_map");
           for (auto &dataset_meta : this->dataset_meta_map_) {
+	      LOG(INFO) << "<<<<<<< insert DATASET : " << dataset_meta.first << ", "<< dataset_meta.second;
               set_task_context_dataset_map_(dataset_meta.first, dataset_meta.second);
           }
 
