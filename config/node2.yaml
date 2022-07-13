@@ -53,7 +53,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/192.168.99.17/tcp/10080/ipfs/QmYp9xmGgjVzJomWfEe87EPrVSY6jjAV5MMCWCCn4Fqu2A"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8889"
   dht_get_value_timeout:  60
-
