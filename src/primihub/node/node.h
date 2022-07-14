@@ -87,6 +87,10 @@ class VMNodeImpl final: public VMNode::Service {
         running_set.clear();
         nodelet = std::make_shared<Nodelet>(config_file_path);
     }
+    ~VMNodeImpl() override {
+      std::cout << "VMNodeImpl destructor\n";
+      this->nodelet.reset();
+    }
 
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
