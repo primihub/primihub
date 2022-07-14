@@ -81,6 +81,9 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
     for (auto &vm : vm_list) {
         auto name = vm.next().name();
         LOG(INFO) << "vm name is: " << name;
+        if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
+                server_ip_str = '*';
+        }
         auto ip = vm.next().ip();  
         // auto port = vm.next().port();
         auto port = t[1]; // get port from not context
