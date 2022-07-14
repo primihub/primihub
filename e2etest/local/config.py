@@ -13,5 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
+import os
+
 simple_bootstrap_node_path = '/home/xt/Documents/simple-bootstrap-node'
-primihub_path = '/home/xt/Documents/new/primihub-develop'
+primihub_path = os.path.abspath(os.path.join(os.getcwd(), "../.."))
