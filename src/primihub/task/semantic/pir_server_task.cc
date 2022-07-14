@@ -90,7 +90,7 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
 
             std::string rand_str(rand_num, 0);
             prng->generate(rand_str.size(), reinterpret_cast<seal::SEAL_BYTE*>(rand_str.data()));
-	    elements_.push_back(std::to_string(i) + rand_str);
+	        elements_.push_back(std::to_string(i) + std::to_string(i) + std::to_string(i) + rand_str);
         }
     }
 
@@ -112,6 +112,22 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
     return 0;
 }
 
+uint32_t compute_plain_mod_bit_size_server(size_t dbsize, size_t elem_size) {
+    uint32_t plain_mod_bit_size = PLAIN_MOD_BIT_SIZE_UPBOUND_SVR;
+    while (true) {
+        plain_mod_bit_size--;
+        uint64_t elem_per_plaintext = POLY_MODULUS_DEGREE_SVR \
+                                    * (plain_mod_bit_size - 1) / 8 / elem_size;
+        uint64_t num_plaintext = dbsize / elem_per_plaintext + 1;
+        if (num_plaintext <= 
+                (uint64_t)1 << (NOISE_BUDGET_BASE_SVR - 2 * plain_mod_bit_size)) 
+        {
+            break;
+        }
+    }
+    return plain_mod_bit_size;
+}
+
 int PIRServerTask::execute() {
     int ret = loadParams(params_);
     if (ret) {
@@ -119,11 +135,11 @@ int PIRServerTask::execute() {
         return -1;
     }
 
-    size_t db_size = 400;
+    size_t db_size = 100000;
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE_SVR;
-    uint32_t plain_mod_bit_size = 28;
-    bool use_ciphertext_multiplication = false;
+    uint32_t plain_mod_bit_size = compute_plain_mod_bit_size_server(db_size, elem_size);
+    bool use_ciphertext_multiplication = true;
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE_SVR;
     uint32_t bits_per_coeff = 0;
 
