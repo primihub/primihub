@@ -30,6 +30,7 @@ namespace primihub::task {
 typedef struct NodeContext {
     std::string role;
     std::string protocol;
+    std::string next_peer;
     std::vector<std::string> datasets;
     std::string dumps_func;
     // std::map<std::string, std::string> func_params_map;

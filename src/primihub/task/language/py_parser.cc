@@ -71,6 +71,7 @@ void PyParser::parseTask() {
             NodeContext _node_context;
             _node_context.role = node_context_obj.attr("role").cast<std::string>();
             _node_context.protocol = node_context_obj.attr("protocol").cast<std::string>();
+            _node_context.next_peer = node_context_obj.attr("next_peer").cast<std::string>();
             _node_context.dumps_func = node_context_obj.attr("dumps_func").cast<std::string>();
             auto datasets = node_context_obj.attr("datasets").cast<py::list>();
             for (auto &dataset : datasets) {
