@@ -27,6 +27,7 @@ from primihub.FL.model.evaluation.evaluation import Regression_eva
 import pandas as pd
 import numpy as np
 import logging
+import pickle
 
 
 def get_logger(name):
@@ -122,6 +123,9 @@ def xgb_host_logic(cry_pri="paillier"):
 
             logger.info("Finish to trian tree {}.".format(t))
 
+        model = xgb_host.tree_structure
+        with open('model', 'wb') as fp:
+            pickle.dump(model, fp)
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_raw(data_test)
@@ -144,6 +148,9 @@ def xgb_host_logic(cry_pri="paillier"):
 
             logger.info("Finish to trian tree {}.".format(t))
 
+        model = xgb_host.tree_structure
+        with open('model', 'wb') as fp:
+            pickle.dump(model, fp)
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_raw(data_test)
