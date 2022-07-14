@@ -31,7 +31,7 @@ StorageBackendLevelDB::StorageBackendLevelDB(std::string path) : path_(path) {
 }
 
 StorageBackendLevelDB::~StorageBackendLevelDB()  {
-    std::cout << "StorageBackendLevelDB::~StorageBackendLevelDB()" << std::endl;
+    std::cout << "Closing leveldb..." << std::endl;
     delete db_;
 }
 

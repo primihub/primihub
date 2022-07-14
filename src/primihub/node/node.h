@@ -88,7 +88,6 @@ class VMNodeImpl final: public VMNode::Service {
         nodelet = std::make_shared<Nodelet>(config_file_path);
     }
     ~VMNodeImpl() override {
-      std::cout << "VMNodeImpl destructor\n";
       this->nodelet.reset();
     }
 
