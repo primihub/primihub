@@ -463,12 +463,20 @@ cc_library(
             "src/primihub/algorithm/aby3ML.h",
             "src/primihub/algorithm/linear_model_gen.h",
             "src/primihub/algorithm/logistic.h",
+	    "src/primihub/node/node.h",
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
 	    "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h",
+	    "src/primihub/node/nodelet.h",
+	    "src/primihub/node/worker/worker.h",
+	    "src/primihub/task/semantic/parser.h",
+	    "src/primihub/task/semantic/scheduler.h",
+	    "src/primihub/task/semantic/task.h",
+	    "src/primihub/task/language/parser.h",
+	    "src/primihub/task/language/py_parser.h",
     ]),
     copts = C_OPT + [
       "-maes",
@@ -485,7 +493,10 @@ cc_library(
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-          ":protocol_falcon_lib"
+          ":protocol_falcon_lib",
+	  "@pybind11",
+	  "@com_google_absl//absl/flags:flag",
+	  "@com_google_absl//absl/flags:parse",
     ],
 )
 
@@ -525,7 +536,7 @@ cc_library(
     # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
     # help locate line content of which need replace, don't 
     # remove it.)
-    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.9/config-3.9-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu  -lcrypt -lpthread -ldl  -lutil -lm -lm  -lpython3.9"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )

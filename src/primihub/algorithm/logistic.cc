@@ -20,6 +20,7 @@
 #include <arrow/result.h>
 #include <glog/logging.h>
 
+#include "src/primihub/node/node.h"
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
@@ -29,7 +30,7 @@ using namespace Eigen;
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Table;
-
+extern primihub::VMNodeImpl * node_service;
 namespace primihub {
 eMatrix<double>
 logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
@@ -508,7 +509,7 @@ int LogisticRegressionExecutor::saveModel(void) {
   std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
 
   std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver("CSV", "test addr");
+      DataDirverFactory::getDriver("CSV", node_service->getNodelet()->getNodeletAddr());
   std::shared_ptr<CSVDriver> csv_driver =
       std::dynamic_pointer_cast<CSVDriver>(driver);
 
