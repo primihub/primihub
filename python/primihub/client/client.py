@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from primihub import context, dataset
 from primihub.client.visitor import Visitor
 from primihub.client.grpc_client import GRPCClient
 import primihub as ph
@@ -47,7 +48,7 @@ class PrimihubClient(object):
         >>> from primihub.client import primihub_cli as cli
         >>> cli.init(config={"node": "node_address", "cert": "cert_file_path"})
         """
-        print("***")
+        print("*** init ***")
         print(config)
         node = config.get("node", None)
         cert = config.get("cert", None)
@@ -63,7 +64,7 @@ class PrimihubClient(object):
 
         self.grpc_cli.set_task_map(code=code.encode('utf-8'))
         res = self.grpc_cli.submit()
-        print("res: ", res)
+        print("res: ", type(res), res)
         return res
 
     def remote_execute(self, *args):
@@ -77,15 +78,15 @@ class PrimihubClient(object):
             params = arg[1:]
             func_params_map[func.__name__] = params
 
-        print(func_params_map)
+        # print(func_params_map)
 
         self.code = self.vistitor.trans_remote_execute(self.code)
         ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
-        print(self.code)
+        # print(self.code)
         res = self.submit_task(self.code)
-        print(res)
+        # print(res)
         return res
 
 

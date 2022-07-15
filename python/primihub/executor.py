@@ -16,7 +16,8 @@
 
 import sys
 import traceback
-from dill import loads
+# from dill import loads
+from cloudpickle import loads
 from primihub.context import Context
 
 shared_globals = dict()
@@ -68,17 +69,42 @@ class Executor:
                 func()
                 print("end execute")
             except Exception as e:
-                print(e)
-                exc_type, exc_value, exc_traceback_obj = sys.exc_info()
-                print(exc_type, exc_value)
-                traceback.print_tb(exc_traceback_obj)
+                print("Exception: ", str(e))
+                traceback.print_exc()
         else:
             try:
                 print("start execute with params")
                 func(*func_params)
                 print("end execute with params")
             except Exception as e:
-                print(e)
-                exc_type, exc_value, exc_traceback_obj = sys.exc_info()
-                print(exc_type, exc_value)
-                traceback.print_tb(exc_traceback_obj)
+                print("Exception: ", str(e))
+                traceback.print_exc()
+                
+    @staticmethod
+    def execute_py(dumps_func):
+        print("execute oy code.")
+        func_name = loads(dumps_func).__name__
+        print("func name: ", func_name)
+        func_params = Context.get_func_params_map().get(func_name, None)
+        func = loads(dumps_func)
+        print("func params: ", func_params)
+        if not func_params:
+            try:
+                print("start execute")
+                func()
+                print("end execute")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+        else:
+            try:
+                print("start execute with params")
+                func(*func_params)
+                print("end execute with params")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+
+    @staticmethod
+    def execute_test():
+        print("This is a tset function.")
