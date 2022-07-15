@@ -1,15 +1,28 @@
-#!/bin/bash
+#!/bin/sh
+PYTHON_BIN=python3
+if ! command -v python3 >/dev/null 2>&1; then
+  if ! command -v python >/dev/null 2>&1; then
+    echo "please install python3"
+    exit
+  else
+    PYTHON_BIN=python
+  fi
+fi
+U_V1=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $1}'`
+U_V2=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $2}'`
+U_V3=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $3}'`
 
-PrevLineNum=`cat BUILD.bazel | grep -n "PLACEHOLDER-PYTHON3.X-CONFIG" | awk -F ":" '{print $1}'`
-if [ -z ${PrevLineNum} ]; then
-	echo "Can't find line including 'PLACEHOLDER-PYTHON3.X-CONFIG' in BUILD.bazel."
-	exit
-fi	
+echo your python version is : "$U_V1.$U_V2.$U_V3"
+if ! [ $U_V1 == 3 ] && [ $U_V2 > 6 ] ; then
+  echo "python version must > 3.6"
+  exit
+fi
 
-TargetLine=`expr $PrevLineNum + 3`
+if ! command -v python$U_V1.$U_V2-config >/dev/null 2>&1; then
+  echo "please install python$U_V1.$U_V2-dev"
+  exit
+fi
 
-CONFIG=`python3.9-config --ldflags` \
-  && NEWLINE="\ \ \ \ linkopts = LINK_OPTS + [\"${CONFIG} -lpython3.9\"]," \
-  && sed -i "${TargetLine}c ${NEWLINE}" BUILD.bazel
-
+CONFIG=`python$U_V1.$U_V2-config --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+sed -e "s|PLACEHOLDER-PYTHON3.X-CONFIG|${NEWLINE}|g" BUILD.bazel > BUILD.bazel.tmp && mv BUILD.bazel.tmp BUILD.bazel
 echo "done"
