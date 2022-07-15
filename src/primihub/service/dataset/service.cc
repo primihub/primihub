@@ -151,7 +151,10 @@ namespace primihub::service {
             std::string node_id, node_ip, dataset_path;
             int node_port;
             std::string data_url = meta.getDataURL();
-            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+            if (!DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path)) {
+                LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
+                continue;
+            }
             meta.setDataURL(nodelet_addr + ":" +dataset_path);
             // Publish dataset meta on libp2p network.
             metaService_->putMeta(meta);
@@ -163,7 +166,6 @@ namespace primihub::service {
           metaService_->setMetaSearchTimeout(timeout);
        }
     }
-
 
     // ======================== DatasetMetaService ====================================
     DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,

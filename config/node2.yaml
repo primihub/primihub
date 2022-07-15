@@ -33,6 +33,12 @@ datasets:
   - description: "guest_dataset"
     model: "csv"
     source: "data/FL/wisconsin_guest.data"
+  - description: "train_party_2"
+    model: "csv"
+    source: "data/train_party_2.csv" 
+  - description: "test_party_2"
+    model: "csv"
+    source: "data/test_party_2.csv"
 
 localkv: 
   model: "leveldb"

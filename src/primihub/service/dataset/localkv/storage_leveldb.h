@@ -25,7 +25,7 @@ namespace primihub::service {
     class StorageBackendLevelDB : public StorageBackend {
       public:
         StorageBackendLevelDB(std::string path);
-        ~StorageBackendLevelDB() override = default;
+        ~StorageBackendLevelDB();
 
         outcome::result<void> putValue(Key key, Value value) override;
 
