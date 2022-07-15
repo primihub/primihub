@@ -1,12 +1,12 @@
 FROM ubuntu:20.04 as runner
 
-ENV LANG C.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
-
 RUN  apt-get update \
   && apt-get install -y python3.9 python3.9-dev libgmp-dev python3-pip git \
   && rm -rf /var/lib/apt/lists/*
-
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
 # Copy binaries to TARGET_PATH
@@ -29,8 +29,12 @@ COPY ./src ./src
 
 WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip \
-  && python3.9 -m pip install -r requirements.txt \ 
-  && python3.9 setup.py install
+  && python3.9 -m pip install --no-cache-dir -r requirements.txt 
+
+RUN python3.9 -m pip install cloudpickle
+RUN python3.9 -m pip uninstall primihub \
+RUN python3.9 setup.py install
+RUN python3.9 setup.py develop
 
 WORKDIR /app
 RUN ln -s /app/python /app/primihub_python
