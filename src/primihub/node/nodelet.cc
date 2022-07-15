@@ -58,6 +58,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
 Nodelet::~Nodelet() {
     // TODO stop node and release all protocol/service resources
+    this->local_kv_.reset();
 }
 
 std::shared_ptr<primihub::service::DatasetService> &Nodelet::getDataService() {

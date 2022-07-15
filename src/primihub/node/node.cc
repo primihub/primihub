@@ -99,9 +99,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->singleton, 
                                            this->nodelet->getDataService());
         // Parse and dispathc pir task.
-	LOG(INFO) << "node_ip:" << this->node_ip;
         if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK) {
-            //_psp.schedulePirTask(lan_parser_, this->node_id, this->node_ip, this->service_port);
             _psp.schedulePirTask(lan_parser_, this->nodelet->getNodeletAddr());
         } else {
             _psp.schedulePsiTask(lan_parser_);
@@ -181,7 +179,15 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
     .RegisterService(node_service)
     .RegisterService(dataset_service);
 
+    // set the max message size to 128M
     builder.SetMaxReceiveMessageSize(128 * 1024 * 1024);
+    
+    // set gRPC thread pool size to current number of cores
+    grpc::ResourceQuota rq;
+    int num_threads = std::thread::hardware_concurrency();
+    rq.SetMaxThreads(num_threads);
+    builder.SetResourceQuota(rq);
+
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
     LOG(INFO) << " 💻 Node listening on port: " << service_port;
@@ -191,12 +197,19 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
 
 } // namespace primihub
 
+
+primihub::VMNodeImpl * node_service;
+primihub::DataServiceImpl * data_service;
+
 int main(int argc, char **argv) {
 
-
+    // std::atomic<bool> quit(false);    // signal flag for server to quit
     // Register SIGINT signal and signal handler
+
     signal(SIGINT, [] (int sig) {
         LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
+        delete node_service;
+        delete data_service;
         exit(0);
     });
 
@@ -218,12 +231,14 @@ int main(int argc, char **argv) {
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    primihub::VMNodeImpl node_service(node_id, node_ip, service_port, singleton,
+    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port, singleton,
                                  config_file);
-    primihub::DataServiceImpl data_service(node_service.getNodelet()->getDataService(),
-                                           node_service.getNodelet()->getNodeletAddr());
+    data_service = new primihub::DataServiceImpl(node_service->getNodelet()->getDataService(),
+                                           node_service->getNodelet()->getNodeletAddr());
 
-    primihub::RunServer(&node_service, &data_service, service_port);
+
+
+    primihub::RunServer(node_service, data_service, service_port);
 
     return EXIT_SUCCESS;
 }
