@@ -33,6 +33,7 @@ jobs:
       with:
         python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - run: sudo apt update
     - name: Install gcc-8
       run: |
          sudo apt install -y gcc-8  g++-8 \
@@ -47,12 +48,10 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - name: set PYTHON LINK_OPTS
-      run: ./pre_build.sh
-      shell: bash
-      
+  
     - name: bazel test
       run: |
+        ./pre_build.sh
         bazel build --config=linux logistic_test maxpool_test falcon_lenet_test common_test network_test
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
@@ -79,13 +78,12 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    
     - name: get python ldflags
       run: python3.9-config --ldflags
-
     - uses: actions/checkout@v3
     - name: bazel build
       run: |
+        ./pre_build.sh 
         bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
@@ -94,6 +92,7 @@ jobs:
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
         # bazel test --config=darwin_x86_64 --config=macos share_test
+      shell: bash
 
   
   build-on-ubuntu:
@@ -108,6 +107,7 @@ jobs:
       with:
         python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - run: sudo apt update
     - name: Install gcc-8
       run: |
          sudo apt install -y gcc-8  g++-8 \
@@ -129,6 +129,7 @@ jobs:
       run: |
         # cc_binary
         bazel build --config=linux :node :cli :opt_paillier_c2py_test 
+      
   
   build-on-mac_x86_64:
     needs: unit-test-on-macos_x86_64
@@ -147,7 +148,9 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
+        ./pre_build.sh
         bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py_test  --sandbox_debug 
+      shell: bash
     - name: Release copy
       run : |
         cp ./bazel-bin/node ./bazel-bin/primihub-node

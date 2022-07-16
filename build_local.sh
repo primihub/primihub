@@ -48,4 +48,4 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$1 . -f Dockerfile.local
+docker build --no-cache -t $IMAGE_NAME:$1 . -f Dockerfile.local 

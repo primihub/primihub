@@ -49,14 +49,14 @@ class Visitor(object):
 
     def trans_remote_execute(self, code):
         node = ast.parse(code)
-        print(ast.dump(node))
+        # print(ast.dump(node))
         # do ast manipulation
         node = RemoteExecuteTransformer().visit(node)
         # fix locations
         node = ast.fix_missing_locations(node)
-        print("Here are the extracted content:")
+        # print("Here are the extracted content:")
         code_str = ast.unparse(node)
-        print(code_str)
+        # print(code_str)
         return code_str
 
 # ast transformer
@@ -125,8 +125,8 @@ class CLiTransformer(ast.NodeTransformer):
 
     def visit_Expr(self, node: ast.Expr):
         if isinstance(node.value, ast.Call):
-            print(node.value.func)
-            print(node.value.func.__dict__)
+            # print(node.value.func)
+            # print(node.value.func.__dict__)
             if node.value.func.__dict__.get("attr", None) == "init":
                 return None
         return node
@@ -158,8 +158,8 @@ class RemoteExecuteTransformer(ast.NodeTransformer):
 
     def visit_Expr(self, node: ast.Expr):
         if isinstance(node.value, ast.Call):
-            print(node.value.func)
-            print(node.value.func.__dict__)
+            # print(node.value.func)
+            # print(node.value.func.__dict__)
             if node.value.func.__dict__.get("attr", None) == "remote_execute":
                 return None
         return node

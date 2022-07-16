@@ -30,13 +30,27 @@ StorageBackendLevelDB::StorageBackendLevelDB(std::string path) : path_(path) {
     }
 }
 
+StorageBackendLevelDB::~StorageBackendLevelDB()  {
+    std::cout << "Closing leveldb..." << std::endl;
+    delete db_;
+}
+
+
 outcome::result<void> StorageBackendLevelDB::putValue(Key key, Value value) {
     // Kade::ContentId to leveldb::Slice
     auto key_str = Key2Str(key);
     leveldb::Slice key_slice = key_str;
-    leveldb::Status status =
-        db_->Put(leveldb::WriteOptions(), key_slice, value);
-
+    try {
+        // leveldb::Status to outcome::result<void>
+        auto status = db_->Put(leveldb::WriteOptions(), key_slice, value);
+        if (!status.ok()) {
+            return Error::INTERNAL_ERROR;
+        }
+    } catch (const std::exception &e) {
+        std::cout << "StorageBackendLevelDB::putValue() exception: " << e.what() << std::endl;
+        return Error::INTERNAL_ERROR;
+    }
+    
     return outcome::success();
 }
 
@@ -44,10 +58,14 @@ outcome::result<Value> StorageBackendLevelDB::getValue(const Key &key) const {
     std::string value;
     auto key_str = Key2Str(key);
     leveldb::Slice key_slice = key_str;
-    leveldb::Status status =
-        db_->Get(leveldb::ReadOptions(), key_slice, &value);
-    if (!status.ok()) {
-        return Error::VALUE_NOT_FOUND;
+    try {
+        auto status = db_->Get(leveldb::ReadOptions(), key_slice, &value);
+        if (!status.ok()) {
+            return Error::VALUE_NOT_FOUND;
+        }
+    } catch (const std::exception &e) {
+        std::cout << "StorageBackendLevelDB::getValue() exception: " << e.what() << std::endl;
+        return Error::INTERNAL_ERROR;
     }
     return outcome::success(value);
 }
