@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-class XGB_GUEST:
+class XGB_GUEST_EN:
     def __init__(self,
                  base_score=0.5,
                  max_depth=3,
@@ -34,7 +34,7 @@ class XGB_GUEST:
 
     def get_GH(self, X, pub):
         # Calculate G_left、G_right、H_left、H_right under feature segmentation
-        arr = np.zeros((X.shape[0]*4, 6))
+        arr = np.zeros((X.shape[0]*10, 6))
         GH = pd.DataFrame(arr, columns=['G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'])
         i = 0
         for item in [x for x in X.columns if x not in ['g', 'h']]:
@@ -127,6 +127,9 @@ class XGB_GUEST:
         if mdep > self.max_depth:
             return
         best_var = self.channel.recv()
+        if best_var == "True":
+            self.channel.send("True")
+            return None
 
         self.channel.send("true")
         if best_var in [x for x in X_guest_gh.columns]:

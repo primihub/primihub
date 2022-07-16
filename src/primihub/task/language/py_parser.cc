@@ -39,7 +39,7 @@ PyParser::~PyParser() {
  *            1. What datasets to use. 
  *            2. What protocol to use.
  *            3. What roles join nodes should have. 
- *            4. What python code to execute in each role.
+ *            4. What python code and params to execute in each role.
  *         from python code.
  */
 void PyParser::parseTask() {
@@ -55,6 +55,10 @@ void PyParser::parseTask() {
         
         // get roles
         auto roles = ph_context_.attr("get_roles")().cast<py::list>();
+
+        // get func params map
+        auto func_params_ = ph_context_.attr("get_func_params_map")().cast<py::tuple>();
+
         for (auto &role : roles) {
             std::cout << role.cast<std::string>() << std::endl;
             this->roles_.push_back(role.cast<std::string>());
@@ -67,6 +71,7 @@ void PyParser::parseTask() {
             NodeContext _node_context;
             _node_context.role = node_context_obj.attr("role").cast<std::string>();
             _node_context.protocol = node_context_obj.attr("protocol").cast<std::string>();
+            _node_context.next_peer = node_context_obj.attr("next_peer").cast<std::string>();
             _node_context.dumps_func = node_context_obj.attr("dumps_func").cast<std::string>();
             auto datasets = node_context_obj.attr("datasets").cast<py::list>();
             for (auto &dataset : datasets) {

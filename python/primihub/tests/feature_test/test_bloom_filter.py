@@ -1,6 +1,20 @@
 from primihub.FL.feature_engineer.bloom_filter import BloomFilter
 
-if __name__ == '__main__':
+
+def test_bloom_filter():
+    """Test bloom filter."""
+    bloom_a = BloomFilter(200)
+    for i in range(50):
+        bloom_a.add(str(i))
+
+    assert "50" not in bloom_a
+    assert "-1" not in bloom_a
+    assert "24" in bloom_a
+    assert "25" in bloom_a
+
+
+def test_bloom_filter_union():
+    """Test bloom filter union func."""
     bloom_a = BloomFilter(200)
     bloom_b = BloomFilter(200)
     for i in range(50):

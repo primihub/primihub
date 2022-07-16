@@ -22,22 +22,24 @@ import primihub as ph
 
 from primihub.examples.disxgb_en import xgb_host_logic, xgb_guest_logic
 
-HOST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/breast-cancer-wisconsin-label.data"))  # noqa
-GUEST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/breast-cancer-wisconsin.data"))  # noqa
-
+HOST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/wisconsin_host.data"))  # noqa
+GUEST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/wisconsin_guest.data"))  # noqa
+TEST_DATA_PATH = path.abspath(path.join(path.dirname(__file__), "data/wisconsin_test.data"))  # noqa
 
 ph.context.Context.dataset_map = {
     'label_dataset': HOST_DATA_PATH,
-    'guest_dataset': GUEST_DATA_PATH
+    'guest_dataset': GUEST_DATA_PATH,
+    'test_dataset': TEST_DATA_PATH
 }
 
 ph.context.Context.output_path = "/data/result/xgb_prediction.csv"
 
+cry_pri = "paillier"
 def run_xgb_host_logic():
-    xgb_host_logic()
+    xgb_host_logic(cry_pri)
 
 def run_xgb_guest_logic():
-    xgb_guest_logic()
+    xgb_guest_logic(cry_pri)
 
 
 if __name__ == "__main__":

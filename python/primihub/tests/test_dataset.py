@@ -1,17 +1,16 @@
-import pytest
-from os import path
-import sys
-
 import ctypes
+import sys
+from os import path
 
-from primihub import dataset as ds
 import pybind11_example
+from primihub import dataset as ds
 
 here = path.abspath(path.dirname(__file__))
 
+
 def test_read_csv_dataset():
     dr = ds.driver("csv")
-    cursor = ds.driver("csv")().read(path=here+'/data/matrix.csv')
+    cursor = ds.driver("csv")().read(path=here + '/data/matrix.csv')
     d = cursor.read()
     print(type(d.as_arrow()))
 

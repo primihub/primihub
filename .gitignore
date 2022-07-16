@@ -105,5 +105,10 @@ output
 *.egg-info/
 *.pyc
 
+# sphinx .rst
+*.rst
+
+primihub.code-workspace
+
 # leveldb storage
 localdb/

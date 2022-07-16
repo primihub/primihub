@@ -14,16 +14,19 @@
  limitations under the License.
  """
 
+import sys
+import traceback
+# from dill import loads
+from cloudpickle import loads
 from primihub.context import Context
-from dill import loads
 
 shared_globals = dict()
 shared_globals['context'] = Context
 
+
 class Executor:
     def __init__(self):
         pass
-    
 
     @staticmethod
     def execute(py_code: str):
@@ -47,3 +50,61 @@ class Executor:
             print("end execute 1")
         except Exception as e:
             print(e)
+
+    @staticmethod
+    def execute_with_params(dumps_func=None, dumps_params=None):
+        func_name = loads(dumps_func).__name__
+        # print("func: ", loads(dumps_func))
+        print("func name: ", func_name)
+        # print("func params: ", loads(dumps_params))
+        if not dumps_params:
+            func_params = Context.get_func_params_map().get(func_name, None)
+        else:
+            func_params = loads(dumps_params)
+        func = loads(dumps_func)
+        print("func params: ", func_params)
+        if not func_params:
+            try:
+                print("start execute")
+                func()
+                print("end execute")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+        else:
+            try:
+                print("start execute with params")
+                func(*func_params)
+                print("end execute with params")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+                
+    @staticmethod
+    def execute_py(dumps_func):
+        print("execute oy code.")
+        func_name = loads(dumps_func).__name__
+        print("func name: ", func_name)
+        func_params = Context.get_func_params_map().get(func_name, None)
+        func = loads(dumps_func)
+        print("func params: ", func_params)
+        if not func_params:
+            try:
+                print("start execute")
+                func()
+                print("end execute")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+        else:
+            try:
+                print("start execute with params")
+                func(*func_params)
+                print("end execute with params")
+            except Exception as e:
+                print("Exception: ", str(e))
+                traceback.print_exc()
+
+    @staticmethod
+    def execute_test():
+        print("This is a tset function.")

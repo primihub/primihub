@@ -519,12 +519,12 @@ cc_library(
     ]),
     hdrs = glob([
              "src/primihub/task/**/*.h",
+	     "src/primihub/util/util.h"
     ]),
     copts = C_OPT,
-    # PLACEHOLDER-PYTHON3.X-CONFIG (pre_build.sh use it to 
-    # help locate line content of which need replace, don't 
-    # remove it.)
-    linkopts = LINK_OPTS + ["-L/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -ldl -lpython3.9 -framework CoreFoundation"],
+    # pre_build.sh use it to help locate line content of which need replace, 
+    # don't remove it.
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -1341,7 +1341,7 @@ cc_test(
             ":logistic_test",
             ":prng_test",
             ":share_test",
-            ":paillier_test",
+            ":opt_paillier_test",
     ],
 )
 

@@ -153,6 +153,22 @@ int PIRClientTask::saveResult() {
     return 0;
 }
 
+uint32_t compute_plain_mod_bit_size(size_t dbsize, size_t elem_size) {
+    uint32_t plain_mod_bit_size = PLAIN_MOD_BIT_SIZE_UPBOUND;
+    while (true) {
+        plain_mod_bit_size--;
+        uint64_t elem_per_plaintext = POLY_MODULUS_DEGREE \
+                                    * (plain_mod_bit_size - 1) / 8 / elem_size;
+        uint64_t num_plaintext = dbsize / elem_per_plaintext + 1;
+        if (num_plaintext <= 
+                (uint64_t)1 << (NOISE_BUDGET_BASE - 2 * plain_mod_bit_size)) 
+        {
+            break;
+        }
+    }
+    return plain_mod_bit_size;
+}
+
 int PIRClientTask::execute() {
     int ret = _LoadParams(task_param_);
     if (ret) {
@@ -160,17 +176,17 @@ int PIRClientTask::execute() {
         return ret;
     }
 
-    size_t db_size = 20;
+    size_t db_size = 100000;
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE;
-    uint32_t plain_mod_bit_size = 28;
-    bool use_ciphertext_multiplication = false;
+    uint32_t plain_mod_bit_size = compute_plain_mod_bit_size(db_size, elem_size);
+    bool use_ciphertext_multiplication = true;
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE;
     uint32_t bits_per_coeff = 0;
 
     ret = _SetUpDB(db_size, dimensions, elem_size,
-                       plain_mod_bit_size, use_ciphertext_multiplication,
-                       bits_per_coeff);
+                       plain_mod_bit_size, bits_per_coeff,
+                       use_ciphertext_multiplication);
 
     if (ret) {
         LOG(ERROR) << "Failed to initialize pir client.";

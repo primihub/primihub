@@ -143,6 +143,8 @@ class XGB_HOST:
 
         best_var, best_cut, GH_best = self.find_split(GH_host, GH_guest)
         if best_var is None:
+            self.channel.send("True")
+            self.channel.recv()
             return None
         # best_var = best_var.encode("utf-8")
         self.channel.send(best_var)
@@ -176,22 +178,29 @@ class XGB_HOST:
             print("host shape",
                   X_host.loc[id_left].shape, X_host.loc[id_right].shape)
 
-            tree_structure[(best_var, best_cut)][('left', w_left)] = self.xgb_tree(X_host.loc[id_left],
-                                                                                   gh_sum_left,
-                                                                                   gh.loc[id_left],
-                                                                                   f_t,
-                                                                                   m_dpth + 1)
-            tree_structure[(best_var, best_cut)][('right', w_right)] = self.xgb_tree(X_host.loc[id_right],
-                                                                                     gh_sum_right,
-                                                                                     gh.loc[id_right],
-                                                                                     f_t,
-                                                                                     m_dpth + 1)
-        return tree_structure
+            result_left = self.xgb_tree(X_host.loc[id_left],
+                                        gh_sum_left,
+                                        gh.loc[id_left],
+                                        f_t,
+                                        m_dpth + 1)
+            if isinstance(result_left, tuple):
+                tree_structure[(best_var, best_cut)][('left', w_left)] = result_left[0]
+                f_t = result_left[1]
+            else:
+                tree_structure[(best_var, best_cut)][('left', w_left)] = result_left
+            result_right = self.xgb_tree(X_host.loc[id_right],
+                                         gh_sum_right,
+                                         gh.loc[id_right],
+                                         f_t,
+                                         m_dpth + 1)
+            if isinstance(result_right, tuple):
+                tree_structure[(best_var, best_cut)][('right', w_right)] = result_right[0]
+                f_t = result_right[1]
+            else:
+                tree_structure[(best_var, best_cut)][('right', w_right)] = result_right
+        return tree_structure, f_t
 
     def _get_tree_node_w(self, X, tree, w):
-        '''
-        以递归的方法，把树结构解构出来，把权重值赋到w上面
-        '''
 
         if not tree is None:
             k = list(tree.keys())[0]
@@ -212,10 +221,6 @@ class XGB_HOST:
             self._get_tree_node_w(X_right, tree_right, w)
 
     def predict_raw(self, X: pd.DataFrame):
-        '''
-        根据训练结果预测
-        返回原始预测值
-        '''
 
         X = X.reset_index(drop='True')
         Y = pd.Series([self.base_score]*X.shape[0])
@@ -229,9 +234,6 @@ class XGB_HOST:
         return Y
 
     def predict_prob(self, X: pd.DataFrame):
-        '''
-        当指定objective为logistic时，输出概率要做一个logistic转换
-        '''
 
         Y = self.predict_raw(X)
         def sigmoid(x): return 1/(1+np.exp(-x))

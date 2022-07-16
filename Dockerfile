@@ -50,7 +50,7 @@ WORKDIR /src
 ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
-RUN bash pre_docker_build.sh \
+RUN bash pre_build.sh \
   && bazel build --config=linux :node :cli :opt_paillier_c2py_test
 
 FROM ubuntu:18.04 as runner
@@ -83,16 +83,16 @@ WORKDIR /app
 COPY --from=builder /src/config ./
 
 # Copy primihub python sources to /app and setup to system python3
-RUN mkdir primihub_python
-COPY --from=builder /src/python/ ./primihub_python/
+RUN mkdir -p src/primihub/protos
+COPY --from=builder /src/python ./python
+COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 COPY --from=builder src/python/primihub/tests/data/ /tmp/
-WORKDIR /app/primihub_python
+WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip setuptools
 RUN python3.9 -m pip install -r requirements.txt
 RUN python3.9 setup.py install
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 WORKDIR /app
-
 
 # gRPC server port
 EXPOSE 50050
