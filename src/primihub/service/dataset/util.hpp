@@ -64,18 +64,6 @@ static Key Str2Key(const std::string &str) {
      return Key(k.value());
 }
 
-static  std::string Key2Str(const Key &key) {
-     auto s = libp2p::multi::ContentIdentifierCodec::toString(
-          libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
-     return s.value();
-}
-
-static Key Str2Key(const std::string &str) {
-     auto k = libp2p::multi::ContentIdentifierCodec::encode(
-          libp2p::multi::ContentIdentifierCodec::fromString(str).value());
-     return Key(k.value());
-}
-
 } // namespace primihub::service
 
 #endif // SRC_PRIMIHUB_SERVICE_DATASET_UTIL_HPP_
