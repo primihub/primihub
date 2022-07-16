@@ -24,5 +24,6 @@ if ! command -v python$U_V1.$U_V2-config >/dev/null 2>&1; then
 fi
 
 CONFIG=`python$U_V1.$U_V2-config --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+# Compatible with MacOS
 sed -e "s|PLACEHOLDER-PYTHON3.X-CONFIG|${NEWLINE}|g" BUILD.bazel > BUILD.bazel.tmp && mv BUILD.bazel.tmp BUILD.bazel
 echo "done"
