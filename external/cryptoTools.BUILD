@@ -4,16 +4,16 @@ package(
     ],
 )
 
-load("@rules_foreign_cc//tools/build_defs:boost_build.bzl", "boost_build")
+#load("@rules_foreign_cc//tools/build_defs:boost_build.bzl", "boost_build")
 
-boost_build(
-    name = "boost_fiber",
-    lib_source = "@boost//:all",
-    static_libraries = ["libboost_fiber.a"],
-    user_options = ["--with-fiber"],
-    visibility = ["//visibility:public"],
-    deps = [":boost_context"],
-)
+#boost_build(
+#    name = "boost_fiber",
+#    lib_source = "@boost//:all",
+#    static_libraries = ["libboost_fiber.a"],
+#    user_options = ["--with-fiber"],
+#    visibility = ["//visibility:public"],
+#    deps = [":boost_context"],
+#)
 
 boost_build(
     name = "boost_context",
@@ -97,7 +97,7 @@ cc_library(
     linkopts = ["-pthread"],
     linkstatic = True,
     deps = [
-                ":boost_fiber",
+                #":boost_fiber",
                 "@toolkit_relic//:relic",
         ],
 )

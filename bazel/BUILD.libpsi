@@ -1,0 +1,25 @@
+cc_library(
+    name = "libpsi",
+    srcs = glob(
+        [
+            "libPSI/**/*.cpp",
+            "libPSI_Tests/**/*.cpp",
+            "frontend/**/*.cpp",
+        ],
+
+    ),
+    includes = ["libPSI", "libPSI_Tests","frontend"],
+    hdrs = glob([
+        "libPSI/**/*.h",
+        "libPSI_Tests/**/*.h",
+        "frontend/**/*.h",
+    ]),
+    visibility = ["//visibility:public"],
+    linkopts = ["-pthread -lstdc++"],
+    linkstatic = True,
+    deps = [
+        "@primihub//:libpsi_config",
+        "@ladnir_cryptoTools//:lib_frontend_cryptoTools",
+        "@osu_libote//:lib_frontend_libOTe",
+    ],
+)

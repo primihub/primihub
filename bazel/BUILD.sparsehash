@@ -1,0 +1,13 @@
+
+cc_library(
+    name = "sparsehash",
+    includes = ["src"],
+    hdrs = glob([
+        "src/google/**/*",
+        "src/sparsehash/**/*",
+    ]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@primihub//:sparsehash_config",
+    ],
+)

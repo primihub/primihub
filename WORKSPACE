@@ -1,3 +1,5 @@
+workspace(name = "primihub")
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
@@ -434,6 +436,41 @@ http_archive(
     #sha256 = "87b565e89a9a684fe4ebeeddb8399dce2599f9c9049854ca8c0dfbdea0e21912",
     strip_prefix = "gmp-6.2.1",
     urls = ["https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz"],
+)
+
+# Google dense_hash_set
+http_archive(
+    name = "google_sparsehash",
+    build_file = "//bazel:BUILD.sparsehash",
+    strip_prefix = "sparsehash-master",
+    urls = ["https://github.com/google/sparsehash/archive/master.zip"],
+)
+
+# libpsi
+http_archive(
+    name = "osu_libpsi",
+    build_file = "//bazel:BUILD.libpsi",
+    sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
+    strip_prefix = "libPSI-master",
+    urls = ["https://github.com/osu-crypto/libPSI/archive/refs/heads/master.zip"],
+)
+
+# libote
+http_archive(
+    name = "osu_libote",
+    build_file = "//external:libOTe.BUILD",
+    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
+    strip_prefix = "libOTe-master",
+    urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
+)
+
+# cryptoTools
+http_archive(
+    name = "ladnir_cryptoTools",
+    build_file = "//external:cryptoTools.BUILD",
+    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
+    strip_prefix = "cryptoTools-master",
+    urls = ["https://github.com/ladnir/cryptoTools/archive/refs/heads/master.zip"],
 )
 
 #PSI
