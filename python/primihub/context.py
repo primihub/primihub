@@ -1,8 +1,6 @@
 import functools
 import os
 from typing import Callable
-
-# from dill import dumps
 from cloudpickle import dumps
 
 
@@ -73,7 +71,10 @@ class TaskContext:
     def get_indicator_file_path(self):
         output_dir = os.path.dirname(self.indicator_file_path)
         if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+            try:
+                os.makedir(output_dir)
+            except:
+                os.makedirs(output_dir)
         return self.indicator_file_path
 
 
