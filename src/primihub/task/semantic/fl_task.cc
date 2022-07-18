@@ -162,9 +162,6 @@ int FLTask::execute() {
                   << ((PyGILState_Check() == 1) ? "hold" : "not hold")
                   << " now is runing " << std::endl;
 
-        // // Execute python code.
-        // ph_exec_m.attr("execute_with_params")(py::bytes(node_context_.dumps_func));
-        /* Release GIL before calling into (potentially long-running) C++ code */
         py::gil_scoped_release release;
 
     } catch (std::exception& e) {
@@ -173,25 +170,16 @@ int FLTask::execute() {
     }
 
     try {
-        LOG(INFO) << "Execute 🐍 ." << std::endl;
-        /* Acquire GIL before calling Python code */
-        // py::gil_scoped_acquire acquire;
-        LOG(INFO) << "<<<<<<<<<<<<<<<1";
         LOG(INFO) << "🔐  GIL is "
             << ((PyGILState_Check() == 1) ? "hold" : "not hold")
             << " now is runing " << std::endl;
-        ph_exec_m.attr("execute_test")();
-        LOG(INFO) << "<<<<<<<<<<<<<<<2";
-        LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< begin";
-        LOG(INFO) << node_context_.dumps_func;
-        LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< end";
-
+        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< begin";
+        // LOG(INFO) << node_context_.dumps_func;
+        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< end";
+        LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
         // Execute python code.
         ph_exec_m.attr("execute_py")(py::bytes(node_context_.dumps_func));
-        /* Release GIL before calling into (potentially long-running) C++ code */
-        // py::gil_scoped_release release;
-        LOG(INFO) << "<<<<<<<<<<<<<<<3";
-
+        LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
 
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to execute python: " << e.what();
