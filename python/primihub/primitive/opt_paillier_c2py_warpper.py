@@ -128,3 +128,18 @@ def opt_paillier_add(pub, op1_cipher_text, op2_cipher_text):
     opt_paillier_c2py.opt_paillier_add_warpper(add_res_cipher_text, op1_cipher_text, op2_cipher_text, pub)
 
     return add_res_cipher_text
+
+def opt_paillier_cons_mul(pub, op1_cipher_text, op2_cons_value):
+
+    if not isinstance (op1_cipher_text, Opt_paillier_ciphertext):
+        print("opt_paillier_cons_mul op1_cipher_text should be type of Opt_paillier_ciphertext()")
+        return
+    if not isinstance (op2_cons_value, int):
+        print("opt_paillier_cons_mul op2_cons_value should be type of int()")
+        return
+
+    cons_mul_res_cipher_text = Opt_paillier_ciphertext()
+
+    opt_paillier_c2py.opt_paillier_cons_mul_warpper(cons_mul_res_cipher_text, op1_cipher_text, str(op2_cons_value), pub)
+
+    return cons_mul_res_cipher_text

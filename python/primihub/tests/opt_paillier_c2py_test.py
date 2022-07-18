@@ -23,11 +23,12 @@ if __name__ == '__main__':
     print("==================KeyGen is finished==================")
     print("KeyGen costs: " + str(keygen_cost * 1000.0) + " ms.")
 
-    _round = 1000
+    _round = 100
     encrypt_cost = 0
     encrypt_crt_cost = 0
     decrypt_cost = 0
     add_cost = 0
+    mul_cost = 0
     for i in range(_round):
         plain_text1 = random_plaintext(2048)
         e_st = time.time()
@@ -56,9 +57,20 @@ if __name__ == '__main__':
         add_cost += e_ed - e_st
 
         add_decrypt_text = opt_paillier_decrypt_crt(pub, prv, add_cipher_text)
-        
         if not add_decrypt_text == plain_text1 + plain_text2:
             print("Add Error")
+
+        e_st = time.time()
+        cons_mul_cipher_text = opt_paillier_cons_mul(pub, cipher_text1, plain_text2)
+        e_ed = time.time()
+        mul_cost += e_ed - e_st
+
+        mul_decrypt_text = opt_paillier_decrypt_crt(pub, prv, cons_mul_cipher_text)
+        mul_plain_res = (plain_text1 * plain_text2) % int(pub.n)
+        if mul_plain_res > int(pub.half_n):
+            mul_plain_res = mul_plain_res - int(pub.n)
+        if not mul_decrypt_text == mul_plain_res:
+            print("Mul Error")
         
         if plain_text1 >= 0:
             if plain_text2 >= 0:
@@ -72,14 +84,16 @@ if __name__ == '__main__':
                 check_list[3] = 1
 
     print("=========================opt test=========================")
-    encrypt_cost = 1.0 / _round * encrypt_cost;
-    encrypt_crt_cost = 1.0 / _round * encrypt_crt_cost;
-    decrypt_cost = 1.0 / _round * decrypt_cost;
-    add_cost     = 1.0 / _round * add_cost;
+    encrypt_cost = 1.0 / _round * encrypt_cost
+    encrypt_crt_cost = 1.0 / _round * encrypt_crt_cost
+    decrypt_cost = 1.0 / _round * decrypt_cost
+    add_cost     = 1.0 / _round * add_cost
+    mul_cost     = 1.0 / _round * mul_cost
 
     print("The avg encrypt_crt  cost is " + str(encrypt_crt_cost * 1000.0 ) + " ms.")
     print("The avg encryption   cost is " + str(encrypt_cost * 1000.0 ) + " ms.")
     print("The avg add_cost     cost is " + str(add_cost     * 1000.0 ) + " ms.")
+    print("The avg mul_cost     cost is " + str(mul_cost     * 1000.0 ) + " ms.")
     print("The avg decrypt_cost cost is " + str(decrypt_cost     * 1000.0 ) + " ms.")
     print("checked: " + str(check_list))
 
