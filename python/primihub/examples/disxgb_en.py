@@ -40,9 +40,9 @@ def get_logger(name):
 
 logger = get_logger("xgb_host")
 
-ph.dataset.dataset.define("guest_dataset")
-ph.dataset.dataset.define("label_dataset")
-ph.dataset.dataset.define("test_dataset")
+dataset.define("guest_dataset")
+dataset.define("label_dataset")
+dataset.define("test_dataset")
 
 ph.context.Context.func_params_map = {
     "xgb_host_logic": ("paillier", ),
