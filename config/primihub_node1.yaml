@@ -7,25 +7,32 @@ grpc_port: 50050
 datasets:
   - description: "test_party_1_self"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1" 
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
   - description: "test_party_1_next"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2" 
+    source: "/tmp/falcon/dataset/MNIST/input_2" 
   - description: "train_party_1"
     model: "csv"
     source: "/tmp/train_party_1.csv" 
   - description: "test_party_1"
     model: "csv"
     source: "/tmp/test_party_1.csv"
-  - description: "guest_dataset"
-    model: "csv"
-    source: "/tmp/breast-cancer-wisconsin.data"
   - description: "pir_server_data"
     model: "csv"
     source: "/tmp/pir_server.csv" 
   - description: "psi_server_data"
     model: "csv"
     source: "/tmp/server_e.csv" 
+  - description: "label_dataset"
+    model: "csv"
+    source: "/tmp/FL/wisconsin_host.data"   
+  - description: "test_dataset"
+    model: "csv"
+    source: "/tmp/FL/wisconsin_test.data"
+
+localkv: 
+  model: "leveldb"
+  path: "./localdb"
 
 p2p:
   bootstrap_nodes:

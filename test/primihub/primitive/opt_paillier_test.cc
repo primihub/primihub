@@ -55,7 +55,6 @@ void test_encrypt(mpz_t cipher_test, mpz_t plain_test) {
 
     encrypt_cost += 1.0 * std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     encrypt_times++;
-    // gmp_printf("Ciphertext = %Zd\n", cipher_test);
 }
 
 void test_add(mpz_t add_cipher_test, mpz_t cipher_test1, mpz_t cipher_test2) {
@@ -78,7 +77,6 @@ void test_decrypt(mpz_t decrypt_test, mpz_t cipher_test) {
 
     decrypt_cost += 1.0 * std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     decrypt_times++;
-    // gmp_printf("Plaintext = %Zd\n", decrypt_test);
 }
 
 bool check_add_res(mpz_t plain_test1, mpz_t plain_test2, mpz_t decrypt_add_test) {

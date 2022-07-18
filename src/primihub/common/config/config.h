@@ -30,6 +30,11 @@ typedef struct Dataset {
     std::string source;
 } Dataset;
 
+typedef struct LocalKV {
+    std::string model;
+    std::string path;
+} LocalKV;
+
 typedef struct P2P {
     std::vector<std::string> bootstrap_nodes;
     std::string multi_addr;
@@ -40,14 +45,16 @@ typedef struct NodeConfig {
     uint64_t grpc_port;
     std::vector<Dataset> datasets;
     P2P p2p;
+    LocalKV localkv;
 } NodeConfig;
 } // namespace primihub::common
 
 namespace YAML {
     
 using primihub::common::Dataset;
-using primihub::common::NodeConfig;
+using primihub::common::LocalKV;
 using primihub::common::P2P;
+using primihub::common::NodeConfig;
 
 template <> struct convert<Dataset> {
     static Node encode(const Dataset &ds) {
@@ -65,6 +72,23 @@ template <> struct convert<Dataset> {
         return true;
     }
 };
+
+
+template <> struct convert<LocalKV> {
+    static Node encode(const LocalKV &lkv) {
+        Node node;
+        node["model"] = lkv.model;
+        node["path"] = lkv.path;
+        return node;
+    }
+
+    static bool decode(const Node &node, LocalKV &lkv) {
+        lkv.model = node["model"].as<std::string>();
+        lkv.path = node["path"].as<std::string>();
+        return true;
+    }
+};
+
 
 template <> struct convert<P2P> {
     static Node encode(const P2P &p2p) {
@@ -90,7 +114,9 @@ template <> struct convert<NodeConfig> {
         node["location"] = nc.location;
         node["grpc_port"] = nc.grpc_port;
         node["datasets"] = nc.datasets;
+        node["localkv"] = nc.localkv;
         node["p2p"] = nc.p2p;
+
         return node;
     }
 
@@ -103,6 +129,7 @@ template <> struct convert<NodeConfig> {
             auto dataset = datasets[i].as<Dataset>();
             nc.datasets.push_back(dataset);
         }
+        nc.localkv = node["localkv"].as<LocalKV>();
         nc.p2p = node["p2p"].as<P2P>();
 
         return true;

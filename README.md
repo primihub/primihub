@@ -71,7 +71,7 @@ $ docker run --network=host -it primihub/primihub-node:1.0.5 ./primihub-cli --se
 >  2. Which shared datasets are used.
 >  3. What kind of private computing tasks to do.
  
-In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from *** node 0 ***. For the parameters that can be specified by cli, please refer to *** [Create task](http://docs.primihub.com/docs/advance-usage/create-tasks) ***
+In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from *** node 0 ***. For the parameters that can be specified by cli, please refer to *** [Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1) ***
 
 ## Advanced use
    To learn how to start from native applications and how to use Primihub features to implement more applications, see [Advanced Usage](http://docs.primihub.com/docs/category/%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8)

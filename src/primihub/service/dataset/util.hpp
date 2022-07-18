@@ -21,19 +21,27 @@
 #include <string>
 #include <glog/logging.h>
 
+#include <libp2p/multi/content_identifier_codec.hpp>
+
 #include "src/primihub/util/util.h"
+#include "src/primihub/service/dataset/storage_backend.h"
 
 namespace primihub::service {
 
 using primihub::str_split;
 
-static void DataURLToDetail(const std::string &data_url, 
+
+static int DataURLToDetail(const std::string &data_url, 
                               std::string &node_id,
                               std::string &node_ip,
                               int &node_port,
                               std::string& dataset_path) {
     std::vector<std::string> v;
     primihub::str_split(data_url, &v);
+    if ( v.size() != 4 ) {
+        LOG(ERROR) << "DataURLToDetail: data_url is invalid: " << data_url;
+        return 0;
+    }
     node_id = v[0];
     node_ip = v[1];
     node_port = std::stoi(v[2]);
@@ -41,6 +49,19 @@ static void DataURLToDetail(const std::string &data_url,
     DLOG(INFO) << "node_id:" << node_id 
                << " ip:"<< node_ip   
                << " port:"<< node_port << std::endl;
+     return 1;
+}
+
+static  std::string Key2Str(const Key &key) {
+     auto s = libp2p::multi::ContentIdentifierCodec::toString(
+          libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
+     return s.value();
+}
+
+static Key Str2Key(const std::string &str) {
+     auto k = libp2p::multi::ContentIdentifierCodec::encode(
+          libp2p::multi::ContentIdentifierCodec::fromString(str).value());
+     return Key(k.value());
 }
 
 } // namespace primihub::service

@@ -14,15 +14,13 @@
  limitations under the License.
  """
 
-
 import abc
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List
+
 import pandas as pd
 import pyarrow as pa
-
-from primihub.context import reg_dataset
-
 from primihub.context import Context
+from primihub.context import reg_dataset
 
 
 class DataDriver(abc.ABC):
@@ -36,7 +34,7 @@ class FileDriver(DataDriver):
     @abc.abstractmethod
     def read(self, path):
         raise NotImplementedError
-    
+
 
 class DBDriver(DataDriver):
     @abc.abstractmethod
@@ -45,8 +43,8 @@ class DBDriver(DataDriver):
 
 
 class Dataset:
-    def __init__(self, df_data: pd.DataFrame, df_meta: pd.DataFrame=None):
-        self.df_data : pd.DataFrame = df_data
+    def __init__(self, df_data: pd.DataFrame, df_meta: pd.DataFrame = None):
+        self.df_data: pd.DataFrame = df_data
 
     def as_arrow(self) -> pa.Table:
         return pa.Table.from_pandas(self.df_data)
@@ -60,25 +58,25 @@ class CSVCursor(Cursor):
     def __init__(self, path: str):
         self.path = path
         self.cursor: int = 0;
-    
+
     # @property
     # def cursor(self):
     #     return self.cursor
 
     def read(self, names: List = None,
-            usecols: List = None, 
-            skiprows=None, 
-            nrows=None, **kwargs) -> Dataset:
+             usecols: List = None,
+             skiprows=None,
+             nrows=None, **kwargs) -> Dataset:
         if skiprows is not None:
             self.cursor += skiprows
 
         df = pd.read_csv(self.path, names=names, usecols=usecols, skiprows=self.cursor, nrows=nrows, **kwargs)
-        
+
         if nrows is not None:
-            self.cursor += nrows  
-        # self.cursor += d/
+            self.cursor += nrows
+            # self.cursor += d/
         return Dataset(df)
-    
+
 
 class CSVDataDriver(FileDriver):
     """ CSV data driver.
@@ -87,6 +85,7 @@ class CSVDataDriver(FileDriver):
         for piece in cursor.read(usecols, skiprows, nrows):
             arrow_table = piece.as_arrow()
     """
+
     def __init__(self) -> None:
         self.cursor: CSVCursor = None
 
@@ -95,28 +94,26 @@ class CSVDataDriver(FileDriver):
         return self.cursor
 
 
-        
 class HDFSDataDriver(DataDriver):
     # TODO (chenhongbo)
     pass
-
 
 
 __drivers__ = {
     "csv": CSVDataDriver,
 }
 
+
 def driver(name: str) -> DataDriver:
     """Returns a driver object.
     """
     # FIXME (chenhongbo) key error
     return __drivers__[name]
-    
-    
+
 
 # @reg_dataset
 def get(dataset: str):
-    Context.datasets.append(dataset)    
+    Context.datasets.append(dataset)
     print("mock registe dataset:", dataset)
 
 
@@ -125,7 +122,7 @@ def define(dataset: str):
     print("mock registe dataset:", dataset)
 
 
-def read(dataset_key: str = None, 
+def read(dataset_key: str = None,
          names: List = None,
          usecols: List = None,
          skiprows=None,
@@ -135,4 +132,3 @@ def read(dataset_key: str = None,
     cursor = d().read(path=dataset_path)
     dataset = cursor.read(names=names, usecols=usecols, skiprows=skiprows, nrows=nrows)
     return dataset
-

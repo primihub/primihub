@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <unistd.h>
+#include <signal.h>
 
 
 #include "src/primihub/node/node.h"
@@ -99,18 +100,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->nodelet->getDataService());
         // Parse and dispathc pir task.
         if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK) {
-            _psp.schedulePirTask(lan_parser_, this->node_id, this->node_ip, this->service_port);
-            PushTaskRequest _1NodePushTaskRequest;
-            int ret = _psp.transformPirRequest(lan_parser_, _1NodePushTaskRequest);
-            if (ret) {
-                pushTaskReply->set_ret_code(1);
-                return Status::OK;
-            }
-            LOG(INFO) << "start to create worker for pir task";
-            running_set.insert(job_task);
-            std::shared_ptr<Worker> worker = CreateWorker();
-            worker->execute(&_1NodePushTaskRequest);
-            running_set.erase(job_task);
+            _psp.schedulePirTask(lan_parser_, this->nodelet->getNodeletAddr());
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
@@ -189,7 +179,15 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
     .RegisterService(node_service)
     .RegisterService(dataset_service);
 
+    // set the max message size to 128M
     builder.SetMaxReceiveMessageSize(128 * 1024 * 1024);
+    
+    // set gRPC thread pool size to current number of cores
+    grpc::ResourceQuota rq;
+    int num_threads = std::thread::hardware_concurrency();
+    rq.SetMaxThreads(num_threads);
+    builder.SetResourceQuota(rq);
+
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 
     LOG(INFO) << " 💻 Node listening on port: " << service_port;
@@ -199,7 +197,21 @@ void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *da
 
 } // namespace primihub
 
+
+primihub::VMNodeImpl * node_service;
+primihub::DataServiceImpl * data_service;
+
 int main(int argc, char **argv) {
+
+    // std::atomic<bool> quit(false);    // signal flag for server to quit
+    // Register SIGINT signal and signal handler
+
+    signal(SIGINT, [] (int sig) {
+        LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
+        delete node_service;
+        delete data_service;
+        exit(0);
+    });
 
     py::scoped_interpreter python;
     py::gil_scoped_release release;
@@ -215,19 +227,18 @@ int main(int argc, char **argv) {
     const std::string node_id = absl::GetFlag(FLAGS_node_id);
     bool singleton = absl::GetFlag(FLAGS_singleton);
 
-    // TODO(chenhongbo) peer_list need to remove. get Peer list from dataset
-    // service.
-
     int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    primihub::VMNodeImpl node_service(node_id, node_ip, service_port, singleton,
+    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port, singleton,
                                  config_file);
-    primihub::DataServiceImpl data_service(node_service.getNodelet()->getDataService(),
-                                           node_service.getNodelet()->getNodeletAddr());
+    data_service = new primihub::DataServiceImpl(node_service->getNodelet()->getDataService(),
+                                           node_service->getNodelet()->getNodeletAddr());
 
-    primihub::RunServer(&node_service, &data_service, service_port);
 
-    return 0;
+
+    primihub::RunServer(node_service, data_service, service_port);
+
+    return EXIT_SUCCESS;
 }

@@ -1,6 +1,8 @@
-import pandas as pd
-import numpy as np
 from os import path
+
+import numpy as np
+import pandas as pd
+
 from python.primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from python.primihub.FL.model.xgboost.xgb_host import XGB_HOST
 

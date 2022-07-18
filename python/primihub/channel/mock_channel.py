@@ -1,9 +1,6 @@
 # TODO Mock Session & Channel
 
 
-import time
-import threading
-
 session_map = dict()
 endpoint_map = dict()
 
@@ -19,10 +16,11 @@ class MockIOService:
 class MockChannel:
     """ mock channel
     """
+
     def __init__(self, session):
         self.session = session.session
         self.endpoint = session.endpoint
-        
+
     def send(self, data):
         print("send message: ", data)
         if data is not None:
@@ -34,7 +32,6 @@ class MockChannel:
         if len(message) > 0:
             return self.session[self.endpoint].pop()
         return None
-
 
     def close(self):
         print("channel close")
@@ -48,12 +45,10 @@ class MockSession:
         self.session_mode = session_mode
         self.endpoint = endpoint
         self.session = session_map[endpoint]
-        
+
         # print("session init: ", self.session)
 
     def addChannel(self, *args) -> MockChannel:
         # print(args)
         ch = MockChannel(self)
         return ch
-
-

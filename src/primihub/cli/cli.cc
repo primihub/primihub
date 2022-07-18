@@ -29,7 +29,9 @@ ABSL_FLAG(std::vector<std::string>, params,
           std::vector<std::string>(
               {"BatchSize:INT32:0:128", "NumIters:INT32:0:1",
                "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
-               "TestData:STRING:0:test_party_0;test_party_1;test_party_2"}),
+               "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
+	       "predictFileName:STRING:0:./prediction.csv",
+	       "indicatorFileName:STRING:0:./indicator.csv"}),
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>, input_datasets,
           std::vector<std::string>({"TrainData", "TestData"}),
@@ -117,10 +119,16 @@ int SDKClient::SubmitTask() {
     }
 
     // Setup input datasets
-    auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
-    for (int i = 0; i < input_datasets.size(); i++) {
-        pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
+    if (task_lang == "proto") {
+        auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
+        for (int i = 0; i < input_datasets.size(); i++) {
+            pushTaskRequest.mutable_task()->add_input_datasets(input_datasets[i]);
+        }
+    } else {
+        // std::cerr << "Only PROTO task language support input_datsets " << std::endl;
+        // return -1;
     }
+
     // TODO Generate job id and task id
     pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
     pushTaskRequest.mutable_task()->set_task_id(absl::GetFlag(FLAGS_task_id));

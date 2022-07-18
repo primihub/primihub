@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pyarrow = "==4.0.0"
+pandas = "*"
+pytest = "*"
+numpy = "*"
+dill = "==0.3.5.1"
+pyzmq = "*"
+bitarray = "*"
+mmh3 = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

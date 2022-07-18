@@ -33,16 +33,19 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_1" 
   - description: "train_party_0"
     model: "csv"
-    source: "/tmp/train_party_0.csv" 
+    source: "data/train_party_0.csv" 
   - description: "test_party_0"
     model: "csv"
-    source: "/tmp/test_party_0.csv" 
+    source: "data/test_party_0.csv" 
   
     # Dataset authorization
     # authorization:
     #   - node:
     #     task:
         
+localkv: 
+  model: "leveldb"
+  path: "./localdb/node0"
 
 # p2p paramaters
 p2p:

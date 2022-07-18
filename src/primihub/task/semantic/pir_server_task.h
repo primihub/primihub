@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <stdlib.h>
 
 #include "pir/cpp/server.h"
 #include "pir/cpp/database.h"
@@ -44,6 +45,8 @@ namespace primihub::task {
 
 constexpr uint32_t POLY_MODULUS_DEGREE_SVR = 4096;
 constexpr uint32_t ELEM_SIZE_SVR = 1024;
+constexpr uint32_t PLAIN_MOD_BIT_SIZE_UPBOUND_SVR = 29;
+constexpr uint32_t NOISE_BUDGET_BASE_SVR = 57;
 
 
 class PIRServerTask : public ServerTaskBase {
