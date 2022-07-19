@@ -15,8 +15,8 @@ limitations under the License.
 """
 
 import primihub as ph
-from primihub.client.client import primihub_cli as cli
 # from primihub.channel.zmq_channel import IOService, Session
+from primihub.client.client import primihub_cli as cli
 
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})

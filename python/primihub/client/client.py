@@ -48,23 +48,17 @@ class PrimihubClient(object):
         >>> from primihub.client import primihub_cli as cli
         >>> cli.init(config={"node": "node_address", "cert": "cert_file_path"})
         """
-        print("*** init ***")
+        print("*** cli init ***")
         print(config)
         node = config.get("node", None)
         cert = config.get("cert", None)
-
         self.grpc_cli = GRPCClient(node=node, cert=cert)
-
         self.code = self.vistitor.visit_file()
-        # print(self.code)
-
         return self.grpc_cli
 
     def submit_task(self, code):
-
-        self.grpc_cli.set_task_map(code=code.encode('utf-8'))
+        self.grpc_cli.set_task_map(code=code.encode('utf-8'), job_id=b"777", task_id=b"777")
         res = self.grpc_cli.submit()
-        print("res: ", type(res), res)
         return res
 
     def remote_execute(self, *args):
@@ -84,9 +78,10 @@ class PrimihubClient(object):
         ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
-        # print(self.code)
+        print("-*-" * 30)
+        print("Have a cup of coffee, it will take a lot of time here.")
+        print("-*-" * 30)
         res = self.submit_task(self.code)
-        # print(res)
         return res
 
 

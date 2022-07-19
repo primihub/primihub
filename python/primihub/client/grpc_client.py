@@ -51,8 +51,8 @@ class GRPCClient(object):
                      code: bytes = None,
                      node_map: common_pb2.Task.NodeMapEntry = None,
                      input_datasets: str = None,
-                     job_id: bytes = None,
-                     task_id: bytes = None
+                     job_id: bytes = b"666",
+                     task_id: bytes = b"666"
                      ):
         """set task map
 
@@ -129,13 +129,12 @@ class GRPCClient(object):
                 sequence_number=11,
                 client_processed_up_to=22
             )
-            print("request: ", request)
+            # print("request: ", request)
             reply = stub.SubmitTask(request)
-            
-            print("-*-" * 30)
-            print(worker_pb2.PushTaskReply() == reply )
-            print("type reply is: ", type(reply), reply.ret_code, reply.job_id)
-            print("return: ", reply)
+
+            # print("-*-" * 30)
+            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))
+            # print("-*-" * 30)
             return reply
 
     # def execute(self, request) -> None:
