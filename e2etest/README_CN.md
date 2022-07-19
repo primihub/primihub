@@ -44,7 +44,7 @@ e2etest |--------- local|---- pre_test.py 启动节点
         2) 检测单个功能
         pytest -s test_mpc.py
 3.注意问题
-        1) 注意配置/e2etest/local_action/config中的startNode和workspace的路径
+        1) 注意配置/e2etest/local/config中的startNode和workspace的路径
         2) 如果某任务失败,尝试删除localdb后重新mkdir,或者再试一次。   
         3) 这种方式隐式启动节点，节点的输出在node?.log中
         4) 尽量在root下运行
