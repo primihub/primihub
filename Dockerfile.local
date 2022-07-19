@@ -1,13 +1,16 @@
-FROM ubuntu:20.04 as runner
+# Call this Dockerfile via the build_local.sh script
 
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
+FROM ubuntu:20.04
+
+ENV LANG c.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
+
 RUN  apt-get update \
   && apt-get install -y python3.9 python3.9-dev libgmp-dev python3-pip git \
   && rm -rf /var/lib/apt/lists/*
+
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
+
 WORKDIR $TARGET_PATH
 # Copy binaries to TARGET_PATH
 COPY . ./
@@ -25,19 +28,14 @@ COPY ./config ./config
 
 # Copy primihub python sources to /app and setup to system python3
 COPY ./python ./python
-COPY ./src ./src
+COPY ./src/primihub/protos/ ./src/primihub/protos/
 
 WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip \
-  && python3.9 -m pip install --no-cache-dir -r requirements.txt 
-
-RUN python3.9 -m pip install cloudpickle
-RUN python3.9 -m pip uninstall primihub \
-RUN python3.9 setup.py install
-RUN python3.9 setup.py develop
+  && python3.9 -m pip install -r requirements.txt \
+  && python3.9 setup.py install
 
 WORKDIR /app
-RUN ln -s /app/python /app/primihub_python
 ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
 # gRPC server port
