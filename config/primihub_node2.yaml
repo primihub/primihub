@@ -2,7 +2,7 @@ version: 1.0
 
 node: "node2"
 location: "172.28.1.12"
-grpc_port: 50052
+grpc_port: 50050
 
 datasets:
   - description: "test_party_2_self"
