@@ -1,0 +1,25 @@
+syntax = "proto3";
+package primihub.rpc;
+
+import "src/primihub/protos/common.proto";
+
+
+message ClusterInfoResponse {
+  map<string, string> context_map = 1;
+  map<string, Node> node_map = 2; // key node_id
+  map<string, Channel> channel_map = 3;
+
+}
+
+message ClusterInfoRequest{
+  bytes ip= 1;
+  bytes port = 2;
+}
+
+/**
+  * Get PrimihubContext, which contains Node and cluster information 
+*/
+service Cluster {
+  rpc GetClusterInfo(ClusterInfoRequest) returns (ClusterInfoResponse);
+}
+

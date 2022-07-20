@@ -1,0 +1,24 @@
+syntax = "proto3";
+package primihub.rpc;
+
+import "src/primihub/protos/common.proto";
+
+message RegisterChannelRequest {
+  string name = 1;
+  ChannelType type = 2;
+  bytes ip = 3;
+  bytes port = 4;
+}
+
+
+message RegisterChannelResponse{
+  int32 ret_code = 1;  // 0: success  1: error
+  string ret_msg = 2;
+  Channel channel = 3;
+}
+
+
+service ChannelService {
+  rpc RegisterChannel(RegisterChannelRequest) returns (RegisterChannelResponse);
+}
+
