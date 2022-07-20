@@ -134,7 +134,7 @@ def xgb_host_logic(cry_pri="paillier"):
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_prob(X_host)
         Regression_eva.get_result(y_true, y_pre, indicator_file_path)
-        return xgb_host.predict_raw(X_host).to_csv(predict_file_path)
+        return xgb_host.predict_prob(X_host).to_csv(predict_file_path)
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
