@@ -31,6 +31,8 @@ using arrow::Table;
 
 namespace primihub
 {
+  extern std::string nodelet_addr;
+
   eMatrix<double>
   logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
                 sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
@@ -593,13 +595,15 @@ namespace primihub
         arrow::field("w", arrow::float64())};
     auto schema = std::make_shared<arrow::Schema>(schema_vector);
     std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
+    
+    LOG(INFO) << "Nodelet addr is " << primihub::nodelet_addr << ".";
 
     std::shared_ptr<DataDriver> driver =
-        DataDirverFactory::getDriver("CSV", "test addr");
+        DataDirverFactory::getDriver("CSV", primihub::nodelet_addr);
     std::shared_ptr<CSVDriver> csv_driver =
         std::dynamic_pointer_cast<CSVDriver>(driver);
 
-    std::string filepath = "/tmp/" + model_name_ + ".csv";
+    std::string filepath = "data/" + model_name_ + ".csv";
     int ret = csv_driver->write(table, filepath);
     if (ret != 0)
     {
