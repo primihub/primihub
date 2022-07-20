@@ -272,27 +272,23 @@ class XGB_HOST_EN:
         return tree_structure, f_t
 
     def _get_tree_node_w(self, X, tree, lookup_table, w, t):
-        global T
         if not tree is None:
             if isinstance(tree, tuple):
                 tree = tree[0]
             k = list(tree.keys())[0]
             party_id, record_id = k[0], k[1]
             id = X.index.tolist()
-            print(id)
             if party_id != self.sid:
                 self.channel.send(
                     {'id': id, 'record_id': record_id, 'tree': t})
                 split_id = self.channel.recv()
                 id_left = split_id['id_left']
                 id_right = split_id['id_right']
-
                 if id_left == [] or id_right == []:
                     return
                 else:
                     X_left = X.loc[id_left,:]
                     X_right = X.loc[id_right,:]
-                print('fenge--guest')
                 for kk in tree[k].keys():
                     if kk[0] == 'left':
                         tree_left = tree[k][kk]
@@ -312,9 +308,6 @@ class XGB_HOST_EN:
                         id_left = X_left.index.tolist()
                         X_right = X.loc[X[var] >= cut]
                         id_right = X_right.index.tolist()
-                        print(id_left)
-                        print(id_right)
-                        print('fenge--host')
                         if id_left == [] or id_right == []:
                             return
                         for kk in tree[k].keys():
