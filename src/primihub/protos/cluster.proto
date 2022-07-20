@@ -12,13 +12,11 @@ message ClusterInfoResponse {
 }
 
 message ClusterInfoRequest{
-  bytes ip= 1;
-  bytes port = 2;
+  bytes connect_str = 1;
+  bytes cert = 2;
 }
 
-/**
-  * Get PrimihubContext, which contains Node and cluster information 
-*/
+/* Get PrimihubContext, which contains Node and cluster information */
 service Cluster {
   rpc GetClusterInfo(ClusterInfoRequest) returns (ClusterInfoResponse);
 }

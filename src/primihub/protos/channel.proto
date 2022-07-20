@@ -6,8 +6,7 @@ import "src/primihub/protos/common.proto";
 message RegisterChannelRequest {
   string name = 1;
   ChannelType type = 2;
-  bytes ip = 3;
-  bytes port = 4;
+  bytes connect_str = 3;
 }
 
 
@@ -17,7 +16,7 @@ message RegisterChannelResponse{
   Channel channel = 3;
 }
 
-
+/*Channel service */
 service ChannelService {
   rpc RegisterChannel(RegisterChannelRequest) returns (RegisterChannelResponse);
 }
