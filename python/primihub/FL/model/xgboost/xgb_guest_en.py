@@ -155,7 +155,6 @@ class XGB_GUEST_EN:
             data = {'f_t': f_t, 'id_right': id_right, 'id_left': id_left, 'w_right': w_right,
                     'w_left': w_left, 'gh_sum_right': gh_sum_right, 'gh_sum_left': gh_sum_left,
                     'record_id': self.record, 'party_id': self.sid}
-            # self.channel.send(json.dumps(data))
             self.channel.send(data)
             self.record = self.record + 1
             print("data", type(data), data)
@@ -212,5 +211,4 @@ class XGB_GUEST_EN:
                 id_list = need_record["id"]
                 tree = need_record["tree"]
                 id_after_record = self.host_record(record_id, id_list, tree, X)
-                print(id_after_record)
                 self.channel.send(id_after_record)
