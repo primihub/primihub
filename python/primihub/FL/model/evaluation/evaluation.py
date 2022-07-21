@@ -1,16 +1,13 @@
 from sklearn import metrics
 import json
-
-
 class Evaluator:
-    regression_metrics = ["MEAN_SQUARED_ERROR", "EXPLAINED_VARIANCE", "MEAN_ABSOLUTE_ERROR", "MEAN_SQUARED_LOG_ERROR",
-                          "MEDIAN_ABSOLUTE_ERROR", "R2_SCORE", "ROOT_MEAN_SQUARED_ERROR"]
-    regression_method = ["get_mse", "get_ev", "get_mae", "get_msle", "get_median_absolute_error", "get_r2_score",
-                         "get_rmse"]
+    regression_metrics= ["MEAN_SQUARED_ERROR","EXPLAINED_VARIANCE", "MEAN_ABSOLUTE_ERROR", "MEAN_SQUARED_LOG_ERROR", "MEDIAN_ABSOLUTE_ERROR","R2_SCORE","ROOT_MEAN_SQUARED_ERROR"]
+    regression_method =   ["get_mse","get_ev","get_mae","get_msle","get_median_absolute_error","get_r2_score","get_rmse"]
 
-    classification_metrics = ["AUC", "Precision", "Recall", "Accuracy", "F1_score", "KS"]
-    classification_method = ["get_auc", "get_precision", "get_recall", "get_accuracy", "get_f1_score", "get_ks"]
-    need_prob = ["AUC", "KS"]
+    classification_metrics = ["AUC","Precision","Recall","Accuracy","F1_score","KS"]
+    classification_method = ["get_auc","get_precision","get_recall","get_accuracy","get_f1_score","get_ks"]
+    need_prob = ["AUC","KS"]
+
 
     """
     evaluation methods for classification:
@@ -20,9 +17,8 @@ class Evaluator:
         Accuracy
         MSE
     """
-
     @staticmethod
-    def get_confusionMatrix(y, y_hat):
+    def get_confusionMatrix(y,y_hat):
         """
         :param y: real label
         :param y_hat: predicted label
@@ -30,37 +26,37 @@ class Evaluator:
                 row:real class
                 column:predicted class
         """
-        return metrics.confusion_matrix(y, y_hat)
+        return metrics.confusion_matrix(y,y_hat)
 
     @staticmethod
-    def get_auc(y, y_pred_prob):
+    def get_auc(y,y_pred_prob):
         """
         :param y: real label
         :param y_pred_prob:  probability of true
         :return: auc
         """
-        return metrics.roc_auc_score(y, y_pred_prob)
+        return metrics.roc_auc_score(y,y_pred_prob)
 
     @staticmethod
-    def get_precision(y, y_hat):
+    def get_precision(y,y_hat):
         """
         :param y: real label
         :param y_hat: predicted label
         :return: Precision
         """
-        return metrics.precision_score(y, y_hat)
+        return metrics.precision_score(y,y_hat)
 
     @staticmethod
-    def get_recall(y, y_hat):
+    def get_recall(y,y_hat):
         """
         :param y: real label
         :param y_hat: predicted label
         :return: Recall
         """
-        return metrics.recall_score(y, y_hat)
+        return metrics.recall_score(y,y_hat)
 
     @staticmethod
-    def get_accuracy(y, y_hat):
+    def get_accuracy(y,y_hat):
         """
         :param y: real label
         :param y_hat: predicted label
@@ -69,7 +65,7 @@ class Evaluator:
         return metrics.accuracy_score(y, y_hat)
 
     @staticmethod
-    def get_f1_score(y, y_hat):
+    def get_f1_score(y,y_hat):
         """
         :param y: real label
         :param y_hat: predicted label
@@ -78,13 +74,14 @@ class Evaluator:
         return metrics.f1_score(y, y_hat)
 
     @staticmethod
-    def get_roc(y_test, y_pred_prob):
+    def get_roc(y_test,y_pred_prob):
         roc = {}
         fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred_prob)
         roc["fpr"] = fpr
         roc["tpr"] = tpr
         roc["thresholds"] = thresholds
         return roc
+
 
     @staticmethod
     def get_ks(y_test, y_pred_prob):
@@ -101,6 +98,7 @@ class Evaluator:
         ks = max(tpr - fpr)
         return ks
 
+
     """
     evaluation methods for regression :
         EXPLAINED_VARIANCE
@@ -110,7 +108,6 @@ class Evaluator:
         R2_SCORE
         ROOT_MEAN_SQUARED_ERROR
     """
-
     @staticmethod
     def get_mse(y, y_hat):
         """
@@ -122,9 +119,8 @@ class Evaluator:
                 the better the fitting effect.
         """
         return metrics.mean_squared_error(y, y_hat)
-
     @staticmethod
-    def get_ev(y, y_hat):
+    def get_ev(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -132,10 +128,10 @@ class Evaluator:
                 its value range is [0,1]. The closer it is to 1, the more independent
                 variable can explain the dependent variable
         """
-        return metrics.explained_variance_score(y, y_hat)
+        return metrics.explained_variance_score(y,y_hat)
 
     @staticmethod
-    def get_mae(y, y_hat):
+    def get_mae(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -143,10 +139,10 @@ class Evaluator:
                 of closeness between the predicted results and the real data set. The smaller
                 the value, the better the fitting effect.
         """
-        return metrics.mean_absolute_error(y, y_hat)
+        return metrics.mean_absolute_error(y,y_hat)
 
     @staticmethod
-    def get_msle(y, y_hat):
+    def get_msle(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -154,10 +150,10 @@ class Evaluator:
                 the degree of closeness between the predicted results and the real data set.
                 The smaller the value, the better the fitting effect.
         """
-        return metrics.mean_squared_log_error(y, y_hat)
+        return metrics.mean_squared_log_error(y,y_hat)
 
     @staticmethod
-    def get_median_absolute_error(y, y_hat):
+    def get_median_absolute_error(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -165,10 +161,10 @@ class Evaluator:
                 of approximation between the predicted results and the real data set. The smaller
                 the value, the better the fitting effect.
         """
-        return metrics.median_absolute_error(y, y_hat)
+        return metrics.median_absolute_error(y,y_hat)
 
     @staticmethod
-    def get_r2_score(y, y_hat):
+    def get_r2_score(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -177,10 +173,10 @@ class Evaluator:
                 the more independent variable can explain the variance change of the dependent variable;
                 the smaller the value is, the worse the effect is.
         """
-        return metrics.r2_score(y, y_hat)
+        return metrics.r2_score(y,y_hat)
 
     @staticmethod
-    def get_rmse(y, y_hat):
+    def get_rmse(y,y_hat):
         """
         :param y: real y
         :param y_hat: predicted t
@@ -188,20 +184,21 @@ class Evaluator:
                 the predicted results and the real data set. The smaller the value is, the better the fitting
                 effect is.
         """
-        return pow(Evaluator.get_mse(y, y_hat), 2)
+        return pow(Evaluator.get_mse(y,y_hat),2)
 
     @staticmethod
-    def write_json(path, eval_train, eval_test=None):
-        json_result = {"train": eval_train}
+    def write_json(path,eval_train,eval_test=None):
+        json_result = {"train":eval_train}
         if eval_test:
             json_result["test"] = eval_test
-        with open(path, 'w') as f:
-            json.dump(json_result, f)
+        with open(path,'w') as f:
+            json.dump(json_result,f)
+
 
 
 class Regression_eva:
     @staticmethod
-    def get_result(y, y_hat, path="evaluation.json", eval_test=None):
+    def get_result(y,y_hat,path = "evaluation.json",eval_test = None):
         """
         :param y: real y
         :param y_hat:predicted y
@@ -217,40 +214,52 @@ class Regression_eva:
             else:
                 res[metrics] = f"{method} is not support。"
 
-        Evaluator.write_json(path, res, eval_test)
+        Evaluator.write_json(path,res,eval_test)
         return res
-
 
 class Classification_eva:
     @staticmethod
-    def get_result(y, y_prob, path="evaluation.json", eval_test=None):
+    def get_result(y_true,y_prob,path = "evaluation.json",eval_test = None):
         """
                 :param y: real y
                 :param y_hat:predicted y
                 :return:classification metricss all supported.
                 """
-        roc = Evaluator.get_roc(y, y_prob)
+        lable = [0,1]
+        lable_true = list(set(y_true))
+        lable_true.sort()
+        y = []
+        if lable_true != lable:
+            for i in y_true:
+                if i == lable_true[0]:
+                    y.append(lable[0])
+                else:
+                    y.append(lable[1])
+        else:
+            y = y_true
+
+        roc = Evaluator.get_roc(y,y_prob)
         thresholds = roc["thresholds"]
         fpr = roc["fpr"]
         tpr = roc["tpr"]
         max_tf = 0
         threshold = 0
         for i in range(len(tpr)):
-            this_tf = tpr[i] - fpr[i]
-            if this_tf > max_tf:
+            this_tf = tpr[i]-fpr[i]
+            if this_tf>max_tf:
                 max_tf = this_tf
                 threshold = thresholds[i]
         lable = list(set(y))
         y_hat = []
         for i in y_prob:
-            if i <= threshold:
+            if i<=threshold:
                 y_hat.append(lable[0])
             else:
                 y_hat.append(lable[1])
         res = {}
         print(y)
         print(y_hat)
-        suffix = Evaluator.get_confusionMatrix(y, y_hat)
+        suffix = Evaluator.get_confusionMatrix(y,y_hat)
         print(suffix)
         for i in range(len(Evaluator.classification_metrics)):
             metrics = Evaluator.classification_metrics[i]
@@ -264,12 +273,12 @@ class Classification_eva:
                 res[metrics] = mere
             else:
                 res[metrics] = f"{method} is not support。"
-        Evaluator.write_json(path, res, eval_test)
+        Evaluator.write_json(path,res,eval_test)
         return res
 
 
 if __name__ == "__main__":
-    a = [1, 0, 1, 1, 1]
-    b = [1, 0, 0, 1, 1]
-    c = [0.8, 0.3, 0.2, 0.9, 0.7]
-    Regression_eva.get_result(a, b)
+    a = [1,0,1,1,1]
+    b = [1,0,0,1,1]
+    c = [0.8,0.3,0.2,0.9,0.7]
+    Regression_eva.get_result(a,b)
