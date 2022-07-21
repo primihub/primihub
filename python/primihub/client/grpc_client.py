@@ -15,7 +15,7 @@ limitations under the License.
 """
 import sys
 from os import path
-
+import uuid
 import grpc
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))  # noqa
@@ -51,8 +51,9 @@ class GRPCClient(object):
                      code: bytes = None,
                      node_map: common_pb2.Task.NodeMapEntry = None,
                      input_datasets: str = None,
-                     job_id: bytes = b"666",
-                     task_id: bytes = b"666"
+                     job_id: bytes = None,
+                     task_id: bytes = None,
+                     channel_map: str = None, # TODO
                      ):
         """set task map
 
@@ -90,14 +91,12 @@ class GRPCClient(object):
         if job_id:
             task_map["job_id"] = job_id
         else:
-            # todo set job id
-            pass
+            task_map["job_id"] = str(uuid.uuid1())
 
         if task_id:
             task_map["task_id"] = task_id
         else:
-            # todo set task id
-            pass
+            task_map["task_id"] = str(uuid.uuid1())
 
         self.task_map = task_map
         return task_map
@@ -133,7 +132,8 @@ class GRPCClient(object):
             reply = stub.SubmitTask(request)
 
             # print("-*-" * 30)
-            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))
+            print("return code: %s, job id: %s" %
+                  (reply.ret_code, reply.job_id))
             # print("-*-" * 30)
             return reply
 

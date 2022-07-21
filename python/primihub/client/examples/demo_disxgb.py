@@ -23,7 +23,8 @@ from primihub import dataset, context
 from primihub.FL.model.evaluation.evaluation import Regression_eva
 
 # client init
-cli.init(config={"node": "127.0.0.1:50050", "cert": ""})
+# cli.init(config={"node": "127.0.0.1:50050", "cert": ""})
+cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
 
 ph.dataset.define("guest_dataset")
 ph.dataset.define("label_dataset")

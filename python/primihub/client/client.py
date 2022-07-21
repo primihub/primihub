@@ -17,8 +17,7 @@ from primihub import context, dataset
 from primihub.client.visitor import Visitor
 from primihub.client.grpc_client import GRPCClient
 import primihub as ph
-import inspect
-import ast
+import uuid
 
 
 class PrimihubClient(object):
@@ -56,8 +55,10 @@ class PrimihubClient(object):
         self.code = self.vistitor.visit_file()
         return self.grpc_cli
 
-    def submit_task(self, code):
-        self.grpc_cli.set_task_map(code=code.encode('utf-8'), job_id=b"777", task_id=b"777")
+    def submit_task(self, code: str, job_id: str, task_id: str):
+        self.grpc_cli.set_task_map(code=code.encode('utf-8'),
+                                   job_id=bytes(str(job_id), "utf-8"),
+                                   task_id=bytes(str(task_id), "utf-8"))
         res = self.grpc_cli.submit()
         return res
 
@@ -81,7 +82,7 @@ class PrimihubClient(object):
         print("-*-" * 30)
         print("Have a cup of coffee, it will take a lot of time here.")
         print("-*-" * 30)
-        res = self.submit_task(self.code)
+        res = self.submit_task(self.code, uuid.uuid1(), uuid.uuid1())
         return res
 
 
