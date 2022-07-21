@@ -20,6 +20,8 @@
 # generated files
 /lib/
 /bin/
+data/localdb*
+data/result/
 
 */CMakeFiles/
 /CMakeFiles/

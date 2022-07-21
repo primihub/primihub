@@ -1,7 +1,7 @@
 services:
   node0:
     image: primihub/primihub-node:latest
-    restart: "restart"
+    restart: "always"
     container_name: node0_primihub
     ports:
       - "8050:50050"
@@ -22,7 +22,7 @@ services:
 
   node1:
     image: primihub/primihub-node:latest
-    restart: "restart"
+    restart: "always"
     container_name: node1_primihub
     ports:
       - "8051:50050"
@@ -43,7 +43,7 @@ services:
 
   node2:
     image: primihub/primihub-node:latest
-    restart: "restart"
+    restart: "always"
     container_name: node2_primihub
     ports:
       - "8052:50050"
