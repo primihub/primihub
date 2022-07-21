@@ -240,20 +240,22 @@ namespace primihub
     {
       m(j, num_col - 1) = array_lastCol->Value(j);
     }
-    return 0;
+    return array->length();
   }
 
   int LogisticRegressionExecutor::loadDataset()
   {
     int ret = _LoadDatasetFromCSV(train_input_filepath_, train_input_);
-    if (ret)
+    // file reading error or file empty
+    if (ret <= 0)
     {
       LOG(ERROR) << "Load dataset for train failed.";
       return -1;
     }
 
     ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
-    if (ret)
+    // file reading error or file empty
+    if (ret <= 0)
     {
       LOG(ERROR) << "Load dataset for test failed.";
       return -2;
