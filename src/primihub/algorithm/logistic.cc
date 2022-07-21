@@ -596,8 +596,6 @@ namespace primihub
     auto schema = std::make_shared<arrow::Schema>(schema_vector);
     std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
     
-    LOG(INFO) << "Nodelet addr is " << primihub::nodelet_addr << ".";
-
     std::shared_ptr<DataDriver> driver =
         DataDirverFactory::getDriver("CSV", primihub::nodelet_addr);
     std::shared_ptr<CSVDriver> csv_driver =
