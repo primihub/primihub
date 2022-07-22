@@ -202,10 +202,10 @@ class XGB_GUEST_EN:
         flag = True
         while (flag):
             need_record = self.channel.recv()
-
+		
             if need_record == -1:
                 flag = False
-                self.channel.send(b"finished predict")
+                self.channel.send(b"finished predict once")
             else:
                 record_id = need_record["record_id"]
                 id_list = need_record["id"]
