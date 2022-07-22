@@ -5,6 +5,10 @@
 #include "src/primihub/algorithm/falcon_lenet.h"
 #include "src/primihub/service/dataset/localkv/storage_default.h"
 
+namespace primihub {
+  std::string nodelet_addr = "test addr";
+}
+
 using namespace primihub;
 
 static void RunFalconlenet(std::string node_id, rpc::Task &task,
