@@ -63,7 +63,7 @@ int ServerTaskBase::loadDatasetFromCSV(std::string &filename, int data_col,
         }
         col_array.push_back(array->GetString(i));
     }
-    return 0;
+    return array->length();
 }
 
 } // namespace primihub::task
