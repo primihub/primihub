@@ -55,11 +55,14 @@ int PIRServerTask::loadParams(Params & params) {
 
 int PIRServerTask::loadDataset() {
     int ret = loadDatasetFromCSV(dataset_path_, 0, elements_, db_size_);
-    if (ret) {
+    // file reading error or file empty
+    if (ret <= 0) {
         LOG(ERROR) << "Load dataset for psi client failed.";
         return -1;
     }
-    return 0;
+
+    // output the dataset length
+    return ret;
 }
 
 int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
@@ -71,9 +74,6 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
     pir_params_ = *(pir::CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
                                         use_ciphertext_multiplication, bits_per_coeff));
     db_size_ = dbsize;
-    int ret = loadDataset();
-    if (ret)
-        return -1;
 
     if (elements_.size() > dbsize) {
         LOG(ERROR) << "Dataset size is not equal dbsize:" << elements_.size();
@@ -135,7 +135,11 @@ int PIRServerTask::execute() {
         return -1;
     }
 
-    size_t db_size = 100000;
+    int db_size = loadDataset();
+    if (db_size <= 0) {
+        LOG(ERROR) << "Load database for pir server failed.";
+        return -1;
+    }
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE_SVR;
     uint32_t plain_mod_bit_size = compute_plain_mod_bit_size_server(db_size, elem_size);
@@ -143,8 +147,6 @@ int PIRServerTask::execute() {
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE_SVR;
     uint32_t bits_per_coeff = 0;
 
-    pir::Request pir_request;
-    initRequest(request_, pir_request);
     ret = _SetUpDB(db_size, dimensions, elem_size, poly_modulus_degree,
                        plain_mod_bit_size, bits_per_coeff,
                        use_ciphertext_multiplication);
@@ -152,6 +154,9 @@ int PIRServerTask::execute() {
         LOG(ERROR) << "Create pir db failed.";
         return -1;
     }
+
+    pir::Request pir_request;
+    initRequest(request_, pir_request);
 
     std::unique_ptr<pir::PIRServer> server = 
         *(pir::PIRServer::Create(pir_db_, pir_params_));

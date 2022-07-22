@@ -95,12 +95,13 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
     for (int64_t i = 0; i < array->length(); i++) {
         col_array.push_back(array->GetString(i));
     }
-    return 0;
+    return array->length();
 }
 
 int PSIClientTask::_LoadDataset(void) {
     int ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    if (ret) {
+    // file reading error or file empty
+    if (ret <= 0) {
         LOG(ERROR) << "Load dataset for psi client failed.";
         return -1;
     }

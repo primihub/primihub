@@ -58,6 +58,7 @@ int PIRClientTask::_LoadParams(Task &task) {
         result_file_path_ = param_map["outputFullFilename"].value_string();
         server_address_ = param_map["serverAddress"].value_string();
         server_dataset_ = param_map[server_address_].value_string();
+        db_size_ = stoi(param_map["databaseSize"].value_string());  // temperarily read db size direly from frontend
         std::vector<std::string> tmp_indices;
         str_split(param_map["queryIndeies"].value_string(), &tmp_indices, ',');
         for (std::string &index : tmp_indices) {
@@ -73,13 +74,13 @@ int PIRClientTask::_LoadParams(Task &task) {
 }
 
 
-int PIRClientTask::_SetUpDB(size_t dbsize, size_t dimensions, size_t elem_size,
+int PIRClientTask::_SetUpDB(size_t __dbsize, size_t dimensions, size_t elem_size,
                              uint32_t plain_mod_bit_size, uint32_t bits_per_coeff,
                              bool use_ciphertext_multiplication = false) {
-    db_size_ = dbsize;
+    // db_size_ = dbsize;
     encryption_params_ = pir::GenerateEncryptionParams(POLY_MODULUS_DEGREE,
                                                        plain_mod_bit_size);
-    pir_params_ = *(pir::CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
+    pir_params_ = *(pir::CreatePIRParameters(db_size_, elem_size, dimensions, encryption_params_,
                                         use_ciphertext_multiplication, bits_per_coeff));
     client_ = *(PIRClient::Create(pir_params_));
     if (client_ == nullptr) {
@@ -176,15 +177,14 @@ int PIRClientTask::execute() {
         return ret;
     }
 
-    size_t db_size = 100000;
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE;
-    uint32_t plain_mod_bit_size = compute_plain_mod_bit_size(db_size, elem_size);
+    uint32_t plain_mod_bit_size = compute_plain_mod_bit_size(db_size_, elem_size);
     bool use_ciphertext_multiplication = true;
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE;
     uint32_t bits_per_coeff = 0;
 
-    ret = _SetUpDB(db_size, dimensions, elem_size,
+    ret = _SetUpDB(0, dimensions, elem_size,                // temperarily read db size direly from frontend
                        plain_mod_bit_size, bits_per_coeff,
                        use_ciphertext_multiplication);
 

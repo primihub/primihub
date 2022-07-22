@@ -27,6 +27,7 @@
 CMakeCache.txt
 out/
 build/
+cmake-*/
 
 bazel-bin
 bazel-out

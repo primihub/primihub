@@ -17,12 +17,13 @@ datasets:
   - description: "test_party_2"
     model: "csv"
     source: "/tmp/test_party_2.csv"
-  - description: "label_dataset"
-    model: "csv"
-    source: "/tmp/breast-cancer-wisconsin-label.data"   
   - description: "psi_client_data"
     model: "csv"
     source: "/tmp/client_e.csv"
+  - description: "guest_dataset"
+    model: "csv"
+    source: "/tmp/FL/wisconsin_guest.data" 
+
 
 localkv: 
   model: "leveldb"

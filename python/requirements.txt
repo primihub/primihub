@@ -2,7 +2,7 @@ pyarrow==4.0.0
 pandas
 pytest
 numpy
-dill==0.3.5.1
+cloudpickle
 pyzmq
 bitarray
 mmh3

@@ -2,7 +2,8 @@ import functools
 import os
 from typing import Callable
 
-from dill import dumps
+# from dill import dumps
+from cloudpickle import dumps
 
 
 class NodeContext:

@@ -115,7 +115,8 @@ class GRPCClient(object):
     #     )
     #     return request
 
-    def submit(self) -> worker_pb2.PushTaskReply:
+    # def submit(self) -> worker_pb2.PushTaskReply:
+    def submit(self):
         """gRPC submit
 
         :return:
@@ -128,7 +129,12 @@ class GRPCClient(object):
                 sequence_number=11,
                 client_processed_up_to=22
             )
+            print("request: ", request)
             reply = stub.SubmitTask(request)
+            
+            print("-*-" * 30)
+            print(worker_pb2.PushTaskReply() == reply )
+            print("type reply is: ", type(reply), reply.ret_code, reply.job_id)
             print("return: ", reply)
             return reply
 

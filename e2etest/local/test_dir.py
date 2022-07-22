@@ -1,5 +1,5 @@
 import os
-import config
+from . import config
 def test_change_dir():
     '''测试修改当前工作目录'''
     path = config.simple_bootstrap_node_path
