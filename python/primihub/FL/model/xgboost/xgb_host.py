@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import copy
 
 class XGB_HOST:
     def __init__(self,
@@ -12,7 +13,11 @@ class XGB_HOST:
                  min_child_sample=None,
                  min_child_weight=1,
                  objective='linear',
-                 channel=None
+                 channel=None,
+                 sid=0,
+                 record=0,
+                 lookup_table=pd.DataFrame(
+                     columns=['record_id', 'feature_id', 'threshold_value'])
                  ):
 
         self.channel = channel
@@ -25,7 +30,11 @@ class XGB_HOST:
         self.min_child_sample = min_child_sample
         self.min_child_weight = min_child_weight
         self.objective = objective
+        self.sid = sid
+        self.record = record
+        self.lookup_table = lookup_table
         self.tree_structure = {}
+        self.lookup_table_sum = {}
 
     def _grad(self, y_hat, Y):
 
@@ -136,8 +145,8 @@ class XGB_HOST:
         print("=====host mdep===", m_dpth)
         if m_dpth > self.max_depth:
             return
-        X_host = X_host  # .reset_index(drop='True')
-        gh = gh  # .reset_index(drop='True')
+        X_host = X_host
+        gh = gh
         X_host_gh = pd.concat([X_host, gh], axis=1)
         GH_host = self.get_GH(X_host_gh)
 
@@ -146,10 +155,9 @@ class XGB_HOST:
             self.channel.send("True")
             self.channel.recv()
             return None
-        # best_var = best_var.encode("utf-8")
+
         self.channel.send(best_var)
         flag = self.channel.recv()
-        tree_structure = {(best_var, best_cut): {}}
         if flag:
             if best_var not in [x for x in X_host.columns]:
                 data = {'best_var': best_var, 'best_cut': best_cut,
@@ -161,10 +169,20 @@ class XGB_HOST:
                 id_left = id_w_gh['id_left']
                 w_right = id_w_gh['w_right']
                 w_left = id_w_gh['w_left']
+                record_id = id_w_gh['record_id']
+                party_id = id_w_gh['party_id']
+                tree_structure = {(party_id, record_id): {}}
                 gh_sum_right = id_w_gh['gh_sum_right']
                 gh_sum_left = id_w_gh['gh_sum_left']
 
             else:
+                self.lookup_table.loc[self.record, 'record_id'] = self.record
+                self.lookup_table.loc[self.record, 'feature_id'] = best_var
+                self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+                record_id = self.record
+                party_id = self.sid
+                tree_structure = {(party_id, record_id): {}}
+                self.record = self.record + 1
                 f_t, id_right, id_left, w_right, w_left = self.split(
                     X_host, best_var, best_cut, GH_best, f_t)
                 print("host split", X_host.index)
@@ -184,59 +202,93 @@ class XGB_HOST:
                                         f_t,
                                         m_dpth + 1)
             if isinstance(result_left, tuple):
-                tree_structure[(best_var, best_cut)][('left', w_left)] = result_left[0]
+                tree_structure[(party_id, record_id)][('left', w_left)] = copy.deepcopy(result_left[0])
                 f_t = result_left[1]
             else:
-                tree_structure[(best_var, best_cut)][('left', w_left)] = result_left
+                tree_structure[(party_id, record_id)][('left', w_left)] = copy.deepcopy(result_left)
             result_right = self.xgb_tree(X_host.loc[id_right],
                                          gh_sum_right,
                                          gh.loc[id_right],
                                          f_t,
                                          m_dpth + 1)
             if isinstance(result_right, tuple):
-                tree_structure[(best_var, best_cut)][('right', w_right)] = result_right[0]
+                tree_structure[(party_id, record_id)][('right', w_right)] = copy.deepcopy(result_right[0])
                 f_t = result_right[1]
             else:
-                tree_structure[(best_var, best_cut)][('right', w_right)] = result_right
+                tree_structure[(party_id, record_id)][('right', w_right)] = copy.deepcopy(result_right)
         return tree_structure, f_t
 
-    def _get_tree_node_w(self, X, tree, w):
-
+    def _get_tree_node_w(self, X, tree, lookup_table, w, t):
         if not tree is None:
+            if isinstance(tree, tuple):
+                tree = tree[0]
             k = list(tree.keys())[0]
-            var, cut = k[0], k[1]
-            X_left = X.loc[X[var] < cut]
-            id_left = X_left.index.tolist()
-            X_right = X.loc[X[var] >= cut]
-            id_right = X_right.index.tolist()
-            for kk in tree[k].keys():
-                if kk[0] == 'left':
-                    tree_left = tree[k][kk]
-                    w[id_left] = kk[1]
-                elif kk[0] == 'right':
-                    tree_right = tree[k][kk]
-                    w[id_right] = kk[1]
+            party_id, record_id = k[0], k[1]
+            id = X.index.tolist()
+            if party_id != self.sid:
+                self.channel.send(
+                    {'id': id, 'record_id': record_id, 'tree': t})
+                split_id = self.channel.recv()
+                id_left = split_id['id_left']
+                id_right = split_id['id_right']
+                if id_left == [] or id_right == []:
+                    return
+                else:
+                    X_left = X.loc[id_left, :]
+                    X_right = X.loc[id_right, :]
+                for kk in tree[k].keys():
+                    if kk[0] == 'left':
+                        tree_left = tree[k][kk]
+                        w[id_left] = kk[1]
+                    elif kk[0] == 'right':
+                        tree_right = tree[k][kk]
+                        w[id_right] = kk[1]
 
-            self._get_tree_node_w(X_left, tree_left, w)
-            self._get_tree_node_w(X_right, tree_right, w)
+                self._get_tree_node_w(X_left, tree_left, lookup_table, w, t)
+                self._get_tree_node_w(X_right, tree_right, lookup_table, w, t)
+            else:
+                for index in lookup_table.index:
+                    if lookup_table.loc[index, 'record_id'] == record_id:
+                        var = lookup_table.loc[index, 'feature_id']
+                        cut = lookup_table.loc[index, 'threshold_value']
+                        X_left = X.loc[X[var] < cut]
+                        id_left = X_left.index.tolist()
+                        X_right = X.loc[X[var] >= cut]
+                        id_right = X_right.index.tolist()
+                        if id_left == [] or id_right == []:
+                            return
+                        for kk in tree[k].keys():
+                            if kk[0] == 'left':
+                                tree_left = tree[k][kk]
+                                w[id_left] = kk[1]
+                            elif kk[0] == 'right':
+                                tree_right = tree[k][kk]
+                                w[id_right] = kk[1]
+
+                        self._get_tree_node_w(X_left, tree_left, lookup_table, w, t)
+                        self._get_tree_node_w(X_right, tree_right, lookup_table, w, t)
 
     def predict_raw(self, X: pd.DataFrame):
-
         X = X.reset_index(drop='True')
-        Y = pd.Series([self.base_score]*X.shape[0])
+        Y = pd.Series([self.base_score] * X.shape[0])
 
         for t in range(self.n_estimators):
-            tree = self.tree_structure[t+1]
-            y_t = pd.Series([0]*X.shape[0])
-            self._get_tree_node_w(X, tree, y_t)
+            tree = self.tree_structure[t + 1]
+            lookup_table = self.lookup_table_sum[t + 1]
+            y_t = pd.Series([0] * X.shape[0])
+            self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             Y = Y + self.learning_rate * y_t
 
+        self.channel.send(-1)
+        print(self.channel.recv())
         return Y
 
     def predict_prob(self, X: pd.DataFrame):
 
         Y = self.predict_raw(X)
-        def sigmoid(x): return 1/(1+np.exp(-x))
+
+        def sigmoid(x): return 1 / (1 + np.exp(-x))
+
         Y = Y.apply(sigmoid)
 
         return Y
