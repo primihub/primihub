@@ -135,11 +135,13 @@ def xgb_host_logic(cry_pri="paillier"):
         model = xgb_host.tree_structure
         with open('model', 'wb') as fp:
             pickle.dump(model, fp)
+
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         y_pre = xgb_host.predict_prob(data_test)
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
-        return xgb_host.predict_prob(X_host).to_csv(predict_file_path)
+        xgb_host.predict_prob(X_host).to_csv(predict_file_path)
+
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
                             min_child_weight=1, objective='linear', channel=channel)
@@ -206,6 +208,7 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
         xgb_guest.predict(data_test)
+        xgb_guest.predict(X_guest)
     elif cry_pri == "plaintext":
         xgb_guest = XGB_GUEST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1,
                               objective='linear',

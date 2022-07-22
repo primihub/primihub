@@ -322,19 +322,18 @@ class XGB_HOST_EN:
                         self._get_tree_node_w(X_right, tree_right, lookup_table, w, t)
 
     def predict_raw(self, X: pd.DataFrame):
-
         X = X.reset_index(drop='True')
         Y = pd.Series([self.base_score] * X.shape[0])
-
+        
         for t in range(self.n_estimators):
             tree = self.tree_structure[t + 1]
             lookup_table = self.lookup_table_sum[t + 1]
             y_t = pd.Series([0] * X.shape[0])
             self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             Y = Y + self.learning_rate * y_t
-        self.channel.send(-1)
-        print(self.channel.recv())
 
+        self.channel.send(-1)
+        print(self.channel.recv()) 
         return Y
 
     def predict_prob(self, X: pd.DataFrame):
