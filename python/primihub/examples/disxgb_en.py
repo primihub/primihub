@@ -132,12 +132,14 @@ def xgb_host_logic(cry_pri="paillier"):
 
             logger.info("Finish to trian tree {}.".format(t + 1))
 
-        model = xgb_host.tree_structure
-        with open('model', 'wb') as fp:
-            pickle.dump(model, fp)
-
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
+        model_file_path = ph.context.Context.get_model_file_path()
+        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+        with open(model_file_path, 'wb') as fm:
+            pickle.dump(xgb_host.tree_structure, fm)
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
         xgb_host.predict_prob(X_host).to_csv(predict_file_path)
@@ -163,11 +165,14 @@ def xgb_host_logic(cry_pri="paillier"):
 
             logger.info("Finish to trian tree {}.".format(t))
 
-        model = xgb_host.tree_structure
-        with open('model', 'wb') as fp:
-            pickle.dump(model, fp)
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
+        model_file_path = ph.context.Context.get_model_file_path()
+        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+        with open(model_file_path, 'wb') as fm:
+            pickle.dump(xgb_host.tree_structure, fm)
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
@@ -211,6 +216,9 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
         xgb_guest.predict(X_guest)
     elif cry_pri == "plaintext":
@@ -229,5 +237,8 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
         xgb_guest.predict(X_guest)
