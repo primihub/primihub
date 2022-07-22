@@ -35,6 +35,10 @@ class TaskContext:
     dataset_map = dict()
     predict_file_path = "result/xgb_prediction.csv"
     indicator_file_path = "result/xgb_indicator.json"
+    model_file_path = "result/host/model"
+    host_lookup_file_path = "result/host/lookuptable"
+    guest_lookup_file_path = "result/guest/lookuptable"
+
     func_params_map = dict()
 
     def __init__(self) -> None:
@@ -76,6 +80,24 @@ class TaskContext:
             os.makedirs(output_dir)
         return self.indicator_file_path
 
+    def get_model_file_path(self):
+        output_dir = os.path.dirname(self.model_file_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return self.model_file_path
+
+    def get_host_lookup_file_path(self):
+        output_dir = os.path.dirname(self.host_lookup_file_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return self.host_lookup_file_path
+
+    def get_guest_lookup_file_path(self):
+        output_dir = os.path.dirname(self.guest_lookup_file_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        return self.guest_lookup_file_path
+
 
 Context = TaskContext()
 
@@ -89,18 +111,23 @@ def set_node_context(role, protocol, datasets,  next_peer):
 def set_task_context_func_params(func_name, func_params):
     Context.params_map[func_name] = func_params
 
-
 def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
-
 
 def set_task_context_predict_file(f):
     Context.predict_file_path = f
 
-
 def set_task_context_indicator_file(f):
     Context.indicator_file_path = f
 
+def set_task_context_model_file(f):
+    Context.model_file_path = f
+
+def set_task_context_host_lookup_file(f):
+    Context.host_lookup_file_path = f
+
+def set_task_context_guest_lookup_file(f):
+    Context.guest_lookup_file_path = f
 
 # For test
 def set_text(role, protocol, datasets, dumps_func):

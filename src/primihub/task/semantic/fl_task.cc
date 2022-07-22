@@ -105,7 +105,12 @@ FLTask::FLTask(const std::string& node_id,
         this->dataset_meta_map_.insert(
             std::make_pair(input_dataset, data_path));
     }
+
+
     // output file path
+    this->model_file_path_ = param_map["modelFileName"].value_string();
+    this->host_lookup_file_path_ = param_map["hostLookupTable"].value_string();
+    this->guest_lookup_file_path_ = param_map["guestLookupTable"].value_string();
     this->predict_file_path_ = param_map["predictFileName"].value_string();
     this->indicator_file_path_ = param_map["indicatorFileName"].value_string();
 }
@@ -113,6 +118,10 @@ FLTask::FLTask(const std::string& node_id,
 FLTask::~FLTask() {
     set_task_context_predict_file_.release();
     set_task_context_indicator_file_.release();
+    set_task_context_model_file_.release();
+    set_task_context_host_lookup_file_.release();
+    set_task_context_guest_lookup_file_.release();
+
     set_task_context_dataset_map_.release();
     set_task_context_func_params_.release();
     set_node_context_.release();
@@ -148,6 +157,17 @@ int FLTask::execute() {
             set_task_context_dataset_map_(dataset_meta.first,
                                           dataset_meta.second);
         }
+        set_task_context_predict_file_ =
+            ph_context_m.attr("set_task_context_model_file");
+        set_task_context_predict_file_(this->model_file_path_);
+
+        set_task_context_predict_file_ =
+            ph_context_m.attr("set_task_context_host_lookup_file");
+        set_task_context_predict_file_(this->host_lookup_file_path_);
+
+        set_task_context_indicator_file_ =
+            ph_context_m.attr("set_task_context_lookup_file_file");
+        set_task_context_indicator_file_(this->guest_lookup_file_path_);
 
         set_task_context_predict_file_ =
             ph_context_m.attr("set_task_context_predict_file");
@@ -155,7 +175,7 @@ int FLTask::execute() {
 
         set_task_context_indicator_file_ =
             ph_context_m.attr("set_task_context_indicator_file");
-        set_task_context_indicator_file_(this->indicator_file_path_);
+        set_task_context_indicator_file_(this->indicator_file_path_); 
 
         //   LOG(INFO) << node_context_.dumps_func;
         LOG(INFO) << "🔐 After ph_context, GIL is "
