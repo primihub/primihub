@@ -15,5 +15,5 @@
  """
 import os
 
-simple_bootstrap_node_path = '/home/xt/Documents/simple-bootstrap-node'
+simple_bootstrap_node_path ='/home/xt/primihub-develop/simple-bootstrap-node'
 primihub_path = os.path.abspath(os.path.join(os.getcwd(), "../.."))
