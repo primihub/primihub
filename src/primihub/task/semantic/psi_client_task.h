@@ -79,7 +79,7 @@ private:
     std::string result_file_path_;
     bool reveal_intersection_;
     std::vector <std::string> elements_;
-    std::vector <std::int64_t> result_;
+    std::vector <std::string> result_;
 
     std::string server_address_;
     std::string server_dataset_;

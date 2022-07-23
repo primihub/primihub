@@ -24,7 +24,8 @@ using namespace std;
 using arrow::Table;
 using arrow::StringArray;
 using arrow::DoubleArray;
-using arrow::Int64Builder;
+//using arrow::Int64Builder;
+using arrow::StringBuilder;
 using primihub::rpc::VarType;
 
 namespace primihub::task {
@@ -142,7 +143,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
         static_cast<std::int64_t>(intersection.size());
 
     if (psi_type_ == PsiType::DIFFERENCE) {
-	map<int64_t, int> inter_map;
+        map<int64_t, int> inter_map;
         std::int64_t num_elements = static_cast<std::int64_t>(elements_.size());
         for (std::int64_t i = 0; i < num_intersection; i++) {
             inter_map[intersection[i]] = 1;
@@ -150,13 +151,13 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
         for (std::int64_t i = 0; i < num_elements; i++) {
             if (inter_map.find(i) == inter_map.end()) {
                 // outFile << i << std::endl;
-                result_.push_back(i);
+                result_.push_back(elements_[i]);
             }
         }
     } else {
         for (std::int64_t i = 0; i < num_intersection; i++) {
             // outFile << intersection[i] << std::endl;
-            result_.push_back(intersection[i]);
+            result_.push_back(elements_[intersection[i]]);
         }
     }
     return 0;
@@ -233,7 +234,7 @@ int PSIClientTask::execute() {
 
 int PSIClientTask::saveResult() {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
-    arrow::Int64Builder builder(pool);
+    arrow::StringBuilder builder(pool);
 
     for (std::int64_t i = 0; i < result_.size(); i++) {
         builder.Append(result_[i]);
