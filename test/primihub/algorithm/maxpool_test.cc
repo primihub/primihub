@@ -18,9 +18,10 @@ static void RunMaxpool(std::string node_id, rpc::Task &task,
     EXPECT_EQ(exec.execute(), 0);
     EXPECT_EQ(exec.saveModel(), 0);
     exec.finishPartyComm();
-  } catch (const runtime_error& error) {
+  } catch (const runtime_error &error) {
     std::cerr << "Skip maxpool test because this platform "
-	         "don't have avx2 support." << std::endl;
+                 "don't have avx2 support."
+              << std::endl;
   }
 }
 
@@ -96,23 +97,23 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
   pid_t pid = fork();
   if (pid != 0) {
-    // Child process.  
+    // Child process.
     sleep(1);
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/65533");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>());
-    
+        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+
     RunMaxpool("node_2", task2, service);
     return;
   }
-  
+
   // Parent process.
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/65534");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      stub, std::make_shared<service::StorageBackendDefault>());
-  
+      stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+
   RunMaxpool("node_1", task1, service);
   return;
 }

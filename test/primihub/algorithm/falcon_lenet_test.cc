@@ -5,10 +5,6 @@
 #include "src/primihub/algorithm/falcon_lenet.h"
 #include "src/primihub/service/dataset/localkv/storage_default.h"
 
-namespace primihub {
-  std::string nodelet_addr = "test addr";
-}
-
 using namespace primihub;
 
 static void RunFalconlenet(std::string node_id, rpc::Task &task,
@@ -217,7 +213,7 @@ TEST(falcon, falcon_lenet_test)
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11050");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>());
+        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
 
     google::InitGoogleLogging("LENET-Party0");
     RunFalconlenet("node_1", task1, service);
@@ -232,7 +228,7 @@ TEST(falcon, falcon_lenet_test)
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11060");
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>());
+        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
 
     google::InitGoogleLogging("LENET-party1");
     RunFalconlenet("node_2", task2, service);
@@ -244,7 +240,7 @@ TEST(falcon, falcon_lenet_test)
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/11070");
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      stub, std::make_shared<service::StorageBackendDefault>());
+      stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
 
   google::InitGoogleLogging("LENET-party2");
   RunFalconlenet("node_3", task3, service);
