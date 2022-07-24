@@ -441,8 +441,8 @@ http_archive(
 new_git_repository(
     name = "osu_libpsi",
     build_file = "//bazel:BUILD.libpsi",
-    remote = "https://github.com/yankaili2006/libPSI.git",
-    branch="master",
+    commit = "ef0ffba14dbf43fdceb88ad0cf1415c9d34093f9",
+    remote = "https://github.com/primihub/libPSI.git",
 )
 
 # Google dense_hash_set
@@ -465,18 +465,16 @@ http_archive(
 new_git_repository(
     name = "ladnir_cryptoTools",
     build_file = "//bazel:cryptoTools.BUILD",
-    # commit = "1e3a69bf2d5cd10c34b74f066054cd335d033d71",
-    branch = "master",
-    remote = "https://github.com/yankaili2006/cryptoTools.git",
+    commit = "d52e05e2e803006256ddb66f48a0d51080f4b285",
+    remote = "https://github.com/primihub/cryptoTools.git",
     # shallow_since = "1591047380 -0700",
 )
 
 new_git_repository(
     name = "github_ntl",
     build_file = "//bazel:ntl.BUILD",
-    # commit = "1e3a69bf2d5cd10c34b74f066054cd335d033d71",
-    branch = "main",
-    remote = "https://github.com/yankaili2006/ntl.git",
+    commit = "6b23216ce6b24dd04446122c2200b6f031621965",
+    remote = "https://github.com/primihub/ntl.git",
     # shallow_since = "1591047380 -0700",
 )
 
