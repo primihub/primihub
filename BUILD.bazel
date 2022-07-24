@@ -505,6 +505,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     "@org_openmined_pir//pir/cpp:pir",
+    "@osu_libpsi//:libpsi",
 ]
 
 TASK_LIB_DEPS = select({
@@ -1325,22 +1326,6 @@ py_test(
     ],
 )
 
-## sparsehash
-cc_library(
-    name = "sparsehash_config",
-    hdrs = ["sparseconfig.h"],
-    include_prefix = "sparsehash/internal",
-    visibility = ["//visibility:public"],
-)
-
-## libpsi
-cc_library(
-    name = "libpsi_config",
-    hdrs = ["config.h"],
-    include_prefix = "libPSI",
-    visibility = ["//visibility:public"],
-)
-
 # test
 cc_test(
     name = "test",
@@ -1358,7 +1343,6 @@ cc_test(
             ":prng_test",
             ":share_test",
             ":opt_paillier_test",
-            "@osu_libpsi//:libpsi",
     ],
 )
 
