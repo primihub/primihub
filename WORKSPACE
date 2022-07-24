@@ -441,7 +441,7 @@ http_archive(
 new_git_repository(
     name = "osu_libpsi",
     build_file = "//bazel:BUILD.libpsi",
-    commit = "ef0ffba14dbf43fdceb88ad0cf1415c9d34093f9",
+    commit = "213037d4aa0db4d257937d2d953f1b965e4a5234",
     remote = "https://github.com/primihub/libPSI.git",
 )
 
@@ -454,12 +454,11 @@ http_archive(
 )
 
 # libote
-http_archive(
+new_git_repository(
     name = "osu_libote",
     build_file = "//bazel:libOTe.BUILD",
-    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-    strip_prefix = "libOTe-master",
-    urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
+    commit = "f455eb7bf83034ebca6cab42e3aea9d9b33f8102",
+    remote = "https://github.com/primihub/libOTe.git",
 )
 
 new_git_repository(

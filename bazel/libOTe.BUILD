@@ -27,8 +27,8 @@ genrule(
 #define ENABLE_SILENTOT \r\n \
 #define ENABLE_DELTA_KOS \r\n \
 #define ENABLE_DELTA_IKNP \r\n \
-#define ENABLE_OOS ON \r\n \
-#define ENABLE_KKRT ON \r\n \
+/* #define ENABLE_OOS ON */ \r\n \
+/* #define ENABLE_KKRT ON */ \r\n \
 #define ENABLE_RR ON \r\n \
 #define ENABLE_AKN ON \r\n \
 #if defined(ENABLE_SIMPLESTOT_ASM) && defined(_MSC_VER) \r\n \

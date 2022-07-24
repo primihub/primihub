@@ -24,12 +24,23 @@ cc_library(
             "libPSI/**/*.h",
             #"frontend/**/*.cpp",
         ],
-
+        exclude = [
+            "libPSI/Tools/RandomShuffle.cpp",
+            "libPSI/Tools/BalancedIndex.cpp",
+            "libPSI/Tools/RandomShuffle.h",
+            "libPSI/Tools/BalancedIndex.h",
+        ],
     ),
-    hdrs = glob([
-        "libPSI/**/*.h",
-        #"frontend/**/*.h",
-    ]),
+    hdrs = glob(
+        [
+            "libPSI/**/*.h",
+            #"frontend/**/*.h",
+        ],
+        exclude = [
+            "libPSI/Tools/RandomShuffle.h",
+            "libPSI/Tools/BalancedIndex.h",
+        ],
+    ),
     includes = ["libPSI"],
     visibility = ["//visibility:public"],
     linkopts = ["-pthread -lstdc++"],

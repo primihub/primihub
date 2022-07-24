@@ -125,10 +125,7 @@ genrule(
         'cd $$TMP_DIR',
         'cd src',
         './configure PREFIX=$$INSTALL_DIR NTL_THREADS=on NTL_THREAD_BOOST=on NTL_EXCEPTIONS=on SHARED=on NTL_STD_CXX11=on NTL_SAFE_VECTORS=off TUNE=generic',
-        'make && make install',
-        'cp $$TMP_DIR/../include/NTL/config.h $$INSTALL_DIR/NTL',
-        'cp $$TMP_DIR/../include/NTL/mach_desc.h $$INSTALL_DIR/NTL',
-        'cp $$TMP_DIR/../include/NTL/gmp_aux.h $$INSTALL_DIR/NTL',
+        'make && make install && (cp $$TMP_DIR/../include/NTL/config.h $$INSTALL_DIR/NTL) && (cp $$TMP_DIR/../include/NTL/mach_desc.h $$INSTALL_DIR/NTL) && (cp $$TMP_DIR/../include/NTL/gmp_aux.h $$INSTALL_DIR/NTL)',
         'rm -rf $$TMP_DIR',
     ]),
 )
