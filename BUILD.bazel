@@ -1358,7 +1358,6 @@ cc_test(
             ":prng_test",
             ":share_test",
             ":opt_paillier_test",
-            "@google_sparsehash//:sparsehash",
             "@osu_libpsi//:libpsi",
     ],
 )
