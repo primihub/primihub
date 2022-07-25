@@ -66,8 +66,9 @@ class TaskContext:
     def get_func_params_map(self):
         return self.func_params_map
 
+    @staticmethod
     def mk_output_dir(output_dir):
-        print(output_dir)
+        print("output_dir: ", output_dir)
         if output_dir:
             if not os.path.exists(output_dir):
                 try:
@@ -92,16 +93,19 @@ class TaskContext:
     def get_model_file_path(self):
         output_dir = os.path.dirname(self.model_file_path).strip()
         self.mk_output_dir(output_dir)
+        print("model: ", self.model_file_path)
         return self.model_file_path
 
     def get_host_lookup_file_path(self):
         output_dir = os.path.dirname(self.host_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
+        print("host lookup table: ", self.host_lookup_file_path)
         return self.host_lookup_file_path
 
     def get_guest_lookup_file_path(self):
         output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
+        print("guest lookup table: ", self.guest_lookup_file_path)
         return self.guest_lookup_file_path
 
 
@@ -117,25 +121,33 @@ def set_node_context(role, protocol, datasets,  next_peer):
 def set_task_context_func_params(func_name, func_params):
     Context.params_map[func_name] = func_params
 
+
 def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
+
 
 def set_task_context_predict_file(f):
     Context.predict_file_path = f
 
+
 def set_task_context_indicator_file(f):
     Context.indicator_file_path = f
+
 
 def set_task_context_model_file(f):
     Context.model_file_path = f
 
+
 def set_task_context_host_lookup_file(f):
     Context.host_lookup_file_path = f
+
 
 def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
 # For test
+
+
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 
