@@ -8,8 +8,10 @@ e2etest |--------- local|---- pre_test.py 启动节点
         |                                 |---- test_fl.py
         |                                 |---- test_psi.py
         |                                 |---- test_pir.py 
+        |                                 |---- test_all.py 
         |                                 |---- config.py   配置路径，请首先修改！！！
-        |                                 |---- test_dir.py 
+        |                                 |---- kill_node.py 
+        |                                 |---- portlisten.py 
 
 ```
 ## local测试环境
@@ -36,18 +38,21 @@ e2etest |--------- local|---- pre_test.py 启动节点
   ```  
     - name: Install pytest
       run: sudo apt-get install python3-pip && pip3 install pytest     
+
 2.运行方式
         cd e2etest
         cd local
         1) 检测全部功能
-        pytest
+          pytest
         2) 检测单个功能
-        pytest -s test_mpc.py
+          为了释放资源，取消指定功能的最后kill_node两行注释
+          pytest -s test_mpc.py
+
 3.注意问题
-        1) 注意配置/e2etest/local/config中的startNode和workspace的路径
-        2) 如果某任务失败,尝试删除localdb后重新mkdir,或者再试一次。   
-        3) 这种方式隐式启动节点，节点的输出在node?.log中
-        4) 尽量在root下运行
+        1) 注意配置/e2etest/local_action/config中的startNode的路径
+        2) 这种方式隐式启动节点，节点的输出在node?.log中
+        3) 尽量在root下运行
+        4) 在全部检测时，kill_node只需在任意功能最后执行一次，可以节省测试时间
 
 >pytest的常见参数
 >-s ：显示标准输出，例如print()的语句；
