@@ -66,44 +66,42 @@ class TaskContext:
     def get_func_params_map(self):
         return self.func_params_map
 
-    def get_predict_file_path(self):
-        output_dir = os.path.dirname(self.predict_file_path)
+    def mk_output_dir(output_dir):
+        print(output_dir)
         if output_dir:
             if not os.path.exists(output_dir):
                 try:
                     os.makedir(output_dir)
                 except:
                     os.makedirs(output_dir)
+                finally:
+                    print(output_dir)
+
+    def get_predict_file_path(self):
+        output_dir = os.path.dirname(self.predict_file_path).strip()
+        self.mk_output_dir(output_dir)
         print("predict: ", self.predict_file_path)
         return self.predict_file_path
 
     def get_indicator_file_path(self):
-        output_dir = os.path.dirname(self.indicator_file_path)
-        if output_dir:
-            if not os.path.exists(output_dir):
-                try:
-                    os.makedir(output_dir)
-                except:
-                    os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.indicator_file_path).strip()
+        self.mk_output_dir(output_dir)
         print("indicator: ", self.indicator_file_path)
         return self.indicator_file_path
 
     def get_model_file_path(self):
-        output_dir = os.path.dirname(self.model_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.model_file_path).strip()
+        self.mk_output_dir(output_dir)
         return self.model_file_path
 
     def get_host_lookup_file_path(self):
-        output_dir = os.path.dirname(self.host_lookup_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.host_lookup_file_path).strip()
+        self.mk_output_dir(output_dir)
         return self.host_lookup_file_path
 
     def get_guest_lookup_file_path(self):
-        output_dir = os.path.dirname(self.guest_lookup_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
+        self.mk_output_dir(output_dir)
         return self.guest_lookup_file_path
 
 

@@ -33,7 +33,7 @@ fi
 BASE_DIR=`ls -l | grep bazel-bin | awk '{print $11}'`
 IMAGE_NAME="primihub/primihub_node"
 
-sed -i "10c ARG TARGET_PATH=$BASE_DIR" Dockerfile.local
+sed -i "12c ARG TARGET_PATH=$BASE_DIR" Dockerfile.local
 
 #rm -rf $BASE_DIR/python $BASE_DIR/config
 rm -f $BASE_DIR/Dockerfile.local
