@@ -1,3 +1,4 @@
+
 from sklearn import metrics
 import json
 
@@ -223,13 +224,48 @@ class Regression_eva:
 
 class Classification_eva:
     @staticmethod
-    def get_result(y, y_hat, y_prob, path="evaluation.json", eval_test=None):
+    def get_result(y_true, y_prob, path="evaluation.json", eval_test=None):
         """
                 :param y: real y
                 :param y_hat:predicted y
                 :return:classification metricss all supported.
                 """
+        lable = [0, 1]
+        lable_true = list(set(y_true))
+        lable_true.sort()
+        y = []
+        if lable_true != lable:
+            for i in y_true:
+                if i == lable_true[0]:
+                    y.append(lable[0])
+                else:
+                    y.append(lable[1])
+        else:
+            y = y_true
+
+        roc = Evaluator.get_roc(y, y_prob)
+        thresholds = roc["thresholds"]
+        fpr = roc["fpr"]
+        tpr = roc["tpr"]
+        max_tf = 0
+        threshold = 0
+        for i in range(len(tpr)):
+            this_tf = tpr[i]-fpr[i]
+            if this_tf > max_tf:
+                max_tf = this_tf
+                threshold = thresholds[i]
+        lable = list(set(y))
+        y_hat = []
+        for i in y_prob:
+            if i <= threshold:
+                y_hat.append(lable[0])
+            else:
+                y_hat.append(lable[1])
         res = {}
+        print(y)
+        print(y_hat)
+        suffix = Evaluator.get_confusionMatrix(y, y_hat)
+        print(suffix)
         for i in range(len(Evaluator.classification_metrics)):
             metrics = Evaluator.classification_metrics[i]
             method = Evaluator.classification_method[i]
@@ -246,8 +282,8 @@ class Classification_eva:
         return res
 
 
-if __name__ == "__main__":
-    a = [1, 0, 1, 1, 1]
-    b = [1, 0, 0, 1, 1]
-    c = [0.8, 0.3, 0.2, 0.9, 0.7]
-    Regression_eva.get_result(a, b)
+# if __name__ == "__main__":
+#     a = [1,0,1,1,1]
+#     b = [1,0,0,1,1]
+#     c = [0.8,0.3,0.2,0.9,0.7]
+#     Classification_eva.get_result(a,c)
