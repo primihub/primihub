@@ -1,8 +1,6 @@
 import functools
 import os
 from typing import Callable
-
-# from dill import dumps
 from cloudpickle import dumps
 
 
@@ -70,14 +68,24 @@ class TaskContext:
 
     def get_predict_file_path(self):
         output_dir = os.path.dirname(self.predict_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if output_dir:
+            if not os.path.exists(output_dir):
+                try:
+                    os.makedir(output_dir)
+                except:
+                    os.makedirs(output_dir)
+        print("predict: ", self.predict_file_path)
         return self.predict_file_path
 
     def get_indicator_file_path(self):
         output_dir = os.path.dirname(self.indicator_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if output_dir:
+            if not os.path.exists(output_dir):
+                try:
+                    os.makedir(output_dir)
+                except:
+                    os.makedirs(output_dir)
+        print("indicator: ", self.indicator_file_path)
         return self.indicator_file_path
 
     def get_model_file_path(self):
@@ -152,9 +160,12 @@ def function(protocol, role, datasets, next_peer):
         Context.nodes_context[role] = NodeContext(
             role, protocol, datasets, func, next_peer)
 
-        print(">>>>> next peer in {}'s node context is {}.".format(role, Context.nodes_context[role].next_peer)) 
-        print(">>>>> dataset in {}'s node context is {}.".format(role, Context.nodes_context[role].datasets)) 
-        print(">>>>> role in {}'s node context is {}.".format(role, Context.nodes_context[role].role)) 
+        print(">>>>> next peer in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].next_peer))
+        print(">>>>> dataset in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].datasets))
+        print(">>>>> role in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].role))
 
         @functools.wraps(func)
         def wapper(*args, **kwargs):

@@ -98,4 +98,27 @@ message Task {
   repeated string input_datasets = 7; 
   bytes job_id = 8;
   bytes task_id = 9;
+
+  map<string, Channel> chennel_map = 10;
 }
+
+// Node Context
+message NodeContext {
+  map<string, string> context_map = 1;
+}
+
+// Channel
+enum ChannelType {
+  MQ = 0;
+  GRPC = 1;
+  HTTP = 2;
+  WEBSOCKET = 3;
+}
+
+message Channel {
+  string name = 1;
+  ChannelType type = 2;
+  bytes connect_str = 3;
+}
+
+

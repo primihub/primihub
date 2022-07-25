@@ -3,6 +3,7 @@ import os
 import shlex
 import subprocess
 import sys
+import distutils
 from distutils.sysconfig import get_python_lib
 from os import path
 from shutil import copy
@@ -23,6 +24,7 @@ python setup.py install
 """
 
 print(sys.executable)
+
 
 def is_pkg(line):
     return line and not line.startswith(('--', 'git', '#'))
@@ -61,7 +63,7 @@ def add_primihub_so_site():
     site_packages_path = get_python_lib()
     print(site_packages_path)
     pth_file = site_packages_path + "/primihub_so.pth"
-    print(pth_file) 
+    print(pth_file)
     try:
         with open(pth_file, "w") as pth:
             print("--", SO_LIB_PATH)
@@ -70,7 +72,6 @@ def add_primihub_so_site():
         print("sys path: ", sys.path)
     except Exception as e:
         print(e)
-        
 
 
 def compile_proto():
@@ -85,6 +86,8 @@ def compile_proto():
                         src/primihub/protos/pir.proto \
                         src/primihub/protos/psi.proto \
                         src/primihub/protos/service.proto \
+                        src/primihub/protos/cluster.proto \
+                        src/primihub/protos/channel.proto \
                         src/primihub/protos/worker.proto """.format(pyexe=sys.executable))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -111,6 +114,26 @@ class PostInstallCommand(install):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         install.run(self)
         add_primihub_so_site()
+        compile_proto()
+
+
+class ProtoCommand(distutils.cmd.Command):
+    """compile proto"""
+
+    # `python setup.py --help` description
+    description = 'compile proto'
+    user_options = [
+        ('proto', 'p', 'compile proto'),
+    ]
+
+    def initialize_options(self):
+        ...
+
+    def finalize_options(self):
+        ...
+
+    def run(self):
+        print("======= command is running =======")
         compile_proto()
 
 
@@ -142,6 +165,7 @@ setup(
     cmdclass={
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
+        'proto': ProtoCommand,
     },
     entry_points={
         # 'console_scripts': [
