@@ -34,7 +34,7 @@ class ClientChannelProxy:
             _ = channel.recv()
 
         msg = {"v": val, "tag": tag}
-        fut = self.executor_.submit(send_fn, (self.chann_, msg))
+        fut = self.executor_.submit(send_fn, self.chann_, msg)
 
         return fut
 
