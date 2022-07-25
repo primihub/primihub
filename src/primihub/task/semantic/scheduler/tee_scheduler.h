@@ -31,11 +31,11 @@ class TEEScheduler: public VMScheduler {
     public:
         TEEScheduler(const std::string &node_id,
                      bool singleton,
-                     const std::vector<NodeWithRoleTag> &peers_with_tag,
+                     const std::vector<NodeWithRoleTag> &peers_with_role_tag,
                      const PeerContextMap &peer_context_map,
                      const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
             : VMScheduler(node_id, singleton),
-              peers_with_tag_(peers_with_tag),
+              peers_with_role_tag_(peers_with_role_tag),
               peer_context_map_(peer_context_map),
               metas_with_role_tag_(metas_with_role_tag) {}
         ~TEEScheduler() {}
@@ -43,13 +43,11 @@ class TEEScheduler: public VMScheduler {
         void dispatch(const PushTaskRequest *pushTaskRequest) override;
     
     private:
-        void add_vm(Node *node, int i, int role_num, 
-                    const PushTaskRequest *pushTaskRequest);
-    
-        void getDataMetaListByRole(const std::string &role,
-                                   std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);
-    
-        std::vector<NodeWithRoleTag> peers_with_tag_;
+        
+        void add_vm(Node* executor, Node *dpv,
+                            int party_id, 
+                            const PushTaskRequest *pushTaskRequest);
+        std::vector<NodeWithRoleTag> peers_with_role_tag_;
         PeerContextMap peer_context_map_;
         std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
     

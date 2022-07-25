@@ -22,6 +22,8 @@ enum TaskType {
   NODE_PIR_TASK = 4;
   NODE_PSI_TASK = 5;
   TEE_TASK = 6;
+  TEE_EXECUTOR_TASK = 7;
+  TEE_DATAPROVIDER_TASK = 8;
 }
 
 enum VarType {
