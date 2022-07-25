@@ -1,7 +1,7 @@
 import pytest
 import os
-import pre_test
-import config
+from . import pre_test
+from . import config
 
 '''
 运行启动节点和node节点。

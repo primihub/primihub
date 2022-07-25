@@ -16,7 +16,7 @@
 
 import os
 import time
-import config
+from . import config
 
 def pre_start_node():
     '''开启一个命令行窗口，运行启动节点
@@ -24,7 +24,7 @@ def pre_start_node():
     '''
     path = config.simple_bootstrap_node_path
     os.chdir(path)
-    os.system("sudo gnome-terminal -e 'go run main.go'")
+    os.system("sudo nohup go run main.go >> bootstrap.log 2>&1 &")
     time.sleep(60)
 
 
@@ -32,7 +32,7 @@ def pre_node():
     '''开启三个命令行窗口，运行节点'''
     path = config.primihub_path  
     os.chdir(path)
-    os.system("sudo gnome-terminal -e './bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml'")
-    os.system("sudo gnome-terminal -e './bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml'")
-    os.system("sudo gnome-terminal -e './bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml'")
+    os.system("sudo nohup  ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml >> node0.log 2>&1 &")
+    os.system("sudo nohup  ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml >> node1.log 2>&1 &")
+    os.system("sudo nohup  ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml >> node2.log 2>&1 &")
     time.sleep(30)

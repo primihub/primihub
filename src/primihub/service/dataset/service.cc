@@ -79,7 +79,7 @@ namespace primihub::service {
         metaService_->getMeta(id, [&](std::shared_ptr<DatasetMeta> meta) {
             if (meta) {
                 // Construct dataset from meta
-                auto driver = DataDirverFactory::getDriver(meta->getDriverType(), "node test addr");  // TODO get node test addr from config
+                auto driver = DataDirverFactory::getDriver(meta->getDriverType(), nodelet_addr_);
                 auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
                 auto dataset = cursor->read();
                 handler(dataset);
@@ -142,7 +142,7 @@ namespace primihub::service {
     }
 
     // Load dataset from local meta storage.
-    void DatasetService::restoreDatasetFromLocalStorage(const std::string &nodelet_addr) {
+    void DatasetService::restoreDatasetFromLocalStorage(void) {
         LOG(INFO) << "💾 Restore dataset from local storage...";
         std::vector<DatasetMeta> metas;
         metaService_->getAllLocalMetas(metas);
@@ -155,7 +155,8 @@ namespace primihub::service {
                 LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
                 continue;
             }
-            meta.setDataURL(nodelet_addr + ":" +dataset_path);
+
+            meta.setDataURL(nodelet_addr_ + ":" +dataset_path);
             // Publish dataset meta on libp2p network.
             metaService_->putMeta(meta);
         }

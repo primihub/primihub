@@ -45,7 +45,6 @@ ABSL_FLAG(int, service_port, 50050, "node service port");
 
 namespace primihub {
 
-
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
                               PushTaskReply *pushTaskReply) {
@@ -235,8 +234,6 @@ int main(int argc, char **argv) {
                                  config_file);
     data_service = new primihub::DataServiceImpl(node_service->getNodelet()->getDataService(),
                                            node_service->getNodelet()->getNodeletAddr());
-
-
 
     primihub::RunServer(node_service, data_service, service_port);
 

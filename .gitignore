@@ -20,6 +20,8 @@
 # generated files
 /lib/
 /bin/
+data/localdb*
+data/result/
 
 */CMakeFiles/
 /CMakeFiles/
@@ -27,6 +29,7 @@
 CMakeCache.txt
 out/
 build/
+cmake-*/
 
 bazel-bin
 bazel-out

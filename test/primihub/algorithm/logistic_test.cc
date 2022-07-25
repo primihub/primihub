@@ -140,8 +140,8 @@ TEST(logistic, logistic_3pc_test) {
     stub->start("/ip4/127.0.0.1/tcp/65530");
 
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>());
-
+        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+    
     RunLogistic("node_1", task1, service);
     return;
   }
@@ -154,7 +154,7 @@ TEST(logistic, logistic_3pc_test) {
     stub->start("/ip4/127.0.0.1/tcp/65531");
 
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>());
+        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
 
     RunLogistic("node_2", task2, service);
     return;
@@ -166,7 +166,7 @@ TEST(logistic, logistic_3pc_test) {
   stub->start("/ip4/127.0.0.1/tcp/65532");
 
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      stub, std::make_shared<service::StorageBackendDefault>());
+      stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
 
   RunLogistic("node_3", task3, service);
   return;
