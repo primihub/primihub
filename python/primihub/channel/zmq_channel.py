@@ -1,5 +1,5 @@
 import pickle
-
+import time
 import zmq
 import zmq.asyncio
 
@@ -18,10 +18,20 @@ class Channel:
     def send(self, data):
         self.socket.send(pickle.dumps(data))
 
-    def recv(self):
-        # print("wait for recv ...")
-        message = self.socket.recv()
-        return pickle.loads(message)
+    def recv(self, block=True):
+        if block is True:
+            message = self.socket.recv()
+            return pickle.loads(message)
+        else:
+            # Don't remove unblock recv, it's used for 
+            # ClientChannelProxy and ServerChannelProxy.
+            try:
+                message = self.socket.recv(flags=zmq.NOBLOCK)
+                return pickle.loads(message)
+            except zmq.Again as e:
+                time.sleep(0.1)
+            except Exception as e:
+                raise e
 
     def send_json(self, data):
         self.socket.send_json(data)
