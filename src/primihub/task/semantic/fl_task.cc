@@ -166,7 +166,7 @@ int FLTask::execute() {
         set_task_context_predict_file_(this->host_lookup_file_path_);
 
         set_task_context_indicator_file_ =
-            ph_context_m.attr("set_task_context_lookup_file_file");
+            ph_context_m.attr("set_task_context_guest_lookup_file");
         set_task_context_indicator_file_(this->guest_lookup_file_path_);
 
         set_task_context_predict_file_ =
