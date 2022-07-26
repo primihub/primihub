@@ -525,7 +525,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-x86_64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -1258,6 +1258,41 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":lib_opt_paillier",
+    ],
+)
+
+cc_library(
+    name = "kkrt_psi",
+    srcs = glob(
+        [
+            "test/primihub/protocol/kkrtpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/kkrtpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "kkrt_psi_test",
+    srcs = [
+        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/kkrtpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":kkrt_psi"
     ],
 )
 
