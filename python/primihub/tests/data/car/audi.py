@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 
 RAW_PATH = path.dirname(__file__)
 
-audi = pd.read_csv(path.join(RAW_PATH, "audi.csv"))
+audi = pd.read_csv(path.join(RAW_PATH, "h_audi2.csv"))
 print(audi.shape)
 audi['transmission'] = audi['transmission'].map(
     {'Automatic': 0, 'Manual': 1, 'Semi-Auto': 2, 'Other': 3})
