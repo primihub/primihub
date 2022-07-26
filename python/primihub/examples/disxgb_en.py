@@ -141,8 +141,12 @@ def xgb_host_logic(cry_pri="paillier"):
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
-        Classification_eva.get_result(y_true, y_pre, indicator_file_path)
-        xgb_host.predict_prob(X_host).to_csv(predict_file_path)
+        y_train_pre = xgb_host.predict_prob(X_host)
+        y_train_pre.to_csv(predict_file_path)
+        y_train_true = Y
+        Y_true = {"train":y_train_true,"test":y_true}
+        Y_pre = {"train":y_train_pre,"test":y_pre}
+        Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
 
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
