@@ -13,10 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-import pre_test
+
+import os
+
 '''
-运行启动节点和node节点。
-如果已经运行了可以注释掉，也可以选择关闭命令行窗口重新运行。
+直接根据名称关闭
 '''
-pre_test.pre_start_node()
-pre_test.pre_node()
+def direct_kill() :
+    os.system("sudo killall main")
+    os.system("sudo killall node")
+
