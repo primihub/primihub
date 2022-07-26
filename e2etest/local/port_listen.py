@@ -13,10 +13,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-import pre_test
-'''
-运行启动节点和node节点。
-如果已经运行了可以注释掉，也可以选择关闭命令行窗口重新运行。
-'''
-pre_test.pre_start_node()
-pre_test.pre_node()
+ 
+import socket
+
+def judge_port_listen(port_num):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = s.connect_ex(('127.0.0.1', port_num))
+    if result == 0:
+        print("Port %d is open" % port_num)
+    else :
+       print("Port %d is not open" % port_num)
+    s.close()
+    return result
