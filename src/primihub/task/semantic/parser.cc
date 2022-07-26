@@ -27,8 +27,11 @@
 #include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
+#include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
 
 using primihub::service::DataURLToDetail;
+using primihub::rpc::TaskType;
+
 
 namespace primihub::task {
 
@@ -92,10 +95,10 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
         // TEE task scheduler
         if (pushTaskRequest.task().type() == TaskType::TEE_TASK) {
-            std::shared_ptr<VMScheduler> scheduler =
-              std::make_shared<TEEScheduler>(node_id_, peer_list_,
-                                              peer_dataset_map_, singleton_);
-            scheduler->dispatch(&pushTaskRequest);
+            // std::shared_ptr<VMScheduler> scheduler =
+            //   std::make_shared<TEEScheduler>(node_id_, peer_list_,
+            //                                   peer_dataset_map_, singleton_);
+            // scheduler->dispatch(&pushTaskRequest);
         }
       });
 }

@@ -17,7 +17,14 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_TEE_SCHEDULER_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_TEE_SCHEDULER_H_
 
+#include <string>
+#include <vector>
+
+#include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler.h"
+
+using primihub::service::DatasetMeta;
+using primihub::service::DatasetMetaWithParamTag;
 
 namespace primihub::task {
 /**
@@ -27,32 +34,34 @@ namespace primihub::task {
  *        2. DataProvider:  node that can provide data to a task.
  * @todo
  */
-class TEEScheduler: public VMScheduler {
-    public:
-        TEEScheduler(const std::string &node_id,
-                     bool singleton,
-                     const std::vector<NodeWithRoleTag> &peers_with_role_tag,
-                     const PeerContextMap &peer_context_map,
-                     const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
-            : VMScheduler(node_id, singleton),
-              peers_with_role_tag_(peers_with_role_tag),
-              peer_context_map_(peer_context_map),
-              metas_with_role_tag_(metas_with_role_tag) {}
-        ~TEEScheduler() {}
-        
-        void dispatch(const PushTaskRequest *pushTaskRequest) override;
-    
-    private:
-        
-        void add_vm(Node* executor, Node *dpv,
-                            int party_id, 
-                            const PushTaskRequest *pushTaskRequest);
-        std::vector<NodeWithRoleTag> peers_with_role_tag_;
-        PeerContextMap peer_context_map_;
-        std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
-    
+class TEEScheduler : public VMScheduler {
+  public:
+    TEEScheduler(
+        const std::string &node_id, bool singleton,
+        const std::vector<NodeWithRoleTag> &peers_with_role_tag,
+        const PeerContextMap &peer_context_map,
+        const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
+        : VMScheduler(node_id, singleton),
+          peers_with_role_tag_(peers_with_role_tag),
+          peer_context_map_(peer_context_map),
+          metas_with_role_tag_(metas_with_role_tag) {}
+    ~TEEScheduler() {}
+
+    void dispatch(const PushTaskRequest *pushTaskRequest) override;
+
+  private:
+    void add_vm(Node *executor, Node *dpv, int party_id,
+                const PushTaskRequest *pushTaskRequest);
+    void push_task_to_node(const std::string &node_id,
+                           const PushTaskRequest &request,
+                           const std::string &dest_node_address);
+
+    std::vector<NodeWithRoleTag> peers_with_role_tag_;
+    PeerContextMap peer_context_map_;
+    std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
+
 }; // class TEEScheduler
 
 } // namespace primihub::task
 
-#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_TEE_SCHEDULER_H_
+#endif // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_TEE_SCHEDULER_H_

@@ -14,29 +14,40 @@
  limitations under the License.
  */
 
-/**
- * @brief TEE Executor role task
- *  1. compile AI server SGX enclave application
- *  2. run SGX enclave application
- *  3. Notice all DataProvider  start to provide data
- */
-class TEEExecutorTask : public TaskBase {
-    public:
-        TEEExecutorTask(const TaskParam *task_param, 
-                        std::shared_ptr<DatasetService> dataset_service);
-        ~TEEExecutorTask() {}
+#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
+#define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_ 
 
-        int compile();
-        int execute();
-};
+#include "src/primihub/task/semantic/task.h"
 
+namespace primihub::task {
+// /**
+//  * @brief TEE Executor role task
+//  *  1. compile AI server SGX enclave application
+//  *  2. run SGX enclave application
+//  *  3. Notice all DataProvider  start to provide data
+//  */
+// class TEEExecutorTask : public TaskBase {
+//     public:
+//         TEEExecutorTask(const TaskParam *task_param, 
+//                         std::shared_ptr<DatasetService> dataset_service);
+//         ~TEEExecutorTask() {}
+
+//         int compile();
+//         int execute();
+// };
 
 /**
  * @brief TEE DataProvider role task
  * 
  */
-class TEEDataProviderTask {
-
+class TEEDataProviderTask: public TaskBase {
+    public:
+        TEEDataProviderTask(const TaskParam *task_param, 
+                            std::shared_ptr<DatasetService> dataset_service);
+        ~TEEDataProviderTask();
+        int execute();
 };
 
 } // namespace primihub::task
+
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
