@@ -86,8 +86,6 @@ def compile_proto():
                         src/primihub/protos/pir.proto \
                         src/primihub/protos/psi.proto \
                         src/primihub/protos/service.proto \
-                        src/primihub/protos/cluster.proto \
-                        src/primihub/protos/channel.proto \
                         src/primihub/protos/worker.proto """.format(pyexe=sys.executable))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
