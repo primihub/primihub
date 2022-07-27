@@ -53,14 +53,14 @@ namespace primihub {
     }).getClosure();
   }
 
-  // byte 0909 const matrix mul
+  //  const matrix mul
   void Sh3Evaluator::asyncConstMul(const i64& a, const si64Matrix& b,
                                    si64Matrix& c) {
     c.mShares[0] = a * b.mShares[0];
     c.mShares[1] = a * b.mShares[1];
   }
 
-  // byte 0909 const mul
+  //  const mul
   void Sh3Evaluator::asyncConstMul(const i64& a, const si64& b, si64& c) {
     c[0] = a * b[0];
     c[1] = a * b[1];
@@ -421,7 +421,7 @@ namespace primihub {
     }).getClosure();
   }
 
-  // byte 0909 const fixed number mul
+  //  const fixed number mul
   Sh3Task Sh3Evaluator::asyncConstFixedMul(Sh3Task  dependency,
     const i64& A, const si64& B, si64& C, u64 shift) {
     return dependency.then([&, shift](CommPkgBase* comm, Sh3Task& self) -> void {
@@ -464,7 +464,7 @@ namespace primihub {
     }).getClosure();
   }
 
-  // byte 0909 const fixed matrix mul
+  //  const fixed matrix mul
   Sh3Task Sh3Evaluator::asyncConstFixedMul(Sh3Task dependency,
     const i64& A, const si64Matrix& B, si64Matrix& C, u64 shift) {
       return dependency.then([&, shift](CommPkgBase* comm, Sh3Task& self) -> void {

@@ -44,7 +44,7 @@ class aby3ML {
     return dest;
   }
 
-  //byte 0909
+  //
   template<Decimal D>
   sf64<D> localInput(const f64<D>& val) {
     sf64<D> dest;
@@ -70,7 +70,7 @@ class aby3ML {
     return localInput(v2);
   }
 
-  // byte 0909 share double (local)
+  //  share double (local)
   template<Decimal D>
   sf64<D> localInput(const double & vals) {
     f64<D> v2 = vals;
@@ -92,7 +92,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909 share double (remote)
+  //  share double (remote)
   template<Decimal D>
   sf64<D> remoteInput(void) {
     sf64<D> dest;
@@ -137,7 +137,7 @@ class aby3ML {
     return ret;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64<D> mul(const sf64<D>& left, const sf64<D>& right) {
     sf64<D> dest;
@@ -152,7 +152,7 @@ class aby3ML {
     return static_cast<double>(dest);
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64<D> constMul(const i64& a, const sf64<D>& vals) {
     sf64<D> dest;
@@ -160,7 +160,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64Matrix<D> constMul(const i64& a, const sf64Matrix<D>& vals) {
     sf64Matrix<D> dest;
@@ -168,7 +168,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64<D> constFixedMul(const double& a, const sf64<D>& vals) {
     sf64<D> dest;
@@ -177,7 +177,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64Matrix<D> constFixedMul(const double& a, const sf64Matrix<D>& vals) {
     sf64Matrix<D> dest;
@@ -186,7 +186,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64<D> FixedPow(const u64& n, const sf64<D>& B) {
     i64 i, j;
@@ -211,7 +211,7 @@ class aby3ML {
     return C;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64Matrix<D> FixedPow(const u64& n, const sf64Matrix<D>& B) {
     i64 i, j;
@@ -236,7 +236,7 @@ class aby3ML {
     return C;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64<D> average(sf64<D> *A, u64 n) {
     double inv = 1.0 / n;
@@ -251,7 +251,7 @@ class aby3ML {
     return dest;
   }
 
-  // byte 0909
+  // 
   template<Decimal D>
   sf64Matrix<D> average(sf64Matrix<D> *A, u64 n) {
     double inv = 1.0 / n;
