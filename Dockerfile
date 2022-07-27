@@ -71,7 +71,7 @@ RUN rm -rf /var/lib/apt/lists/*
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/__main__/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
 # Copy binaries to TARGET_PATH
-COPY --from=builder $TARGET_PATH ./
+COPY --from=builder $TARGET_PATH $TARGET_PATH
 # Copy test data files to /tmp/
 COPY --from=builder /src/data/ /tmp/
 # Make symlink to primihub-node & primihub-cli
