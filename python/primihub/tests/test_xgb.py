@@ -29,7 +29,7 @@ ph.context.Context.dataset_map = {
     'test_dataset': TEST_DATA_PATH
 }
 
-ph.context.Context.output_path = "/home/zxy/primihub/python/primihub/tests/data/result/xgb_prediction_local.csv"
+ph.context.Context.output_path = "data/result/xgb_prediction_local.csv"
 
 def run_xgb_logic():
     xgb_logic()
