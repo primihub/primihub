@@ -1,0 +1,59 @@
+package(default_visibility = ["//visibility:public",],)
+
+## sparsehash
+cc_library(
+    name = "sparsehash_config",
+    hdrs = ["sparseconfig.h"],
+    include_prefix = "sparsehash/internal",
+    visibility = ["//visibility:public"],
+)
+
+## libpsi
+cc_library(
+    name = "libpsi_config",
+    hdrs = ["config.h"],
+    include_prefix = "libPSI",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "libpsi",
+    srcs = glob(
+        [
+            "libPSI/**/*.cpp",
+            "libPSI/**/*.h",
+            #"frontend/**/*.cpp",
+        ],
+        exclude = [
+            "libPSI/Tools/RandomShuffle.cpp",
+            "libPSI/Tools/BalancedIndex.cpp",
+            "libPSI/Tools/RandomShuffle.h",
+            "libPSI/Tools/BalancedIndex.h",
+        ],
+    ),
+    hdrs = glob(
+        [
+            "libPSI/**/*.h",
+            #"frontend/**/*.h",
+        ],
+        exclude = [
+            "libPSI/Tools/RandomShuffle.h",
+            "libPSI/Tools/BalancedIndex.h",
+        ],
+    ),
+    includes = ["libPSI"],
+    visibility = ["//visibility:public"],
+    linkopts = ["-pthread -lstdc++"],
+    copts = ["-I. -std=c++14 -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul"],
+    strip_include_prefix = "libPSI",
+    # Using an empty include_prefix causes Bazel to emit -I instead of -iquote
+    # options for the include directory, so that #include <gmp.h> works.
+    include_prefix = "libPSI",
+    deps = [
+        ":libpsi_config",
+        "@ladnir_cryptoTools//:libcryptoTools",
+        "@osu_libote//:libOTe",
+        "@github_ntl//:libntl",
+        "@google_sparsehash//:sparsehash",
+    ],
+)
