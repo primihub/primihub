@@ -5,12 +5,11 @@ from cloudpickle import dumps
 
 
 class NodeContext:
-    def __init__(self, role, protocol, datasets, func=None, next_peer=None):
+    def __init__(self, role, protocol, dataset_port_map, func=None):
         self.role = role
         self.protocol = protocol
-        self.datasets = datasets
         self.func = func
-        self.next_peer = next_peer
+        self.dataset_port_map = dataset_port_map 
         print("func type: ", type(func))
 
         self.dumps_func = None
@@ -23,6 +22,10 @@ class NodeContext:
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
 
+        self.datasets = []
+        for ds_name in self.dataset_port_map.keys():
+            self.datasets.append(ds_name)
+
 
 class TaskContext:
     """ key: role, value:NodeContext """
@@ -31,6 +34,7 @@ class TaskContext:
     datasets = []
     # dataset meta information
     dataset_map = dict()
+    node_addr_map = dict()
     predict_file_path = "result/xgb_prediction.csv"
     indicator_file_path = "result/xgb_indicator.json"
     model_file_path = "result/host/model"
@@ -112,8 +116,8 @@ class TaskContext:
 Context = TaskContext()
 
 
-def set_node_context(role, protocol, datasets,  next_peer):
-    print("========set node context: ", role, protocol, datasets,  next_peer)
+def set_node_context(role, protocol, datasets,  party_port):
+    print("========set node context: ", role, protocol, datasets,  party_port)
     Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
@@ -145,6 +149,10 @@ def set_task_context_host_lookup_file(f):
 def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
+
+def set_node_addr_map(node_id, addr):
+    Context.node_addr_map[node_id] = addr
+
 # For test
 
 
@@ -164,14 +172,14 @@ def reg_dataset(func):
 
 
 # Register task decorator
-def function(protocol, role, datasets, next_peer):
+def function(protocol, role, dataset_port_map):
     def function_decorator(func):
         print("Register task:", func.__name__)
         Context.nodes_context[role] = NodeContext(
-            role, protocol, datasets, func, next_peer)
+            role, protocol, dataset_port_map, func)
 
-        print(">>>>> next peer in {}'s node context is {}.".format(
-            role, Context.nodes_context[role].next_peer))
+        print(">>>>> dataset_port_map in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].dataset_port_map))
         print(">>>>> dataset in {}'s node context is {}.".format(
             role, Context.nodes_context[role].datasets))
         print(">>>>> role in {}'s node context is {}.".format(

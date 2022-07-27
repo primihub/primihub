@@ -56,7 +56,7 @@ num_tree = 1
 max_depth = 1
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:12120")
+@ph.context.function(role='host', protocol='xgboost', dataset_port_map = {"label_dataset" : "8000"})
 def xgb_host_logic(cry_pri="paillier"):
     print("start xgb host logic...")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
@@ -182,7 +182,7 @@ def xgb_host_logic(cry_pri="paillier"):
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
+@ph.context.function(role='guest', protocol='xgboost', dataset_port_map = {"guest_dataset": "9000"})
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
     ios = IOService()

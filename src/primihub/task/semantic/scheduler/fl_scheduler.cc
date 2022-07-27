@@ -188,21 +188,15 @@ namespace primihub::task {
 
     void FLScheduler::add_vm(Node *node, int i, int role_num, 
                             const PushTaskRequest *pushTaskRequest) {
-        VirtualMachine *vm = node->add_vm();
-        vm->set_party_id(i);
-        EndPoint *ed_next = vm->mutable_next();
-
-        auto next = (i + 1) % role_num;
-        
-        std::string name_prefix = pushTaskRequest->task().job_id() + "_" +
-                                pushTaskRequest->task().task_id() + "_";
-
-        int session_basePort = 12120;
-        ed_next->set_ip(peers_with_tag_[next].first.ip());
-        ed_next->set_port(std::min(i, next) + session_basePort);
-        ed_next->set_name(name_prefix +
-                        absl::StrCat(std::min(i, next), std::max(i, next)));
-        ed_next->set_link_type(i < next ? LinkType::SERVER : LinkType::CLIENT);
+        int ret = 0;
+        for (auto node_with_tag : peers_with_tag_) {
+          VirtualMachine *vm = node->add_vm();
+          EndPoint *ep_next = vm->mutable_next();
+          ep_next->set_ip(node_with_tag.first.ip());
+          ep_next->set_name(node_with_tag.first.node_id());
+          ep_next->set_link_type(LinkType::SERVER);
+          ep_next->set_port(node_with_tag.first.data_port());
+        }
     }
 
 

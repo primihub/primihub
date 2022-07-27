@@ -78,19 +78,22 @@ FLTask::FLTask(const std::string& node_id,
     std::vector<std::string> t;
     str_split(this->next_peer_address_, &t, ':');
 
-    for (auto& vm : vm_list) {
-        auto name = vm.next().name();
-        LOG(INFO) << "vm name is: " << name;
-        if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
-            server_ip_str = '*';
-        }
-        auto ip = vm.next().ip();
-        // auto port = vm.next().port();
-        auto port = t[1];  // get port from not context
-        // next_peer_address_ = ip + ":" + std::to_string(port);
-        this->next_peer_address_ = server_ip_str + ":" + port;
-        LOG(INFO) << "Next peer address: " << this->next_peer_address_;
-        break;
+    // for (auto& vm : vm_list) {
+    //     auto name = vm.next().name();
+    //     LOG(INFO) << "vm name is: " << name;
+    //     if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
+    //         server_ip_str = '*';
+    //     }
+    //     auto ip = vm.next().ip();
+    //     // auto port = vm.next().port();
+    //     auto port = t[1];  // get port from not context
+    //     // next_peer_address_ = ip + ":" + std::to_string(port);
+    //     this->next_peer_address_ = server_ip_str + ":" + port;
+    //     LOG(INFO) << "Next peer address: " << this->next_peer_address_;
+    //     break;
+    // }
+    for (auto &vm : vm_list) {
+      node_addr_map_[vm.next().name()] = vm.next().ip();
     }
 
     // Set datasets meta list in context

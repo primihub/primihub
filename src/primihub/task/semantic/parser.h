@@ -70,6 +70,10 @@ class ProtocolSemanticParser {
     void metasToPeerWithTagList(
           const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
            std::vector<NodeWithRoleTag> &peers_with_tag);
+
+    void metasToPeerWithTagAndPort(
+        const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
+        std::vector<NodeWithRoleTag> &peers_with_tag);
     
     const std::string node_id_;
     bool singleton_;
