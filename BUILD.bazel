@@ -505,6 +505,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     "@org_openmined_pir//pir/cpp:pir",
+    # "@osu_libpsi//:libpsi",
 ]
 
 TASK_LIB_DEPS = select({
@@ -1257,6 +1258,41 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":lib_opt_paillier",
+    ],
+)
+
+cc_library(
+    name = "kkrt_psi",
+    srcs = glob(
+        [
+            "test/primihub/protocol/kkrtpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/kkrtpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "kkrt_psi_test",
+    srcs = [
+        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/kkrtpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":kkrt_psi"
     ],
 )
 
