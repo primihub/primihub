@@ -64,11 +64,14 @@ namespace primihub::task {
         pv_protocol.set_var_type(VarType::STRING);
         pv_protocol.set_value_string(node_context.protocol);
         (*params_map)["protocol"] = pv_protocol;
+        
+        // TODO: Remove useless code.
         // Next peer
-        ParamValue pv_next_peer;
-        pv_next_peer.set_var_type(VarType::STRING);
-        pv_next_peer.set_value_string(node_context.next_peer);
-        (*params_map)["next_peer"] = pv_next_peer;
+        // ParamValue pv_next_peer;
+        // pv_next_peer.set_var_type(VarType::STRING);
+        // pv_next_peer.set_value_string(node_context.next_peer);
+        // (*params_map)["next_peer"] = pv_next_peer;
+
         // Dataset meta
         for (auto &dataset_meta : dataset_meta_list) {
             ParamValue pv_dataset;
