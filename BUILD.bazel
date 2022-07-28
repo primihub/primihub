@@ -505,7 +505,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     "@org_openmined_pir//pir/cpp:pir",
-    "@osu_libpsi//:libpsi",
+    # "@osu_libpsi//:libpsi",
 ]
 
 TASK_LIB_DEPS = select({
