@@ -1,5 +1,6 @@
 from sklearn import metrics
 import json
+import copy
 class Evaluator:
     regression_metrics= ["MEAN_SQUARED_ERROR","EXPLAINED_VARIANCE", "MEAN_ABSOLUTE_ERROR", "MEAN_SQUARED_LOG_ERROR", "MEDIAN_ABSOLUTE_ERROR","R2_SCORE","ROOT_MEAN_SQUARED_ERROR"]
     regression_method =   ["get_mse","get_ev","get_mae","get_msle","get_median_absolute_error","get_r2_score","get_rmse"]
@@ -220,14 +221,14 @@ class Regression_eva:
 
 class Classification_eva:
     @staticmethod
-    def get_result(y_true,y_prob,path = "evaluation.json",eval_test = None):
+    def get_result(y_true,y_prob,path = "evaluation.json"):
         """
                 :param y: real y
                 :param y_hat:predicted y
                 :return:classification metricss all supported.
                 """
         lable = [0,1]
-        lable_true = list(set(y_true))
+        lable_true = list(set(y_true["train"]))
         lable_true.sort()
         y = []
         if lable_true != lable:
@@ -239,7 +240,7 @@ class Classification_eva:
         else:
             y = y_true
 
-        roc = Evaluator.get_roc(y,y_prob)
+        roc = Evaluator.get_roc(y["train"],y_prob["train"])
         thresholds = roc["thresholds"]
         fpr = roc["fpr"]
         tpr = roc["tpr"]
@@ -250,35 +251,39 @@ class Classification_eva:
             if this_tf>max_tf:
                 max_tf = this_tf
                 threshold = thresholds[i]
-        lable = list(set(y))
-        y_hat = []
-        for i in y_prob:
-            if i<=threshold:
-                y_hat.append(lable[0])
-            else:
-                y_hat.append(lable[1])
-        res = {}
-        print(y)
-        print(y_hat)
-        suffix = Evaluator.get_confusionMatrix(y,y_hat)
-        print(suffix)
-        for i in range(len(Evaluator.classification_metrics)):
-            metrics = Evaluator.classification_metrics[i]
-            method = Evaluator.classification_method[i]
-            if hasattr(Evaluator, method):
-                f = getattr(Evaluator, method)
-                if (metrics in Evaluator.need_prob):
-                    mere = f(y, y_prob)
+        lable = list(set(y_true["train"]))
+        me = ["train", "test"]
+        res = {"train": {}, "test": {}}
+        for k in me:
+            y_hat = []
+            y_t = y_true[k]
+            y_p = y_prob[k]
+            for i in y_p:
+                if i<=threshold:
+                    y_hat.append(lable[0])
                 else:
-                    mere = f(y, y_hat)
-                res[metrics] = mere
-            else:
-                res[metrics] = f"{method} is not support。"
+                    y_hat.append(lable[1])
+            # print(y)
+            # print(y_hat)
+            suffix = Evaluator.get_confusionMatrix(y_t,y_hat)
+            # print(suffix)
+            for i in range(len(Evaluator.classification_metrics)):
+                metrics = Evaluator.classification_metrics[i]
+                method = Evaluator.classification_method[i]
+                if hasattr(Evaluator, method):
+                    f = getattr(Evaluator, method)
+                    if (metrics in Evaluator.need_prob):
+                        mere = f(y_t, y_p)
+                    else:
+                        mere = f(y_t, y_hat)
+                    res[k][metrics] = mere
+                else:
+                    res[k][metrics] = f"{method} is not support。"
         Evaluator.write_json(path,res)
         return res
 
 
 # if __name__ == "__main__":
-#     a = {"train":[1, 0, 1, 1, 1],"test":[1,1,2]}
+#     a = {"train":[1, 0, 1, 1, 1],"test":[1,1,0]}
 #     c = {"train":[0.8, 0.3, 0.2, 0.9, 0.7],"test":[0.9,0.7,0.8]}
-#     print(Regression_eva.get_result(a,c))
+#     print(Classification_eva.get_result(a,c))
