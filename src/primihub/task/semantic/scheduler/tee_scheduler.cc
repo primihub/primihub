@@ -46,20 +46,18 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 
         int party_id = 0;
 
-        for (int i = 0; i < this->peers_with_role_tag_.size(); i++) {
-
-            std::string node_id = this->peers_with_role_tag_[i].first.node_id();
-            std::string role = this->peers_with_role_tag_[i].second;
-
-            if (role == "executor") {
+        for (int i = 0; i < this->peer_list_.size(); i++) {
+            std::string node_id = this->peer_list_[i].node_id();
+            // Node head is server, others are clients
+            if (i == 0) {
                 party_id = 0;
-                executor_node.CopyFrom(this->peers_with_role_tag_[i].first);
+                executor_node.CopyFrom(this->peer_list_[i]);
                 (*mutable_node_map)[node_id] = executor_node;
 
-            } else if (role == "data_provider") {
+            } else {
                 party_id += 1;
                 Node data_pvd_node;
-                data_pvd_node.CopyFrom(this->peers_with_role_tag_[i].first);
+                data_pvd_node.CopyFrom(this->peer_list_[i]);
                 (*mutable_node_map)[node_id] = data_pvd_node;
                 // update node_map
                 add_vm(&executor_node, &data_pvd_node, party_id, &request);
@@ -81,7 +79,9 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
 
         LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
-        this->push_task_to_node(pair.first, std::ref(request),
+        this->push_task_to_node(pair.first, 
+                                this->peer_dataset_map_,
+                                std::ref(request),
                                 dest_node_address);
     }
 }
@@ -116,16 +116,38 @@ void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
 
 
 void TEEScheduler::push_task_to_node (const std::string &node_id,
+                                      const PeerDatasetMap &peer_dataset_map,
                                       const PushTaskRequest &request,
                                       const std::string &dest_node_address) {                              
     grpc::ClientContext context;
-    grpc::Status status;
+    PushTaskRequest _1NodePushTaskRequest;
+    _1NodePushTaskRequest.CopyFrom(request);  
+
+    // Add datasets params to request
+    google::protobuf::Map<std::string, ParamValue> *param_map =
+        _1NodePushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
+    auto peer_dataset_map_it = peer_dataset_map.find(node_id);
+    if (peer_dataset_map_it == peer_dataset_map.end()) {
+        LOG(ERROR) << "push_task_to_node: peer_dataset_map not found";
+        return;
+    }
+    std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+    for (auto &dataset_param : dataset_param_list) {
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        pv.set_value_string(dataset_param.first);
+        (*param_map)[dataset_param.second] = pv;
+    }
+    // send request
     auto channel = grpc::CreateChannel(
         dest_node_address, grpc::InsecureChannelCredentials());
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
     primihub::rpc::PushTaskReply response;
-    status = stub->SubmitTask(&context, request, &response);
-    if (!status.ok()) {
+    grpc::Status status = stub->SubmitTask(&context, _1NodePushTaskRequest, &response);
+    if (status.ok()) {
+        LOG(INFO) << "📤 TEE Task pushed to node: " << node_id;
+    } else {
         LOG(ERROR) << "Failed to push task to node: " << node_id
                    << " with error: " << status.error_message();
     }

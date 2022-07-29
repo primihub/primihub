@@ -24,18 +24,34 @@ using primihub::rpc::TaskType;
 
 ABSL_FLAG(std::string, server, "127.0.0.1:50050", "server address");
 ABSL_FLAG(int, task_type, TaskType::ACTOR_TASK,
-          "task type, 0-ACTOR_TASK, 1-PSI_TASK 2-PIR_TASK");
-ABSL_FLAG(std::vector<std::string>, params,
+          "task type, 0-ACTOR_TASK, 1-PSI_TASK, 2-PIR_TASK");
+
+// ABSL_FLAG(std::vector<std::string>,
+//           params,
+//           std::vector<std::string>(
+//               {"BatchSize:INT32:0:128", "NumIters:INT32:0:1",
+//                "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
+//                "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
+//                 "predictFileName:STRING:0:./prediction.csv",
+//                 "indicatorFileName:STRING:0:./indicator.csv"}),
+//           "task params, format is <name, type, is array, value>");
+// ABSL_FLAG(std::vector<std::string>, input_datasets,
+//           std::vector<std::string>({"TrainData", "TestData"}),
+//           "input datasets name list");
+
+
+ABSL_FLAG(std::vector<std::string>,
+          params,
           std::vector<std::string>(
-              {"BatchSize:INT32:0:128", "NumIters:INT32:0:1",
-               "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
-               "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
-	       "predictFileName:STRING:0:./prediction.csv",
-	       "indicatorFileName:STRING:0:./indicator.csv"}),
+              {
+               "datasets:STRING:0:train_party_1;train_party_2",
+               "server:STRING:0:127.0.0.1:8815"
+               }),
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>, input_datasets,
-          std::vector<std::string>({"TrainData", "TestData"}),
+          std::vector<std::string>({"datasets"}),
           "input datasets name list");
+
 ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
 ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
 

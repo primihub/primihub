@@ -89,16 +89,20 @@ void ProtocolSemanticParser::scheduleProtoTask(
           //  Generate ABY3 scheduler
           std::shared_ptr<VMScheduler> scheduler =
               std::make_shared<ABY3Scheduler>(node_id_, peer_list_,
-                                              peer_dataset_map_, singleton_);
+                                              peer_dataset_map_, 
+                                              singleton_);
           scheduler->dispatch(&pushTaskRequest);
         }
 
         // TEE task scheduler
         if (pushTaskRequest.task().type() == TaskType::TEE_TASK) {
-            // std::shared_ptr<VMScheduler> scheduler =
-            //   std::make_shared<TEEScheduler>(node_id_, peer_list_,
-            //                                   peer_dataset_map_, singleton_);
-            // scheduler->dispatch(&pushTaskRequest);
+            std::shared_ptr<VMScheduler> scheduler =
+              // TODO peer_list add server Node object
+              std::make_shared<TEEScheduler>(node_id_, peer_list_,
+                                              peer_dataset_map_, 
+                                              pushTaskRequest.task().params(),
+                                              singleton_);
+            scheduler->dispatch(&pushTaskRequest);
         }
       });
 }
@@ -177,7 +181,7 @@ void ProtocolSemanticParser::schedulePirTask(
 }
 
 void ProtocolSemanticParser::schedulePsiTask(
-        std::shared_ptr<LanguageParser> lan_parser){
+        std::shared_ptr<LanguageParser> lan_parser) {
     if (lan_parser == nullptr)
         return;
 
@@ -274,7 +278,7 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
   for (auto &meta : metas_with_param_tag) {
     auto _meta = meta.first;
     auto _param_tag = meta.second;
-    DLOG(INFO) << "metasToPeerDatasetMap： " << _meta->getDataURL() << " "
+    DLOG(INFO) << "metasToPeerDatasetMap: " << _meta->getDataURL() << " "
                << _param_tag;
     std::string node_id, node_ip, dataset_path;
     int node_port;

@@ -65,7 +65,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     
     // actor
     if ( pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
-        pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK )   {
+         pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK )   {
         LOG(INFO) << "start to schedule task";
         absl::MutexLock lock(&parser_mutex_);
         // Construct language parser

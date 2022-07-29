@@ -76,7 +76,11 @@ class FlightServer(pa.flight.FlightServerBase):
         dataset_path = self._repo / dataset
         dataset_path.unlink()
 
-if __name__ == '__main__':
+
+def serve():
     server = FlightServer()
     server._repo.mkdir(exist_ok=True)
     server.serve()
+    
+if __name__ == '__main__':
+    serve()

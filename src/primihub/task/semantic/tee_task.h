@@ -17,8 +17,10 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_ 
 
+#include <pybind11/embed.h>
 #include "src/primihub/task/semantic/task.h"
 
+namespace py = pybind11;
 namespace primihub::task {
 // /**
 //  * @brief TEE Executor role task
@@ -42,10 +44,15 @@ namespace primihub::task {
  */
 class TEEDataProviderTask: public TaskBase {
     public:
-        TEEDataProviderTask(const TaskParam *task_param, 
-                            std::shared_ptr<DatasetService> dataset_service);
+        TEEDataProviderTask(
+            const std::string& node_id,
+            const TaskParam *task_param, 
+            std::shared_ptr<DatasetService> dataset_service);
         ~TEEDataProviderTask();
         int execute();
+    private:
+        py::object flight_client_;
+        std::string dataset_, server_addr_;
 };
 
 } // namespace primihub::task

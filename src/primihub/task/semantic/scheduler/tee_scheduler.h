@@ -22,9 +22,14 @@
 
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/util/util.h"
+
 
 using primihub::service::DatasetMeta;
 using primihub::service::DatasetMetaWithParamTag;
+using primihub::rpc::Node;
+using primihub::rpc::Params;
 
 namespace primihub::task {
 /**
@@ -36,15 +41,32 @@ namespace primihub::task {
  */
 class TEEScheduler : public VMScheduler {
   public:
-    TEEScheduler(
-        const std::string &node_id, bool singleton,
-        const std::vector<NodeWithRoleTag> &peers_with_role_tag,
-        const PeerContextMap &peer_context_map,
-        const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
-        : VMScheduler(node_id, singleton),
-          peers_with_role_tag_(peers_with_role_tag),
-          peer_context_map_(peer_context_map),
-          metas_with_role_tag_(metas_with_role_tag) {}
+    TEEScheduler(const std::string &node_id, 
+                 std::vector<Node> &peer_list,
+                 const PeerDatasetMap &peer_dataset_map, 
+                 const Params params,
+                 bool singleton)
+        : VMScheduler(node_id, singleton), peer_list_(peer_list),
+          peer_dataset_map_(peer_dataset_map) {
+        
+        Node node; 
+        node.set_node_id("TEE_Executor");
+        auto param_map = params.param_map();
+        try {
+            std::string server_addr = param_map["server"].value_string();
+            // split ip:port
+            std::vector<std::string> v;
+            str_split(server_addr, &v);
+            node.set_ip(v[0]);
+            node.set_port(std::stoi(v[1]));
+            // Add server node to peer_list_ head.
+            peer_list_.insert(peer_list_.begin(), node);
+        } catch (std::exception &e) {
+            LOG(ERROR) << "get TEE server addr error: " << e.what();
+        }
+        
+    }
+
     ~TEEScheduler() {}
 
     void dispatch(const PushTaskRequest *pushTaskRequest) override;
@@ -53,12 +75,12 @@ class TEEScheduler : public VMScheduler {
     void add_vm(Node *executor, Node *dpv, int party_id,
                 const PushTaskRequest *pushTaskRequest);
     void push_task_to_node(const std::string &node_id,
+                           const PeerDatasetMap &peer_dataset_map,
                            const PushTaskRequest &request,
                            const std::string &dest_node_address);
 
-    std::vector<NodeWithRoleTag> peers_with_role_tag_;
-    PeerContextMap peer_context_map_;
-    std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
+    std::vector<Node> peer_list_;
+    const PeerDatasetMap peer_dataset_map_;
 
 }; // class TEEScheduler
 
