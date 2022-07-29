@@ -24,6 +24,14 @@ from multiprocessing import Process
 shared_globals = dict()
 shared_globals['context'] = Context
 
+import signal
+def _handle_timeout(signum, frame):
+    raise TimeoutError('function timeout')
+
+timeout_sec = 60 * 30
+signal.signal(signal.SIGALRM, _handle_timeout)
+signal.alarm(timeout_sec)
+
 
 class Executor:
     def __init__(self):
@@ -92,28 +100,32 @@ class Executor:
         print('Parent process %s.' % os.getpid())
         if not func_params:
             try:
-                # print("start execute")
-                # func()
-                p = Process(target=func)
-                # print("end execute")
+                print("start execute")
+                func()
+                # p = Process(target=func)
+                print("end execute")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
+            finally:
+                signal.alarm(0)
         else:
             try:
-                # print("start execute with params")
-                # func(*func_params)
-                p = Process(target=func, args=func_params)
-                # print("end execute with params")
+                print("start execute with params")
+                func(*func_params)
+                # p = Process(target=func, args=func_params)
+                print("end execute with params")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
+            finally:
+                signal.alarm(0)
 
-        print(p.daemon)
-        print('Child process will start.')
-        p.start()
-        p.join()
-        print('Child process end.')
+        # print(p.daemon)
+        # print('Child process will start.')
+        # p.start()
+        # p.join()
+        # print('Child process end.')
     @staticmethod
     def execute_test():
         print("This is a tset function.")
