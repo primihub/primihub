@@ -54,7 +54,7 @@ RUN bash pre_build.sh \
   && bazel build --config=linux :node :cli :opt_paillier_c2py
 
 # check if bazel build success
-ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/__main__/bazel-out/k8-fastbuild/bin
+ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
 RUN  ls -l $TARGET_PATH
 
 FROM ubuntu:18.04 as runner
@@ -72,7 +72,7 @@ RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/ge
 
 RUN rm -rf /var/lib/apt/lists/*
 
-ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/__main__/bazel-out/k8-fastbuild/bin
+ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
 # Copy binaries to TARGET_PATH
   

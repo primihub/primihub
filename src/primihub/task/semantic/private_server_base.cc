@@ -18,6 +18,7 @@
 
 #include "src/primihub/task/semantic/private_server_base.h"
 #include "src/primihub/data_store/factory.h"
+#include <fstream>
 
 using arrow::Array;
 using arrow::StringArray;
@@ -64,6 +65,23 @@ int ServerTaskBase::loadDatasetFromCSV(std::string &filename, int data_col,
         col_array.push_back(array->GetString(i));
     }
     return array->length();
+}
+
+int ServerTaskBase::loadDatasetFromTXT(std::string &filename, 
+                                       std::vector <std::string> &col_array) {
+    LOG(INFO) << "loading file ...";
+    std::ifstream infile;
+    infile.open(filename);
+
+    col_array.clear();
+    std::string tmp;
+    std::getline(infile, tmp); // ignore the first line
+    while (std::getline(infile, tmp)) {
+        col_array.push_back(tmp);
+    }
+
+    infile.close();
+    return col_array.size();
 }
 
 } // namespace primihub::task
