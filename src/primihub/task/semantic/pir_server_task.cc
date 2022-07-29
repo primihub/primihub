@@ -54,12 +54,14 @@ int PIRServerTask::loadParams(Params & params) {
 }
 
 int PIRServerTask::loadDataset() {
-    int ret = loadDatasetFromCSV(dataset_path_, 0, elements_, db_size_);
+    // int ret = loadDatasetFromCSV(dataset_path_, 0, elements_, db_size_);
+    int ret = loadDatasetFromTXT(dataset_path_, elements_);
     // file reading error or file empty
     if (ret <= 0) {
         LOG(ERROR) << "Load dataset for psi client failed.";
         return -1;
     }
+    LOG(INFO) << "db size = " << ret;
 
     // output the dataset length
     return ret;
@@ -129,17 +131,22 @@ uint32_t compute_plain_mod_bit_size_server(size_t dbsize, size_t elem_size) {
 }
 
 int PIRServerTask::execute() {
+    LOG(INFO) << "load parameters";
     int ret = loadParams(params_);
     if (ret) {
         LOG(ERROR) << "Load parameters for pir server fialed.";
         return -1;
     }
+    LOG(INFO) << "parameters loaded";
 
+    LOG(INFO) << "load dataset";
     int db_size = loadDataset();
     if (db_size <= 0) {
-        LOG(ERROR) << "Load database for pir server failed.";
+        LOG(ERROR) << "Load dataset for pir server failed.";
         return -1;
     }
+    LOG(INFO) << "dataset loaded";
+
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE_SVR;
     uint32_t plain_mod_bit_size = compute_plain_mod_bit_size_server(db_size, elem_size);
@@ -147,6 +154,7 @@ int PIRServerTask::execute() {
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE_SVR;
     uint32_t bits_per_coeff = 0;
 
+    LOG(INFO) << "create database";
     ret = _SetUpDB(db_size, dimensions, elem_size, poly_modulus_degree,
                        plain_mod_bit_size, bits_per_coeff,
                        use_ciphertext_multiplication);
@@ -154,10 +162,12 @@ int PIRServerTask::execute() {
         LOG(ERROR) << "Create pir db failed.";
         return -1;
     }
+    LOG(INFO) << "database created";
 
     pir::Request pir_request;
     initRequest(request_, pir_request);
 
+    LOG(INFO) << "create server";
     std::unique_ptr<pir::PIRServer> server = 
         *(pir::PIRServer::Create(pir_db_, pir_params_));
 
@@ -165,13 +175,16 @@ int PIRServerTask::execute() {
         LOG(ERROR) << "Failed to create pir server";
         return -1;
     }
+    LOG(INFO) << "server created";
 
+    LOG(INFO) << "process request";
     auto  result_status = server->ProcessRequest(pir_request);
     if (!result_status.ok()) {
         LOG(ERROR) << "Process pir request failed:"
                    << result_status.status();
         return -1;
     }
+    LOG(INFO) << "request processed";
 
     auto result_raw = std::move(result_status).value();
     const size_t num_reply = static_cast<size_t>(result_raw.reply().size());
