@@ -525,7 +525,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-x86_64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -1342,9 +1342,9 @@ py_library(
 )
 
 py_test(
-    name = "opt_paillier_c2py_test",
+    name = "test_opt_paillier_c2py",
     srcs = [
-        "python/primihub/tests/opt_paillier_c2py_test.py"
+        "python/primihub/tests/test_opt_paillier_c2py.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"
@@ -1352,9 +1352,9 @@ py_test(
 )
 
 py_test(
-    name = "opt_paillier_pack_c2py_test",
+    name = "test_opt_paillier_pack_c2py",
     srcs = [
-        "python/primihub/tests/opt_paillier_pack_c2py_test.py"
+        "python/primihub/tests/test_opt_paillier_pack_c2py.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"
