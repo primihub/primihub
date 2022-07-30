@@ -1,7 +1,7 @@
 import pyarrow as pa
 import pyarrow.flight
 
-client = pa.flight.connect("grpc://0.0.0.0:8815")
+client = pa.flight.connect("grpc://59.110.170.174:8815")
 print(client.list_actions())
 
 # Upload a new dataset
