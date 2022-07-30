@@ -44,18 +44,12 @@ sgx.trusted_files = [
   "file:{{ python.get_path('stdlib', vars={'installed_base': '/usr/local'}) }}/",
 
   "file:flight_server.py",
-  "file:datasets/",
-
-  "file:classes.txt",
-  "file:input.jpg",
-  "file:alexnet-pretrained.pt",  # Pre-trained model saved as a file
 
   # Uncomment line below if you want to use torchvision.model.alexnet(pretrained=True)
   # "file:{{ env.HOME }}/.cache/torch/checkpoints/alexnet-owt-4df8aa71.pth",
 ]
 
 sgx.allowed_files = [
-  "file:result.txt",
 ]
 
 # Gramine optionally provides patched OpenMP runtime library that runs faster

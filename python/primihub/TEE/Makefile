@@ -17,7 +17,6 @@ endif
 flight.manifest: flight.manifest.template
 	gramine-manifest \
 		-Dlog_level=$(GRAMINE_LOG_LEVEL) \
-		-Dpillow_path=$(PILLOW_PATH) \
 		-Darch_libdir=$(ARCH_LIBDIR) \
 		-Dentrypoint=$(realpath $(shell sh -c "command -v python3")) \
 		$< > $@
