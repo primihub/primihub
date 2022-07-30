@@ -5,6 +5,7 @@ import pandas as pd
 from  multiprocessing import Process
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
+import pytest
 dir = path.join(path.dirname(__file__), '../data/pokemon')
 # use horizontal data as simulated vertical data
 data_p1 = pd.read_csv(path.join(dir, "h_pokemon1.csv"))
@@ -192,4 +193,4 @@ def test_main():
     client_process.join()
 
 if __name__ == '__main__':
-    test_main()
+    pytest.main(["./test_onehot.py::test_main"])
