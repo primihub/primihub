@@ -58,16 +58,25 @@ max_depth = 1
 
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:12120")
 def xgb_host_logic(cry_pri="paillier"):
-    print("start xgb host logic...")
+    logger.info("start xgb host logic...")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
+    logger.info(ph.context.Context.datasets)
+    logger.info(ph.context.Context.dataset_map)
     ip, port = next_peer.split(":")
     ios = IOService()
     server = Session(ios, ip, port, "server")
 
     channel = server.addChannel()
+
     data = ph.dataset.read(dataset_key="label_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = str(row[name])
+            if not temp.isdigit():
+                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
@@ -184,18 +193,28 @@ def xgb_host_logic(cry_pri="paillier"):
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
 def xgb_guest_logic(cry_pri="paillier"):
-    print("start xgb guest logic...")
+    logger.info("start xgb guest logic...")
     ios = IOService()
+
     next_peer = ph.context.Context.nodes_context["guest"].next_peer
-    print(ph.context.Context.nodes_context["guest"])
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
-    print("guest next peer: ", next_peer)
+    logger.info(ph.context.Context.nodes_context["guest"])
+    logger.info(ph.context.Context.datasets)
+    logger.info(ph.context.Context.dataset_map)
+    logger.info("guest next peer: {}".format(next_peer))
+
     ip, port = next_peer.split(":")
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 
     data = ph.dataset.read(dataset_key="guest_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = str(row[name])
+            if not temp.isdigit():
+                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     X_guest = data.loc[:dim_train, :].reset_index(drop=True)
