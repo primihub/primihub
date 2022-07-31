@@ -222,6 +222,34 @@ void opt_paillier_add_warpper(
     opt_paillier_freepubkey(pub);
 }
 
+void opt_paillier_cons_mul_warpper(
+    const py::object &py_cons_mul_res,
+    const py::object &py_cipher_text,
+    const py::str    &py_cons_value,
+    const py::object &py_pub) {
+    
+    opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
+
+    mpz_t cipher_text;
+    mpz_t cons_value;
+    mpz_t res;
+    mpz_init(cipher_text);
+    mpz_init(cons_value);
+    mpz_init(res);
+
+    py::dict py_cipher_text_dict = py_cipher_text.attr("__dict__");
+    mpz_set_str(cipher_text, std::string(py::str(py_cipher_text_dict["ciphertext"])).c_str(), BASE); // 0: success -1:error
+    opt_paillier_set_plaintext(cons_value, std::string(py_cons_value).c_str(), pub);
+
+    opt_paillier_constant_mul(res, cipher_text, cons_value, pub);
+
+    py::dict py_mul_res_dict = py_cons_mul_res.attr("__dict__");
+    py_mul_res_dict["ciphertext"] = mpz_get_str(nullptr, BASE, res);
+
+    mpz_clears(cipher_text, cons_value, res, nullptr);
+    opt_paillier_freepubkey(pub);
+}
+
 py::dict crtMod_2_dict(CrtMod* crtmod) {
     py::dict res = py::dict();
     py::list crt_half_mod = py::list();
@@ -473,6 +501,10 @@ PYBIND11_MODULE(opt_paillier_c2py, m) {
     m.def("opt_paillier_add_warpper",
          &opt_paillier_add_warpper, 
          "A opt paillier add function that add two ciphertext");
+
+    m.def("opt_paillier_cons_mul_warpper",
+         &opt_paillier_cons_mul_warpper, 
+         "A opt paillier constant multiplication function that multify one ciphertext with one constant value");
 
     m.def("opt_paillier_pack_encrypt_warpper",
          &opt_paillier_pack_encrypt_warpper, 

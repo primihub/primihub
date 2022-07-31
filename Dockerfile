@@ -51,7 +51,7 @@ ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
-  && bazel build --config=linux :node :cli :opt_paillier_c2py_test
+  && bazel build --config=linux :node :cli :opt_paillier_c2py
 
 # check if bazel build success
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin

@@ -1342,9 +1342,9 @@ py_library(
 )
 
 py_test(
-    name = "opt_paillier_c2py_test",
+    name = "test_opt_paillier_c2py",
     srcs = [
-        "python/primihub/tests/opt_paillier_c2py_test.py"
+        "python/primihub/tests/test_opt_paillier_c2py.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"
@@ -1352,9 +1352,9 @@ py_test(
 )
 
 py_test(
-    name = "opt_paillier_pack_c2py_test",
+    name = "test_opt_paillier_pack_c2py",
     srcs = [
-        "python/primihub/tests/opt_paillier_pack_c2py_test.py"
+        "python/primihub/tests/test_opt_paillier_pack_c2py.py"
     ],
     deps = [
         ":opt_paillier_c2py_warpper"

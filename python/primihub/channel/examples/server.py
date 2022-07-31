@@ -27,7 +27,7 @@ async def server(node_count=0):
     consumer = consumer()
     node_list = []
     for i in range(node_count):
-        print("server watting for node ...", i)
+        print("server waiting for node ...", i)
         msg = await consumer.recv()  # waits for msg to be ready
         import json
         node_list.append(json.loads(msg))

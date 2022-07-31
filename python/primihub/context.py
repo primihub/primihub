@@ -1,8 +1,6 @@
 import functools
 import os
 from typing import Callable
-
-# from dill import dumps
 from cloudpickle import dumps
 
 
@@ -35,6 +33,10 @@ class TaskContext:
     dataset_map = dict()
     predict_file_path = "result/xgb_prediction.csv"
     indicator_file_path = "result/xgb_indicator.json"
+    model_file_path = "result/host/model"
+    host_lookup_file_path = "result/host/lookuptable"
+    guest_lookup_file_path = "result/guest/lookuptable"
+
     func_params_map = dict()
 
     def __init__(self) -> None:
@@ -64,17 +66,47 @@ class TaskContext:
     def get_func_params_map(self):
         return self.func_params_map
 
+    @staticmethod
+    def mk_output_dir(output_dir):
+        print("output_dir: ", output_dir)
+        if output_dir:
+            if not os.path.exists(output_dir):
+                try:
+                    os.makedir(output_dir)
+                except:
+                    os.makedirs(output_dir)
+                finally:
+                    print(output_dir)
+
     def get_predict_file_path(self):
-        output_dir = os.path.dirname(self.predict_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.predict_file_path).strip()
+        self.mk_output_dir(output_dir)
+        print("predict: ", self.predict_file_path)
         return self.predict_file_path
 
     def get_indicator_file_path(self):
-        output_dir = os.path.dirname(self.indicator_file_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = os.path.dirname(self.indicator_file_path).strip()
+        self.mk_output_dir(output_dir)
+        print("indicator: ", self.indicator_file_path)
         return self.indicator_file_path
+
+    def get_model_file_path(self):
+        output_dir = os.path.dirname(self.model_file_path).strip()
+        self.mk_output_dir(output_dir)
+        print("model: ", self.model_file_path)
+        return self.model_file_path
+
+    def get_host_lookup_file_path(self):
+        output_dir = os.path.dirname(self.host_lookup_file_path).strip()
+        self.mk_output_dir(output_dir)
+        print("host lookup table: ", self.host_lookup_file_path)
+        return self.host_lookup_file_path
+
+    def get_guest_lookup_file_path(self):
+        output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
+        self.mk_output_dir(output_dir)
+        print("guest lookup table: ", self.guest_lookup_file_path)
+        return self.guest_lookup_file_path
 
 
 Context = TaskContext()
@@ -102,7 +134,20 @@ def set_task_context_indicator_file(f):
     Context.indicator_file_path = f
 
 
+def set_task_context_model_file(f):
+    Context.model_file_path = f
+
+
+def set_task_context_host_lookup_file(f):
+    Context.host_lookup_file_path = f
+
+
+def set_task_context_guest_lookup_file(f):
+    Context.guest_lookup_file_path = f
+
 # For test
+
+
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 
@@ -125,9 +170,12 @@ def function(protocol, role, datasets, next_peer):
         Context.nodes_context[role] = NodeContext(
             role, protocol, datasets, func, next_peer)
 
-        print(">>>>> next peer in {}'s node context is {}.".format(role, Context.nodes_context[role].next_peer)) 
-        print(">>>>> dataset in {}'s node context is {}.".format(role, Context.nodes_context[role].datasets)) 
-        print(">>>>> role in {}'s node context is {}.".format(role, Context.nodes_context[role].role)) 
+        print(">>>>> next peer in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].next_peer))
+        print(">>>>> dataset in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].datasets))
+        print(">>>>> role in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].role))
 
         @functools.wraps(func)
         def wapper(*args, **kwargs):

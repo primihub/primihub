@@ -1,4 +1,3 @@
-
 import time
 import pandas as pd
 
@@ -14,7 +13,12 @@ class XGB_GUEST:
                  min_child_sample=None,
                  min_child_weight=1,
                  objective='linear',
-                 channel=None):
+                 channel=None,
+                 sid=0,
+                 record=0,
+                 lookup_table=pd.DataFrame(
+                     columns=['record_id', 'feature_id', 'threshold_value'])
+                 ):
 
         self.channel = channel
 
@@ -27,7 +31,10 @@ class XGB_GUEST:
         self.min_child_sample = min_child_sample
         self.min_child_weight = min_child_weight
         self.objective = objective
-        self.tree_structure = {}
+        self.sid = sid
+        self.record = record
+        self.lookup_table = lookup_table
+        self.lookup_table_sum = {}
 
     def get_GH(self, X):
         # Calculate G_left、G_right、H_left、H_right under feature segmentation
@@ -120,6 +127,9 @@ class XGB_GUEST:
             best_cut = var_cut_GH['best_cut']
             GH_best = var_cut_GH['GH_best']
             f_t = var_cut_GH['f_t']
+            self.lookup_table.loc[self.record, 'record_id'] = self.record
+            self.lookup_table.loc[self.record, 'feature_id'] = best_var
+            self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
             f_t, id_right, id_left, w_right, w_left = self.split(
                 X_guest_gh, best_var, best_cut, GH_best, f_t)
             # .reset_index(drop='True'))
@@ -128,9 +138,10 @@ class XGB_GUEST:
             gh_sum_right = self.get_GH(X_guest_gh.loc[id_right])
 
             data = {'f_t': f_t, 'id_right': id_right, 'id_left': id_left, 'w_right': w_right,
-                    'w_left': w_left, 'gh_sum_right': gh_sum_right, 'gh_sum_left': gh_sum_left}
-            # self.channel.send(json.dumps(data))
+                    'w_left': w_left, 'gh_sum_right': gh_sum_right, 'gh_sum_left': gh_sum_left,
+                    'record_id': self.record, 'party_id': self.sid}
             self.channel.send(data)
+            self.record = self.record + 1
             print("data", type(data), data)
             time.sleep(5)
 
@@ -157,3 +168,32 @@ class XGB_GUEST:
 
         # right tree
         self.cart_tree(X_guest_gh.loc[id_right], mdep+1)
+
+    def host_record(self, record_id, id_list, tree, X):
+        id_after_record = {"id_left": [], "id_right": []}
+        record_tree = self.lookup_table_sum[tree + 1]
+        feature = record_tree.loc[record_id, "feature_id"]
+        threshold_value = record_tree.loc[record_id, 'threshold_value']
+        for i in id_list:
+            feature_value = X.loc[i, feature]
+            if feature_value >= threshold_value:
+                id_after_record["id_right"].append(i)
+            else:
+                id_after_record["id_left"].append(i)
+
+        return id_after_record
+
+    def predict(self, X):
+        flag = True
+        while (flag):
+            need_record = self.channel.recv()
+
+            if need_record == -1:
+                flag = False
+                self.channel.send(b"finished predict once")
+            else:
+                record_id = need_record["record_id"]
+                id_list = need_record["id"]
+                tree = need_record["tree"]
+                id_after_record = self.host_record(record_id, id_list, tree, X)
+                self.channel.send(id_after_record)

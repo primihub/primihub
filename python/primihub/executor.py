@@ -14,14 +14,23 @@
  limitations under the License.
  """
 
-import sys
+import sys, os
 import traceback
 # from dill import loads
 from cloudpickle import loads
 from primihub.context import Context
+from multiprocessing import Process
 
 shared_globals = dict()
 shared_globals['context'] = Context
+
+import signal
+def _handle_timeout(signum, frame):
+    raise TimeoutError('function timeout')
+
+timeout_sec = 60 * 30
+signal.signal(signal.SIGALRM, _handle_timeout)
+signal.alarm(timeout_sec)
 
 
 class Executor:
@@ -88,23 +97,35 @@ class Executor:
         func_params = Context.get_func_params_map().get(func_name, None)
         func = loads(dumps_func)
         print("func params: ", func_params)
+        print('Parent process %s.' % os.getpid())
         if not func_params:
             try:
                 print("start execute")
                 func()
+                # p = Process(target=func)
                 print("end execute")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
+            finally:
+                signal.alarm(0)
         else:
             try:
                 print("start execute with params")
                 func(*func_params)
+                # p = Process(target=func, args=func_params)
                 print("end execute with params")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
+            finally:
+                signal.alarm(0)
 
+        # print(p.daemon)
+        # print('Child process will start.')
+        # p.start()
+        # p.join()
+        # print('Child process end.')
     @staticmethod
     def execute_test():
         print("This is a tset function.")
