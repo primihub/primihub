@@ -55,6 +55,7 @@ jobs:
         export PYTHONPATH=../..
         pytest -v feature_test/test_onehot.py
         pytest -v feature_test/test_minmax_standard.py
+        pytest -v test_disxgb_en.py
  
     - name: bazel test
       run: |
