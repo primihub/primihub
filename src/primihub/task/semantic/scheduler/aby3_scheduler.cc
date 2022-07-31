@@ -47,7 +47,7 @@ void node_push_task(const std::string &node_id,
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
 
     // Add params to request
-     google::protobuf::Map<std::string, ParamValue> *param_map =
+    google::protobuf::Map<std::string, ParamValue> *param_map =
         _1NodePushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
     auto peer_dataset_map_it = peer_dataset_map.find(node_id);
     if (peer_dataset_map_it == peer_dataset_map.end()) {
