@@ -58,7 +58,8 @@ int PSIServerTask::loadParams(Params & params) {
 
 int PSIServerTask::loadDataset() {
     int ret = loadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    if (ret) {
+    // file reading error or file empty
+    if (ret <= 0) {
         LOG(ERROR) << "Load dataset for psi server failed.";
         return -1;
     }

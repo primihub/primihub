@@ -4,17 +4,18 @@
 
 ```
 e2etest |--------- local|---- pre_test.py 启动节点
-        |               |---- test_mpc.py
-        |               |---- test_fl.py
-        |               |---- test_psi.py
-        |               |---- test_pir.py 
-        |               |---- config.py   配置路径，请首先修改！！！
-        |               |---- test_dir.py 测试路径
+        |                                 |---- test_mpc.py
+        |                                 |---- test_fl.py
+        |                                 |---- test_psi.py
+        |                                 |---- test_pir.py 
+        |                                 |---- test_all.py 
+        |                                 |---- config.py   配置路径，请首先修改！！！
+        |                                 |---- kill_node.py 
+        |                                 |---- portlisten.py 
 
 ```
-## 测试环境
-
-1. 环境: wsl2 + ubuntu, 本地编译, 依赖项配置参考如下:
+## local测试环境
+1.环境： ubuntu，远程连接时可使用，依赖项如下：
   ```
     - name: Install go
       run: |
@@ -38,34 +39,20 @@ e2etest |--------- local|---- pre_test.py 启动节点
     - name: Install pytest
       run: sudo apt-get install python3-pip && pip3 install pytest     
 
-    - name: Install gnome-terminal
-      run: |
-        sudo apt-get install libgirepository1.0-dev
-        sudo apt-get install python-cairo
-        sudo apt-get install libcairo2
-        sudo python3 -m pip install -U pycairo
-        sudo python3 -m pip install --ignore-installed PyGObject
-        sudo apt-get install gnome-terminal
-        
-   ```  
-   >或者参考 [这里](  https://blog.csdn.net/qq_44026881/article/details/125317821?spm=1001.2101.3001.6650.3&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-3-125317821-blog-122414615.pc_relevant_multi_platform_whitelistv2&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-3-125317821-blog-122414615.pc_relevant_multi_platform_whitelistv2&utm_relevant_index=5)
-
-
-2. 运行方式
-  ```bash
+2.运行方式
         cd e2etest
         cd local
-        # 1. 检测全部功能
-        pytest
-        # 2. 检测单个功能
-        pytest -s test_mpc.py
-  ```
+        1) 检测全部功能
+          pytest
+        2) 检测单个功能
+          为了释放资源，取消指定功能的最后kill_node两行注释
+          pytest -s test_mpc.py
 
-3. 注意问题
-
-* 注意配置/e2etest/local/config中的bootstrap node的路径
-* 如果test_mpc.py失败，请注意node2节点的配置。
-* 如果test_fl.py失败，请注意是否在primihub/python目录下执行了 python3.9 setup.py install.
+3.注意问题
+        1) 注意配置/e2etest/local_action/config中的startNode的路径
+        2) 这种方式隐式启动节点，节点的输出在node?.log中
+        3) 尽量在root下运行
+        4) 在全部检测时，kill_node只需在任意功能最后执行一次，可以节省测试时间
 
 >pytest的常见参数
 >-s ：显示标准输出，例如print()的语句；

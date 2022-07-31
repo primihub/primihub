@@ -2,12 +2,14 @@ from primihub.FL.feature_engineer.onehot_encode import OneHotEncoder, HorOneHotE
 from os import path
 import numpy as np
 import pandas as pd
-
+from  multiprocessing import Process
+from primihub.FL.proxy.proxy import ServerChannelProxy
+from primihub.FL.proxy.proxy import ClientChannelProxy
+import pytest
 dir = path.join(path.dirname(__file__), '../data/pokemon')
 # use horizontal data as simulated vertical data
 data_p1 = pd.read_csv(path.join(dir, "h_pokemon1.csv"))
 data_p2 = pd.read_csv(path.join(dir, "h_pokemon2.csv"))
-
 idxs_nd = [1, 10]
 # there are 8 categories in idx_1
 expected_idxs = list(range(1, 10))
@@ -106,8 +108,89 @@ def test_hor_onehot_df():
     oh_enc2.load_union(union_cats_len, union_cats_idxs)
     out_data = oh_enc2.transform(data_p2.values[:5, :], idxs_nd)
     pd.set_option('display.max_columns', None)
-
     assert out_data.values[:, expected_idxs_2].astype(
         np.int8).shape == expected_encoded.shape
     assert (out_data.values[:, expected_idxs_2].astype(
         np.int8) == expected_encoded).all()
+
+def client():
+    print("进入client")
+    proxy_server = ServerChannelProxy("10091")
+    proxy_client = ClientChannelProxy("127.0.0.1", "10090")
+    proxy_server.StartRecvLoop()
+    # dir = path.join(path.dirname(__file__), '../data/pokemon')
+    # # use horizontal data as simulated vertical data
+    # data_p2 = pd.read_csv(path.join(dir, "h_pokemon2.csv"))
+    # idxs_nd = [1, 10]
+    # # there are 8 categories in idx_1
+    # expected_idxs = list(range(1, 10))
+    # # there are 2 categories in idx_10
+    # expected_idxs.extend([18, 19])
+    # # there are 18 categories in idx_1s' union
+    # expected_idxs_2 = list(range(1, 19))
+    # # there are 2 categories in idx_10s' union
+    # expected_idxs_2.extend([27, 28])
+    oh_enc2 = HorOneHotEncoder()
+    cats2 = oh_enc2.get_cats(data_p2, idxs_nd)
+
+    proxy_client.Remote(cats2, "class")
+
+    # Server do category set union operation
+    result = proxy_server.Get("result")
+    proxy_server.StopRecvLoop()
+    union_cats_len, union_cats_idxs = result[0], result[1]
+    oh_enc2.load_union(union_cats_len, union_cats_idxs)
+    #out_data = oh_enc2.transform(data_p2.values, idxs_nd)
+    out_data = oh_enc2.transform(data_p2.values[:5, :], idxs_nd)
+    pd.set_option('display.max_columns', None)
+    expected_encoded = np.array([
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1]], dtype=np.int8)
+    pd.set_option('display.max_columns', None)
+    assert out_data.values[:, expected_idxs_2].astype(
+        np.int8).shape == expected_encoded.shape
+    assert (out_data.values[:, expected_idxs_2].astype(
+        np.int8) == expected_encoded).all()
+    return out_data
+
+def server():
+    print("进入server")
+    proxy_server = ServerChannelProxy("10090")
+    proxy_client = ClientChannelProxy("127.0.0.1", "10091")
+    proxy_server.StartRecvLoop()
+    # dir = path.join(path.dirname(__file__), '../data/pokemon')
+    # # use horizontal data as simulated vertical data
+    # data_p1 = pd.read_csv(path.join(dir, "h_pokemon1.csv"))
+    # idxs_nd = [1, 10]
+    # # there are 8 categories in idx_1
+    # expected_idxs = list(range(1, 10))
+    # # there are 2 categories in idx_10
+    # expected_idxs.extend([18, 19])
+    oh_enc1 = HorOneHotEncoder()
+    cats1 = oh_enc1.get_cats(data_p1, idxs_nd)
+    cats2 = proxy_server.Get("class")
+    proxy_server.StopRecvLoop()
+
+    # Server do category set union operation
+    union_cats_len, union_cats_idxs = HorOneHotEncoder.server_union(
+        cats1, cats2)
+    proxy_client.Remote([union_cats_len, union_cats_idxs], "result")
+
+    oh_enc1.load_union(union_cats_len, union_cats_idxs)
+    out_data = oh_enc1.transform(data_p1.values, idxs_nd)
+    pd.set_option('display.max_columns', None)
+    return out_data
+
+def test_main():
+    server_process = Process(target=server)
+    client_process = Process(target=client)
+    server_process.start()
+    client_process.start()
+    server_process.join()
+    client_process.join()
+
+if __name__ == '__main__':
+    pytest.main(["./test_onehot.py::test_main"])

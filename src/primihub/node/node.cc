@@ -45,7 +45,6 @@ ABSL_FLAG(int, service_port, 50050, "node service port");
 
 namespace primihub {
 
-
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
                               PushTaskReply *pushTaskReply) {
@@ -64,7 +63,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     }
     
     // actor
-    if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK) {
+    if ( pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
+         pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK )   {
         LOG(INFO) << "start to schedule task";
         absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
@@ -105,7 +105,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             _psp.schedulePsiTask(lan_parser_);
         }
 
-    } else {
+    }  else {
         LOG(INFO) << "start to create worker for task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
@@ -147,7 +147,7 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
 
     if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
             taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
-        LOG(INFO) << "start to create server for task.";
+        LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
         worker->execute(taskRequest, taskResponse);
@@ -235,8 +235,6 @@ int main(int argc, char **argv) {
                                  config_file);
     data_service = new primihub::DataServiceImpl(node_service->getNodelet()->getDataService(),
                                            node_service->getNodelet()->getNodeletAddr());
-
-
 
     primihub::RunServer(node_service, data_service, service_port);
 

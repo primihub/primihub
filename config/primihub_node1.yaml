@@ -32,11 +32,11 @@ datasets:
 
 localkv: 
   model: "leveldb"
-  path: "./localdb"
+  path: "/data/localdb1"
 
 p2p:
   bootstrap_nodes:
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/172.28.1.11/tcp/8881"
-  dht_get_value_timeout:  60
+  dht_get_value_timeout:  120

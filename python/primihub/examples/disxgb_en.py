@@ -24,9 +24,11 @@ from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
 from primihub.FL.model.evaluation.evaluation import Regression_eva
+from primihub.FL.model.evaluation.evaluation import Classification_eva
 import pandas as pd
 import numpy as np
 import logging
+import pickle
 
 
 def get_logger(name):
@@ -37,14 +39,14 @@ def get_logger(name):
     logger = logging.getLogger(name)
     return logger
 
+
 logger = get_logger("xgb_host")
 
 dataset.define("guest_dataset")
 dataset.define("label_dataset")
-dataset.define("test_dataset")
 
 ph.context.Context.func_params_map = {
-    "xgb_host_logic": ("paillier", ),
+    "xgb_host_logic": ("paillier",),
     "xgb_guest_logic": ("paillier",)
 }
 
@@ -53,7 +55,8 @@ num_tree = 1
 # Max depth of each tree.
 max_depth = 1
 
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:12120")
+
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:12120")
 def xgb_host_logic(cry_pri="paillier"):
     print("start xgb host logic...")
     next_peer = ph.context.Context.nodes_context["host"].next_peer
@@ -65,8 +68,11 @@ def xgb_host_logic(cry_pri="paillier"):
 
     channel = server.addChannel()
     data = ph.dataset.read(dataset_key="label_dataset").df_data
+    dim = data.shape[0]
+    dim_train = dim / 10 * 8
+    data_train = data.loc[:dim_train, :].reset_index(drop=True)
+    data_test = data.loc[dim_train:dim, :].reset_index(drop=True)
     label_true = ['Class']
-    data_test = ph.dataset.read(dataset_key="test_dataset").df_data
     y_true = data_test['Class'].values
     data_test = data_test[
         [x for x in data_test.columns if x not in label_true]
@@ -74,22 +80,25 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.info(data_test.head())
 
     labels = ['Class']  # noqa
-    X_host = data[
+    X_host = data_train[
         [x for x in data.columns if x not in labels]
     ]
-    Y = data['Class'].values
+    Y = data_train['Class'].values
 
     if cry_pri == "paillier":
         xgb_host = XGB_HOST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
-                               min_child_weight=1, objective='linear', channel=channel)
+                               sid=0, min_child_weight=1, objective='linear', channel=channel)
         channel.recv()
         xgb_host.channel.send(xgb_host.pub)
         print(xgb_host.channel.recv())
         y_hat = np.array([0.5] * Y.shape[0])
 
         for t in range(xgb_host.n_estimators):
-            logger.info("Begin to trian tree {}.".format(t))
+            logger.info("Begin to trian tree {}.".format(t + 1))
 
+            xgb_host.record = 0
+            xgb_host.lookup_table = pd.DataFrame(
+                columns=['record_id', 'feature_id', 'threshold_value'])
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
             gh_en = pd.DataFrame(columns=['g', 'h'])
@@ -118,37 +127,59 @@ def xgb_host_logic(cry_pri="paillier"):
                     GH_guest.loc[index, item] = GH_guest_en.loc[index, item]
 
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
+            xgb_host.lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
-            logger.info("Finish to trian tree {}.".format(t))
+            logger.info("Finish to trian tree {}.".format(t + 1))
 
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
-        y_pre = xgb_host.predict_raw(data_test)
-        Regression_eva.get_result(y_true, y_pre, indicator_file_path)
-        return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
+        model_file_path = ph.context.Context.get_model_file_path()
+        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+        with open(model_file_path, 'wb') as fm:
+            pickle.dump(xgb_host.tree_structure, fm)
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_host.lookup_table_sum, fl)
+        y_pre = xgb_host.predict_prob(data_test)
+        y_train_pre = xgb_host.predict_prob(X_host)
+        y_train_pre.to_csv(predict_file_path)
+        y_train_true = Y
+        Y_true = {"train":y_train_true,"test":y_true}
+        Y_pre = {"train":y_train_pre,"test":y_pre}
+        Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
-                            min_child_weight=1, objective='linear', channel=channel)
+                            sid=0, min_child_weight=1, objective='linear', channel=channel)
         channel.recv()
         y_hat = np.array([0.5] * Y.shape[0])
         for t in range(xgb_host.n_estimators):
             logger.info("Begin to trian tree {}.".format(t))
 
+            xgb_host.record = 0
+            xgb_host.lookup_table = pd.DataFrame(
+                columns=['record_id', 'feature_id', 'threshold_value'])
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
             xgb_host.channel.send(gh)
             GH_guest = xgb_host.channel.recv()
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(X_host, GH_guest, gh, f_t, 0)  # noqa
+            xgb_host.lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
             logger.info("Finish to trian tree {}.".format(t))
 
         predict_file_path = ph.context.Context.get_predict_file_path()
         indicator_file_path = ph.context.Context.get_indicator_file_path()
-        y_pre = xgb_host.predict_raw(data_test)
-        Regression_eva.get_result(y_true, y_pre, indicator_file_path)
-        return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
+        model_file_path = ph.context.Context.get_model_file_path()
+        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+        with open(model_file_path, 'wb') as fm:
+            pickle.dump(xgb_host.tree_structure, fm)
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_host.lookup_table_sum, fl)
+        y_pre = xgb_host.predict_prob(data_test)
+        Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+        xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
@@ -164,30 +195,54 @@ def xgb_guest_logic(cry_pri="paillier"):
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 
-    X_guest = ph.dataset.read(dataset_key="guest_dataset").df_data
+    data = ph.dataset.read(dataset_key="guest_dataset").df_data
+    dim = data.shape[0]
+    dim_train = dim / 10 * 8
+    X_guest = data.loc[:dim_train, :].reset_index(drop=True)
+    data_test = data.loc[dim_train:dim, :].reset_index(drop=True)
 
     if cry_pri == "paillier":
-        xgb_guest = XGB_GUEST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1, objective='linear',
-                                 channel=channel)  # noqa
+        xgb_guest = XGB_GUEST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1,
+                                 objective='linear',
+                                 sid=1, channel=channel)  # noqa
         channel.send(b'guest ready')
         pub = xgb_guest.channel.recv()
         xgb_guest.channel.send(b'recved pub')
 
         for t in range(xgb_guest.n_estimators):
+            xgb_guest.record = 0
+            xgb_guest.lookup_table = pd.DataFrame(
+                columns=['record_id', 'feature_id', 'threshold_value'])
             gh_host = xgb_guest.channel.recv()
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
             print(X_guest_gh)
             gh_sum = xgb_guest.get_GH(X_guest_gh, pub)
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
+            xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_guest.lookup_table_sum, fl)
+        xgb_guest.predict(data_test)
+        xgb_guest.predict(X_guest)
     elif cry_pri == "plaintext":
-        xgb_guest = XGB_GUEST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1, objective='linear',
-                              channel=channel)  # noqa
+        xgb_guest = XGB_GUEST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1,
+                              objective='linear',
+                              sid=1, channel=channel)  # noqa
         channel.send(b'guest ready')
         for t in range(xgb_guest.n_estimators):
+            xgb_guest.record = 0
+            xgb_guest.lookup_table = pd.DataFrame(
+                columns=['record_id', 'feature_id', 'threshold_value'])
             gh_host = xgb_guest.channel.recv()
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
             print(X_guest_gh)
             gh_sum = xgb_guest.get_GH(X_guest_gh)
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)
+            xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+        with open(lookup_file_path, 'wb') as fl:
+            pickle.dump(xgb_guest.lookup_table_sum, fl)
+        xgb_guest.predict(data_test)
+        xgb_guest.predict(X_guest)

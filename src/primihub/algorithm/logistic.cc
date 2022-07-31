@@ -240,20 +240,22 @@ namespace primihub
     {
       m(j, num_col - 1) = array_lastCol->Value(j);
     }
-    return 0;
+    return array->length();
   }
 
   int LogisticRegressionExecutor::loadDataset()
   {
     int ret = _LoadDatasetFromCSV(train_input_filepath_, train_input_);
-    if (ret)
+    // file reading error or file empty
+    if (ret <= 0)
     {
       LOG(ERROR) << "Load dataset for train failed.";
       return -1;
     }
 
     ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
-    if (ret)
+    // file reading error or file empty
+    if (ret <= 0)
     {
       LOG(ERROR) << "Load dataset for test failed.";
       return -2;
@@ -593,13 +595,13 @@ namespace primihub
         arrow::field("w", arrow::float64())};
     auto schema = std::make_shared<arrow::Schema>(schema_vector);
     std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
-
+    
     std::shared_ptr<DataDriver> driver =
-        DataDirverFactory::getDriver("CSV", "test addr");
+        DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
     std::shared_ptr<CSVDriver> csv_driver =
         std::dynamic_pointer_cast<CSVDriver>(driver);
 
-    std::string filepath = "/tmp/" + model_name_ + ".csv";
+    std::string filepath = "data/" + model_name_ + ".csv";
     int ret = csv_driver->write(table, filepath);
     if (ret != 0)
     {

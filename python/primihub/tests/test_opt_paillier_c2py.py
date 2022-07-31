@@ -1,6 +1,8 @@
 from python.primihub.primitive.opt_paillier_c2py_warpper import *
 import random
 import time
+from os import path
+import pytest
 
 check_list = [0, 0, 0, 0]
 
@@ -13,7 +15,7 @@ def random_plaintext(length):
          res = -res
     return res
 
-if __name__ == '__main__':
+def test_opt_paillier_c2py():
     keygen_cost = 0
     keygen_st = time.time()
     pub, prv = opt_paillier_keygen(112)
@@ -23,11 +25,12 @@ if __name__ == '__main__':
     print("==================KeyGen is finished==================")
     print("KeyGen costs: " + str(keygen_cost * 1000.0) + " ms.")
 
-    _round = 1000
+    _round = 100
     encrypt_cost = 0
     encrypt_crt_cost = 0
     decrypt_cost = 0
     add_cost = 0
+    mul_cost = 0
     for i in range(_round):
         plain_text1 = random_plaintext(2048)
         e_st = time.time()
@@ -40,8 +43,7 @@ if __name__ == '__main__':
         e_ed = time.time()
         decrypt_cost += e_ed - e_st
 
-        if not decrypt_text1 == plain_text1:
-            print("Encrypt Error")
+        assert decrypt_text1 == plain_text1
 
         plain_text2 = random_plaintext(2048)
 
@@ -56,9 +58,20 @@ if __name__ == '__main__':
         add_cost += e_ed - e_st
 
         add_decrypt_text = opt_paillier_decrypt_crt(pub, prv, add_cipher_text)
-        
-        if not add_decrypt_text == plain_text1 + plain_text2:
-            print("Add Error")
+
+        assert add_decrypt_text == plain_text1 + plain_text2
+
+        e_st = time.time()
+        cons_mul_cipher_text = opt_paillier_cons_mul(pub, cipher_text1, plain_text2)
+        e_ed = time.time()
+        mul_cost += e_ed - e_st
+
+        mul_decrypt_text = opt_paillier_decrypt_crt(pub, prv, cons_mul_cipher_text)
+        mul_plain_res = (plain_text1 * plain_text2) % int(pub.n)
+        if mul_plain_res > int(pub.half_n):
+            mul_plain_res = mul_plain_res - int(pub.n)
+
+        assert mul_decrypt_text == mul_plain_res
         
         if plain_text1 >= 0:
             if plain_text2 >= 0:
@@ -72,15 +85,20 @@ if __name__ == '__main__':
                 check_list[3] = 1
 
     print("=========================opt test=========================")
-    encrypt_cost = 1.0 / _round * encrypt_cost;
-    encrypt_crt_cost = 1.0 / _round * encrypt_crt_cost;
-    decrypt_cost = 1.0 / _round * decrypt_cost;
-    add_cost     = 1.0 / _round * add_cost;
+    encrypt_cost = 1.0 / _round * encrypt_cost
+    encrypt_crt_cost = 1.0 / _round * encrypt_crt_cost
+    decrypt_cost = 1.0 / _round * decrypt_cost
+    add_cost     = 1.0 / _round * add_cost
+    mul_cost     = 1.0 / _round * mul_cost
 
     print("The avg encrypt_crt  cost is " + str(encrypt_crt_cost * 1000.0 ) + " ms.")
     print("The avg encryption   cost is " + str(encrypt_cost * 1000.0 ) + " ms.")
     print("The avg add_cost     cost is " + str(add_cost     * 1000.0 ) + " ms.")
+    print("The avg mul_cost     cost is " + str(mul_cost     * 1000.0 ) + " ms.")
     print("The avg decrypt_cost cost is " + str(decrypt_cost     * 1000.0 ) + " ms.")
     print("checked: " + str(check_list))
 
     print("========================================================")
+
+if __name__ == '__main__':
+    pytest.main(['-q', path.dirname(__file__)])

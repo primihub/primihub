@@ -42,9 +42,9 @@ datasets:
   - description: "label_dataset"
     model: "csv"
     source: "data/FL/wisconsin_host.data"   
-  - description: "test_dataset"
-    model: "csv"
-    source: "data/FL/wisconsin_test.data"
+  # - description: "test_dataset"
+  #   model: "csv"
+  #   source: "data/FL/wisconsin_test.data"
 
 localkv: 
   model: "leveldb"

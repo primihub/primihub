@@ -10,8 +10,11 @@ audi_df = pd.read_csv(RAW_PATH)
 raws_len = audi_df.shape[0]
 h_columns = audi_df.columns
 
-h_audi1 = audi_df.values[:raws_len//2, :]
-h_audi2 = audi_df.values[raws_len//2:, :]
+# np.random.shuffle(audi_df.values)
+shuffle_audi = audi_df.values
+np.random.shuffle(shuffle_audi)
+h_audi1 = shuffle_audi[:raws_len//2, :]
+h_audi2 = shuffle_audi[raws_len//2:, :]
 h_audi1_df = pd.DataFrame(h_audi1, columns=h_columns)
 h_audi2_df = pd.DataFrame(h_audi2, columns=h_columns)
 h_audi1_df.to_csv(path.join(OUT_PATH, "h_audi1.csv"), index=False)

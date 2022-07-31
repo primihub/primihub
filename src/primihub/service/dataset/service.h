@@ -44,8 +44,10 @@ class DatasetMetaService;
 class DatasetService {
   public:
     explicit DatasetService(std::shared_ptr<primihub::p2p::NodeStub> stub,
-                            std::shared_ptr<StorageBackend> localkv) {
+                            std::shared_ptr<StorageBackend> localkv,
+                            const std::string &nodelet_addr) {
         metaService_ = std::make_shared<DatasetMetaService>(stub, localkv);
+        nodelet_addr_ = nodelet_addr;
     }
     ~DatasetService() {}
 
@@ -56,6 +58,10 @@ class DatasetService {
 
     void regDataset(DatasetMeta &meta);
 
+    std::string getNodeletAddr(void) {
+      return nodelet_addr_;
+    }
+
     outcome::result<void> readDataset(const DatasetId &id,
                                       ReadDatasetHandler handler);
 
@@ -64,7 +70,7 @@ class DatasetService {
 
     int deleteDataset(const DatasetId &id);
     void loadDefaultDatasets(const std::string &config_file_path);
-    void restoreDatasetFromLocalStorage(const std::string &nodelet_addr);
+    void restoreDatasetFromLocalStorage(void);
     void setMetaSearchTimeout(unsigned int timeout);
     // void
     // findPeerListFromDatasets(const std::vector<std::string> &dataset_namae_list,
@@ -79,6 +85,7 @@ class DatasetService {
 
     //  private:
     std::shared_ptr<DatasetMetaService> metaService_;
+    std::string nodelet_addr_;
 };
 
 class DatasetMetaService {

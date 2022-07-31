@@ -1,5 +1,5 @@
-from primihub.channel.proxy import ServerChannelProxy
-from primihub.channel.proxy import ClientChannelProxy
+from primihub.FL.proxy import ServerChannelProxy
+from primihub.FL.proxy import ClientChannelProxy
 from concurrent.futures import ThreadPoolExecutor
 import time
 
