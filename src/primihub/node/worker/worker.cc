@@ -35,7 +35,8 @@ namespace primihub {
 
 void Worker::execute(const PushTaskRequest *pushTaskRequest) {
     primihub::rpc::TaskType type = pushTaskRequest->task().type();
-    if (type == rpc::TaskType::NODE_TASK) {
+    if (type == rpc::TaskType::NODE_TASK ||
+        type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
@@ -74,6 +75,8 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
     }
 }
 
+
+// PIR /PSI Server worker execution
 void Worker::execute(const ExecuteTaskRequest *taskRequest,
                      ExecuteTaskResponse *taskResponse) {
     //primihub::rpc::TaskType type;

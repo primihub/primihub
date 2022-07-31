@@ -28,6 +28,7 @@
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/task/semantic/pir_server_task.h"
+#include "src/primihub/task/semantic/tee_task.h"
 #include "src/primihub/service/dataset/service.h"
 
 
@@ -75,6 +76,12 @@ class TaskFactory {
                                                             &task_param, 
                                                             dataset_service);
             return std::dynamic_pointer_cast<TaskBase>(pir_task);
+        }  else if (task_language == Language::PROTO && task_type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
+            auto task_param = request.task();
+            auto tee_task = std::make_shared<TEEDataProviderTask>(node_id,
+                                                    &task_param, 
+                                                    dataset_service);
+            return std::dynamic_pointer_cast<TaskBase>(tee_task);
         } else {
             LOG(ERROR) << "Unsupported task type: "<< task_type <<"," 
                         << "language: "<< task_language;
