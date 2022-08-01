@@ -15,13 +15,13 @@ package(
 #    deps = [":boost_context"],
 #)
 
-boost_build(
-    name = "boost_context",
-    lib_source = "@boost//:all",
-    static_libraries = ["libboost_context.a"],
-    user_options = ["--with-context"],
-    visibility = ["//visibility:public"],
-)
+#boost_build(
+#    name = "boost_context",
+#    lib_source = "@boost//:all",
+#    static_libraries = ["libboost_context.a"],
+#    user_options = ["--with-context"],
+#    visibility = ["//visibility:public"],
+#)
 
 genrule(
     name = "cryptoTools_config_h",
@@ -35,12 +35,11 @@ genrule(
         echo "#pragma once \r\n \
 #define ENABLE_RELIC ON \r\n \
 #define ENABLE_CIRCUITS ON \r\n \
-#define ENABLE_FULL_GSL ON \r\n \
+#define ENABLE_SPAN_LITE ON \r\n \
 #define ENABLE_CPP_14 ON \r\n \
 #define ENABLE_BOOST ON \r\n \
 #define ENABLE_SSE ON \r\n \
 #define ENABLE_CPP_14 ON \r\n \
-#define ENABLE_FULL_GSL ON \r\n \
 #define ENABLE_NET_LOG ON \r\n \
 #define ENABLE_NASM ON \r\n \
 #if (defined(_MSC_VER) || defined(__SSE2__)) && defined(ENABLE_SSE) \r\n \
@@ -53,7 +52,7 @@ genrule(
 #if (defined(_MSC_VER) || defined(__AES__)) && defined(ENABLE_SSE) \r\n \
 #define OC_ENABLE_AESNI ON \r\n \
 #else \r\n \
-#define OC_ENABLE_PORTABLE_AES ON \r\n \
+#define OC_ENABLE_PORTABLE_AES OFF \r\n \
 #endif \r\n \
 ">"$${tmpdir}"/cryptoTools/Common/config.h
         ls -ltrh "$${tmpdir}"
@@ -64,7 +63,7 @@ genrule(
 )
 
 cc_library(
-    name = "cryptoTools",
+    name = "libcryptoTools",
     srcs = glob(
                 ["cryptoTools/Circuit/*.cpp",
                 "cryptoTools/Common/*.cpp",
@@ -76,28 +75,27 @@ cc_library(
     hdrs = [":cryptoTools_config_h"] + glob(
                 ["cryptoTools/Circuit/*.h",
                 "cryptoTools/Common/*.h",
+                "cryptoTools/Common/*.hpp",
                 "cryptoTools/Crypto/*.h",
                 "cryptoTools/Crypto/blake2/c/*.h",
                 "cryptoTools/Crypto/blake2/sse/*.h",
                 "cryptoTools/Network/*.h"],
         ),
-    textual_hdrs = [
-                    "cryptoTools/gsl/span",
-                    "cryptoTools/gsl/gsl_assert",
-                    "cryptoTools/gsl/gsl_util",
-                    "cryptoTools/gsl/gsl_byte",
-                    "cryptoTools/gsl/gsl_algorithm",
-                    "cryptoTools/gsl/gsl",
-                    "cryptoTools/gsl/multi_span",
-                    "cryptoTools/gsl/string_span",
-                    "cryptoTools/gsl/gls-lite.hpp",
-                ],
-    includes = [".", ":cryptoTools_config_h"],
-    copts = ["-I@tookit_relic//:relic/include -std=c++14 -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON -DRAND=HASHD -DBoost_USE_MULTITHREADED=ON"],
+    includes = ["cryptoTools", ":cryptoTools_config_h"],
+    copts = ["-I@tookit_relic//:relic/include -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON -DRAND=HASHD -DMULTI=PTHREAD -DBoost_USE_MULTITHREADED=ON"],
     linkopts = ["-pthread"],
+    # strip_include_prefix = "src",
+    # Using an empty include_prefix causes Bazel to emit -I instead of -iquote
+    # options for the include directory, so that #include <gmp.h> works.
+    include_prefix = "",
     linkstatic = True,
     deps = [
-                #":boost_fiber",
+                "@boost//:fiber",
+                "@boost//:asio",
+                "@boost//:variant",
+                "@boost//:multiprecision",
+                "@boost//:system",
+                "@boost//:circular_buffer",
                 "@toolkit_relic//:relic",
         ],
 )
@@ -110,7 +108,7 @@ cc_library(
     hdrs = glob(
                 ["tests_cryptoTools/**/*.h"],
         ),
-    copts = ["-std=c++14 -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DBoost_USE_MULTITHREADED=ON"],
+    copts = [" -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DBoost_USE_MULTITHREADED=ON"],
     linkopts = ["-pthread"],
     linkstatic = True,
     deps = [
@@ -128,7 +126,7 @@ cc_library(
     hdrs = glob([
                     "frontend_cryptoTools/**/*.h"
                 ],),
-    copts = ["-std=c++14 -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON -DBoost_USE_MULTITHREADED=ON -DENABLE_FULL_GSL=ON -DENABLE_CPP_14=ON"],
+    copts = [" -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON -DBoost_USE_MULTITHREADED=ON -DENABLE_FULL_GSL=ON -DENABLE_CPP_14=ON"],
     linkopts = ["-pthread -lstdc++"],
     linkstatic = True,
     deps = [
@@ -144,7 +142,7 @@ cc_binary(
                 ["frontend_cryptoTools/**/*.cpp"], ["frontend_cryptoTools/**/*.h"],
         ),
     includes = [".", "Tutorials/Network.h"],
-    copts = ["-std=c++14 -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON"],
+    copts = [" -O0 -g -ggdb -rdynamic -maes -msse2 -msse3 -msse4.1 -mpclmul -DENABLE_CIRCUITS=ON -DENABLE_RELIC=ON -DENABLE_BOOST=ON -DENABLE_SSE=ON"],
     linkopts = ["-pthread -lstdc++"],
     linkstatic = False,
     deps = [

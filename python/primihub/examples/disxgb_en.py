@@ -67,7 +67,16 @@ def xgb_host_logic(cry_pri="paillier"):
     server = Session(ios, ip, port, "server")
 
     channel = server.addChannel()
+
     data = ph.dataset.read(dataset_key="label_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = str(row[name])
+            if not temp.isdigit():
+                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
@@ -181,7 +190,6 @@ def xgb_host_logic(cry_pri="paillier"):
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
-
 @ph.context.function(role='guest', protocol='xgboost', dataset_port_map = {"guest_dataset": "9000"})
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
@@ -191,11 +199,20 @@ def xgb_guest_logic(cry_pri="paillier"):
     print(ph.context.Context.datasets)
     print(ph.context.Context.dataset_map)
     print("guest next peer: ", next_peer)
+
     ip, port = next_peer.split(":")
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 
     data = ph.dataset.read(dataset_key="guest_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = str(row[name])
+            if not temp.isdigit():
+                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     X_guest = data.loc[:dim_train, :].reset_index(drop=True)

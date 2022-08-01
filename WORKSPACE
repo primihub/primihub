@@ -1,3 +1,5 @@
+workspace(name = "primihub")
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
@@ -41,15 +43,6 @@ git_repository(
 
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
-
-new_git_repository(
-    name = "toolkit_relic",
-    build_file = "//bazel:BUILD.relic",
-    remote = "https://github.com/relic-toolkit/relic.git",
-    commit = "3f616ad64c3e63039277b8c90915607b6a2c504c",
-    shallow_since = "1581106153 -0800",
-)
-
 
 http_archive(
   name="eigen",
@@ -435,6 +428,80 @@ http_archive(
     strip_prefix = "gmp-6.2.1",
     urls = ["https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz"],
 )
+
+# Google dense_hash_set
+http_archive(
+    name = "google_sparsehash",
+    build_file = "//bazel:BUILD.sparsehash",
+    strip_prefix = "sparsehash-master",
+    urls = ["https://github.com/google/sparsehash/archive/master.zip"],
+)
+
+# libPSI start
+new_git_repository(
+    name = "osu_libpsi",
+    build_file = "//bazel:BUILD.libpsi",
+    commit = "213037d4aa0db4d257937d2d953f1b965e4a5234",
+    remote = "https://github.com/primihub/libPSI.git",
+)
+
+# Google dense_hash_set
+http_archive(
+    name = "google_sparsehash",
+    build_file = "//bazel:BUILD.sparsehash",
+    strip_prefix = "sparsehash-master",
+    urls = ["https://github.com/google/sparsehash/archive/master.zip"],
+)
+
+# libote
+new_git_repository(
+    name = "osu_libote",
+    build_file = "//bazel:libOTe.BUILD",
+    commit = "f455eb7bf83034ebca6cab42e3aea9d9b33f8102",
+    remote = "https://github.com/primihub/libOTe.git",
+)
+
+new_git_repository(
+    name = "ladnir_cryptoTools",
+    build_file = "//bazel:cryptoTools.BUILD",
+    commit = "d52e05e2e803006256ddb66f48a0d51080f4b285",
+    remote = "https://github.com/primihub/cryptoTools.git",
+    # shallow_since = "1591047380 -0700",
+)
+
+new_git_repository(
+    name = "github_ntl",
+    build_file = "//bazel:ntl.BUILD",
+    commit = "6b23216ce6b24dd04446122c2200b6f031621965",
+    remote = "https://github.com/primihub/ntl.git",
+    # shallow_since = "1591047380 -0700",
+)
+
+new_git_repository(
+    name = "toolkit_relic",
+    build_file = "//bazel:BUILD.relic",
+    remote = "https://github.com/relic-toolkit/relic.git",
+    commit = "3f616ad64c3e63039277b8c90915607b6a2c504c",
+    shallow_since = "1581106153 -0800",
+)
+
+# libote
+#http_archive(
+#    name = "osu_libote",
+#    build_file = "//external:libOTe.BUILD",
+#    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
+#    strip_prefix = "libOTe-master",
+#    urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
+#)
+
+# cryptoTools
+#http_archive(
+#    name = "ladnir_cryptoTools",
+#    build_file = "//external:cryptoTools.BUILD",
+#    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
+#    strip_prefix = "cryptoTools-master",
+#    urls = ["https://github.com/ladnir/cryptoTools/archive/refs/heads/master.zip"],
+#)
 
 #PSI
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")

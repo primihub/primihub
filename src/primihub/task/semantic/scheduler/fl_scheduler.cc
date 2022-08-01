@@ -118,7 +118,6 @@ void push_node_py_task(
  *
  */
 void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
-
   PushTaskRequest nodePushTaskRequest;
   nodePushTaskRequest.CopyFrom(*pushTaskRequest);
   // Construct node map

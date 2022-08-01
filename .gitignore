@@ -115,3 +115,9 @@ primihub.code-workspace
 
 # leveldb storage
 localdb/
+
+# gramine sgx generated files
+*.manifest
+*.manifest.sgx
+*.sig
+*.token

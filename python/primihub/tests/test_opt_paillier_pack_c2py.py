@@ -2,6 +2,8 @@ from python.primihub.primitive.opt_paillier_c2py_warpper import *
 from python.primihub.primitive.opt_paillier_pack_c2py_warpper import *
 import random
 import time
+from os import path
+import pytest
 
 def random_plaintext(length):
     res = 0
@@ -12,7 +14,7 @@ def random_plaintext(length):
          res = -res
     return res
 
-if __name__ == '__main__':
+def test_opt_paillier_pack_c2py():
     keygen_cost = 0
     keygen_st = time.time()
     pub, prv = opt_paillier_keygen(112)
@@ -22,7 +24,7 @@ if __name__ == '__main__':
     print("==================KeyGen is finished==================")
     print("KeyGen costs: " + str(keygen_cost * 1000.0) + " ms.")
 
-    _round = 100
+    _round = 10
     pack_size = 1000
     encrypt_cost = 0
     decrypt_cost = 0
@@ -44,8 +46,7 @@ if __name__ == '__main__':
         decrypt_cost += d_ed - d_st
 
         for j in range(pack_size):
-            if pack_decrypt_text[j] != plain_text_list[j]:
-                print("Encrypt Error")
+            assert pack_decrypt_text[j] == plain_text_list[j]
 
         plain_text_list2 = []
         for j in range(pack_size):
@@ -60,8 +61,7 @@ if __name__ == '__main__':
         pack_add_decrypt_text = opt_paillier_pack_decrypt_crt(pub, prv, pack_add_cipher_text)
         
         for j in range(pack_size):
-            if pack_add_decrypt_text[j] != plain_text_list2[j] + plain_text_list[j]:
-                print("Add Error")
+            assert pack_add_decrypt_text[j] == plain_text_list2[j] + plain_text_list[j]
 
     print("=========================opt test=========================")
     encrypt_cost = 1.0 / _round * encrypt_cost;
@@ -73,3 +73,7 @@ if __name__ == '__main__':
     print("The avg addition   cost is " + str(add_cost     * 1000.0 ) + " ms.")
 
     print("========================================================")
+
+
+if __name__ == '__main__':
+    pytest.main(['-q', path.dirname(__file__)])
