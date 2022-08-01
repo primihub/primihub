@@ -48,7 +48,15 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-  
+
+    - name: pytest
+      run: |
+        cd python/primihub/tests/
+        export PYTHONPATH=../..
+        pytest -v feature_test/test_onehot.py
+        pytest -v feature_test/test_minmax_standard.py
+        pytest -v test_disxgb_en.py
+ 
     - name: bazel test
       run: |
         ./pre_build.sh
@@ -58,12 +66,13 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
+        bazel test --config=linux test_opt_paillier_c2py 
+        bazel test --config=linux test_opt_paillier_pack_c2py 
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
-
 
   
 
@@ -128,7 +137,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli :opt_paillier_c2py_test 
+        bazel build --config=linux :node :cli :test_opt_paillier_c2py 
       
   
   build-on-mac_x86_64:
@@ -149,7 +158,7 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py_test  --sandbox_debug 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :test_opt_paillier_c2py  --sandbox_debug 
       shell: bash
     - name: Release copy
       run : |

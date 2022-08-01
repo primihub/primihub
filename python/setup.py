@@ -1,4 +1,3 @@
-import glob
 import os
 import shlex
 import subprocess
@@ -6,7 +5,6 @@ import sys
 import distutils
 from distutils.sysconfig import get_python_lib
 from os import path
-from shutil import copy
 import site
 import primihub
 from setuptools import setup, find_packages
@@ -33,7 +31,6 @@ def is_pkg(line):
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-
 # class PostDevelopCommand(develop):
 #     """Post-installation for development mode."""
 
@@ -55,10 +52,13 @@ with open('requirements.txt', encoding='utf-8') as reqs:
     print("install requires: ", install_requires)
 
 
-def add_primihub_so_site():
+def solib2sitepackage(solib_path=None):
     # add ../bazel-bin to PYTHONPATH on LINUX
     print("ADD ../bazel-bin to PYTHONPATH on LINUX")
-    SO_LIB_PATH = path.abspath(path.join(path.dirname(__file__), "../bazel-bin"))  # noqa
+    if not solib_path:
+        solib_path = path.abspath(path.join(path.dirname(__file__), "../bazel-bin"))  # noqa
+    SOLIB_PATH = solib_path
+    print("SOLIB_PATH: ", SOLIB_PATH)
     print("* " * 30)
     site_packages_path = get_python_lib()
     print(site_packages_path)
@@ -66,9 +66,9 @@ def add_primihub_so_site():
     print(pth_file)
     try:
         with open(pth_file, "w") as pth:
-            print("--", SO_LIB_PATH)
-            pth.write(SO_LIB_PATH)
-        site.addsitedir(SO_LIB_PATH)
+            print("--", SOLIB_PATH)
+            pth.write(SOLIB_PATH)
+        site.addsitedir(SOLIB_PATH)
         print("sys path: ", sys.path)
     except Exception as e:
         print(e)
@@ -83,8 +83,6 @@ def compile_proto():
                         --python_out=python/primihub/client/ph_grpc \
                         --grpc_python_out=python/primihub/client/ph_grpc -I. \
                         src/primihub/protos/common.proto  \
-                        src/primihub/protos/pir.proto \
-                        src/primihub/protos/psi.proto \
                         src/primihub/protos/service.proto \
                         src/primihub/protos/worker.proto """.format(pyexe=sys.executable))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -101,7 +99,7 @@ class PostDevelopCommand(develop):
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         develop.run(self)
-        add_primihub_so_site()
+        solib2sitepackage()
         compile_proto()
 
 
@@ -111,7 +109,7 @@ class PostInstallCommand(install):
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         install.run(self)
-        add_primihub_so_site()
+        solib2sitepackage()
         compile_proto()
 
 
@@ -120,9 +118,9 @@ class ProtoCommand(distutils.cmd.Command):
 
     # `python setup.py --help` description
     description = 'compile proto'
-    user_options = [
-        ('proto', 'p', 'compile proto'),
-    ]
+    # user_options = [
+    #     ('proto', 'p', 'compile proto'),
+    # ]
 
     def initialize_options(self):
         ...
@@ -131,8 +129,34 @@ class ProtoCommand(distutils.cmd.Command):
         ...
 
     def run(self):
-        print("======= command is running =======")
+        print("======= command: compile proto is running =======")
         compile_proto()
+
+
+class AddSoLibCommand(distutils.cmd.Command):
+    """Run command: 
+        add so lib path to Python path.
+    """
+
+    # `python setup.py --help` description
+    description = 'Add so lib path to Python path'
+    user_options = [
+        ('solib-path=', 's', 'solib path'),
+    ]
+
+    def initialize_options(self):
+        self.solib_path = None
+
+    def finalize_options(self):
+        if self.solib_path is None:
+            raise Exception("Parameter --solib-path is missing")
+        if not os.path.isdir(self.solib_path):
+            raise Exception(
+                "Solib path does not exist: {0}".format(self.solib_path))
+
+    def run(self):
+        print("======= command:add solib is running =======")
+        solib2sitepackage(self.solib_path)
 
 
 setup(
@@ -164,6 +188,7 @@ setup(
         'develop': PostDevelopCommand,
         'install': PostInstallCommand,
         'proto': ProtoCommand,
+        'solib': AddSoLibCommand,
     },
     entry_points={
         # 'console_scripts': [

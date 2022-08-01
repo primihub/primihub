@@ -46,6 +46,9 @@ protected:
     int loadDatasetFromCSV(std::string &filename, int data_col,
 		           std::vector <std::string> &col_array,
 			   int64_t max_num = 0);
+
+    int loadDatasetFromTXT(std::string &filename, 
+		           std::vector <std::string> &col_array);
                            
     Params params_;
     std::shared_ptr<DatasetService> dataset_service_;

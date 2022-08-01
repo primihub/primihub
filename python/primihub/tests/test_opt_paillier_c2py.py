@@ -1,6 +1,8 @@
 from python.primihub.primitive.opt_paillier_c2py_warpper import *
 import random
 import time
+from os import path
+import pytest
 
 check_list = [0, 0, 0, 0]
 
@@ -13,7 +15,7 @@ def random_plaintext(length):
          res = -res
     return res
 
-if __name__ == '__main__':
+def test_opt_paillier_c2py():
     keygen_cost = 0
     keygen_st = time.time()
     pub, prv = opt_paillier_keygen(112)
@@ -41,8 +43,7 @@ if __name__ == '__main__':
         e_ed = time.time()
         decrypt_cost += e_ed - e_st
 
-        if not decrypt_text1 == plain_text1:
-            print("Encrypt Error")
+        assert decrypt_text1 == plain_text1
 
         plain_text2 = random_plaintext(2048)
 
@@ -57,8 +58,8 @@ if __name__ == '__main__':
         add_cost += e_ed - e_st
 
         add_decrypt_text = opt_paillier_decrypt_crt(pub, prv, add_cipher_text)
-        if not add_decrypt_text == plain_text1 + plain_text2:
-            print("Add Error")
+
+        assert add_decrypt_text == plain_text1 + plain_text2
 
         e_st = time.time()
         cons_mul_cipher_text = opt_paillier_cons_mul(pub, cipher_text1, plain_text2)
@@ -69,8 +70,8 @@ if __name__ == '__main__':
         mul_plain_res = (plain_text1 * plain_text2) % int(pub.n)
         if mul_plain_res > int(pub.half_n):
             mul_plain_res = mul_plain_res - int(pub.n)
-        if not mul_decrypt_text == mul_plain_res:
-            print("Mul Error")
+
+        assert mul_decrypt_text == mul_plain_res
         
         if plain_text1 >= 0:
             if plain_text2 >= 0:
@@ -98,3 +99,6 @@ if __name__ == '__main__':
     print("checked: " + str(check_list))
 
     print("========================================================")
+
+if __name__ == '__main__':
+    pytest.main(['-q', path.dirname(__file__)])

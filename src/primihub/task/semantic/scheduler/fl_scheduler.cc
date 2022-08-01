@@ -148,8 +148,6 @@ namespace primihub::task {
                 }
                 (*mutable_node_map)[node_id] = single_node;
                 add_vm(&single_node, party_id, 2, &nodePushTaskRequest);
-
-                (*mutable_node_map)[node_id] = single_node;
             }
         }
 

@@ -23,10 +23,11 @@ using primihub::rpc::string_array;
 using primihub::rpc::TaskType;
 
 ABSL_FLAG(std::string, server, "127.0.0.1:50050", "server address");
-ABSL_FLAG(int,
-          task_type,
-          TaskType::ACTOR_TASK,
-          "task type, 0-ACTOR_TASK, 1-PSI_TASK 2-PIR_TASK");
+
+ABSL_FLAG(int, task_type, TaskType::ACTOR_TASK,
+          "task type, 0-ACTOR_TASK, 1-PSI_TASK, 2-PIR_TASK  6-TEE_TASK");
+
+
 ABSL_FLAG(std::vector<std::string>,
           params,
           std::vector<std::string>(
@@ -38,11 +39,13 @@ ABSL_FLAG(std::vector<std::string>,
                "guestLookupTable:STRING:0:./guestlookuptable.csv",
                "predictFileName:STRING:0:./prediction.csv",
                "indicatorFileName:STRING:0:./indicator.csv"}),
+
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>,
           input_datasets,
           std::vector<std::string>({"TrainData", "TestData"}),
           "input datasets name list");
+
 ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
 ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
 
@@ -125,15 +128,19 @@ int SDKClient::SubmitTask() {
     }
 
     // Setup input datasets
-    if (task_lang == "proto") {
+    if (task_lang == "proto" && absl::GetFlag(FLAGS_task_type) != 6) {
         auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
         for (int i = 0; i < input_datasets.size(); i++) {
             pushTaskRequest.mutable_task()->add_input_datasets(
                 input_datasets[i]);
         }
-    } else {
-        // std::cerr << "Only PROTO task language support input_datsets " <<
-        // std::endl; return -1;
+
+    } 
+
+    // TEE task
+    if ( absl::GetFlag(FLAGS_task_type) == 6 ) {
+       pushTaskRequest.mutable_task()->add_input_datasets("datasets");
+
     }
 
     // TODO Generate job id and task id
