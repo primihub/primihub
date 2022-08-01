@@ -333,12 +333,17 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     LOG(ERROR) << "Error occurs during construct Node structure.";
   } else {
     LOG(INFO) << "Dump content of all node in FL task before schedule:";
+    uint32_t count = 0;
+
     for (auto &peer_with_tag : peers_with_tag) {
       auto &node = peer_with_tag.first;
+      count ++;
       LOG(INFO) << "Node content: node_id " << node.node_id() << ", role " 
                 << peer_with_tag.second << ", ip " << node.ip() << ", port " 
                 << node.port() << ", data port " << node.data_port() << ".";
     }
+
+    LOG(INFO) << "Dump finish, dump count " << count << ".";
   }
 
   return;

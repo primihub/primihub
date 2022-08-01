@@ -119,6 +119,8 @@ FLTask::~FLTask() {
     set_task_context_dataset_map_.release();
     set_task_context_func_params_.release();
     set_node_context_.release();
+    set_task_context_node_map_.release();
+
     ph_context_m.release();
     ph_exec_m.release();
 }
@@ -140,8 +142,7 @@ int FLTask::execute() {
         set_node_context_ = ph_context_m.attr("set_node_context");
 
         set_node_context_(node_context_.role, node_context_.protocol,
-                          py::cast(node_context_.datasets),
-                          this->next_peer_address_);
+                          py::cast(node_context_.datasets));
 
         set_task_context_dataset_map_ =
             ph_context_m.attr("set_task_context_dataset_map");
@@ -171,6 +172,12 @@ int FLTask::execute() {
             ph_context_m.attr("set_task_context_indicator_file");
         set_task_context_indicator_file_(this->indicator_file_path_); 
 
+        set_task_context_node_map_ = 
+            ph_context_m.attr("set_task_context_node_addr_map");
+        
+        for (auto nodeid_addr : this->node_addr_map_)
+          set_task_context_node_map_(nodeid_addr.first, nodeid_addr.second);
+
         //   LOG(INFO) << node_context_.dumps_func;
         LOG(INFO) << "🔐 After ph_context, GIL is "
                   << ((PyGILState_Check() == 1) ? "hold" : "not hold")
@@ -187,9 +194,6 @@ int FLTask::execute() {
         LOG(INFO) << "🔐  GIL is "
             << ((PyGILState_Check() == 1) ? "hold" : "not hold")
             << " now is runing " << std::endl;
-        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< begin";
-        // LOG(INFO) << node_context_.dumps_func;
-        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< end";
         LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
         // Execute python code.
         ph_exec_m.attr("execute_py")(py::bytes(node_context_.dumps_func));

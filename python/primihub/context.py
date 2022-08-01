@@ -1,8 +1,18 @@
 import functools
 import os
+import logging
 from typing import Callable
 from cloudpickle import dumps
 
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+logger = get_logger("context")
 
 class NodeContext:
     def __init__(self, role, protocol, dataset_port_map, func=None):
@@ -116,9 +126,11 @@ class TaskContext:
 Context = TaskContext()
 
 
-def set_node_context(role, protocol, datasets,  party_port):
-    print("========set node context: ", role, protocol, datasets,  party_port)
-    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
+def set_node_context(role, protocol, datasets):
+    dataset_port_map = {}
+    for dataset in datasets:
+        dataset_port_map[dataset] = "0"
+    Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
@@ -150,8 +162,9 @@ def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
 
-def set_node_addr_map(node_id, addr):
+def set_task_context_node_addr_map(node_id, addr):
     Context.node_addr_map[node_id] = addr
+    logger.info("Insert node_id {} and it's addr {} into task context.".format(node_id, addr))
 
 # For test
 
