@@ -51,46 +51,41 @@ FLTask::FLTask(const std::string& node_id,
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
-        this->node_context_.next_peer = param_map["next_peer"].value_string();
-        this->next_peer_address_ = param_map["next_peer"].value_string();
-
     } catch (std::exception& e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
     }
+
     this->node_context_.dumps_func = task_param->code();
     auto input_datasets = task_param->input_datasets();
-    for (auto& input_dataset : input_datasets) {
+    for (auto& input_dataset : input_datasets)
         this->node_context_.datasets.push_back(input_dataset);
+    
+    auto iter = task_param->node_map().find(node_id);
+    if (iter == task_param->node_map().end()) {
+      LOG(ERROR) << "Can't find Node structure with node id " << node_id << ".";
+      return;
     }
-    // get next peer address
-    auto node_it = task_param->node_map().find(node_id);
-    if (node_it == task_param->node_map().end()) {
-        LOG(ERROR) << "Failed to find node: " << node_id;
-        return;
-    }
-    auto vm_list = node_it->second.vm();
-    if (vm_list.empty()) {
-        LOG(ERROR) << "Failed to find vm list for node: " << node_id;
-        return;
+    
+    auto &vm_list = iter->second.vm();
+    for (auto &vm : vm_list) {
+      std::string full_addr = vm.next().ip() + ":" + 
+                              std::to_string(vm.next().port());
+      node_addr_map_[vm.next().name()] = full_addr;
     }
 
-    std::vector<std::string> t;
-    str_split(this->next_peer_address_, &t, ':');
+    {
+      uint32_t count = 0;
+      auto iter = node_addr_map_.begin();
 
-    for (auto& vm : vm_list) {
-        auto name = vm.next().name();
-        LOG(INFO) << "vm name is: " << name;
-        if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
-            server_ip_str = '*';
-        }
-        auto ip = vm.next().ip();
-        // auto port = vm.next().port();
-        auto port = t[1];  // get port from not context
-        // next_peer_address_ = ip + ":" + std::to_string(port);
-        this->next_peer_address_ = server_ip_str + ":" + port;
-        LOG(INFO) << "Next peer address: " << this->next_peer_address_;
-        break;
+      LOG(INFO) << "Dump node id and it's address used by FL algorithm.";
+      for (iter; iter != node_addr_map_.end(); iter ++) {
+        LOG(INFO) << "Node " << iter->first << ": [" 
+                  << iter->second << "].";
+        count ++;
+      }
+
+      LOG(INFO) << "Dump finish, dump count " << count << "."; 
     }
 
     // Set datasets meta list in context
@@ -105,7 +100,6 @@ FLTask::FLTask(const std::string& node_id,
         this->dataset_meta_map_.insert(
             std::make_pair(input_dataset, data_path));
     }
-
 
     // output file path
     this->model_file_path_ = param_map["modelFileName"].value_string();
@@ -125,6 +119,8 @@ FLTask::~FLTask() {
     set_task_context_dataset_map_.release();
     set_task_context_func_params_.release();
     set_node_context_.release();
+    set_task_context_node_map_.release();
+
     ph_context_m.release();
     ph_exec_m.release();
 }
@@ -146,8 +142,7 @@ int FLTask::execute() {
         set_node_context_ = ph_context_m.attr("set_node_context");
 
         set_node_context_(node_context_.role, node_context_.protocol,
-                          py::cast(node_context_.datasets),
-                          this->next_peer_address_);
+                          py::cast(node_context_.datasets));
 
         set_task_context_dataset_map_ =
             ph_context_m.attr("set_task_context_dataset_map");
@@ -177,6 +172,12 @@ int FLTask::execute() {
             ph_context_m.attr("set_task_context_indicator_file");
         set_task_context_indicator_file_(this->indicator_file_path_); 
 
+        set_task_context_node_map_ = 
+            ph_context_m.attr("set_task_context_node_addr_map");
+        
+        for (auto nodeid_addr : this->node_addr_map_)
+          set_task_context_node_map_(nodeid_addr.first, nodeid_addr.second);
+
         //   LOG(INFO) << node_context_.dumps_func;
         LOG(INFO) << "🔐 After ph_context, GIL is "
                   << ((PyGILState_Check() == 1) ? "hold" : "not hold")
@@ -193,9 +194,6 @@ int FLTask::execute() {
         LOG(INFO) << "🔐  GIL is "
             << ((PyGILState_Check() == 1) ? "hold" : "not hold")
             << " now is runing " << std::endl;
-        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< begin";
-        // LOG(INFO) << node_context_.dumps_func;
-        // LOG(INFO) << "<<<<<<<<<<<<<<< dump func <<<<<<<<<< end";
         LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
         // Execute python code.
         ph_exec_m.attr("execute_py")(py::bytes(node_context_.dumps_func));

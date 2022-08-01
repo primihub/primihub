@@ -71,8 +71,8 @@ void PyParser::parseTask() {
             NodeContext _node_context;
             _node_context.role = node_context_obj.attr("role").cast<std::string>();
             _node_context.protocol = node_context_obj.attr("protocol").cast<std::string>();
-            _node_context.next_peer = node_context_obj.attr("next_peer").cast<std::string>();
             _node_context.dumps_func = node_context_obj.attr("dumps_func").cast<std::string>();
+
             auto datasets = node_context_obj.attr("datasets").cast<py::list>();
             for (auto &dataset : datasets) {
                 LOG(INFO) << "Python assign dataset: " << dataset.cast<std::string>();
@@ -80,6 +80,14 @@ void PyParser::parseTask() {
                 // Datasets with role tag.
                 this->input_datasets_with_tag_.push_back(std::make_pair(dataset.cast<std::string>(), _node_context.role));
             }
+
+            auto dataset_port_map = node_context_obj.attr("dataset_port_map").cast<py::dict>();
+            for (auto ds_port : dataset_port_map) {
+              std::string dataset = ds_port.first.cast<std::string>();
+              std::string port = ds_port.second.cast<std::string>();
+              _node_context.dataset_port_map[dataset] = port; 
+            }
+
             this->nodes_context_map_[_node_context.role] = _node_context;
         }
         

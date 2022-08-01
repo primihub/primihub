@@ -33,7 +33,7 @@ typedef struct NodeContext {
     std::string next_peer;
     std::vector<std::string> datasets;
     std::string dumps_func;
-    // std::map<std::string, std::string> func_params_map;
+    std::map<std::string, std::string> dataset_port_map;
 } NodeContext;
 
 class PyParser : public LanguageParser {
@@ -51,7 +51,7 @@ class PyParser : public LanguageParser {
     std::map<std::string, NodeContext> getNodeContextMap() const {
         return nodes_context_map_;
     }
-
+    
   private:
     std::string py_code_;
     std::string procotol_;
