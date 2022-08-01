@@ -1,5 +1,15 @@
 syntax = "proto3";
-package primihub.rpc;
+package primihub.rpc.service;
+
+
+service DataService {
+    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+}
+
+service NodeContextService {
+    rpc GetNodeContext(ClientContext) returns (NodeContext);
+    
+}
 
 message NewDatasetRequest {
     string driver = 1;
@@ -12,6 +22,51 @@ message NewDatasetResponse {
     string dataset_url = 2;
 }
 
-service DataService {
-    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+message ClientContext {
+    string client_id = 1;
+    string client_ip = 2;
+    int32 client_port = 3;
+}
+
+// Notify channnel usage: task running status and result.
+message NotifyChannel {
+    string key = 1;
+    string connect_str = 2;
+}
+
+message TaskContext {
+    string node_id = 1;
+    string task_id = 2;
+    string job_id = 3;
+}
+
+message TaskStatus{
+    TaskContext task_context = 1;
+    string status = 2;  // TODO enum
+}
+
+message TaskResult {
+    TaskContext task_context = 1;
+    string result_dataset_url = 2;
+}
+
+enum DatasetRetriveType {
+    ARROW_FLIGHT = 0; 
+    HDFS_FILE = 1;
+}
+
+message DatasetRetriveChannel {
+    DatasetRetriveType retrive_type = 1;
+}
+
+// Node public certificate.
+message NodeCertficate {
+    bytes cert = 1;
+}
+
+// Node context: notify channel, dataset retrive channel, Node certificate.
+message NodeContext {
+    NotifyChannel notify_channel = 1;
+    DatasetRetriveChannel dataset_retrive_channel = 2;
+    NodeCertficate node_certficate = 3;
 }
