@@ -13,35 +13,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import sys
-from os import path
 import uuid
 import grpc
 
-sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))  # noqa
+from .client import GRPCClient
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
-class GRPCClient(object):
-    """primihub gRPC client
+class WorkerClient(GRPCClient):
+    """primihub gRPC worker client
 
 
     :param str node: Address of the node.
     :param str cert: Path of the local cert file path.
 
-    :return: A primihub gRPC client.
+    :return: A primihub gRPC worker client.
     """
 
-    def __init__(self, node: str, cert: str) -> None:
-        """Constructor
-        """
-        self.task_map = {}
-        if node is not None:
-            self.channel = grpc.insecure_channel(node)
+    # def __init__(self, node: str, cert: str) -> None:
+    #     """Constructor
+    #     """
+    #     self.task_map = {}
+    #     if node is not None:
+    #         self.channel = grpc.insecure_channel(node)
 
-        if cert is not None:
-            # TODO
-            pass
+    #     if cert is not None:
+    #         # TODO
+    #         pass
 
     def set_task_map(self,
                      task_type: common_pb2.TaskType = 0,
@@ -53,7 +51,7 @@ class GRPCClient(object):
                      input_datasets: str = None,
                      job_id: bytes = None,
                      task_id: bytes = None,
-                     channel_map: str = None, # TODO
+                     channel_map: str = None,  # TODO
                      ):
         """set task map
 
@@ -114,26 +112,40 @@ class GRPCClient(object):
     #     )
     #     return request
 
+    def set_request_data(self,
+                     intended_worker_id=b'1',
+                     task=None,
+                     sequence_number=11,
+                     client_processed_up_to=22):
+        self.request_data = {
+            "intended_worker_id": intended_worker_id,
+            "task": task,
+            "sequence_number": sequence_number,
+            "client_processed_up_to": client_processed_up_to
+        }
+
+        return self.request_data
+
     # def submit(self) -> worker_pb2.PushTaskReply:
-    def submit(self):
-        """gRPC submit
+    def submit_task(self):
+        """gRPC submit task
 
         :return:
         """
         with self.channel:
             stub = worker_pb2_grpc.VMNodeStub(self.channel)
-            request = worker_pb2.PushTaskRequest(
-                intended_worker_id=b'1',
-                task=self.task_map,
-                sequence_number=11,
-                client_processed_up_to=22
-            )
+            # request = worker_pb2.PushTaskRequest(
+            # intended_worker_id=b'1',
+            # task=self.task_map,
+            # sequence_number=11,
+            # client_processed_up_to=22
+            # )
+            request = worker_pb2.PushTaskRequest(**self.request_data)
             # print("request: ", request)
             reply = stub.SubmitTask(request)
 
             # print("-*-" * 30)
-            print("return code: %s, job id: %s" %
-                  (reply.ret_code, reply.job_id))
+            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))  # noqa
             # print("-*-" * 30)
             return reply
 

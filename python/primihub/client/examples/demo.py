@@ -20,56 +20,57 @@ from primihub.client.client import primihub_cli as cli
 
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})
-cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
+# cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
+cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
 
 from primihub import context, dataset
 
 print(ph.context.Context.__dict__)
 
 
-# ph.dataset.define("guest_dataset")
-# ph.dataset.define("label_dataset")
-# # ph.dataset.define("test_dataset")
+ph.dataset.define("guest_dataset")
+ph.dataset.define("label_dataset")
+# ph.dataset.define("test_dataset")
 
-# # define a remote method
-# @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
-# def func1(value=1):
-#     print("params: ", str(value))
+# define a remote method
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
+def func1(value=1):
+    print("params: ", str(value))
     
-#     # do something
-#     # next_peer = ph.context.Context.nodes_context["host"].next_peer
-#     # print("host next peer: ", next_peer)
-#     # ip, port = next_peer.split(":")
-#     # ios = IOService()
-#     # server = Session(ios, ip, port, "server")
-#     # channel = server.addChannel()
-#     # channel.recv()
-#     # channel.send(value)
-#     # print(channel.recv())
-#     # return value
+    # do something
+    # next_peer = ph.context.Context.nodes_context["host"].next_peer
+    # print("host next peer: ", next_peer)
+    # ip, port = next_peer.split(":")
+    # ios = IOService()
+    # server = Session(ios, ip, port, "server")
+    # channel = server.addChannel()
+    # channel.recv()
+    # channel.send(value)
+    # print(channel.recv())
+    # return value
 
-# # define a remote method
-# @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
-# def func2(value=2):
+# define a remote method
+@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
+def func2(value=2):
     
-#     print("params: ", str(value))
-#     # do something
-#     # next_peer = ph.context.Context.nodes_context["host"].next_peer
-#     # print("guest next peer: ", next_peer)
-#     # ip, port = next_peer.split(":")
-#     # ios = IOService()
-#     # client = Session(ios, ip, port, "client")
-#     # channel = client.addChannel()
-#     # channel.send(b'guest ready')
-#     # pub = channel.recv()
-#     # channel.send(b'recved pub')
-#     # return value
+    print("params: ", str(value))
+    # do something
+    # next_peer = ph.context.Context.nodes_context["host"].next_peer
+    # print("guest next peer: ", next_peer)
+    # ip, port = next_peer.split(":")
+    # ios = IOService()
+    # client = Session(ios, ip, port, "client")
+    # channel = client.addChannel()
+    # channel.send(b'guest ready')
+    # pub = channel.recv()
+    # channel.send(b'recved pub')
+    # return value
 
-# # context
-# value1 = 1
-# value2 = 2
-# cli.remote_execute((func1, value1), (func2, value2))
-# print(ph.context.Context)
-# # print(ph.context.Context.__dict__)
-# # ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
-# # map >>> node context
+# context
+value1 = 1
+value2 = 2
+cli.remote_execute((func1, value1), (func2, value2))
+print(ph.context.Context)
+# print(ph.context.Context.__dict__)
+# ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
+# map >>> node context

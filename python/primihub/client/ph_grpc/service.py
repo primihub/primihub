@@ -13,3 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import sys
+from os import path
+import uuid
+import grpc
+
+from .client import GRPCClient
+from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
+
+
+class ServerClient(GRPCClient):
+    """primihub gRPC service client
+
+
+    :param str node: Address of the node.
+    :param str cert: Path of the local cert file path.
+
+    :return: A primihub gRPC service client.
+    """
+    pass

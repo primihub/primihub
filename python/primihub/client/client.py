@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from primihub import context, dataset
+from primihub.client.ph_grpc.worker import WorkerClient
 from primihub.client.visitor import Visitor
-from primihub.client.grpc_client import GRPCClient
+# from primihub.client.grpc_client import GRPCClient
 import primihub as ph
 import uuid
 
@@ -51,15 +52,20 @@ class PrimihubClient(object):
         print(config)
         node = config.get("node", None)
         cert = config.get("cert", None)
-        self.grpc_cli = GRPCClient(node=node, cert=cert)
+        self.grpc_cli = WorkerClient(node=node, cert=cert)
         self.code = self.vistitor.visit_file()
         return self.grpc_cli
 
     def submit_task(self, code: str, job_id: str, task_id: str):
-        self.grpc_cli.set_task_map(code=code.encode('utf-8'),
-                                   job_id=bytes(str(job_id), "utf-8"),
-                                   task_id=bytes(str(task_id), "utf-8"))
-        res = self.grpc_cli.submit()
+        task_map = self.grpc_cli.set_task_map(code=code.encode('utf-8'),
+                                              job_id=bytes(str(job_id), "utf-8"),
+                                              task_id=bytes(str(task_id), "utf-8"))
+        
+        self.grpc_cli.set_request_data(intended_worker_id=b'1',
+                                       task=task_map,
+                                       sequence_number=11,
+                                       client_processed_up_to=22)
+        res = self.grpc_cli.submit_task()
         return res
 
     def remote_execute(self, *args):
