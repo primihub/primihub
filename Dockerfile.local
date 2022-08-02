@@ -1,11 +1,11 @@
 # Call this Dockerfile via the build_local.sh script
-
 FROM ubuntu:20.04
 
 ENV LANG c.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 
 ENV PYTHONUNBUFFERED=1
+
 RUN  apt-get update \
   && apt-get install -y python3.9 python3.9-dev libgmp-dev python3-pip git \
   && rm -rf /var/lib/apt/lists/*
@@ -38,7 +38,7 @@ RUN python3.9 -m pip install --upgrade pip \
   && python3.9 setup.py solib --solib-path $TARGET_PATH 
 
 
-# WORKDIR /app
+WORKDIR /app
 # ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
 # gRPC server port
