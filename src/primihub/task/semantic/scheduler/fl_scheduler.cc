@@ -179,9 +179,12 @@ void FLScheduler::add_vm(Node *node, const PushTaskRequest *pushTaskRequest) {
     VirtualMachine *vm = node->add_vm();
     EndPoint *ep_next = vm->mutable_next();
     ep_next->set_ip(node_with_tag.first.ip());
-    ep_next->set_name(node_with_tag.first.node_id());
     ep_next->set_link_type(LinkType::SERVER);
     ep_next->set_port(node_with_tag.first.data_port());
+
+    std::string ep_name =
+        node_with_tag.first.node_id() + "_" + node_with_tag.second;
+    ep_next->set_name(ep_name);
   }
 }
 

@@ -52,6 +52,9 @@ private:
   std::string model_file_path_;
   std::string host_lookup_file_path_;
   std::string guest_lookup_file_path_;
+
+  // Key is the combine of node's nodeid and role, 
+  // and value is 'ip:port'.
   std::map<std::string, std::string> node_addr_map_;
 };
 

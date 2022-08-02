@@ -91,7 +91,7 @@ class Executor:
                 
     @staticmethod
     def execute_py(dumps_func):
-        print("execute oy code.")
+        print("execute py code.")
         func_name = loads(dumps_func).__name__
         print("func name: ", func_name)
         func_params = Context.get_func_params_map().get(func_name, None)
