@@ -56,28 +56,19 @@ num_tree = 1
 max_depth = 1
 
 host_dataset_port_map = {
-    "label_dataset":"8000", 
-    "train_party_0":"7000"
+    "label_dataset":"7000"
 }
 
 guest_dataset_port_map = {
     "guest_dataset":"9000"
 }
 
-@ph.context.function(role='host', protocol='xgboost', 
-                     dataset_port_map = host_dataset_port_map)
+@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000')
 def xgb_host_logic(cry_pri="paillier"):
     logger.info("start xgb host logic...")
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
-    return
-    
-    next_peer = ""
-    ip, port = next_peer.split(":")
-    ios = IOService()
-    server = Session(ios, ip, port, "server")
-
-    channel = server.addChannel()
+    logger.info(ph.context.Context.role_nodeid_map)
 
     data = ph.dataset.read(dataset_key="label_dataset").df_data
     columns_label_data = data.columns.tolist()
@@ -88,6 +79,23 @@ def xgb_host_logic(cry_pri="paillier"):
                 logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
                 return
 
+    # Get host's ip address.
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label, "
+                     "so host party must have one, make sure it.")
+        return
+    
+    host_node = role_node_map["host"][0]
+    next_peer = node_addr_map[host_node]
+    ip, port = next_peer.split(":")
+    ios = IOService()
+    server = Session(ios, ip, port, "server")
+    channel = server.addChannel()
+    
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
@@ -201,21 +209,16 @@ def xgb_host_logic(cry_pri="paillier"):
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
-@ph.context.function(role='guest', protocol='xgboost', 
-                     dataset_port_map = guest_dataset_port_map)
+@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000')
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
     ios = IOService()
 
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
-    return
+    logger.info(ph.context.Context.role_nodeid_map)
     
-    next_peer = ""
-    ip, port = next_peer.split(":")
-    client = Session(ios, ip, port, "client")
-    channel = client.addChannel()
-
+    # Check dataset.
     data = ph.dataset.read(dataset_key="guest_dataset").df_data
     columns_label_data = data.columns.tolist()
     for index, row in data.iterrows():
@@ -224,6 +227,23 @@ def xgb_guest_logic(cry_pri="paillier"):
             if not temp.isdigit():
                 logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
                 return
+    
+    # Get host's ip address.
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label,"
+                     "so host party must have one, make sure it.")
+        return
+    
+    host_node = role_node_map["host"][0]
+    next_peer = node_addr_map[host_node]
+
+    ip, port = next_peer.split(":")
+    client = Session(ios, ip, port, "client")
+    channel = client.addChannel()
 
     dim = data.shape[0]
     dim_train = dim / 10 * 8

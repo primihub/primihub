@@ -124,6 +124,12 @@ class TaskContext:
         self.mk_output_dir(output_dir)
         print("guest lookup table: ", self.guest_lookup_file_path)
         return self.guest_lookup_file_path
+    
+    def get_role_node_map(self):
+        return self.role_nodeid_map
+
+    def get_node_addr_map(self):
+        return self.node_addr_map
 
 
 Context = TaskContext()
@@ -189,9 +195,14 @@ def reg_dataset(func):
 
 
 # Register task decorator
-def function(protocol, role, dataset_port_map):
+def function(protocol, role, datasets, port):
     def function_decorator(func):
         print("Register task:", func.__name__)
+
+        dataset_port_map = {}
+        for dataset in datasets:
+            dataset_port_map[dataset] = port
+
         Context.nodes_context[role] = NodeContext(
             role, protocol, dataset_port_map, func)
 
