@@ -40,7 +40,7 @@ def get_logger(name):
     return logger
 
 
-logger = get_logger("xgb_host")
+logger = get_logger("hetero_xgb")
 
 dataset.define("guest_dataset")
 dataset.define("label_dataset")
@@ -55,13 +55,24 @@ num_tree = 1
 # Max depth of each tree.
 max_depth = 1
 
+host_dataset_port_map = {
+    "label_dataset":"8000", 
+    "train_party_0":"7000"
+}
 
-@ph.context.function(role='host', protocol='xgboost', dataset_port_map = {"label_dataset" : "8000"})
+guest_dataset_port_map = {
+    "guest_dataset":"9000"
+}
+
+@ph.context.function(role='host', protocol='xgboost', 
+                     dataset_port_map = host_dataset_port_map)
 def xgb_host_logic(cry_pri="paillier"):
-    print("start xgb host logic...")
-    next_peer = ph.context.Context.nodes_context["host"].next_peer
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
+    logger.info("start xgb host logic...")
+    logger.info(ph.context.Context.dataset_map)
+    logger.info(ph.context.Context.node_addr_map)
+    return
+    
+    next_peer = ""
     ip, port = next_peer.split(":")
     ios = IOService()
     server = Session(ios, ip, port, "server")
@@ -190,16 +201,17 @@ def xgb_host_logic(cry_pri="paillier"):
         Classification_eva.get_result(y_true, y_pre, indicator_file_path)
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
-@ph.context.function(role='guest', protocol='xgboost', dataset_port_map = {"guest_dataset": "9000"})
+@ph.context.function(role='guest', protocol='xgboost', 
+                     dataset_port_map = guest_dataset_port_map)
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
     ios = IOService()
-    next_peer = ph.context.Context.nodes_context["guest"].next_peer
-    print(ph.context.Context.nodes_context["guest"])
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
-    print("guest next peer: ", next_peer)
 
+    logger.info(ph.context.Context.dataset_map)
+    logger.info(ph.context.Context.node_addr_map)
+    return
+    
+    next_peer = ""
     ip, port = next_peer.split(":")
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()

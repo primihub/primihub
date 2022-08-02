@@ -54,7 +54,10 @@ class TaskContext:
     func_params_map = dict()
 
     def __init__(self) -> None:
-        pass
+        self.role_nodeid_map = {}
+        self.role_nodeid_map["host"] = []
+        self.role_nodeid_map["arbiter"] = []
+        self.role_nodeid_map["guest"] = []
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -162,15 +165,16 @@ def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
 
-def set_task_context_node_addr_map(node_id, addr):
-    Context.node_addr_map[node_id] = addr
-    logger.info("Insert node_id {} and it's addr {} into task context.".format(node_id, addr))
-
-# For test
+def set_task_context_node_addr_map(node_id_with_role, addr):
+    nodeid, role = node_id_with_role.rsplit("_")
+    Context.node_addr_map[nodeid] = addr
+    Context.role_nodeid_map[role].append(nodeid)
+    logger.info("Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
+    logger.info("Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
 
 
 def set_text(role, protocol, datasets, dumps_func):
-    print("========", role, protocol, datasets, dumps_func)
+    logger.info("========", role, protocol, datasets, dumps_func)
 
 
 # Register dataset decorator
