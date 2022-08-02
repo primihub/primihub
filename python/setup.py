@@ -118,9 +118,7 @@ class ProtoCommand(distutils.cmd.Command):
 
     # `python setup.py --help` description
     description = 'compile proto'
-    # user_options = [
-    #     ('proto', 'p', 'compile proto'),
-    # ]
+    user_options = ()
 
     def initialize_options(self):
         ...
