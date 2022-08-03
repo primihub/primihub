@@ -13,16 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import sys
-from os import path
-import uuid
-import grpc
 
-from .client import GRPCClient
-from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
+from .connect import GRPCClient, GRPCConnect
+from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
 
 
-class ServerClient(GRPCClient):
+class ServiceClient(GRPCClient):
     """primihub gRPC service client
 
 
@@ -32,3 +28,31 @@ class ServerClient(GRPCClient):
     :return: A primihub gRPC service client.
     """
     pass
+
+    def set_context_request_data(self, client_id: str,
+                         client_ip: str,
+                         client_port: int):
+        self.request_data = {
+            "client_id": client_id,
+            "client_ip": client_ip,
+            "client_port": client_port
+        }
+
+        return self.request_data
+
+    def get_node_context(self, request_data):
+        """gRPC get node context
+
+        :returns: gRPC reply
+        :rtype: :obj:`server_pb2.NodeContext`
+        """
+        with self.channel:
+            stub = service_pb2_grpc.NodeContextServiceStub(self.channel)
+            request = service_pb2.ClientContext(**request_data)
+            # print("request: ", request)
+            reply = stub.GetNodeContext(request)
+
+            # print("-*-" * 30)
+            print("reply : %s" % (reply))
+            # print("-*-" * 30)
+            return reply

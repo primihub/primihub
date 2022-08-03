@@ -16,7 +16,7 @@ limitations under the License.
 import uuid
 import grpc
 
-from .client import GRPCClient
+from .connect import GRPCClient, GRPCConnect
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
@@ -30,16 +30,10 @@ class WorkerClient(GRPCClient):
     :return: A primihub gRPC worker client.
     """
 
-    # def __init__(self, node: str, cert: str) -> None:
+    # def __init__(self, connect: GRPCConnect) -> None:
     #     """Constructor
     #     """
-    #     self.task_map = {}
-    #     if node is not None:
-    #         self.channel = grpc.insecure_channel(node)
-
-    #     if cert is not None:
-    #         # TODO
-    #         pass
+    #     self.channel = connect.channel
 
     def set_task_map(self,
                      task_type: common_pb2.TaskType = 0,
@@ -112,11 +106,11 @@ class WorkerClient(GRPCClient):
     #     )
     #     return request
 
-    def set_request_data(self,
-                     intended_worker_id=b'1',
-                     task=None,
-                     sequence_number=11,
-                     client_processed_up_to=22):
+    def set_task_request_data(self,
+                              intended_worker_id=b'1',
+                              task=None,
+                              sequence_number=11,
+                              client_processed_up_to=22):
         self.request_data = {
             "intended_worker_id": intended_worker_id,
             "task": task,
@@ -127,20 +121,15 @@ class WorkerClient(GRPCClient):
         return self.request_data
 
     # def submit(self) -> worker_pb2.PushTaskReply:
-    def submit_task(self):
+    def submit_task(self, request_data: dict):
         """gRPC submit task
 
-        :return:
+        :returns: gRPC reply
+        :rtype: :obj:`worker_pb2.PushTaskReply`
         """
         with self.channel:
             stub = worker_pb2_grpc.VMNodeStub(self.channel)
-            # request = worker_pb2.PushTaskRequest(
-            # intended_worker_id=b'1',
-            # task=self.task_map,
-            # sequence_number=11,
-            # client_processed_up_to=22
-            # )
-            request = worker_pb2.PushTaskRequest(**self.request_data)
+            request = worker_pb2.PushTaskRequest(**request_data)
             # print("request: ", request)
             reply = stub.SubmitTask(request)
 

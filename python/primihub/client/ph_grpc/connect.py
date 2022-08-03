@@ -22,14 +22,14 @@ sys.path.append(here)
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
-class GRPCClient(object):
-    """primihub gRPC client
+class GRPCConnect(object):
+    """primihub gRPC connect
 
 
     :param str node: Address of the node.
     :param str cert: Path of the local cert file path.
 
-    :return: A primihub gRPC client.
+    :return: A primihub gRPC connect.
     """
 
     def __init__(self, node: str, cert: str) -> None:
@@ -42,3 +42,19 @@ class GRPCClient(object):
         if cert is not None:
             # TODO
             pass
+
+
+class GRPCClient(object):
+    """primihub gRPC client
+
+
+    :param str node: Address of the node.
+    :param str cert: Path of the local cert file path.
+
+    :return: A primihub gRPC client.
+    """
+
+    def __init__(self, connect: GRPCConnect) -> None:
+        """Constructor
+        """
+        self.channel = connect.channel
