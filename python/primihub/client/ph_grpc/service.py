@@ -18,7 +18,7 @@ from .connect import GRPCClient, GRPCConnect
 from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
 
 
-class NodeContextServiceClient(GRPCClient):
+class NodeServiceClient(GRPCClient):
     """primihub gRPC node context service client.
 
     :return: A primihub gRPC node context service client.
@@ -32,7 +32,8 @@ class NodeContextServiceClient(GRPCClient):
 
     @staticmethod
     def client_context(client_id: str, client_ip: str, client_port: int):
-        request = service_pb2.ClientContext(**{"client_id": client_id, "client_ip": client_ip, "client_port": client_port})
+        request = service_pb2.ClientContext(
+            **{"client_id": client_id, "client_ip": client_ip, "client_port": client_port})
         return request
 
     def get_node_context(self, request):
@@ -46,6 +47,34 @@ class NodeContextServiceClient(GRPCClient):
             reply = self.stub.GetNodeContext(request)
             print("reply : %s" % reply)
             return reply
+
+    def get_task_status(self, request):
+        """gRPC get task status
+
+        :returns: gRPC reply
+        :rtype: :obj:`server_pb2.TaskStatus`
+        """
+        with self.channel:
+            # request = self.client_context(**request_data)
+            status = self.stub.GetTaskStatus(request)
+            for s in status:
+                print(">>> task context: {task_context}, status is: {status}".
+                      format(task_context=s.tassk_task_context, status=s.status))
+            return status
+
+    def get_task_result(self, request):
+        """gRPC get task result
+
+        :returns: gRPC reply
+        :rtype: :obj:`server_pb2.TaskResult`
+        """
+        with self.channel:
+            # request = self.client_context(**request_data)
+            result = self.stub.GetTaskResult(request)
+            for r in result:
+                print(">>> task context: {task_context}, result_dataset_url is: {result_dataset_url}".
+                      format(task_context=r.tassk_task_context, result_dataset_url=r.result_dataset_url))
+            return result
 
 
 class DataServiceClient(GRPCClient):

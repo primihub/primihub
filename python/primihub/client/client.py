@@ -17,7 +17,7 @@ import random
 
 from primihub import context, dataset
 from primihub.client.ph_grpc.connect import GRPCConnect
-from primihub.client.ph_grpc.service import NodeContextServiceClient
+from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.client.ph_grpc.worker import WorkerClient
 from primihub.client.visitor import Visitor
 import primihub as ph
@@ -83,12 +83,12 @@ class PrimihubClient(object):
         return self.connect
 
     def get_node_context(self):
-        """get not context
+        """get node context
 
         :return: _description_
         :rtype: _type_
         """
-        client = NodeContextServiceClient(self.connect)
+        client = NodeServiceClient(self.connect)
         request = client.client_context(client_id=self.client_id,
                                         client_ip=self.client_ip,
                                         client_port=self.client_port)
@@ -139,3 +139,33 @@ class PrimihubClient(object):
         print("-*-" * 30)
         res = self.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
         return res
+
+    def get_status(self):
+        """get task status
+
+        :return: _description_
+        :rtype: _type_
+        """
+        client = NodeServiceClient(self.connect)
+        request = client.client_context(client_id=self.client_id,
+                                        client_ip=self.client_ip,
+                                        client_port=self.client_port)
+        res = client.get_task_status(request)
+        return res
+
+    def get_result(self):
+        """get task result
+
+        :return: _description_
+        :rtype: _type_
+        """
+        client = NodeServiceClient(self.connect)
+        request = client.client_context(client_id=self.client_id,
+                                        client_ip=self.client_ip,
+                                        client_port=self.client_port)
+        res = client.get_task_result(request)
+        return res
+
+    def get(self, ref_ret):
+        print("........>>>>>>>")
+        pass
