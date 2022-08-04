@@ -1,5 +1,5 @@
 syntax = "proto3";
-package primihub.rpc.service;
+package primihub.rpc;
 
 
 service DataService {
