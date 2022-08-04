@@ -58,6 +58,7 @@ class TaskContext:
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["arbiter"] = []
         self.role_nodeid_map["guest"] = []
+        self.params_map = {}
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -177,6 +178,11 @@ def set_task_context_node_addr_map(node_id_with_role, addr):
     Context.role_nodeid_map[role].append(nodeid)
     logger.info("Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
     logger.info("Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
+
+
+def set_task_context_params_map(key, value):
+    Context.params_map[key] = value
+    logger.info("Insert '{}:{}' into task context.".format(key, value))
 
 
 def set_text(role, protocol, datasets, dumps_func):

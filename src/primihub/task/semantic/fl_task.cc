@@ -102,12 +102,13 @@ FLTask::FLTask(const std::string &node_id, const TaskParam *task_param,
     this->dataset_meta_map_.insert(std::make_pair(input_dataset, data_path));
   }
 
-  // output file path
   this->model_file_path_ = param_map["modelFileName"].value_string();
   this->host_lookup_file_path_ = param_map["hostLookupTable"].value_string();
   this->guest_lookup_file_path_ = param_map["guestLookupTable"].value_string();
   this->predict_file_path_ = param_map["predictFileName"].value_string();
   this->indicator_file_path_ = param_map["indicatorFileName"].value_string();
+
+  this->params_map_["taskType"] = param_map["taskType"].value_string();
 }
 
 FLTask::~FLTask() {
@@ -121,6 +122,7 @@ FLTask::~FLTask() {
   set_task_context_func_params_.release();
   set_node_context_.release();
   set_task_context_node_map_.release();
+  set_task_context_param_map_.release();
 
   ph_context_m.release();
   ph_exec_m.release();
@@ -173,10 +175,15 @@ int FLTask::execute() {
 
     set_task_context_node_map_ =
         ph_context_m.attr("set_task_context_node_addr_map");
-
     for (auto nodeid_role_addr : this->node_addr_map_) {
       set_task_context_node_map_(nodeid_role_addr.first,
                                  nodeid_role_addr.second);
+    }
+    
+    set_task_context_param_map_ = 
+        ph_context_m.attr("set_task_context_params_map");
+    for (auto param : this->params_map_) {
+      set_task_context_param_map_(param.first, param.second); 
     }
 
     //   LOG(INFO) << node_context_.dumps_func;
