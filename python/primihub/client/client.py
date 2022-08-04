@@ -14,10 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from primihub import context, dataset
+from primihub.client.ph_grpc.connect import GRPCConnect
+from primihub.client.ph_grpc.service import ServiceClient
+from primihub.client.ph_grpc.worker import WorkerClient
 from primihub.client.visitor import Visitor
-from primihub.client.grpc_client import GRPCClient
 import primihub as ph
+import socket
 import uuid
+
+
+def get_host_ip():
+    """get host ip address
+
+    :return: ip
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+    finally:
+        s.close()
+
+    return ip
 
 
 class PrimihubClient(object):
@@ -35,6 +53,9 @@ class PrimihubClient(object):
             PrimihubClient.__first_init = True
 
         self.vistitor = Visitor()
+        self.client_id = str(uuid.uuid1())  # TODO
+        self.client_ip = get_host_ip()  # TODO
+        self.client_port = 10050  # TODO default
 
     def init(self, config):
         """Client Initialization.
@@ -51,15 +72,57 @@ class PrimihubClient(object):
         print(config)
         node = config.get("node", None)
         cert = config.get("cert", None)
-        self.grpc_cli = GRPCClient(node=node, cert=cert)
+        # connect
+        self.connect = GRPCConnect(node=node, cert=cert)
+        # get client code str
         self.code = self.vistitor.visit_file()
-        return self.grpc_cli
+        # get node context
+        self.node_context = self.get_node_context(client_id=self.client_id,
+                                                 client_ip=self.client_ip,
+                                                 client_port=self.client_port)
+
+        return self.connect
+
+    def get_node_context(self, client_id, client_ip, client_port):
+        """get not context
+
+        :param client_id: client id
+        :type client_id: _type_
+        :param client_ip: _description_
+        :type client_ip: _type_
+        :param client_port: _description_
+        :type client_port: _type_
+        :return: _description_
+        :rtype: _type_
+        """
+        client = ServiceClient(self.connect)
+        request_data = client.set_context_request_data(
+            client_id, client_ip, client_port)
+        res = client.get_node_context(request_data)
+        return res
 
     def submit_task(self, code: str, job_id: str, task_id: str):
-        self.grpc_cli.set_task_map(code=code.encode('utf-8'),
-                                   job_id=bytes(str(job_id), "utf-8"),
-                                   task_id=bytes(str(task_id), "utf-8"))
-        res = self.grpc_cli.submit()
+        """submit task
+
+        :param code: code str
+        :type code: str
+        :param job_id: job id
+        :type job_id: str
+        :param task_id: task id
+        :type task_id: str
+        :return: _description_
+        :rtype: _type_
+        """
+        client = WorkerClient(self.connect)
+        task_map = client.set_task_map(code=code.encode('utf-8'),
+                                       job_id=bytes(str(job_id), "utf-8"),
+                                       task_id=bytes(str(task_id), "utf-8"))
+
+        request_data = client.set_task_request_data(intended_worker_id=b'1',
+                                                    task=task_map,
+                                                    sequence_number=11,
+                                                    client_processed_up_to=22)
+        res = client.submit_task(request_data)
         return res
 
     def remote_execute(self, *args):

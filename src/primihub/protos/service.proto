@@ -25,7 +25,7 @@ message NewDatasetResponse {
 message ClientContext {
     string client_id = 1;
     string client_ip = 2;
-    int32 client_port = 3;
+    int32 client_port = 3; // TODO no need or from grpc server 
 }
 
 // Notify channnel usage: task running status and result.
@@ -47,7 +47,7 @@ message TaskStatus{
 
 message TaskResult {
     TaskContext task_context = 1;
-    string result_dataset_url = 2;
+    string result_dataset_url = 2; // TODO many
 }
 
 enum DatasetRetriveType {

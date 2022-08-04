@@ -79,12 +79,19 @@ def compile_proto():
     print(os.getcwd())
     os.chdir("..")
     print(os.getcwd())
-    cmd = shlex.split("""{pyexe} -m grpc_tools.protoc \
-                        --python_out=python/primihub/client/ph_grpc \
-                        --grpc_python_out=python/primihub/client/ph_grpc -I. \
+    cmd_str = """{pyexe} -m grpc_tools.protoc \
+                        --python_out={python_out} \
+                        --grpc_python_out={grpc_python_out} -I. \
                         src/primihub/protos/common.proto  \
                         src/primihub/protos/service.proto \
-                        src/primihub/protos/worker.proto """.format(pyexe=sys.executable))
+                        src/primihub/protos/worker.proto \
+                        src/primihub/protos/pir.proto \
+                        src/primihub/protos/psi.proto""".format(python_out="python/primihub/client/ph_grpc",
+                                                                grpc_python_out="python/primihub/client/ph_grpc",
+                                                                pyexe=sys.executable)
+
+    print("cmd: %s" % cmd_str)
+    cmd = shlex.split(cmd_str)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     if p.returncode != 0:
@@ -118,9 +125,7 @@ class ProtoCommand(distutils.cmd.Command):
 
     # `python setup.py --help` description
     description = 'compile proto'
-    # user_options = [
-    #     ('proto', 'p', 'compile proto'),
-    # ]
+    user_options = []
 
     def initialize_options(self):
         ...
