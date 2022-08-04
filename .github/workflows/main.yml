@@ -53,6 +53,7 @@ jobs:
       run: |
         ./pre_build.sh
         bazel build --config=linux logistic_test maxpool_test falcon_lenet_test common_test network_test
+        mkdir /data
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
         ./bazel-bin/falcon_lenet_test
@@ -85,6 +86,7 @@ jobs:
       run: |
         ./pre_build.sh 
         bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+        mkdir /data
         ./bazel-bin/common_test
         ./bazel-bin/network_test
         ./bazel-bin/logistic_test
