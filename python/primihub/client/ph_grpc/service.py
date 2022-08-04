@@ -43,7 +43,6 @@ class NodeServiceClient(GRPCClient):
         :rtype: :obj:`server_pb2.NodeContext`
         """
         with self.channel:
-            # request = self.client_context(**request_data)
             reply = self.stub.GetNodeContext(request)
             print("reply : %s" % reply)
             return reply
@@ -55,7 +54,6 @@ class NodeServiceClient(GRPCClient):
         :rtype: :obj:`server_pb2.TaskStatus`
         """
         with self.channel:
-            # request = self.client_context(**request_data)
             status = self.stub.GetTaskStatus(request)
             for s in status:
                 print(">>> task context: {task_context}, status is: {status}".
@@ -69,7 +67,6 @@ class NodeServiceClient(GRPCClient):
         :rtype: :obj:`server_pb2.TaskResult`
         """
         with self.channel:
-            # request = self.client_context(**request_data)
             result = self.stub.GetTaskResult(request)
             for r in result:
                 print(">>> task context: {task_context}, result_dataset_url is: {result_dataset_url}".
@@ -93,14 +90,13 @@ class DataServiceClient(GRPCClient):
     def new_data_request(driver: str, path: str, fid: str):
         return service_pb2.NewDatasetRequest(driver, path, fid)
 
-    def new_dataset(self, request_data):
+    def new_dataset(self, request):
         """gRPC new dataset
 
         :returns: gRPC reply
         :rtype: :obj:`server_pb2.NewDatasetResponse`
         """
         with self.channel:
-            request = self.new_data_request(**request_data)
-            reply = self.stub.GetNodeContext(request)
+            reply = self.stub.NewDataset(request)
             print("reply : %s" % reply)
             return reply

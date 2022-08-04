@@ -167,5 +167,5 @@ class PrimihubClient(object):
         return res
 
     def get(self, ref_ret):
-        print("........>>>>>>>")
+        print("........%s >>>>>>>", ref_ret)
         pass
