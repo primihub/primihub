@@ -46,7 +46,7 @@ class NotifyDelegate {
         virtual void notifyResult(const std::string &result) = 0;
 };
 
-struct TestEvent{
+struct TaskStatusEvent {
     std::string msg;
 };
 
@@ -57,6 +57,8 @@ class EventBusNotifyDelegate : public NotifyDelegate {
         ~EventBusNotifyDelegate();
         void notifyStatus(const std::string &status);
         void notifyResult(const std::string &result_dataset_url);
+        primihub::common::event_bus* getEventBusPtr() { return &event_bus_; }
+
     private:
         primihub::common::event_bus event_bus_;
 };
@@ -65,8 +67,8 @@ class NotifyServer;
 
 class NotifyServerSubscriber {
     public:
-        NotifyServerSubscriber(const rpc::TaskContext &task_context, 
-                               const std::string &topic);
+        explicit NotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server): notify_server_(notify_server) {}
+        ~NotifyServerSubscriber() {}
         virtual void subscribe(const std::string &topic, const std::string &server_addr) = 0;
         virtual void unsubscribe(const std::string &topic, const std::string &server_addr) = 0;
     protected:
@@ -84,6 +86,9 @@ class NotifyServer {
         virtual int RegClientContext(const rpc::ClientContext &client_context) = 0;
         // 4. client notification implement
         virtual int notifyProcess() = 0;
+        // Event handlers
+        virtual void on_task_status_event(const primihub::rpc::TaskStatus &e) = 0;
+        virtual void on_task_result_event(const primihub::rpc::TaskResult &e) = 0;
 
     protected:
         // Running task context list
@@ -96,11 +101,16 @@ class NotifyServer {
 
 class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
     public:
-        explicit EventBusNotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server);
+        explicit EventBusNotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server,
+                                                primihub::common::event_bus *event_bus_ptr);
         ~EventBusNotifyServerSubscriber();
-        void subscribe(const std::string &topic, const std::string &server_addr);
-        void unsubscribe(const std::string &topic, const std::string &server_addr);
-    
+        void subscribe(const std::string &topic);
+        void unsubscribe(const std::string &topic);
+        
+    private:
+        primihub::common::event_bus *event_bus_ptr_; 
+        primihub::common::handler_registration task_stauts_reg_, task_result_reg_;
+
 };
 
 
@@ -112,9 +122,11 @@ class GRPCNotifyServer : public NotifyServer {
         int SubscribeTaskNotify(const rpc::TaskContext &task_context);
         int RegClientContext(const rpc::ClientContext &client_context);
         int notifyProcess();
+    
     private:
         std::string channel_id_;
         std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_;
+        // TODO task context -> grpc client map
 };
 
 

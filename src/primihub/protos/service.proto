@@ -6,9 +6,10 @@ service DataService {
     rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
 }
 
-service NodeContextService {
+service NodeService {
     rpc GetNodeContext(ClientContext) returns (NodeContext);
-    
+    rpc GetTaskStatus(ClientContext) returns (stream TaskStatus);
+    rpc GetTaskResult(ClientContext) returns (stream TaskResult);
 }
 
 message NewDatasetRequest {
