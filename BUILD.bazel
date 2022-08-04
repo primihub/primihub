@@ -141,6 +141,9 @@ cc_library(
             "src/primihub/common/type/fixed_point.h",
             "src/primihub/common/type/matrix.h",
             "src/primihub/common/type/matrix_view.h",
+            "src/primihub/common/eventbus/eventbus.hpp",
+            "src/primihub/common/eventbus/function_traits.hpp",
+
     ]),
     textual_hdrs = [
               "src/primihub/common/gsl/span",
@@ -762,7 +765,6 @@ cc_library(
 )
 
 
-
 cc_library(
     name = "dataset_service",
     srcs = [
@@ -796,6 +798,30 @@ cc_library(
         ":data_store_lib",
         ":util_lib",
         "service_base",
+    ],
+    linkstatic = True,
+    visibility = ["//visibility:public"],   
+)
+
+
+cc_library(
+    name = "notify_service",
+    srcs = [
+            "src/primihub/service/notify/model.cc",
+            "src/primihub/service/notify/service.cc",
+    ],
+    hdrs = [
+            "src/primihub/service/notify/model.h",
+            "src/primihub/service/notify/service.h",
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_glog_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        "@boost//:outcome",
+        ":service_proto",
+        ":common_lib",
+        ":service_base",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],   
