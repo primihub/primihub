@@ -13,9 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import random
+
 from primihub import context, dataset
 from primihub.client.ph_grpc.connect import GRPCConnect
-from primihub.client.ph_grpc.service import ServiceClient
+from primihub.client.ph_grpc.service import NodeContextServiceClient
 from primihub.client.ph_grpc.worker import WorkerClient
 from primihub.client.visitor import Visitor
 import primihub as ph
@@ -49,10 +51,11 @@ class PrimihubClient(object):
         return cls.__instance
 
     def __init__(self, *args, **kwargs) -> None:
+        self.code = None
         if not self.__first_init:
             PrimihubClient.__first_init = True
 
-        self.vistitor = Visitor()
+        self.visitor = Visitor()
         self.client_id = str(uuid.uuid1())  # TODO
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
@@ -63,8 +66,6 @@ class PrimihubClient(object):
         config: `dict` [`str`]
         The keys are names of `node` and `cert`.
 
-
-        # >>> from primihub import cli
         >>> from primihub.client import primihub_cli as cli
         >>> cli.init(config={"node": "node_address", "cert": "cert_file_path"})
         """
@@ -75,30 +76,23 @@ class PrimihubClient(object):
         # connect
         self.connect = GRPCConnect(node=node, cert=cert)
         # get client code str
-        self.code = self.vistitor.visit_file()
+        self.code = self.visitor.visit_file()
         # get node context
-        self.node_context = self.get_node_context(client_id=self.client_id,
-                                                 client_ip=self.client_ip,
-                                                 client_port=self.client_port)
+        # self.node_context = self.get_node_context() # TODO
 
         return self.connect
 
-    def get_node_context(self, client_id, client_ip, client_port):
+    def get_node_context(self):
         """get not context
 
-        :param client_id: client id
-        :type client_id: _type_
-        :param client_ip: _description_
-        :type client_ip: _type_
-        :param client_port: _description_
-        :type client_port: _type_
         :return: _description_
         :rtype: _type_
         """
-        client = ServiceClient(self.connect)
-        request_data = client.set_context_request_data(
-            client_id, client_ip, client_port)
-        res = client.get_node_context(request_data)
+        client = NodeContextServiceClient(self.connect)
+        request = client.client_context(client_id=self.client_id,
+                                        client_ip=self.client_ip,
+                                        client_port=self.client_port)
+        res = client.get_node_context(request)
         return res
 
     def submit_task(self, code: str, job_id: str, task_id: str):
@@ -118,11 +112,11 @@ class PrimihubClient(object):
                                        job_id=bytes(str(job_id), "utf-8"),
                                        task_id=bytes(str(task_id), "utf-8"))
 
-        request_data = client.set_task_request_data(intended_worker_id=b'1',
-                                                    task=task_map,
-                                                    sequence_number=11,
-                                                    client_processed_up_to=22)
-        res = client.submit_task(request_data)
+        request = client.push_task_request(intended_worker_id=b'1',
+                                           task=task_map,
+                                           sequence_number=random.randint(0, 9999),
+                                           client_processed_up_to=random.randint(0, 9999))
+        res = client.submit_task(request)
         return res
 
     def remote_execute(self, *args):
@@ -136,18 +130,12 @@ class PrimihubClient(object):
             params = arg[1:]
             func_params_map[func.__name__] = params
 
-        # print(func_params_map)
-
-        self.code = self.vistitor.trans_remote_execute(self.code)
+        self.code = self.visitor.trans_remote_execute(self.code)
         ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
         print("-*-" * 30)
         print("Have a cup of coffee, it will take a lot of time here.")
         print("-*-" * 30)
-        res = self.submit_task(self.code, uuid.uuid1(), uuid.uuid1())
+        res = self.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
         return res
-
-
-# alias
-primihub_cli = PrimihubClient()

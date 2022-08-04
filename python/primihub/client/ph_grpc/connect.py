@@ -15,6 +15,7 @@ limitations under the License.
 """
 import sys
 from os import path
+
 import grpc
 
 here = path.abspath(path.join(path.dirname(__file__), "."))
@@ -24,7 +25,6 @@ from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 class GRPCConnect(object):
     """primihub gRPC connect
-
 
     :param str node: Address of the node.
     :param str cert: Path of the local cert file path.
@@ -46,10 +46,6 @@ class GRPCConnect(object):
 
 class GRPCClient(object):
     """primihub gRPC client
-
-
-    :param str node: Address of the node.
-    :param str cert: Path of the local cert file path.
 
     :return: A primihub gRPC client.
     """
