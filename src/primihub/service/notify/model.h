@@ -17,6 +17,14 @@
 #ifndef SRC_PRIMIHUB_SERVICE_NOTIFY_MODEL_H_
 #define SRC_PRIMIHUB_SERVICE_NOTIFY_MODEL_H_
 
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+
+#include <grpc/support/log.h>
+#include <grpcpp/grpcpp.h>
+
 #include "src/primihub/common/eventbus/eventbus.hpp"
 #include "src/primihub/protos/service.grpc.pb.h"
 
@@ -31,10 +39,16 @@
                                                               |--------------------> |NotifyServer Implemention 2| ------------> |Register Client 2|
                                                                                      ----------------------------                ------------------
 */
-
+using grpc::Server;
+using grpc::ServerAsyncResponseWriter;
+using grpc::ServerBuilder;
+using grpc::ServerCompletionQueue;
+using grpc::ServerContext;
+using grpc::Status;
 using primihub::rpc::ClientContext;
 using primihub::rpc::TaskContext;
 using primihub::rpc::NodeContext;
+using primihub::rpc::NodeService;
 using primihub::common::event_bus;
 
 namespace primihub::service {
@@ -79,16 +93,16 @@ class NotifyServerSubscriber {
 class NotifyServer {
     public:
         // 1. task context register
-        virtual int RegTaskContext(const rpc::TaskContext &task_context) = 0;
+        virtual int regTaskContext(const rpc::TaskContext &task_context) = 0;
         // 2. subscribe task notify use task context id
-        virtual int SubscribeTaskNotify(const rpc::TaskContext &task_context) = 0;
+        virtual int subscribeTaskNotify(const rpc::TaskContext &task_context) = 0;
         // 3. client context register
-        virtual int RegClientContext(const rpc::ClientContext &client_context) = 0;
+        virtual int regClientContext(const rpc::ClientContext &client_context) = 0;
         // 4. client notification implement
         virtual int notifyProcess() = 0;
         // Event handlers
-        virtual void on_task_status_event(const primihub::rpc::TaskStatus &e) = 0;
-        virtual void on_task_result_event(const primihub::rpc::TaskResult &e) = 0;
+        virtual void onTaskStatusEvent(const primihub::rpc::TaskStatus &e) = 0;
+        virtual void onTaskResultEvent(const primihub::rpc::TaskResult &e) = 0;
 
     protected:
         // Running task context list
@@ -104,8 +118,9 @@ class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
         explicit EventBusNotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server,
                                                 primihub::common::event_bus *event_bus_ptr);
         ~EventBusNotifyServerSubscriber();
-        void subscribe(const std::string &topic);
-        void unsubscribe(const std::string &topic);
+        void subscribe(const std::string &topic) {};
+        void unsubscribe(const std::string &topic) {};
+        
         
     private:
         primihub::common::event_bus *event_bus_ptr_; 
@@ -114,19 +129,107 @@ class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
 };
 
 
-class GRPCNotifyServer : public NotifyServer {
+////////////////////////////////GRPC Notification Server & client session impolemetion ///////////////////////////////////////////////////////
+
+class GRPCClientSession;
+
+class GRPCNotifyServer final : public NotifyServer  {
     public:
-        explicit GRPCNotifyServer(const std::string &channel_id);
+        GRPCNotifyServer() {};
         ~GRPCNotifyServer();
-        int RegTaskContext(const rpc::TaskContext &task_context);
-        int SubscribeTaskNotify(const rpc::TaskContext &task_context);
-        int RegClientContext(const rpc::ClientContext &client_context);
+
+        int regTaskContext(const rpc::TaskContext &task_context);
+        int subscribeTaskNotify(const rpc::TaskContext &task_context);
+        int regClientContext(const rpc::ClientContext &client_context);
         int notifyProcess();
+        
+        // Event handlers
+        void onTaskStatusEvent(const primihub::rpc::TaskStatus &e);
+        void onTaskResultEvent(const primihub::rpc::TaskResult &e);
+
+        // gRPC methods
+        bool init(const std::string &server);
+        void run();
+        void stop(); 
+        std::shared_ptr<GRPCClientSession> addSession();
+        void removeSession(uint64_t sessionId);
+        std::shared_ptr<GRPCClientSession> getSession(uint64_t sessionId);
+
     
     private:
-        std::string channel_id_;
         std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_;
         // TODO task context -> grpc client map
+      
+        // gRPC members
+        std::atomic_bool running_{false};
+        std::atomic_uint64_t session_id_allocator_{0};
+
+        std::unique_ptr<::grpc::Server> server_{};
+        NodeService::AsyncService node_async_service_{};
+
+        // subscribe_greeting
+        std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue_call_{};
+        std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue_notification_{};
+        // better choice for production environment: boost::shared_mutex or std::shared_mutex(since C++17)
+        mutable std::shared_mutex mutex_sessions_{};
+        std::unordered_map<uint64_t /*session id*/, std::shared_ptr<GreetingSession>> sessions_{};
+
+        
+
+};
+
+#include <iostream>
+
+#define GRPC_NOTIFY_EVENT_MASK 0x3u
+#define GRPC_NOTIFY_EVENT_BIT_LENGTH 2u
+
+enum GrpcNotifyEvent {
+    GRPC_NOTIFY_EVENT_CONNECTED = 0,
+    GRPC_NOTIFY_EVENT_READ_DONE = 1,
+    GRPC_NOTIFY_EVENT_WRITE_DONE = 2,
+    GRPC_NOTIFY_EVENT_FINISHED = 3
+};
+
+std::ostream& operator<<(std::ostream& os, GrpcNotifyEvent event);
+
+enum class GrpcClientSessionStatus { 
+    WAIT_CONNECT,
+    READY_TO_WRITE,
+    WAIT_WRITE_DONE, 
+    FINISHED 
+};
+
+std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus);
+
+class GRPCClientSession {
+    public:
+        explicit GRPCClientSession(uint64_t sessionId) : session_id_(sessionId) {}
+        
+        bool init();
+
+        void process(GrpcEvent event);
+
+        void reply();
+
+        void finish();
+
+    public:
+        const uint64_t session_id_{0}; // client id?
+        
+        std::mutex mutex_{};
+        GrpcClientSessionStatus status_{GrpcClientSessionStatus::WAIT_CONNECT};
+
+        ::grpc::ServerContext server_context_{};
+
+        ::grpc::ServerAsyncReaderWriter<primihub::rpc::NodeEventReply, primihub::rpc::ClientContext>
+            subscribe_stream{&server_context_};
+
+        primihub::rpc::ClientContext request_{};
+
+        std::string name_{};
+        std::deque<std::shared_ptr<primihub::rpc::NodeEventReply>> message_queue_{};
+        Performance performance_{};
+        uint64_t reply_times_{0};
 };
 
 

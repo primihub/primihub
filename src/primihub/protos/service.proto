@@ -7,9 +7,22 @@ service DataService {
 }
 
 service NodeService {
-    rpc GetNodeContext(ClientContext) returns (NodeContext);
-    rpc GetTaskStatus(ClientContext) returns (stream TaskStatus);
-    rpc GetTaskResult(ClientContext) returns (stream TaskResult);
+    rpc GetNodeEvent(ClientContext) returns (stream NodeEventReply);
+}
+
+enum NodeEventType {
+    NODE_EVENT_TYPE_NODE_CONTEXT = 0;
+    NODE_EVENT_TYPE_TASK_STATUS = 1;
+    NODE_EVENT_TYPE_TASK_RESULT = 2;
+}
+
+message NodeEventReply {
+    NodeEventType event_type = 1;
+    oneof node_event {
+        NodeContext node_context = 2;
+        TaskStatus task_status = 3;
+        TaskResult task_result = 4;
+    }
 }
 
 message NewDatasetRequest {
