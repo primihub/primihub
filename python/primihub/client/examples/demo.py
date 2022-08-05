@@ -15,8 +15,7 @@ limitations under the License.
 """
 
 import primihub as ph
-# from primihub.channel.zmq_channel import IOService, Session
-from primihub.client.client import primihub_cli as cli
+from primihub.client import primihub_cli as cli
 
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})
@@ -27,16 +26,17 @@ from primihub import context, dataset
 
 print(ph.context.Context.__dict__)
 
-
 ph.dataset.define("guest_dataset")
 ph.dataset.define("label_dataset")
+
+
 # ph.dataset.define("test_dataset")
 
 # define a remote method
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
 def func1(value=1):
     print("params: ", str(value))
-    
+
     # do something
     # next_peer = ph.context.Context.nodes_context["host"].next_peer
     # print("host next peer: ", next_peer)
@@ -49,10 +49,10 @@ def func1(value=1):
     # print(channel.recv())
     # return value
 
+
 # define a remote method
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
 def func2(value=2):
-    
     print("params: ", str(value))
     # do something
     # next_peer = ph.context.Context.nodes_context["host"].next_peer
@@ -66,6 +66,7 @@ def func2(value=2):
     # channel.send(b'recved pub')
     # return value
 
+
 # context
 value1 = 1
 value2 = 2
@@ -74,3 +75,7 @@ print(ph.context.Context)
 # print(ph.context.Context.__dict__)
 # ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
 # map >>> node context
+
+cli.get_status()
+cli.get_result()
+cli.get()
