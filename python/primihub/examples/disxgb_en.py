@@ -64,7 +64,7 @@ guest_dataset_port_map = {
 }
 
 @ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000')
-def xgb_host_logic(cry_pri="paillier"):
+def xgb_host_logic(cry_pri="paillier", eva_type="regression"):
     logger.info("start xgb host logic...")
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
@@ -174,7 +174,12 @@ def xgb_host_logic(cry_pri="paillier"):
         y_train_true = Y
         Y_true = {"train":y_train_true,"test":y_true}
         Y_pre = {"train":y_train_pre,"test":y_pre}
-        Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        if eva_type == 'regression':
+            Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        else:
+            return
 
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
@@ -206,7 +211,12 @@ def xgb_host_logic(cry_pri="paillier"):
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
-        Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+        if eva_type == 'regression':
+            Regression_eva.get_result(y_true, y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+        else:
+            return
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000')
