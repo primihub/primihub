@@ -132,6 +132,16 @@ class TaskContext:
     def get_node_addr_map(self):
         return self.node_addr_map
 
+    def clean_content(self):
+        self.role_nodeid_map.clear()
+        self.role_nodeid_map["host"] = []
+        self.role_nodeid_map["guest"] = []
+        self.role_nodeid_map["arbiter"] = []
+
+        self.node_addr_map.clear()
+        self.params_map.clear()
+
+
 
 Context = TaskContext()
 
