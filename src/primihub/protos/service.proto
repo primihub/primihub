@@ -7,7 +7,7 @@ service DataService {
 }
 
 service NodeService {
-    rpc GetNodeEvent(ClientContext) returns (stream NodeEventReply);
+    rpc SubscribeNodeEvent(ClientContext) returns (stream NodeEventReply);
 }
 
 enum NodeEventType {
@@ -80,7 +80,8 @@ message NodeCertficate {
 
 // Node context: notify channel, dataset retrive channel, Node certificate.
 message NodeContext {
-    NotifyChannel notify_channel = 1;
-    DatasetRetriveChannel dataset_retrive_channel = 2;
-    NodeCertficate node_certficate = 3;
+    int64 session_id = 1;
+    NotifyChannel notify_channel = 2;
+    DatasetRetriveChannel dataset_retrive_channel = 3;
+    NodeCertficate node_certficate = 4;
 }
