@@ -56,7 +56,7 @@ num_tree = 1
 max_depth = 1
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000')
+@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000', task_type="regression")
 def xgb_host_logic(cry_pri="paillier"):
     logger.info("start xgb host logic...")
     logger.info(ph.context.Context.dataset_map)
@@ -228,7 +228,7 @@ def xgb_host_logic(cry_pri="paillier"):
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000')
+@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
     ios = IOService()
