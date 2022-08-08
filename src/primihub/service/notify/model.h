@@ -74,48 +74,63 @@ struct TaskResultEvent {
 };
 
 
-class EventBusNotifyDelegate : public NotifyDelegate {
+class EventBusNotifyDelegate {
     public:
-    // TODO change to sigleton ?
-        explicit EventBusNotifyDelegate(const rpc::TaskContext &task_context);
-        ~EventBusNotifyDelegate();
+        
+        EventBusNotifyDelegate(const EventBusNotifyDelegate&) = delete;
+        EventBusNotifyDelegate(EventBusNotifyDelegate&&) = delete;
+        EventBusNotifyDelegate &operator=(const EventBusNotifyDelegate &) = delete;
+        EventBusNotifyDelegate &operator=(EventBusNotifyDelegate &&) = delete;
+
+        static EventBusNotifyDelegate &getInstance() {
+            static EventBusNotifyDelegate kSingleInstance;
+            return kSingleInstance;
+        }
+
         void notifyStatus(const std::string task_id, const std::string &status);
         void notifyResult(const std::string task_id, const std::string &result_dataset_url);
         primihub::common::event_bus* getEventBusPtr() { return &event_bus_; }
-        
-
+    
     private:
+        EventBusNotifyDelegate() = default;
+        virtual ~EventBusNotifyDelegate() = default;
+
         primihub::common::event_bus event_bus_;
 };
 
 class NotifyServer;
+// class GRPCNotifyServer;
 
 class NotifyServerSubscriber {
     public:
-        explicit NotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server): notify_server_(notify_server) {}
+        NotifyServerSubscriber(NotifyServer& notify_server) {
+             notify_server_ptr= &notify_server;
+        }
         ~NotifyServerSubscriber() {}
-        virtual void subscribe(const std::string &topic, const std::string &server_addr) = 0;
-        virtual void unsubscribe(const std::string &topic, const std::string &server_addr) = 0;
+        virtual void subscribe(const std::string &topic) = 0;
+        virtual void unsubscribe(const std::string &topic) = 0;
     protected:
-        std::shared_ptr<NotifyServer> notify_server_;
+        NotifyServer* notify_server_ptr;
 };
 
 
 class NotifyServer {
     public:
         // 1. task context register
-        virtual int regTaskContext(const rpc::TaskContext &task_context) = 0;
-        // 2. subscribe task notify use task context id
-        virtual int subscribeTaskNotify(const rpc::TaskContext &task_context) = 0;
-        // 3. client context register
-        virtual int regClientContext(const rpc::ClientContext &client_context) = 0;
-        // 4. client notification implement
-        virtual int notifyProcess() = 0;
+        // virtual int regTaskContext(const rpc::TaskContext &task_context) = 0;
+        // // 2. subscribe task notify use task context id
+        // virtual int subscribeTaskNotify(const rpc::TaskContext &task_context) = 0;
+        // // 3. client context register
+        // virtual int regClientContext(const rpc::ClientContext &client_context) = 0;
+        // // 4. client notification implement
+        // virtual int notifyProcess() = 0;
         // Event handlers
         virtual void onTaskStatusEvent(const TaskStatusEvent &e) = 0;
         virtual void onTaskResultEvent(const TaskResultEvent &e) = 0;
 
     protected:
+        NotifyServer() = default;
+        virtual ~NotifyServer() = default;
         // Running task context list
         std::map<std::string, TaskContext> task_context_map_;
         // client context list
@@ -126,14 +141,17 @@ class NotifyServer {
         std::string node_id_;
 };
 
+
+
 class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
     public:
-        explicit EventBusNotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server,
+        explicit EventBusNotifyServerSubscriber(NotifyServer& notify_server,
                                                 primihub::common::event_bus *event_bus_ptr);
         ~EventBusNotifyServerSubscriber();
+
+        // TODO not implement yet
         void subscribe(const std::string &topic) {};
         void unsubscribe(const std::string &topic) {};
-        
         
     private:
         primihub::common::event_bus *event_bus_ptr_; 
@@ -146,7 +164,7 @@ class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
 
 class GRPCClientSession;
 
-class GRPCNotifyServer final : public NotifyServer  {
+class GRPCNotifyServer : public NotifyServer {
     public:
         GRPCNotifyServer(const GRPCNotifyServer&) = delete;
         GRPCNotifyServer(GRPCNotifyServer&&) = delete;
@@ -159,10 +177,10 @@ class GRPCNotifyServer final : public NotifyServer  {
             return kSingleInstance;
         }
 
-        int regTaskContext(const rpc::TaskContext &task_context);
-        int subscribeTaskNotify(const rpc::TaskContext &task_context);
-        int regClientContext(const rpc::ClientContext &client_context);
-        int notifyProcess();
+        // int regTaskContext(const rpc::TaskContext &task_context) {return 0};
+        // int subscribeTaskNotify(const rpc::TaskContext &task_context) {return 0};
+        // int regClientContext(const rpc::ClientContext &client_context) {return 0};
+        // int notifyProcess() {return 0};;
         
         // Event handlers
         void onTaskStatusEvent(const TaskStatusEvent &e);
@@ -194,21 +212,16 @@ class GRPCNotifyServer final : public NotifyServer  {
         std::unordered_map<uint64_t /*session id*/, std::shared_ptr<GRPCClientSession>> sessions_{};
     
     private:
-        GRPCNotifyServer() = default;
-        virtual ~GRPCNotifyServer() = default;
-
-        std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_;  // TODO init
+        GRPCNotifyServer() {};
+        ~GRPCNotifyServer() {};
+        std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_; 
         // TODO task context -> grpc client map
         // std::map<std::string /*task id*/, Task> tasks_; //TODO new/delte task
         // TODO  add item when client submit new task
         mutable std::shared_mutex mutex_task_sessions_{};
         std::unordered_map<std::string /*task id*/, std::shared_ptr<GRPCClientSession>> task_sessions_;
-
-      
-    
-
+        std::string node_id_;
         
-
 };
 
 #include <iostream>

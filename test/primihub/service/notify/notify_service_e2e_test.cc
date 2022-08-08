@@ -14,29 +14,32 @@
  limitations under the License.
  */
 
-#ifndef SRC_PRIMIHUB_SERVICE_NOTIFY_SERVICE_H_
-#define SRC_PRIMIHUB_SERVICE_NOTIFY_SERVICE_H_
+#include "src/primihub/service/notify/service.h"
 
-#include "src/primihub/service/notify/model.h"
+using primihub::service::NotifyService;
+using primihub::service::NotifyServer;
 
-namespace primihub::service {
+NotifyService *notify_service_ptr;
 
-class NotifyService {
-  public:
-    NotifyService();
-    ~NotifyService();
+void handler(int sig) {
+    std::cout << "get signal: " << sig << std::endl;
+    // GreetingServer::getInstance().stop();
+    delete notify_service_ptr;
+}
 
-    // 1. TODO create notify server list by config file.
+
+int main(int argc, const char **argv) {
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
+
+    notify_service_ptr = new NotifyService();
+    notify_service_ptr->run();
     
-    void run();
 
-  private:
+    // TODO stdin read to simulate task stauts and result.
     
-    void init();
 
-    // NotifyServer* notify_svr_;
-};
+    return 0;
+}
 
-} // namespace primihub::service
 
-#endif // SRC_PRIMIHUB_SERVICE_NOTIFY_SERVICE_H_

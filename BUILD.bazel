@@ -809,10 +809,15 @@ cc_library(
     srcs = [
             "src/primihub/service/notify/model.cc",
             "src/primihub/service/notify/service.cc",
+            "src/primihub/service/notify/model.h",
+            "src/primihub/service/notify/service.h",
     ],
     hdrs = [
             "src/primihub/service/notify/model.h",
             "src/primihub/service/notify/service.h",
+    ],
+    copts = C_OPT + [
+        "--std=c++17",
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -961,6 +966,23 @@ cc_test(
         "@openssl",
         ":dataset_service",
         ":p2p_lib"
+    ],
+)
+
+cc_binary(
+    name = "notify_service_test",
+    srcs = [
+        "test/primihub/service/notify/notify_service_e2e_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":notify_service",
     ],
 )
 

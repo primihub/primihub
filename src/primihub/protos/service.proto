@@ -80,7 +80,7 @@ message NodeCertficate {
 
 // Node context: notify channel, dataset retrive channel, Node certificate.
 message NodeContext {
-    int64 session_id = 1;
+    int64 session_id = 1; 
     NotifyChannel notify_channel = 2;
     DatasetRetriveChannel dataset_retrive_channel = 3;
     NodeCertficate node_certficate = 4;

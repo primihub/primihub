@@ -24,9 +24,7 @@ using primihub::rpc::NodeEventType;
 
 
 //////////////////////////////EventBusNotifyDelegate/////////////////////////////////////////////////
-EventBusNotifyDelegate::EventBusNotifyDelegate(const rpc::TaskContext &task_context) {
-    
-}
+
 
 void EventBusNotifyDelegate::notifyStatus(const std::string task_id, const std::string &status) {
     // TODO send status to event bus.
@@ -41,13 +39,13 @@ void EventBusNotifyDelegate::notifyResult(const std::string task_id, const std::
 
 /////////////////////////////////////EventBusNotifyServerSubscriber//////////////////////////////////////////
 
-EventBusNotifyServerSubscriber::EventBusNotifyServerSubscriber(const std::shared_ptr<NotifyServer> &notify_server,
+EventBusNotifyServerSubscriber::EventBusNotifyServerSubscriber(NotifyServer& notify_server,
                                                             primihub::common::event_bus *event_bus_ptr)
 : NotifyServerSubscriber(notify_server), event_bus_ptr_(event_bus_ptr),
   task_stauts_reg_(std::move(event_bus_ptr_->register_handler<TaskStatusEvent>(
-        notify_server_.get(), &NotifyServer::onTaskStatusEvent))),
+        notify_server_ptr, &NotifyServer::onTaskStatusEvent))),
    task_result_reg_(std::move(event_bus_ptr_->register_handler<TaskResultEvent>(
-        notify_server_.get(), &NotifyServer::onTaskResultEvent))) {
+        notify_server_ptr, &NotifyServer::onTaskResultEvent))) {
 
 } 
 
@@ -103,6 +101,7 @@ void GRPCNotifyServer::onTaskResultEvent(const TaskResultEvent &e) {
 
 bool GRPCNotifyServer::init(const std::string &server, 
     const std::shared_ptr<NotifyServerSubscriber> &notify_server_subscriber) {
+    this->notify_server_subscriber_ = notify_server_subscriber;
     ::grpc::ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
     builder.AddListeningPort(server, grpc::InsecureServerCredentials());
@@ -115,7 +114,7 @@ bool GRPCNotifyServer::init(const std::string &server,
     completion_queue_notification_ = builder.AddCompletionQueue();
     // Finally assemble the server.
     server_ = builder.BuildAndStart();
-    LOG(INFO) << "NodeService listening on: " << server;
+    LOG(INFO) << "GRPCNotifyServer listening on: " << server;
     return true;
 }
 
