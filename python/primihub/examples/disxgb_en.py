@@ -55,13 +55,6 @@ num_tree = 1
 # Max depth of each tree.
 max_depth = 1
 
-host_dataset_port_map = {
-    "label_dataset":"7000"
-}
-
-guest_dataset_port_map = {
-    "guest_dataset":"9000"
-}
 
 @ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000')
 def xgb_host_logic(cry_pri="paillier"):
@@ -69,6 +62,20 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
     logger.info(ph.context.Context.role_nodeid_map)
+    logger.info(ph.context.Context.params_map)
+
+    eva_type = ph.context.Context.params_map.get("taskType", None)
+    if eva_type is None:
+        logger.warn(
+            "taskType is not specified, set to default value 'regression'.")
+        eva_type = "regression"
+
+    eva_type = eva_type.lower()
+    if eva_type != "classification" and eva_type != "regression":
+        logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
+        return
+
+    logger.info("Current task type is {}.".format(eva_type))
 
     data = ph.dataset.read(dataset_key="label_dataset").df_data
     columns_label_data = data.columns.tolist()
@@ -76,7 +83,8 @@ def xgb_host_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = str(row[name])
             if not temp.isdigit():
-                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                logger.error(
+                    "Find illegal string '{}', it's not a digit string.".format(temp))
                 return
 
     # Get host's ip address.
@@ -84,18 +92,19 @@ def xgb_host_logic(cry_pri="paillier"):
     node_addr_map = ph.context.Context.get_node_addr_map()
 
     if len(role_node_map["host"]) != 1:
-        logger.error("Current node of host party: {}".format(role_node_map["host"]))
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
         logger.error("In hetero XGB, only dataset of host party has label, "
                      "so host party must have one, make sure it.")
         return
-    
+
     host_node = role_node_map["host"][0]
     next_peer = node_addr_map[host_node]
     ip, port = next_peer.split(":")
     ios = IOService()
     server = Session(ios, ip, port, "server")
     channel = server.addChannel()
-    
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
@@ -164,6 +173,7 @@ def xgb_host_logic(cry_pri="paillier"):
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+
         with open(model_file_path, 'wb') as fm:
             pickle.dump(xgb_host.tree_structure, fm)
         with open(lookup_file_path, 'wb') as fl:
@@ -172,9 +182,13 @@ def xgb_host_logic(cry_pri="paillier"):
         y_train_pre = xgb_host.predict_prob(X_host)
         y_train_pre.to_csv(predict_file_path)
         y_train_true = Y
-        Y_true = {"train":y_train_true,"test":y_true}
-        Y_pre = {"train":y_train_pre,"test":y_pre}
-        Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        Y_true = {"train": y_train_true, "test": y_true}
+        Y_pre = {"train": y_train_pre, "test": y_pre}
+        if eva_type == 'regression':
+            Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
+
 
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
@@ -206,8 +220,13 @@ def xgb_host_logic(cry_pri="paillier"):
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
-        Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+        if eva_type == 'regression':
+            Regression_eva.get_result(y_true, y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
+
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000')
 def xgb_guest_logic(cry_pri="paillier"):
@@ -217,7 +236,20 @@ def xgb_guest_logic(cry_pri="paillier"):
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
     logger.info(ph.context.Context.role_nodeid_map)
+
+    eva_type = ph.context.Context.params_map.get("taskType", None)
+    if eva_type is None:
+        logger.warn(
+            "taskType is not specified, set to default value 'regression'.")
+        eva_type = "regression"
+
+    eva_type = eva_type.lower()
+    if eva_type != "classification" and eva_type != "regression":
+        logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
+        return
     
+    logger.info("Current task type is {}.".format(eva_type))
+
     # Check dataset.
     data = ph.dataset.read(dataset_key="guest_dataset").df_data
     columns_label_data = data.columns.tolist()
@@ -225,19 +257,21 @@ def xgb_guest_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = str(row[name])
             if not temp.isdigit():
-                logger.error("Find illegal string '{}', it's not a digit string.".format(temp))
+                logger.error(
+                    "Find illegal string '{}', it's not a digit string.".format(temp))
                 return
-    
+
     # Get host's ip address.
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
 
     if len(role_node_map["host"]) != 1:
-        logger.error("Current node of host party: {}".format(role_node_map["host"]))
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
         logger.error("In hetero XGB, only dataset of host party has label,"
                      "so host party must have one, make sure it.")
         return
-    
+
     host_node = role_node_map["host"][0]
     next_peer = node_addr_map[host_node]
 
