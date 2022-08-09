@@ -33,7 +33,7 @@ class NotifyService {
     void notifyResult(const std::string task_id, const std::string &result_dataset_url);
     
     // when client create task / subscribe task, notify client.
-    void onSubscribeTaskEvent(const std::string task_id, const std::string &session_id);
+    void onSubscribeTaskEvent(const std::string task_id, const uint64_t &session_id);
     
     // void onNewSessionEvent(const std::string session_id) = 0;
   private:

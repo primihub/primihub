@@ -61,8 +61,9 @@ void NotifyService::notifyResult(const std::string task_id, const std::string &r
     EventBusNotifyDelegate::getInstance().notifyResult(task_id, result_dataset_url);
 }
 
-void NotifyService::onSubscribeTaskEvent(const std::string task_id, const std::string &session_id) {
+void NotifyService::onSubscribeTaskEvent(const std::string task_id, const uint64_t &session_id) {
     GRPCNotifyServer::getInstance().addTaskSession(task_id, 
                                                    GRPCNotifyServer::getInstance().getSession(session_id));
+}
 
 }   // namespace primihub::service

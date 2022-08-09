@@ -30,7 +30,7 @@ NotifyService *notify_service_ptr;
 
 void handler(int sig) {
     std::cout << "get signal: " << sig << std::endl;
-    // GreetingServer::getInstance().stop();
+    GRPCNotifyServer::getInstance().stop();
     delete notify_service_ptr;
 }
 
@@ -76,8 +76,6 @@ int main(int argc, const char **argv) {
     stdin_thread.join();
     server_thread.join(); 
     
-  
-
     return 0;
 }
 

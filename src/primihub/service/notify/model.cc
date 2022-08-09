@@ -207,6 +207,33 @@ void GRPCNotifyServer::run() {
 }
 
 
+void GRPCNotifyServer::stop() {
+    if (!running_) { return; }
+    running_ = false;
+    LOG(INFO) << "all sessions TryCancel() begin";
+    {
+        std::shared_lock lock(mutex_sessions_);
+        // send finish() will trigger error(pure virtual method called) for bi-di stream(grpc version: 1.27.3)
+        // https://github.com/grpc/grpc/issues/17222
+        // for (const auto &it : sessions_) { it.second->finish(); }
+        for (const auto &it : sessions_) {
+            std::lock_guard<std::mutex> local_lock_guard_inner{it.second->mutex_};
+            if (it.second->status_ != GrpcClientSessionStatus::WAIT_CONNECT) {
+                it.second->server_context_.TryCancel();
+            }
+        }
+    }
+    LOG(INFO) << "server_->Shutdown() begin";
+    server_->Shutdown();
+    // Always shutdown the completion queue after the server.
+    LOG(INFO) << "completion queue(call) Shutdown() begin";
+    completion_queue_call_->Shutdown();
+    LOG(INFO) << "completion queue(notification) Shutdown() begin";
+    completion_queue_notification_->Shutdown();
+    LOG(INFO) << "GreetingServer::stop() exit";
+}
+
+
 std::shared_ptr<GRPCClientSession> GRPCNotifyServer::addSession() {
     auto new_session_id = session_id_allocator_++; 
     auto new_session = std::make_shared<GRPCClientSession>(new_session_id);
