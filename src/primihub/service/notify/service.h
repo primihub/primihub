@@ -26,10 +26,16 @@ class NotifyService {
     NotifyService();
     ~NotifyService();
 
-    // 1. TODO create notify server list by config file.
+    // TODO create notify server list by config file.
     
     void run();
-
+    void notifyStatus(const std::string task_id, const std::string &status);
+    void notifyResult(const std::string task_id, const std::string &result_dataset_url);
+    
+    // when client create task / subscribe task, notify client.
+    void onSubscribeTaskEvent(const std::string task_id, const std::string &session_id);
+    
+    // void onNewSessionEvent(const std::string session_id) = 0;
   private:
     void init();
 };

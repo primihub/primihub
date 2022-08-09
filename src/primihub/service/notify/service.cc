@@ -53,4 +53,16 @@ void NotifyService::run() {
     }
 }
 
+void NotifyService::notifyStatus(const std::string task_id, const std::string &status) {
+    EventBusNotifyDelegate::getInstance().notifyStatus(task_id, status);
+}
+
+void NotifyService::notifyResult(const std::string task_id, const std::string &result_dataset_url) {
+    EventBusNotifyDelegate::getInstance().notifyResult(task_id, result_dataset_url);
+}
+
+void NotifyService::onSubscribeTaskEvent(const std::string task_id, const std::string &session_id) {
+    GRPCNotifyServer::getInstance().addTaskSession(task_id, 
+                                                   GRPCNotifyServer::getInstance().getSession(session_id));
+
 }   // namespace primihub::service
