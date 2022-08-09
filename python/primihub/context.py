@@ -20,6 +20,7 @@ class NodeContext:
         self.protocol = protocol
         self.func = func
         self.dataset_port_map = dataset_port_map 
+        self.task_type = None 
         print("func type: ", type(func))
 
         self.dumps_func = None
@@ -35,6 +36,12 @@ class NodeContext:
         self.datasets = []
         for ds_name in self.dataset_port_map.keys():
             self.datasets.append(ds_name)
+
+    def set_task_type(self, task_type):
+        self.task_type = task_type
+
+    def get_task_type(self):
+        return self.task_type
 
 
 class TaskContext:
@@ -58,6 +65,7 @@ class TaskContext:
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["arbiter"] = []
         self.role_nodeid_map["guest"] = []
+        self.params_map = {}
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -82,6 +90,20 @@ class TaskContext:
 
     def get_func_params_map(self):
         return self.func_params_map
+
+    def get_task_type(self):
+        roles = self.get_roles()
+        type_list = []
+        for role in roles:
+            type_list.append(self.nodes_context[role].get_task_type())
+
+        type_set = set(type_list)
+        logger.info(type_set)
+        if len(type_set) != 1:
+            logger.error("Task type in all role must be the same.")
+            raise RuntimeError("Task type in all role is not the same.")
+        else:
+            return type_list[0] 
 
     @staticmethod
     def mk_output_dir(output_dir):
@@ -131,6 +153,16 @@ class TaskContext:
     def get_node_addr_map(self):
         return self.node_addr_map
 
+    def clean_content(self):
+        self.role_nodeid_map.clear()
+        self.role_nodeid_map["host"] = []
+        self.role_nodeid_map["guest"] = []
+        self.role_nodeid_map["arbiter"] = []
+
+        self.node_addr_map.clear()
+        self.params_map.clear()
+
+
 
 Context = TaskContext()
 
@@ -179,6 +211,11 @@ def set_task_context_node_addr_map(node_id_with_role, addr):
     logger.info("Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
 
 
+def set_task_context_params_map(key, value):
+    Context.params_map[key] = value
+    logger.info("Insert '{}:{}' into task context.".format(key, value))
+
+
 def set_text(role, protocol, datasets, dumps_func):
     logger.info("========", role, protocol, datasets, dumps_func)
 
@@ -195,7 +232,7 @@ def reg_dataset(func):
 
 
 # Register task decorator
-def function(protocol, role, datasets, port):
+def function(protocol, role, datasets, port, task_type="default"):
     def function_decorator(func):
         print("Register task:", func.__name__)
 
@@ -205,6 +242,8 @@ def function(protocol, role, datasets, port):
 
         Context.nodes_context[role] = NodeContext(
             role, protocol, dataset_port_map, func)
+
+        Context.nodes_context[role].set_task_type(task_type)
 
         print(">>>>> dataset_port_map in {}'s node context is {}.".format(
             role, Context.nodes_context[role].dataset_port_map))

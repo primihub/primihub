@@ -79,7 +79,7 @@ class Executor:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content() 
         else:
             try:
                 print("start execute with params")
@@ -89,7 +89,7 @@ class Executor:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content() 
 
     @staticmethod
     def execute_test():

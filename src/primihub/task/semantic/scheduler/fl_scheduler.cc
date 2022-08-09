@@ -83,6 +83,13 @@ void nodeContext2TaskParam(
     node_task_request->mutable_task()->add_input_datasets(
         node_context.datasets[i]);
   }
+
+  // Task type.
+  ParamValue pv_type;
+  pv_type.set_var_type(VarType::STRING);
+  pv_type.set_value_string(node_context.task_type);
+  (*params_map)["taskType"] = pv_type;
+
   // dumps code
   node_task_request->mutable_task()->set_code(node_context.dumps_func);
 }

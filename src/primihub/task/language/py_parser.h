@@ -31,6 +31,7 @@ typedef struct NodeContext {
     std::string role;
     std::string protocol;
     std::string next_peer;
+    std::string task_type;
     std::vector<std::string> datasets;
     std::string dumps_func;
     std::map<std::string, std::string> dataset_port_map;

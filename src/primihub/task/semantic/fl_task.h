@@ -44,7 +44,7 @@ private:
       set_task_context_guest_lookup_file_, set_task_context_predict_file_,
       set_task_context_indicator_file_, set_task_context_dataset_map_,
       set_node_context_, ph_exec_m, ph_context_m, set_task_context_func_params_,
-      set_task_context_node_map_;
+      set_task_context_node_map_, set_task_context_param_map_;
   std::string next_peer_address_;
   std::map<std::string, std::string> dataset_meta_map_;
   std::string predict_file_path_;
@@ -53,9 +53,12 @@ private:
   std::string host_lookup_file_path_;
   std::string guest_lookup_file_path_;
 
-  // Key is the combine of node's nodeid and role, 
+  // Key is the combine of node's nodeid and role,
   // and value is 'ip:port'.
   std::map<std::string, std::string> node_addr_map_;
+
+  // Save all params.
+  std::map<std::string, std::string> params_map_;
 };
 
 } // namespace primihub::task
