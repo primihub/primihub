@@ -30,6 +30,7 @@ class WorkerClient(GRPCClient):
         """Constructor
         """
         super().__init__(connect)
+        self.channel = connect.channel
         self.request_data = None
         self.stub = worker_pb2_grpc.VMNodeStub(self.channel)
 

@@ -38,6 +38,9 @@ class GRPCConnect(object):
         self.task_map = {}
         if node is not None:
             self.channel = grpc.insecure_channel(node)
+            self.aio_channel = grpc.aio.insecure_channel(node)
+        else:
+            raise
 
         if cert is not None:
             # TODO

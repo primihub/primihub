@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import asyncio
 import random
 
 from primihub import context, dataset
@@ -51,6 +52,8 @@ class PrimihubClient(object):
         return cls.__instance
 
     def __init__(self, *args, **kwargs) -> None:
+        self.connect = None
+        self.node_event_stream = None
         self.code = None
         if not self.__first_init:
             PrimihubClient.__first_init = True
@@ -60,7 +63,7 @@ class PrimihubClient(object):
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
 
-    def init(self, config):
+    async def init(self, config):
         """Client Initialization.
 
         config: `dict` [`str`]
@@ -74,28 +77,37 @@ class PrimihubClient(object):
         node = config.get("node", None)
         cert = config.get("cert", None)
         # connect
-        self.connect = GRPCConnect(node=node, cert=cert)
+        # self.connect = GRPCConnect(node=node, cert=cert)
         # get client code str
         self.code = self.visitor.visit_file()
         # get node context
         # self.node_context = self.get_node_context() # TODO
 
+        self.node_event_stream = await self.get_node_event_stream()
         return self.connect
 
-    def get_node_context(self):
-        """get node context
-
-        :return: _description_
-        :rtype: _type_
-        """
+    async def get_node_event_stream(self):
         client = NodeServiceClient(self.connect)
         request = client.client_context(client_id=self.client_id,
                                         client_ip=self.client_ip,
                                         client_port=self.client_port)
-        res = client.get_node_context(request)
-        return res
+        stream = client.get_node_event_stream(request)
+        return stream
 
-    def submit_task(self, code: str, job_id: str, task_id: str):
+    # def get_node_context(self):
+    #     """get node context
+    #
+    #     :return: _description_
+    #     :rtype: _type_
+    #     """
+    #     client = NodeServiceClient(self.connect)
+    #     request = client.client_context(client_id=self.client_id,
+    #                                     client_ip=self.client_ip,
+    #                                     client_port=self.client_port)
+    #     res = client.get_node_context(request)
+    #     return res
+
+    async def submit_task(self, code: str, job_id: str, task_id: str):
         """submit task
 
         :param code: code str
@@ -119,7 +131,7 @@ class PrimihubClient(object):
         res = client.submit_task(request)
         return res
 
-    def remote_execute(self, *args):
+    async def _remote_execute(self, *args):
         """Send local functions and parameters to the remote side
 
         :param args: `list` [`tuple`] (`function`, `args`)
@@ -137,35 +149,48 @@ class PrimihubClient(object):
         print("-*-" * 30)
         print("Have a cup of coffee, it will take a lot of time here.")
         print("-*-" * 30)
-        res = self.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
+        res = await self.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
+
         return res
 
-    def get_status(self):
-        """get task status
+    async def remote_execute(self, *args):
+        complete, pending = await asyncio.wait([self.get_node_event_stream(), self._remote_execute(*args)])
+        for i in complete:
+            print("result: ", i.result())
+        if pending:
+            for p in pending:
+                print(p)
 
-        :return: _description_
-        :rtype: _type_
-        """
-        client = NodeServiceClient(self.connect)
-        request = client.client_context(client_id=self.client_id,
-                                        client_ip=self.client_ip,
-                                        client_port=self.client_port)
-        res = client.get_task_status(request)
-        return res
+    # async def get_node_event(self):
+    #     async for response in node_event_reply_stream():
 
-    def get_result(self):
-        """get task result
 
-        :return: _description_
-        :rtype: _type_
-        """
-        client = NodeServiceClient(self.connect)
-        request = client.client_context(client_id=self.client_id,
-                                        client_ip=self.client_ip,
-                                        client_port=self.client_port)
-        res = client.get_task_result(request)
-        return res
+    # def get_status(self):
+    #     """get task status
+    #
+    #     :return: _description_
+    #     :rtype: _type_
+    #     """
+    #     client = NodeServiceClient(self.connect)
+    #     request = client.client_context(client_id=self.client_id,
+    #                                     client_ip=self.client_ip,
+    #                                     client_port=self.client_port)
+    #     res = client.get_task_status(request)
+    #     return res
 
-    def get(self, ref_ret):
+    # def get_result(self):
+    #     """get task result
+    #
+    #     :return: _description_
+    #     :rtype: _type_
+    #     """
+    #     client = NodeServiceClient(self.connect)
+    #     request = client.client_context(client_id=self.client_id,
+    #                                     client_ip=self.client_ip,
+    #                                     client_port=self.client_port)
+    #     res = client.get_task_result(request)
+    #     return res
+    #
+    async def get(self, ref_ret):
         print("........%s >>>>>>>", ref_ret)
         pass
