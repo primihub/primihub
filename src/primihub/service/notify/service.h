@@ -31,10 +31,7 @@ class NotifyService {
     void run();
 
   private:
-    
     void init();
-
-    // NotifyServer* notify_svr_;
 };
 
 } // namespace primihub::service

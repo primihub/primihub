@@ -986,6 +986,24 @@ cc_binary(
     ],
 )
 
+cc_binary (
+    name = "notify_test_client",
+    srcs = [
+        "test/primihub/service/notify/test_client.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_github_glog_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        ":service_proto",
+    ],
+)
+
 
 cc_test(
     name = "local_kv_test",

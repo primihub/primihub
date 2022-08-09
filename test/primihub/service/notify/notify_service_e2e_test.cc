@@ -13,11 +13,18 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include <unistd.h>
+#include <cstdio>
+#include <thread>
+#include <string>
 
 #include "src/primihub/service/notify/service.h"
+#include "src/primihub/service/notify/model.h"
 
 using primihub::service::NotifyService;
 using primihub::service::NotifyServer;
+using primihub::service::GRPCNotifyServer;
+using primihub::service::EventBusNotifyDelegate;
 
 NotifyService *notify_service_ptr;
 
@@ -27,17 +34,49 @@ void handler(int sig) {
     delete notify_service_ptr;
 }
 
+// TODO read to simulate task stauts and result.
+    
+void stdin_func() {
+    std::string line;
+    std::cout << "waiting input: ";
+    while (std::getline(std::cin, line)) {
+        if (line == "quit") {
+            std::cout << "quit" << std::endl;
+            break;
+        } else if (line == "s") {
+            // simulate send task status
+            std::cout << "simulate send task status" << std::endl;
+             // FIXME test code
+            GRPCNotifyServer::getInstance().addTaskSession("1", GRPCNotifyServer::getInstance().getSession(0));
+
+            EventBusNotifyDelegate::getInstance().notifyStatus("1", "task test status");
+            
+        } else if (line == "r") {
+            // simulate send task status
+            std::cout << "simulate send task result" << std::endl;
+            EventBusNotifyDelegate::getInstance().notifyResult("1", "task test result");
+        } else {
+            std::cout << "input: " << line << std::endl;
+        }
+    }
+}
+
+void server_func() {
+    notify_service_ptr = new NotifyService();
+    notify_service_ptr->run();
+}
 
 int main(int argc, const char **argv) {
     signal(SIGTERM, handler);
     signal(SIGINT, handler);
-
-    notify_service_ptr = new NotifyService();
-    notify_service_ptr->run();
+    // run stdin in thread
+    std::thread stdin_thread(stdin_func);
+    // run server in thread
+    std::thread server_thread(server_func);
+    stdin_thread.join();
+    server_thread.join(); 
     
-
-    // TODO stdin read to simulate task stauts and result.
-    
+  
 
     return 0;
 }

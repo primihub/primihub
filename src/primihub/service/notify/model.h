@@ -196,6 +196,7 @@ class GRPCNotifyServer : public NotifyServer {
         void removeSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSessionByTaskId(const std::string taskId);
+        void addTaskSession(const std::string taskId, const std::shared_ptr<GRPCClientSession> &session);
 
         // gRPC members
         std::atomic_bool running_{false};
@@ -247,7 +248,7 @@ enum class GrpcClientSessionStatus {
 
 std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus);
 
-class GRPCClientSession {
+class GRPCClientSession : std::enable_shared_from_this<GRPCClientSession> {
     public:
         explicit GRPCClientSession(uint64_t sessionId) : session_id_(sessionId) {}
         
@@ -268,10 +269,11 @@ class GRPCClientSession {
         GrpcClientSessionStatus status_{GrpcClientSessionStatus::WAIT_CONNECT};
 
         ::grpc::ServerContext server_context_{};
+        // client request message
         primihub::rpc::ClientContext client_context_{};
 
         ::grpc::ServerAsyncWriter<primihub::rpc::NodeEventReply> subscribe_stream{&server_context_};
-
+        
         primihub::rpc::ClientContext request_{};
 
         std::string name_{};  // session name
