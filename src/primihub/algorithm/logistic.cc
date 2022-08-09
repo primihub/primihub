@@ -601,7 +601,7 @@ namespace primihub
     std::shared_ptr<CSVDriver> csv_driver =
         std::dynamic_pointer_cast<CSVDriver>(driver);
 
-    std::string filepath = "data/" + model_name_ + ".csv";
+    std::string filepath = "./" + model_name_ + ".csv";
     int ret = csv_driver->write(table, filepath);
     if (ret != 0)
     {

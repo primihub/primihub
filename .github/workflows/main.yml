@@ -85,9 +85,9 @@ jobs:
       run: |
         ./pre_build.sh 
         bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+        ./bazel-bin/logistic_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
-        ./bazel-bin/logistic_test
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
