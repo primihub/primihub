@@ -168,6 +168,10 @@ namespace primihub::service {
        }
     }
 
+    std::string DatasetService::getNodeletAddr(void) {
+        return nodelet_addr_;
+    }
+
     // ======================== DatasetMetaService ====================================
     DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
                                    std::shared_ptr<StorageBackend> localKv) {
