@@ -62,6 +62,7 @@ class PrimihubClient(object):
         self.client_id = str(uuid.uuid1())  # TODO
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
+        self.loop = asyncio.get_event_loop()
 
     async def init(self, config):
         """Client Initialization.
@@ -86,13 +87,13 @@ class PrimihubClient(object):
         self.node_event_stream = await self.get_node_event_stream()
         return self.connect
 
-    async def get_node_event_stream(self):
-        client = NodeServiceClient(self.connect)
-        request = client.client_context(client_id=self.client_id,
-                                        client_ip=self.client_ip,
-                                        client_port=self.client_port)
-        stream = client.get_node_event_stream(request)
-        return stream
+    # async def get_node_event_stream(self):
+    #     client = NodeServiceClient(self.connect)
+    #     request = client.client_context(client_id=self.client_id,
+    #                                     client_ip=self.client_ip,
+    #                                     client_port=self.client_port)
+    #     stream = client.get_node_event_stream(request)
+    #     return stream
 
     # def get_node_context(self):
     #     """get node context
@@ -107,7 +108,7 @@ class PrimihubClient(object):
     #     res = client.get_node_context(request)
     #     return res
 
-    async def submit_task(self, code: str, job_id: str, task_id: str):
+    async def _submit_task(self, code: str, job_id: str, task_id: str):
         """submit task
 
         :param code: code str
@@ -131,7 +132,7 @@ class PrimihubClient(object):
         res = client.submit_task(request)
         return res
 
-    async def _remote_execute(self, *args):
+    async def submit_task(self, *args):
         """Send local functions and parameters to the remote side
 
         :param args: `list` [`tuple`] (`function`, `args`)
@@ -149,48 +150,28 @@ class PrimihubClient(object):
         print("-*-" * 30)
         print("Have a cup of coffee, it will take a lot of time here.")
         print("-*-" * 30)
-        res = await self.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
+        res = await self._submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
 
         return res
 
+    async def get_node_event(self):
+
+        client = NodeServiceClient(self.connect)
+        request = client.client_context(client_id=self.client_id,
+                                        client_ip=self.client_ip,
+                                        client_port=self.client_port)
+        async with client.channel:
+            # Read from an async generator
+            async for response in client.stub.SubscribeNodeEvent(request):
+                print("NodeService client received from async generator: " + response.event_type)
+
     async def remote_execute(self, *args):
-        complete, pending = await asyncio.wait([self.get_node_event_stream(), self._remote_execute(*args)])
-        for i in complete:
-            print("result: ", i.result())
-        if pending:
-            for p in pending:
-                print(p)
+        tasks = [
+            asyncio.ensure_future(self.submit_task(*args)),  # submit_task
+            asyncio.ensure_future(self.get_node_event())  # get node event
+        ]
+        self.loop.run_until_complete(asyncio.wait(tasks))
 
-    # async def get_node_event(self):
-    #     async for response in node_event_reply_stream():
-
-
-    # def get_status(self):
-    #     """get task status
-    #
-    #     :return: _description_
-    #     :rtype: _type_
-    #     """
-    #     client = NodeServiceClient(self.connect)
-    #     request = client.client_context(client_id=self.client_id,
-    #                                     client_ip=self.client_ip,
-    #                                     client_port=self.client_port)
-    #     res = client.get_task_status(request)
-    #     return res
-
-    # def get_result(self):
-    #     """get task result
-    #
-    #     :return: _description_
-    #     :rtype: _type_
-    #     """
-    #     client = NodeServiceClient(self.connect)
-    #     request = client.client_context(client_id=self.client_id,
-    #                                     client_ip=self.client_ip,
-    #                                     client_port=self.client_port)
-    #     res = client.get_task_result(request)
-    #     return res
-    #
     async def get(self, ref_ret):
         print("........%s >>>>>>>", ref_ret)
         pass

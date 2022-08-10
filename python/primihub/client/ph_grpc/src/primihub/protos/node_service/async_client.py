@@ -22,15 +22,17 @@ import service_pb2_grpc
 
 
 async def _run() -> None:
-    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+    async with grpc.aio.insecure_channel("192.168.99.26:6666") as channel:
+        print(channel)
+        print("192.168.99.26:6666")
         stub = service_pb2_grpc.NodeServiceStub(channel)
         # Read from an async generator
         print("# Read from an async generator")
         async for response in stub.SubscribeNodeEvent(
                 service_pb2.ClientContext(
-                    client_id="client01",
-                    client_ip="127.0.0.1",
-                    client_port=50051
+                    client_id="1",
+                    # client_ip="127.0.0.1",
+                    # client_port=50051
                 )):
             print("NodeService client received from async generator: " +
                   str(response.event_type))
@@ -38,9 +40,9 @@ async def _run() -> None:
         # Direct read from the stub
         node_event_reply_stream = stub.SubscribeNodeEvent(
             service_pb2.ClientContext(
-                client_id="client01",
-                client_ip="127.0.0.1",
-                client_port=50051
+                client_id="1",
+                # client_ip="127.0.0.1",
+                # client_port=50051
             ))
         while True:
             response = await node_event_reply_stream.read()
@@ -50,15 +52,45 @@ async def _run() -> None:
                   str(response.event_type))
 
 
-async def run():
+def callback():
+    print("callback...")
+
+# 0.0.0.0:6666
+async def run_async() -> None:
+    async with grpc.aio.insecure_channel("192.168.99.26:6666") as channel:
+        print("192.168.99.26:6666")
+    # async with grpc.aio.insecure_channel("localhost:50051") as channel:
+        stub = service_pb2_grpc.NodeServiceStub(channel)
+        # Read from an async generator
+        print("# Read from an async generator")
+        async for response in stub.SubscribeNodeEvent(
+                service_pb2.ClientContext(
+                    client_id="client01",
+                    # client_ip="127.0.0.1",
+                    # client_port=50051
+                )):
+            print("NodeService client received from async generator: " +
+                  str(response.event_type))
+            if response.event_type == 0:
+                print("0 do sth...")
+                ...
+            elif response.event_type == 1:
+                print("1 do sth...")
+                ...
+            elif response.event_type == 2:
+                print("2 do sth...")
+                ...
+
+
+async def run_direct():
     async with grpc.aio.insecure_channel("localhost:50051") as channel:
         stub = service_pb2_grpc.NodeServiceStub(channel)
         # Direct read from the stub
         node_event_reply_stream = stub.SubscribeNodeEvent(
             service_pb2.ClientContext(
                 client_id="client01",
-                client_ip="127.0.0.1",
-                client_port=50051
+                # client_ip="127.0.0.1",
+                # client_port=50051
             ))
         while True:
             response = await node_event_reply_stream.read()
@@ -72,11 +104,11 @@ async def run():
 async def func():
     while True:
         print("<<<<<<<<<<,")
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
 
 async def main():
-    complete, pending = await asyncio.wait([run(), func()])
+    complete, pending = await asyncio.wait([run_async(), func()])
     for i in complete:
         print("result: ", i.result())
     if pending:

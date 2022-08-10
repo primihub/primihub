@@ -15,6 +15,7 @@
  """
 import asyncio
 import logging
+import random
 
 import grpc
 
@@ -29,8 +30,10 @@ class NodeService(NodeServiceServicer):
         for i in range(10):
             import time
             time.sleep(i)
+            event_type = random.randint(0, 2)
+            print("event_type: %s" % event_type)
             yield NodeEventReply(
-                event_type=0,
+                event_type=event_type,
                 task_status={
                     "task_context": {
                         "node_id": "node-%s" % i,

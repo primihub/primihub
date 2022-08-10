@@ -18,6 +18,39 @@ import grpc
 from .connect import GRPCClient, GRPCConnect
 from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
 
+# NodeEventType
+from typing import Callable
+
+NODE_EVENT_TYPE_NODE_CONTEXT = 0
+NODE_EVENT_TYPE_TASK_STATUS = 1
+NODE_EVENT_TYPE_TASK_RESULT = 2
+
+
+class EventHandler(object):
+
+    def handler_node_context(self):
+        print("handler_node_context")
+        ...
+
+    def handler_task_status(self):
+        print("handler_task_status")
+        ...
+
+    def handler_task_result(self):
+        print("handler_task_result")
+        ...
+
+    def event_handler(self, event):
+        while True:  # 根据事件类型发事件
+            if event is NODE_EVENT_TYPE_NODE_CONTEXT:
+                self.handler_node_context()
+
+            if event is NODE_EVENT_TYPE_TASK_STATUS:
+                self.handler_task_status()
+
+            if event is NODE_EVENT_TYPE_TASK_RESULT:
+                self.handler_task_result()
+
 
 class NodeServiceClient(GRPCClient):
     """primihub gRPC node context service client.
@@ -44,6 +77,7 @@ class NodeServiceClient(GRPCClient):
             async for response in self.stub.SubscribeNodeEvent(request):
                 print("NodeService client received from async generator: " +
                       response.event_type)
+                EventHandler().event_handler(response.event_type)
             # # Direct read from the stub
             # node_event_reply_stream = self.stub.SubscribeNodeEvent(request)
             # while True:
@@ -67,6 +101,7 @@ class NodeServiceClient(GRPCClient):
                     break
                 print("NodeService client received from direct read: " +
                       response.event_type)
+                EventHandler().event_handler(response.event_type)
 
 
 class DataServiceClient(GRPCClient):
