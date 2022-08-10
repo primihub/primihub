@@ -8,6 +8,7 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE.txt"])
 
 load("@com_github_google_flatbuffers//:build_defs.bzl", "flatbuffer_cc_library")
+load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
 
 flatbuffer_cc_library(
     name = "arrow_format",
@@ -25,6 +26,22 @@ flatbuffer_cc_library(
     ],
     out_prefix = "cpp/src/generated/",
 )
+
+
+
+
+grpc_proto_library(
+    name = "flight_proto",
+    srcs = ["cpp/src/arrow/flight/Flight.proto"],
+)
+
+grpc_proto_library(
+    name = "flight_perf_proto",
+    srcs = ["cpp/src/arrow/flight/perf.proto"],
+)
+
+
+
 
 genrule(
     name = "arrow_util_config",
@@ -50,6 +67,9 @@ genrule(
            "$< >$@"),
 )
 
+
+
+
 cc_library(
     name = "arrow",
     srcs = glob(
@@ -62,6 +82,7 @@ cc_library(
             "cpp/src/arrow/json/*.cc",
             "cpp/src/arrow/tensor/*.cc",
             "cpp/src/arrow/util/*.cc",
+            "cpp/src/arrow/flight/*.cc",
 
             "cpp/src/arrow/filesystem/util_internal.cc",
             "cpp/src/arrow/filesystem/localfs.cc",
@@ -74,7 +95,6 @@ cc_library(
             "cpp/src/arrow/compute/function.cc",
             "cpp/src/arrow/compute/registry.cc",
             "cpp/src/arrow/compute/kernels/scalar_*.cc",
-
             "cpp/src/arrow/compute/api_*.cc",
             "cpp/src/arrow/compute/kernels/codegen_*.cc",
             "cpp/src/arrow/compute/kernels/vector_*.cc",
@@ -115,6 +135,7 @@ cc_library(
         "cpp/src/parquet/parquet_version.h",
         "cpp/src/arrow/filesystem/localfs.h",
         "cpp/src/arrow/filesystem/filesystem.h",
+        "cpp/src/arrow/flight/server.h",
     ],
     copts = [],
     defines = [
@@ -139,6 +160,8 @@ cc_library(
     ],
     deps = [
         ":arrow_format",
+        ":flight_proto",
+        ":flight_perf_proto",
         "@openssl",
         "@boost//:multiprecision",
         "@boost//:random",
@@ -161,5 +184,7 @@ cc_library(
         "@io_opentelemetry_cpp//sdk/src/trace",
         # "@liborc//:liborc",
         # "@com_google_protobuf//:protobuf",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_github_gflags_gflags//:gflags",
     ],
 )
