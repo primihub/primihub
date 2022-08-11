@@ -3,24 +3,85 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <string>
 #include <stack>
+#include <string>
+
+#include "src/primihub/executor/party.h"
 
 namespace primihub {
+class PartyConfig {
+public:
+  enum ColDtype { INT64, FP64 };
+
+  PartyConfig(std::string node_id) { node_id_ = node_id; }
+  ~PartyConfig();
+
+  int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
+  int importColumnOwner(const std::string &col_name,
+                        const std::string &node_id);
+  int getColumnDtype(const std::string &col_name, ColDtype &dtype);
+  int getColumnLocality(bool &is_local);
+  int resolveLocalColumn(void);
+  bool hasFP64Column(void);
+  void Clean(void);
+
+  static std::string DtypeToString(const ColDtype &dtype);
+
+private:
+  std::string node_id_;
+  std::map<std::string, std::string> col_owner_;
+  std::map<std::string, ColDtype> col_dtype_;
+  std::map<std::string, bool> local_col_;
+};
+
+class FeedDict {
+public:
+  FeedDict(const std::string &node_id, const PartyConfig *party_config,
+           bool float_run) {
+    node_id_ = node_id;
+    party_config_ = party_config;
+    float_run_ = float_run;
+  }
+
+  ~FeedDict();
+
+  int importColumnValues(const std::string &col_name,
+                         std::vector<int64_t> &int64_vec);
+  int importColumnValues(const std::string &col_name,
+                         std::vector<double> &fp64_vec);
+  template <class T>
+  int getColumnValues(const std::string &col_name, std::vector<T> &col_vec);
+
+private:
+  int checkLocalColumn(const std::string &col_name);
+
+  bool float_run_;
+  std::string node_id_;
+  std::map<std::string, std::vector<double>> fp64_col_;
+  std::map<std::string, std::vector<int64_t>> int64_col_;
+  const PartyConfig *party_config_;
+};
+
 class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
-  int ImportExpress(std::string expr);
+
+  int importExpress(std::string expr);
+  void resolveRunMode(void);
 
 private:
   bool isOperator(const char op);
+  bool isOperator(const std::string &op);
   int Priority(const char str);
   bool checkExpress(void);
   void parseExpress(const std::string &expr);
 
+  bool fp64_run_;
   std::string expr_;
   std::stack<std::string> suffix_stk_;
+  PartyConfig *party_config_;
+  FeedDict *feed_dict_;
 };
 }; // namespace primihub
 #endif
