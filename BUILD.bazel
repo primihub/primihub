@@ -525,7 +525,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-x86_64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -1065,6 +1065,22 @@ cc_test(
     ],
 )
 
+cc_test(
+	name = "aby3_add_test",
+	srcs = [
+		"test/primihub/algorithm/aby3_add_test.cc",
+		"src/primihub/operator/aby3_operator.h",
+		"src/primihub/operator/aby3_operator.cc",
+	],
+	copts= C_OPT,
+	linkopts = LINK_OPTS,
+	linkstatic = False,
+	deps = [
+		"@com_google_googletest//:gtest_main",
+		":network_lib",
+		":protocol_aby3_lib",
+	],
+)
 
 cc_test(
     name = "util_test",
