@@ -210,11 +210,11 @@ class Regression_eva:
             for i in range(len(Evaluator.regression_metrics)):
                 metrics = Evaluator.regression_metrics[i]
                 method = Evaluator.regression_method[i]
-                if hasattr(Evaluator, method):
+                try:
                     f = getattr(Evaluator, method)
                     res[k][metrics] = f(y_true, y_pre)
-                else:
-                    res[k][metrics] = f"{method} is not support。"
+                except:
+                    res[k][metrics] = f"{method} is not support"
 
         Evaluator.write_json(path,res)
         return res
@@ -275,15 +275,15 @@ class Classification_eva:
             for i in range(len(Evaluator.classification_metrics)):
                 metrics = Evaluator.classification_metrics[i]
                 method = Evaluator.classification_method[i]
-                if hasattr(Evaluator, method):
+                try:
                     f = getattr(Evaluator, method)
                     if (metrics in Evaluator.need_prob):
                         mere = f(y_t, y_p)
                     else:
                         mere = f(y_t, y_hat)
                     res[k][metrics] = mere
-                else:
-                    res[k][metrics] = f"{method} is not support。"
+                except:
+                    res[k][metrics] = f"{metrics} is not support"
         Evaluator.write_json(path,res)
         return res
 
