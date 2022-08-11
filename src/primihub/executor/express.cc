@@ -501,3 +501,43 @@ void MPCExpressExecutor::resolveRunMode(void) {
 
   LOG(INFO) << "MPC run in FP64 mode.";
 }
+
+int MPCExpressExecutor::RunMPCEvaluate(void) {
+  std::stack<std::string> stk1;
+
+  while (!suffix_stk_.empty()) {
+    std::string token = suffix_stk_.top();
+    if (token == "+") {
+      std::string a = stk1.top();
+      stk1.pop();
+      std::string b = stk1.top();
+      stk1.pop();
+      suffix_stk_.pop();
+
+    } else if (token == "-") {
+      std::string a = stk1.top();
+      stk1.pop();
+      std::string b = stk1.top();
+      stk1.pop();
+      suffix_stk_.pop();
+   
+    } else if (token == "*") {
+      std::string a = stk1.top();
+      stk1.pop();
+      std::string b = stk1.top();
+      stk1.pop();
+      suffix_stk_.pop();
+
+    } else if (token == "/") {
+      std::string a = stk1.top();
+      stk1.pop();
+      std::string b = stk1.top();
+      stk1.pop();
+      suffix_stk_.pop();
+
+    } else {
+      stk1.push(token);
+      suffix_stk_.pop();
+    }
+  }
+}

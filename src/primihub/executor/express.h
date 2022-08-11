@@ -69,8 +69,24 @@ public:
 
   int importExpress(std::string expr);
   void resolveRunMode(void);
+  int runMPCEvaluate(void);
+
+  void setPartyConfig(PartyConfig *party_config) {
+    this->party_config_ = party_config;
+  }
+
+  void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
 
 private:
+  int runMPCAdd(const std::string &token1, const std::string &token2,
+                sf64Matrix<D> &sh_val);
+  int runMPCSub(const std::string &token1, const std::string &token2,
+                sf64Matrix<D> &sh_val);
+  int runMPCMul(const std::string &token1, const std::string &token2, 
+                sf64Matrix<D> &sh_val);
+  int runMPCDiv(const std::string &token1, const std::string &token2, 
+                sf64Matrix<D> &sh_val);
+
   bool isOperator(const char op);
   bool isOperator(const std::string &op);
   int Priority(const char str);
