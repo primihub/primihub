@@ -15,14 +15,6 @@ using namespace primihub;
 
 TEST(add_operator, aby3_3pc_test)
 {
-	/*封装算子要遵循的基本流程：
-		三方启动，
-		反推：
-			要计算，需要构造分享，构造分享需要channel，
-			把算子封装起来，怎么使用呢？
-			调用这个算子函数，算子
-			有加法需求，
-	*/
 	pid_t pid = fork();
 	if (pid != 0)
 	{

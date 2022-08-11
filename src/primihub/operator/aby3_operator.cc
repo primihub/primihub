@@ -5,14 +5,6 @@ namespace primihub
 {
 	int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port)
 	{
-		/*
-		  功能：初始化成员变量
-		  参数1：IP
-		  参数2：next端口
-		  参数3：prev端口
-		  返回值：0//失败
-				 1//成功
-		  */
 		CommPkg comm = CommPkg();
 		Session ep_next_;
 		Session ep_prev_;
