@@ -81,8 +81,10 @@ def xgb_host_logic(cry_pri="paillier"):
     columns_label_data = data.columns.tolist()
     for index, row in data.iterrows():
         for name in columns_label_data:
-            temp = str(row[name])
-            if not temp.isdigit():
+            temp = row[name]
+            try:
+            	float(temp)
+            except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))
                 return
@@ -255,8 +257,10 @@ def xgb_guest_logic(cry_pri="paillier"):
     columns_label_data = data.columns.tolist()
     for index, row in data.iterrows():
         for name in columns_label_data:
-            temp = str(row[name])
-            if not temp.isdigit():
+            temp = row[name]
+            try:
+            	float(temp)
+            except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))
                 return
