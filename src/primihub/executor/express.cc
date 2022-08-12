@@ -100,7 +100,7 @@ int PartyConfig::getColumnLocality(const std::string &col_name,
 
 bool PartyConfig::hasFP64Column(void) {
   bool fp64_col = false;
-  for (auto iter = col_dtype_.begin(); iter != col_dtype_.end(); iter ++) {
+  for (auto iter = col_dtype_.begin(); iter != col_dtype_.end(); iter++) {
     if (iter->second == ColDtype::FP64) {
       fp64_col = true;
       break;
@@ -213,8 +213,8 @@ int FeedDict::importColumnValues(const std::string &col_name,
 }
 
 template <class T>
-int FeedDict::getColumnDtype(const std::string &col_name,
-                             std::vector<T> &col_vec) {
+int FeedDict::getColumnValues(const std::string &col_name,
+                              std::vector<T> &col_vec) {
   {
     int ret = party_config_->getColumnLocality(col_name);
     if (ret < 0) {
@@ -261,7 +261,7 @@ int FeedDict::getColumnDtype(const std::string &col_name,
   return 0;
 }
 
-// Implement of class MPCExpressExecutor. 
+// Implement of class MPCExpressExecutor.
 MPCExpressExecutor::MPCExpressExecutor() {}
 
 bool MPCExpressExecutor::isOperator(const char op) {
@@ -277,7 +277,7 @@ bool MPCExpressExecutor::isOperator(const std::string &op) {
     return true;
   else if (op == "*")
     return true;
-  else if (op == "/") 
+  else if (op == "/")
     return true;
   else
     return false;
@@ -458,7 +458,7 @@ int MPCExpressExecutor::importExpress(std::string expr) {
   parseExpress(expr);
   bool ret = checkExpress();
   if (ret == false) {
-    LOG(ERROR) << "Import express '" << expr << "' failed."; 
+    LOG(ERROR) << "Import express '" << expr << "' failed.";
     return -1;
   }
 
@@ -466,40 +466,87 @@ int MPCExpressExecutor::importExpress(std::string expr) {
 }
 
 void MPCExpressExecutor::resolveRunMode(void) {
-  std::stack<std::string> tmp_suffix = suffix_stk_; 
+  std::stack<std::string> tmp_suffix = suffix_stk_;
   bool has_div_op = false;
   bool has_fp64_val = false;
 
   while (!tmp_suffix.empty()) {
     std::string token = tmp_suffix.top();
     tmp_suffix.pop();
-    
+
     if (isOperator(token)) {
       // Token is an operator.
       if (token == "/")
         has_div_op = true;
       continue;
     }
-    
+
     PartyConfig::ColDtype dtype;
     if (!getColumnDtype(token, &dtype)) {
       // Token is a column name.
+      token_type_.insert(std::make_pair(token, TokenType::COLUMN));
       continue;
     }
 
     // Token is a number.
+    token_type_.insert(std::make_pair(token, TokenType::VALUE));
     if (token.find(".") != std::string::npos)
-      has_fp64_val = true;  
+      has_fp64_val = true;
   }
 
   bool has_fp64_col = party_config_->hasFP64Column();
-  
+
   if (has_div_op | has_fp64_col | has_fp64_val)
-    fp64_run_ = true; 
+    fp64_run_ = true;
   else
     fp64_run_ = false;
 
-  LOG(INFO) << "MPC run in FP64 mode.";
+  if (fp64_run_)
+    LOG(INFO) << "MPC run in FP64 mode.";
+  else
+    LOG(INFO) << "MPC run in INT64 mode.";
+}
+
+void MPCOperator::createTokenValue(const std::string &token,
+                                   TokenValue &token_val) {
+  TokenType type = token_type_[token];
+  if (type == TokenType::COLUMN) {
+    // Token is a column name, a remote column or a local column.
+    bool is_local = false;
+    party_config_->getColumnLocality(is_local);
+    if (is_local == false) {
+      // Column is a remote column.
+      token_val.type = 4;
+      return;
+    }
+    
+    // Column is a local column. 
+    if (float_run_) {
+      std::vector<double> col_vec;
+      feed_dict_->getColumnValues(token, col_vec);
+      token_val.val.fp64_vec = std::move(col_vec);
+      token_val.type = 0;
+    } else {
+      std::vector<int64_t> col_vec;
+      feed_dict_->getColumnValues(token, col_vec);
+      token_val.val.i64_vec = std::move(col_vec);
+      token_val.type = 1;
+    }
+  } else {
+    // Token is a number, maybe a float number.
+    if (float_run_) {
+      token_val.val.fp64_val = std::stod(token);
+      token_val.type = 2;
+    } else {
+      token_val.val.i64_val = atol(token.c_str());
+      token_val.type = 3;
+    }
+  }
+}
+
+int MPCOperator::runMPCAdd(const std::string &token1, const std::string &token2,
+                           sf64Matrix<D> &sh_val) {
+  return 0;
 }
 
 int MPCExpressExecutor::RunMPCEvaluate(void) {
@@ -520,7 +567,7 @@ int MPCExpressExecutor::RunMPCEvaluate(void) {
       std::string b = stk1.top();
       stk1.pop();
       suffix_stk_.pop();
-   
+
     } else if (token == "*") {
       std::string a = stk1.top();
       stk1.pop();

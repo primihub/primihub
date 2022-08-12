@@ -23,6 +23,7 @@ public:
   int getColumnLocality(bool &is_local);
   int resolveLocalColumn(void);
   bool hasFP64Column(void);
+  int ResolveTokenType(void);
   void Clean(void);
 
   static std::string DtypeToString(const ColDtype &dtype);
@@ -78,13 +79,40 @@ public:
   void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
 
 private:
+  union ValueUnion {
+    std::vector<double> fp64_vec;
+    std::vector<int64_t> i64_vec;
+    int64_t i64_val;
+    double fp64_val;
+  };
+
+  struct TokenValue {
+    ValueUnion val;
+    // type == 0: val.fp64_vec is set;
+    // type == 1: val.i64_vec is set;
+    // type == 2: val.fp64 is set.
+    // type == 3: val.i64 is set;
+    // type == 4: a remote column, set nothing.
+    uint8_t type;
+  };
+
+  inline void createTokenValue(const std::string &token, TokenValue &token_val);
+
+  inline void createI64Shares(TokenValue &val1, TokenValue val2,
+                              si64Matrix &sh_val);
+  inline void createFP64Shares(TokenType &val, TokenValue val2,
+                               sf64Matrix<D> &sh_val);
+
+  enum TokenType { COLUMN, VALUE };
+  int ResolveTokenType(void);
+
   int runMPCAdd(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
   int runMPCSub(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
-  int runMPCMul(const std::string &token1, const std::string &token2, 
+  int runMPCMul(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
-  int runMPCDiv(const std::string &token1, const std::string &token2, 
+  int runMPCDiv(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
 
   bool isOperator(const char op);
@@ -97,7 +125,9 @@ private:
   std::string expr_;
   std::stack<std::string> suffix_stk_;
   PartyConfig *party_config_;
+  MPCOperator *mpc_op_;
   FeedDict *feed_dict_;
+  std::map<std::string, TokenType> token_type_;
 };
 }; // namespace primihub
 #endif
