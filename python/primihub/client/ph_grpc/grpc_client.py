@@ -39,16 +39,45 @@ listener.run()
 @listener.on_event(NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
 async def handler_node_context(event: Event):
     print("handler_node_context", event.params, event.data)
+    # TODO
+    node_context = event.data.get("node_context")
+    notify_channel = node_context.get("notify_channel")
+    node = notify_channel["connect_str"]
+    cert = notify_channel["key"]
+    grpc_client = GrpcClient(node, cert)
+    # TODO
+    client_id = ""
+    client_ip = ""
+    client_port = 12345
+    # get node event from other nodes
+    await grpc_client.get_node_event(client_id=client_id, client_ip=client_ip, client_port=client_port)
 
 
 @listener.on_event(NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_STATUS])
 async def handler_task_status(event: Event):
     print("handler_task_status", event.params, event.data)
+    # TODO
+    # event data
+    # {'event_type': 1,
+    #      'task_status': {'task_context': {'task_id': '1',
+    #                                       'job_id': 'task test status'
+    #                                       }
+    #                   'status': '' // ? TODO
+    #                      }
+    #      }
 
 
 @listener.on_event(NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_RESULT])
 async def handler_task_result(event: Event):
     print("handler_task_result", event.params, event.data)
+    # TODO
+    # event data
+    # {'event_type': 2,
+    #  'task_result': {'task_context': {'task_id': '1',
+    #                                   'job_id': 'task test result'},
+    #                   'result_dataset_url': '' // ? TODO
+    #                  }
+    #  }
 
 
 class GrpcClient(object):
