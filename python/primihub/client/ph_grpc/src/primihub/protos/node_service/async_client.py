@@ -15,10 +15,39 @@
  """
 import asyncio
 import logging
+import sys
 
 import grpc
 import service_pb2
 import service_pb2_grpc
+from primihub.client import tiny_listener
+from primihub.client.tiny_listener import Listener, Event
+
+# NodeEventType
+from primihub.utils.protobuf_to_dict import protobuf_to_dict
+
+NODE_EVENT_TYPE_NODE_CONTEXT = 0
+NODE_EVENT_TYPE_TASK_STATUS = 1
+NODE_EVENT_TYPE_TASK_RESULT = 2
+listener = Listener()
+listener.run()
+
+
+# from protobuf_to_dict import protobuf_to_dict
+class EventHandlers(object):
+
+    @listener.on_event(str(NODE_EVENT_TYPE_NODE_CONTEXT))
+    async def handler_node_context(self):
+        print("handler_node_context")
+
+    @listener.on_event(str(NODE_EVENT_TYPE_TASK_STATUS))
+    async def handler_task_status(self, event: Event):
+        print("handler_task_status", event.params, event.data)
+        # print(event)
+
+    @listener.on_event(str(NODE_EVENT_TYPE_TASK_RESULT))
+    async def handler_task_result(self, event: Event):
+        print("handler_task_result", event.params, event.data)
 
 
 async def _run() -> None:
@@ -55,11 +84,12 @@ async def _run() -> None:
 def callback():
     print("callback...")
 
+
 # 0.0.0.0:6666
 async def run_async() -> None:
     async with grpc.aio.insecure_channel("192.168.99.26:6666") as channel:
         print("192.168.99.26:6666")
-    # async with grpc.aio.insecure_channel("localhost:50051") as channel:
+        # async with grpc.aio.insecure_channel("localhost:50051") as channel:
         stub = service_pb2_grpc.NodeServiceStub(channel)
         # Read from an async generator
         print("# Read from an async generator")
@@ -71,15 +101,13 @@ async def run_async() -> None:
                 )):
             print("NodeService client received from async generator: " +
                   str(response.event_type))
-            if response.event_type == 0:
-                print("0 do sth...")
-                ...
-            elif response.event_type == 1:
-                print("1 do sth...")
-                ...
-            elif response.event_type == 2:
-                print("2 do sth...")
-                ...
+            # listener.fire(str(response.event_type))
+            # listener.fire(str(response))
+            print(">>>>>>>>><<<<<<<<<<<<<<<<")
+            # print(protobuf_to_dict(response))
+            response_dict = protobuf_to_dict(response)
+            print(type(response_dict), response_dict)
+            listener.fire(name=str(response.event_type), data=response_dict)
 
 
 async def run_direct():
@@ -98,13 +126,32 @@ async def run_direct():
                 break
             print("NodeService client received from direct read: " +
                   str(response.event_type))
-        # await streaming()
 
 
 async def func():
     while True:
         print("<<<<<<<<<<,")
         await asyncio.sleep(1)
+
+
+async def listen(app_dir: str, app: str) -> None:
+    # sys.path.insert(0, app_dir)
+    # try:
+    #     listener_run: tiny_listener.Listener = tiny_listener.import_from_string(app)
+    # except BaseException as e:
+    #     # click.echo(e)
+    #     print(e)
+    #     sys.exit(1)
+    # else:
+    #     listener_run.run()
+    listener.run()
+
+# async def run():
+#     listener.run()
+
+
+# async def m():
+#     listen(".", "async_client:listener")
 
 
 async def main():
