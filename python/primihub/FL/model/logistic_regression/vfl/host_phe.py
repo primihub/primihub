@@ -122,7 +122,7 @@ class Host:
         data_to_arbiter = {
             "encrypted_masked_dJ_host": encrypted_masked_dJ_host,
             "encrypted_loss": encrypted_loss}
-        proxy_client_arbiter.Remote(data_to_arbiter, "host_dJ_loss")
+        self.proxy_client_arbiter.Remote(data_to_arbiter, "host_dJ_loss")
 
     '''
         host receive arbiter's decrypted gradient minus its own mask
@@ -277,12 +277,12 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
     logger.debug("Create server proxy for host, port {}.".format(host_port))
 
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port)
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
     logger.debug("Create client proxy to guest,"
                  " ip {}, port {}.".format(guest_ip, guest_port))
 
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
-    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port)
+    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port, "host")
     logger.debug("Create client proxy to arbiter,"
                  " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
@@ -296,6 +296,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
 
     # TODO: File path shouldn't a fixed path.
     data_host = np.loadtxt("/tmp/wisconsin_host.data", str, delimiter=',')
+    data_test = np.loadtxt("/tmp/wisconsion_test.data", str, delimiter=',')
 
     # load train data
     x = data_host[1:, 1:-1]

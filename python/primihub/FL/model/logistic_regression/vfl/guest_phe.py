@@ -6,17 +6,7 @@ from os import path
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 
-# dir = path.join(path.dirname(__file__), '../../../../tests/data')
-# data_guest = np.loadtxt(
-#     path.join(dir, "wisconsin_guest.data"), str, delimiter=',')
-# data_host = np.loadtxt(
-#     path.join(dir, "wisconsin_host.data"), str, delimiter=',')
-# data_test = np.loadtxt(
-#     path.join(dir, "wisconsin_test.data"), str, delimiter=',')
-
 import logging
-
-
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -191,12 +181,13 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
     logger.debug("Create server proxy for guest, port {}.".format(guest_port))
 
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    proxy_client_arbiter = ClientChannelProxy(host_ip, host_port)
+    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     logger.debug("Create client proxy to host,"
                  " ip {}, port {}.".format(host_ip, host_port))
 
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
-    proxy_client_host = ClientChannelProxy(arbiter_ip, arbiter_port)
+    proxy_client_arbiter = ClientChannelProxy(
+        arbiter_ip, arbiter_port, "arbiter")
     logger.debug("Create client proxy to arbiter,"
                  " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
@@ -207,9 +198,10 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         'lr': 0.05,
         'batch_size': 200
     }
-    
+
     # TODO: File path shouldn't a fixed path.
     data_guest = np.loadtxt("/tmp/wisconsin_guest.data", str, delimiter=',')
+    data_test = np.loadtxt("/tmp/wisconsin_test.data", str, delimiter=',')
 
     x = data_guest[1:, :]
     x = x.astype(np.float)

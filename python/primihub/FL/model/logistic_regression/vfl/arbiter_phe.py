@@ -66,20 +66,20 @@ class Arbiter:
             [self.private_key.decrypt(x) for x in encrypted_masked_dJ_guest])
         masked_dJ_host = np.asarray(
             [self.private_key.decrypt(x) for x in encrypted_masked_dJ_host])
-        logger.info("masked_dJ_guest", masked_dJ_guest)
-        logger.info("masked_dJ_host", masked_dJ_host)
+        logger.info("masked_dJ_guest:".format(masked_dJ_guest))
+        logger.info("masked_dJ_host:".format(masked_dJ_host))
         assert "encrypted_loss" in dt.keys(
         ), "Error: 'encrypted_loss' from host  not successfully received."
         encrypted_loss = dt['encrypted_loss']
         loss = self.private_key.decrypt(
             encrypted_loss) / self.batch_size
-        logger.info("loss: ", loss)
+        logger.info("loss: {}".format(loss))
         self.loss.append(loss)
 
         data_to_guest = {"masked_dJ_guest": masked_dJ_guest}
         data_to_host = {"masked_dJ_host": masked_dJ_host}
         self.proxy_client_guest.Remote(data_to_guest, "masked_dJ_guest")
-        selfproxy_client_host.Remote(data_to_host, "masked_dJ_host")
+        self.proxy_client_host.Remote(data_to_host, "masked_dJ_host")
         return
 
     def dec_re(self):
@@ -90,7 +90,7 @@ class Arbiter:
         pred_prob_en = dt['pred_prob_en']
         pred_prob = np.asarray(
             [self.private_key.decrypt(x) for x in pred_prob_en])
-        logger.info("pred_prob", pred_prob)
+        logger.info("pred_prob: {}".format(pred_prob))
         data_to_host = {"pred_prob": pred_prob}
         self.proxy_client_host.Remote(data_to_host, "pred_prob")
 
@@ -121,12 +121,12 @@ def run_hetero_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     logger.debug("Create server proxy for arbiter, port {}.".format(arbiter_port))
 
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    proxy_client_host = ClientChannelProxy(host_ip, host_port)
+    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     logger.debug("Create client proxy to host,"
                  " ip {}, port {}.".format(host_ip, host_port))
 
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port)
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
     logger.debug("Create client proxy to guest,"
                  " ip {}, port {}.".format(guest_ip, guest_port))
 
