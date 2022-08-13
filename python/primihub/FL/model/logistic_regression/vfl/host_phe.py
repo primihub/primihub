@@ -1,44 +1,40 @@
 import numpy as np
 from sklearn import metrics
 from os import path
-# from primihub.FL.model.evaluation.evaluation import Evaluator, Classification_eva
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import classification_eva
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
-proxy_server_arbiter = ServerChannelProxy("10091")  # host接收来自arbiter消息
-proxy_server_guest = ServerChannelProxy("10095")  # host接收来自guest消息
-proxy_client_arbiter = ClientChannelProxy(
-    "127.0.0.1", "10092")  # host发送消息给arbiter
-proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")  # host发送消息给guest
+import logging
 
-dir = path.join(path.dirname(__file__), '../../../../tests/data')
-data_host = np.loadtxt(
-    path.join(
-        dir,
-        "wisconsin_host.data"),
-    str,
-    delimiter=',')
-data_test = np.loadtxt(
-    path.join(
-        dir,
-        "wisconsin_test.data"),
-    str,
-    delimiter=',')
+
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+
+logger = get_logger("hetero_LR_host")
+# proxy_server = ServerChannelProxy("10091")
+# proxy_server = ServerChannelProxy("10095")
+# proxy_client_arbiter = ClientChannelProxy(
+#     "127.0.0.1", "10092")
+# proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")
 
 
 class Host:
-    def __init__(self,
-                 x,
-                 y,
-                 config
-                 ):
+    def __init__(self, x, y, config, proxy_server, proxy_client_guest, proxy_client_host):
         self.x = x
         self.y = y
         self.weights = np.zeros(x.shape[1])
-        # self.weights = np.full(x.shape[1], fill_value=0.2)
         self.mask = 0
         self.data = {}
         self.config = config
+        self.proxy_server = proxy_server
+        self.proxy_client_guest = proxy_client_guest
+        self.proxy_client_host = proxy_client_host
 
     @staticmethod
     def compute_z_host(we, x):
@@ -72,7 +68,7 @@ class Host:
     '''
 
     def cal_u(self, batch_x, batch_y):
-        self.data.update(proxy_server_arbiter.Get("pub", 10000))
+        self.data.update(self.proxy_server.Get("pub", 10000))
         dt = self.data
         assert "public_key" in dt.keys(
         ), "Error: 'public_key' from arbiter not successfully received."
@@ -98,7 +94,7 @@ class Host:
     '''
 
     def cal_dJ_loss(self, batch_x, batch_y):
-        self.data.update(proxy_server_guest.Get("u_z", 10000))
+        self.data.update(self.proxy_server.Get("u_z", 10000))
         dt = self.data
         assert "encrypted_u_guest" in dt.keys(
         ), "Error: 'encrypt_u_guest' from guest not successfully received."
@@ -114,8 +110,10 @@ class Host:
             batch_x, encrypted_u)
         self.mask = np.random.rand(len(encrypted_dJ_host))
         encrypted_masked_dJ_host = encrypted_dJ_host + self.mask
+
         assert "encrypted_z_guest_square" in dt.keys(
         ), "Error: 'encrypted_z_guest_square' from guest in step 1 not successfully received."
+
         encrypted_z = 4 * encrypted_u_guest + dt['z_host']  # w*x
         encrypted_loss = np.sum(np.log(2) - 0.5 * batch_y *
                                 encrypted_z +
@@ -136,18 +134,18 @@ class Host:
     '''
 
     def update(self, batch_x):
-        self.data.update(proxy_server_arbiter.Get("masked_dJ_host", 10000))
+        self.data.update(self.proxy_server.Get("masked_dJ_host", 10000))
         try:
             dt = self.data
             assert "masked_dJ_host" in dt.keys(
             ), "Error: 'masked_dJ_host' from arbiter  not successfully received."
             masked_dJ_host = dt['masked_dJ_host']
-            # proxy_server_arbiter.StopRecvLoop()
+            # proxy_server.StopRecvLoop()
             dJ_host = masked_dJ_host - self.mask
             self.update_weight(dJ_host, batch_x)
         except Exception as e:
-            print("guest update weight exception: %s" % e)
-        print(f"host weight: {self.weights}")
+            logger.error("guest update weight exception: %s" % e)
+        logger.info(f"host weight: {self.weights}")
         return self.weights
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
@@ -160,7 +158,7 @@ class Host:
         # Each element is a numpy array
         all_data = [np.array(d) for d in all_data]
         data_size = all_data[0].shape[0]
-        print("data_size: ", data_size)
+        logger.info("data_size: ", data_size)
         if shuffle:
             p = np.random.permutation(data_size)
             all_data = [d[p] for d in all_data]
@@ -223,25 +221,25 @@ class Host:
 
     @staticmethod
     def predict(we, data_instances, true_y, guest_re):
-        # print("weights.shape", we.shape, "x_test.shape", data_instances.shape)
+        # logger.info("weights.shape", we.shape, "x_test.shape", data_instances.shape)
         pred_prob_en = Host.compute_z_host(we, data_instances) + guest_re
         mask = np.random.rand(len(pred_prob_en))
         pred_prob_en = pred_prob_en + mask
         data_to_arbiter = {"pred_prob_en": pred_prob_en}
         proxy_client_arbiter.Remote(data_to_arbiter, "pred_prob_en")
-        pred_prob = proxy_server_arbiter.Get("pred_prob", 10000)
-        pred_prob=pred_prob["pred_prob"]
+        pred_prob = self.proxy_server.Get("pred_prob", 10000)
+        pred_prob = pred_prob["pred_prob"]
         pred_prob = pred_prob - mask
-        print("pred_prob",pred_prob)
+        logger.info("pred_prob", pred_prob)
         pred_prob = list(map(lambda x: Host.sigmoid(x), pred_prob))
-        print("true_y.shape", true_y.shape)
-        print(true_y)
-        print("pred_prob", len(pred_prob), pred_prob)
+        logger.info("true_y.shape", true_y.shape)
+        logger.info(true_y)
+        logger.info("pred_prob", len(pred_prob), pred_prob)
         threshold = Host.get_threshold(true_y, pred_prob)
-        print("threshold", threshold)
+        logger.info("threshold", threshold)
         predict_result = Host.predict_score_to_output(
             pred_prob, classes=[0, 1], threshold=threshold)
-        print("predict_result", predict_result)
+        logger.info("predict_result", predict_result)
         evaluation_result = classification_eva.getResult(
             true_y, predict_result, pred_prob)
         with open("result_phe.txt", 'a') as f:
@@ -258,7 +256,36 @@ class Host:
         return predict_result, pred_prob, threshold, evaluation_result
 
 
-if __name__ == "__main__":
+def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
+    host_nodes = role_node_map["host"]
+    guest_nodes = role_node_map["guest"]
+    arbiter_nodes = role_node_map["arbiter"]
+
+    if len(host_nodes) != 1:
+        logger.error("Hetero LR only support one host party, but current "
+                     "task have {} host party.".format(len(host_nodes)))
+        return
+
+    if len(guest_nodes) != 1:
+        logger.error("Hetero LR only support one guest party, but current "
+                     "task have {} guest party.".format(len(host_nodes)))
+        return
+
+    if len(arbiter_nodes) != 1:
+        logger.error("Hetero LR only support one arbiter party, but current "
+                     "task have {} arbiter party.".format(len(host_nodes)))
+        return
+
+    host_port = node_addr_map[host_nodes[0]].split(":")
+    proxy_server = ServerChannelProxy(host_port)
+    proxy_server.StartRecvLoop()
+
+    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+    proxy_client_guest = ClientChannelProxy(guest_ip. guest_port)
+
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port)
+
     config = {
         'epochs': 1,
         'lambda': 10,
@@ -266,6 +293,7 @@ if __name__ == "__main__":
         'lr': 0.05,
         'batch_size': 200
     }
+
     # load train data
     x = data_host[1:, 1:-1]
     x = x.astype(float)
@@ -280,39 +308,39 @@ if __name__ == "__main__":
     batch_num = count // config['batch_size'] + 1
     proxy_client_arbiter.Remote(batch_num, "batch_num")
 
-    proxy_server_arbiter.StartRecvLoop()
-    proxy_server_guest.StartRecvLoop()
-    client_host = Host(x, label, config)
+    client_host = Host(x, label, config, proxy_server,
+                       proxy_client_guest, proxy_client_host)
+
     batch_gen_host = client_host.batch_generator(
         [x, label], config['batch_size'], False)
     for i in range(config['epochs']):
-        print("##### epoch %s ##### " % i)
+        logger.info("##### epoch %s ##### " % i)
         for j in range(batch_num):
-            print("-----epoch=%s, batch=%s-----" % (i, j))
+            logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_host_x, batch_host_y = next(batch_gen_host)
-            print("batch_host_x.shape", batch_host_x.shape)
-            print("batch_host_y.shape", batch_host_y.shape)
+            logger.info("batch_host_x.shape", batch_host_x.shape)
+            logger.info("batch_host_y.shape", batch_host_y.shape)
             client_host.cal_u(batch_host_x, batch_host_y)
             client_host.cal_dJ_loss(batch_host_x, batch_host_y)
             client_host.update(batch_host_x)
-            print("batch=%s done" % j)
-        print("epoch=%i done" % i)
-    print("host training process done.")
+            logger.info("batch=%s done" % j)
+        logger.info("epoch=%i done" % i)
+    logger.info("host training process done.")
     client_host.data.update(
-        proxy_server_guest.Get(
+        proxy_server.Get(
             "encrypted_z_guest_test", 10000))
     assert "encrypted_z_guest_test" in client_host.data.keys(
     ), "Error: 'encrypted_z_guest_test' from guest  not successfully received."
     guest_re = client_host.data["encrypted_z_guest_test"]
     # weights = np.concatenate(
     #     [client_host.data["guest_weights"], client_host.weights], axis=0)
-    # print("weights.shape", weights.shape)
-    # print(weights)
+    # logger.info("weights.shape", weights.shape)
+    # logger.info(weights)
     # load test data
     x = data_test[1:, 3:-1]
     x = x.astype(float)
-    print("x.shape", x.shape)
-    print(x[0])
+    logger.info("x.shape", x.shape)
+    logger.info(x[0])
     label = data_test[1:, -1]
     label = label.astype(int)
     for i in range(len(label)):
@@ -321,5 +349,4 @@ if __name__ == "__main__":
         else:
             label[i] = 1
     client_host.predict(client_host.weights, x, label, guest_re)
-    proxy_server_arbiter.StopRecvLoop()
-    proxy_server_guest.StopRecvLoop()
+    proxy_server.StopRecvLoop()
