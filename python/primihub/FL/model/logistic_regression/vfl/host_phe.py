@@ -296,7 +296,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
 
     # TODO: File path shouldn't a fixed path.
     data_host = np.loadtxt("/tmp/wisconsin_host.data", str, delimiter=',')
-    data_test = np.loadtxt("/tmp/wisconsion_test.data", str, delimiter=',')
+    data_test = np.loadtxt("/tmp/wisconsin_test.data", str, delimiter=',')
 
     # load train data
     x = data_host[1:, 1:-1]
