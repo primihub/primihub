@@ -133,7 +133,7 @@ class Guest:
         # Each element is a numpy array
         all_data = [np.array(d) for d in all_data]
         data_size = all_data[0].shape[0]
-        logger.info("data_size: ", data_size)
+        logger.info("data_size: {}".format(data_size))
         if shuffle:
             p = np.random.permutation(data_size)
             all_data = [d[p] for d in all_data]
@@ -185,15 +185,20 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
                      "task have {} arbiter party.".format(len(host_nodes)))
         return
 
-    guest_port = node_addr_map[guest_nodes[0]].split(":")[0]
+    guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for guest, port {}.".format(guest_port))
 
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
     proxy_client_arbiter = ClientChannelProxy(host_ip, host_port)
+    logger.debug("Create client proxy to host,"
+                 " ip {}, port {}.".format(host_ip, host_port))
 
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
     proxy_client_host = ClientChannelProxy(arbiter_ip, arbiter_port)
+    logger.debug("Create client proxy to arbiter,"
+                 " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
     config = {
         'epochs': 1,
@@ -202,6 +207,9 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         'lr': 0.05,
         'batch_size': 200
     }
+    
+    # TODO: File path shouldn't a fixed path.
+    data_guest = np.loadtxt("/tmp/wisconsin_guest.data", str, delimiter=',')
 
     x = data_guest[1:, :]
     x = x.astype(np.float)
@@ -219,7 +227,7 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         for j in range(batch_num):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_guest_x = next(batch_gen_guest)[0]
-            logger.info("batch_guest_x.shape", batch_guest_x.shape)
+            logger.info("batch_guest_x.shape: {}".format(batch_guest_x.shape))
             client_guest.cal_uz(batch_guest_x)
             client_guest.cal_dJ(batch_guest_x)
             client_guest.update(batch_guest_x)
@@ -230,7 +238,7 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
     # load test data
     x_test = data_test[1:, 1:3]
     x_test = x_test.astype(float)
-    logger.info("x_test.shape", x_test.shape)
+    logger.info("x_test.shape: {}".format(x_test.shape))
     logger.info(x_test[0])
     client_guest.predict(client_guest.weights, x_test)
 

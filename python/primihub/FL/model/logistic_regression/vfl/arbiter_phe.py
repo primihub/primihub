@@ -32,7 +32,7 @@ class Arbiter:
         self.loss = []
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
-        self.proxy_client_guest = proxy_cient_guest
+        self.proxy_client_guest = proxy_client_guest
 
     # Arbiter: Send the public key to guest,host
     def send_pub(self):
@@ -55,8 +55,8 @@ class Arbiter:
     # the received gradient
 
     def dec_gradient(self):
-        self.data.update(proxy_server.Get("encrypted_masked_dJ_guest", 10000))
-        self.data.update(proxy_server.Get("host_dJ_loss", 10000))
+        self.data.update(self.proxy_server.Get("encrypted_masked_dJ_guest", 10000))
+        self.data.update(self.proxy_server.Get("host_dJ_loss", 10000))
         dt = self.data
         assert "encrypted_masked_dJ_guest" in dt.keys() and "encrypted_masked_dJ_host" in dt.keys(
         ), "Error: 'masked_dJ_guest' from guest or 'masked_dJ_host' from host  not successfully received."
@@ -83,7 +83,7 @@ class Arbiter:
         return
 
     def dec_re(self):
-        self.data.update(proxy_server.Get("pred_prob_en", 10000))
+        self.data.update(self.proxy_server.Get("pred_prob_en", 10000))
         dt = self.data
         assert "pred_prob_en" in dt.keys(
         ), "Error: 'pred_prob_en' from host not successfully received."
@@ -115,15 +115,20 @@ def run_hetero_lr_arbiter(role_node_map, node_addr_map, params_map={}):
                      "task have {} arbiter party.".format(len(host_nodes)))
         return
 
-    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(arbiter_port)
     proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for arbiter, port {}.".format(arbiter_port))
 
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    self.proxy_client_host = ClientChannelProxy(host_ip, host_port)
+    proxy_client_host = ClientChannelProxy(host_ip, host_port)
+    logger.debug("Create client proxy to host,"
+                 " ip {}, port {}.".format(host_ip, host_port))
 
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    self.proxy_client_guest = ClientChannelProxy(guest_ip, guest_port)
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port)
+    logger.debug("Create client proxy to guest,"
+                 " ip {}, port {}.".format(guest_ip, guest_port))
 
     config = {
         'epochs': 1,
@@ -137,11 +142,11 @@ def run_hetero_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     for i in range(config['epochs']):
         logger.info("##### epoch %s ##### " % i)
         for j in range(batch_num):
-            logger.info("-----epoch=%s, batch=%s-----" % (i, j))
+            logger.info("-----epoch={}, batch={}-----".format(i, j))
             client_arbiter.send_pub()
             client_arbiter.dec_gradient()
-            logger.info("batch=%s done" % j)
-        logger.info("epoch=%i done" % i)
+            logger.info("batch={} done".format(j))
+        logger.info("epoch={} done".format(i))
     logger.info("All process done.")
 
     client_arbiter.send_pub()

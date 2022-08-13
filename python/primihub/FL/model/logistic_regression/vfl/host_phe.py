@@ -17,15 +17,10 @@ def get_logger(name):
 
 
 logger = get_logger("hetero_LR_host")
-# proxy_server = ServerChannelProxy("10091")
-# proxy_server = ServerChannelProxy("10095")
-# proxy_client_arbiter = ClientChannelProxy(
-#     "127.0.0.1", "10092")
-# proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")
 
 
 class Host:
-    def __init__(self, x, y, config, proxy_server, proxy_client_guest, proxy_client_host):
+    def __init__(self, x, y, config, proxy_server, proxy_client_guest, proxy_client_arbiter):
         self.x = x
         self.y = y
         self.weights = np.zeros(x.shape[1])
@@ -34,7 +29,7 @@ class Host:
         self.config = config
         self.proxy_server = proxy_server
         self.proxy_client_guest = proxy_client_guest
-        self.proxy_client_host = proxy_client_host
+        self.proxy_client_arbiter = proxy_client_arbiter
 
     @staticmethod
     def compute_z_host(we, x):
@@ -83,7 +78,7 @@ class Host:
         dt.update({"z_host": z_host})
         data_to_guest = {"encrypted_u_host": encrypted_u_host}
         # self.channel.send(data_to_guest)
-        proxy_client_guest.Remote(data_to_guest, "encrypted_u_host")
+        self.proxy_client_guest.Remote(data_to_guest, "encrypted_u_host")
 
     '''
         1.host receive the partial gradient from the guest
@@ -158,7 +153,7 @@ class Host:
         # Each element is a numpy array
         all_data = [np.array(d) for d in all_data]
         data_size = all_data[0].shape[0]
-        logger.info("data_size: ", data_size)
+        logger.info("data_size: {}".format(data_size))
         if shuffle:
             p = np.random.permutation(data_size)
             all_data = [d[p] for d in all_data]
@@ -276,15 +271,20 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
                      "task have {} arbiter party.".format(len(host_nodes)))
         return
 
-    host_port = node_addr_map[host_nodes[0]].split(":")
+    host_port = node_addr_map[host_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(host_port)
     proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for host, port {}.".format(host_port))
 
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    proxy_client_guest = ClientChannelProxy(guest_ip. guest_port)
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port)
+    logger.debug("Create client proxy to guest,"
+                 " ip {}, port {}.".format(guest_ip, guest_port))
 
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
     proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port)
+    logger.debug("Create client proxy to arbiter,"
+                 " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
     config = {
         'epochs': 1,
@@ -293,6 +293,9 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
         'lr': 0.05,
         'batch_size': 200
     }
+
+    # TODO: File path shouldn't a fixed path.
+    data_host = np.loadtxt("/tmp/wisconsin_host.data", str, delimiter=',')
 
     # load train data
     x = data_host[1:, 1:-1]
@@ -309,7 +312,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
     proxy_client_arbiter.Remote(batch_num, "batch_num")
 
     client_host = Host(x, label, config, proxy_server,
-                       proxy_client_guest, proxy_client_host)
+                       proxy_client_guest, proxy_client_arbiter)
 
     batch_gen_host = client_host.batch_generator(
         [x, label], config['batch_size'], False)
@@ -318,8 +321,8 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
         for j in range(batch_num):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_host_x, batch_host_y = next(batch_gen_host)
-            logger.info("batch_host_x.shape", batch_host_x.shape)
-            logger.info("batch_host_y.shape", batch_host_y.shape)
+            logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
+            logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
             client_host.cal_u(batch_host_x, batch_host_y)
             client_host.cal_dJ_loss(batch_host_x, batch_host_y)
             client_host.update(batch_host_x)

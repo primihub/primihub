@@ -1,4 +1,5 @@
 import primihub as ph
+import logging
 from primihub import dataset, context
 from primihub.FL.model.logistic_regression.vfl.host_phe import run_hetero_lr_host
 from primihub.FL.model.logistic_regression.vfl.guest_phe import run_hetero_lr_guest
@@ -37,12 +38,13 @@ def dump_task_content(dataset_map, node_addr_map, role_nodeid_map, params_map):
 def run_host_party():
     logger.info("Start hetero-LR host logic.")
 
-    dump_task_content(ph.context.Context.node_addr_map,
+    dump_task_content(ph.context.Context.dataset_map,
+                      ph.context.Context.node_addr_map,
                       ph.context.Context.role_nodeid_map,
                       ph.context.Context.params_map)
 
-    run_hetero_lr_host(ph.context.Context.node_addr_map,
-                       ph.context.Context.role_nodeid_map,
+    run_hetero_lr_host(ph.context.Context.role_nodeid_map,
+                       ph.context.Context.node_addr_map,
                        ph.context.Context.params_map)
 
     logger.info("Finish hetero-LR host logic.")
@@ -53,12 +55,13 @@ def run_host_party():
 def run_guest_party():
     logger.info("Start hetero-LR guest logic.")
 
-    dump_task_content(ph.context.Context.node_addr_map,
+    dump_task_content(ph.context.Context.dataset_map,
+                      ph.context.Context.node_addr_map,
                       ph.context.Context.role_nodeid_map,
                       ph.context.Context.params_map)
 
-    run_hetero_lr_guest(ph.context.Context.node_addr_map,
-                        ph.context.Context.role_nodeid_map,
+    run_hetero_lr_guest(ph.context.Context.role_nodeid_map,
+                        ph.context.Context.node_addr_map,
                         ph.context.Context.params_map)
 
     logger.info("Finish hetero-LR guest logic.")
@@ -69,13 +72,13 @@ def run_guest_party():
 def run_arbiter_party():
     logger.info("Start hetero-LR arbiter logic.")
 
-    dump_task_content(ph.context.Context.node_addr_map,
+    dump_task_content(ph.context.Context.dataset_map,
+                      ph.context.Context.node_addr_map,
                       ph.context.Context.role_nodeid_map,
                       ph.context.Context.params_map)
 
-
-    run_hetero_lr_arbiter(ph.context.Context.node_addr_map,
-                          ph.context.Context.role_nodeid_map,
+    run_hetero_lr_arbiter(ph.context.Context.role_nodeid_map,
+                          ph.context.Context.node_addr_map,
                           ph.context.Context.params_map)
 
     logger.info("Finish hetero-LR arbiter logic.")
