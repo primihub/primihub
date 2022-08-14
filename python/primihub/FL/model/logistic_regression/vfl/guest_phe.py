@@ -53,20 +53,33 @@ class Guest:
         assert "public_key" in dt.keys(
         ), "Error: 'public_key' from arbiter not successfully received."
         public_key = dt['public_key']
+
         z_guest = self.compute_z_guest(self.weights, batch_x)
         u_guest = 0.25 * z_guest
         z_guest_square = z_guest ** 2
         encrypted_u_guest = []
         encrypted_z_guest_square = []
+        
+        tm_st = time.time()
         for x in u_guest:
             encrypted_u_guest.append(public_key.encrypt(x))
+        tm_ed = time.time()
+        logger.info(f"Encrypt u_guest use {tm_ed - tm_st} seconds.")
+        
+        tm_st = time.time()
         for y in z_guest_square:
             encrypted_z_guest_square.append(public_key.encrypt(y))
+        tm_ed = time.time()
+        logger.info(f"Encrypt u_guest_square use {tm_ed - tm_st} seconds.")
+        
         encrypted_u_guest = np.asarray(encrypted_u_guest)
         encrypted_z_guest_square = np.asarray(encrypted_z_guest_square)
         dt.update({"encrypted_u_guest": encrypted_u_guest})
+
         data_to_host = {"encrypted_u_guest": encrypted_u_guest,
                         "encrypted_z_guest_square": encrypted_z_guest_square}
+
+        time.sleep(1)
         self.proxy_client_host.Remote(data_to_host, "u_z")
 
     '''
@@ -196,7 +209,7 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 400
+        'batch_size': 500
     }
 
     # TODO: File path shouldn't a fixed path.

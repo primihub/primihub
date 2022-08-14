@@ -132,7 +132,7 @@ def run_hetero_lr_arbiter(role_node_map, node_addr_map, params_map={}):
 
     config = {
         'epochs': 1,
-        'batch_size': 400
+        'batch_size': 500 
     }
 
     batch_num = proxy_server.Get("batch_num")

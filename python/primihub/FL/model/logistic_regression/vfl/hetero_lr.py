@@ -6,14 +6,14 @@ from primihub.FL.model.logistic_regression.vfl.guest_phe import run_hetero_lr_gu
 from primihub.FL.model.logistic_regression.vfl.arbiter_phe import run_hetero_lr_arbiter
 
 # TODO: Remove them, just for debug.
-ph.context.Context.role_nodeid_map["host"] = ["nodeX"]
-ph.context.Context.role_nodeid_map["guest"] = ["nodeY"]
-ph.context.Context.role_nodeid_map["arbiter"] = ["nodeZ"]
-
+# ph.context.Context.role_nodeid_map["host"] = ["nodeX"]
+# ph.context.Context.role_nodeid_map["guest"] = ["nodeY"]
+# ph.context.Context.role_nodeid_map["arbiter"] = ["nodeZ"]
+# 
 # TODO: Remove them, just for debug.
-ph.context.Context.node_addr_map["nodeX"] = "127.0.0.1:8010"
-ph.context.Context.node_addr_map["nodeY"] = "127.0.0.1:8020"
-ph.context.Context.node_addr_map["nodeZ"] = "127.0.0.1:8030"
+# ph.context.Context.node_addr_map["nodeX"] = "127.0.0.1:8010"
+# ph.context.Context.node_addr_map["nodeY"] = "127.0.0.1:8020"
+# ph.context.Context.node_addr_map["nodeZ"] = "127.0.0.1:8030"
 
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
