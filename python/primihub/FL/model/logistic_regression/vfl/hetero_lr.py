@@ -67,9 +67,10 @@ def run_guest_party():
     logger.info("Finish hetero-LR guest logic.")
 
 
-# Although the arbiter don't load any dataset, but primihub use dataset name 
-# to find which party will act as arbiter, so don't forget to add a dataset 
-# name to ph.context.function.
+# Don't forget to add dataset name to ph.context.function's dataset parameters,
+# although hetero-LR's arbiter don't handle any examples. This limit comes from
+# primihub, primihub use dataset name here to resolve which party will act as 
+# arbiter.
 @ph.context.function(role='arbiter', protocol='hetero-LR',
                      datasets=['arbiter_dataset'], port='8030')
 def run_arbiter_party():
