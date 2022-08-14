@@ -215,26 +215,26 @@ class Host:
         return pred_re
 
     @staticmethod
-    def predict(we, data_instances, true_y, guest_re):
+    def predict(we, data_instances, true_y, guest_re, proxy_client_arbiter, proxy_server):
         # logger.info("weights.shape", we.shape, "x_test.shape", data_instances.shape)
         pred_prob_en = Host.compute_z_host(we, data_instances) + guest_re
         mask = np.random.rand(len(pred_prob_en))
         pred_prob_en = pred_prob_en + mask
         data_to_arbiter = {"pred_prob_en": pred_prob_en}
         proxy_client_arbiter.Remote(data_to_arbiter, "pred_prob_en")
-        pred_prob = self.proxy_server.Get("pred_prob", 10000)
+        pred_prob = proxy_server.Get("pred_prob", 10000)
         pred_prob = pred_prob["pred_prob"]
         pred_prob = pred_prob - mask
-        logger.info("pred_prob", pred_prob)
+        logger.info("pred_prob: {}".format(pred_prob))
         pred_prob = list(map(lambda x: Host.sigmoid(x), pred_prob))
-        logger.info("true_y.shape", true_y.shape)
+        logger.info("true_y.shape: {}".format(true_y.shape))
         logger.info(true_y)
-        logger.info("pred_prob", len(pred_prob), pred_prob)
+        logger.info("pred_prob: {}".format(pred_prob))
         threshold = Host.get_threshold(true_y, pred_prob)
-        logger.info("threshold", threshold)
+        logger.info("threshold: {}".format(threshold))
         predict_result = Host.predict_score_to_output(
             pred_prob, classes=[0, 1], threshold=threshold)
-        logger.info("predict_result", predict_result)
+        logger.info("predict_result: {}".format(predict_result))
         evaluation_result = classification_eva.getResult(
             true_y, predict_result, pred_prob)
         with open("result_phe.txt", 'a') as f:
@@ -291,7 +291,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 200
+        'batch_size': 400
     }
 
     # TODO: File path shouldn't a fixed path.
@@ -343,7 +343,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
     # load test data
     x = data_test[1:, 3:-1]
     x = x.astype(float)
-    logger.info("x.shape", x.shape)
+    logger.info("x.shape: ".format(x.shape))
     logger.info(x[0])
     label = data_test[1:, -1]
     label = label.astype(int)
@@ -352,5 +352,8 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
             label[i] = 0
         else:
             label[i] = 1
-    client_host.predict(client_host.weights, x, label, guest_re)
+
+    client_host.predict(client_host.weights, x, label, guest_re, 
+                        proxy_client_arbiter, proxy_server)
+
     proxy_server.StopRecvLoop()

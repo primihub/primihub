@@ -196,7 +196,7 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 200
+        'batch_size': 400
     }
 
     # TODO: File path shouldn't a fixed path.

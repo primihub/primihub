@@ -104,5 +104,5 @@ class ServerChannelProxy:
             else:
                 time.sleep(0.3)
 
-        logger.warn("Can't get value for tag {}, timeout.".format(tag))
+        logger.warn("Can't get value for tag '{}', timeout.".format(tag))
         return None
