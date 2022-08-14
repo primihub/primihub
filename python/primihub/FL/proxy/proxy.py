@@ -87,8 +87,8 @@ class ServerChannelProxy:
         self.stop_signal_ = True
         self.recv_loop_fut_.result()
         logger.info("Recv loop already exit, clean cached value.")
-        keys = self.recv_cache_.keys()
-        for key in keys:
+        key_list = list(self.recv_cache_.keys())
+        for key in key_list: 
             del self.recv_cache_[key]
         del self.recv_cache_
 
