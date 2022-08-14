@@ -90,6 +90,7 @@ class ServerChannelProxy:
         key_list = list(self.recv_cache_.keys())
         for key in key_list: 
             del self.recv_cache_[key]
+            logger.warn("Remove value with tag '{}', not used until now.".format(key))
         del self.recv_cache_
 
     # Get value from cache, and the check will repeat at most 'retries' times,
