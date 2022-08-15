@@ -40,6 +40,8 @@ jobs:
           && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
     - name: Install python-devel
       run: sudo apt install python-dev
+    - name: Install pytest
+      run: sudo apt-get install python3-pip -y && pip3 install pytest
     - uses: actions/checkout@v3
     - name: Setup bazelisk
       uses: bazelbuild/setup-bazelisk@v2
