@@ -50,12 +50,27 @@ namespace primihub::service {
         auto dataset = driver->getCursor()->read();
         DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now. 
         meta = _meta;
-
         // Save datameta in local storage.& Publish dataset meta on libp2p network.
         metaService_->putMeta(meta);
-
         return dataset;
     }
+
+    /**
+     * @brief write dataset to local storage
+     * @param dataset [input]: Dataset to be written with own driver
+     * @param description [input]: Dataset description
+     * @param meta [output]: Dataset metadata
+     */
+    void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset, 
+                 const std::string &description,
+                 DatasetMeta &meta /*output*/) {
+        // dataset.write();
+        dataset->getDataDriver()->getCursor()->write(dataset);
+        DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
+        meta = _meta;
+        metaService_->putMeta(meta);
+    } 
+
 
     /**
      * @brief Register dataset use meta
@@ -190,6 +205,14 @@ namespace primihub::service {
             metas.push_back(meta);
         }
         return outcome::success();
+    }
+    
+    std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
+        auto res = localKv_->getValue(id);
+        if (res.has_value()) {
+            return make_shared<DatasetMeta>(res.value());
+        }
+        return nullptr;
     }
 
     void DatasetMetaService::putMeta(DatasetMeta& meta) {

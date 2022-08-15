@@ -14,8 +14,11 @@
  limitations under the License.
  */
 
+#include <variant>
+
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
+
 
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
@@ -82,24 +85,9 @@ std::shared_ptr<primihub::Dataset> CSVCursor::read(int64_t offset,
   return nullptr;
 }
 
-// ======== CSV Driver implementation ========
-
-CSVDriver::CSVDriver(const std::string &nodelet_addr)
-    : DataDriver(nodelet_addr) {
-  driver_type = "CSV";
-}
-
-std::shared_ptr<Cursor> &CSVDriver::read(const std::string &filePath) {
-  filePath_ = filePath;
-  this->cursor = std::make_shared<CSVCursor>(filePath, shared_from_this());
-  return getCursor();
-}
-
-// std::shared_ptr<primihub::Dataset>
-int CSVDriver::write(std::shared_ptr<arrow::Table> table,
-                     std::string &filePath) {
-  filePath_ = filePath;
-  auto result = arrow::io::FileOutputStream::Open(filePath);
+int CSVCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
+  // write Dataset to csv file
+  auto result = arrow::io::FileOutputStream::Open(this->filePath);
   if (!result.ok()) {
     LOG(ERROR) << "Open file " << filePath << " failed.";
     return -1;
@@ -107,7 +95,7 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
 
   auto stream = result.ValueOrDie();
   auto options = arrow::csv::WriteOptions::Defaults();
-  auto csv_table = table.get();
+  auto csv_table = std::get<std::shared_ptr<arrow::Table>>(dataset->data);
   auto mem_pool = arrow::default_memory_pool();
   arrow::Status status = arrow::csv::WriteCSV(
       *(csv_table), options, mem_pool,
@@ -116,9 +104,50 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
     LOG(ERROR) << "Write content to csv file failed.";
     return -2;
   }
-  
   return 0;
 }
+
+// ======== CSV Driver implementation ========
+
+CSVDriver::CSVDriver(const std::string &nodelet_addr)
+    : DataDriver(nodelet_addr) {
+  driver_type = "CSV";
+}
+
+std::shared_ptr<Cursor> &CSVDriver::read(const std::string &filePath) {
+   return this->initCursor(filePath);
+}
+
+std::shared_ptr<Cursor> &CSVDriver::initCursor(const std::string &filePath) {
+  filePath_ = filePath;
+  this->cursor = std::make_shared<CSVCursor>(filePath, shared_from_this());
+  return getCursor();
+}
+
+// FIXME to be deleted write file in driver directly.
+// int CSVDriver::write(std::shared_ptr<arrow::Table> table,
+//                      std::string &filePath) {
+//   filePath_ = filePath;
+//   auto result = arrow::io::FileOutputStream::Open(filePath);
+//   if (!result.ok()) {
+//     LOG(ERROR) << "Open file " << filePath << " failed.";
+//     return -1;
+//   }
+
+//   auto stream = result.ValueOrDie();
+//   auto options = arrow::csv::WriteOptions::Defaults();
+//   auto csv_table = table.get();
+//   auto mem_pool = arrow::default_memory_pool();
+//   arrow::Status status = arrow::csv::WriteCSV(
+//       *(csv_table), options, mem_pool,
+//       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
+//   if (!status.ok()) {
+//     LOG(ERROR) << "Write content to csv file failed.";
+//     return -2;
+//   }
+  
+//   return 0;
+// }
 
 std::string CSVDriver::getDataURL() const { return filePath_; };
 
