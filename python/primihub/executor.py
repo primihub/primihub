@@ -64,7 +64,7 @@ class Executor:
     @staticmethod
     @timeout(60 * 60, _handle_timeout)  # TODO TIMEOUT 60 * 60
     def execute_py(dumps_func):
-        print("execute oy code.")
+        print("execute py code.")
         func_name = loads(dumps_func).__name__
         print("func name: ", func_name)
         func_params = Context.get_func_params_map().get(func_name, None)
@@ -79,7 +79,7 @@ class Executor:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content() 
         else:
             try:
                 print("start execute with params")
@@ -89,7 +89,7 @@ class Executor:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content() 
 
     @staticmethod
     def execute_test():

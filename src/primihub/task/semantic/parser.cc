@@ -122,7 +122,7 @@ void ProtocolSemanticParser::schedulePythonTask(
         LOG(INFO) << " 🔍 Python task found meta list from datasets: "
                   << metas_with_param_tag.size();
 
-        metasToPeerWithTagList(metas_with_param_tag, peers_with_role_tag_);
+        metasToPeerWithTagAndPort(metas_with_param_tag, peers_with_role_tag_);
         std::shared_ptr<VMScheduler> scheduler = std::make_shared<FLScheduler>(
                         node_id_, singleton_, 
                         peers_with_role_tag_, 
@@ -299,6 +299,72 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
   }
 }
 
+void ProtocolSemanticParser::metasToPeerWithTagAndPort(
+    const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
+    std::vector<NodeWithRoleTag> &peers_with_tag) {
+  bool errors = false;
+  for (auto &meta_with_tag : metas_with_tag) {
+    auto meta = meta_with_tag.first;
+    auto tag = meta_with_tag.second;
+    std::string node_id, node_ip, dataset_path;
+    int node_port;
+    std::string data_url = meta->getDataURL();
+    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    
+    // Get tcp port used by FL algorithm.
+    std::string ds_name = meta->getDescription();
+    auto &ds_port_map = peer_context_map_[tag].dataset_port_map;
+    auto iter = ds_port_map.find(ds_name);
+    if (iter == ds_port_map.end()) {
+      LOG(ERROR) << "Can't find data port for dataset " << ds_name << ".";
+      errors = true;
+      break;
+    }
+
+    Node node;
+    node.set_node_id(node_id);
+    node.set_ip(node_ip);
+
+    // This port is tcp port used by FL algorithm.
+    node.set_data_port(std::atoi(iter->second.c_str()));
+
+    // This port is tcp port used by gRPC.
+    node.set_port(node_port);
+
+    bool is_new_peer = true;
+    for (auto &peer : peers_with_tag) {
+      if (peer.first.node_id() == node_id) {
+        is_new_peer = false;
+        break;
+      }
+    }
+
+    if (is_new_peer) {
+      peers_with_tag.push_back(std::make_pair(node, tag));
+    }
+  }
+
+
+  if (errors) {
+    LOG(ERROR) << "Error occurs during construct Node structure.";
+  } else {
+    LOG(INFO) << "Dump content of all node in FL task before schedule:";
+    uint32_t count = 0;
+
+    for (auto &peer_with_tag : peers_with_tag) {
+      auto &node = peer_with_tag.first;
+      count ++;
+      LOG(INFO) << "Node content: node_id " << node.node_id() << ", role " 
+                << peer_with_tag.second << ", ip " << node.ip() << ", port " 
+                << node.port() << ", data port " << node.data_port() << ".";
+    }
+
+    LOG(INFO) << "Dump finish, dump count " << count << ".";
+  }
+
+  return;
+}
+
 void ProtocolSemanticParser::metasToPeerWithTagList(
     const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
     std::vector<NodeWithRoleTag> &peers_with_tag) {
@@ -312,7 +378,7 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     int node_port;
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-
+  
     Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);

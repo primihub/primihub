@@ -1,16 +1,26 @@
 import functools
 import os
+import logging
 from typing import Callable
 from cloudpickle import dumps
 
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+logger = get_logger("context")
 
 class NodeContext:
-    def __init__(self, role, protocol, datasets, func=None, next_peer=None):
+    def __init__(self, role, protocol, dataset_port_map, func=None):
         self.role = role
         self.protocol = protocol
-        self.datasets = datasets
         self.func = func
-        self.next_peer = next_peer
+        self.dataset_port_map = dataset_port_map 
+        self.task_type = None 
         print("func type: ", type(func))
 
         self.dumps_func = None
@@ -23,6 +33,16 @@ class NodeContext:
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
 
+        self.datasets = []
+        for ds_name in self.dataset_port_map.keys():
+            self.datasets.append(ds_name)
+
+    def set_task_type(self, task_type):
+        self.task_type = task_type
+
+    def get_task_type(self):
+        return self.task_type
+
 
 class TaskContext:
     """ key: role, value:NodeContext """
@@ -31,6 +51,7 @@ class TaskContext:
     datasets = []
     # dataset meta information
     dataset_map = dict()
+    node_addr_map = dict()
     predict_file_path = "result/xgb_prediction.csv"
     indicator_file_path = "result/xgb_indicator.json"
     model_file_path = "result/host/model"
@@ -40,7 +61,11 @@ class TaskContext:
     func_params_map = dict()
 
     def __init__(self) -> None:
-        pass
+        self.role_nodeid_map = {}
+        self.role_nodeid_map["host"] = []
+        self.role_nodeid_map["arbiter"] = []
+        self.role_nodeid_map["guest"] = []
+        self.params_map = {}
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -65,6 +90,20 @@ class TaskContext:
 
     def get_func_params_map(self):
         return self.func_params_map
+
+    def get_task_type(self):
+        roles = self.get_roles()
+        type_list = []
+        for role in roles:
+            type_list.append(self.nodes_context[role].get_task_type())
+
+        type_set = set(type_list)
+        logger.info(type_set)
+        if len(type_set) != 1:
+            logger.error("Task type in all role must be the same.")
+            raise RuntimeError("Task type in all role is not the same.")
+        else:
+            return type_list[0] 
 
     @staticmethod
     def mk_output_dir(output_dir):
@@ -107,14 +146,32 @@ class TaskContext:
         self.mk_output_dir(output_dir)
         print("guest lookup table: ", self.guest_lookup_file_path)
         return self.guest_lookup_file_path
+    
+    def get_role_node_map(self):
+        return self.role_nodeid_map
+
+    def get_node_addr_map(self):
+        return self.node_addr_map
+
+    def clean_content(self):
+        self.role_nodeid_map.clear()
+        self.role_nodeid_map["host"] = []
+        self.role_nodeid_map["guest"] = []
+        self.role_nodeid_map["arbiter"] = []
+
+        self.node_addr_map.clear()
+        self.params_map.clear()
+
 
 
 Context = TaskContext()
 
 
-def set_node_context(role, protocol, datasets,  next_peer):
-    print("========set node context: ", role, protocol, datasets,  next_peer)
-    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
+def set_node_context(role, protocol, datasets):
+    dataset_port_map = {}
+    for dataset in datasets:
+        dataset_port_map[dataset] = "0"
+    Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
@@ -145,11 +202,22 @@ def set_task_context_host_lookup_file(f):
 def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
-# For test
+
+def set_task_context_node_addr_map(node_id_with_role, addr):
+    nodeid, role = node_id_with_role.rsplit("_")
+    Context.node_addr_map[nodeid] = addr
+    Context.role_nodeid_map[role].append(nodeid)
+    logger.info("Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
+    logger.info("Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
+
+
+def set_task_context_params_map(key, value):
+    Context.params_map[key] = value
+    logger.info("Insert '{}:{}' into task context.".format(key, value))
 
 
 def set_text(role, protocol, datasets, dumps_func):
-    print("========", role, protocol, datasets, dumps_func)
+    logger.info("========", role, protocol, datasets, dumps_func)
 
 
 # Register dataset decorator
@@ -164,14 +232,21 @@ def reg_dataset(func):
 
 
 # Register task decorator
-def function(protocol, role, datasets, next_peer):
+def function(protocol, role, datasets, port, task_type="default"):
     def function_decorator(func):
         print("Register task:", func.__name__)
-        Context.nodes_context[role] = NodeContext(
-            role, protocol, datasets, func, next_peer)
 
-        print(">>>>> next peer in {}'s node context is {}.".format(
-            role, Context.nodes_context[role].next_peer))
+        dataset_port_map = {}
+        for dataset in datasets:
+            dataset_port_map[dataset] = port
+
+        Context.nodes_context[role] = NodeContext(
+            role, protocol, dataset_port_map, func)
+
+        Context.nodes_context[role].set_task_type(task_type)
+
+        print(">>>>> dataset_port_map in {}'s node context is {}.".format(
+            role, Context.nodes_context[role].dataset_port_map))
         print(">>>>> dataset in {}'s node context is {}.".format(
             role, Context.nodes_context[role].datasets))
         print(">>>>> role in {}'s node context is {}.".format(
