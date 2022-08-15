@@ -213,21 +213,28 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_m
         'lr': 0.05,
         'batch_size': 500
     }
+    data_guest = np.loadtxt(dataset_filepath, str, delimiter=',')
+
 
     x = data_guest[1:, :]
     x = x.astype(np.float)
     count = x.shape[0]
-    batch_num = count // config['batch_size'] + 1
 
-    client_guest = Guest(x, config, proxy_server,
+    x_train=x[:count*0.8,:]
+    count_train=x_train.shape[0]
+    batch_num_train = count_train // config['batch_size'] + 1
+    x_test=x[count*0.8:,:]
+
+
+    client_guest = Guest(x_train, config, proxy_server,
                          proxy_client_host, proxy_client_arbiter)
 
     batch_gen_guest = client_guest.batch_generator(
-        [x], config['batch_size'], False)
+        [x_train], config['batch_size'], False)
 
     for i in range(config['epochs']):
         logger.info("##### epoch %s ##### " % i)
-        for j in range(batch_num):
+        for j in range(batch_num_train):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_guest_x = next(batch_gen_guest)[0]
             logger.info("batch_guest_x.shape: {}".format(batch_guest_x.shape))
@@ -239,8 +246,6 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_m
     logger.info("guest training process done.")
 
     # load test data
-    x_test = data_test[1:, 1:3]
-    x_test = x_test.astype(float)
     logger.info("x_test.shape: {}".format(x_test.shape))
     logger.info(x_test[0])
     client_guest.predict(client_guest.weights, x_test)
