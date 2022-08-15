@@ -49,13 +49,13 @@ jobs:
         path: "~/.cache/bazel"
         key: bazel
 
-    - name: pytest
-      run: |
-        cd python/primihub/tests/
-        export PYTHONPATH=../..
-        pytest -v feature_test/test_onehot.py
-        pytest -v feature_test/test_minmax_standard.py
-        pytest -v test_disxgb_en.py
+    # - name: pytest
+    #   run: |
+    #     cd python/primihub/tests/
+    #     export PYTHONPATH=../..
+    #     pytest -v feature_test/test_onehot.py
+    #     pytest -v feature_test/test_minmax_standard.py
+    #     pytest -v test_disxgb_en.py
  
     - name: bazel test
       run: |
