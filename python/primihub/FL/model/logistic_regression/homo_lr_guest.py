@@ -5,6 +5,7 @@ import pandas as pd
 import copy
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
+import logging
 
 proxy_server_arbiter = ServerChannelProxy("10090")  # guest接收arbiter消息
 proxy_server_host = ServerChannelProxy("10093")  # guest接收Host消息
@@ -12,6 +13,18 @@ proxy_client_arbiter = ClientChannelProxy("127.0.0.1", "10094")  # guest发送�
 proxy_client_host = ClientChannelProxy("127.0.0.1", "10095")  # guest发送消息给host
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+
+
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+
+logger = get_logger("Homo-LR-Guest")
 
 
 def data_process():
@@ -96,11 +109,11 @@ if __name__ == "__main__":
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
 
     for i in range(conf['epoch']):
-        print("######### epoch %s ######### start " % i)
+        logger.info("######### epoch %s ######### start " % i)
         guest_param = client_guest.fit_binary(X, label)
         proxy_client_arbiter.Remote(guest_param, "guest_param")
         client_guest.model.theta = proxy_server_arbiter.Get("global_guest_model_param")
-        print("######### epoch %s ######### done " % i)
-    print("guest training process done!")
+        logger.info("######### epoch %s ######### done " % i)
+    logger.info("guest training process done!")
 
     proxy_server_arbiter.StopRecvLoop()

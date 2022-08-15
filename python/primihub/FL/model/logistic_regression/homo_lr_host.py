@@ -5,6 +5,7 @@ import copy
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
+import logging
 
 proxy_server_arbiter = ServerChannelProxy("10091")  # host接收来自arbiter消息
 proxy_server_guest = ServerChannelProxy("10095")  # host接收来自guest消息
@@ -13,6 +14,18 @@ proxy_client_arbiter = ClientChannelProxy(
 proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")  # host发送消息给guest
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+
+
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+
+logger = get_logger("Homo-LR-Host")
 
 
 def data_process():
@@ -117,15 +130,14 @@ if __name__ == "__main__":
     # Send host_data_weight to arbiter
     host_data_weight = conf['batch_size']
     host_data_weight = client_host.encrypt_vector([host_data_weight])
-    print('host_data_weight--->', host_data_weight)
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
 
     for i in range(conf['epoch']):
-        print("######### epoch %s ######### start " % i)
+        logger.info("######### epoch %s ######### start " % i)
         host_param = client_host.fit_binary(X, label)
         proxy_client_arbiter.Remote(host_param, "host_param")
         client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
-        print("######### epoch %s ######### done " % i)
-    print("host training process done!")
+        logger.info("######### epoch %s ######### done " % i)
+    logger.info("host training process done!")
 
     proxy_server_arbiter.StopRecvLoop()
