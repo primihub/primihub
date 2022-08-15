@@ -64,7 +64,7 @@ class Host:
             pre = self.mode.predict(data)
             return pre
 
-    def fit_binary(self, X, y):
+    def fit_binary(self, batch_x, batch_y):
         if self.need_encrypt == True:
             if self.flag == True:
                 # Only need to encrypt once
@@ -72,22 +72,20 @@ class Host:
                 self.flag = False
             # Convert subtraction to addition
             neg_one = self.public_key.encrypt(-1)
-            for e in range(self.iter):  # local iteration
-                print("###### host local iteration %s ###### " % e)
-                idx = np.arange(X.shape[0])
-                batch_idx = np.random.choice(idx, self.batch_size, replace=False)
-                X = np.array(X)
-                y = np.array(y)
-                data_x = X[batch_idx]
-                data_x = np.concatenate((np.ones((data_x.shape[0], 1)), data_x), axis=1)
-                data_y = y[batch_idx].reshape((-1, 1))
-                # use taylor approximation
-                batch_encrypted_grad = data_x.transpose() * (
-                        0.25 * data_x.dot(self.model.theta) + 0.5 * data_y.transpose() * neg_one)
-                encrypted_grad = batch_encrypted_grad.sum(axis=1) / data_y.shape[0]
+            # idx = np.arange(X.shape[0])
+            # batch_idx = np.random.choice(idx, self.batch_size, replace=False)
+            # X = np.array(X)
+            # y = np.array(y)
+            # data_x = X[batch_idx]
+            batch_x = np.concatenate((np.ones((batch_x.shape[0], 1)), batch_x), axis=1)
+            # data_y = y[batch_idx].reshape((-1, 1))
+            # use taylor approximation
+            batch_encrypted_grad = batch_x.transpose() * (
+                    0.25 * batch_x.dot(self.model.theta) + 0.5 * batch_y.transpose() * neg_one)
+            encrypted_grad = batch_encrypted_grad.sum(axis=1) / batch_y.shape[0]
 
-                for j in range(len(self.model.theta)):
-                    self.model.theta[j] -= self.lr * encrypted_grad[j]
+            for j in range(len(self.model.theta)):
+                self.model.theta[j] -= self.lr * encrypted_grad[j]
 
             # weight_accumulators = []
             # for j in range(len(self.local_model.encrypt_weights)):
@@ -96,17 +94,47 @@ class Host:
             return self.model.theta
 
         else:  # Plaintext
-            self.model.theta = self.model.fit(X, y, n_iters=self.iter)
+            self.model.theta = self.model.fit(batch_x, batch_y)
             return self.model.theta
+
+    def batch_generator(self, all_data, batch_size, shuffle=True):
+
+        """
+        :param all_data : incluing features and label
+        :param batch_size: number of samples in one batch
+        :param shuffle: Whether to disrupt the order
+        :return:iterator to generate every batch of features and labels
+        """
+        # Each element is a numpy array
+        all_data = [np.array(d) for d in all_data]
+        data_size = all_data[0].shape[0]
+        logger.info("data_size: {}".format(data_size))
+        if shuffle:
+            p = np.random.permutation(data_size)
+            all_data = [d[p] for d in all_data]
+        batch_count = 0
+        while True:
+            # The epoch completes, disrupting the order once
+            if batch_count * batch_size + batch_size > data_size:
+                batch_count = 0
+                if shuffle:
+                    p = np.random.permutation(data_size)
+                    all_data = [d[p] for d in all_data]
+            start = batch_count * batch_size
+            end = start + batch_size
+            batch_count += 1
+            yield [d[start: end] for d in all_data]
+
 
     def encrypt_vector(self, x):
         return [self.public_key.encrypt(i) for i in x]
 
-    # def encrypt_matrix(self, x):
-    #     ret = []
-    #     for r in x:
-    #         ret.append(self.encrypt_vector(self.public_key, r))
-    #     return ret
+
+# def encrypt_matrix(self, x):
+#     ret = []
+#     for r in x:
+#         ret.append(self.encrypt_vector(self.public_key, r))
+#     return ret
 
 
 if __name__ == "__main__":
@@ -117,11 +145,15 @@ if __name__ == "__main__":
     # load train data
     X, label = data_process()
     X = LRModel.normalization(X)
+    count = X.shape[0]
+    batch_num = count // conf['batch_size'] + 1
+    proxy_client_arbiter.Remote(batch_num, "batch_num")
 
     client_host = Host(X, label)
     client_host.iter = conf['iter']
     client_host.lr = conf['lr']
     client_host.batch_size = conf['batch_size']
+    batch_gen_host = client_host.batch_generator([X, label], conf['batch_size'])
 
     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
     proxy_server_arbiter.StartRecvLoop()
@@ -132,11 +164,16 @@ if __name__ == "__main__":
     host_data_weight = client_host.encrypt_vector([host_data_weight])
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
 
+    # 数据处理
     for i in range(conf['epoch']):
         logger.info("######### epoch %s ######### start " % i)
-        host_param = client_host.fit_binary(X, label)
-        proxy_client_arbiter.Remote(host_param, "host_param")
-        client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
+        for j in range(batch_num):
+            batch_x, batch_y = next(batch_gen_host)
+            logger.info("batch_host_x.shape:{}".format(batch_x.shape))
+            logger.info("batch_host_y.shape:{}".format(batch_y.shape))
+            host_param = client_host.fit_binary(batch_x, batch_y)
+            proxy_client_arbiter.Remote(host_param, "host_param")
+            client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
         logger.info("######### epoch %s ######### done " % i)
     logger.info("host training process done!")
 

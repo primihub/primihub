@@ -55,43 +55,34 @@ class LRModel:
         out = self.sigmoid(x_b.dot(theta))
         return x_b.T.dot(out - y) / len(x_b)
 
-    def gradient_descent(self, x_b, y, initial_theta, eta, n_iters=1e4, epsilon=1e-8):
+    def gradient_descent(self, x_b, y, theta, eta):
         """
         :param x_b: training data
         :param y: label
-        :param initial_theta: model parameters
+        :param theta: model parameters
         :param eta: learning rate
-        :param n_iters: max iterations
-        :param epsilon:
-            When the loss function of the two training decreases less than this value,
-            the training is terminated in advance
         :return:
         """
-        theta = initial_theta
-        i_iter = 0
-        while i_iter < n_iters:
-            gradient = self.d_loss_func(theta, x_b, y)
-            last_theta = theta
-            theta = theta - eta * gradient
-            i_iter += 1
-            if abs(self.loss_func(theta, x_b, y) - self.loss_func(last_theta, x_b, y)) < epsilon:
-                break
+        gradient = self.d_loss_func(theta, x_b, y)
+        theta = theta - eta * gradient
         return theta
 
-    def fit(self, train_data, train_label, eta=0.01, n_iters=10):
 
+    def fit(self, train_data, train_label, eta=0.01):
         assert train_data.shape[0] == train_label.shape[0], "The length of the training data set shall " \
                                                             "be consistent with the length of the label"
         x_b = np.hstack([np.ones((train_data.shape[0], 1)), train_data])
 
-        self.theta = self.gradient_descent(x_b, train_label, self.theta, eta, n_iters)
+        self.theta = self.gradient_descent(x_b, train_label, self.theta, eta)
         self.intercept = self.theta[0]
         self.coef = self.theta[1:]
         return self.theta
 
+
     def predict_prob(self, x_predict):
         x_b = np.hstack([np.ones((len(x_predict), 1)), x_predict])
         return self.sigmoid(x_b.dot(self.theta))
+
 
     def predict(self, x_predict):
         """
