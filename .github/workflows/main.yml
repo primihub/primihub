@@ -66,8 +66,8 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
-        bazel test --config=linux test_opt_paillier_c2py 
-        bazel test --config=linux test_opt_paillier_pack_c2py 
+        bazel test --test_output=all --config=linux test_opt_paillier_c2py 
+        bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
