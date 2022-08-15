@@ -5,9 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class LRModel:
-
     def __init__(self, X, y, w=None):
-
         self.w_size = X.shape[1] + 1
         self.coef = None
         self.intercept = None
@@ -67,7 +65,6 @@ class LRModel:
         theta = theta - eta * gradient
         return theta
 
-
     def fit(self, train_data, train_label, eta=0.01):
         assert train_data.shape[0] == train_label.shape[0], "The length of the training data set shall " \
                                                             "be consistent with the length of the label"
@@ -78,11 +75,9 @@ class LRModel:
         self.coef = self.theta[1:]
         return self.theta
 
-
     def predict_prob(self, x_predict):
         x_b = np.hstack([np.ones((len(x_predict), 1)), x_predict])
         return self.sigmoid(x_b.dot(self.theta))
-
 
     def predict(self, x_predict):
         """
