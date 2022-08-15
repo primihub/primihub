@@ -85,23 +85,54 @@ class Guest:
         #     #     weight_accumulators.append(self.local_model.encrypt_weights[j] - original_w[j])
         #     return model_param
         # plaintext
-        self.model.theta = self.model.fit(X, y, eta=self.lr, n_iters=self.iter)
+        self.model.theta = self.model.fit(X, y, eta=self.lr)
         self.model.theta = list(self.model.theta)
         return self.model.theta
+
+    def batch_generator(self, all_data, batch_size, shuffle=True):
+        """
+        :param all_data : incluing features and label
+        :param batch_size: number of samples in one batch
+        :param shuffle: Whether to disrupt the order
+        :return:iterator to generate every batch of features and labels
+        """
+        # Each element is a numpy array
+        all_data = [np.array(d) for d in all_data]
+        data_size = all_data[0].shape[0]
+        logger.info("data_size: {}".format(data_size))
+        if shuffle:
+            p = np.random.permutation(data_size)
+            all_data = [d[p] for d in all_data]
+        batch_count = 0
+        while True:
+            # The epoch completes, disrupting the order once
+            if batch_count * batch_size + batch_size > data_size:
+                batch_count = 0
+                if shuffle:
+                    p = np.random.permutation(data_size)
+                    all_data = [d[p] for d in all_data]
+            start = batch_count * batch_size
+            end = start + batch_size
+            batch_count += 1
+            yield [d[start: end] for d in all_data]
 
 
 if __name__ == "__main__":
     conf = {'iter': 2,
             'lr': 0.01,
-            'batch_size': 100,
+            'batch_size': 200,
             'epoch': 3}
     # load train data
     X, label = data_process()
     X = LRModel.normalization(X)
+    count = X.shape[0]
+    batch_num = count // conf['batch_size'] + 1
+
     client_guest = Guest(X, label)
     client_guest.iter = conf['iter']
     client_guest.lr = conf['lr']
     client_guest.batch_size = conf['batch_size']
+    batch_gen_guest = client_guest.batch_generator([X, label], conf['batch_size'])
     proxy_server_arbiter.StartRecvLoop()
 
     # Send guest data weight to arbiter
@@ -110,9 +141,13 @@ if __name__ == "__main__":
 
     for i in range(conf['epoch']):
         logger.info("######### epoch %s ######### start " % i)
-        guest_param = client_guest.fit_binary(X, label)
-        proxy_client_arbiter.Remote(guest_param, "guest_param")
-        client_guest.model.theta = proxy_server_arbiter.Get("global_guest_model_param")
+        for j in range(batch_num):
+            batch_x, batch_y = next(batch_gen_guest)
+            logger.info("batch_host_x.shape:{}".format(batch_x.shape))
+            logger.info("batch_host_y.shape:{}".format(batch_y.shape))
+            guest_param = client_guest.fit_binary(batch_x, batch_y)
+            proxy_client_arbiter.Remote(guest_param, "guest_param")
+            client_guest.model.theta = proxy_server_arbiter.Get("global_guest_model_param")
         logger.info("######### epoch %s ######### done " % i)
     logger.info("guest training process done!")
 

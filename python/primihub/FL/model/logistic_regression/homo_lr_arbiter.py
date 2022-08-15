@@ -170,14 +170,16 @@ if __name__ == "__main__":
         logger.info("send public key done!")
     proxy_server_guest.StartRecvLoop()
 
+    batch_num = proxy_server_host.Get("batch_num")
     host_data_weight = proxy_server_host.Get("host_data_weight")
     guest_data_weight = proxy_server_guest.Get("guest_data_weight")
 
     for i in range(conf['epoch']):
         logger.info("######## epoch %s ######### start " % i)
-        host_param = proxy_server_host.Get("host_param")
-        guest_param = proxy_server_guest.Get("guest_param")
-        client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
+        for j in range(batch_num):
+            host_param = proxy_server_host.Get("host_param")
+            guest_param = proxy_server_guest.Get("guest_param")
+            client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
         logger.info("######### epoch %s ######### done " % i)
     logger.info("All process done.")
 
