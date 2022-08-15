@@ -16,24 +16,23 @@ limitations under the License.
 import uuid
 import grpc
 
-from .connect import GRPCClient, GRPCConnect
+from .connect import GRPCConnect
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
-class WorkerClient(GRPCClient):
+class WorkerClient(GRPCConnect):
     """primihub gRPC worker client
 
     :return: A primihub gRPC worker client.
     """
 
-    def __init__(self, connect: GRPCConnect) -> None:
+    def __init__(self, node, cert) -> None:
         """Constructor
         """
-        super().__init__(connect)
+        super(WorkerClient, self).__init__(node, cert)
+        self.channel = grpc.insecure_channel(self.node)
         self.request_data = None
         self.stub = worker_pb2_grpc.VMNodeStub(self.channel)
-
-        # self.channel = connect.channel
 
     def set_task_map(self,
                      task_type: common_pb2.TaskType = 0,

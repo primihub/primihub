@@ -20,6 +20,7 @@
 
 #include "src/primihub/service/notify/service.h"
 #include "src/primihub/service/notify/model.h"
+#include <signal.h>
 
 using primihub::service::NotifyService;
 using primihub::service::NotifyServer;

@@ -13,21 +13,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from abc import ABC
 
-from .connect import GRPCClient, GRPCConnect
+import grpc
+
+from .connect import GRPCConnect
 from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
 
+from ...utils.protobuf_to_dict import protobuf_to_dict
 
-class NodeServiceClient(GRPCClient):
+
+class NodeServiceClient(GRPCConnect):
     """primihub gRPC node context service client.
 
     :return: A primihub gRPC node context service client.
     """
 
-    def __init__(self, connect: GRPCConnect) -> None:
+    def __init__(self, node, cert) -> None:
         """Constructor
         """
-        super().__init__(connect)
+        super(NodeServiceClient, self).__init__(node, cert)
+        self.channel = grpc.aio.insecure_channel(self.node)
         self.stub = service_pb2_grpc.NodeContextServiceStub(self.channel)
 
     @staticmethod
@@ -36,54 +42,38 @@ class NodeServiceClient(GRPCClient):
             **{"client_id": client_id, "client_ip": client_ip, "client_port": client_port})
         return request
 
-    def get_node_context(self, request):
-        """gRPC get node context
+    async def get_node_event_async(self, request: service_pb2.ClientContext) -> None:
+        async with self.channel:
+            # Read from an async generator
+            async for response in self.stub.SubscribeNodeEvent(request):
+                response_dict = protobuf_to_dict(response)
+                print("NodeService client received from async generator: " +
+                      response_dict)
 
-        :returns: gRPC reply
-        :rtype: :obj:`server_pb2.NodeContext`
-        """
-        with self.channel:
-            reply = self.stub.GetNodeContext(request)
-            print("reply : %s" % reply)
-            return reply
-
-    def get_task_status(self, request):
-        """gRPC get task status
-
-        :returns: gRPC reply
-        :rtype: :obj:`server_pb2.TaskStatus`
-        """
-        with self.channel:
-            status = self.stub.GetTaskStatus(request)
-            for s in status:
-                print(">>> task context: {task_context}, status is: {status}".
-                      format(task_context=s.tassk_task_context, status=s.status))
-            return status
-
-    def get_task_result(self, request):
-        """gRPC get task result
-
-        :returns: gRPC reply
-        :rtype: :obj:`server_pb2.TaskResult`
-        """
-        with self.channel:
-            result = self.stub.GetTaskResult(request)
-            for r in result:
-                print(">>> task context: {task_context}, result_dataset_url is: {result_dataset_url}".
-                      format(task_context=r.tassk_task_context, result_dataset_url=r.result_dataset_url))
-            return result
+    async def get_node_event_direct(self, request: service_pb2.ClientContext) -> None:
+        async with self.channel:
+            # Direct read from the stub
+            node_event_reply_stream = self.stub.SubscribeNodeEvent(request)
+            while True:
+                response = await node_event_reply_stream.read()
+                response_dict = protobuf_to_dict(response)
+                if response == grpc.aio.EOF:
+                    break
+                print("NodeService client received from direct read: " +
+                      response_dict)
 
 
-class DataServiceClient(GRPCClient):
+class DataServiceClient(GRPCConnect):
     """primihub gRPC data service client.
 
     :return: A primihub gRPC data service client.
     """
 
-    def __init__(self, connect: GRPCConnect) -> None:
+    def __init__(self, node, cert) -> None:
         """Constructor
         """
-        super().__init__(connect)
+        super(DataServiceClient, self).__init__(node, cert)
+        self.channel = grpc.insecure_channel(self.node)
         self.stub = service_pb2_grpc.DataServiceStub(self.channel)
 
     @staticmethod

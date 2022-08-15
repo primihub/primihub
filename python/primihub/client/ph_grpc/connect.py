@@ -37,20 +37,13 @@ class GRPCConnect(object):
         """
         self.task_map = {}
         if node is not None:
-            self.channel = grpc.insecure_channel(node)
+            self.node = node
+            # self.channel = grpc.insecure_channel(node)
+            # self.aio_channel = grpc.aio.insecure_channel(node)
+        else:
+            raise
 
         if cert is not None:
+            self.cert = cert
             # TODO
             pass
-
-
-class GRPCClient(object):
-    """primihub gRPC client
-
-    :return: A primihub gRPC client.
-    """
-
-    def __init__(self, connect: GRPCConnect) -> None:
-        """Constructor
-        """
-        self.channel = connect.channel

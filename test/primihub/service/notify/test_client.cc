@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 
+#include <signal.h>
 #include "src/primihub/protos/service.grpc.pb.h"
 
 using grpc::CreateChannel;
