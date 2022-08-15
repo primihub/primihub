@@ -7,6 +7,7 @@ from primihub.FL.model.evaluation.evaluation import Classification_eva
 import pandas as pd
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
+import logging
 
 proxy_server_guest = ServerChannelProxy("10094")  # arbiter接收guest消息
 proxy_server_host = ServerChannelProxy("10092")  # arbiter接收host消息
@@ -16,6 +17,18 @@ proxy_client_host = ClientChannelProxy(
     "127.0.0.1", "10091")  # arbiter发送消息给host
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+
+
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
+
+
+logger = get_logger("Homo_LR_Arbiter")
 
 
 def data_process():
@@ -36,6 +49,7 @@ class Arbiter:
     """
     Tips: Arbiter is a trusted third party !!!
     """
+
     def __init__(self):
         self.need_one_vs_rest = None
         self.public_key = None
@@ -79,12 +93,11 @@ class Arbiter:
         try:
             self.public_key, self.private_key = self.generate_key()
             data_to_host = {"public_key": self.public_key}
-            print("start send pub")
+            logger.info("start send pub")
             proxy_client_host.Remote(data_to_host, "pub")
-            print("send pub to host Ok")
+            logger.info("send pub to host OK")
         except Exception as e:
-            print("Arbiter broadcast key pair error : %s" % e)
-
+            logger.info("Arbiter broadcast key pair error : %s" % e)
 
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         agg_param = np.zeros(len(host_parm))
@@ -154,35 +167,35 @@ if __name__ == "__main__":
     if need_encrypt == True:
         public_key, private_key = client_arbiter.generate_key()
         proxy_client_host.Remote(public_key, "public_key")
-        print("send public key done!")
+        logger.info("send public key done!")
     proxy_server_guest.StartRecvLoop()
 
     host_data_weight = proxy_server_host.Get("host_data_weight")
     guest_data_weight = proxy_server_guest.Get("guest_data_weight")
 
     for i in range(conf['epoch']):
-        print("######### %s ######### start " % i)
+        logger.info("######## epoch %s ######### start " % i)
         host_param = proxy_server_host.Get("host_param")
         guest_param = proxy_server_guest.Get("guest_param")
         client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
-        print("######### %s ######### done " % i)
-    print("All process done.")
+        logger.info("######### epoch %s ######### done " % i)
+    logger.info("All process done.")
 
-    print("####### start predict ######")
+    logger.info("####### start predict ######")
     X, y = data_process()
     X = LRModel.normalization(X)
     y = list(y)
     prob = client_arbiter.predict_prob(X)
-    print('Classification probability is:')
-    print(prob)
+    logger.info('Classification probability is:')
+    logger.info(prob)
     predict = list(client_arbiter.predict(prob))
-    print('Classification result is:')
-    print(predict)
+    logger.info('Classification result is:')
+    logger.info(predict)
     count = 0
     for i in range(len(y)):
         if y[i] == predict[i]:
             count += 1
-    print('acc is: ', count/(len(y)))
+    logger.info('acc is: %s' % (count / (len(y))))
 
     proxy_server_guest.StopRecvLoop()
     proxy_server_host.StopRecvLoop()
