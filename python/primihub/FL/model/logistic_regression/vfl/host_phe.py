@@ -251,7 +251,7 @@ class Host:
         return predict_result, pred_prob, threshold, evaluation_result
 
 
-def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
+def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -291,12 +291,8 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 500 
+        'batch_size': 500
     }
-
-    # TODO: File path shouldn't a fixed path.
-    data_host = np.loadtxt("/tmp/wisconsin_host.data", str, delimiter=',')
-    data_test = np.loadtxt("/tmp/wisconsin_test.data", str, delimiter=',')
 
     # load train data
     x = data_host[1:, 1:-1]
@@ -353,7 +349,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, params_map={}):
         else:
             label[i] = 1
 
-    client_host.predict(client_host.weights, x, label, guest_re, 
+    client_host.predict(client_host.weights, x, label, guest_re,
                         proxy_client_arbiter, proxy_server)
 
     proxy_server.StopRecvLoop()

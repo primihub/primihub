@@ -7,6 +7,8 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 
 import logging
+
+
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -59,19 +61,19 @@ class Guest:
         z_guest_square = z_guest ** 2
         encrypted_u_guest = []
         encrypted_z_guest_square = []
-        
+
         tm_st = time.time()
         for x in u_guest:
             encrypted_u_guest.append(public_key.encrypt(x))
         tm_ed = time.time()
         logger.info(f"Encrypt u_guest use {tm_ed - tm_st} seconds.")
-        
+
         tm_st = time.time()
         for y in z_guest_square:
             encrypted_z_guest_square.append(public_key.encrypt(y))
         tm_ed = time.time()
         logger.info(f"Encrypt u_guest_square use {tm_ed - tm_st} seconds.")
-        
+
         encrypted_u_guest = np.asarray(encrypted_u_guest)
         encrypted_z_guest_square = np.asarray(encrypted_z_guest_square)
         dt.update({"encrypted_u_guest": encrypted_u_guest})
@@ -168,7 +170,7 @@ class Guest:
         self.proxy_client_host.Remote(data_to_host, "encrypted_z_guest_test")
 
 
-def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
+def run_hetero_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -211,10 +213,6 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, params_map={}):
         'lr': 0.05,
         'batch_size': 500
     }
-
-    # TODO: File path shouldn't a fixed path.
-    data_guest = np.loadtxt("/tmp/wisconsin_guest.data", str, delimiter=',')
-    data_test = np.loadtxt("/tmp/wisconsin_test.data", str, delimiter=',')
 
     x = data_guest[1:, :]
     x = x.astype(np.float)

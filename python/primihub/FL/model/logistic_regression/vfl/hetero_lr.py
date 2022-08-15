@@ -5,15 +5,6 @@ from primihub.FL.model.logistic_regression.vfl.host_phe import run_hetero_lr_hos
 from primihub.FL.model.logistic_regression.vfl.guest_phe import run_hetero_lr_guest
 from primihub.FL.model.logistic_regression.vfl.arbiter_phe import run_hetero_lr_arbiter
 
-# TODO: Remove them, just for debug.
-# ph.context.Context.role_nodeid_map["host"] = ["nodeX"]
-# ph.context.Context.role_nodeid_map["guest"] = ["nodeY"]
-# ph.context.Context.role_nodeid_map["arbiter"] = ["nodeZ"]
-# 
-# TODO: Remove them, just for debug.
-# ph.context.Context.node_addr_map["nodeX"] = "127.0.0.1:8010"
-# ph.context.Context.node_addr_map["nodeY"] = "127.0.0.1:8020"
-# ph.context.Context.node_addr_map["nodeZ"] = "127.0.0.1:8030"
 
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
@@ -45,6 +36,7 @@ def run_host_party():
 
     run_hetero_lr_host(ph.context.Context.role_nodeid_map,
                        ph.context.Context.node_addr_map,
+                       ph.context.Context.dataset_map["label_dataset"],
                        ph.context.Context.params_map)
 
     logger.info("Finish hetero-LR host logic.")
@@ -62,6 +54,7 @@ def run_guest_party():
 
     run_hetero_lr_guest(ph.context.Context.role_nodeid_map,
                         ph.context.Context.node_addr_map,
+                        ph.context.Context.dataset_map["guest_dataset"],
                         ph.context.Context.params_map)
 
     logger.info("Finish hetero-LR guest logic.")
@@ -69,7 +62,7 @@ def run_guest_party():
 
 # Don't forget to add dataset name to ph.context.function's dataset parameters,
 # although hetero-LR's arbiter don't handle any examples. This limit comes from
-# primihub, primihub use dataset name here to resolve which party will act as 
+# primihub, primihub use dataset name here to resolve which party will act as
 # arbiter.
 @ph.context.function(role='arbiter', protocol='hetero-LR',
                      datasets=['arbiter_dataset'], port='8030')
