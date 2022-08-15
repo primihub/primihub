@@ -293,29 +293,42 @@ def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_ma
         'lr': 0.05,
         'batch_size': 500
     }
+    # load  data
+    data_host = np.loadtxt(dataset_filepath, str, delimiter=',')
+    x=data_host[1:,:]
+    count=x.shape[0]
+    x_train=x[:count*0.8,:]
+    x_test=x[count*0.8,:]
 
-    # load train data
-    x = data_host[1:, 1:-1]
-    x = x.astype(float)
-    label = data_host[1:, -1]
-    label = label.astype(int)
-    for i in range(len(label)):
-        if label[i] == 2:
-            label[i] = 0
+    x_train_feature = x_train[:, 1:-1]
+    x_train_feature = x_train_feature.astype(float)
+    label_train = x_train[:, -1]
+    label_train = label_train.astype(int)
+    for i in range(len(label_train)):
+        if label_train[i] == 2:
+            label_train[i] = 0
         else:
-            label[i] = 1
-    count = x.shape[0]
-    batch_num = count // config['batch_size'] + 1
-    proxy_client_arbiter.Remote(batch_num, "batch_num")
+            label_train[i] = 1
+    x_test_feature = x_test[:, 1:-1]
+    x_test_feature = x_test_feature.astype(float)
+    label_test = x_test[:, -1]
+    label_test = label_test.astype(int)
+    for i in range(len(label_test)):
+        if label_test[i] == 2:
+            label_test[i] = 0
+        else:
+            label_test[i] = 1
 
-    client_host = Host(x, label, config, proxy_server,
+    count_train = x_train.shape[0]
+    batch_num_train = count_train // config['batch_size'] + 1
+    client_host = Host(x_train_feature, label_train, config, proxy_server,
                        proxy_client_guest, proxy_client_arbiter)
 
     batch_gen_host = client_host.batch_generator(
-        [x, label], config['batch_size'], False)
+        [x_train_feature, label_train], config['batch_size'], False)
     for i in range(config['epochs']):
         logger.info("##### epoch %s ##### " % i)
-        for j in range(batch_num):
+        for j in range(batch_num_train):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_host_x, batch_host_y = next(batch_gen_host)
             logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
@@ -336,20 +349,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_ma
     #     [client_host.data["guest_weights"], client_host.weights], axis=0)
     # logger.info("weights.shape", weights.shape)
     # logger.info(weights)
-    # load test data
-    x = data_test[1:, 3:-1]
-    x = x.astype(float)
-    logger.info("x.shape: ".format(x.shape))
-    logger.info(x[0])
-    label = data_test[1:, -1]
-    label = label.astype(int)
-    for i in range(len(label)):
-        if label[i] == 2:
-            label[i] = 0
-        else:
-            label[i] = 1
-
-    client_host.predict(client_host.weights, x, label, guest_re,
+    client_host.predict(client_host.weights, x_test_feature, label_test, guest_re,
                         proxy_client_arbiter, proxy_server)
 
     proxy_server.StopRecvLoop()
