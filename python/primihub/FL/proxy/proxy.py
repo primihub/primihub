@@ -11,19 +11,24 @@ logger = logging.getLogger("proxy")
 
 
 class ClientChannelProxy:
-    def __init__(self, host, port):
+    def __init__(self, host, port, dest_role="NotSetYet"):
         self.ios_ = IOService()
         self.sess_ = Session(self.ios_, host, port, "client")
         self.chann_ = self.sess_.addChannel()
         self.executor_ = ThreadPoolExecutor()
-    
-    # Send val and it's tag to server side, server 
-    # has cached val when the method return. 
+        self.host = host
+        self.port = port
+        self.dest_role = dest_role
+
+    # Send val and it's tag to server side, server
+    # has cached val when the method return.
     def Remote(self, val, tag):
         msg = {"v": val, "tag": tag}
         self.chann_.send(msg)
         _ = self.chann_.recv()
-    
+        logger.debug(
+            "Send value with tag '{}' to {} finish".format(tag, self.dest_role))
+
     # Send val and it's tag to server side, client begin the send action
     # in a thread when the the method reutrn but not ensure that server
     # has cached this val. Use 'fut.result()' to wait for server to cache it,
@@ -48,7 +53,7 @@ class ServerChannelProxy:
         self.recv_cache_ = {}
         self.stop_signal_ = False
         self.recv_loop_fut_ = None
-    
+
     # Start a recv thread to receive value and cache it.
     def StartRecvLoop(self):
         def recv_loop():
@@ -67,26 +72,27 @@ class ServerChannelProxy:
                 value = msg["v"]
                 if self.recv_cache_.get(key, None) is not None:
                     logger.warn(
-                        "Hash entry for tag {} is not empty, replace old value".format(key))
+                        "Hash entry for tag '{}' is not empty, replace old value".format(key))
                     del self.recv_cache_[key]
 
-                logger.debug("Recv msg with tag {}.".format(key))
+                logger.debug("Recv msg with tag '{}'.".format(key))
                 self.recv_cache_[key] = value
                 self.chann_.send("ok")
             logger.info("Recv loop stops.")
 
         self.recv_loop_fut_ = self.executor_.submit(recv_loop)
-    
+
     # Stop recv thread.
     def StopRecvLoop(self):
         self.stop_signal_ = True
         self.recv_loop_fut_.result()
         logger.info("Recv loop already exit, clean cached value.")
-        keys = self.recv_cache_.keys()
-        for key in keys:
+        key_list = list(self.recv_cache_.keys())
+        for key in key_list: 
             del self.recv_cache_[key]
+            logger.warn("Remove value with tag '{}', not used until now.".format(key))
         del self.recv_cache_
-    
+
     # Get value from cache, and the check will repeat at most 'retries' times,
     # and sleep 0.3s after each check to avoid check all the time.
     def Get(self, tag, retries=100):
@@ -94,9 +100,10 @@ class ServerChannelProxy:
             val = self.recv_cache_.get(tag, None)
             if val:
                 del self.recv_cache_[tag]
+                logger.debug("Get val with tag '{}' finish.".format(tag))
                 return val
             else:
                 time.sleep(0.3)
 
-        logger.warn("Can't get value for tag {}, timeout.".format(tag))
+        logger.warn("Can't get value for tag '{}', timeout.".format(tag))
         return None
