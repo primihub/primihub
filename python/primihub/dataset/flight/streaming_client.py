@@ -16,7 +16,7 @@
 import pyarrow as pa
 import pyarrow.flight
 
-client = pa.flight.connect("grpc://0.0.0.0:8815")
+client = pa.flight.connect("grpc+tcp://localhost:8815")
 
 # Upload a new dataset
 NUM_BATCHES = 1024
@@ -34,6 +34,9 @@ with writer:
 flight = client.get_flight_info(upload_descriptor)
 reader = client.do_get(flight.endpoints[0].ticket)
 total_rows = 0
+# read_table = reader.read_all()
+# print(read_table.to_pandas().head())
 for chunk in reader:
+    print(chunk.data)
     total_rows += chunk.data.num_rows
 print("Got", total_rows, "rows total, expected", NUM_BATCHES * ROWS_PER_BATCH)

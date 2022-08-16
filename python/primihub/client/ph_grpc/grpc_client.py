@@ -45,7 +45,7 @@ async def handler_node_context(event: Event):
     node = notify_channel["connect_str"]
     cert = notify_channel["key"]
     grpc_client = GrpcClient(node, cert)
-    # TODO
+    # TODO ip, port from `connect_str`
     client_id = ""
     client_ip = ""
     client_port = 12345
