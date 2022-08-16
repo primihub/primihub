@@ -9,13 +9,6 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
 
-proxy_server_guest = ServerChannelProxy("10094")  # arbiter接收guest消息
-proxy_server_host = ServerChannelProxy("10092")  # arbiter接收host消息
-proxy_client_guest = ClientChannelProxy(
-    "127.0.0.1", "10090")  # arbiter发送消息给guest
-proxy_client_host = ClientChannelProxy(
-    "127.0.0.1", "10091")  # arbiter发送消息给host
-
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 
@@ -50,7 +43,7 @@ class Arbiter:
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self):
+    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest):
         self.need_one_vs_rest = None
         self.public_key = None
         self.private_key = None
@@ -59,6 +52,9 @@ class Arbiter:
         self.weight_host = None
         self.weight_guest = None
         self.theta = None
+        self.proxy_server = proxy_server
+        self.proxy_client_host = proxy_client_host
+        self.proxy_client_guest = proxy_client_guest
 
     def sigmoid(self, x):
         x = np.array(x, dtype=np.float64)
@@ -69,7 +65,16 @@ class Arbiter:
         public_key, private_key = paillier.generate_paillier_keypair(n_length=length)
         self.public_key = public_key
         self.private_key = private_key
-        return public_key, private_key
+
+    def broadcast_key(self):
+        try:
+            self.generate_key()
+            data_to_host = {"public_key": self.public_key}
+            logger.info("start send pub")
+            self.proxy_client_host.Remote(data_to_host, "pub")
+            logger.info("send pub to host OK")
+        except Exception as e:
+            logger.info("Arbiter broadcast key pair error : %s" % e)
 
     def predict_prob(self, data):
         if self.need_encrypt:
@@ -85,19 +90,21 @@ class Arbiter:
     def predict(self, prob):
         return np.array(prob > 0.5, dtype='int')
 
-    def aggregate(self, client_param):
-        self.global_model_param = self.server_aggregate(client_param)
-        return self.global_model_param
+    # def aggregate(self, client_param): # plaintext
+    #     self.global_model_param = self.server_aggregate(client_param)
+    #     return self.global_model_param
 
-    def broadcast_key(self):
-        try:
-            self.public_key, self.private_key = self.generate_key()
-            data_to_host = {"public_key": self.public_key}
-            logger.info("start send pub")
-            proxy_client_host.Remote(data_to_host, "pub")
-            logger.info("send pub to host OK")
-        except Exception as e:
-            logger.info("Arbiter broadcast key pair error : %s" % e)
+    # def server_aggregate(self, *client_param):  # plaintext
+    #     sum_weight = np.zeros(client_param[0][0].shape)
+    #     print('sum_weight.shape---->', sum_weight.shape)
+    #     sum_bias = np.float64("0")
+    #     for param in client_param:
+    #         sum_weight = sum_weight + param[0]
+    #         sum_bias = sum_bias + param[1]
+    #     print(f"sum average is {sum_weight}")
+    #     avg_weight = sum_weight / len(client_param)
+    #     avg_bias = sum_bias / len(client_param)
+    #     return avg_weight, avg_bias
 
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         agg_param = np.zeros(len(host_parm))
@@ -116,25 +123,13 @@ class Arbiter:
         self.theta = agg_param
         return list(self.theta)
 
-    def server_aggregate(self, *client_param):  # plaintext
-        sum_weight = np.zeros(client_param[0][0].shape)
-        print('sum_weight.shape---->', sum_weight.shape)
-        sum_bias = np.float64("0")
-        for param in client_param:
-            sum_weight = sum_weight + param[0]
-            sum_bias = sum_bias + param[1]
-        print(f"sum average is {sum_weight}")
-        avg_weight = sum_weight / len(client_param)
-        avg_bias = sum_bias / len(client_param)
-        return avg_weight, avg_bias
-
     def broadcast_global_model_param(self, host_param, guest_param, host_data_weight, guest_data_weight):
         self.theta = self.model_aggregate(host_param, guest_param, host_data_weight, guest_data_weight)
         # send guest plaintext
-        proxy_client_guest.Remote(self.theta, "global_guest_model_param")
+        self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
         # send host ciphertext
         self.theta = self.encrypt_vector(self.theta)
-        proxy_client_host.Remote(self.theta, "global_host_model_param")
+        self.proxy_client_host.Remote(self.theta, "global_host_model_param")
 
     def evaluation(self, y_true, y_pre_prob):
         res = Classification_eva.get_result(y_true, y_pre_prob)
@@ -159,45 +154,109 @@ class Arbiter:
     #     return ret
 
 
-if __name__ == "__main__":
-    conf = {'epoch': 3}
-    proxy_server_host.StartRecvLoop()
-    need_encrypt = proxy_server_host.Get("need_encrypt")
-    client_arbiter = Arbiter()
+# if __name__ == "__main__":
+#     conf = {'epoch': 3}
+#     proxy_server_host.StartRecvLoop()
+#     need_encrypt = proxy_server_host.Get("need_encrypt")
+#     client_arbiter = Arbiter()
+#     if need_encrypt == True:
+#         public_key, private_key = client_arbiter.generate_key()
+#         proxy_client_host.Remote(public_key, "public_key")
+#         logger.info("send public key done!")
+#     proxy_server_guest.StartRecvLoop()
+#
+#     batch_num = proxy_server_host.Get("batch_num")
+#     host_data_weight = proxy_server_host.Get("host_data_weight")
+#     guest_data_weight = proxy_server_guest.Get("guest_data_weight")
+#
+#     for i in range(conf['epoch']):
+#         logger.info("######## epoch %s ######### start " % i)
+#         for j in range(batch_num):
+#             host_param = proxy_server_host.Get("host_param")
+#             guest_param = proxy_server_guest.Get("guest_param")
+#             client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
+#         logger.info("######### epoch %s ######### done " % i)
+#     logger.info("All process done.")
+#
+#     logger.info("####### start predict ######")
+#     X, y = data_process()
+#     X = LRModel.normalization(X)
+#     y = list(y)
+#     prob = client_arbiter.predict_prob(X)
+#     logger.info('Classification probability is:')
+#     logger.info(prob)
+#     predict = list(client_arbiter.predict(prob))
+#     logger.info('Classification result is:')
+#     logger.info(predict)
+#     count = 0
+#     for i in range(len(y)):
+#         if y[i] == predict[i]:
+#             count += 1
+#     logger.info('acc is: %s' % (count / (len(y))))
+#
+#     proxy_server_guest.StopRecvLoop()
+#     proxy_server_host.StopRecvLoop()
+
+def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
+    host_nodes = role_node_map["host"]
+    guest_nodes = role_node_map["guest"]
+    arbiter_nodes = role_node_map["arbiter"]
+
+    if len(host_nodes) != 1:
+        logger.error("Hetero LR only support one host party, but current "
+                     "task have {} host party.".format(len(host_nodes)))
+        return
+
+    if len(guest_nodes) != 1:
+        logger.error("Hetero LR only support one guest party, but current "
+                     "task have {} guest party.".format(len(host_nodes)))
+        return
+
+    if len(arbiter_nodes) != 1:
+        logger.error("Hetero LR only support one arbiter party, but current "
+                     "task have {} arbiter party.".format(len(host_nodes)))
+        return
+
+    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
+    proxy_server = ServerChannelProxy(arbiter_port)
+    proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for arbiter, port {}.".format(arbiter_port))
+
+    host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
+    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
+    logger.debug("Create client proxy to host,"
+                 " ip {}, port {}.".format(host_ip, host_port))
+
+    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
+    logger.debug("Create client proxy to guest,"
+                 " ip {}, port {}.".format(guest_ip, guest_port))
+
+    config = {
+        'epochs': 1,
+        'batch_size': 500
+    }
+    client_arbiter = Arbiter(proxy_server, proxy_client_guest, proxy_client_host)
+    need_encrypt = proxy_server.Get("need_encrypt")
+
     if need_encrypt == True:
-        public_key, private_key = client_arbiter.generate_key()
-        proxy_client_host.Remote(public_key, "public_key")
-        logger.info("send public key done!")
-    proxy_server_guest.StartRecvLoop()
+        client_arbiter.broadcast_key()
 
-    batch_num = proxy_server_host.Get("batch_num")
-    host_data_weight = proxy_server_host.Get("host_data_weight")
-    guest_data_weight = proxy_server_guest.Get("guest_data_weight")
+    batch_num = proxy_server.Get("batch_num")
+    client_arbiter.broadcast_key()
 
-    for i in range(conf['epoch']):
-        logger.info("######## epoch %s ######### start " % i)
+    host_data_weight = proxy_server.Get("host_data_weight")
+    guest_data_weight = proxy_server.Get("guest_data_weight")
+
+    for i in range(config['epochs']):
+        logger.info("##### epoch %s ##### " % i)
         for j in range(batch_num):
-            host_param = proxy_server_host.Get("host_param")
-            guest_param = proxy_server_guest.Get("guest_param")
+            logger.info("-----epoch={}, batch={}-----".format(i, j))
+            host_param = proxy_server.Get("host_param")
+            guest_param = proxy_server.Get("guest_param")
             client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
-        logger.info("######### epoch %s ######### done " % i)
+            logger.info("batch={} done".format(j))
+        logger.info("epoch={} done".format(i))
     logger.info("All process done.")
 
-    logger.info("####### start predict ######")
-    X, y = data_process()
-    X = LRModel.normalization(X)
-    y = list(y)
-    prob = client_arbiter.predict_prob(X)
-    logger.info('Classification probability is:')
-    logger.info(prob)
-    predict = list(client_arbiter.predict(prob))
-    logger.info('Classification result is:')
-    logger.info(predict)
-    count = 0
-    for i in range(len(y)):
-        if y[i] == predict[i]:
-            count += 1
-    logger.info('acc is: %s' % (count / (len(y))))
-
-    proxy_server_guest.StopRecvLoop()
-    proxy_server_host.StopRecvLoop()
+    proxy_server.StopRecvLoop()

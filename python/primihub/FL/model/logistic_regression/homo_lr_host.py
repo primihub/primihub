@@ -7,11 +7,6 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
 import logging
 
-proxy_server_arbiter = ServerChannelProxy("10091")  # host接收来自arbiter消息
-proxy_server_guest = ServerChannelProxy("10095")  # host接收来自guest消息
-proxy_client_arbiter = ClientChannelProxy(
-    "127.0.0.1", "10092")  # host发送消息给arbiter
-proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")  # host发送消息给guest
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
@@ -43,19 +38,22 @@ def data_process():
 
 
 class Host:
-    def __init__(self, X, y):
+    def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
         self.X = X
         self.y = y
+        self.config = config
         self.model = LRModel(X, y)
         self.public_key = None
         self.iter = None
         self.need_one_vs_rest = None
         self.need_encrypt = True
-        self.lr = 0.01
+        self.lr = self.config['lr']
         self.batch_size = 200
         self.iteration = 0
         self.epoch = 10
         self.flag = True
+        self.proxy_server = proxy_server
+        self.proxy_client_arbiter = proxy_client_arbiter
 
     def predict(self, data=None):
         if self.need_one_vs_rest:
@@ -72,13 +70,7 @@ class Host:
                 self.flag = False
             # Convert subtraction to addition
             neg_one = self.public_key.encrypt(-1)
-            # idx = np.arange(X.shape[0])
-            # batch_idx = np.random.choice(idx, self.batch_size, replace=False)
-            # X = np.array(X)
-            # y = np.array(y)
-            # data_x = X[batch_idx]
             batch_x = np.concatenate((np.ones((batch_x.shape[0], 1)), batch_x), axis=1)
-            # data_y = y[batch_idx].reshape((-1, 1))
             # use taylor approximation
             batch_encrypted_grad = batch_x.transpose() * (
                     0.25 * batch_x.dot(self.model.theta) + 0.5 * batch_y.transpose() * neg_one)
@@ -137,44 +129,129 @@ class Host:
 #     return ret
 
 
-if __name__ == "__main__":
-    conf = {'iter': 2,
-            'lr': 0.01,
-            'batch_size': 200,
-            'epoch': 3}
-    # load train data
-    X, label = data_process()
-    X = LRModel.normalization(X)
-    count = X.shape[0]
-    batch_num = count // conf['batch_size'] + 1
-    proxy_client_arbiter.Remote(batch_num, "batch_num")
+# if __name__ == "__main__":
+#     conf = {'iter': 2,
+#             'lr': 0.01,
+#             'batch_size': 200,
+#             'epoch': 3}
+#     # load train data
+#     X, label = data_process()
+#     X = LRModel.normalization(X)
+#     count = X.shape[0]
+#     batch_num = count // conf['batch_size'] + 1
+#     proxy_client_arbiter.Remote(batch_num, "batch_num")
+#
+#     client_host = Host(X, label)
+#     client_host.iter = conf['iter']
+#     client_host.lr = conf['lr']
+#     client_host.batch_size = conf['batch_size']
+#     batch_gen_host = client_host.batch_generator([X, label], conf['batch_size'])
+#
+#     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
+#     proxy_server_arbiter.StartRecvLoop()
+#     client_host.public_key = proxy_server_arbiter.Get("public_key")
+#
+#     # Send host_data_weight to arbiter
+#     host_data_weight = conf['batch_size']
+#     host_data_weight = client_host.encrypt_vector([host_data_weight])
+#     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
+#
+#     # 数据处理
+#     for i in range(conf['epoch']):
+#         logger.info("######### epoch %s ######### start " % i)
+#         for j in range(batch_num):
+#             batch_x, batch_y = next(batch_gen_host)
+#             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
+#             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
+#             host_param = client_host.fit_binary(batch_x, batch_y)
+#             proxy_client_arbiter.Remote(host_param, "host_param")
+#             client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
+#         logger.info("######### epoch %s ######### done " % i)
+#     logger.info("host training process done!")
+#
+#     proxy_server_arbiter.StopRecvLoop()
 
-    client_host = Host(X, label)
-    client_host.iter = conf['iter']
-    client_host.lr = conf['lr']
-    client_host.batch_size = conf['batch_size']
-    batch_gen_host = client_host.batch_generator([X, label], conf['batch_size'])
 
-    proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-    proxy_server_arbiter.StartRecvLoop()
-    client_host.public_key = proxy_server_arbiter.Get("public_key")
+def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map={}):
+    host_nodes = role_node_map["host"]
+    # guest_nodes = role_node_map["guest"]
+    arbiter_nodes = role_node_map["arbiter"]
 
-    # Send host_data_weight to arbiter
-    host_data_weight = conf['batch_size']
+    if len(host_nodes) != 1:
+        logger.error("Hetero LR only support one host party, but current "
+                     "task have {} host party.".format(len(host_nodes)))
+        return
+
+    # if len(guest_nodes) != 1:
+    #     logger.error("Hetero LR only support one guest party, but current "
+    #                  "task have {} guest party.".format(len(host_nodes)))
+    #     return
+
+    if len(arbiter_nodes) != 1:
+        logger.error("Hetero LR only support one arbiter party, but current "
+                     "task have {} arbiter party.".format(len(host_nodes)))
+        return
+
+    host_port = node_addr_map[host_nodes[0]].split(":")[1]
+    proxy_server = ServerChannelProxy(host_port)
+    proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for host, port {}.".format(host_port))
+
+    # guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+    # proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
+    # logger.debug("Create client proxy to guest,"
+    #              " ip {}, port {}.".format(guest_ip, guest_port))
+
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port, "host")
+    logger.debug("Create client proxy to arbiter,"
+                 " ip {}, port {}.".format(arbiter_ip, arbiter_port))
+
+    config = {
+        'epochs': 1,
+        'lambda': 10,
+        'threshold': 0.5,
+        'lr': 0.05,
+        'batch_size': 500
+    }
+    x, label = data_process()
+    client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
+    x = LRModel.normalization(x)
+    count_train = x.shape[0]
+    batch_num_train = count_train // config['batch_size'] + 1
+
+    client_host.public_key = proxy_server.Get("pub")
+
+    host_data_weight = config['batch_size']
     host_data_weight = client_host.encrypt_vector([host_data_weight])
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
 
-    # 数据处理
-    for i in range(conf['epoch']):
-        logger.info("######### epoch %s ######### start " % i)
-        for j in range(batch_num):
-            batch_x, batch_y = next(batch_gen_host)
-            logger.info("batch_host_x.shape:{}".format(batch_x.shape))
-            logger.info("batch_host_y.shape:{}".format(batch_y.shape))
-            host_param = client_host.fit_binary(batch_x, batch_y)
+    batch_gen_host = client_host.batch_generator(
+        [x, label], config['batch_size'], False)
+    for i in range(config['epochs']):
+        logger.info("##### epoch %s ##### " % i)
+        for j in range(batch_num_train):
+            logger.info("-----epoch=%s, batch=%s-----" % (i, j))
+            batch_host_x, batch_host_y = next(batch_gen_host)
+            logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
+            logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
+            host_param = client_host.fit_binary(batch_host_x, batch_host_y)
             proxy_client_arbiter.Remote(host_param, "host_param")
-            client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
-        logger.info("######### epoch %s ######### done " % i)
-    logger.info("host training process done!")
+            client_host.model.theta = proxy_server.Get("global_host_model_param")
+            logger.info("batch=%s done" % j)
+        logger.info("epoch=%i done" % i)
+    logger.info("host training process done.")
+    # client_host.data.update(
+    #     proxy_server.Get(
+    #         "encrypted_z_guest_test", 10000))
+    # assert "encrypted_z_guest_test" in client_host.data.keys(
+    # ), "Error: 'encrypted_z_guest_test' from guest  not successfully received."
+    # guest_re = client_host.data["encrypted_z_guest_test"]
+    # weights = np.concatenate(
+    #     [client_host.data["guest_weights"], client_host.weights], axis=0)
+    # logger.info("weights.shape", weights.shape)
+    # logger.info(weights)
+    # client_host.predict(client_host.weights, x_test_feature, label_test, guest_re,
+    #                     proxy_client_arbiter, proxy_server)
 
-    proxy_server_arbiter.StopRecvLoop()
+    proxy_server.StopRecvLoop()
