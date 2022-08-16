@@ -229,7 +229,7 @@ int PIRClientTask::execute() {
         grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(),
                                   channel_args);
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
-    ClientContext client_context;
+    grpc::ClientContext client_context;
     Status status = stub->ExecuteTask(&client_context, taskRequest, &taskResponse);
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {

@@ -182,7 +182,7 @@ int PSIClientTask::execute() {
         std::move(client->CreateRequest(elements_)).value();
     psi_proto::Response server_response;
 
-    ClientContext context;
+    grpc::ClientContext context;
     ExecuteTaskRequest taskRequest;
     ExecuteTaskResponse taskResponse;
 

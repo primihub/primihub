@@ -113,7 +113,7 @@ void node_push_psi_task(const std::string &node_id,
                     const PushTaskRequest &nodePushTaskRequest,
                     std::string dest_node_address,
                     bool is_client) {
-    ClientContext context;
+    grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);

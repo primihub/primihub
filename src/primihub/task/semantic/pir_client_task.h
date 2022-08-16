@@ -39,7 +39,7 @@ using pir::PIRParameters;
 using pir::EncryptionParameters;
 using pir::PIRClient;
 
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::Status;
 using grpc::Channel;
 

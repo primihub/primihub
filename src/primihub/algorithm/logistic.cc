@@ -22,6 +22,8 @@
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
+#include "src/primihub/data_store/dataset.h"
+
 
 using namespace std;
 using namespace Eigen;
@@ -598,11 +600,11 @@ namespace primihub
     
     std::shared_ptr<DataDriver> driver =
         DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-    std::shared_ptr<CSVDriver> csv_driver =
-        std::dynamic_pointer_cast<CSVDriver>(driver);
 
     std::string filepath = "data/" + model_name_ + ".csv";
-    int ret = csv_driver->write(table, filepath);
+    auto cursor = driver->initCursor(filepath);
+    auto dataset = std::make_shared<primihub::Dataset>(table, driver);
+    int ret = cursor->write(dataset);
     if (ret != 0)
     {
       LOG(ERROR) << "Save LR model to file " << filepath << " failed.";
@@ -610,7 +612,6 @@ namespace primihub
     }
     LOG(INFO) << "Save model to " << filepath << ".";
 
-    std::shared_ptr<Dataset> dataset = std::make_shared<Dataset>(table, driver);
     service::DatasetMeta meta(dataset, model_name_,
                               service::DatasetVisbility::PUBLIC);
     dataset_service_->regDataset(meta);

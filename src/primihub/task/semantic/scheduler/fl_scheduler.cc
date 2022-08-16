@@ -31,7 +31,7 @@
 
 
 using grpc::Channel;
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
@@ -96,7 +96,7 @@ namespace primihub::task {
                           const PushTaskRequest &nodePushTaskRequest,
                           const PeerContextMap peer_context_map,
                           const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list) {
-        ClientContext context;
+        grpc::ClientContext context;
         PushTaskReply pushTaskReply;
         PushTaskRequest _1NodePushTaskRequest;
         _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
