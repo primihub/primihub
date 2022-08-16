@@ -291,14 +291,14 @@ def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_ma
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 500
+        'batch_size': 50 
     }
     # load  data
     data_host = np.loadtxt(dataset_filepath, str, delimiter=',')
     x=data_host[1:,:]
     count=x.shape[0]
-    x_train=x[:count*0.8,:]
-    x_test=x[count*0.8,:]
+    x_train=x[:int(count*0.8),:]
+    x_test=x[int(count*0.8):,:]
 
     x_train_feature = x_train[:, 1:-1]
     x_train_feature = x_train_feature.astype(float)
@@ -309,6 +309,7 @@ def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_ma
             label_train[i] = 0
         else:
             label_train[i] = 1
+    
     x_test_feature = x_test[:, 1:-1]
     x_test_feature = x_test_feature.astype(float)
     label_test = x_test[:, -1]
@@ -321,6 +322,8 @@ def run_hetero_lr_host(role_node_map, node_addr_map, dataset_filepath, params_ma
 
     count_train = x_train.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
+    proxy_client_arbiter.Remote(batch_num_train, "batch_num")
+
     client_host = Host(x_train_feature, label_train, config, proxy_server,
                        proxy_client_guest, proxy_client_arbiter)
 

@@ -211,7 +211,7 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_m
         'lambda': 10,
         'threshold': 0.5,
         'lr': 0.05,
-        'batch_size': 500
+        'batch_size': 50
     }
     data_guest = np.loadtxt(dataset_filepath, str, delimiter=',')
 
@@ -220,10 +220,10 @@ def run_hetero_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_m
     x = x.astype(np.float)
     count = x.shape[0]
 
-    x_train=x[:count*0.8,:]
+    x_train=x[:int(count*0.8),:]
     count_train=x_train.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
-    x_test=x[count*0.8:,:]
+    x_test=x[int(count*0.8):,:]
 
 
     client_guest = Guest(x_train, config, proxy_server,
