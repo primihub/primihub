@@ -47,7 +47,7 @@ class Arbiter:
         self.need_one_vs_rest = None
         self.public_key = None
         self.private_key = None
-        self.need_encrypt = True
+        self.need_encrypt = None
         self.epoch = None
         self.weight_host = None
         self.weight_guest = None
@@ -109,9 +109,13 @@ class Arbiter:
         agg_param = np.zeros(len(host_parm))
         param = []
         weight_all = []
-        param.append(self.decrypt_vector(host_parm))
+        if self.need_encrypt == True:
+            param.append(self.decrypt_vector(host_parm))
+            weight_all.append(self.decrypt_vector(host_data_weight)[0])
+        else:
+            param.append(host_parm)
+            weight_all.append(host_data_weight)
         param.append(guest_param)
-        weight_all.append(self.decrypt_vector(host_data_weight)[0])
         weight_all.append(guest_data_weight)
 
         weight = np.array([weight * 1.0 for weight in weight_all])
@@ -127,8 +131,11 @@ class Arbiter:
         # send guest plaintext
         self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
         # send host ciphertext
-        self.theta = self.encrypt_vector(self.theta)
-        self.proxy_client_host.Remote(self.theta, "global_host_model_param")
+        if self.need_encrypt == True:
+            self.theta = self.encrypt_vector(self.theta)
+            self.proxy_client_host.Remote(self.theta, "global_host_model_param")
+        else:
+            self.proxy_client_host.Remote(self.theta, "global_host_model_param")
 
     def evaluation(self, y_true, y_pre_prob):
         res = Classification_eva.get_result(y_true, y_pre_prob)
@@ -199,7 +206,7 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
         client_arbiter.broadcast_key()
 
     batch_num = proxy_server.Get("batch_num")
-
+    print('batch_num ---->', batch_num)
     host_data_weight = proxy_server.Get("host_data_weight")
     guest_data_weight = proxy_server.Get("guest_data_weight")
 

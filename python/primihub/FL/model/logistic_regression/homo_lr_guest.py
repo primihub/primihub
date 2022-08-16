@@ -41,6 +41,7 @@ class Guest:
         self.X = X
         self.y = y
         self.config = config
+        self.lr = self.config['lr']
         self.model = LRModel(X, y)
         self.need_one_vs_rest = None
         self.need_encrypt = False
@@ -81,7 +82,7 @@ class Guest:
         #     #     weight_accumulators.append(self.local_model.encrypt_weights[j] - original_w[j])
         #     return model_param
         # plaintext
-        self.model.theta = self.model.fit(X, y, eta=self.config['lr'])
+        self.model.theta = self.model.fit(X, y, eta=self.lr)
         self.model.theta = list(self.model.theta)
         return self.model.theta
 

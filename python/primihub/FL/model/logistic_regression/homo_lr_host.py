@@ -44,9 +44,8 @@ class Host:
         self.config = config
         self.model = LRModel(X, y)
         self.public_key = None
-        self.iter = None
         self.need_one_vs_rest = None
-        self.need_encrypt = True
+        self.need_encrypt = False
         self.lr = self.config['lr']
         self.batch_size = 200
         self.iteration = 0
@@ -86,8 +85,8 @@ class Host:
             return self.model.theta
 
         else:  # Plaintext
-            self.model.theta = self.model.fit(batch_x, batch_y)
-            return self.model.theta
+            self.model.theta = self.model.fit(batch_x, batch_y, eta=self.lr)
+            return list(self.model.theta)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
 
@@ -166,8 +165,6 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
 
     config = {
         'epochs': 1,
-        'lambda': 10,
-        'threshold': 0.5,
         'lr': 0.05,
         'batch_size': 500
     }
@@ -175,12 +172,14 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
     x = LRModel.normalization(x)
     count_train = x.shape[0]
+    proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
     batch_num_train = count_train // config['batch_size'] + 1
     proxy_client_arbiter.Remote(batch_num_train, "batch_num")
-    proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-    client_host.public_key = proxy_server.Get("pub")
     host_data_weight = config['batch_size']
-    host_data_weight = client_host.encrypt_vector([host_data_weight])
+    if client_host.need_encrypt == True:
+        client_host.public_key = proxy_server.Get("pub")
+        host_data_weight = client_host.encrypt_vector([host_data_weight])
+
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
 
     batch_gen_host = client_host.batch_generator(
@@ -190,8 +189,6 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
         for j in range(batch_num_train):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_host_x, batch_host_y = next(batch_gen_host)
-            print('batch_host_x ---> ', batch_host_x)
-            print('batch_host_y ---> ', batch_host_y)
             logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
             host_param = client_host.fit_binary(batch_host_x, batch_host_y)
