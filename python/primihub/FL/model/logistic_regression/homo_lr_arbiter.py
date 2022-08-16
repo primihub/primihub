@@ -69,9 +69,8 @@ class Arbiter:
     def broadcast_key(self):
         try:
             self.generate_key()
-            data_to_host = {"public_key": self.public_key}
             logger.info("start send pub")
-            self.proxy_client_host.Remote(data_to_host, "pub")
+            self.proxy_client_host.Remote(self.public_key, "pub")
             logger.info("send pub to host OK")
         except Exception as e:
             logger.info("Arbiter broadcast key pair error : %s" % e)
@@ -154,49 +153,6 @@ class Arbiter:
     #     return ret
 
 
-# if __name__ == "__main__":
-#     conf = {'epoch': 3}
-#     proxy_server_host.StartRecvLoop()
-#     need_encrypt = proxy_server_host.Get("need_encrypt")
-#     client_arbiter = Arbiter()
-#     if need_encrypt == True:
-#         public_key, private_key = client_arbiter.generate_key()
-#         proxy_client_host.Remote(public_key, "public_key")
-#         logger.info("send public key done!")
-#     proxy_server_guest.StartRecvLoop()
-#
-#     batch_num = proxy_server_host.Get("batch_num")
-#     host_data_weight = proxy_server_host.Get("host_data_weight")
-#     guest_data_weight = proxy_server_guest.Get("guest_data_weight")
-#
-#     for i in range(conf['epoch']):
-#         logger.info("######## epoch %s ######### start " % i)
-#         for j in range(batch_num):
-#             host_param = proxy_server_host.Get("host_param")
-#             guest_param = proxy_server_guest.Get("guest_param")
-#             client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
-#         logger.info("######### epoch %s ######### done " % i)
-#     logger.info("All process done.")
-#
-#     logger.info("####### start predict ######")
-#     X, y = data_process()
-#     X = LRModel.normalization(X)
-#     y = list(y)
-#     prob = client_arbiter.predict_prob(X)
-#     logger.info('Classification probability is:')
-#     logger.info(prob)
-#     predict = list(client_arbiter.predict(prob))
-#     logger.info('Classification result is:')
-#     logger.info(predict)
-#     count = 0
-#     for i in range(len(y)):
-#         if y[i] == predict[i]:
-#             count += 1
-#     logger.info('acc is: %s' % (count / (len(y))))
-#
-#     proxy_server_guest.StopRecvLoop()
-#     proxy_server_host.StopRecvLoop()
-
 def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
@@ -236,14 +192,13 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
         'epochs': 1,
         'batch_size': 500
     }
-    client_arbiter = Arbiter(proxy_server, proxy_client_guest, proxy_client_host)
+    client_arbiter = Arbiter(proxy_server, proxy_client_host, proxy_client_guest)
     need_encrypt = proxy_server.Get("need_encrypt")
 
     if need_encrypt == True:
         client_arbiter.broadcast_key()
 
     batch_num = proxy_server.Get("batch_num")
-    client_arbiter.broadcast_key()
 
     host_data_weight = proxy_server.Get("host_data_weight")
     guest_data_weight = proxy_server.Get("guest_data_weight")
@@ -257,6 +212,21 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
             client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
             logger.info("batch={} done".format(j))
         logger.info("epoch={} done".format(i))
-    logger.info("All process done.")
 
+    logger.info("####### start predict ######")
+    X, y = data_process()
+    X = LRModel.normalization(X)
+    y = list(y)
+    prob = client_arbiter.predict_prob(X)
+    logger.info('Classification probability is:')
+    logger.info(prob)
+    predict = list(client_arbiter.predict(prob))
+    logger.info('Classification result is:')
+    logger.info(predict)
+    count = 0
+    for i in range(len(y)):
+        if y[i] == predict[i]:
+            count += 1
+    logger.info('acc is: %s' % (count / (len(y))))
+    logger.info("All process done.")
     proxy_server.StopRecvLoop()

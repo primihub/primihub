@@ -112,45 +112,9 @@ class Guest:
             batch_count += 1
             yield [d[start: end] for d in all_data]
 
-#
-# if __name__ == "__main__":
-#     conf = {'iter': 2,
-#             'lr': 0.01,
-#             'batch_size': 200,
-#             'epoch': 3}
-#     # load train data
-#     X, label = data_process()
-#     X = LRModel.normalization(X)
-#     count = X.shape[0]
-#     batch_num = count // conf['batch_size'] + 1
-#
-#     client_guest = Guest(X, label)
-#     client_guest.iter = conf['iter']
-#     client_guest.lr = conf['lr']
-#     client_guest.batch_size = conf['batch_size']
-#     batch_gen_guest = client_guest.batch_generator([X, label], conf['batch_size'])
-#     proxy_server_arbiter.StartRecvLoop()
-#
-#     # Send guest data weight to arbiter
-#     guest_data_weight = conf['batch_size']
-#     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
-#
-#     for i in range(conf['epoch']):
-#         logger.info("######### epoch %s ######### start " % i)
-#         for j in range(batch_num):
-#             batch_x, batch_y = next(batch_gen_guest)
-#             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
-#             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
-#             guest_param = client_guest.fit_binary(batch_x, batch_y)
-#             proxy_client_arbiter.Remote(guest_param, "guest_param")
-#             client_guest.model.theta = proxy_server_arbiter.Get("global_guest_model_param")
-#         logger.info("######### epoch %s ######### done " % i)
-#     logger.info("guest training process done!")
-#
-#     proxy_server_arbiter.StopRecvLoop()
 
 
-def run_homo_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map={}):
+def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
 
@@ -186,6 +150,9 @@ def run_homo_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map
     x = LRModel.normalization(x)
     count_train = x.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
+
+    guest_data_weight = config['batch_size']
+    proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
     client_guest = Guest(x, label, config, proxy_server,
                           proxy_client_arbiter)
 

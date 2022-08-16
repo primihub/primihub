@@ -4,7 +4,9 @@ from primihub import dataset, context
 from primihub.FL.model.logistic_regression.homo_lr_host import run_homo_lr_host
 from primihub.FL.model.logistic_regression.homo_lr_guest import run_homo_lr_guest
 from primihub.FL.model.logistic_regression.homo_lr_arbiter import run_homo_lr_arbiter
+from os import path
 
+path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
@@ -17,6 +19,14 @@ def get_logger(name):
 
 logger = get_logger("Homo-LR")
 
+ph.context.Context.role_nodeid_map["host"] = ["nodeX"]
+ph.context.Context.role_nodeid_map["guest"] = ["nodeY"]
+ph.context.Context.role_nodeid_map["arbiter"] = ["nodeZ"]
+
+# TODO: Remove them, just for debug.
+ph.context.Context.node_addr_map["nodeX"] = "127.0.0.1:8010"
+ph.context.Context.node_addr_map["nodeY"] = "127.0.0.1:8020"
+ph.context.Context.node_addr_map["nodeZ"] = "127.0.0.1:8030"
 
 def dump_task_content(dataset_map, node_addr_map, role_nodeid_map, params_map):
     logger.info(f"Dataset of all node: {dataset_map}")
@@ -36,7 +46,7 @@ def run_host_party():
 
     run_homo_lr_host(ph.context.Context.role_nodeid_map,
                        ph.context.Context.node_addr_map,
-                       ph.context.Context.dataset_map["label_dataset"],
+                       # ph.context.Context.dataset_map["label_dataset"],
                        ph.context.Context.params_map)
 
     logger.info("Finish homo-LR host logic.")
@@ -52,10 +62,7 @@ def run_guest_party():
                       ph.context.Context.role_nodeid_map,
                       ph.context.Context.params_map)
 
-    run_homo_lr_guest(ph.context.Context.role_nodeid_map,
-                        ph.context.Context.node_addr_map,
-                        ph.context.Context.dataset_map["guest_dataset"],
-                        ph.context.Context.params_map)
+    run_homo_lr_guest(ph.context.Context.role_nodeid_map, ph.context.Context.node_addr_map)
 
     logger.info("Finish homo-LR guest logic.")
 

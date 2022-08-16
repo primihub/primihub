@@ -129,50 +129,7 @@ class Host:
 #     return ret
 
 
-# if __name__ == "__main__":
-#     conf = {'iter': 2,
-#             'lr': 0.01,
-#             'batch_size': 200,
-#             'epoch': 3}
-#     # load train data
-#     X, label = data_process()
-#     X = LRModel.normalization(X)
-#     count = X.shape[0]
-#     batch_num = count // conf['batch_size'] + 1
-#     proxy_client_arbiter.Remote(batch_num, "batch_num")
-#
-#     client_host = Host(X, label)
-#     client_host.iter = conf['iter']
-#     client_host.lr = conf['lr']
-#     client_host.batch_size = conf['batch_size']
-#     batch_gen_host = client_host.batch_generator([X, label], conf['batch_size'])
-#
-#     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-#     proxy_server_arbiter.StartRecvLoop()
-#     client_host.public_key = proxy_server_arbiter.Get("public_key")
-#
-#     # Send host_data_weight to arbiter
-#     host_data_weight = conf['batch_size']
-#     host_data_weight = client_host.encrypt_vector([host_data_weight])
-#     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
-#
-#     # 数据处理
-#     for i in range(conf['epoch']):
-#         logger.info("######### epoch %s ######### start " % i)
-#         for j in range(batch_num):
-#             batch_x, batch_y = next(batch_gen_host)
-#             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
-#             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
-#             host_param = client_host.fit_binary(batch_x, batch_y)
-#             proxy_client_arbiter.Remote(host_param, "host_param")
-#             client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
-#         logger.info("######### epoch %s ######### done " % i)
-#     logger.info("host training process done!")
-#
-#     proxy_server_arbiter.StopRecvLoop()
-
-
-def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map={}):
+def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
     host_nodes = role_node_map["host"]
     # guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -219,9 +176,9 @@ def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map=
     x = LRModel.normalization(x)
     count_train = x.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
-
+    proxy_client_arbiter.Remote(batch_num_train, "batch_num")
+    proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
     client_host.public_key = proxy_server.Get("pub")
-
     host_data_weight = config['batch_size']
     host_data_weight = client_host.encrypt_vector([host_data_weight])
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
@@ -233,6 +190,8 @@ def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map=
         for j in range(batch_num_train):
             logger.info("-----epoch=%s, batch=%s-----" % (i, j))
             batch_host_x, batch_host_y = next(batch_gen_host)
+            print('batch_host_x ---> ', batch_host_x)
+            print('batch_host_y ---> ', batch_host_y)
             logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
             host_param = client_host.fit_binary(batch_host_x, batch_host_y)
@@ -241,17 +200,5 @@ def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map=
             logger.info("batch=%s done" % j)
         logger.info("epoch=%i done" % i)
     logger.info("host training process done.")
-    # client_host.data.update(
-    #     proxy_server.Get(
-    #         "encrypted_z_guest_test", 10000))
-    # assert "encrypted_z_guest_test" in client_host.data.keys(
-    # ), "Error: 'encrypted_z_guest_test' from guest  not successfully received."
-    # guest_re = client_host.data["encrypted_z_guest_test"]
-    # weights = np.concatenate(
-    #     [client_host.data["guest_weights"], client_host.weights], axis=0)
-    # logger.info("weights.shape", weights.shape)
-    # logger.info(weights)
-    # client_host.predict(client_host.weights, x_test_feature, label_test, guest_re,
-    #                     proxy_client_arbiter, proxy_server)
 
     proxy_server.StopRecvLoop()
