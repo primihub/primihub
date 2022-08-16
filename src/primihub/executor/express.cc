@@ -2,16 +2,19 @@
 
 #include "src/primihub/executor/express.h"
 
-// Implement of class PartyConfig.
-std::string PartyConfig::DtypeToString(const ColDtype &dtype) {
+using TokenValue = primihub::MPCExpressExecutor::TokenValue;
+
+namespace primihub {
+// Implement of class ColumnConf.
+std::string ColumnConfig::DtypeToString(const ColDtype &dtype) {
   if (dtype == ColDtype::FP64)
     return std::string("FP64");
   else
     return std::string("INT64");
 }
 
-int PartyConfig::importColumnDtype(const std::string &col_name,
-                                   const ColDtype &dtype) {
+int ColumnConfig::importColumnDtype(const std::string &col_name,
+                                    const ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter != col_dtype_.end()) {
     LOG(ERROR) << "Column " << col_name
@@ -24,8 +27,8 @@ int PartyConfig::importColumnDtype(const std::string &col_name,
   return 0;
 }
 
-int PartyConfig::importColumnOwner(const std::string &col_name,
-                                   const std::string &node_id) {
+int ColumnConfig::importColumnOwner(const std::string &col_name,
+                                    const std::string &node_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
     LOG(ERROR) << "Column " << col_name
@@ -33,11 +36,11 @@ int PartyConfig::importColumnOwner(const std::string &col_name,
     return -1;
   }
 
-  col_owner_.insert(std::make_pair(col_name, dtype));
+  col_owner_.insert(std::make_pair(col_name, node_id));
   return 0;
 }
 
-int PartyConfig::getColumnDtype(const std::string &col_name, ColDtype &dtype) {
+int ColumnConfig::getColumnDtype(const std::string &col_name, ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter == col_dtype_.end()) {
     LOG(ERROR) << "Can't find dtype attr for column " << col_name << ".";
@@ -48,7 +51,7 @@ int PartyConfig::getColumnDtype(const std::string &col_name, ColDtype &dtype) {
   return 0;
 }
 
-int PartyConfig::ResolveLocalColumn(void) {
+int ColumnConfig::resolveLocalColumn(void) {
   if (col_dtype_.size() != col_owner_.size()) {
     LOG(ERROR) << "Count of owner attr and dtype attr must be the same.";
     return -1;
@@ -85,8 +88,8 @@ int PartyConfig::ResolveLocalColumn(void) {
   return 0;
 }
 
-int PartyConfig::getColumnLocality(const std::string &col_name,
-                                   bool &is_local) {
+int ColumnConfig::getColumnLocality(const std::string &col_name,
+                                    bool &is_local) {
   auto iter = local_col_.find(col_name);
   if (iter == local_col_.end()) {
     LOG(ERROR) << "Can't find column locality by column name " << col_name
@@ -98,7 +101,7 @@ int PartyConfig::getColumnLocality(const std::string &col_name,
   return 0;
 }
 
-bool PartyConfig::hasFP64Column(void) {
+bool ColumnConfig::hasFP64Column(void) {
   bool fp64_col = false;
   for (auto iter = col_dtype_.begin(); iter != col_dtype_.end(); iter++) {
     if (iter->second == ColDtype::FP64) {
@@ -110,19 +113,19 @@ bool PartyConfig::hasFP64Column(void) {
   return fp64_col;
 }
 
-void PartyConfig::Clean(void) {
+void ColumnConfig::Clean(void) {
   col_owner_.clear();
   col_dtype_.clear();
   local_col_.clear();
   node_id_ = "";
 }
 
-PartyConfig::~PartyConfig() { Clean(); }
+ColumnConfig::~ColumnConfig() { Clean(); }
 
 // Implement of class FeedDict.
 int FeedDict::checkLocalColumn(const std::string &col_name) {
   bool is_local = false;
-  int ret = party_config_->getColumnLocality(col_name, is_local);
+  int ret = col_config_->getColumnLocality(col_name, is_local);
   if (ret) {
     LOG(ERROR) << "Get column locality by column name " << col_name
                << " failed.";
@@ -136,26 +139,29 @@ int FeedDict::checkLocalColumn(const std::string &col_name) {
 int FeedDict::importColumnValues(const std::string &col_name,
                                  std::vector<int64_t> &int64_vec) {
   {
-    int ret = party_config_->getColumnLocality(col_name);
+    bool is_local = false;
+    int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
       LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
       return -1;
-    } else if (ret == 0) {
-      LOG(ERROR) << "Column " << col_name << " is not a local column.";
+    }
+
+    if (is_local == false) {
+      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
 
-  if (dtype == PartyConfig::ColDtype::FP64) {
-    LOG(ERROR) << "Column " << col_name << "'s dtype is fp64 in party config,"
-               << "but now is int64.";
-    return -1;
-  }
-
-  PartyConfig::ColDtype dtype;
-  int ret = party_config_->getColumnDtype(col_name, dtype);
+  ColumnConfig::ColDtype dtype;
+  int ret = col_config_->getColumnDtype(col_name, dtype);
   if (ret) {
     LOG(ERROR) << "Get column " << col_name << "'s dtype failed.";
+    return -2;
+  }
+
+  if (dtype != ColumnConfig::ColDtype::INT64) {
+    LOG(ERROR) << "Try to import column values type of which is I64, but type "
+                  "of it is FP64 in column config.";
     return -2;
   }
 
@@ -164,6 +170,7 @@ int FeedDict::importColumnValues(const std::string &col_name,
     std::vector<double> fp64_vec;
     for (auto v : int64_vec)
       fp64_vec.emplace_back(static_cast<double>(v));
+
     int ret = importColumnValues(col_name, fp64_vec);
     if (ret) {
       LOG(ERROR) << "Import values of column " << col_name << " failed.";
@@ -187,12 +194,15 @@ int FeedDict::importColumnValues(const std::string &col_name,
 int FeedDict::importColumnValues(const std::string &col_name,
                                  std::vector<double> &fp64_vec) {
   {
-    int ret = party_config_->getColumnLocality(col_name);
+    bool is_local = false;
+    int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
       LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
       return -1;
-    } else if (ret == 0) {
-      LOG(ERROR) << "Column " << col_name << " is not a local column.";
+    }
+
+    if (is_local == false) {
+      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
@@ -216,12 +226,15 @@ template <class T>
 int FeedDict::getColumnValues(const std::string &col_name,
                               std::vector<T> &col_vec) {
   {
-    int ret = party_config_->getColumnLocality(col_name);
+    bool is_local = false;
+    int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
       LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
       return -1;
-    } else if (ret == 0) {
-      LOG(ERROR) << "Column " << col_name << " is not a local column.";
+    }
+
+    if (is_local == false) {
+      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
@@ -305,7 +318,7 @@ int MPCExpressExecutor::Priority(const char str) {
 
 bool MPCExpressExecutor::checkExpress(void) {
   std::vector<std::string> suffix_vec;
-  std::stack<std::string> tmp_stk = suffix_stk;
+  std::stack<std::string> tmp_stk = suffix_stk_;
 
   while (!tmp_stk.empty()) {
     suffix_vec.push_back(tmp_stk.top());
@@ -481,8 +494,8 @@ void MPCExpressExecutor::resolveRunMode(void) {
       continue;
     }
 
-    PartyConfig::ColDtype dtype;
-    if (!getColumnDtype(token, &dtype)) {
+    ColumnConfig::ColDtype dtype;
+    if (!col_config_->getColumnDtype(token, dtype)) {
       // Token is a column name.
       token_type_.insert(std::make_pair(token, TokenType::COLUMN));
       continue;
@@ -494,7 +507,7 @@ void MPCExpressExecutor::resolveRunMode(void) {
       has_fp64_val = true;
   }
 
-  bool has_fp64_col = party_config_->hasFP64Column();
+  bool has_fp64_col = col_config_->hasFP64Column();
 
   if (has_div_op | has_fp64_col | has_fp64_val)
     fp64_run_ = true;
@@ -507,49 +520,151 @@ void MPCExpressExecutor::resolveRunMode(void) {
     LOG(INFO) << "MPC run in INT64 mode.";
 }
 
-void MPCOperator::createTokenValue(const std::string &token,
-                                   TokenValue &token_val) {
+void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
+  if (val.type == 3) {
+    m.resize(1, 1);
+    m(0, 0) = val.val_union.fp64_val;
+  } else {
+    m.resize(val.val_union.i64_vec.size(), 1);
+    for (size_t i = 0; i < val.val_union.fp64_vec.size(); i++) {
+      m(i, 0) = val.val_union.i64_vec[i];
+    }
+  }
+
+  return;
+}
+
+void MPCExpressExecutor::createI64Shares(TokenValue &val1, TokenValue &val2,
+                                         si64Matrix &sh_val1,
+                                         si64Matrix &sh_val2) {
+  if (val1.type == 4) {
+    mpc_op_->createShares(sh_val1);
+  } else {
+    i64Matrix m;
+    constructI64Matrix(val1, m);
+    mpc_op_->createShares(m, sh_val1);
+  }
+
+  if (val2.type == 4) {
+    mpc_op_->createShares(sh_val2);
+  } else {
+    i64Matrix m;
+    constructI64Matrix(val2, m);
+    mpc_op_->createShares(m, sh_val2);
+  }
+
+  return;
+}
+
+void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
+                                             eMatrix<double> &m) {
+  if (val.type == 2) {
+    m.resize(1, 1);
+    m(0, 0) = val.val_union.i64_val;
+  } else {
+    m.resize(val.val_union.fp64_vec.size(), 1);
+    for (size_t i = 0; i < val.val_union.fp64_vec.size(); i++) {
+      m(i, 0) = val.val_union.fp64_vec[i];
+    }
+  }
+
+  return;
+}
+
+void MPCExpressExecutor::createFP64Shares(TokenValue &val1, TokenValue &val2,
+                                          sf64Matrix<D> &sh_val1,
+                                          sf64Matrix<D> &sh_val2) {
+  if (val1.type == 4) {
+    mpc_op_->createShares(sh_val1);
+  } else {
+    eMatrix<double> m;
+    constructFP64Matrix(val1, m);
+    mpc_op_->createShares(m, sh_val1);
+  }
+
+  if (val2.type == 4) {
+    mpc_op_->createShares(sh_val2);
+  } else {
+    eMatrix<double> m;
+    constructFP64Matrix(val1, m);
+    mpc_op_->createShares(m, sh_val2);
+  }
+
+  return;
+}
+
+void MPCExpressExecutor::createTokenValue(const std::string &token,
+                                          TokenValue &token_val) {
   TokenType type = token_type_[token];
   if (type == TokenType::COLUMN) {
     // Token is a column name, a remote column or a local column.
     bool is_local = false;
-    party_config_->getColumnLocality(is_local);
+    col_config_->getColumnLocality(token, is_local);
     if (is_local == false) {
       // Column is a remote column.
       token_val.type = 4;
       return;
     }
-    
-    // Column is a local column. 
-    if (float_run_) {
+
+    // Column is a local column.
+    if (fp64_run_) {
       std::vector<double> col_vec;
       feed_dict_->getColumnValues(token, col_vec);
-      token_val.val.fp64_vec = std::move(col_vec);
+      token_val.val_union.fp64_vec = std::move(col_vec);
       token_val.type = 0;
     } else {
       std::vector<int64_t> col_vec;
       feed_dict_->getColumnValues(token, col_vec);
-      token_val.val.i64_vec = std::move(col_vec);
+      token_val.val_union.i64_vec = std::move(col_vec);
       token_val.type = 1;
     }
   } else {
     // Token is a number, maybe a float number.
-    if (float_run_) {
-      token_val.val.fp64_val = std::stod(token);
+    if (fp64_run_) {
+      token_val.val_union.fp64_val = std::stod(token);
       token_val.type = 2;
     } else {
-      token_val.val.i64_val = atol(token.c_str());
+      token_val.val_union.i64_val = atol(token.c_str());
       token_val.type = 3;
     }
   }
 }
 
-int MPCOperator::runMPCAdd(const std::string &token1, const std::string &token2,
-                           sf64Matrix<D> &sh_val) {
-  return 0;
+void MPCExpressExecutor::runMPCAdd(const std::string &token1,
+                                   const std::string &token2,
+                                   sf64Matrix<D> &sh_res) {
+  TokenValue val1, val2;
+  createTokenValue(token1, val1);
+  createTokenValue(token2, val2);
+
+  sf64Matrix<D> sh_val1, sh_val2;
+  createFP64Shares(val1, val2, sh_val1, sh_val2);
+
+  std::vector<sf64Matrix<D>> sh_val_vec;
+  sh_val_vec.emplace_back(sh_val1);
+  sh_val_vec.emplace_back(sh_val2);
+
+  mpc_op_->MPC_Add(sh_val_vec, sh_res);
 }
 
-int MPCExpressExecutor::RunMPCEvaluate(void) {
+void MPCExpressExecutor::runMPCAdd(const std::string &token1,
+                                   const std::string &token2,
+                                   si64Matrix &sh_res) {
+  TokenValue val1, val2;
+  createTokenValue(token1, val1);
+  createTokenValue(token2, val2);
+
+  si64Matrix sh_val1, sh_val2;
+  createI64Shares(val1, val2, sh_val1, sh_val2);
+
+  std::vector<si64Matrix> sh_val_vec;
+  sh_val_vec.emplace_back(sh_val1);
+  sh_val_vec.emplace_back(sh_val2);
+
+  mpc_op_->MPC_Add(sh_val_vec, sh_res);
+}
+
+int MPCExpressExecutor::runMPCEvaluate(void) {
   std::stack<std::string> stk1;
 
   while (!suffix_stk_.empty()) {
@@ -561,6 +676,13 @@ int MPCExpressExecutor::RunMPCEvaluate(void) {
       stk1.pop();
       suffix_stk_.pop();
 
+      if (fp64_run_) {
+        sf64Matrix<D> sh_sum;
+        runMPCAdd(a, b, sh_sum);
+      } else {
+        si64Matrix sh_sum;
+        runMPCAdd(a, b, sh_sum);
+      }
     } else if (token == "-") {
       std::string a = stk1.top();
       stk1.pop();
@@ -588,3 +710,4 @@ int MPCExpressExecutor::RunMPCEvaluate(void) {
     }
   }
 }
+} // namespace primihub

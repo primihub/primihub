@@ -23,6 +23,7 @@
 #include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
+
 namespace primihub {
 
 const Decimal D = D16;

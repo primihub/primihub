@@ -3,24 +3,25 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <stack>
 #include <string>
 
-#include "src/primihub/executor/party.h"
+#include "src/primihub/operator/aby3_operator.h"
 
 namespace primihub {
-class PartyConfig {
+class ColumnConfig {
 public:
   enum ColDtype { INT64, FP64 };
 
-  PartyConfig(std::string node_id) { node_id_ = node_id; }
-  ~PartyConfig();
+  ColumnConfig(std::string node_id) { node_id_ = node_id; }
+  ~ColumnConfig();
 
   int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
   int importColumnOwner(const std::string &col_name,
                         const std::string &node_id);
   int getColumnDtype(const std::string &col_name, ColDtype &dtype);
-  int getColumnLocality(bool &is_local);
+  int getColumnLocality(const std::string &col_name, bool &is_local);
   int resolveLocalColumn(void);
   bool hasFP64Column(void);
   int ResolveTokenType(void);
@@ -37,10 +38,10 @@ private:
 
 class FeedDict {
 public:
-  FeedDict(const std::string &node_id, const PartyConfig *party_config,
+  FeedDict(const std::string &node_id, ColumnConfig *col_config,
            bool float_run) {
     node_id_ = node_id;
-    party_config_ = party_config;
+    col_config_ = col_config;
     float_run_ = float_run;
   }
 
@@ -60,7 +61,7 @@ private:
   std::string node_id_;
   std::map<std::string, std::vector<double>> fp64_col_;
   std::map<std::string, std::vector<int64_t>> int64_col_;
-  const PartyConfig *party_config_;
+  ColumnConfig *col_config_;
 };
 
 class MPCExpressExecutor {
@@ -72,42 +73,55 @@ public:
   void resolveRunMode(void);
   int runMPCEvaluate(void);
 
-  void setPartyConfig(PartyConfig *party_config) {
-    this->party_config_ = party_config;
+  void setPartyConfig(ColumnConfig *col_config) {
+    this->col_config_ = col_config;
   }
 
   void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
 
-private:
+  // TODO: TokenValue should be a private type, fix it.
+  enum TokenType { COLUMN, VALUE };
   union ValueUnion {
     std::vector<double> fp64_vec;
     std::vector<int64_t> i64_vec;
     int64_t i64_val;
     double fp64_val;
+
+    ValueUnion() {}
+    ~ValueUnion() {}
   };
 
   struct TokenValue {
-    ValueUnion val;
+    ValueUnion val_union;
     // type == 0: val.fp64_vec is set;
     // type == 1: val.i64_vec is set;
     // type == 2: val.fp64 is set.
     // type == 3: val.i64 is set;
     // type == 4: a remote column, set nothing.
     uint8_t type;
+
+    TokenValue(){};
+    ~TokenValue(){};
   };
 
+private:
   inline void createTokenValue(const std::string &token, TokenValue &token_val);
 
-  inline void createI64Shares(TokenValue &val1, TokenValue val2,
-                              si64Matrix &sh_val);
-  inline void createFP64Shares(TokenType &val, TokenValue val2,
-                               sf64Matrix<D> &sh_val);
+  inline void constructI64Matrix(TokenValue &token_val, i64Matrix &m);
 
-  enum TokenType { COLUMN, VALUE };
-  int ResolveTokenType(void);
+  inline void constructFP64Matrix(TokenValue &token_val, eMatrix<double> &m);
 
-  int runMPCAdd(const std::string &token1, const std::string &token2,
-                sf64Matrix<D> &sh_val);
+  inline void createI64Shares(TokenValue &val1, TokenValue &val2,
+                              si64Matrix &sh_val1, si64Matrix &sh_val2);
+
+  inline void createFP64Shares(TokenValue &val1, TokenValue &val2,
+                               sf64Matrix<D> &sh_val1, sf64Matrix<D> &sh_val2);
+
+  void runMPCAdd(const std::string &token1, const std::string &token2,
+                 sf64Matrix<D> &sh_val);
+  void runMPCAdd(const std::string &token1, const std::string &token2,
+                 si64Matrix &sh_val);
+
   int runMPCSub(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
   int runMPCMul(const std::string &token1, const std::string &token2,
@@ -124,7 +138,7 @@ private:
   bool fp64_run_;
   std::string expr_;
   std::stack<std::string> suffix_stk_;
-  PartyConfig *party_config_;
+  ColumnConfig *col_config_;
   MPCOperator *mpc_op_;
   FeedDict *feed_dict_;
   std::map<std::string, TokenType> token_type_;
