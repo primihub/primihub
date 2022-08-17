@@ -24,7 +24,6 @@ public:
   int getColumnLocality(const std::string &col_name, bool &is_local);
   int resolveLocalColumn(void);
   bool hasFP64Column(void);
-  int ResolveTokenType(void);
   void Clean(void);
 
   static std::string DtypeToString(const ColDtype &dtype);
@@ -38,9 +37,8 @@ private:
 
 class FeedDict {
 public:
-  FeedDict(const std::string &node_id, ColumnConfig *col_config,
+  FeedDict(ColumnConfig *col_config,
            bool float_run) {
-    node_id_ = node_id;
     col_config_ = col_config;
     float_run_ = float_run;
   }
@@ -58,7 +56,6 @@ private:
   int checkLocalColumn(const std::string &col_name);
 
   bool float_run_;
-  std::string node_id_;
   std::map<std::string, std::vector<double>> fp64_col_;
   std::map<std::string, std::vector<int64_t>> int64_col_;
   ColumnConfig *col_config_;
@@ -71,15 +68,20 @@ public:
 
   int importExpress(std::string expr);
   void resolveRunMode(void);
+  void initMPCRuntime(uint8_t party_id, const std::string &ip,
+                      uint16_t prev_port, uint16_t next_port);
   int runMPCEvaluate(void);
 
-  void setPartyConfig(ColumnConfig *col_config) {
+  void setColumnConfig(ColumnConfig *col_config) {
     this->col_config_ = col_config;
   }
 
   void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
 
-  // TODO: TokenValue should be a private type, fix it.
+  bool isFP64RunMode(void) {
+    return this->fp64_run_;
+  }
+
   enum TokenType { COLUMN, VALUE };
   union ValueUnion {
     std::vector<double> fp64_vec;

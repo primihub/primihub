@@ -274,6 +274,13 @@ int FeedDict::getColumnValues(const std::string &col_name,
   return 0;
 }
 
+FeedDict::~FeedDict() {
+  this->float_run_ = false;
+  this->fp64_col_.clear();
+  this->int64_col_.clear();
+  this->col_config_ = nullptr;
+}
+
 // Implement of class MPCExpressExecutor.
 MPCExpressExecutor::MPCExpressExecutor() {}
 
@@ -520,6 +527,29 @@ void MPCExpressExecutor::resolveRunMode(void) {
     LOG(INFO) << "MPC run in INT64 mode.";
 }
 
+void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
+                                        uint16_t prev_port,
+                                        uint16_t next_port) {
+  std::string next_name;
+  std::string prev_name;
+  
+  if (party_id == 0) {
+    next_name = "01";
+    prev_name = "02";
+  } else if (party_id == 1) {
+    next_name = "12";
+    prev_name = "01";
+  } else if (party_id == 2) {
+    next_name = "02";
+    prev_name = "12";
+  } 
+
+  mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
+  mpc_op_->setup(ip, next_port, prev_port);
+
+  return;
+}
+
 void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
   if (val.type == 3) {
     m.resize(1, 1);
@@ -710,4 +740,14 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
     }
   }
 }
+
+MPCExpressExecutor::~MPCExpressExecutor() {
+  token_type_.clear();
+
+  while (!suffix_stk_.empty()) 
+    suffix_stk_.pop();
+
+  delete mpc_op_;
+}
+
 } // namespace primihub
