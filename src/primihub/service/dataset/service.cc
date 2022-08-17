@@ -221,7 +221,7 @@ namespace primihub::service {
     std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
         auto res = localKv_->getValue(id);
         if (res.has_value()) {
-            return make_shared<DatasetMeta>(res.value());
+            return std::make_shared<DatasetMeta>(res.value());
         }
         return nullptr;
     }
