@@ -102,8 +102,6 @@ class Arbiter:
             weight_all.append(host_data_weight)
         param.append(guest_param)
         weight_all.append(guest_data_weight)
-        for i in weight_all:
-            print(i)
         weight = np.array([weight * 1.0 for weight in weight_all])
         for id_c, p in enumerate(param):
             w = weight[id_c] / np.sum(weight, axis=0)

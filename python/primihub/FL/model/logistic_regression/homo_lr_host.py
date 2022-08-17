@@ -45,7 +45,7 @@ class Host:
         self.model = LRModel(X, y)
         self.public_key = None
         self.need_one_vs_rest = None
-        self.need_encrypt = False
+        self.need_encrypt = True
         self.lr = self.config['lr']
         self.batch_size = 200
         self.iteration = 0
