@@ -69,6 +69,7 @@ class Arbiter:
     def broadcast_key(self):
         try:
             self.generate_key()
+            self.need_encrypt = True
             logger.info("start send pub")
             self.proxy_client_host.Remote(self.public_key, "pub")
             logger.info("send pub to host OK")
@@ -89,22 +90,6 @@ class Arbiter:
     def predict(self, prob):
         return np.array(prob > 0.5, dtype='int')
 
-    # def aggregate(self, client_param): # plaintext
-    #     self.global_model_param = self.server_aggregate(client_param)
-    #     return self.global_model_param
-
-    # def server_aggregate(self, *client_param):  # plaintext
-    #     sum_weight = np.zeros(client_param[0][0].shape)
-    #     print('sum_weight.shape---->', sum_weight.shape)
-    #     sum_bias = np.float64("0")
-    #     for param in client_param:
-    #         sum_weight = sum_weight + param[0]
-    #         sum_bias = sum_bias + param[1]
-    #     print(f"sum average is {sum_weight}")
-    #     avg_weight = sum_weight / len(client_param)
-    #     avg_bias = sum_bias / len(client_param)
-    #     return avg_weight, avg_bias
-
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         agg_param = np.zeros(len(host_parm))
         param = []
@@ -117,7 +102,8 @@ class Arbiter:
             weight_all.append(host_data_weight)
         param.append(guest_param)
         weight_all.append(guest_data_weight)
-
+        for i in weight_all:
+            print(i)
         weight = np.array([weight * 1.0 for weight in weight_all])
         for id_c, p in enumerate(param):
             w = weight[id_c] / np.sum(weight, axis=0)
@@ -206,7 +192,6 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
         client_arbiter.broadcast_key()
 
     batch_num = proxy_server.Get("batch_num")
-    print('batch_num ---->', batch_num)
     host_data_weight = proxy_server.Get("host_data_weight")
     guest_data_weight = proxy_server.Get("guest_data_weight")
 
