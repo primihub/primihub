@@ -159,6 +159,7 @@ jobs:
     - name: find objcopy
       run: |
         brew install binutils
+        ln -s /usr/local/Cellar/binutils/2.38_1/bin/objcopy /usr/local/bin/objcopy
         mdfind -name objcopy
     - name: bazel build
       run: |
