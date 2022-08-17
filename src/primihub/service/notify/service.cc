@@ -53,16 +53,21 @@ void NotifyService::run() {
     }
 }
 
-void NotifyService::notifyStatus(const std::string task_id, const std::string &status) {
-    EventBusNotifyDelegate::getInstance().notifyStatus(task_id, status);
+void NotifyService::notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
+                                 const std::string &status, const std::string &message) {
+    EventBusNotifyDelegate::getInstance().notifyStatus(task_id, submit_client_id, status, message);
 }
 
-void NotifyService::notifyResult(const std::string task_id, const std::string &result_dataset_url) {
-    EventBusNotifyDelegate::getInstance().notifyResult(task_id, result_dataset_url);
+void NotifyService::notifyResult(const std::string &task_id, const std::string &submit_client_id, 
+                                const std::string &result_dataset_url) {
+    EventBusNotifyDelegate::getInstance().notifyResult(task_id, submit_client_id, result_dataset_url);
 }
 
-void NotifyService::onSubscribeTaskEvent(const std::string task_id, const uint64_t &session_id) {
-    GRPCNotifyServer::getInstance().addTaskSession(task_id, 
+/**
+ * when client create task or subscribe task, notify client.
+ */
+void NotifyService::onSubscribeClientEvent(const std::string client_id, const uint64_t &session_id) {
+    GRPCNotifyServer::getInstance().addClientSession(client_id, 
                                                    GRPCNotifyServer::getInstance().getSession(session_id));
 }
 

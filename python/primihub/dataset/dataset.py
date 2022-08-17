@@ -137,7 +137,7 @@ def read(dataset_key: str = None,
 """TODO Put dataset using primihub client (singltone) Dataset client.
         Default is flight client.
 """
-def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
-    from primihub.client import primihub_cli
-    primihub_cli.dataset_client
+# def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
+#     from primihub.client import primihub_cli
+#     primihub_cli.dataset_client
     

@@ -29,11 +29,11 @@ class NotifyService {
     // TODO create notify server list by config file.
     
     void run();
-    void notifyStatus(const std::string task_id, const std::string &status);
-    void notifyResult(const std::string task_id, const std::string &result_dataset_url);
+    void notifyStatus(const std::string &task_id, const std::string &submit_client_id, const std::string &status, const std::string &message);
+    void notifyResult(const std::string &task_id, const std::string &submit_client_id, const std::string &result_dataset_url);
     
-    // when client create task / subscribe task, notify client.
-    void onSubscribeTaskEvent(const std::string task_id, const uint64_t &session_id);
+    // when client subscribe by node, notify client.
+    void onSubscribeClientEvent(const std::string client_id, const uint64_t &session_id);
     
     // void onNewSessionEvent(const std::string session_id) = 0;
   private:

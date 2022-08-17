@@ -504,6 +504,7 @@ DEFAULT_TASK_LIB_DEPS = [
     ":common_lib",
     ":algorithm_lib",
     "dataset_service",
+    "notify_service",
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",

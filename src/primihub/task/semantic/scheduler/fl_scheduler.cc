@@ -28,10 +28,9 @@
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/util.hpp"
-
+#include "src/primihub/service/notify/model.h"
 
 using grpc::Channel;
-// using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
@@ -46,6 +45,7 @@ using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
 
 using primihub::service::DataURLToDetail;
+using primihub::service::EventBusNotifyDelegate;
 
 namespace primihub::task {
     
@@ -147,6 +147,12 @@ namespace primihub::task {
                 add_vm(&single_node, party_id, 2, &nodePushTaskRequest);
             }
         }
+        // TODO Fire TASK_STATUS event using NotifyService
+        auto taskId = nodePushTaskRequest.task().task_id();
+        auto submitClientId = nodePushTaskRequest.submit_client_id();
+        EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
+                                                            "RUNNING", 
+                                                            "task status test message");
 
         // schedule
         std::vector<std::thread> thrds;

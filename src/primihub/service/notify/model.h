@@ -57,19 +57,24 @@ namespace primihub::service {
 
 class NotifyDelegate {
     public:
-        virtual void notifyStatus(const std::string &status) = 0;
-        virtual void notifyResult(const std::string &result) = 0;
+        virtual void notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
+                                 const std::string &status, const std::string &message) = 0;
+        virtual void notifyResult(const std::string &task_id, const std::string &submit_client_id, 
+                                  const std::string &result_dataset_url) = 0;
 };
 
 struct TaskStatusEvent {
     std::string task_id;
     std::string job_id;
-    std::string status;
+    std::string submit_client_id;
+    std::string status;    // TODO enum PEDNING, RUNNING, SUCCESS, FAILED
+    std::string message;
 };
 
 struct TaskResultEvent {
     std::string task_id;
     std::string job_id;
+    std::string submit_client_id;
     std::string result_dataset_url;
 };
 
@@ -87,8 +92,10 @@ class EventBusNotifyDelegate {
             return kSingleInstance;
         }
 
-        void notifyStatus(const std::string task_id, const std::string &status);
-        void notifyResult(const std::string task_id, const std::string &result_dataset_url);
+        void notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
+                         const std::string &status, const std::string &message);
+        void notifyResult(const std::string &task_id, const std::string &submit_client_id,
+                          const std::string &result_dataset_url);
         primihub::common::event_bus* getEventBusPtr() { return &event_bus_; }
     
     private:
@@ -195,8 +202,8 @@ class GRPCNotifyServer : public NotifyServer {
         std::shared_ptr<GRPCClientSession> addSession();
         void removeSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSession(uint64_t sessionId);
-        std::shared_ptr<GRPCClientSession> getSessionByTaskId(const std::string taskId);
-        void addTaskSession(const std::string taskId, const std::shared_ptr<GRPCClientSession> &session);
+        std::shared_ptr<GRPCClientSession> getSessionByClientId(const std::string clientId);
+        void addClientSession(const std::string clientId, const std::shared_ptr<GRPCClientSession> &session);
 
         // gRPC members
         std::atomic_bool running_{false};
@@ -219,8 +226,8 @@ class GRPCNotifyServer : public NotifyServer {
         // TODO task context -> grpc client map
         // std::map<std::string /*task id*/, Task> tasks_; //TODO new/delte task
         // TODO  add item when client submit new task
-        mutable std::shared_mutex mutex_task_sessions_{};
-        std::unordered_map<std::string /*task id*/, std::shared_ptr<GRPCClientSession>> task_sessions_;
+        mutable std::shared_mutex mutex_client_sessions_{};
+        std::unordered_map<std::string /*client id*/, std::shared_ptr<GRPCClientSession>> client_sessions_;
         std::string node_id_;
         
 };

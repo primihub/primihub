@@ -26,14 +26,19 @@ using primihub::rpc::NodeEventType;
 //////////////////////////////EventBusNotifyDelegate/////////////////////////////////////////////////
 
 // TODO job id is not used yet.
-void EventBusNotifyDelegate::notifyStatus(const std::string task_id, const std::string &status) {
+void EventBusNotifyDelegate::notifyStatus(const std::string &task_id,
+                                          const std::string &submit_client_id, 
+                                          const std::string& status,
+                                          const std::string& message) {
     // send status to event bus.
-    event_bus_.fire_event(TaskStatusEvent{task_id, status});
+    event_bus_.fire_event(TaskStatusEvent{task_id, "jobid", submit_client_id, status, message});
 }
 
-void EventBusNotifyDelegate::notifyResult(const std::string task_id, const std::string &result_dataset_url) {
+void EventBusNotifyDelegate::notifyResult(const std::string &task_id, 
+                                         const std::string &submit_client_id, 
+                                         const std::string &result_dataset_url) {
     // send result to event bus.
-    event_bus_.fire_event(TaskResultEvent{task_id, result_dataset_url});
+    event_bus_.fire_event(TaskResultEvent{task_id, "jobId", submit_client_id, result_dataset_url});
     
 }
 
@@ -61,7 +66,7 @@ void GRPCNotifyServer::onTaskStatusEvent(const TaskStatusEvent &e) {
     // TODO put TaskStatus event to session message queue if session is exist.
     // find which session subscribed this task.
     LOG(INFO) << "get task status event: " << e.task_id << " " << e.status;
-    auto session = getSessionByTaskId(e.task_id);
+    auto session = getSessionByClientId(e.submit_client_id);
     if (session) {
         // Construct NodeEventReply rpc message.
         auto new_message = std::make_shared<primihub::rpc::NodeEventReply>();
@@ -72,6 +77,7 @@ void GRPCNotifyServer::onTaskStatusEvent(const TaskStatusEvent &e) {
         task_context->set_node_id(this->node_id_);
         task_context->set_job_id(e.job_id);
         task_status->set_status(e.status);
+        task_status->set_message(e.message);
         LOG(INFO) << "Prepare put message to session: " << new_message->ShortDebugString();
         session->putMessage(new_message);
     } else {
@@ -81,7 +87,7 @@ void GRPCNotifyServer::onTaskStatusEvent(const TaskStatusEvent &e) {
 
 void GRPCNotifyServer::onTaskResultEvent(const TaskResultEvent &e) {
     // TODO put TaskResult event to session message queue if session is exist.
-     auto session = getSessionByTaskId(e.task_id);
+     auto session = getSessionByClientId(e.submit_client_id);
     if (session) {
         // Construct NodeEventReply rpc message.
         auto new_message = std::make_shared<primihub::rpc::NodeEventReply>();
@@ -259,16 +265,16 @@ std::shared_ptr<GRPCClientSession> GRPCNotifyServer::getSession(uint64_t session
     return it->second;
 }
 
-std::shared_ptr<GRPCClientSession> GRPCNotifyServer::getSessionByTaskId(const std::string taskId) {
-    std::shared_lock lock(mutex_task_sessions_);
-    auto it = task_sessions_.find(taskId);
-    if (it == task_sessions_.end()) { return nullptr; }
+std::shared_ptr<GRPCClientSession> GRPCNotifyServer::getSessionByClientId(const std::string clientId) {
+    std::shared_lock lock(mutex_client_sessions_);
+    auto it = client_sessions_.find(clientId);
+    if (it == client_sessions_.end()) { return nullptr; }
     return it->second;
 }
 
-void GRPCNotifyServer::addTaskSession(const std::string taskId, const std::shared_ptr<GRPCClientSession> &session) {
-     std::shared_lock lock(mutex_task_sessions_);
-    task_sessions_[taskId] = session;
+void GRPCNotifyServer::addClientSession(const std::string clientId, const std::shared_ptr<GRPCClientSession> &session) {
+     std::shared_lock lock(mutex_client_sessions_);
+    client_sessions_[clientId] = session;
 }
 
 //////////////////////////////GRPCClientSession////////////////////////////////////////////////
@@ -289,14 +295,15 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
     LOG(INFO) << "session_id_: " << session_id_ << ", current status: " << status_ << ", event: " << event;
     switch (event) {
         case GRPC_NOTIFY_EVENT_CONNECTED:
-            // subscribe_stream.Read(
-            //     &request_,
-            //     reinterpret_cast<void*>(session_id_ << GRPC_NOTIFY_EVENT_BIT_LENGTH | GRPC_NOTIFY_EVENT_READ_DONE));
+
             LOG(INFO) << "client context: " << client_context_.DebugString();
-            
+            //TODO  Save client id & current session id pair
+            // GRPCNotifyServer::getInstance().addClientSession(client_context_.client_id(), shared_from_this());
+
             status_ = GrpcClientSessionStatus::READY_TO_WRITE;
             GRPCNotifyServer::getInstance().addSession();
             return;
+            
         case GRPC_NOTIFY_EVENT_READ_DONE:
             // LOG(DEBUG) << "session_id_: " << session_id_ << ", new request: " << request_.ShortDebugString();
             // performance_.setName(name_);

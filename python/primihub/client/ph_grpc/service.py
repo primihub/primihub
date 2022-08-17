@@ -44,15 +44,18 @@ class NodeServiceClient(GRPCConnect):
         """
         super(NodeServiceClient, self).__init__(node, cert)
         self.channel = grpc.aio.insecure_channel(self.node)
-        self.stub = service_pb2_grpc.NodeContextServiceStub(self.channel)
+        # self.stub = service_pb2_grpc.NodeContextServiceStub(self.channel)
+        self.stub = service_pb2_grpc.NodeServiceStub(self.channel)
 
     @staticmethod
     def client_context(client_id: str, client_ip: str, client_port: int):
         request = service_pb2.ClientContext(
             **{"client_id": client_id, "client_ip": client_ip, "client_port": client_port})
+        print(request)
         return request
 
     async def async_get_node_event(self, request: service_pb2.ClientContext) -> None:
+        print("async_get_node_event")
         async with self.channel:
             # Read from an async generator
             async for response in self.stub.SubscribeNodeEvent(request):

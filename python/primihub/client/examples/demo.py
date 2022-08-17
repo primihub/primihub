@@ -20,7 +20,8 @@ from primihub.client import primihub_cli as cli
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})
 # cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
-cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
+# cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
+cli.init(config={"node": "192.168.99.23:50050", "cert": ""})
 
 from primihub import context, dataset
 
@@ -70,6 +71,7 @@ def func2(value=2):
 # context
 value1 = 1
 value2 = 2
+print("run remote execute...")
 cli.remote_execute((func1, value1), (func2, value2))
 print(ph.context.Context)
 # print(ph.context.Context.__dict__)

@@ -100,6 +100,5 @@ message Task {
   repeated string input_datasets = 7; 
   bytes job_id = 8;
   bytes task_id = 9;
-  bytes session_id = 10;
 }
 
