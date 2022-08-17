@@ -21,13 +21,13 @@
 #include <mutex>
 #include <string>
 
+#include <arrow/buffer.h>
 #include <arrow/filesystem/filesystem.h>
-#include <arrow/flight/server.h>
 #include <arrow/flight/internal.h>
+#include <arrow/flight/server.h>
 #include <arrow/flight/test_util.h>
 #include <arrow/record_batch.h>
 #include <arrow/table.h>
-#include <arrow/buffer.h>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
@@ -49,24 +49,24 @@ using ReadDatasetHandler =
 using FoundMetaListHandler =
     std::function<void(std::vector<DatasetMetaWithParamTag> &)>;
 
+using arrow::Buffer;
+using arrow::RecordBatchReader;
+using arrow::Schema;
 using arrow::flight::FlightDataStream;
+using arrow::flight::FlightDescriptor;
+using arrow::flight::FlightEndpoint;
+using arrow::flight::FlightInfo;
 using arrow::flight::FlightMessageReader;
 using arrow::flight::FlightMetadataWriter;
 using arrow::flight::FlightServerBase;
-using arrow::flight::FlightInfo;
-using arrow::flight::FlightDescriptor;
-using arrow::flight::ServerCallContext;
-using arrow::flight::Ticket;
-using arrow::flight::ServerCallContext;
-using arrow::flight::FlightEndpoint;
 using arrow::flight::Location;
-using arrow::flight::internal::SchemaToString;
 using arrow::flight::NumberingStream;
 using arrow::flight::RecordBatchStream;
+using arrow::flight::ServerCallContext;
+using arrow::flight::Ticket;
+using arrow::flight::FlightPayload;
+using arrow::flight::internal::SchemaToString;
 using arrow::fs::FileSystem;
-using arrow::Buffer;
-using arrow::Schema;
-using arrow::RecordBatchReader;
 
 using primihub::DataDirverFactory;
 
@@ -78,7 +78,7 @@ class DatasetMetaService {
 
     void putMeta(DatasetMeta &meta);
     outcome::result<void> getAllLocalMetas(std::vector<DatasetMeta> &metas);
-    std::shared_ptr<DatasetMeta> getLocalMeta(const DatasetId& id);
+    std::shared_ptr<DatasetMeta> getLocalMeta(const DatasetId &id);
     outcome::result<void> getMeta(const DatasetId &id,
                                   FoundMetaHandler handler);
     outcome::result<void> findPeerListFromDatasets(
@@ -96,157 +96,24 @@ class DatasetMetaService {
     unsigned int meta_search_timeout_ = 60; // seconds
 };
 
-class DatasetService {
+class DatasetService  {
   public:
     explicit DatasetService(std::shared_ptr<primihub::p2p::NodeStub> stub,
                             std::shared_ptr<StorageBackend> localkv,
-                            const std::string &nodelet_addr) {
-        metaService_ = std::make_shared<DatasetMetaService>(stub, localkv);
-        nodelet_addr_ = nodelet_addr;
-    }
+                            const std::string &nodelet_addr);
     ~DatasetService() {}
-    
-    /////////////////////////// Arrow Flight Server /////////////////////////////////
-    struct IntegrationDataset {
-        std::shared_ptr<arrow::Schema> schema;
-        std::vector<std::shared_ptr<arrow::RecordBatch>> chunks;
-    };
 
-    // class RecordBatchListReader : public arrow::RecordBatchReader {
-    //   public:
-    //     explicit RecordBatchListReader(IntegrationDataset dataset)
-    //         : dataset_(dataset), current_(0) {}
-
-    //     std::shared_ptr<arrow::Schema> schema() const override {
-    //         return dataset_.schema;
-    //     }
-
-    //     arrow::Status ReadNext(std::shared_ptr<arrow::RecordBatch> *batch) override {
-    //         if (current_ >= dataset_.chunks.size()) {
-    //             *batch = nullptr;
-    //             return arrow::Status::OK();
-    //         }
-    //         *batch = dataset_.chunks[current_];
-    //         current_++;
-    //         return arrow::Status::OK();
-    //     }
-
-    //   private:
-    //     IntegrationDataset dataset_;
-    //     uint64_t current_;
-    // };
-    class FlightIntegrationServer : public arrow::flight::FlightServerBase {
-        arrow::Status GetFlightInfo(const arrow::flight::ServerCallContext &context,
-                             const FlightDescriptor &request,
-                             std::unique_ptr<FlightInfo> *info) override {
-            if (request.type == FlightDescriptor::PATH) {
-                if (request.path.size() == 0) {
-                    return arrow::Status::Invalid("Invalid path"); // path is dataurl
-                }
-                DatasetId id(request.path[0]);
-                std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService_->getLocalMeta(id);
-                if (meta == nullptr) {
-                    return arrow::Status::KeyError("Could not find flight.",  request.path[0]); // path is dataset description
-                }
-
-                arrow::flight::Location server_location;
-                RETURN_NOT_OK( arrow::flight::Location::ForGrpcTcp("127.0.0.1", port(),
-                                                   &server_location));
-                arrow::flight::FlightEndpoint endpoint1(
-                    {{request.path[0]}, {server_location}});
-
-                FlightInfo::Data flight_data;
-                flight_data.schema = meta->toJSON();
-                flight_data.descriptor = request;
-                flight_data.endpoints = {endpoint1};
-                flight_data.total_records = meta->getTotalRecords();
-                flight_data.total_bytes = -1;
-                FlightInfo value(flight_data);
-
-                *info = std::unique_ptr<FlightInfo>(new arrow::flight::FlightInfo(value));
-                return arrow::Status::OK();
-            } else {
-                return arrow::Status::NotImplemented(request.type);
-            }
-        }
-
-        // NOTE Only allow get dataset from local driver
-        arrow::Status DoGet(const arrow::flight::ServerCallContext &context, 
-                            const arrow::flight::Ticket &request,
-                            std::unique_ptr<FlightDataStream> *data_stream) override {
-            DatasetId id(request.ticket);
-            std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService_->getLocalMeta(id);
-            if (meta == nullptr) {
-                return arrow::Status::KeyError("Could not find flight.",  request.ticket); // NOTE path is dataset description
-            }
-            // read dataset from local driver
-            auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
-            auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
-            auto dataset = cursor->read();
-
-            *data_stream = std::unique_ptr<FlightDataStream>(
-                new NumberingStream(std::unique_ptr<FlightDataStream>(
-                    new arrow::flight::RecordBatchStream(std::shared_ptr<arrow::RecordBatchReader>(
-                        new arrow::TableBatchReader(*(std::get<0>(dataset->data).get())))))));
-
-            return arrow::Status::OK();
-        }
-        
-        arrow::Status DoPut(const ServerCallContext &context,
-                     std::unique_ptr<FlightMessageReader> reader,
-                     std::unique_ptr<FlightMetadataWriter> writer) override {
-            const FlightDescriptor &descriptor = reader->descriptor();
-
-            if (descriptor.type != arrow::flight::FlightDescriptor::DescriptorType::PATH) {
-                return arrow::Status::Invalid("Must specify a path");
-            } else if (descriptor.path.size() < 1) {
-                return arrow::Status::Invalid("Must specify a path");
-            }
-
-            std::string key = descriptor.path[0];
-
-            IntegrationDataset dataset;
-            ARROW_ASSIGN_OR_RAISE(dataset.schema, reader->GetSchema());
-            arrow::flight::FlightStreamChunk chunk;
-            while (true) {
-                RETURN_NOT_OK(reader->Next(&chunk));
-                if (chunk.data == nullptr)
-                    break;
-                RETURN_NOT_OK(chunk.data->ValidateFull());
-                dataset.chunks.push_back(chunk.data);
-                if (chunk.app_metadata) {
-                    RETURN_NOT_OK(writer->WriteMetadata(*chunk.app_metadata)); // TODO metadata include dataset meta
-                }
-            }
-            
-            // Register dataset and  write dataset by driver
-            // TODO stream writer
-            auto driver = primihub::DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-            auto ph_dataset = std::make_shared<primihub::Dataset>(dataset.chunks, driver);
-            DatasetMeta meta;
-            dataset_service_->writeDataset(ph_dataset, key /*NOTE from upload description*/, meta);
-            auto metadata_buf = arrow::Buffer::FromString(meta.toJSON());
-            RETURN_NOT_OK(writer->WriteMetadata(*metadata_buf));
-            
-            return arrow::Status::OK();
-        }
-        // TODO temporary solution for integration test
-        // std::unordered_map<std::string, IntegrationDataset> uploaded_chunks;
-        std::shared_ptr<DatasetService> dataset_service_;
-    }; // class FlightIntegrationServer
-
-    //////////////////// Arrow Flight Server End /////////////////////////////////
+    //////////////////// Arrow Flight Server End
+    ////////////////////////////////////
     // create dataset from DataDriver reader
     std::shared_ptr<primihub::Dataset>
     newDataset(std::shared_ptr<primihub::DataDriver> driver,
-               const std::string &description,
-               DatasetMeta &meta /*output*/);
-    
+               const std::string &description, DatasetMeta &meta /*output*/);
+
     // create dataset from arrow data and write data using driver
-    void
-    writeDataset(const std::shared_ptr<primihub::Dataset> &dataset, 
-                 const std::string &description,
-                 DatasetMeta &meta /*output*/); 
+    void writeDataset(const std::shared_ptr<primihub::Dataset> &dataset,
+                      const std::string &description,
+                      DatasetMeta &meta /*output*/);
 
     void regDataset(DatasetMeta &meta);
 
@@ -276,9 +143,142 @@ class DatasetService {
     //  private:
     std::shared_ptr<DatasetMetaService> metaService_;
     std::string nodelet_addr_;
+
 };
 
+/////////////////////////// Arrow Flight Server////////////////////////////////////
+struct IntegrationDataset {
+    std::shared_ptr<arrow::Schema> schema;
+    std::vector<std::shared_ptr<arrow::RecordBatch>> chunks;
+};
 
+class FlightIntegrationServer : public arrow::flight::FlightServerBase {
+
+  public:
+    // ----------------------------------------------------------------------
+    // A FlightDataStream that numbers the record batches
+    /// \brief A basic implementation of FlightDataStream that will provide
+    /// a sequence of FlightData messages to be written to a gRPC stream
+    class ARROW_FLIGHT_EXPORT NumberingStream : public FlightDataStream {
+      public:
+        explicit NumberingStream(std::unique_ptr<FlightDataStream> stream)  
+        : counter_(0), stream_(std::move(stream)) {}
+
+        std::shared_ptr<Schema> schema() override  { return stream_->schema(); }
+        arrow::Status GetSchemaPayload(FlightPayload *payload) override {
+              return stream_->GetSchemaPayload(payload);
+        }
+
+        arrow::Status Next(FlightPayload *payload) override {
+            RETURN_NOT_OK(stream_->Next(payload));
+            if (payload && payload->ipc_message.type == arrow::ipc::MessageType::RECORD_BATCH) {
+                payload->app_metadata = Buffer::FromString(std::to_string(counter_));
+                counter_++;
+            }
+            return arrow::Status::OK();
+        }
+
+      private:
+        int counter_;
+        std::shared_ptr<FlightDataStream> stream_;
+    };
+
+  public:
+    FlightIntegrationServer(std::shared_ptr<DatasetService> service)
+        : dataset_service_(service) {}
+
+    arrow::Status GetFlightInfo(const arrow::flight::ServerCallContext &context,
+                                const FlightDescriptor &request,
+                                std::unique_ptr<FlightInfo> *info) override {
+        if (request.type == FlightDescriptor::PATH) {
+            if (request.path.size() == 0) {
+                return arrow::Status::Invalid(
+                    "Invalid path"); // path is dataurl
+            }
+            DatasetId id(request.path[0]);
+            std::shared_ptr<DatasetMeta> meta =
+                dataset_service_->metaService_->getLocalMeta(id);
+            if (meta == nullptr) {
+                return arrow::Status::KeyError(
+                    "Could not find flight.",
+                    request.path[0]); // path is dataset description
+            }
+
+            arrow::flight::Location server_location;
+            RETURN_NOT_OK(arrow::flight::Location::ForGrpcTcp(
+                "127.0.0.1", port(), &server_location));
+            arrow::flight::FlightEndpoint endpoint1(
+                {{request.path[0]}, {server_location}});
+
+            FlightInfo::Data flight_data;
+            flight_data.schema = meta->toJSON();
+            flight_data.descriptor = request;
+            flight_data.endpoints = {endpoint1};
+            flight_data.total_records = meta->getTotalRecords();
+            flight_data.total_bytes = -1;
+            FlightInfo value(flight_data);
+
+            *info = std::unique_ptr<FlightInfo>(
+                new arrow::flight::FlightInfo(value));
+            return arrow::Status::OK();
+        } else {
+            return arrow::Status::NotImplemented(request.type);
+        }
+    }
+
+    // NOTE Only allow get dataset from local driver
+    arrow::Status
+    DoGet(const arrow::flight::ServerCallContext &context,
+          const arrow::flight::Ticket &request,
+          std::unique_ptr<FlightDataStream> *data_stream) override;
+
+    arrow::Status DoPut(const ServerCallContext &context,
+                        std::unique_ptr<FlightMessageReader> reader,
+                        std::unique_ptr<FlightMetadataWriter> writer) override {
+        const FlightDescriptor &descriptor = reader->descriptor();
+
+        if (descriptor.type !=
+            arrow::flight::FlightDescriptor::DescriptorType::PATH) {
+            return arrow::Status::Invalid("Must specify a path");
+        } else if (descriptor.path.size() < 1) {
+            return arrow::Status::Invalid("Must specify a path");
+        }
+
+        std::string key = descriptor.path[0];
+
+        IntegrationDataset dataset;
+        ARROW_ASSIGN_OR_RAISE(dataset.schema, reader->GetSchema());
+        arrow::flight::FlightStreamChunk chunk;
+        while (true) {
+            RETURN_NOT_OK(reader->Next(&chunk));
+            if (chunk.data == nullptr)
+                break;
+            RETURN_NOT_OK(chunk.data->ValidateFull());
+            dataset.chunks.push_back(chunk.data);
+            if (chunk.app_metadata) {
+                RETURN_NOT_OK(writer->WriteMetadata(
+                    *chunk.app_metadata)); // TODO metadata include dataset meta
+            }
+        }
+
+        // Register dataset and  write dataset by driver
+        // TODO stream writer
+        auto driver = primihub::DataDirverFactory::getDriver(
+            "CSV", dataset_service_->getNodeletAddr());
+        auto ph_dataset =
+            std::make_shared<primihub::Dataset>(dataset.chunks, driver);
+        DatasetMeta meta;
+        dataset_service_->writeDataset(
+            ph_dataset, key /*NOTE from upload description*/, meta);
+        auto metadata_buf = arrow::Buffer::FromString(meta.toJSON());
+        RETURN_NOT_OK(writer->WriteMetadata(*metadata_buf));
+
+        return arrow::Status::OK();
+    }
+    // TODO temporary solution for integration test
+    // std::unordered_map<std::string, IntegrationDataset> uploaded_chunks;
+    std::shared_ptr<DatasetService> dataset_service_;
+}; // class FlightIntegrationServer
 
 } // namespace primihub::service
 

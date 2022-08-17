@@ -47,6 +47,9 @@ public:
   std::shared_ptr<Cursor> &read(const std::string &filePath) override;
   std::shared_ptr<Cursor> &initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
+  // FIXME to be deleted
+  int write(std::shared_ptr<arrow::Table> table,
+                     std::string &filePath);
 
 private:
   std::string filePath_;

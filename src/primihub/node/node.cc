@@ -16,17 +16,21 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <signal.h>
 #include <sstream>
 #include <unistd.h>
-#include <signal.h>
 
+#include <arrow/flight/server.h>
+#include <arrow/util/logging.h>
 
-#include "src/primihub/node/node.h"
+#include "src/primihub/data_store/factory.h"
 #include "src/primihub/node/ds.h"
+#include "src/primihub/node/node.h"
+#include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
-#include "src/primihub/data_store/factory.h"
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -36,12 +40,10 @@ using primihub::rpc::TaskType;
 using primihub::task::LanguageParserFactory;
 using primihub::task::ProtocolSemanticParser;
 
-
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
 ABSL_FLAG(bool, singleton, false, "singleton mode"); // TODO: remove this flag
 ABSL_FLAG(int, service_port, 50050, "node service port");
-
 
 namespace primihub {
 
@@ -61,33 +63,36 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         pushTaskReply->set_ret_code(1);
         return Status::OK;
     }
-    
+
     // actor
-    if ( pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
-         pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK )   {
+    if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
+        pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
         LOG(INFO) << "start to schedule task";
         absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
-        std::shared_ptr<LanguageParser> lan_parser_ = LanguageParserFactory::Create(*pushTaskRequest);
+        std::shared_ptr<LanguageParser> lan_parser_ =
+            LanguageParserFactory::Create(*pushTaskRequest);
         if (lan_parser_ == nullptr) {
             pushTaskReply->set_ret_code(1);
             return Status::OK;
         }
         lan_parser_->parseTask();
         lan_parser_->parseDatasets();
-        
+
         // Construct protocol semantic parser
-        auto _psp = ProtocolSemanticParser(this->node_id,
-                                           this->singleton, 
+        auto _psp = ProtocolSemanticParser(this->node_id, this->singleton,
                                            this->nodelet->getDataService());
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
 
-    } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
-               pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
+    } else if (pushTaskRequest->task().type() ==
+                   primihub::rpc::TaskType::PIR_TASK ||
+               pushTaskRequest->task().type() ==
+                   primihub::rpc::TaskType::PSI_TASK) {
         LOG(INFO) << "start to schedule schedule task";
         absl::MutexLock lock(&parser_mutex_);
-        std::shared_ptr<LanguageParser> lan_parser_ = LanguageParserFactory::Create(*pushTaskRequest);
+        std::shared_ptr<LanguageParser> lan_parser_ =
+            LanguageParserFactory::Create(*pushTaskRequest);
         if (lan_parser_ == nullptr) {
             pushTaskReply->set_ret_code(1);
             return Status::OK;
@@ -95,17 +100,17 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         lan_parser_->parseDatasets();
 
         // Construct protocol semantic parser
-        auto _psp = ProtocolSemanticParser(this->node_id,
-                                           this->singleton, 
+        auto _psp = ProtocolSemanticParser(this->node_id, this->singleton,
                                            this->nodelet->getDataService());
         // Parse and dispathc pir task.
-        if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK) {
+        if (pushTaskRequest->task().type() ==
+            primihub::rpc::TaskType::PIR_TASK) {
             _psp.schedulePirTask(lan_parser_, this->nodelet->getNodeletAddr());
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
 
-    }  else {
+    } else {
         LOG(INFO) << "start to create worker for task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
@@ -126,16 +131,16 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
     std::string job_task = "";
     primihub::rpc::TaskType taskType;
     if (taskRequest->algorithm_request_case() ==
-            ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+        ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
         taskType = primihub::rpc::TaskType::NODE_PSI_TASK;
         job_task = taskRequest->psi_request().job_id() +
-	           taskRequest->psi_request().task_id();
+                   taskRequest->psi_request().task_id();
         if (running_set.find(job_task) != running_set.end()) {
             taskResponse->mutable_psi_response()->set_ret_code(1);
             return Status::OK;
         }
     } else if (taskRequest->algorithm_request_case() ==
-	          ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+               ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
         taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
         job_task = taskRequest->pir_request().job_id() +
                    taskRequest->pir_request().task_id();
@@ -146,7 +151,7 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
     }
 
     if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
-            taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
+        taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
         LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
@@ -159,54 +164,65 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
     }
 }
 
-
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     auto worker = std::make_shared<Worker>(this->node_id, this->nodelet);
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id;
     absl::MutexLock lock(&worker_map_mutex_);
-    
+
     workers_.emplace("simple_test_worker", worker);
     LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id;
     return worker;
 }
 
-void RunServer(primihub::VMNodeImpl *node_service, primihub::DataServiceImpl *dataset_service, int service_port) {
-    ServerBuilder builder;
-    builder.AddListeningPort(absl::StrCat("0.0.0.0:", service_port),
-                             grpc::InsecureServerCredentials());
-    
-    builder
-    .RegisterService(node_service)
-    .RegisterService(dataset_service);
+/**
+ * @brief
+ *  Start Apache arrow flight server with NodeService and DatasetService.
+ */
+void RunServer(primihub::VMNodeImpl *node_service,
+               primihub::DataServiceImpl *dataset_service, int service_port) {
 
-    // set the max message size to 128M
-    builder.SetMaxReceiveMessageSize(128 * 1024 * 1024);
-    
-    // set gRPC thread pool size to current number of cores
-    grpc::ResourceQuota rq;
-    int num_threads = std::thread::hardware_concurrency();
-    rq.SetMaxThreads(num_threads);
-    builder.SetResourceQuota(rq);
+    // Initialize server
+    arrow::flight::Location location;
 
-    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+    // Listen to all interfaces
+    ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTcp("0.0.0.0", service_port,
+                                                       &location));
+    arrow::flight::FlightServerOptions options(location);
+    auto server = std::unique_ptr<arrow::flight::FlightServerBase>(
+        new primihub::service::FlightIntegrationServer(
+            node_service->getNodelet()->getDataService()));
+
+    // Use builder_hook to register grpc service
+    options.builder_hook = [&](void *raw_builder) {
+        auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
+        builder->RegisterService(node_service);
+        builder->RegisterService(dataset_service);
+
+        // set the max message size to 128M
+        builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
+    };
+
+    // Start the server
+    ARROW_CHECK_OK(server->Init(options));
+    // Exit with a clean error code (0) on SIGTERM
+    ARROW_CHECK_OK(server->SetShutdownOnSignals({SIGTERM}));
 
     LOG(INFO) << " 💻 Node listening on port: " << service_port;
 
-    server->Wait();
+    ARROW_CHECK_OK(server->Serve());
 }
 
 } // namespace primihub
 
-
-primihub::VMNodeImpl * node_service;
-primihub::DataServiceImpl * data_service;
+primihub::VMNodeImpl *node_service;
+primihub::DataServiceImpl *data_service;
 
 int main(int argc, char **argv) {
 
     // std::atomic<bool> quit(false);    // signal flag for server to quit
     // Register SIGINT signal and signal handler
 
-    signal(SIGINT, [] (int sig) {
+    signal(SIGINT, [](int sig) {
         LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
         delete node_service;
         delete data_service;
@@ -215,7 +231,7 @@ int main(int argc, char **argv) {
 
     py::scoped_interpreter python;
     py::gil_scoped_release release;
-    
+
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
     FLAGS_alsologtostderr = true;
@@ -231,10 +247,11 @@ int main(int argc, char **argv) {
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port, singleton,
-                                 config_file);
-    data_service = new primihub::DataServiceImpl(node_service->getNodelet()->getDataService(),
-                                           node_service->getNodelet()->getNodeletAddr());
+    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port,
+                                            singleton, config_file);
+    data_service = new primihub::DataServiceImpl(
+        node_service->getNodelet()->getDataService(),
+        node_service->getNodelet()->getNodeletAddr());
 
     primihub::RunServer(node_service, data_service, service_port);
 

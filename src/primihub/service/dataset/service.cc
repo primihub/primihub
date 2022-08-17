@@ -29,6 +29,17 @@ using namespace std::chrono_literals;
 
 namespace primihub::service {
 
+    DatasetService::DatasetService(
+                            std::shared_ptr<primihub::p2p::NodeStub> stub,
+                            std::shared_ptr<StorageBackend> localkv,
+                            const std::string &nodelet_addr) {
+        metaService_ = std::make_shared<DatasetMetaService>(stub, localkv);
+        nodelet_addr_ = nodelet_addr;
+        // create Flight server
+        // flight_server_ = std::make_shared<FlightIntegrationServer>(shared_from_this());
+        // 
+    }
+
     /**
      * @brief Construct a new Dataset object
      * 1. Read data using driver for get dataset & datameta
@@ -210,7 +221,7 @@ namespace primihub::service {
     std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
         auto res = localKv_->getValue(id);
         if (res.has_value()) {
-            return make_shared<DatasetMeta>(res.value());
+            return std::make_shared<DatasetMeta>(res.value());
         }
         return nullptr;
     }
@@ -325,5 +336,30 @@ namespace primihub::service {
         return outcome::success();
      }
 
+
+
+
+////////////////Flight Server ///////
+
+arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallContext &context, 
+                            const arrow::flight::Ticket &request,
+                            std::unique_ptr<FlightDataStream> *data_stream)  {
+            DatasetId id(request.ticket);
+            std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService_->getLocalMeta(id);
+            if (meta == nullptr) {
+                return arrow::Status::KeyError("Could not find flight.",  request.ticket); // NOTE path is dataset description
+            }
+            // read dataset from local driver
+            auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
+            auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
+            auto dataset = cursor->read();
+
+            *data_stream = std::unique_ptr<FlightDataStream>(
+                new NumberingStream(std::unique_ptr<FlightDataStream>(
+                    new arrow::flight::RecordBatchStream(std::shared_ptr<arrow::RecordBatchReader>(
+                        new arrow::TableBatchReader(*(std::get<0>(dataset->data).get())))))));
+
+            return arrow::Status::OK();
+        }
 
 } // namespace primihub::service

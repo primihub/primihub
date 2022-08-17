@@ -64,13 +64,13 @@ message TaskResult {
     string result_dataset_url = 2; // TODO many
 }
 
-enum DatasetRetriveType {
-    ARROW_FLIGHT = 0; 
-    HDFS_FILE = 1;
-}
+// enum DatasetRetriveType {
+//     ARROW_FLIGHT = 0; 
+//     HDFS_FILE = 1;
+// }
 
 message DatasetRetriveChannel {
-    DatasetRetriveType retrive_type = 1;
+    int32 retrive_type = 1;
 }
 
 // Node public certificate.

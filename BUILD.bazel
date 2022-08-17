@@ -99,7 +99,7 @@ grpc_proto_library(
     deps = [
             ":common_proto",
             ":grpc_psi_proto",
-	    ":grpc_pir_proto",
+	        ":grpc_pir_proto",
            ],
 )
 
@@ -712,7 +712,6 @@ cc_library(
         "@arrow",
         "@com_github_glog_glog//:glog",
         ":eigen",
-        
         ":common_lib",
         ":crypto_lib",
         ":network_lib",
@@ -847,6 +846,7 @@ cc_library(
     deps = [
         ":p2p_lib",
         ":dataset_service",
+        ":notify_service",
     ],
 )
 
@@ -890,6 +890,7 @@ cc_binary(
         "@com_google_absl//absl/memory",
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
+        "@arrow",
         ":worker_proto",
         ":service_proto",
         ":common_lib",
@@ -897,6 +898,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
+       
     ],
 )
 

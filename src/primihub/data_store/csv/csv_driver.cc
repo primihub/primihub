@@ -125,29 +125,29 @@ std::shared_ptr<Cursor> &CSVDriver::initCursor(const std::string &filePath) {
 }
 
 // FIXME to be deleted write file in driver directly.
-// int CSVDriver::write(std::shared_ptr<arrow::Table> table,
-//                      std::string &filePath) {
-//   filePath_ = filePath;
-//   auto result = arrow::io::FileOutputStream::Open(filePath);
-//   if (!result.ok()) {
-//     LOG(ERROR) << "Open file " << filePath << " failed.";
-//     return -1;
-//   }
+int CSVDriver::write(std::shared_ptr<arrow::Table> table,
+                     std::string &filePath) {
+  filePath_ = filePath;
+  auto result = arrow::io::FileOutputStream::Open(filePath);
+  if (!result.ok()) {
+    LOG(ERROR) << "Open file " << filePath << " failed.";
+    return -1;
+  }
 
-//   auto stream = result.ValueOrDie();
-//   auto options = arrow::csv::WriteOptions::Defaults();
-//   auto csv_table = table.get();
-//   auto mem_pool = arrow::default_memory_pool();
-//   arrow::Status status = arrow::csv::WriteCSV(
-//       *(csv_table), options, mem_pool,
-//       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
-//   if (!status.ok()) {
-//     LOG(ERROR) << "Write content to csv file failed.";
-//     return -2;
-//   }
+  auto stream = result.ValueOrDie();
+  auto options = arrow::csv::WriteOptions::Defaults();
+  auto csv_table = table.get();
+  auto mem_pool = arrow::default_memory_pool();
+  arrow::Status status = arrow::csv::WriteCSV(
+      *(csv_table), options, mem_pool,
+      reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
+  if (!status.ok()) {
+    LOG(ERROR) << "Write content to csv file failed.";
+    return -2;
+  }
   
-//   return 0;
-// }
+  return 0;
+}
 
 std::string CSVDriver::getDataURL() const { return filePath_; };
 
