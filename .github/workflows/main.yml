@@ -156,6 +156,10 @@ jobs:
         key: bazel
     - name: get python ldflags
       run: python3.9-config --ldflags
+    - name: find objcopy
+      run: |
+        brew install binutils
+        mdfind -name objcopy
     - name: bazel build
       run: |
         # cc_binary
