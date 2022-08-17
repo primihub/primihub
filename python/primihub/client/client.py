@@ -22,6 +22,7 @@ from primihub.client.ph_grpc.grpc_client import GrpcClient
 from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.client.ph_grpc.worker import WorkerClient
 from primihub.client.visitor import Visitor
+from primihub.client.ph_grpc.task import listener, NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT, NODE_EVENT_TYPE_TASK_RESULT, NODE_EVENT_TYPE_TASK_STATUS
 import primihub as ph
 import socket
 import uuid
@@ -63,7 +64,10 @@ class PrimihubClient(object):
         self.client_id = str(uuid.uuid1())  # TODO
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
+        
+        # NOTE All submit task will be done in one loop
         self.loop = asyncio.get_event_loop()
+        self.tasks = []
 
     def init(self, config):
         """Client Initialization.
@@ -77,9 +81,21 @@ class PrimihubClient(object):
         print("*** cli init ***")
         print(config)
         node = config.get("node", None)
+        notify_node = config.get("node", None).split(":")[0] + ":6666"
         cert = config.get("cert", None)
-        self.grpc_client = GrpcClient(node, cert)  # grpc client connect
+        
+        # grpc clients: Commond/Notify/Dataset
+        self.grpc_client = GrpcClient(node, cert)  
+        self.notfiy_grpc_client = NodeServiceClient(notify_node, cert)  
+        self.dataset_client = self.grpc_client # NOTE create when recevie NodeContext in NodeService
+        
         self.code = self.visitor.visit_file()  # get client code str
+        """
+        TODO 创建与Node之间的NodeService async grpc通道：
+        1. 发送ClientContext给Node，接收NodeContext
+        2. 收到NodeContext后，根据配置的数据通道和通知通道建立连接（暂时用当前默认的这个grpc连接）
+        """
+        self.loop.run_until_complete(self.notfiy_grpc_client.async_get_node_event())
 
     async def submit_task(self, job_id, task_id, *args):
         """Send local functions and parameters to the remote side
@@ -105,11 +121,20 @@ class PrimihubClient(object):
         res = await self.grpc_client.submit_task(self.code, job_id=job_id, task_id=task_id)
         return res
 
+    # TODO NodeEvent Handler
+    @listener.on_event("/context/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
+    def node_event_handler(self, event):
+        
+        print("node_event_handler: %s" % event)
+        pass
+    
+
+
     async def get_node_event(self):
-        await self.grpc_client.get_node_event(self.client_id, self.client_ip, self.client_port)
+        await self.notfiy_grpc_client.get_node_event(self.client_id, self.client_ip, self.client_port)
 
     async def get_task_node_event(self, task_id):
-        await self.grpc_client.get_node_event(task_id, self.client_id, self.client_ip, self.client_port)
+        await self.notfiy_grpc_client.get_node_event(task_id, self.client_id, self.client_ip, self.client_port)
 
     async def remote_execute(self, *args):
         job_id = uuid.uuid1().hex
@@ -117,7 +142,7 @@ class PrimihubClient(object):
         tasks = [
             # asyncio.ensure_future(self.get_node_event()),  # get node event
             asyncio.ensure_future(self.submit_task(job_id, task_id, *args)),  # submit_task
-            asyncio.ensure_future(self.get_task_node_event(task_id))  # get node event
+            # asyncio.ensure_future(self.get_task_node_event(task_id))  # get node event
         ]
         self.loop.run_until_complete(asyncio.wait(tasks))
 

@@ -19,8 +19,18 @@ import grpc
 
 from .connect import GRPCConnect
 from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
-
+from primihub.client.ph_grpc.event import listener
 from ...utils.protobuf_to_dict import protobuf_to_dict
+
+NODE_EVENT_TYPE_NODE_CONTEXT = 0
+NODE_EVENT_TYPE_TASK_STATUS = 1
+NODE_EVENT_TYPE_TASK_RESULT = 2
+
+NODE_EVENT_TYPE = {
+    NODE_EVENT_TYPE_NODE_CONTEXT: "NODE_EVENT_TYPE_NODE_CONTEXT",
+    NODE_EVENT_TYPE_TASK_STATUS: "NODE_EVENT_TYPE_TASK_STATUS",
+    NODE_EVENT_TYPE_TASK_RESULT: "NODE_EVENT_TYPE_TASK_RESULT"
+}
 
 
 class NodeServiceClient(GRPCConnect):
@@ -42,25 +52,33 @@ class NodeServiceClient(GRPCConnect):
             **{"client_id": client_id, "client_ip": client_ip, "client_port": client_port})
         return request
 
-    async def get_node_event_async(self, request: service_pb2.ClientContext) -> None:
+    async def async_get_node_event(self, request: service_pb2.ClientContext) -> None:
         async with self.channel:
             # Read from an async generator
             async for response in self.stub.SubscribeNodeEvent(request):
                 response_dict = protobuf_to_dict(response)
-                print("NodeService client received from async generator: " +
-                      response_dict)
-
-    async def get_node_event_direct(self, request: service_pb2.ClientContext) -> None:
-        async with self.channel:
-            # Direct read from the stub
-            node_event_reply_stream = self.stub.SubscribeNodeEvent(request)
-            while True:
-                response = await node_event_reply_stream.read()
+                print("NodeService client received from async generator: " + response_dict)
+                print(
+                    "NodeService client received from async generator: " + response.event_type)
                 response_dict = protobuf_to_dict(response)
-                if response == grpc.aio.EOF:
-                    break
-                print("NodeService client received from direct read: " +
-                      response_dict)
+                event_type = NODE_EVENT_TYPE[response.event_type]
+
+                # note
+                # 1. if NODE_CONTEXT fire
+                # 2. elif TASK_STATUS or TASK_RESULT  + taskid fire event to Task object
+
+                if response.event_type == 0:  # NODE_CONTEXT
+                    listener.fire(name=event_type, data=response_dict)  # fire
+                elif response.event_type == 1:  # TASK_STATUS
+                    event_type = NODE_EVENT_TYPE[response.event_type]
+                    task_id = response.task_status.task_context.task_id
+                    topic = task_id + '/' + event_type
+                    listener.fire(name=topic, data=response_dict)  # fire
+                elif response.event_type == 2:  # TASK_RESULT
+                    event_type = NODE_EVENT_TYPE[response.event_type]
+                    task_id = response.task_result.task_context.task_id
+                    topic = task_id + '/' + event_type
+                    listener.fire(name=topic, data=response_dict)  # fire
 
 
 class DataServiceClient(GRPCConnect):

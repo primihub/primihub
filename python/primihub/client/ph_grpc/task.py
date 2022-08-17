@@ -14,34 +14,23 @@
  limitations under the License.
  """
 from primihub.client.ph_grpc.event import listener
-from primihub.client.ph_grpc.grpc_client import GrpcClient
 from primihub.client.tiny_listener import Event
+from primihub.client.ph_grpc.event import NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT, NODE_EVENT_TYPE_TASK_RESULT, NODE_EVENT_TYPE_TASK_STATUS
 
-NODE_EVENT_TYPE_NODE_CONTEXT = 0
-NODE_EVENT_TYPE_TASK_STATUS = 1
-NODE_EVENT_TYPE_TASK_RESULT = 2
-
-NODE_EVENT_TYPE = {
-    NODE_EVENT_TYPE_NODE_CONTEXT: "NODE_EVENT_TYPE_NODE_CONTEXT",
-    NODE_EVENT_TYPE_TASK_STATUS: "NODE_EVENT_TYPE_TASK_STATUS",
-    NODE_EVENT_TYPE_TASK_RESULT: "NODE_EVENT_TYPE_TASK_RESULT"
-}
+from primihub.client.ph_grpc.service import NodeServiceClient
 
 
 class Task(object):
 
     def __init__(self, task_id):
         self.task_id = task_id
+        self.task_status = "PENDING"  # PENDING, RUNNING, SUCCESS, FAILED
 
-    @listener.on_event("/task/{task_id}/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
-    async def handler_node_context(self, event: Event):
-        print("handler_node_context", event.params, event.data)
-        # TODO
-        # node_context = event.data.get("node_context")
-        # notify_channel = node_context.get("notify_channel")
-        # node = notify_channel["connect_str"]
-        # cert = notify_channel["key"]
-        # grpc_client = GrpcClient(node, cert)
+    def get_status(self):
+        pass
+
+    def get_result(self):
+        pass
 
     @listener.on_event("/task/{task_id}/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_STATUS])
     async def handler_task_status(self, event: Event):
@@ -58,10 +47,10 @@ class Task(object):
         node = ""  # TODO
         cert = ""  # TODO
         client_id = ""
-        client_ip = ""
+        client_ip = 6666
         client_port = 12345
         # get node event from other nodes
-        grpc_client = GrpcClient(node, cert)
+        grpc_client = NodeServiceClient(node, cert)
         task_id = event.data["task_status"]["task_context"]["task_id"]
         await grpc_client.get_task_node_event(task_id=task_id, client_id=client_id, client_ip=client_ip,
                                               client_port=client_port)
@@ -77,9 +66,3 @@ class Task(object):
         #                   'result_dataset_url': '' // ? TODO
         #                  }
         #  }
-
-    def get_status(self):
-        pass
-
-    def get_result(self):
-        pass

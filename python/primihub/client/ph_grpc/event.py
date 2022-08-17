@@ -13,9 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-# NodeEventType
-from primihub.client.tiny_listener import Listener, Event
 
+from primihub.client.tiny_listener import Listener
 
 listener = Listener()
 listener.run()

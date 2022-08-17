@@ -57,6 +57,7 @@ message TaskContext {
 message TaskStatus{
     TaskContext task_context = 1;
     string status = 2;  // TODO enum
+    string message = 3;
 }
 
 message TaskResult {
