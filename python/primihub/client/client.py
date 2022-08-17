@@ -17,13 +17,10 @@ import asyncio
 import random
 
 from primihub import context, dataset
-from primihub.client.ph_grpc.connect import GRPCConnect
-from primihub.client.ph_grpc.grpc_client import GrpcClient
-from primihub.client.ph_grpc.service import NodeServiceClient
-from primihub.client.ph_grpc.worker import WorkerClient
-from primihub.client.visitor import Visitor
 from primihub.client.ph_grpc.event import listener
+from primihub.client.ph_grpc.grpc_client import GrpcClient
 from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT
+from primihub.client.visitor import Visitor
 import primihub as ph
 import socket
 import uuid
@@ -100,10 +97,7 @@ class PrimihubClient(object):
         notify_request = self.notify_grpc_client.client_context(self.client_id, self.client_ip, self.client_port)
         self.loop.run_until_complete(self.notify_grpc_client.async_get_node_event(notify_request))
 
-        # loop = asyncio.get_event_loop()
-        # loop.run_until_complete(self.notify_grpc_client.async_get_node_event(notify_request))
-
-    async def submit_task(self, job_id, task_id, client_id, *args):
+    async def submit_task(self, job_id, task_id, *args):
         """Send local functions and parameters to the remote side
 
         :param job_id
