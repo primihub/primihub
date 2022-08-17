@@ -145,6 +145,8 @@ namespace primihub::task {
                 }
                 (*mutable_node_map)[node_id] = single_node;
                 add_vm(&single_node, party_id, 2, &nodePushTaskRequest);
+                //Update single_node with vm info
+                (*mutable_node_map)[node_id] = single_node;
             }
         }
         // TODO Fire TASK_STATUS event using NotifyService

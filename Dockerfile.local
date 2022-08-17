@@ -37,7 +37,7 @@ RUN python3.9 -m pip install --upgrade pip \
   && python3.9 setup.py solib --solib-path $TARGET_PATH 
 
 
-# WORKDIR /app
+WORKDIR /app
 # ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 
 # gRPC server port
