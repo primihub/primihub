@@ -15,9 +15,8 @@
  """
 from primihub.client.ph_grpc.event import listener
 from primihub.client.tiny_listener import Event
-from primihub.client.ph_grpc.event import NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT, NODE_EVENT_TYPE_TASK_RESULT, NODE_EVENT_TYPE_TASK_STATUS
-
-from primihub.client.ph_grpc.service import NodeServiceClient
+from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_TASK_STATUS, \
+    NODE_EVENT_TYPE_TASK_RESULT
 
 
 class Task(object):
@@ -52,8 +51,7 @@ class Task(object):
         # get node event from other nodes
         grpc_client = NodeServiceClient(node, cert)
         task_id = event.data["task_status"]["task_context"]["task_id"]
-        await grpc_client.get_task_node_event(task_id=task_id, client_id=client_id, client_ip=client_ip,
-                                              client_port=client_port)
+        await grpc_client.async_get_node_event(client_id=client_id, client_ip=client_ip, client_port=client_port)
 
     @listener.on_event("/task/{task_id}/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_RESULT])
     async def handler_task_result(self, event: Event):
