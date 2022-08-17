@@ -81,11 +81,14 @@ class PrimihubClient(object):
         self.grpc_client = GrpcClient(node, cert)  # grpc client connect
         self.code = self.visitor.visit_file()  # get client code str
 
-    async def submit_task(self, *args):
+    async def submit_task(self, job_id, task_id, *args):
         """Send local functions and parameters to the remote side
 
+        :param job_id
+        :param task_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
+
         func_params_map = ph.context.Context.func_params_map
         for arg in args:
             func = arg[0]
@@ -99,16 +102,22 @@ class PrimihubClient(object):
         print("-*-" * 30)
         print("Have a cup of coffee, it will take a lot of time here.")
         print("-*-" * 30)
-        res = await self.grpc_client.submit_task(self.code, uuid.uuid1().hex, uuid.uuid1().hex)
+        res = await self.grpc_client.submit_task(self.code, job_id=job_id, task_id=task_id)
         return res
 
     async def get_node_event(self):
         await self.grpc_client.get_node_event(self.client_id, self.client_ip, self.client_port)
 
+    async def get_task_node_event(self, task_id):
+        await self.grpc_client.get_node_event(task_id, self.client_id, self.client_ip, self.client_port)
+
     async def remote_execute(self, *args):
+        job_id = uuid.uuid1().hex
+        task_id = uuid.uuid1().hex
         tasks = [
-            asyncio.ensure_future(self.submit_task(*args)),  # submit_task
-            asyncio.ensure_future(self.get_node_event())  # get node event
+            # asyncio.ensure_future(self.get_node_event()),  # get node event
+            asyncio.ensure_future(self.submit_task(job_id, task_id, *args)),  # submit_task
+            asyncio.ensure_future(self.get_task_node_event(task_id))  # get node event
         ]
         self.loop.run_until_complete(asyncio.wait(tasks))
 

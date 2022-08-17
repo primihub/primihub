@@ -107,3 +107,54 @@ class MyFlightClient(object):
 
     def do_get(self, Ticket_ticket, FlightCallOptions_options=None):
         return self.client.do_get(Ticket_ticket, FlightCallOptions_options)
+
+
+if __name__ == '__main__':
+    client = MyFlightClient(
+        location="grpc+tcp://localhost:8815"
+    )
+    print(client)
+    # Upload a new dataset
+    NUM_BATCHES = 1024
+    ROWS_PER_BATCH = 4096
+    import pyarrow as pa
+    import pyarrow.flight
+
+    upload_descriptor = pa.flight.FlightDescriptor.for_path("streamed.parquet")
+    batch = pa.record_batch([
+        pa.array(range(ROWS_PER_BATCH)),
+    ], names=["ints"])
+
+    writer, _ = client.do_put(upload_descriptor, batch.schema)
+    with writer:
+        for _ in range(NUM_BATCHES):
+            writer.write_batch(batch)
+
+    # Read content of the dataset
+    flight = client.get_flight_info(upload_descriptor)
+    print(flight)
+    reader = client.do_get(flight.endpoints[0].ticket)
+    print(reader)
+    print(client.list_flights())
+    print('---')
+    try:
+        print(client.do_action("drop_dataset"))
+    except Exception as e:
+        print(e)
+    print("===+=")
+    p = client.get_flight(b'streamed.parquet')
+    print(type(p))
+    for pp in p:
+        df = pp.read_pandas()
+        print(df, "=")
+        # print(pp.read_pandas, "|||", type(pp))
+        for ppp in p:
+            print(ppp, type(ppp), "---")
+
+    total_rows = 0
+    # read_table = reader.read_all()
+    # print(read_table.to_pandas().head())
+    for chunk in reader:
+        # print(chunk.data)
+        total_rows += chunk.data.num_rows
+    print("Got", total_rows, "rows total, expected", NUM_BATCHES * ROWS_PER_BATCH)
