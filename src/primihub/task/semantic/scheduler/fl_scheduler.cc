@@ -116,7 +116,7 @@ namespace primihub::task {
     }
 
     /**
-     * @brief Dispatch FL task to diffent role. eg: xgboost host & guest.
+     * @brief Dispatch FL task to different role. eg: xgboost host & guest.
      * 
      */
     void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
