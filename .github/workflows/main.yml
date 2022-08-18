@@ -89,8 +89,8 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - name: get python ldflags
-      run: python3.9-config --ldflags
+    #- name: get python ldflags
+    #  run: python3.9-config --ldflags
     - uses: actions/checkout@v3
     - name: bazel build
       run: |
@@ -154,8 +154,8 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - name: get python ldflags
-      run: python3.9-config --ldflags
+    #- name: get python ldflags
+    #  run: python3.9-config --ldflags
     - name: find objcopy
       run: |
         brew install binutils
