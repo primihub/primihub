@@ -151,10 +151,10 @@ namespace primihub::task {
         }
         // TODO Fire TASK_STATUS event using NotifyService
         auto taskId = nodePushTaskRequest.task().task_id();
-        auto submit_client_id = nodePushTaskRequest.submit_client_id();
+        auto submitClientId = nodePushTaskRequest.submit_client_id();
 
         LOG(INFO) << "nodePushTaskRequest task_id: " << taskId;
-        LOG(INFO) << "nodePushTaskRequest submit_client_id: " << submit_client_id;
+        LOG(INFO) << "nodePushTaskRequest submit_client_id: " << submitClientId;
         
         EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
                                                             "RUNNING", 
