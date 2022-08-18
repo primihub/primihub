@@ -605,19 +605,19 @@ void MPCExpressExecutor::createFP64Shares(TokenValue &val1, TokenValue &val2,
                                           sf64Matrix<D> &sh_val1,
                                           sf64Matrix<D> &sh_val2) {
   if (val1.type == 4) {
-    mpc_op_->createShares(sh_val1);
+    mpc_op_->createShares<D>(sh_val1);
   } else {
     eMatrix<double> m;
     constructFP64Matrix(val1, m);
-    mpc_op_->createShares(m, sh_val1);
+    // mpc_op_->createShares<D>(m, sh_val1);
   }
 
   if (val2.type == 4) {
-    mpc_op_->createShares(sh_val2);
+    // mpc_op_->createShares<D>(sh_val2);
   } else {
     eMatrix<double> m;
     constructFP64Matrix(val1, m);
-    mpc_op_->createShares(m, sh_val2);
+    // mpc_op_->createShares<D>(m, sh_val2);
   }
 
   return;
@@ -674,7 +674,7 @@ void MPCExpressExecutor::runMPCAdd(const std::string &token1,
   sh_val_vec.emplace_back(sh_val1);
   sh_val_vec.emplace_back(sh_val2);
 
-  mpc_op_->MPC_Add(sh_val_vec, sh_res);
+  // mpc_op_->MPC_Add(sh_val_vec, sh_res);
 }
 
 void MPCExpressExecutor::runMPCAdd(const std::string &token1,

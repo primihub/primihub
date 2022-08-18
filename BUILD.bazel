@@ -492,8 +492,8 @@ cc_library(
 cc_library(
   name = "mpc_express_executor",
   srcs = [
+    "src/primihub/operator/aby3_operator.cc",
     "src/primihub/executor/express.cc",
-    "src/primihub/operator/aby3_operator.cc"
   ],
   hdrs = [
     "src/primihub/executor/express.h",
@@ -504,7 +504,8 @@ cc_library(
   deps = [
     ":protocol_aby3_lib",
     "@com_github_glog_glog//:glog"
-  ]
+  ],
+  linkopts = LINK_OPTS,
 )
 
 DEFAULT_TASK_LIB_DEPS = [
