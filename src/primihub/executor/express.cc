@@ -80,7 +80,7 @@ int ColumnConfig::resolveLocalColumn(void) {
       if (iter->second == true)
         LOG(INFO) << "Column " << iter->first << ": local;";
       else
-        LOG(INFO) << "Column " << iter->second << ": remote;";
+        LOG(INFO) << "Column " << iter->first<< ": remote;";
     }
     LOG(INFO) << "Dump finish, dump count " << count << ".";
   }
