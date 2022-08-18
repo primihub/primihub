@@ -85,7 +85,8 @@ class PrimihubClient(object):
         # grpc clients: Commond/Notify/Dataset
         self.grpc_client = GrpcClient(node, cert)
         self.notify_grpc_client = NodeServiceClient(notify_node, cert)
-        self.dataset_client = self.grpc_client  # NOTE create when recevie NodeContext in NodeService
+        # NOTE create when recevie NodeContext in NodeService
+        self.dataset_client = self.grpc_client
 
         self.code = self.visitor.visit_file()  # get client code str
         """
@@ -94,10 +95,13 @@ class PrimihubClient(object):
         2. 收到NodeContext后，根据配置的数据通道和通知通道建立连接（暂时用当前默认的这个grpc连接）
         """
         print("-------async notify-----------")
-        notify_request = self.notify_grpc_client.client_context(self.client_id, self.client_ip, self.client_port)
-        self.loop.run_until_complete(self.notify_grpc_client.async_get_node_event(notify_request))
+        notify_request = self.notify_grpc_client.client_context(
+            self.client_id, self.client_ip, self.client_port)
+        notify = asyncio.ensure_future(self.notify_grpc_client.async_get_node_event(notify_request))
+        self.loop.run_until_complete(notify)
+        # self.loop.run_until_complete(self.notify_grpc_client.async_get_node_event(notify_request))
 
-    async def submit_task(self, job_id, task_id, *args):
+    async def submit_task(self, job_id, task_id, client_id, *args):
         """Send local functions and parameters to the remote side
 
         :param job_id
@@ -135,16 +139,21 @@ class PrimihubClient(object):
     # async def get_task_node_event(self, task_id):
     #     await self.notfiy_grpc_client.get_node_event(task_id, self.client_id, self.client_ip, self.client_port)
 
-    async def remote_execute(self, *args):
+    def remote_execute(self, *args):
         job_id = uuid.uuid1().hex
         task_id = uuid.uuid1().hex
         client_id = self.client_id
         print("-------async remote execute-----------")
-        self.loop.run_until_complete(self.submit_task(job_id, task_id, client_id, *args))
+        self.loop.run_until_complete(
+             asyncio.ensure_future(self.submit_task(job_id, task_id, client_id, *args))
+        )
+        
+
         # tasks = [
         #     # asyncio.ensure_future(self.get_node_event()),  # get node event
         #     asyncio.ensure_future(self.submit_task(job_id, task_id, client_id, *args)),  # submit_task
         #     # asyncio.ensure_future(self.get_task_node_event(task_id))  # get node event
+        #     # notify
         # ]
         # self.loop.run_until_complete(asyncio.wait(tasks))
 

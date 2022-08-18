@@ -30,7 +30,7 @@ class GrpcClient(object):
         self.cert = cert
         self.listener = listener
 
-    async def submit_task(self, code: str, job_id: str, task_id: str):
+    async def submit_task(self, code: str, job_id: str, task_id: str, submit_client_id: str):
         """submit task
 
         :param code: code str
@@ -49,9 +49,10 @@ class GrpcClient(object):
 
         request = client.push_task_request(intended_worker_id=b'1',
                                            task=task_map,
-                                           sequence_number=random.randint(
-                                               0, 9999),
-                                           client_processed_up_to=random.randint(0, 9999))
+                                           sequence_number=random.randint(0, 9999),
+                                           client_processed_up_to=random.randint(0, 9999),
+                                           submit_client_id = bytes(str(submit_client_id), "utf-8")
+                                           )
         res = client.submit_task(request)
         return res
 

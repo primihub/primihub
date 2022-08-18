@@ -98,12 +98,15 @@ class WorkerClient(GRPCConnect):
     def push_task_request(intended_worker_id=b'1',
                           task=None,
                           sequence_number=11,
-                          client_processed_up_to=22):
+                          client_processed_up_to=22,
+                          submit_client_id= b""
+                          ):
         request_data = {
             "intended_worker_id": intended_worker_id,
             "task": task,
             "sequence_number": sequence_number,
-            "client_processed_up_to": client_processed_up_to
+            "client_processed_up_to": client_processed_up_to,
+            "submit_client_id": submit_client_id
         }
 
         request = worker_pb2.PushTaskRequest(**request_data)

@@ -57,6 +57,7 @@ class NodeServiceClient(GRPCConnect):
     async def async_get_node_event(self, request: service_pb2.ClientContext) -> None:
         print("async_get_node_event")
         async with self.channel:
+            print("with chennel", self.channel)
             # Read from an async generator
             async for response in self.stub.SubscribeNodeEvent(request):
                 response_dict = protobuf_to_dict(response)
