@@ -31,7 +31,7 @@ ABSL_FLAG(int, task_type, TaskType::ACTOR_TASK,
 ABSL_FLAG(std::vector<std::string>,
           params,
           std::vector<std::string>(
-              {"BatchSize:INT32:0:128", "NumIters:INT32:0:1",
+              {"BatchSize:INT32:0:128", "NumIters:INT32:0:100",
                "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
                "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
                "modelFileName:STRING:0:./model",

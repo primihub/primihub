@@ -14,7 +14,8 @@
  limitations under the License.
  """
 
-import sys, os
+import sys
+import os
 import traceback
 # from dill import loads
 from cloudpickle import loads
@@ -24,13 +25,24 @@ from multiprocessing import Process
 shared_globals = dict()
 shared_globals['context'] = Context
 
-import signal
-def _handle_timeout(signum, frame):
+
+def _handle_timeout():
     raise TimeoutError('function timeout')
 
-timeout_sec = 60 * 30
-signal.signal(signal.SIGALRM, _handle_timeout)
-signal.alarm(timeout_sec)
+
+def timeout(interval, callback=None):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            import gevent  # noqa
+            from gevent import monkey  # noqa
+            monkey.patch_all()
+
+            try:
+                gevent.with_timeout(interval, func, *args, **kwargs)
+            except gevent.timeout.Timeout as e:
+                callback() if callback else None
+        return wrapper
+    return decorator
 
 
 class Executor:
@@ -50,82 +62,35 @@ class Executor:
             raise e
 
     @staticmethod
-    def execute1(dumps_func):
-        try:
-            print("start execute 1")
-            t = loads(dumps_func)
-            print(t)
-            loads(dumps_func)()
-            print("end execute 1")
-        except Exception as e:
-            print(e)
-
-    @staticmethod
-    def execute_with_params(dumps_func=None, dumps_params=None):
-        func_name = loads(dumps_func).__name__
-        # print("func: ", loads(dumps_func))
-        print("func name: ", func_name)
-        # print("func params: ", loads(dumps_params))
-        if not dumps_params:
-            func_params = Context.get_func_params_map().get(func_name, None)
-        else:
-            func_params = loads(dumps_params)
-        func = loads(dumps_func)
-        print("func params: ", func_params)
-        if not func_params:
-            try:
-                print("start execute")
-                func()
-                print("end execute")
-            except Exception as e:
-                print("Exception: ", str(e))
-                traceback.print_exc()
-        else:
-            try:
-                print("start execute with params")
-                func(*func_params)
-                print("end execute with params")
-            except Exception as e:
-                print("Exception: ", str(e))
-                traceback.print_exc()
-                
-    @staticmethod
+    @timeout(60 * 60, _handle_timeout)  # TODO TIMEOUT 60 * 60
     def execute_py(dumps_func):
-        print("execute oy code.")
+        print("execute py code.")
         func_name = loads(dumps_func).__name__
         print("func name: ", func_name)
         func_params = Context.get_func_params_map().get(func_name, None)
         func = loads(dumps_func)
         print("func params: ", func_params)
-        print('Parent process %s.' % os.getpid())
         if not func_params:
             try:
                 print("start execute")
                 func()
-                # p = Process(target=func)
                 print("end execute")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                signal.alarm(0)
+                Context.clean_content() 
         else:
             try:
                 print("start execute with params")
                 func(*func_params)
-                # p = Process(target=func, args=func_params)
                 print("end execute with params")
             except Exception as e:
                 print("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                signal.alarm(0)
+                Context.clean_content() 
 
-        # print(p.daemon)
-        # print('Child process will start.')
-        # p.start()
-        # p.join()
-        # print('Child process end.')
     @staticmethod
     def execute_test():
         print("This is a tset function.")

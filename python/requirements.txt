@@ -14,3 +14,6 @@ protobuf==3.20.0
 pydantic
 sphinx
 scikit-learn==1.1.1
+phe==1.5.0
+
+gevent

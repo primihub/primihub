@@ -1262,14 +1262,14 @@ cc_binary(
 )
 
 cc_library(
-    name = "kkrt_psi",
+    name = "libpsi_frontend",
     srcs = glob(
         [
-            "test/primihub/protocol/kkrtpsi/*.cc"
+            "test/primihub/protocol/libpsi/*.cc"
         ],
     ),
     hdrs = glob([
-        "test/primihub/protocol/kkrtpsi/*.h"
+        "test/primihub/protocol/libpsi/*.h"
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
@@ -1281,18 +1281,18 @@ cc_library(
 )
 
 cc_binary(
-    name = "kkrt_psi_test",
+    name = "libpsi_test",
     srcs = [
-        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
+        "test/primihub/protocol/libpsi/libpsi.cc",
     ],
     includes = [
-        "test/primihub/protocol/kkrtpsi",
+        "test/primihub/protocol/libpsi",
     ],
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-        ":kkrt_psi"
+        ":libpsi_frontend"
     ],
 )
 
