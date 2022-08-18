@@ -50,6 +50,7 @@ int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
   // Establishes some shared randomness needed for the later protocols
   eval.init(partyIdx, comm, sysRandomSeed());
 
+  binEval.mPrng.SetSeed(toBlock(partyIdx));
   // Copies the Channels and will use them for later protcols.
   auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
   runtime.init(partyIdx, commPtr);
@@ -65,6 +66,13 @@ si64Matrix MPCOperator::createShares(const i64Matrix &vals,
 si64Matrix MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
   return sharedMatrix;
+}
+
+void MPCOperator::createBinShares(i64Matrix &vals, sbMatrix &ret) {
+  enc.localBinMatrix(runtime.noDependencies(), vals, ret).get();
+}
+void MPCOperator::createBinShares(sbMatrix &ret) {
+  enc.remoteBinMatrix(runtime.noDependencies(), ret).get();
 }
 
 i64Matrix MPCOperator::revealAll(const si64Matrix &vals) {
