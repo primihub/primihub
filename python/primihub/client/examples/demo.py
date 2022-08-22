@@ -20,8 +20,8 @@ from primihub.client import primihub_cli as cli
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})
 # cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
-# cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
-cli.init(config={"node": "192.168.99.23:50050", "cert": ""})
+cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
+# cli.init(config={"node": "192.168.99.23:50050", "cert": ""})
 
 from primihub import context, dataset
 
