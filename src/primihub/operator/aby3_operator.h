@@ -45,33 +45,27 @@ public:
   int setup(std::string ip, u32 next_port, u32 prev_port);
 
   template <Decimal D>
-  sf64Matrix<D> createShares(const eMatrix<double> &vals,
-                             sf64Matrix<D> &sharedMatrix) {
+  void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
     for (u64 i = 0; i < vals.size(); ++i)
       fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
-    return sharedMatrix;
   }
 
-  template <Decimal D> sf64Matrix<D> createShares(sf64Matrix<D> &sharedMatrix) {
+  template <Decimal D> void createShares(sf64Matrix<D> &sharedMatrix) {
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
-    return sharedMatrix;
   }
 
-  si64Matrix createShares(const i64Matrix &vals, si64Matrix &sharedMatrix);
+  void createShares(const i64Matrix &vals, si64Matrix &sharedMatrix);
 
-  si64Matrix createShares(si64Matrix &sharedMatrix);
+  void createShares(si64Matrix &sharedMatrix);
 
-  template <Decimal D>
-  sf64<D> createShares(double vals, sf64<D> &sharedFixedInt) {
+  template <Decimal D> void createShares(double vals, sf64<D> &sharedFixedInt) {
     enc.localFixed<D>(runtime, vals, sharedFixedInt).get();
-    return sharedFixedInt;
   }
 
-  template <Decimal D> sf64<D> createShares(sf64<D> &sharedFixedInt) {
+  template <Decimal D> void createShares(sf64<D> &sharedFixedInt) {
     enc.remoteFixed<D>(runtime, sharedFixedInt).get();
-    return sharedFixedInt;
   }
 
   template <Decimal D> eMatrix<double> revealAll(const sf64Matrix<D> &vals) {
@@ -111,18 +105,18 @@ public:
 
   void reveal(const si64Matrix &vals, u64 Idx);
 
-  template <Decimal D> double reveal(const sf64<D> &vals, u64 Idx) {
-    if (Idx == partyIdx) {
-      f64<D> ret;
-      enc.reveal(runtime, vals, ret).get();
-      return static_cast<double>(ret);
-    } else {
-      enc.reveal(runtime, Idx, vals).get();
-    }
+  template <Decimal D> double reveal(const sf64<D> &vals) {
+    f64<D> ret;
+    enc.reveal(runtime, vals, ret).get();
+    return static_cast<double>(ret);
   }
 
-  template <Decimal D>
-  sf64<D> MPC_Add(std::vector<sf64<D>> sharedFixedInt, sf64<D> &sum) {
+  template <Decimal D> void reveal(const sf64<D> &vals, u64 Idx) {
+    enc.reveal(runtime, Idx, vals).get();
+  }
+
+  template <Decimal D> sf64<D> MPC_Add(std::vector<sf64<D>> sharedFixedInt) {
+    sf64<D> sum;
     sum = sharedFixedInt[0];
     for (u64 i = 1; i < sharedFixedInt.size(); i++) {
       sum = sum + sharedFixedInt[i];
@@ -131,8 +125,8 @@ public:
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_Add(std::vector<sf64Matrix<D>> sharedFixedInt,
-                        sf64Matrix<D> &sum) {
+  sf64Matrix<D> MPC_Add(std::vector<sf64Matrix<D>> sharedFixedInt) {
+    sf64Matrix<D> sum;
     sum = sharedFixedInt[0];
     for (u64 i = 1; i < sharedFixedInt.size(); i++) {
       sum = sum + sharedFixedInt[i];
@@ -140,11 +134,11 @@ public:
     return sum;
   }
 
-  si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt, si64Matrix &sum);
+  si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt);
 
   template <Decimal D>
-  sf64<D> MPC_Sub(sf64<D> minuend, std::vector<sf64<D>> subtrahends,
-                  sf64<D> &difference) {
+  sf64<D> MPC_Sub(sf64<D> minuend, std::vector<sf64<D>> subtrahends) {
+    sf64<D> difference;
     difference = minuend;
     for (u64 i = 0; i < subtrahends.size(); i++) {
       difference = difference - subtrahends[i];
@@ -154,8 +148,8 @@ public:
 
   template <Decimal D>
   sf64Matrix<D> MPC_Sub(sf64Matrix<D> minuend,
-                        std::vector<sf64Matrix<D>> subtrahends,
-                        sf64Matrix<D> &difference) {
+                        std::vector<sf64Matrix<D>> subtrahends) {
+    sf64Matrix<D> difference;
     difference = minuend;
     for (u64 i = 0; i < subtrahends.size(); i++) {
       difference = difference - subtrahends[i];
@@ -163,9 +157,8 @@ public:
     return difference;
   }
 
-  si64Matrix MPC_Sub(si64Matrix minuend, std::vector<si64Matrix> subtrahends,
-                     si64Matrix &difference);
-
+  si64Matrix MPC_Sub(si64Matrix minuend, std::vector<si64Matrix> subtrahends);
+  si64Matrix difference;
   template <Decimal D>
   sf64<D> MPC_Mul(std::vector<sf64<D>> sharedFixedInt, sf64<D> &prod) {
     prod = sharedFixedInt[0];
@@ -175,15 +168,15 @@ public:
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_Mul(std::vector<sf64Matrix<D>> sharedFixedInt,
-                        sf64Matrix<D> &prod) {
+  sf64Matrix<D> MPC_Mul(std::vector<sf64Matrix<D>> sharedFixedInt) {
+    sf64Matrix<D> prod;
     prod = sharedFixedInt[0];
     for (u64 i = 1; i < sharedFixedInt.size(); ++i)
       eval.asyncMul(runtime, prod, sharedFixedInt[i], prod).get();
     return prod;
   }
 
-  si64Matrix MPC_Mul(std::vector<si64Matrix> sharedInt, si64Matrix &prod);
+  si64Matrix MPC_Mul(std::vector<si64Matrix> sharedInt);
 };
 
 #endif

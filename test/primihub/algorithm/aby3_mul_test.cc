@@ -76,14 +76,6 @@ void matrixOperations(u64 partyIdx) {
   Sh3Evaluator eval;
   Sh3Runtime runtime;
   setup(partyIdx, ios, enc, eval, runtime);
-
-  // In addition to working with individual integers,
-  // ABY3 directly supports performing matrix
-  // multiplications. Matrix operations are more efficient
-  // for several reasons. First, there is less overhead from
-  // the runtime and second we can use more efficient protocols
-  // in many cases. See the ABY3 paper for details.
-
   // A plaintext matrix can be instantiated as
   u64 rows = 2, cols = 1;
   eMatrix<i64> plainMatrix1(rows, cols);

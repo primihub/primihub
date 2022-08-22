@@ -57,15 +57,13 @@ int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
   return 1;
 }
 
-si64Matrix MPCOperator::createShares(const i64Matrix &vals,
-                                     si64Matrix &sharedMatrix) {
+void MPCOperator::createShares(const i64Matrix &vals,
+                               si64Matrix &sharedMatrix) {
   enc.localIntMatrix(runtime, vals, sharedMatrix).get();
-  return sharedMatrix;
 }
 
-si64Matrix MPCOperator::createShares(si64Matrix &sharedMatrix) {
+void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
-  return sharedMatrix;
 }
 
 void MPCOperator::createBinShares(i64Matrix &vals, sbMatrix &ret) {
@@ -91,8 +89,8 @@ void MPCOperator::reveal(const si64Matrix &vals, u64 Idx) {
   enc.reveal(runtime, Idx, vals).get();
 }
 
-si64Matrix MPCOperator::MPC_Add(std::vector<si64Matrix> sharedInt,
-                                si64Matrix &sum) {
+si64Matrix MPCOperator::MPC_Add(std::vector<si64Matrix> sharedInt) {
+  si64Matrix sum;
   sum = sharedInt[0];
   for (u64 i = 1; i < sharedInt.size(); i++) {
     sum = sum + sharedInt[i];
@@ -101,8 +99,8 @@ si64Matrix MPCOperator::MPC_Add(std::vector<si64Matrix> sharedInt,
 }
 
 si64Matrix MPCOperator::MPC_Sub(si64Matrix minuend,
-                                std::vector<si64Matrix> subtrahends,
-                                si64Matrix &difference) {
+                                std::vector<si64Matrix> subtrahends) {
+  si64Matrix difference;
   difference = minuend;
   for (u64 i = 0; i < subtrahends.size(); i++) {
     difference = difference - subtrahends[i];
@@ -110,8 +108,8 @@ si64Matrix MPCOperator::MPC_Sub(si64Matrix minuend,
   return difference;
 }
 
-si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt,
-                                si64Matrix &prod) {
+si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
+  si64Matrix prod;
   prod = sharedInt[0];
   for (u64 i = 1; i < sharedInt.size(); ++i)
     eval.asyncMul(runtime, prod, sharedInt[i], prod).get();

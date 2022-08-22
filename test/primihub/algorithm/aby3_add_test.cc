@@ -134,7 +134,7 @@ TEST(add_operator, aby3_3pc_test) {
     // Child process as party 0.
     // integerOperations(0);
     // fixedPointOperations(0);
-    matrixOperations(0);
+    // matrixOperations(0);
     MPCOperator mpc(0, "01", "02");
     mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
     u64 rows = 2, cols = 2;
@@ -159,9 +159,9 @@ TEST(add_operator, aby3_3pc_test) {
     // Add
     //  si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt, si64Matrix &sum)
     si64Matrix sum;
-    mpc.MPC_Add(sharedMatrix, sum);
+    sum = mpc.MPC_Add(sharedMatrix);
     si64Matrix prod;
-    mpc.MPC_Mul(sharedMatrix, prod);
+    prod = mpc.MPC_Mul(sharedMatrix);
     LOG(INFO) << "starting reveal";
 
     i64Matrix sumVal = mpc.reveal(sum);
@@ -177,7 +177,7 @@ TEST(add_operator, aby3_3pc_test) {
     sleep(1);
     // integerOperations(1);
     // fixedPointOperations(1);
-    matrixOperations(1);
+    // matrixOperations(1);
 
     MPCOperator mpc(1, "12", "01");
     mpc.setup("127.0.0.1", (u32)1515, (u32)1313);
@@ -202,9 +202,9 @@ TEST(add_operator, aby3_3pc_test) {
     // Add
     //  si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt, si64Matrix &sum)
     si64Matrix sum;
-    mpc.MPC_Add(sharedMatrix, sum);
+    sum = mpc.MPC_Add(sharedMatrix);
     si64Matrix prod;
-    mpc.MPC_Mul(sharedMatrix, prod);
+    prod = mpc.MPC_Mul(sharedMatrix);
     mpc.reveal(sum, 0);
     mpc.reveal(prod, 0);
 
@@ -216,7 +216,7 @@ TEST(add_operator, aby3_3pc_test) {
 
   // integerOperations(2);
   // fixedPointOperations(2);
-  matrixOperations(2);
+  // matrixOperations(2);
   MPCOperator mpc(2, "02", "12");
   mpc.setup("127.0.0.1", (u32)1414, (u32)1515);
   u64 rows = 2, cols = 2;
@@ -241,9 +241,9 @@ TEST(add_operator, aby3_3pc_test) {
   // Add
   //  si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt, si64Matrix &sum)
   si64Matrix sum;
-  mpc.MPC_Add(sharedMatrix, sum);
+  sum = mpc.MPC_Add(sharedMatrix);
   si64Matrix prod;
-  mpc.MPC_Mul(sharedMatrix, prod);
+  prod = mpc.MPC_Mul(sharedMatrix);
   mpc.reveal(sum, 0);
   mpc.reveal(prod, 0);
   return;
