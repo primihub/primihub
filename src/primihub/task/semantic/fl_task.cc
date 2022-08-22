@@ -201,6 +201,8 @@ int FLTask::execute() {
         ph_exec_m.attr("execute_py")(py::bytes(node_context_.dumps_func));
         LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
 
+        // TODO Fire task status event
+        
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to execute python: " << e.what();
         return -1;

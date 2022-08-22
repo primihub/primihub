@@ -51,9 +51,9 @@ class EventHandlers(object):
 
 
 async def _run() -> None:
-    async with grpc.aio.insecure_channel("192.168.99.26:6666") as channel:
+    async with grpc.aio.insecure_channel("192.168.99.23:6666") as channel:
         print(channel)
-        print("192.168.99.26:6666")
+        print("192.168.99.23:6666")
         stub = service_pb2_grpc.NodeServiceStub(channel)
         # Read from an async generator
         print("# Read from an async generator")
@@ -65,6 +65,7 @@ async def _run() -> None:
                 )):
             print("NodeService client received from async generator: " +
                   str(response.event_type))
+            print("NodeService client received from async generator: " + response.event_type)
         print("# Direct read from the stub")
         # Direct read from the stub
         node_event_reply_stream = stub.SubscribeNodeEvent(
@@ -79,6 +80,7 @@ async def _run() -> None:
                 break
             print("NodeService client received from direct read: " +
                   str(response.event_type))
+            print("NodeService client received from async generator: " + response.event_type)
 
 
 def callback():
@@ -87,8 +89,8 @@ def callback():
 
 # 0.0.0.0:6666
 async def run_async() -> None:
-    async with grpc.aio.insecure_channel("192.168.99.26:6666") as channel:
-        print("192.168.99.26:6666")
+    async with grpc.aio.insecure_channel("192.168.99.23:6666") as channel:
+        print("192.168.99.23:6666")
         # async with grpc.aio.insecure_channel("localhost:50051") as channel:
         stub = service_pb2_grpc.NodeServiceStub(channel)
         # Read from an async generator
@@ -99,8 +101,7 @@ async def run_async() -> None:
                     # client_ip="127.0.0.1",
                     # client_port=50051
                 )):
-            print("NodeService client received from async generator: " +
-                  str(response.event_type))
+            print("NodeService client received from async generator: " +str(response.event_type))
             # listener.fire(str(response.event_type))
             # listener.fire(str(response))
             print(">>>>>>>>><<<<<<<<<<<<<<<<")

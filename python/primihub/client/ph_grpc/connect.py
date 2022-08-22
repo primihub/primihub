@@ -16,11 +16,8 @@ limitations under the License.
 import sys
 from os import path
 
-import grpc
-
 here = path.abspath(path.join(path.dirname(__file__), "."))
 sys.path.append(here)
-from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
 class GRPCConnect(object):

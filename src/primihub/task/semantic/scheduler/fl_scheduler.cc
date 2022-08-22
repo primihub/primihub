@@ -156,6 +156,7 @@ namespace primihub::task {
         LOG(INFO) << "nodePushTaskRequest task_id: " << taskId;
         LOG(INFO) << "nodePushTaskRequest submit_client_id: " << submitClientId;
         
+        
         EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
                                                             "RUNNING", 
                                                             "task status test message");

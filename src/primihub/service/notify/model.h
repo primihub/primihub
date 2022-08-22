@@ -203,7 +203,7 @@ class GRPCNotifyServer : public NotifyServer {
         void removeSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSessionByClientId(const std::string clientId);
-        void addClientSession(const std::string clientId, const std::shared_ptr<GRPCClientSession> &session);
+        void addClientSession(const std::string clientId, uint64_t sessionId);
 
         // gRPC members
         std::atomic_bool running_{false};
@@ -255,7 +255,7 @@ enum class GrpcClientSessionStatus {
 
 std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus);
 
-class GRPCClientSession : std::enable_shared_from_this<GRPCClientSession> {
+class GRPCClientSession {
     public:
         explicit GRPCClientSession(uint64_t sessionId) : session_id_(sessionId) {}
         
@@ -284,8 +284,8 @@ class GRPCClientSession : std::enable_shared_from_this<GRPCClientSession> {
         primihub::rpc::ClientContext request_{};
 
         std::string name_{};  // session name
+        std::shared_ptr<primihub::rpc::NodeEventReply> new_message_;
         std::deque<std::shared_ptr<primihub::rpc::NodeEventReply>> message_queue_{};
-        // Performance performance_{};
         uint64_t reply_times_{0};
 };
 

@@ -17,13 +17,14 @@
 #ifndef SRC_PRIMIHUB_SERVICE_NOTIFY_SERVICE_H_
 #define SRC_PRIMIHUB_SERVICE_NOTIFY_SERVICE_H_
 
+#include <string>
 #include "src/primihub/service/notify/model.h"
 
 namespace primihub::service {
 
 class NotifyService {
   public:
-    NotifyService();
+    NotifyService(const std::string& addr);
     ~NotifyService();
 
     // TODO create notify server list by config file.
@@ -37,7 +38,7 @@ class NotifyService {
     
     // void onNewSessionEvent(const std::string session_id) = 0;
   private:
-    void init();
+    void init(const std::string& addr);
 };
 
 } // namespace primihub::service

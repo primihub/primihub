@@ -15,15 +15,22 @@ limitations under the License.
 """
 import asyncio
 import random
+import sys
+import socket
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from primihub import context, dataset
 from primihub.client.ph_grpc.event import listener
+from primihub.client.ph_grpc.task import Task
 from primihub.client.ph_grpc.grpc_client import GrpcClient
 from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT
 from primihub.client.visitor import Visitor
+from primihub.utils.async_util import fire_coroutine_threadsafe
+from primihub.dataset.dataset_cli import DatasetClientFactory
+
 import primihub as ph
-import socket
-import uuid
+notify_channel_connected = False
 
 
 def get_host_ip():
@@ -65,7 +72,15 @@ class PrimihubClient(object):
 
         # NOTE All submit task will be done in one loop
         self.loop = asyncio.get_event_loop()
-        self.tasks = []
+        executor_opts = {'max_workers': None}  # type: Dict[str, Any]
+        if sys.version_info[:2] >= (3, 6):
+            executor_opts['thread_name_prefix'] = 'SyncWorker'
+        self.executor = ThreadPoolExecutor(**executor_opts)
+        self.loop.set_default_executor(self.executor)
+
+        # Storage
+        self.tasks_map = {}  # Primihub task map task_id: Task
+        self._pending_task = []  # pending asyncio task
 
     def init(self, config):
         """Client Initialization.
@@ -85,7 +100,8 @@ class PrimihubClient(object):
         # grpc clients: Command/Notify/Dataset
         self.grpc_client = GrpcClient(node, cert)
         self.notify_grpc_client = NodeServiceClient(notify_node, cert)
-        self.dataset_client = self.grpc_client  # NOTE create when recevie NodeContext in NodeService
+        # NOTE create when recevie NodeContext in NodeService
+        self.dataset_client = DatasetClientFactory.create(node, cert)
 
         self.code = self.visitor.visit_file()  # get client code str
         """
@@ -93,11 +109,28 @@ class PrimihubClient(object):
         1. 发送ClientContext给Node，接收NodeContext
         2. 收到NodeContext后，根据配置的数据通道和通知通道建立连接（暂时用当前默认的这个grpc连接）
         """
-        print("-------async notify-----------")
-        notify_request = self.notify_grpc_client.client_context(self.client_id, self.client_ip, self.client_port)
-        self.loop.run_until_complete(self.notify_grpc_client.async_get_node_event(notify_request))
+        print("-------create task: async notify-----------")
+        # listener.on_event("/0/")(self.node_event_handler(event=None))  # regist event handler
 
-    async def submit_task(self, job_id, task_id, client_id, *args):
+        notify_request = self.notify_grpc_client.client_context(
+            self.client_id, self.client_ip, self.client_port)
+
+        fire_coroutine_threadsafe(
+            self.notify_grpc_client.async_get_node_event(notify_request), self.loop)
+
+    def start(self):
+        """Client Start.
+        """
+        print("*** cli start ***")
+        try:
+            self.loop.run_forever()
+        except Exception as e:
+            print(str(e))
+
+            self.loop.stop()
+        # TODO try exception
+
+    async def submit_task(self, job_id, client_id, *args):
         """Send local functions and parameters to the remote side
 
         :param job_id
@@ -105,14 +138,26 @@ class PrimihubClient(object):
         :param client_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
+        task = Task(task_id=uuid.uuid1().hex, primihub_client=self)
+        task_id = task.task_id
+        self.tasks_map[task_id] = task
+
+        # while self.notify_channel_connected is False:
+        #     print("----- waiting notify channel connected...")
+        #     await asyncio.sleep(5e-2)  # 50ms
 
         func_params_map = ph.context.Context.func_params_map
+        print("/,./.,/.")
+        print(func_params_map)
         for arg in args:
             func = arg[0]
             params = arg[1:]
             func_params_map[func.__name__] = params
 
         self.code = self.visitor.trans_remote_execute(self.code)
+        print("* - * " * 20)
+        print(self.code)
+        print("* - * " * 20)
         ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
@@ -123,18 +168,30 @@ class PrimihubClient(object):
         return res
 
     # TODO NodeEvent Handler
-    @listener.on_event("/context/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
+
+    # @listener.on_event("%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
     def node_event_handler(self, event):
+        # self.notify_channel_connected = True
+        self.notify_channel_connected = True
+        print("...node_event_handler: %s" % event)
 
-        print("node_event_handler: %s" % event)
-        pass
-
-    async def remote_execute(self, *args):
+    def async_remote_execute(self, *args) -> None:
         job_id = uuid.uuid1().hex
-        task_id = uuid.uuid1().hex
+        # task_id = uuid.uuid1().hex
         client_id = self.client_id
-        print("-------async remote execute-----------")
-        self.loop.run_until_complete(self.submit_task(job_id, task_id, client_id, *args))
+        print("------- create task: async submit task -----------")
+        print("job_id: {}, type: {}".format(job_id, type(job_id)))
+        # print("task_id_id: {}, type: {}".format(task_id, type(task_id)))
+        print("client_id: {}, type: {}".format(client_id, type(client_id)))
+
+        print("------- async run submit task -----------")
+        try:
+            fire_coroutine_threadsafe(self.submit_task(
+                job_id, client_id, *args), self.loop)
+        except Exception as e:
+            print(str(e))
+        # self.loop.call_soon_threadsafe(self.submit_task_task)
+        # self.loop.run_until_complete(asyncio.wait(tasks))
 
     async def get(self, ref_ret):
         print("........%s >>>>>>>", ref_ret)

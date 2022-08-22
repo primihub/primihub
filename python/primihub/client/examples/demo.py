@@ -77,7 +77,8 @@ print(ph.context.Context)
 # print(ph.context.Context.__dict__)
 # ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
 # map >>> node context
-
+cli.start()
 cli.get_status()
 cli.get_result()
 cli.get()
+

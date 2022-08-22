@@ -23,6 +23,7 @@ from .dataset import (
     get,
     define,
     read,
+    put
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     'get',
     'define',
     'read',
+    'put',
 ]

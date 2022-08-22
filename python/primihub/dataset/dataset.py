@@ -134,10 +134,25 @@ def read(dataset_key: str = None,
     return dataset
 
 
-"""TODO Put dataset using primihub client (singltone) Dataset client.
+class DatasetRef:
+    """Dataset refrence.
+    """
+    def __init__(self) -> None:
+        self.dataset_id = "NOT_ASSIGNED"
+        self.dataset_status = "UNKNOWN" # UPLOADING, DOWNLOADING, UNKNOWN
+        self.type = "LOCAL" # LOCAL, REMOTE
+        self.dataset_url = "NOT_ASSIGNED"
+        self.dataset: Dataset = None
+        
+
+def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
+    """ Put dataset using primihub client (singltone) Dataset client.
         Default is flight client.
-"""
-# def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
-#     from primihub.client import primihub_cli
-#     primihub_cli.dataset_client
-    
+    """
+    from primihub.client import primihub_cli
+    primihub_cli.dataset_client.do_put(df_data, dataset_key)
+    dataset_ref = DatasetRef()
+    # TODO 
+    return dataset_ref
+
+

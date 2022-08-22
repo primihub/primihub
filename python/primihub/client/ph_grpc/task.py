@@ -13,17 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-from primihub.client.ph_grpc.event import listener
-from primihub.client.tiny_listener import Event
 from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_TASK_STATUS, \
     NODE_EVENT_TYPE_TASK_RESULT
+from primihub.utils.async_util import fire_coroutine_threadsafe
 
 
 class Task(object):
 
-    def __init__(self, task_id):
+    def __init__(self, task_id, primihub_client):
         self.task_id = task_id
         self.task_status = "PENDING"  # PENDING, RUNNING, SUCCESS, FAILED
+        self.node_grpc_connections = []
+        # from primihub.client import primihub_cli as cli
+        self.cli = primihub_client
+        self.loop = self.cli.loop
 
     def get_status(self):
         pass
@@ -31,36 +34,12 @@ class Task(object):
     def get_result(self):
         pass
 
-    @listener.on_event("/task/{task_id}/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_STATUS])
-    async def handler_task_status(self, event: Event):
-        print("handler_task_status", event.params, event.data)
-        # TODO
-        # event data
-        # {'event_type': 1,
-        #      'task_status': {'task_context': {'task_id': '1',
-        #                                       'job_id': 'task test status'
-        #                                       }
-        #                   'status': '' // ? TODO
-        #                      }
-        #      }
-        node = ""  # TODO
-        cert = ""  # TODO
-        client_id = ""
-        client_ip = 6666
-        client_port = 12345
-        # get node event from other nodes
-        grpc_client = NodeServiceClient(node, cert)
-        task_id = event.data["task_status"]["task_context"]["task_id"]
-        await grpc_client.async_get_node_event(client_id=client_id, client_ip=client_ip, client_port=client_port)
+    def get_node_event(self, node, cert):
+        # # get node event from other nodes
+        worker_node_grpc_client = NodeServiceClient(node, cert)
+        self.node_grpc_connections.append(worker_node_grpc_client)
+        notify_request = worker_node_grpc_client.client_context(
+            self.cli.client_id, self.cli.client_ip, self.cli.client_port)
 
-    @listener.on_event("/task/{task_id}/%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_RESULT])
-    async def handler_task_result(self, event: Event):
-        print("handler_task_result", event.params, event.data)
-        # TODO
-        # event data
-        # {'event_type': 2,
-        #  'task_result': {'task_context': {'task_id': '1',
-        #                                   'job_id': 'task test result'},
-        #                   'result_dataset_url': '' // ? TODO
-        #                  }
-        #  }
+        fire_coroutine_threadsafe(
+            worker_node_grpc_client.async_get_node_event(notify_request), self.loop)

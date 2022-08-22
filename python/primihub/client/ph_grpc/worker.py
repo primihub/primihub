@@ -99,7 +99,7 @@ class WorkerClient(GRPCConnect):
                           task=None,
                           sequence_number=11,
                           client_processed_up_to=22,
-                          submit_client_id= b""
+                          submit_client_id=b""
                           ):
         request_data = {
             "intended_worker_id": intended_worker_id,
@@ -108,8 +108,8 @@ class WorkerClient(GRPCConnect):
             "client_processed_up_to": client_processed_up_to,
             "submit_client_id": submit_client_id
         }
-
         request = worker_pb2.PushTaskRequest(**request_data)
+        print(request)
         return request
 
     def submit_task(self, request: worker_pb2.PushTaskRequest) -> worker_pb2.PushTaskReply:

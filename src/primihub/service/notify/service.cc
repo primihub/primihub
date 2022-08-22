@@ -22,15 +22,15 @@ using primihub::service::GRPCNotifyServer;
 
 namespace primihub::service {
         
-NotifyService::NotifyService() {
-    init();
+NotifyService::NotifyService(const std::string &addr) {
+    init(addr);
 }
 
 NotifyService::~NotifyService() {
 
 }
 
-void NotifyService::init() {
+void NotifyService::init(const std::string &addr) {
     // Composite GRPCNotifyServer & EventBusNotifyServerSubscriber
     try {   
         auto subscriber = std::make_shared<EventBusNotifyServerSubscriber>(GRPCNotifyServer::getInstance(),
@@ -38,7 +38,7 @@ void NotifyService::init() {
         auto subscriber_cast = std::dynamic_pointer_cast<NotifyServerSubscriber>(subscriber);                                                                        
         
         // FIXME test parameters
-        GRPCNotifyServer::getInstance().init("0.0.0.0:6666", subscriber_cast);
+        GRPCNotifyServer::getInstance().init(addr, subscriber_cast);
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to init notify server: " << e.what();
     }
@@ -67,8 +67,7 @@ void NotifyService::notifyResult(const std::string &task_id, const std::string &
  * when client create task or subscribe task, notify client.
  */
 void NotifyService::onSubscribeClientEvent(const std::string client_id, const uint64_t &session_id) {
-    GRPCNotifyServer::getInstance().addClientSession(client_id, 
-                                                   GRPCNotifyServer::getInstance().getSession(session_id));
+    GRPCNotifyServer::getInstance().addClientSession(client_id, session_id);
 }
 
 }   // namespace primihub::service

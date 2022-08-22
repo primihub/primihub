@@ -65,7 +65,7 @@ EventBusNotifyServerSubscriber::~EventBusNotifyServerSubscriber() {
 void GRPCNotifyServer::onTaskStatusEvent(const TaskStatusEvent &e) {
     // TODO put TaskStatus event to session message queue if session is exist.
     // find which session subscribed this task.
-    LOG(INFO) << "get task status event: " << e.task_id << " " << e.status;
+    LOG(INFO) << "get task status event: " << e.task_id << " " << e.status << " , clientId:" << e.submit_client_id;
     auto session = getSessionByClientId(e.submit_client_id);
     if (session) {
         // Construct NodeEventReply rpc message.
@@ -188,8 +188,6 @@ void GRPCNotifyServer::run() {
                 // deal request
                 session->process(event);
                 
-            
-                
             }
         }
         LOG(INFO) << "completion queue(notification) exit";
@@ -272,9 +270,11 @@ std::shared_ptr<GRPCClientSession> GRPCNotifyServer::getSessionByClientId(const 
     return it->second;
 }
 
-void GRPCNotifyServer::addClientSession(const std::string clientId, const std::shared_ptr<GRPCClientSession> &session) {
-     std::shared_lock lock(mutex_client_sessions_);
-    client_sessions_[clientId] = session;
+void GRPCNotifyServer::addClientSession(const std::string clientId, uint64_t sessionId) {
+    LOG(INFO) << "addClentSession:" << clientId << ", sessionId:" << sessionId;
+    auto session_ptr = this->getSession(sessionId);
+    std::shared_lock lock(mutex_client_sessions_);
+    client_sessions_[clientId] = session_ptr;
 }
 
 //////////////////////////////GRPCClientSession////////////////////////////////////////////////
@@ -297,11 +297,17 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
         case GRPC_NOTIFY_EVENT_CONNECTED:
 
             LOG(INFO) << "client context: " << client_context_.DebugString();
-            //TODO  Save client id & current session id pair
-            // GRPCNotifyServer::getInstance().addClientSession(client_context_.client_id(), shared_from_this());
-
+            
             status_ = GrpcClientSessionStatus::READY_TO_WRITE;
             GRPCNotifyServer::getInstance().addSession();
+            //Save client id & current session id pair
+            GRPCNotifyServer::getInstance().addClientSession(client_context_.client_id(), this->session_id_);
+            // TODO put node context message in message_queue_
+            new_message_ = std::make_shared<primihub::rpc::NodeEventReply>();
+            new_message_->set_event_type(rpc::NodeEventType::NODE_EVENT_TYPE_NODE_CONTEXT);
+            // primihub::rpc::NodeContext *node_context = new_message->mutable_node_context();
+            LOG(INFO) << "Prepare put NodeContext message to session: " << new_message_->ShortDebugString();
+            this->putMessage(new_message_);
             return;
             
         case GRPC_NOTIFY_EVENT_READ_DONE:
@@ -321,6 +327,7 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
         case GRPC_NOTIFY_EVENT_WRITE_DONE:
             if (!message_queue_.empty()) {
                 status_ = GrpcClientSessionStatus::WAIT_WRITE_DONE;
+                LOG(INFO) << "GRPC_NOTIFY_EVENT_WRITE_DONE";
                 subscribe_stream.Write(
                     *message_queue_.front(),
                     reinterpret_cast<void*>(session_id_ << GRPC_NOTIFY_EVENT_BIT_LENGTH | GRPC_NOTIFY_EVENT_WRITE_DONE));
@@ -361,6 +368,7 @@ void GRPCClientSession::finish() {
 }
 
 void GRPCClientSession::putMessage(const std::shared_ptr<primihub::rpc::NodeEventReply> &message) {
+    LOG(INFO) << "putMessage GrpcClientSessionStatus: " << status_;
     if (status_ != GrpcClientSessionStatus::READY_TO_WRITE) {
         message_queue_.emplace_back(message);
         return;
@@ -377,13 +385,13 @@ std::ostream& operator<<(std::ostream& os, GrpcNotifyEvent event) {
     // omit default case to trigger compiler warning for missing cases
     switch (event) {
         case GrpcNotifyEvent::GRPC_NOTIFY_EVENT_CONNECTED:
-            return os << "GRPC_EVENT_CONNECTED";
+            return os << "GRPC_NOTIFY_EVENT_CONNECTED";
         case GrpcNotifyEvent::GRPC_NOTIFY_EVENT_READ_DONE:
-            return os << "GRPC_EVENT_READ_DONE";
+            return os << "GRPC_NOTIFY_EVENT_READ_DONE";
         case GrpcNotifyEvent::GRPC_NOTIFY_EVENT_WRITE_DONE:
-            return os << "GRPC_EVENT_WRITE_DONE";
+            return os << "GRPC_NOTIFY_EVENT_WRITE_DONE";
         case GrpcNotifyEvent::GRPC_NOTIFY_EVENT_FINISHED:
-            return os << "GRPC_EVENT_FINISHED";
+            return os << "GRPC_NOTIFY_EVENT_FINISHED";
     }
 }
 
