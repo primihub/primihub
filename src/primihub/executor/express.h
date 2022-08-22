@@ -37,8 +37,7 @@ private:
 
 class FeedDict {
 public:
-  FeedDict(ColumnConfig *col_config,
-           bool float_run) {
+  FeedDict(ColumnConfig *col_config, bool float_run) {
     col_config_ = col_config;
     float_run_ = float_run;
   }
@@ -49,8 +48,11 @@ public:
                          std::vector<int64_t> &int64_vec);
   int importColumnValues(const std::string &col_name,
                          std::vector<double> &fp64_vec);
-  template <class T>
-  int getColumnValues(const std::string &col_name, std::vector<T> &col_vec);
+
+  int getColumnValues(const std::string &col_name,
+                      std::vector<int64_t> **col_vec);
+  int getColumnValues(const std::string &col_name,
+                      std::vector<double> **col_vec);
 
 private:
   int checkLocalColumn(const std::string &col_name);
@@ -69,7 +71,7 @@ public:
   int importExpress(std::string expr);
   void resolveRunMode(void);
   void initMPCRuntime(uint8_t party_id, const std::string &ip,
-                      uint16_t prev_port, uint16_t next_port);
+                      uint16_t next_port, uint16_t prev_port);
   int runMPCEvaluate(void);
 
   void setColumnConfig(ColumnConfig *col_config) {
@@ -78,14 +80,12 @@ public:
 
   void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
 
-  bool isFP64RunMode(void) {
-    return this->fp64_run_;
-  }
+  bool isFP64RunMode(void) { return this->fp64_run_; }
 
   enum TokenType { COLUMN, VALUE };
   union ValueUnion {
-    std::vector<double> fp64_vec;
-    std::vector<int64_t> i64_vec;
+    std::vector<double> *fp64_vec;
+    std::vector<int64_t> *i64_vec;
     int64_t i64_val;
     double fp64_val;
 
@@ -104,6 +104,19 @@ public:
 
     TokenValue(){};
     ~TokenValue(){};
+
+    std::string TypeToString(void) {
+      if (this->type == 4)
+        return "remote column";
+      else if (this->type == 3)
+        return "const I64 value";
+      else if (this->type == 2)
+        return "const FP64 value";
+      else if (this->type == 1)
+        return "local I64 column";
+      else
+        return "local FP64 column";
+    }
   };
 
 private:

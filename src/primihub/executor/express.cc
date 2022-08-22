@@ -80,7 +80,7 @@ int ColumnConfig::resolveLocalColumn(void) {
       if (iter->second == true)
         LOG(INFO) << "Column " << iter->first << ": local;";
       else
-        LOG(INFO) << "Column " << iter->first<< ": remote;";
+        LOG(INFO) << "Column " << iter->first << ": remote;";
     }
     LOG(INFO) << "Dump finish, dump count " << count << ".";
   }
@@ -222,9 +222,8 @@ int FeedDict::importColumnValues(const std::string &col_name,
   return 0;
 }
 
-template <class T>
 int FeedDict::getColumnValues(const std::string &col_name,
-                              std::vector<T> &col_vec) {
+                              std::vector<int64_t> **p_col_vec) {
   {
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -239,27 +238,40 @@ int FeedDict::getColumnValues(const std::string &col_name,
     }
   }
 
-  if ((float_run_ == true) && (std::is_same<T, int64_t>::value)) {
-    LOG(ERROR) << "Current run mode is float but want to get int64 values.";
-    return -1;
-  }
-
-  if ((float_run_ == false) && (std::is_same<T, double>::value)) {
-    LOG(ERROR) << "Current run mode is int64, but want to get fp64 values.";
-    return -1;
-  }
-
-  if (std::is_same<T, int64_t>::value) {
-    auto iter = int64_col_.find(col_name);
-    if (iter == int64_col_.end()) {
-      LOG(ERROR) << "Can't find values by column name " << col_name << ".";
-      return -2;
+  if (float_run_ == true) {
+      LOG(ERROR) << "Current run mode is FP64 but want to get I64 values.";
+      return -1;
     }
 
-    for (auto v : iter->second)
-      col_vec.emplace_back(v);
+  auto iter = int64_col_.find(col_name);
+  if (iter == int64_col_.end()) {
+    LOG(ERROR) << "Can't find values by column name " << col_name << ".";
+    return -2;
+  }
 
-    return 0;
+  *p_col_vec = &(iter->second);
+  return 0;
+}
+
+int FeedDict::getColumnValues(const std::string &col_name,
+                              std::vector<double> **p_col_vec) {
+  {
+    bool is_local = false;
+    int ret = col_config_->getColumnLocality(col_name, is_local);
+    if (ret < 0) {
+      LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
+      return -1;
+    }
+
+    if (is_local == false) {
+      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
+      return -1;
+    }
+  }
+
+  if (float_run_ == false) {
+    LOG(ERROR) << "Current run mode is I64 but want to get FP64 values.";
+    return -1;
   }
 
   auto iter = fp64_col_.find(col_name);
@@ -268,9 +280,7 @@ int FeedDict::getColumnValues(const std::string &col_name,
     return -2;
   }
 
-  for (auto v : iter->second)
-    col_vec.emplace_back(v);
-
+  *p_col_vec = &(iter->second);
   return 0;
 }
 
@@ -528,11 +538,11 @@ void MPCExpressExecutor::resolveRunMode(void) {
 }
 
 void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
-                                        uint16_t prev_port,
-                                        uint16_t next_port) {
+                                        uint16_t next_port,
+                                        uint16_t prev_port) {
   std::string next_name;
   std::string prev_name;
-  
+
   if (party_id == 0) {
     next_name = "01";
     prev_name = "02";
@@ -542,7 +552,7 @@ void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
   } else if (party_id == 2) {
     next_name = "02";
     prev_name = "12";
-  } 
+  }
 
   mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
   mpc_op_->setup(ip, next_port, prev_port);
@@ -555,9 +565,11 @@ void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
     m.resize(1, 1);
     m(0, 0) = val.val_union.fp64_val;
   } else {
-    m.resize(val.val_union.i64_vec.size(), 1);
-    for (size_t i = 0; i < val.val_union.fp64_vec.size(); i++) {
-      m(i, 0) = val.val_union.i64_vec[i];
+    std::vector<int64_t> *p_vec;
+    p_vec = val.val_union.i64_vec;
+    m.resize(p_vec->size(), 1);
+    for (size_t i = 0; i < p_vec->size(); i++) {
+      m(i, 0) = (*p_vec)[i];
     }
   }
 
@@ -592,9 +604,10 @@ void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
     m.resize(1, 1);
     m(0, 0) = val.val_union.i64_val;
   } else {
-    m.resize(val.val_union.fp64_vec.size(), 1);
-    for (size_t i = 0; i < val.val_union.fp64_vec.size(); i++) {
-      m(i, 0) = val.val_union.fp64_vec[i];
+    std::vector<double> *p_vec = val.val_union.fp64_vec;
+    m.resize(p_vec->size(), 1);
+    for (size_t i = 0; i < p_vec->size(); i++) {
+      m(i, 0) = (*p_vec)[i];
     }
   }
 
@@ -609,15 +622,15 @@ void MPCExpressExecutor::createFP64Shares(TokenValue &val1, TokenValue &val2,
   } else {
     eMatrix<double> m;
     constructFP64Matrix(val1, m);
-    // mpc_op_->createShares<D>(m, sh_val1);
+    mpc_op_->createShares<D>(m, sh_val1);
   }
 
   if (val2.type == 4) {
-    // mpc_op_->createShares<D>(sh_val2);
+    mpc_op_->createShares<D>(sh_val2);
   } else {
     eMatrix<double> m;
     constructFP64Matrix(val1, m);
-    // mpc_op_->createShares<D>(m, sh_val2);
+    mpc_op_->createShares<D>(m, sh_val2);
   }
 
   return;
@@ -633,19 +646,17 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
     if (is_local == false) {
       // Column is a remote column.
       token_val.type = 4;
+      VLOG(3) << "Construct TokenValue instance for '" << token << "', type '"
+              << token_val.TypeToString() << "'.";
       return;
     }
 
     // Column is a local column.
     if (fp64_run_) {
-      std::vector<double> col_vec;
-      feed_dict_->getColumnValues(token, col_vec);
-      token_val.val_union.fp64_vec = std::move(col_vec);
+      feed_dict_->getColumnValues(token, &(token_val.val_union.fp64_vec));
       token_val.type = 0;
     } else {
-      std::vector<int64_t> col_vec;
-      feed_dict_->getColumnValues(token, col_vec);
-      token_val.val_union.i64_vec = std::move(col_vec);
+      feed_dict_->getColumnValues(token, &(token_val.val_union.i64_vec));
       token_val.type = 1;
     }
   } else {
@@ -658,6 +669,9 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
       token_val.type = 3;
     }
   }
+
+  VLOG(3) << "Construct TokenValue instance for '" << token << "', type '"
+          << token_val.TypeToString() << "'.";
 }
 
 void MPCExpressExecutor::runMPCAdd(const std::string &token1,
@@ -674,7 +688,7 @@ void MPCExpressExecutor::runMPCAdd(const std::string &token1,
   sh_val_vec.emplace_back(sh_val1);
   sh_val_vec.emplace_back(sh_val2);
 
-  // mpc_op_->MPC_Add(sh_val_vec, sh_res);
+  sh_res = mpc_op_->MPC_Add(sh_val_vec);
 }
 
 void MPCExpressExecutor::runMPCAdd(const std::string &token1,
@@ -691,7 +705,7 @@ void MPCExpressExecutor::runMPCAdd(const std::string &token1,
   sh_val_vec.emplace_back(sh_val1);
   sh_val_vec.emplace_back(sh_val2);
 
-  mpc_op_->MPC_Add(sh_val_vec, sh_res);
+  sh_res = mpc_op_->MPC_Add(sh_val_vec);
 }
 
 int MPCExpressExecutor::runMPCEvaluate(void) {
@@ -707,11 +721,15 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       suffix_stk_.pop();
 
       if (fp64_run_) {
+        VLOG(3) << "Run FP64 add between '" << a << ", and '" << b << "'.";
         sf64Matrix<D> sh_sum;
         runMPCAdd(a, b, sh_sum);
+        VLOG(3) << "Finish.";
       } else {
+        VLOG(3) << "Run I64 add between '" << a << ", and '" << b << "'.";
         si64Matrix sh_sum;
         runMPCAdd(a, b, sh_sum);
+        VLOG(3) << "Finish.";
       }
     } else if (token == "-") {
       std::string a = stk1.top();
@@ -744,7 +762,7 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
 MPCExpressExecutor::~MPCExpressExecutor() {
   token_type_.clear();
 
-  while (!suffix_stk_.empty()) 
+  while (!suffix_stk_.empty())
     suffix_stk_.pop();
 
   delete mpc_op_;

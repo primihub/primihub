@@ -77,14 +77,14 @@ void matrixOperations(u64 partyIdx) {
   Sh3Runtime runtime;
   setup(partyIdx, ios, enc, eval, runtime);
   // A plaintext matrix can be instantiated as
-  u64 rows = 2, cols = 1;
+  u64 rows = 1, cols = 2;
   eMatrix<i64> plainMatrix1(rows, cols);
   eMatrix<i64> plainMatrix2(cols, rows);
   // We can populate is by
   for (u64 i = 0; i < rows; ++i)
     for (u64 j = 0; j < cols; ++j) {
       plainMatrix1(i, j) = i + j + 1;
-      plainMatrix2(j, i) = i + j + 1;
+      plainMatrix2(i, j) = i + j + 1;
     }
   LOG(INFO) << " plainMatrix1:" << plainMatrix1;
   LOG(INFO) << " plainMatrix2:" << plainMatrix2;
@@ -113,7 +113,7 @@ void matrixOperations(u64 partyIdx) {
 
   // we can reconstruct the secret shares
   eMatrix<i64> plainMatrix(
-      1, 1); //这里矩阵是什么结构不影响，下边揭露会重新设置结构
+      2, 1); //这里矩阵是什么结构不影响，下边揭露会重新设置结构
   enc.revealAll(mulTask, prod, plainMatrix).get();
   LOG(INFO) << plainMatrix;
 }
