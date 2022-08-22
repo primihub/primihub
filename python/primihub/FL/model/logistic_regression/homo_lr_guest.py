@@ -6,6 +6,7 @@ import copy
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
+from sklearn.datasets import load_iris
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
@@ -22,7 +23,7 @@ def get_logger(name):
 logger = get_logger("Homo-LR-Guest")
 
 
-def data_process():
+def data_binary():
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
@@ -35,6 +36,11 @@ def data_process():
     X1 = X1.iloc[:, :-1]
     return X1, yy
 
+def data_iris():
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+    return X, y
 
 class Guest:
     def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
@@ -43,7 +49,7 @@ class Guest:
         self.config = config
         self.lr = self.config['lr']
         self.model = LRModel(X, y)
-        self.need_one_vs_rest = None
+        self.need_one_vs_rest = self.config['need_one_vs_rest']
         self.need_encrypt = False
         self.batch_size = None
         self.proxy_server = proxy_server
@@ -56,35 +62,20 @@ class Guest:
             pre = self.model.predict(data)
         return pre
 
-    def fit_binary(self, X, y):
-        # if self.need_encrypt == True:
-        #     model_param = Utils.encrypt_vector(self.public_key, self.global_model.theta)
-        #     neg_one = self.public_key.encrypt(-1)
-        #
-        #     for e in range(1):  # 10为本地epoch大小
-        #         print("start epoch ", e)
-        #         # 每一轮都随机挑选batch_size大小的训练数据进行训练
-        #         idx = np.arange(X.shape[0])
-        #         batch_idx = np.random.choice(idx, self.batch_size, replace=False)
-        #         x = X[batch_idx]
-        #         x = np.concatenate((np.ones((x.shape[0], 1)), x), axis=1)
-        #         y = y[batch_idx].values.reshape((-1, 1))
-        #         # 在加密状态下求取加密梯度
-        #         batch_encrypted_grad = x.transpose() * (
-        #                 0.25 * x.dot(model_param) + 0.5 * y.transpose() * neg_one)
-        #         encrypted_grad = batch_encrypted_grad.sum(axis=1) / y.shape[0]
-        #
-        #         for j in range(len(model_param)):
-        #             model_param[j] -= self.lr * encrypted_grad[j]
-        #
-        #     # weight_accumulators = []
-        #     # for j in range(len(self.local_model.encrypt_weights)):
-        #     #     weight_accumulators.append(self.local_model.encrypt_weights[j] - original_w[j])
-        #     return model_param
-        # plaintext
-        self.model.theta = self.model.fit(X, y, eta=self.lr)
+    def fit_binary(self, X, y, theta=None):
+        if self.need_one_vs_rest == False:
+            theta = self.model.theta
+        self.model.theta = self.model.fit(X, y, theta, eta=self.lr)
         self.model.theta = list(self.model.theta)
         return self.model.theta
+
+    def one_vs_rest(self, X, y ,k):
+        all_theta = []
+        for i in range(0, k):
+            y_i = np.array([1 if label == i else 0 for label in y])
+            theta = self.fit_binary(X, y_i, self.model.one_vs_rest_theta[i])
+            all_theta.append(list(theta))
+        return all_theta
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
         """
@@ -143,11 +134,13 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'lr': 0.05,
-        'batch_size': 500
+        'batch_size': 100,
+        'need_one_vs_rest': True
     }
 
 
-    x, label = data_process()
+    x, label = data_binary()
+    # x, label = data_iris()
     x = LRModel.normalization(x)
     count_train = x.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
@@ -168,6 +161,7 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
             guest_param = client_guest.fit_binary(batch_x, batch_y)
+            # guest_param = client_guest.one_vs_rest(batch_x, batch_y, 3)
             proxy_client_arbiter.Remote(guest_param, "guest_param")
             client_guest.model.theta = proxy_server.Get("global_guest_model_param")
             logger.info("batch=%s done" % j)

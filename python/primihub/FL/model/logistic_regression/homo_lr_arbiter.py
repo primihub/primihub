@@ -8,6 +8,7 @@ import pandas as pd
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
+from sklearn.datasets import load_iris
 
 path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
@@ -24,7 +25,7 @@ def get_logger(name):
 logger = get_logger("Homo_LR_Arbiter")
 
 
-def data_process():
+def data_binary():
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
@@ -36,6 +37,13 @@ def data_process():
             yy[i] = 1
     X1 = X1.iloc[:, :-1]
     return X1, yy
+
+
+def iris_data():
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+    return X, y
 
 
 class Arbiter:
@@ -87,15 +95,28 @@ class Arbiter:
             prob = self.sigmoid(data.dot(self.theta))
             return prob
 
-    def predict(self, prob):
+    def predict_binary(self, prob):
         return np.array(prob > 0.5, dtype='int')
 
+    def predict_one_vs_rest(self, data):
+        data = np.hstack([np.ones((len(data), 1)), data])
+        if self.need_encrypt:
+            global_theta = self.decrypt_matrix(self.theta)
+            global_theta = np.array(global_theta)
+        else:
+            global_theta = np.array(self.theta)
+        pre = self.sigmoid(data.dot(global_theta.T))
+        y_argmax = np.argmax(pre, axis=1)
+        return y_argmax
+
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
-        agg_param = np.zeros(len(host_parm))
         param = []
         weight_all = []
         if self.need_encrypt == True:
-            param.append(self.decrypt_vector(host_parm))
+            if self.need_one_vs_rest == False:
+                param.append(self.decrypt_vector(host_parm))
+            else:
+                param.append(self.decrypt_matrix(host_parm))
             weight_all.append(self.decrypt_vector(host_data_weight)[0])
         else:
             param.append(host_parm)
@@ -103,12 +124,23 @@ class Arbiter:
         param.append(guest_param)
         weight_all.append(guest_data_weight)
         weight = np.array([weight * 1.0 for weight in weight_all])
-        for id_c, p in enumerate(param):
-            w = weight[id_c] / np.sum(weight, axis=0)
-            for id_d, d in enumerate(p):
-                agg_param[id_d] += d * w
-        self.theta = agg_param
-        return list(self.theta)
+        if self.need_one_vs_rest == True:
+            agg_param = np.zeros_like(np.array(param))
+            for id_c, p in enumerate(param):
+                w = weight[id_c] / np.sum(weight, axis=0)
+                for id_d, d in enumerate(p):
+                    d = np.array(d)
+                    agg_param[id_c, id_d] += d * w
+            self.theta = np.sum(agg_param, axis=0)
+            return list(self.theta)
+        else:
+            agg_param = np.zeros(len(host_parm))
+            for id_c, p in enumerate(param):
+                w = weight[id_c] / np.sum(weight, axis=0)
+                for id_d, d in enumerate(p):
+                    agg_param[id_d] += d * w
+            self.theta = agg_param
+            return list(self.theta)
 
     def broadcast_global_model_param(self, host_param, guest_param, host_data_weight, guest_data_weight):
         self.theta = self.model_aggregate(host_param, guest_param, host_data_weight, guest_data_weight)
@@ -116,32 +148,31 @@ class Arbiter:
         self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
         # send host ciphertext
         if self.need_encrypt == True:
-            self.theta = self.encrypt_vector(self.theta)
+            if self.need_one_vs_rest == False:
+                self.theta = self.encrypt_vector(self.theta)
+            else:
+                self.theta = self.encrypt_matrix(self.theta)
             self.proxy_client_host.Remote(self.theta, "global_host_model_param")
         else:
             self.proxy_client_host.Remote(self.theta, "global_host_model_param")
 
-    def evaluation(self, y_true, y_pre_prob):
-        res = Classification_eva.get_result(y_true, y_pre_prob)
-        return res
-
     def decrypt_vector(self, x):
         return [self.private_key.decrypt(i) for i in x]
 
-    # def decrypt_matrix(self, x):
-    #     ret = []
-    #     for r in x:
-    #         ret.append(self.decrypt_vector(self.private_key, r))
-    #     return ret
+    def decrypt_matrix(self, x):
+        ret = []
+        for r in x:
+            ret.append(self.decrypt_vector(r))
+        return ret
 
     def encrypt_vector(self, x):
         return [self.public_key.encrypt(i) for i in x]
 
-    # def encrypt_matrix(self, x):
-    #     ret = []
-    #     for r in x:
-    #         ret.append(self.encrypt_vector(self.public_key, r))
-    #     return ret
+    def encrypt_matrix(self, x):
+        ret = []
+        for r in x:
+            ret.append(self.encrypt_vector(r))
+        return ret
 
 
 def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
@@ -181,12 +212,14 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
 
     config = {
         'epochs': 1,
-        'batch_size': 500
+        'batch_size': 100,
+        'need_one_vs_rest': True
     }
     client_arbiter = Arbiter(proxy_server, proxy_client_host, proxy_client_guest)
+    client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
     need_encrypt = proxy_server.Get("need_encrypt")
 
-    if need_encrypt == True:
+    if need_encrypt == 'no':
         client_arbiter.broadcast_key()
 
     batch_num = proxy_server.Get("batch_num")
@@ -203,14 +236,14 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
             logger.info("batch={} done".format(j))
         logger.info("epoch={} done".format(i))
 
-    logger.info("####### start predict ######")
-    X, y = data_process()
+    logger.info("####### binary classification start predict ######")
+    X, y = data_binary()
     X = LRModel.normalization(X)
     y = list(y)
     prob = client_arbiter.predict_prob(X)
     logger.info('Classification probability is:')
     logger.info(prob)
-    predict = list(client_arbiter.predict(prob))
+    predict = list(client_arbiter.predict_binary(prob))
     logger.info('Classification result is:')
     logger.info(predict)
     count = 0
@@ -220,3 +253,14 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     logger.info('acc is: %s' % (count / (len(y))))
     logger.info("All process done.")
     proxy_server.StopRecvLoop()
+
+    # logger.info("####### multi classification start predict ######")
+    # X, y = iris_data()
+    # X = LRModel.normalization(X)
+    # pre = client_arbiter.predict_one_vs_rest(X)
+    # logger.info('Classification result is:')
+    # logger.info(pre)
+    # acc = np.mean(y == pre)
+    # logger.info('acc is: %s' % acc)
+    # logger.info("All process done.")
+    # proxy_server.StopRecvLoop()
