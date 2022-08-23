@@ -108,6 +108,12 @@ class Arbiter:
         y_argmax = np.argmax(pre, axis=1)
         return y_argmax
 
+    def predict(self, data, category):
+        if category == 2:
+            return self.predict_binary(self.predict_prob(data))
+        else:
+            return self.predict_one_vs_rest(data)
+
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         param = []
         weight_all = []
@@ -212,7 +218,8 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'batch_size': 100,
-        'need_one_vs_rest': True
+        'need_one_vs_rest': True,
+        'category': 3
     }
     client_arbiter = Arbiter(proxy_server, proxy_client_host, proxy_client_guest)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
@@ -236,30 +243,11 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
             logger.info("batch={} done".format(j))
         logger.info("epoch={} done".format(i))
 
-    # logger.info("####### binary classification start predict ######")
-    # X, y = data_binary()
-    # X = LRModel.normalization(X)
-    # y = list(y)
-    # prob = client_arbiter.predict_prob(X)
-    # logger.info('Classification probability is:')
-    # logger.info(prob)
-    # predict = list(client_arbiter.predict_binary(prob))
-    # logger.info('Classification result is:')
-    # logger.info(predict)
-    # count = 0
-    # for i in range(len(y)):
-    #     if y[i] == predict[i]:
-    #         count += 1
-    # logger.info('acc is: %s' % (count / (len(y))))
-    # logger.info("All process done.")
-    # proxy_server.StopRecvLoop()
-
-    logger.info("####### multi classification start predict ######")
+    logger.info("####### start predict ######")
     X, y = iris_data()
     X = LRModel.normalization(X)
-    pre = client_arbiter.predict_one_vs_rest(X)
+    pre = client_arbiter.predict(X, config['category'])
     logger.info('Classification result is:')
-    logger.info(pre)
     acc = np.mean(y == pre)
     logger.info('acc is: %s' % acc)
     logger.info("All process done.")

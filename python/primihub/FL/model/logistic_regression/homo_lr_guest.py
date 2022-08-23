@@ -36,11 +36,13 @@ def data_binary():
     X1 = X1.iloc[:, :-1]
     return X1, yy
 
+
 def data_iris():
     iris = load_iris()
     X = iris.data
     y = iris.target
     return X, y
+
 
 class Guest:
     def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
@@ -69,13 +71,19 @@ class Guest:
         self.model.theta = list(self.model.theta)
         return self.model.theta
 
-    def one_vs_rest(self, X, y ,k):
+    def one_vs_rest(self, X, y, k):
         all_theta = []
         for i in range(0, k):
             y_i = np.array([1 if label == i else 0 for label in y])
             theta = self.fit_binary(X, y_i, self.model.one_vs_rest_theta[i])
             all_theta.append(list(theta))
         return all_theta
+
+    def fit(self, X, y, category):
+        if category == 2:
+            return self.fit_binary(X, y)
+        else:
+            return self.one_vs_rest(X, y, category)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
         """
@@ -103,7 +111,6 @@ class Guest:
             end = start + batch_size
             batch_count += 1
             yield [d[start: end] for d in all_data]
-
 
 
 def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
@@ -134,10 +141,10 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'lr': 0.05,
-        'batch_size': 500,
-        'need_one_vs_rest': True
+        'batch_size': 100,
+        'need_one_vs_rest': True,
+        'category': 3
     }
-
 
     # x, label = data_binary()
     x, label = data_iris()
@@ -148,7 +155,7 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
     guest_data_weight = config['batch_size']
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
     client_guest = Guest(x, label, config, proxy_server,
-                          proxy_client_arbiter)
+                         proxy_client_arbiter)
 
     batch_gen_guest = client_guest.batch_generator(
         [x, label], config['batch_size'], False)
@@ -160,13 +167,10 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
             batch_x, batch_y = next(batch_gen_guest)
             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
-            # guest_param = client_guest.fit_binary(batch_x, batch_y)
-            guest_param = client_guest.one_vs_rest(batch_x, batch_y, 3)
+            guest_param = client_guest.fit(batch_x, batch_y, config['category'])
             proxy_client_arbiter.Remote(guest_param, "guest_param")
             client_guest.model.theta = proxy_server.Get("global_guest_model_param")
             logger.info("batch=%s done" % j)
         logger.info("epoch=%i done" % i)
     logger.info("guest training process done.")
-
-
     proxy_server.StopRecvLoop()

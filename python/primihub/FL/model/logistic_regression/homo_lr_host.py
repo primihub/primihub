@@ -104,6 +104,12 @@ class Host:
             all_theta.append(theta)
         return all_theta
 
+    def fit(self, X, y, category):
+        if category == 2:
+            return self.fit_binary(X, y)
+        else:
+            return self.one_vs_rest(X, y, category)
+
     def batch_generator(self, all_data, batch_size, shuffle=True):
 
         """
@@ -164,9 +170,10 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'lr': 0.05,
-        'batch_size': 500,
+        'batch_size': 100,
         'need_encrypt': 'YES',
-        'need_one_vs_rest': True
+        'need_one_vs_rest': True,
+        'category': 3
     }
     # x, label = data_binary()
     x, label = data_iris()
@@ -192,8 +199,7 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
             batch_host_x, batch_host_y = next(batch_gen_host)
             logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
-            # host_param = client_host.fit_binary(batch_host_x, batch_host_y)
-            host_param = client_host.one_vs_rest(batch_host_x, batch_host_y, 3)
+            host_param = client_host.fit(batch_host_x, batch_host_y, config['category'])
             proxy_client_arbiter.Remote(host_param, "host_param")
             client_host.model.theta = proxy_server.Get("global_host_model_param")
             logger.info("batch=%s done" % j)
