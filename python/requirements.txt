@@ -15,4 +15,4 @@ pydantic
 sphinx
 scikit-learn==1.1.1
 
-gevent
+loguru

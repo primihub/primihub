@@ -3,7 +3,7 @@ import asyncio
 import threading
 from asyncio import ensure_future, coroutines
 from typing import Any, Union, Coroutine, Callable, Generator, TypeVar, \
-                   Awaitable
+    Awaitable
 from asyncio.events import AbstractEventLoop
 
 

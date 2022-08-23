@@ -13,24 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import os
 import asyncio
-import random
 import sys
 import socket
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from primihub import context, dataset
-from primihub.client.ph_grpc.event import listener
 from primihub.client.ph_grpc.task import Task
 from primihub.client.ph_grpc.grpc_client import GrpcClient
-from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT
+from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.client.visitor import Visitor
 from primihub.utils.async_util import fire_coroutine_threadsafe
 from primihub.dataset.dataset_cli import DatasetClientFactory
+from primihub.utils.logger_util import logger
 
 import primihub as ph
-notify_channel_connected = False
+# notify_channel_connected = False
+
+
+# @listener.on_event("/0/")
+# def node_event_handler(event: Event):
+#     global notify_channel_connected
+#     notify_channel_connected = True
+#     logger.debug("...node_event_handler: %s" % event)
 
 
 def get_host_ip():
@@ -66,7 +72,8 @@ class PrimihubClient(object):
             PrimihubClient.__first_init = True
 
         self.visitor = Visitor()
-        self.client_id = str(uuid.uuid1().hex)  # TODO
+        self.client_id = "client:" + \
+            uuid.uuid3(uuid.NAMESPACE_DNS, 'python.org').hex
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
 
@@ -78,9 +85,17 @@ class PrimihubClient(object):
         self.executor = ThreadPoolExecutor(**executor_opts)
         self.loop.set_default_executor(self.executor)
 
+        def exception_handler(loop, context):
+            logger.error(context)
+            logger.error("An error occurred and the client was about to exit.")
+            loop.stop()
+        self.loop.set_exception_handler(exception_handler)
+
         # Storage
         self.tasks_map = {}  # Primihub task map task_id: Task
         self._pending_task = []  # pending asyncio task
+
+        self.notify_channel_connected = False
 
     def init(self, config):
         """Client Initialization.
@@ -91,8 +106,8 @@ class PrimihubClient(object):
         >>> from primihub.client import primihub_cli as cli
         >>> cli.init(config={"node": "node_address", "cert": "cert_file_path"})
         """
-        print("*** cli init ***")
-        print(config)
+        logger.info("*** cli init ***")
+        logger.debug(config)
         node = config.get("node", None)
         notify_node = config.get("node", None).split(":")[0] + ":6666"
         cert = config.get("cert", None)
@@ -101,7 +116,7 @@ class PrimihubClient(object):
         self.grpc_client = GrpcClient(node, cert)
         self.notify_grpc_client = NodeServiceClient(notify_node, cert)
         # NOTE create when recevie NodeContext in NodeService
-        self.dataset_client = DatasetClientFactory.create(node, cert)
+        self.dataset_client = DatasetClientFactory.create("flight", node, cert)
 
         self.code = self.visitor.visit_file()  # get client code str
         """
@@ -109,26 +124,42 @@ class PrimihubClient(object):
         1. 发送ClientContext给Node，接收NodeContext
         2. 收到NodeContext后，根据配置的数据通道和通知通道建立连接（暂时用当前默认的这个grpc连接）
         """
-        print("-------create task: async notify-----------")
+        logger.info("-------create task: async notify-----------")
         # listener.on_event("/0/")(self.node_event_handler(event=None))  # regist event handler
 
         notify_request = self.notify_grpc_client.client_context(
             self.client_id, self.client_ip, self.client_port)
 
-        fire_coroutine_threadsafe(
-            self.notify_grpc_client.async_get_node_event(notify_request), self.loop)
+        try:
+            fire_coroutine_threadsafe(
+                self.notify_grpc_client.async_get_node_event(notify_request), self.loop)
+        except Exception as e:
+            logger.error(str(e))
 
     def start(self):
         """Client Start.
         """
-        print("*** cli start ***")
+        logger.info("*** cli start ***")
         try:
             self.loop.run_forever()
+        except (KeyboardInterrupt, SystemExit) as e:
+            logger.debug(str(e))
+            self.exit()
         except Exception as e:
-            print(str(e))
+            logger.debug(str(e))
+            self.exit()
 
-            self.loop.stop()
-        # TODO try exception
+    def stop(self):
+        """CLient Stop
+        """
+        logger.info("*** cli stop ***")
+        self.loop.stop()
+
+    def exit(self):
+        """Client exit
+        """
+        self.stop()
+        sys.exit()
 
     async def submit_task(self, job_id, client_id, *args):
         """Send local functions and parameters to the remote side
@@ -138,61 +169,62 @@ class PrimihubClient(object):
         :param client_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
-        task = Task(task_id=uuid.uuid1().hex, primihub_client=self)
+        task = Task(task_id="task:"+uuid.uuid5(uuid.NAMESPACE_DNS, 'python.org').hex, primihub_client=self)
         task_id = task.task_id
         self.tasks_map[task_id] = task
 
-        # while self.notify_channel_connected is False:
-        #     print("----- waiting notify channel connected...")
-        #     await asyncio.sleep(5e-2)  # 50ms
+        n = 0
+        while self.notify_channel_connected is False:
+            n += 1
+            logger.debug(
+                "----- waiting notify channel connected {}".format("▒" * int(n)))
+            logger.debug(n)
+            await asyncio.sleep(n)  # 50ms
 
         func_params_map = ph.context.Context.func_params_map
-        print("/,./.,/.")
-        print(func_params_map)
+        logger.debug(func_params_map)
         for arg in args:
             func = arg[0]
             params = arg[1:]
             func_params_map[func.__name__] = params
 
         self.code = self.visitor.trans_remote_execute(self.code)
-        print("* - * " * 20)
-        print(self.code)
-        print("* - * " * 20)
+        logger.debug("╔═" + "=" * 60 + "═╗")
+        logger.debug(self.code)
+        logger.debug("╚═" + "=" * 60 + "═╝")
         ph_context_str = "ph.context.Context.func_params_map = %s" % func_params_map
         self.code += "\n"
         self.code += ph_context_str
-        print("-*-" * 30)
-        print("Have a cup of coffee, it will take a lot of time here.")
-        print("-*-" * 30)
-        res = await self.grpc_client.submit_task(self.code, job_id=job_id, task_id=task_id, submit_client_id=client_id)
-        return res
-
-    # TODO NodeEvent Handler
-
-    # @listener.on_event("%s" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_NODE_CONTEXT])
-    def node_event_handler(self, event):
-        # self.notify_channel_connected = True
-        self.notify_channel_connected = True
-        print("...node_event_handler: %s" % event)
+        logger.info("-*-" * 25)
+        logger.info("Have a cup of coffee, it will take a lot of time here.")
+        logger.info("-*-" * 25)
+        try:
+            await self.grpc_client.submit_task(self.code, job_id=job_id, task_id=task_id, submit_client_id=client_id)
+        except asyncio.CancelledError:
+            logger.error("cancel the future.")
+        except Exception as e:
+            logger.error(str(e))
+            self.exit()
 
     def async_remote_execute(self, *args) -> None:
-        job_id = uuid.uuid1().hex
+        job_id = "job:" + uuid.uuid1().hex
         # task_id = uuid.uuid1().hex
         client_id = self.client_id
-        print("------- create task: async submit task -----------")
-        print("job_id: {}, type: {}".format(job_id, type(job_id)))
-        # print("task_id_id: {}, type: {}".format(task_id, type(task_id)))
-        print("client_id: {}, type: {}".format(client_id, type(client_id)))
+        logger.debug("------- create task: async submit task -----------")
+        logger.debug("job_id: {}, type: {}".format(job_id, type(job_id)))
+        # logger.debug("task_id_id: {}, type: {}".format(task_id, type(task_id)))
+        logger.debug("client_id: {}, type: {}".format(
+            client_id, type(client_id)))
 
-        print("------- async run submit task -----------")
+        logger.debug("------- async run submit task -----------")
         try:
             fire_coroutine_threadsafe(self.submit_task(
                 job_id, client_id, *args), self.loop)
         except Exception as e:
-            print(str(e))
+            logger.debug(str(e))
         # self.loop.call_soon_threadsafe(self.submit_task_task)
         # self.loop.run_until_complete(asyncio.wait(tasks))
 
     async def get(self, ref_ret):
-        print("........%s >>>>>>>", ref_ret)
+        logger.debug("........%s >>>>>>>", ref_ret)
         pass

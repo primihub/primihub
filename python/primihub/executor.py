@@ -14,13 +14,11 @@
  limitations under the License.
  """
 
-import sys
-import os
 import traceback
-# from dill import loads
 from cloudpickle import loads
 from primihub.context import Context
-from multiprocessing import Process
+
+from primihub.utils.logger_util import logger
 
 shared_globals = dict()
 shared_globals['context'] = Context
@@ -58,35 +56,35 @@ class Executor:
         try:
             loads(Context.nodes_context[role].dumps_func)()
         except Exception as e:
-            print(e)
+            logger.error(str(e))
             raise e
 
     @staticmethod
     @timeout(60 * 60, _handle_timeout)  # TODO TIMEOUT 60 * 60
     def execute_py(dumps_func):
-        print("execute oy code.")
+        logger.info("execute py code.")
         func_name = loads(dumps_func).__name__
-        print("func name: ", func_name)
+        logger.debug("func name: ", func_name)
         func_params = Context.get_func_params_map().get(func_name, None)
         func = loads(dumps_func)
-        print("func params: ", func_params)
+        logger.debug("func params: ", func_params)
         if not func_params:
             try:
-                print("start execute")
+                logger.debug("start execute")
                 func()
-                print("end execute")
+                logger.debug("end execute")
             except Exception as e:
-                print("Exception: ", str(e))
+                logger.error("Exception: ", str(e))
                 traceback.print_exc()
             finally:
                 ...
         else:
             try:
-                print("start execute with params")
+                logger.debug("start execute with params")
                 func(*func_params)
-                print("end execute with params")
+                logger.debug("end execute with params")
             except Exception as e:
-                print("Exception: ", str(e))
+                logger.error("Exception: ", str(e))
                 traceback.print_exc()
             finally:
                 ...

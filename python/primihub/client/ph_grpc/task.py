@@ -13,9 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-from primihub.client.ph_grpc.service import NodeServiceClient, NODE_EVENT_TYPE, NODE_EVENT_TYPE_TASK_STATUS, \
-    NODE_EVENT_TYPE_TASK_RESULT
+from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.utils.async_util import fire_coroutine_threadsafe
+from primihub.utils.logger_util import logger
 
 
 class Task(object):
@@ -24,18 +24,35 @@ class Task(object):
         self.task_id = task_id
         self.task_status = "PENDING"  # PENDING, RUNNING, SUCCESS, FAILED
         self.node_grpc_connections = []
-        # from primihub.client import primihub_cli as cli
         self.cli = primihub_client
         self.loop = self.cli.loop
 
-    def get_status(self):
-        pass
+    def set_task_status(self, status):
+        logger.debug("set task status: {}".format(status))
+        if self.task_status != status:
+            self.task_status = status
+        if self.task_status == "SUCCESS" or self.task_status == "FAILED":
+            self.exit()
+
+    def exit(self):
+        try:
+            self.cli.tasks_map.pop(self.task_id)
+        except Exception as e:
+            logger.error(str(e))
+        if self.cli.tasks_map is None:
+            logger.info("All tasks are over and the client is about to exit.")
+            self.cli.exit()
+
+    def get_task_status(self):
+        return self.task_status
 
     def get_result(self):
         pass
 
     def get_node_event(self, node, cert):
         # # get node event from other nodes
+        logger.debug(node)
+        logger.debug("get node event from: {}".format(node))
         worker_node_grpc_client = NodeServiceClient(node, cert)
         self.node_grpc_connections.append(worker_node_grpc_client)
         notify_request = worker_node_grpc_client.client_context(

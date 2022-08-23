@@ -16,7 +16,7 @@
 import random
 
 from primihub.client.ph_grpc.event import listener
-from primihub.client.ph_grpc.task import NODE_EVENT_TYPE
+# from primihub.client.ph_grpc.task import NODE_EVENT_TYPE
 from primihub.client.ph_grpc.worker import WorkerClient
 
 from primihub.utils.protobuf_to_dict import protobuf_to_dict

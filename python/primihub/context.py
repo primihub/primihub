@@ -2,6 +2,7 @@ import functools
 import os
 from typing import Callable
 from cloudpickle import dumps
+from primihub.utils.logger_util import logger
 
 
 class NodeContext:

@@ -25,6 +25,8 @@
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
 
+#include <arrow/ipc/json_simple.h>
+
 using namespace std::chrono_literals;
 
 namespace primihub::service {
@@ -182,7 +184,7 @@ namespace primihub::service {
                 continue;
             }
 
-            meta.setDataURL(nodelet_addr_ + ":" +dataset_path);
+            meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
             // Publish dataset meta on libp2p network.
             metaService_->putMeta(meta);
         }
@@ -340,24 +342,92 @@ namespace primihub::service {
 
 
 ////////////////Flight Server ///////
+// std::shared_ptr<arrow::Array> ArrayFromJSON(const std::shared_ptr<arrow::DataType>& type,
+//                                      arrow::util::string_view json) {
+//   std::shared_ptr<arrow::Array> out;
+//   arrow::ipc::internal::json::ArrayFromJSON(type, json, &out);
+//   return out;
+// }
+
+
+
+// std::shared_ptr<arrow::RecordBatch> RecordBatchFromJSON(const std::shared_ptr<arrow::Schema>& schema,
+//                                                  arrow::util::string_view json) {
+//   // Parse as a StructArray
+//   auto struct_type = arrow::struct_(schema->fields());
+//   std::shared_ptr<arrow::Array> struct_array = ArrayFromJSON(struct_type, json);
+
+//   // Convert StructArray to RecordBatch
+//   return *arrow::RecordBatch::FromStructArray(struct_array);
+// }
+
+
+// std::shared_ptr<arrow::Table> TableFromJSON(const std::shared_ptr<arrow::Schema>& schema,
+//                                      const std::vector<std::string>& json) {
+//   std::vector<std::shared_ptr<arrow::RecordBatch>> batches;
+//   for (const std::string& batch_json : json) {
+//     batches.push_back(RecordBatchFromJSON(schema, batch_json));
+//   }
+//   return *arrow::Table::FromRecordBatches(schema, std::move(batches));
+// }
 
 arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallContext &context, 
                             const arrow::flight::Ticket &request,
                             std::unique_ptr<FlightDataStream> *data_stream)  {
+            // NOTE fligth ticket format : fligt.{dataset_id_str}
             DatasetId id(request.ticket);
             std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService_->getLocalMeta(id);
             if (meta == nullptr) {
-                return arrow::Status::KeyError("Could not find flight.",  request.ticket); // NOTE path is dataset description
+                LOG(WARNING) << "Could not find flight ticket: " << request.ticket;
+                return arrow::Status::KeyError("Could not find flight ticket: ",  request.ticket); // NOTE path is dataset description
             }
             // read dataset from local driver
             auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
-            auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
+            
+            std::string node_id, node_ip, dataset_path;
+            int node_port;
+            std::string data_url = meta->getDataURL();
+            LOG(INFO) << "DoGet dataset url:" << data_url;
+            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+            LOG(INFO) << "DoGet dataset path:" << dataset_path;
+            auto cursor = driver->read(dataset_path);  // TODO only support Local file path now.
             auto dataset = cursor->read();
+            LOG(INFO) << "DoGet dataset read done 1";
 
-            *data_stream = std::unique_ptr<FlightDataStream>(
-                new NumberingStream(std::unique_ptr<FlightDataStream>(
-                    new arrow::flight::RecordBatchStream(std::shared_ptr<arrow::RecordBatchReader>(
-                        new arrow::TableBatchReader(*(std::get<0>(dataset->data).get())))))));
+
+            // /// TEST 
+
+            // //  auto table = TableFromJSON(arrow::schema({field("x", arrow::utf8())}),
+            // //                  {
+            // //                      R"([{"x": "a"}])",
+            // //                      R"([{"x": "b"}, {"x": "b"}])",
+            // //                      R"([{"x": "c"}, {"x": "c"}, {"x": "c"}])",
+            // //                      R"([{"x": "a"}, {"x": "b"}, {"x": "c"}, {"x": "d"}])",
+            // //                  });
+
+            // std::shared_ptr<arrow::RecordBatchReader> batch_reader = 
+            //                 // std::make_shared<arrow::TableBatchReader>(*table);
+            //                 std::make_shared<arrow::TableBatchReader>(*std::get<0>(dataset->data));
+            // // std::shared_ptr<arrow::RecordBatch> batch;
+            // // batch_reader->ReadNext(&batch);
+
+            // LOG(INFO) << "DoGet dataset read done 2";
+            // *data_stream = std::unique_ptr<FlightDataStream>( new NumberingStream(
+            //     std::unique_ptr<FlightDataStream>(new arrow::flight::RecordBatchStream(batch_reader))));
+
+            // NOTE that we can't directly pass TableBatchReader to
+            // RecordBatchStream because TableBatchReader keeps a non-owning
+            // reference to the underlying Table, which would then get freed
+            // when we exit this function
+            auto table = std::get<0>(dataset->data);
+            std::vector<std::shared_ptr<arrow::RecordBatch>> batches;
+            arrow::TableBatchReader batch_reader(*table);
+            ARROW_ASSIGN_OR_RAISE(batches, batch_reader.ToRecordBatches());
+
+            ARROW_ASSIGN_OR_RAISE(auto owning_reader, arrow::RecordBatchReader::Make(
+                                                  std::move(batches), table->schema()));
+            *stream = std::unique_ptr<arrow::flight::FlightDataStream>(
+                     new arrow::flight::RecordBatchStream(owning_reader));
 
             return arrow::Status::OK();
         }
