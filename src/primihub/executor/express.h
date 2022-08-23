@@ -40,6 +40,7 @@ public:
   FeedDict(ColumnConfig *col_config, bool float_run) {
     col_config_ = col_config;
     float_run_ = float_run;
+    val_count_ = -1;
   }
 
   ~FeedDict();
@@ -54,10 +55,16 @@ public:
   int getColumnValues(const std::string &col_name,
                       std::vector<double> **col_vec);
 
+  uint32_t getColumnValuesCount(void) {
+    return static_cast<uint32_t>(val_count_);
+  }
+
 private:
   int checkLocalColumn(const std::string &col_name);
+  int setOrCheckValueCount(int64_t new_count);
 
   bool float_run_;
+  int64_t val_count_;
   std::map<std::string, std::vector<double>> fp64_col_;
   std::map<std::string, std::vector<int64_t>> int64_col_;
   ColumnConfig *col_config_;

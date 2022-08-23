@@ -136,6 +136,16 @@ int FeedDict::checkLocalColumn(const std::string &col_name) {
     return 0;
 }
 
+int FeedDict::setOrCheckValueCount(int64_t new_count) {
+  if (val_count_ == -1)
+    val_count_ = new_count;
+
+  if (val_count_ != new_count)
+    return -1;
+
+  return 0;
+}
+
 int FeedDict::importColumnValues(const std::string &col_name,
                                  std::vector<int64_t> &int64_vec) {
   {
@@ -162,6 +172,13 @@ int FeedDict::importColumnValues(const std::string &col_name,
   if (dtype != ColumnConfig::ColDtype::INT64) {
     LOG(ERROR) << "Try to import column values type of which is I64, but type "
                   "of it is FP64 in column config.";
+    return -2;
+  }
+
+  if (setOrCheckValueCount(static_cast<int64_t>(int64_vec.size()))) {
+    LOG(ERROR) << "Column " << col_name << " has " << int64_vec.size()
+               << " value, but column imported before has " << val_count_
+               << " value.";
     return -2;
   }
 
@@ -207,6 +224,13 @@ int FeedDict::importColumnValues(const std::string &col_name,
     }
   }
 
+  if (setOrCheckValueCount(static_cast<int64_t>(fp64_vec.size()))) {
+    LOG(ERROR) << "Column " << col_name << " has " << fp64_vec.size()
+               << " value, but column imported before has " << val_count_
+               << " value.";
+    return -2;
+  }
+
   if (float_run_ == false) {
     LOG(ERROR) << "Current run mode is int64, but import values type of which "
                   "is fp64. This should be a bug, fix it.";
@@ -239,9 +263,9 @@ int FeedDict::getColumnValues(const std::string &col_name,
   }
 
   if (float_run_ == true) {
-      LOG(ERROR) << "Current run mode is FP64 but want to get I64 values.";
-      return -1;
-    }
+    LOG(ERROR) << "Current run mode is FP64 but want to get I64 values.";
+    return -1;
+  }
 
   auto iter = int64_col_.find(col_name);
   if (iter == int64_col_.end()) {
@@ -629,7 +653,7 @@ void MPCExpressExecutor::createFP64Shares(TokenValue &val1, TokenValue &val2,
     mpc_op_->createShares<D>(sh_val2);
   } else {
     eMatrix<double> m;
-    constructFP64Matrix(val1, m);
+    constructFP64Matrix(val2, m);
     mpc_op_->createShares<D>(m, sh_val2);
   }
 
@@ -681,7 +705,9 @@ void MPCExpressExecutor::runMPCAdd(const std::string &token1,
   createTokenValue(token1, val1);
   createTokenValue(token2, val2);
 
-  sf64Matrix<D> sh_val1, sh_val2;
+  sf64Matrix<D> sh_val1(feed_dict_->getColumnValuesCount(), 1);
+  sf64Matrix<D> sh_val2(feed_dict_->getColumnValuesCount(), 1);
+
   createFP64Shares(val1, val2, sh_val1, sh_val2);
 
   std::vector<sf64Matrix<D>> sh_val_vec;
@@ -698,7 +724,9 @@ void MPCExpressExecutor::runMPCAdd(const std::string &token1,
   createTokenValue(token1, val1);
   createTokenValue(token2, val2);
 
-  si64Matrix sh_val1, sh_val2;
+  si64Matrix sh_val1(feed_dict_->getColumnValuesCount(), 1);
+  si64Matrix sh_val2(feed_dict_->getColumnValuesCount(), 1);
+
   createI64Shares(val1, val2, sh_val1, sh_val2);
 
   std::vector<si64Matrix> sh_val_vec;
