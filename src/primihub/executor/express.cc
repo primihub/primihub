@@ -600,23 +600,14 @@ void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
   return;
 }
 
-void MPCExpressExecutor::createI64Shares(TokenValue &val1, TokenValue &val2,
-                                         si64Matrix &sh_val1,
-                                         si64Matrix &sh_val2) {
-  if (val1.type == 4) {
-    mpc_op_->createShares(sh_val1);
+void MPCExpressExecutor::createI64Shares(TokenValue &val,
+                                         si64Matrix &sh_val) {
+  if (val.type == 4) {
+    mpc_op_->createShares(sh_val);
   } else {
     i64Matrix m;
-    constructI64Matrix(val1, m);
-    mpc_op_->createShares(m, sh_val1);
-  }
-
-  if (val2.type == 4) {
-    mpc_op_->createShares(sh_val2);
-  } else {
-    i64Matrix m;
-    constructI64Matrix(val2, m);
-    mpc_op_->createShares(m, sh_val2);
+    constructI64Matrix(val, m);
+    mpc_op_->createShares(m, sh_val);
   }
 
   return;
@@ -638,26 +629,27 @@ void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
   return;
 }
 
-void MPCExpressExecutor::createFP64Shares(TokenValue &val1, TokenValue &val2,
-                                          sf64Matrix<D> &sh_val1,
-                                          sf64Matrix<D> &sh_val2) {
-  if (val1.type == 4) {
-    mpc_op_->createShares<D>(sh_val1);
+void MPCExpressExecutor::createFP64Shares(TokenValue &val,
+                                          sf64Matrix<D> &sh_val) {
+  if (val.type == 4) {
+    mpc_op_->createShares<D>(sh_val);
   } else {
     eMatrix<double> m;
-    constructFP64Matrix(val1, m);
-    mpc_op_->createShares<D>(m, sh_val1);
-  }
-
-  if (val2.type == 4) {
-    mpc_op_->createShares<D>(sh_val2);
-  } else {
-    eMatrix<double> m;
-    constructFP64Matrix(val2, m);
-    mpc_op_->createShares<D>(m, sh_val2);
+    constructFP64Matrix(val, m);
+    mpc_op_->createShares<D>(m, sh_val);
   }
 
   return;
+}
+
+void MPCExpressExecutor::createTokenValue(sf64Matrix<D> *m, TokenValue &v,
+                                          bool is_fp64) {
+  v.val_union.sh_fp64_m = m;
+
+  if (is_fp64)
+    v.type = 5;
+  else
+    v.type = 6;
 }
 
 void MPCExpressExecutor::createTokenValue(const std::string &token,
@@ -698,67 +690,76 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
           << token_val.TypeToString() << "'.";
 }
 
-void MPCExpressExecutor::runMPCAdd(const std::string &token1,
-                                   const std::string &token2,
-                                   sf64Matrix<D> &sh_res) {
-  TokenValue val1, val2;
-  createTokenValue(token1, val1);
-  createTokenValue(token2, val2);
+void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
+                                       TokenValue &res) {
+  sf64Matrix<D> *p_sh_val1 = nullptr;
+  sf64Matrix<D> *p_sh_val2 = nullptr;
 
-  sf64Matrix<D> sh_val1(feed_dict_->getColumnValuesCount(), 1);
-  sf64Matrix<D> sh_val2(feed_dict_->getColumnValuesCount(), 1);
+  uint32_t val_count = feed_dict_->getColumnValuesCount();
 
-  createFP64Shares(val1, val2, sh_val1, sh_val2);
+  if (val1.type == 0 || val1.type == 4) {
+    p_sh_val1 = new sf64Matrix<D>(val_count, 1);
+    createFP64Shares(val1, *p_sh_val1);
+  } else { 
+    p_sh_val1 = val1.val_union.sh_fp64_m;
+  }
+
+  if (val2.type == 0 || val1.type == 4) {
+    p_sh_val2 = new sf64Matrix<D>(val_count, 1);
+    createFP64Shares(val2, *p_sh_val2);
+  } else {
+    p_sh_val2 = val2.val_union.sh_fp64_m;
+  }
 
   std::vector<sf64Matrix<D>> sh_val_vec;
-  sh_val_vec.emplace_back(sh_val1);
-  sh_val_vec.emplace_back(sh_val2);
+  sh_val_vec.push_back(*p_sh_val1);
+  sh_val_vec.push_back(*p_sh_val2);
 
-  sh_res = mpc_op_->MPC_Add(sh_val_vec);
+  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  *sh_res = mpc_op_->MPC_Add(sh_val_vec);
+
+  createTokenValue(sh_res, res, true);
 }
 
-void MPCExpressExecutor::runMPCAdd(const std::string &token1,
-                                   const std::string &token2,
-                                   si64Matrix &sh_res) {
-  TokenValue val1, val2;
-  createTokenValue(token1, val1);
-  createTokenValue(token2, val2);
-
-  si64Matrix sh_val1(feed_dict_->getColumnValuesCount(), 1);
-  si64Matrix sh_val2(feed_dict_->getColumnValuesCount(), 1);
-
-  createI64Shares(val1, val2, sh_val1, sh_val2);
-
-  std::vector<si64Matrix> sh_val_vec;
-  sh_val_vec.emplace_back(sh_val1);
-  sh_val_vec.emplace_back(sh_val2);
-
-  sh_res = mpc_op_->MPC_Add(sh_val_vec);
+void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
+                                      TokenValue &res) {
+  (void)val1;
+  (void)val2;
+  (void)res;
+  return;
 }
 
 int MPCExpressExecutor::runMPCEvaluate(void) {
   std::stack<std::string> stk1;
+  std::stack<TokenValue> val_stk;
 
   while (!suffix_stk_.empty()) {
     std::string token = suffix_stk_.top();
     if (token == "+") {
-      std::string a = stk1.top();
-      stk1.pop();
       std::string b = stk1.top();
+      stk1.pop();
+      std::string a = stk1.top();
       stk1.pop();
       suffix_stk_.pop();
 
+      TokenValue res;
+      TokenValue val2 = val_stk.top();
+      val_stk.pop();
+      TokenValue val1 = val_stk.top();
+      val_stk.pop();
+
       if (fp64_run_) {
         VLOG(3) << "Run FP64 add between '" << a << ", and '" << b << "'.";
-        sf64Matrix<D> sh_sum;
-        runMPCAdd(a, b, sh_sum);
+        runMPCAddFP64(val1, val2, res);
         VLOG(3) << "Finish.";
       } else {
         VLOG(3) << "Run I64 add between '" << a << ", and '" << b << "'.";
         si64Matrix sh_sum;
-        runMPCAdd(a, b, sh_sum);
+        runMPCAddI64(val1, val2, res);
         VLOG(3) << "Finish.";
       }
+
+      val_stk.push(res);
     } else if (token == "-") {
       std::string a = stk1.top();
       stk1.pop();
@@ -783,6 +784,10 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
     } else {
       stk1.push(token);
       suffix_stk_.pop();
+
+      TokenValue token_val;
+      createTokenValue(token, token_val);
+      val_stk.push(token_val);
     }
   }
 }

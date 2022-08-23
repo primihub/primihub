@@ -91,6 +91,8 @@ public:
 
   enum TokenType { COLUMN, VALUE };
   union ValueUnion {
+    sf64Matrix<D> *sh_fp64_m;
+    si64Matrix *sh_i64_m;
     std::vector<double> *fp64_vec;
     std::vector<int64_t> *i64_vec;
     int64_t i64_val;
@@ -107,42 +109,52 @@ public:
     // type == 2: val.fp64 is set.
     // type == 3: val.i64 is set;
     // type == 4: a remote column, set nothing.
+    // type == 5: a share matrix for FP64 matrix.
+    // type == 6: a share matrix for I64 matrix.
     uint8_t type;
 
     TokenValue(){};
     ~TokenValue(){};
 
     std::string TypeToString(void) {
-      if (this->type == 4)
-        return "remote column";
-      else if (this->type == 3)
+      switch (this->type) {
+      case 5:
+        return "share value for FP64 values";
+      case 6:
+        return "share value for I64 values";
+      case 3:
         return "const I64 value";
-      else if (this->type == 2)
+      case 2:
         return "const FP64 value";
-      else if (this->type == 1)
+      case 1:
         return "local I64 column";
-      else
+      case 0:
         return "local FP64 column";
+      case 4:
+        return "remote column";
+      default:
+        return "unknown type";
+      }
     }
   };
 
 private:
   inline void createTokenValue(const std::string &token, TokenValue &token_val);
 
+  inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val,
+                               bool is_fp64);
+
   inline void constructI64Matrix(TokenValue &token_val, i64Matrix &m);
 
   inline void constructFP64Matrix(TokenValue &token_val, eMatrix<double> &m);
 
-  inline void createI64Shares(TokenValue &val1, TokenValue &val2,
-                              si64Matrix &sh_val1, si64Matrix &sh_val2);
+  inline void createI64Shares(TokenValue &val, si64Matrix &sh_val);
 
-  inline void createFP64Shares(TokenValue &val1, TokenValue &val2,
-                               sf64Matrix<D> &sh_val1, sf64Matrix<D> &sh_val2);
+  inline void createFP64Shares(TokenValue &val, sf64Matrix<D> &sh_val);
 
-  void runMPCAdd(const std::string &token1, const std::string &token2,
-                 sf64Matrix<D> &sh_val);
-  void runMPCAdd(const std::string &token1, const std::string &token2,
-                 si64Matrix &sh_val);
+  void runMPCAddFP64(TokenValue &val1, TokenValue &val2, TokenValue &res);
+
+  void runMPCAddI64(TokenValue &val1, TokenValue &val2, TokenValue &res);
 
   int runMPCSub(const std::string &token1, const std::string &token2,
                 sf64Matrix<D> &sh_val);
