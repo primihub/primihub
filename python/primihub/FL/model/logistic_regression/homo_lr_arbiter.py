@@ -77,7 +77,6 @@ class Arbiter:
     def broadcast_key(self):
         try:
             self.generate_key()
-            self.need_encrypt = True
             logger.info("start send pub")
             self.proxy_client_host.Remote(self.public_key, "pub")
             logger.info("send pub to host OK")
@@ -100,7 +99,7 @@ class Arbiter:
 
     def predict_one_vs_rest(self, data):
         data = np.hstack([np.ones((len(data), 1)), data])
-        if self.need_encrypt:
+        if self.need_encrypt == 'YES':
             global_theta = self.decrypt_matrix(self.theta)
             global_theta = np.array(global_theta)
         else:
@@ -112,7 +111,7 @@ class Arbiter:
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         param = []
         weight_all = []
-        if self.need_encrypt == True:
+        if self.need_encrypt == 'YES':
             if self.need_one_vs_rest == False:
                 param.append(self.decrypt_vector(host_parm))
             else:
@@ -147,7 +146,7 @@ class Arbiter:
         # send guest plaintext
         self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
         # send host ciphertext
-        if self.need_encrypt == True:
+        if self.need_encrypt == 'YES':
             if self.need_one_vs_rest == False:
                 self.theta = self.encrypt_vector(self.theta)
             else:
@@ -219,7 +218,8 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
     need_encrypt = proxy_server.Get("need_encrypt")
 
-    if need_encrypt == 'no':
+    if need_encrypt == 'YES':
+        client_arbiter.need_encrypt = 'YES'
         client_arbiter.broadcast_key()
 
     batch_num = proxy_server.Get("batch_num")
@@ -236,31 +236,31 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
             logger.info("batch={} done".format(j))
         logger.info("epoch={} done".format(i))
 
-    logger.info("####### binary classification start predict ######")
-    X, y = data_binary()
-    X = LRModel.normalization(X)
-    y = list(y)
-    prob = client_arbiter.predict_prob(X)
-    logger.info('Classification probability is:')
-    logger.info(prob)
-    predict = list(client_arbiter.predict_binary(prob))
-    logger.info('Classification result is:')
-    logger.info(predict)
-    count = 0
-    for i in range(len(y)):
-        if y[i] == predict[i]:
-            count += 1
-    logger.info('acc is: %s' % (count / (len(y))))
-    logger.info("All process done.")
-    proxy_server.StopRecvLoop()
-
-    # logger.info("####### multi classification start predict ######")
-    # X, y = iris_data()
+    # logger.info("####### binary classification start predict ######")
+    # X, y = data_binary()
     # X = LRModel.normalization(X)
-    # pre = client_arbiter.predict_one_vs_rest(X)
+    # y = list(y)
+    # prob = client_arbiter.predict_prob(X)
+    # logger.info('Classification probability is:')
+    # logger.info(prob)
+    # predict = list(client_arbiter.predict_binary(prob))
     # logger.info('Classification result is:')
-    # logger.info(pre)
-    # acc = np.mean(y == pre)
-    # logger.info('acc is: %s' % acc)
+    # logger.info(predict)
+    # count = 0
+    # for i in range(len(y)):
+    #     if y[i] == predict[i]:
+    #         count += 1
+    # logger.info('acc is: %s' % (count / (len(y))))
     # logger.info("All process done.")
     # proxy_server.StopRecvLoop()
+
+    logger.info("####### multi classification start predict ######")
+    X, y = iris_data()
+    X = LRModel.normalization(X)
+    pre = client_arbiter.predict_one_vs_rest(X)
+    logger.info('Classification result is:')
+    logger.info(pre)
+    acc = np.mean(y == pre)
+    logger.info('acc is: %s' % acc)
+    logger.info("All process done.")
+    proxy_server.StopRecvLoop()

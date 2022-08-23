@@ -67,11 +67,11 @@ class Host:
             return pre
 
     def fit_binary(self, batch_x, batch_y, theta=None):
-        if self.need_one_vs_rest == True:
-            theta = list(theta)
-        else:
+        if self.need_one_vs_rest == False:
             theta = self.model.theta
-        if self.need_encrypt == True:
+        else:
+            theta = list(theta)
+        if self.need_encrypt == 'YES':
             if self.flag == True:
                 # Only need to encrypt once
                 theta = self.encrypt_vector(theta)
@@ -83,7 +83,6 @@ class Host:
             batch_encrypted_grad = batch_x.transpose() * (
                     0.25 * batch_x.dot(theta) + 0.5 * batch_y.transpose() * neg_one)
             encrypted_grad = batch_encrypted_grad.sum(axis=1) / batch_y.shape[0]
-            print('--->', encrypted_grad)
             for j in range(len(theta)):
                 theta[j] -= self.lr * encrypted_grad[j]
 
@@ -165,12 +164,12 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'lr': 0.05,
-        'batch_size': 100,
-        'need_encrypt': 'no',
+        'batch_size': 500,
+        'need_encrypt': 'YES',
         'need_one_vs_rest': True
     }
-    x, label = data_binary()
-    # x, label = data_iris()
+    # x, label = data_binary()
+    x, label = data_iris()
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
     x = LRModel.normalization(x)
     count_train = x.shape[0]
@@ -178,7 +177,7 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
     batch_num_train = count_train // config['batch_size'] + 1
     proxy_client_arbiter.Remote(batch_num_train, "batch_num")
     host_data_weight = config['batch_size']
-    if client_host.need_encrypt == True:
+    if client_host.need_encrypt == 'YES':
         client_host.public_key = proxy_server.Get("pub")
         host_data_weight = client_host.encrypt_vector([host_data_weight])
 
@@ -193,8 +192,8 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
             batch_host_x, batch_host_y = next(batch_gen_host)
             logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
-            host_param = client_host.fit_binary(batch_host_x, batch_host_y)
-            # host_param = client_host.one_vs_rest(batch_host_x, batch_host_y, 3)
+            # host_param = client_host.fit_binary(batch_host_x, batch_host_y)
+            host_param = client_host.one_vs_rest(batch_host_x, batch_host_y, 3)
             proxy_client_arbiter.Remote(host_param, "host_param")
             client_host.model.theta = proxy_server.Get("global_host_model_param")
             logger.info("batch=%s done" % j)
