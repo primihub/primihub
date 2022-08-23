@@ -16,6 +16,7 @@
 
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_SERVICE_H_
 #define SRC_PRIMIHUB_SERVICE_DATASET_SERVICE_H_
+#include <glog/logging.h>
 
 #include <memory>
 #include <mutex>
@@ -235,6 +236,7 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
     arrow::Status DoPut(const ServerCallContext &context,
                         std::unique_ptr<FlightMessageReader> reader,
                         std::unique_ptr<FlightMetadataWriter> writer) override {
+        LOG(INFO) << "====DoPut 1====";
         const FlightDescriptor &descriptor = reader->descriptor();
 
         if (descriptor.type !=
@@ -245,7 +247,7 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
         }
 
         std::string key = descriptor.path[0];
-
+        LOG(INFO) << "DoPut dataest key: " << key;
         IntegrationDataset dataset;
         ARROW_ASSIGN_OR_RAISE(dataset.schema, reader->GetSchema());
         arrow::flight::FlightStreamChunk chunk;
@@ -260,19 +262,22 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
                     *chunk.app_metadata)); // TODO metadata include dataset meta
             }
         }
-
+        LOG(INFO) << "====DoPut 2====";
         // Register dataset and  write dataset by driver
         // TODO stream writer
         auto driver = primihub::DataDirverFactory::getDriver(
             "CSV", dataset_service_->getNodeletAddr());
+        driver->initCursor(key+".csv");
         auto ph_dataset =
             std::make_shared<primihub::Dataset>(dataset.chunks, driver);
+        LOG(INFO) << "====DoPut 3====";
         DatasetMeta meta;
         dataset_service_->writeDataset(
             ph_dataset, key /*NOTE from upload description*/, meta);
+        LOG(INFO) << "====DoPut 4====";    
         auto metadata_buf = arrow::Buffer::FromString(meta.toJSON());
         RETURN_NOT_OK(writer->WriteMetadata(*metadata_buf));
-
+        LOG(INFO) << "====DoPut 5====";
         return arrow::Status::OK();
     }
     // TODO temporary solution for integration test

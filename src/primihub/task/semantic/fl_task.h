@@ -21,6 +21,9 @@
 #include <pybind11/embed.h>
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/language/py_parser.h"
+#include "src/primihub/protos/worker.grpc.pb.h"
+
+using primihub::rpc::PushTaskRequest;
 
 namespace py = pybind11;
 namespace primihub::task {
@@ -32,6 +35,7 @@ namespace primihub::task {
         public:
             FLTask(const std::string &node_id,
                      const TaskParam *task_param,
+                     const PushTaskRequest& task_request,
                      std::shared_ptr<DatasetService> dataset_service);
 
             ~FLTask();
@@ -39,6 +43,7 @@ namespace primihub::task {
             int execute() override;
         
         private:
+            PushTaskRequest task_request_;
             std::string py_code_;
             NodeContext node_context_;
             py::object set_task_context_model_file_, set_task_context_host_lookup_file_, set_task_context_guest_lookup_file_, set_task_context_predict_file_, set_task_context_indicator_file_, set_task_context_dataset_map_, set_node_context_,  ph_exec_m, ph_context_m, set_task_context_func_params_;

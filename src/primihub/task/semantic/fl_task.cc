@@ -20,13 +20,17 @@
 #include <pybind11/stl.h>
 #include "Python.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/service/notify/model.h"
 // namespace py = pybind11;
 
+using primihub::service::EventBusNotifyDelegate;
 namespace primihub::task {
 FLTask::FLTask(const std::string& node_id,
                const TaskParam* task_param,
+               const PushTaskRequest& task_request,
                std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service) {
+    : TaskBase(task_param, dataset_service), task_request_(task_request) {
+
     // Convert TaskParam to NodeContext
     auto param_map = task_param->params().param_map();
 
@@ -105,7 +109,6 @@ FLTask::FLTask(const std::string& node_id,
         this->dataset_meta_map_.insert(
             std::make_pair(input_dataset, data_path));
     }
-
 
     // output file path
     this->model_file_path_ = param_map["modelFileName"].value_string();
@@ -202,7 +205,12 @@ int FLTask::execute() {
         LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
 
         // TODO Fire task status event
-        
+        auto taskId = task_param_.task_id();
+        auto submitClientId = task_request_.submit_client_id();
+        EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
+                                                            "SUCCESS", 
+                                                            "task finished");
+
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to execute python: " << e.what();
         return -1;
