@@ -17,10 +17,11 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 
-//#include "frontend/util.h"
+#ifndef __APPLE__
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Common/Defines.h"
 #include "libPSI/PSI/Kkrt/KkrtPsiReceiver.h"
+#endif
 
 #include <grpc/grpc.h>
 #include <grpcpp/channel.h>
@@ -36,11 +37,16 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/task.h"
 
+
+#ifndef __APPLE__
 using namespace osuCrypto;
+#endif
 using primihub::rpc::Task;
 using primihub::rpc::ParamValue;
 using primihub::rpc::PsiType;
+#ifndef __APPLE__
 using osuCrypto::KkrtPsiReceiver;
+#endif
 
 
 
@@ -62,9 +68,11 @@ private:
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
                             std::vector <std::string> &col_array);
+#ifndef __APPLE__
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
+#endif
                             
     const std::string node_id_;
     const std::string job_id_;
@@ -79,7 +87,6 @@ private:
 
     std::string host_address_;
 
-    //LaunchParams psi_params_;
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_

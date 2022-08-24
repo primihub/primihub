@@ -159,7 +159,8 @@ jobs:
     - name: find objcopy
       run: |
         brew install binutils
-        ln -s /usr/local/Cellar/binutils/2.38_1/bin/objcopy /usr/local/bin/objcopy
+        #ln -s /usr/local/Cellar/binutils/2.38_1/bin/objcopy /usr/local/bin/objcopy
+        echo 'export PATH="/usr/local/opt/binutils/bin:$PATH"' >> /Users/runner/.bash_profile
         mdfind -name objcopy
     - name: bazel build
       run: |

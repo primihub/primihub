@@ -14,6 +14,7 @@
  limitations under the License.
  */
 
+#ifndef __APPLE__
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Endpoint.h"
 #include "cryptoTools/Network/SocketAdapter.h"
@@ -22,6 +23,7 @@
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Crypto/RandomOracle.h"
 #include "cryptoTools/Crypto/PRNG.h"
+#endif
 
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
 #include "src/primihub/data_store/factory.h"
@@ -31,16 +33,20 @@
 
 #include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
 
+#ifndef __APPLE__
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtSender.h"
 #include "libOTe/NChooseOne/NcoOtExt.h"
+#endif
 
 #include "cryptoTools/Common/Timer.h"
 
 #include <numeric>
 
 
+#ifndef __APPLE__
 using namespace osuCrypto;
+#endif
 using arrow::Table;
 using arrow::StringArray;
 using arrow::DoubleArray;
@@ -124,6 +130,7 @@ int PSIKkrtTask::_LoadDataset(void) {
     return 0;
 }
 
+#ifndef __APPLE__
 void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     u8 dummy[1];
     PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
@@ -242,6 +249,7 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
     }
     return 0;
 }
+#endif
 
 int PSIKkrtTask::saveResult(void) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
@@ -304,6 +312,7 @@ int PSIKkrtTask::execute() {
         }
     }
 
+#ifndef __APPLE__
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
     std::vector<std::string> addr_info;
@@ -349,6 +358,7 @@ int PSIKkrtTask::execute() {
             return -1;
         }
     }
+#endif
     return 0;
 }
 
