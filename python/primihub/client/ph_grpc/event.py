@@ -34,7 +34,7 @@ def node_event_handler(event: Event):
 @listener.on_event("/1/{task_id}")
 async def handler_task_status(event: Event):
     task_id = event.params["task_id"]
-    logger.debug("handler_task_status", event.params, event.data)
+    logger.debug("handler_task_status params: {}, data: {}".format(event.params, event.data))
     # TODO
     # event data
     # {'event_type': 1,
@@ -50,12 +50,12 @@ async def handler_task_status(event: Event):
         {
             "client_id": "192.168.99.23",
             "client_ip": 6667,
-            "client_port": 12345
+            "client_port": 10051
         },
         {
             "client_id": "192.168.99.23",
             "client_ip": 6668,
-            "client_port": 12345
+            "client_port": 10052
 
         }
     ]
@@ -65,8 +65,8 @@ async def handler_task_status(event: Event):
         cert = ""  # TODO
 
         logger.debug("node connect str: {}".format(connect_str))
-        logger.debug("task id: {}".format(task_id))
         task = Task(task_id=task_id, primihub_client=cli)
+        logger.debug("task id: {}".format(task_id))
         task.get_node_event(node=connect_str, cert=cert)
     
     task_status = event.data.task_status.status

@@ -30,7 +30,7 @@ class GrpcClient(object):
         self.cert = cert
         self.listener = listener
 
-    async def submit_task(self, code: str, job_id: str, task_id: str, submit_client_id: str):
+    def submit_task(self, code: str, job_id: str, task_id: str, submit_client_id: str):
         """submit task
 
         :param code: code str

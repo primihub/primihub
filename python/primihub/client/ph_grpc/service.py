@@ -60,8 +60,8 @@ class NodeServiceClient(GRPCConnect):
 
     async def async_get_node_event(self, request: service_pb2.ClientContext) -> None:
         async with self.channel:
+            logger.debug(self.channel)
             # Read from an async generator
-
             from primihub.client.ph_grpc.event import listener
             async for response in self.stub.SubscribeNodeEvent(request):
                 logger.debug(

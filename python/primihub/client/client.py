@@ -13,11 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import functools
 import os
 import asyncio
+from re import sub
 import sys
 import socket
 import uuid
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from primihub.client.ph_grpc.task import Task
@@ -169,7 +172,8 @@ class PrimihubClient(object):
         :param client_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
-        task = Task(task_id="task:"+uuid.uuid5(uuid.NAMESPACE_DNS, 'python.org').hex, primihub_client=self)
+        task = Task(task_id="task:"+uuid.uuid5(uuid.NAMESPACE_DNS,
+                    'python.org').hex, primihub_client=self)
         task_id = task.task_id
         self.tasks_map[task_id] = task
 
@@ -199,12 +203,20 @@ class PrimihubClient(object):
         logger.info("Have a cup of coffee, it will take a lot of time here.")
         logger.info("-*-" * 25)
         try:
-            await self.grpc_client.submit_task(self.code, job_id=job_id, task_id=task_id, submit_client_id=client_id)
+            logger.debug("grpc submit task.")
+            # self.grpc_client.submit_task(code=self.code, job_id=job_id, task_id=task_id, submit_client_id=client_id)
+
+            thread = threading.Thread(target=self.grpc_client.submit_task, args=(self.code, job_id, task_id, client_id))
+            thread.start()
         except asyncio.CancelledError:
             logger.error("cancel the future.")
+        except asyncio.TimeoutError:
+            logger.error("timeout error")
         except Exception as e:
             logger.error(str(e))
             self.exit()
+        else:
+            logger.info("grpc submit end.")
 
     def async_remote_execute(self, *args) -> None:
         job_id = "job:" + uuid.uuid1().hex
@@ -218,8 +230,16 @@ class PrimihubClient(object):
 
         logger.debug("------- async run submit task -----------")
         try:
+            # sub_loop = asyncio.new_event_loop()
+            # thread = threading.Thread(target=sub_loop.run_forever)
+            # thread.start()
             fire_coroutine_threadsafe(self.submit_task(
                 job_id, client_id, *args), self.loop)
+
+            # sub_loop.run_until_complete(asyncio.ensure_future(
+            #     self.submit_task(job_id, client_id, *args)))
+            # sub_loop.call_soon_threadsafe(sub_loop.stop)
+
         except Exception as e:
             logger.debug(str(e))
         # self.loop.call_soon_threadsafe(self.submit_task_task)

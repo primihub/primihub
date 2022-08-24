@@ -33,6 +33,8 @@ class Task(object):
             self.task_status = status
         if self.task_status == "SUCCESS" or self.task_status == "FAILED":
             self.exit()
+        # if self.task_status == "RUNNING":
+            # self.exit()
 
     def exit(self):
         try:
@@ -51,7 +53,6 @@ class Task(object):
 
     def get_node_event(self, node, cert):
         # # get node event from other nodes
-        logger.debug(node)
         logger.debug("get node event from: {}".format(node))
         worker_node_grpc_client = NodeServiceClient(node, cert)
         self.node_grpc_connections.append(worker_node_grpc_client)
