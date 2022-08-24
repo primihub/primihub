@@ -12,7 +12,7 @@ MPCExpressExecutor::ColumnConfig::DtypeToString(const ColDtype &dtype) {
   if (dtype == ColDtype::FP64)
     return std::string("FP64");
   else
-    return std::string("INT64");
+    return std::string("I64");
 }
 
 int MPCExpressExecutor::ColumnConfig::importColumnDtype(
@@ -613,7 +613,7 @@ int MPCExpressExecutor::resolveRunMode(void) {
   if (fp64_run_)
     LOG(INFO) << "MPC run in FP64 mode.";
   else
-    LOG(INFO) << "MPC run in INT64 mode.";
+    LOG(INFO) << "MPC run in I64 mode.";
 
   return 0;
 }
