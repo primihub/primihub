@@ -523,11 +523,12 @@ void MPCExpressExecutor::parseExpress(const std::string &expr) {
   return;
 }
 
-void MPCExpressExecutor::initColumnConfig(std::string &node_id) {
+void MPCExpressExecutor::initColumnConfig(const std::string &node_id) {
   col_config_ = new ColumnConfig(node_id);
 }
 
-int MPCExpressExecutor::importColumnDtype(std::string &col_name, bool is_fp64) {
+int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
+                                          bool is_fp64) {
   if (is_fp64)
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::FP64);
@@ -537,8 +538,8 @@ int MPCExpressExecutor::importColumnDtype(std::string &col_name, bool is_fp64) {
   return 0;
 }
 
-int MPCExpressExecutor::importColumnOwner(std::string &col_name,
-                                          std::string &node_id) {
+int MPCExpressExecutor::importColumnOwner(const std::string &col_name,
+                                          const std::string &node_id) {
   return col_config_->importColumnOwner(col_name, node_id);
 }
 
@@ -546,17 +547,17 @@ void MPCExpressExecutor::InitFeedDict(void) {
   feed_dict_ = new FeedDict(col_config_, fp64_run_);
 }
 
-int MPCExpressExecutor::importColumnValues(std::string &col_name,
+int MPCExpressExecutor::importColumnValues(const std::string &col_name,
                                            std::vector<int64_t> &val_vec) {
   return feed_dict_->importColumnValues(col_name, val_vec);
 }
 
-int MPCExpressExecutor::importColumnValues(std::string &col_name,
+int MPCExpressExecutor::importColumnValues(const std::string &col_name,
                                            std::vector<double> &val_vec) {
   return feed_dict_->importColumnValues(col_name, val_vec);
 }
 
-int MPCExpressExecutor::importExpress(std::string expr) {
+int MPCExpressExecutor::importExpress(const std::string &expr) {
   parseExpress(expr);
   bool ret = checkExpress();
   if (ret == false) {
@@ -698,14 +699,14 @@ void MPCExpressExecutor::createFP64Shares(TokenValue &val,
   return;
 }
 
-void MPCExpressExecutor::createTokenValue(sf64Matrix<D> *m, TokenValue &v,
-                                          bool is_fp64) {
+void MPCExpressExecutor::createTokenValue(sf64Matrix<D> *m, TokenValue &v) {
   v.val_union.sh_fp64_m = m;
+  v.type = 5;
+}
 
-  if (is_fp64)
-    v.type = 5;
-  else
-    v.type = 6;
+void MPCExpressExecutor::createTokenValue(si64Matrix *m, TokenValue &v) {
+  v.val_union.sh_i64_m = m;
+  v.type = 6;
 }
 
 void MPCExpressExecutor::createTokenValue(const std::string &token,
@@ -748,41 +749,70 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
 
 void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
                                        TokenValue &res) {
+  sf64Matrix<D> sh_val1, sh_val2;
   sf64Matrix<D> *p_sh_val1 = nullptr;
   sf64Matrix<D> *p_sh_val2 = nullptr;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
   if (val1.type == 0 || val1.type == 4) {
-    p_sh_val1 = new sf64Matrix<D>(val_count, 1);
-    createFP64Shares(val1, *p_sh_val1);
+    sh_val1.resize(val_count, 1);
+    createFP64Shares(val1, sh_val1);
+    p_sh_val1 = &sh_val1;
   } else {
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
 
   if (val2.type == 0 || val2.type == 4) {
-    p_sh_val2 = new sf64Matrix<D>(val_count, 1);
-    createFP64Shares(val2, *p_sh_val2);
+    sh_val2.resize(val_count, 1);
+    createFP64Shares(val2, sh_val2);
+    p_sh_val2 = &sh_val2;
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
 
   std::vector<sf64Matrix<D>> sh_val_vec;
-  sh_val_vec.push_back(*p_sh_val1);
-  sh_val_vec.push_back(*p_sh_val2);
+  sh_val_vec.emplace_back(*p_sh_val1);
+  sh_val_vec.emplace_back(*p_sh_val2);
 
   sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
   *sh_res = mpc_op_->MPC_Add(sh_val_vec);
 
-  createTokenValue(sh_res, res, true);
+  createTokenValue(sh_res, res);
 }
 
 void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
                                       TokenValue &res) {
-  (void)val1;
-  (void)val2;
-  (void)res;
-  return;
+  si64Matrix sh_val1, sh_val2;
+  si64Matrix *p_sh_val1 = nullptr;
+  si64Matrix *p_sh_val2 = nullptr;
+
+  uint32_t val_count = feed_dict_->getColumnValuesCount();
+
+  if (val1.type == 1 || val1.type == 4) {
+    sh_val1.resize(val_count, 1);
+    createI64Shares(val1, sh_val1);
+    p_sh_val1 = &sh_val1;
+  } else {
+    p_sh_val1 = val1.val_union.sh_i64_m;
+  }
+
+  if (val2.type == 1 || val2.type == 4) {
+    sh_val2.resize(val_count, 1);
+    createI64Shares(val1, sh_val1);
+    p_sh_val2 = &sh_val2;
+  } else {
+    p_sh_val2 = val1.val_union.sh_i64_m;
+  }
+
+  std::vector<si64Matrix> sh_val_vec;
+  sh_val_vec.emplace_back(*p_sh_val1);
+  sh_val_vec.emplace_back(*p_sh_val2);
+
+  si64Matrix *sh_res = new si64Matrix(val_count, 1);
+  *sh_res = mpc_op_->MPC_Add(sh_val_vec);
+
+  createTokenValue(sh_res, res);
 }
 
 int MPCExpressExecutor::runMPCEvaluate(void) {

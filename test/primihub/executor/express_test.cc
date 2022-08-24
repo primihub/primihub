@@ -22,6 +22,8 @@ public:
   ~GLogHelper() { google::ShutdownGoogleLogging(); }
 };
 
+std::string expr = "A+B+C";
+
 static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
   std::string col_name, col_owner;
 
@@ -61,8 +63,8 @@ static void runFirstParty(std::vector<double> &col_val) {
   mpc_exec->initColumnConfig(node_id);
   importColumnOwner(mpc_exec);
   importColumnDtype(mpc_exec);
-
-  mpc_exec->importExpress("A+B+C");
+  
+  mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
   mpc_exec->InitFeedDict();
@@ -95,7 +97,7 @@ static void runSecondParty(std::vector<double> &col_val) {
   importColumnOwner(mpc_exec);
   importColumnDtype(mpc_exec);
 
-  mpc_exec->importExpress("A+B+C");
+  mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
   mpc_exec->InitFeedDict();
@@ -129,7 +131,7 @@ static void runThirdParty(std::vector<double> &col_val) {
   importColumnOwner(mpc_exec);
   importColumnDtype(mpc_exec);
 
-  mpc_exec->importExpress("A+B+C");
+  mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
   mpc_exec->InitFeedDict();

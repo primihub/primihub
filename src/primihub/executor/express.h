@@ -14,21 +14,22 @@ class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
-  
+
   // Method group begin:
-  
-  // Run method in method group from 1 to 6 (don't change the order) will 
+
+  // Run method in method group from 1 to 6 (don't change the order) will
   // evaluate a express with MPC operator.
-  
+
   // Method group 1: Import all column's dtype and owner.
-  void initColumnConfig(std::string &node_id);
+  void initColumnConfig(const std::string &node_id);
 
-  int importColumnDtype(std::string &col_name, bool is_fp64);
+  int importColumnDtype(const std::string &col_name, bool is_fp64);
 
-  int importColumnOwner(std::string &col_name, std::string &node_id);
+  int importColumnOwner(const std::string &col_name,
+                        const std::string &node_id);
 
   // Method group 2: Import express, parse and check it.
-  int importExpress(std::string expr);
+  int importExpress(const std::string &expr);
 
   // Method group 3: Check whether MPC will handle double value or not.
   int resolveRunMode(void);
@@ -36,17 +37,19 @@ public:
   // Method group 4: Import local column's value.
   void InitFeedDict(void);
 
-  int importColumnValues(std::string &col_name, std::vector<int64_t> &col_vec);
+  int importColumnValues(const std::string &col_name,
+                         std::vector<int64_t> &col_vec);
 
-  int importColumnValues(std::string &col_name, std::vector<double> &col_vec);
-  
+  int importColumnValues(const std::string &col_name,
+                         std::vector<double> &col_vec);
+
   // Method group 5: Init MPC operator.
   void initMPCRuntime(uint8_t party_id, const std::string &ip,
                       uint16_t next_port, uint16_t prev_port);
-  
+
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);
-  
+
   // Method group 7: Reveal MPC result to one or more parties.
   void revealMPCResult(std::vector<uint8_t> &party, std::vector<double> &vec);
 
@@ -181,8 +184,9 @@ private:
 
   inline void createTokenValue(const std::string &token, TokenValue &token_val);
 
-  inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val,
-                               bool is_fp64);
+  inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val);
+
+  inline void createTokenValue(si64Matrix *m, TokenValue &token_val);
 
   inline void constructI64Matrix(TokenValue &token_val, i64Matrix &m);
 
