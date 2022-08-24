@@ -70,4 +70,6 @@ void NotifyService::onSubscribeClientEvent(const std::string client_id, const ui
     GRPCNotifyServer::getInstance().addClientSession(client_id, session_id);
 }
 
+
 }   // namespace primihub::service
+
