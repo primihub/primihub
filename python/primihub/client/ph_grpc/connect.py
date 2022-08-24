@@ -15,6 +15,7 @@ limitations under the License.
 """
 import sys
 from os import path
+from typing_extensions import Self
 
 here = path.abspath(path.join(path.dirname(__file__), "."))
 sys.path.append(here)
@@ -28,6 +29,13 @@ class GRPCConnect(object):
 
     :return: A primihub gRPC connect.
     """
+    __instance_node = {}
+    __first_init = False
+
+    def __new__(cls: type[Self], node, cert) -> Self:
+        if node not in cls.__instance_node:
+            cls.__instance_node[node] = super().__new__(cls)
+        return cls.__instance_node[node]
 
     def __init__(self, node: str, cert: str) -> None:
         """Constructor

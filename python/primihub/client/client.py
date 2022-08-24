@@ -32,14 +32,7 @@ from primihub.dataset.dataset_cli import DatasetClientFactory
 from primihub.utils.logger_util import logger
 
 import primihub as ph
-# notify_channel_connected = False
 
-
-# @listener.on_event("/0/")
-# def node_event_handler(event: Event):
-#     global notify_channel_connected
-#     notify_channel_connected = True
-#     logger.debug("...node_event_handler: %s" % event)
 
 
 def get_host_ip():
@@ -162,7 +155,7 @@ class PrimihubClient(object):
         """Client exit
         """
         self.stop()
-        sys.exit()
+        # sys.exit()
 
     async def submit_task(self, job_id, client_id, *args):
         """Send local functions and parameters to the remote side
@@ -205,7 +198,6 @@ class PrimihubClient(object):
         try:
             logger.debug("grpc submit task.")
             # self.grpc_client.submit_task(code=self.code, job_id=job_id, task_id=task_id, submit_client_id=client_id)
-
             thread = threading.Thread(target=self.grpc_client.submit_task, args=(self.code, job_id, task_id, client_id))
             thread.start()
         except asyncio.CancelledError:
