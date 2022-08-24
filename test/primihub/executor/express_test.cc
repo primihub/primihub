@@ -51,9 +51,13 @@ static void runFirstParty(std::vector<double> &col_val) {
   feed_dict->importColumnValues("A", col_val);
   mpc_exec->setFeedDict(feed_dict);
 
+  std::vector<double> final_val;
+  std::vector<uint8_t> parties = {0, 1};
+
   try {
     mpc_exec->initMPCRuntime(0, "127.0.0.1", 10090, 10091);
     mpc_exec->runMPCEvaluate();
+    mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
     msg = msg + e.what();
@@ -82,9 +86,13 @@ static void runSecondParty(std::vector<double> &col_val) {
   feed_dict->importColumnValues("B", col_val);
   mpc_exec->setFeedDict(feed_dict);
 
+  std::vector<double> final_val;
+  std::vector<uint8_t> parties = {0, 1};
+
   try {
     mpc_exec->initMPCRuntime(1, "127.0.0.1", 10092, 10090);
     mpc_exec->runMPCEvaluate();
+    mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 1, ";
     msg = msg + e.what();
@@ -113,9 +121,13 @@ static void runThirdParty(std::vector<double> &col_val) {
   feed_dict->importColumnValues("C", col_val);
   mpc_exec->setFeedDict(feed_dict);
 
+  std::vector<double> final_val;
+  std::vector<uint8_t> parties = {0, 1};
+
   try {
     mpc_exec->initMPCRuntime(2, "127.0.0.1", 10091, 10092);
     mpc_exec->runMPCEvaluate();
+    mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 2, ";
     msg = msg + e.what();

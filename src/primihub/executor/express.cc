@@ -1,4 +1,5 @@
 #include <glog/logging.h>
+#include <sstream>
 
 #include "src/primihub/executor/express.h"
 
@@ -82,7 +83,12 @@ int ColumnConfig::resolveLocalColumn(void) {
       else
         LOG(INFO) << "Column " << iter->first << ": remote;";
     }
-    LOG(INFO) << "Dump finish, dump count " << count << ".";
+
+    if (count < 10)
+      LOG(INFO) << "Dump finish, dump count " << static_cast<char>(count + '0')
+                << ".";
+    else
+      LOG(INFO) << "Dump finish, dump count " << count << ".";
   }
 
   return 0;
@@ -581,6 +587,7 @@ void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
   mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
   mpc_op_->setup(ip, next_port, prev_port);
 
+  party_id_ = party_id;
   return;
 }
 
@@ -600,8 +607,7 @@ void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
   return;
 }
 
-void MPCExpressExecutor::createI64Shares(TokenValue &val,
-                                         si64Matrix &sh_val) {
+void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
   if (val.type == 4) {
     mpc_op_->createShares(sh_val);
   } else {
@@ -700,11 +706,11 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
   if (val1.type == 0 || val1.type == 4) {
     p_sh_val1 = new sf64Matrix<D>(val_count, 1);
     createFP64Shares(val1, *p_sh_val1);
-  } else { 
+  } else {
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
 
-  if (val2.type == 0 || val1.type == 4) {
+  if (val2.type == 0 || val2.type == 4) {
     p_sh_val2 = new sf64Matrix<D>(val_count, 1);
     createFP64Shares(val2, *p_sh_val2);
   } else {
@@ -749,16 +755,19 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       val_stk.pop();
 
       if (fp64_run_) {
-        VLOG(3) << "Run FP64 add between '" << a << ", and '" << b << "'.";
+        LOG(INFO) << "Run FP64 add between '" << a << "' and '" << b << "'.";
         runMPCAddFP64(val1, val2, res);
-        VLOG(3) << "Finish.";
+        LOG(INFO) << "Run FP64 add finish.";
       } else {
-        VLOG(3) << "Run I64 add between '" << a << ", and '" << b << "'.";
+        LOG(INFO) << "Run I64 add between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
         runMPCAddI64(val1, val2, res);
-        VLOG(3) << "Finish.";
+        LOG(INFO) << "Run I64 add finish.";
       }
 
+      std::string new_token = "(" + a + "+" + b + ")";
+      stk1.push(new_token);
+      token_val_map_[new_token] = res;
       val_stk.push(res);
     } else if (token == "-") {
       std::string a = stk1.top();
@@ -788,8 +797,49 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       TokenValue token_val;
       createTokenValue(token, token_val);
       val_stk.push(token_val);
+      token_val_map_[token] = token_val;
     }
   }
+
+  while (!stk1.empty()) {
+    suffix_stk_.push(stk1.top());
+    stk1.pop();
+  }
+}
+
+void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
+                                         std::vector<double> &val_vec) {
+  std::string final_token = suffix_stk_.top();
+  suffix_stk_.pop();
+
+  TokenValue val = token_val_map_[final_token];
+  sf64Matrix<D> *p_final_share = val.val_union.sh_fp64_m;
+
+  for (auto party : parties) {
+    if (party_id_ == party) {
+      eMatrix<double> m = mpc_op_->reveal(*p_final_share);
+      uint32_t count = 0;
+      for (size_t i = 0; i < m.rows(); i++) {
+        val_vec.emplace_back(m(i, 0));
+        count++;
+      }
+
+      LOG(INFO) << "Reveal MPC result to party "
+                << static_cast<char>(party + '0') << ", value count " << count
+                << ".";
+    } else {
+      mpc_op_->reveal(*p_final_share, party);
+    }
+  }
+
+  return;
+}
+
+void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
+                                         std::vector<int64_t> &val_vec) {
+  (void)parties;
+  (void)val_vec;
+  return;
 }
 
 MPCExpressExecutor::~MPCExpressExecutor() {

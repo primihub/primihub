@@ -76,10 +76,17 @@ public:
   ~MPCExpressExecutor();
 
   int importExpress(std::string expr);
+
   void resolveRunMode(void);
+
   void initMPCRuntime(uint8_t party_id, const std::string &ip,
                       uint16_t next_port, uint16_t prev_port);
+
   int runMPCEvaluate(void);
+
+  void revealMPCResult(std::vector<uint8_t> &party, std::vector<double> &vec);
+
+  void revealMPCResult(std::vector<uint8_t> &party, std::vector<int64_t> &vec);
 
   void setColumnConfig(ColumnConfig *col_config) {
     this->col_config_ = col_config;
@@ -175,7 +182,9 @@ private:
   ColumnConfig *col_config_;
   MPCOperator *mpc_op_;
   FeedDict *feed_dict_;
+  std::map<std::string, TokenValue> token_val_map_;
   std::map<std::string, TokenType> token_type_;
+  uint8_t party_id_;
 };
 }; // namespace primihub
 #endif
