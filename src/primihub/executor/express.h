@@ -10,92 +10,60 @@
 #include "src/primihub/operator/aby3_operator.h"
 
 namespace primihub {
-class ColumnConfig {
-public:
-  enum ColDtype { INT64, FP64 };
-
-  ColumnConfig(std::string node_id) { node_id_ = node_id; }
-  ~ColumnConfig();
-
-  int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
-  int importColumnOwner(const std::string &col_name,
-                        const std::string &node_id);
-  int getColumnDtype(const std::string &col_name, ColDtype &dtype);
-  int getColumnLocality(const std::string &col_name, bool &is_local);
-  int resolveLocalColumn(void);
-  bool hasFP64Column(void);
-  void Clean(void);
-
-  static std::string DtypeToString(const ColDtype &dtype);
-
-private:
-  std::string node_id_;
-  std::map<std::string, std::string> col_owner_;
-  std::map<std::string, ColDtype> col_dtype_;
-  std::map<std::string, bool> local_col_;
-};
-
-class FeedDict {
-public:
-  FeedDict(ColumnConfig *col_config, bool float_run) {
-    col_config_ = col_config;
-    float_run_ = float_run;
-    val_count_ = -1;
-  }
-
-  ~FeedDict();
-
-  int importColumnValues(const std::string &col_name,
-                         std::vector<int64_t> &int64_vec);
-  int importColumnValues(const std::string &col_name,
-                         std::vector<double> &fp64_vec);
-
-  int getColumnValues(const std::string &col_name,
-                      std::vector<int64_t> **col_vec);
-  int getColumnValues(const std::string &col_name,
-                      std::vector<double> **col_vec);
-
-  uint32_t getColumnValuesCount(void) {
-    return static_cast<uint32_t>(val_count_);
-  }
-
-private:
-  int checkLocalColumn(const std::string &col_name);
-  int setOrCheckValueCount(int64_t new_count);
-
-  bool float_run_;
-  int64_t val_count_;
-  std::map<std::string, std::vector<double>> fp64_col_;
-  std::map<std::string, std::vector<int64_t>> int64_col_;
-  ColumnConfig *col_config_;
-};
-
 class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
+  
+  // Method group begin:
+  
+  // Run method in method group from 1 to 6 (don't change the order) will 
+  // evaluate a express with MPC operator.
+  
+  // Method group 1: Import all column's dtype and owner.
+  void initColumnConfig(std::string &node_id);
 
+  int importColumnDtype(std::string &col_name, bool is_fp64);
+
+  int importColumnOwner(std::string &col_name, std::string &node_id);
+
+  // Method group 2: Import express, parse and check it.
   int importExpress(std::string expr);
 
-  void resolveRunMode(void);
+  // Method group 3: Check whether MPC will handle double value or not.
+  int resolveRunMode(void);
 
+  // Method group 4: Import local column's value.
+  void InitFeedDict(void);
+
+  int importColumnValues(std::string &col_name, std::vector<int64_t> &col_vec);
+
+  int importColumnValues(std::string &col_name, std::vector<double> &col_vec);
+  
+  // Method group 5: Init MPC operator.
   void initMPCRuntime(uint8_t party_id, const std::string &ip,
                       uint16_t next_port, uint16_t prev_port);
-
+  
+  // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);
-
+  
+  // Method group 7: Reveal MPC result to one or more parties.
   void revealMPCResult(std::vector<uint8_t> &party, std::vector<double> &vec);
 
   void revealMPCResult(std::vector<uint8_t> &party, std::vector<int64_t> &vec);
 
-  void setColumnConfig(ColumnConfig *col_config) {
-    this->col_config_ = col_config;
-  }
-
-  void setFeedDict(FeedDict *feed_dict) { this->feed_dict_ = feed_dict; }
+  // Method group end;
+  
 
   bool isFP64RunMode(void) { return this->fp64_run_; }
 
+  // A token means a column name and constant value string, and a TokenValue
+  // saves values of a token. So:
+  // 1. if token is a column name, instance of TokenValue saves column's value;
+  // 2. if token is a constant value string, instance of TokenValue saves it's
+  //    int64_t value of double value;
+  // 3. if token is a sub-express, instance of TokenValue saves share value
+  //    of it's result.
   enum TokenType { COLUMN, VALUE };
   union ValueUnion {
     sf64Matrix<D> *sh_fp64_m;
@@ -146,6 +114,68 @@ public:
   };
 
 private:
+  // ColumnConfig saves column's owner and it's data type.
+  class ColumnConfig {
+  public:
+    enum ColDtype { INT64, FP64 };
+
+    ColumnConfig(std::string node_id) { node_id_ = node_id; }
+    ~ColumnConfig();
+
+    int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
+    int importColumnOwner(const std::string &col_name,
+                          const std::string &node_id);
+    int getColumnDtype(const std::string &col_name, ColDtype &dtype);
+    int getColumnLocality(const std::string &col_name, bool &is_local);
+    int resolveLocalColumn(void);
+    bool hasFP64Column(void);
+    void Clean(void);
+
+    static std::string DtypeToString(const ColDtype &dtype);
+
+  private:
+    std::string node_id_;
+    std::map<std::string, std::string> col_owner_;
+    std::map<std::string, ColDtype> col_dtype_;
+    std::map<std::string, bool> local_col_;
+  };
+
+  // FeedDict saves each local column's value.
+  class FeedDict {
+  public:
+    FeedDict(ColumnConfig *col_config, bool float_run) {
+      col_config_ = col_config;
+      float_run_ = float_run;
+      val_count_ = -1;
+    }
+
+    ~FeedDict();
+
+    int importColumnValues(const std::string &col_name,
+                           std::vector<int64_t> &int64_vec);
+    int importColumnValues(const std::string &col_name,
+                           std::vector<double> &fp64_vec);
+
+    int getColumnValues(const std::string &col_name,
+                        std::vector<int64_t> **col_vec);
+    int getColumnValues(const std::string &col_name,
+                        std::vector<double> **col_vec);
+
+    uint32_t getColumnValuesCount(void) {
+      return static_cast<uint32_t>(val_count_);
+    }
+
+  private:
+    int checkLocalColumn(const std::string &col_name);
+    int setOrCheckValueCount(int64_t new_count);
+
+    bool float_run_;
+    int64_t val_count_;
+    std::map<std::string, std::vector<double>> fp64_col_;
+    std::map<std::string, std::vector<int64_t>> int64_col_;
+    ColumnConfig *col_config_;
+  };
+
   inline void createTokenValue(const std::string &token, TokenValue &token_val);
 
   inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val,

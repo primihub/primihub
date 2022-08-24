@@ -22,34 +22,52 @@ public:
   ~GLogHelper() { google::ShutdownGoogleLogging(); }
 };
 
-static void importColumnOwner(ColumnConfig *col_config) {
-  col_config->importColumnOwner("A", "node0");
-  col_config->importColumnOwner("B", "node1");
-  col_config->importColumnOwner("C", "node2");
+static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
+  std::string col_name, col_owner;
+
+  col_name = "A";
+  col_owner = "node0";
+  mpc_exec->importColumnOwner(col_name, col_owner);
+
+  col_name = "B";
+  col_owner = "node1";
+  mpc_exec->importColumnOwner(col_name, col_owner);
+
+  col_name = "C";
+  col_owner = "node2";
+  mpc_exec->importColumnOwner(col_name, col_owner);
+
   return;
 }
 
-static void importColumnDtype(ColumnConfig *col_config) {
-  col_config->importColumnDtype("A", ColumnConfig::ColDtype::FP64);
-  col_config->importColumnDtype("B", ColumnConfig::ColDtype::FP64);
-  col_config->importColumnDtype("C", ColumnConfig::ColDtype::FP64);
+static void importColumnDtype(MPCExpressExecutor *mpc_exec) {
+  std::string col_name;
+
+  col_name = "A";
+  mpc_exec->importColumnDtype(col_name, true);
+
+  col_name = "B";
+  mpc_exec->importColumnDtype(col_name, true);
+
+  col_name = "C";
+  mpc_exec->importColumnDtype(col_name, true);
   return;
 }
 
 static void runFirstParty(std::vector<double> &col_val) {
-  ColumnConfig *col_config = new ColumnConfig("node0");
-  importColumnOwner(col_config);
-  importColumnDtype(col_config);
-  col_config->resolveLocalColumn();
-
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
+  
+  std::string node_id = "node0";
+  mpc_exec->initColumnConfig(node_id);
+  importColumnOwner(mpc_exec);
+  importColumnDtype(mpc_exec);
+
   mpc_exec->importExpress("A+B+C");
-  mpc_exec->setColumnConfig(col_config);
   mpc_exec->resolveRunMode();
 
-  FeedDict *feed_dict = new FeedDict(col_config, mpc_exec->isFP64RunMode());
-  feed_dict->importColumnValues("A", col_val);
-  mpc_exec->setFeedDict(feed_dict);
+  mpc_exec->InitFeedDict();
+  std::string col_name = "A";
+  mpc_exec->importColumnValues(col_name, col_val);
 
   std::vector<double> final_val;
   std::vector<uint8_t> parties = {0, 1};
@@ -64,27 +82,26 @@ static void runFirstParty(std::vector<double> &col_val) {
     throw std::runtime_error(msg);
   }
 
-  delete col_config;
-  delete feed_dict;
   delete mpc_exec;
 
   return;
 }
 
 static void runSecondParty(std::vector<double> &col_val) {
-  ColumnConfig *col_config = new ColumnConfig("node1");
-  importColumnOwner(col_config);
-  importColumnDtype(col_config);
-  col_config->resolveLocalColumn();
-
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
+  
+  std::string node_id = "node1";
+  mpc_exec->initColumnConfig(node_id);
+  importColumnOwner(mpc_exec);
+  importColumnDtype(mpc_exec);
+
   mpc_exec->importExpress("A+B+C");
-  mpc_exec->setColumnConfig(col_config);
   mpc_exec->resolveRunMode();
 
-  FeedDict *feed_dict = new FeedDict(col_config, mpc_exec->isFP64RunMode());
-  feed_dict->importColumnValues("B", col_val);
-  mpc_exec->setFeedDict(feed_dict);
+  mpc_exec->InitFeedDict();
+  
+  std::string col_name = "B";
+  mpc_exec->importColumnValues(col_name, col_val);
 
   std::vector<double> final_val;
   std::vector<uint8_t> parties = {0, 1};
@@ -99,27 +116,26 @@ static void runSecondParty(std::vector<double> &col_val) {
     throw std::runtime_error(msg);
   }
 
-  delete col_config;
-  delete feed_dict;
   delete mpc_exec;
 
   return;
 }
 
 static void runThirdParty(std::vector<double> &col_val) {
-  ColumnConfig *col_config = new ColumnConfig("node2");
-  importColumnOwner(col_config);
-  importColumnDtype(col_config);
-  col_config->resolveLocalColumn();
-
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
+  
+  std::string node_id = "node2";
+  mpc_exec->initColumnConfig(node_id);
+  importColumnOwner(mpc_exec);
+  importColumnDtype(mpc_exec);
+
   mpc_exec->importExpress("A+B+C");
-  mpc_exec->setColumnConfig(col_config);
   mpc_exec->resolveRunMode();
 
-  FeedDict *feed_dict = new FeedDict(col_config, mpc_exec->isFP64RunMode());
-  feed_dict->importColumnValues("C", col_val);
-  mpc_exec->setFeedDict(feed_dict);
+  mpc_exec->InitFeedDict();
+
+  std::string col_name = "C";
+  mpc_exec->importColumnValues(col_name, col_val);
 
   std::vector<double> final_val;
   std::vector<uint8_t> parties = {0, 1};
@@ -134,8 +150,6 @@ static void runThirdParty(std::vector<double> &col_val) {
     throw std::runtime_error(msg);
   }
 
-  delete col_config;
-  delete feed_dict;
   delete mpc_exec;
 
   return;

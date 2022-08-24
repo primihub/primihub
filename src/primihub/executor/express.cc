@@ -6,16 +6,17 @@
 using TokenValue = primihub::MPCExpressExecutor::TokenValue;
 
 namespace primihub {
-// Implement of class ColumnConf.
-std::string ColumnConfig::DtypeToString(const ColDtype &dtype) {
+// Implement of class ColumnConfig.
+std::string
+MPCExpressExecutor::ColumnConfig::DtypeToString(const ColDtype &dtype) {
   if (dtype == ColDtype::FP64)
     return std::string("FP64");
   else
     return std::string("INT64");
 }
 
-int ColumnConfig::importColumnDtype(const std::string &col_name,
-                                    const ColDtype &dtype) {
+int MPCExpressExecutor::ColumnConfig::importColumnDtype(
+    const std::string &col_name, const ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter != col_dtype_.end()) {
     LOG(ERROR) << "Column " << col_name
@@ -28,8 +29,8 @@ int ColumnConfig::importColumnDtype(const std::string &col_name,
   return 0;
 }
 
-int ColumnConfig::importColumnOwner(const std::string &col_name,
-                                    const std::string &node_id) {
+int MPCExpressExecutor::ColumnConfig::importColumnOwner(
+    const std::string &col_name, const std::string &node_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
     LOG(ERROR) << "Column " << col_name
@@ -41,7 +42,8 @@ int ColumnConfig::importColumnOwner(const std::string &col_name,
   return 0;
 }
 
-int ColumnConfig::getColumnDtype(const std::string &col_name, ColDtype &dtype) {
+int MPCExpressExecutor::ColumnConfig::getColumnDtype(
+    const std::string &col_name, ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter == col_dtype_.end()) {
     LOG(ERROR) << "Can't find dtype attr for column " << col_name << ".";
@@ -52,7 +54,7 @@ int ColumnConfig::getColumnDtype(const std::string &col_name, ColDtype &dtype) {
   return 0;
 }
 
-int ColumnConfig::resolveLocalColumn(void) {
+int MPCExpressExecutor::ColumnConfig::resolveLocalColumn(void) {
   if (col_dtype_.size() != col_owner_.size()) {
     LOG(ERROR) << "Count of owner attr and dtype attr must be the same.";
     return -1;
@@ -94,8 +96,8 @@ int ColumnConfig::resolveLocalColumn(void) {
   return 0;
 }
 
-int ColumnConfig::getColumnLocality(const std::string &col_name,
-                                    bool &is_local) {
+int MPCExpressExecutor::ColumnConfig::getColumnLocality(
+    const std::string &col_name, bool &is_local) {
   auto iter = local_col_.find(col_name);
   if (iter == local_col_.end()) {
     LOG(ERROR) << "Can't find column locality by column name " << col_name
@@ -107,7 +109,7 @@ int ColumnConfig::getColumnLocality(const std::string &col_name,
   return 0;
 }
 
-bool ColumnConfig::hasFP64Column(void) {
+bool MPCExpressExecutor::ColumnConfig::hasFP64Column(void) {
   bool fp64_col = false;
   for (auto iter = col_dtype_.begin(); iter != col_dtype_.end(); iter++) {
     if (iter->second == ColDtype::FP64) {
@@ -119,17 +121,18 @@ bool ColumnConfig::hasFP64Column(void) {
   return fp64_col;
 }
 
-void ColumnConfig::Clean(void) {
+void MPCExpressExecutor::ColumnConfig::Clean(void) {
   col_owner_.clear();
   col_dtype_.clear();
   local_col_.clear();
   node_id_ = "";
 }
 
-ColumnConfig::~ColumnConfig() { Clean(); }
+MPCExpressExecutor::ColumnConfig::~ColumnConfig() { Clean(); }
 
 // Implement of class FeedDict.
-int FeedDict::checkLocalColumn(const std::string &col_name) {
+int MPCExpressExecutor::FeedDict::checkLocalColumn(
+    const std::string &col_name) {
   bool is_local = false;
   int ret = col_config_->getColumnLocality(col_name, is_local);
   if (ret) {
@@ -142,7 +145,7 @@ int FeedDict::checkLocalColumn(const std::string &col_name) {
     return 0;
 }
 
-int FeedDict::setOrCheckValueCount(int64_t new_count) {
+int MPCExpressExecutor::FeedDict::setOrCheckValueCount(int64_t new_count) {
   if (val_count_ == -1)
     val_count_ = new_count;
 
@@ -152,8 +155,8 @@ int FeedDict::setOrCheckValueCount(int64_t new_count) {
   return 0;
 }
 
-int FeedDict::importColumnValues(const std::string &col_name,
-                                 std::vector<int64_t> &int64_vec) {
+int MPCExpressExecutor::FeedDict::importColumnValues(
+    const std::string &col_name, std::vector<int64_t> &int64_vec) {
   {
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -214,8 +217,8 @@ int FeedDict::importColumnValues(const std::string &col_name,
   return 0;
 }
 
-int FeedDict::importColumnValues(const std::string &col_name,
-                                 std::vector<double> &fp64_vec) {
+int MPCExpressExecutor::FeedDict::importColumnValues(
+    const std::string &col_name, std::vector<double> &fp64_vec) {
   {
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -252,8 +255,8 @@ int FeedDict::importColumnValues(const std::string &col_name,
   return 0;
 }
 
-int FeedDict::getColumnValues(const std::string &col_name,
-                              std::vector<int64_t> **p_col_vec) {
+int MPCExpressExecutor::FeedDict::getColumnValues(
+    const std::string &col_name, std::vector<int64_t> **p_col_vec) {
   {
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -283,8 +286,8 @@ int FeedDict::getColumnValues(const std::string &col_name,
   return 0;
 }
 
-int FeedDict::getColumnValues(const std::string &col_name,
-                              std::vector<double> **p_col_vec) {
+int MPCExpressExecutor::FeedDict::getColumnValues(
+    const std::string &col_name, std::vector<double> **p_col_vec) {
   {
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -314,7 +317,7 @@ int FeedDict::getColumnValues(const std::string &col_name,
   return 0;
 }
 
-FeedDict::~FeedDict() {
+MPCExpressExecutor::FeedDict::~FeedDict() {
   this->float_run_ = false;
   this->fp64_col_.clear();
   this->int64_col_.clear();
@@ -322,7 +325,11 @@ FeedDict::~FeedDict() {
 }
 
 // Implement of class MPCExpressExecutor.
-MPCExpressExecutor::MPCExpressExecutor() {}
+MPCExpressExecutor::MPCExpressExecutor() {
+  col_config_ = nullptr;
+  mpc_op_ = nullptr;
+  feed_dict_ = nullptr;
+}
 
 bool MPCExpressExecutor::isOperator(const char op) {
   if (op == '+' || op == '-' || op == '*' || op == '/')
@@ -514,6 +521,39 @@ void MPCExpressExecutor::parseExpress(const std::string &expr) {
   return;
 }
 
+void MPCExpressExecutor::initColumnConfig(std::string &node_id) {
+  col_config_ = new ColumnConfig(node_id);
+}
+
+int MPCExpressExecutor::importColumnDtype(std::string &col_name, bool is_fp64) {
+  if (is_fp64)
+    return col_config_->importColumnDtype(col_name,
+                                          ColumnConfig::ColDtype::FP64);
+  else
+    return col_config_->importColumnDtype(col_name,
+                                          ColumnConfig::ColDtype::INT64);
+  return 0;
+}
+
+int MPCExpressExecutor::importColumnOwner(std::string &col_name,
+                                          std::string &node_id) {
+  return col_config_->importColumnOwner(col_name, node_id);
+}
+
+void MPCExpressExecutor::InitFeedDict(void) {
+  feed_dict_ = new FeedDict(col_config_, fp64_run_);
+}
+
+int MPCExpressExecutor::importColumnValues(std::string &col_name,
+                                           std::vector<int64_t> &val_vec) {
+  return feed_dict_->importColumnValues(col_name, val_vec);
+}
+
+int MPCExpressExecutor::importColumnValues(std::string &col_name,
+                                           std::vector<double> &val_vec) {
+  return feed_dict_->importColumnValues(col_name, val_vec);
+}
+
 int MPCExpressExecutor::importExpress(std::string expr) {
   parseExpress(expr);
   bool ret = checkExpress();
@@ -525,10 +565,16 @@ int MPCExpressExecutor::importExpress(std::string expr) {
   return 0;
 }
 
-void MPCExpressExecutor::resolveRunMode(void) {
+int MPCExpressExecutor::resolveRunMode(void) {
   std::stack<std::string> tmp_suffix = suffix_stk_;
   bool has_div_op = false;
   bool has_fp64_val = false;
+
+  int ret = col_config_->resolveLocalColumn();
+  if (ret) {
+    LOG(ERROR) << "Find out local column failed.";
+    return -1;
+  }
 
   while (!tmp_suffix.empty()) {
     std::string token = tmp_suffix.top();
@@ -565,6 +611,8 @@ void MPCExpressExecutor::resolveRunMode(void) {
     LOG(INFO) << "MPC run in FP64 mode.";
   else
     LOG(INFO) << "MPC run in INT64 mode.";
+
+  return 0;
 }
 
 void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
@@ -668,8 +716,8 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
     if (is_local == false) {
       // Column is a remote column.
       token_val.type = 4;
-      VLOG(3) << "Construct TokenValue instance for '" << token << "', type '"
-              << token_val.TypeToString() << "'.";
+      LOG(INFO) << "Construct TokenValue instance for '" << token << "', type '"
+                << token_val.TypeToString() << "'.";
       return;
     }
 
@@ -692,8 +740,8 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
     }
   }
 
-  VLOG(3) << "Construct TokenValue instance for '" << token << "', type '"
-          << token_val.TypeToString() << "'.";
+  LOG(INFO) << "Construct TokenValue instance for '" << token << "', type '"
+            << token_val.TypeToString() << "'.";
 }
 
 void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
