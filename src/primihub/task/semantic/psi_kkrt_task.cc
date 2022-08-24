@@ -31,9 +31,9 @@
 #include "src/primihub/util/file_util.h"
 #include <glog/logging.h>
 
+#ifndef __APPLE__
 #include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
 
-#ifndef __APPLE__
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtSender.h"
 #include "libOTe/NChooseOne/NcoOtExt.h"
