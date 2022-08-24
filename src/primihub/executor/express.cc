@@ -317,12 +317,14 @@ int MPCExpressExecutor::FeedDict::getColumnValues(
   return 0;
 }
 
-MPCExpressExecutor::FeedDict::~FeedDict() {
+void MPCExpressExecutor::FeedDict::Clean(void) {
   this->float_run_ = false;
   this->fp64_col_.clear();
   this->int64_col_.clear();
   this->col_config_ = nullptr;
 }
+
+MPCExpressExecutor::FeedDict::~FeedDict() { Clean(); }
 
 // Implement of class MPCExpressExecutor.
 MPCExpressExecutor::MPCExpressExecutor() {
@@ -590,12 +592,12 @@ int MPCExpressExecutor::resolveRunMode(void) {
     ColumnConfig::ColDtype dtype;
     if (!col_config_->getColumnDtype(token, dtype)) {
       // Token is a column name.
-      token_type_.insert(std::make_pair(token, TokenType::COLUMN));
+      token_type_map_.insert(std::make_pair(token, TokenType::COLUMN));
       continue;
     }
 
     // Token is a number.
-    token_type_.insert(std::make_pair(token, TokenType::VALUE));
+    token_type_map_.insert(std::make_pair(token, TokenType::VALUE));
     if (token.find(".") != std::string::npos)
       has_fp64_val = true;
   }
@@ -708,7 +710,7 @@ void MPCExpressExecutor::createTokenValue(sf64Matrix<D> *m, TokenValue &v,
 
 void MPCExpressExecutor::createTokenValue(const std::string &token,
                                           TokenValue &token_val) {
-  TokenType type = token_type_[token];
+  TokenType type = token_type_map_[token];
   if (type == TokenType::COLUMN) {
     // Token is a column name, a remote column or a local column.
     bool is_local = false;
@@ -890,13 +892,32 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
   return;
 }
 
-MPCExpressExecutor::~MPCExpressExecutor() {
-  token_type_.clear();
+void MPCExpressExecutor::Clean(void) {
+  for (auto iter = token_val_map_.begin(); iter != token_val_map_.end();
+       iter++) {
+    switch (iter->second.type) {
+    case 5:
+      delete iter->second.val_union.sh_fp64_m;
+      break;
+    case 6:
+      delete iter->second.val_union.sh_i64_m;
+      break;
+    default:
+      break;
+    }
+  }
+
+  delete col_config_;
+  delete feed_dict_;
+  delete mpc_op_;
 
   while (!suffix_stk_.empty())
     suffix_stk_.pop();
 
-  delete mpc_op_;
+  token_val_map_.clear();
+  token_type_map_.clear();
 }
+
+MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
 
 } // namespace primihub

@@ -53,9 +53,10 @@ public:
   void revealMPCResult(std::vector<uint8_t> &party, std::vector<int64_t> &vec);
 
   // Method group end;
-  
 
   bool isFP64RunMode(void) { return this->fp64_run_; }
+
+  void Clean(void);
 
   // A token means a column name and constant value string, and a TokenValue
   // saves values of a token. So:
@@ -165,6 +166,8 @@ private:
       return static_cast<uint32_t>(val_count_);
     }
 
+    void Clean(void);
+
   private:
     int checkLocalColumn(const std::string &col_name);
     int setOrCheckValueCount(int64_t new_count);
@@ -213,7 +216,7 @@ private:
   MPCOperator *mpc_op_;
   FeedDict *feed_dict_;
   std::map<std::string, TokenValue> token_val_map_;
-  std::map<std::string, TokenType> token_type_;
+  std::map<std::string, TokenType> token_type_map_;
   uint8_t party_id_;
 };
 }; // namespace primihub
