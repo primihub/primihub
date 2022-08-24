@@ -422,11 +422,12 @@ arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallCont
             auto table = std::get<0>(dataset->data);
             std::vector<std::shared_ptr<arrow::RecordBatch>> batches;
             arrow::TableBatchReader batch_reader(*table);
-            ARROW_ASSIGN_OR_RAISE(batches, batch_reader.ToRecordBatches());
+            // ARROW_ASSIGN_OR_RAISE(batches, batch_reader.ToRecordBatches());
+            batch_reader.ReadAll(&batches);
 
             ARROW_ASSIGN_OR_RAISE(auto owning_reader, arrow::RecordBatchReader::Make(
                                                   std::move(batches), table->schema()));
-            *stream = std::unique_ptr<arrow::flight::FlightDataStream>(
+            *data_stream = std::unique_ptr<arrow::flight::FlightDataStream>(
                      new arrow::flight::RecordBatchStream(owning_reader));
 
             return arrow::Status::OK();

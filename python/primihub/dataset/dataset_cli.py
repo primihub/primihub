@@ -16,6 +16,7 @@
 
 from typing import List
 import pyarrow as pa
+import pandas as pd
 import pyarrow.flight
 import threading
 import json
@@ -56,11 +57,11 @@ class FlightClient(DatasetClient):
             sleep(1)
         return meta
 
-    def do_get(self, ticket: str):
+    def do_get(self, ticket: str) -> pd.DataFrame:
         reader = self.client.do_get(pyarrow.flight.Ticket(ticket))
-        data = reader.readall()
-        print("====", data)
-        return data
+        data = reader.read_all()
+        df_data = data.to_pandas()
+        return df_data
 
         
 

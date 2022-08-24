@@ -173,10 +173,14 @@ def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
     return dataset_ref
 
 
-def get(dataset_ref: DatasetRef):
+def get(dataset_ref: DatasetRef) -> pd.DataFrame:
+    """ Get dataset using primihub client (singltone) Dataset client.
+        Default is flight client.
+        @return pandas DataFrame object
+    """
     from primihub.dataset.dataset_cli import DatasetClientFactory
     # FIXME use primihub cli client
     dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
-
     # get dataset use dataset id.
-    dataset_client.do_get(dataset_ref.dataset_name)
+    df_data = dataset_client.do_get(dataset_ref.dataset_name)
+    return df_data
