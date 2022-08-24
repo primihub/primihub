@@ -170,7 +170,7 @@ def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
     from primihub.dataset.dataset_cli import DatasetClientFactory
     # FIXME use primihub cli client
     # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
-    dataset_client = primihub_cli
+    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
     metas = dataset_client.do_put(df_data, dataset_key)
     dataset_ref = DatasetRef()
     dataset_ref.from_meta(metas[0])
@@ -186,7 +186,7 @@ def get(dataset_ref: DatasetRef) -> pd.DataFrame:
     from primihub.dataset.dataset_cli import DatasetClientFactory
     # FIXME use primihub cli client
     # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
-    dataset_client = primihub_cli
+    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
     # get dataset use dataset id.
     df_data = dataset_client.do_get(dataset_ref.dataset_name)
     return df_data

@@ -104,9 +104,9 @@ class PrimihubClient(object):
         """
         logger.info("*** cli init ***")
         logger.debug(config)
-        node = config.get("node", None)
+        self.node =node= config.get("node", None)
         notify_node = config.get("node", None).split(":")[0] + ":6666"
-        cert = config.get("cert", None)
+        self.cert = cert = config.get("cert", None)
 
         # grpc clients: Command/Notify/Dataset
         self.grpc_client = GrpcClient(node, cert)
