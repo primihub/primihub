@@ -799,10 +799,10 @@ void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
 
   if (val2.type == 1 || val2.type == 4) {
     sh_val2.resize(val_count, 1);
-    createI64Shares(val1, sh_val1);
+    createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
   } else {
-    p_sh_val2 = val1.val_union.sh_i64_m;
+    p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
   std::vector<si64Matrix> sh_val_vec;

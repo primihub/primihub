@@ -12,16 +12,6 @@
 
 using namespace primihub;
 
-class GLogHelper {
-public:
-  GLogHelper(char *program) {
-    google::InitGoogleLogging(program);
-    FLAGS_colorlogtostderr = true;
-    google::InstallFailureSignalHandler();
-  }
-  ~GLogHelper() { google::ShutdownGoogleLogging(); }
-};
-
 std::string expr = "A+B+C";
 
 static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
@@ -42,28 +32,32 @@ static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
   return;
 }
 
-static void importColumnDtype(MPCExpressExecutor *mpc_exec) {
+static void importColumnDtype(MPCExpressExecutor *mpc_exec, bool is_fp64) {
   std::string col_name;
 
   col_name = "A";
-  mpc_exec->importColumnDtype(col_name, true);
+  mpc_exec->importColumnDtype(col_name, is_fp64);
 
   col_name = "B";
-  mpc_exec->importColumnDtype(col_name, true);
+  mpc_exec->importColumnDtype(col_name, is_fp64);
 
   col_name = "C";
-  mpc_exec->importColumnDtype(col_name, true);
+  mpc_exec->importColumnDtype(col_name, is_fp64);
   return;
 }
 
-static void runFirstParty(std::vector<double> &col_val) {
+template <typename T> static void runFirstParty(std::vector<T> &col_val) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
-  
+
   std::string node_id = "node0";
   mpc_exec->initColumnConfig(node_id);
   importColumnOwner(mpc_exec);
-  importColumnDtype(mpc_exec);
-  
+
+  if (std::is_same<double, T>::value)
+    importColumnDtype(mpc_exec, true);
+  else
+    importColumnDtype(mpc_exec, false);
+
   mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
@@ -89,19 +83,23 @@ static void runFirstParty(std::vector<double> &col_val) {
   return;
 }
 
-static void runSecondParty(std::vector<double> &col_val) {
+template <typename T> static void runSecondParty(std::vector<T> &col_val) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
-  
+
   std::string node_id = "node1";
   mpc_exec->initColumnConfig(node_id);
   importColumnOwner(mpc_exec);
-  importColumnDtype(mpc_exec);
+
+  if (std::is_same<double, T>::value)
+    importColumnDtype(mpc_exec, true);
+  else
+    importColumnDtype(mpc_exec, false);
 
   mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
   mpc_exec->InitFeedDict();
-  
+
   std::string col_name = "B";
   mpc_exec->importColumnValues(col_name, col_val);
 
@@ -123,13 +121,17 @@ static void runSecondParty(std::vector<double> &col_val) {
   return;
 }
 
-static void runThirdParty(std::vector<double> &col_val) {
+template <typename T> static void runThirdParty(std::vector<T> &col_val) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
-  
+
   std::string node_id = "node2";
   mpc_exec->initColumnConfig(node_id);
   importColumnOwner(mpc_exec);
-  importColumnDtype(mpc_exec);
+
+  if (std::is_same<double, T>::value)
+    importColumnDtype(mpc_exec, true);
+  else
+    importColumnDtype(mpc_exec, false);
 
   mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
@@ -157,7 +159,7 @@ static void runThirdParty(std::vector<double> &col_val) {
   return;
 }
 
-TEST(mpc_express_executor, aby3_executor_test) {
+TEST(mpc_express_executor, fp64_executor_test) {
   std::vector<double> col_val_a;
   std::vector<double> col_val_b;
   std::vector<double> col_val_c;
@@ -177,7 +179,6 @@ TEST(mpc_express_executor, aby3_executor_test) {
     pid_t pid = fork();
     if (pid != 0) {
       // This subprocess is party 1.
-      GLogHelper gh("Party_1");
       runSecondParty(col_val_b);
       return;
     }
@@ -185,13 +186,11 @@ TEST(mpc_express_executor, aby3_executor_test) {
     pid = fork();
     if (pid != 0) {
       // This subprocess is party 2.
-      GLogHelper gh("Party_2");
       runThirdParty(col_val_c);
       return;
     }
 
     // The parent process is party 0.
-    GLogHelper gh("Party_0");
     runFirstParty(col_val_a);
 
     // Wait for subprocess exit.
@@ -199,15 +198,62 @@ TEST(mpc_express_executor, aby3_executor_test) {
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      GLogHelper gh("Party_0");
       runFirstParty(col_val_a);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
-      GLogHelper gh("Party_1");
       runSecondParty(col_val_b);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_2")) {
-      GLogHelper gh("Party_2");
+      runThirdParty(col_val_c);
+    }
+  }
+}
+
+TEST(mpc_express_executor, i64_executor_test) {
+  std::vector<int64_t> col_val_a;
+  std::vector<int64_t> col_val_b;
+  std::vector<int64_t> col_val_c;
+
+  srand(time(nullptr));
+  for (int i = 0; i < 100; i++)
+    col_val_a.emplace_back(rand() % 10000);
+
+  for (int i = 0; i < 100; i++)
+    col_val_b.emplace_back(rand() % 10000);
+
+  for (int i = 0; i < 100; i++)
+    col_val_c.emplace_back(rand() % 10000);
+
+  bool single_terminal = false;
+  if (single_terminal) {
+    pid_t pid = fork();
+    if (pid != 0) {
+      // This subprocess is party 1.
+      runSecondParty(col_val_b);
+      return;
+    }
+
+    pid = fork();
+    if (pid != 0) {
+      // This subprocess is party 2.
+      runThirdParty(col_val_c);
+      return;
+    }
+
+    // The parent process is party 0.
+    runFirstParty(col_val_a);
+
+    // Wait for subprocess exit.
+    int status;
+    waitpid(-1, &status, 0);
+  } else {
+    if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
+      runFirstParty(col_val_a);
+    } else if (std::string(std::getenv("MPC_PARTY")) ==
+               std::string("PARTY_1")) {
+      runSecondParty(col_val_b);
+    } else if (std::string(std::getenv("MPC_PARTY")) ==
+               std::string("PARTY_2")) {
       runThirdParty(col_val_c);
     }
   }
