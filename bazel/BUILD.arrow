@@ -83,6 +83,7 @@ cc_library(
             "cpp/src/arrow/tensor/*.cc",
             "cpp/src/arrow/util/*.cc",
             "cpp/src/arrow/flight/*.cc",
+            # "cpp/src/arrow/python/*.cc",
 
             "cpp/src/arrow/filesystem/util_internal.cc",
             "cpp/src/arrow/filesystem/localfs.cc",
@@ -136,8 +137,10 @@ cc_library(
         "cpp/src/arrow/filesystem/localfs.h",
         "cpp/src/arrow/filesystem/filesystem.h",
         "cpp/src/arrow/flight/server.h",
+        # "cpp/src/arrow/python/pyarrow.h",
     ],
     copts = [],
+    # linkopts = ["-L/Users/chb/miniforge3/lib -ldl -framework CoreFoundation"] + ["-lpython3.9"],
     defines = [
         "ARROW_WITH_BROTLI",
         "ARROW_WITH_SNAPPY",
@@ -186,5 +189,6 @@ cc_library(
         # "@com_google_protobuf//:protobuf",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_gflags_gflags//:gflags",
+        # "@pybind11",
     ],
 )

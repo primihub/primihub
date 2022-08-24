@@ -6,7 +6,7 @@ from primihub.utils.logger_util import logger
 
 
 class NodeContext:
-    def __init__(self, role, protocol, datasets, func=None, next_peer=None):
+    def __init__(self, role, protocol, datasets, func=None, next_peer=None, dataset_service_shared_ptr=None):
         self.role = role
         self.protocol = protocol
         self.datasets = datasets
@@ -23,6 +23,8 @@ class NodeContext:
 
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
+            
+        self.dataset_service_shared_ptr = dataset_service_shared_ptr
 
 
 class TaskContext:
@@ -109,13 +111,18 @@ class TaskContext:
         print("guest lookup table: ", self.guest_lookup_file_path)
         return self.guest_lookup_file_path
 
-
+    def get_dataset_service(self, role):
+        node_context = self.nodes_context.get(role, None)
+        if node_context is None:
+            return None
+        return node_context.dataset_service_shared_ptr
+        
 Context = TaskContext()
 
 
-def set_node_context(role, protocol, datasets,  next_peer):
-    print("========set node context: ", role, protocol, datasets,  next_peer)
-    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer)  # noqa
+def set_node_context(role, protocol, datasets,  next_peer, dataset_service_shared_ptr):
+    print("========set node context: ", role, protocol, datasets, next_peer, dataset_service_shared_ptr)
+    Context.nodes_context[role] = NodeContext(role, protocol, datasets, None, next_peer, dataset_service_shared_ptr)  # noqa
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
@@ -147,8 +154,6 @@ def set_task_context_guest_lookup_file(f):
     Context.guest_lookup_file_path = f
 
 # For test
-
-
 def set_text(role, protocol, datasets, dumps_func):
     print("========", role, protocol, datasets, dumps_func)
 

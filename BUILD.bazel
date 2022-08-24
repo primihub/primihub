@@ -851,6 +851,7 @@ cc_library(
     ],
 )
 
+########### pybind11 warppers start ########
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 pybind_extension(
@@ -869,6 +870,46 @@ py_library(
     name = "primihub_channel",
     data = ["primihub_channel.so"],
 )
+
+
+pybind_extension(
+    name = "primihub_dataset_warpper", 
+    srcs = [
+            "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
+            "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
+    ],
+    deps = [
+        "@arrow",
+        ":dataset_service",
+        ":data_store_lib",
+    ],
+)
+
+py_library(
+    name = "primihub_dataset_warpper",
+    data = ["primihub_dataset_warpper.so"],
+)
+
+
+# cc_library(
+#     name = "primihub_dataset_warpper",
+#     srcs = [
+#             "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
+#     ],
+#     hdrs = [
+#             "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
+#     ],
+#     copts = C_OPT,
+#     linkstatic = False,
+#     linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -framework CoreFoundation"] + ["-lpython3.9"],
+#     deps = [
+#         "@arrow",
+#         "@pybind11",
+#         ":dataset_service",
+#         ":data_store_lib",
+#     ],
+# )
+########### pybind11 warppers end ########
 
 cc_binary(
     name = "node",
@@ -1246,7 +1287,7 @@ cc_test(
     ],
 )
 
-## paillier
+
 cc_library(
     name = "lib_miracl",
     srcs = glob(["thirdparty/miracl/mr_src/*.c"],),
@@ -1259,6 +1300,7 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+######################### paillier start #########################
 cc_library(
     name = "lib_paillier",
     srcs = glob(
@@ -1330,41 +1372,6 @@ cc_binary(
     ],
 )
 
-cc_library(
-    name = "kkrt_psi",
-    srcs = glob(
-        [
-            "test/primihub/protocol/kkrtpsi/*.cc"
-        ],
-    ),
-    hdrs = glob([
-        "test/primihub/protocol/kkrtpsi/*.h"
-    ]),
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = True,
-    deps = [
-        "@osu_libpsi//:libpsi",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-cc_binary(
-    name = "kkrt_psi_test",
-    srcs = [
-        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
-    ],
-    includes = [
-        "test/primihub/protocol/kkrtpsi",
-    ],
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-        ":kkrt_psi"
-    ],
-)
-
 cc_binary(
     name = "opt_paillier_pack_test",
     srcs = [
@@ -1430,6 +1437,44 @@ py_test(
     ],
 )
 
+######################### paillier end #########################
+
+
+
+cc_library(
+    name = "kkrt_psi",
+    srcs = glob(
+        [
+            "test/primihub/protocol/kkrtpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/kkrtpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "kkrt_psi_test",
+    srcs = [
+        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/kkrtpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":kkrt_psi"
+    ],
+)
 # test
 cc_test(
     name = "test",

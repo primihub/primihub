@@ -31,21 +31,6 @@ def is_pkg(line):
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-# class PostDevelopCommand(develop):
-#     """Post-installation for development mode."""
-
-#     def run(self):
-#         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
-#         develop.run(self)
-
-
-# class PostInstallCommand(install):
-#     """Post-installation for installation mode."""
-
-#     def run(self):
-#         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
-#         install.run(self)
-
 
 with open('requirements.txt', encoding='utf-8') as reqs:
     install_requires = [l for l in reqs.read().split('\n') if is_pkg(l)]

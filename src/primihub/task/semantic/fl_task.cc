@@ -16,7 +16,7 @@
 #include "src/primihub/task/semantic/fl_task.h"
 #include <glog/logging.h>
 #include <pybind11/embed.h>
-// #include <pybind11/pybind11.h>
+#include <memory>
 #include <pybind11/stl.h>
 #include "Python.h"
 #include "src/primihub/util/util.h"
@@ -24,6 +24,13 @@
 // namespace py = pybind11;
 
 using primihub::service::EventBusNotifyDelegate;
+
+
+PYBIND11_EMBEDDED_MODULE(embeded, module) {
+  py::class_<DatasetService, std::shared_ptr<DatasetService>> dataset_service(module, "DatasetService");
+}
+
+
 namespace primihub::task {
 FLTask::FLTask(const std::string& node_id,
                const TaskParam* task_param,
@@ -150,7 +157,8 @@ int FLTask::execute() {
 
         set_node_context_(node_context_.role, node_context_.protocol,
                           py::cast(node_context_.datasets),
-                          this->next_peer_address_);
+                          this->next_peer_address_,
+                          this->dataset_service_);
 
         set_task_context_dataset_map_ =
             ph_context_m.attr("set_task_context_dataset_map");
@@ -160,6 +168,7 @@ int FLTask::execute() {
             set_task_context_dataset_map_(dataset_meta.first,
                                           dataset_meta.second);
         }
+        // FIXME（chenhongbo） short these fucntions in one.
         set_task_context_predict_file_ =
             ph_context_m.attr("set_task_context_model_file");
         set_task_context_predict_file_(this->model_file_path_);
@@ -180,7 +189,6 @@ int FLTask::execute() {
             ph_context_m.attr("set_task_context_indicator_file");
         set_task_context_indicator_file_(this->indicator_file_path_); 
 
-        //   LOG(INFO) << node_context_.dumps_func;
         LOG(INFO) << "🔐 After ph_context, GIL is "
                   << ((PyGILState_Check() == 1) ? "hold" : "not hold")
                   << " now is runing " << std::endl;
@@ -204,7 +212,7 @@ int FLTask::execute() {
         ph_exec_m.attr("execute_py")(py::bytes(node_context_.dumps_func));
         LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
 
-        // TODO Fire task status event
+        // Fire task status event
         auto taskId = task_param_.task_id();
         auto submitClientId = task_request_.submit_client_id();
         EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
