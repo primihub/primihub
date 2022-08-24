@@ -47,24 +47,18 @@ class Host:
         self.X = X
         self.y = y
         self.config = config
-        self.model = LRModel(X, y)
+        self.model = LRModel(X, y, self.config['category'])
         self.public_key = None
         self.need_encrypt = self.config['need_encrypt']
-        self.need_one_vs_rest = self.config['need_one_vs_rest']
         self.lr = self.config['lr']
-        self.batch_size = 200
-        self.iteration = 0
-        self.epoch = 10
+        self.need_one_vs_rest = None
+        self.batch_size = self.config['batch_size']
         self.flag = True
         self.proxy_server = proxy_server
         self.proxy_client_arbiter = proxy_client_arbiter
 
     def predict(self, data=None):
-        if self.need_one_vs_rest:
-            pass
-        else:
-            pre = self.mode.predict(data)
-            return pre
+        pass
 
     def fit_binary(self, batch_x, batch_y, theta=None):
         if self.need_one_vs_rest == False:
@@ -85,11 +79,6 @@ class Host:
             encrypted_grad = batch_encrypted_grad.sum(axis=1) / batch_y.shape[0]
             for j in range(len(theta)):
                 theta[j] -= self.lr * encrypted_grad[j]
-
-            # weight_accumulators = []
-            # for j in range(len(self.local_model.encrypt_weights)):
-            #     weight_accumulators.append(self.local_model.encrypt_weights[j] - original_w[j])
-            # print('host model_param---->', model_param)
             return theta
 
         else:  # Plaintext
@@ -106,8 +95,10 @@ class Host:
 
     def fit(self, X, y, category):
         if category == 2:
+            self.need_one_vs_rest = False
             return self.fit_binary(X, y)
         else:
+            self.need_one_vs_rest = True
             return self.one_vs_rest(X, y, category)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
@@ -172,11 +163,10 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
         'lr': 0.05,
         'batch_size': 100,
         'need_encrypt': 'YES',
-        'need_one_vs_rest': True,
-        'category': 3
+        'category': 2
     }
-    # x, label = data_binary()
-    x, label = data_iris()
+    x, label = data_binary()
+    # x, label = data_iris()
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
     x = LRModel.normalization(x)
     count_train = x.shape[0]

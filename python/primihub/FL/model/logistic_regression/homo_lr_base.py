@@ -5,13 +5,12 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class LRModel:
-    def __init__(self, X, y, w=None):
+    def __init__(self, X, y, category, w=None):
         self.w_size = X.shape[1] + 1
         self.coef = None
         self.intercept = None
         self.theta = None
-        # TODO: 类别参数
-        self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (3, self.w_size))
+        self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, self.w_size))
         if w is not None:
             self.theta = w
         else:

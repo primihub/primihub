@@ -50,10 +50,10 @@ class Guest:
         self.y = y
         self.config = config
         self.lr = self.config['lr']
-        self.model = LRModel(X, y)
-        self.need_one_vs_rest = self.config['need_one_vs_rest']
+        self.model = LRModel(X, y, self.config['category'])
+        self.need_one_vs_rest = None
         self.need_encrypt = False
-        self.batch_size = None
+        self.batch_size = self.config['batch_size']
         self.proxy_server = proxy_server
         self.proxy_client_arbiter = proxy_client_arbiter
 
@@ -81,8 +81,10 @@ class Guest:
 
     def fit(self, X, y, category):
         if category == 2:
+            self.need_one_vs_rest = False
             return self.fit_binary(X, y)
         else:
+            self.need_one_vs_rest = True
             return self.one_vs_rest(X, y, category)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
@@ -142,12 +144,11 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
         'epochs': 1,
         'lr': 0.05,
         'batch_size': 100,
-        'need_one_vs_rest': True,
-        'category': 3
+        'category': 2
     }
 
-    # x, label = data_binary()
-    x, label = data_iris()
+    x, label = data_binary()
+    # x, label = data_iris()
     x = LRModel.normalization(x)
     count_train = x.shape[0]
     batch_num_train = count_train // config['batch_size'] + 1
@@ -157,8 +158,9 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
     client_guest = Guest(x, label, config, proxy_server,
                          proxy_client_arbiter)
 
-    batch_gen_guest = client_guest.batch_generator(
-        [x, label], config['batch_size'], False)
+    # batch_gen_guest = client_guest.batch_generator(
+    #     [x, label], config['batch_size'], False)
+    batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
 
     for i in range(config['epochs']):
         logger.info("##### epoch %s ##### " % i)

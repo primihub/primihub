@@ -3,7 +3,7 @@ from os import path
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 import numpy as np
 from phe import paillier
-from primihub.FL.model.evaluation.evaluation import Classification_eva
+from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 import pandas as pd
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
@@ -114,6 +114,9 @@ class Arbiter:
         else:
             return self.predict_one_vs_rest(data)
 
+    def evaluation(self, y, y_hat):
+        return evaluator.getAccuracy(y, y_hat)
+
     def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
         param = []
         weight_all = []
@@ -218,8 +221,8 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
     config = {
         'epochs': 1,
         'batch_size': 100,
-        'need_one_vs_rest': True,
-        'category': 3
+        'need_one_vs_rest': False,
+        'category': 2
     }
     client_arbiter = Arbiter(proxy_server, proxy_client_host, proxy_client_guest)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
@@ -244,11 +247,13 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
         logger.info("epoch={} done".format(i))
 
     logger.info("####### start predict ######")
-    X, y = iris_data()
+    # X, y = iris_data()
+    X, y = data_binary()
     X = LRModel.normalization(X)
     pre = client_arbiter.predict(X, config['category'])
     logger.info('Classification result is:')
-    acc = np.mean(y == pre)
+    # acc = np.mean(y == pre)
+    acc = client_arbiter.evaluation(y, pre)
     logger.info('acc is: %s' % acc)
     logger.info("All process done.")
     proxy_server.StopRecvLoop()
