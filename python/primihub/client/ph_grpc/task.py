@@ -26,22 +26,23 @@ class Task(object):
         self.node_grpc_connections = []
         self.cli = primihub_client
         self.loop = self.cli.loop
+        self.nodes = []
 
     def set_task_status(self, status):
-        logger.debug("set task status: {}".format(status))
-        if self.task_status != status:
-            self.task_status = status
+        self.task_status = status
         if self.task_status == "SUCCESS" or self.task_status == "FAILED":
-            self.exit()
-        # if self.task_status == "RUNNING":
-            # self.exit()
+            self.nodes.pop()
+            logger.debug('NODE NUM: {}'.format(len(self.nodes)))
+            if len(self.nodes) == 0:
+                self.exit()
 
     def exit(self):
         try:
-            self.cli.tasks_map.pop(self.task_id)
+            self.cli.tasks_map.pop(self.task_id, None)
         except Exception as e:
             logger.error(str(e))
-        if self.cli.tasks_map is None:
+        logger.debug(self.cli.tasks_map)
+        if not self.cli.tasks_map:
             logger.info("All tasks are over and the client is about to exit.")
             self.cli.exit()
 
@@ -56,8 +57,14 @@ class Task(object):
         logger.debug("get node event from: {}".format(node))
         worker_node_grpc_client = NodeServiceClient(node, cert)
         self.node_grpc_connections.append(worker_node_grpc_client)
+        logger.debug(
+            "!!!!!!! ------ node_grpc_connections ------node: {}".format(worker_node_grpc_client.node))
+        logger.debug(self.node_grpc_connections)
         notify_request = worker_node_grpc_client.client_context(
-            self.cli.client_id, self.cli.client_ip, self.cli.client_port)
+            self.cli.client_id, self.cli.client_ip, 10051)
+        # self.cli.client_id, self.cli.client_ip, self.cli.client_port)
 
         fire_coroutine_threadsafe(
             worker_node_grpc_client.async_get_node_event(notify_request), self.loop)
+
+        # get task status event: task:886313e13b8a53729b900c9aee199e5d SUCCESS , clientId:client:6fa459eaee8a3ca4894edb77e160355z
