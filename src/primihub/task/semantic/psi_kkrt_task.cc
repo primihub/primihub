@@ -23,6 +23,7 @@
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Crypto/RandomOracle.h"
 #include "cryptoTools/Crypto/PRNG.h"
+#include "cryptoTools/Common/Timer.h"
 #endif
 
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
@@ -38,8 +39,6 @@
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtSender.h"
 #include "libOTe/NChooseOne/NcoOtExt.h"
 #endif
-
-#include "cryptoTools/Common/Timer.h"
 
 #include <numeric>
 
