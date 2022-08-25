@@ -21,7 +21,10 @@ genrule(
             cmake -DARCH=ARM -DWSIZE=32 .
             make
         popd
-        #objcopy --localize-symbol=bn_init $$RELIC_ROOT/lib/librelic_s.a
+        obj_dir=`which objcopy`
+        if [ "$$obj_dir" != "" ]; then
+            objcopy --localize-symbol=bn_init $$RELIC_ROOT/lib/librelic_s.a
+        fi
         cp $$RELIC_ROOT/lib/librelic_s.a $(location librelic_s.a)
         cp $$RELIC_ROOT/include/relic_conf.h $(location include/relic_conf.h)
     """,

@@ -89,8 +89,6 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    #- name: get python ldflags
-    #  run: python3.9-config --ldflags
     - uses: actions/checkout@v3
     - name: bazel build
       run: |
@@ -154,14 +152,6 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    #- name: get python ldflags
-    #  run: python3.9-config --ldflags
-    - name: find objcopy
-      run: |
-        brew install binutils
-        #ln -s /usr/local/Cellar/binutils/2.38_1/bin/objcopy /usr/local/bin/objcopy
-        echo 'export PATH="/usr/local/opt/binutils/bin:$PATH"' >> /Users/runner/.bash_profile
-        mdfind -name objcopy
     - name: bazel build
       run: |
         # cc_binary
