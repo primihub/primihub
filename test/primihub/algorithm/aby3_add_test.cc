@@ -168,6 +168,8 @@ TEST(add_operator, aby3_3pc_test) {
     i64Matrix prodVal = mpc.reveal(prod);
     LOG(INFO) << "Sum:" << sumVal;
     LOG(INFO) << "Prod:" << prodVal;
+    mpc.fini();
+
     return;
   }
 
@@ -207,6 +209,7 @@ TEST(add_operator, aby3_3pc_test) {
     prod = mpc.MPC_Mul(sharedMatrix);
     mpc.reveal(sum, 0);
     mpc.reveal(prod, 0);
+    mpc.fini();
 
     return;
   }
@@ -246,5 +249,6 @@ TEST(add_operator, aby3_3pc_test) {
   prod = mpc.MPC_Mul(sharedMatrix);
   mpc.reveal(sum, 0);
   mpc.reveal(prod, 0);
+  mpc.fini();
   return;
 }

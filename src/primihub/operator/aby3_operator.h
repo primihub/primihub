@@ -30,9 +30,11 @@ const Decimal D = D16;
 
 class MPCOperator {
 public:
+  Channel mNext, mPrev;
   IOService ios;
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
+  Sh3ShareGen gen;
   Sh3Evaluator eval;
   Sh3Runtime runtime;
   u64 partyIdx;
@@ -43,7 +45,7 @@ public:
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
   int setup(std::string ip, u32 next_port, u32 prev_port);
-
+  void fini();
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
@@ -56,9 +58,44 @@ public:
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
   }
 
+  template <Decimal D>
+  sf64Matrix<D> createSharesByShape(const eMatrix<double> &val) {
+    f64Matrix<D> v2(val.rows(), val.cols());
+    for (u64 i = 0; i < val.size(); ++i)
+      v2(i) = val(i);
+    return createSharesByShape(v2);
+  }
+
+  template <Decimal D>
+  sf64Matrix<D> createSharesByShape(const f64Matrix<D> &val) {
+    std::array<u64, 2> size{val.rows(), val.cols()};
+    mNext.asyncSendCopy(size);
+    mPrev.asyncSendCopy(size);
+    sf64Matrix<D> dest(size[0], size[1]);
+    enc.localFixedMatrix(runtime, val, dest).get();
+    return dest;
+  }
+
+  template <Decimal D> sf64Matrix<D> createSharesByShape(u64 pIdx) {
+    std::array<u64, 2> size;
+    if (pIdx == (partyIdx + 1) % 3)
+      mNext.recv(size);
+    else if (pIdx == (partyIdx + 2) % 3)
+      mPrev.recv(size);
+    else
+      throw RTE_LOC;
+    sf64Matrix<D> dest(size[0], size[1]);
+    enc.remoteFixedMatrix(runtime, dest).get();
+    return dest;
+  }
+
   void createShares(const i64Matrix &vals, si64Matrix &sharedMatrix);
 
   void createShares(si64Matrix &sharedMatrix);
+
+  si64Matrix createSharesByShape(const i64Matrix &val);
+
+  si64Matrix createSharesByShape(u64 partyIdx);
 
   template <Decimal D> void createShares(double vals, sf64<D> &sharedFixedInt) {
     enc.localFixed<D>(runtime, vals, sharedFixedInt).get();
@@ -67,6 +104,10 @@ public:
   template <Decimal D> void createShares(sf64<D> &sharedFixedInt) {
     enc.remoteFixed<D>(runtime, sharedFixedInt).get();
   }
+
+  sbMatrix createBinSharesByShape(i64Matrix &val, u64 bitCount);
+
+  sbMatrix createBinSharesByShape(u64 partyIdx);
 
   template <Decimal D> eMatrix<double> revealAll(const sf64Matrix<D> &vals) {
     f64Matrix<D> temp(vals.rows(), vals.cols());
@@ -77,8 +118,6 @@ public:
       ret(i) = static_cast<double>(temp(i));
     return ret;
   }
-  void createBinShares(i64Matrix &vals, sbMatrix &ret);
-  void createBinShares(sbMatrix &ret);
 
   i64Matrix revealAll(const si64Matrix &vals);
 
