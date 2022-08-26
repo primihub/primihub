@@ -141,7 +141,6 @@ cc_library(
         # "cpp/src/arrow/python/pyarrow.h",
     ],
     copts = [],
-    # linkopts = ["-L/Users/chb/miniforge3/lib -ldl -framework CoreFoundation"] + ["-lpython3.9"],
     defines = [
         "ARROW_WITH_BROTLI",
         "ARROW_WITH_SNAPPY",
