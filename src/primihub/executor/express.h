@@ -200,12 +200,13 @@ private:
 
   void runMPCAddI64(TokenValue &val1, TokenValue &val2, TokenValue &res);
 
-  int runMPCSub(const std::string &token1, const std::string &token2,
-                sf64Matrix<D> &sh_val);
-  int runMPCMul(const std::string &token1, const std::string &token2,
-                sf64Matrix<D> &sh_val);
-  int runMPCDiv(const std::string &token1, const std::string &token2,
-                sf64Matrix<D> &sh_val);
+  void runMPCSubFP64(TokenValue &val1, TokenValue &val2, TokenValue &res);
+
+  void runMPCSubI64(TokenValue &val1, TokenValue &val2, TokenValue &res);
+
+  void runMPCMulFP64(TokenValue &val1, TokenValue &val2, TokenValue &res);
+
+  void runMPCMulI64(TokenValue &val1, TokenValue &val2, TokenValue &res);
 
   bool isOperator(const char op);
   bool isOperator(const std::string &op);

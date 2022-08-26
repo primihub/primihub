@@ -12,7 +12,7 @@
 
 using namespace primihub;
 
-std::string expr = "A+B+C";
+std::string expr = "A*B-C+A";
 
 static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
   std::string col_name, col_owner;

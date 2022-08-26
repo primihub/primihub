@@ -77,7 +77,7 @@ void matrixOperations(u64 partyIdx) {
   Sh3Runtime runtime;
   setup(partyIdx, ios, enc, eval, runtime);
   // A plaintext matrix can be instantiated as
-  u64 rows = 1, cols = 2;
+  u64 rows = 3, cols = 1;
   eMatrix<i64> plainMatrix1(rows, cols);
   eMatrix<i64> plainMatrix2(cols, rows);
   // We can populate is by
@@ -90,8 +90,8 @@ void matrixOperations(u64 partyIdx) {
   LOG(INFO) << " plainMatrix2:" << plainMatrix2;
 
   // To encrypt it, we use
-  si64Matrix sharedMatrix1(rows, cols); //该结构中有两个矩阵，存放两份分享值
-  si64Matrix sharedMatrix2(cols, rows); //该结构中有两个矩阵，存放两份分享值
+  si64Matrix sharedMatrix1(rows, cols);
+  si64Matrix sharedMatrix2(cols, rows);
 
   if (partyIdx == 0) {
     enc.localIntMatrix(runtime, plainMatrix1, sharedMatrix1).get();
@@ -112,8 +112,7 @@ void matrixOperations(u64 partyIdx) {
   Sh3Task mulTask = eval.asyncMul(runtime, sharedMatrix1, sharedMatrix2, prod);
 
   // we can reconstruct the secret shares
-  eMatrix<i64> plainMatrix(
-      2, 1); //这里矩阵是什么结构不影响，下边揭露会重新设置结构
+  eMatrix<i64> plainMatrix(1, 1);
   enc.revealAll(mulTask, prod, plainMatrix).get();
   LOG(INFO) << plainMatrix;
 }
@@ -140,5 +139,6 @@ TEST(add_operator, aby3_3pc_test) {
   sleep(3);
 
   matrixOperations(2);
+
   return;
 }

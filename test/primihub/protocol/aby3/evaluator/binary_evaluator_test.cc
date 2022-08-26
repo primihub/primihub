@@ -3,7 +3,7 @@
 #include <random>
 #include <string>
 #include <vector>
-
+#pragma once
 #include "gtest/gtest.h"
 
 #include "src/primihub/common/type/fixed_point.h"
@@ -21,6 +21,7 @@
 namespace primihub {
 
 #define GCOUT std::cerr << "[          ] [ INFO ]"
+
 std::array<Matrix<i64>, 3> getShares(sbMatrix &S, Sh3Runtime &rt,
                                      CommPkg &comm) {
   std::array<Matrix<i64>, 3> r;
@@ -310,5 +311,4 @@ TEST(BinaryEvaluatorTest, Sh3_BinaryEngine_add_msb_test) {
   Sh3_BinaryEngine_test(cir, func, true, "msb", mask);
   //   Sh3_BinaryEngine_test(cir, func, false, "msb", mask);
 }
-
 } // namespace primihub

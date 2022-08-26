@@ -67,12 +67,20 @@ int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
   eval.init(partyIdx, comm, sysRandomSeed());
 
   binEval.mPrng.SetSeed(toBlock(partyIdx));
+  gen.init(toBlock(partyIdx), toBlock((partyIdx + 1) % 3));
+
   // Copies the Channels and will use them for later protcols.
+  mNext = comm.mNext();
+  mPrev = comm.mPrev();
   auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
   runtime.init(partyIdx, commPtr);
   return 1;
 }
 
+void MPCOperator::fini() {
+  mPrev.close();
+  mNext.close();
+}
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
   enc.localIntMatrix(runtime, vals, sharedMatrix).get();
@@ -81,12 +89,51 @@ void MPCOperator::createShares(const i64Matrix &vals,
 void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 }
-
-void MPCOperator::createBinShares(i64Matrix &vals, sbMatrix &ret) {
-  enc.localBinMatrix(runtime.noDependencies(), vals, ret).get();
+si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
+  std::array<u64, 2> size{val.rows(), val.cols()};
+  mNext.asyncSendCopy(size);
+  mPrev.asyncSendCopy(size);
+  si64Matrix dest(size[0], size[1]);
+  enc.localIntMatrix(runtime, val, dest).get();
+  return dest;
 }
-void MPCOperator::createBinShares(sbMatrix &ret) {
-  enc.remoteBinMatrix(runtime.noDependencies(), ret).get();
+
+si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
+  std::array<u64, 2> size;
+  if (pIdx == (partyIdx + 1) % 3)
+    mNext.recv(size);
+  else if (pIdx == (partyIdx + 2) % 3)
+    mPrev.recv(size);
+  else
+    throw RTE_LOC;
+
+  si64Matrix dest(size[0], size[1]);
+  enc.remoteIntMatrix(runtime, dest).get();
+  return dest;
+}
+
+// only support val is column vector
+sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
+  std::array<u64, 2> size{val.rows(), bitCount};
+  mNext.asyncSendCopy(size);
+  mPrev.asyncSendCopy(size);
+  sbMatrix dest(size[0], size[1]);
+  enc.localBinMatrix(runtime, val, dest).get();
+  return dest;
+}
+
+sbMatrix MPCOperator::createBinSharesByShape(u64 pIdx) {
+  std::array<u64, 2> size;
+  if (pIdx == (partyIdx + 1) % 3)
+    mNext.recv(size);
+  else if (pIdx == (partyIdx + 2) % 3)
+    mPrev.recv(size);
+  else
+    throw RTE_LOC;
+
+  sbMatrix dest(size[0], size[1]);
+  enc.remoteBinMatrix(runtime, dest).get();
+  return dest;
 }
 
 i64Matrix MPCOperator::revealAll(const si64Matrix &vals) {
