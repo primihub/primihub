@@ -509,12 +509,12 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     "@org_openmined_pir//pir/cpp:pir",
-    # "@osu_libpsi//:libpsi",
+    #"@osu_libpsi//:libpsi",
 ]
 
 TASK_LIB_DEPS = select({
     ":macos-build": DEFAULT_TASK_LIB_DEPS,
-    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib"],
+    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
 })
 
 cc_library(
