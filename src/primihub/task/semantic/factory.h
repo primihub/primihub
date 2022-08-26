@@ -52,7 +52,7 @@ class TaskFactory {
 
         if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
             auto task_param = request.task();
-            auto fl_task = std::make_shared<FLTask>(node_id, &task_param, dataset_service);
+            auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
             return std::dynamic_pointer_cast<TaskBase>(fl_task);
             
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_TASK) {

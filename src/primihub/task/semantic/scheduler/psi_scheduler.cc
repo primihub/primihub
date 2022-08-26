@@ -168,11 +168,12 @@ void set_kkrt_psi_request_param(const std::string &node_id,
 }
 
 void node_push_psi_task(const std::string &node_id,
-                        const PeerDatasetMap &peer_dataset_map,
-                        const PushTaskRequest &nodePushTaskRequest,
-                        std::string dest_node_address,
-                        bool is_client) {
-    ClientContext context;
+                    const PeerDatasetMap &peer_dataset_map,
+                    const PushTaskRequest &nodePushTaskRequest,
+                    std::string dest_node_address,
+                    bool is_client) {
+    grpc::ClientContext context;
+
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);

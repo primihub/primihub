@@ -3,6 +3,7 @@ import os
 import logging
 from typing import Callable
 from cloudpickle import dumps
+from primihub.utils.logger_util import logger
 
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
@@ -16,6 +17,7 @@ logger = get_logger("context")
 
 class NodeContext:
     def __init__(self, role, protocol, dataset_port_map, func=None):
+
         self.role = role
         self.protocol = protocol
         self.func = func
@@ -32,7 +34,7 @@ class NodeContext:
 
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
-
+            
         self.datasets = []
         for ds_name in self.dataset_port_map.keys():
             self.datasets.append(ds_name)
@@ -163,8 +165,14 @@ class TaskContext:
         self.params_map.clear()
 
 
-
+    def get_dataset_service(self, role):
+        node_context = self.nodes_context.get(role, None)
+        if node_context is None:
+            return None
+        return node_context.dataset_service_shared_ptr
+        
 Context = TaskContext()
+
 
 
 def set_node_context(role, protocol, datasets):
@@ -172,6 +180,7 @@ def set_node_context(role, protocol, datasets):
     for dataset in datasets:
         dataset_port_map[dataset] = "0"
     Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
+
     # TODO set dataset map, key dataset name, value dataset meta information
 
 
@@ -215,7 +224,7 @@ def set_task_context_params_map(key, value):
     Context.params_map[key] = value
     logger.info("Insert '{}:{}' into task context.".format(key, value))
 
-
+# For test
 def set_text(role, protocol, datasets, dumps_func):
     logger.info("========", role, protocol, datasets, dumps_func)
 

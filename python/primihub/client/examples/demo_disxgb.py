@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 import primihub as ph
-from primihub.client.client import primihub_cli as cli
+from primihub.client import primihub_cli as cli
 from primihub.channel.zmq_channel import IOService, Session
 import pandas as pd
 import numpy as np
@@ -24,7 +24,8 @@ from primihub.FL.model.evaluation.evaluation import Regression_eva
 
 # client init
 # cli.init(config={"node": "127.0.0.1:50050", "cert": ""})
-cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
+# cli.init(config={"node": "192.168.99.23:8050", "cert": ""})
+cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
 
 ph.dataset.define("guest_dataset")
 ph.dataset.define("label_dataset")
@@ -37,6 +38,8 @@ num_tree = 1
 max_depth = 1
 
 # define a remote method
+
+
 @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset", "test_dataset"], next_peer="*:12121")
 def xgb_host_logic():
     print("start xgb host logic...")
@@ -88,6 +91,8 @@ def xgb_host_logic():
     return xgb_host.predict_raw(data_test).to_csv(predict_file_path)
 
 # define a remote method
+
+
 @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12121")
 def xgb_guest_logic():
     print("start xgb guest logic...")

@@ -36,7 +36,7 @@
 #include "src/primihub/task/semantic/scheduler.h"
 
 using grpc::Channel;
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;

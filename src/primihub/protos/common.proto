@@ -95,7 +95,6 @@ message Node {
   repeated VirtualMachine vm = 5;
 }
 
-
 message Task {
   TaskType type = 1;
   string name = 2;
@@ -106,6 +105,5 @@ message Task {
   repeated string input_datasets = 7; 
   bytes job_id = 8;
   bytes task_id = 9;
-
 }
 

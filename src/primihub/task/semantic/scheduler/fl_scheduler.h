@@ -43,7 +43,8 @@ class FLScheduler : public VMScheduler {
           void dispatch(const PushTaskRequest *pushTaskRequest) override;
      
      private:
-          void add_vm(Node *node, const PushTaskRequest *pushTaskRequest);
+                void add_vm(Node *node, int i, int role_num, 
+                            const PushTaskRequest *pushTaskRequest);
 
           void getDataMetaListByRole(const std::string &role,
                                      std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);

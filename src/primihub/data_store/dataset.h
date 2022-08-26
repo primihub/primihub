@@ -21,12 +21,14 @@
 
 #include <memory>
 #include <variant>
+#include <vector>
 
 #include <arrow/table.h>
 #include <arrow/tensor.h>
 #include <arrow/array.h>
 
 #include "src/primihub/data_store/driver.h"
+
 
 namespace primihub {
 
@@ -37,7 +39,10 @@ namespace primihub {
         REMOTE,
     };
 
-    using DatasetContainerType = std::variant<std::shared_ptr<arrow::Table>, std::shared_ptr<arrow::Tensor>, std::shared_ptr<arrow::Array>>;
+    using DatasetContainerType = std::variant<
+                                            std::shared_ptr<arrow::Table>, 
+                                            std::shared_ptr<arrow::Tensor>, 
+                                            std::shared_ptr<arrow::Array>>;
 
     class Dataset {
         public:
@@ -48,6 +53,20 @@ namespace primihub {
                 location_ = DatasetLocation::LOCAL;
             }
             
+            Dataset(const std::vector<std::shared_ptr<arrow::RecordBatch>> &batches, 
+                                std::shared_ptr<primihub::DataDriver> driver) 
+                            : driver_(driver) { 
+                location_ = DatasetLocation::LOCAL;
+                // Convert RecordBatch to Table
+                auto result = arrow::Table::FromRecordBatches(batches);
+                
+                if (result.ok()) {
+                    data = result.ValueOrDie();
+                } else {
+                    throw std::runtime_error("Error converting RecordBatch to Table");
+                }
+            }
+            
             // TODO: Only support table now. May support Tensor later. 
             DatasetContainerType data;
 
@@ -56,6 +75,11 @@ namespace primihub {
             std::shared_ptr<primihub::DataDriver>  getDataDriver() const { 
                 return driver_;
             }
+
+            // //TODO  Dump dataset using DataDriver.
+            // bool write() {
+            //     return driver_->getCursor()->write(data);
+            // }
 
         private:
             DatasetLocation location_;

@@ -160,6 +160,10 @@ class RemoteExecuteTransformer(ast.NodeTransformer):
         if isinstance(node.value, ast.Call):
             # print(node.value.func)
             # print(node.value.func.__dict__)
+            if node.value.func.__dict__.get("attr", None) == "async_remote_execute":
+                return None
             if node.value.func.__dict__.get("attr", None) == "remote_execute":
+                return None
+            if node.value.func.__dict__.get("attr", None) == "start":
                 return None
         return node
