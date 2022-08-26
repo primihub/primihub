@@ -8,7 +8,7 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
 from sklearn.datasets import load_iris
 
-path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+# path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 
 def get_logger(name):
@@ -23,7 +23,7 @@ def get_logger(name):
 logger = get_logger("Homo-LR-Guest")
 
 
-def data_binary():
+def data_binary(path):
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
@@ -115,7 +115,7 @@ class Guest:
             yield [d[start: end] for d in all_data]
 
 
-def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
+def run_homo_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map={}):
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
 
@@ -147,20 +147,20 @@ def run_homo_lr_guest(role_node_map, node_addr_map, params_map={}):
         'category': 2
     }
 
-    x, label = data_binary()
+    x, label = data_binary(dataset_filepath)
     # x, label = data_iris()
     x = LRModel.normalization(x)
     count_train = x.shape[0]
-    batch_num_train = count_train // config['batch_size'] + 1
+    batch_num_train = (count_train-1) // config['batch_size'] + 1
 
     guest_data_weight = config['batch_size']
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
     client_guest = Guest(x, label, config, proxy_server,
                          proxy_client_arbiter)
 
-    # batch_gen_guest = client_guest.batch_generator(
-    #     [x, label], config['batch_size'], False)
-    batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
+    batch_gen_guest = client_guest.batch_generator(
+        [x, label], config['batch_size'], False)
+    # batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
 
     for i in range(config['epochs']):
         logger.info("##### epoch %s ##### " % i)

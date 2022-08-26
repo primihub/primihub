@@ -6,9 +6,9 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
 import logging
-from sklearn.datasets import  load_iris
+from sklearn.datasets import load_iris
 
-path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+# path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 
 def get_logger(name):
@@ -23,7 +23,7 @@ def get_logger(name):
 logger = get_logger("Homo-LR-Host")
 
 
-def data_binary():
+def data_binary(path):
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
@@ -134,7 +134,7 @@ class Host:
 
 
 
-def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
+def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map={}):
     host_nodes = role_node_map["host"]
     arbiter_nodes = role_node_map["arbiter"]
 
@@ -165,13 +165,13 @@ def run_homo_lr_host(role_node_map, node_addr_map, params_map={}):
         'need_encrypt': 'YES',
         'category': 2
     }
-    x, label = data_binary()
+    x, label = data_binary(dataset_filepath)
     # x, label = data_iris()
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
     x = LRModel.normalization(x)
     count_train = x.shape[0]
     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-    batch_num_train = count_train // config['batch_size'] + 1
+    batch_num_train = (count_train-1) // config['batch_size'] + 1
     proxy_client_arbiter.Remote(batch_num_train, "batch_num")
     host_data_weight = config['batch_size']
     if client_host.need_encrypt == 'YES':

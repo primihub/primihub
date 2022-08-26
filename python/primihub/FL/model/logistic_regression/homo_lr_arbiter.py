@@ -183,7 +183,7 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
+def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath,params_map={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -248,7 +248,7 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, params_map={}):
 
     logger.info("####### start predict ######")
     # X, y = iris_data()
-    X, y = data_binary()
+    X, y = data_binary(dataset_filepath)
     X = LRModel.normalization(X)
     pre = client_arbiter.predict(X, config['category'])
     logger.info('Classification result is:')
