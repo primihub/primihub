@@ -953,11 +953,10 @@ void MPCExpressExecutor::BeforeMPCRun(std::stack<std::string> &token_stk,
                                       std::stack<TokenValue> &val_stk,
                                       TokenValue &val1, TokenValue &val2,
                                       std::string &a, std::string &b) {
-  a = token_stk.top();
-  token_stk.pop();
   b = token_stk.top();
   token_stk.pop();
-  suffix_stk_.pop();
+  a = token_stk.top();
+  token_stk.pop();
 
   val2 = val_stk.top();
   val_stk.pop();
