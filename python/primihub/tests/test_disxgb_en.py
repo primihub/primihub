@@ -17,8 +17,10 @@
  """
 
 from os import path
+from multiprocessing import Process
 import threading
 import primihub as ph
+import pytest
 
 from primihub.examples.disxgb_en import xgb_host_logic, xgb_guest_logic
 
@@ -32,7 +34,7 @@ ph.context.Context.dataset_map = {
     'test_dataset': TEST_DATA_PATH
 }
 
-ph.context.Context.output_path = "/data/result/xgb_prediction.csv"
+ph.context.Context.output_path = "/tmp/result/xgb_prediction.csv"
 
 cry_pri = "paillier"
 def run_xgb_host_logic():
@@ -41,17 +43,14 @@ def run_xgb_host_logic():
 def run_xgb_guest_logic():
     xgb_guest_logic(cry_pri)
 
+def test_main():
+    host_p = Process(target=run_xgb_host_logic)
+    host_p.start()
+    guest_p = Process(target=run_xgb_guest_logic)
+    guest_p.start()
+    host_p.join()
+    guest_p.join()
 
 if __name__ == "__main__":
-    print("- " * 30)
-
-    host = threading.Thread(target=run_xgb_host_logic)
-    guest = threading.Thread(target=run_xgb_guest_logic)
-
-    print("* " * 30, host)
-    host.start()
-    print("* " * 30, guest)
-    guest.start()
-
-    host.join()
-    guest.join()
+    pytest.main(['-q', path.dirname(__file__)])
+    # test_main()

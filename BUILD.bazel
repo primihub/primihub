@@ -1439,7 +1439,40 @@ py_test(
 
 ######################### paillier end #########################
 
+cc_library(
+    name = "libpsi_frontend",
+    srcs = glob(
+        [
+            "test/primihub/protocol/libpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/libpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
 
+cc_binary(
+    name = "libpsi_test",
+    srcs = [
+        "test/primihub/protocol/libpsi/libpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/libpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":libpsi_frontend"
+    ],
+)
 
 cc_library(
     name = "kkrt_psi",

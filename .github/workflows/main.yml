@@ -40,6 +40,8 @@ jobs:
           && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
     - name: Install python-devel
       run: sudo apt install python-dev
+    - name: Install pytest
+      run: sudo apt-get install python3-pip -y && pip3 install pytest
     - uses: actions/checkout@v3
     - name: Setup bazelisk
       uses: bazelbuild/setup-bazelisk@v2
@@ -48,7 +50,15 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-  
+
+    # - name: pytest
+    #   run: |
+    #     cd python/primihub/tests/
+    #     export PYTHONPATH=../..
+    #     pytest -v feature_test/test_onehot.py
+    #     pytest -v feature_test/test_minmax_standard.py
+    #     pytest -v test_disxgb_en.py
+ 
     - name: bazel test
       run: |
         ./pre_build.sh
@@ -58,12 +68,13 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
+        bazel test --test_output=all --config=linux test_opt_paillier_c2py 
+        bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
-
 
   
 
@@ -78,16 +89,14 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - name: get python ldflags
-      run: python3.9-config --ldflags
     - uses: actions/checkout@v3
     - name: bazel build
       run: |
         ./pre_build.sh 
         bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+        ./bazel-bin/logistic_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
-        ./bazel-bin/logistic_test
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
@@ -143,8 +152,6 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
-    - name: get python ldflags
-      run: python3.9-config --ldflags
     - name: bazel build
       run: |
         # cc_binary
