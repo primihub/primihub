@@ -41,6 +41,11 @@ enum PsiType {
   DIFFERENCE = 1;
 }
 
+enum PsiTag {
+  ECDH = 0;
+  KKRT = 1;
+}
+
 message int32_array {
   repeated int32 value_int32_array = 1;
 }
