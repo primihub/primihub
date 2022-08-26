@@ -196,6 +196,14 @@ private:
 
   inline void createFP64Shares(TokenValue &val, sf64Matrix<D> &sh_val);
 
+  inline void BeforeMPCRun(std::stack<std::string> &token_stk,
+                           std::stack<TokenValue> &val_stk, TokenValue &val1,
+                           TokenValue &val2, std::string &a, std::string &b);
+
+  inline void AfterMPCRun(std::stack<std::string> &token_stk,
+                          std::stack<TokenValue> &val_stk,
+                          std::string &new_token, TokenValue &res);
+
   void runMPCAddFP64(TokenValue &val1, TokenValue &val2, TokenValue &res);
 
   void runMPCAddI64(TokenValue &val1, TokenValue &val2, TokenValue &res);

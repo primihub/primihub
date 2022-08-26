@@ -916,7 +916,7 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
 }
 
 void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
-                                   TokenValue &res) {
+                                      TokenValue &res) {
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
@@ -949,6 +949,32 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
+void MPCExpressExecutor::BeforeMPCRun(std::stack<std::string> &token_stk,
+                                      std::stack<TokenValue> &val_stk,
+                                      TokenValue &val1, TokenValue &val2,
+                                      std::string &a, std::string &b) {
+  a = token_stk.top();
+  token_stk.pop();
+  b = token_stk.top();
+  token_stk.pop();
+  suffix_stk_.pop();
+
+  val2 = val_stk.top();
+  val_stk.pop();
+  val1 = val_stk.top();
+  val_stk.pop();
+
+  suffix_stk_.pop();
+}
+
+void MPCExpressExecutor::AfterMPCRun(std::stack<std::string> &token_stk,
+                                     std::stack<TokenValue> &val_stk,
+                                     std::string &new_token, TokenValue &res) {
+  token_stk.push(new_token);
+  token_val_map_[new_token] = res;
+  val_stk.push(res);
+}
+
 int MPCExpressExecutor::runMPCEvaluate(void) {
   std::stack<std::string> stk1;
   std::stack<TokenValue> val_stk;
@@ -956,17 +982,9 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
   while (!suffix_stk_.empty()) {
     std::string token = suffix_stk_.top();
     if (token == "+") {
-      std::string b = stk1.top();
-      stk1.pop();
-      std::string a = stk1.top();
-      stk1.pop();
-      suffix_stk_.pop();
-
-      TokenValue res;
-      TokenValue val2 = val_stk.top();
-      val_stk.pop();
-      TokenValue val1 = val_stk.top();
-      val_stk.pop();
+      std::string a, b;
+      TokenValue val1, val2, res;
+      BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Add between '" << a << "' and '" << b << "'.";
@@ -980,22 +998,12 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       }
 
       std::string new_token = "(" + a + "+" + b + ")";
-      stk1.push(new_token);
-      token_val_map_[new_token] = res;
-      val_stk.push(res);
+      AfterMPCRun(stk1, val_stk, new_token, res);
     } else if (token == "-") {
-      std::string b = stk1.top();
-      stk1.pop();
-      std::string a = stk1.top();
-      stk1.pop();
-      suffix_stk_.pop();
-
-      TokenValue res;
-      TokenValue val2 = val_stk.top();
-      val_stk.pop();
-      TokenValue val1 = val_stk.top();
-      val_stk.pop();
-
+      std::string a, b;
+      TokenValue val1, val2, res;
+      BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
+     
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Sub between '" << a << "' and '" << b << "'.";
         runMPCAddFP64(val1, val2, res);
@@ -1008,22 +1016,12 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       }
 
       std::string new_token = "(" + a + "-" + b + ")";
-      stk1.push(new_token);
-      token_val_map_[new_token] = res;
-      val_stk.push(res);
+      AfterMPCRun(stk1, val_stk, new_token, res);
     } else if (token == "*") {
-      std::string b = stk1.top();
-      stk1.pop();
-      std::string a = stk1.top();
-      stk1.pop();
-      suffix_stk_.pop();
-
-      TokenValue res;
-      TokenValue val2 = val_stk.top();
-      val_stk.pop();
-      TokenValue val1 = val_stk.top();
-      val_stk.pop();
-
+      std::string a, b;
+      TokenValue val1, val2, res;
+      BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
+      
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Mul between '" << a << "' and '" << b << "'.";
         runMPCAddFP64(val1, val2, res);
@@ -1036,16 +1034,16 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       }
 
       std::string new_token = "(" + a + "*" + b + ")";
-      stk1.push(new_token);
-      token_val_map_[new_token] = res;
-      val_stk.push(res);
+      AfterMPCRun(stk1, val_stk, new_token, res);
     } else if (token == "/") {
-      std::string b = stk1.top();
-      stk1.pop();
-      std::string a = stk1.top();
-      stk1.pop();
-      suffix_stk_.pop();
+      std::string a, b;
+      TokenValue val1, val2, res;
+      BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
+      // TODO: Add MPC Div implement. 
+      
+      std::string new_token = "(" + a + "/" + b + ")";
+      AfterMPCRun(stk1, val_stk, new_token, res);
     } else {
       stk1.push(token);
       suffix_stk_.pop();
