@@ -118,6 +118,7 @@ cc_library(
         ],
         exclude = [
             "cpp/src/**/*_benchmark.cc",
+            "cpp/src/arrow/flight/perf_server.cc",
             "cpp/src/**/*_main.cc",
             "cpp/src/**/*_nossl.cc",
             "cpp/src/**/*_test.cc",
