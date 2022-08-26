@@ -917,8 +917,29 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
 
 void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
                                          std::vector<int64_t> &val_vec) {
-  (void)parties;
-  (void)val_vec;
+  std::string final_token = suffix_stk_.top();
+  suffix_stk_.pop();
+
+  TokenValue val = token_val_map_[final_token];
+  si64Matrix *p_final_share = val.val_union.sh_i64_m;
+
+  for (auto party : parties) {
+    if (party_id_ == party) {
+      i64Matrix m = mpc_op_->revealAll(*p_final_share);
+      uint32_t count = 0;
+      for (size_t i = 0; i < m.rows(); i++) {
+        val_vec.emplace_back(m(i, 0));
+        count++;
+      }
+
+      LOG(INFO) << "Reveal MPC result to party "
+                << static_cast<char>(party + '0') << ", value count " << count
+                << ".";
+    } else {
+      mpc_op_->reveal(*p_final_share, party);
+    }
+  }
+
   return;
 }
 
