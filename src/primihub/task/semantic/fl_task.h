@@ -45,18 +45,33 @@ class FLTask : public TaskBase {
     PushTaskRequest task_request_;
     std::string py_code_;
     NodeContext node_context_;
-    py::object set_task_context_model_file_, set_task_context_host_lookup_file_,
-        set_task_context_guest_lookup_file_, set_task_context_predict_file_,
-        set_task_context_indicator_file_, set_task_context_dataset_map_,
-        set_node_context_, ph_exec_m, ph_context_m,
-        set_task_context_func_params_;
-    std::string next_peer_address_;
+
+    py::object ph_exec_m_, ph_context_m_;
+
+    // py::object set_node_context_;
+    // py::object set_task_context_dataset_map_;
+    // py::object set_task_context_params_map_;
+
+    // py::object set_task_context_model_file_, set_task_context_host_lookup_file_,
+    //     set_task_context_guest_lookup_file_, set_task_context_predict_file_,
+    //     set_task_context_indicator_file_, set_task_context_dataset_map_,
+    //     set_node_context_, ph_exec_m, ph_context_m,
+    //     set_task_context_func_params_;
+
     std::map<std::string, std::string> dataset_meta_map_;
-    std::string predict_file_path_;
-    std::string indicator_file_path_;
-    std::string model_file_path_;
-    std::string host_lookup_file_path_;
-    std::string guest_lookup_file_path_;
+
+    // std::string predict_file_path_;
+    // std::string indicator_file_path_;
+    // std::string model_file_path_;
+    // std::string host_lookup_file_path_;
+    // std::string guest_lookup_file_path_;
+
+    // Key is the combine of node's nodeid and role,
+    // and value is 'ip:port'.
+    std::map<std::string, std::string> node_addr_map_;
+
+    // Save all params.
+    std::map<std::string, std::string> params_map_;
 };
 
 } // namespace primihub::task
