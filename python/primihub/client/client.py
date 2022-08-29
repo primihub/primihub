@@ -146,7 +146,7 @@ class PrimihubClient(object):
             self.exit()
 
     def stop(self):
-        """CLient Stop
+        """Client Stop
         """
         logger.info("*** cli stop ***")
         self.loop.stop()
@@ -161,7 +161,6 @@ class PrimihubClient(object):
         """Send local functions and parameters to the remote side
 
         :param job_id
-        :param task_id
         :param client_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
@@ -222,21 +221,8 @@ class PrimihubClient(object):
 
         logger.debug("------- async run submit task -----------")
         try:
-            # sub_loop = asyncio.new_event_loop()
-            # thread = threading.Thread(target=sub_loop.run_forever)
-            # thread.start()
             fire_coroutine_threadsafe(self.submit_task(
                 job_id, client_id, *args), self.loop)
-
-            # sub_loop.run_until_complete(asyncio.ensure_future(
-            #     self.submit_task(job_id, client_id, *args)))
-            # sub_loop.call_soon_threadsafe(sub_loop.stop)
-
         except Exception as e:
             logger.debug(str(e))
-        # self.loop.call_soon_threadsafe(self.submit_task_task)
-        # self.loop.run_until_complete(asyncio.wait(tasks))
 
-    async def get(self, ref_ret):
-        logger.debug("........%s >>>>>>>", ref_ret)
-        pass
