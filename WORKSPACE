@@ -547,3 +547,12 @@ leveldb_repos()
 
 load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
 leveldb_deps()
+
+
+# APSI
+# TODO use local for test
+new_local_repository(
+    name = "APSI",
+    path = "/Users/chb/Projects/deps/APSI",
+    build_file = "//bazel:BUILD.APSI",
+  )
