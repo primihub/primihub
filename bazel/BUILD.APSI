@@ -1,0 +1,22 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+
+
+filegroup(
+    name = "all",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"]
+)
+
+cmake(
+    name = "APSI",
+    env={
+        "HTTPS_PROXY": "http://127.0.0.1:7890",
+        "HTTP_PROXY": "http://127.0.0.1:7890",
+        "https_proxy": "http://127.0.0.1:7890",
+        "http_proxy": "http://127.0.0.1:7890",
+    },
+    visibility = ["//visibility:public"],
+    # build_args = ["-j 
+    lib_source = ":all",
+    out_static_libs = ["libapsi-0.8.a"],
+)
