@@ -123,47 +123,19 @@ FLTask::FLTask(const std::string& node_id,
             std::make_pair(input_dataset, data_path));
     }
 
-    // output file path
-    // this->model_file_path_ = param_map["modelFileName"].value_string();
-    // this->host_lookup_file_path_ = param_map["hostLookupTable"].value_string();
-    // this->guest_lookup_file_path_ = param_map["guestLookupTable"].value_string();
-    // this->predict_file_path_ = param_map["predictFileName"].value_string();
-    // this->indicator_file_path_ = param_map["indicatorFileName"].value_string();
-    
+   
     for (auto &pair : param_map)
         this->params_map_[pair.first] = pair.second.value_string();
-
-    // Algorithm params.
-    // this->params_map_["taskType"] = param_map["taskType"].value_string();
 }
 
 FLTask::~FLTask() {
-    // set_task_context_predict_file_.release();
-    // set_task_context_indicator_file_.release();
-    // set_task_context_model_file_.release();
-    // set_task_context_host_lookup_file_.release();
-    // set_task_context_guest_lookup_file_.release();
-
-    // set_task_context_func_params_.release();
-    // set_node_context_.release();
-    // set_task_context_dataset_map_.release();
-    // set_task_context_params_map_.release();
-
     ph_context_m_.release();
     ph_exec_m_.release();
 }
 
 int FLTask::execute() {
-    // LOG(INFO) << "🔐 Before gil_scoped_acquire, GIL is "
-    //             << ((PyGILState_Check() == 1) ? "hold" : "not hold")
-    //             << std::endl;
-
     py::gil_scoped_acquire acquire;
     try {
-        // LOG(INFO) << "🔐 Before ph_context, GIL is "
-        //           << ((PyGILState_Check() == 1) ? "hold" : "not hold")
-        //           << " now is runing " << std::endl;
-
         ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
         ph_context_m_ = py::module::import("primihub.context");
         
@@ -208,31 +180,6 @@ int FLTask::execute() {
             set_node_addr_map(pair.first, pair.second);
 
         set_node_addr_map.release();
-
-        // FIXME（chenhongbo） short these fucntions in one.
-        // set_task_context_predict_file_ =
-        //     ph_context_m.attr("set_task_context_model_file");
-        // set_task_context_predict_file_(this->model_file_path_);
-
-        // set_task_context_predict_file_ =
-        //     ph_context_m.attr("set_task_context_host_lookup_file");
-        // set_task_context_predict_file_(this->host_lookup_file_path_);
-
-        // set_task_context_indicator_file_ =
-        //     ph_context_m.attr("set_task_context_guest_lookup_file");
-        // set_task_context_indicator_file_(this->guest_lookup_file_path_);
-
-        // set_task_context_predict_file_ =
-        //     ph_context_m.attr("set_task_context_predict_file");
-        // set_task_context_predict_file_(this->predict_file_path_);
-
-        // set_task_context_indicator_file_ =
-        //     ph_context_m.attr("set_task_context_indicator_file");
-        // set_task_context_indicator_file_(this->indicator_file_path_); 
-
-        // LOG(INFO) << "🔐 After ph_context, GIL is "
-        //           << ((PyGILState_Check() == 1) ? "hold" : "not hold")
-        //           << " now is runing " << std::endl;
     } catch (std::exception& e) {
         LOG(ERROR) << "Failed: " << e.what();
         py::gil_scoped_release release;
@@ -241,9 +188,6 @@ int FLTask::execute() {
 
 
     try {
-        // LOG(INFO) << "🔐  GIL is "
-        //     << ((PyGILState_Check() == 1) ? "hold" : "not hold")
-        //     << " now is runing " << std::endl;
         LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
 
         // Execute python code.
