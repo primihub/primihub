@@ -28,6 +28,7 @@ using namespace osuCrypto;
 
 std::vector<std::string>
 kkrtTag{ "kkrt" },
+mkkrtTag{ "mkkrt" },
 cm20Tag{ "cm20" },
 helpTags{ "h", "help" },
 numThreads{ "t", "threads" },
@@ -90,9 +91,12 @@ void benchmark(
 			auto mode = params.mIdx ? EpMode::Server : EpMode::Client;
 			Endpoint ep(ios, params.mIP, mode);
 			params.mChls.resize(*std::max_element(params.mNumThreads.begin(), params.mNumThreads.end()));
+			params.mChls2.resize(*std::max_element(params.mNumThreads.begin(), params.mNumThreads.end()));
 
-			for (u64 i = 0; i < params.mChls.size(); ++i)
+			for (u64 i = 0; i < params.mChls.size(); ++i) {
 				params.mChls[i] = ep.addChannel();
+				params.mChls2[i] = ep.addChannel();
+			}
 
             if (params.mIdx == 0)
             {
@@ -106,11 +110,14 @@ void benchmark(
 				sendProtol(params);
 			}
 
-			for (u64 i = 0; i < params.mChls.size(); ++i)
+			for (u64 i = 0; i < params.mChls.size(); ++i) {
 				params.mChls[i].close();
+				params.mChls2[i].close();
+			}
 
 
 			params.mChls.clear();
+			params.mChls2.clear();
 			ep.stop();
 		};
 
@@ -158,9 +165,11 @@ int main(int argc, char** argv)
 
 	benchmark(kkrtTag, cmd, kkrtRecv, kkrtSend);
 	benchmark(cm20Tag, cmd, cm20Recv, cm20Send);
+	benchmark(mkkrtTag, cmd, mkkrtRecv, mkkrtSend);
 
 	if (cmd.isSet(kkrtTag) == false &&
 		cmd.isSet(cm20Tag) == false &&
+		cmd.isSet(mkkrtTag) == false &&
 		cmd.isSet(helpTags))
 	{
 		std::cout << Color::Red 
@@ -173,6 +182,7 @@ int main(int argc, char** argv)
 
 		std::cout << Color::Green << "Protocols:\n" << Color::Default
 			<< "   -" << kkrtTag[0] << "    : KKRT16  - Hash to Bin & compare style (semi-honest secure, fastest)\n"
+			<< "   -" << mkkrtTag[0] << "   : KKRT16  - Hash to Bin & compare style (semi-honest secure, fastest, multithread)\n"
 			<< "   -" << cm20Tag[0] << "    : CM16  - Multi-Point OPRF & compare style (semi-honest secure, fastest)\n"
 			<< std::endl;
 

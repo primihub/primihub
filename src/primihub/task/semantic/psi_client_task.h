@@ -32,7 +32,7 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/task.h"
 
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::Status;
 using grpc::Channel;
 

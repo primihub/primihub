@@ -106,8 +106,7 @@ eMatrix<double> load_data_local_logistic(const std::string& fullpath) {
   return res;
 }
 
-
-
+///////////////////////////////// DataDriver //////////////////////////////////////////////
   std::shared_ptr<Cursor>& DataDriver::getCursor() { return cursor; }
   std::string DataDriver::getDriverType() const { return driver_type; }
   std::string DataDriver::getNodeletAddress() const { return nodelet_address; }

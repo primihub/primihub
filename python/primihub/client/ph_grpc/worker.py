@@ -13,35 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import sys
-from os import path
 import uuid
 import grpc
 
-sys.path.append(path.abspath(path.join(path.dirname(__file__), "ph_grpc")))  # noqa
+from .connect import GRPCConnect
 from src.primihub.protos import common_pb2, worker_pb2, worker_pb2_grpc  # noqa
 
 
-class GRPCClient(object):
-    """primihub gRPC client
+class WorkerClient(GRPCConnect):
+    """primihub gRPC worker client
 
-
-    :param str node: Address of the node.
-    :param str cert: Path of the local cert file path.
-
-    :return: A primihub gRPC client.
+    :return: A primihub gRPC worker client.
     """
 
-    def __init__(self, node: str, cert: str) -> None:
+    def __init__(self, node, cert) -> None:
         """Constructor
         """
-        self.task_map = {}
-        if node is not None:
-            self.channel = grpc.insecure_channel(node)
-
-        if cert is not None:
-            # TODO
-            pass
+        super(WorkerClient, self).__init__(node, cert)
+        self.channel = grpc.insecure_channel(self.node)
+        self.request_data = None
+        self.stub = worker_pb2_grpc.VMNodeStub(self.channel)
 
     def set_task_map(self,
                      task_type: common_pb2.TaskType = 0,
@@ -53,7 +44,7 @@ class GRPCClient(object):
                      input_datasets: str = None,
                      job_id: bytes = None,
                      task_id: bytes = None,
-                     channel_map: str = None, # TODO
+                     channel_map: str = None,  # TODO
                      ):
         """set task map
 
@@ -63,11 +54,11 @@ class GRPCClient(object):
         :param params: `dict`
         :param code: bytes
         :param node_map: `dict`
-        :param input_datasets: 
+        :param input_datasets:
         :param job_id: bytes
         :param task_id: bytes
 
-        :return: `dict` 
+        :return: `dict`
         """
 
         task_map = {
@@ -88,53 +79,49 @@ class GRPCClient(object):
         if input_datasets:
             task_map["inout_datasets"] = input_datasets
 
+        print(type(job_id), job_id)
         if job_id:
             task_map["job_id"] = job_id
         else:
-            task_map["job_id"] = str(uuid.uuid1())
+            job_id = uuid.uuid1().hex
+            task_map["job_id"] = bytes(str(job_id), "utf-8")
 
         if task_id:
             task_map["task_id"] = task_id
         else:
-            task_map["task_id"] = str(uuid.uuid1())
+            task_id = uuid.uuid1().hex
+            task_map["task_id"] = bytes(str(task_id), "utf-8")
 
-        self.task_map = task_map
         return task_map
 
-    # def task_request(self,
-    #                  intended_worker_id: bytes = b'1',
-    #                  task: Task = None,
-    #                  sequence_number: int = 11,
-    #                  client_processed_up_to: int = 22):
-    #     request = worker_pb2.PushTaskRequest(
-    #         intended_worker_id=intended_worker_id,
-    #         task=task,
-    #         sequence_number=sequence_number,
-    #         client_processed_up_to=client_processed_up_to
-    #     )
-    #     return request
+    @staticmethod
+    def push_task_request(intended_worker_id=b'1',
+                          task=None,
+                          sequence_number=11,
+                          client_processed_up_to=22,
+                          submit_client_id=b""
+                          ):
+        request_data = {
+            "intended_worker_id": intended_worker_id,
+            "task": task,
+            "sequence_number": sequence_number,
+            "client_processed_up_to": client_processed_up_to,
+            "submit_client_id": submit_client_id
+        }
+        request = worker_pb2.PushTaskRequest(**request_data)
+        print(request)
+        return request
 
-    # def submit(self) -> worker_pb2.PushTaskReply:
-    def submit(self):
-        """gRPC submit
+    def submit_task(self, request: worker_pb2.PushTaskRequest) -> worker_pb2.PushTaskReply:
+        """gRPC submit task
 
-        :return:
+        :returns: gRPC reply
+        :rtype: :obj:`worker_pb2.PushTaskReply`
         """
+        # print(type(request_data), request_data)
         with self.channel:
-            stub = worker_pb2_grpc.VMNodeStub(self.channel)
-            request = worker_pb2.PushTaskRequest(
-                intended_worker_id=b'1',
-                task=self.task_map,
-                sequence_number=11,
-                client_processed_up_to=22
-            )
-            # print("request: ", request)
-            reply = stub.SubmitTask(request)
-
-            # print("-*-" * 30)
-            print("return code: %s, job id: %s" %
-                  (reply.ret_code, reply.job_id))
-            # print("-*-" * 30)
+            reply = self.stub.SubmitTask(request)
+            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))  # noqa
             return reply
 
     # def execute(self, request) -> None:

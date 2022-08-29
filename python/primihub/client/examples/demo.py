@@ -15,61 +15,70 @@ limitations under the License.
 """
 
 import primihub as ph
-# from primihub.channel.zmq_channel import IOService, Session
-from primihub.client.client import primihub_cli as cli
+from primihub.client import primihub_cli as cli
 
 # client init
 # cli.init(config={"node": "127.0.0.1:8050", "cert": ""})
-cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
+# cli.init(config={"node": "192.168.99.26:8050", "cert": ""})
+cli.init(config={"node": "192.168.99.26:50050", "cert": ""})
+# cli.init(config={"node": "192.168.99.23:50050", "cert": ""})
 
 from primihub import context, dataset
 
 print(ph.context.Context.__dict__)
 
+ph.dataset.define("guest_dataset")
+ph.dataset.define("label_dataset")
 
-# ph.dataset.define("guest_dataset")
-# ph.dataset.define("label_dataset")
-# # ph.dataset.define("test_dataset")
 
-# # define a remote method
-# @ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
-# def func1(value=1):
-#     print("params: ", str(value))
-    
-#     # do something
-#     # next_peer = ph.context.Context.nodes_context["host"].next_peer
-#     # print("host next peer: ", next_peer)
-#     # ip, port = next_peer.split(":")
-#     # ios = IOService()
-#     # server = Session(ios, ip, port, "server")
-#     # channel = server.addChannel()
-#     # channel.recv()
-#     # channel.send(value)
-#     # print(channel.recv())
-#     # return value
+# ph.dataset.define("test_dataset")
 
-# # define a remote method
-# @ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
-# def func2(value=2):
-    
-#     print("params: ", str(value))
-#     # do something
-#     # next_peer = ph.context.Context.nodes_context["host"].next_peer
-#     # print("guest next peer: ", next_peer)
-#     # ip, port = next_peer.split(":")
-#     # ios = IOService()
-#     # client = Session(ios, ip, port, "client")
-#     # channel = client.addChannel()
-#     # channel.send(b'guest ready')
-#     # pub = channel.recv()
-#     # channel.send(b'recved pub')
-#     # return value
+# define a remote method
+@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:5555")
+def func1(value=1):
+    print("params: ", str(value))
 
-# # context
-# value1 = 1
-# value2 = 2
-# cli.remote_execute((func1, value1), (func2, value2))
-# print(ph.context.Context)
-# # print(ph.context.Context.__dict__)
-# # ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
-# # map >>> node context
+    # do something
+    # next_peer = ph.context.Context.nodes_context["host"].next_peer
+    # print("host next peer: ", next_peer)
+    # ip, port = next_peer.split(":")
+    # ios = IOService()
+    # server = Session(ios, ip, port, "server")
+    # channel = server.addChannel()
+    # channel.recv()
+    # channel.send(value)
+    # print(channel.recv())
+    # return value
+
+
+# define a remote method
+@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:5555")
+def func2(value=2):
+    print("params: ", str(value))
+    # do something
+    # next_peer = ph.context.Context.nodes_context["host"].next_peer
+    # print("guest next peer: ", next_peer)
+    # ip, port = next_peer.split(":")
+    # ios = IOService()
+    # client = Session(ios, ip, port, "client")
+    # channel = client.addChannel()
+    # channel.send(b'guest ready')
+    # pub = channel.recv()
+    # channel.send(b'recved pub')
+    # return value
+
+
+# context
+value1 = 1
+value2 = 2
+print("run remote execute...")
+cli.remote_execute((func1, value1), (func2, value2))
+print(ph.context.Context)
+# print(ph.context.Context.__dict__)
+# ph.context.Context.params_map = {'func1': (1,), 'func2': (1,)}
+# map >>> node context
+cli.start()
+cli.get_status()
+cli.get_result()
+cli.get()
+

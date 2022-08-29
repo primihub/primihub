@@ -35,6 +35,7 @@ using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
+using primihub::rpc::PsiTag;
 
 namespace primihub::task {
 
@@ -108,20 +109,95 @@ void set_psi_request_param(const std::string &node_id,
                << server_address;
 }
 
+void set_kkrt_psi_request_param(const std::string &node_id,
+                                const PeerDatasetMap &peer_dataset_map,
+                                PushTaskRequest &taskRequest,
+                                bool is_client) {
+    // Add params to request
+    google::protobuf::Map<std::string, ParamValue> *param_map =
+        taskRequest.mutable_task()->mutable_params()->mutable_param_map();
+    auto peer_dataset_map_it = peer_dataset_map.find(node_id);
+    if (peer_dataset_map_it == peer_dataset_map.end()) {
+        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
+        return;
+    }
+
+    std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+    for (auto &dataset_param : dataset_param_list) {
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        pv.set_value_string(dataset_param.first);
+        (*param_map)[dataset_param.second] = pv;
+    }
+
+    std::string server_address = "";
+    for (auto &pair : taskRequest.task().node_map()) {
+        if (pair.first == node_id) { // get the server address for psi client and server
+            if (is_client) {
+                continue;
+            }
+        } else {
+            if (!is_client) {
+                continue;
+            }
+        }
+
+        std::string server_addr(
+            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+
+        if (server_address == "") {
+            server_address = server_addr;
+        } else {
+            server_address = absl::StrCat(server_address, ",", server_addr);
+        }
+    }
+
+    ParamValue pv_addr;
+    pv_addr.set_var_type(VarType::STRING);
+    pv_addr.set_value_string(server_address);
+    if (is_client) {
+        (*param_map)["serverAddress"] = pv_addr;
+        DLOG(INFO) << "📤 push psi task server address : server_address, "
+                   << server_address;
+    } else {
+        (*param_map)["clientAddress"] = pv_addr;
+        DLOG(INFO) << "📤 push psi task client address : server_address, "
+                   << server_address;
+    }
+}
+
 void node_push_psi_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
                     std::string dest_node_address,
                     bool is_client) {
-    ClientContext context;
+    grpc::ClientContext context;
+
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
 
-    set_psi_request_param(node_id, peer_dataset_map,
-                      _1NodePushTaskRequest, is_client);
+    auto params = nodePushTaskRequest.task().params().param_map();
+    int psiTag = PsiTag::ECDH;
+    auto param_it = params.find("psiTag");
+    if (param_it != params.end()) {
+        psiTag = params["psiTag"].value_int32();
+    }
+
+    if (psiTag == PsiTag::ECDH) {
+        set_psi_request_param(node_id, peer_dataset_map,
+                              _1NodePushTaskRequest, is_client);
+    } else if (psiTag == PsiTag::KKRT) {
+        set_kkrt_psi_request_param(node_id, peer_dataset_map,
+			           _1NodePushTaskRequest, is_client);
+    } else {
+        LOG(ERROR) << "psiTag is set error.";
+        return ;
+    }
    
     // send request
+    LOG(INFO) << "dest node " << dest_node_address;
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
         dest_node_address, grpc::InsecureChannelCredentials()));
     Status status =
@@ -134,9 +210,11 @@ void node_push_psi_task(const std::string &node_id,
         }
     } else {
         if (is_client) {
-            LOG(ERROR) << "Node push psi task rpc failed.";
+            LOG(ERROR) << "Node push psi task rpc failed. "
+                       << status.error_code() << ": " << status.error_message();
         } else {
-            LOG(ERROR) << "Psi task server node is inactive.";
+            LOG(ERROR) << "Psi task server node is inactive."
+                       << status.error_code() << ": " << status.error_message();
         }
     }
 }

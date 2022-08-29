@@ -24,6 +24,7 @@
 #include "src/primihub/p2p/node_stub.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/storage_backend.h"
+#include "src/primihub/service/notify/service.h"
 
 namespace primihub {
 
@@ -46,6 +47,7 @@ class Nodelet {
     std::shared_ptr<primihub::service::StorageBackend> local_kv_;
     // protocols, servcies, etc.
     std::shared_ptr<primihub::service::DatasetService> dataset_service_;
+    std::shared_ptr<primihub::service::NotifyService> notify_service_;
     std::string nodelet_addr_;
 };
 

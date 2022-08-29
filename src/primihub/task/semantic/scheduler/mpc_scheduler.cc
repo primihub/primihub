@@ -26,7 +26,7 @@ limitations under the License.
 #include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
 
 using grpc::Channel;
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::Status;
 
 using primihub::rpc::EndPoint;
@@ -42,7 +42,7 @@ void MPCScheduler::push_task(const std::string &node_id,
                              const PeerDatasetMap &peer_dataset_map,
                              const PushTaskRequest &nodePushTaskRequest,
                              const std::string dest_node_address) {
-  ClientContext context;
+  grpc::ClientContext context;
   PushTaskReply pushTaskReply;
   PushTaskRequest push_request;
   push_request.CopyFrom(nodePushTaskRequest);
