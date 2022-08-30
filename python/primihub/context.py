@@ -1,16 +1,19 @@
 import functools
 import os
-import traceback
+import logging
 from typing import Callable
-
 from cloudpickle import dumps
-
 from primihub.utils.logger_util import logger
 
+def get_logger(name):
+    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    logger = logging.getLogger(name)
+    return logger
 
-# from loguru import logger
-# logger.add(sys.stdout, colorize=True)
-
+logger = get_logger("context")
 
 class NodeContext:
     def __init__(self, role, protocol, dataset_port_map, func=None):
@@ -18,25 +21,19 @@ class NodeContext:
         self.role = role
         self.protocol = protocol
         self.func = func
-        self.dataset_port_map = dataset_port_map
-        self.task_type = None
-        print("func type: ", type(func))
+        self.dataset_port_map = dataset_port_map 
+        self.task_type = None 
 
         self.dumps_func = None
         if isinstance(func, Callable):
             # pickle dumps func
-            try:
-                self.dumps_func = dumps(func)
-            except Exception as e:
-                logger.error(e)
-                traceback.print_exc()
+            self.dumps_func = dumps(func)
         elif type(func) == str:
             self.dumps_func = func
 
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
-
-        self.dumps_func = func
+            
         self.datasets = []
         for ds_name in self.dataset_port_map.keys():
             self.datasets.append(ds_name)
@@ -107,7 +104,7 @@ class TaskContext:
             logger.error("Task type in all role must be the same.")
             raise RuntimeError("Task type in all role is not the same.")
         else:
-            return type_list[0]
+            return type_list[0] 
 
     @staticmethod
     def mk_output_dir(output_dir):
@@ -122,35 +119,55 @@ class TaskContext:
                     print(output_dir)
 
     def get_predict_file_path(self):
+        file_path = self.params_map.get("predictFileName", None) 
+        if file_path:
+            self.predict_file_path = file_path
+
         output_dir = os.path.dirname(self.predict_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("predict: ", self.predict_file_path)
+        logger.info("predict: {}".format(self.predict_file_path))
         return self.predict_file_path
 
     def get_indicator_file_path(self):
+        file_path = self.params_map.get("indicatorFileName", None)
+        if file_path:
+            self.indicator_file_path = file_path
+
         output_dir = os.path.dirname(self.indicator_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("indicator: ", self.indicator_file_path)
+        logger.info("indicator: {}".format(self.indicator_file_path))
         return self.indicator_file_path
 
     def get_model_file_path(self):
+        file_path = self.params_map.get("modelFileName", None)
+        if file_path:
+            self.model_file_path = file_path
+
         output_dir = os.path.dirname(self.model_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("model: ", self.model_file_path)
+        logger.info("model: {}".format(self.model_file_path))
         return self.model_file_path
 
     def get_host_lookup_file_path(self):
+        file_path = self.params_map.get("hostLookupTable", None)
+        if file_path:
+            self.host_lookup_file_path = file_path
+
         output_dir = os.path.dirname(self.host_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("host lookup table: ", self.host_lookup_file_path)
+        logger.info("host lookup table: {}".format(self.host_lookup_file_path))
         return self.host_lookup_file_path
 
     def get_guest_lookup_file_path(self):
+        file_path = self.params_map.get("guestLookupTable", None)
+        if file_path:
+            self.guest_lookup_file_path = file_path
+
         output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("guest lookup table: ", self.guest_lookup_file_path)
+        logger.info("guest lookup table: {}".format(self.guest_lookup_file_path))
         return self.guest_lookup_file_path
-
+    
     def get_role_node_map(self):
         return self.role_nodeid_map
 
@@ -166,6 +183,7 @@ class TaskContext:
         self.node_addr_map.clear()
         self.params_map.clear()
 
+
     def get_dataset_service(self, role):
         node_context = self.nodes_context.get(role, None)
         if node_context is None:
@@ -176,41 +194,15 @@ class TaskContext:
 Context = TaskContext()
 
 
+def set_task_context_dataset_map(k, v):
+    Context.dataset_map[k] = v
+
+
 def set_node_context(role, protocol, datasets):
     dataset_port_map = {}
     for dataset in datasets:
         dataset_port_map[dataset] = "0"
     Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
-
-    # TODO set dataset map, key dataset name, value dataset meta information
-
-
-def set_task_context_func_params(func_name, func_params):
-    Context.params_map[func_name] = func_params
-
-
-def set_task_context_dataset_map(k, v):
-    Context.dataset_map[k] = v
-
-
-def set_task_context_predict_file(f):
-    Context.predict_file_path = f
-
-
-def set_task_context_indicator_file(f):
-    Context.indicator_file_path = f
-
-
-def set_task_context_model_file(f):
-    Context.model_file_path = f
-
-
-def set_task_context_host_lookup_file(f):
-    Context.host_lookup_file_path = f
-
-
-def set_task_context_guest_lookup_file(f):
-    Context.guest_lookup_file_path = f
 
 
 def set_task_context_node_addr_map(node_id_with_role, addr):
@@ -224,7 +216,6 @@ def set_task_context_node_addr_map(node_id_with_role, addr):
 def set_task_context_params_map(key, value):
     Context.params_map[key] = value
     logger.info("Insert '{}:{}' into task context.".format(key, value))
-
 
 # For test
 def set_text(role, protocol, datasets, dumps_func):
@@ -251,12 +242,8 @@ def function(protocol, role, datasets, port, task_type="default"):
         for dataset in datasets:
             dataset_port_map[dataset] = port
 
-        logger.debug(role)
-        logger.debug(protocol)
-        logger.debug(dataset_port_map)
-        logger.debug(port)
-        logger.debug(func)
-        Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map, func)
+        Context.nodes_context[role] = NodeContext(
+            role, protocol, dataset_port_map, func)
 
         Context.nodes_context[role].set_task_type(task_type)
 

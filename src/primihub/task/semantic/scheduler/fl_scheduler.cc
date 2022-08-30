@@ -59,16 +59,13 @@ namespace primihub::task {
         pv_role.set_var_type(VarType::STRING);
         pv_role.set_value_string(node_context.role);
         (*params_map)["role"] = pv_role;
+
         // Protocol
         ParamValue pv_protocol;
         pv_protocol.set_var_type(VarType::STRING);
         pv_protocol.set_value_string(node_context.protocol);
         (*params_map)["protocol"] = pv_protocol;
-        // Next peer
-        ParamValue pv_next_peer;
-        pv_next_peer.set_var_type(VarType::STRING);
-        pv_next_peer.set_value_string(node_context.next_peer);
-        (*params_map)["next_peer"] = pv_next_peer;
+
         // Dataset meta
         for (auto &dataset_meta : dataset_meta_list) {
             ParamValue pv_dataset;
@@ -149,6 +146,7 @@ namespace primihub::task {
                 (*mutable_node_map)[node_id] = single_node;
             }
         }
+
         // TODO Fire TASK_STATUS event using NotifyService
         auto taskId = nodePushTaskRequest.task().task_id();
         auto submitClientId = nodePushTaskRequest.submit_client_id();
@@ -163,7 +161,7 @@ namespace primihub::task {
 
         // schedule
         std::vector<std::thread> thrds;
-       for (size_t i = 0; i < peers_with_tag_.size(); i++) {
+        for (size_t i = 0; i < peers_with_tag_.size(); i++) {
             NodeWithRoleTag peer_with_tag = peers_with_tag_[i];
           
             std::string dest_node_address(
@@ -199,23 +197,17 @@ namespace primihub::task {
 
     void FLScheduler::add_vm(Node *node, int i, int role_num, 
                             const PushTaskRequest *pushTaskRequest) {
-        VirtualMachine *vm = node->add_vm();
-        vm->set_party_id(i);
-        EndPoint *ed_next = vm->mutable_next();
+        int ret = 0;
+        for (auto node_with_tag : peers_with_tag_) {
+            VirtualMachine *vm = node->add_vm();
+            EndPoint *ep_next = vm->mutable_next();
+            ep_next->set_ip(node_with_tag.first.ip());
+            ep_next->set_link_type(LinkType::SERVER);
+            ep_next->set_port(node_with_tag.first.data_port());
 
-        auto next = (i + 1) % role_num;
-        
-        std::string name_prefix = pushTaskRequest->task().job_id() + "_" +
-                                pushTaskRequest->task().task_id() + "_";
-
-        int session_basePort = 12120;
-        ed_next->set_ip(peers_with_tag_[next].first.ip());
-        ed_next->set_port(std::min(i, next) + session_basePort);
-        ed_next->set_name(name_prefix +
-                        absl::StrCat(std::min(i, next), std::max(i, next)));
-        ed_next->set_link_type(i < next ? LinkType::SERVER : LinkType::CLIENT);
+            std::string ep_name =
+                node_with_tag.first.node_id() + "_" + node_with_tag.second;
+            ep_next->set_name(ep_name);
+        }
     }
-
-
-
 } // namespace primihub::task
