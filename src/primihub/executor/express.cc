@@ -866,7 +866,7 @@ void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
 
   if (val2.type == 1 || val2.type == 4) {
     sh_val2.resize(val_count, 1);
-    createI64Shares(val1, sh_val1);
+    createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
   } else {
     p_sh_val2 = val2.val_union.sh_i64_m;
@@ -933,7 +933,7 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
 
   if (val2.type == 1 || val2.type == 4) {
     sh_val2.resize(val_count, 1);
-    createI64Shares(val1, sh_val1);
+    createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
   } else {
     p_sh_val2 = val2.val_union.sh_i64_m;
@@ -1005,12 +1005,12 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
      
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Sub between '" << a << "' and '" << b << "'.";
-        runMPCAddFP64(val1, val2, res);
+        runMPCSubFP64(val1, val2, res);
         LOG(INFO) << "Run FP64 Sub finish.";
       } else {
         LOG(INFO) << "Run I64 Sub between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
-        runMPCAddI64(val1, val2, res);
+        runMPCSubI64(val1, val2, res);
         LOG(INFO) << "Run I64 Sub finish.";
       }
 
@@ -1023,12 +1023,12 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Mul between '" << a << "' and '" << b << "'.";
-        runMPCAddFP64(val1, val2, res);
+        runMPCMulFP64(val1, val2, res);
         LOG(INFO) << "Run FP64 Mul finish.";
       } else {
         LOG(INFO) << "Run I64 Mul between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
-        runMPCAddI64(val1, val2, res);
+        runMPCMulI64(val1, val2, res);
         LOG(INFO) << "Run I64 Mul finish.";
       }
 
