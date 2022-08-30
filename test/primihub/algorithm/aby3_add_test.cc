@@ -128,12 +128,88 @@ void matrixOperations(u64 partyIdx) {
   LOG(INFO) << plainMatrix;
 }
 
+void fixedPointOperations(u64 partyIdx) {
+  IOService ios;
+  Sh3Encryptor enc;
+  Sh3Evaluator eval;
+  Sh3Runtime runtime;
+  setup(partyIdx, ios, enc, eval, runtime);
+
+  // The framework also supports the ability to perform
+  // fixed point computation. This is similar to the
+  // double or float type in c++. The key difference is
+  // that it is implemented as an integer where a fixed
+  // number of the bits represent decimal/fraction part.
+
+  // This represent a plain 64-bit value where the bottom
+  // 8-bit of the integer represent the fractional part.
+  f64<D16> fixedInt = 34.62;
+  f64<D16> constfixed = 2.5;
+  // We can encrypt this value in the similar way as an integer
+  sf64<D16> sharedFixedInt;
+  if (partyIdx == 0)
+    enc.localFixed(runtime, fixedInt, sharedFixedInt).get();
+  else
+    enc.remoteFixed(runtime, sharedFixedInt).get();
+
+  if (partyIdx == 0)
+    sharedFixedInt[0] = sharedFixedInt[0] + constfixed.mValue;
+  if (partyIdx == 1)
+    sharedFixedInt[1] = sharedFixedInt[1] + constfixed.mValue;
+  LOG(INFO) << "party:" << partyIdx << "======" << sharedFixedInt[0] << "    "
+            << sharedFixedInt[1];
+  f64<D16> fixedVal;
+  enc.revealAll(runtime, sharedFixedInt, fixedVal).get();
+  LOG(INFO) << "party:" << partyIdx << "======" << fixedVal;
+
+  // We can add and multiply
+  // sf64<D8> addition = sharedFixedInt + sharedFixedInt;
+  // sf64<D8> prod;
+  // eval.asyncMul(runtime, addition, sharedFixedInt, prod).get();
+
+  // We can also perform matrix operations.
+  u64 rows = 3, cols = 2;
+  f64Matrix<D16> fixedMatrix(rows, cols);
+
+  // We can populate is by
+  for (u64 i = 0; i < rows; ++i)
+    for (u64 j = 0; j < cols; ++j)
+      fixedMatrix(i, j) = 2.52;
+
+  // To encrypt it, we use
+  sf64Matrix<D16> sharedMatrix(rows, cols);
+  if (partyIdx == 0)
+    enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
+  else
+    enc.remoteFixedMatrix(runtime, sharedMatrix).get();
+  f64Matrix<D16> constFixedMatrix(rows, cols);
+  for (u64 i = 0; i < rows; ++i)
+    for (u64 j = 0; j < cols; ++j)
+      constFixedMatrix(i, j) = 5.35;
+  if (partyIdx == 0)
+    sharedMatrix[0] = sharedMatrix[0] + constFixedMatrix.i64Cast();
+  else if (partyIdx == 1)
+    sharedMatrix[1] = sharedMatrix[1] + constFixedMatrix.i64Cast();
+  // // We can add locally
+  // sf64Matrix<D8> additionMtx = sharedMatrix + sharedMatrix;
+
+  // // We can multiply
+  // sf64Matrix<D8> prodMtx;
+  // Sh3Task mulTask = eval.asyncMul(runtime, sharedMatrix, additionMtx,
+  // prodMtx);
+
+  // we can reconstruct the secret shares
+  f64Matrix<D16> finalMatrix(rows, cols);
+  enc.revealAll(runtime, sharedMatrix, finalMatrix).get();
+  LOG(INFO) << "party:" << partyIdx << "======" << finalMatrix;
+}
+
 TEST(add_operator, aby3_3pc_test) {
   pid_t pid = fork();
   if (pid != 0) {
     // Child process as party 0.
     // integerOperations(0);
-    // fixedPointOperations(0);
+    fixedPointOperations(0);
     // matrixOperations(0);
     MPCOperator mpc(0, "01", "02");
     mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
@@ -178,7 +254,7 @@ TEST(add_operator, aby3_3pc_test) {
     // Child process as party 1.
     sleep(1);
     // integerOperations(1);
-    // fixedPointOperations(1);
+    fixedPointOperations(1);
     // matrixOperations(1);
 
     MPCOperator mpc(1, "12", "01");
@@ -218,7 +294,7 @@ TEST(add_operator, aby3_3pc_test) {
   sleep(3);
 
   // integerOperations(2);
-  // fixedPointOperations(2);
+  fixedPointOperations(2);
   // matrixOperations(2);
   MPCOperator mpc(2, "02", "12");
   mpc.setup("127.0.0.1", (u32)1414, (u32)1515);

@@ -176,6 +176,27 @@ public:
   si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt);
 
   template <Decimal D>
+  void MPC_Add_Const(sf64<D> &sharedFixed, f64<D> constfixed) {
+    if (partyIdx == 0)
+      sharedFixed[0] = sharedFixed[0] + constfixed.mValue;
+    else if (partyIdx == 1)
+      sharedFixed[1] = sharedFixed[1] + constfixed.mValue;
+  }
+
+  template <Decimal D>
+  void MPC_Add_Const(sf64Matrix<D> &sharedFixed,
+                     f64Matrix<D> constFixedMatrix) {
+    auto b0 = sharedFixed[0].cols() != constFixedMatrix.cols();
+    auto b1 = sharedFixed[0].rows() != constFixedMatrix.rows();
+    if (b0 || b1)
+      throw std::runtime_error(LOCATION);
+    if (partyIdx == 0)
+      sharedFixed[0] = sharedFixed[0] + constFixedMatrix.i64Cast();
+    else if (partyIdx == 1)
+      sharedFixed[1] = sharedFixed[1] + constFixedMatrix.i64Cast();
+  }
+
+  template <Decimal D>
   sf64<D> MPC_Sub(sf64<D> minuend, std::vector<sf64<D>> subtrahends) {
     sf64<D> difference;
     difference = minuend;
