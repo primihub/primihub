@@ -1,0 +1,38 @@
+
+
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+
+filegroup(
+    name = "src", 
+    srcs = glob(["**"]), 
+    visibility = ["//visibility:public"]
+)
+
+cmake(
+   name = "seal",
+   env={
+        "HTTPS_PROXY": "http://127.0.0.1:7890",
+        "HTTP_PROXY": "http://127.0.0.1:7890",
+        "https_proxy": "http://127.0.0.1:7890",
+        "http_proxy": "http://127.0.0.1:7890",
+   },
+   defines = [
+        "SEAL_USE_CXX17=ON",
+        "SEAL_USE_INTRIN=ON",
+        "SEAL_USE_MSGSL=OFF",
+        "SEAL_USE_ZLIB=OFF",
+        "SEAL_BUILD_TESTS=OFF",
+        "BUILD_SHARED_LIBS=OFF",
+        "CMAKE_BUILD_TYPE=Release",
+   ],
+   install = True,
+#    make_commands = [
+#         "make -j",
+#         "make install"
+#    ],
+   lib_source = ":src",
+#    install_prefix = "native/src",
+   out_include_dir = "include/SEAL-4.0",
+   out_static_libs = ["libseal-4.0.a"],
+   visibility = ["//visibility:public"],
+)

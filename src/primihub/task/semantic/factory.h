@@ -27,8 +27,11 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
+#if 0
 #include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/task/semantic/pir_server_task.h"
+#endif
+
 #include "src/primihub/task/semantic/tee_task.h"
 #include "src/primihub/service/dataset/service.h"
 
@@ -89,7 +92,9 @@ class TaskFactory {
                 LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
                 return nullptr;
             }
-        } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PIR_TASK) {
+        }
+        #if 0 
+        else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PIR_TASK) {
             auto task_param = request.task();
             auto pir_task = std::make_shared<PIRClientTask>(node_id,
                                                             request.task().job_id(),
@@ -97,7 +102,9 @@ class TaskFactory {
                                                             &task_param, 
                                                             dataset_service);
             return std::dynamic_pointer_cast<TaskBase>(pir_task);
-        }  else if (task_language == Language::PROTO && task_type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
+        } 
+        #endif
+        else if (task_language == Language::PROTO && task_type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
             auto task_param = request.task();
             auto tee_task = std::make_shared<TEEDataProviderTask>(node_id,
                                                     &task_param, 
@@ -116,9 +123,11 @@ class TaskFactory {
                                                   ExecuteTaskResponse *response,
                                                   std::shared_ptr<DatasetService> dataset_service) {
         if (task_type == rpc::TaskType::NODE_PIR_TASK) {
+            #if 0
             auto pir_task = std::make_shared<PIRServerTask>(node_id, request,
                                                             response, dataset_service);
             return std::dynamic_pointer_cast<ServerTaskBase>(pir_task);
+            #endif
         } else if (task_type == rpc::TaskType::NODE_PSI_TASK) {
             auto psi_task = std::make_shared<PSIServerTask>(node_id, request,
                                                             response, dataset_service);

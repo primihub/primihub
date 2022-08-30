@@ -29,6 +29,11 @@
 #include <thread>
 #include <vector>
 
+// #include <apsi/oprf/oprf_sender.h>
+// #include <apsi/thread_pool_mgr.h>
+// #include <apsi/version.h>
+#include <apsi/zmq/sender_dispatcher.h>
+
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
@@ -45,6 +50,11 @@ using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
 using primihub::service::DatasetWithParamTag;
 using primihub::task::PeerDatasetMap;
+
+using namespace apsi;
+using namespace apsi::sender;
+using namespace apsi::network;
+using namespace apsi::oprf;
 
 namespace primihub::task {
 
