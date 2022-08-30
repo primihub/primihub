@@ -35,7 +35,7 @@ def dump_task_content(dataset_map, node_addr_map, role_nodeid_map, params_map):
     logger.info(f"Params: {params_map}")
 
 @ph.context.function(role='host', protocol='homo-LR',
-                     datasets=['host'], port='8010')
+                     datasets=['homolr-host'], port='8010')
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
@@ -46,14 +46,14 @@ def run_host_party():
 
     run_homo_lr_host(ph.context.Context.role_nodeid_map,
                        ph.context.Context.node_addr_map,
-                       ph.context.Context.dataset_map["host"],
+                       ph.context.Context.dataset_map["homolr-host"],
                        ph.context.Context.params_map)
 
     logger.info("Finish homo-LR host logic.")
 
 
 @ph.context.function(role='guest', protocol='homo-LR',
-                     datasets=['guest'], port='8020')
+                     datasets=['homolr-guest'], port='8020')
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
@@ -64,7 +64,7 @@ def run_guest_party():
 
     run_homo_lr_guest(ph.context.Context.role_nodeid_map,
                       ph.context.Context.node_addr_map,
-                      ph.context.Context.dataset_map["guest"],
+                      ph.context.Context.dataset_map["homolr-guest"],
                       ph.context.Context.params_map)
 
     logger.info("Finish homo-LR guest logic.")
@@ -75,7 +75,7 @@ def run_guest_party():
 # primihub, primihub use dataset name here to resolve which party will act as
 # arbiter.
 @ph.context.function(role='arbiter', protocol='homo-LR',
-                     datasets=['arbiter'], port='8030')
+                     datasets=['homolr-arbiter'], port='8030')
 def run_arbiter_party():
     logger.info("Start homo-LR arbiter logic.")
 
@@ -85,8 +85,8 @@ def run_arbiter_party():
                       ph.context.Context.params_map)
 
     run_homo_lr_arbiter(ph.context.Context.role_nodeid_map,
-                          ph.context.Context.node_addr_map,
-                          ph.context.Context.dataset_map["arbiter"],
-                          ph.context.Context.params_map)
+                        ph.context.Context.node_addr_map,
+                        ph.context.Context.dataset_map["homolr-arbiter"],
+                        ph.context.Context.params_map)
 
     logger.info("Finish homo-LR arbiter logic.")

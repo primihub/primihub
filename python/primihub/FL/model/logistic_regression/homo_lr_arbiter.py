@@ -10,9 +10,6 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
 from sklearn.datasets import load_iris
 
-path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
-
-
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -25,11 +22,11 @@ def get_logger(name):
 logger = get_logger("Homo_LR_Arbiter")
 
 
-def data_binary():
+def data_binary(path):
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
-    # 处理标签
+
     for i in range(len(yy.values)):
         if yy[i] == 2:
             yy[i] = 0
@@ -183,7 +180,7 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath,params_map={}):
+def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath, params_map={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]

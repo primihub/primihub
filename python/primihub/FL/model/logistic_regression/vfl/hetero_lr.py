@@ -65,7 +65,7 @@ def run_guest_party():
 # primihub, primihub use dataset name here to resolve which party will act as
 # arbiter.
 @ph.context.function(role='arbiter', protocol='hetero-LR',
-                     datasets=['arbiter_dataset'], port='8030')
+                     datasets=['arbiter-dataset'], port='8030')
 def run_arbiter_party():
     logger.info("Start hetero-LR arbiter logic.")
 
