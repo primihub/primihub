@@ -344,7 +344,5 @@ def xgb_guest_logic(cry_pri="paillier"):
 cry_pri = "plaintext"
 # cry_pri = "paillier"
 cli.async_remote_execute((xgb_host_logic, cry_pri), (xgb_guest_logic, cry_pri))
-print(ph.context.Context)
-print(ph.context.Context.__dict__)
 
-cli.start()
+# cli.start()

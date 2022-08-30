@@ -66,18 +66,20 @@ async def handler_task_status(event: Event):
     client_id = cli.client_id
     # client_ip = cli.client_ip
     node_ip = cli.node.split(":")[0]
-    logger.debug('NODE NUM: {}'.format(len(nodes)))
+    logger.debug("Total number of node is : {}".format(len(nodes)))
     task = Task(task_id=task_id, primihub_client=cli)
+    for node in nodes:
+        if node not in task.nodes:
+            task.nodes.append(node)
+
     for node in nodes:
         connect_str = node_ip + ":" + str(node["client_port"])
         cert = ""  # TODO
         logger.debug("node connect str: {}".format(connect_str))
-        if node not in task.nodes:
-            task.nodes.append(node)
         logger.debug("task id: {}".format(task_id))
         task.get_node_event(node=connect_str, cert=cert)
         task_status = event.data.task_status.status
-        task.set_task_status(task_status)
+        await task.set_task_status(task_status)
 
 
 @listener.on_event("/%s/{task_id}" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_RESULT])
