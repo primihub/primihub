@@ -1,19 +1,9 @@
 import functools
 import os
-import logging
 from typing import Callable
 from cloudpickle import dumps
 from primihub.utils.logger_util import logger
 
-def get_logger(name):
-    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
-    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-    logging.basicConfig(level=logging.DEBUG,
-                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
-    logger = logging.getLogger(name)
-    return logger
-
-logger = get_logger("context")
 
 class NodeContext:
     def __init__(self, role, protocol, dataset_port_map, func=None):
@@ -21,8 +11,8 @@ class NodeContext:
         self.role = role
         self.protocol = protocol
         self.func = func
-        self.dataset_port_map = dataset_port_map 
-        self.task_type = None 
+        self.dataset_port_map = dataset_port_map
+        self.task_type = None
 
         self.dumps_func = None
         if isinstance(func, Callable):
@@ -33,7 +23,7 @@ class NodeContext:
 
         if self.dumps_func:
             print("dumps func:", self.dumps_func)
-            
+
         self.datasets = []
         for ds_name in self.dataset_port_map.keys():
             self.datasets.append(ds_name)
@@ -104,7 +94,7 @@ class TaskContext:
             logger.error("Task type in all role must be the same.")
             raise RuntimeError("Task type in all role is not the same.")
         else:
-            return type_list[0] 
+            return type_list[0]
 
     @staticmethod
     def mk_output_dir(output_dir):
@@ -119,7 +109,7 @@ class TaskContext:
                     print(output_dir)
 
     def get_predict_file_path(self):
-        file_path = self.params_map.get("predictFileName", None) 
+        file_path = self.params_map.get("predictFileName", None)
         if file_path:
             self.predict_file_path = file_path
 
@@ -167,7 +157,7 @@ class TaskContext:
         self.mk_output_dir(output_dir)
         logger.info("guest lookup table: {}".format(self.guest_lookup_file_path))
         return self.guest_lookup_file_path
-    
+
     def get_role_node_map(self):
         return self.role_nodeid_map
 
@@ -182,7 +172,6 @@ class TaskContext:
 
         self.node_addr_map.clear()
         self.params_map.clear()
-
 
     def get_dataset_service(self, role):
         node_context = self.nodes_context.get(role, None)
@@ -217,6 +206,7 @@ def set_task_context_params_map(key, value):
     Context.params_map[key] = value
     logger.info("Insert '{}:{}' into task context.".format(key, value))
 
+
 # For test
 def set_text(role, protocol, datasets, dumps_func):
     logger.info("========", role, protocol, datasets, dumps_func)
@@ -247,11 +237,11 @@ def function(protocol, role, datasets, port, task_type="default"):
 
         Context.nodes_context[role].set_task_type(task_type)
 
-        print(">>>>> dataset_port_map in {}'s node context is {}.".format(
+        logger.debug(">>>>> dataset_port_map in {}'s node context is {}.".format(
             role, Context.nodes_context[role].dataset_port_map))
-        print(">>>>> dataset in {}'s node context is {}.".format(
+        logger.debug(">>>>> dataset in {}'s node context is {}.".format(
             role, Context.nodes_context[role].datasets))
-        print(">>>>> role in {}'s node context is {}.".format(
+        logger.debug(">>>>> role in {}'s node context is {}.".format(
             role, Context.nodes_context[role].role))
 
         @functools.wraps(func)
