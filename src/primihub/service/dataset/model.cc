@@ -94,6 +94,7 @@ namespace primihub::service {
         SchemaConstructorParamType arrowSchemaParam = std::get<0>(dataset->data)->schema(); // TODO schema may not be available
         this->data_type = DatasetType::TABLE;   // FIXME only support table now               
         this->schema = NewDatasetSchema(data_type, arrowSchemaParam);     
+        this->total_records = std::get<0>(dataset->data)->num_rows();
         // TODO Maybe description is duplicated with other dataset?
         this->id = DatasetId(description);
         this->description = description;
@@ -122,6 +123,7 @@ namespace primihub::service {
         return ss.str();
     }
 
+    
     void DatasetMeta::fromJSON(const std::string &json)
     {
         nlohmann::json oJson = nlohmann::json::parse(json);

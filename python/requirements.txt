@@ -16,4 +16,4 @@ sphinx
 scikit-learn==1.1.1
 phe==1.5.0
 
-gevent
+loguru

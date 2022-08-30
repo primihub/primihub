@@ -5,6 +5,7 @@
 
 //using namespace std;
 #include "cryptoTools/Common/Defines.h"
+#include "libOTe/Tools/DefaultCurve.h"
 //#include "cryptoTools/Common/Version.h"
 
 //#if !defined(CRYPTO_TOOLS_VERSION_MAJOR) || CRYPTO_TOOLS_VERSION_MAJOR != 1 || CRYPTO_TOOLS_VERSION_MAJOR != 1
@@ -18,6 +19,7 @@ using namespace osuCrypto;
 #include <chrono>
 #include "cryptoTools/Common/Log.h"
 #include "cryptoTools/Common/Timer.h"
+#include "cryptoTools/Common/BitVector.h"
 
 #include "util.h"
 #include "OtBinMain.h"
@@ -26,12 +28,12 @@ using namespace osuCrypto;
 
 std::vector<std::string>
 kkrtTag{ "kkrt" },
+mkkrtTag{ "mkkrt" },
+cm20Tag{ "cm20" },
 helpTags{ "h", "help" },
 numThreads{ "t", "threads" },
 numItems{ "n","numItems" },
-numItems2{ "n2","srvNumItems" },
 powNumItems{ "nn","powNumItems" },
-powNumItems2{ "nn2","srvPowNumItems" },
 verboseTags{ "v", "verbose" },
 trialsTags{ "trials" },
 roleTag{ "r", "role" },
@@ -89,9 +91,12 @@ void benchmark(
 			auto mode = params.mIdx ? EpMode::Server : EpMode::Client;
 			Endpoint ep(ios, params.mIP, mode);
 			params.mChls.resize(*std::max_element(params.mNumThreads.begin(), params.mNumThreads.end()));
+			params.mChls2.resize(*std::max_element(params.mNumThreads.begin(), params.mNumThreads.end()));
 
-			for (u64 i = 0; i < params.mChls.size(); ++i)
+			for (u64 i = 0; i < params.mChls.size(); ++i) {
 				params.mChls[i] = ep.addChannel();
+				params.mChls2[i] = ep.addChannel();
+			}
 
             if (params.mIdx == 0)
             {
@@ -105,11 +110,14 @@ void benchmark(
 				sendProtol(params);
 			}
 
-			for (u64 i = 0; i < params.mChls.size(); ++i)
+			for (u64 i = 0; i < params.mChls.size(); ++i) {
 				params.mChls[i].close();
+				params.mChls2[i].close();
+			}
 
 
 			params.mChls.clear();
+			params.mChls2.clear();
 			ep.stop();
 		};
 
@@ -120,6 +128,8 @@ void benchmark(
         }
         else
         {
+			using namespace DefaultCurve;
+			Curve curve;
             auto thrd = std::thread([&]()
             {
                 auto params2 = params;
@@ -143,7 +153,6 @@ int main(int argc, char** argv)
 	// default parameters for various things
 	cmd.setDefault(numThreads, "1");
 	cmd.setDefault(numItems, std::to_string(1 << 8));
-	cmd.setDefault(numItems2, std::to_string(1 << 8));
 	cmd.setDefault(trialsTags, "1");
 	cmd.setDefault(bitSizeTag, "-1");
 	cmd.setDefault(binScalerTag, "1");
@@ -155,8 +164,12 @@ int main(int argc, char** argv)
 	cmd.setDefault(verboseTags, std::to_string(1 & (u8)cmd.isSet(verboseTags)));
 
 	benchmark(kkrtTag, cmd, kkrtRecv, kkrtSend);
+	benchmark(cm20Tag, cmd, cm20Recv, cm20Send);
+	benchmark(mkkrtTag, cmd, mkkrtRecv, mkkrtSend);
 
 	if (cmd.isSet(kkrtTag) == false &&
+		cmd.isSet(cm20Tag) == false &&
+		cmd.isSet(mkkrtTag) == false &&
 		cmd.isSet(helpTags))
 	{
 		std::cout << Color::Red 
@@ -169,6 +182,8 @@ int main(int argc, char** argv)
 
 		std::cout << Color::Green << "Protocols:\n" << Color::Default
 			<< "   -" << kkrtTag[0] << "    : KKRT16  - Hash to Bin & compare style (semi-honest secure, fastest)\n"
+			<< "   -" << mkkrtTag[0] << "   : KKRT16  - Hash to Bin & compare style (semi-honest secure, fastest, multithread)\n"
+			<< "   -" << cm20Tag[0] << "    : CM16  - Multi-Point OPRF & compare style (semi-honest secure, fastest)\n"
 			<< std::endl;
 
 		std::cout << Color::Green << "Benchmark Parameters:\n" << Color::Default
@@ -182,9 +197,6 @@ int main(int argc, char** argv)
 
             << "   -" << powNumItems[0]
             << ": 2^n number of items each party has, white space delimited.\n"
-
-            << "   -" << powNumItems2[0]
-            << ": 2^n number of items the server in PIR PSI has, white space delimited.\n"
 
 			<< "   -" << numThreads[0]
 			<< ": Number of theads each party has, white space delimited. (Default = " << cmd.get<std::string>(numThreads) << ")\n"

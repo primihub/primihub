@@ -138,16 +138,19 @@ class DatasetMeta {
     std::string &getDataURL() { return data_url; }
     std::string getDescription()  { return description; }
     void setDataURL(const std::string &data_url) { this->data_url = data_url; }
+    std::shared_ptr<DatasetSchema> getSchema() { return schema; }
+    uint64_t getTotalRecords() { return total_records; }
     DatasetId id;
 
   private:
-    // TODO nodeid:ip:port:/path/to/data
+    // NOTE data_url format [nodeid:ip:port:/path/to/data]
     std::string data_url; 
     std::string description;
     DatasetVisbility visibility;
     std::string driver_type;
     DatasetType data_type;
     std::shared_ptr<DatasetSchema> schema;
+    uint64_t total_records;
 };
 
 } // namespace service

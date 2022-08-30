@@ -29,6 +29,7 @@ public:
   ~CSVCursor();
   std::shared_ptr<primihub::Dataset> read() override;
   std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
+  int write(std::shared_ptr<primihub::Dataset> dataset) override;
   void close() override;
 
 private:
@@ -44,10 +45,11 @@ public:
   ~CSVDriver() {}
 
   std::shared_ptr<Cursor> &read(const std::string &filePath) override;
+  std::shared_ptr<Cursor> &initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
-  // std::shared_ptr<primihub::Dataset> write(std::shared_ptr<arrow::Table> table,
-  //                                          std::string &filePath);
-  int write(std::shared_ptr<arrow::Table> table, std::string &filePath);
+  // FIXME to be deleted
+  int write(std::shared_ptr<arrow::Table> table,
+                     std::string &filePath);
 
 private:
   std::string filePath_;

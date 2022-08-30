@@ -99,7 +99,7 @@ grpc_proto_library(
     deps = [
             ":common_proto",
             ":grpc_psi_proto",
-	    ":grpc_pir_proto",
+	        ":grpc_pir_proto",
            ],
 )
 
@@ -141,6 +141,9 @@ cc_library(
             "src/primihub/common/type/fixed_point.h",
             "src/primihub/common/type/matrix.h",
             "src/primihub/common/type/matrix_view.h",
+            "src/primihub/common/eventbus/eventbus.hpp",
+            "src/primihub/common/eventbus/function_traits.hpp",
+
     ]),
     textual_hdrs = [
               "src/primihub/common/gsl/span",
@@ -501,16 +504,17 @@ DEFAULT_TASK_LIB_DEPS = [
     ":common_lib",
     ":algorithm_lib",
     "dataset_service",
+    "notify_service",
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     "@org_openmined_pir//pir/cpp:pir",
-    # "@osu_libpsi//:libpsi",
+    #"@osu_libpsi//:libpsi",
 ]
 
 TASK_LIB_DEPS = select({
     ":macos-build": DEFAULT_TASK_LIB_DEPS,
-    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib"],
+    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
 })
 
 cc_library(
@@ -709,7 +713,6 @@ cc_library(
         "@arrow",
         "@com_github_glog_glog//:glog",
         ":eigen",
-        
         ":common_lib",
         ":crypto_lib",
         ":network_lib",
@@ -762,7 +765,6 @@ cc_library(
 )
 
 
-
 cc_library(
     name = "dataset_service",
     srcs = [
@@ -803,6 +805,35 @@ cc_library(
 
 
 cc_library(
+    name = "notify_service",
+    srcs = [
+            "src/primihub/service/notify/model.cc",
+            "src/primihub/service/notify/service.cc",
+            "src/primihub/service/notify/model.h",
+            "src/primihub/service/notify/service.h",
+    ],
+    hdrs = [
+            "src/primihub/service/notify/model.h",
+            "src/primihub/service/notify/service.h",
+    ],
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_glog_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        "@boost//:outcome",
+        ":service_proto",
+        ":common_lib",
+        ":service_base",
+    ],
+    linkstatic = True,
+    visibility = ["//visibility:public"],   
+)
+
+
+cc_library(
     name = "nodelet",
     srcs = [
             "src/primihub/node/nodelet.cc",
@@ -816,9 +847,11 @@ cc_library(
     deps = [
         ":p2p_lib",
         ":dataset_service",
+        ":notify_service",
     ],
 )
 
+########### pybind11 warppers start ########
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 pybind_extension(
@@ -837,6 +870,46 @@ py_library(
     name = "primihub_channel",
     data = ["primihub_channel.so"],
 )
+
+
+pybind_extension(
+    name = "primihub_dataset_warpper", 
+    srcs = [
+            "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
+            "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
+    ],
+    deps = [
+        "@arrow",
+        ":dataset_service",
+        ":data_store_lib",
+    ],
+)
+
+py_library(
+    name = "primihub_dataset_warpper",
+    data = ["primihub_dataset_warpper.so"],
+)
+
+
+# cc_library(
+#     name = "primihub_dataset_warpper",
+#     srcs = [
+#             "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
+#     ],
+#     hdrs = [
+#             "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
+#     ],
+#     copts = C_OPT,
+#     linkstatic = False,
+#     linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib -ldl -framework CoreFoundation"] + ["-lpython3.9"],
+#     deps = [
+#         "@arrow",
+#         "@pybind11",
+#         ":dataset_service",
+#         ":data_store_lib",
+#     ],
+# )
+########### pybind11 warppers end ########
 
 cc_binary(
     name = "node",
@@ -859,6 +932,7 @@ cc_binary(
         "@com_google_absl//absl/memory",
         "@com_github_glog_glog//:glog",
         "@toolkit_relic//:relic",
+        "@arrow",
         ":worker_proto",
         ":service_proto",
         ":common_lib",
@@ -866,6 +940,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
+       
     ],
 )
 
@@ -935,6 +1010,41 @@ cc_test(
         "@openssl",
         ":dataset_service",
         ":p2p_lib"
+    ],
+)
+
+cc_binary(
+    name = "notify_service_test",
+    srcs = [
+        "test/primihub/service/notify/notify_service_e2e_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":notify_service",
+    ],
+)
+
+cc_binary (
+    name = "notify_test_client",
+    srcs = [
+        "test/primihub/service/notify/test_client.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_github_glog_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        ":service_proto",
     ],
 )
 
@@ -1177,7 +1287,7 @@ cc_test(
     ],
 )
 
-## paillier
+
 cc_library(
     name = "lib_miracl",
     srcs = glob(["thirdparty/miracl/mr_src/*.c"],),
@@ -1190,6 +1300,7 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+######################### paillier start #########################
 cc_library(
     name = "lib_paillier",
     srcs = glob(
@@ -1261,41 +1372,6 @@ cc_binary(
     ],
 )
 
-cc_library(
-    name = "kkrt_psi",
-    srcs = glob(
-        [
-            "test/primihub/protocol/kkrtpsi/*.cc"
-        ],
-    ),
-    hdrs = glob([
-        "test/primihub/protocol/kkrtpsi/*.h"
-    ]),
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = True,
-    deps = [
-        "@osu_libpsi//:libpsi",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-cc_binary(
-    name = "kkrt_psi_test",
-    srcs = [
-        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
-    ],
-    includes = [
-        "test/primihub/protocol/kkrtpsi",
-    ],
-    copts = C_OPT,
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-        ":kkrt_psi"
-    ],
-)
-
 cc_binary(
     name = "opt_paillier_pack_test",
     srcs = [
@@ -1361,6 +1437,77 @@ py_test(
     ],
 )
 
+######################### paillier end #########################
+
+cc_library(
+    name = "libpsi_frontend",
+    srcs = glob(
+        [
+            "test/primihub/protocol/libpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/libpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "libpsi_test",
+    srcs = [
+        "test/primihub/protocol/libpsi/libpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/libpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":libpsi_frontend"
+    ],
+)
+
+cc_library(
+    name = "kkrt_psi",
+    srcs = glob(
+        [
+            "test/primihub/protocol/kkrtpsi/*.cc"
+        ],
+    ),
+    hdrs = glob([
+        "test/primihub/protocol/kkrtpsi/*.h"
+    ]),
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = True,
+    deps = [
+        "@osu_libpsi//:libpsi",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "kkrt_psi_test",
+    srcs = [
+        "test/primihub/protocol/kkrtpsi/kkrtpsi.cc",
+    ],
+    includes = [
+        "test/primihub/protocol/kkrtpsi",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":kkrt_psi"
+    ],
+)
 # test
 cc_test(
     name = "test",

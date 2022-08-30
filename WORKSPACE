@@ -441,7 +441,7 @@ http_archive(
 new_git_repository(
     name = "osu_libpsi",
     build_file = "//bazel:BUILD.libpsi",
-    commit = "213037d4aa0db4d257937d2d953f1b965e4a5234",
+    commit = "e048aa682f4fef76bc499021d1978422b474d512",
     remote = "https://github.com/primihub/libPSI.git",
 )
 

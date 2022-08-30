@@ -29,9 +29,61 @@ int port = 32000;             // network ports
 MaxPoolExecutor::MaxPoolExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
+
+  if (checkInstructionSupport("aes")) {
+    LOG(ERROR) << "aes is required but not support in this platform.";
+    LOG(ERROR) << "Dump cpu info:";
+    PrintCPUInfo();
+
+    throw std::runtime_error(
+        "aes is required but not support in this platform.");
+  } else {
+    LOG(INFO) << "Current cpu support aes instruction.";
+  }
+
+  if (checkInstructionSupport("avx")) {
+    LOG(ERROR) << "avx is required but not support in this platform.";
+    LOG(ERROR) << "Dump cpu info:";
+    PrintCPUInfo();
+
+    throw std::runtime_error(
+        "avx is required but not support in this platform.");
+  } else {
+    LOG(INFO) << "Current cpu support avx instruction.";
+  }
+
+
   if (checkInstructionSupport("avx2")) {
+    LOG(ERROR) << "avx2 is required but not support in this platform.";
+    LOG(ERROR) << "Dump cpu info:";
+    PrintCPUInfo();
+
     throw std::runtime_error(
         "avx2 is required but not support in this platform.");
+  } else {
+    LOG(INFO) << "Current cpu support avx2 instruction.";
+  }
+
+  if (checkInstructionSupport("sse4_1")) {
+    LOG(ERROR) << "sse4.1 is required but not support in this platform.";
+    LOG(ERROR) << "Dump cpu info:";
+    PrintCPUInfo();
+
+    throw std::runtime_error(
+        "sse4.1 is required but not support in this platform.");
+  } else {
+    LOG(INFO) << "Current cpu support sse4.1 instruction.";
+  }
+
+  if (checkInstructionSupport("rdseed")) {
+    LOG(ERROR) << "rdseed is required but not support in this platform.";
+    LOG(ERROR) << "Dump cpu info:";
+    PrintCPUInfo();
+
+    throw std::runtime_error(
+        "rdseed is required but not support in this platform.");
+  } else {
+    LOG(INFO) << "Current cpu support rdseed instruction.";
   }
 
   this->algorithm_name_ = "maxpool";

@@ -46,6 +46,7 @@ typedef struct NodeConfig {
     std::vector<Dataset> datasets;
     P2P p2p;
     LocalKV localkv;
+    std::string notify_server;
 } NodeConfig;
 } // namespace primihub::common
 
@@ -116,6 +117,7 @@ template <> struct convert<NodeConfig> {
         node["datasets"] = nc.datasets;
         node["localkv"] = nc.localkv;
         node["p2p"] = nc.p2p;
+        node["notify_server"] = nc.notify_server;
 
         return node;
     }
@@ -131,6 +133,7 @@ template <> struct convert<NodeConfig> {
         }
         nc.localkv = node["localkv"].as<LocalKV>();
         nc.p2p = node["p2p"].as<P2P>();
+        nc.notify_server = node["notify_server"].as<std::string>();
 
         return true;
     }
