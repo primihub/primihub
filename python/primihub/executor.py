@@ -77,7 +77,7 @@ class Executor:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content()
         else:
             try:
                 logger.debug("start execute with params")
@@ -87,7 +87,7 @@ class Executor:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
             finally:
-                ...
+                Context.clean_content()
 
     @staticmethod
     def execute_test():

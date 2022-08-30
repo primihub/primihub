@@ -23,7 +23,6 @@ class NodeContext:
         self.func = func
         self.dataset_port_map = dataset_port_map 
         self.task_type = None 
-        print("func type: ", type(func))
 
         self.dumps_func = None
         if isinstance(func, Callable):
@@ -120,33 +119,53 @@ class TaskContext:
                     print(output_dir)
 
     def get_predict_file_path(self):
+        file_path = self.params_map.get("predictFileName", None) 
+        if file_path:
+            self.predict_file_path = file_path
+
         output_dir = os.path.dirname(self.predict_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("predict: ", self.predict_file_path)
+        logger.info("predict: {}".format(self.predict_file_path))
         return self.predict_file_path
 
     def get_indicator_file_path(self):
+        file_path = self.params_map.get("indicatorFileName", None)
+        if file_path:
+            self.indicator_file_path = file_path
+
         output_dir = os.path.dirname(self.indicator_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("indicator: ", self.indicator_file_path)
+        logger.info("indicator: {}".format(self.indicator_file_path))
         return self.indicator_file_path
 
     def get_model_file_path(self):
+        file_path = self.params_map.get("modelFileName", None)
+        if file_path:
+            self.model_file_path = file_path
+
         output_dir = os.path.dirname(self.model_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("model: ", self.model_file_path)
+        logger.info("model: {}".format(self.model_file_path))
         return self.model_file_path
 
     def get_host_lookup_file_path(self):
+        file_path = self.params_map.get("hostLookupTable", None)
+        if file_path:
+            self.host_lookup_file_path = file_path
+
         output_dir = os.path.dirname(self.host_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("host lookup table: ", self.host_lookup_file_path)
+        logger.info("host lookup table: {}".format(self.host_lookup_file_path))
         return self.host_lookup_file_path
 
     def get_guest_lookup_file_path(self):
+        file_path = self.params_map.get("guestLookupTable", None)
+        if file_path:
+            self.guest_lookup_file_path = file_path
+
         output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
-        print("guest lookup table: ", self.guest_lookup_file_path)
+        logger.info("guest lookup table: {}".format(self.guest_lookup_file_path))
         return self.guest_lookup_file_path
     
     def get_role_node_map(self):
@@ -170,9 +189,13 @@ class TaskContext:
         if node_context is None:
             return None
         return node_context.dataset_service_shared_ptr
-        
+
+
 Context = TaskContext()
 
+
+def set_task_context_dataset_map(k, v):
+    Context.dataset_map[k] = v
 
 
 def set_node_context(role, protocol, datasets):
@@ -180,36 +203,6 @@ def set_node_context(role, protocol, datasets):
     for dataset in datasets:
         dataset_port_map[dataset] = "0"
     Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
-
-    # TODO set dataset map, key dataset name, value dataset meta information
-
-
-def set_task_context_func_params(func_name, func_params):
-    Context.params_map[func_name] = func_params
-
-
-def set_task_context_dataset_map(k, v):
-    Context.dataset_map[k] = v
-
-
-def set_task_context_predict_file(f):
-    Context.predict_file_path = f
-
-
-def set_task_context_indicator_file(f):
-    Context.indicator_file_path = f
-
-
-def set_task_context_model_file(f):
-    Context.model_file_path = f
-
-
-def set_task_context_host_lookup_file(f):
-    Context.host_lookup_file_path = f
-
-
-def set_task_context_guest_lookup_file(f):
-    Context.guest_lookup_file_path = f
 
 
 def set_task_context_node_addr_map(node_id_with_role, addr):
