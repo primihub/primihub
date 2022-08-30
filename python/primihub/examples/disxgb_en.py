@@ -83,7 +83,7 @@ def xgb_host_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = row[name]
             try:
-            	float(temp)
+                float(temp)
             except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))
@@ -249,7 +249,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     if eva_type != "classification" and eva_type != "regression":
         logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
         return
-    
+
     logger.info("Current task type is {}.".format(eva_type))
 
     # Check dataset.
@@ -259,7 +259,7 @@ def xgb_guest_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = row[name]
             try:
-            	float(temp)
+                float(temp)
             except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))

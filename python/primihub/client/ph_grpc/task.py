@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
+import random
+
 from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.utils.async_util import fire_coroutine_threadsafe
 from primihub.utils.logger_util import logger
@@ -61,7 +63,7 @@ class Task(object):
             "!!!!!!! ------ node_grpc_connections ------node: {}".format(worker_node_grpc_client.node))
         logger.debug(self.node_grpc_connections)
         notify_request = worker_node_grpc_client.client_context(
-            self.cli.client_id, self.cli.client_ip, 10051)
+            self.cli.client_id, self.cli.client_ip, random.randint(10000, 10050))
         # self.cli.client_id, self.cli.client_ip, self.cli.client_port)
 
         fire_coroutine_threadsafe(
