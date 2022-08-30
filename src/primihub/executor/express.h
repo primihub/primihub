@@ -182,7 +182,7 @@ private:
     ColumnConfig *col_config_;
   };
 
-  inline void createTokenValue(const std::string &token, TokenValue &token_val);
+  inline int createTokenValue(const std::string &token, TokenValue &token_val);
 
   inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val);
 

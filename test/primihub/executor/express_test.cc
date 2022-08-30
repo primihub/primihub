@@ -22,7 +22,7 @@ static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
   mpc_exec->importColumnOwner(col_name, col_owner);
 
   col_name = "B";
-  col_owner = "node1";
+  col_owner = "node0";
   mpc_exec->importColumnOwner(col_name, col_owner);
 
   col_name = "C";
@@ -70,7 +70,7 @@ template <typename T> static void runFirstParty(std::vector<T> &col_val) {
 
   try {
     mpc_exec->initMPCRuntime(0, "127.0.0.1", 10090, 10091);
-    mpc_exec->runMPCEvaluate();
+    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
@@ -108,7 +108,7 @@ template <typename T> static void runSecondParty(std::vector<T> &col_val) {
 
   try {
     mpc_exec->initMPCRuntime(1, "127.0.0.1", 10092, 10090);
-    mpc_exec->runMPCEvaluate();
+    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 1, ";
@@ -146,7 +146,7 @@ template <typename T> static void runThirdParty(std::vector<T> &col_val) {
 
   try {
     mpc_exec->initMPCRuntime(2, "127.0.0.1", 10091, 10092);
-    mpc_exec->runMPCEvaluate();
+    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 2, ";

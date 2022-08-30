@@ -709,28 +709,55 @@ void MPCExpressExecutor::createTokenValue(si64Matrix *m, TokenValue &v) {
   v.type = 6;
 }
 
-void MPCExpressExecutor::createTokenValue(const std::string &token,
-                                          TokenValue &token_val) {
+int MPCExpressExecutor::createTokenValue(const std::string &token,
+                                         TokenValue &token_val) {
   TokenType type = token_type_map_[token];
   if (type == TokenType::COLUMN) {
     // Token is a column name, a remote column or a local column.
-    bool is_local = false;
-    col_config_->getColumnLocality(token, is_local);
-    if (is_local == false) {
-      // Column is a remote column.
-      token_val.type = 4;
-      LOG(INFO) << "Construct TokenValue instance for '" << token << "', type '"
-                << token_val.TypeToString() << "'.";
-      return;
-    }
+    bool errors = false;
+    do {
+      bool is_local = false;
+      if (col_config_->getColumnLocality(token, is_local)) {
+        errors = true;
+        LOG(ERROR) << "Get column locality with token '" << token
+                   << "' failed.";
+        break;
+      }
 
-    // Column is a local column.
-    if (fp64_run_) {
-      feed_dict_->getColumnValues(token, &(token_val.val_union.fp64_vec));
-      token_val.type = 0;
-    } else {
-      feed_dict_->getColumnValues(token, &(token_val.val_union.i64_vec));
-      token_val.type = 1;
+      if (is_local == false) {
+        // Column is a remote column.
+        token_val.type = 4;
+        LOG(INFO) << "Construct TokenValue instance for '" << token
+                  << "', type '" << token_val.TypeToString() << "'.";
+        return 0;
+      }
+
+      // Column is a local column.
+      if (fp64_run_) {
+        if (feed_dict_->getColumnValues(token,
+                                        &(token_val.val_union.fp64_vec))) {
+          errors = true;
+          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          break;
+        }
+
+        token_val.type = 0;
+      } else {
+        if (feed_dict_->getColumnValues(token,
+                                        &(token_val.val_union.i64_vec))) {
+          errors = true;
+          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          break;
+        }
+
+        token_val.type = 1;
+      }
+    } while (0);
+
+    if (errors) {
+      LOG(ERROR) << "Error occurs during create token value for local column '"
+                 << token << "'.";
+      return -2;
     }
   } else {
     // Token is a number, maybe a float number.
@@ -745,6 +772,7 @@ void MPCExpressExecutor::createTokenValue(const std::string &token,
 
   LOG(INFO) << "Construct TokenValue instance for '" << token << "', type '"
             << token_val.TypeToString() << "'.";
+  return 0;
 }
 
 void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
@@ -1002,7 +1030,7 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       std::string a, b;
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
-     
+
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Sub between '" << a << "' and '" << b << "'.";
         runMPCSubFP64(val1, val2, res);
@@ -1020,7 +1048,7 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       std::string a, b;
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
-      
+
       if (fp64_run_) {
         LOG(INFO) << "Run FP64 Mul between '" << a << "' and '" << b << "'.";
         runMPCMulFP64(val1, val2, res);
@@ -1039,8 +1067,8 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
-      // TODO: Add MPC Div implement. 
-      
+      // TODO: Add MPC Div implement.
+
       std::string new_token = "(" + a + "/" + b + ")";
       AfterMPCRun(stk1, val_stk, new_token, res);
     } else {
@@ -1048,7 +1076,12 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       suffix_stk_.pop();
 
       TokenValue token_val;
-      createTokenValue(token, token_val);
+      if (createTokenValue(token, token_val)) {
+        LOG(ERROR) << "Construct token value for token '" << token
+                   << "' failed.";
+        return -1;
+      }
+
       val_stk.push(token_val);
       token_val_map_[token] = token_val;
     }
