@@ -13,17 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from primihub.utils.logger_util import logger
-
-from .connect import GRPCConnect
-import grpc
-from abc import ABC
 import sys
 from os import path
 
+import grpc
+
+from primihub.utils.logger_util import logger
+from .connect import GRPCConnect
+
 here = path.abspath(path.join(path.dirname(__file__), "."))
 sys.path.append(here)
-
 
 from src.primihub.protos import service_pb2, service_pb2_grpc  # noqa
 
@@ -109,7 +108,7 @@ class DataServiceClient(GRPCConnect):
         self.channel = grpc.insecure_channel(self.node)
         self.stub = service_pb2_grpc.DataServiceStub(self.channel)
 
-    @ staticmethod
+    @staticmethod
     def new_data_request(driver: str, path: str, fid: str):
         return service_pb2.NewDatasetRequest(driver, path, fid)
 

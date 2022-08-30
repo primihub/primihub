@@ -16,10 +16,7 @@
 import random
 
 from primihub.client.ph_grpc.event import listener
-# from primihub.client.ph_grpc.task import NODE_EVENT_TYPE
 from primihub.client.ph_grpc.worker import WorkerClient
-
-from primihub.utils.protobuf_to_dict import protobuf_to_dict
 
 
 class GrpcClient(object):
@@ -51,35 +48,7 @@ class GrpcClient(object):
                                            task=task_map,
                                            sequence_number=random.randint(0, 9999),
                                            client_processed_up_to=random.randint(0, 9999),
-                                           submit_client_id = bytes(str(submit_client_id), "utf-8")
+                                           submit_client_id=bytes(str(submit_client_id), "utf-8")
                                            )
         res = client.submit_task(request)
         return res
-
-    # async def run_notfiy_client(self, client_id: str, client_ip: str, client_port: int):
-    #     # client = NodeServiceClient(self.node, self.cert)
-    #     request = self.client.client_context(client_id=client_id,
-    #                                     client_ip=client_ip,
-    #                                     client_port=client_port)
-    #     async with self.client.channel:
-    #         # Read from an async generator
-    #         async for response in self.client.stub.SubscribeNodeEvent(request):
-    #             print("NodeService client received from async generator: " + response.event_type)
-    #             response_dict = protobuf_to_dict(response)
-    #             event_type = NODE_EVENT_TYPE[response.event_type]
-    #             #
-    #             listener.fire(name=event_type, data=response_dict)
-
-    # async def get_task_node_event(self, task_id: str, client_id: str, client_ip: str, client_port: int):
-    #     client = NodeServiceClient(self.node, self.cert)
-    #     request = client.client_context(client_id=client_id,
-    #                                     client_ip=client_ip,
-    #                                     client_port=client_port)
-    #     async with client.channel:
-    #         # Read from an async generator
-    #         async for response in client.stub.SubscribeNodeEvent(request):
-    #             print("NodeService client received from async generator: " + response.event_type)
-    #             response_dict = protobuf_to_dict(response)
-    #             event_type = NODE_EVENT_TYPE[response.event_type]
-    #             topic = task_id + '/' + event_type
-    #             listener.fire(name=topic, data=response_dict)
