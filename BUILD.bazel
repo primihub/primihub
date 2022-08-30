@@ -508,7 +508,8 @@ DEFAULT_TASK_LIB_DEPS = [
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-    "@org_openmined_pir//pir/cpp:pir",
+    # "@org_openmined_pir//pir/cpp:pir", #TODO need bazel select 
+    "@APSI//:APSI",
     #"@osu_libpsi//:libpsi",
 ]
 
@@ -519,17 +520,62 @@ TASK_LIB_DEPS = select({
 
 cc_library(
     name = "task_lib",
-    srcs = glob([
-            "src/primihub/task/**/*.cc",
-    ]),
-    hdrs = glob([
-             "src/primihub/task/**/*.h",
-	     "src/primihub/util/util.h"
-    ]),
+    srcs = glob(
+        [
+            "src/primihub/task/language/proto_parser.cc",
+            "src/primihub/task/language/py_parser.cc",
+            "src/primihub/task/semantic/psi_kkrt_task.cc",
+            # "src/primihub/task/semantic/pir_server_task.cc",
+            # "src/primihub/task/semantic/pir_client_task.cc",
+            "src/primihub/task/semantic/parser.cc",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+            "src/primihub/task/semantic/mpc_task.cc",
+            "src/primihub/task/semantic/tee_task.cc",
+            "src/primihub/task/semantic/task.cc",
+            "src/primihub/task/semantic/psi_client_task.cc",
+            "src/primihub/task/semantic/private_server_base.cc",
+            "src/primihub/task/semantic/fl_task.cc",
+            "src/primihub/task/semantic/psi_server_task.cc",
+        ],
+        
+    ),
+    hdrs = glob(
+        [
+            "src/primihub/task/language/proto_parser.h",
+            "src/primihub/task/language/parser.h",
+            "src/primihub/task/language/py_parser.h",
+            "src/primihub/task/language/factory.h",
+            "src/primihub/task/semantic/task.h",
+            # "src/primihub/task/semantic/pir_server_task.h",
+            "src/primihub/task/semantic/private_server_base.h",
+            "src/primihub/task/semantic/parser.h",
+            # "src/primihub/task/semantic/pir_client_task.h",
+            "src/primihub/task/semantic/scheduler.h",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.h",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.h",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.h",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.h",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.h",
+            "src/primihub/task/semantic/psi_server_task.h",
+            "src/primihub/task/semantic/psi_kkrt_task.h",
+            "src/primihub/task/semantic/psi_client_task.h",
+            "src/primihub/task/semantic/factory.h",
+            "src/primihub/task/semantic/mpc_task.h",
+            "src/primihub/task/semantic/fl_task.h",
+            "src/primihub/task/semantic/tee_task.h",
+            "src/primihub/util/util.h",
+        ]
+    ),
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib/python3.9/config-3.9-darwin -ldl -framework CoreFoundation"] + ["-lpython3.9"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
