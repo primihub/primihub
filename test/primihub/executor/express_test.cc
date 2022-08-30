@@ -13,143 +13,59 @@
 using namespace primihub;
 
 std::string expr = "A*B-C+A";
+std::map<std::string, std::string> col_and_owner;
+std::map<std::string, bool> col_and_dtype;
 
-static void importColumnOwner(MPCExpressExecutor *mpc_exec) {
-  std::string col_name, col_owner;
-
-  col_name = "A";
-  col_owner = "node0";
-  mpc_exec->importColumnOwner(col_name, col_owner);
-
-  col_name = "B";
-  col_owner = "node0";
-  mpc_exec->importColumnOwner(col_name, col_owner);
-
-  col_name = "C";
-  col_owner = "node2";
-  mpc_exec->importColumnOwner(col_name, col_owner);
-
+static void
+importColumnOwner(MPCExpressExecutor *mpc_exec,
+                  std::map<std::string, std::string> &col_and_owner) {
+  for (auto &pair : col_and_owner)
+    mpc_exec->importColumnOwner(pair.first, pair.second);
   return;
 }
 
-static void importColumnDtype(MPCExpressExecutor *mpc_exec, bool is_fp64) {
-  std::string col_name;
-
-  col_name = "A";
-  mpc_exec->importColumnDtype(col_name, is_fp64);
-
-  col_name = "B";
-  mpc_exec->importColumnDtype(col_name, is_fp64);
-
-  col_name = "C";
-  mpc_exec->importColumnDtype(col_name, is_fp64);
+static void importColumnDtype(MPCExpressExecutor *mpc_exec,
+                              std::map<std::string, bool> &col_and_dtype) {
+  for (auto &pair : col_and_dtype)
+    mpc_exec->importColumnDtype(pair.first, pair.second);
   return;
 }
 
-template <typename T> static void runFirstParty(std::vector<T> &col_val) {
+template <typename T>
+static void
+importColumnValues(MPCExpressExecutor *mpc_exec,
+                   std::map<std::string, std::vector<T>> &col_and_val) {
+  for (auto &pair : col_and_val)
+    mpc_exec->importColumnValues(pair.first, pair.second);
+  return;
+}
+
+template <typename T>
+static void runParty(std::map<std::string, std::vector<T>> col_and_val,
+                     std::string node_id, uint8_t party_id, std::string ip,
+                     uint16_t next_port, uint16_t prev_port) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
 
-  std::string node_id = "node0";
   mpc_exec->initColumnConfig(node_id);
-  importColumnOwner(mpc_exec);
 
-  if (std::is_same<double, T>::value)
-    importColumnDtype(mpc_exec, true);
-  else
-    importColumnDtype(mpc_exec, false);
+  importColumnOwner(mpc_exec, col_and_owner);
+  importColumnDtype(mpc_exec, col_and_dtype);
+  importColumnValues(mpc_exec, col_and_val);
 
   mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
   mpc_exec->InitFeedDict();
-  std::string col_name = "A";
-  mpc_exec->importColumnValues(col_name, col_val);
 
   std::vector<double> final_val;
   std::vector<uint8_t> parties = {0, 1};
 
   try {
-    mpc_exec->initMPCRuntime(0, "127.0.0.1", 10090, 10091);
+    mpc_exec->initMPCRuntime(0, ip, next_port, prev_port);
     ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
-    msg = msg + e.what();
-    throw std::runtime_error(msg);
-  }
-
-  delete mpc_exec;
-
-  return;
-}
-
-template <typename T> static void runSecondParty(std::vector<T> &col_val) {
-  MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
-
-  std::string node_id = "node1";
-  mpc_exec->initColumnConfig(node_id);
-  importColumnOwner(mpc_exec);
-
-  if (std::is_same<double, T>::value)
-    importColumnDtype(mpc_exec, true);
-  else
-    importColumnDtype(mpc_exec, false);
-
-  mpc_exec->importExpress(expr);
-  mpc_exec->resolveRunMode();
-
-  mpc_exec->InitFeedDict();
-
-  std::string col_name = "B";
-  mpc_exec->importColumnValues(col_name, col_val);
-
-  std::vector<double> final_val;
-  std::vector<uint8_t> parties = {0, 1};
-
-  try {
-    mpc_exec->initMPCRuntime(1, "127.0.0.1", 10092, 10090);
-    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
-    mpc_exec->revealMPCResult(parties, final_val);
-  } catch (const std::exception &e) {
-    std::string msg = "In party 1, ";
-    msg = msg + e.what();
-    throw std::runtime_error(msg);
-  }
-
-  delete mpc_exec;
-
-  return;
-}
-
-template <typename T> static void runThirdParty(std::vector<T> &col_val) {
-  MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
-
-  std::string node_id = "node2";
-  mpc_exec->initColumnConfig(node_id);
-  importColumnOwner(mpc_exec);
-
-  if (std::is_same<double, T>::value)
-    importColumnDtype(mpc_exec, true);
-  else
-    importColumnDtype(mpc_exec, false);
-
-  mpc_exec->importExpress(expr);
-  mpc_exec->resolveRunMode();
-
-  mpc_exec->InitFeedDict();
-
-  std::string col_name = "C";
-  mpc_exec->importColumnValues(col_name, col_val);
-
-  std::vector<double> final_val;
-  std::vector<uint8_t> parties = {0, 1};
-
-  try {
-    mpc_exec->initMPCRuntime(2, "127.0.0.1", 10091, 10092);
-    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
-    mpc_exec->revealMPCResult(parties, final_val);
-  } catch (const std::exception &e) {
-    std::string msg = "In party 2, ";
     msg = msg + e.what();
     throw std::runtime_error(msg);
   }
@@ -174,37 +90,55 @@ TEST(mpc_express_executor, fp64_executor_test) {
   for (int i = 0; i < 100; i++)
     col_val_c.emplace_back(rand() % 10000);
 
+  std::map<std::string, std::string> col_and_owner;
+  col_and_owner.insert(std::make_pair("A", "node0"));
+  col_and_owner.insert(std::make_pair("B", "node0"));
+  col_and_owner.insert(std::make_pair("C", "node1"));
+
+  std::map<std::string, bool> col_and_dtype;
+  col_and_dtype.insert(std::make_pair("A", false));
+  col_and_dtype.insert(std::make_pair("B", true));
+  col_and_dtype.insert(std::make_pair("C", false));
+
+  std::map<std::string, std::vector<double>> col_and_val_0;
+  std::map<std::string, std::vector<double>> col_and_val_1;
+  std::map<std::string, std::vector<double>> col_and_val_2;
+
+  col_and_val_0.insert(std::make_pair("A", col_val_a));
+  col_and_val_0.insert(std::make_pair("B", col_val_b));
+  col_and_val_1.insert(std::make_pair("C", col_val_c));
+
   bool single_terminal = false;
   if (single_terminal) {
     pid_t pid = fork();
     if (pid != 0) {
       // This subprocess is party 1.
-      runSecondParty(col_val_b);
+      runParty(col_and_val_1, "node1", 1, "127.0.0.1", 10030, 10010);
       return;
     }
 
     pid = fork();
     if (pid != 0) {
       // This subprocess is party 2.
-      runThirdParty(col_val_c);
+      runParty(col_and_val_2, "node2", 2, "127.0.0.1", 10020, 10030);
       return;
     }
 
     // The parent process is party 0.
-    runFirstParty(col_val_a);
+    runParty(col_and_val_0, "node0", 0, "127.0.0.1", 10010, 10020);
 
     // Wait for subprocess exit.
     int status;
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      runFirstParty(col_val_a);
+      runParty(col_and_val_0, "node0", 0, "127.0.0.1", 10010, 10020);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
-      runSecondParty(col_val_b);
+      runParty(col_and_val_1, "node1", 1, "127.0.0.1", 10030, 10010);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_2")) {
-      runThirdParty(col_val_c);
+      runParty(col_and_val_2, "node2", 2, "127.0.0.1", 10020, 10030);
     }
   }
 }
@@ -224,37 +158,55 @@ TEST(mpc_express_executor, i64_executor_test) {
   for (int i = 0; i < 100; i++)
     col_val_c.emplace_back(rand() % 10000);
 
+  std::map<std::string, std::string> col_and_owner;
+  col_and_owner.insert(std::make_pair("A", "node0"));
+  col_and_owner.insert(std::make_pair("B", "node0"));
+  col_and_owner.insert(std::make_pair("C", "node1"));
+
+  std::map<std::string, bool> col_and_dtype;
+  col_and_dtype.insert(std::make_pair("A", false));
+  col_and_dtype.insert(std::make_pair("B", false));
+  col_and_dtype.insert(std::make_pair("C", false));
+
+  std::map<std::string, std::vector<int64_t>> col_and_val_0;
+  std::map<std::string, std::vector<int64_t>> col_and_val_1;
+  std::map<std::string, std::vector<int64_t>> col_and_val_2;
+
+  col_and_val_0.insert(std::make_pair("A", col_val_a));
+  col_and_val_0.insert(std::make_pair("B", col_val_b));
+  col_and_val_1.insert(std::make_pair("C", col_val_c));
+
   bool single_terminal = false;
   if (single_terminal) {
     pid_t pid = fork();
     if (pid != 0) {
       // This subprocess is party 1.
-      runSecondParty(col_val_b);
+      runParty(col_and_val_1, "node1", 1, "127.0.0.1", 10030, 10010);
       return;
     }
 
     pid = fork();
     if (pid != 0) {
       // This subprocess is party 2.
-      runThirdParty(col_val_c);
+      runParty(col_and_val_2, "node2", 2, "127.0.0.1", 10020, 10030);
       return;
     }
 
     // The parent process is party 0.
-    runFirstParty(col_val_a);
+    runParty(col_and_val_0, "node0", 0, "127.0.0.1", 10010, 10020);
 
     // Wait for subprocess exit.
     int status;
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      runFirstParty(col_val_a);
+      runParty(col_and_val_0, "node0", 0, "127.0.0.1", 10010, 10020);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
-      runSecondParty(col_val_b);
+      runParty(col_and_val_1, "node1", 1, "127.0.0.1", 10030, 10010);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_2")) {
-      runThirdParty(col_val_c);
+      runParty(col_and_val_2, "node2", 2, "127.0.0.1", 10020, 10030);
     }
   }
 }

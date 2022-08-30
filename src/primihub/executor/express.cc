@@ -1091,6 +1091,8 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
     suffix_stk_.push(stk1.top());
     stk1.pop();
   }
+
+  return 0;
 }
 
 void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
