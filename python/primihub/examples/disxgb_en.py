@@ -83,7 +83,7 @@ def xgb_host_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = row[name]
             try:
-            	float(temp)
+                float(temp)
             except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))
@@ -217,6 +217,7 @@ def xgb_host_logic(cry_pri="paillier"):
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+
         with open(model_file_path, 'wb') as fm:
             pickle.dump(xgb_host.tree_structure, fm)
         with open(lookup_file_path, 'wb') as fl:
@@ -238,6 +239,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     logger.info(ph.context.Context.dataset_map)
     logger.info(ph.context.Context.node_addr_map)
     logger.info(ph.context.Context.role_nodeid_map)
+    logger.info(ph.context.Context.params_map)
 
     eva_type = ph.context.Context.params_map.get("taskType", None)
     if eva_type is None:
@@ -249,7 +251,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     if eva_type != "classification" and eva_type != "regression":
         logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
         return
-    
+
     logger.info("Current task type is {}.".format(eva_type))
 
     # Check dataset.
@@ -259,7 +261,7 @@ def xgb_guest_logic(cry_pri="paillier"):
         for name in columns_label_data:
             temp = row[name]
             try:
-            	float(temp)
+                float(temp)
             except ValueError:
                 logger.error(
                     "Find illegal string '{}', it's not a digit string.".format(temp))
@@ -307,7 +309,9 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
@@ -328,7 +332,9 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)

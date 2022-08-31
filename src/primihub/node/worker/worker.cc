@@ -30,6 +30,7 @@ using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
 using primihub::task::TaskFactory;
+using primihub::rpc::PsiTag;
 
 namespace primihub {
 
@@ -56,9 +57,18 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
             return;
         }
 
-        auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
-        if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
-            return;
+        auto param_map = pushTaskRequest->task().params().param_map();
+        int psiTag = PsiTag::ECDH;
+        auto param_it = param_map.find("psiTag");
+        if (param_it != param_map.end()) {
+            psiTag = param_map["psiTag"].value_int32();
+        }
+
+        if (psiTag == PsiTag::ECDH) {
+            auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
+            if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
+                return;
+            }
         }
 
         auto dataset_service = nodelet->getDataService();

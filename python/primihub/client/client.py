@@ -13,10 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import functools
-import os
 import asyncio
-from re import sub
 import sys
 import socket
 import uuid
@@ -32,7 +29,6 @@ from primihub.dataset.dataset_cli import DatasetClientFactory
 from primihub.utils.logger_util import logger
 
 import primihub as ph
-
 
 
 def get_host_ip():
@@ -69,7 +65,7 @@ class PrimihubClient(object):
 
         self.visitor = Visitor()
         self.client_id = "client:" + \
-            uuid.uuid3(uuid.NAMESPACE_DNS, 'python.org').hex
+                         uuid.uuid3(uuid.NAMESPACE_DNS, 'python.org').hex
         self.client_ip = get_host_ip()  # TODO
         self.client_port = 10050  # TODO default
 
@@ -85,6 +81,7 @@ class PrimihubClient(object):
             logger.error(context)
             logger.error("An error occurred and the client was about to exit.")
             loop.stop()
+
         self.loop.set_exception_handler(exception_handler)
 
         # Storage
@@ -104,7 +101,7 @@ class PrimihubClient(object):
         """
         logger.info("*** cli init ***")
         logger.debug(config)
-        self.node =node= config.get("node", None)
+        self.node = node = config.get("node", None)
         notify_node = config.get("node", None).split(":")[0] + ":6666"
         self.cert = cert = config.get("cert", None)
 
@@ -146,7 +143,7 @@ class PrimihubClient(object):
             self.exit()
 
     def stop(self):
-        """CLient Stop
+        """Client Stop
         """
         logger.info("*** cli stop ***")
         self.loop.stop()
@@ -161,12 +158,11 @@ class PrimihubClient(object):
         """Send local functions and parameters to the remote side
 
         :param job_id
-        :param task_id
         :param client_id
         :param args: `list` [`tuple`] (`function`, `args`)
         """
-        task = Task(task_id="task:"+uuid.uuid5(uuid.NAMESPACE_DNS,
-                    'python.org').hex, primihub_client=self)
+        task = Task(task_id="task:" + uuid.uuid5(uuid.NAMESPACE_DNS,
+                                                 'python.org').hex, primihub_client=self)
         task_id = task.task_id
         self.tasks_map[task_id] = task
 
@@ -216,27 +212,14 @@ class PrimihubClient(object):
         client_id = self.client_id
         logger.debug("------- create task: async submit task -----------")
         logger.debug("job_id: {}, type: {}".format(job_id, type(job_id)))
-        # logger.debug("task_id_id: {}, type: {}".format(task_id, type(task_id)))
         logger.debug("client_id: {}, type: {}".format(
             client_id, type(client_id)))
 
         logger.debug("------- async run submit task -----------")
         try:
-            # sub_loop = asyncio.new_event_loop()
-            # thread = threading.Thread(target=sub_loop.run_forever)
-            # thread.start()
             fire_coroutine_threadsafe(self.submit_task(
                 job_id, client_id, *args), self.loop)
-
-            # sub_loop.run_until_complete(asyncio.ensure_future(
-            #     self.submit_task(job_id, client_id, *args)))
-            # sub_loop.call_soon_threadsafe(sub_loop.stop)
-
         except Exception as e:
             logger.debug(str(e))
-        # self.loop.call_soon_threadsafe(self.submit_task_task)
-        # self.loop.run_until_complete(asyncio.wait(tasks))
 
-    async def get(self, ref_ret):
-        logger.debug("........%s >>>>>>>", ref_ret)
-        pass
+        self.start()

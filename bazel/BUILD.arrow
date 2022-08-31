@@ -118,6 +118,7 @@ cc_library(
         ],
         exclude = [
             "cpp/src/**/*_benchmark.cc",
+            "cpp/src/arrow/flight/perf_server.cc",
             "cpp/src/**/*_main.cc",
             "cpp/src/**/*_nossl.cc",
             "cpp/src/**/*_test.cc",
@@ -140,7 +141,6 @@ cc_library(
         # "cpp/src/arrow/python/pyarrow.h",
     ],
     copts = [],
-    # linkopts = ["-L/Users/chb/miniforge3/lib -ldl -framework CoreFoundation"] + ["-lpython3.9"],
     defines = [
         "ARROW_WITH_BROTLI",
         "ARROW_WITH_SNAPPY",

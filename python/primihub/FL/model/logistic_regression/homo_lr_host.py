@@ -6,14 +6,9 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
 import logging
+from sklearn.datasets import load_iris
 
-proxy_server_arbiter = ServerChannelProxy("10091")  # host接收来自arbiter消息
-proxy_server_guest = ServerChannelProxy("10095")  # host接收来自guest消息
-proxy_client_arbiter = ClientChannelProxy(
-    "127.0.0.1", "10092")  # host发送消息给arbiter
-proxy_client_guest = ClientChannelProxy("127.0.0.1", "10093")  # host发送消息给guest
-
-path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
+# path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 
 def get_logger(name):
@@ -28,7 +23,7 @@ def get_logger(name):
 logger = get_logger("Homo-LR-Host")
 
 
-def data_process():
+def data_binary(path):
     X1 = pd.read_csv(path, header=None)
     y1 = X1.iloc[:, -1]
     yy = copy.deepcopy(y1)
@@ -41,61 +36,70 @@ def data_process():
     X1 = X1.iloc[:, :-1]
     return X1, yy
 
+def data_iris():
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+    return X, y
 
 class Host:
-    def __init__(self, X, y):
+    def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
         self.X = X
         self.y = y
-        self.model = LRModel(X, y)
+        self.config = config
+        self.model = LRModel(X, y, self.config['category'])
         self.public_key = None
-        self.iter = None
+        self.need_encrypt = self.config['need_encrypt']
+        self.lr = self.config['lr']
         self.need_one_vs_rest = None
-        self.need_encrypt = True
-        self.lr = 0.01
-        self.batch_size = 200
-        self.iteration = 0
-        self.epoch = 10
+        self.batch_size = self.config['batch_size']
         self.flag = True
+        self.proxy_server = proxy_server
+        self.proxy_client_arbiter = proxy_client_arbiter
 
     def predict(self, data=None):
-        if self.need_one_vs_rest:
-            pass
-        else:
-            pre = self.mode.predict(data)
-            return pre
+        pass
 
-    def fit_binary(self, batch_x, batch_y):
-        if self.need_encrypt == True:
+    def fit_binary(self, batch_x, batch_y, theta=None):
+        if self.need_one_vs_rest == False:
+            theta = self.model.theta
+        else:
+            theta = list(theta)
+        if self.need_encrypt == 'YES':
             if self.flag == True:
                 # Only need to encrypt once
-                self.model.theta = self.encrypt_vector(self.model.theta)
+                theta = self.encrypt_vector(theta)
                 self.flag = False
             # Convert subtraction to addition
             neg_one = self.public_key.encrypt(-1)
-            # idx = np.arange(X.shape[0])
-            # batch_idx = np.random.choice(idx, self.batch_size, replace=False)
-            # X = np.array(X)
-            # y = np.array(y)
-            # data_x = X[batch_idx]
             batch_x = np.concatenate((np.ones((batch_x.shape[0], 1)), batch_x), axis=1)
-            # data_y = y[batch_idx].reshape((-1, 1))
             # use taylor approximation
             batch_encrypted_grad = batch_x.transpose() * (
-                    0.25 * batch_x.dot(self.model.theta) + 0.5 * batch_y.transpose() * neg_one)
+                    0.25 * batch_x.dot(theta) + 0.5 * batch_y.transpose() * neg_one)
             encrypted_grad = batch_encrypted_grad.sum(axis=1) / batch_y.shape[0]
-
-            for j in range(len(self.model.theta)):
-                self.model.theta[j] -= self.lr * encrypted_grad[j]
-
-            # weight_accumulators = []
-            # for j in range(len(self.local_model.encrypt_weights)):
-            #     weight_accumulators.append(self.local_model.encrypt_weights[j] - original_w[j])
-            # print('host model_param---->', model_param)
-            return self.model.theta
+            for j in range(len(theta)):
+                theta[j] -= self.lr * encrypted_grad[j]
+            return theta
 
         else:  # Plaintext
-            self.model.theta = self.model.fit(batch_x, batch_y)
-            return self.model.theta
+            self.model.theta = self.model.fit(batch_x, batch_y, theta, eta=self.lr)
+            return list(self.model.theta)
+
+    def one_vs_rest(self, X, y, k):
+        all_theta = []
+        for i in range(0, k):
+            y_i = np.array([1 if label == i else 0 for label in y])
+            theta = self.fit_binary(X, y_i, self.model.one_vs_rest_theta[i])
+            all_theta.append(theta)
+        return all_theta
+
+    def fit(self, X, y, category):
+        if category == 2:
+            self.need_one_vs_rest = False
+            return self.fit_binary(X, y)
+        else:
+            self.need_one_vs_rest = True
+            return self.one_vs_rest(X, y, category)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
 
@@ -125,56 +129,71 @@ class Host:
             batch_count += 1
             yield [d[start: end] for d in all_data]
 
-
     def encrypt_vector(self, x):
         return [self.public_key.encrypt(i) for i in x]
 
 
-# def encrypt_matrix(self, x):
-#     ret = []
-#     for r in x:
-#         ret.append(self.encrypt_vector(self.public_key, r))
-#     return ret
 
+def run_homo_lr_host(role_node_map, node_addr_map, dataset_filepath, params_map={}):
+    host_nodes = role_node_map["host"]
+    arbiter_nodes = role_node_map["arbiter"]
 
-if __name__ == "__main__":
-    conf = {'iter': 2,
-            'lr': 0.01,
-            'batch_size': 200,
-            'epoch': 3}
-    # load train data
-    X, label = data_process()
-    X = LRModel.normalization(X)
-    count = X.shape[0]
-    batch_num = count // conf['batch_size'] + 1
-    proxy_client_arbiter.Remote(batch_num, "batch_num")
+    if len(host_nodes) != 1:
+        logger.error("Hetero LR only support one host party, but current "
+                     "task have {} host party.".format(len(host_nodes)))
+        return
 
-    client_host = Host(X, label)
-    client_host.iter = conf['iter']
-    client_host.lr = conf['lr']
-    client_host.batch_size = conf['batch_size']
-    batch_gen_host = client_host.batch_generator([X, label], conf['batch_size'])
+    if len(arbiter_nodes) != 1:
+        logger.error("Hetero LR only support one arbiter party, but current "
+                     "task have {} arbiter party.".format(len(host_nodes)))
+        return
 
+    host_port = node_addr_map[host_nodes[0]].split(":")[1]
+    proxy_server = ServerChannelProxy(host_port)
+    proxy_server.StartRecvLoop()
+    logger.debug("Create server proxy for host, port {}.".format(host_port))
+
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port, "arbiter")
+    logger.debug("Create client proxy to arbiter,"
+                 " ip {}, port {}.".format(arbiter_ip, arbiter_port))
+
+    config = {
+        'epochs': 1,
+        'lr': 0.05,
+        'batch_size': 100,
+        'need_encrypt': 'YES',
+        'category': 2
+    }
+    x, label = data_binary(dataset_filepath)
+    # x, label = data_iris()
+    client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
+    x = LRModel.normalization(x)
+    count_train = x.shape[0]
     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-    proxy_server_arbiter.StartRecvLoop()
-    client_host.public_key = proxy_server_arbiter.Get("public_key")
+    batch_num_train = (count_train-1) // config['batch_size'] + 1
+    proxy_client_arbiter.Remote(batch_num_train, "batch_num")
+    host_data_weight = config['batch_size']
+    if client_host.need_encrypt == 'YES':
+        client_host.public_key = proxy_server.Get("pub")
+        host_data_weight = client_host.encrypt_vector([host_data_weight])
 
-    # Send host_data_weight to arbiter
-    host_data_weight = conf['batch_size']
-    host_data_weight = client_host.encrypt_vector([host_data_weight])
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
 
-    # 数据处理
-    for i in range(conf['epoch']):
-        logger.info("######### epoch %s ######### start " % i)
-        for j in range(batch_num):
-            batch_x, batch_y = next(batch_gen_host)
-            logger.info("batch_host_x.shape:{}".format(batch_x.shape))
-            logger.info("batch_host_y.shape:{}".format(batch_y.shape))
-            host_param = client_host.fit_binary(batch_x, batch_y)
+    batch_gen_host = client_host.batch_generator(
+        [x, label], config['batch_size'], False)
+    for i in range(config['epochs']):
+        logger.info("##### epoch %s ##### " % i)
+        for j in range(batch_num_train):
+            logger.info("-----epoch=%s, batch=%s-----" % (i, j))
+            batch_host_x, batch_host_y = next(batch_gen_host)
+            logger.info("batch_host_x.shape:{}".format(batch_host_x.shape))
+            logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
+            host_param = client_host.fit(batch_host_x, batch_host_y, config['category'])
             proxy_client_arbiter.Remote(host_param, "host_param")
-            client_host.model.theta = proxy_server_arbiter.Get("global_host_model_param")
-        logger.info("######### epoch %s ######### done " % i)
-    logger.info("host training process done!")
+            client_host.model.theta = proxy_server.Get("global_host_model_param")
+            logger.info("batch=%s done" % j)
+        logger.info("epoch=%i done" % i)
+    logger.info("host training process done.")
 
-    proxy_server_arbiter.StopRecvLoop()
+    proxy_server.StopRecvLoop()
