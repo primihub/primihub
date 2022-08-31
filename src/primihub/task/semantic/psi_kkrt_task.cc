@@ -151,7 +151,7 @@ void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     RandomOracle  sha1(block_size);
     u8 hash_dest[block_size];
     for (u64 i = 0; i < recvSize; ++i) {
-        sha1.Update((u8 *)elements_[i].data(), block_size);
+        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());
         sha1.Final((u8 *)hash_dest);
         recvSet[i] = toBlock(hash_dest);
         sha1.Reset();
@@ -198,7 +198,7 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
     u8 hash_dest[block_size];
     //prng.get(set.data(), set.size());
     for (u64 i = 0; i < sendSize; ++i) {
-        sha1.Update((u8 *)elements_[i].data(), block_size);
+        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());
         sha1.Final((u8 *)hash_dest);
         set[i] = toBlock(hash_dest);
         sha1.Reset();
