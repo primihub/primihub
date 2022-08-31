@@ -19,7 +19,8 @@ from primihub.client.ph_grpc.task import Task
 from primihub.client.tiny_listener import Event
 from primihub.utils.logger_util import logger
 
-from primihub.client.ph_grpc.service import NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT, NODE_EVENT_TYPE_TASK_STATUS, NODE_EVENT_TYPE_TASK_RESULT
+from primihub.client.ph_grpc.service import NODE_EVENT_TYPE, NODE_EVENT_TYPE_NODE_CONTEXT, NODE_EVENT_TYPE_TASK_STATUS, \
+    NODE_EVENT_TYPE_TASK_RESULT
 
 listener = Listener()
 listener.run()
@@ -48,32 +49,37 @@ async def handler_task_status(event: Event):
     #      }
     # node = ""  # TODO
     # cert = ""  # TODO
+    # TODO nodes list return from gRPC service
     nodes = [
         {
-            "client_id": "192.168.99.23",
-            "client_ip": 6667,
-            "client_port": 10051
+            "client_id": "",
+            "client_ip": "192.168.99.23",
+            "client_port": 6667
         },
         {
-            "client_id": "192.168.99.23",
-            "client_ip": 6668,
-            "client_port": 10052
-
+            "client_id": "",
+            "client_ip": "192.168.99.23",
+            "client_port": 6668
         }
     ]
     from primihub.client import primihub_cli as cli
-    logger.debug('NODE NUM: {}'.format(len(nodes)))
+    client_id = cli.client_id
+    # client_ip = cli.client_ip
+    node_ip = cli.node.split(":")[0]
+    logger.debug("Total number of node is : {}".format(len(nodes)))
     task = Task(task_id=task_id, primihub_client=cli)
     for node in nodes:
-        connect_str = node['client_id'] + ":" + str(node["client_ip"])
-        cert = ""  # TODO
-        logger.debug("node connect str: {}".format(connect_str))
         if node not in task.nodes:
             task.nodes.append(node)
+
+    for node in nodes:
+        connect_str = node_ip + ":" + str(node["client_port"])
+        cert = ""  # TODO
+        logger.debug("node connect str: {}".format(connect_str))
         logger.debug("task id: {}".format(task_id))
         task.get_node_event(node=connect_str, cert=cert)
         task_status = event.data.task_status.status
-        task.set_task_status(task_status)
+        await task.set_task_status(task_status)
 
 
 @listener.on_event("/%s/{task_id}" % NODE_EVENT_TYPE[NODE_EVENT_TYPE_TASK_RESULT])

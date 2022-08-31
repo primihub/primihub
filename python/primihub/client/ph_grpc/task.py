@@ -13,9 +13,14 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
+import random
+
 from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.utils.async_util import fire_coroutine_threadsafe
 from primihub.utils.logger_util import logger
+import asyncio
+
+lock = asyncio.Lock()
 
 
 class Task(object):
@@ -28,13 +33,15 @@ class Task(object):
         self.loop = self.cli.loop
         self.nodes = []
 
-    def set_task_status(self, status):
-        self.task_status = status
-        if self.task_status == "SUCCESS" or self.task_status == "FAILED":
-            self.nodes.pop()
-            logger.debug('NODE NUM: {}'.format(len(self.nodes)))
-            if len(self.nodes) == 0:
-                self.exit()
+    async def set_task_status(self, status):
+        async with lock:
+            self.task_status = status
+            if self.task_status == "SUCCESS" or self.task_status == "FAILED":
+                logger.debug("The task is over and the node exits.")
+                self.nodes.pop()
+                logger.debug("Number of current survival nodes: {}".format(len(self.nodes)))
+                if len(self.nodes) == 0:
+                    self.exit()
 
     def exit(self):
         try:
@@ -61,7 +68,7 @@ class Task(object):
             "!!!!!!! ------ node_grpc_connections ------node: {}".format(worker_node_grpc_client.node))
         logger.debug(self.node_grpc_connections)
         notify_request = worker_node_grpc_client.client_context(
-            self.cli.client_id, self.cli.client_ip, 10051)
+            self.cli.client_id, self.cli.client_ip, random.randint(10000, 10050))
         # self.cli.client_id, self.cli.client_ip, self.cli.client_port)
 
         fire_coroutine_threadsafe(
