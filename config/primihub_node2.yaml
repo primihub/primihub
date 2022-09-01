@@ -35,3 +35,5 @@ p2p:
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/172.28.1.12/tcp/8882"
   dht_get_value_timeout:  120
+
+notify_server: 0.0.0.0:6662

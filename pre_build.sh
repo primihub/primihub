@@ -27,3 +27,7 @@ CONFIG=`python$U_V1.$U_V2-config --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lp
 # Compatible with MacOS
 sed -e "s|PLACEHOLDER-PYTHON3.X-CONFIG|${NEWLINE}|g" BUILD.bazel > BUILD.bazel.tmp && mv BUILD.bazel.tmp BUILD.bazel
 echo "done"
+
+if [ ! -d "localdb" ]; then
+    mkdir localdb
+fi
