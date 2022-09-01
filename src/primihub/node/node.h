@@ -50,7 +50,7 @@
 #include "src/primihub/task/semantic/parser.h"
 
 
-using grpc::ClientContext;
+// using grpc::ClientContext;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;

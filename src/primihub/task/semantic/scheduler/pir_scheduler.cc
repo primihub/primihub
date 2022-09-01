@@ -94,7 +94,7 @@ void node_push_pir_task(const std::string &node_id,
                         const PeerDatasetMap &peer_dataset_map,
                         const PushTaskRequest &nodePushTaskRequest,
                         std::string dest_node_address, bool is_client) {
-    ClientContext context;
+    grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);

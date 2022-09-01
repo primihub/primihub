@@ -1,6 +1,30 @@
 syntax = "proto3";
 package primihub.rpc;
 
+
+service DataService {
+    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+}
+
+service NodeService {
+    rpc SubscribeNodeEvent(ClientContext) returns (stream NodeEventReply);
+}
+
+enum NodeEventType {
+    NODE_EVENT_TYPE_NODE_CONTEXT = 0;
+    NODE_EVENT_TYPE_TASK_STATUS = 1;
+    NODE_EVENT_TYPE_TASK_RESULT = 2;
+}
+
+message NodeEventReply {
+    NodeEventType event_type = 1;
+    oneof node_event {
+        NodeContext node_context = 2;
+        TaskStatus task_status = 3;
+        TaskResult task_result = 4;
+    }
+}
+
 message NewDatasetRequest {
     string driver = 1;
     string path = 2;
@@ -12,6 +36,53 @@ message NewDatasetResponse {
     string dataset_url = 2;
 }
 
-service DataService {
-    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+message ClientContext {
+    string client_id = 1;
+    string client_ip = 2;
+    int32 client_port = 3; // TODO no need or from grpc server 
+}
+
+// Notify channnel usage: task running status and result.
+message NotifyChannel {
+    string key = 1;
+    string connect_str = 2;
+}
+
+message TaskContext {
+    string node_id = 1;
+    string task_id = 2;
+    string job_id = 3;
+}
+
+message TaskStatus{
+    TaskContext task_context = 1;
+    string status = 2;  // TODO enum
+    string message = 3;
+}
+
+message TaskResult {
+    TaskContext task_context = 1;
+    string result_dataset_url = 2; // TODO many
+}
+
+// enum DatasetRetriveType {
+//     ARROW_FLIGHT = 0; 
+//     HDFS_FILE = 1;
+// }
+
+message DatasetRetriveChannel {
+    int32 retrive_type = 1;
+}
+
+// Node public certificate.
+message NodeCertficate {
+    bytes cert = 1;
+}
+
+// Node context: notify channel, dataset retrive channel, Node certificate.
+message NodeContext {
+    int64 session_id = 1; 
+    NotifyChannel notify_channel = 2;
+    DatasetRetriveChannel dataset_retrive_channel = 3;
+    NodeCertficate node_certficate = 4;
 }

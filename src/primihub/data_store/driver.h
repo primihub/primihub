@@ -50,6 +50,8 @@ namespace primihub
   class Cursor {
     public:
       virtual std::shared_ptr<primihub::Dataset> read() = 0;
+      virtual std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit) = 0;
+      virtual int write(std::shared_ptr<primihub::Dataset> dataset) = 0;
       virtual void close() = 0;
   };
 
@@ -62,7 +64,8 @@ namespace primihub
       }
       virtual ~DataDriver() { };
       virtual std::string getDataURL() const = 0;
-      virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0; // TODO const
+      virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
+      virtual std::shared_ptr<Cursor>& initCursor(const std::string &dataURL) = 0;
   
       std::shared_ptr<Cursor>& getCursor();
       std::string getDriverType() const;

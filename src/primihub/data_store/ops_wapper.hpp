@@ -47,20 +47,7 @@ namespace pybind11
 
 //!!! only for test !!!
 void unwrap_arrow_pyobject(std::shared_ptr<arrow::Table> &table) {
-    // Ensure that the Python module was loaded
-    // arrow::py::import_pyarrow();
-    
     std::cout << "------- unwrap_arrow_pyobject-----" << std::endl;
-    // arrow::Result<std::shared_ptr<arrow::Array>> t = arrow::py::unwrap_array(obj);
-    // // std::cout << "unwrap_arrow_pyobject: " << t.ToString() << std::endl;
-    // // std::cout << t.ToString() << std::endl;
-    // std::cout << "is_table: "<< arrow::py::is_table(obj) << std::endl;
-    // if ( t.ok() ) {
-        
-    //     auto arr = t.ValueOrDie();
-    //     std::cout << "array length: " <<arr->length() << std::endl;
-    // }
     std::cout << "Table schema: " << std::endl;
     std::cout << table->schema()->ToString() << std::endl;
-    
 }

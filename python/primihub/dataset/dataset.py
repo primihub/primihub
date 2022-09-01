@@ -57,7 +57,7 @@ class Cursor(abc.ABC):
 class CSVCursor(Cursor):
     def __init__(self, path: str):
         self.path = path
-        self.cursor: int = 0;
+        self.cursor: int = 0
 
     # @property
     # def cursor(self):
@@ -70,7 +70,8 @@ class CSVCursor(Cursor):
         if skiprows is not None:
             self.cursor += skiprows
 
-        df = pd.read_csv(self.path, names=names, usecols=usecols, skiprows=self.cursor, nrows=nrows, **kwargs)
+        df = pd.read_csv(self.path, names=names, usecols=usecols,
+                         skiprows=self.cursor, nrows=nrows, **kwargs)
 
         if nrows is not None:
             self.cursor += nrows
@@ -130,5 +131,62 @@ def read(dataset_key: str = None,
     dataset_path = Context.dataset_map.get(dataset_key, None)
     d = driver(name="csv")
     cursor = d().read(path=dataset_path)
-    dataset = cursor.read(names=names, usecols=usecols, skiprows=skiprows, nrows=nrows)
+    dataset = cursor.read(names=names, usecols=usecols,
+                          skiprows=skiprows, nrows=nrows)
     return dataset
+
+
+class DatasetRef:
+    """Dataset refrence.
+    """
+
+    def __init__(self) -> None:
+        self.dataset_id = "NOT_ASSIGNED"
+        self.dataset_status = "UNKNOWN"  # UPLOADING, DOWNLOADING, UNKNOWN
+        self.type = "LOCAL"  # LOCAL, REMOTE
+        self.dataset_url = "NOT_ASSIGNED"
+        self.dataset_name = "NOT_ASSIGNED"
+        self.dataset: Dataset = None
+
+    def from_meta(self, meta):
+        try:
+            print(meta)
+            self.dataset_id = meta["id"]
+            self.type = "REMOTE"
+            self.dataset_url = meta["data_url"]
+            self.dataset_name = meta["description"]
+        except KeyError as e:
+            print(e)
+
+    def __repr__(self) -> str:
+        return f"name: [ {self.dataset_name} ], id:[ {self.dataset_id} ], url:[ {self.dataset_url} ]"
+
+
+def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
+    """ Put dataset using primihub client (singltone) Dataset client.
+        Default is flight client.
+    """
+    from primihub.client import primihub_cli
+    from primihub.dataset.dataset_cli import DatasetClientFactory
+    # FIXME use primihub cli client
+    # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
+    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
+    metas = dataset_client.do_put(df_data, dataset_key)
+    dataset_ref = DatasetRef()
+    dataset_ref.from_meta(metas[0])
+    return dataset_ref
+
+
+def get(dataset_ref: DatasetRef) -> pd.DataFrame:
+    """ Get dataset using primihub client (singltone) Dataset client.
+        Default is flight client.
+        @return pandas DataFrame object
+    """
+    from primihub.client import primihub_cli
+    from primihub.dataset.dataset_cli import DatasetClientFactory
+    # FIXME use primihub cli client
+    # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
+    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
+    # get dataset use dataset id.
+    df_data = dataset_client.do_get(dataset_ref.dataset_name)
+    return df_data

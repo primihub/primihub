@@ -26,6 +26,7 @@
 #include "src/primihub/task/semantic/private_server_base.h"
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/task/semantic/psi_server_task.h"
+#include "src/primihub/task/semantic/psi_kkrt_task.h"
 #include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/task/semantic/pir_server_task.h"
 #include "src/primihub/task/semantic/tee_task.h"
@@ -36,6 +37,7 @@ using primihub::rpc::PushTaskRequest;
 using primihub::rpc::Language;
 using primihub::rpc::TaskType;
 using primihub::service::DatasetService;
+using primihub::rpc::PsiTag;
 
 namespace primihub::task {
 
@@ -50,7 +52,7 @@ class TaskFactory {
 
         if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
             auto task_param = request.task();
-            auto fl_task = std::make_shared<FLTask>(node_id, &task_param, dataset_service);
+            auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
             return std::dynamic_pointer_cast<TaskBase>(fl_task);
             
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_TASK) {
@@ -62,12 +64,31 @@ class TaskFactory {
             return std::dynamic_pointer_cast<TaskBase>(mpc_task);
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PSI_TASK) {
             auto task_param = request.task();
-            auto psi_task = std::make_shared<PSIClientTask>(node_id,
-                                                            request.task().job_id(),
-                                                            request.task().task_id(),
-                                                            &task_param, 
-                                                            dataset_service);
-            return std::dynamic_pointer_cast<TaskBase>(psi_task);
+            auto param_map = task_param.params().param_map();
+            int psi_tag = PsiTag::ECDH;
+            auto param_it = param_map.find("psiTag");
+            if (param_it != param_map.end()) {
+                psi_tag = param_map["psiTag"].value_int32();
+            }
+
+            if (psi_tag == PsiTag::ECDH) {
+                auto psi_task = std::make_shared<PSIClientTask>(node_id,
+                                                           request.task().job_id(),
+                                                           request.task().task_id(),
+                                                           &task_param,
+                                                           dataset_service);
+                return std::dynamic_pointer_cast<TaskBase>(psi_task);
+            } else if (psi_tag == PsiTag::KKRT) {
+                auto psi_task = std::make_shared<PSIKkrtTask>(node_id,
+                                                              request.task().job_id(),
+                                                              request.task().task_id(),
+                                                              &task_param,
+                                                              dataset_service);
+                return std::dynamic_pointer_cast<TaskBase>(psi_task);
+            } else {
+                LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
+                return nullptr;
+            }
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PIR_TASK) {
             auto task_param = request.task();
             auto pir_task = std::make_shared<PIRClientTask>(node_id,

@@ -14,3 +14,9 @@ void cm20Recv(
 
 void cm20Send(
     LaunchParams& params);
+
+void mkkrtRecv(
+    LaunchParams& params);
+
+void mkkrtSend(
+    LaunchParams& params);

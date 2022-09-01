@@ -18,32 +18,18 @@
 
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/file_util.h"
 
 
-using namespace std;
 using arrow::Table;
 using arrow::StringArray;
 using arrow::DoubleArray;
 //using arrow::Int64Builder;
 using arrow::StringBuilder;
 using primihub::rpc::VarType;
+using std::map;
 
 namespace primihub::task {
-
-int validateDir(string file_path) {
-    int pos = file_path.find_last_of('/');
-    string path;
-    if (pos > 0) {
-        path = file_path.substr(0, pos);
-	if (access(path.c_str(), 0) == -1) {
-	    string cmd = "mkdir -p " + path;
-	    int ret = system(cmd.c_str());
-	    if (ret)
-	        return -1;
-	}
-    }
-    return 0;
-}
 
 PSIClientTask::PSIClientTask(const std::string &node_id,
                              const std::string &job_id,
@@ -182,7 +168,7 @@ int PSIClientTask::execute() {
         std::move(client->CreateRequest(elements_)).value();
     psi_proto::Response server_response;
 
-    ClientContext context;
+    grpc::ClientContext context;
     ExecuteTaskRequest taskRequest;
     ExecuteTaskResponse taskResponse;
 
@@ -256,7 +242,7 @@ int PSIClientTask::saveResult() {
         std::dynamic_pointer_cast<CSVDriver>(driver);
 
 
-    if (validateDir(result_file_path_)) {
+    if (ValidateDir(result_file_path_)) {
         LOG(ERROR) << "can't access file path: "
                    << result_file_path_;
         return -1;
