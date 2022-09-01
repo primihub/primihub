@@ -182,10 +182,21 @@ void fixedPointOperations(u64 partyIdx) {
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
   else
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
+
+  if (partyIdx == 0)
+    for (i64 i = 0; i < sharedMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedMatrix.cols(); j++)
+        sharedMatrix[0](i, j) = sharedMatrix[0](i, j) + constfixed.mValue;
+  else if (partyIdx == 1)
+    // sharedFixed[1] = sharedFixed[1] + constfixed.mValue;
+    for (i64 i = 0; i < sharedMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedMatrix.cols(); j++)
+        sharedMatrix[1](i, j) = sharedMatrix[1](i, j) + constfixed.mValue;
+
   f64Matrix<D16> constFixedMatrix(rows, cols);
   for (u64 i = 0; i < rows; ++i)
     for (u64 j = 0; j < cols; ++j)
-      constFixedMatrix(i, j) = 5.35;
+      constFixedMatrix(i, j) = 5;
   if (partyIdx == 0)
     sharedMatrix[0] = sharedMatrix[0] + constFixedMatrix.i64Cast();
   else if (partyIdx == 1)
@@ -197,10 +208,13 @@ void fixedPointOperations(u64 partyIdx) {
   // sf64Matrix<D8> prodMtx;
   // Sh3Task mulTask = eval.asyncMul(runtime, sharedMatrix, additionMtx,
   // prodMtx);
-
+  f64<D16> constfixed1 = 10;
+  sf64Matrix<D16> sharedMatrix1(rows, cols);
+  eval.asyncConstFixedMul(runtime, constfixed1, sharedMatrix, sharedMatrix1)
+      .get();
   // we can reconstruct the secret shares
   f64Matrix<D16> finalMatrix(rows, cols);
-  enc.revealAll(runtime, sharedMatrix, finalMatrix).get();
+  enc.revealAll(runtime, sharedMatrix1, finalMatrix).get();
   LOG(INFO) << "party:" << partyIdx << "======" << finalMatrix;
 }
 

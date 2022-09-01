@@ -22,7 +22,7 @@ int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
 
     VLOG(3) << "Start server session, listen port " << next_port << ".";
     VLOG(3) << "Start client session, connect to " << ip << ":" << prev_port
-              << ".";
+            << ".";
 
     break;
   default:
@@ -30,9 +30,9 @@ int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
     ep_prev_.start(ios, ip, prev_port, SessionMode::Client, prev_name);
 
     VLOG(3) << "Start client session, connect to " << ip << ":" << next_port
-              << ".";
+            << ".";
     VLOG(3) << "Start client session, connect to " << ip << ":" << prev_port
-              << ".";
+            << ".";
 
     break;
   }
@@ -161,6 +161,29 @@ si64Matrix MPCOperator::MPC_Add(std::vector<si64Matrix> sharedInt) {
   return sum;
 }
 
+si64 MPCOperator::MPC_Add_Const(i64 constInt, si64 &sharedInt) {
+  si64 temp = sharedInt;
+  if (partyIdx == 0)
+    temp[0] = sharedInt[0] + constInt;
+  else if (partyIdx == 1)
+    temp[1] = sharedInt[1] + constInt;
+  return temp;
+}
+
+si64Matrix MPCOperator::MPC_Add_Const(i64 constInt,
+                                      si64Matrix &sharedIntMatrix) {
+  si64Matrix<D> temp = sharedIntMatrix;
+  if (partyIdx == 0)
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+        temp[0](i, j) = sharedIntMatrix[0](i, j) + sharedIntMatrix;
+  else if (partyIdx == 1)
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+        temp[1](i, j) = sharedIntMatrix[1](i, j) + sharedIntMatrix;
+  return temp;
+}
+
 si64Matrix MPCOperator::MPC_Sub(si64Matrix minuend,
                                 std::vector<si64Matrix> subtrahends) {
   si64Matrix difference;
@@ -171,11 +194,47 @@ si64Matrix MPCOperator::MPC_Sub(si64Matrix minuend,
   return difference;
 }
 
+si64 MPCOperator::MPC_Sub_Const(i64 constInt, si64 &sharedInt) {
+  si64 temp = sharedInt;
+  if (partyIdx == 0)
+    temp[0] = sharedInt[0] - constInt;
+  else if (partyIdx == 1)
+    temp[1] = sharedInt[1] - constInt;
+  return temp;
+}
+
+si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt,
+                                      si64Matrix &sharedIntMatrix) {
+  si64Matrix<D> temp = sharedIntMatrix;
+  if (partyIdx == 0)
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+        temp[0](i, j) = sharedIntMatrix[0](i, j) - sharedIntMatrix;
+  else if (partyIdx == 1)
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+        temp[1](i, j) = sharedIntMatrix[1](i, j) - sharedIntMatrix;
+  return temp;
+}
+
 si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
   si64Matrix prod;
   prod = sharedInt[0];
   for (u64 i = 1; i < sharedInt.size(); ++i)
     eval.asyncMul(runtime, prod, sharedInt[i], prod).get();
   return prod;
+}
+
+si64 MPCOperator::MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt) {
+  si64 ret;
+  asyncConstMul(runtime, constInt, sharedInt, ret).get();
+  return ret;
+}
+
+si64Matrix MPCOperator::MPC_Mul_Const(const i64 &constInt,
+                                      const si64Matrix &sharedIntMatrix) {
+  si64Matrix ret(sharedIntMatrix.rows(), sharedIntMatrix.cols());
+  asyncConstMul(runtime, constInt, sharedIntMatrix, ret).get();
+  return ret;
 }
 } // namespace primihub
