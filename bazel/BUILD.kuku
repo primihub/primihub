@@ -10,14 +10,14 @@ filegroup(
 
 cmake(
    name = "kuku",
-   #env={
-   #     "HTTPS_PROXY": "http://127.0.0.1:7890",
-   #     "HTTP_PROXY": "http://127.0.0.1:7890",
-   #     "https_proxy": "http://127.0.0.1:7890",
-   #     "http_proxy": "http://127.0.0.1:7890",
-   #},
+   env={
+        "HTTPS_PROXY": "http://127.0.0.1:1080",
+        "HTTP_PROXY": "http://127.0.0.1:1080",
+        "https_proxy": "http://127.0.0.1:1080",
+        "http_proxy": "http://127.0.0.1:1080",
+   },
    lib_source = ":src",
-   out_include_dir = "include/kuku-2.1",
+   out_include_dir = "include/Kuku-2.1",
    out_static_libs = ["libkuku-2.1.a"],
    visibility = ["//visibility:public"],
    tags = ["requires-network"],
