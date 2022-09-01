@@ -623,6 +623,7 @@ cc_library(
             "src/primihub/task/semantic/scheduler/tee_scheduler.h",
             "src/primihub/task/semantic/psi_server_task.h",
             "src/primihub/task/semantic/psi_kkrt_task.h",
+            "src/primihub/task/semantic/keyword_pir_client_task.h",
             "src/primihub/task/semantic/psi_client_task.h",
             "src/primihub/task/semantic/factory.h",
             "src/primihub/task/semantic/mpc_task.h",

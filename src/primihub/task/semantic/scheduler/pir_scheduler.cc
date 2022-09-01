@@ -35,6 +35,7 @@ using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
+using primihub::rpc::PirType;
 
 namespace primihub::task {
 
@@ -124,6 +125,13 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     PushTaskRequest nodePushTaskRequest;
     nodePushTaskRequest.CopyFrom(*pushTaskRequest);
 
+    auto params = nodePushTaskRequest.task().params().param_map();
+    int pirType = PirType::ID_PIR;
+    auto param_it = params.find("pirType");
+    if (param_it != params.end()) {
+        pirType = params["pirType"].value_int32();
+    }
+
     if (pushTaskRequest->task().type() == TaskType::PIR_TASK) {
         google::protobuf::Map<std::string, Node> *mutable_node_map =
             nodePushTaskRequest.mutable_task()->mutable_node_map();
@@ -152,19 +160,46 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     google::protobuf::Map<std::string, Node> node_map =
         nodePushTaskRequest.task().node_map();
     for (auto &pair : node_map) {
-        bool is_client = pair.first == node_id_ ? true : false;
+        if (pirType == PirType::ID_PIR) {
+            bool is_client = pair.first == node_id_ ? true : false;
 
-        std::string dest_node_address(
-            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-        DLOG(INFO) << "dest_node_address: " << dest_node_address;
+            std::string dest_node_address(
+                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            DLOG(INFO) << "dest_node_address: " << dest_node_address;
 
 
-        thrds.emplace_back(std::thread(node_push_pir_task,
-                                       pair.first,                     // node_id
-                                       this->peer_dataset_map_,  // peer_dataset_map
-                                       std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                                       dest_node_address,
-                                       is_client));
+            thrds.emplace_back(std::thread(node_push_pir_task,
+                                           pair.first,                     // node_id
+                                           this->peer_dataset_map_,  // peer_dataset_map
+                                           std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                                           dest_node_address,
+                                           is_client));
+        } else if (pirType == PirType::KEY_PIR) {
+            auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
+            if (peer_dataset_map_it == this->peer_dataset_map_.end()) {
+                LOG(ERROR) << "dispatchTask: peer_dataset_map not found";
+                return;
+            }
+            std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+            for (auto &dataset_param : dataset_param_list) {
+                bool is_client = false;
+                if (dataset_param.second == "clientData") {
+                    is_client = true;
+                }
+                std::string dest_node_address(
+                    absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+                DLOG(INFO) << "dest_node_address: " << dest_node_address;
+                thrds.emplace_back(std::thread(node_push_pir_task,
+                                               pair.first,                     // node_id
+                                               this->peer_dataset_map_,  // peer_dataset_map
+                                               std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                                               dest_node_address,
+                                               is_client));
+            }
+        } else {
+            LOG(ERROR) << "The pir type is error";
+            return;
+        }
     }
 
     for (auto &t : thrds) {
