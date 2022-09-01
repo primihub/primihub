@@ -11,15 +11,15 @@ filegroup(
 cmake(
    name = "seal",
    env={
-        "HTTPS_PROXY": "http://127.0.0.1:7890",
-        "HTTP_PROXY": "http://127.0.0.1:7890",
-        "https_proxy": "http://127.0.0.1:7890",
-        "http_proxy": "http://127.0.0.1:7890",
+        "HTTPS_PROXY": "http://127.0.0.1:1080",
+        "HTTP_PROXY": "http://127.0.0.1:1080",
+       "https_proxy": "http://127.0.0.1:1080",
+       "http_proxy": "http://127.0.0.1:1080",
    },
    defines = [
         "SEAL_USE_CXX17=ON",
         "SEAL_USE_INTRIN=ON",
-        "SEAL_USE_MSGSL=OFF",
+        "SEAL_USE_MSGSL=ON",
         "SEAL_USE_ZLIB=OFF",
         "SEAL_BUILD_TESTS=OFF",
         "BUILD_SHARED_LIBS=OFF",
@@ -35,4 +35,5 @@ cmake(
    out_include_dir = "include/SEAL-4.0",
    out_static_libs = ["libseal-4.0.a"],
    visibility = ["//visibility:public"],
+   tags = ["requires-network"],
 )
