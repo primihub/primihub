@@ -23,11 +23,8 @@ RUN apt update && apt install -y software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa 
 RUN  apt update \
   && apt remove -y python3.6 \
-  && apt install -y python3.9 python3.9-dev
+  && apt install -y python3.9 python3.9-dev python3.9-distutils
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
-RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-  && python3 get-pip.py --user \
-  && rm -f get-pip.py
 
 # install other dependencies
 RUN apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg-config python-dev unzip make wget curl zip ninja-build libgmp-dev \
