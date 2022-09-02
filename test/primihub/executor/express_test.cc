@@ -50,9 +50,6 @@ static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
   importColumnOwner(mpc_exec, col_and_owner);
   importColumnDtype(mpc_exec, col_and_dtype);
 
-  // mpc_exec->InitFeedDict();
-  // importColumnValues(mpc_exec, col_and_val);
-
   mpc_exec->importExpress(expr);
   mpc_exec->resolveRunMode();
 
@@ -99,11 +96,13 @@ TEST(mpc_express_executor, fp64_executor_test) {
   col_and_owner.insert(std::make_pair("A", "node0"));
   col_and_owner.insert(std::make_pair("B", "node0"));
   col_and_owner.insert(std::make_pair("C", "node1"));
+  col_and_owner.insert(std::make_pair("D", "node2"));
 
   std::map<std::string, bool> col_and_dtype;
   col_and_dtype.insert(std::make_pair("A", false));
   col_and_dtype.insert(std::make_pair("B", true));
   col_and_dtype.insert(std::make_pair("C", false));
+  col_and_dtype.insert(std::make_pair("D", true));
 
   std::map<std::string, std::vector<double>> col_and_val_0;
   std::map<std::string, std::vector<double>> col_and_val_1;
@@ -112,6 +111,7 @@ TEST(mpc_express_executor, fp64_executor_test) {
   col_and_val_0.insert(std::make_pair("A", col_val_a));
   col_and_val_0.insert(std::make_pair("B", col_val_b));
   col_and_val_1.insert(std::make_pair("C", col_val_c));
+  col_and_val_2.insert(std::make_pair("D", col_val_c));
 
   bool single_terminal = false;
   if (single_terminal) {
@@ -173,11 +173,13 @@ TEST(mpc_express_executor, i64_executor_test) {
   col_and_owner.insert(std::make_pair("A", "node0"));
   col_and_owner.insert(std::make_pair("B", "node0"));
   col_and_owner.insert(std::make_pair("C", "node1"));
+  col_and_owner.insert(std::make_pair("D", "node2"));
 
   std::map<std::string, bool> col_and_dtype;
   col_and_dtype.insert(std::make_pair("A", false));
   col_and_dtype.insert(std::make_pair("B", false));
   col_and_dtype.insert(std::make_pair("C", false));
+  col_and_dtype.insert(std::make_pair("D", false));
 
   std::map<std::string, std::vector<int64_t>> col_and_val_0;
   std::map<std::string, std::vector<int64_t>> col_and_val_1;
@@ -186,6 +188,7 @@ TEST(mpc_express_executor, i64_executor_test) {
   col_and_val_0.insert(std::make_pair("A", col_val_a));
   col_and_val_0.insert(std::make_pair("B", col_val_b));
   col_and_val_1.insert(std::make_pair("C", col_val_c));
+  col_and_val_2.insert(std::make_pair("D", col_val_c));
 
   bool single_terminal = false;
   if (single_terminal) {
