@@ -176,25 +176,47 @@ public:
   si64Matrix MPC_Add(std::vector<si64Matrix> sharedInt);
 
   template <Decimal D>
-  void MPC_Add_Const(sf64<D> &sharedFixed, f64<D> constfixed) {
+  sf64<D> MPC_Add_Const(f64<D> constfixed, sf64<D> &sharedFixed) {
+    sf64<D> temp = sharedFixed;
     if (partyIdx == 0)
-      sharedFixed[0] = sharedFixed[0] + constfixed.mValue;
+      temp[0] = sharedFixed[0] + constfixed.mValue;
     else if (partyIdx == 1)
-      sharedFixed[1] = sharedFixed[1] + constfixed.mValue;
+      temp[1] = sharedFixed[1] + constfixed.mValue;
+    return temp;
   }
 
   template <Decimal D>
-  void MPC_Add_Const(sf64Matrix<D> &sharedFixed,
-                     f64Matrix<D> constFixedMatrix) {
+  sf64Matrix<D> MPC_Add_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed) {
+    sf64Matrix<D> temp = sharedFixed;
+    if (partyIdx == 0)
+      for (i64 i = 0; i < sharedFixed.rows(); i++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++)
+          temp[0](i, j) = sharedFixed[0](i, j) + constfixed.mValue;
+    else if (partyIdx == 1)
+      for (i64 i = 0; i < sharedFixed.rows(); i++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++)
+          temp[1](i, j) = sharedFixed[1](i, j) + constfixed.mValue;
+    return temp;
+  }
+
+  template <Decimal D>
+  sf64Matrix<D> MPC_Add_Const(f64Matrix<D> constFixedMatrix,
+                              sf64Matrix<D> &sharedFixed) {
     auto b0 = sharedFixed[0].cols() != constFixedMatrix.cols();
     auto b1 = sharedFixed[0].rows() != constFixedMatrix.rows();
     if (b0 || b1)
       throw std::runtime_error(LOCATION);
+    sf64Matrix<D> temp = sharedFixed;
     if (partyIdx == 0)
-      sharedFixed[0] = sharedFixed[0] + constFixedMatrix.i64Cast();
+      temp[0] = sharedFixed[0] + constFixedMatrix.i64Cast();
     else if (partyIdx == 1)
-      sharedFixed[1] = sharedFixed[1] + constFixedMatrix.i64Cast();
+      temp[1] = sharedFixed[1] + constFixedMatrix.i64Cast();
+    return temp;
   }
+
+  si64 MPC_Add_Const(i64 constInt, si64 &sharedInt);
+
+  si64Matrix MPC_Add_Const(i64 constInt, si64Matrix &sharedIntMatrix);
 
   template <Decimal D>
   sf64<D> MPC_Sub(sf64<D> minuend, std::vector<sf64<D>> subtrahends) {
@@ -218,7 +240,35 @@ public:
   }
 
   si64Matrix MPC_Sub(si64Matrix minuend, std::vector<si64Matrix> subtrahends);
-  si64Matrix difference;
+
+  template <Decimal D>
+  sf64<D> MPC_Sub_Const(f64<D> constfixed, sf64<D> &sharedFixed) {
+    sf64<D> temp = sharedFixed;
+    if (partyIdx == 0)
+      temp[0] = sharedFixed[0] - constfixed.mValue;
+    else if (partyIdx == 1)
+      temp[1] = sharedFixed[1] - constfixed.mValue;
+    return temp;
+  }
+
+  template <Decimal D>
+  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed) {
+    sf64Matrix<D> temp = sharedFixed;
+    if (partyIdx == 0)
+      for (i64 i = 0; i < sharedFixed.rows(); i++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++)
+          temp[0](i, j) = sharedFixed[0](i, j) - constfixed.mValue;
+    else if (partyIdx == 1)
+      for (i64 i = 0; i < sharedFixed.rows(); i++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++)
+          temp[1](i, j) = sharedFixed[1](i, j) - constfixed.mValue;
+    return temp;
+  }
+
+  si64 MPC_Sub_Const(i64 constInt, si64 &sharedInt);
+
+  si64Matrix MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix);
+
   template <Decimal D>
   sf64<D> MPC_Mul(std::vector<sf64<D>> sharedFixedInt, sf64<D> &prod) {
     prod = sharedFixedInt[0];
@@ -237,6 +287,26 @@ public:
   }
 
   si64Matrix MPC_Mul(std::vector<si64Matrix> sharedInt);
+
+  template <Decimal D>
+  sf64<D> MPC_Mul_Const(const f64<D> &constFixed, const sf64<D> &sharedFixed) {
+    sf64<D> ret;
+    asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
+    return ret;
+  }
+
+  template <Decimal D>
+  sf64Matrix<D> MPC_Mul_Const(const f64<D> &constFixed,
+                              const sf64Matrix<D> &sharedFixed) {
+    sf64Matrix<D> ret(sharedFixed.rows(), sharedFixed.cols());
+    asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
+    return ret;
+  }
+
+  si64 MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt);
+
+  si64Matrix MPC_Mul_Const(const i64 &constInt,
+                           const si64Matrix &sharedIntMatrix);
 };
 
 #endif
