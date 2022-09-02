@@ -172,15 +172,15 @@ si64 MPCOperator::MPC_Add_Const(i64 constInt, si64 &sharedInt) {
 
 si64Matrix MPCOperator::MPC_Add_Const(i64 constInt,
                                       si64Matrix &sharedIntMatrix) {
-  si64Matrix<D> temp = sharedIntMatrix;
+  si64Matrix temp = sharedIntMatrix;
   if (partyIdx == 0)
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
       for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
-        temp[0](i, j) = sharedIntMatrix[0](i, j) + sharedIntMatrix;
+        temp[0](i, j) = sharedIntMatrix[0](i, j) + constInt;
   else if (partyIdx == 1)
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
       for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
-        temp[1](i, j) = sharedIntMatrix[1](i, j) + sharedIntMatrix;
+        temp[1](i, j) = sharedIntMatrix[1](i, j) + constInt;
   return temp;
 }
 
@@ -205,15 +205,15 @@ si64 MPCOperator::MPC_Sub_Const(i64 constInt, si64 &sharedInt) {
 
 si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt,
                                       si64Matrix &sharedIntMatrix) {
-  si64Matrix<D> temp = sharedIntMatrix;
+  si64Matrix temp = sharedIntMatrix;
   if (partyIdx == 0)
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
       for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
-        temp[0](i, j) = sharedIntMatrix[0](i, j) - sharedIntMatrix;
+        temp[0](i, j) = sharedIntMatrix[0](i, j) - constInt;
   else if (partyIdx == 1)
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
       for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
-        temp[1](i, j) = sharedIntMatrix[1](i, j) - sharedIntMatrix;
+        temp[1](i, j) = sharedIntMatrix[1](i, j) - constInt;
   return temp;
 }
 
@@ -227,14 +227,14 @@ si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
 
 si64 MPCOperator::MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt) {
   si64 ret;
-  asyncConstMul(runtime, constInt, sharedInt, ret).get();
+  eval.asyncConstMul(constInt, sharedInt, ret);
   return ret;
 }
 
 si64Matrix MPCOperator::MPC_Mul_Const(const i64 &constInt,
                                       const si64Matrix &sharedIntMatrix) {
   si64Matrix ret(sharedIntMatrix.rows(), sharedIntMatrix.cols());
-  asyncConstMul(runtime, constInt, sharedIntMatrix, ret).get();
+  eval.asyncConstMul(constInt, sharedIntMatrix, ret);
   return ret;
 }
 } // namespace primihub
