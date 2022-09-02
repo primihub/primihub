@@ -536,10 +536,12 @@ int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::INT64);
 
-  if (is_fp64) 
-    LOG(INFO) << "Column " << col_name << "'s dtype is " << " FP64.";
+  if (is_fp64)
+    LOG(INFO) << "Column " << col_name << "'s dtype is "
+              << " FP64.";
   else
-    LOG(INFO) << "Column " << col_name << "'s dtype is " << " I64.";
+    LOG(INFO) << "Column " << col_name << "'s dtype is "
+              << " I64.";
 
   return 0;
 }
@@ -680,9 +682,11 @@ void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
 void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
                                              eMatrix<double> &m) {
   if (val.type == 2) {
+    LOG(INFO) << "test!!!!!!!!!1";
     m.resize(1, 1);
     m(0, 0) = val.val_union.i64_val;
   } else {
+    LOG(INFO) << "test!!!!!!!!!1";
     std::vector<double> *p_vec = val.val_union.fp64_vec;
     m.resize(p_vec->size(), 1);
     for (size_t i = 0; i < p_vec->size(); i++) {
@@ -696,11 +700,16 @@ void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
 void MPCExpressExecutor::createFP64Shares(TokenValue &val,
                                           sf64Matrix<D> &sh_val) {
   if (val.type == 4) {
+    LOG(INFO) << "test!!!!!!!!!1";
     mpc_op_->createShares<D>(sh_val);
+    LOG(INFO) << "test!!!!!!!!!1";
   } else {
+    LOG(INFO) << "test!!!!!!!!!1";
     eMatrix<double> m;
     constructFP64Matrix(val, m);
+    LOG(INFO) << "test!!!!!!!!!1";
     mpc_op_->createShares<D>(m, sh_val);
+    LOG(INFO) << "test!!!!!!!!!1";
   }
 
   return;
@@ -921,7 +930,6 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
   sf64Matrix<D> sh_val1, sh_val2;
   sf64Matrix<D> *p_sh_val1 = nullptr;
   sf64Matrix<D> *p_sh_val2 = nullptr;
-
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
   if (val1.type == 0 || val1.type == 4) {
@@ -929,6 +937,7 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
     createFP64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
   } else {
+
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
 
@@ -946,8 +955,8 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
 
   sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
   *sh_res = mpc_op_->MPC_Mul(sh_val_vec);
-
   createTokenValue(sh_res, res);
+  LOG(INFO) << "test!!!!!!!!!1";
 }
 
 void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
