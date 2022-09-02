@@ -535,11 +535,18 @@ int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
   else
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::INT64);
+
+  if (is_fp64) 
+    LOG(INFO) << "Column " << col_name << "'s dtype is " << " FP64.";
+  else
+    LOG(INFO) << "Column " << col_name << "'s dtype is " << " I64.";
+
   return 0;
 }
 
 int MPCExpressExecutor::importColumnOwner(const std::string &col_name,
                                           const std::string &node_id) {
+  LOG(INFO) << "Column " << col_name << " belong to " << node_id << ".";
   return col_config_->importColumnOwner(col_name, node_id);
 }
 
