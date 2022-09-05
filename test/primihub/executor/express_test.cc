@@ -60,11 +60,8 @@ static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
   std::vector<uint8_t> parties = {0, 1};
 
   try {
-    LOG(INFO) << "test!!!!!!!!!1";
     mpc_exec->initMPCRuntime(party_id, ip, next_port, prev_port);
-    LOG(INFO) << "test!!!!!!!!!1";
     ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
-    LOG(INFO) << "test!!!!!!!!!1";
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
