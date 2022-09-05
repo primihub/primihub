@@ -60,14 +60,10 @@ FROM ubuntu:18.04 as runner
 RUN apt update && apt install -y software-properties-common  
 RUN add-apt-repository ppa:deadsnakes/ppa 
 RUN  apt-get update \
-  && apt-get install -y python3.9 python3.9-dev libgomp1
+  && apt-get install -y python3.9 python3.9-dev libgomp1 python3-pip
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2
-RUN apt install -y curl python3.9-distutils && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-  && python3 get-pip.py --user \
-  && rm -f get-pip.py
 
-RUN rm -rf /var/lib/apt/lists/*
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
@@ -93,7 +89,8 @@ WORKDIR /app/python
 RUN python3.9 -m pip install --upgrade pip setuptools
 RUN python3.9 -m pip install -r requirements.txt
 RUN python3.9 setup.py install
-ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
+RUN python3.9 setup.py solib --solib-path $TARGET_PATH 
+# ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
 WORKDIR /app
 
 # gRPC server port
