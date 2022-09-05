@@ -190,12 +190,18 @@ public:
     sf64Matrix<D> temp = sharedFixed;
     if (partyIdx == 0)
       for (i64 i = 0; i < sharedFixed.rows(); i++)
-        for (i64 j = 0; j < sharedFixed.cols(); j++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+          LOG(INFO) << temp[0](i, j);
           temp[0](i, j) = sharedFixed[0](i, j) + constfixed.mValue;
+          LOG(INFO) << temp[0](i, j);
+        }
     else if (partyIdx == 1)
       for (i64 i = 0; i < sharedFixed.rows(); i++)
-        for (i64 j = 0; j < sharedFixed.cols(); j++)
+        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+          LOG(INFO) << temp[1](i, j);
           temp[1](i, j) = sharedFixed[1](i, j) + constfixed.mValue;
+          LOG(INFO) << temp[1](i, j);
+        }
     return temp;
   }
 
@@ -291,15 +297,22 @@ public:
   template <Decimal D>
   sf64<D> MPC_Mul_Const(const f64<D> &constFixed, const sf64<D> &sharedFixed) {
     sf64<D> ret;
-    asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
+    eval.asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
     return ret;
   }
+
+  template <Decimal D>
+  sf64Matrix<D> MPC_Dot_Mul(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
+    return eval.asyncDotMul(runtime, A, B);
+  }
+
+  si64Matrix MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B);
 
   template <Decimal D>
   sf64Matrix<D> MPC_Mul_Const(const f64<D> &constFixed,
                               const sf64Matrix<D> &sharedFixed) {
     sf64Matrix<D> ret(sharedFixed.rows(), sharedFixed.cols());
-    asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
+    eval.asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
     return ret;
   }
 

@@ -225,6 +225,10 @@ si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
   return prod;
 }
 
+si64Matrix MPCOperator::MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B) {
+  return eval.asyncDotMul(runtime, A, B);
+}
+
 si64 MPCOperator::MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt) {
   si64 ret;
   eval.asyncConstMul(constInt, sharedInt, ret);

@@ -12,7 +12,8 @@
 
 using namespace primihub;
 
-std::string expr = "A*B-C+A";
+std::string expr = "A+0";
+// std::string expr = "A*B-C+A+2";
 
 static void
 importColumnOwner(MPCExpressExecutor *mpc_exec,
@@ -80,14 +81,17 @@ TEST(mpc_express_executor, fp64_executor_test) {
   std::vector<double> col_val_c;
 
   srand(time(nullptr));
-  for (int i = 0; i < 100; i++)
-    col_val_a.emplace_back(rand() % 10000);
+  for (int i = 0; i < 2; i++)
+    col_val_a.emplace_back(i + 1);
+  // col_val_a.emplace_back(rand() % 10000);
 
-  for (int i = 0; i < 100; i++)
-    col_val_b.emplace_back(rand() % 10000);
+  for (int i = 0; i < 2; i++)
+    col_val_b.emplace_back(i + 1);
+  // col_val_b.emplace_back(rand() % 10000);
 
-  for (int i = 0; i < 100; i++)
-    col_val_c.emplace_back(rand() % 10000);
+  for (int i = 0; i < 2; i++)
+    col_val_c.emplace_back(i + 1);
+  // col_val_c.emplace_back(rand() % 10000);
 
   std::map<std::string, std::string> col_and_owner;
   col_and_owner.insert(std::make_pair("A", "node0"));
@@ -157,14 +161,17 @@ TEST(mpc_express_executor, i64_executor_test) {
   std::vector<int64_t> col_val_c;
 
   srand(time(nullptr));
-  for (int i = 0; i < 100; i++)
-    col_val_a.emplace_back(rand() % 10000);
+  for (int i = 0; i < 1; i++)
+    col_val_a.emplace_back(i + 1);
+  // col_val_a.emplace_back(rand() % 10000);
 
-  for (int i = 0; i < 100; i++)
-    col_val_b.emplace_back(rand() % 10000);
+  for (int i = 0; i < 1; i++)
+    col_val_b.emplace_back(i + 2);
+  // col_val_b.emplace_back(rand() % 10000);
 
-  for (int i = 0; i < 100; i++)
-    col_val_c.emplace_back(rand() % 10000);
+  for (int i = 0; i < 1; i++)
+    col_val_c.emplace_back(i + 3);
+  // col_val_c.emplace_back(rand() % 10000);
 
   std::map<std::string, std::string> col_and_owner;
   col_and_owner.insert(std::make_pair("A", "node0"));

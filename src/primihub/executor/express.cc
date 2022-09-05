@@ -673,7 +673,10 @@ void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
   } else {
     i64Matrix m;
     constructI64Matrix(val, m);
+    LOG(INFO) << m;
     mpc_op_->createShares(m, sh_val);
+    LOG(INFO) << sh_val[0](0, 0);
+    LOG(INFO) << sh_val[1](0, 0);
   }
 
   return;
@@ -682,11 +685,9 @@ void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
 void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
                                              eMatrix<double> &m) {
   if (val.type == 2) {
-    LOG(INFO) << "test!!!!!!!!!1";
     m.resize(1, 1);
     m(0, 0) = val.val_union.i64_val;
   } else {
-    LOG(INFO) << "test!!!!!!!!!1";
     std::vector<double> *p_vec = val.val_union.fp64_vec;
     m.resize(p_vec->size(), 1);
     for (size_t i = 0; i < p_vec->size(); i++) {
@@ -700,16 +701,11 @@ void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
 void MPCExpressExecutor::createFP64Shares(TokenValue &val,
                                           sf64Matrix<D> &sh_val) {
   if (val.type == 4) {
-    LOG(INFO) << "test!!!!!!!!!1";
     mpc_op_->createShares<D>(sh_val);
-    LOG(INFO) << "test!!!!!!!!!1";
   } else {
-    LOG(INFO) << "test!!!!!!!!!1";
     eMatrix<double> m;
     constructFP64Matrix(val, m);
-    LOG(INFO) << "test!!!!!!!!!1";
     mpc_op_->createShares<D>(m, sh_val);
-    LOG(INFO) << "test!!!!!!!!!1";
   }
 
   return;
@@ -796,6 +792,7 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
   sf64Matrix<D> sh_val1, sh_val2;
   sf64Matrix<D> *p_sh_val1 = nullptr;
   sf64Matrix<D> *p_sh_val2 = nullptr;
+  f64<D> constfixed;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -803,6 +800,8 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
     sh_val1.resize(val_count, 1);
     createFP64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 2) {
+    constfixed = val1.val_union.fp64_val;
   } else {
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
@@ -811,17 +810,29 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createFP64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val2.type == 2) {
+    constfixed = val2.val_union.fp64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
 
-  std::vector<sf64Matrix<D>> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val1);
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
-  *sh_res = mpc_op_->MPC_Add(sh_val_vec);
+  if (val1.type != 2 && val2.type != 2) {
+    std::vector<sf64Matrix<D>> sh_val_vec;
+    sh_val_vec.emplace_back(*p_sh_val1);
+    sh_val_vec.emplace_back(*p_sh_val2);
 
+    *sh_res = mpc_op_->MPC_Add(sh_val_vec);
+  } else {
+    LOG(INFO) << "TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+    if (val1.type == 2) {
+      LOG(INFO) << "TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+      *sh_res = mpc_op_->MPC_Add_Const(constfixed, *p_sh_val2);
+    } else {
+      LOG(INFO) << "TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+      *sh_res = mpc_op_->MPC_Add_Const(constfixed, *p_sh_val1);
+    }
+  }
   createTokenValue(sh_res, res);
 }
 
@@ -830,13 +841,15 @@ void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
-
+  i64 constInt;
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
   if (val1.type == 1 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 3) {
+    constInt = val1.val_union.i64_val;
   } else {
     p_sh_val1 = val1.val_union.sh_i64_m;
   }
@@ -845,17 +858,28 @@ void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val2.type == 3) {
+    constInt = val2.val_union.i64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
-  std::vector<si64Matrix> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val1);
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
-  *sh_res = mpc_op_->MPC_Add(sh_val_vec);
-
+  if (val1.type != 3 && val2.type != 3) {
+    std::vector<si64Matrix> sh_val_vec;
+    sh_val_vec.emplace_back(*p_sh_val1);
+    sh_val_vec.emplace_back(*p_sh_val2);
+    LOG(INFO) << (*p_sh_val1)[0](0, 0);
+    LOG(INFO) << (*p_sh_val1)[1](0, 0);
+    LOG(INFO) << (*p_sh_val2)[0](0, 0);
+    LOG(INFO) << (*p_sh_val2)[1](0, 0);
+    *sh_res = mpc_op_->MPC_Add(sh_val_vec);
+  } else {
+    if (val1.type == 3)
+      *sh_res = mpc_op_->MPC_Add_Const(constInt, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Add_Const(constInt, *p_sh_val1);
+  }
   createTokenValue(sh_res, res);
 }
 
@@ -864,6 +888,7 @@ void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
   sf64Matrix<D> sh_val1, sh_val2;
   sf64Matrix<D> *p_sh_val1 = nullptr;
   sf64Matrix<D> *p_sh_val2 = nullptr;
+  f64<D> constfixed;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -871,6 +896,8 @@ void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
     sh_val1.resize(val_count, 1);
     createFP64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 2) {
+    constfixed = val1.val_union.fp64_val;
   } else {
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
@@ -879,16 +906,23 @@ void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createFP64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val2.type == 2) {
+    constfixed = val2.val_union.fp64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
 
-  std::vector<sf64Matrix<D>> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
-  *sh_res = mpc_op_->MPC_Sub(*p_sh_val1, sh_val_vec);
-
+  if (val1.type != 2 && val2.type != 2) {
+    std::vector<sf64Matrix<D>> sh_val_vec;
+    sh_val_vec.emplace_back(*p_sh_val2);
+    *sh_res = mpc_op_->MPC_Sub(*p_sh_val1, sh_val_vec);
+  } else {
+    if (val1.type == 2)
+      *sh_res = mpc_op_->MPC_Sub_Const(constfixed, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Add_Const(constfixed, *p_sh_val1);
+  }
   createTokenValue(sh_res, res);
 }
 
@@ -897,6 +931,7 @@ void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
+  i64 constInt;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -904,6 +939,8 @@ void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 3) {
+    constInt = val1.val_union.i64_val;
   } else {
     p_sh_val1 = val1.val_union.sh_i64_m;
   }
@@ -912,16 +949,23 @@ void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val1.type == 3) {
+    constInt = val2.val_union.i64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
-  std::vector<si64Matrix> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
-  *sh_res = mpc_op_->MPC_Sub(*p_sh_val1, sh_val_vec);
-
+  if (val1.type != 3 && val2.type != 3) {
+    std::vector<si64Matrix> sh_val_vec;
+    sh_val_vec.emplace_back(*p_sh_val2);
+    *sh_res = mpc_op_->MPC_Sub(*p_sh_val1, sh_val_vec);
+  } else {
+    if (val1.type != 3)
+      *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val1);
+  }
   createTokenValue(sh_res, res);
 }
 
@@ -930,14 +974,16 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
   sf64Matrix<D> sh_val1, sh_val2;
   sf64Matrix<D> *p_sh_val1 = nullptr;
   sf64Matrix<D> *p_sh_val2 = nullptr;
+  f64<D> constfixed;
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
   if (val1.type == 0 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createFP64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 2) {
+    constfixed = val1.val_union.fp64_val;
   } else {
-
     p_sh_val1 = val1.val_union.sh_fp64_m;
   }
 
@@ -945,18 +991,21 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createFP64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val2.type == 2) {
+    constfixed = val2.val_union.fp64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
-
-  std::vector<sf64Matrix<D>> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val1);
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
-  *sh_res = mpc_op_->MPC_Mul(sh_val_vec);
+  if (val1.type != 2 && val2.type != 2) {
+    *sh_res = mpc_op_->MPC_Dot_Mul(*p_sh_val1, *p_sh_val2);
+  } else {
+    if (val1.type == 2)
+      *sh_res = mpc_op_->MPC_Mul_Const(constfixed, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Mul_Const(constfixed, *p_sh_val1);
+  }
   createTokenValue(sh_res, res);
-  LOG(INFO) << "test!!!!!!!!!1";
 }
 
 void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
@@ -964,6 +1013,7 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
+  i64 constInt;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -971,6 +1021,8 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
     p_sh_val1 = &sh_val1;
+  } else if (val1.type == 3) {
+    constInt = val1.val_union.i64_val;
   } else {
     p_sh_val1 = val1.val_union.sh_i64_m;
   }
@@ -979,16 +1031,22 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     sh_val2.resize(val_count, 1);
     createI64Shares(val2, sh_val2);
     p_sh_val2 = &sh_val2;
+  } else if (val2.type == 3) {
+    constInt = val2.val_union.i64_val;
   } else {
     p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
-  std::vector<si64Matrix> sh_val_vec;
-  sh_val_vec.emplace_back(*p_sh_val1);
-  sh_val_vec.emplace_back(*p_sh_val2);
-
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
-  *sh_res = mpc_op_->MPC_Mul(sh_val_vec);
+  if (val1.type != 3 && val2.type != 3) {
+    LOG(INFO) << "TEST!!!!!!!!!!!!!!!!!";
+    *sh_res = mpc_op_->MPC_Dot_Mul(*p_sh_val1, *p_sh_val2);
+  } else {
+    if (val1.type == 3)
+      *sh_res = mpc_op_->MPC_Mul_Const(constInt, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Mul_Const(constInt, *p_sh_val1);
+  }
 
   createTokenValue(sh_res, res);
 }
@@ -1131,6 +1189,7 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
       LOG(INFO) << "Reveal MPC result to party "
                 << static_cast<char>(party + '0') << ", value count " << count
                 << ".";
+      LOG(INFO) << m;
     } else {
       mpc_op_->reveal(*p_final_share, party);
     }
