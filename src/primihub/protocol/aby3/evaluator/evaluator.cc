@@ -298,24 +298,111 @@ Sh3Task Sh3Evaluator::asyncMul(Sh3Task dep, const i64 &a, const sbMatrix &b,
       .getClosure();
 }
 
-si64Matrix Sh3Evaluator::asyncDotMul(Sh3Task dependency, const si64Matrix &A,
-                                     const si64Matrix &B) {
-  if (A.cols() != B.cols() || A.rows() != B.rows())
-    throw std::runtime_error(LOCATION);
+// si64Matrix Sh3Evaluator::asyncDotMul(Sh3Task dependency, const si64Matrix &A,
+//                                      const si64Matrix &B) {
+//   if (A.cols() != B.cols() || A.rows() != B.rows())
+//     throw std::runtime_error(LOCATION);
 
-  si64Matrix ret(A.rows(), A.cols());
-  si64 a, b, c;
-  for (int i = 0; i < A.rows(); i++)
-    for (int j = 0; j < A.cols(); j++) {
-      a[0] = A[0](i, j);
-      a[1] = A[1](i, j);
-      b[0] = B[0](i, j);
-      b[1] = B[1](i, j);
-      asyncMul(dependency, a, b, c).get();
-      ret[0](i, j) = c[0];
-      ret[1](i, j) = c[1];
-    }
-  return ret;
+//   si64Matrix ret(A.rows(), A.cols());
+//   si64 a, b, c;
+//   for (int i = 0; i < A.rows(); i++)
+//     for (int j = 0; j < A.cols(); j++) {
+//       a[0] = A[0](i, j);
+//       a[1] = A[1](i, j);
+//       b[0] = B[0](i, j);
+//       b[1] = B[1](i, j);
+//       asyncMul(dependency, a, b, c).get();
+//       ret[0](i, j) = c[0];
+//       ret[1](i, j) = c[1];
+//     }
+//   return ret;
+// }
+
+Sh3Task Sh3Evaluator::asyncDotMul(Sh3Task dependency, const si64Matrix &A,
+                                  const si64Matrix &B, si64Matrix &C) {
+  return dependency
+      .then([&](CommPkgBase *comm, Sh3Task self) {
+        C.mShares[0] = A.mShares[0].array() * B.mShares[0].array() +
+                       A.mShares[0].array() * B.mShares[1].array() +
+                       A.mShares[1].array() * B.mShares[0].array();
+
+        for (u64 i = 0; i < C.size(); ++i) {
+          C.mShares[0](i) += mShareGen.getShare();
+        }
+
+        C.mShares[1].resizeLike(C.mShares[0]);
+        auto comm_cast = dynamic_cast<CommPkg &>(*comm);
+        comm_cast.mNext().asyncSendCopy(C.mShares[0].data(),
+                                        C.mShares[0].size());
+        auto fu = comm_cast.mPrev()
+                      .asyncRecv(C.mShares[1].data(), C.mShares[1].size())
+                      .share();
+
+        self.then([fu = std::move(fu)](CommPkgBase *comm, Sh3Task &self) {
+          fu.get();
+        });
+      })
+      .getClosure();
+}
+
+Sh3Task Sh3Evaluator::asyncDotMul(Sh3Task dependency, const si64Matrix &A,
+                                  const si64Matrix &B, si64Matrix &C,
+                                  u64 shift) {
+  return dependency
+      .then([&, shift](CommPkgBase *comm, Sh3Task &self) -> void {
+        i64Matrix abMinusR = A.mShares[0].array() * B.mShares[0].array() +
+                             A.mShares[0].array() * B.mShares[1].array() +
+                             A.mShares[1].array() * B.mShares[0].array();
+
+        auto truncationTuple =
+            getTruncationTuple(abMinusR.rows(), abMinusR.cols(), shift);
+
+        abMinusR -= truncationTuple.mR;
+        C.mShares = std::move(truncationTuple.mRTrunc.mShares);
+
+        auto &rt = self.getRuntime();
+
+        // reveal dependency.getRuntime().the value to party 0, 1
+        auto next = (rt.mPartyIdx + 1) % 3;
+        auto prev = (rt.mPartyIdx + 2) % 3;
+        auto comm_cast = dynamic_cast<CommPkg &>(*comm);
+        if (next < 2)
+          comm_cast.mNext().asyncSendCopy(abMinusR.data(), abMinusR.size());
+        if (prev < 2)
+          comm_cast.mPrev().asyncSendCopy(abMinusR.data(), abMinusR.size());
+        if (rt.mPartyIdx < 2) {
+          auto shares = std::make_unique<std::array<i64Matrix, 3>>();
+
+          (*shares)[0].resize(abMinusR.rows(), abMinusR.cols());
+          (*shares)[1].resize(abMinusR.rows(), abMinusR.cols());
+
+          // perform the async receives
+          auto fu0 = comm_cast.mNext()
+                         .asyncRecv((*shares)[0].data(), (*shares)[0].size())
+                         .share();
+          auto fu1 = comm_cast.mPrev()
+                         .asyncRecv((*shares)[1].data(), (*shares)[1].size())
+                         .share();
+          (*shares)[2] = std::move(abMinusR);
+
+          // set the completion handle complete the computation
+          self.then([fu0, fu1, shares = std::move(shares), &C, shift,
+                     this](CommPkgBase *comm, Sh3Task self) mutable {
+            fu0.get();
+            fu1.get();
+
+            // xy-r
+            (*shares)[0] += (*shares)[1] + (*shares)[2];
+
+            // xy/2^d = (r/2^d) + ((xy-r) / 2^d)
+            auto &v = C.mShares[mPartyIdx];
+            auto &s = (*shares)[0];
+            for (u64 i = 0; i < v.size(); ++i)
+              v(i) += s(i) >> shift;
+          });
+        }
+      })
+      .getClosure();
 }
 
 TruncationPair Sh3Evaluator::getTruncationTuple(u64 xSize, u64 ySize, u64 d) {

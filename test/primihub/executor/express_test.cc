@@ -12,8 +12,15 @@
 
 using namespace primihub;
 
-std::string expr = "A+0";
+// std::string expr = "A+B-2";
+// std::string expr = "A+B-2";
+// std::string expr = "A*B-C+A+2.2";
+// std::string expr = "(A*B-C+A+2)";
 // std::string expr = "A*B-C+A+2";
+std::string expr = "(5.3-(A*B-C+A+2.2))*2.0";
+// std::string expr = "(5-(A*B-C+A+2))*2";
+// std::string expr = "A*B-C+A*2.2";
+// std::string expr = "A*B-C+A*2";
 
 static void
 importColumnOwner(MPCExpressExecutor *mpc_exec,
@@ -58,6 +65,7 @@ static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
   importColumnValues(mpc_exec, col_and_val);
 
   std::vector<double> final_val;
+  // std::vector<int64_t> final_val;
   std::vector<uint8_t> parties = {0, 1};
 
   try {
@@ -82,15 +90,15 @@ TEST(mpc_express_executor, fp64_executor_test) {
 
   srand(time(nullptr));
   for (int i = 0; i < 2; i++)
-    col_val_a.emplace_back(i + 1);
+    col_val_a.emplace_back(i + 3.3);
   // col_val_a.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 2; i++)
-    col_val_b.emplace_back(i + 1);
+    col_val_b.emplace_back(i + 2.2);
   // col_val_b.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 2; i++)
-    col_val_c.emplace_back(i + 1);
+    col_val_c.emplace_back(i + 1.1);
   // col_val_c.emplace_back(rand() % 10000);
 
   std::map<std::string, std::string> col_and_owner;
@@ -162,7 +170,7 @@ TEST(mpc_express_executor, i64_executor_test) {
 
   srand(time(nullptr));
   for (int i = 0; i < 1; i++)
-    col_val_a.emplace_back(i + 1);
+    col_val_a.emplace_back(i + 3);
   // col_val_a.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 1; i++)
@@ -170,7 +178,7 @@ TEST(mpc_express_executor, i64_executor_test) {
   // col_val_b.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 1; i++)
-    col_val_c.emplace_back(i + 3);
+    col_val_c.emplace_back(i + 1);
   // col_val_c.emplace_back(rand() % 10000);
 
   std::map<std::string, std::string> col_and_owner;

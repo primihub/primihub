@@ -194,17 +194,21 @@ si64Matrix MPCOperator::MPC_Sub(si64Matrix minuend,
   return difference;
 }
 
-si64 MPCOperator::MPC_Sub_Const(i64 constInt, si64 &sharedInt) {
+si64 MPCOperator::MPC_Sub_Const(i64 constInt, si64 &sharedInt, bool mode) {
   si64 temp = sharedInt;
   if (partyIdx == 0)
     temp[0] = sharedInt[0] - constInt;
   else if (partyIdx == 1)
     temp[1] = sharedInt[1] - constInt;
+  if (mode != true) {
+    temp[0] = -temp[0];
+    temp[1] = -temp[1];
+  }
   return temp;
 }
 
-si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt,
-                                      si64Matrix &sharedIntMatrix) {
+si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix,
+                                      bool mode) {
   si64Matrix temp = sharedIntMatrix;
   if (partyIdx == 0)
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
@@ -214,6 +218,10 @@ si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt,
     for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
       for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
         temp[1](i, j) = sharedIntMatrix[1](i, j) - constInt;
+  if (mode != true) {
+    temp[0] = -temp[0];
+    temp[1] = -temp[1];
+  }
   return temp;
 }
 
@@ -226,7 +234,12 @@ si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
 }
 
 si64Matrix MPCOperator::MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B) {
-  return eval.asyncDotMul(runtime, A, B);
+  if (A.cols() != B.cols() || A.rows() != B.rows())
+    throw std::runtime_error(LOCATION);
+
+  si64Matrix ret(A.rows(), A.cols());
+  eval.asyncDotMul(runtime, A, B, ret).get();
+  return ret;
 }
 
 si64 MPCOperator::MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt) {

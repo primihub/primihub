@@ -190,17 +190,12 @@ public:
     sf64Matrix<D> temp = sharedFixed;
     if (partyIdx == 0)
       for (i64 i = 0; i < sharedFixed.rows(); i++)
-        for (i64 j = 0; j < sharedFixed.cols(); j++) {
-          LOG(INFO) << temp[0](i, j);
+        for (i64 j = 0; j < sharedFixed.cols(); j++)
           temp[0](i, j) = sharedFixed[0](i, j) + constfixed.mValue;
-          LOG(INFO) << temp[0](i, j);
-        }
     else if (partyIdx == 1)
       for (i64 i = 0; i < sharedFixed.rows(); i++)
         for (i64 j = 0; j < sharedFixed.cols(); j++) {
-          LOG(INFO) << temp[1](i, j);
           temp[1](i, j) = sharedFixed[1](i, j) + constfixed.mValue;
-          LOG(INFO) << temp[1](i, j);
         }
     return temp;
   }
@@ -248,18 +243,24 @@ public:
   si64Matrix MPC_Sub(si64Matrix minuend, std::vector<si64Matrix> subtrahends);
 
   template <Decimal D>
-  sf64<D> MPC_Sub_Const(f64<D> constfixed, sf64<D> &sharedFixed) {
+  sf64<D> MPC_Sub_Const(f64<D> constfixed, sf64<D> &sharedFixed, bool mode) {
     sf64<D> temp = sharedFixed;
     if (partyIdx == 0)
       temp[0] = sharedFixed[0] - constfixed.mValue;
     else if (partyIdx == 1)
       temp[1] = sharedFixed[1] - constfixed.mValue;
+    if (mode != true) {
+      temp[0] = -temp[0];
+      temp[1] = -temp[1];
+    }
     return temp;
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed) {
+  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed,
+                              bool mode) {
     sf64Matrix<D> temp = sharedFixed;
+
     if (partyIdx == 0)
       for (i64 i = 0; i < sharedFixed.rows(); i++)
         for (i64 j = 0; j < sharedFixed.cols(); j++)
@@ -268,12 +269,17 @@ public:
       for (i64 i = 0; i < sharedFixed.rows(); i++)
         for (i64 j = 0; j < sharedFixed.cols(); j++)
           temp[1](i, j) = sharedFixed[1](i, j) - constfixed.mValue;
+    if (mode != true) {
+      temp[0] = -temp[0];
+      temp[1] = -temp[1];
+    }
     return temp;
   }
 
-  si64 MPC_Sub_Const(i64 constInt, si64 &sharedInt);
+  si64 MPC_Sub_Const(i64 constInt, si64 &sharedInt, bool mode);
 
-  si64Matrix MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix);
+  si64Matrix MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix,
+                           bool mode);
 
   template <Decimal D>
   sf64<D> MPC_Mul(std::vector<sf64<D>> sharedFixedInt, sf64<D> &prod) {
@@ -295,18 +301,23 @@ public:
   si64Matrix MPC_Mul(std::vector<si64Matrix> sharedInt);
 
   template <Decimal D>
+  sf64Matrix<D> MPC_Dot_Mul(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
+    if (A.cols() != B.cols() || A.rows() != B.rows())
+      throw std::runtime_error(LOCATION);
+
+    sf64Matrix<D> ret(A.rows(), A.cols());
+    eval.asyncDotMul(runtime, A, B, ret).get();
+    return ret;
+  }
+
+  si64Matrix MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B);
+
+  template <Decimal D>
   sf64<D> MPC_Mul_Const(const f64<D> &constFixed, const sf64<D> &sharedFixed) {
     sf64<D> ret;
     eval.asyncConstFixedMul(runtime, constFixed, sharedFixed, ret).get();
     return ret;
   }
-
-  template <Decimal D>
-  sf64Matrix<D> MPC_Dot_Mul(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
-    return eval.asyncDotMul(runtime, A, B);
-  }
-
-  si64Matrix MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B);
 
   template <Decimal D>
   sf64Matrix<D> MPC_Mul_Const(const f64<D> &constFixed,
