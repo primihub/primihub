@@ -10,6 +10,7 @@
 #include "src/primihub/operator/aby3_operator.h"
 
 namespace primihub {
+class LocalExpressExecutor;
 class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
@@ -116,6 +117,8 @@ public:
       }
     }
   };
+  
+  friend class LocalExpressExecutor;
 
 private:
   // ColumnConfig saves column's owner and it's data type.
@@ -136,6 +139,8 @@ private:
     void Clean(void);
 
     static std::string DtypeToString(const ColDtype &dtype);
+
+    friend class LocalExpressExecutor;
 
   private:
     std::string node_id_;
@@ -232,5 +237,22 @@ private:
   std::map<std::string, TokenType> token_type_map_;
   uint8_t party_id_;
 };
+
+class LocalExpressExecutor {
+public:
+  LocalExpressExecutor(MPCExpressExecutor *mpc_exec) {
+    this->mpc_exec_ = mpc_exec;
+  }
+
+  void beforeLocalEvaluate(void);
+  int runLocalEvaluate(std::vector<double> &eval_res) { return 0; }
+  int runLocalEvaluate(std::vector<int64_t> &eval_res) { return 0; }
+  void afterLocalEvaluate(void);
+
+private:
+  MPCExpressExecutor *mpc_exec_;
+  std::map<std::string, bool> local_col_;
+};
+
 }; // namespace primihub
 #endif
