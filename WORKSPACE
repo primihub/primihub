@@ -552,7 +552,7 @@ leveldb_deps()
 # TODO use local for test
 new_local_repository(
     name = "APSI",
-    path = "/Users/chb/Projects/deps/APSI",
+    path = "/home/primihub/Projects/APSI0",
     build_file = "//bazel:BUILD.APSI",
 )
 # needed by APSI

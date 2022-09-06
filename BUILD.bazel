@@ -31,6 +31,11 @@ config_setting(
    values = {"define": "macos-build=true"},
 )
 
+config_setting(
+   name = "microsoft-apsi",
+   values = {"define": "microsoft-apsi=true"},
+)
+
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
@@ -492,6 +497,7 @@ cc_library(
     ],
 )
 
+
 DEFAULT_TASK_LIB_DEPS = [
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
@@ -509,43 +515,75 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     # "@org_openmined_pir//pir/cpp:pir", #TODO need bazel select 
-    "@APSI//:APSI",
+    # "@APSI//:APSI",
     #"@osu_libpsi//:libpsi",
 ]
 
-TASK_LIB_DEPS = select({
-    ":macos-build": DEFAULT_TASK_LIB_DEPS,
-    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+PIR_LIB_DEPS = select({
+    "microsoft-apsi": ["@APSI//:APSI"],
+    "//conditions:default": ["@org_openmined_pir//pir/cpp:pir"]
 })
+
+
+LINUX_X86_BUILD_LIBS = select({
+    ":macos-build": [] ,
+    "//conditions:default": [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+})
+
+TASK_LIB_DEPS = DEFAULT_TASK_LIB_DEPS + PIR_LIB_DEPS + LINUX_X86_BUILD_LIBS
+
+
 
 cc_library(
     name = "task_lib",
-    srcs = glob(
-        [
-            "src/primihub/task/language/proto_parser.cc",
-            "src/primihub/task/language/py_parser.cc",
-            "src/primihub/task/semantic/psi_kkrt_task.cc",
-            # "src/primihub/task/semantic/pir_server_task.cc",
-            # "src/primihub/task/semantic/pir_client_task.cc",
-            "src/primihub/task/semantic/parser.cc",
-            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
-            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
-            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
-            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
-            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
-            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
-            "src/primihub/task/semantic/mpc_task.cc",
-            "src/primihub/task/semantic/tee_task.cc",
-            "src/primihub/task/semantic/task.cc",
-            "src/primihub/task/semantic/psi_client_task.cc",
-            "src/primihub/task/semantic/private_server_base.cc",
-            "src/primihub/task/semantic/fl_task.cc",
-            "src/primihub/task/semantic/psi_server_task.cc",
-        ],
-        
-    ),
-    hdrs = glob(
-        [
+    srcs = select({
+            "microsoft-apsi": glob(
+                [
+                    "src/primihub/task/language/proto_parser.cc",
+                    "src/primihub/task/language/py_parser.cc",
+                    "src/primihub/task/semantic/psi_kkrt_task.cc",
+                    # "src/primihub/task/semantic/pir_server_task.cc",
+                    # "src/primihub/task/semantic/pir_client_task.cc",
+                    "src/primihub/task/semantic/parser.cc",
+                    "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+                    "src/primihub/task/semantic/mpc_task.cc",
+                    "src/primihub/task/semantic/tee_task.cc",
+                    "src/primihub/task/semantic/task.cc",
+                    "src/primihub/task/semantic/psi_client_task.cc",
+                    "src/primihub/task/semantic/private_server_base.cc",
+                    "src/primihub/task/semantic/fl_task.cc",
+                    "src/primihub/task/semantic/psi_server_task.cc",
+                ]),
+            "//conditions:default": glob(
+                [
+                    "src/primihub/task/language/proto_parser.cc",
+                    "src/primihub/task/language/py_parser.cc",
+                    "src/primihub/task/semantic/psi_kkrt_task.cc",
+                    "src/primihub/task/semantic/pir_server_task.cc",
+                    "src/primihub/task/semantic/pir_client_task.cc",
+                    "src/primihub/task/semantic/parser.cc",
+                    "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+                    "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+                    "src/primihub/task/semantic/mpc_task.cc",
+                    "src/primihub/task/semantic/tee_task.cc",
+                    "src/primihub/task/semantic/task.cc",
+                    "src/primihub/task/semantic/psi_client_task.cc",
+                    "src/primihub/task/semantic/private_server_base.cc",
+                    "src/primihub/task/semantic/fl_task.cc",
+                    "src/primihub/task/semantic/psi_server_task.cc",
+                ]),
+    }),
+    hdrs = select({
+        "microsoft-apsi": glob([
             "src/primihub/task/language/proto_parser.h",
             "src/primihub/task/language/parser.h",
             "src/primihub/task/language/py_parser.h",
@@ -570,12 +608,41 @@ cc_library(
             "src/primihub/task/semantic/fl_task.h",
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
-        ]
-    ),
-    copts = C_OPT,
+        ]),
+        "//conditions:default": glob([
+            "src/primihub/task/language/proto_parser.h",
+            "src/primihub/task/language/parser.h",
+            "src/primihub/task/language/py_parser.h",
+            "src/primihub/task/language/factory.h",
+            "src/primihub/task/semantic/task.h",
+            "src/primihub/task/semantic/pir_server_task.h",
+            "src/primihub/task/semantic/private_server_base.h",
+            "src/primihub/task/semantic/parser.h",
+            "src/primihub/task/semantic/pir_client_task.h",
+            "src/primihub/task/semantic/scheduler.h",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.h",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.h",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.h",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.h",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.h",
+            "src/primihub/task/semantic/psi_server_task.h",
+            "src/primihub/task/semantic/psi_kkrt_task.h",
+            "src/primihub/task/semantic/psi_client_task.h",
+            "src/primihub/task/semantic/factory.h",
+            "src/primihub/task/semantic/mpc_task.h",
+            "src/primihub/task/semantic/fl_task.h",
+            "src/primihub/task/semantic/tee_task.h",
+            "src/primihub/util/util.h",
+        ]),
+    }),
+    copts = C_OPT + select({
+        "microsoft-apsi" : ["-D_ASPI"],
+        "//conditions:default": []
+    }),
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + ["-L/Users/chb/miniforge3/lib/python3.9/config-3.9-darwin -ldl -framework CoreFoundation"] + ["-lpython3.9"],
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
