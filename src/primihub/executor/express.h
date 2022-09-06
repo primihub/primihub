@@ -117,7 +117,7 @@ public:
       }
     }
   };
-  
+
   friend class LocalExpressExecutor;
 
 private:
@@ -245,13 +245,27 @@ public:
   }
 
   void beforeLocalEvaluate(void);
-  int runLocalEvaluate(std::vector<double> &eval_res) { return 0; }
-  int runLocalEvaluate(std::vector<int64_t> &eval_res) { return 0; }
+  int runLocalEvaluate(std::vector<double> &eval_res);
+  int runLocalEvaluate(std::vector<int64_t> &eval_res);
   void afterLocalEvaluate(void);
 
 private:
+  using I64StackType = std::stack<std::vector<int64_t> *>;
+  using FP64StackType = std::stack<std::vector<double> *>;
+
+  inline void beforeLocalCalculate(std::stack<std::string> &stk1,
+                                   I64StackType &val_stk, std::string &a,
+                                   std::string &b, std::vector<int64_t> *p_a,
+                                   std::vector<int64_t> *p_b);
+
+  inline void afterLocalCalculate(std::stack<std::string> &stk1,
+                                  I64StackType &val_stk, std::string &new_token,
+                                  std::vector<int64_t> *p_res);
+
   MPCExpressExecutor *mpc_exec_;
   std::map<std::string, bool> local_col_;
+  std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
+  std::map<std::string, std::vector<double> *> fp64_token_val_map_;
 };
 
 }; // namespace primihub
