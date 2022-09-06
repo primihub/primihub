@@ -33,13 +33,6 @@ RUN apt install -y gcc-8 automake ca-certificates git g++-8 libtool m4 patch pkg
 # install npm 
 RUN apt-get install -y npm
 
-# install cmake
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz \
-  && tar -zxf cmake-3.20.2-linux-x86_64.tar.gz \
-  && chmod +x cmake-3.20.2-linux-x86_64/bin/cmake \
-  && ln -s `pwd`/cmake-3.20.2-linux-x86_64/bin/cmake /usr/bin/cmake \
-  && rm -rf /var/lib/apt/lists/* cmake-3.20.2-linux-x86_64.tar.gz 
-
 # install bazelisk
 RUN npm install -g @bazel/bazelisk
 
@@ -63,7 +56,6 @@ RUN  apt-get update \
   && apt-get install -y python3.9 python3.9-dev libgomp1 python3-pip
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 2
-
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
