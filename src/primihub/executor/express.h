@@ -64,8 +64,10 @@ public:
 
   // A token means a column name and constant value string, and a TokenValue
   // saves values of a token. So:
-  // 1. if token is a column name, instance of TokenValue saves column's value;
-  // 2. if token is a constant value string, instance of TokenValue saves it's
+  // 1. if token is a column name, instance of TokenValue saves column's
+  // value;
+  // 2. if token is a constant value string, instance of TokenValue saves
+  // it's
   //    int64_t value of double value;
   // 3. if token is a sub-express, instance of TokenValue saves share value
   //    of it's result.
@@ -247,7 +249,31 @@ public:
   void beforeLocalEvaluate(void);
   int runLocalEvaluate(std::vector<double> &eval_res);
   int runLocalEvaluate(std::vector<int64_t> &eval_res);
-  void afterLocalEvaluate(void);
+  // void afterLocalEvaluate(void);
+
+  void createNewColumnConfig() {
+    new_col_cfg =
+        new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->node_id_);
+    std::map<std::string, bool> &local_col_outside =
+        mpc_exec_->col_config_->local_col_;
+    for (auto &pair : local_col_outside)
+      new_col_cfg->local_col_.insert(std::make_pair(pair.first, true));
+  }
+
+  void creatNewFeedDict() {
+    // old_feed = mpc_exec_->feed_dict_;
+    createNewColumnConfig();
+    new_feed =
+        new MPCExpressExecutor::FeedDict(new_col_cfg, mpc_exec_->fp64_run_);
+  }
+
+  template <typename T>
+  static void
+  importColumnValues(std::map<std::string, std::vector<T>> &col_and_val) {
+    for (auto &pair : col_and_val)
+      new_feed->importColumnValues(pair.first, pair.second);
+    return;
+  }
 
 private:
   using I64StackType = std::stack<std::vector<int64_t> *>;
@@ -263,9 +289,13 @@ private:
                                   std::vector<int64_t> *p_res);
 
   MPCExpressExecutor *mpc_exec_;
-  std::map<std::string, bool> local_col_;
+  // std::map<std::string, bool> local_col_;
   std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
   std::map<std::string, std::vector<double> *> fp64_token_val_map_;
+
+  // MPCExpressExecutor::FeedDict *old_feed;
+  MPCExpressExecutor::FeedDict *new_feed;
+  MPCExpressExecutor::ColumnConfig *new_col_cfg;
 };
 
 }; // namespace primihub

@@ -47,11 +47,12 @@ importColumnValues(MPCExpressExecutor *mpc_exec,
 }
 
 template <typename T>
-static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
-                     std::map<std::string, bool> &col_and_dtype,
-                     std::map<std::string, std::string> &col_and_owner,
-                     std::string node_id, uint8_t party_id, std::string ip,
-                     uint16_t next_port, uint16_t prev_port) {
+static MPCExpressExecutor *
+runParty(std::map<std::string, std::vector<T>> &col_and_val,
+         std::map<std::string, bool> &col_and_dtype,
+         std::map<std::string, std::string> &col_and_owner, std::string node_id,
+         uint8_t party_id, std::string ip, uint16_t next_port,
+         uint16_t prev_port) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
 
   mpc_exec->initColumnConfig(node_id);
@@ -70,7 +71,8 @@ static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
 
   try {
     mpc_exec->initMPCRuntime(party_id, ip, next_port, prev_port);
-    ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
+    // ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
+    mpc_exec->runMPCEvaluate();
     mpc_exec->revealMPCResult(parties, final_val);
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
@@ -78,9 +80,9 @@ static void runParty(std::map<std::string, std::vector<T>> &col_and_val,
     throw std::runtime_error(msg);
   }
 
-  delete mpc_exec;
+  // delete mpc_exec;
 
-  return;
+  return mpc_exec;
 }
 
 TEST(mpc_express_executor, fp64_executor_test) {
@@ -149,8 +151,20 @@ TEST(mpc_express_executor, fp64_executor_test) {
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
+      // MPCExpressExecutor *mpc_exec =
       runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
                "127.0.0.1", 10010, 10020);
+      // LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      // local_exec->creatNewFeedDict();
+      // std::map<std::string, std::vector<double>> col_and_val_n;
+
+      // col_and_val_n.insert(std::make_pair("A", col_val_a));
+      // col_and_val_n.insert(std::make_pair("B", col_val_b));
+      // col_and_val_n.insert(std::make_pair("C", col_val_c));
+      // col_and_val_n.insert(std::make_pair("D", col_val_d));
+
+      // local_exec->importColumnValues(col_and_val_n);
+
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
       runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,
@@ -229,8 +243,22 @@ TEST(mpc_express_executor, i64_executor_test) {
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
-               "127.0.0.1", 10010, 10020);
+      MPCExpressExecutor *mpc_exec =
+          runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
+                   "127.0.0.1", 10010, 10020);
+
+      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      local_exec->creatNewFeedDict();
+      std::map<std::string, std::vector<int64_t>> col_and_val_n;
+
+      col_and_val_n.insert(std::make_pair("A", col_val_a));
+      col_and_val_n.insert(std::make_pair("B", col_val_b));
+      col_and_val_n.insert(std::make_pair("C", col_val_c));
+      col_and_val_n.insert(std::make_pair("D", col_val_d));
+
+      local_exec->importColumnValues(col_and_val_n);
+      int runLocalEvaluate(std::vector<int64_t> & eval_res);
+
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
       runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,

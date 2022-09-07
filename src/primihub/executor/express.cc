@@ -1248,26 +1248,27 @@ void MPCExpressExecutor::Clean(void) {
 
 MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
 
-void LocalExpressExecutor::beforeLocalEvaluate(void) {
-  std::map<std::string, bool> &local_col_outside =
-      mpc_exec_->col_config_->local_col_;
-  for (auto &pair : local_col_outside)
-    local_col_.insert(std::make_pair(pair.first, pair.second));
+// void LocalExpressExecutor::beforeLocalEvaluate(void) {
+//   std::map<std::string, bool> &local_col_outside =
+//       mpc_exec_->col_config_->local_col_;
+//   for (auto &pair : local_col_outside)
+//     local_col_.insert(std::make_pair(pair.first, pair.second));
 
-  for (auto iter = local_col_outside.begin(); iter != local_col_outside.end();
-       iter++)
-    if (iter->second == false)
-      iter->second = true;
-}
+//   for (auto iter = local_col_outside.begin(); iter !=
+//   local_col_outside.end();
+//        iter++)
+//     if (iter->second == false)
+//       iter->second = true;
+// }
 
-void LocalExpressExecutor::afterLocalEvaluate(void) {
-  std::map<std::string, bool> &local_col_outside =
-      mpc_exec_->col_config_->local_col_;
-  local_col_outside.clear();
+// void LocalExpressExecutor::afterLocalEvaluate(void) {
+//   std::map<std::string, bool> &local_col_outside =
+//       mpc_exec_->col_config_->local_col_;
+//   local_col_outside.clear();
 
-  for (auto &pair : local_col_)
-    local_col_outside.insert(std::make_pair(pair.first, pair.second));
-}
+//   for (auto &pair : local_col_)
+//     local_col_outside.insert(std::make_pair(pair.first, pair.second));
+// }
 
 void LocalExpressExecutor::beforeLocalCalculate(std::stack<std::string> &stk1,
                                                 I64StackType &val_stk,
@@ -1367,7 +1368,7 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
       suffix_stk.pop();
 
       std::vector<int64_t> *p_i64_vec = nullptr;
-      if (mpc_exec_->feed_dict_->getColumnValues(token, &p_i64_vec)) {
+      if (new_feed->getColumnValues(token, &p_i64_vec)) {
         LOG(ERROR) << "Get column value with name " << token << " failed.";
         return -1;
       }
@@ -1385,7 +1386,7 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
 int LocalExpressExecutor::runLocalEvaluate(std::vector<double> &eval_res) {
   std::string expr = mpc_exec_->expr_;
   mpc_exec_->parseExpress(expr);
-  
+
   return 0;
 }
 
