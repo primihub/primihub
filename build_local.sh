@@ -17,7 +17,7 @@ fi
 
 BASE_DIR=`ls -l | grep bazel-bin | awk '{print $11}'`
 
-if [ !$BASE_DIR ]; then
+if [ ! -d "$BASE_DIR" ]; then
     echo "BASE_DIR IS NULL"
     exit
 fi
