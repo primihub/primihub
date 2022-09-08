@@ -258,6 +258,12 @@ public:
         mpc_exec_->col_config_->local_col_;
     for (auto &pair : local_col_outside)
       new_col_cfg->local_col_.insert(std::make_pair(pair.first, true));
+    std::map<std::string, ColDtype> &local_col_dtype =
+        mpc_exec_->col_config_->col_dtype_;
+    for (auto &pair : local_col_dtype)
+      new_col_cfg->col_dtype_.insert(std::make_pair(pair.first, pair.second));
+
+    std::map<std::string, ColDtype> col_dtype_;
   }
 
   void creatNewFeedDict() {
@@ -275,14 +281,51 @@ public:
     return;
   }
 
+  int createTokenValue(const std::string &token,
+                       MPCExpressExecutor::TokenValue &token_val) {
+    TokenType type = mpc_exec_->token_type_map_[token];
+    if (type == TokenType::COLUMN) {
+      if (fp64_run_) {
+        if (new_feed->getColumnValues(token, &(token_val.val_union.fp64_vec))) {
+          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          return -1;
+        }
+        token_val.type = 0;
+      } else {
+        if (new_feed->getColumnValues(token, &(token_val.val_union.i64_vec))) {
+          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          return -1;
+        }
+        token_val.type = 1;
+      }
+
+    } else {
+      if (fp64_run_) {
+        token_val.val_union.fp64_val = std::stod(token);
+        token_val.type = 2;
+      } else {
+        token_val.val_union.i64_val = atol(token.c_str());
+        token_val.type = 3;
+      }
+    }
+    return 0;
+  }
+
+  void init() {
+    creatNewFeedDict();
+    importColumnValues();
+  }
+
 private:
   using I64StackType = std::stack<std::vector<int64_t> *>;
   using FP64StackType = std::stack<std::vector<double> *>;
 
-  inline void beforeLocalCalculate(std::stack<std::string> &stk1,
-                                   I64StackType &val_stk, std::string &a,
-                                   std::string &b, std::vector<int64_t> *p_a,
-                                   std::vector<int64_t> *p_b);
+  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
+
+  inline void beforeLocalCalculate(std::stack<std::string> &token_stk,
+                                   std::stack<TokenValue> &val_stk,
+                                   std::string &a, std::string &b,
+                                   TokenValue &val1, TokenValue &val2);
 
   inline void afterLocalCalculate(std::stack<std::string> &stk1,
                                   I64StackType &val_stk, std::string &new_token,

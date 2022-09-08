@@ -1270,31 +1270,21 @@ MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
 //     local_col_outside.insert(std::make_pair(pair.first, pair.second));
 // }
 
-void LocalExpressExecutor::beforeLocalCalculate(std::stack<std::string> &stk1,
-                                                I64StackType &val_stk,
-                                                std::string &a, std::string &b,
-                                                std::vector<int64_t> *p_a,
-                                                std::vector<int64_t> *p_b) {
-  b = stk1.top();
-  stk1.pop();
-  a = stk1.top();
-  stk1.pop();
-
-  p_b = val_stk.top();
-  val_stk.pop();
-  p_a = val_stk.top();
-  val_stk.pop();
+void LocalExpressExecutor::beforeLocalCalculate(
+    std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
+    std::string &a, std::string &b, TokenValue &val1, TokenValue &val2) {
+  mpc_exec_->BeforeMPCRun(token_stk, val_stk, a, b, val1, val2);
 }
 
-void LocalExpressExecutor::afterLocalCalculate(std::stack<std::string> &stk1,
-                                               I64StackType &val_stk,
-                                               std::string &new_token,
-                                               std::vector<int64_t> *p_vec) {
-  stk1.push(new_token);
+void LocalExpressExecutor::afterLocalCalculate(
+    std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
+    std::string &new_token, TokenValue &res) {
+  token_stk.push(new_token);
+  token_val_map_[new_token] = res;
   val_stk.push(p_vec);
-  i64_token_val_map_.insert(std::make_pair(new_token, p_vec));
 }
 
+//加个变量，判断数据类型，计算的时候，根据类型执行不同的运算
 int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
   std::string expr = mpc_exec_->expr_;
   mpc_exec_->parseExpress(expr);
@@ -1306,24 +1296,37 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
   }
 
   std::stack<std::string> stk1;
-  I64StackType val_stk;
+  // I64StackType val_stk;
+  std::stack<TokenValue> val_stk;
 
   std::stack<std::string> &suffix_stk = mpc_exec_->suffix_stk_;
   while (!suffix_stk.empty()) {
     std::string token = suffix_stk.top();
     if (token == "+") {
       std::string a, b;
-      std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
-      std::vector<int64_t> *p_vec_sum = new std::vector<int64_t>();
+      TokenValue val1, val2, res;
+      std::string new_token;
+      beforeLocalCalculate(stk1, val_stk, val1, val2, a, b);
+      if (fp64_run_) {
+        // 0 2
+        if (val1.type != 2 && val2.type != 2) {
+          //数组相乘
+        }
 
-      beforeLocalCalculate(stk1, val_stk, a, b, p_vec_a, p_vec_b);
+      } else {
+        if (val1.type != 3 && val2.type != 3) {
 
-      p_vec_sum->resize(p_vec_a->size());
-      for (size_t i = 0; i < p_vec_b->size(); i++)
-        (*p_vec_sum)[i] = (*p_vec_a)[i] + (*p_vec_b)[i];
+          std::vector<int64_t> *p_vec_sum = new std::vector<int64_t>();
+          // std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
+          p_vec_sum->resize(p_vec_a->size());
+          for (size_t i = 0; i < p_vec_b->size(); i++)
+            (*p_vec_sum)[i] = (*p_vec_a)[i] + (*p_vec_b)[i];
 
-      std::string new_token = "(" + a + "+" + b + ")";
-      afterLocalCalculate(stk1, val_stk, new_token, p_vec_sum);
+          new_token = "(" + a + "+" + b + ")";
+        }
+      }
+
+      afterLocalCalculate(stk1, val_stk, new_token, res);
     } else if (token == "-") {
       std::string a, b;
       std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
@@ -1366,14 +1369,16 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
     } else {
       stk1.push(token);
       suffix_stk.pop();
-
-      std::vector<int64_t> *p_i64_vec = nullptr;
-      if (new_feed->getColumnValues(token, &p_i64_vec)) {
-        LOG(ERROR) << "Get column value with name " << token << " failed.";
+      //判断token时否为矩阵符号，是就按如下执行，否则要按常数处理
+      TokenValue token_val;
+      if (createTokenValue(token, token_val)) {
+        LOG(ERROR) << "Construct token value for token '" << token
+                   << "' failed.";
         return -1;
       }
 
-      val_stk.push(p_i64_vec);
+      val_stk.push(token_val);
+      token_val_map_[token] = token_val;
     }
   }
 
@@ -1381,6 +1386,7 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
     suffix_stk.push(stk1.top());
     stk1.pop();
   }
+  return 0;
 }
 
 int LocalExpressExecutor::runLocalEvaluate(std::vector<double> &eval_res) {
