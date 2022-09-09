@@ -1248,28 +1248,6 @@ void MPCExpressExecutor::Clean(void) {
 
 MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
 
-// void LocalExpressExecutor::beforeLocalEvaluate(void) {
-//   std::map<std::string, bool> &local_col_outside =
-//       mpc_exec_->col_config_->local_col_;
-//   for (auto &pair : local_col_outside)
-//     local_col_.insert(std::make_pair(pair.first, pair.second));
-
-//   for (auto iter = local_col_outside.begin(); iter !=
-//   local_col_outside.end();
-//        iter++)
-//     if (iter->second == false)
-//       iter->second = true;
-// }
-
-// void LocalExpressExecutor::afterLocalEvaluate(void) {
-//   std::map<std::string, bool> &local_col_outside =
-//       mpc_exec_->col_config_->local_col_;
-//   local_col_outside.clear();
-
-//   for (auto &pair : local_col_)
-//     local_col_outside.insert(std::make_pair(pair.first, pair.second));
-// }
-
 void LocalExpressExecutor::beforeLocalCalculate(
     std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
     TokenValue &val1, TokenValue &val2, std::string &a, std::string &b) {

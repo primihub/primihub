@@ -162,8 +162,6 @@ TEST(mpc_express_executor, fp64_executor_test) {
 
       LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
       local_exec->init(col_and_val_n);
-      // local_exec->creatNewFeedDict();
-      // local_exec->importColumnValues(col_and_val_n);
       local_exec->runLocalEvaluate();
 
     } else if (std::string(std::getenv("MPC_PARTY")) ==

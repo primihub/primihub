@@ -246,9 +246,7 @@ public:
     this->mpc_exec_ = mpc_exec;
   }
 
-  // void beforeLocalEvaluate(void);
   int runLocalEvaluate();
-  // void afterLocalEvaluate(void);
 
   int createTokenValue(const std::string &token,
                        MPCExpressExecutor::TokenValue &token_val);
