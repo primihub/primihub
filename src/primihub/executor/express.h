@@ -246,97 +246,54 @@ public:
     this->mpc_exec_ = mpc_exec;
   }
 
-  void beforeLocalEvaluate(void);
-  int runLocalEvaluate(std::vector<double> &eval_res);
-  int runLocalEvaluate(std::vector<int64_t> &eval_res);
+  // void beforeLocalEvaluate(void);
+  int runLocalEvaluate();
   // void afterLocalEvaluate(void);
 
-  void createNewColumnConfig() {
-    new_col_cfg =
-        new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->node_id_);
-    std::map<std::string, bool> &local_col_outside =
-        mpc_exec_->col_config_->local_col_;
-    for (auto &pair : local_col_outside)
-      new_col_cfg->local_col_.insert(std::make_pair(pair.first, true));
-    std::map<std::string, ColDtype> &local_col_dtype =
-        mpc_exec_->col_config_->col_dtype_;
-    for (auto &pair : local_col_dtype)
-      new_col_cfg->col_dtype_.insert(std::make_pair(pair.first, pair.second));
-
-    std::map<std::string, ColDtype> col_dtype_;
-  }
-
-  void creatNewFeedDict() {
-    // old_feed = mpc_exec_->feed_dict_;
-    createNewColumnConfig();
-    new_feed =
-        new MPCExpressExecutor::FeedDict(new_col_cfg, mpc_exec_->fp64_run_);
-  }
+  int createTokenValue(const std::string &token,
+                       MPCExpressExecutor::TokenValue &token_val);
 
   template <typename T>
-  static void
-  importColumnValues(std::map<std::string, std::vector<T>> &col_and_val) {
+  void init(std::map<std::string, std::vector<T>> &col_and_val) {
+    createNewColumnConfig();
+    creatNewFeedDict();
+    importColumnValues(col_and_val);
+  }
+
+private:
+  // using I64StackType = std::stack<std::vector<int64_t> *>;
+  // using FP64StackType = std::stack<std::vector<double> *>;
+
+  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
+
+  void createNewColumnConfig();
+
+  void creatNewFeedDict();
+
+  template <typename T>
+  void importColumnValues(std::map<std::string, std::vector<T>> &col_and_val) {
     for (auto &pair : col_and_val)
       new_feed->importColumnValues(pair.first, pair.second);
     return;
   }
 
-  int createTokenValue(const std::string &token,
-                       MPCExpressExecutor::TokenValue &token_val) {
-    TokenType type = mpc_exec_->token_type_map_[token];
-    if (type == TokenType::COLUMN) {
-      if (fp64_run_) {
-        if (new_feed->getColumnValues(token, &(token_val.val_union.fp64_vec))) {
-          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
-          return -1;
-        }
-        token_val.type = 0;
-      } else {
-        if (new_feed->getColumnValues(token, &(token_val.val_union.i64_vec))) {
-          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
-          return -1;
-        }
-        token_val.type = 1;
-      }
+  inline void
+  beforeLocalCalculate(std::stack<std::string> &token_stk,
+                       std::stack<MPCExpressExecutor::TokenValue> &val_stk,
+                       MPCExpressExecutor::TokenValue &val1,
+                       MPCExpressExecutor::TokenValue &val2, std::string &a,
+                       std::string &b);
 
-    } else {
-      if (fp64_run_) {
-        token_val.val_union.fp64_val = std::stod(token);
-        token_val.type = 2;
-      } else {
-        token_val.val_union.i64_val = atol(token.c_str());
-        token_val.type = 3;
-      }
-    }
-    return 0;
-  }
-
-  void init() {
-    creatNewFeedDict();
-    importColumnValues();
-  }
-
-private:
-  using I64StackType = std::stack<std::vector<int64_t> *>;
-  using FP64StackType = std::stack<std::vector<double> *>;
-
-  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
-
-  inline void beforeLocalCalculate(std::stack<std::string> &token_stk,
-                                   std::stack<TokenValue> &val_stk,
-                                   std::string &a, std::string &b,
-                                   TokenValue &val1, TokenValue &val2);
-
-  inline void afterLocalCalculate(std::stack<std::string> &stk1,
-                                  I64StackType &val_stk, std::string &new_token,
-                                  std::vector<int64_t> *p_res);
+  inline void
+  afterLocalCalculate(std::stack<std::string> &token_stk,
+                      std::stack<MPCExpressExecutor::TokenValue> &val_stk,
+                      std::string &new_token,
+                      MPCExpressExecutor::TokenValue &res);
 
   MPCExpressExecutor *mpc_exec_;
-  // std::map<std::string, bool> local_col_;
   std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
   std::map<std::string, std::vector<double> *> fp64_token_val_map_;
 
-  // MPCExpressExecutor::FeedDict *old_feed;
   MPCExpressExecutor::FeedDict *new_feed;
   MPCExpressExecutor::ColumnConfig *new_col_cfg;
 };

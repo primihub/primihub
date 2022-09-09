@@ -573,7 +573,7 @@ int MPCExpressExecutor::importExpress(const std::string &expr) {
     LOG(ERROR) << "Import express '" << expr << "' failed.";
     return -1;
   }
-
+  expr_ = expr;
   return 0;
 }
 
@@ -1272,8 +1272,8 @@ MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
 
 void LocalExpressExecutor::beforeLocalCalculate(
     std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
-    std::string &a, std::string &b, TokenValue &val1, TokenValue &val2) {
-  mpc_exec_->BeforeMPCRun(token_stk, val_stk, a, b, val1, val2);
+    TokenValue &val1, TokenValue &val2, std::string &a, std::string &b) {
+  mpc_exec_->BeforeMPCRun(token_stk, val_stk, val1, val2, a, b);
 }
 
 void LocalExpressExecutor::afterLocalCalculate(
@@ -1281,22 +1281,15 @@ void LocalExpressExecutor::afterLocalCalculate(
     std::string &new_token, TokenValue &res) {
   token_stk.push(new_token);
   token_val_map_[new_token] = res;
-  val_stk.push(p_vec);
+  val_stk.push(res);
 }
 
-//加个变量，判断数据类型，计算的时候，根据类型执行不同的运算
-int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
+int LocalExpressExecutor::runLocalEvaluate() {
   std::string expr = mpc_exec_->expr_;
+  LOG(INFO) << expr;
   mpc_exec_->parseExpress(expr);
 
-  if (mpc_exec_->fp64_run_) {
-    LOG(ERROR) << "Current run mode is FP64 but this method will get I64 "
-                  "result, which is disabled.";
-    return -1;
-  }
-
   std::stack<std::string> stk1;
-  // I64StackType val_stk;
   std::stack<TokenValue> val_stk;
 
   std::stack<std::string> &suffix_stk = mpc_exec_->suffix_stk_;
@@ -1307,93 +1300,260 @@ int LocalExpressExecutor::runLocalEvaluate(std::vector<int64_t> &eval_res) {
       TokenValue val1, val2, res;
       std::string new_token;
       beforeLocalCalculate(stk1, val_stk, val1, val2, a, b);
-      if (fp64_run_) {
-        // 0 2
+      if (mpc_exec_->fp64_run_) {
+        std::vector<double> *p_vec_sum = new std::vector<double>();
         if (val1.type != 2 && val2.type != 2) {
-          //数组相乘
+          p_vec_sum->resize(val1.val_union.fp64_vec->size());
+          for (size_t i = 0; i < p_vec_sum->size(); i++)
+            (*p_vec_sum)[i] =
+                (*val1.val_union.fp64_vec)[i] + (*val2.val_union.fp64_vec)[i];
+        } else {
+          if (val1.type == 2) {
+            p_vec_sum->resize(val2.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_sum->size(); i++)
+              (*p_vec_sum)[i] =
+                  val1.val_union.fp64_val + (*val2.val_union.fp64_vec)[i];
+          } else {
+            p_vec_sum->resize(val1.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_sum->size(); i++)
+              (*p_vec_sum)[i] =
+                  val2.val_union.fp64_val + (*val1.val_union.fp64_vec)[i];
+          }
         }
-
+        res.val_union.fp64_vec = p_vec_sum;
+        res.type = 0;
       } else {
+        std::vector<int64_t> *p_vec_sum = new std::vector<int64_t>();
         if (val1.type != 3 && val2.type != 3) {
-
-          std::vector<int64_t> *p_vec_sum = new std::vector<int64_t>();
-          // std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
-          p_vec_sum->resize(p_vec_a->size());
-          for (size_t i = 0; i < p_vec_b->size(); i++)
-            (*p_vec_sum)[i] = (*p_vec_a)[i] + (*p_vec_b)[i];
-
-          new_token = "(" + a + "+" + b + ")";
+          p_vec_sum->resize(val1.val_union.i64_vec->size());
+          for (size_t i = 0; i < p_vec_sum->size(); i++)
+            (*p_vec_sum)[i] =
+                (*val1.val_union.i64_vec)[i] + (*val2.val_union.i64_vec)[i];
+        } else {
+          if (val1.type == 3) {
+            p_vec_sum->resize(val2.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_sum->size(); i++)
+              (*p_vec_sum)[i] =
+                  val1.val_union.i64_val + (*val2.val_union.i64_vec)[i];
+          } else {
+            p_vec_sum->resize(val1.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_sum->size(); i++)
+              (*p_vec_sum)[i] =
+                  val2.val_union.i64_val + (*val1.val_union.i64_vec)[i];
+          }
         }
+        res.val_union.i64_vec = p_vec_sum;
+        res.type = 1;
       }
-
+      new_token = "(" + a + "+" + b + ")";
       afterLocalCalculate(stk1, val_stk, new_token, res);
     } else if (token == "-") {
       std::string a, b;
-      std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
-      std::vector<int64_t> *p_vec_sub = new std::vector<int64_t>();
-
-      beforeLocalCalculate(stk1, val_stk, a, b, p_vec_a, p_vec_b);
-
-      p_vec_sub->resize(p_vec_a->size());
-      for (size_t i = 0; i < p_vec_b->size(); i++)
-        (*p_vec_sub)[i] = (*p_vec_a)[i] - (*p_vec_b)[i];
-
-      std::string new_token = "(" + a + "-" + b + ")";
-      afterLocalCalculate(stk1, val_stk, new_token, p_vec_sub);
+      TokenValue val1, val2, res;
+      std::string new_token;
+      beforeLocalCalculate(stk1, val_stk, val1, val2, a, b);
+      if (mpc_exec_->fp64_run_) {
+        std::vector<double> *p_vec_sub = new std::vector<double>();
+        if (val1.type != 2 && val2.type != 2) {
+          p_vec_sub->resize(val1.val_union.fp64_vec->size());
+          for (size_t i = 0; i < p_vec_sub->size(); i++)
+            (*p_vec_sub)[i] =
+                (*val1.val_union.fp64_vec)[i] - (*val2.val_union.fp64_vec)[i];
+        } else {
+          if (val1.type == 2) {
+            p_vec_sub->resize(val2.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_sub->size(); i++)
+              (*p_vec_sub)[i] =
+                  val1.val_union.fp64_val - (*val2.val_union.fp64_vec)[i];
+          } else {
+            p_vec_sub->resize(val1.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_sub->size(); i++)
+              (*p_vec_sub)[i] =
+                  (*val1.val_union.fp64_vec)[i] - val2.val_union.fp64_val;
+          }
+        }
+        res.val_union.fp64_vec = p_vec_sub;
+        res.type = 0;
+      } else {
+        std::vector<int64_t> *p_vec_sub = new std::vector<int64_t>();
+        if (val1.type != 3 && val2.type != 3) {
+          p_vec_sub->resize(val1.val_union.i64_vec->size());
+          for (size_t i = 0; i < p_vec_sub->size(); i++)
+            (*p_vec_sub)[i] =
+                (*val1.val_union.i64_vec)[i] - (*val2.val_union.i64_vec)[i];
+        } else {
+          if (val1.type == 3) {
+            p_vec_sub->resize(val2.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_sub->size(); i++)
+              (*p_vec_sub)[i] =
+                  val1.val_union.i64_val - (*val2.val_union.i64_vec)[i];
+          } else {
+            p_vec_sub->resize(val1.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_sub->size(); i++)
+              (*p_vec_sub)[i] =
+                  (*val1.val_union.i64_vec)[i] - val2.val_union.i64_val;
+          }
+        }
+        res.val_union.i64_vec = p_vec_sub;
+        res.type = 1;
+      }
+      new_token = "(" + a + "-" + b + ")";
+      afterLocalCalculate(stk1, val_stk, new_token, res);
     } else if (token == "*") {
       std::string a, b;
-      std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
-      std::vector<int64_t> *p_vec_mul = new std::vector<int64_t>();
-
-      beforeLocalCalculate(stk1, val_stk, a, b, p_vec_a, p_vec_b);
-
-      p_vec_mul->resize(p_vec_a->size());
-      for (size_t i = 0; i < p_vec_b->size(); i++)
-        (*p_vec_mul)[i] = (*p_vec_a)[i] * (*p_vec_b)[i];
-
-      std::string new_token = "(" + a + "*" + b + ")";
-      afterLocalCalculate(stk1, val_stk, new_token, p_vec_mul);
+      TokenValue val1, val2, res;
+      std::string new_token;
+      beforeLocalCalculate(stk1, val_stk, val1, val2, a, b);
+      if (mpc_exec_->fp64_run_) {
+        std::vector<double> *p_vec_mul = new std::vector<double>();
+        if (val1.type != 2 && val2.type != 2) {
+          p_vec_mul->resize(val1.val_union.fp64_vec->size());
+          for (size_t i = 0; i < p_vec_mul->size(); i++)
+            (*p_vec_mul)[i] =
+                (*val1.val_union.fp64_vec)[i] * (*val2.val_union.fp64_vec)[i];
+        } else {
+          if (val1.type == 2) {
+            p_vec_mul->resize(val2.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_mul->size(); i++)
+              (*p_vec_mul)[i] =
+                  val1.val_union.fp64_val * (*val2.val_union.fp64_vec)[i];
+          } else {
+            p_vec_mul->resize(val1.val_union.fp64_vec->size());
+            for (size_t i = 0; i < p_vec_mul->size(); i++)
+              (*p_vec_mul)[i] =
+                  (*val1.val_union.fp64_vec)[i] * val2.val_union.fp64_val;
+          }
+        }
+        res.val_union.fp64_vec = p_vec_mul;
+        res.type = 0;
+      } else {
+        std::vector<int64_t> *p_vec_mul = new std::vector<int64_t>();
+        if (val1.type != 3 && val2.type != 3) {
+          p_vec_mul->resize(val1.val_union.i64_vec->size());
+          for (size_t i = 0; i < p_vec_mul->size(); i++)
+            (*p_vec_mul)[i] =
+                (*val1.val_union.i64_vec)[i] * (*val2.val_union.i64_vec)[i];
+        } else {
+          if (val1.type == 3) {
+            p_vec_mul->resize(val2.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_mul->size(); i++)
+              (*p_vec_mul)[i] =
+                  val1.val_union.i64_val * (*val2.val_union.i64_vec)[i];
+          } else {
+            p_vec_mul->resize(val1.val_union.i64_vec->size());
+            for (size_t i = 0; i < p_vec_mul->size(); i++)
+              (*p_vec_mul)[i] =
+                  (*val1.val_union.i64_vec)[i] * val2.val_union.i64_val;
+          }
+        }
+        res.val_union.i64_vec = p_vec_mul;
+        res.type = 1;
+      }
+      new_token = "(" + a + "*" + b + ")";
+      afterLocalCalculate(stk1, val_stk, new_token, res);
     } else if (token == "/") {
       std::string a, b;
-      std::vector<int64_t> *p_vec_a = nullptr, *p_vec_b = nullptr;
-      std::vector<int64_t> *p_vec_div = new std::vector<int64_t>();
-
-      beforeLocalCalculate(stk1, val_stk, a, b, p_vec_a, p_vec_b);
-
-      p_vec_div->resize(p_vec_a->size());
-      for (size_t i = 0; i < p_vec_b->size(); i++)
-        (*p_vec_div)[i] = (*p_vec_a)[i] / (*p_vec_b)[i];
-
-      std::string new_token = "(" + a + "/" + b + ")";
-      afterLocalCalculate(stk1, val_stk, new_token, p_vec_div);
+      TokenValue val1, val2, res;
+      std::string new_token;
+      beforeLocalCalculate(stk1, val_stk, val1, val2, a, b);
+      std::vector<double> *p_vec_div = new std::vector<double>();
+      if (val1.type != 2 && val2.type != 2) {
+        p_vec_div->resize(val1.val_union.fp64_vec->size());
+        for (size_t i = 0; i < p_vec_div->size(); i++)
+          (*p_vec_div)[i] =
+              (*val1.val_union.fp64_vec)[i] / (*val2.val_union.fp64_vec)[i];
+      } else {
+        if (val1.type == 2) {
+          p_vec_div->resize(val2.val_union.fp64_vec->size());
+          for (size_t i = 0; i < p_vec_div->size(); i++)
+            (*p_vec_div)[i] =
+                val1.val_union.fp64_val / (*val2.val_union.fp64_vec)[i];
+        } else {
+          p_vec_div->resize(val1.val_union.fp64_vec->size());
+          for (size_t i = 0; i < p_vec_div->size(); i++)
+            (*p_vec_div)[i] =
+                (*val1.val_union.fp64_vec)[i] / val2.val_union.fp64_val;
+        }
+      }
+      res.val_union.fp64_vec = p_vec_div;
+      res.type = 0;
+      new_token = "(" + a + "/" + b + ")";
+      afterLocalCalculate(stk1, val_stk, new_token, res);
     } else {
       stk1.push(token);
       suffix_stk.pop();
-      //判断token时否为矩阵符号，是就按如下执行，否则要按常数处理
       TokenValue token_val;
       if (createTokenValue(token, token_val)) {
         LOG(ERROR) << "Construct token value for token '" << token
                    << "' failed.";
         return -1;
       }
-
       val_stk.push(token_val);
       token_val_map_[token] = token_val;
     }
   }
-
   while (!stk1.empty()) {
     suffix_stk.push(stk1.top());
     stk1.pop();
   }
+  string final_token = suffix_stk.top();
+  suffix_stk.pop();
+  TokenValue finalVal = token_val_map_[final_token];
+  if (finalVal.type == 0)
+    for (int i = 0; i < finalVal.val_union.fp64_vec->size(); i++)
+      LOG(INFO) << (*finalVal.val_union.fp64_vec)[i];
+  else
+    for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++)
+      LOG(INFO) << (*finalVal.val_union.i64_vec)[i];
   return 0;
 }
 
-int LocalExpressExecutor::runLocalEvaluate(std::vector<double> &eval_res) {
-  std::string expr = mpc_exec_->expr_;
-  mpc_exec_->parseExpress(expr);
+void LocalExpressExecutor::createNewColumnConfig() {
+  new_col_cfg =
+      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->node_id_);
+  std::map<std::string, bool> &local_col_outside =
+      mpc_exec_->col_config_->local_col_;
+  for (auto &pair : local_col_outside)
+    new_col_cfg->local_col_.insert(std::make_pair(pair.first, true));
+  std::map<std::string, MPCExpressExecutor::ColumnConfig::ColDtype>
+      &local_col_dtype = mpc_exec_->col_config_->col_dtype_;
+  for (auto &pair : local_col_dtype)
+    new_col_cfg->col_dtype_.insert(std::make_pair(pair.first, pair.second));
 
-  return 0;
+  std::map<std::string, MPCExpressExecutor::ColumnConfig::ColDtype> col_dtype_;
 }
 
+void LocalExpressExecutor::creatNewFeedDict() {
+  new_feed =
+      new MPCExpressExecutor::FeedDict(new_col_cfg, mpc_exec_->fp64_run_);
+}
+
+int LocalExpressExecutor::createTokenValue(
+    const std::string &token, MPCExpressExecutor::TokenValue &token_val) {
+  MPCExpressExecutor::TokenType type = mpc_exec_->token_type_map_[token];
+  if (type == MPCExpressExecutor::TokenType::COLUMN) {
+    if (mpc_exec_->fp64_run_) {
+      if (new_feed->getColumnValues(token, &(token_val.val_union.fp64_vec))) {
+        LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+        return -1;
+      }
+      token_val.type = 0;
+    } else {
+      if (new_feed->getColumnValues(token, &(token_val.val_union.i64_vec))) {
+        LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+        return -1;
+      }
+      token_val.type = 1;
+    }
+  } else {
+    if (mpc_exec_->fp64_run_) {
+      token_val.val_union.fp64_val = std::stod(token);
+      token_val.type = 2;
+    } else {
+      token_val.val_union.i64_val = atol(token.c_str());
+      token_val.type = 3;
+    }
+  }
+  return 0;
+}
 } // namespace primihub

@@ -17,8 +17,8 @@ using namespace primihub;
 // std::string expr = "A*B-C+A+2.2";
 // std::string expr = "(A*B-C+A+2)";
 // std::string expr = "A*B-C+A+2";
-std::string expr = "(5.3-(A*B-C+A+2.2))*2.0";
-// std::string expr = "(5-(A*B-C+A+2))*2";
+// std::string expr = "(5.3-(A*B-C+A+2.2))*2.0";
+std::string expr = "(5-(A*B-C+A+2))*2";
 // std::string expr = "A*B-C+A*2.2";
 // std::string expr = "A*B-C+A*2";
 
@@ -65,8 +65,8 @@ runParty(std::map<std::string, std::vector<T>> &col_and_val,
   mpc_exec->InitFeedDict();
   importColumnValues(mpc_exec, col_and_val);
 
-  std::vector<double> final_val;
-  // std::vector<int64_t> final_val;
+  // std::vector<double> final_val;
+  std::vector<T> final_val;
   std::vector<uint8_t> parties = {0, 1};
 
   try {
@@ -151,19 +151,20 @@ TEST(mpc_express_executor, fp64_executor_test) {
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      // MPCExpressExecutor *mpc_exec =
-      runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
-               "127.0.0.1", 10010, 10020);
-      // LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      MPCExpressExecutor *mpc_exec =
+          runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
+                   "127.0.0.1", 10010, 10020);
+
+      std::map<std::string, std::vector<double>> col_and_val_n;
+      col_and_val_n.insert(std::make_pair("A", col_val_a));
+      col_and_val_n.insert(std::make_pair("B", col_val_b));
+      col_and_val_n.insert(std::make_pair("C", col_val_c));
+
+      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      local_exec->init(col_and_val_n);
       // local_exec->creatNewFeedDict();
-      // std::map<std::string, std::vector<double>> col_and_val_n;
-
-      // col_and_val_n.insert(std::make_pair("A", col_val_a));
-      // col_and_val_n.insert(std::make_pair("B", col_val_b));
-      // col_and_val_n.insert(std::make_pair("C", col_val_c));
-      // col_and_val_n.insert(std::make_pair("D", col_val_d));
-
       // local_exec->importColumnValues(col_and_val_n);
+      local_exec->runLocalEvaluate();
 
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
@@ -247,18 +248,17 @@ TEST(mpc_express_executor, i64_executor_test) {
           runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
                    "127.0.0.1", 10010, 10020);
 
-      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
-      local_exec->creatNewFeedDict();
       std::map<std::string, std::vector<int64_t>> col_and_val_n;
 
       col_and_val_n.insert(std::make_pair("A", col_val_a));
       col_and_val_n.insert(std::make_pair("B", col_val_b));
       col_and_val_n.insert(std::make_pair("C", col_val_c));
-      col_and_val_n.insert(std::make_pair("D", col_val_d));
 
-      local_exec->importColumnValues(col_and_val_n);
-      int runLocalEvaluate(std::vector<int64_t> & eval_res);
-
+      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      local_exec->init(col_and_val_n);
+      // local_exec->creatNewFeedDict();
+      // local_exec->importColumnValues(col_and_val_n);
+      local_exec->runLocalEvaluate();
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
       runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,
