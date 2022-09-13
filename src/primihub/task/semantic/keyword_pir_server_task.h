@@ -17,9 +17,20 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 
+#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/task/semantic/task.h"
+
+#include "apsi/util/csv_reader.h"
+#include "apsi/util/common_utils.h"
+
+using std::string;
+using std::unique_ptr;
+using apsi::PSIParams;
+using apsi::util::CSVReader;
+
 namespace primihub::task {
 
-class KeywordPIRServerTask {
+class KeywordPIRServerTask : public TaskBase {
 public:
     explicit KeywordPIRServerTask(const std::string &node_id,
                                   const std::string &job_id,

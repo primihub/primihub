@@ -15,6 +15,15 @@
  */
 #include "src/primihub/task/semantic/keyword_pir_client_task.h"
 
+#include "apsi/network/zmq/zmq_channel.h"
+#include "apsi/receiver.h"
+#include "apsi/util/common_utils.h"
+
+using namespace std;
+using namespace apsi;
+using namespace apsi::network;
+using namespace apsi::receiver;
+
 namespace primihub::task {
 
 KeywordPIRClientTask::KeywordPIRClientTask(const std::string &node_id,
@@ -78,8 +87,8 @@ int KeywordPIRClientTask::saveResult(
         }
     }
 
-    if (!out_file.empty()) {
-        ofstream ofs(out_file);
+    if (!result_file_path_.empty()) {
+        ofstream ofs(result_file_path_);
         ofs << csv_output.str();
     }
 
@@ -90,7 +99,7 @@ int KeywordPIRClientTask::execute() {
     ZMQReceiverChannel channel;
     channel.connect(server_address_);
     if (!channel.is_connected()) {
-        LOG(ERROR) << "Failed to connect to keyword PIR server: " << conn_addr;
+        LOG(ERROR) << "Failed to connect to keyword PIR server: " << server_address_;
         return -1;
     }
 

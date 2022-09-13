@@ -16,7 +16,66 @@
 
 #include "src/primihub/task/semantic/keyword_pir_server_task.h"
 
+#include "apsi/thread_pool_mgr.h"
+#include "apsi/sender_db.h"
+#include "apsi/oprf/oprf_sender.h"
+#include "apsi/zmq/sender_dispatcher.h"
+
+#include "seal/context.h"
+#include "seal/modulus.h"
+#include "seal/util/common.h"
+#include "seal/util/defines.h"
+
+using namespace std;
+using namespace apsi;
+using namespace apsi::sender;
+using namespace apsi::oprf;
+using namespace apsi::network;
+using namespace seal;
+using namespace seal::util;
+
 namespace primihub::task {
+
+shared_ptr<SenderDB> create_sender_db(
+    const CSVReader::DBData &db_data,
+    unique_ptr<PSIParams> psi_params,
+    OPRFKey &oprf_key,
+    size_t nonce_byte_count,
+    bool compress)
+{
+    if (!psi_params) {
+        LOG(ERROR) << "No Keyword pir parameters were given";
+        return nullptr;
+    }
+
+    shared_ptr<SenderDB> sender_db;
+    if (holds_alternative<CSVReader::LabeledData>(db_data)) {
+        try {
+            auto &labeled_db_data = get<CSVReader::LabeledData>(db_data);
+            // Find the longest label and use that as label size
+            size_t label_byte_count =
+                max_element(labeled_db_data.begin(), labeled_db_data.end(), [](auto &a, auto &b) {
+                    return a.second.size() < b.second.size();
+                })->second.size();
+
+            sender_db =
+                make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
+            sender_db->set_data(labeled_db_data);
+        } catch (const exception &ex) {
+            LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
+            return nullptr;
+        }
+    } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
+        LOG(ERROR) << "Loaded keyword pir database is without label";
+        return nullptr;
+    } else {
+        LOG(ERROR) << "Loaded keyword pir database is in an invalid state";
+        return nullptr;
+    }
+
+    oprf_key = sender_db->strip();
+    return sender_db;
+}
 
 KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
                                            const std::string &job_id,
@@ -41,11 +100,11 @@ unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
     CSVReader::DBData db_data;
 
     try {
-        CSVReader reader(db_file);
+        CSVReader reader(dataset_path_);
         tie(db_data, ignore) = reader.read();
     } catch (const exception &ex) {
         LOG(ERROR) << "Could not open or read file `" 
-                   << db_file << "`: " << ex.what();
+                   << dataset_path_ << "`: " << ex.what();
         return nullptr;
     }
     return make_unique<CSVReader::DBData>(move(db_data));
@@ -66,7 +125,7 @@ unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
                                 32,38, 41, 42, 43, 45, 46};
     query_params.query_powers.insert(1);
     for (const auto &power : query_powers) {
-        query_params.query_powers.insert(json_value_ui32(power));
+        query_params.query_powers.insert(power);
     }
 
     PSIParams::SEALParams seal_params;
@@ -78,12 +137,12 @@ unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
     seal_params.set_coeff_modulus(
         CoeffModulus::Create(poly_modulus_degree, coeff_modulus_bit_sizes));
 
-    return PSIParams(item_params, table_params, query_params, seal_params); 
+    return make_unique<PSIParams>(
+        PSIParams(item_params, table_params, query_params, seal_params)); 
 }
 
 int KeywordPIRServerTask::execute() {
-    ThreadPoolMgr::SetThreadCount(cmd.threads());
-    shared_ptr<SenderDB> sender_db;
+    ThreadPoolMgr::SetThreadCount(1);
     OPRFKey oprf_key;
     unique_ptr<PSIParams> params = _SetPsiParams();
     unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
@@ -98,25 +157,14 @@ int KeywordPIRServerTask::execute() {
                 static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
     }
 
+    atomic<bool> stop = false;
     ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
-    ZMQSenderChannel chl;
     int port = 1212;
-    stringstream ss;
-    ss << "tcp://*:" << port;
-    chl.bind(ss.str());
+    bool done_exit = true;
 
-    auto seal_context = sender_db->get_seal_context();
-    //bool logged_waiting = false;
-    while (true) {
-        unique_ptr<ZMQSenderOperation> sop;
-        if (!(sop = chl.receive_network_operation(seal_context))) {
-            this_thread::sleep_for(50ms);
-            continue;
-        }
+    dispatcher.run(stop, port, done_exit);
 
-        switch (sop->sop->type()) {
-            
-        }
-    }
+    return 0;
 }
+
 }

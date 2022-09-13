@@ -18,8 +18,19 @@
 
 #include "apsi/item.h"
 #include "apsi/match_record.h"
+#include "apsi/util/csv_reader.h"
+
+#include <vector>
 
 #include "src/primihub/task/semantic/task.h"
+
+using std::vector;
+using std::string;
+using std::pair;
+using std::unique_ptr;
+using apsi::Item;
+using apsi::receiver::MatchRecord;
+using apsi::util::CSVReader;
 
 namespace primihub::task {
 
@@ -49,6 +60,6 @@ private:
     std::string dataset_path_;
     std::string result_file_path_;
     std::string server_address_;
-}
+};
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_
