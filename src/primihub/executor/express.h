@@ -262,8 +262,6 @@ private:
   // using I64StackType = std::stack<std::vector<int64_t> *>;
   // using FP64StackType = std::stack<std::vector<double> *>;
 
-  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
-
   void createNewColumnConfig();
 
   void creatNewFeedDict();
@@ -288,10 +286,11 @@ private:
                       std::string &new_token,
                       MPCExpressExecutor::TokenValue &res);
 
-  MPCExpressExecutor *mpc_exec_;
-  std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
-  std::map<std::string, std::vector<double> *> fp64_token_val_map_;
+  // std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
+  // std::map<std::string, std::vector<double> *> fp64_token_val_map_;
 
+  MPCExpressExecutor *mpc_exec_;
+  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
   MPCExpressExecutor::FeedDict *new_feed;
   MPCExpressExecutor::ColumnConfig *new_col_cfg;
 };

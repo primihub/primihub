@@ -1534,4 +1534,25 @@ int LocalExpressExecutor::createTokenValue(
   }
   return 0;
 }
+
+LocalExpressExecutor::~LocalExpressExecutor() {
+  for (auto iter = token_val_map_.begin(); iter != token_val_map_.end();
+       iter++) {
+    switch (iter->second.type) {
+    case 5:
+      delete iter->second.val_union.sh_fp64_m;
+      break;
+    case 6:
+      delete iter->second.val_union.sh_i64_m;
+      break;
+    default:
+      break;
+    }
+  }
+  delete new_feed;
+  delete new_col_cfg;
+  delete mpc_exec_;
+  token_val_map_.clear();
+}
+
 } // namespace primihub

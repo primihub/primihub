@@ -163,15 +163,19 @@ TEST(mpc_express_executor, fp64_executor_test) {
       LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
       local_exec->init(col_and_val_n);
       local_exec->runLocalEvaluate();
-
+      delete local_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
-      runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,
-               "127.0.0.1", 10030, 10010);
+      MPCExpressExecutor *mpc_exec =
+          runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,
+                   "127.0.0.1", 10030, 10010);
+      delete mpc_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_2")) {
-      runParty(col_and_val_2, col_and_dtype, col_and_owner, "node2", 2,
-               "127.0.0.1", 10020, 10030);
+      MPCExpressExecutor *mpc_exec =
+          runParty(col_and_val_2, col_and_dtype, col_and_owner, "node2", 2,
+                   "127.0.0.1", 10020, 10030);
+      delete mpc_exec;
     }
   }
 }
