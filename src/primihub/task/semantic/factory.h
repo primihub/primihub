@@ -27,6 +27,8 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
+#include "src/primihub/task/semantic/keyword_pir_client_task.h"
+#include "src/primihub/task/semantic/keyword_pir_server_task.h"
 #if 0
 #include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/task/semantic/pir_server_task.h"
@@ -93,17 +95,50 @@ class TaskFactory {
                 return nullptr;
             }
         }
-        #if 0 
+        //#if 0 
         else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PIR_TASK) {
             auto task_param = request.task();
-            auto pir_task = std::make_shared<PIRClientTask>(node_id,
-                                                            request.task().job_id(),
-                                                            request.task().task_id(),
-                                                            &task_param, 
-                                                            dataset_service);
-            return std::dynamic_pointer_cast<TaskBase>(pir_task);
+            auto param_map = task_param.params().param_map();
+            int pir_type = PirType::ID_PIR;
+            auto param_it = param_map.find("pirType");
+            if (param_it != param_map.end()) {
+                pir_type = param_map["pirType"].value_int32();
+            }
+
+            if (pir_type == PirType::ID_PIR) {
+                #if 0
+                auto pir_task = std::make_shared<PIRClientTask>(node_id,
+                                                                request.task().job_id(),
+                                                                request.task().task_id(),
+                                                                &task_param,
+                                                                dataset_service);
+                return std::dynamic_pointer_cast<TaskBase>(pir_task);
+                #endif
+                LOG(INFO) << "Unsupported pir type: " << pir_type;
+                return nullptr;
+            } else if (pir_type == PirType::KEY_PIR) {
+                auto param_map_it = param_map.find("serverAddress");
+                if (param_map_it == param_map.end()) {
+                    auto pir_task = std::make_shared<KeywordPIRServerTask>(node_id,
+                                                                           request.task().job_id(),
+                                                                           request.task().task_id(),
+                                                                           &task_param,
+                                                                           dataset_service);
+                    return std::dynamic_pointer_cast<TaskBase>(pir_task);
+                } else {
+                    auto pir_task = std::make_shared<KeywordPIRClientTask>(node_id,
+                                                                           request.task().job_id(),
+                                                                           request.task().task_id(),
+                                                                           &task_param,
+                                                                           dataset_service);
+                    return std::dynamic_pointer_cast<TaskBase>(pir_task);
+                }
+            } else {
+                LOG(ERROR) << "Unsupported pir type: " << pir_type;
+                return nullptr;
+            }
         } 
-        #endif
+        //#endif
         else if (task_language == Language::PROTO && task_type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
             auto task_param = request.task();
             auto tee_task = std::make_shared<TEEDataProviderTask>(node_id,
