@@ -33,15 +33,14 @@
 
 
 
-#include "src/primihub/common/clp.h"
-#include "src/primihub/common/type/type.h"
+// #include "src/primihub/common/clp.h"
+// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
 
 
 namespace primihub
 {
 
-  eMatrix<double> load_data_local_logistic(const std::string &fullpath);
 
 
   // ====== Data Store Driver ======
