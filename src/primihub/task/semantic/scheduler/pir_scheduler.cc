@@ -91,6 +91,64 @@ void set_pir_request_param(const std::string &node_id,
     
 }
 
+void set_keyword_pir_request_param(const std::string &node_id,
+                                   const PeerDatasetMap &peer_dataset_map,
+                                   PushTaskRequest &taskRequest,
+                                   bool is_client) {
+    // Add params to request
+    google::protobuf::Map<std::string, ParamValue> *param_map =
+        taskRequest.mutable_task()->mutable_params()->mutable_param_map();
+    auto peer_dataset_map_it = peer_dataset_map.find(node_id);
+    if (peer_dataset_map_it == peer_dataset_map.end()) {
+        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
+        return;
+    }
+
+    std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+    for (auto &dataset_param : dataset_param_list) {
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        pv.set_value_string(dataset_param.first);
+        (*param_map)[dataset_param.second] = pv;
+    }
+
+    std::string server_address = "";
+    for (auto &pair : taskRequest.task().node_map()) {
+        if (pair.first == node_id) { // get the server address for psi client and server
+            if (is_client) {
+                continue;
+            }
+        } else {
+            if (!is_client) {
+                continue;
+            }
+        }
+
+        std::string server_addr(
+            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+
+        if (server_address == "") {
+            server_address = server_addr;
+        } else {
+            server_address = absl::StrCat(server_address, ",", server_addr);
+        }
+    }
+
+    ParamValue pv_addr;
+    pv_addr.set_var_type(VarType::STRING);
+    pv_addr.set_value_string(server_address);
+    if (is_client) {
+        (*param_map)["serverAddress"] = pv_addr;
+        DLOG(INFO) << "📤 push psi task server address : server_address, "
+                   << server_address;
+    } else {
+        (*param_map)["clientAddress"] = pv_addr;
+        DLOG(INFO) << "📤 push psi task client address : server_address, "
+                   << server_address;
+    }
+}
+
 void node_push_pir_task(const std::string &node_id,
                         const PeerDatasetMap &peer_dataset_map,
                         const PushTaskRequest &nodePushTaskRequest,
@@ -100,8 +158,23 @@ void node_push_pir_task(const std::string &node_id,
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
 
-    set_pir_request_param(node_id, peer_dataset_map,
-                      _1NodePushTaskRequest, is_client);
+    auto params = nodePushTaskRequest.task().params().param_map();
+    int pirType = PirType::ID_PIR;
+    auto param_it = params.find("pirType");
+    if (param_it != params.end()) {
+        pirType = params["pirType"].value_int32();
+    }
+
+    if (pirType == PirType::ID_PIR) {
+        set_pir_request_param(node_id, peer_dataset_map,
+                              _1NodePushTaskRequest, is_client);
+    } else if (pirType == PirType::KEY_PIR) {
+        set_keyword_pir_request_param(node_id, peer_dataset_map,
+                                      _1NodePushTaskRequest, is_client);
+    } else {
+        LOG(ERROR) << "pirType is set error.";
+        return ;
+    }
    
     // send request
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(

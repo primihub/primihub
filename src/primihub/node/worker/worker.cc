@@ -50,8 +50,7 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
             LOG(ERROR) << "Error occurs during execute task.";
 
         return;
-    } else if (type == rpc::TaskType::NODE_PSI_TASK || 
-               type == rpc::TaskType::NODE_PIR_TASK) {
+    } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
             return;
@@ -74,13 +73,42 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create psi/pir task failed.";
+            LOG(ERROR) << "Woker create psi task failed.";
             return;
         }
         int ret = pTask->execute();
         if (ret != 0)
-            LOG(ERROR) << "Error occurs during execute psi/pir task.";
-    }  else {
+            LOG(ERROR) << "Error occurs during execute psi task.";
+    } else if (type == rpc::TaskType::NODE_PIR_TASK) {
+        if (pushTaskRequest->task().node_map().size() < 2) {
+            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
+            return;
+        }
+
+        auto param_map = pushTaskRequest->task().params().param_map();
+        int pirType = PirType::ID_PIR;
+        auto param_it = param_map.find("pirType");
+        if (param_it != param_map.end()) {
+            pirType = param_map["pirType"].value_int32();
+        }
+
+        if (pirType == PirType::ID_PIR) {
+            auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
+            if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
+                return ;
+            }
+        }
+
+        auto dataset_service = nodelet->getDataService();
+        auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+        if (pTask == nullptr) {
+            LOG(ERROR) << "Woker create pir task failed.";
+            return ;
+        }
+        int ret = pTask->execute();
+        if (ret != 0)
+            LOG(ERROR) << "Error occurs during execute pir task.";
+    } else {
         LOG(WARNING) << "Requested task type is not supported.";
     }
 }
