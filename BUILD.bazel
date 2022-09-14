@@ -1083,6 +1083,25 @@ cc_test(
         ":protocol_aby3_lib",
     ],
 )
+
+cc_test(
+  name = "aby3_div_test",
+  srcs = [
+    "test/primihub/algorithm/aby3_div_test.cc",
+    "src/primihub/operator/aby3_operator.h",
+    "src/primihub/operator/aby3_operator.cc",
+  ],
+  copts= C_OPT,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":network_lib",
+    ":protocol_aby3_lib",
+  ],
+)
+
+
 cc_test(
     name = "aby3_A2B_test",
     srcs = [

@@ -2,8 +2,10 @@
 #ifndef SRC_primihub_operator_ABY3_operator_H
 #define SRC_primihub_operator_ABY3_operator_H
 
+#include <Eigen/Dense>
 #include <algorithm>
 #include <random>
+#include <unistd.h>
 #include <vector>
 
 #include "src/primihub/common/defines.h"
@@ -24,9 +26,11 @@
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
 
+#include "src/primihub/util/eigen_util.h"
+#include "src/primihub/util/log.h"
 namespace primihub {
 
-const Decimal D = D16;
+const Decimal D = D20;
 
 class MPCOperator {
 public:
@@ -35,6 +39,7 @@ public:
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
   Sh3ShareGen gen;
+  Sh3Piecewise mdivision;
   Sh3Evaluator eval;
   Sh3Runtime runtime;
   u64 partyIdx;
@@ -331,6 +336,298 @@ public:
 
   si64Matrix MPC_Mul_Const(const i64 &constInt,
                            const si64Matrix &sharedIntMatrix);
+
+  template <Decimal D> sf64Matrix<D> MPC_DReLu(const sf64Matrix<D> &Y) {
+    if (mdivision.mThresholds.size() == 0) {
+      mdivision.mThresholds.resize(1);
+      mdivision.mThresholds[0] = 0;
+      mdivision.mCoefficients.resize(2);
+      mdivision.mCoefficients[0].resize(2);
+      mdivision.mCoefficients[0][0] = 0;
+      mdivision.mCoefficients[0][1] = 0;
+      mdivision.mCoefficients[1].resize(2);
+      mdivision.mCoefficients[1][0] = 1;
+      mdivision.mCoefficients[1][1] = 0;
+    }
+
+    sf64Matrix<D> out(Y.rows(), Y.cols());
+    mdivision.eval<D>(runtime.noDependencies(), Y, out, eval);
+    return out;
+  }
+
+  template <Decimal D> eMatrix<u64> MPC_Pow(const sf64Matrix<D> &Y) {
+    sf64Matrix<D> Y_temp(Y.rows(), Y.cols());
+    sf64Matrix<D> drelu_result(Y.rows(), Y.cols());
+    eMatrix<u64> Alpha_matrix(Y.rows(), Y.cols());
+    for (int k = 0; k < Y.rows(); k++) {
+      for (int j = 0; j < Y.cols(); j++) {
+        Alpha_matrix(k, j) = 0;
+      }
+    }
+    // std::cout << "Alpha matrix initial: " << Alpha_matrix << std::endl;
+    eMatrix<double> drelu_result_temp(Y.rows(), Y.cols());
+    eMatrix<u64> rank_matrix(Y.rows(), Y.cols());
+    for (int i = 5; i >= 0; i--) {
+      // std::cout << "The " << i << "th time iteration" << std::endl;
+      // here we calculate the rank in each iteration. <<,>>can only use in
+      // integer type
+      u64 round_bound = 1 << i;
+      // u64 rank <<=  D;
+      // if (partyIdx == 0) {
+      //   std::cout << "round_bound: " << round_bound << std::endl;
+      // }
+      for (int k = 0; k < Y.rows(); k++) {
+        for (int j = 0; j < Y.cols(); j++) {
+          rank_matrix(k, j) = Alpha_matrix(k, j) + round_bound;
+        }
+      }
+      // if (partyIdx == 0) {
+      //   std::cout << "rank_matrix: " << rank_matrix << std::endl;
+      // }
+      // here we want to calculate a new sfmatrix with the sub result of
+      // (x-rank) we will use [[x]] = x1 + x2 + x3; then x1 - c, x2, x3 get the
+      // result [[x]]-c
+      // std::cout << "input Y is ? " << revealAll(Y).format(HeavyFmt)
+      //           << std::endl;
+
+      f64Matrix<D> rank_temp(Y.rows(), Y.cols());
+      for (int k = 0; k < Y.rows(); k++) {
+        for (int j = 0; j < Y.cols(); j++) {
+          rank_temp(k, j) = 1ULL << rank_matrix(k, j);
+        }
+      }
+      sf64Matrix<D> sfrank_temp(Y.rows(), Y.cols());
+      if (partyIdx == 0) { // key point here is we can use partyIdx == 0 to
+                           // present the input secret belongs to whom.
+        enc.localFixedMatrix(runtime, rank_temp, sfrank_temp).get();
+      } else {
+        enc.remoteFixedMatrix(runtime, sfrank_temp).get();
+      }
+      Y_temp = Y - sfrank_temp;
+
+      /*
+        what is mShares[0] means to?
+        what will happen if we use constant * mshares[0]?
+      */
+      // }
+      sleep(1);
+      // std::cout << "party: " << partyIdx << "Y_temp result by (x -
+      // rank_matrix)"
+      //           << revealAll(Y_temp).format(HeavyFmt) << std::endl;
+      // here we use MPC_DReLu to calculate the signal of (x-rank) and get 1 or
+      // 0.
+      drelu_result = MPC_DReLu(Y_temp);
+      // std::cout << i << "th Drelu result for Y_temp"
+      //           << revealAll(drelu_result).format(HeavyFmt) << std::endl;
+
+      drelu_result_temp = revealAll(
+          drelu_result); // ematrix should mutiply rank to get rank matrix.
+      // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
+      for (u64 i = 0; i < Alpha_matrix.size(); ++i)
+        Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
+      // Alpha_matrix += round_bound * drelu_result_temp
+      // then we use the result to multiply the rank , we get rank[i]+rank[i-1]
+      // or 0 what is important is that the rank_matrix should be all 0 at the
+      // first time.
+      // if (partyIdx == 0) {
+      //   std::cout << "Alpha_matrix: " << Alpha_matrix << std::endl;
+      // }
+    } // 5 rounds iteration.
+    // if(partyIdx == 0)
+    // if (partyIdx == 0) {
+    //   std::cout << "final partyIdx: " << partyIdx << std::endl;
+    //   std::cout << "final Alpha_matrix: " << Alpha_matrix << std::endl;
+    // }
+    return Alpha_matrix;
+  }
+
+  template <Decimal D>
+  vector<sf64<D>> MPC_sfmatrixTosfvec(const sf64Matrix<D> &X) {
+    vector<sf64<D>> dest(X.size());
+    int count = 0;
+    for (int k = 0; k < X.rows(); k++) {
+      for (int j = 0; j < X.cols(); j++) {
+        dest[count][0] = X[0](k, j);
+        dest[count][1] = X[1](k, j);
+        count++;
+      }
+    }
+    return dest;
+  }
+
+  template <Decimal D>
+  sf64Matrix<D> MPC_sfvecTosfmatrix(const vector<sf64<D>> &X, int rows,
+                                    int cols) {
+    assert(rows * cols == X.size() &&
+           "Input vector size should be consistent of output matrix!");
+    sf64Matrix<D> dest(rows, cols);
+    int count = 0;
+    for (int k = 0; k < dest.rows(); k++) {
+      for (int j = 0; j < dest.cols(); j++) {
+        dest[0](k, j) = X[count][0];
+        dest[1](k, j) = X[count][1];
+        count++;
+      }
+    }
+    return dest;
+  }
+
+  template <Decimal D>
+  void MPC_Dotproduct(const sf64Matrix<D> &A, const sf64Matrix<D> &B,
+                      sf64Matrix<D> &C, u64 shift = 0) {
+    assert(A.cols() == B.cols() && A.rows() == B.rows() &&
+           "Size of A and B should be completely consistent.");
+    vector<sf64<D>> vec_temp_A(A.size());
+    vector<sf64<D>> vec_temp_B(B.size());
+    vector<sf64<D>> vec_prod_result(C.size());
+
+    vec_temp_A = MPC_sfmatrixTosfvec(A);
+    vec_temp_B = MPC_sfmatrixTosfvec(B);
+
+    for (int i = 0; i < vec_temp_A.size(); i++) {
+      eval.asyncMul(runtime, vec_temp_A[i].i64Cast(), vec_temp_B[i].i64Cast(),
+                    vec_prod_result[i].i64Cast(), D + shift)
+          .get();
+    }
+
+    C = MPC_sfvecTosfmatrix(vec_prod_result, C.rows(), C.cols());
+  }
+
+  template <Decimal D>
+  void MPC_Dotproduct(const sf64Matrix<D> &A, const sf64Matrix<D> &B,
+                      sf64Matrix<D> &C, eMatrix<u64> shift) {
+    assert(A.cols() == B.cols() && A.rows() == B.rows() &&
+           "Size of A and B should be completely consistent.");
+    vector<sf64<D>> vec_temp_A(A.size());
+    vector<sf64<D>> vec_temp_B(B.size());
+    vector<sf64<D>> vec_prod_result(C.size());
+
+    vec_temp_A = MPC_sfmatrixTosfvec(A);
+    vec_temp_B = MPC_sfmatrixTosfvec(B);
+    int count = 0;
+    for (int k = 0; k < B.rows(); k++) {
+      for (int j = 0; j < B.cols(); j++) {
+        eval.asyncMul(runtime, vec_temp_A[count].i64Cast(),
+                      vec_temp_B[count].i64Cast(),
+                      vec_prod_result[count].i64Cast(), D + shift(k, j))
+            .get();
+        count++;
+      }
+    }
+    C = MPC_sfvecTosfmatrix(vec_prod_result, C.rows(), C.cols());
+  }
+
+  template <Decimal D>
+  void MPC_MatrixDotprod(const sf64Matrix<D> &A, const sf64Matrix<D> &B,
+                         sf64Matrix<D> &C, u64 shift = 0) {
+    assert(A.cols() == B.cols() && A.rows() == B.rows() &&
+           "Size of A and B should be completely consistent.");
+    eval.asyncDotMul(runtime, A, B, C, shift).get();
+  }
+
+  template <Decimal D>
+  void MPC_Div(const sf64Matrix<D> &A, const sf64Matrix<D> &B,
+               sf64Matrix<D> &C) {
+    /*because of the limitation of PIECEWISE, we have to input n rows and 1
+     * cols*/
+    // w0 = 2.9142-2b and 1 Note:2.9142 and 1 has been truncate by rank+1;
+    eMatrix<u64> rank = MPC_Pow(B);
+    eMatrix<u64> precision(B.rows(), B.cols());
+    eMatrix<u64> double_precision(B.rows(), B.cols());
+    // eMatrix<double> constant_two(B.rows(),B.cols());
+    f64Matrix<D> twopotnine(B.rows(), B.cols());
+    f64Matrix<D> constant_one(B.rows(), B.cols());
+    for (int k = 0; k < B.rows(); k++) {
+      for (int j = 0; j < B.cols(); j++) {
+        // constant_two(k,j) = 2;
+        twopotnine(k, j) = 2.9142 * (1 << (rank(k, j) + 1));
+        constant_one(k, j) = (1 << (rank(k, j) + 1));
+        precision(k, j) = rank(k, j) + 1;
+        double_precision(k, j) = 2 * precision(k, j);
+      }
+    }
+
+    sf64Matrix<D> sftwopotnine(B.rows(), B.cols());
+    sf64Matrix<D> sfconstant_one(B.rows(), B.cols());
+    if (partyIdx == 0) {
+      enc.localFixedMatrix(runtime, twopotnine, sftwopotnine).get();
+      enc.localFixedMatrix(runtime, constant_one, sfconstant_one).get();
+    } else {
+      enc.remoteFixedMatrix(runtime, sftwopotnine).get();
+      enc.remoteFixedMatrix(runtime, sfconstant_one).get();
+    }
+    // std::cout << "sftwopotnine result: "
+    //           << revealAll(sftwopotnine).format(HeavyFmt) << std::endl;
+    // std::cout << "sfconstant_one result: "
+    //           << revealAll(sfconstant_one).format(HeavyFmt) << std::endl;
+
+    sf64Matrix<D> temp_twob(B.rows(), B.cols());
+    sf64Matrix<D> w0(B.rows(), B.cols());
+    i64 constant_two = 2;
+    eval.asyncConstMul(constant_two, B, temp_twob); // const needn't .get()
+    w0 = sftwopotnine - temp_twob; // here means w0 has been truncate by rank+1;
+    // std::cout << "w0 result: " << revealAll(w0).format(HeavyFmt) <<
+    // std::endl; calculate: epsilon0 = (1 - bw0), epsilon1 = (1 - bw0) ^2
+    sf64Matrix<D> epsilon0(B.rows(), B.cols());
+    sf64Matrix<D> epsilon1(B.rows(), B.cols());
+    sf64Matrix<D> epsilon2(B.rows(), B.cols());
+    sf64Matrix<D> epsilon3(B.rows(), B.cols());
+    sf64Matrix<D> epsilon4(B.rows(), B.cols());
+    sf64Matrix<D> bw0(B.rows(), B.cols());
+    // vector<sf64<D>> vec_B(B.size());
+    // vector<sf64<D>> vec_w0(B.size());
+    MPC_Dotproduct(B, w0, bw0, precision);
+    // std::cout << "bw0 result: " << revealAll(bw0).format(HeavyFmt) <<
+    // std::endl;
+    epsilon0 = sfconstant_one - bw0;
+    // sf64Matrix<D> temp_epsilon0 = epsilon0;
+    // MPC_Dotproduct(epsilon0,temp_epsilon0,epsilon1);
+    MPC_Dotproduct(epsilon0, epsilon0, epsilon1, precision);
+    // std::cout << "epsilon0 result: " << revealAll(epsilon0).format(HeavyFmt)
+    //           << std::endl;
+    MPC_Dotproduct(epsilon1, epsilon1, epsilon2, precision);
+    // std::cout << "epsilon1 result: " << revealAll(epsilon1).format(HeavyFmt)
+    //           << std::endl;
+    MPC_Dotproduct(epsilon2, epsilon2, epsilon3, precision);
+    // std::cout << "epsilon2 result: " << revealAll(epsilon2).format(HeavyFmt)
+    //           << std::endl;
+    MPC_Dotproduct(epsilon3, epsilon3, epsilon4, precision);
+    // std::cout << "epsilon3 result: " << revealAll(epsilon3).format(HeavyFmt)
+    //           << std::endl;
+    // std::cout << "epsilon4 result: " << revealAll(epsilon4).format(HeavyFmt)
+    //           << std::endl;
+
+    sf64Matrix<D> aw0(B.rows(), B.cols());
+    sf64Matrix<D> epsilon0_one(B.rows(), B.cols());
+    epsilon0_one = sfconstant_one + epsilon0;
+    // std::cout << "sfconstant_one + epsilon0 result: "
+    //           << revealAll(epsilon0_one).format(HeavyFmt) << std::endl;
+    sf64Matrix<D> epsilon1_one(B.rows(), B.cols());
+    epsilon1_one = sfconstant_one + epsilon1;
+
+    sf64Matrix<D> epsilon2_one(B.rows(), B.cols());
+    epsilon2_one = sfconstant_one + epsilon2;
+
+    sf64Matrix<D> epsilon3_one(B.rows(), B.cols());
+    epsilon3_one = sfconstant_one + epsilon3;
+
+    sf64Matrix<D> epsilon4_one(B.rows(), B.cols());
+    epsilon4_one = sfconstant_one + epsilon4;
+
+    sf64Matrix<D> epsilon_prod(B.rows(), B.cols());
+    MPC_Dotproduct(A, w0, aw0, precision);
+    // std::cout << "aw0 result: " << revealAll(aw0).format(HeavyFmt) <<
+    // std::endl;
+    MPC_Dotproduct(epsilon0_one, epsilon1_one, epsilon_prod, precision);
+
+    // std::cout << "epsilon_prod result: "
+    //           << revealAll(epsilon_prod).format(HeavyFmt) << std::endl;
+    MPC_Dotproduct(epsilon_prod, w0, epsilon_prod,
+                   precision); //(1+e0)(1+e1)(1+e2)(1+e3)
+    MPC_Dotproduct(epsilon_prod, epsilon2_one, epsilon_prod, precision);
+    MPC_Dotproduct(epsilon_prod, epsilon3_one, epsilon_prod, precision);
+    MPC_Dotproduct(epsilon_prod, A, C, double_precision);
+  }
 };
 
 #endif
