@@ -22,12 +22,11 @@ public:
   // evaluate a express with MPC operator.
 
   // Method group 1: Import all column's dtype and owner.
-  void initColumnConfig(const std::string &node_id);
+  void initColumnConfig(const u32 &party_id);
 
   int importColumnDtype(const std::string &col_name, bool is_fp64);
 
-  int importColumnOwner(const std::string &col_name,
-                        const std::string &node_id);
+  int importColumnOwner(const std::string &col_name, const u32 &party_id);
 
   // Method group 2: Import express, parse and check it.
   int importExpress(const std::string &expr);
@@ -128,12 +127,11 @@ private:
   public:
     enum ColDtype { INT64, FP64 };
 
-    ColumnConfig(std::string node_id) { node_id_ = node_id; }
+    ColumnConfig(u32 party_id) { party_id_ = party_id; }
     ~ColumnConfig();
 
     int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
-    int importColumnOwner(const std::string &col_name,
-                          const std::string &node_id);
+    int importColumnOwner(const std::string &col_name, const u32 &party_id);
     int getColumnDtype(const std::string &col_name, ColDtype &dtype);
     int getColumnLocality(const std::string &col_name, bool &is_local);
     int resolveLocalColumn(void);
@@ -145,8 +143,8 @@ private:
     friend class LocalExpressExecutor;
 
   private:
-    std::string node_id_;
-    std::map<std::string, std::string> col_owner_;
+    u32 party_id_;
+    std::map<std::string, u32> col_owner_;
     std::map<std::string, ColDtype> col_dtype_;
     std::map<std::string, bool> local_col_;
   };

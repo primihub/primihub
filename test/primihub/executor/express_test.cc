@@ -50,12 +50,12 @@ template <typename T>
 static MPCExpressExecutor *
 runParty(std::map<std::string, std::vector<T>> &col_and_val,
          std::map<std::string, bool> &col_and_dtype,
-         std::map<std::string, std::string> &col_and_owner, std::string node_id,
+         std::map<std::string, std::string> &col_and_owner, u32 party_id,
          uint8_t party_id, std::string ip, uint16_t next_port,
          uint16_t prev_port) {
   MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
 
-  mpc_exec->initColumnConfig(node_id);
+  mpc_exec->initColumnConfig(party_id);
   importColumnOwner(mpc_exec, col_and_owner);
   importColumnDtype(mpc_exec, col_and_dtype);
 
@@ -150,9 +150,9 @@ TEST(mpc_express_executor, fp64_executor_test) {
     int status;
     waitpid(-1, &status, 0);
   } else {
-    if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
+    if (std::string(std::getenv("MPC_PARTY")) == u32(0)) {
       MPCExpressExecutor *mpc_exec =
-          runParty(col_and_val_0, col_and_dtype, col_and_owner, "node0", 0,
+          runParty(col_and_val_0, col_and_dtype, col_and_owner, 0, 0,
                    "127.0.0.1", 10010, 10020);
 
       std::map<std::string, std::vector<double>> col_and_val_n;
@@ -164,16 +164,14 @@ TEST(mpc_express_executor, fp64_executor_test) {
       local_exec->init(col_and_val_n);
       local_exec->runLocalEvaluate();
       delete local_exec;
-    } else if (std::string(std::getenv("MPC_PARTY")) ==
-               std::string("PARTY_1")) {
+    } else if (std::string(std::getenv("MPC_PARTY")) == u32(1)) {
       MPCExpressExecutor *mpc_exec =
-          runParty(col_and_val_1, col_and_dtype, col_and_owner, "node1", 1,
+          runParty(col_and_val_1, col_and_dtype, col_and_owner, 1, 1,
                    "127.0.0.1", 10030, 10010);
       delete mpc_exec;
-    } else if (std::string(std::getenv("MPC_PARTY")) ==
-               std::string("PARTY_2")) {
+    } else if (std::string(std::getenv("MPC_PARTY")) == u32(2)) {
       MPCExpressExecutor *mpc_exec =
-          runParty(col_and_val_2, col_and_dtype, col_and_owner, "node2", 2,
+          runParty(col_and_val_2, col_and_dtype, col_and_owner, 2, 2,
                    "127.0.0.1", 10020, 10030);
       delete mpc_exec;
     }

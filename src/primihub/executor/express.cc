@@ -30,7 +30,7 @@ int MPCExpressExecutor::ColumnConfig::importColumnDtype(
 }
 
 int MPCExpressExecutor::ColumnConfig::importColumnOwner(
-    const std::string &col_name, const std::string &node_id) {
+    const std::string &col_name, const u32 &party_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
     LOG(ERROR) << "Column " << col_name
@@ -38,7 +38,7 @@ int MPCExpressExecutor::ColumnConfig::importColumnOwner(
     return -1;
   }
 
-  col_owner_.insert(std::make_pair(col_name, node_id));
+  col_owner_.insert(std::make_pair(col_name, party_id));
   return 0;
 }
 
@@ -69,7 +69,7 @@ int MPCExpressExecutor::ColumnConfig::resolveLocalColumn(void) {
   }
 
   for (auto iter = col_owner_.begin(); iter != col_owner_.end(); iter++) {
-    if (iter->second == node_id_)
+    if (iter->second == party_id)
       local_col_.insert(std::make_pair(iter->first, true));
     else
       local_col_.insert(std::make_pair(iter->first, false));
@@ -125,7 +125,7 @@ void MPCExpressExecutor::ColumnConfig::Clean(void) {
   col_owner_.clear();
   col_dtype_.clear();
   local_col_.clear();
-  node_id_ = "";
+  // node_id_ = "";
 }
 
 MPCExpressExecutor::ColumnConfig::~ColumnConfig() { Clean(); }
@@ -523,8 +523,8 @@ void MPCExpressExecutor::parseExpress(const std::string &expr) {
   return;
 }
 
-void MPCExpressExecutor::initColumnConfig(const std::string &node_id) {
-  col_config_ = new ColumnConfig(node_id);
+void MPCExpressExecutor::initColumnConfig(const u32 &party_id) {
+  col_config_ = new ColumnConfig(party_id);
 }
 
 int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
@@ -547,9 +547,9 @@ int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
 }
 
 int MPCExpressExecutor::importColumnOwner(const std::string &col_name,
-                                          const std::string &node_id) {
-  LOG(INFO) << "Column " << col_name << " belong to " << node_id << ".";
-  return col_config_->importColumnOwner(col_name, node_id);
+                                          const u32 &party_id) {
+  LOG(INFO) << "Column " << col_name << " belong to " << party_id << ".";
+  return col_config_->importColumnOwner(col_name, party_id);
 }
 
 void MPCExpressExecutor::InitFeedDict(void) {
@@ -1488,7 +1488,7 @@ int LocalExpressExecutor::runLocalEvaluate() {
 
 void LocalExpressExecutor::createNewColumnConfig() {
   new_col_cfg =
-      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->node_id_);
+      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->party_id);
   std::map<std::string, bool> &local_col_outside =
       mpc_exec_->col_config_->local_col_;
   for (auto &pair : local_col_outside)
