@@ -1043,6 +1043,56 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
+void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
+                                       TokenValue &res) {
+
+  sf64Matrix<D> sh_val1, sh_val2;
+  sf64Matrix<D> *p_sh_val1 = nullptr;
+  sf64Matrix<D> *p_sh_val2 = nullptr;
+  f64<D> constfixed;
+  eMatrix<double> temp_f64Matrix;
+
+  uint32_t val_count = feed_dict_->getColumnValuesCount();
+
+  if (val1.type == 0 || val1.type == 4) {
+    sh_val1.resize(val_count, 1);
+    createFP64Shares(val1, sh_val1);
+    p_sh_val1 = &sh_val1;
+  } else if (val1.type == 2) {
+    temp_f64Matrix.resize(val_count, 1);
+    sh_val1.resize(val_count, 1);
+    for (u64 i = 0; i < val_count; i++)
+      temp_f64Matrix(i, 0) = val1.val_union.fp64_val;
+    // createshares
+    if (party_id_ == 0)
+      mpc_op_->createShares<D>(temp_f64Matrix, sh_val1);
+    else
+      mpc_op_->createShares<D>(sh_val1);
+    p_sh_val1 = &sh_val1;
+  } else {
+    p_sh_val1 = val1.val_union.sh_fp64_m;
+  }
+  if (val2.type == 0 || val2.type == 4) {
+    sh_val2.resize(val_count, 1);
+    createFP64Shares(val2, sh_val2);
+    p_sh_val2 = &sh_val2;
+  } else if (val2.type == 2) {
+    constfixed = val2.val_union.fp64_val;
+  } else {
+    p_sh_val2 = val2.val_union.sh_fp64_m;
+  }
+  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  if (val1.type != 2 && val2.type != 2) {
+    *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
+  } else {
+    if (val1.type == 2)
+      *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
+    else
+      *sh_res = mpc_op_->MPC_Mul_Const(1 / constfixed, *p_sh_val1);
+  }
+  createTokenValue(sh_res, res);
+}
+
 void MPCExpressExecutor::BeforeMPCRun(std::stack<std::string> &token_stk,
                                       std::stack<TokenValue> &val_stk,
                                       TokenValue &val1, TokenValue &val2,
@@ -1133,7 +1183,7 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
-      // TODO: Add MPC Div implement.
+      runMPCDivFP64(val1, val2, res);
 
       std::string new_token = "(" + a + "/" + b + ")";
       AfterMPCRun(stk1, val_stk, new_token, res);

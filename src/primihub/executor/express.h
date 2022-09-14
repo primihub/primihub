@@ -221,6 +221,8 @@ private:
 
   void runMPCMulI64(TokenValue &val1, TokenValue &val2, TokenValue &res);
 
+  void runMPCDivFP64(TokenValue &val1, TokenValue &val2, TokenValue &res);
+
   bool isOperator(const char op);
   bool isOperator(const std::string &op);
   int Priority(const char str);

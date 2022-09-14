@@ -526,11 +526,13 @@ public:
   }
 
   template <Decimal D>
-  void MPC_Div(const sf64Matrix<D> &A, const sf64Matrix<D> &B,
-               sf64Matrix<D> &C) {
+  sf64Matrix<D> MPC_Div(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
     /*because of the limitation of PIECEWISE, we have to input n rows and 1
      * cols*/
     // w0 = 2.9142-2b and 1 Note:2.9142 and 1 has been truncate by rank+1;
+    if (A.cols() != B.cols() || A.rows() != B.rows())
+      throw std::runtime_error(LOCATION);
+    sf64Matrix<D> ret(A.rows(), B.cols());
     eMatrix<u64> rank = MPC_Pow(B);
     eMatrix<u64> precision(B.rows(), B.cols());
     eMatrix<u64> double_precision(B.rows(), B.cols());
@@ -626,7 +628,8 @@ public:
                    precision); //(1+e0)(1+e1)(1+e2)(1+e3)
     MPC_Dotproduct(epsilon_prod, epsilon2_one, epsilon_prod, precision);
     MPC_Dotproduct(epsilon_prod, epsilon3_one, epsilon_prod, precision);
-    MPC_Dotproduct(epsilon_prod, A, C, double_precision);
+    MPC_Dotproduct(epsilon_prod, A, ret, double_precision);
+    return ret;
   }
 };
 
