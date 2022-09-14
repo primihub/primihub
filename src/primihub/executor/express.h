@@ -243,7 +243,7 @@ public:
   LocalExpressExecutor(MPCExpressExecutor *mpc_exec) {
     this->mpc_exec_ = mpc_exec;
   }
-
+  ~LocalExpressExecutor();
   int runLocalEvaluate();
 
   int createTokenValue(const std::string &token,

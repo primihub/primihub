@@ -69,7 +69,7 @@ int MPCExpressExecutor::ColumnConfig::resolveLocalColumn(void) {
   }
 
   for (auto iter = col_owner_.begin(); iter != col_owner_.end(); iter++) {
-    if (iter->second == party_id)
+    if (iter->second == party_id_)
       local_col_.insert(std::make_pair(iter->first, true));
     else
       local_col_.insert(std::make_pair(iter->first, false));
@@ -1488,7 +1488,7 @@ int LocalExpressExecutor::runLocalEvaluate() {
 
 void LocalExpressExecutor::createNewColumnConfig() {
   new_col_cfg =
-      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->party_id);
+      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->party_id_);
   std::map<std::string, bool> &local_col_outside =
       mpc_exec_->col_config_->local_col_;
   for (auto &pair : local_col_outside)
