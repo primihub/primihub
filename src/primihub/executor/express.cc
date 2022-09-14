@@ -1087,8 +1087,10 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   } else {
     if (val1.type == 2)
       *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
-    else
-      *sh_res = mpc_op_->MPC_Mul_Const(1 / constfixed, *p_sh_val1);
+    else {
+      constfixed.mValue = 1.0 / constfixed.mValue;
+      *sh_res = mpc_op_->MPC_Mul_Const(constfixed, *p_sh_val1);
+    }
   }
   createTokenValue(sh_res, res);
 }
