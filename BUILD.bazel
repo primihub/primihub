@@ -508,6 +508,7 @@ cc_library(
   linkopts = LINK_OPTS,
 )
 
+
 DEFAULT_TASK_LIB_DEPS = [
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
@@ -855,6 +856,22 @@ pybind_extension(
 py_library(
     name = "primihub_channel",
     data = ["primihub_channel.so"],
+)
+
+pybind_extension(
+    name = "pympc", 
+    srcs = [
+        "src/primihub/pybind_warpper/express_wrapper.cc",
+        "src/primihub/pybind_warpper/express_wrapper.h"
+    ],
+    deps = [
+        ":mpc_express_executor"
+    ],
+)
+
+py_library(
+    name = "pympc",
+    data = ["pympc.so"]
 )
 
 cc_binary(
