@@ -627,7 +627,7 @@ int MPCExpressExecutor::resolveRunMode(void) {
   return 0;
 }
 
-void MPCExpressExecutor::initMPCRuntime(uint8_t party_id, const std::string &ip,
+void MPCExpressExecutor::initMPCRuntime(uint32_t party_id, const std::string &ip,
                                         uint16_t next_port,
                                         uint16_t prev_port) {
   std::string next_name;
@@ -1212,7 +1212,7 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
   return 0;
 }
 
-void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
+void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
                                          std::vector<double> &val_vec) {
   std::string final_token = suffix_stk_.top();
   suffix_stk_.pop();
@@ -1241,7 +1241,7 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
   return;
 }
 
-void MPCExpressExecutor::revealMPCResult(std::vector<uint8_t> &parties,
+void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
                                          std::vector<int64_t> &val_vec) {
   std::string final_token = suffix_stk_.top();
   suffix_stk_.pop();

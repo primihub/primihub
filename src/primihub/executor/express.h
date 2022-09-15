@@ -44,16 +44,16 @@ public:
                          std::vector<double> &col_vec);
 
   // Method group 5: Init MPC operator.
-  void initMPCRuntime(uint8_t party_id, const std::string &ip,
+  void initMPCRuntime(uint32_t party_id, const std::string &ip,
                       uint16_t next_port, uint16_t prev_port);
 
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);
 
   // Method group 7: Reveal MPC result to one or more parties.
-  void revealMPCResult(std::vector<uint8_t> &party, std::vector<double> &vec);
+  void revealMPCResult(std::vector<uint32_t> &party, std::vector<double> &vec);
 
-  void revealMPCResult(std::vector<uint8_t> &party, std::vector<int64_t> &vec);
+  void revealMPCResult(std::vector<uint32_t> &party, std::vector<int64_t> &vec);
 
   // Method group end;
 
@@ -237,7 +237,7 @@ private:
   FeedDict *feed_dict_;
   std::map<std::string, TokenValue> token_val_map_;
   std::map<std::string, TokenType> token_type_map_;
-  uint8_t party_id_;
+  uint32_t party_id_;
 };
 
 class LocalExpressExecutor {

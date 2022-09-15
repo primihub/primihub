@@ -6,7 +6,7 @@
 #include "src/primihub/pybind_warpper/express_wrapper.h"
 
 namespace primihub {
-PyMPCExpressExecutor::PyMPCExpressExecutor(uint8_t party_id) {
+PyMPCExpressExecutor::PyMPCExpressExecutor(uint32_t party_id) {
   if ((party_id == 0) || (party_id == 1) || (party_id == 2)) {
     this->party_id_ = party_id;
   } else {
@@ -36,7 +36,7 @@ void PyMPCExpressExecutor::importColumnConfig(py::dict &col_owner,
 
   for (const std::pair<py::handle, py::handle> &item : col_owner) {
     col_name = item.first.cast<std::string>();
-    party_id = item.second.cast<uint8_t>();
+    party_id = item.second.cast<uint32_t>();
     if (importColumnOwner(col_name, party_id)) {
       std::stringstream ss;
       ss << "Import column " << col_name << " and it's owner's party id "
@@ -97,7 +97,7 @@ void PyMPCExpressExecutor::importFP64ColumnValues(std::string &name,
   return;
 }
 
-void PyMPCExpressExecutor::runMPCEvaluate(uint8_t party_id,
+void PyMPCExpressExecutor::runMPCEvaluate(uint32_t party_id,
                                           const std::string &ip,
                                           uint16_t next_port,
                                           uint16_t prev_port) {
@@ -107,9 +107,9 @@ void PyMPCExpressExecutor::runMPCEvaluate(uint8_t party_id,
 }
 
 py::object PyMPCExpressExecutor::revealMPCResult(py::list &party_list) {
-  std::vector<uint8_t> party;
+  std::vector<uint32_t> party;
   for (auto v : party_list)
-    party.emplace_back(v.cast<uint8_t>());
+    party.emplace_back(v.cast<uint32_t>());
 
   if (isFP64RunMode()) {
     std::vector<double> vec;
@@ -143,8 +143,8 @@ py::object PyMPCExpressExecutor::revealMPCResult(py::list &party_list) {
 }; // namespace primihub
 
 PYBIND11_MODULE(pympc, m) {
-  py::class_<primihub::PyMPCExpressExecutor>(m, "Executor")
-      .def(py::init<uint8_t>())
+  py::class_<primihub::PyMPCExpressExecutor>(m, "ExpressExecutor")
+      .def(py::init<uint32_t>())
       .def("import_column_config",
            &primihub::PyMPCExpressExecutor::importColumnConfig)
       .def("import_column_fp64_values",
