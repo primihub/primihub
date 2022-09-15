@@ -532,13 +532,13 @@ public:
     // w0 = 2.9142-2b and 1 Note:2.9142 and 1 has been truncate by rank+1;
     if (A.cols() != B.cols() || A.rows() != B.rows())
       throw std::runtime_error(LOCATION);
-    sf64Matrix<D> ret(A.rows(), B.cols());
     eMatrix<u64> rank = MPC_Pow(B);
     eMatrix<u64> precision(B.rows(), B.cols());
     eMatrix<u64> double_precision(B.rows(), B.cols());
     // eMatrix<double> constant_two(B.rows(),B.cols());
     f64Matrix<D> twopotnine(B.rows(), B.cols());
     f64Matrix<D> constant_one(B.rows(), B.cols());
+    sf64Matrix<D> ret(A.rows(), B.cols());
     for (int k = 0; k < B.rows(); k++) {
       for (int j = 0; j < B.cols(); j++) {
         // constant_two(k,j) = 2;

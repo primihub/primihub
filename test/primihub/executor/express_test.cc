@@ -18,7 +18,8 @@ using namespace primihub;
 // std::string expr = "(A*B-C+A+2)";
 // std::string expr = "A*B-C+A+2";
 // std::string expr = "(5.3-(A*B-C+A+2.2))*2.0";
-std::string expr = "(5-(A*B-C+A+2))*2";
+std::string expr = "-100/B";
+// std::string expr = "100/(100-(A*B-C+A+2-1))";
 // std::string expr = "A*B-C+A*2.2";
 // std::string expr = "A*B-C+A*2";
 
@@ -90,15 +91,17 @@ TEST(mpc_express_executor, fp64_executor_test) {
 
   srand(time(nullptr));
   for (int i = 0; i < 2; i++)
-    col_val_a.emplace_back(i + 3.3);
+    // col_val_a.emplace_back(-i - 3.0);
+    col_val_a.emplace_back(i + 3.0);
   // col_val_a.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 2; i++)
-    col_val_b.emplace_back(i + 2.2);
+    // col_val_b.emplace_back(i + 2.0);
+    col_val_b.emplace_back(-i - 2.0);
   // col_val_b.emplace_back(rand() % 10000);
 
   for (int i = 0; i < 2; i++)
-    col_val_c.emplace_back(i + 1.1);
+    col_val_c.emplace_back(i + 1.0);
   // col_val_c.emplace_back(rand() % 10000);
 
   std::map<std::string, u32> col_and_owner;

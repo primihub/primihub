@@ -1053,7 +1053,6 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   eMatrix<double> temp_f64Matrix;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
-
   if (val1.type == 0 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createFP64Shares(val1, sh_val1);
@@ -1085,10 +1084,10 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   if (val1.type != 2 && val2.type != 2) {
     *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
   } else {
-    if (val1.type == 2)
+    if (val1.type == 2) {
       *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
-    else {
-      constfixed.mValue = 1.0 / constfixed.mValue;
+    } else {
+      constfixed = 1.0 / static_cast<double>(constfixed);
       *sh_res = mpc_op_->MPC_Mul_Const(constfixed, *p_sh_val1);
     }
   }
@@ -1184,9 +1183,9 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
       std::string a, b;
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
-
+      LOG(INFO) << "Run FP64 Div between '" << a << "' and '" << b << "'.";
       runMPCDivFP64(val1, val2, res);
-
+      LOG(INFO) << "Run FP64 Div finish.";
       std::string new_token = "(" + a + "/" + b + ")";
       AfterMPCRun(stk1, val_stk, new_token, res);
     } else {
