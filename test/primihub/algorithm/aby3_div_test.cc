@@ -108,7 +108,7 @@ TEST(add_operator, aby3_3pc_test) {
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
     f64Matrix<D20> f64fixedMatrix_B(rows, cols);
-    double divisior[4] = {6.5, 15.0, 23.2, 33.0};
+    double divisior[4] = {-6.5, -15.0, -23.2, 33.0};
     vector<double> test_number(divisior, divisior + 4);
     for (u64 i = 0; i < rows; ++i) {
       for (u64 j = 0; j < cols; ++j) {
@@ -133,7 +133,7 @@ TEST(add_operator, aby3_3pc_test) {
     // division
     sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
     sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
-    mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
+    div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
     LOG(INFO) << "div_result result "
               << mpc.revealAll(div_result).format(HeavyFmt) << std::endl;
     mpc.fini();
@@ -173,7 +173,7 @@ TEST(add_operator, aby3_3pc_test) {
     sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
 
     sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
-    mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
+    div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
 
     mpc.revealAll(div_result);
     mpc.fini();
@@ -216,7 +216,7 @@ TEST(add_operator, aby3_3pc_test) {
   // division
   sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
   sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
-  mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
+  div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
 
   mpc.revealAll(div_result);
   mpc.fini();
