@@ -245,9 +245,14 @@ public:
   LocalExpressExecutor(MPCExpressExecutor *mpc_exec) {
     this->mpc_exec_ = mpc_exec;
   }
-  ~LocalExpressExecutor();
-  int runLocalEvaluate();
 
+  ~LocalExpressExecutor();
+
+  bool isFP64RunMode(void) {
+    return mpc_exec_->isFP64RunMode(); 
+  }
+
+  int runLocalEvaluate();
   int createTokenValue(const std::string &token,
                        MPCExpressExecutor::TokenValue &token_val);
 

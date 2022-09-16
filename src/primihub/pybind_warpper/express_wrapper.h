@@ -38,6 +38,20 @@ public:
 private:
   uint32_t party_id_;
 };
+
+class PyLocalExpressExecutor : public LocalExpressExecutor {
+public:
+  PyLocalExpressExecutor(PyMPCExpressExecutor *mpc_exec);
+  void importFP64ColumnValues(std::string &owner, py::list &val_list);
+  void importI64ColumnValues(std::string &owner, py::list &val_list);
+  void finishImport(void);
+  py::list runLocalEvaluate(void);
+
+private:
+  std::map<std::string, std::vector<double> fp64_val_map_;
+  std::map<std::string, std::vector<int64_t> i64_val_map_;
+};
+
 } // namespace primihub
 
 #endif

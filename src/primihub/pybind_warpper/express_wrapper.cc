@@ -140,10 +140,38 @@ py::object PyMPCExpressExecutor::revealMPCResult(py::list &party_list) {
   }
 }
 
+PyLocalExpressExecutor::PyLocalExpressExecutor(PyMPCExpressExecutor *mpc_exec)
+    : LocalExpressExecutor(mpc_exec) {}
+
+void PyLocalExpressExecutor::importFP64ColumnValues(std::string &owner,
+                                                    py::list &val_list) {
+  std::vector<double> val_vec;
+  for (auto v : val_list)
+    val_vec.push_back(v.cast<double>());
+
+  fp64_val_map_.insert(std::make_pair(owner, val_vec);
+}
+
+void PyLocalExpressExecutor::importI64ColumnValues(std::string &owner,
+                                                   py::list &val_list) {
+  std::vector<int64_t> val_vec;
+  for (auto v : val_list)
+    val_vec.push_back(v.cast<int64_t<());
+
+  i64_val_map_.insert(std::make_pair(owner, val_vec));
+}
+
+void PyLocalExpressExecutor::finishImport(void) {
+  if (LocalExpressExecutor::isFP64RunMode())
+    LocalExpressExecutor::init(fp64_val_map_);
+  else
+    LocalExpressExecutor::init(i64_val_map_);
+}
+
 }; // namespace primihub
 
 PYBIND11_MODULE(pympc, m) {
-  py::class_<primihub::PyMPCExpressExecutor>(m, "ExpressExecutor")
+  py::class_<primihub::PyMPCExpressExecutor>(m, "MPCExpressExecutor")
       .def(py::init<uint32_t>())
       .def("import_column_config",
            &primihub::PyMPCExpressExecutor::importColumnConfig)
@@ -153,8 +181,7 @@ PYBIND11_MODULE(pympc, m) {
            &primihub::PyMPCExpressExecutor::importI64ColumnValues)
       .def("reveal_mpc_result",
            &primihub::PyMPCExpressExecutor::revealMPCResult)
-      .def("import_express", 
-           &primihub::PyMPCExpressExecutor::importExpress)
-      .def("evaluate_with_mpc", 
+      .def("import_express", &primihub::PyMPCExpressExecutor::importExpress)
+      .def("evaluate_with_mpc",
            &primihub::PyMPCExpressExecutor::runMPCEvaluate);
 }
