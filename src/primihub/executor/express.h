@@ -246,11 +246,19 @@ public:
     this->mpc_exec_ = mpc_exec;
   }
 
+  LocalExpressExecutor() {
+    this->mpc_exec_ = nullptr;
+  }
+
   ~LocalExpressExecutor();
 
   bool isFP64RunMode(void) { return mpc_exec_->isFP64RunMode(); }
 
   int runLocalEvaluate();
+
+  void setMPCExpressExecutor(MPCExpressExecutor *mpc_exec) {
+    this->mpc_exec_ = mpc_exec;
+  }
 
   template <typename T>
   void init(std::map<std::string, std::vector<T>> &col_and_val) {

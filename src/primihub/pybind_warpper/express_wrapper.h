@@ -44,7 +44,7 @@ private:
 // Warning: this class is only used for test, DON'T USE IT IN ANY APPLICATION.
 class PyLocalExpressExecutor : public LocalExpressExecutor {
 public:
-  PyLocalExpressExecutor(PyMPCExpressExecutor *mpc_exec);
+  PyLocalExpressExecutor(py::object mpc_exec_obj);
   void importColumnValues(std::string &name, py::list &val_list);
   void finishImport(void);
   py::object runLocalEvaluate(void);

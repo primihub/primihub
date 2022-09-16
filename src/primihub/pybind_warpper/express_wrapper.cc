@@ -73,7 +73,7 @@ void PyMPCExpressExecutor::importI64ColumnValues(std::string &name,
   for (auto v : val_list)
     val_vec.emplace_back(v.cast<int64_t>());
 
-  if (importColumnValues(name, val_vec)) {
+  if (MPCExpressExecutor::importColumnValues(name, val_vec)) {
     std::stringstream ss;
     ss << "Import column " << name << "'s value failed, dtype is I64.";
     throw std::runtime_error(ss.str());
@@ -88,7 +88,7 @@ void PyMPCExpressExecutor::importFP64ColumnValues(std::string &name,
   for (auto v : val_list)
     val_vec.emplace_back(v.cast<double>());
 
-  if (importColumnValues(name, val_vec)) {
+  if (MPCExpressExecutor::importColumnValues(name, val_vec)) {
     std::stringstream ss;
     ss << "Import column " << name << "'s value failed, dtype is FP64.";
     throw std::runtime_error(ss.str());
@@ -149,8 +149,11 @@ py::object PyMPCExpressExecutor::revealMPCResult(py::list &party_list) {
   }
 }
 
-PyLocalExpressExecutor::PyLocalExpressExecutor(PyMPCExpressExecutor *mpc_exec)
-    : LocalExpressExecutor(mpc_exec) {}
+PyLocalExpressExecutor::PyLocalExpressExecutor(py::object mpc_exec_obj) {
+  PyMPCExpressExecutor *mpc_exec =
+      mpc_exec_obj.cast<PyMPCExpressExecutor *>();
+  LocalExpressExecutor::setMPCExpressExecutor(mpc_exec);
+}
 
 void PyLocalExpressExecutor::importFP64ColumnValues(std::string &owner,
                                                     py::list &val_list) {
@@ -158,14 +161,14 @@ void PyLocalExpressExecutor::importFP64ColumnValues(std::string &owner,
   for (auto v : val_list)
     val_vec.push_back(v.cast<double>());
 
-  fp64_val_map_.insert(std::make_pair(owner, val_vec);
+  fp64_val_map_.insert(std::make_pair(owner, val_vec));
 }
 
 void PyLocalExpressExecutor::importI64ColumnValues(std::string &owner,
                                                    py::list &val_list) {
   std::vector<int64_t> val_vec;
   for (auto v : val_list)
-    val_vec.push_back(v.cast < int64_t < ());
+    val_vec.push_back(v.cast<int64_t>());
 
   i64_val_map_.insert(std::make_pair(owner, val_vec));
 }
@@ -200,7 +203,6 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
     for (auto v : result)
       val_list.append(v);
     return val_list;
-
   } else {
     std::vector<int64_t> result;
     LocalExpressExecutor::getFinalVal(result);
@@ -219,13 +221,19 @@ PYBIND11_MODULE(pympc, m) {
       .def(py::init<uint32_t>())
       .def("import_column_config",
            &primihub::PyMPCExpressExecutor::importColumnConfig)
-      .def("import_column_fp64_values",
-           &primihub::PyMPCExpressExecutor::importFP64ColumnValues)
-      .def("import_column_i64_values",
-           &primihub::PyMPCExpressExecutor::importI64ColumnValues)
+      .def("import_column_values",
+           &primihub::PyMPCExpressExecutor::importColumnValues)
       .def("reveal_mpc_result",
            &primihub::PyMPCExpressExecutor::revealMPCResult)
       .def("import_express", &primihub::PyMPCExpressExecutor::importExpress)
       .def("evaluate_with_mpc",
            &primihub::PyMPCExpressExecutor::runMPCEvaluate);
+
+  py::class_<primihub::PyLocalExpressExecutor>(m, "LocalExpressExecutor")
+      .def(py::init<py::object>())
+      .def("import_column_values",
+           &primihub::PyLocalExpressExecutor::importColumnValues)
+      .def("finish_import", &primihub::PyLocalExpressExecutor::finishImport)
+      .def("evaluate",
+           &primihub::PyLocalExpressExecutor::runLocalEvaluate);
 }
