@@ -164,7 +164,7 @@ TEST(mpc_express_executor, fp64_executor_test) {
       LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
       local_exec->init(col_and_val_n);
       local_exec->runLocalEvaluate();
-      // std::vector<double> final_val = local_exec->getFinalVal();
+      // std::vector<double> final_val = local_exec->getFinalVal<double>();
       delete local_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_1") {
       MPCExpressExecutor *mpc_exec =

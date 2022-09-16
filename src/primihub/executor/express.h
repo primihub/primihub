@@ -258,15 +258,13 @@ public:
     creatNewFeedDict();
     importColumnValues(col_and_val);
   }
-  template <typename T> std::vector<T> getFinalVal() {
-    std::vector<T> final_val;
+  template <typename T> void getFinalVal(std::vector<T> &final_val) {
     if (std::is_same<T, double>::value)
       for (i64 = i = 0; i < final_val_double.size(); i++)
         final_val.push_back(final_val_double[i]);
     else
       for (i64 = i = 0; i < final_val_int64.size(); i++)
         final_val.push_back(final_val_int64[i]);
-    return final_val;
   }
 
 private:
