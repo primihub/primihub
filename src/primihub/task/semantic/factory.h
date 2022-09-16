@@ -43,6 +43,7 @@ using primihub::rpc::Language;
 using primihub::rpc::TaskType;
 using primihub::service::DatasetService;
 using primihub::rpc::PsiTag;
+using primihub::rpc::PirType;
 
 namespace primihub::task {
 
