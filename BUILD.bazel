@@ -558,6 +558,8 @@ cc_library(
                     "src/primihub/task/semantic/private_server_base.cc",
                     "src/primihub/task/semantic/fl_task.cc",
                     "src/primihub/task/semantic/psi_server_task.cc",
+                    "src/primihub/task/semantic/keyword_pir_client_task.cc",
+                    "src/primihub/task/semantic/keyword_pir_server_task.cc",
                 ]),
             "//conditions:default": glob(
                 [
@@ -603,6 +605,7 @@ cc_library(
             "src/primihub/task/semantic/psi_server_task.h",
             "src/primihub/task/semantic/psi_kkrt_task.h",
             "src/primihub/task/semantic/keyword_pir_client_task.h",
+            "src/primihub/task/semantic/keyword_pir_server_task.h",
             "src/primihub/task/semantic/psi_client_task.h",
             "src/primihub/task/semantic/factory.h",
             "src/primihub/task/semantic/mpc_task.h",
