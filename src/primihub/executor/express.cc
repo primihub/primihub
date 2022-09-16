@@ -1529,11 +1529,16 @@ int LocalExpressExecutor::runLocalEvaluate() {
   suffix_stk.pop();
   TokenValue finalVal = token_val_map_[final_token];
   if (finalVal.type == 0)
-    for (int i = 0; i < finalVal.val_union.fp64_vec->size(); i++)
+    for (int i = 0; i < finalVal.val_union.fp64_vec->size(); i++) {
       LOG(INFO) << (*finalVal.val_union.fp64_vec)[i];
+      final_val_double.push_back((*finalVal.val_union.fp64_vec)[i]);
+    }
   else
-    for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++)
+    for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++) {
       LOG(INFO) << (*finalVal.val_union.i64_vec)[i];
+      final_val_int64.push_back((*finalVal.val_union.fp64_vec)[i]);
+    }
+  // return
   return 0;
 }
 

@@ -217,8 +217,8 @@ void KoggeStoneLibrary::int_int_add_msb_build_optimized(
   u64 d = log2ceil(size_a1);
   node_by_depth_.resize(d);
 
-  VLOG(3) << "Depth of circuit is " << d;
-  VLOG(3) << "Size of input is " << size_a1;
+  // VLOG(3) << "Depth of circuit is " << d;
+  // VLOG(3) << "Size of input is " << size_a1;
 
   // Resolve the dependent of C[i-1] bit in circuit built by Kogge-Stone
   // algorithm.

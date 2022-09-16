@@ -248,19 +248,25 @@ public:
 
   ~LocalExpressExecutor();
 
-  bool isFP64RunMode(void) {
-    return mpc_exec_->isFP64RunMode(); 
-  }
+  bool isFP64RunMode(void) { return mpc_exec_->isFP64RunMode(); }
 
   int runLocalEvaluate();
-  int createTokenValue(const std::string &token,
-                       MPCExpressExecutor::TokenValue &token_val);
 
   template <typename T>
   void init(std::map<std::string, std::vector<T>> &col_and_val) {
     createNewColumnConfig();
     creatNewFeedDict();
     importColumnValues(col_and_val);
+  }
+  template <typename T> std::vector<T> getFinalVal() {
+    std::vector<T> final_val;
+    if (std::is_same<T, double>::value)
+      for (i64 = i = 0; i < final_val_double.size(); i++)
+        final_val.push_back(final_val_double[i]);
+    else
+      for (i64 = i = 0; i < final_val_int64.size(); i++)
+        final_val.push_back(final_val_int64[i]);
+    return final_val;
   }
 
 private:
@@ -270,6 +276,9 @@ private:
   void createNewColumnConfig();
 
   void creatNewFeedDict();
+
+  int createTokenValue(const std::string &token,
+                       MPCExpressExecutor::TokenValue &token_val);
 
   template <typename T>
   void importColumnValues(std::map<std::string, std::vector<T>> &col_and_val) {
@@ -298,6 +307,8 @@ private:
   std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
   MPCExpressExecutor::FeedDict *new_feed;
   MPCExpressExecutor::ColumnConfig *new_col_cfg;
+  std::vector<double> final_val_double;
+  std::vector<int64_t> final_val_int64;
 };
 
 }; // namespace primihub
