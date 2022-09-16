@@ -45,6 +45,8 @@ private:
 class PyLocalExpressExecutor : public LocalExpressExecutor {
 public:
   PyLocalExpressExecutor(py::object mpc_exec_obj);
+  ~PyLocalExpressExecutor();
+
   void importColumnValues(std::string &name, py::list &val_list);
   void finishImport(void);
   py::object runLocalEvaluate(void);
@@ -55,6 +57,8 @@ private:
 
   std::map<std::string, std::vector<double>> fp64_val_map_;
   std::map<std::string, std::vector<int64_t>> i64_val_map_;
+  
+  PyObject *obj_ptr_;
 };
 
 } // namespace primihub

@@ -1284,11 +1284,22 @@ void MPCExpressExecutor::Clean(void) {
       break;
     }
   }
-
-  delete col_config_;
-  delete feed_dict_;
-  mpc_op_->fini();
-  delete mpc_op_;
+  
+  if (col_config_) {
+    delete col_config_;
+    col_config_ = nullptr;
+  }
+  
+  if (feed_dict_) {
+    delete feed_dict_;
+    feed_dict_ = nullptr;
+  }
+  
+  if (mpc_op_) {
+    mpc_op_->fini();
+    delete mpc_op_;
+    mpc_op_ = nullptr;
+  }
 
   while (!suffix_stk_.empty())
     suffix_stk_.pop();
@@ -1607,7 +1618,6 @@ LocalExpressExecutor::~LocalExpressExecutor() {
   }
   delete new_feed;
   delete new_col_cfg;
-  delete mpc_exec_;
   token_val_map_.clear();
 }
 

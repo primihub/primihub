@@ -150,9 +150,18 @@ py::object PyMPCExpressExecutor::revealMPCResult(py::list &party_list) {
 }
 
 PyLocalExpressExecutor::PyLocalExpressExecutor(py::object mpc_exec_obj) {
+  PyObject *obj = mpc_exec_obj.ptr();
+  Py_INCREF(obj);
+
   PyMPCExpressExecutor *mpc_exec =
       mpc_exec_obj.cast<PyMPCExpressExecutor *>();
   LocalExpressExecutor::setMPCExpressExecutor(mpc_exec);
+
+  obj_ptr_ = obj;
+}
+
+PyLocalExpressExecutor::~PyLocalExpressExecutor() {
+  Py_DECREF(obj_ptr_);
 }
 
 void PyLocalExpressExecutor::importFP64ColumnValues(std::string &owner,
