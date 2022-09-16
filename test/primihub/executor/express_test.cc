@@ -66,7 +66,7 @@ runParty(std::map<std::string, std::vector<T>> &col_and_val,
 
   // std::vector<double> final_val;
   std::vector<T> final_val;
-  std::vector<uint8_t> parties = {0, 1};
+  std::vector<uint32_t> parties = {0, 1};
 
   try {
     mpc_exec->initMPCRuntime(party_id, ip, next_port, prev_port);
@@ -164,7 +164,10 @@ TEST(mpc_express_executor, fp64_executor_test) {
       LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
       local_exec->init(col_and_val_n);
       local_exec->runLocalEvaluate();
-      // std::vector<double> final_val = local_exec->getFinalVal<double>();
+      std::vector<double> final_val;
+      local_exec->getFinalVal<double>(final_val);
+      for (auto itr = final_val.begin(); itr != final_val.end(); itr++)
+        LOG(INFO) << *itr;
       delete local_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_1") {
       MPCExpressExecutor *mpc_exec =
