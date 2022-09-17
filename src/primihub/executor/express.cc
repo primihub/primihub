@@ -553,7 +553,8 @@ int MPCExpressExecutor::importColumnOwner(const std::string &col_name,
 }
 
 void MPCExpressExecutor::InitFeedDict(void) {
-  feed_dict_ = new FeedDict(col_config_, fp64_run_);
+  if (!feed_dict_)
+    feed_dict_ = new FeedDict(col_config_, fp64_run_);
 }
 
 int MPCExpressExecutor::importColumnValues(const std::string &col_name,
@@ -1232,7 +1233,6 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
       LOG(INFO) << "Reveal MPC result to party "
                 << static_cast<char>(party + '0') << ", value count " << count
                 << ".";
-      LOG(INFO) << m;
     } else {
       mpc_op_->reveal(*p_final_share, party);
     }
@@ -1541,12 +1541,10 @@ int LocalExpressExecutor::runLocalEvaluate() {
   TokenValue finalVal = token_val_map_[final_token];
   if (finalVal.type == 0)
     for (int i = 0; i < finalVal.val_union.fp64_vec->size(); i++) {
-      LOG(INFO) << (*finalVal.val_union.fp64_vec)[i];
       final_val_double.push_back((*finalVal.val_union.fp64_vec)[i]);
     }
   else
     for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++) {
-      LOG(INFO) << (*finalVal.val_union.i64_vec)[i];
       final_val_int64.push_back((*finalVal.val_union.fp64_vec)[i]);
     }
   // return

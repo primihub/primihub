@@ -45,7 +45,7 @@ void PyMPCExpressExecutor::importColumnConfig(py::dict &col_owner,
     }
   }
 
-  bool is_fp64 = false;
+  bool is_fp64 = 0;
   for (const std::pair<py::handle, py::handle> &item : col_dtype) {
     is_fp64 = item.second.cast<bool>();
     col_name = item.first.cast<std::string>();
@@ -99,6 +99,8 @@ void PyMPCExpressExecutor::importFP64ColumnValues(std::string &name,
 
 void PyMPCExpressExecutor::importColumnValues(std::string &name,
                                               py::list &val_list) {
+  MPCExpressExecutor::InitFeedDict();
+
   PyObject *obj = val_list[0].ptr();
   if (PyFloat_Check(obj))
     importFP64ColumnValues(name, val_list);
@@ -153,16 +155,13 @@ PyLocalExpressExecutor::PyLocalExpressExecutor(py::object mpc_exec_obj) {
   PyObject *obj = mpc_exec_obj.ptr();
   Py_INCREF(obj);
 
-  PyMPCExpressExecutor *mpc_exec =
-      mpc_exec_obj.cast<PyMPCExpressExecutor *>();
+  PyMPCExpressExecutor *mpc_exec = mpc_exec_obj.cast<PyMPCExpressExecutor *>();
   LocalExpressExecutor::setMPCExpressExecutor(mpc_exec);
 
   obj_ptr_ = obj;
 }
 
-PyLocalExpressExecutor::~PyLocalExpressExecutor() {
-  Py_DECREF(obj_ptr_);
-}
+PyLocalExpressExecutor::~PyLocalExpressExecutor() { Py_DECREF(obj_ptr_); }
 
 void PyLocalExpressExecutor::importFP64ColumnValues(std::string &owner,
                                                     py::list &val_list) {
@@ -226,6 +225,7 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 }; // namespace primihub
 
 PYBIND11_MODULE(pympc, m) {
+  // clang-format off
   py::class_<primihub::PyMPCExpressExecutor>(m, "MPCExpressExecutor")
       .def(py::init<uint32_t>())
       .def("import_column_config",
@@ -234,15 +234,18 @@ PYBIND11_MODULE(pympc, m) {
            &primihub::PyMPCExpressExecutor::importColumnValues)
       .def("reveal_mpc_result",
            &primihub::PyMPCExpressExecutor::revealMPCResult)
-      .def("import_express", &primihub::PyMPCExpressExecutor::importExpress)
-      .def("evaluate_with_mpc",
+      .def("import_express", 
+           &primihub::PyMPCExpressExecutor::importExpress)
+      .def("evaluate",
            &primihub::PyMPCExpressExecutor::runMPCEvaluate);
 
   py::class_<primihub::PyLocalExpressExecutor>(m, "LocalExpressExecutor")
       .def(py::init<py::object>())
       .def("import_column_values",
            &primihub::PyLocalExpressExecutor::importColumnValues)
-      .def("finish_import", &primihub::PyLocalExpressExecutor::finishImport)
-      .def("evaluate",
+      .def("finish_import", 
+           &primihub::PyLocalExpressExecutor::finishImport)
+      .def("evaluate", 
            &primihub::PyLocalExpressExecutor::runLocalEvaluate);
+  // clang-format on
 }
