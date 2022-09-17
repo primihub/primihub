@@ -28,8 +28,8 @@ public:
   void importColumnValues(std::string &col_name, py::list &val_list);
 
   // 4. Evaluate express with MPC protocol.
-  void runMPCEvaluate(uint32_t party_id, const std::string &ip,
-                      uint16_t next_port, uint16_t prev_port);
+  void runMPCEvaluate(const std::string &ip, uint16_t next_port,
+                      uint16_t prev_port);
 
   // 5. Reveal MPC result to parties.
   py::object revealMPCResult(py::list &party_list);
@@ -57,7 +57,7 @@ private:
 
   std::map<std::string, std::vector<double>> fp64_val_map_;
   std::map<std::string, std::vector<int64_t>> i64_val_map_;
-  
+
   PyObject *obj_ptr_;
 };
 

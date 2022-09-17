@@ -13,7 +13,7 @@ def run_mpc_party(party_id, expr, col_owner, col_dtype,
     for name, val in col_val.items():
         mpc_exec.import_column_values(name, val)
 
-    mpc_exec.evaluate(party_id, party_addr[0], party_addr[1], party_addr[2])
+    mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2])
     result = mpc_exec.reveal_mpc_result(reveal_party)
 
     return mpc_exec, result
