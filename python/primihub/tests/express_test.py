@@ -65,6 +65,9 @@ if __name__ == '__main__':
     mpc_exec = res[0]
     mpc_result = res[1]
 
+    party_1_proc.join()
+    party_2_proc.join()
+
     # Run local evaluate.
     local_exec = pympc.LocalExpressExecutor(mpc_exec)
     local_exec.import_column_values("A", col_A)
