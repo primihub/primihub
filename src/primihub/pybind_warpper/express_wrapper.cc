@@ -223,6 +223,77 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 
 }; // namespace primihub
 
+//
+// A brief introduction to usage of MPCExpressExecutor class.
+//
+// The MPCExpressExecutor class aim to evaluate express like A+B*C-D, and A, B,
+// C, D is column name of database in different company or organization, these
+// company and organization is called party in MPC. Now the calss only support
+// three party MPC.
+//
+// Before introduct the usage of the class, assume something to help understand
+// them. First, assume that there are three company which act as three party in
+// MPC. Second, column A belond to the first party (called party 0), column B
+// belong to second party (called party 1), column C, D belong to third party
+// (called party 2). Third, all value of column A is float value, all value of
+// column B is float value, all value of column C is float value.
+//
+// The usage of this class is that:
+// 0. Create class instance.
+//    for every party:
+//      # party_id is every party's party id, must not be the same.
+//      mpc_exec = pympc.MPCExpressExecutor(party_id)
+//
+// 1.Import column's owner and data type.
+//    for every party:
+//      define a dict that save all column's owner (party id):
+//        col_owner = {"A": 0, "B": 1, "C": 2, "D": 2}
+//
+//      define a dict that save all column's dtype, notice that 'true' means
+//      this column has data type float:
+//        col_dtype = {"A": true, "B": true, "C": true, "D": true}
+//
+//      import them into class instance:
+//        mpc_exec.import_column_config(col_owner, col_dtype)
+//
+//      # Notice all party shoule provide the same col_owner and col_dtype to
+//      # this two interface.
+//
+// 2.Import express.
+//    for every party:
+//      expr = "A+B*C-D"
+//      mpc_exec.import_express(expr)
+//      # expr imported in every party should be the same.
+//
+// 3.Import column's value.
+//    for party 0:
+//      val_a = []
+//      # do something to fill this list.
+//      mpc_exec.import_column_values("A", val_a)
+//
+//    for party 1:
+//      val_b = []
+//      # do something to fill this list.
+//      mpc_exec.import_column_values("B", val_b)
+//
+//    for party 2:
+//      val_c = []
+//      val_d = []
+//      # do something to fill the two list.
+//      mpc_exec.import_column_values("C", val_c)
+//      mpc_exec.import_column_values("D", val_d)
+//
+// 4.Evaluate with MPC protocol.
+//    for every party:
+//      mpc_exec.evaluate()
+//
+// 5.Get evaluate result.
+//    define a list to hold which party will get evaluate result:
+//      reveal_list = [0, 1, 2] # a list of party id.
+//
+//    reveal evaluate result:
+//      mpc_exec.reveal_mpc_result(reveal_list)
+//
 PYBIND11_MODULE(pympc, m) {
   // clang-format off
   py::class_<primihub::PyMPCExpressExecutor>(m, "MPCExpressExecutor")
