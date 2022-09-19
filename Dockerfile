@@ -60,7 +60,7 @@ RUN ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/pr
 COPY --from=builder /src/config ./config
 
 # Copy primihub python sources to /app and setup to system python3
-RUN mkdir -p src/primihub/protos
+RUN mkdir -p src/primihub/protos data log
 COPY --from=builder /src/python ./python
 COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 
