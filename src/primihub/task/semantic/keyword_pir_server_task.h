@@ -22,33 +22,37 @@
 
 #include "apsi/util/csv_reader.h"
 #include "apsi/util/common_utils.h"
-
-using std::string;
-using std::unique_ptr;
-using apsi::PSIParams;
-using apsi::util::CSVReader;
+#include "apsi/sender.h"
+#include "apsi/oprf/oprf_sender.h"
 
 namespace primihub::task {
 
 class KeywordPIRServerTask : public TaskBase {
-public:
-    explicit KeywordPIRServerTask(const std::string &node_id,
-                                  const std::string &job_id,
-                                  const std::string &task_id,
-                                  const TaskParam *task_param,
+ public:
+    explicit KeywordPIRServerTask(const std::string& node_id,
+                                  const std::string& job_id,
+                                  const std::string& task_id,
+                                  const TaskParam* task_param,
                                   std::shared_ptr<DatasetService> dataset_service);
 
-    ~KeywordPIRServerTask(){};
+    ~KeywordPIRServerTask() = default;
     int execute() override;
-private:
+
+ private:
     int _LoadParams(Task &task);
-    unique_ptr<CSVReader::DBData> _LoadDataset(void);
-    unique_ptr<PSIParams> _SetPsiParams();
+    std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
+    std::unique_ptr<apsi::PSIParams> _SetPsiParams();
+    std::shared_ptr<apsi::sender::SenderDB> create_sender_db(
+        const apsi::util::CSVReader::DBData &db_data,
+        std::unique_ptr<apsi::PSIParams> psi_params,
+        apsi::oprf::OPRFKey &oprf_key,
+        size_t nonce_byte_count,
+        bool compress);
 
-    const std::string node_id_;
-    const std::string job_id_;
-    const std::string task_id_;
-
+ private:
+    std::string node_id_;
+    std::string job_id_;
+    std::string task_id_;
     std::string dataset_path_;
 
 };

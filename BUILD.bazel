@@ -322,7 +322,7 @@ cc_library(
       "src/primihub/protocol/cryptflow2/OT/*.cpp",
   ],
   exclude = [
-    "src/primihub/protocol/cryptflow2/globals_float.cpp", 
+    "src/primihub/protocol/cryptflow2/globals_float.cpp",
     "src/primihub/protocol/cryptflow2/library_float.cpp"]),
   hdrs = glob([
     "src/primihub/protocol/cryptflow2/*.h",
@@ -535,13 +535,11 @@ DEFAULT_TASK_LIB_DEPS = [
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-    # "@org_openmined_pir//pir/cpp:pir", #TODO need bazel select 
-    # "@APSI//:APSI",
     #"@osu_libpsi//:libpsi",
 ]
 
 PIR_LIB_DEPS = select({
-    "microsoft-apsi": ["@APSI//:APSI"],
+    "microsoft-apsi": ["@mircrosoft_apsi//:APSI",],
     "//conditions:default": ["@org_openmined_pir//pir/cpp:pir"]
 })
 
@@ -558,52 +556,50 @@ TASK_LIB_DEPS = DEFAULT_TASK_LIB_DEPS + PIR_LIB_DEPS + LINUX_X86_BUILD_LIBS
 cc_library(
     name = "task_lib",
     srcs = select({
-            "microsoft-apsi": glob(
-                [
-                    "src/primihub/task/language/proto_parser.cc",
-                    "src/primihub/task/language/py_parser.cc",
-                    "src/primihub/task/semantic/psi_kkrt_task.cc",
-                    # "src/primihub/task/semantic/pir_server_task.cc",
-                    # "src/primihub/task/semantic/pir_client_task.cc",
-                    "src/primihub/task/semantic/parser.cc",
-                    "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
-                    "src/primihub/task/semantic/mpc_task.cc",
-                    "src/primihub/task/semantic/tee_task.cc",
-                    "src/primihub/task/semantic/task.cc",
-                    "src/primihub/task/semantic/psi_client_task.cc",
-                    "src/primihub/task/semantic/private_server_base.cc",
-                    "src/primihub/task/semantic/fl_task.cc",
-                    "src/primihub/task/semantic/psi_server_task.cc",
-                    "src/primihub/task/semantic/keyword_pir_client_task.cc",
-                    "src/primihub/task/semantic/keyword_pir_server_task.cc",
-                ]),
-            "//conditions:default": glob(
-                [
-                    "src/primihub/task/language/proto_parser.cc",
-                    "src/primihub/task/language/py_parser.cc",
-                    "src/primihub/task/semantic/psi_kkrt_task.cc",
-                    "src/primihub/task/semantic/pir_server_task.cc",
-                    "src/primihub/task/semantic/pir_client_task.cc",
-                    "src/primihub/task/semantic/parser.cc",
-                    "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
-                    "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
-                    "src/primihub/task/semantic/mpc_task.cc",
-                    "src/primihub/task/semantic/tee_task.cc",
-                    "src/primihub/task/semantic/task.cc",
-                    "src/primihub/task/semantic/psi_client_task.cc",
-                    "src/primihub/task/semantic/private_server_base.cc",
-                    "src/primihub/task/semantic/fl_task.cc",
-                    "src/primihub/task/semantic/psi_server_task.cc",
-                ]),
+        "microsoft-apsi": glob([
+            "src/primihub/task/language/proto_parser.cc",
+            "src/primihub/task/language/py_parser.cc",
+            "src/primihub/task/semantic/psi_kkrt_task.cc",
+            # "src/primihub/task/semantic/pir_server_task.cc",
+            # "src/primihub/task/semantic/pir_client_task.cc",
+            "src/primihub/task/semantic/parser.cc",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+            "src/primihub/task/semantic/mpc_task.cc",
+            "src/primihub/task/semantic/tee_task.cc",
+            "src/primihub/task/semantic/task.cc",
+            "src/primihub/task/semantic/psi_client_task.cc",
+            "src/primihub/task/semantic/private_server_base.cc",
+            "src/primihub/task/semantic/fl_task.cc",
+            "src/primihub/task/semantic/psi_server_task.cc",
+            "src/primihub/task/semantic/keyword_pir_client_task.cc",
+            "src/primihub/task/semantic/keyword_pir_server_task.cc",
+         ]),
+        "//conditions:default": glob([
+            "src/primihub/task/language/proto_parser.cc",
+            "src/primihub/task/language/py_parser.cc",
+            "src/primihub/task/semantic/psi_kkrt_task.cc",
+            "src/primihub/task/semantic/pir_server_task.cc",
+            "src/primihub/task/semantic/pir_client_task.cc",
+            "src/primihub/task/semantic/parser.cc",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+            "src/primihub/task/semantic/mpc_task.cc",
+            "src/primihub/task/semantic/tee_task.cc",
+            "src/primihub/task/semantic/task.cc",
+            "src/primihub/task/semantic/psi_client_task.cc",
+            "src/primihub/task/semantic/private_server_base.cc",
+            "src/primihub/task/semantic/fl_task.cc",
+            "src/primihub/task/semantic/psi_server_task.cc",
+        ]),
     }),
     hdrs = select({
         "microsoft-apsi": glob([
@@ -612,10 +608,10 @@ cc_library(
             "src/primihub/task/language/py_parser.h",
             "src/primihub/task/language/factory.h",
             "src/primihub/task/semantic/task.h",
-            # "src/primihub/task/semantic/pir_server_task.h",
+            #"src/primihub/task/semantic/pir_server_task.h",
             "src/primihub/task/semantic/private_server_base.h",
             "src/primihub/task/semantic/parser.h",
-            # "src/primihub/task/semantic/pir_client_task.h",
+            #"src/primihub/task/semantic/pir_client_task.h",
             "src/primihub/task/semantic/scheduler.h",
             "src/primihub/task/semantic/scheduler/pir_scheduler.h",
             "src/primihub/task/semantic/scheduler/fl_scheduler.h",
@@ -665,7 +661,13 @@ cc_library(
         "microsoft-apsi" : ["-D_ASPI"],
         "//conditions:default": []
     }),
-    # pre_build.sh use it to help locate line content of which need replace, 
+    defines = select({
+        "microsoft-apsi" : [
+            "USE_MICROSOFT_APSI",
+        ],
+        "//conditions:default": []
+    }),
+    # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
     linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
@@ -676,12 +678,12 @@ cc_library(
     name = "node_lib",
     srcs = glob([
             "src/primihub/node/worker/worker.cc",
-            
+
             "src/primihub/algorithm/dataload.cpp",
     ]),
     hdrs = glob([
             "src/primihub/node/worker/worker.h",
-            
+
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
@@ -845,7 +847,7 @@ cc_library(
             "src/primihub/data_store/driver.h",
             "src/primihub/data_store/csv/csv_driver.h",
             "src/primihub/data_store/hdfs/hdfs_driver.h",
-            
+
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -878,7 +880,7 @@ cc_library(
 
             "src/primihub/data_store/csv/csv_driver.h",
             "src/primihub/data_store/hdfs/hdfs_driver.h",
-            
+
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -905,7 +907,7 @@ cc_library(
         "@boost//:thread",
     ],
     linkstatic = False,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -929,7 +931,7 @@ cc_library(
         "@boost//:outcome",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -939,16 +941,16 @@ cc_library(
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
-             "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
+             "src/primihub/service/dataset/localkv/storage_leveldb.cc",
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
             "src/primihub/service/dataset/model.h",
-            "src/primihub/service/dataset/service.h",                 
+            "src/primihub/service/dataset/service.h",
             "src/primihub/service/dataset/storage_backend.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
-            "src/primihub/service/dataset/localkv/storage_leveldb.h",    
-            "src/primihub/service/dataset/util.hpp",     
+            "src/primihub/service/dataset/localkv/storage_leveldb.h",
+            "src/primihub/service/dataset/util.hpp",
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -968,7 +970,7 @@ cc_library(
         "service_base",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -997,7 +999,7 @@ cc_library(
         ":service_base",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -1023,7 +1025,7 @@ cc_library(
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 pybind_extension(
-    name = "primihub_channel", 
+    name = "primihub_channel",
     srcs = [
             "src/primihub/pybind_warpper/channel_warpper.cc",
     ],
@@ -1041,7 +1043,7 @@ py_library(
 
 
 pybind_extension(
-    name = "primihub_dataset_warpper", 
+    name = "primihub_dataset_warpper",
     srcs = [
             "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
             "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
@@ -1088,7 +1090,7 @@ cc_binary(
                   "src/primihub/node/ds.h",
             ]),
     copts = C_OPT,
-    includes = [    
+    includes = [
     ],
     linkstatic = True,
     linkopts = LINK_OPTS ,
@@ -1108,7 +1110,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-       
+
     ],
 )
 
@@ -1231,7 +1233,7 @@ cc_test(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         ":dataset_service",
-        
+
     ],
 )
 
@@ -1319,7 +1321,7 @@ cc_test(
         ":algorithm_lib",
      ],
 )
-# Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
+# Some test case not in 'binary_evaluator_test.cc' will run into segment fault
 # or error, so this rule will not build all test case.
 cc_test(
     name = "protocol_aby3_test",

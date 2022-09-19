@@ -13,10 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include "src/primihub/task/semantic/pir_client_task.h"
 
 #include <string>
 
-#include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/util.h"
 
@@ -87,17 +87,17 @@ int PIRClientTask::_SetUpDB(size_t __dbsize, size_t dimensions, size_t elem_size
         LOG(ERROR) << "Failed to create pir client.";
         return -1;
     }
-    
+
     return 0;
 }
 
 int PIRClientTask::_ProcessResponse(const ExecuteTaskResponse &taskResponse) {
     pir::Response response;
-    size_t num_reply = 
+    size_t num_reply =
         static_cast<size_t>(taskResponse.pir_response().reply().size());
     for (size_t i = 0; i < num_reply; i++) {
         pir::Ciphertexts* ptr_reply = response.add_reply();
-        size_t num_ct = 
+        size_t num_ct =
             static_cast<std::int64_t>(taskResponse.pir_response().reply()[i].ct().size());
         for (size_t j = 0; j < num_ct; j++) {
             ptr_reply->add_ct(taskResponse.pir_response().reply()[i].ct()[j]);
@@ -161,8 +161,8 @@ uint32_t compute_plain_mod_bit_size(size_t dbsize, size_t elem_size) {
         uint64_t elem_per_plaintext = POLY_MODULUS_DEGREE \
                                     * (plain_mod_bit_size - 1) / 8 / elem_size;
         uint64_t num_plaintext = dbsize / elem_per_plaintext + 1;
-        if (num_plaintext <= 
-                (uint64_t)1 << (NOISE_BUDGET_BASE - 2 * plain_mod_bit_size)) 
+        if (num_plaintext <=
+                (uint64_t)1 << (NOISE_BUDGET_BASE - 2 * plain_mod_bit_size))
         {
             break;
         }
@@ -202,7 +202,7 @@ int PIRClientTask::execute() {
                    << request_or.status();
         return -1;
     }
-    
+
     ExecuteTaskRequest taskRequest;
     ExecuteTaskResponse taskResponse;
     PirRequest * ptr_request = taskRequest.mutable_pir_request();
@@ -225,7 +225,7 @@ int PIRClientTask::execute() {
 
     grpc::ChannelArguments channel_args;
     channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, 128*1024*1024);
-    std::shared_ptr<grpc::Channel> channel = 
+    std::shared_ptr<grpc::Channel> channel =
         grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(),
                                   channel_args);
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
@@ -250,7 +250,7 @@ int PIRClientTask::execute() {
     } else {
         LOG(ERROR) << "Pir server return error: "
                    << status.error_code() << " " << status.error_message().c_str();
-        return -1; 
+        return -1;
     }
     return 0;
 }

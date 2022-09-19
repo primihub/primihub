@@ -35,7 +35,8 @@ using primihub::rpc::PsiTag;
 namespace primihub {
 
 void Worker::execute(const PushTaskRequest *pushTaskRequest) {
-    primihub::rpc::TaskType type = pushTaskRequest->task().type();
+    auto type = pushTaskRequest->task().type();
+    VLOG(2) << "Worker::execute task type: " << type;
     if (type == rpc::TaskType::NODE_TASK ||
         type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
         auto dataset_service = nodelet->getDataService();
@@ -46,26 +47,25 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         }
         LOG(INFO) << " 🚀 Worker start execute task ";
         int ret = pTask->execute();
-        if (ret != 0)
+        if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute task.";
-
-        return;
+        }
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
             return;
         }
 
-        auto param_map = pushTaskRequest->task().params().param_map();
+        const auto& param_map = pushTaskRequest->task().params().param_map();
         int psiTag = PsiTag::ECDH;
         auto param_it = param_map.find("psiTag");
         if (param_it != param_map.end()) {
-            psiTag = param_map["psiTag"].value_int32();
+            psiTag = param_it->second.value_int32();
         }
 
         if (psiTag == PsiTag::ECDH) {
-            auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
-            if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
+            auto param_map_it = param_map.find("serverAddress");
+            if (param_map_it == param_map.end()) {
                 return;
             }
         }
@@ -85,31 +85,33 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
             return;
         }
 
-        auto param_map = pushTaskRequest->task().params().param_map();
+        const auto& param_map = pushTaskRequest->task().params().param_map();
         int pirType = PirType::ID_PIR;
         auto param_it = param_map.find("pirType");
         if (param_it != param_map.end()) {
-            pirType = param_map["pirType"].value_int32();
+            pirType = param_it->second.value_int32();
+            VLOG(5) << "get pirType: " << pirType;
         }
 
         if (pirType == PirType::ID_PIR) {
-            auto param_map_it = pushTaskRequest->task().params().param_map().find("serverAddress");
-            if (param_map_it == pushTaskRequest->task().params().param_map().end()) {
+            auto param_map_it = param_map.find("serverAddress");
+            if (param_map_it == param_map.end()) {
                 return ;
             }
         }
 
-        auto dataset_service = nodelet->getDataService();
+        auto& dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
             LOG(ERROR) << "Woker create pir task failed.";
             return ;
         }
         int ret = pTask->execute();
-        if (ret != 0)
+        if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute pir task.";
+        }
     } else {
-        LOG(WARNING) << "Requested task type is not supported.";
+        LOG(WARNING) << "unsupported Requested task type: " << type;
     }
 }
 
@@ -117,10 +119,8 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
 // PIR /PSI Server worker execution
 void Worker::execute(const ExecuteTaskRequest *taskRequest,
                      ExecuteTaskResponse *taskResponse) {
-    //primihub::rpc::TaskType type;
-
-    if (taskRequest->algorithm_request_case() ==
-        ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+    auto request_type = taskRequest->algorithm_request_case();
+    if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id,
 			                             rpc::TaskType::NODE_PSI_TASK,
@@ -132,23 +132,25 @@ void Worker::execute(const ExecuteTaskRequest *taskRequest,
             return;
         }
         int ret = pTask->execute();
-        if (ret != 0)
+        if (ret != 0) {
             LOG(ERROR) << "Error occurs during server node execute task.";
-    } else if (taskRequest->algorithm_request_case() ==
-	           ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+        }
+    } else if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+        VLOG(0) << "algorithm_request_case kPirRequest Worker::execute";
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id,
-			                             rpc::TaskType::NODE_PIR_TASK,
-			                             *taskRequest,
+                                         rpc::TaskType::NODE_PIR_TASK,   // convert into internal task type
+                                         *taskRequest,
                                          taskResponse,
-					                     dataset_service);
+                                         dataset_service);
         if (pTask == nullptr) {
             LOG(ERROR) << "Woker create server node task failed.";
             return;
         }
         int ret = pTask->execute();
-        if (ret != 0)
+        if (ret != 0) {
             LOG(ERROR) << "Error occurs during server node execute task.";
+        }
     } else {
         LOG(WARNING) << "Requested task type is not supported.";
     }

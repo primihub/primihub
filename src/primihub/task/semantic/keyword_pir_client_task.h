@@ -16,18 +16,13 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_
 
+#include <vector>
+
 #include "apsi/item.h"
 #include "apsi/match_record.h"
 #include "apsi/util/csv_reader.h"
-
-#include <vector>
-
 #include "src/primihub/task/semantic/task.h"
 
-using std::vector;
-using std::string;
-using std::pair;
-using std::unique_ptr;
 using apsi::Item;
 using apsi::receiver::MatchRecord;
 using apsi::util::CSVReader;
@@ -35,28 +30,28 @@ using apsi::util::CSVReader;
 namespace primihub::task {
 
 class KeywordPIRClientTask : public TaskBase {
-public:
+ public:
     explicit KeywordPIRClientTask(const std::string &node_id,
                                   const std::string &job_id,
                                   const std::string &task_id,
                                   const TaskParam *task_param,
                                   std::shared_ptr<DatasetService> dataset_service);
 
-    ~KeywordPIRClientTask() {};
+    ~KeywordPIRClientTask() = default;
     int execute() override;
-    int saveResult(
-        const vector<string> &orig_items,
-        const vector<Item> &items,
-        const vector<MatchRecord> &intersection);
-private:
+    int saveResult(const std::vector<std::string>& orig_items,
+                   const std::vector<apsi::Item>& items,
+                   const std::vector<apsi::receiver::MatchRecord>& intersection);
+
+ private:
     int _LoadParams(Task &task);
-    pair<unique_ptr<CSVReader::DBData>, vector<string>> _LoadDataset(void);
+    std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
     int _GetIntsection();
 
-    const std::string node_id_;
-    const std::string job_id_;
-    const std::string task_id_;
-
+ private:
+    std::string node_id_;
+    std::string job_id_;
+    std::string task_id_;
     std::string dataset_path_;
     std::string result_file_path_;
     std::string server_address_;

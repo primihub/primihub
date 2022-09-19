@@ -24,27 +24,27 @@ using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub::task {
-    using TaskParam = primihub::rpc::Task;
+using TaskParam = primihub::rpc::Task;
 
-    /**
-     * @brief Basic task class
-     * 
-     */
-    class TaskBase {
-        public:
-            TaskBase(const TaskParam *task_param, 
-                     std::shared_ptr<DatasetService> dataset_service);
-            ~TaskBase() {}
-            virtual int execute() = 0;
-            
-            void setTaskParam(const TaskParam *task_param);
-            TaskParam* getTaskParam();
+/**
+ * @brief Basic task class
+ *
+ */
+class TaskBase {
+ public:
+    TaskBase(const TaskParam *task_param,
+                std::shared_ptr<DatasetService> dataset_service);
+    virtual ~TaskBase() = default;
+    virtual int execute() = 0;
 
-        protected:
-            TaskParam task_param_;
-            std::shared_ptr<DatasetService> dataset_service_;
-    };
-    
+    void setTaskParam(const TaskParam *task_param);
+    TaskParam* getTaskParam();
+
+ protected:
+    TaskParam task_param_;
+    std::shared_ptr<DatasetService> dataset_service_;
+};
+
 } // namespace primihub::task
 
 #endif  // SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_

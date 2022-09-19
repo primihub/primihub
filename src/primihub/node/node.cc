@@ -55,8 +55,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     google::protobuf::TextFormat::PrintToString(*pushTaskRequest, &str);
     LOG(INFO) << str << std::endl;
 
-    std::string job_task =
-        pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
+    std::string job_task = pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
     pushTaskReply->set_job_id(pushTaskRequest->task().job_id());
 
     // if (running_set.find(job_task) != running_set.end()) {
@@ -66,7 +65,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
 
     // actor
     if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
-        pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
+            pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
         LOG(INFO) << "start to schedule task";
         // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
@@ -85,10 +84,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
 
-    } else if (pushTaskRequest->task().type() ==
-                   primihub::rpc::TaskType::PIR_TASK ||
-               pushTaskRequest->task().type() ==
-                   primihub::rpc::TaskType::PSI_TASK) {
+    } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
+            pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
         LOG(INFO) << "start to schedule schedule task";
         absl::MutexLock lock(&parser_mutex_);
         std::shared_ptr<LanguageParser> lan_parser_ =
@@ -109,7 +106,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
-
+        auto _type = static_cast<int>(pushTaskRequest->task().type());
+        VLOG(5) << "end schedule schedule task for type: " << _type;
     } else {
         LOG(INFO) << "start to create worker for task";
         running_set.insert(job_task);
@@ -252,7 +250,6 @@ int main(int argc, char **argv) {
     data_service = new primihub::DataServiceImpl(
         node_service->getNodelet()->getDataService(),
         node_service->getNodelet()->getNodeletAddr());
-
     primihub::RunServer(node_service, data_service, service_port);
 
     return EXIT_SUCCESS;
