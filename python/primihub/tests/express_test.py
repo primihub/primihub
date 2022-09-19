@@ -1,4 +1,4 @@
-import pympc
+import pybind_mpc
 import random
 import multiprocessing
 import csv
@@ -6,7 +6,7 @@ import csv
 
 def run_mpc_party(party_id, expr, col_owner, col_dtype,
                   col_val, party_addr, reveal_party):
-    mpc_exec = pympc.MPCExpressExecutor(party_id)
+    mpc_exec = pybind_mpc.MPCExpressExecutor(party_id)
     mpc_exec.import_column_config(col_owner, col_dtype)
     mpc_exec.import_express(expr)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     party_2_proc.join()
 
     # Run local evaluate.
-    local_exec = pympc.LocalExpressExecutor(mpc_exec)
+    local_exec = pybind_mpc.LocalExpressExecutor(mpc_exec)
     local_exec.import_column_values("A", col_A)
     local_exec.import_column_values("B", col_B)
     local_exec.import_column_values("C", col_C)

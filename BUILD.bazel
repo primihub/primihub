@@ -859,7 +859,7 @@ py_library(
 )
 
 pybind_extension(
-    name = "pympc", 
+    name = "pybind_mpc", 
     srcs = [
         "src/primihub/pybind_warpper/express_wrapper.cc",
         "src/primihub/pybind_warpper/express_wrapper.h"
@@ -870,8 +870,8 @@ pybind_extension(
 )
 
 py_library(
-    name = "pympc",
-    data = ["pympc.so"]
+    name = "pybind_mpc",
+    data = ["pybind_mpc.so"]
 )
 
 cc_binary(

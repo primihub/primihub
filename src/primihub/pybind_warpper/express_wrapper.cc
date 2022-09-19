@@ -242,19 +242,19 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 // 0. Create class instance.
 //    for every party:
 //      # party_id is every party's party id, must not be the same.
-//      mpc_exec = pympc.MPCExpressExecutor(party_id)
+//      mpc_exec = pybind_mpc.MPCExpressExecutor(party_id)
 //
 // 1.Import column's owner and data type.
 //    for every party:
-//      define a dict that save all column's owner (party id):
-//        col_owner = {"A": 0, "B": 1, "C": 2, "D": 2}
+//      # define a dict that save all column's owner (party id):
+//      col_owner = {"A": 0, "B": 1, "C": 2, "D": 2}
 //
-//      define a dict that save all column's dtype, notice that 'true' means
-//      this column has data type float:
-//        col_dtype = {"A": true, "B": true, "C": true, "D": true}
+//      # define a dict that save all column's dtype, notice that 'true' means
+//      # this column has data type float:
+//      col_dtype = {"A": true, "B": true, "C": true, "D": true}
 //
-//      import them into class instance:
-//        mpc_exec.import_column_config(col_owner, col_dtype)
+//      # import them into class instance:
+//      mpc_exec.import_column_config(col_owner, col_dtype)
 //
 //      # Notice all party shoule provide the same col_owner and col_dtype to
 //      # this two interface.
@@ -288,13 +288,15 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 //      mpc_exec.evaluate()
 //
 // 5.Get evaluate result.
-//    define a list to hold which party will get evaluate result:
+//    for every party:
+//      # define a list to hold which party will get evaluate result, and
+//      # reveal_list in every party should be the same.
 //      reveal_list = [0, 1, 2] # a list of party id.
 //
-//    reveal evaluate result:
+//      # reveal evaluate result:
 //      mpc_exec.reveal_mpc_result(reveal_list)
 //
-PYBIND11_MODULE(pympc, m) {
+PYBIND11_MODULE(pybind_mpc, m) {
   // clang-format off
   py::class_<primihub::PyMPCExpressExecutor>(m, "MPCExpressExecutor")
       .def(py::init<uint32_t>())
