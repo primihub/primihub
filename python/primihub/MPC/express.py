@@ -14,7 +14,8 @@ from multiprocessing import Process
 def run_grpc_client():
     conn = grpc.insecure_channel("192.168.99.22:50051")
     stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
-
+    
+    # Start new task.
     request = express_pb2.MPCExpressRequest()
 
     request.jobid = "jobid"
@@ -41,16 +42,26 @@ def run_grpc_client():
     addr.port_prev = 10070
 
     response = stub.TaskStart(request)
+    print(response)
+    
+    # Stop task created just now.
+    time.sleep(5)
+
+    stop_request = express_pb2.MPCExpressRequest()
+    stop_request.jobid = "jobid"
+    
+    response = stub.TaskStop(stop_request)
+    print(response)
 
 
 class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
-    proc_jobid_map = {}
+    jobid_pid_map = {}
 
     def __init__(self):
         self.timeout_check_timer = threading.Timer(10, self.CheckTimeout)
         self.clean_timer = threading.Timer(10, self.CleanHistoryTask)
 
-    def TaskStart(self, request, response):
+    def TaskStart(self, request, context):
         party_id = request.local_partyid
         job_id = request.jobid
         party_addr = (request.addr.ip_next,
@@ -73,18 +84,39 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
                     reveal_party)
 
         p = Process(target=MPCExpressService.RunMPCEvaluator, args=mpc_args)
+        p.daemon = True
         p.start()
-            
-        proc_jobid_map[jobid] = p 
 
+        MPCExpressService.jobid_pid_map[job_id] = p
+
+        response = express_pb2.MPCExpressResponse()
         response.jobid = request.jobid
         response.status = express_pb2.TaskStatus.TASK_RUNNING
         response.message = "New pid is {}".format(p.pid)
 
         return response
 
-    def TaskStop(self, request, response):
-        pass
+    def TaskStop(self, request, context):
+        jobid = request.jobid
+        proc = MPCExpressService.jobid_pid_map.get(jobid, None)
+        if proc is None:
+            response = express_pb2.MPCExpressResponse()
+            response.jobid = request.jobid
+            response.message = "Can't find subprocess with jobid {}".format(
+                jobid)
+            return response
+        else:
+            response = express_pb2.MPCExpressResponse()
+            if proc.is_alive():
+                proc.kill()
+                response.message = "Subprocess for jobid {} quit now.".format(
+                    jobid)
+            else:
+                response.message = "Subprocess for jobid {} quit before.".format(
+                    jobid)
+
+            response.jobid = request.jobid
+            return response
 
     def TaskStatus(self, request, response):
         pass

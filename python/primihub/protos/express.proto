@@ -22,9 +22,9 @@ enum TaskStatus {
 
 message MPCExpressRequest {
   string jobid = 1;
-  uint32 local_partyid = 2;
-  string expr = 3;
-  repeated PartyColumn columns = 4;
+  repeated PartyColumn columns = 2;
+  optional uint32 local_partyid = 3;
+  optional string expr = 4;
   optional PartyAddress addr = 5;
   optional string output_filepath = 6;
   optional string input_filepath = 7;
@@ -32,7 +32,7 @@ message MPCExpressRequest {
 
 message MPCExpressResponse {
   string jobid = 1;
-  repeated string message = 2;
+  string message = 2;
   optional TaskStatus status = 3;
 }
 
