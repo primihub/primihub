@@ -54,6 +54,75 @@ def run_grpc_client():
     print(response)
 
 
+class MYSQLOperator():
+    def __init__(self):
+        self.conn=pymysql.connect(
+            host="127.0.0.1",
+            port=3306,
+            database="Primihub",
+            charset="utf8",
+            user="root",
+            passwd="123456"
+        )
+    def close_conn():
+        conn.close()
+
+    def TaskStart(self, jobid, pid):
+        #insert one record,get jobid,pid,status,`errmsg` ,
+        status="running"
+        errmsg=""
+        cursor = conn.cursor()
+        #insert
+        try:
+            sql = 'INSERT INTO task(jobid,pid,status,errmsg) VALUES(%s,%s,%s,%s);'
+            cursor.execute(sql,(jobid,pid,status,errmsg))
+            conn.commit()
+            print("insert success!")
+        except Exception as e:
+            conn.rollback()
+            print("error:\n",e)
+
+    def TaskStop(self, jobid):
+        errmsg=""
+        status="cancelled"
+        cursor = conn.cursor()
+        try:
+            #inquiry pid by jobid
+            sql = 'SELECT * FROM task where jobid=%s;'
+            cursor.execute(sql,jobid)
+            pid = cursor.fetchone()[1]
+            #kill process by pid
+            os.kill(int(pid))
+            #modified stauts as cancelled
+            sql = "UPDATE task SET status = %s WHERE jobid = %s;"
+            cursor.execute(sql,(status,jobid))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print("error:\n",e)
+
+    def TaskStatus(self, jobid):
+        cursor = conn.cursor()
+        try:
+            sql = 'SELECT * FROM task where jobid=%s;'
+            cursor.execute(sql,jobid)
+            status = cursor.fetchone()[2]
+            return status
+        except Exception as e:
+            print("error:\n",e)
+
+    def CheckTimeout(self):
+        pass
+
+    def CleanHistoryTask(self):
+        cursor = conn.cursor()
+        try:
+            sql = 'DELETE FROM task where start_time<DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 DAY);'
+            affect_rows=cursor.execute(sql)
+            print(affect_rows)
+        except Exception as e:
+            print("error:\n",e)
+
 class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     jobid_pid_map = {}
 
