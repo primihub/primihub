@@ -11,6 +11,38 @@ from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
 
 
+def run_grpc_client():
+    conn = grpc.insecure_channel("192.168.99.22:50051")
+    stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
+
+    request = express_pb2.MPCExpressRequest()
+
+    request.jobid = "jobid"
+    request.local_partyid = 0
+
+    request.columns.append(express_pb2.PartyColumn(
+        name="A", owner=0, float_type=True))
+    request.columns.append(express_pb2.PartyColumn(
+        name="B", owner=1, float_type=True))
+    request.columns.append(express_pb2.PartyColumn(
+        name="C", owner=2, float_type=True))
+    request.columns.append(express_pb2.PartyColumn(
+        name="D", owner=2, float_type=True))
+
+    request.output_filepath = "/tmp/test.csv"
+    request.input_filepath = "/tmp/data.csv"
+
+    request.expr = "A+B*C-D"
+
+    addr = request.addr
+    addr.ip_prev = "127.0.0.1"
+    addr.ip_next = "127.0.0.1"
+    addr.port_next = 10070
+    addr.port_prev = 10070
+
+    response = stub.TaskStart(request)
+
+
 class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def __init__(self):
         self.timeout_check_timer = threading.Timer(10, self.CheckTimeout)
@@ -37,13 +69,12 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
                     party_addr, input_file_path, output_file_path,
                     reveal_party)
 
-        p = Process(target=MPCExpressService.RunMPCEvaluator, args=mpc_args) 
+        p = Process(target=MPCExpressService.RunMPCEvaluator, args=mpc_args)
         p.start()
-        
+
         pid = p.pid
         time.sleep(1)
         p.kill()
-
 
     def TaskStop(self, request, response):
         pass
@@ -61,26 +92,26 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def RunMPCEvaluator(job_id, party_id, expr, col_owner,
                         col_dtype, party_addr, input_file_path,
                         output_file_path, reveal_party):
-        mpc_exec=pybind_mpc.MPCExpressExecutor(party_id)
+        mpc_exec = pybind_mpc.MPCExpressExecutor(party_id)
         mpc_exec.import_column_config(col_owner, col_dtype)
         mpc_exec.import_express(expr)
 
-        df=pandas.read_csv(input_file_path)
+        df = pandas.read_csv(input_file_path)
         for col in df.columns:
-            val_list=df.iloc[col]
+            val_list = df.iloc[col]
             mpc_exec.import_column_values(col, val_list)
 
         mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2])
-        result=mpc_exec.reveal_mpc_result(reveal_party)
+        result = mpc_exec.reveal_mpc_result(reveal_party)
         if result:
             with open(output_file_path, "w") as f:
-                writer=csv.writer(f)
+                writer = csv.writer(f)
                 writer.writerow(expr)
                 writer.writerow(result)
 
 
 def serve():
-    server=grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     express_pb2_grpc.add_MPCExpressTaskServicer_to_server(
         MPCExpressService(), server)
     server.add_insecure_port('[::]:50051')
