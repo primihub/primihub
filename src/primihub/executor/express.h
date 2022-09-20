@@ -44,8 +44,9 @@ public:
                          std::vector<double> &col_vec);
 
   // Method group 5: Init MPC operator.
-  void initMPCRuntime(uint32_t party_id, const std::string &ip,
-                      uint16_t next_port, uint16_t prev_port);
+  void initMPCRuntime(uint32_t party_id, const std::string &next_ip,
+                      const std::string &prev_ip, uint16_t next_port,
+                      uint16_t prev_port);
 
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);
@@ -246,9 +247,7 @@ public:
     this->mpc_exec_ = mpc_exec;
   }
 
-  LocalExpressExecutor() {
-    this->mpc_exec_ = nullptr;
-  }
+  LocalExpressExecutor() { this->mpc_exec_ = nullptr; }
 
   ~LocalExpressExecutor();
 

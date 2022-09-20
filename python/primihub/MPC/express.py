@@ -14,7 +14,7 @@ from multiprocessing import Process
 def run_grpc_client():
     conn = grpc.insecure_channel("192.168.99.22:50051")
     stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
-    
+
     # Start new task.
     request = express_pb2.MPCExpressRequest()
 
@@ -43,13 +43,13 @@ def run_grpc_client():
 
     response = stub.TaskStart(request)
     print(response)
-    
+
     # Stop task created just now.
     time.sleep(5)
 
     stop_request = express_pb2.MPCExpressRequest()
     stop_request.jobid = "jobid"
-    
+
     response = stub.TaskStop(stop_request)
     print(response)
 
@@ -64,7 +64,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def TaskStart(self, request, context):
         party_id = request.local_partyid
         job_id = request.jobid
-        party_addr = (request.addr.ip_next,
+        party_addr = (request.addr.ip_next, request.addr.ip_prev,
                       request.addr.port_next, request.addr.port_prev)
         expr = request.expr
         input_file_path = request.input_filepath
@@ -140,7 +140,8 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
             val_list = df[col].tolist()
             mpc_exec.import_column_values(col, val_list)
 
-        mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2])
+        mpc_exec.evaluate(party_addr[0], party_addr[1],
+                          party_addr[2], party_addr[3])
         result = mpc_exec.reveal_mpc_result(reveal_party)
         if result:
             with open(output_file_path, "w") as f:

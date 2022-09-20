@@ -2,37 +2,38 @@
 #include "src/primihub/operator/aby3_operator.h"
 
 namespace primihub {
-int MPCOperator::setup(std::string ip, u32 next_port, u32 prev_port) {
+int MPCOperator::setup(std::string next_ip, std::string prev_ip,
+                       u32 next_port, u32 prev_port) {
   CommPkg comm = CommPkg();
   Session ep_next_;
   Session ep_prev_;
 
   switch (partyIdx) {
   case 0:
-    ep_next_.start(ios, ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios, ip, prev_port, SessionMode::Server, prev_name);
+    ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
+    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Server, prev_name);
 
     VLOG(3) << "Start server session, listen port " << next_port << ".";
     VLOG(3) << "Start server session, listen port " << prev_port << ".";
 
     break;
   case 1:
-    ep_next_.start(ios, ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios, ip, prev_port, SessionMode::Client, prev_name);
+    ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
+    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
 
     VLOG(3) << "Start server session, listen port " << next_port << ".";
-    VLOG(3) << "Start client session, connect to " << ip << ":" << prev_port
-            << ".";
+    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
+            << prev_port << ".";
 
     break;
   default:
-    ep_next_.start(ios, ip, next_port, SessionMode::Client, next_name);
-    ep_prev_.start(ios, ip, prev_port, SessionMode::Client, prev_name);
+    ep_next_.start(ios, next_ip, next_port, SessionMode::Client, next_name);
+    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
 
-    VLOG(3) << "Start client session, connect to " << ip << ":" << next_port
-            << ".";
-    VLOG(3) << "Start client session, connect to " << ip << ":" << prev_port
-            << ".";
+    VLOG(3) << "Start client session, connect to " << next_ip << ":"
+            << next_port << ".";
+    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
+            << prev_port << ".";
 
     break;
   }
