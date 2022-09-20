@@ -30,7 +30,7 @@ def run_grpc_client():
         name="D", owner=2, float_type=True))
 
     request.output_filepath = "/tmp/test.csv"
-    request.input_filepath = "/tmp/data.csv"
+    request.input_filepath = "/home/zxy/expr/party_0_data.csv"
 
     request.expr = "A+B*C-D"
 
@@ -44,6 +44,8 @@ def run_grpc_client():
 
 
 class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
+    proc_jobid_map = {}
+
     def __init__(self):
         self.timeout_check_timer = threading.Timer(10, self.CheckTimeout)
         self.clean_timer = threading.Timer(10, self.CleanHistoryTask)
@@ -51,7 +53,8 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def TaskStart(self, request, response):
         party_id = request.local_partyid
         job_id = request.jobid
-        party_addr = request.addr
+        party_addr = (request.addr.ip_next,
+                      request.addr.port_next, request.addr.port_prev)
         expr = request.expr
         input_file_path = request.input_filepath
         output_file_path = request.output_filepath
@@ -71,10 +74,14 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
 
         p = Process(target=MPCExpressService.RunMPCEvaluator, args=mpc_args)
         p.start()
+            
+        proc_jobid_map[jobid] = p 
 
-        pid = p.pid
-        time.sleep(1)
-        p.kill()
+        response.jobid = request.jobid
+        response.status = express_pb2.TaskStatus.TASK_RUNNING
+        response.message = "New pid is {}".format(p.pid)
+
+        return response
 
     def TaskStop(self, request, response):
         pass
@@ -98,7 +105,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
 
         df = pandas.read_csv(input_file_path)
         for col in df.columns:
-            val_list = df.iloc[col]
+            val_list = df[col].tolist()
             mpc_exec.import_column_values(col, val_list)
 
         mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2])
