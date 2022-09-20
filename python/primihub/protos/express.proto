@@ -9,11 +9,11 @@ message PartyColumn {
 message PartyAddress {
   string ip_next = 1;
   string ip_prev = 2;
-  string port_next = 3;
-  string port_prev = 4;
+  uint32 port_next = 3;
+  uint32 port_prev = 4;
 }
 
-enum TaskStatus{
+enum TaskStatus {
   TASK_RUNNING = 0;
   TASK_DONE = 1;
   TASK_FAILED = 2;
@@ -22,9 +22,12 @@ enum TaskStatus{
 
 message MPCExpressRequest {
   string jobid = 1;
-  repeated PartyColumn columns = 3;
-  optional PartyAddress addr = 4;
-  optional string filepath = 5;
+  uint32 local_partyid = 2;
+  string expr = 3;
+  repeated PartyColumn columns = 4;
+  optional PartyAddress addr = 5;
+  optional string output_filepath = 6;
+  optional string input_filepath = 7;
 }
 
 message MPCExpressResponse {
