@@ -547,3 +547,13 @@ leveldb_repos()
 
 load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
 leveldb_deps()
+
+# gRPC for python3.
+load("@rules_proto_grpc//python:repositories.bzl", rules_proto_grpc_python_repos = "python_repos")
+rules_proto_grpc_python_repos()
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()

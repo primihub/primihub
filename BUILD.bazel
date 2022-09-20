@@ -712,8 +712,6 @@ cc_library(
             "src/primihub/data_store/driver.cc",
             "src/primihub/data_store/csv/csv_driver.cc",
             # "src/primihub/data_store/hdfs/hdfs_driver.cc",
-
-
     ],
     hdrs = [
             "src/primihub/data_store/factory.h",
@@ -872,6 +870,25 @@ pybind_extension(
 py_library(
     name = "pybind_mpc",
     data = ["pybind_mpc.so"]
+)
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+    name = "proto_mpc_express_executor",
+    srcs = ["python/primihub/protos/express.proto"],
+)
+
+py_proto_library(
+    name = "py_proto_mpc_express_executor",
+    deps = [":proto_mpc_express_executor"]
+)
+
+py_grpc_library(
+    name = "py_mpc_express_grpc",
+    srcs = [":proto_mpc_express_executor"],
+    deps = [":py_proto_mpc_express_executor"]
 )
 
 cc_binary(
