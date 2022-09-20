@@ -30,7 +30,7 @@
 #include "src/primihub/util/log.h"
 namespace primihub {
 
-const Decimal D = D20;
+const Decimal D = D16;
 
 class MPCOperator {
 public:
@@ -40,6 +40,9 @@ public:
   Sh3BinaryEvaluator binEval;
   Sh3ShareGen gen;
   Sh3Piecewise mdivision;
+  Sh3Piecewise mAbs;
+  Sh3Piecewise mQuoDertermine;
+
   Sh3Evaluator eval;
   Sh3Runtime runtime;
   u64 partyIdx;
@@ -337,6 +340,40 @@ public:
   si64Matrix MPC_Mul_Const(const i64 &constInt,
                            const si64Matrix &sharedIntMatrix);
 
+  template <Decimal D> sf64Matrix<D> MPC_Abs(const sf64Matrix<D> &Y) {
+    if (mAbs.mThresholds.size() == 0) {
+      mAbs.mThresholds.resize(1);
+      mAbs.mThresholds[0] = 0;
+      mAbs.mCoefficients.resize(2);
+      mAbs.mCoefficients[0].resize(2);
+      mAbs.mCoefficients[0][0] = 0;
+      mAbs.mCoefficients[0][1] = -1;
+      mAbs.mCoefficients[1].resize(2);
+      mAbs.mCoefficients[1][0] = 0;
+      mAbs.mCoefficients[1][1] = 1;
+    }
+
+    sf64Matrix<D> out(Y.rows(), Y.cols());
+    mAbs.eval<D>(runtime.noDependencies(), Y, out, eval);
+    return out;
+  }
+
+  template <Decimal D> sf64Matrix<D> MPC_QuoDertermine(const sf64Matrix<D> &Y) {
+    if (mQuoDertermine.mThresholds.size() == 0) {
+      mQuoDertermine.mThresholds.resize(1);
+      mQuoDertermine.mThresholds[0] = 0;
+      mQuoDertermine.mCoefficients.resize(2);
+      mQuoDertermine.mCoefficients[0].resize(1);
+      mQuoDertermine.mCoefficients[0][0] = -1;
+      mQuoDertermine.mCoefficients[1].resize(1);
+      mQuoDertermine.mCoefficients[1][0] = 1;
+    }
+
+    sf64Matrix<D> out(Y.rows(), Y.cols());
+    mQuoDertermine.eval<D>(runtime.noDependencies(), Y, out, eval);
+    return out;
+  }
+
   template <Decimal D> sf64Matrix<D> MPC_DReLu(const sf64Matrix<D> &Y) {
     if (mdivision.mThresholds.size() == 0) {
       mdivision.mThresholds.resize(1);
@@ -527,18 +564,40 @@ public:
 
   template <Decimal D>
   sf64Matrix<D> MPC_Div(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
+    if (A.cols() != B.cols() || A.rows() != B.rows())
+      throw std::runtime_error(LOCATION);
+    sf64Matrix<D> ret(A.rows(), B.cols());
+
+    sf64Matrix<D> denominator_sign(B.rows(), B.cols());
+    sf64Matrix<D> denominator(B.rows(), B.cols());
+    denominator_sign = MPC_QuoDertermine(B);
+    denominator = MPC_Abs(B);
+    sf64Matrix<D> numerator_sign(B.rows(), B.cols());
+    sf64Matrix<D> numerator(B.rows(), B.cols());
+    numerator_sign = MPC_QuoDertermine(A);
+    numerator = MPC_Abs(A);
+
+    sf64Matrix<D> quotient_sign(B.rows(), B.cols());
+    MPC_Dotproduct(denominator_sign, numerator_sign, quotient_sign);
+
+    // LOG(INFO) << "denominator result: "
+    //           << revealAll(denominator).format(HeavyFmt);
+    // LOG(INFO) << "numerator result: " <<
+    // revealAll(numerator).format(HeavyFmt); LOG(INFO) << "denominator_sign
+    // result: "
+    //           << revealAll(denominator_sign).format(HeavyFmt);
+    // LOG(INFO) << "numerator_sign result: "
+    //           << revealAll(numerator_sign).format(HeavyFmt);
+
     /*because of the limitation of PIECEWISE, we have to input n rows and 1
      * cols*/
     // w0 = 2.9142-2b and 1 Note:2.9142 and 1 has been truncate by rank+1;
-    if (A.cols() != B.cols() || A.rows() != B.rows())
-      throw std::runtime_error(LOCATION);
-    eMatrix<u64> rank = MPC_Pow(B);
+    eMatrix<u64> rank = MPC_Pow(denominator);
     eMatrix<u64> precision(B.rows(), B.cols());
     eMatrix<u64> double_precision(B.rows(), B.cols());
     // eMatrix<double> constant_two(B.rows(),B.cols());
     f64Matrix<D> twopotnine(B.rows(), B.cols());
     f64Matrix<D> constant_one(B.rows(), B.cols());
-    sf64Matrix<D> ret(A.rows(), B.cols());
     for (int k = 0; k < B.rows(); k++) {
       for (int j = 0; j < B.cols(); j++) {
         // constant_two(k,j) = 2;
@@ -558,18 +617,19 @@ public:
       enc.remoteFixedMatrix(runtime, sftwopotnine).get();
       enc.remoteFixedMatrix(runtime, sfconstant_one).get();
     }
-    // std::cout << "sftwopotnine result: "
-    //           << revealAll(sftwopotnine).format(HeavyFmt) << std::endl;
-    // std::cout << "sfconstant_one result: "
-    //           << revealAll(sfconstant_one).format(HeavyFmt) << std::endl;
+    // std::cout << "sftwopotnine result: " <<
+    // reveal(sftwopotnine).format(HeavyFmt) << std::endl; std::cout <<
+    // "sfconstant_one result: " << reveal(sfconstant_one).format(HeavyFmt) <<
+    // std::endl;
 
     sf64Matrix<D> temp_twob(B.rows(), B.cols());
     sf64Matrix<D> w0(B.rows(), B.cols());
     i64 constant_two = 2;
-    eval.asyncConstMul(constant_two, B, temp_twob); // const needn't .get()
+    eval.asyncConstMul(constant_two, denominator,
+                       temp_twob); // const needn't .get()
     w0 = sftwopotnine - temp_twob; // here means w0 has been truncate by rank+1;
-    // std::cout << "w0 result: " << revealAll(w0).format(HeavyFmt) <<
-    // std::endl; calculate: epsilon0 = (1 - bw0), epsilon1 = (1 - bw0) ^2
+    // std::cout << "w0 result: " << reveal(w0).format(HeavyFmt) << std::endl;
+    // calculate: epsilon0 = (1 - bw0), epsilon1 = (1 - bw0) ^2
     sf64Matrix<D> epsilon0(B.rows(), B.cols());
     sf64Matrix<D> epsilon1(B.rows(), B.cols());
     sf64Matrix<D> epsilon2(B.rows(), B.cols());
@@ -578,32 +638,32 @@ public:
     sf64Matrix<D> bw0(B.rows(), B.cols());
     // vector<sf64<D>> vec_B(B.size());
     // vector<sf64<D>> vec_w0(B.size());
-    MPC_Dotproduct(B, w0, bw0, precision);
-    // std::cout << "bw0 result: " << revealAll(bw0).format(HeavyFmt) <<
-    // std::endl;
+    MPC_Dotproduct(denominator, w0, bw0, precision);
+    // std::cout << "bw0 result: " << reveal(bw0).format(HeavyFmt) << std::endl;
     epsilon0 = sfconstant_one - bw0;
     // sf64Matrix<D> temp_epsilon0 = epsilon0;
     // MPC_Dotproduct(epsilon0,temp_epsilon0,epsilon1);
     MPC_Dotproduct(epsilon0, epsilon0, epsilon1, precision);
-    // std::cout << "epsilon0 result: " << revealAll(epsilon0).format(HeavyFmt)
-    //           << std::endl;
+    // std::cout << "epsilon0 result: " << reveal(epsilon0).format(HeavyFmt) <<
+    // std::endl;
     MPC_Dotproduct(epsilon1, epsilon1, epsilon2, precision);
-    // std::cout << "epsilon1 result: " << revealAll(epsilon1).format(HeavyFmt)
-    //           << std::endl;
+    // std::cout << "epsilon1 result: " << reveal(epsilon1).format(HeavyFmt) <<
+    // std::endl;
     MPC_Dotproduct(epsilon2, epsilon2, epsilon3, precision);
-    // std::cout << "epsilon2 result: " << revealAll(epsilon2).format(HeavyFmt)
-    //           << std::endl;
+    // std::cout << "epsilon2 result: " << reveal(epsilon2).format(HeavyFmt) <<
+    // std::endl;
     MPC_Dotproduct(epsilon3, epsilon3, epsilon4, precision);
-    // std::cout << "epsilon3 result: " << revealAll(epsilon3).format(HeavyFmt)
-    //           << std::endl;
-    // std::cout << "epsilon4 result: " << revealAll(epsilon4).format(HeavyFmt)
-    //           << std::endl;
-
+    // std::cout << "epsilon3 result: " << reveal(epsilon3).format(HeavyFmt) <<
+    // std::endl; std::cout << "epsilon4 result: " <<
+    // reveal(epsilon4).format(HeavyFmt) << std::endl; std::cout << "epsilon0
+    // result: " << reveal(epsilon0).format(HeavyFmt) << std::endl; std::cout <<
+    // "epsilon0 result: " << reveal(epsilon1).format(HeavyFmt) << std::endl;
+    // calculate:a*w0*(1+epsilon0)*（1+epsilon1）
     sf64Matrix<D> aw0(B.rows(), B.cols());
     sf64Matrix<D> epsilon0_one(B.rows(), B.cols());
     epsilon0_one = sfconstant_one + epsilon0;
-    // std::cout << "sfconstant_one + epsilon0 result: "
-    //           << revealAll(epsilon0_one).format(HeavyFmt) << std::endl;
+    // std::cout << "sfconstant_one + epsilon0 result: " <<
+    // reveal(epsilon0_one).format(HeavyFmt) << std::endl;
     sf64Matrix<D> epsilon1_one(B.rows(), B.cols());
     epsilon1_one = sfconstant_one + epsilon1;
 
@@ -617,20 +677,166 @@ public:
     epsilon4_one = sfconstant_one + epsilon4;
 
     sf64Matrix<D> epsilon_prod(B.rows(), B.cols());
-    MPC_Dotproduct(A, w0, aw0, precision);
-    // std::cout << "aw0 result: " << revealAll(aw0).format(HeavyFmt) <<
-    // std::endl;
+    MPC_Dotproduct(numerator, w0, aw0, precision);
+    // std::cout << "aw0 result: " << reveal(aw0).format(HeavyFmt) << std::endl;
     MPC_Dotproduct(epsilon0_one, epsilon1_one, epsilon_prod, precision);
 
-    // std::cout << "epsilon_prod result: "
-    //           << revealAll(epsilon_prod).format(HeavyFmt) << std::endl;
+    /*there we compute w0 firstly*/
+    // MPC_Dotproduct(epsilon0_one,w0,epsilon_prod,precision);//1+e0
+    // MPC_Dotproduct(epsilon_prod,A,C,double_precision);
+
+    // MPC_Dotproduct(epsilon_prod,w0,epsilon_prod,precision);//(1+e0)(1+e1)
+    // MPC_Dotproduct(epsilon_prod,A,C,double_precision);
+
+    // std::cout << "epsilon_prod result: " <<
+    // reveal(epsilon_prod).format(HeavyFmt) << std::endl;
+    // MPC_Dotproduct(epsilon_prod,w0,epsilon_prod,precision);//(1+e0)(1+e1)(1+e2)
+    // MPC_Dotproduct(epsilon_prod,epsilon2_one,epsilon_prod,precision);
+    // MPC_Dotproduct(epsilon_prod,A,C,double_precision);
+
+    // std::cout << "epsilon_prod result: " <<
+    // reveal(epsilon_prod).format(HeavyFmt) << std::endl;
     MPC_Dotproduct(epsilon_prod, w0, epsilon_prod,
                    precision); //(1+e0)(1+e1)(1+e2)(1+e3)
     MPC_Dotproduct(epsilon_prod, epsilon2_one, epsilon_prod, precision);
     MPC_Dotproduct(epsilon_prod, epsilon3_one, epsilon_prod, precision);
     MPC_Dotproduct(epsilon_prod, A, ret, double_precision);
+
+    /****/
+
+    // MPC_Dotproduct(aw0,epsilon0_one,C,double_precision);//(1+e0)
+
+    // MPC_Dotproduct(aw0,epsilon_prod,C,double_precision);//(1+e0)(1+e1)
+
+    // MPC_Dotproduct(aw0,epsilon_prod,C,precision);
+    // MPC_Dotproduct(C,epsilon2_one,C,double_precision);//(1+e0)(1+e1)(1+e2)
+
+    // MPC_Dotproduct(aw0,epsilon_prod,C,precision);
+    // MPC_Dotproduct(C,epsilon2_one,C,precision);
+    // MPC_Dotproduct(C,epsilon3_one,C,double_precision);//(1+e0)(1+e1)(1+e2)(1+e3)
+
+    // MPC_Dotproduct(aw0,epsilon_prod,C,precision);
+    // MPC_Dotproduct(C,epsilon2_one,C,precision);
+    // MPC_Dotproduct(C,epsilon3_one,C,precision);
+    // MPC_Dotproduct(C,epsilon4_one,C,double_precision);//(1+e0)(1+e1)(1+e2)(1+e3)(1+e4)
+
+    // get final result:
+    MPC_Dotproduct(ret, quotient_sign, ret);
     return ret;
   }
+
+  // template <Decimal D>
+  // sf64Matrix<D> MPC_Div(const sf64Matrix<D> &A, const sf64Matrix<D> &B) {
+  //   /*because of the limitation of PIECEWISE, we have to input n rows and 1
+  //    * cols*/
+  //   // w0 = 2.9142-2b and 1 Note:2.9142 and 1 has been truncate by rank+1;
+  //   if (A.cols() != B.cols() || A.rows() != B.rows())
+  //     throw std::runtime_error(LOCATION);
+  //   eMatrix<u64> rank = MPC_Pow(B);
+  //   eMatrix<u64> precision(B.rows(), B.cols());
+  //   eMatrix<u64> double_precision(B.rows(), B.cols());
+  //   // eMatrix<double> constant_two(B.rows(),B.cols());
+  //   f64Matrix<D> twopotnine(B.rows(), B.cols());
+  //   f64Matrix<D> constant_one(B.rows(), B.cols());
+  //   sf64Matrix<D> ret(A.rows(), B.cols());
+  //   for (int k = 0; k < B.rows(); k++) {
+  //     for (int j = 0; j < B.cols(); j++) {
+  //       // constant_two(k,j) = 2;
+  //       twopotnine(k, j) = 2.9142 * (1 << (rank(k, j) + 1));
+  //       constant_one(k, j) = (1 << (rank(k, j) + 1));
+  //       precision(k, j) = rank(k, j) + 1;
+  //       double_precision(k, j) = 2 * precision(k, j);
+  //     }
+  //   }
+
+  //   sf64Matrix<D> sftwopotnine(B.rows(), B.cols());
+  //   sf64Matrix<D> sfconstant_one(B.rows(), B.cols());
+  //   if (partyIdx == 0) {
+  //     enc.localFixedMatrix(runtime, twopotnine, sftwopotnine).get();
+  //     enc.localFixedMatrix(runtime, constant_one, sfconstant_one).get();
+  //   } else {
+  //     enc.remoteFixedMatrix(runtime, sftwopotnine).get();
+  //     enc.remoteFixedMatrix(runtime, sfconstant_one).get();
+  //   }
+  //   // std::cout << "sftwopotnine result: "
+  //   //           << revealAll(sftwopotnine).format(HeavyFmt) << std::endl;
+  //   // std::cout << "sfconstant_one result: "
+  //   //           << revealAll(sfconstant_one).format(HeavyFmt) << std::endl;
+
+  //   sf64Matrix<D> temp_twob(B.rows(), B.cols());
+  //   sf64Matrix<D> w0(B.rows(), B.cols());
+  //   i64 constant_two = 2;
+  //   eval.asyncConstMul(constant_two, B, temp_twob); // const needn't .get()
+  //   w0 = sftwopotnine - temp_twob; // here means w0 has been truncate by
+  //   rank+1;
+  //   // std::cout << "w0 result: " << revealAll(w0).format(HeavyFmt) <<
+  //   // std::endl; calculate: epsilon0 = (1 - bw0), epsilon1 = (1 - bw0) ^2
+  //   sf64Matrix<D> epsilon0(B.rows(), B.cols());
+  //   sf64Matrix<D> epsilon1(B.rows(), B.cols());
+  //   sf64Matrix<D> epsilon2(B.rows(), B.cols());
+  //   sf64Matrix<D> epsilon3(B.rows(), B.cols());
+  //   sf64Matrix<D> epsilon4(B.rows(), B.cols());
+  //   sf64Matrix<D> bw0(B.rows(), B.cols());
+  //   // vector<sf64<D>> vec_B(B.size());
+  //   // vector<sf64<D>> vec_w0(B.size());
+  //   MPC_Dotproduct(B, w0, bw0, precision);
+  //   // std::cout << "bw0 result: " << revealAll(bw0).format(HeavyFmt) <<
+  //   // std::endl;
+  //   epsilon0 = sfconstant_one - bw0;
+  //   // sf64Matrix<D> temp_epsilon0 = epsilon0;
+  //   // MPC_Dotproduct(epsilon0,temp_epsilon0,epsilon1);
+  //   MPC_Dotproduct(epsilon0, epsilon0, epsilon1, precision);
+  //   // std::cout << "epsilon0 result: " <<
+  //   revealAll(epsilon0).format(HeavyFmt)
+  //   //           << std::endl;
+  //   MPC_Dotproduct(epsilon1, epsilon1, epsilon2, precision);
+  //   // std::cout << "epsilon1 result: " <<
+  //   revealAll(epsilon1).format(HeavyFmt)
+  //   //           << std::endl;
+  //   MPC_Dotproduct(epsilon2, epsilon2, epsilon3, precision);
+  //   // std::cout << "epsilon2 result: " <<
+  //   revealAll(epsilon2).format(HeavyFmt)
+  //   //           << std::endl;
+  //   MPC_Dotproduct(epsilon3, epsilon3, epsilon4, precision);
+  //   // std::cout << "epsilon3 result: " <<
+  //   revealAll(epsilon3).format(HeavyFmt)
+  //   //           << std::endl;
+  //   // std::cout << "epsilon4 result: " <<
+  //   revealAll(epsilon4).format(HeavyFmt)
+  //   //           << std::endl;
+
+  //   sf64Matrix<D> aw0(B.rows(), B.cols());
+  //   sf64Matrix<D> epsilon0_one(B.rows(), B.cols());
+  //   epsilon0_one = sfconstant_one + epsilon0;
+  //   // std::cout << "sfconstant_one + epsilon0 result: "
+  //   //           << revealAll(epsilon0_one).format(HeavyFmt) << std::endl;
+  //   sf64Matrix<D> epsilon1_one(B.rows(), B.cols());
+  //   epsilon1_one = sfconstant_one + epsilon1;
+
+  //   sf64Matrix<D> epsilon2_one(B.rows(), B.cols());
+  //   epsilon2_one = sfconstant_one + epsilon2;
+
+  //   sf64Matrix<D> epsilon3_one(B.rows(), B.cols());
+  //   epsilon3_one = sfconstant_one + epsilon3;
+
+  //   sf64Matrix<D> epsilon4_one(B.rows(), B.cols());
+  //   epsilon4_one = sfconstant_one + epsilon4;
+
+  //   sf64Matrix<D> epsilon_prod(B.rows(), B.cols());
+  //   MPC_Dotproduct(A, w0, aw0, precision);
+  //   // std::cout << "aw0 result: " << revealAll(aw0).format(HeavyFmt) <<
+  //   // std::endl;
+  //   MPC_Dotproduct(epsilon0_one, epsilon1_one, epsilon_prod, precision);
+
+  //   // std::cout << "epsilon_prod result: "
+  //   //           << revealAll(epsilon_prod).format(HeavyFmt) << std::endl;
+  //   MPC_Dotproduct(epsilon_prod, w0, epsilon_prod,
+  //                  precision); //(1+e0)(1+e1)(1+e2)(1+e3)
+  //   MPC_Dotproduct(epsilon_prod, epsilon2_one, epsilon_prod, precision);
+  //   MPC_Dotproduct(epsilon_prod, epsilon3_one, epsilon_prod, precision);
+  //   MPC_Dotproduct(epsilon_prod, A, ret, double_precision);
+  //   return ret;
+  // }
 };
 
 #endif

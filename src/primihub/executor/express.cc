@@ -628,7 +628,8 @@ int MPCExpressExecutor::resolveRunMode(void) {
   return 0;
 }
 
-void MPCExpressExecutor::initMPCRuntime(uint32_t party_id, const std::string &ip,
+void MPCExpressExecutor::initMPCRuntime(uint32_t party_id,
+                                        const std::string &ip,
                                         uint16_t next_port,
                                         uint16_t prev_port) {
   std::string next_name;
@@ -1261,7 +1262,6 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
       LOG(INFO) << "Reveal MPC result to party "
                 << static_cast<char>(party + '0') << ", value count " << count
                 << ".";
-      LOG(INFO) << m;
     } else {
       mpc_op_->reveal(*p_final_share, party);
     }
@@ -1284,17 +1284,17 @@ void MPCExpressExecutor::Clean(void) {
       break;
     }
   }
-  
+
   if (col_config_) {
     delete col_config_;
     col_config_ = nullptr;
   }
-  
+
   if (feed_dict_) {
     delete feed_dict_;
     feed_dict_ = nullptr;
   }
-  
+
   if (mpc_op_) {
     mpc_op_->fini();
     delete mpc_op_;
@@ -1545,7 +1545,7 @@ int LocalExpressExecutor::runLocalEvaluate() {
     }
   else
     for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++) {
-      final_val_int64.push_back((*finalVal.val_union.fp64_vec)[i]);
+      final_val_int64.push_back((*finalVal.val_union.i64_vec)[i]);
     }
   // return
   return 0;

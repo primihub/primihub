@@ -103,22 +103,32 @@ TEST(add_operator, aby3_3pc_test) {
   if (pid != 0) {
     MPCOperator mpc(0, "01", "02");
     mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
+    // u64 rows = 4,
+    // 	cols = 4;
+    // // input data
+    // eMatrix<i64> plainMatrix(rows, cols);
+    // for (u64 i = 0; i < rows; ++i)
+    // 	for (u64 j = 0; j < cols; ++j)
+    // 		plainMatrix(i, j) = -10 + i + j;
 
     // sfmatrix
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
-    f64Matrix<D20> f64fixedMatrix_B(rows, cols);
-    double divisior[4] = {-6.5, -15.0, -23.2, 33.0};
+    double divisior[4] = {6.5, -15.0, 23.2, -33.0};
     vector<double> test_number(divisior, divisior + 4);
+    f64Matrix<D20> f64fixedMatrix_B(rows, cols);
     for (u64 i = 0; i < rows; ++i) {
       for (u64 j = 0; j < cols; ++j) {
         f64fixedMatrix(i, j) = 2 + double(i) + j;
         f64fixedMatrix_B(i, j) = test_number[i + j];
       }
     }
-
+    f64fixedMatrix(2, 0) = -4;
+    f64fixedMatrix(3, 0) = -5;
     sf64Matrix<D20> sf64fixedMatrix(rows, cols);
     sf64Matrix<D20> sf64fixedMatrix_B(rows, cols);
+    // To encrypt it, we use
+    // sf64Matrix<D20> sharedMatrix(rows, cols);
 
     if (mpc.partyIdx == 0) {
       mpc.enc.localFixedMatrix(mpc.runtime, f64fixedMatrix, sf64fixedMatrix)
@@ -131,10 +141,11 @@ TEST(add_operator, aby3_3pc_test) {
     }
 
     // division
-    sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
     sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
+    // mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
     div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
-    LOG(INFO) << "div_result result "
+
+    std::cout << "div_result result "
               << mpc.revealAll(div_result).format(HeavyFmt) << std::endl;
     mpc.fini();
     return;
@@ -146,7 +157,7 @@ TEST(add_operator, aby3_3pc_test) {
     mpc.setup("127.0.0.1", (u32)1515, (u32)1313);
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
-    double divisior[4] = {6.5, 15.0, 23.2, 33.0};
+    double divisior[4] = {-6.5, -15.0, 23.2, 33.0};
     vector<double> test_number(divisior, divisior + 4);
     f64Matrix<D20> f64fixedMatrix_B(rows, cols);
     for (u64 i = 0; i < rows; ++i) {
@@ -158,6 +169,8 @@ TEST(add_operator, aby3_3pc_test) {
 
     sf64Matrix<D20> sf64fixedMatrix(rows, cols);
     sf64Matrix<D20> sf64fixedMatrix_B(rows, cols);
+    // To encrypt it, we use
+    // sf64Matrix<D20> sharedMatrix(rows, cols);
 
     if (mpc.partyIdx == 0) {
       mpc.enc.localFixedMatrix(mpc.runtime, f64fixedMatrix, sf64fixedMatrix)
@@ -170,11 +183,9 @@ TEST(add_operator, aby3_3pc_test) {
     }
 
     // division
-    sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
-
     sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
+    // mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
     div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
-
     mpc.revealAll(div_result);
     mpc.fini();
     return;
@@ -187,7 +198,7 @@ TEST(add_operator, aby3_3pc_test) {
   mpc.setup("127.0.0.1", (u32)1414, (u32)1515);
   u64 rows = 4, cols = 1;
   f64Matrix<D20> f64fixedMatrix(rows, cols);
-  double divisior[4] = {6.5, 15.0, 23.2, 33.0};
+  double divisior[4] = {-6.5, -15.0, 23.2, 33.0};
   vector<double> test_number(divisior, divisior + 4);
   f64Matrix<D20> f64fixedMatrix_B(rows, cols);
   for (u64 i = 0; i < rows; ++i) {
@@ -214,8 +225,8 @@ TEST(add_operator, aby3_3pc_test) {
   }
 
   // division
-  sf64Matrix<D20> additionMtx = sf64fixedMatrix + sf64fixedMatrix;
   sf64Matrix<D20> div_result(sf64fixedMatrix.rows(), sf64fixedMatrix.cols());
+  // mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B, div_result);
   div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
 
   mpc.revealAll(div_result);

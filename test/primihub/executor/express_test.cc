@@ -18,8 +18,12 @@ using namespace primihub;
 // std::string expr = "(A*B-C+A+2)";
 // std::string expr = "A*B-C+A+2";
 // std::string expr = "(5.3-(A*B-C+A+2.2))*2.0";
-std::string expr = "-100/B";
-// std::string expr = "100/(100-(A*B-C+A+2-1))";
+// std::string expr = "1/B";
+
+// std::string expr = "(5-(A*B-C+A+2-1)*2)/2";
+std::string expr = "-100/A";
+// std::string expr = "-100/B";
+// std::string expr = "-100/(5-(A*B-C+A+2-1)*2)/2";
 // std::string expr = "A*B-C+A*2.2";
 // std::string expr = "A*B-C+A*2";
 
@@ -73,6 +77,8 @@ runParty(std::map<std::string, std::vector<T>> &col_and_val,
     // ASSERT_EQ(mpc_exec->runMPCEvaluate(), 0);
     mpc_exec->runMPCEvaluate();
     mpc_exec->revealMPCResult(parties, final_val);
+    for (auto itr = final_val.begin(); itr != final_val.end(); itr++)
+      LOG(INFO) << *itr;
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
     msg = msg + e.what();
