@@ -9,7 +9,7 @@ import pybind_mpc
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
-
+import configparser
 
 def run_grpc_client():
     conn = grpc.insecure_channel("192.168.99.22:50051")
@@ -56,13 +56,16 @@ def run_grpc_client():
 
 class MYSQLOperator():
     def __init__(self):
+        db_config = configparser.ConfigParser()
+        db_config.read_file(open('./dbUntils/dbMysqlConfig.cnf', encoding='utf-8', mode='rt'))
+
         self.conn=pymysql.connect(
-            host="127.0.0.1",
-            port=3306,
-            database="Primihub",
-            charset="utf8",
-            user="root",
-            passwd="123456"
+            host=db_config.get('dbMysql', 'host'),
+            port=int(db_config.get('dbMysql', 'port')),
+            database=db_config.get('dbMysql', 'db_name'),
+            charset=db_config.get('dbMysql', 'charset'),
+            user=db_config.get('dbMysql', 'user'),
+            passwd=db_config.get('dbMysql', 'password')
         )
     def close_conn():
         conn.close()
