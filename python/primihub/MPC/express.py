@@ -227,7 +227,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
         p.start()
 
         MPCExpressService.jobid_pid_map[job_id] = p
-        mysql_op.TaskStart(job_id, p)
+        self.mysql_op.TaskStart(job_id, p)
         response = express_pb2.MPCExpressResponse()
         response.jobid = request.jobid
         response.status = express_pb2.TaskStatus.TASK_RUNNING
