@@ -286,9 +286,8 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
             with open(output_file_path, "w") as f:
                 writer = csv.writer(f)
                 writer.writerow(expr)
-                print(type(result))
-                print(result)
-                writer.writerows(result)
+                for v in result:
+                    writer.writerow(v)
 
 
 def serve():
