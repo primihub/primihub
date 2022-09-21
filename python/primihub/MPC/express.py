@@ -9,6 +9,7 @@ import pybind_mpc
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
+import configparser
 
 
 class MPCExpressRequestGenerator:
@@ -65,68 +66,31 @@ class MPCExpressServiceClient:
         return response
 
     @staticmethod
-    def stop_task(remote_addr: string, msg: express_pb2.MPCExpressRequest):
+    def stop_task(remote_addr: string, job_id: string):
+        request = express_pb2.MPCExpressRequest()
+        request.jobid = jobid
         conn = grpc.insecure_channel(remote_addr)
         stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
         response = stub.TaskStart(request)
         return response
 
 
-# def run_grpc_client():
-    # conn = grpc.insecure_channel("192.168.99.22:50051")
-    # stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
-
-    # # Start new task.
-    # request = express_pb2.MPCExpressRequest()
-
-    # request.jobid = "jobid"
-    # request.local_partyid = 0
-
-    # request.columns.append(express_pb2.PartyColumn(
-    #     name="A", owner=0, float_type=True))
-    # request.columns.append(express_pb2.PartyColumn(
-    #     name="B", owner=1, float_type=True))
-    # request.columns.append(express_pb2.PartyColumn(
-    #     name="C", owner=2, float_type=True))
-    # request.columns.append(express_pb2.PartyColumn(
-    #     name="D", owner=2, float_type=True))
-
-    # request.output_filepath = "/tmp/test.csv"
-    # request.input_filepath = "/home/zxy/expr/party_0_data.csv"
-
-    # request.expr = "A+B*C-D"
-
-    # addr = request.addr
-    # addr.ip_prev = "127.0.0.1"
-    # addr.ip_next = "127.0.0.1"
-    # addr.port_next = 10070
-    # addr.port_prev = 10070
-
-    # response = stub.TaskStart(request)
-    # print(response)
-
-    # Stop task created just now.
-    # time.sleep(5)
-
-    # stop_request = express_pb2.MPCExpressRequest()
-    # stop_request.jobid = "jobid"
-
-    # response = stub.TaskStop(stop_request)
-    # print(response)
-
-
 class MYSQLOperator():
     def __init__(self):
+        db_config = configparser.ConfigParser()
+        db_config.read_file(
+            open('./dbUntils/dbMysqlConfig.cnf', encoding='utf-8', mode='rt'))
+
         self.conn = pymysql.connect(
-            host="127.0.0.1",
-            port=3306,
-            database="Primihub",
-            charset="utf8",
-            user="root",
-            passwd="123456"
+            host=db_config.get('dbMysql', 'host'),
+            port=int(db_config.get('dbMysql', 'port')),
+            database=db_config.get('dbMysql', 'db_name'),
+            charset=db_config.get('dbMysql', 'charset'),
+            user=db_config.get('dbMysql', 'user'),
+            passwd=db_config.get('dbMysql', 'password')
         )
 
-    def close_conn():
+    def __del__(self):
         conn.close()
 
     def TaskStart(self, jobid, pid):
@@ -149,13 +113,6 @@ class MYSQLOperator():
         status = "cancelled"
         cursor = conn.cursor()
         try:
-            # inquiry pid by jobid
-            sql = 'SELECT * FROM task where jobid=%s;'
-            cursor.execute(sql, jobid)
-            pid = cursor.fetchone()[1]
-            # kill process by pid
-            os.kill(int(pid))
-            # modified stauts as cancelled
             sql = "UPDATE task SET status = %s WHERE jobid = %s;"
             cursor.execute(sql, (status, jobid))
             conn.commit()
@@ -174,7 +131,7 @@ class MYSQLOperator():
             print("error:\n", e)
 
     def CheckTimeout(self):
-        pass
+        # select status is running and timeouted
 
     def CleanHistoryTask(self):
         cursor = conn.cursor()
@@ -192,6 +149,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def __init__(self):
         self.timeout_check_timer = threading.Timer(10, self.CheckTimeout)
         self.clean_timer = threading.Timer(10, self.CleanHistoryTask)
+        self.mysql_op = MYSQLOperator()
 
     def TaskStart(self, request, context):
         party_id = request.local_partyid
@@ -220,7 +178,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
         p.start()
 
         MPCExpressService.jobid_pid_map[job_id] = p
-
+        mysql_op.TaskStart(job_id, p)
         response = express_pb2.MPCExpressResponse()
         response.jobid = request.jobid
         response.status = express_pb2.TaskStatus.TASK_RUNNING
@@ -246,7 +204,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
             else:
                 response.message = "Subprocess for jobid {} quit before.".format(
                     jobid)
-
+            mysql_op.TaskStop(jobid)
             response.jobid = request.jobid
             return response
 

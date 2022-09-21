@@ -102,7 +102,7 @@ TEST(add_operator, aby3_3pc_test) {
   pid_t pid = fork();
   if (pid != 0) {
     MPCOperator mpc(0, "01", "02");
-    mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1313, (u32)1414);
     // u64 rows = 4,
     // 	cols = 4;
     // // input data
@@ -154,7 +154,7 @@ TEST(add_operator, aby3_3pc_test) {
   pid = fork();
   if (pid != 0) {
     MPCOperator mpc(1, "12", "01");
-    mpc.setup("127.0.0.1", (u32)1515, (u32)1313);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1515, (u32)1313);
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
     double divisior[4] = {-6.5, -15.0, 23.2, 33.0};
@@ -195,7 +195,7 @@ TEST(add_operator, aby3_3pc_test) {
   sleep(3);
 
   MPCOperator mpc(2, "02", "12");
-  mpc.setup("127.0.0.1", (u32)1414, (u32)1515);
+  mpc.setup("127.0.0.1", "127.0.0.1", (u32)1414, (u32)1515);
   u64 rows = 4, cols = 1;
   f64Matrix<D20> f64fixedMatrix(rows, cols);
   double divisior[4] = {-6.5, -15.0, 23.2, 33.0};

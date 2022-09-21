@@ -226,7 +226,7 @@ TEST(add_operator, aby3_3pc_test) {
     fixedPointOperations(0);
     // matrixOperations(0);
     MPCOperator mpc(0, "01", "02");
-    mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1313, (u32)1414);
     u64 rows = 2, cols = 2;
     // input data
     eMatrix<i64> plainMatrix(rows, cols);
@@ -272,7 +272,7 @@ TEST(add_operator, aby3_3pc_test) {
     // matrixOperations(1);
 
     MPCOperator mpc(1, "12", "01");
-    mpc.setup("127.0.0.1", (u32)1515, (u32)1313);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1515, (u32)1313);
     u64 rows = 2, cols = 2;
     // input data
     eMatrix<i64> plainMatrix(rows, cols);
@@ -311,7 +311,7 @@ TEST(add_operator, aby3_3pc_test) {
   fixedPointOperations(2);
   // matrixOperations(2);
   MPCOperator mpc(2, "02", "12");
-  mpc.setup("127.0.0.1", (u32)1414, (u32)1515);
+  mpc.setup("127.0.0.1", "127.0.0.1", (u32)1414, (u32)1515);
   u64 rows = 2, cols = 2;
   // input data
   eMatrix<i64> plainMatrix(rows, cols);
