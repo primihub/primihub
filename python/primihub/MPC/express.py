@@ -11,52 +11,113 @@ from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
 
 
-def run_grpc_client():
-    conn = grpc.insecure_channel("192.168.99.22:50051")
-    stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
+class MPCExpressRequestGenerator:
+    def __init__(self):
+        self.column_attr = {}
 
-    # Start new task.
-    request = express_pb2.MPCExpressRequest()
+    def set_party_id(self, party_id):
+        self.party_id = party_id
 
-    request.jobid = "jobid"
-    request.local_partyid = 0
+    def set_job_id(self, job_id):
+        self.job_id = job_id
 
-    request.columns.append(express_pb2.PartyColumn(
-        name="A", owner=0, float_type=True))
-    request.columns.append(express_pb2.PartyColumn(
-        name="B", owner=1, float_type=True))
-    request.columns.append(express_pb2.PartyColumn(
-        name="C", owner=2, float_type=True))
-    request.columns.append(express_pb2.PartyColumn(
-        name="D", owner=2, float_type=True))
+    def set_mpc_addr(self, ip_next, ip_prev, port_next, port_prev):
+        self.mpc_addr = (ip_next, ip_prev, port_next, port_prev)
 
-    request.output_filepath = "/tmp/test.csv"
-    request.input_filepath = "/home/zxy/expr/party_0_data.csv"
+    def set_input_output(self, input_path, output_path):
+        self.input_path = input_path
+        self.output_path = output_path
 
-    request.expr = "A+B*C-D"
+    def set_expr(self, expr):
+        self.expr = expr
 
-    addr = request.addr
-    addr.ip_prev = "127.0.0.1"
-    addr.ip_next = "127.0.0.1"
-    addr.port_next = 10070
-    addr.port_prev = 10070
+    def set_column_attr(self, name, owner, is_float):
+        self.column_attr[name] = (owner, is_float)
 
-    response = stub.TaskStart(request)
-    print(response)
+    def gen_request(self):
+        request = express_pb2.MPCExpressRequest()
+        request.jobid = self.job_id
+        request.local_partyid = self.party_id
+
+        for col_name, col_attr in self.column_attr.items():
+            request.columns.append(express_pb2.PartyColumn(
+                name=col_name, owner=col_attr[0], float_type=col_attr[1]))
+
+        request.output_filepath = self.output_path
+        request.input_filepath = self.input_path
+        request.expr = self.expr
+
+        addr = request.addr
+        addr.ip_next = self.mpc_addr[0]
+        addr.ip_prev = self.mpc_addr[1]
+        addr.port_next = self.mpc_addr[2]
+        addr.port_prev = self.mpc_addr[3]
+
+        return response
+
+
+class MPCExpressServiceClient:
+    @staticmethod
+    def start_task(remote_addr: string, msg: express_pb2.MPCExpressRequest):
+        conn = grpc.insecure_channel(remote_addr)
+        stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
+        response = stub.TaskStart(request)
+        return response
+
+    @staticmethod
+    def stop_task(remote_addr: string, msg: express_pb2.MPCExpressRequest):
+        conn = grpc.insecure_channel(remote_addr)
+        stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
+        response = stub.TaskStart(request)
+        return response
+
+
+# def run_grpc_client():
+    # conn = grpc.insecure_channel("192.168.99.22:50051")
+    # stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
+
+    # # Start new task.
+    # request = express_pb2.MPCExpressRequest()
+
+    # request.jobid = "jobid"
+    # request.local_partyid = 0
+
+    # request.columns.append(express_pb2.PartyColumn(
+    #     name="A", owner=0, float_type=True))
+    # request.columns.append(express_pb2.PartyColumn(
+    #     name="B", owner=1, float_type=True))
+    # request.columns.append(express_pb2.PartyColumn(
+    #     name="C", owner=2, float_type=True))
+    # request.columns.append(express_pb2.PartyColumn(
+    #     name="D", owner=2, float_type=True))
+
+    # request.output_filepath = "/tmp/test.csv"
+    # request.input_filepath = "/home/zxy/expr/party_0_data.csv"
+
+    # request.expr = "A+B*C-D"
+
+    # addr = request.addr
+    # addr.ip_prev = "127.0.0.1"
+    # addr.ip_next = "127.0.0.1"
+    # addr.port_next = 10070
+    # addr.port_prev = 10070
+
+    # response = stub.TaskStart(request)
+    # print(response)
 
     # Stop task created just now.
-    time.sleep(5)
+    # time.sleep(5)
 
-    stop_request = express_pb2.MPCExpressRequest()
-    stop_request.jobid = "jobid"
+    # stop_request = express_pb2.MPCExpressRequest()
+    # stop_request.jobid = "jobid"
 
-    response = stub.TaskStop(stop_request)
-    print(response)
+    # response = stub.TaskStop(stop_request)
+    # print(response)
 
 
 class MYSQLOperator():
     def __init__(self):
-        self.conn=pymysql.connect(
+        self.conn = pymysql.connect(
             host="127.0.0.1",
             port=3306,
             database="Primihub",
@@ -64,52 +125,53 @@ class MYSQLOperator():
             user="root",
             passwd="123456"
         )
+
     def close_conn():
         conn.close()
 
     def TaskStart(self, jobid, pid):
-        #insert one record,get jobid,pid,status,`errmsg` ,
-        status="running"
-        errmsg=""
+        # insert one record,get jobid,pid,status,`errmsg` ,
+        status = "running"
+        errmsg = ""
         cursor = conn.cursor()
-        #insert
+        # insert
         try:
             sql = 'INSERT INTO task(jobid,pid,status,errmsg) VALUES(%s,%s,%s,%s);'
-            cursor.execute(sql,(jobid,pid,status,errmsg))
+            cursor.execute(sql, (jobid, pid, status, errmsg))
             conn.commit()
             print("insert success!")
         except Exception as e:
             conn.rollback()
-            print("error:\n",e)
+            print("error:\n", e)
 
     def TaskStop(self, jobid):
-        errmsg=""
-        status="cancelled"
+        errmsg = ""
+        status = "cancelled"
         cursor = conn.cursor()
         try:
-            #inquiry pid by jobid
+            # inquiry pid by jobid
             sql = 'SELECT * FROM task where jobid=%s;'
-            cursor.execute(sql,jobid)
+            cursor.execute(sql, jobid)
             pid = cursor.fetchone()[1]
-            #kill process by pid
+            # kill process by pid
             os.kill(int(pid))
-            #modified stauts as cancelled
+            # modified stauts as cancelled
             sql = "UPDATE task SET status = %s WHERE jobid = %s;"
-            cursor.execute(sql,(status,jobid))
+            cursor.execute(sql, (status, jobid))
             conn.commit()
         except Exception as e:
             conn.rollback()
-            print("error:\n",e)
+            print("error:\n", e)
 
     def TaskStatus(self, jobid):
         cursor = conn.cursor()
         try:
             sql = 'SELECT * FROM task where jobid=%s;'
-            cursor.execute(sql,jobid)
+            cursor.execute(sql, jobid)
             status = cursor.fetchone()[2]
             return status
         except Exception as e:
-            print("error:\n",e)
+            print("error:\n", e)
 
     def CheckTimeout(self):
         pass
@@ -118,10 +180,11 @@ class MYSQLOperator():
         cursor = conn.cursor()
         try:
             sql = 'DELETE FROM task where start_time<DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 DAY);'
-            affect_rows=cursor.execute(sql)
+            affect_rows = cursor.execute(sql)
             print(affect_rows)
         except Exception as e:
-            print("error:\n",e)
+            print("error:\n", e)
+
 
 class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     jobid_pid_map = {}
