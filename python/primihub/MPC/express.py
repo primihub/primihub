@@ -1,17 +1,18 @@
 import grpc
 import csv
 import time
-import express_pb2
-import express_pb2_grpc
 import threading
 import pandas
 import pybind_mpc
-from concurrent import futures
-from concurrent.futures import ThreadPoolExecutor
-from multiprocessing import Process
 import configparser
 import string
 import pymysql
+import express_pb2
+import express_pb2_grpc
+from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import Process
+
 
 class MPCExpressRequestGenerator:
     def __init__(self):
@@ -39,15 +40,13 @@ class MPCExpressRequestGenerator:
     def gen_request(self):
         request = express_pb2.MPCExpressRequest()
         request.jobid = self.job_id
-        request.local_partyid = self.party_id
+        request.expr = self.expr
+        request.output_filepath = self.output_path
+        request.input_filepath = self.input_path
 
         for col_name, col_attr in self.column_attr.items():
             request.columns.append(express_pb2.PartyColumn(
                 name=col_name, owner=col_attr[0], float_type=col_attr[1]))
-
-        request.output_filepath = self.output_path
-        request.input_filepath = self.input_path
-        request.expr = self.expr
 
         addr = request.addr
         addr.ip_next = self.mpc_addr[0]
@@ -55,7 +54,7 @@ class MPCExpressRequestGenerator:
         addr.port_next = self.mpc_addr[2]
         addr.port_prev = self.mpc_addr[3]
 
-        return response
+        return request 
 
 
 class MPCExpressServiceClient:
@@ -63,7 +62,7 @@ class MPCExpressServiceClient:
     def start_task(remote_addr: string, msg: express_pb2.MPCExpressRequest):
         conn = grpc.insecure_channel(remote_addr)
         stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
-        response = stub.TaskStart(request)
+        response = stub.TaskStart(msg)
         return response
 
     @staticmethod
@@ -74,6 +73,53 @@ class MPCExpressServiceClient:
         stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
         response = stub.TaskStart(request)
         return response
+
+
+def submit_mpc_task():
+    generator = MPCExpressRequestGenerator()
+
+    jobid = "202002280915402308774"
+    filename = "/tmp/mpc_{}_result.csv".format(jobid)
+
+    # Generate request for party 0.
+    generator.set_party_id(0)
+    generator.set_job_id(jobid)
+    generator.set_mpc_addr("192.168.99.21", "192.168.99.21", 10020, 10030)
+    generator.set_input_output("/home/primihub/expr/party_0.csv", filename)
+    generator.set_expr("A+B*C+D")
+
+    generator.set_column_attr("A", 0, True)
+    generator.set_column_attr("B", 1, True)
+    generator.set_column_attr("C", 2, True)
+    generator.set_column_attr("D", 2, True)
+
+    party_0_request = generator.gen_request()
+
+    # Generate request for party 1.
+    generator.set_party_id(1)
+    generator.set_mpc_addr("192.168.99.22", "192.168.99.21", 10040, 10020)
+    generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
+
+    party_1_request = generator.gen_request()
+
+    # Generate request for party 2.
+    generator.set_party_id(2)
+    generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10030, 10040)
+    generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
+
+    party_2_request = generator.gen_request()
+
+    # Send request to service.
+    party_0_response = MPCExpressServiceClient.start_task(
+        "192.168.99.21:50051", party_0_request)
+    party_1_response = MPCExpressServiceClient.start_task(
+        "192.168.99.22:50051", party_1_request)
+    party_2_response = MPCExpressServiceClient.start_task(
+        "192.168.99.28:50051", party_2_request)
+
+    print(party_0_response)
+    print(party_1_response)
+    print(party_2_response)
 
 
 class MYSQLOperator():

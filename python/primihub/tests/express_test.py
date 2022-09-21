@@ -2,7 +2,7 @@ import pybind_mpc
 import random
 import multiprocessing
 import csv
-import python.primihub.MPC.express
+from primihub.MPC import express
 
 
 def run_mpc_party(party_id, expr, col_owner, col_dtype,
@@ -105,51 +105,51 @@ def mpc_run_without_grpc():
     f.close()
 
 
-def mpc_run_with_grpc():
-    generator = express.MPCExpressRequestGenerator()
-
-    jobid = "202002280915402308774"
-    filename = "/tmp/mpc_{}_result.csv".format(jobid)
-
-    # Generate request for party 0.
-    generator.set_party_id(0)
-    generator.set_job_id(jobid)
-    generator.set_mpc_addr("192.168.99.21", "192.168.99.21", 10020, 10030)
-    generator.set_input_output("/home/primihub/expr/party_0.csv", filename)
-    generator.set_expr("A+B*C+D")
-
-    generator.set_column_attr("A", 0, True)
-    generator.set_column_attr("B", 1, True)
-    generator.set_column_attr("C", 2, True)
-    generator.set_column_attr("D", 2, True)
-
-    party_0_request = generator.gen_request()
-
-    # Generate request for party 1.
-    generator.set_party_id(1)
-    generator.set_mpc_addr("192.168.99.22", "192.168.99.21", 10040, 10020)
-    generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
-
-    party_1_request = generator.gen_request()
-
-    # Generate request for party 2.
-    generator.set_party_id(2)
-    generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10030, 10040)
-    generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
-
-    party_2_request = generator.gen_reqeust()
-
-    # Send request to service.
-    party_0_response = MPCExpressServiceClient.start_task(
-        "192.168.99.21:50051", party_0_request)
-    party_1_response = MPCExpressServiceClient.start_task(
-        "192.168.99.22:50051", party_1_request)
-    party_2_response = MPCExpressServiceClient.start_task(
-        "192.168.99.28:50051", party_2_request)
-
-    print(party_0_response)
-    print(party_1_response)
-    print(party_2_response)
+# def mpc_run_with_grpc():
+#     generator = express.MPCExpressRequestGenerator()
+# 
+#     jobid = "202002280915402308774"
+#     filename = "/tmp/mpc_{}_result.csv".format(jobid)
+# 
+#     # Generate request for party 0.
+#     generator.set_party_id(0)
+#     generator.set_job_id(jobid)
+#     generator.set_mpc_addr("192.168.99.21", "192.168.99.21", 10020, 10030)
+#     generator.set_input_output("/home/primihub/expr/party_0.csv", filename)
+#     generator.set_expr("A+B*C+D")
+# 
+#     generator.set_column_attr("A", 0, True)
+#     generator.set_column_attr("B", 1, True)
+#     generator.set_column_attr("C", 2, True)
+#     generator.set_column_attr("D", 2, True)
+# 
+#     party_0_request = generator.gen_request()
+# 
+#     # Generate request for party 1.
+#     generator.set_party_id(1)
+#     generator.set_mpc_addr("192.168.99.22", "192.168.99.21", 10040, 10020)
+#     generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
+# 
+#     party_1_request = generator.gen_request()
+# 
+#     # Generate request for party 2.
+#     generator.set_party_id(2)
+#     generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10030, 10040)
+#     generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
+# 
+#     party_2_request = generator.gen_reqeust()
+# 
+#     # Send request to service.
+#     party_0_response = MPCExpressServiceClient.start_task(
+#         "192.168.99.21:50051", party_0_request)
+#     party_1_response = MPCExpressServiceClient.start_task(
+#         "192.168.99.22:50051", party_1_request)
+#     party_2_response = MPCExpressServiceClient.start_task(
+#         "192.168.99.28:50051", party_2_request)
+# 
+#     print(party_0_response)
+#     print(party_1_response)
+#     print(party_2_response)
 
 
 if __name__ == '__main__':
