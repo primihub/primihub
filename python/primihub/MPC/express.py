@@ -253,7 +253,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
             else:
                 response.message = "Subprocess for jobid {} quit before.".format(
                     jobid)
-            mysql_op.TaskStop(jobid)
+            self.mysql_op.TaskStop(jobid)
             response.jobid = request.jobid
             return response
 
