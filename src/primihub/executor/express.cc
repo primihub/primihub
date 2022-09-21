@@ -629,7 +629,8 @@ int MPCExpressExecutor::resolveRunMode(void) {
 }
 
 void MPCExpressExecutor::initMPCRuntime(uint32_t party_id,
-                                        const std::string &ip,
+                                        const std::string &next_ip,
+                                        const std::string &prev_ip,
                                         uint16_t next_port,
                                         uint16_t prev_port) {
   std::string next_name;
@@ -647,7 +648,7 @@ void MPCExpressExecutor::initMPCRuntime(uint32_t party_id,
   }
 
   mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
-  mpc_op_->setup(ip, next_port, prev_port);
+  mpc_op_->setup(next_ip, prev_ip, next_port, prev_port);
 
   party_id_ = party_id;
   return;

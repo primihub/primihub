@@ -52,7 +52,8 @@ public:
   MPCOperator(u64 partyIdx_, string NextName, string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
-  int setup(std::string ip, u32 next_port, u32 prev_port);
+  int setup(std::string next_ip, std::string prev_ip, u32 next_port,
+            u32 prev_port);
   void fini();
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {

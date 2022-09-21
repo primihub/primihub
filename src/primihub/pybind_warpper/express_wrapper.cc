@@ -108,10 +108,12 @@ void PyMPCExpressExecutor::importColumnValues(std::string &name,
     importI64ColumnValues(name, val_list);
 }
 
-void PyMPCExpressExecutor::runMPCEvaluate(const std::string &ip,
+void PyMPCExpressExecutor::runMPCEvaluate(const std::string &next_ip,
+                                          const std::string &prev_ip,
                                           uint16_t next_port,
                                           uint16_t prev_port) {
-  MPCExpressExecutor::initMPCRuntime(party_id_, ip, next_port, prev_port);
+  MPCExpressExecutor::initMPCRuntime(party_id_, next_ip, prev_ip, next_port,
+                                     prev_port);
   if (MPCExpressExecutor::runMPCEvaluate())
     throw std::runtime_error("evaluate express with mpc failed.");
 }
