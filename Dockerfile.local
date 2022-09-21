@@ -21,7 +21,8 @@ COPY ./data/ /tmp/
 WORKDIR /app
 
 # Make symlink to primihub-node & primihub-cli
-RUN ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+RUN mkdir data log \
+  && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
 
 # Copy all test config files to /app
 COPY ./config ./config
