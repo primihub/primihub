@@ -10,7 +10,8 @@ from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
 import configparser
-
+import string
+import pymysql
 
 class MPCExpressRequestGenerator:
     def __init__(self):
@@ -90,8 +91,8 @@ class MYSQLOperator():
             passwd=db_config.get('dbMysql', 'password')
         )
 
-    def __del__(self):
-        conn.close()
+    def ConnClose(self):
+        self.conn.close()
 
     def TaskStart(self, jobid, pid):
         # insert one record,get jobid,pid,status,`errmsg` ,
@@ -132,6 +133,7 @@ class MYSQLOperator():
 
     def CheckTimeout(self):
         # select status is running and timeouted
+        pass
 
     def CleanHistoryTask(self):
         cursor = conn.cursor()
