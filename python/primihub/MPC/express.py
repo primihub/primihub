@@ -75,7 +75,6 @@ class MPCExpressServiceClient:
         return response
 
 
-<<<<<<< HEAD
 def submit_mpc_task():
     generator = MPCExpressRequestGenerator()
 
