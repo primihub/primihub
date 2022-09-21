@@ -13,7 +13,7 @@ def run_mpc_party(party_id, expr, col_owner, col_dtype,
     for name, val in col_val.items():
         mpc_exec.import_column_values(name, val)
 
-    mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2])
+    mpc_exec.evaluate(party_addr[0], party_addr[1], party_addr[2],party_addr[3])
     result = mpc_exec.reveal_mpc_result(reveal_party)
 
     return mpc_exec, result
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     party_2_cols = {"C": col_C, "D": col_D}
 
     # Start party 1.
-    party_1_addr = ("127.0.0.1", 10030, 10010)
+    party_1_addr = ("127.0.0.1", "127.0.0.1",10030, 10010)
     party_1_args = (1, expr, col_owner, col_dtype,
                     party_1_cols, party_1_addr, reveal_party)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     party_1_proc.start()
 
     # Start party 2.
-    party_2_addr = ("127.0.0.1", 10020, 10030)
+    party_2_addr = ("127.0.0.1", "127.0.0.1",10020, 10030)
     party_2_args = (2, expr, col_owner, col_dtype,
                     party_2_cols, party_2_addr, reveal_party)
 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     party_2_proc.start()
 
     # Start party 0.
-    party_0_addr = ("127.0.0.1", 10010, 10020)
+    party_0_addr = ("127.0.0.1","127.0.0.1", 10010, 10020)
     res = run_mpc_party(0, expr, col_owner, col_dtype,
                         party_0_cols, party_0_addr, reveal_party)
 

@@ -172,7 +172,7 @@ TEST(aby3_msb_test, aby3_3pc_test) {
     // Child process as party 0.
     u64 pIdx = 0;
     MPCOperator mpc(pIdx, "01", "02");
-    mpc.setup("127.0.0.1", (u32)1313, (u32)1414);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1313, (u32)1414);
 
     u64 width = 2;
     f64Matrix<D8> a(width, 1); // 2*1
@@ -199,7 +199,7 @@ TEST(aby3_msb_test, aby3_3pc_test) {
     sleep(1);
     u64 pIdx = 1;
     MPCOperator mpc(pIdx, "12", "01");
-    mpc.setup("127.0.0.1", (u32)1515, (u32)1313);
+    mpc.setup("127.0.0.1", "127.0.0.1", (u32)1515, (u32)1313);
     u64 width = 2;
     f64Matrix<D8> b(width, 1); // 2*1
     for (u64 i = 0; i < b.size(); ++i) {
@@ -225,7 +225,7 @@ TEST(aby3_msb_test, aby3_3pc_test) {
   sleep(3);
   u64 pIdx = 2;
   MPCOperator mpc(pIdx, "02", "12");
-  mpc.setup("127.0.0.1", (u32)1414, (u32)1515);
+  mpc.setup("127.0.0.1", "127.0.0.1", (u32)1414, (u32)1515);
   u64 width = 2;
 
   sbMatrix A(width, 64), B(width, 64), C(width, 1);

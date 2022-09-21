@@ -67,7 +67,7 @@ class MYSQLOperator():
             user=db_config.get('dbMysql', 'user'),
             passwd=db_config.get('dbMysql', 'password')
         )
-    def close_conn():
+    def __del__ (self):
         conn.close()
 
     def TaskStart(self, jobid, pid):
@@ -90,12 +90,10 @@ class MYSQLOperator():
         status="cancelled"
         cursor = conn.cursor()
         try:
-            #inquiry pid by jobid
-            sql = 'SELECT * FROM task where jobid=%s;'
-            cursor.execute(sql,jobid)
-            pid = cursor.fetchone()[1]
-            #kill process by pid
-            os.kill(int(pid))
+            # #inquiry pid by jobid
+            # sql = 'SELECT * FROM task where jobid=%s;'
+            # cursor.execute(sql,jobid)
+            # pid = cursor.fetchone()[1]
             #modified stauts as cancelled
             sql = "UPDATE task SET status = %s WHERE jobid = %s;"
             cursor.execute(sql,(status,jobid))
@@ -115,7 +113,7 @@ class MYSQLOperator():
             print("error:\n",e)
 
     def CheckTimeout(self):
-        pass
+        #select status is running and timeouted
 
     def CleanHistoryTask(self):
         cursor = conn.cursor()
@@ -132,6 +130,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
     def __init__(self):
         self.timeout_check_timer = threading.Timer(10, self.CheckTimeout)
         self.clean_timer = threading.Timer(10, self.CleanHistoryTask)
+        self.mysql_op = MYSQLOperator()
 
     def TaskStart(self, request, context):
         party_id = request.local_partyid
@@ -160,7 +159,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
         p.start()
 
         MPCExpressService.jobid_pid_map[job_id] = p
-
+        mysql_op.TaskStart(job_id,p)
         response = express_pb2.MPCExpressResponse()
         response.jobid = request.jobid
         response.status = express_pb2.TaskStatus.TASK_RUNNING
@@ -186,7 +185,7 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
             else:
                 response.message = "Subprocess for jobid {} quit before.".format(
                     jobid)
-
+            mysql_op.TaskStop(jobid)
             response.jobid = request.jobid
             return response
 
