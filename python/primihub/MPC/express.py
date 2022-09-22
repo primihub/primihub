@@ -69,12 +69,18 @@ class MPCExpressServiceClient:
     @staticmethod
     def stop_task(remote_addr: string, job_id: string):
         request = express_pb2.MPCExpressRequest()
-        request.jobid = jobid
+        request.jobid = job_id
         conn = grpc.insecure_channel(remote_addr)
         stub = express_pb2_grpc.MPCExpressTaskStub(channel=conn)
-        response = stub.TaskStart(request)
+        response = stub.TaskStop(request)
         return response
 
+
+def stop_mpc_task():
+    jobid = "202002280915402308774"
+    print(MPCExpressServiceClient.stop_task("192.168.99.21:50051", jobid))
+    print(MPCExpressServiceClient.stop_task("192.168.99.22:50051", jobid))
+    print(MPCExpressServiceClient.stop_task("192.168.99.26:50051", jobid))
 
 def submit_mpc_task():
     generator = MPCExpressRequestGenerator()
@@ -105,8 +111,8 @@ def submit_mpc_task():
 
     # Generate request for party 2.
     generator.set_party_id(2)
-    generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10030, 10040)
-    generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
+    generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10050, 10060)
+    generator.set_input_output("/home/primihub/expr/party_2.csv", filename)
 
     party_2_request = generator.gen_request()
 
@@ -116,7 +122,7 @@ def submit_mpc_task():
     party_1_response = MPCExpressServiceClient.start_task(
         "192.168.99.22:50051", party_1_request)
     party_2_response = MPCExpressServiceClient.start_task(
-        "192.168.99.28:50051", party_2_request)
+        "192.168.99.26:50051", party_2_request)
 
     print(party_0_response)
     print(party_1_response)
