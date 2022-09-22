@@ -281,11 +281,12 @@ class MPCExpressService(express_pb2_grpc.MPCExpressTaskServicer):
 
         mpc_exec.evaluate(party_addr[0], party_addr[1],
                           party_addr[2], party_addr[3])
+
         result = mpc_exec.reveal_mpc_result(reveal_party)
         if result:
             with open(output_file_path, "w") as f:
                 writer = csv.writer(f)
-                writer.writerow(expr)
+                writer.writerow([expr])
                 for v in result:
                     writer.writerow([v])
 

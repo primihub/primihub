@@ -153,4 +153,4 @@ def mpc_run_without_grpc():
 
 
 if __name__ == '__main__':
-    mpc_run_with_grpc()
+    mpc_run_without_grpc()
