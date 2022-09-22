@@ -1,0 +1,42 @@
+{
+    "task_type": "Homo-LR",
+    "task_params": {
+        "data_dir": "",
+        "loss": "log",
+        "penalty": "l2",
+        "local_sgd_iter": 1,
+        "eta0": 0.01,
+        "learning_rate": "constant",
+        "max_global_round": 50,
+        "class_weight": null,
+        "random_state": 0,
+        "tol": 0.001,
+        "encrypted": false
+    },
+    "node_info": {
+        "Arbiter": [
+            {
+                "role": "Arbiter",
+                "dataset": "/primihub/data/breast-cancer-wisconsin.data",
+                "port": 8030,
+                "ip": "172.28.1.10"
+            }
+        ],
+        "Guest": [
+            {
+                "role": "Guest",
+                "dataset": "/primihub/data/breast-cancer-wisconsin.data",
+                "port": 8010,
+                "ip": "172.28.1.11"
+            }
+        ],
+        "Host": [
+            {
+                "role": "Host",
+                "dataset": "/primihub/data/breast-cancer-wisconsin.data",
+                "port": 8020,
+                "ip": "172.28.1.12"
+            }
+        ]
+    }
+}

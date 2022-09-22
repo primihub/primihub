@@ -15,7 +15,8 @@ def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
     logging.basicConfig(level=logging.DEBUG,
-                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+                        format=LOG_FORMAT,
+                        datefmt=DATE_FORMAT)
     logger = logging.getLogger(name)
     return logger
 
@@ -45,6 +46,7 @@ def data_iris():
 
 
 class Guest:
+
     def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
         self.X = X
         self.y = y
@@ -112,54 +114,57 @@ class Guest:
             start = batch_count * batch_size
             end = start + batch_size
             batch_count += 1
-            yield [d[start: end] for d in all_data]
+            yield [d[start:end] for d in all_data]
 
 
-def run_homo_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map={}):
-    guest_nodes = role_node_map["guest"]
-    arbiter_nodes = role_node_map["arbiter"]
+def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
+    # guest_nodes = role_node_map["guest"]
+    # arbiter_nodes = role_node_map["arbiter"]
 
-    if len(guest_nodes) != 1:
+    if len(guest_info) != 1:
         logger.error("Hetero LR only support one guest party, but current "
-                     "task have {} guest party.".format(len(guest_nodes)))
+                     "task have {} guest party.".format(len(guest_info)))
         return
 
-    if len(arbiter_nodes) != 1:
+    if len(arbiter_info) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
-                     "task have {} arbiter party.".format(len(arbiter_nodes)))
+                     "task have {} arbiter party.".format(len(arbiter_info)))
         return
 
-    guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
+    guest_info = guest_info[0]
+    arbiter_info = arbiter_info[0]
+
+    # guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
+    guest_port = guest_info['port']
     proxy_server = ServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
     logger.debug("Create server proxy for guest, port {}.".format(guest_port))
 
-    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
-    proxy_client_arbiter = ClientChannelProxy(
-        arbiter_ip, arbiter_port, "arbiter")
+    # arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
+    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port,
+                                              "arbiter")
     logger.debug("Create client proxy to arbiter,"
                  " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    config = {
-        'epochs': 1,
-        'lr': 0.05,
-        'batch_size': 100,
-        'category': 2
-    }
+    config = {'epochs': 1, 'lr': 0.05, 'batch_size': 100, 'category': 2}
 
-    x, label = data_binary(dataset_filepath)
+    # x, label = data_binary(dataset_filepath)
+    # data = pd.read_csv(guest_info['dataset'], header=0)
     # x, label = data_iris()
-    x = LRModel.normalization(x)
+    data = pd.read_csv(guest_info['dataset'], header=0)
+    label = data.pop('y').values
+    x = data.copy().values
+
     count_train = x.shape[0]
-    batch_num_train = (count_train-1) // config['batch_size'] + 1
+    batch_num_train = (count_train - 1) // config['batch_size'] + 1
 
     guest_data_weight = config['batch_size']
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
-    client_guest = Guest(x, label, config, proxy_server,
-                         proxy_client_arbiter)
+    client_guest = Guest(x, label, config, proxy_server, proxy_client_arbiter)
 
-    batch_gen_guest = client_guest.batch_generator(
-        [x, label], config['batch_size'], False)
+    batch_gen_guest = client_guest.batch_generator([x, label],
+                                                   config['batch_size'], False)
     # batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
 
     for i in range(config['epochs']):
@@ -170,8 +175,10 @@ def run_homo_lr_guest(role_node_map, node_addr_map, dataset_filepath, params_map
             logger.info("batch_host_x.shape:{}".format(batch_x.shape))
             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
             guest_param = client_guest.fit(batch_x, batch_y, config['category'])
+            print("guest_param=======: ", guest_param)
             proxy_client_arbiter.Remote(guest_param, "guest_param")
-            client_guest.model.theta = proxy_server.Get("global_guest_model_param")
+            client_guest.model.theta = proxy_server.Get(
+                "global_guest_model_param")
             logger.info("batch=%s done" % j)
         logger.info("epoch=%i done" % i)
     logger.info("guest training process done.")

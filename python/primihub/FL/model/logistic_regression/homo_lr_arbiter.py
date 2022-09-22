@@ -10,11 +10,13 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 import logging
 from sklearn.datasets import load_iris
 
+
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
     logging.basicConfig(level=logging.DEBUG,
-                        format=LOG_FORMAT, datefmt=DATE_FORMAT)
+                        format=LOG_FORMAT,
+                        datefmt=DATE_FORMAT)
     logger = logging.getLogger(name)
     return logger
 
@@ -67,7 +69,8 @@ class Arbiter:
         return y
 
     def generate_key(self, length=1024):
-        public_key, private_key = paillier.generate_paillier_keypair(n_length=length)
+        public_key, private_key = paillier.generate_paillier_keypair(
+            n_length=length)
         self.public_key = public_key
         self.private_key = private_key
 
@@ -114,7 +117,8 @@ class Arbiter:
     def evaluation(self, y, y_hat):
         return evaluator.getAccuracy(y, y_hat)
 
-    def model_aggregate(self, host_parm, guest_param, host_data_weight, guest_data_weight):
+    def model_aggregate(self, host_parm, guest_param, host_data_weight,
+                        guest_data_weight):
         param = []
         weight_all = []
         if self.need_encrypt == 'YES':
@@ -147,8 +151,10 @@ class Arbiter:
             self.theta = agg_param
             return list(self.theta)
 
-    def broadcast_global_model_param(self, host_param, guest_param, host_data_weight, guest_data_weight):
-        self.theta = self.model_aggregate(host_param, guest_param, host_data_weight, guest_data_weight)
+    def broadcast_global_model_param(self, host_param, guest_param,
+                                     host_data_weight, guest_data_weight):
+        self.theta = self.model_aggregate(host_param, guest_param,
+                                          host_data_weight, guest_data_weight)
         # send guest plaintext
         self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
         # send host ciphertext
@@ -157,6 +163,8 @@ class Arbiter:
                 self.theta = self.encrypt_vector(self.theta)
             else:
                 self.theta = self.encrypt_matrix(self.theta)
+
+            print("=======global model======", self.theta)
             self.proxy_client_host.Remote(self.theta, "global_host_model_param")
         else:
             self.proxy_client_host.Remote(self.theta, "global_host_model_param")
@@ -180,37 +188,44 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath, params_map={}):
-    host_nodes = role_node_map["host"]
-    guest_nodes = role_node_map["guest"]
-    arbiter_nodes = role_node_map["arbiter"]
+def run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params={}):
+    # host_nodes = role_node_map["host"]
+    # guest_nodes = role_node_map["guest"]
+    # arbiter_nodes = role_node_map["arbiter"]
 
-    if len(host_nodes) != 1:
+    if len(host_info) != 1:
         logger.error("Hetero LR only support one host party, but current "
-                     "task have {} host party.".format(len(host_nodes)))
+                     "task have {} host party.".format(len(host_info)))
         return
 
-    if len(guest_nodes) != 1:
+    if len(guest_info) != 1:
         logger.error("Hetero LR only support one guest party, but current "
-                     "task have {} guest party.".format(len(host_nodes)))
+                     "task have {} guest party.".format(len(guest_info)))
         return
 
-    if len(arbiter_nodes) != 1:
+    if len(arbiter_info) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
-                     "task have {} arbiter party.".format(len(host_nodes)))
+                     "task have {} arbiter party.".format(len(arbiter_info)))
         return
 
-    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
+    host_info = host_info[0]
+    guest_info = guest_info[0]
+    arbiter_info = arbiter_info[0]
+    # arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
+    arbiter_port = arbiter_info['port']
     proxy_server = ServerChannelProxy(arbiter_port)
     proxy_server.StartRecvLoop()
-    logger.debug("Create server proxy for arbiter, port {}.".format(arbiter_port))
+    logger.debug(
+        "Create server proxy for arbiter, port {}.".format(arbiter_port))
 
-    host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
+    # host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
+    host_ip, host_port = host_info['ip'], host_info['port']
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     logger.debug("Create client proxy to host,"
                  " ip {}, port {}.".format(host_ip, host_port))
 
-    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+    # guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+    guest_ip, guest_port = guest_info['ip'], guest_info['port']
     proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
     logger.debug("Create client proxy to guest,"
                  " ip {}, port {}.".format(guest_ip, guest_port))
@@ -221,7 +236,8 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath, params_m
         'need_one_vs_rest': False,
         'category': 2
     }
-    client_arbiter = Arbiter(proxy_server, proxy_client_host, proxy_client_guest)
+    client_arbiter = Arbiter(proxy_server, proxy_client_host,
+                             proxy_client_guest)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
     need_encrypt = proxy_server.Get("need_encrypt")
 
@@ -239,18 +255,23 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, dataset_filepath, params_m
             logger.info("-----epoch={}, batch={}-----".format(i, j))
             host_param = proxy_server.Get("host_param")
             guest_param = proxy_server.Get("guest_param")
-            client_arbiter.broadcast_global_model_param(host_param, guest_param, host_data_weight, guest_data_weight)
+            client_arbiter.broadcast_global_model_param(host_param, guest_param,
+                                                        host_data_weight,
+                                                        guest_data_weight)
             logger.info("batch={} done".format(j))
         logger.info("epoch={} done".format(i))
 
     logger.info("####### start predict ######")
     # X, y = iris_data()
-    X, y = data_binary(dataset_filepath)
-    X = LRModel.normalization(X)
-    pre = client_arbiter.predict(X, config['category'])
+    # X, y = data_binary(dataset_filepath)
+    data = pd.read_csv(guest_info['dataset'], header=0)
+    label = data.pop('y').values
+    x = data.copy().values
+    # X = LRModel.normalization(X)
+    pre = client_arbiter.predict(x, config['category'])
     logger.info('Classification result is:')
     # acc = np.mean(y == pre)
-    acc = client_arbiter.evaluation(y, pre)
+    acc = client_arbiter.evaluation(label, pre)
     logger.info('acc is: %s' % acc)
     logger.info("All process done.")
     proxy_server.StopRecvLoop()
