@@ -177,6 +177,9 @@ namespace primihub
       test_input_filepath_ = param_map["TestData"].value_string();
       batch_size_ = param_map["BatchSize"].value_int32();
       num_iter_ = param_map["NumIters"].value_int32();
+      model_file_name_ = param_map["modelName"].value_string();
+      if(model_file_name_ == "")
+      	model_file_name_="data/" + model_name_ + ".csv";
     }
     catch (std::exception &e)
     {
@@ -601,16 +604,15 @@ namespace primihub
     std::shared_ptr<DataDriver> driver =
         DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 
-    std::string filepath = "data/" + model_name_ + ".csv";
-    auto cursor = driver->initCursor(filepath);
+    auto cursor = driver->initCursor(model_file_name_);
     auto dataset = std::make_shared<primihub::Dataset>(table, driver);
     int ret = cursor->write(dataset);
     if (ret != 0)
     {
-      LOG(ERROR) << "Save LR model to file " << filepath << " failed.";
+      LOG(ERROR) << "Save LR model to file " << model_file_name_ << " failed.";
       return -1;
     }
-    LOG(INFO) << "Save model to " << filepath << ".";
+    LOG(INFO) << "Save model to " << model_file_name_ << ".";
 
     service::DatasetMeta meta(dataset, model_name_,
                               service::DatasetVisbility::PUBLIC);
