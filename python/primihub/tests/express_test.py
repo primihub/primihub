@@ -23,17 +23,17 @@ def run_mpc_party(party_id, expr, col_owner, col_dtype,
 
 def mpc_run_without_grpc():
     reveal_party = [0, 1, 2]
-    # expr = "A+B*C+D"
-    expr = "B*C"
+    expr = "A+B*C+D"
+    # expr = "B*C"
 
     col_owner = {"A": 0, "B": 1, "C": 2, "D": 2}
     # col_dtype = {"A": 0, "B": 0, "C": 0, "D": 0}
     col_dtype = {"A": 1, "B": 1, "C": 1, "D": 1}
 
-    col_A = [random.uniform(1, 10000) for i in range(1000)]
-    col_B = [random.uniform(1, 10000) for i in range(1000)]
-    col_C = [random.uniform(1, 10000) for i in range(1000)]
-    col_D = [random.uniform(1, 10000) for i in range(1000)]
+    col_A = [random.uniform(1, 10000) for i in range(10000)]
+    col_B = [random.uniform(1, 10000) for i in range(10000)]
+    col_C = [random.uniform(1, 10000) for i in range(10000)]
+    col_D = [random.uniform(1, 10000) for i in range(10000)]
 
     # col_A = [random.randint(1, 10000) for i in range(1000)]
     # col_B = [random.randint(1, 10000) for i in range(1000)]
@@ -79,6 +79,39 @@ def mpc_run_without_grpc():
 
     party_1_proc.join()
     party_2_proc.join()
+
+    # with open('party_0.csv','r') as f:
+    #     f_csv=csv.reader(f)
+    #     headers=next(f_csv)
+    #     i=0
+    #     for row in f_csv:
+    #         print(row)
+    #         print(type(row))
+    #         print(row[0])
+
+    #         col_A[i]=float(row[0])
+    #         print(col_A[i])
+    #         i+=1
+    # f.close()
+
+    # with open('party_1.csv','r') as f:
+    #     f_csv=csv.reader(f)
+    #     headers=next(f_csv)
+    #     i=0
+    #     for row in f_csv:
+    #         col_B[i]=float(row[0])
+    #         i+=1
+    # f.close()
+
+    # with open('party_2.csv','r') as f:
+    #     f_csv=csv.reader(f)
+    #     headers=next(f_csv)
+    #     i=0
+    #     for row in f_csv:
+    #         col_C[i]=float(row[0])
+    #         col_D[i]=float(row[1])
+    #         i+=1
+    # f.close()
 
     # Run local evaluate.
     local_exec = pybind_mpc.LocalExpressExecutor(mpc_exec)
@@ -134,7 +167,7 @@ def mpc_run_without_grpc():
 # 
 #     # Generate request for party 2.
 #     generator.set_party_id(2)
-#     generator.set_mpc_addr("192.168.99.21", "192.168.99.22", 10030, 10040)
+#     generator.    ("192.168.99.21", "192.168.99.22", 10030, 10040)
 #     generator.set_input_output("/home/primihub/expr/party_1.csv", filename)
 # 
 #     party_2_request = generator.gen_reqeust()
