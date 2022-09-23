@@ -81,12 +81,13 @@ logger = get_logger(task_type)
 #     logger.info(f"Params: {params_map}")
 
 
-@ph.context.function(
-    role=host_info[0]['role'],
-    protocol=task_type,
-    #  datasets=host_info[0]['dataset'],
-    datasets=['guest_dataset'],
-    port=str(host_info[0]['port']))
+# @ph.context.function(
+#     role=host_info[0]['role'],
+#     protocol=task_type,
+#     #  datasets=host_info[0]['dataset'],
+#     datasets=['guest_dataset'],
+#     port=str(host_info[0]['port']))
+@ph.context.function(role='host', protocol='lr', datasets=['guest_dataset'], port='8020', task_type="regression")
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
@@ -95,12 +96,13 @@ def run_host_party():
     logger.info("Finish homo-LR host logic.")
 
 
-@ph.context.function(
-    role=guest_info[0]['role'],
-    protocol=task_type,
-    #  datasets=host_info[0]['dataset'],
-    datasets=["guest_dataset"],
-    port=str(guest_info[0]['port']))
+# @ph.context.function(
+#     role=guest_info[0]['role'],
+#     protocol=task_type,
+#     #  datasets=host_info[0]['dataset'],
+#     datasets=["guest_dataset"],
+#     port=str(guest_info[0]['port']))
+@ph.context.function(role='guest', protocol='lr', datasets=['guest_dataset'], port='8010', task_type="regression")
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
@@ -113,12 +115,13 @@ def run_guest_party():
 # although hetero-LR's arbiter don't handle any examples. This limit comes from
 # primihub, primihub use dataset name here to resolve which party will act as
 # arbiter.
-@ph.context.function(
-    role=arbiter_info[0]['role'],
-    protocol=task_type,
-    #  datasets=arbiter_info[0]['dataset'],
-    datasets=["label_dataset"],
-    port=str(arbiter_info[0]['port']))
+# @ph.context.function(
+#     role=arbiter_info[0]['role'],
+#     protocol=task_type,
+#     #  datasets=arbiter_info[0]['dataset'],
+#     datasets=["label_dataset"],
+#     port=str(arbiter_info[0]['port']))
+@ph.context.function(role='arbiter', protocol='lr', datasets=['guest_dataset'], port='8030', task_type="regression")
 def run_arbiter_party():
 
     run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
