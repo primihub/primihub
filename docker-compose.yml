@@ -10,6 +10,7 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/primihub/FL/model/logistic_regression:/app/python/primihub/FL/model/logistic_regression
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -31,6 +32,8 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/primihub/FL/model/logistic_regression:/app/python/primihub/FL/model/logistic_regression
+
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -52,6 +55,8 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/primihub/FL/model/logistic_regression:/app/python/primihub/FL/model/logistic_regression
+
     entrypoint:
       - "/bin/bash"
       - "-c"

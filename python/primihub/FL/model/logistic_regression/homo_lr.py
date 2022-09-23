@@ -18,7 +18,8 @@ def load_info():
     # basedir = os.path.abspath(os.path.dirname(__file__))
     # config_f = open(os.path.join(basedir, 'homo_lr_config.json'), 'r')
     config_f = open(
-        '/primihub/python/primihub/FL/model/logistic_regression/homo_lr_config.json', 'r')
+        '/app/python/primihub/FL/model/logistic_regression/homo_lr_config.json',
+        'r')
     lr_config = json.load(config_f)
     print(lr_config)
     task_type = lr_config['task_type']
@@ -80,11 +81,12 @@ logger = get_logger(task_type)
 #     logger.info(f"Params: {params_map}")
 
 
-@ph.context.function(role=host_info[0]['role'],
-                     protocol=task_type,
-                     #  datasets=host_info[0]['dataset'],
-                     datasets=['guest_dataset'],
-                     port=str(host_info[0]['port']))
+@ph.context.function(
+    role=host_info[0]['role'],
+    protocol=task_type,
+    #  datasets=host_info[0]['dataset'],
+    datasets=['guest_dataset'],
+    port=str(host_info[0]['port']))
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
@@ -93,11 +95,12 @@ def run_host_party():
     logger.info("Finish homo-LR host logic.")
 
 
-@ ph.context.function(role=guest_info[0]['role'],
-                      protocol=task_type,
-                      #  datasets=host_info[0]['dataset'],
-                      datasets=["guest_dataset"],
-                      port=str(guest_info[0]['port']))
+@ph.context.function(
+    role=guest_info[0]['role'],
+    protocol=task_type,
+    #  datasets=host_info[0]['dataset'],
+    datasets=["guest_dataset"],
+    port=str(guest_info[0]['port']))
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
@@ -110,11 +113,12 @@ def run_guest_party():
 # although hetero-LR's arbiter don't handle any examples. This limit comes from
 # primihub, primihub use dataset name here to resolve which party will act as
 # arbiter.
-@ ph.context.function(role=arbiter_info[0]['role'],
-                      protocol=task_type,
-                      #  datasets=arbiter_info[0]['dataset'],
-                      datasets=["label_dataset"],
-                      port=str(arbiter_info[0]['port']))
+@ph.context.function(
+    role=arbiter_info[0]['role'],
+    protocol=task_type,
+    #  datasets=arbiter_info[0]['dataset'],
+    datasets=["label_dataset"],
+    port=str(arbiter_info[0]['port']))
 def run_arbiter_party():
 
     run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
