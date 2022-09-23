@@ -87,7 +87,7 @@ logger = get_logger(task_type)
 #     #  datasets=host_info[0]['dataset'],
 #     datasets=['guest_dataset'],
 #     port=str(host_info[0]['port']))
-@ph.context.function(role='host', protocol='lr', datasets=['guest_dataset'], port='8020', task_type="regression")
+@ph.context.function(role='host', protocol='lr', datasets=['test_dataset'], port='8020', task_type="regression")
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
@@ -102,7 +102,7 @@ def run_host_party():
 #     #  datasets=host_info[0]['dataset'],
 #     datasets=["guest_dataset"],
 #     port=str(guest_info[0]['port']))
-@ph.context.function(role='guest', protocol='lr', datasets=['guest_dataset'], port='8010', task_type="regression")
+@ph.context.function(role='guest', protocol='lr', datasets=['test_party_0'], port='8010', task_type="regression")
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
