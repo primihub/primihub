@@ -1452,9 +1452,7 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = True,
-    deps = [
-        "@osu_libpsi//:libpsi",
-    ],
+    deps = TASK_LIB_DEPS,
     visibility = ["//visibility:public"],
 )
 
