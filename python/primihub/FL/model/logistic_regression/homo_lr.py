@@ -1,9 +1,9 @@
 import primihub as ph
 import logging
 from primihub import dataset, context
-from primihub.FL.model.logistic_regression.homo_lr_host import run_homo_lr_host
-from primihub.FL.model.logistic_regression.homo_lr_guest import run_homo_lr_guest
-from primihub.FL.model.logistic_regression.homo_lr_arbiter import run_homo_lr_arbiter
+from homo_lr_host import run_homo_lr_host
+from homo_lr_guest import run_homo_lr_guest
+from homo_lr_arbiter import run_homo_lr_arbiter
 from os import path
 import json
 import os
