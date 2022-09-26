@@ -374,7 +374,7 @@ class Host:
 def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
     # host_nodes = role_node_map["host"]
     # arbiter_nodes = role_node_map["arbiter"]
-    eva_type = ph.context.Context.params_map.get("taskType", None)
+    # eva_type = ph.context.Context.params_map.get("taskType", None)
 
     if len(host_info) != 1:
         logger.error("Hetero LR only support one host party, but current "
@@ -451,6 +451,7 @@ def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
         logger.info("epoch=%i done" % i)
     logger.info("host training process done.")
     model_file_path = ph.context.Context.get_model_file_path()
+    logging.info("Current model file path is:", model_file_path)
     with open(model_file_path, 'wb') as fm:
         pickle.dump(client_host.model.theta, fm)
 
