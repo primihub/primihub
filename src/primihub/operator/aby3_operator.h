@@ -398,21 +398,19 @@ public:
 
     if (skip_index == 0 || skip_index == 1) {
       if (partyIdx == 2) {
-        // fp64Matrix tmp(m.cols(), m.rows());
-        // for (auto i = 0; i < tmp.cols(); i ++)
-        //   for (auto j = 0; j < tmp.rows(); j ++)
-        //     tmp(i,j) = -1;
-        // m *= tmp;
-        f64Matrix<D> tmp(1, 1);
-        tmp(0, 0) = -1;
-        m *= tmp;
+        m.mData = m.mData.array() * -1;
       }
     } else {
       if (partyIdx == 1) {
-        f64Matrix<D> tmp(1, 1);
-        tmp(0, 0) = -1;
-        m *= tmp;
+        m.mData = m.mData.array() * -1;
       }
+    }
+
+    // TODO: Add for test, remote it.
+    {
+      std::stringstream ss;
+      ss << m;
+      LOG(INFO) << ss.str();
     }
 
     LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
