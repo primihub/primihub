@@ -21,8 +21,6 @@ from os import path
 import logging
 from sklearn.datasets import load_iris
 
-# path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
-
 
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
@@ -35,6 +33,11 @@ def get_logger(name):
 
 
 logger = get_logger("Homo-LR-Host")
+
+
+dataset.define("breast_0")
+dataset.define("breast_1")
+dataset.define("breast_2")
 
 
 class Arbiter:
@@ -609,11 +612,6 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
 
     proxy_server.StopRecvLoop()
 
-
-dataset.define("breast_0")
-dataset.define("breast_1")
-dataset.define("breast_2")
-
 # path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
 
@@ -661,35 +659,7 @@ arbiter_info, guest_info, host_info, task_type, task_params = load_info()
 
 logger = get_logger(task_type)
 
-# ph.context.Context.role_nodeid_map["host"] = ["nodeX"]
-# ph.context.Context.role_nodeid_map["guest"] = ["nodeY"]
-# ph.context.Context.role_nodeid_map["arbiter"] = ["nodeZ"]
 
-# # TODO: Remove them, just for debug.
-# ph.context.Context.node_addr_map["nodeX"] = "127.0.0.1:8010"
-# ph.context.Context.node_addr_map["nodeY"] = "127.0.0.1:8020"
-# ph.context.Context.node_addr_map["nodeZ"] = "127.0.0.1:8030"
-
-# ph.context.Context.dataset_map[
-#     'homolr-guest'] = '/Users/xusong/githubs/primihub/data/breast-cancer-wisconsin.data'
-# ph.context.Context.dataset_map[
-#     'homolr-host'] = '/Users/xusong/githubs/primihub/data/breast-cancer-wisconsin.data'
-# ph.context.Context.dataset_map[
-#     'homolr-arbiter'] = '/Users/xusong/githubs/primihub/data/breast-cancer-wisconsin.data'
-
-# def dump_task_content(dataset_map, node_addr_map, role_nodeid_map, params_map):
-#     logger.info(f"Dataset of all node: {dataset_map}")
-#     logger.info(f"Node and it's address: {node_addr_map}")
-#     logger.info(f"Role and it's node: {role_nodeid_map}")
-#     logger.info(f"Params: {params_map}")
-
-
-# @ph.context.function(
-#     role=host_info[0]['role'],
-#     protocol=task_type,
-#     #  datasets=host_info[0]['dataset'],
-#     datasets=['guest_dataset'],
-#     port=str(host_info[0]['port']))
 @ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
 def run_host_party():
     logger.info("Start homo-LR host logic.")
