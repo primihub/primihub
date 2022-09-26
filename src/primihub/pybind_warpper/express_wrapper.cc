@@ -7,6 +7,11 @@
 
 namespace primihub {
 PyMPCExpressExecutor::PyMPCExpressExecutor(uint32_t party_id) {
+  FLAGS_log_dir = "./logs/";
+  google::InitGoogleLogging("express_wrapper");
+  google::SetLogFilenameExtension("log_");
+  FLAGS_alsologtostderr = true;
+  FLAGS_log_prefix = true;
   if ((party_id == 0) || (party_id == 1) || (party_id == 2)) {
     this->party_id_ = party_id;
   } else {
