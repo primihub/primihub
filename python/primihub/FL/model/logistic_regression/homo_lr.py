@@ -7,6 +7,8 @@ from primihub import dataset, context
 from os import path
 import json
 import os
+from phe import paillier
+from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 import numpy as np
@@ -265,6 +267,7 @@ def run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params={}):
     acc = client_arbiter.evaluation(label, pre)
     logger.info('acc is: %s' % acc)
     logger.info("All process done.")
+    weights = self.theta
     proxy_server.StopRecvLoop()
 
 
@@ -690,24 +693,9 @@ def run_guest_party():
     logger.info("Finish homo-LR guest logic.")
 
 
-# Don't forget to add dataset name to ph.context.function's dataset parameters,
-# although hetero-LR's arbiter don't handle any examples. This limit comes from
-# primihub, primihub use dataset name here to resolve which party will act as
-# arbiter.
-# @ph.context.function(
-#     role=arbiter_info[0]['role'],
-#     protocol=task_type,
-#     #  datasets=arbiter_info[0]['dataset'],
-#     datasets=["label_dataset"],
-#     port=str(arbiter_info[0]['port']))
 @ph.context.function(role='arbiter', protocol='lr', datasets=['guest_dataset'], port='8030', task_type="regression")
 def run_arbiter_party():
 
     run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
 
     logger.info("Finish homo-LR arbiter logic.")
-
-
-# if __name__ == "__main__":
-
-#     pass
