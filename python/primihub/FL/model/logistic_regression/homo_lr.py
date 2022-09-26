@@ -8,6 +8,7 @@ from os import path
 import json
 import os
 from phe import paillier
+import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
@@ -265,9 +266,11 @@ def run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params={}):
     logger.info('Classification result is:')
     # acc = np.mean(y == pre)
     acc = client_arbiter.evaluation(label, pre)
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    with open(predict_file_path, 'wb') as evf:
+        pickle.dump({'acc': acc}, evf)
     logger.info('acc is: %s' % acc)
     logger.info("All process done.")
-    weights = self.theta
     proxy_server.StopRecvLoop()
 
 
@@ -445,6 +448,9 @@ def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
             logger.info("batch=%s done" % j)
         logger.info("epoch=%i done" % i)
     logger.info("host training process done.")
+    model_file_path = ph.context.Context.get_model_file_path()
+    with open(model_file_path, 'wb') as fm:
+        pickle.dump(client_host.model.theta, fm)
 
     proxy_server.StopRecvLoop()
 
@@ -587,6 +593,7 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
             logger.info("batch=%s done" % j)
         logger.info("epoch=%i done" % i)
     logger.info("guest training process done.")
+
     proxy_server.StopRecvLoop()
 
 
