@@ -412,8 +412,13 @@ def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
     # x, label = data_binary(dataset_filepath)
     print("********",)
     data = pd.read_csv(host_info['dataset'], header=0)
-    label = data.pop('y').values
-    x = data.copy().values
+
+    data = ph.dataset.read(dataset_key="breast_1").df_data
+
+    # label = data.pop('y').values
+    label = data.iloc[:, -1].values
+    # x = data.copy().values
+    x = data.iloc[:, 0:-1].values
 
     # x, label = data_iris()
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
@@ -566,9 +571,13 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
     # x, label = data_binary(dataset_filepath)
     # data = pd.read_csv(guest_info['dataset'], header=0)
     # x, label = data_iris()
-    data = pd.read_csv(guest_info['dataset'], header=0)
-    label = data.pop('y').values
-    x = data.copy().values
+    # data = pd.read_csv(guest_info['dataset'], header=0)
+    data = ph.dataset.read(dataset_key="breast_0").df_data
+
+    # label = data.pop('y').values
+    label = data.iloc[:, -1].values
+    # x = data.copy().values
+    x = data.iloc[:, 0:-1].values
 
     count_train = x.shape[0]
     batch_num_train = (count_train - 1) // config['batch_size'] + 1
@@ -601,8 +610,9 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
     proxy_server.StopRecvLoop()
 
 
-dataset.define("guest_dataset")
-dataset.define("label_dataset")
+dataset.define("breast_0")
+dataset.define("breast_1")
+dataset.define("breast_2")
 
 # path = path.join(path.dirname(__file__), '../../../tests/data/wisconsin.data')
 
@@ -680,7 +690,7 @@ logger = get_logger(task_type)
 #     #  datasets=host_info[0]['dataset'],
 #     datasets=['guest_dataset'],
 #     port=str(host_info[0]['port']))
-@ph.context.function(role='host', protocol='lr', datasets=['test_dataset'], port='8020', task_type="regression")
+@ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
@@ -695,7 +705,7 @@ def run_host_party():
 #     #  datasets=host_info[0]['dataset'],
 #     datasets=["guest_dataset"],
 #     port=str(guest_info[0]['port']))
-@ph.context.function(role='guest', protocol='lr', datasets=['test_party_0'], port='8010', task_type="regression")
+@ph.context.function(role='guest', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
@@ -704,7 +714,7 @@ def run_guest_party():
     logger.info("Finish homo-LR guest logic.")
 
 
-@ph.context.function(role='arbiter', protocol='lr', datasets=['guest_dataset'], port='8030', task_type="regression")
+@ph.context.function(role='arbiter', protocol='lr', datasets=['breast_2'], port='8030', task_type="regression")
 def run_arbiter_party():
 
     run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)

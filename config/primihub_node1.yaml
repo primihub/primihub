@@ -29,6 +29,9 @@ datasets:
   - description: "test_dataset"
     model: "csv"
     source: "/tmp/FL/wisconsin_test.data"
+  - description: "breast_1"
+    model: "csv"
+    source: "/tmp/FL/wisconsin.data"
 
 localkv: 
   model: "leveldb"
