@@ -1,4 +1,3 @@
-
 #ifndef SRC_primihub_operator_ABY3_operator_H
 #define SRC_primihub_operator_ABY3_operator_H
 
@@ -10,26 +9,25 @@
 
 #include "src/primihub/common/defines.h"
 #include "src/primihub/common/type/fixed_point.h"
+#include "src/primihub/common/type/type.h"
+#include "src/primihub/primitive/ppa/kogge_stone.h"
 #include "src/primihub/protocol/aby3/encryptor.h"
 #include "src/primihub/protocol/aby3/evaluator/binary_evaluator.h"
 #include "src/primihub/protocol/aby3/evaluator/evaluator.h"
 #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
+#include "src/primihub/protocol/aby3/runtime.h"
 #include "src/primihub/protocol/aby3/sh3_gen.h"
 #include "src/primihub/util/crypto/prng.h"
+#include "src/primihub/util/eigen_util.h"
+#include "src/primihub/util/log.h"
 #include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/session.h"
-
-#include "src/primihub/common/type/type.h"
-
-#include "src/primihub/protocol/aby3/runtime.h"
 #include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
 
-#include "src/primihub/util/eigen_util.h"
-#include "src/primihub/util/log.h"
 namespace primihub {
 
+const uint8_t VAL_BITCOUNT = 64;
 const Decimal D = D16;
 
 class MPCOperator {
@@ -162,6 +160,10 @@ public:
   template <Decimal D> void reveal(const sf64<D> &vals, u64 Idx) {
     enc.reveal(runtime, Idx, vals).get();
   }
+
+  // Reveal binary share to one or more party.
+  i64Matrix reveal(const sbMatrix &sh_res);
+  void reveal(const sbMatrix &sh_res, uint64_t party_id);
 
   template <Decimal D> sf64<D> MPC_Add(std::vector<sf64<D>> sharedFixedInt) {
     sf64<D> sum;
@@ -341,12 +343,22 @@ public:
         mPrev.asyncSendCopy(shape);
       } else {
         if (partyIdx == (i + 1) % 3)
+          mPrev.recv(shape);
+        else if (partyIdx == (i + 2) % 3)
           mNext.recv(shape);
         else
-          mPrev.recv(shape);
+          throw std::runtime_error("Message recv logic error.");
       }
 
       all_party_shape.emplace_back(shape);
+    }
+
+    {
+      LOG(INFO) << "Dump shape of all party's matrix:";
+      for (uint64_t i = 0; i < 3; i++)
+        LOG(INFO) << "Party " << i << ": (" << all_party_shape[i][0] << ", "
+                << all_party_shape[i][1] << ")";
+      LOG(INFO) << "Dump finish.";
     }
 
     // The compare is a binary operator, so only two party will provide value
@@ -363,6 +375,10 @@ public:
         }
       }
     }
+
+    if (skip_index == -1)
+      throw std::runtime_error(
+          "This operator is binary, can only handle value from two party.");
 
     // Shape of matrix in two party shoubld be the same.
     if (skip_index == 0) {
@@ -399,59 +415,51 @@ public:
       }
     }
 
+    LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
+              << (skip_index + 2) % 3 << " provide value for MPC compare.";
+
     // Create binary shares.
-    m.resize(m.size(), 1);
+    uint64_t num_elem = all_party_shape[0][0] * all_party_shape[0][1];
+    m.resize(num_elem, 1);
+
     std::vector<sbMatrix> sh_m_vec;
     for (uint64_t i = 0; i < 3; i++) {
       if (static_cast<int>(i) == skip_index)
         continue;
       if (i == partyIdx) {
-        sbMatrix sh_m(m.size(), 1);
-        enc.localBinMatrix(runtime.noDependencies(), m.i64Cast(), sh_m).get();
+        sbMatrix sh_m(num_elem, VAL_BITCOUNT);
+        auto task = runtime.noDependencies();
+        task.get();
+        enc.localBinMatrix(task, m.i64Cast(), sh_m).get();
         sh_m_vec.emplace_back(sh_m);
       } else {
-        sbMatrix sh_m(m.size(), 1);
-        enc.remoteBinMatrix(runtime.noDependencies(), sh_m).get();
+        sbMatrix sh_m(num_elem, VAL_BITCOUNT);
+        auto task = runtime.noDependencies();
+        task.get();
+        enc.remoteBinMatrix(task, sh_m).get();
         sh_m_vec.emplace_back(sh_m);
       }
     }
+
+    LOG(INFO) << "Create binary share for value from two party finish.";
+
+    // Build then run MSB circuit.
+    KoggeStoneLibrary lib;
+    uint64_t size = 64;
+    BetaCircuit *cir = lib.int_int_add_msb(size);
+    cir->levelByAndDepth();
+
+    sh_res.resize(m.size(), 1);
+    std::vector<const sbMatrix *> input = {&sh_m_vec[0], &sh_m_vec[1]};
+    std::vector<sbMatrix *> output = {&sh_res};
+    auto task = runtime.noDependencies();
+    task = binEval.asyncEvaluate(task, cir, gen, input, output);
+    task.get();
+
+    LOG(INFO) << "Finish evalute int_int_add_msb circuit.";
   }
 
-  template <Decimal D> void MPC_Compare(sbMatrix &sh_res) {
-    std::vector<std::array<uint64_t, 2>> all_party_shape;
-    // Get matrix shape of all party.
-    for (uint64_t i = 0; i < 3; i++) {
-      std::array<uint64_t, 2> shape;
-      if (partyIdx == i) {
-        shape[0] = 0;
-        shape[1] = 0;
-        mNext.asyncSendCopy(shape);
-        mPrev.asyncSendCopy(shape);
-      } else {
-        if (partyIdx == (i + 1) % 3)
-          mNext.recv(shape);
-        else
-          mPrev.recv(shape);
-
-        all_party_shape.emplace_back(shape);
-      }
-    }
-
-    // Shape of matrix in two party shoubld be the same.
-    if ((all_party_shape[0][0] != all_party_shape[1][0]) ||
-        (all_party_shape[0][1] != all_party_shape[1][1]))
-      throw std::runtime_error(
-          "Shape of matrix in two party must be the same.");
-
-    // Create binary share.
-    uint32_t num_elem = all_party_shape[0][0] * all_party_shape[0][1];
-    std::vector<sbMatrix> sh_m_vec;
-    for (uint8_t i = 0; i < 2; i++) {
-      sbMatrix sh_m(num_elem, 1);
-      enc.remoteBinMatrix(runtime.noDependencies(), sh_m).get();
-      sh_m_vec.emplace_back(sh_m);
-    }
-  }
+  void MPC_Compare(sbMatrix &sh_res);
 };
 
 #endif
