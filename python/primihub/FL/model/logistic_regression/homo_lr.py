@@ -186,6 +186,7 @@ def run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params={}):
     # host_nodes = role_node_map["host"]
     # guest_nodes = role_node_map["guest"]
     # arbiter_nodes = role_node_map["arbiter"]
+    eva_type = ph.context.Context.params_map.get("taskType", None)
 
     if len(host_info) != 1:
         logger.error("Hetero LR only support one host party, but current "
@@ -373,6 +374,7 @@ class Host:
 def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
     # host_nodes = role_node_map["host"]
     # arbiter_nodes = role_node_map["arbiter"]
+    eva_type = ph.context.Context.params_map.get("taskType", None)
 
     if len(host_info) != 1:
         logger.error("Hetero LR only support one host party, but current "
