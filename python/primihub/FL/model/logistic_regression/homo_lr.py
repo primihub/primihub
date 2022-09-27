@@ -708,7 +708,7 @@ def run_host_party():
     logger.info("Finish homo-LR host logic.")
 
 
-@ph.context.function(role='guest', protocol='lr', datasets=['breast_3'], port='8030', task_type="regression")
+@ph.context.function(role='guest', protocol='lr', datasets=['breast_2'], port='8030', task_type="regression")
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
