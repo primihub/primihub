@@ -395,22 +395,14 @@ public:
         (all_party_shape[0][1] != all_party_shape[1][1]))
       throw std::runtime_error(
           "Shape of matrix in two party must be the same.");
-
+    
+    // Set value to it's negative for some party. 
     if (skip_index == 0 || skip_index == 1) {
-      if (partyIdx == 2) {
+      if (partyIdx == 2)
         m.mData = m.mData.array() * -1;
-      }
     } else {
-      if (partyIdx == 1) {
+      if (partyIdx == 1)
         m.mData = m.mData.array() * -1;
-      }
-    }
-
-    // TODO: Add for test, remote it.
-    {
-      std::stringstream ss;
-      ss << m;
-      LOG(INFO) << ss.str();
     }
 
     LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
@@ -453,8 +445,17 @@ public:
     auto task = runtime.noDependencies();
     task = binEval.asyncEvaluate(task, cir, gen, input, output);
     task.get();
+  
+    // Recover original value.
+    if (skip_index == 0 || skip_index == 1) {
+      if (partyIdx == 2)
+        m.mData = m.mData.array() * -1;
+    } else {
+      if (partyIdx == 1)
+        m.mData = m.mData.array() * -1;
+    }
 
-    LOG(INFO) << "Finish evalute int_int_add_msb circuit.";
+    LOG(INFO) << "Finish evalute MSB circuit.";
   }
 
   void MPC_Compare(sbMatrix &sh_res);

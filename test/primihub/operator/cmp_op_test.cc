@@ -59,10 +59,10 @@ TEST(cmp_op, mpc_cmp_op) {
   std::vector<double> party_2_val;
 
   for (int i = 0; i < 100; i++)
-    party_0_val.push_back(1);
+    party_0_val.push_back(1.23456);
 
   for (int i = 0; i < 100; i++)
-    party_1_val.push_back(-10);
+    party_1_val.push_back(-10.3656);
 
   pid_t pid = fork();
   if (pid != 0) {
@@ -84,6 +84,14 @@ TEST(cmp_op, mpc_cmp_op) {
   std::vector<bool> mpc_res;
   run_mpc(0, "127.0.0.1", 10010, 10020, party_0_val, mpc_res);
 
-  for (auto v : mpc_res)
-    LOG(INFO) << v;
+  std::vector<bool> local_res;
+  for (int i = 0; i < 100; i++)
+    local_res.push_back(party_0_val[i] < party_1_val[i]);
+
+  for (int i = 0; i < 100; i++)
+    if (local_res[i] != mpc_res[i]) {
+      std::stringstream ss;
+      ss << "Find result mismatch between MPC and local, index is " << i << ".";
+      throw std::runtime_error(ss.str());
+    }
 }

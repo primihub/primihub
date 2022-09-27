@@ -320,6 +320,6 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
   task = binEval.asyncEvaluate(task, cir, gen, input, output);
   task.get();
 
-  LOG(INFO) << "Finish evaluate int_int_add_msb circuit.";
+  LOG(INFO) << "Finish evaluate MSB circuit.";
 }
 } // namespace primihub
