@@ -660,6 +660,45 @@ arbiter_info, guest_info, host_info, task_type, task_params = load_info()
 logger = get_logger(task_type)
 
 
+# @ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
+# def run_host_party():
+#     logger.info("Start homo-LR host logic.")
+
+#     run_homo_lr_host(host_info, arbiter_info, task_params)
+
+#     logger.info("Finish homo-LR host logic.")
+
+
+# # @ph.context.function(
+# #     role=guest_info[0]['role'],
+# #     protocol=task_type,
+# #     #  datasets=host_info[0]['dataset'],
+# #     datasets=["guest_dataset"],
+# #     port=str(guest_info[0]['port']))
+# @ph.context.function(role='guest', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
+# def run_guest_party():
+#     logger.info("Start homo-LR guest logic.")
+
+#     run_homo_lr_guest(guest_info, arbiter_info, task_params)
+
+#     logger.info("Finish homo-LR guest logic.")
+
+
+# @ph.context.function(role='arbiter', protocol='lr', datasets=['breast_2'], port='8030', task_type="regression")
+# def run_arbiter_party():
+
+#     run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
+
+#     logger.info("Finish homo-LR arbiter logic.")
+
+@ph.context.function(role='arbiter', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
+def run_arbiter_party():
+
+    run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
+
+    logger.info("Finish homo-LR arbiter logic.")
+
+
 @ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
 def run_host_party():
     logger.info("Start homo-LR host logic.")
@@ -669,24 +708,10 @@ def run_host_party():
     logger.info("Finish homo-LR host logic.")
 
 
-# @ph.context.function(
-#     role=guest_info[0]['role'],
-#     protocol=task_type,
-#     #  datasets=host_info[0]['dataset'],
-#     datasets=["guest_dataset"],
-#     port=str(guest_info[0]['port']))
-@ph.context.function(role='guest', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
+@ph.context.function(role='guest', protocol='lr', datasets=['breast_3'], port='8030', task_type="regression")
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
     run_homo_lr_guest(guest_info, arbiter_info, task_params)
 
     logger.info("Finish homo-LR guest logic.")
-
-
-@ph.context.function(role='arbiter', protocol='lr', datasets=['breast_2'], port='8030', task_type="regression")
-def run_arbiter_party():
-
-    run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
-
-    logger.info("Finish homo-LR arbiter logic.")
