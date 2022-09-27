@@ -1,6 +1,7 @@
 #ifndef __EXPRESS_WRAPPER_H_
 #define __EXPRESS_WRAPPER_H_
 
+// #include <glog/logging.h>
 #include <pybind11/pybind11.h>
 #include <string>
 
@@ -9,11 +10,13 @@
 namespace py = pybind11;
 
 namespace primihub {
+
 // This class is a wrapper of C++'s express executor with MPC protocol,
 // and will be used by python interpreter.
 class PyMPCExpressExecutor : public MPCExpressExecutor {
 public:
-  PyMPCExpressExecutor(uint32_t party_id);
+  PyMPCExpressExecutor(uint32_t party_id, string prefix = "No Config",
+                       string log_dir = "No Config");
 
   // These methods are called by python interpreter,
   // ensure call them with below order.

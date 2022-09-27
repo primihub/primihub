@@ -6,12 +6,19 @@
 #include "src/primihub/pybind_warpper/express_wrapper.h"
 
 namespace primihub {
-PyMPCExpressExecutor::PyMPCExpressExecutor(uint32_t party_id) {
-  FLAGS_log_dir = "./logs/";
-  google::InitGoogleLogging("express_wrapper");
-  google::SetLogFilenameExtension("log_");
-  FLAGS_alsologtostderr = true;
-  FLAGS_log_prefix = true;
+PyMPCExpressExecutor::PyMPCExpressExecutor(uint32_t party_id, string prefix,
+                                           string log_dir) {
+  if (prefix != "No Config" || log_dir != "No Config") {
+    FLAGS_alsologtostderr = true;
+    FLAGS_log_prefix = true;
+    if (log_dir != "No Config") {
+      FLAGS_log_dir = log_dir;
+    }
+    if (prefix != "No Config") {
+      google::SetLogFilenameExtension(prefix.data());
+    }
+    google::InitGoogleLogging("express_wrapper");
+  }
   if ((party_id == 0) || (party_id == 1) || (party_id == 2)) {
     this->party_id_ = party_id;
   } else {
@@ -306,7 +313,7 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 PYBIND11_MODULE(pybind_mpc, m) {
   // clang-format off
   py::class_<primihub::PyMPCExpressExecutor>(m, "MPCExpressExecutor")
-      .def(py::init<uint32_t>())
+      .def(py::init<uint32_t,string,string>())
       .def("import_column_config",
            &primihub::PyMPCExpressExecutor::importColumnConfig)
       .def("import_column_values",

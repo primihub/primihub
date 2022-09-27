@@ -8,7 +8,17 @@ import random
 
 def run_mpc_party(party_id, expr, col_owner, col_dtype,
                   col_val, party_addr, reveal_party):
-    mpc_exec = pybind_mpc.MPCExpressExecutor(party_id)
+    log_prefix=os.environ.get('LOG_PREFIX')
+    log_dir=os.environ.get('LOG_DIR')
+    if log_prefix==None:
+        log_prefix="No Config"
+    if log_dir==None:
+        log_dir="No Config"
+    else:
+        if os.path.exists(log_dir)== False:
+            os.mkdir(log_dir)
+    mpc_exec = pybind_mpc.MPCExpressExecutor(party_id,log_prefix,log_dir)
+        
     mpc_exec.import_column_config(col_owner, col_dtype)
     mpc_exec.import_express(expr)
 
@@ -55,6 +65,7 @@ def mpc_run_without_grpc():
         res_file=os.environ.get('RES_FILE')
         env_dict['res_file']=res_file
 
+        
         # data_name_A=os.environ.get('DATA_NAME_A')
         # env_dict['data_name_A']=data_name_A
         
@@ -74,7 +85,6 @@ def mpc_run_without_grpc():
                 party_cols[headers[i]]=[]
             for row in f_csv:
                 for i in range(len(headers)):
-                    print
                     if col_dtype[headers[i]] == 0:
                         party_cols[headers[i]].append(int(row[i]))
                     else:
