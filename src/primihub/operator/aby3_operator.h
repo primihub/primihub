@@ -387,8 +387,8 @@ public:
       all_party_shape[1][0] = all_party_shape[2][0];
       all_party_shape[1][1] = all_party_shape[2][1];
     } else if (skip_index != 2) {
-      all_party_shape[0][0] = all_party_shape[1][0];
-      all_party_shape[0][1] = all_party_shape[1][1];
+      all_party_shape[1][0] = all_party_shape[2][0];
+      all_party_shape[1][1] = all_party_shape[2][1];
     }
 
     if ((all_party_shape[0][0] != all_party_shape[1][0]) ||

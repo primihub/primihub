@@ -64,34 +64,50 @@ TEST(cmp_op, mpc_cmp_op) {
   for (int i = 0; i < 100; i++)
     party_1_val.push_back(-10.3656);
 
-  pid_t pid = fork();
-  if (pid != 0) {
-    // Party 2.
-    std::vector<bool> mpc_res;
-    run_mpc(2, "127.0.0.1", 10020, 10030, party_2_val, mpc_res);
-    return;
-  }
-
-  pid = fork();
-  if (pid != 0) {
-    // Party 1.
-    std::vector<bool> mpc_res;
-    run_mpc(1, "127.0.0.1", 10030, 10010, party_1_val, mpc_res);
-    return;
-  }
-
-  // Party 0.
-  std::vector<bool> mpc_res;
-  run_mpc(0, "127.0.0.1", 10010, 10020, party_0_val, mpc_res);
-
-  std::vector<bool> local_res;
-  for (int i = 0; i < 100; i++)
-    local_res.push_back(party_0_val[i] < party_1_val[i]);
-
-  for (int i = 0; i < 100; i++)
-    if (local_res[i] != mpc_res[i]) {
-      std::stringstream ss;
-      ss << "Find result mismatch between MPC and local, index is " << i << ".";
-      throw std::runtime_error(ss.str());
+  bool standalone_mode = true;
+  if (standalone_mode) {
+    pid_t pid = fork();
+    if (pid != 0) {
+      // Party 2.
+      std::vector<bool> mpc_res;
+      run_mpc(2, "127.0.0.1", 10020, 10030, party_1_val, mpc_res);
+      return;
     }
+
+    pid = fork();
+    if (pid != 0) {
+      // Party 1.
+      std::vector<bool> mpc_res;
+      run_mpc(1, "127.0.0.1", 10030, 10010, party_2_val, mpc_res);
+      return;
+    }
+
+    // Party 0.
+    std::vector<bool> mpc_res;
+    run_mpc(0, "127.0.0.1", 10010, 10020, party_0_val, mpc_res);
+
+    std::vector<bool> local_res;
+    for (int i = 0; i < 100; i++)
+      local_res.push_back(party_0_val[i] < party_1_val[i]);
+
+    for (int i = 0; i < 100; i++) {
+      if (local_res[i] != mpc_res[i]) {
+        std::stringstream ss;
+        ss << "Find result mismatch between MPC and local, index is " << i
+           << ".";
+        throw std::runtime_error(ss.str());
+      }
+    }
+  } else {
+    std::vector<bool> mpc_res;
+    if (!strncmp(std::getenv("MPC_PARTY"), "PARTY_0", strlen("PARTY_0")))
+      run_mpc(0, "127.0.0.1", 10010, 10020, party_0_val, mpc_res);
+    else if (!strncmp(std::getenv("MPC_PARTY"), "PARTY_1", strlen("PARTY_1")))
+      run_mpc(1, "127.0.0.1", 10030, 10010, party_2_val, mpc_res);
+    else if (!strncmp(std::getenv("MPC_PARTY"), "PARTY_2", strlen("PARTY_2")))
+      run_mpc(2, "127.0.0.1", 10020, 10030, party_1_val, mpc_res);
+    else
+      LOG(ERROR) << "Invalid MPC_PARTY value " << std::getenv("MPC_PARTY")
+                 << ".";
+  }
 }

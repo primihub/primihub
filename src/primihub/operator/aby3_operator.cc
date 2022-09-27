@@ -268,7 +268,6 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
       shape[1] = 0;
       mNext.asyncSendCopy(shape);
       mPrev.asyncSendCopy(shape);
-
     } else {
       if (partyIdx == (i + 1) % 3)
         mPrev.recv(shape);
