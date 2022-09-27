@@ -575,7 +575,7 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
     # data = pd.read_csv(guest_info['dataset'], header=0)
     # x, label = data_iris()
     # data = pd.read_csv(guest_info['dataset'], header=0)
-    data = ph.dataset.read(dataset_key="breast_0").df_data
+    data = ph.dataset.read(dataset_key="breast_2").df_data
 
     # label = data.pop('y').values
     label = data.iloc[:, -1].values
