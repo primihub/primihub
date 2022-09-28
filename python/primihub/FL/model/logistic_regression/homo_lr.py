@@ -616,7 +616,7 @@ def load_info():
     # basedir = os.path.abspath(os.path.dirname(__file__))
     # config_f = open(os.path.join(basedir, 'homo_lr_config.json'), 'r')
     config_f = open(
-        '/primihub/python/primihub/FL/model/logistic_regression/homo_lr_config.json',
+        '/app/python/primihub/FL/model/logistic_regression/homo_lr_config.json',
         'r')
     lr_config = json.load(config_f)
     print(lr_config)
