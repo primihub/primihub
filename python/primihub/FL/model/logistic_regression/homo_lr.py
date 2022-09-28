@@ -159,7 +159,6 @@ class Arbiter:
             else:
                 self.theta = self.encrypt_matrix(self.theta)
 
-            print("=======global model======", self.theta)
             self.proxy_client_host.Remote(
                 self.theta, "global_host_model_param")
         else:
@@ -450,7 +449,6 @@ def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
             logger.info("batch_host_y.shape:{}".format(batch_host_y.shape))
             host_param = client_host.fit(batch_host_x, batch_host_y,
                                          config['category'])
-            print("host_param=======: ", host_param)
 
             proxy_client_arbiter.Remote(host_param, "host_param")
             client_host.model.theta = proxy_server.Get(
@@ -602,7 +600,6 @@ def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
             logger.info("batch_host_y.shape:{}".format(batch_y.shape))
             guest_param = client_guest.fit(
                 batch_x, batch_y, config['category'])
-            print("guest_param=======: ", guest_param)
             proxy_client_arbiter.Remote(guest_param, "guest_param")
             client_guest.model.theta = proxy_server.Get(
                 "global_guest_model_param")
@@ -639,8 +636,6 @@ def load_info():
 
         elif tmp_node == 'Host':
             host_info = tmp_val
-
-        print("=========", tmp_val)
 
     return arbiter_info, guest_info, host_info, task_type, task_params
 
