@@ -1,9 +1,6 @@
 #/bin/bash
 
-if [ ! -n "$1" ] ; then
-    echo "Please input 1st arg: docker image tag"
-    exit
-fi
+tag=`date +%F-%H-%M-%S`
 
 bash pre_build.sh
 
@@ -40,4 +37,4 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$1 . -f Dockerfile.local 
+docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local 
