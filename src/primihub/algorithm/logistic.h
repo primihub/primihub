@@ -71,6 +71,7 @@ private:
 
   int _LoadDatasetFromCSV(std::string &filename, eMatrix<double> &m);
 
+  std::string model_file_name_;
   std::string model_name_;
   uint16_t local_id_;
   eMatrix<double> train_input_;
