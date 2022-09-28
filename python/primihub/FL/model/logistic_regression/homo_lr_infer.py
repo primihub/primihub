@@ -10,7 +10,7 @@ def sigmoid(x):
 
 
 def predict_prob(weights, bias, x):
-    prob = sigmoid(np.dot(weights, x)+bias)
+    prob = sigmoid(np.dot(x, weights)+bias)
     return prob
 
 
