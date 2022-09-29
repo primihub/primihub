@@ -383,12 +383,12 @@ def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
     # eva_type = ph.context.Context.params_map.get("taskType", None)
 
     if len(host_nodes) != 1:
-        logger.error("Hetero LR only support one host party, but current "
+        logger.error("Homo LR only support one host party, but current "
                      "task have {} host party.".format(len(host_nodes)))
         return
 
     if len(arbiter_nodes) != 1:
-        logger.error("Hetero LR only support one arbiter party, but current "
+        logger.error("Homo LR only support one arbiter party, but current "
                      "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
 
@@ -549,12 +549,12 @@ def run_homo_lr_guest(role_node_map, node_addr_map, task_params={}):
     arbiter_nodes = role_node_map["arbiter"]
 
     if len(guest_nodes) != 1:
-        logger.error("Hetero LR only support one guest party, but current "
+        logger.error("Homo LR only support one guest party, but current "
                      "task have {} guest party.".format(len(guest_nodes)))
         return
 
     if len(arbiter_nodes) != 1:
-        logger.error("Hetero LR only support one arbiter party, but current "
+        logger.error("Homo LR only support one arbiter party, but current "
                      "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
 
@@ -696,14 +696,22 @@ logger = get_logger(task_type)
 
 #     logger.info("Finish homo-LR arbiter logic.")
 
-role_nodeid_map = ph.context.Context.role_nodeid_map
-node_addr_map = ph.context.Context.node_addr_map
+# role_nodeid_map = ph.context.Context.role_nodeid_map
+# node_addr_map = ph.context.Context.node_addr_map
+
+role_node_map = ph.context.Context.get_role_node_map()
+node_addr_map = ph.context.Context.get_node_addr_map()
+logger.debug(
+    "role_nodeid_map {}".format(role_node_map))
+
+logger.debug(
+    "node_addr_map {}".format(node_addr_map))
 
 
 @ph.context.function(role='arbiter', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
 def run_arbiter_party():
 
-    run_homo_lr_arbiter(role_nodeid_map, node_addr_map, host_info, task_params)
+    run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params)
 
     logger.info("Finish homo-LR arbiter logic.")
 
@@ -712,7 +720,7 @@ def run_arbiter_party():
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
-    run_homo_lr_host(role_nodeid_map, node_addr_map, task_params)
+    run_homo_lr_host(role_node_map, node_addr_map, task_params)
 
     logger.info("Finish homo-LR host logic.")
 
@@ -721,6 +729,6 @@ def run_host_party():
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
-    run_homo_lr_guest(role_nodeid_map, node_addr_map, task_params)
+    run_homo_lr_guest(role_node_map, node_addr_map, task_params)
 
     logger.info("Finish homo-LR guest logic.")
