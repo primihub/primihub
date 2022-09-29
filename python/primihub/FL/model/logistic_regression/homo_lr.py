@@ -263,20 +263,7 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params={})
         logger.info("epoch={} done".format(i))
 
     logger.info("####### start predict ######")
-    # X, y = iris_data()
-    # X, y = data_binary(dataset_filepath)
-    data = pd.read_csv(guest_info['dataset'], header=0)
-    label = data.pop('y').values
-    x = data.copy().values
-    # X = LRModel.normalization(X)
-    pre = client_arbiter.predict(x, config['category'])
-    logger.info('Classification result is:')
-    # acc = np.mean(y == pre)
-    acc = client_arbiter.evaluation(label, pre)
-    predict_file_path = ph.context.Context.get_predict_file_path()
-    with open(predict_file_path, 'wb') as evf:
-        pickle.dump({'acc': acc}, evf)
-    logger.info('acc is: %s' % acc)
+
     logger.info("All process done.")
     proxy_server.StopRecvLoop()
 
