@@ -30,8 +30,6 @@
 #include "src/primihub/util/log.h"
 namespace primihub {
 
-const Decimal D = D16;
-
 class MPCOperator {
 public:
   Channel mNext, mPrev;

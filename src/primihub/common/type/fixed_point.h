@@ -10,7 +10,7 @@
 namespace primihub {
 
 enum Decimal { D0 = 0, D8 = 8, D16 = 16, D20 = 20, D32 = 32 };
-
+const Decimal D = D16;
 // template<Decimal D>
 // using f64 = fpml::fixed_point<i64, 63 - D, D>;
 struct monostate {};
