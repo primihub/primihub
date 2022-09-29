@@ -36,7 +36,7 @@ class ModelInfer:
         if self.type == "Homo-LR":
             preds = predict(self.model, self.arr)
 
-        pd.DataFrame(preds).to_csv(self.out)
+        pd.DataFrame(preds).to_csv(self.out, index=False)
         return preds
 
 
