@@ -420,7 +420,7 @@ def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
     }
     # x, label = data_binary(dataset_filepath)
     print("********",)
-    data = pd.read_csv(host_info['dataset'], header=0)
+    # data = pd.read_csv(host_info['dataset'], header=0)
 
     data = ph.dataset.read(dataset_key="breast_1").df_data
 
