@@ -31,3 +31,7 @@ echo "done"
 if [ ! -d "localdb" ]; then
     mkdir localdb
 fi
+
+if [ ! -d "log" ]; then
+    mkdir log
+fi
