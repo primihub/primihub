@@ -184,45 +184,49 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params={}):
-    # host_nodes = role_node_map["host"]
-    # guest_nodes = role_node_map["guest"]
-    # arbiter_nodes = role_node_map["arbiter"]
+def run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params={}):
+    host_nodes = role_node_map["host"]
+    guest_nodes = role_node_map["guest"]
+    arbiter_nodes = role_node_map["arbiter"]
     eva_type = ph.context.Context.params_map.get("taskType", None)
 
-    if len(host_info) != 1:
+    if len(host_nodes) != 1:
         logger.error("Hetero LR only support one host party, but current "
                      "task have {} host party.".format(len(host_info)))
         return
 
-    if len(guest_info) != 1:
+    if len(guest_nodes) != 1:
         logger.error("Hetero LR only support one guest party, but current "
                      "task have {} guest party.".format(len(guest_info)))
         return
 
-    if len(arbiter_info) != 1:
+    if len(arbiter_nodes) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
                      "task have {} arbiter party.".format(len(arbiter_info)))
         return
 
-    host_info = host_info[0]
-    guest_info = guest_info[0]
-    arbiter_info = arbiter_info[0]
+    # host_info = host_info[0]
+    # guest_info = guest_info[0]
+    # arbiter_info = arbiter_info[0]
     # arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
-    arbiter_port = arbiter_info['port']
+    # arbiter_port = arbiter_info['port']
+    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(arbiter_port)
     proxy_server.StartRecvLoop()
     logger.debug(
         "Create server proxy for arbiter, port {}.".format(arbiter_port))
 
     # host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    host_ip, host_port = host_info['ip'], host_info['port']
+    # host_ip, host_port = host_info['ip'], host_info['port']
+    host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     logger.debug("Create client proxy to host,"
                  " ip {}, port {}.".format(host_ip, host_port))
 
     # guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    guest_ip, guest_port = guest_info['ip'], guest_info['port']
+    # guest_ip, guest_port = guest_info['ip'], guest_info['port']
+    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+
     proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
     logger.debug("Create client proxy to guest,"
                  " ip {}, port {}.".format(guest_ip, guest_port))
@@ -373,32 +377,35 @@ class Host:
         return [self.public_key.encrypt(i) for i in x]
 
 
-def run_homo_lr_host(host_info, arbiter_info=None, task_params={}):
-    # host_nodes = role_node_map["host"]
-    # arbiter_nodes = role_node_map["arbiter"]
+def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
+    host_nodes = role_node_map["host"]
+    arbiter_nodes = role_node_map["arbiter"]
     # eva_type = ph.context.Context.params_map.get("taskType", None)
 
-    if len(host_info) != 1:
+    if len(host_nodes) != 1:
         logger.error("Hetero LR only support one host party, but current "
-                     "task have {} host party.".format(len(host_info)))
+                     "task have {} host party.".format(len(host_nodes)))
         return
 
-    if len(arbiter_info) != 1:
+    if len(arbiter_nodes) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
-                     "task have {} arbiter party.".format(len(arbiter_info)))
+                     "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
 
-    host_info = host_info[0]
-    arbiter_info = arbiter_info[0]
+    # host_info = host_info[0]
+    host_port = node_addr_map[host_nodes[0]].split(":")[1]
+
+    # arbiter_info = arbiter_info[0]
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
 
     # host_port = node_addr_map[host_nodes[0]].split(":")[1]
-    host_port = host_info['port']
+    # host_port = host_info['port']
     proxy_server = ServerChannelProxy(host_port)
     proxy_server.StartRecvLoop()
     logger.debug("Create server proxy for host, port {}.".format(host_port))
 
     # arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
-    arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
+    # arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
     proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port,
                                               "arbiter")
     logger.debug("Create client proxy to arbiter,"
@@ -537,31 +544,34 @@ class Guest:
             yield [d[start:end] for d in all_data]
 
 
-def run_homo_lr_guest(guest_info, arbiter_info, task_params={}):
-    # guest_nodes = role_node_map["guest"]
-    # arbiter_nodes = role_node_map["arbiter"]
+def run_homo_lr_guest(role_node_map, node_addr_map, task_params={}):
+    guest_nodes = role_node_map["guest"]
+    arbiter_nodes = role_node_map["arbiter"]
 
-    if len(guest_info) != 1:
+    if len(guest_nodes) != 1:
         logger.error("Hetero LR only support one guest party, but current "
-                     "task have {} guest party.".format(len(guest_info)))
+                     "task have {} guest party.".format(len(guest_nodes)))
         return
 
-    if len(arbiter_info) != 1:
+    if len(arbiter_nodes) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
-                     "task have {} arbiter party.".format(len(arbiter_info)))
+                     "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
 
-    guest_info = guest_info[0]
-    arbiter_info = arbiter_info[0]
+    # guest_info = guest_info[0]
+    # arbiter_info = arbiter_info[0]
 
-    # guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
-    guest_port = guest_info['port']
+    # # guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
+    # guest_port = guest_info['port']
+    guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
     logger.debug("Create server proxy for guest, port {}.".format(guest_port))
 
     # arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
-    arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
+    # arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+
     proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port,
                                               "arbiter")
     logger.debug("Create client proxy to arbiter,"
@@ -686,10 +696,14 @@ logger = get_logger(task_type)
 
 #     logger.info("Finish homo-LR arbiter logic.")
 
+role_nodeid_map = ph.context.Context.role_nodeid_map
+node_addr_map = ph.context.Context.node_addr_map
+
+
 @ph.context.function(role='arbiter', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
 def run_arbiter_party():
 
-    run_homo_lr_arbiter(arbiter_info, guest_info, host_info, task_params)
+    run_homo_lr_arbiter(role_nodeid_map, node_addr_map, host_info, task_params)
 
     logger.info("Finish homo-LR arbiter logic.")
 
@@ -698,7 +712,7 @@ def run_arbiter_party():
 def run_host_party():
     logger.info("Start homo-LR host logic.")
 
-    run_homo_lr_host(host_info, arbiter_info, task_params)
+    run_homo_lr_host(role_nodeid_map, node_addr_map, task_params)
 
     logger.info("Finish homo-LR host logic.")
 
@@ -707,6 +721,6 @@ def run_host_party():
 def run_guest_party():
     logger.info("Start homo-LR guest logic.")
 
-    run_homo_lr_guest(guest_info, arbiter_info, task_params)
+    run_homo_lr_guest(role_nodeid_map, node_addr_map, task_params)
 
     logger.info("Finish homo-LR guest logic.")
