@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import primihub as ph
+from primihub import dataset
 import logging
 
 
@@ -26,7 +27,7 @@ class ModelInfer:
         model_f = open(model_path, 'rb')
         self.model = np.array(pickle.load(model_f))
         # self.arr = pd.read_csv(input_path, header=None).values
-        data = ph.dataset.read(dataset_key=input_file).df_data
+        data = dataset.read(dataset_key=input_file).df_data
         self.arr = data.values
         self.type = model_type
 
