@@ -32,6 +32,9 @@ datasets:
   - description: "breast_1"
     model: "csv"
     source: "/tmp/FL/wisconsin.data"
+  - description: "homo_lr_test"
+    model: "csv"
+    source: "/tmp/FL/homo_lr_test.data"
 
 localkv: 
   model: "leveldb"
