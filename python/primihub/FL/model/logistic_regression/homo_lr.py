@@ -699,17 +699,16 @@ logger = get_logger(task_type)
 # role_nodeid_map = ph.context.Context.role_nodeid_map
 # node_addr_map = ph.context.Context.node_addr_map
 
-role_node_map = ph.context.Context.get_role_node_map()
-node_addr_map = ph.context.Context.get_node_addr_map()
-logger.debug(
-    "role_nodeid_map {}".format(role_node_map))
-
-logger.debug(
-    "node_addr_map {}".format(node_addr_map))
-
 
 @ph.context.function(role='arbiter', protocol='lr', datasets=['breast_0'], port='8010', task_type="regression")
 def run_arbiter_party():
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+    logger.debug(
+        "role_nodeid_map {}".format(role_node_map))
+
+    logger.debug(
+        "node_addr_map {}".format(node_addr_map))
 
     run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params)
 
@@ -718,6 +717,13 @@ def run_arbiter_party():
 
 @ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
 def run_host_party():
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+    logger.debug(
+        "role_nodeid_map {}".format(role_node_map))
+
+    logger.debug(
+        "node_addr_map {}".format(node_addr_map))
     logger.info("Start homo-LR host logic.")
 
     run_homo_lr_host(role_node_map, node_addr_map, task_params)
@@ -727,6 +733,13 @@ def run_host_party():
 
 @ph.context.function(role='guest', protocol='lr', datasets=['breast_2'], port='8030', task_type="regression")
 def run_guest_party():
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+    logger.debug(
+        "role_nodeid_map {}".format(role_node_map))
+
+    logger.debug(
+        "node_addr_map {}".format(node_addr_map))
     logger.info("Start homo-LR guest logic.")
 
     run_homo_lr_guest(role_node_map, node_addr_map, task_params)
