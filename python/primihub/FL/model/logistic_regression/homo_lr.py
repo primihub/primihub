@@ -184,7 +184,7 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map, node_addr_map, task_params={}):
+def run_homo_lr_arbiter(role_node_map, node_addr_map, data_key, task_params={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -364,7 +364,7 @@ class Host:
         return [self.public_key.encrypt(i) for i in x]
 
 
-def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
+def run_homo_lr_host(role_node_map, node_addr_map, data_key, task_params={}):
     host_nodes = role_node_map["host"]
     arbiter_nodes = role_node_map["arbiter"]
     # eva_type = ph.context.Context.params_map.get("taskType", None)
@@ -409,7 +409,7 @@ def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
     print("********",)
     # data = pd.read_csv(host_info['dataset'], header=0)
 
-    data = ph.dataset.read(dataset_key="breast_1").df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
 
     # label = data.pop('y').values
     label = data.iloc[:, -1].values
@@ -532,7 +532,7 @@ class Guest:
             yield [d[start:end] for d in all_data]
 
 
-def run_homo_lr_guest(role_node_map, node_addr_map, task_params={}):
+def run_homo_lr_guest(role_node_map, node_addr_map, datakey, task_params={}):
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
 
@@ -571,7 +571,7 @@ def run_homo_lr_guest(role_node_map, node_addr_map, task_params={}):
     # data = pd.read_csv(guest_info['dataset'], header=0)
     # x, label = data_iris()
     # data = pd.read_csv(guest_info['dataset'], header=0)
-    data = ph.dataset.read(dataset_key="breast_2").df_data
+    data = ph.dataset.read(dataset_key=datakey).df_data
 
     # label = data.pop('y').values
     label = data.iloc[:, -1].values
@@ -692,13 +692,19 @@ logger = get_logger("Homo-LR")
 def run_arbiter_party():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
+    dataset_map = ph.context.Context.dataset_map
+    data_key = list(dataset_map.keys())[0]
+
     logger.debug(
         "role_nodeid_map {}".format(role_node_map))
 
     logger.debug(
+        "dataset_map {}".format(dataset_map))
+
+    logger.debug(
         "node_addr_map {}".format(node_addr_map))
 
-    run_homo_lr_arbiter(role_node_map, node_addr_map, task_params)
+    run_homo_lr_arbiter(role_node_map, node_addr_map, data_key)
 
     logger.info("Finish homo-LR arbiter logic.")
 
@@ -707,6 +713,9 @@ def run_arbiter_party():
 def run_host_party():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
+    dataset_map = ph.context.Context.dataset_map
+    data_key = list(dataset_map.keys())[0]
+
     logger.debug(
         "role_nodeid_map {}".format(role_node_map))
 
@@ -714,7 +723,7 @@ def run_host_party():
         "node_addr_map {}".format(node_addr_map))
     logger.info("Start homo-LR host logic.")
 
-    run_homo_lr_host(role_node_map, node_addr_map, task_params)
+    run_homo_lr_host(role_node_map, node_addr_map, data_key)
 
     logger.info("Finish homo-LR host logic.")
 
@@ -723,7 +732,8 @@ def run_host_party():
 def run_guest_party():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
-    dataset_map = ph.context.Context.dataset_map
+    dataset_map = ph.context.Context.dataset_map['breast_2']
+    data_key = list(dataset_map.keys())[0]
     logger.debug(
         "role_nodeid_map {}".format(role_node_map))
 
@@ -734,6 +744,6 @@ def run_guest_party():
         "node_addr_map {}".format(node_addr_map))
     logger.info("Start homo-LR guest logic.")
 
-    run_homo_lr_guest(role_node_map, node_addr_map, task_params)
+    run_homo_lr_guest(role_node_map, node_addr_map, datakey=data_key)
 
     logger.info("Finish homo-LR guest logic.")
