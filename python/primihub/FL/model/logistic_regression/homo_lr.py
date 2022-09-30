@@ -184,7 +184,7 @@ class Arbiter:
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params={}):
+def run_homo_lr_arbiter(role_node_map, node_addr_map, task_params={}):
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
@@ -192,17 +192,17 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params={})
 
     if len(host_nodes) != 1:
         logger.error("Hetero LR only support one host party, but current "
-                     "task have {} host party.".format(len(host_info)))
+                     "task have {} host party.".format(len(host_nodes)))
         return
 
     if len(guest_nodes) != 1:
         logger.error("Hetero LR only support one guest party, but current "
-                     "task have {} guest party.".format(len(guest_info)))
+                     "task have {} guest party.".format(len(guest_nodes)))
         return
 
     if len(arbiter_nodes) != 1:
         logger.error("Hetero LR only support one arbiter party, but current "
-                     "task have {} arbiter party.".format(len(arbiter_info)))
+                     "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
 
     # host_info = host_info[0]
@@ -647,9 +647,9 @@ def get_logger(name):
     return logger
 
 
-arbiter_info, guest_info, host_info, task_type, task_params = load_info()
-
-logger = get_logger(task_type)
+# arbiter_info, guest_info, host_info, task_type, task_params = load_info()
+task_params = {}
+logger = get_logger("Homo-LR")
 
 
 # @ph.context.function(role='host', protocol='lr', datasets=['breast_1'], port='8020', task_type="regression")
@@ -697,7 +697,7 @@ def run_arbiter_party():
     logger.debug(
         "node_addr_map {}".format(node_addr_map))
 
-    run_homo_lr_arbiter(role_node_map, node_addr_map, host_info, task_params)
+    run_homo_lr_arbiter(role_node_map, node_addr_map, task_params)
 
     logger.info("Finish homo-LR arbiter logic.")
 
