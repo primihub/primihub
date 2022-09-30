@@ -714,6 +714,9 @@ def run_host_party():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+
+    logger.debug(
+        "dataset_map {}".format(dataset_map))
     data_key = list(dataset_map.keys())[0]
 
     logger.debug(
@@ -733,12 +736,13 @@ def run_guest_party():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map['breast_2']
-    data_key = list(dataset_map.keys())[0]
-    logger.debug(
-        "role_nodeid_map {}".format(role_node_map))
 
     logger.debug(
         "dataset_map {}".format(dataset_map))
+
+    data_key = list(dataset_map.keys())[0]
+    logger.debug(
+        "role_nodeid_map {}".format(role_node_map))
 
     logger.debug(
         "node_addr_map {}".format(node_addr_map))
