@@ -68,8 +68,8 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
-        bazel test --test_output=all --config=linux test_opt_paillier_c2py 
-        bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
+        # bazel test --test_output=all --config=linux test_opt_paillier_c2py 
+        # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
@@ -137,7 +137,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli :test_opt_paillier_c2py 
+        bazel build --config=linux :node :cli :opt_paillier_c2py 
       
   
   build-on-mac_x86_64:
@@ -156,7 +156,7 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :test_opt_paillier_c2py  --sandbox_debug 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py 
       shell: bash
     - name: Release copy
       run : |
