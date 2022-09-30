@@ -90,6 +90,7 @@ class TaskContext:
 
         type_set = set(type_list)
         logger.info(type_set)
+        logger.info(type_list)
         if len(type_set) != 1:
             logger.error("Task type in all role must be the same.")
             # raise RuntimeError("Task type in all role is not the same.")
@@ -167,6 +168,7 @@ class TaskContext:
 
     def clean_content(self):
         self.role_nodeid_map.clear()
+        self.nodes_context.clear()
         self.dataset_map.clear()
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["guest"] = []
