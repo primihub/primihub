@@ -240,7 +240,7 @@ def run_homo_lr_arbiter(role_node_map, node_addr_map, task_params={}):
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
                              proxy_client_guest)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
-    need_encrypt = proxy_server.Get("need_encrypt", None)
+    need_encrypt = proxy_server.Get("need_encrypt")
 
     if need_encrypt == 'YES':
         client_arbiter.need_encrypt = 'YES'
