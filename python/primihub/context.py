@@ -167,6 +167,7 @@ class TaskContext:
 
     def clean_content(self):
         self.role_nodeid_map.clear()
+        self.dataset_map.clear()
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["guest"] = []
         self.role_nodeid_map["arbiter"] = []
