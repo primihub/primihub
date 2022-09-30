@@ -17,7 +17,7 @@
         "Arbiter": [
             {
                 "role": "Arbiter",
-                "dataset": "/primihub/data/breast-cancer-wisconsin.csv",
+                "dataset": "/tmp/FL/wisconsin.data",
                 "port": 9010,
                 "ip": "172.28.1.10"
             }
@@ -25,7 +25,7 @@
         "Host": [
             {
                 "role": "Host",
-                "dataset": "/primihub/data/breast-cancer-wisconsin.csv",
+                "dataset": "/tmp/FL/wisconsin.data",
                 "port": 9020,
                 "ip": "172.28.1.11"
             }
@@ -33,7 +33,7 @@
         "Guest": [
             {
                 "role": "Guest",
-                "dataset": "/primihub/data/breast-cancer-wisconsin.csv",
+                "dataset": "/tmp/FL/wisconsin.data",
                 "port": 9030,
                 "ip": "172.28.1.12"
             }
