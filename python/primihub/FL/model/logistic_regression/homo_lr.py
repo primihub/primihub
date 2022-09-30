@@ -424,7 +424,8 @@ def run_homo_lr_host(role_node_map, node_addr_map, task_params={}):
     batch_num_train = (count_train - 1) // config['batch_size'] + 1
     proxy_client_arbiter.Remote(batch_num_train, "batch_num")
     host_data_weight = config['batch_size']
-    client_host.need_encrypt = task_params['encrypted']
+    # client_host.need_encrypt = task_params['encrypted']
+    # client_host.need_encrypt = task_params['encrypted']
     if client_host.need_encrypt == 'YES':
         # if task_params['encrypted']:
         client_host.public_key = proxy_server.Get("pub")
