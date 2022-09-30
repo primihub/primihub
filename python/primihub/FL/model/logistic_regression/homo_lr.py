@@ -452,8 +452,8 @@ def run_homo_lr_host(role_node_map, node_addr_map, data_key, task_params={}):
         logger.info("epoch=%i done" % i)
     logger.info("host training process done.")
     model_file_path = ph.context.Context.get_model_file_path()
-    logger.info("Current model file path is:",
-                model_file_path, ph.context.Context.params_map)
+    logger.info("Current model file path is: {}".format(model_file_path)
+                )
     with open(model_file_path, 'wb') as fm:
         pickle.dump(client_host.model.theta, fm)
 
