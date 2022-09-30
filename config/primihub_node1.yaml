@@ -34,7 +34,7 @@ datasets:
     source: "/tmp/FL/wisconsin.data"
   - description: "homo_lr_test"
     model: "csv"
-    source: "/primihub/data/FL/homo_lr_test.data"
+    source: "/tmp/FL/homo_lr_test.data"
 
 localkv: 
   model: "leveldb"
