@@ -43,7 +43,7 @@ class ModelInfer:
 infer_data = ['homo_lr_test']
 
 
-@ph.context.function(role='host', protocol='lr-infer', datasets=infer_data, port='8020', task_type="lr-regression-infer")
+@ph.context.function(role='host', protocol='lr-infer', datasets=infer_data, port='9020', task_type="lr-regression-infer")
 def run_infer():
     logging.info("Start machine learning inferring.")
     predict_file_path = ph.context.Context.get_predict_file_path()
