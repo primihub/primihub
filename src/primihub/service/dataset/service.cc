@@ -31,10 +31,9 @@ using namespace std::chrono_literals;
 namespace primihub::service {
 
     DatasetService::DatasetService(
-                            std::shared_ptr<primihub::p2p::NodeStub> stub,
-                            std::shared_ptr<StorageBackend> localkv,
+                            std::shared_ptr<DatasetMetaService> metaService,
                             const std::string &nodelet_addr) {
-        metaService_ = std::make_shared<DatasetMetaService>(stub, localkv);
+        metaService_ = metaService; 
         nodelet_addr_ = nodelet_addr;
         // create Flight server
         // flight_server_ = std::make_shared<FlightIntegrationServer>(shared_from_this());

@@ -48,6 +48,7 @@ class Nodelet {
     // protocols, servcies, etc.
     std::shared_ptr<primihub::service::DatasetService> dataset_service_;
     std::shared_ptr<primihub::service::NotifyService> notify_service_;
+    std::shared_ptr<primihub::service::DatasetMetaService> meta_service_;
     std::string nodelet_addr_;
 };
 
