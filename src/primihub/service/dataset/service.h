@@ -96,6 +96,35 @@ private:
   unsigned int meta_search_timeout_ = 60; // seconds
 };
 
+// The centralized dataset service means that there is a service that saves all
+// dataset's name and it's meta. When node register dataset, node will send
+// dataset's name and it's meta to service, then service save them to it's local
+// dataset. When node find dataset meta given dataset name, the service will
+// lookup database with dataset name and return its meta if found.
+class CentralizedDatasetMetaService : public DatasetMetaService {
+public:
+  CentralizedDatasetMetaService(std::string &service_addr,
+                                std::shared_ptr<StorageBackend> local_db) {
+    service_addr_ = service_addr;
+    local_db_ = local_db;
+
+    // The p2p stub is only used for construct super class instance, the method
+    // that use it in super class will never called in this class.
+    std::shared_ptr<primihub::p2p::NodeStub> dummy(nullptr);
+    DatasetMetaService(dummy, local_db_);
+  }
+
+  void putMeta(DatasetMeta &meta);
+  outcome::result<void> getMeta(const DatasetId &id, FoundMetaHandler handler);
+  outcome::result<void> findPeerListFromDatasets(
+      const std::vector<DatasetWithParamTag> &datasets_with_tag,
+      FoundMetaListHandler handler);
+
+private:
+  std::string service_addr_;
+  std::shared_ptr<StorageBackend> local_db_;
+};
+
 class DatasetService {
 public:
   explicit DatasetService(std::shared_ptr<DatasetMetaService> meta_service,
@@ -145,7 +174,7 @@ public:
 };
 
 /////////////////////////// Arrow Flight
-///Server////////////////////////////////////
+/// Server////////////////////////////////////
 struct IntegrationDataset {
   std::shared_ptr<arrow::Schema> schema;
   std::vector<std::shared_ptr<arrow::RecordBatch>> chunks;

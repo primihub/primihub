@@ -1,0 +1,35 @@
+syntax = "proto3";
+package primihub.rpc.CentralizedService;
+
+enum RequestStatus {
+  FINISH = 0;
+  FAILED = 1;
+}
+
+message RegDatasetRequest {
+  string name = 1;
+  string driver = 2;
+  string dataset_url = 3;
+}
+
+message RegDatasetResponse {
+  string name = 1;
+  RequestStatus status = 2;
+  string msg = 3;
+
+}
+
+message FindDatasetRequest {
+  string name = 1;
+}
+
+message FindDatasetResponse {
+  string name = 1;
+  RequestStatus status = 2;
+  string msg = 3;
+}
+
+service CentralizedDatasetService {
+  rpc RegDataset(RegDatasetRequest) returns (RegDatasetResponse);
+  rpc FindDataset(FindDatasetRequest) returns (FindDatasetResponse);
+}

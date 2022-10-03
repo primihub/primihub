@@ -123,6 +123,30 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/service.proto"],
 )
 
+grpc_proto_library(
+    name = "cc_centralized_service",
+    srcs = ["src/primihub/protos/centralized_service.proto"],
+)
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+    name = "proto_centralized_service",
+    srcs = ["src/primihub/protos/centralized_service.proto"]
+)
+
+py_proto_library(
+    name = "py_centralized_service_proto",
+    deps = [":proto_centralized_service"]
+)
+
+py_grpc_library(
+    name = "py_centralized_service",
+    srcs = [":proto_centralized_service"],
+    deps = [":py_centralized_service_proto"]
+)
+
 cc_library(
     name = "common_lib",
     srcs = glob([
