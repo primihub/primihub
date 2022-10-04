@@ -843,6 +843,7 @@ cc_library(
         ":p2p_lib",
         ":data_store_lib",
         ":util_lib",
+        ":cc_centralized_service",
         "service_base",
     ],
     linkstatic = True,

@@ -97,7 +97,7 @@ class DatasetService(centralized_service_pb2_grpc.CentralizedDatasetService):
         init_db(db_path)
 
     def RegDataset(self, request, context):
-        logger.info("Receive RegDataset request, name {}, dataset_url {}.".format(request.name, request.dataset_url))
+        logger.info("Receive RegDataset request, name {}.".format(request.name))
 
         try:
             insert_dataset_meta(self.db_path, request.name, request.dataset_url) 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     centralized_service_pb2_grpc.add_CentralizedDatasetServiceServicer_to_server(DatasetService(db_dir), server)
     server.add_insecure_port('[::]:10060')
     server.start()
-    print("Start grpc server at 50051.")
+    logger.info("Start grpc server at 10060.")
     server.wait_for_termination()
 
     # init_db(db_dir)

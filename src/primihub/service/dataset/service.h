@@ -34,9 +34,18 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/p2p/node_stub.h"
+#include "src/primihub/protos/centralized_service.grpc.pb.h"
+#include "src/primihub/protos/centralized_service.pb.h"
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/service/dataset/storage_backend.h"
 #include "src/primihub/service/outcome.hpp"
+
+using primihub::rpc::CentralizedDatasetService;
+using primihub::rpc::FindDatasetRequest;
+using primihub::rpc::FindDatasetResponse;
+using primihub::rpc::RegDatasetRequest;
+using primihub::rpc::RegDatasetResponse;
+using primihub::rpc::RequestStatus;
 
 namespace primihub::service {
 
@@ -77,13 +86,16 @@ public:
                      std::shared_ptr<StorageBackend> localKv);
   ~DatasetMetaService() {}
 
-  void putMeta(DatasetMeta &meta);
   outcome::result<void> getAllLocalMetas(std::vector<DatasetMeta> &metas);
   std::shared_ptr<DatasetMeta> getLocalMeta(const DatasetId &id);
-  outcome::result<void> getMeta(const DatasetId &id, FoundMetaHandler handler);
-  outcome::result<void> findPeerListFromDatasets(
+
+  virtual void putMeta(DatasetMeta &meta);
+  virtual outcome::result<void> getMeta(const DatasetId &id,
+                                        FoundMetaHandler handler);
+  virtual outcome::result<void> findPeerListFromDatasets(
       const std::vector<DatasetWithParamTag> &datasets_with_tag,
       FoundMetaListHandler handler);
+
   void setMetaSearchTimeout(unsigned int timeout) {
     meta_search_timeout_ = timeout;
   }
@@ -103,19 +115,16 @@ private:
 // lookup database with dataset name and return its meta if found.
 class CentralizedDatasetMetaService : public DatasetMetaService {
 public:
-  CentralizedDatasetMetaService(std::string &service_addr,
-                                std::shared_ptr<StorageBackend> local_db) {
-    service_addr_ = service_addr;
-    local_db_ = local_db;
-
-    // The p2p stub is only used for construct super class instance, the method
-    // that use it in super class will never called in this class.
-    std::shared_ptr<primihub::p2p::NodeStub> dummy(nullptr);
-    DatasetMetaService(dummy, local_db_);
-  }
-
+  CentralizedDatasetMetaService(
+      std::string &service_addr,
+      std::shared_ptr<primihub::service::StorageBackend> local_db,
+      std::shared_ptr<primihub::p2p::NodeStub> dummy);
   void putMeta(DatasetMeta &meta);
   outcome::result<void> getMeta(const DatasetId &id, FoundMetaHandler handler);
+  outcome::result<void> findPeerListFromDatasets(
+      const std::vector<DatasetWithParamTag> &datasets_with_tag,
+      FoundMetaListHandler handler);
+
   outcome::result<void> findPeerListFromDatasets(
       const std::vector<DatasetWithParamTag> &datasets_with_tag,
       FoundMetaListHandler handler);
@@ -123,6 +132,8 @@ public:
 private:
   std::string service_addr_;
   std::shared_ptr<StorageBackend> local_db_;
+  std::shared_ptr<grpc::Channel> channel_;
+  std::unique_ptr<CentralizedDatasetService::Stub> stub_;
 };
 
 class DatasetService {
