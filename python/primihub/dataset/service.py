@@ -1,8 +1,11 @@
 import sqlite3
-# import centralized_service_pb2_grpc
-# import centralized_service_pb2
+import centralized_service_pb2_grpc
+import centralized_service_pb2
 import sys
 import logging
+import grpc
+from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -20,6 +23,7 @@ def init_db(db_dir):
     meta varchar(500));
     """
     cursor.execute(sql_str)
+    logger.info("Init database finish.")
 
 
 
@@ -84,14 +88,107 @@ def delete_dataset_meta(db_dir, name):
     """
     cursor.execute(sql_str, (name,))
     conn.commit()
-    logger.info("Delete record with key {}".format(name))
+    logger.info("Delete record with key {}.".format(name))
+
+
+class DatasetService(centralized_service_pb2_grpc.CentralizedDatasetService):
+    def __init__(self, db_path):
+        self.db_path = db_path
+        init_db(db_path)
+
+    def RegDataset(self, request, context):
+        logger.info("Receive RegDataset request, name {}, dataset_url {}.".format(request.name, request.dataset_url))
+
+        try:
+            insert_dataset_meta(self.db_path, request.name, request.dataset_url) 
+        except Exception as e:
+            logger.error("Handle RegDataset request failed, {}.".format(repr(e)))
+            errmsg = repr(e) 
+            response = centralized_service_pb2.RegDatasetResponse()
+            response.name = request.name
+            response.status = centralized_service_pb2.RequestStatus.FAILED
+            response.msg = errmsg
+            return response
+
+        response = centralized_service_pb2.RegDatasetResponse()
+        response.name = request.name
+        response.status = centralized_service_pb2.RequestStatus.FINISH
+        logger.info("Handle RegDataset request finish.")
+        return response
+
+
+    def FindDataset(self, request, context):
+        logger.info("Receive FindDataset request, name {}.".format(request.name))
+
+        try:
+            row = lookup_dataset_meta(self.db_path, request.name)
+        except Exception as e:
+            errmsg = repr(e)
+            logger.error("Handle FindDataset request failed, {}.".format(errmsg))
+            response = centralized_service_pb2.FindDatasetResponse()
+            response.name = request.name
+            response.status = centralized_service_pb2.RequestStatus.FAILED
+            response.msg = errmsg
+            return response
+
+        response = centralized_service_pb2.RegDatasetResponse()
+        response.name = row[0][0]
+        response.msg = row[0][1]
+        response.status = centralized_service_pb2.RequestStatus.FINISH
+        logger.info("Handle FindDataset request finish.")
+        return response
     
+    def DelDataset(self, request, context):
+        logger.info("Receive DelDataset request, name {}.".format(request.name))
+
+        try:
+            delete_dataset_meta(self.db_path, request.name)
+        except Exception as e:
+            errmsg = repr(e)
+            logger.error("Handle DelDataset request failed, {}.".format(errmsg))
+            response = centralized_service_pb2.DelDatasetResponse()
+            response.name = request.name
+            response.status = centralized_service_pb2.RequestStatus.FAILED
+            response.msg = errmsg
+            return response
+
+        response = centralized_service_pb2.RegDatasetResponse()
+        respnse.name = request.name
+        response.status = centralized_service_pb2.RequestStatus.FINISH
+        logger.info("Handle DelDataset request finish.")
+        return response
+
+    def ListDataset(self, request, context):
+        logger.info("Receive ListDataset request.")
+
+        try:
+            rows = get_all_dataset_meta(self.db_path)
+        except Exception as e:
+            errmsg = repr(e)
+            logger.info("Handle ListDataset request failed, {}.".format(errmsg))
+            response = centralized_service_pb2.ListDatasetResponse()
+            response.all_meta.append(errmsg)
+            return response
+
+        response = centralized_service_pb2.ListDatasetResponse()
+        for row in rows:
+            response.all_meta.append(row[1])
+        logger.info("Handle ListDataset reques finish.")
+        return response
+
 
 if __name__ == '__main__':
     db_dir = sys.argv[1]
-    init_db(db_dir)
-    insert_dataset_meta(db_dir, "123", "124")
-    lookup_dataset_meta(db_dir, "123")
-    print(get_all_dataset_meta(db_dir))
-    delete_dataset_meta(db_dir, "123")
-    print(get_all_dataset_meta(db_dir))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    centralized_service_pb2_grpc.add_CentralizedDatasetServiceServicer_to_server(DatasetService(db_dir), server)
+    server.add_insecure_port('[::]:10060')
+    server.start()
+    print("Start grpc server at 50051.")
+    server.wait_for_termination()
+
+    # init_db(db_dir)
+    # insert_dataset_meta(db_dir, "123", "124")
+    # lookup_dataset_meta(db_dir, "123")
+    # print(get_all_dataset_meta(db_dir))
+    # delete_dataset_meta(db_dir, "123")
+    # print(get_all_dataset_meta(db_dir))
