@@ -529,10 +529,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    # mac os python10
-    # linkopts = LINK_OPTS + ["-L/opt/homebrew/opt/python@3.10/Frameworks/Python.framework/Versions/3.10/lib/python3.10/config-3.10-darwin -ldl -framework CoreFoundation"] + ["-lpython3.10"],
-    # ubuntu python3.9
-    linkopts = LINK_OPTS + ["-L/usr/lib/python3.9/config-3.9-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.9"],
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
