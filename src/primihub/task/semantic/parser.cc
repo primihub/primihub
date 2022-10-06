@@ -113,11 +113,14 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
 void ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<LanguageParser> python_parser) {
+    
+    std::vector<NodeWithRoleTag> _peers_with_role_tag;
+    PeerContextMap _peer_context_map;
 
     auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
     auto datasets_with_tag =
         _python_parser->getDatasets(); // dataset with role tag
-    peer_context_map_ = _python_parser->getNodeContextMap();
+    _peer_context_map = _python_parser->getNodeContextMap();
 
     // Start find peer node by dataset list
     std::thread t([&]() {
@@ -129,11 +132,12 @@ void ProtocolSemanticParser::schedulePythonTask(
                           << metas_with_param_tag.size();
 
                 metasToPeerWithTagAndPort(metas_with_param_tag,
-                                          peers_with_role_tag_);
+                                          _peer_context_map,
+                                          _peers_with_role_tag);
                 std::shared_ptr<VMScheduler> scheduler =
                     std::make_shared<FLScheduler>(
-                        node_id_, singleton_, peers_with_role_tag_,
-                        peer_context_map_, metas_with_param_tag);
+                        node_id_, singleton_, _peers_with_role_tag,
+                        _peer_context_map, metas_with_param_tag);
 
                 // Dispatch task to worker nodes
                 auto pushTaskRequest = _python_parser->getPushTaskRequest();
@@ -309,6 +313,7 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
 
 void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
+    const PeerContextMap &peer_context_map,
     std::vector<NodeWithRoleTag> &peers_with_tag) {
   bool errors = false;
   for (auto &meta_with_tag : metas_with_tag) {
@@ -321,7 +326,8 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
-    auto &ds_port_map = peer_context_map_[tag].dataset_port_map;
+    // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
+    auto &ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
     auto iter = ds_port_map.find(ds_name);
     if (iter == ds_port_map.end()) {
       LOG(ERROR) << "Can't find data port for dataset " << ds_name << ".";

@@ -73,6 +73,7 @@ class ProtocolSemanticParser {
 
     void metasToPeerWithTagAndPort(
         const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
+        const PeerContextMap &peer_context_map,
         std::vector<NodeWithRoleTag> &peers_with_tag);
     
     const std::string node_id_;
@@ -83,9 +84,9 @@ class ProtocolSemanticParser {
     std::vector<Node> peer_list_;
     PeerDatasetMap peer_dataset_map_;
 
-    // python task use
-    std::vector<NodeWithRoleTag> peers_with_role_tag_;
-    PeerContextMap peer_context_map_;
+    // // python task use
+    // std::vector<NodeWithRoleTag> peers_with_role_tag_;
+    // PeerContextMap peer_context_map_;
    
 };
 
