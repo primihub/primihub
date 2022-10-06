@@ -41,12 +41,15 @@ datasets:
   - description: "xgb_predict_test_data"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
-  - description: "psi_client_data"
-    model: "csv"
-    source: "data/client_e.csv" 
   - description: "guest_dataset"
     model: "csv"
     source: "data/FL/wisconsin_guest.data"
+
+  # PSI test caset datasets
+  - description: "psi_client_data"
+    model: "csv"
+    source: "data/client_e.csv" 
+  
 
 localkv: 
   model: "leveldb"
