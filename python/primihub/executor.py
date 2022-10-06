@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-
+import multiprocessing
 import traceback
 from cloudpickle import loads
 from primihub.context import Context
@@ -39,8 +39,24 @@ def timeout(interval, callback=None):
                 gevent.with_timeout(interval, func, *args, **kwargs)
             except gevent.timeout.Timeout as e:
                 callback() if callback else None
+
         return wrapper
+
     return decorator
+
+
+def _run_in_process(target, *args, **kwargs):
+    """Runs target in process and returns its exitcode after 10s (None if still alive)."""
+    process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
+    process.daemon = True
+    try:
+        process.start()
+        # Do not need to wait much, 10s should be more than enough.
+        process.join(timeout=10)
+        return process.exitcode
+    finally:
+        if process.is_alive():
+            process.terminate()
 
 
 class Executor:
@@ -72,6 +88,8 @@ class Executor:
             try:
                 logger.debug("start execute")
                 func()
+                # exitcode = _run_in_process(target=func)
+                # logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute")
             except Exception as e:
                 logger.error("Exception: ", str(e))
@@ -82,12 +100,15 @@ class Executor:
             try:
                 logger.debug("start execute with params")
                 func(*func_params)
+                # exitcode = _run_in_process(target=func, args=func_params)
+                # logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
             finally:
                 Context.clean_content()
+
 
     @staticmethod
     def execute_test():
