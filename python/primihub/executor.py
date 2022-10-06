@@ -87,9 +87,9 @@ class Executor:
         if not func_params:
             try:
                 logger.debug("start execute")
-                func()
-                # exitcode = _run_in_process(target=func)
-                # logger.info("exitcode is: %s" % exitcode)
+                # func()
+                exitcode = _run_in_process(target=func)
+                logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute")
             except Exception as e:
                 logger.error("Exception: ", str(e))
@@ -99,9 +99,9 @@ class Executor:
         else:
             try:
                 logger.debug("start execute with params")
-                func(*func_params)
-                # exitcode = _run_in_process(target=func, args=func_params)
-                # logger.info("exitcode is: %s" % exitcode)
+                # func(*func_params)
+                exitcode = _run_in_process(target=func, args=func_params)
+                logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
             except Exception as e:
                 logger.error("Exception: ", str(e))
