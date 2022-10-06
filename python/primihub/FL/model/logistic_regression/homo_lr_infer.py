@@ -1,4 +1,5 @@
 import pickle
+import os
 import numpy as np
 import pandas as pd
 import primihub as ph
@@ -36,6 +37,11 @@ class ModelInfer:
         if self.type == "Homo-LR":
             preds = predict(self.model, self.arr)
 
+        dir_name = os.path.dirname(self.out)
+
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
         pd.DataFrame(preds).to_csv(self.out, index=False)
         return preds
 
@@ -54,4 +60,4 @@ def run_infer():
     preds = mli.infer()
 
     logging.info(
-        f"Finish machine learning inferring. And the result is {preds}")
+        "Finish machine learning inferring. And the result is {}".format(preds))
