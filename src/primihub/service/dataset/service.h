@@ -30,6 +30,7 @@
 #include <arrow/record_batch.h>
 #include <arrow/table.h>
 
+#include "hiredis/hiredis.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
@@ -125,15 +126,28 @@ public:
       const std::vector<DatasetWithParamTag> &datasets_with_tag,
       FoundMetaListHandler handler);
 
-  outcome::result<void> findPeerListFromDatasets(
-      const std::vector<DatasetWithParamTag> &datasets_with_tag,
-      FoundMetaListHandler handler);
-
 private:
   std::string service_addr_;
   std::shared_ptr<StorageBackend> local_db_;
   std::shared_ptr<grpc::Channel> channel_;
   std::unique_ptr<CentralizedDatasetService::Stub> stub_;
+};
+
+class RedisDatasetMetaService : public DatasetMetaService {
+public:
+  RedisDatasetMetaService(
+      std::string &redis_addr,
+      std::shared_ptr<primihub::service::StorageBackend> local_db,
+      std::shared_ptr<primihub::p2p::NodeStub> dummy);
+  void putMeta(DatasetMeta &meta);
+  outcome::result<void> getMeta(const DatasetId &ID, FoundMetaHandler handler);
+  outcome::result<void> findPeerListFromDatasets(
+      const std::vector<DatasetWithParamTag> &datasets_with_tag,
+      FoundMetaListHandler handler);
+
+private:
+  std::string redis_addr_;
+  std::shared_ptr<StorageBackend> local_db_;
 };
 
 class DatasetService {

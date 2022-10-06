@@ -29,6 +29,7 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/util.hpp"
+#include "src/primihub/util/redis_helper.h"
 
 using namespace std::chrono_literals;
 
@@ -361,7 +362,8 @@ CentralizedDatasetMetaService::CentralizedDatasetMetaService(
 
 void CentralizedDatasetMetaService::putMeta(DatasetMeta &meta) {
   std::string meta_str = meta.toJSON();
-  LOG(INFO) << "<< Put meta to centralized dataset service, meta " << meta_str;
+  LOG(INFO) << "<< Put meta to centralized dataset meta service, meta "
+            << meta_str;
 
   auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
       libp2p::multi::ContentIdentifierCodec::decode(meta.id.data).value());
@@ -415,7 +417,7 @@ CentralizedDatasetMetaService::getMeta(const DatasetId &id,
       std::make_shared<DatasetMeta>(std::move(response.msg()));
   handler(meta);
 
-  LOG(INFO) << "Find dataset finish.";
+  LOG(INFO) << "Get meta with dataset id " << dataset_id.value() << " finish.";
   return outcome::success();
 }
 
@@ -441,21 +443,132 @@ outcome::result<void> CentralizedDatasetMetaService::findPeerListFromDatasets(
     if (!status.ok()) {
       LOG(ERROR) << "Issue FindDataset failed, " << status.error_message();
       LOG(ERROR) << "findPeerListFromDatasets quit due to error.";
-      return outcome::success();
+      break;
     }
 
     if (response.status() != RequestStatus::FINISH) {
       LOG(ERROR) << "Find dataset failed, " << response.msg() << ".";
       LOG(ERROR) << "findPeerListFromDatasets quit due to error.";
-      return outcome::success();
+      break;
     }
 
     std::shared_ptr<DatasetMeta> meta =
         std::make_shared<DatasetMeta>(std::move(response.msg()));
     meta_list.emplace_back(meta, dataset_tag);
+
+    LOG(INFO) << "Get dataset meta for dataset " << dataset_name
+              << " from centralized service finish.";
   }
 
+  if (datasets_with_tag.size() != meta_list.size())
+    LOG(ERROR) << "Failed to get all dataset's meta, no handler triggered.";
+  else
+    handler(meta_list);
+
   handler(meta_list);
+  return outcome::success();
+}
+
+RedisDatasetMetaService::RedisDatasetMetaService(
+    std::string &redis_addr,
+    std::shared_ptr<primihub::service::StorageBackend> local_db,
+    std::shared_ptr<primihub::p2p::NodeStub> dummy)
+    : DatasetMetaService(dummy, local_db) {
+  this->redis_addr_ = redis_addr;
+  this->local_db_ = local_db;
+}
+
+void RedisDatasetMetaService::putMeta(DatasetMeta &meta) {
+  RedisStringKVHelper helper;
+  if (helper.connect(this->redis_addr_)) {
+    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
+    return;
+  }
+
+  std::string meta_str = meta.toJSON();
+  LOG(INFO) << "<< Put meta to redis dataset meta service, meta " << meta_str;
+
+  auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
+      libp2p::multi::ContentIdentifierCodec::decode(meta.id.data).value());
+
+  if (helper.setString(dataset_id.value(), meta_str)) {
+    LOG(ERROR) << "Save dataset " << meta.getDescription()
+               << " and it's meta to redis failed, dataset id is "
+               << dataset_id.value() << ".";
+    return;
+  }
+
+  local_db_->putValue(meta.id, meta_str);
+  LOG(INFO) << "Save dataset " << meta.getDescription()
+            << "'s meta to redis finish.";
+  return;
+}
+
+outcome::result<void>
+RedisDatasetMetaService::getMeta(const DatasetId &id,
+                                 FoundMetaHandler handler) {
+  RedisStringKVHelper helper;
+  if (helper.connect(this->redis_addr_)) {
+    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
+    return outcome::success();
+  }
+
+  auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
+      libp2p::multi::ContentIdentifierCodec::decode(id.data).value());
+
+  std::string meta_str;
+  if (helper.getString(dataset_id.value(), meta_str)) {
+    LOG(ERROR) << "Get meta for dataset id " << dataset_id.value()
+               << " from redis failed.";
+    return outcome::success();
+  }
+
+  std::shared_ptr<DatasetMeta> meta = std::make_shared<DatasetMeta>(meta_str);
+  handler(meta);
+
+  LOG(INFO) << "Get dataset meta with dataset id " << dataset_id.value()
+            << " from redis finish.";
+  return outcome::success();
+}
+
+outcome::result<void> RedisDatasetMetaService::findPeerListFromDatasets(
+    const std::vector<DatasetWithParamTag> &datasets_with_tag,
+    FoundMetaListHandler handler) {
+  std::vector<DatasetMetaWithParamTag> meta_list;
+
+  RedisStringKVHelper helper;
+  if (helper.connect(this->redis_addr_)) {
+    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
+    return outcome::success();
+  }
+
+  for (auto pair : datasets_with_tag) {
+    auto dataset_name = std::get<0>(pair);
+    auto dataset_tag = std::get<1>(pair);
+
+    DatasetId id(dataset_name);
+    auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
+        libp2p::multi::ContentIdentifierCodec::decode(id.data).value());
+
+    std::string meta_str;
+    if (helper.getString(dataset_id.value(), meta_str)) {
+      LOG(ERROR) << "Get dataset meta from redis server for dataset "
+                 << dataset_name << " failed.";
+      break;
+    }
+
+    std::shared_ptr<DatasetMeta> meta = std::make_shared<DatasetMeta>(meta_str);
+    meta_list.emplace_back(meta, dataset_tag);
+
+    LOG(INFO) << "Get meta for dataset " << dataset_name
+              << " from redis finish.";
+  }
+
+  if (datasets_with_tag.size() != meta_list.size())
+    LOG(ERROR) << "Failed to get all dataset's meta, no handler triggered.";
+  else
+    handler(meta_list);
+
   return outcome::success();
 }
 
