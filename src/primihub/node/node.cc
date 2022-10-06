@@ -59,10 +59,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
     pushTaskReply->set_job_id(pushTaskRequest->task().job_id());
 
-    if (running_set.find(job_task) != running_set.end()) {
-        pushTaskReply->set_ret_code(1);
-        return Status::OK;
-    }
+    // if (running_set.find(job_task) != running_set.end()) {
+    //     pushTaskReply->set_ret_code(1);
+    //     return Status::OK;
+    // }
 
     // actor
     if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||

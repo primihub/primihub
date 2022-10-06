@@ -60,79 +60,87 @@ void ProtocolSemanticParser::parseTaskSyntaxTree(
 
 void ProtocolSemanticParser::scheduleProtoTask(
     std::shared_ptr<LanguageParser> proto_parser) {
-  auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(proto_parser);
-  auto datasets_with_tag = _proto_parser->getDatasets();
-  // Start find peer node by dataset list
-  LOG(INFO) << " 🔍 Proto task finding meta list from datasets...";
-  dataset_service_->metaService_->findPeerListFromDatasets(
-      datasets_with_tag,
-      [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-        LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
-                  << metas_with_param_tag.size();
+    auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(proto_parser);
+    auto datasets_with_tag = _proto_parser->getDatasets();
+    // Start find peer node by dataset list
+    std::thread t([&]() {
+        LOG(INFO) << " 🔍 Proto task finding meta list from datasets...";
+        dataset_service_->metaService_->findPeerListFromDatasets(
+            datasets_with_tag,
+            [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
+                LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
+                          << metas_with_param_tag.size();
 
-        metasToPeerList(metas_with_param_tag, peer_list_);
-        metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
+                metasToPeerList(metas_with_param_tag, peer_list_);
+                metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
 
-        //  Generate MPC algorthim scheduler
-        auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-        if (pushTaskRequest.task().code() == "maxpool") {
-          std::shared_ptr<VMScheduler> scheduler =
-              std::make_shared<CRYPTFLOW2Scheduler>(
-                  node_id_, peer_list_, peer_dataset_map_, singleton_);
-          scheduler->dispatch(&pushTaskRequest);
-        } else if (pushTaskRequest.task().code() == "lenet") {
-          std::shared_ptr<VMScheduler> scheduler =
-              std::make_shared<FalconScheduler>(node_id_, peer_list_,
-                                                peer_dataset_map_, singleton_);
-          scheduler->dispatch(&pushTaskRequest);
-        } else {
-          //  Generate ABY3 scheduler
-          std::shared_ptr<VMScheduler> scheduler =
-              std::make_shared<ABY3Scheduler>(node_id_, peer_list_,
-                                              peer_dataset_map_, 
-                                              singleton_);
-          scheduler->dispatch(&pushTaskRequest);
-        }
+                //  Generate MPC algorthim scheduler
+                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                if (pushTaskRequest.task().code() == "maxpool") {
+                    std::shared_ptr<VMScheduler> scheduler =
+                        std::make_shared<CRYPTFLOW2Scheduler>(
+                            node_id_, peer_list_, peer_dataset_map_,
+                            singleton_);
+                    scheduler->dispatch(&pushTaskRequest);
+                } else if (pushTaskRequest.task().code() == "lenet") {
+                    std::shared_ptr<VMScheduler> scheduler =
+                        std::make_shared<FalconScheduler>(node_id_, peer_list_,
+                                                          peer_dataset_map_,
+                                                          singleton_);
+                    scheduler->dispatch(&pushTaskRequest);
+                } else {
+                    //  Generate ABY3 scheduler
+                    std::shared_ptr<VMScheduler> scheduler =
+                        std::make_shared<ABY3Scheduler>(node_id_, peer_list_,
+                                                        peer_dataset_map_,
+                                                        singleton_);
+                    scheduler->dispatch(&pushTaskRequest);
+                }
 
-        // TEE task scheduler
-        if (pushTaskRequest.task().type() == TaskType::TEE_TASK) {
-            std::shared_ptr<VMScheduler> scheduler =
-              // TODO peer_list add server Node object
-              std::make_shared<TEEScheduler>(node_id_, peer_list_,
-                                              peer_dataset_map_, 
-                                              pushTaskRequest.task().params(),
-                                              singleton_);
-            scheduler->dispatch(&pushTaskRequest);
-        }
-      });
+                // TEE task scheduler
+                if (pushTaskRequest.task().type() == TaskType::TEE_TASK) {
+                    std::shared_ptr<VMScheduler> scheduler =
+                        // TODO peer_list add server Node object
+                        std::make_shared<TEEScheduler>(
+                            node_id_, peer_list_, peer_dataset_map_,
+                            pushTaskRequest.task().params(), singleton_);
+                    scheduler->dispatch(&pushTaskRequest);
+                }
+            });
+    });
+    t.join();
 }
 
 void ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<LanguageParser> python_parser) {
 
     auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
-    auto datasets_with_tag = _python_parser->getDatasets(); // dataset with role tag
+    auto datasets_with_tag =
+        _python_parser->getDatasets(); // dataset with role tag
     peer_context_map_ = _python_parser->getNodeContextMap();
 
-  // Start find peer node by dataset list
-  LOG(INFO) << " 🔍 Python task finding meta list from datasets...";
-  dataset_service_->metaService_->findPeerListFromDatasets(
-      datasets_with_tag,
-      [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-        LOG(INFO) << " 🔍 Python task found meta list from datasets: "
-                  << metas_with_param_tag.size();
+    // Start find peer node by dataset list
+    std::thread t([&]() {
+        LOG(INFO) << " 🔍 Python task finding meta list from datasets...";
+        dataset_service_->metaService_->findPeerListFromDatasets(
+            datasets_with_tag,
+            [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
+                LOG(INFO) << " 🔍 Python task found meta list from datasets: "
+                          << metas_with_param_tag.size();
 
-        metasToPeerWithTagAndPort(metas_with_param_tag, peers_with_role_tag_);
-        std::shared_ptr<VMScheduler> scheduler = std::make_shared<FLScheduler>(
-                        node_id_, singleton_, 
-                        peers_with_role_tag_, 
-                        peer_context_map_, 
-                        metas_with_param_tag);
+                metasToPeerWithTagAndPort(metas_with_param_tag,
+                                          peers_with_role_tag_);
+                std::shared_ptr<VMScheduler> scheduler =
+                    std::make_shared<FLScheduler>(
+                        node_id_, singleton_, peers_with_role_tag_,
+                        peer_context_map_, metas_with_param_tag);
 
-        // Dispatch task to worker nodes
-        auto pushTaskRequest = _python_parser->getPushTaskRequest();
-        scheduler->dispatch(&pushTaskRequest);
-      });
+                // Dispatch task to worker nodes
+                auto pushTaskRequest = _python_parser->getPushTaskRequest();
+                scheduler->dispatch(&pushTaskRequest);
+            });
+    });
+    t.join();
 }
 
 void ProtocolSemanticParser::schedulePirTask(
