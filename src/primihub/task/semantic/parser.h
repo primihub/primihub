@@ -83,10 +83,6 @@ class ProtocolSemanticParser {
     // proto task use
     std::vector<Node> peer_list_;
     PeerDatasetMap peer_dataset_map_;
-
-    // // python task use
-    // std::vector<NodeWithRoleTag> peers_with_role_tag_;
-    // PeerContextMap peer_context_map_;
    
 };
 
