@@ -70,29 +70,30 @@ void ProtocolSemanticParser::scheduleProtoTask(
             [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
                 LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
                           << metas_with_param_tag.size();
-
-                metasToPeerList(metas_with_param_tag, peer_list_);
-                metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
+                std::vector<Node> peer_list;
+                PeerDatasetMap peer_dataset_map;
+                metasToPeerList(metas_with_param_tag, peer_list);
+                metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map);
 
                 //  Generate MPC algorthim scheduler
                 auto pushTaskRequest = _proto_parser->getPushTaskRequest();
                 if (pushTaskRequest.task().code() == "maxpool") {
                     std::shared_ptr<VMScheduler> scheduler =
                         std::make_shared<CRYPTFLOW2Scheduler>(
-                            node_id_, peer_list_, peer_dataset_map_,
+                            node_id_, peer_list_, peer_dataset_map,
                             singleton_);
                     scheduler->dispatch(&pushTaskRequest);
                 } else if (pushTaskRequest.task().code() == "lenet") {
                     std::shared_ptr<VMScheduler> scheduler =
-                        std::make_shared<FalconScheduler>(node_id_, peer_list_,
-                                                          peer_dataset_map_,
+                        std::make_shared<FalconScheduler>(node_id_, peer_list,
+                                                          peer_dataset_map,
                                                           singleton_);
                     scheduler->dispatch(&pushTaskRequest);
                 } else {
                     //  Generate ABY3 scheduler
                     std::shared_ptr<VMScheduler> scheduler =
-                        std::make_shared<ABY3Scheduler>(node_id_, peer_list_,
-                                                        peer_dataset_map_,
+                        std::make_shared<ABY3Scheduler>(node_id_, peer_list,
+                                                        peer_dataset_map,
                                                         singleton_);
                     scheduler->dispatch(&pushTaskRequest);
                 }
@@ -102,7 +103,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
                     std::shared_ptr<VMScheduler> scheduler =
                         // TODO peer_list add server Node object
                         std::make_shared<TEEScheduler>(
-                            node_id_, peer_list_, peer_dataset_map_,
+                            node_id_, peer_list_, peer_dataset_map,
                             pushTaskRequest.task().params(), singleton_);
                     scheduler->dispatch(&pushTaskRequest);
                 }
