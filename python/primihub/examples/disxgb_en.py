@@ -227,8 +227,8 @@ def xgb_host_logic(cry_pri="paillier"):
             Regression_eva.get_result(y_true, y_pre, indicator_file_path)
         elif eva_type == 'classification':
             Classification_eva.get_result(y_true, y_pre, indicator_file_path)
-        channel.stop()
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
+        channel.stop()
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
