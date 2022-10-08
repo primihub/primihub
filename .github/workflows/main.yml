@@ -11,7 +11,7 @@ on:
     # Publish semver tags as releases.
     tags: [ '*.*.*' ]
   pull_request:
-    branches: [ "master", "develop" ]
+    branches: [ "master", "develop", "feature/deploy" ]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -23,28 +23,28 @@ env:
 jobs:
   
   unit-test-on-ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
-      with:
-        cmake-version: '3.20.2'
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - run: sudo apt update
-    - name: Install gcc-8
-      run: |
-         sudo apt install -y gcc-8  g++-8 \
-          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-    - name: Install python-devel
-      run: sudo apt install python-dev
-    - name: Install pytest
-      run: sudo apt-get install python3-pip -y && pip3 install pytest
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
+    # - name: Setup cmake
+    #   uses: jwlawson/actions-setup-cmake@v1.12
+    #   with:
+    #     cmake-version: '3.20.2'
+    # - uses: actions/setup-python@v4
+    #   with:
+    #     python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+    #     architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    # - run: sudo apt update
+    # - name: Install gcc-8
+    #   run: |
+    #      sudo apt install -y gcc-8  g++-8 \
+    #       && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    # - name: Install python-devel
+    #   run: sudo apt install python-dev
+    # - name: Install pytest
+    #   run: sudo apt-get install python3-pip -y && pip3 install pytest
+    # - uses: actions/checkout@v3
+    # - name: Setup bazelisk
+    #   uses: bazelbuild/setup-bazelisk@v2
     - name: Mount bazel cache  # Optional
       uses: actions/cache@v3
       with:
@@ -106,34 +106,34 @@ jobs:
   
   build-on-ubuntu:
     needs: unit-test-on-ubuntu
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
-      with:
-        cmake-version: '3.20.2'
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - run: sudo apt update
-    - name: Install gcc-8
-      run: |
-         sudo apt install -y gcc-8  g++-8 \
-          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-    - name: Install python-devel
-      run: sudo apt install python-dev
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
-    - name: rm cache
-      run: |
-        sudo rm -fr /home/runner/.cache/
+    # - name: Setup cmake
+    #   uses: jwlawson/actions-setup-cmake@v1.12
+    #   with:
+    #     cmake-version: '3.20.2'
+    # - uses: actions/setup-python@v4
+    #   with:
+    #     python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+    #     architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    # - run: sudo apt update
+    # - name: Install gcc-8
+    #   run: |
+    #      sudo apt install -y gcc-8  g++-8 \
+    #       && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    # - name: Install python-devel
+    #   run: sudo apt install python-dev
+    # - uses: actions/checkout@v3
+    # - name: Setup bazelisk
+    #   uses: bazelbuild/setup-bazelisk@v2
+    # - name: Mount bazel cache  # Optional
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: "~/.cache/bazel"
+    #     key: bazel
+    # - name: rm cache
+    #   run: |
+    #     sudo rm -fr /home/runner/.cache/
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
