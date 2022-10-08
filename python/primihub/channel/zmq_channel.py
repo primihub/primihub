@@ -23,7 +23,7 @@ class Channel:
             message = self.socket.recv()
             return pickle.loads(message)
         else:
-            # Don't remove unblock recv, it's used for 
+            # Don't remove unblock recv, it's used for
             # ClientChannelProxy and ServerChannelProxy.
             try:
                 message = self.socket.recv(flags=zmq.NOBLOCK)
@@ -32,6 +32,9 @@ class Channel:
                 time.sleep(0.1)
             except Exception as e:
                 raise e
+
+    def stop(self):
+        self.socket.close()
 
     def send_json(self, data):
         self.socket.send_json(data)
