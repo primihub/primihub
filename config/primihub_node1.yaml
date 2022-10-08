@@ -2,7 +2,7 @@ version: 1.0
 
 node: "node1"
 location: "172.28.1.11"
-grpc_port: 50050
+grpc_port: 50051
 
 datasets:
   # ABY3 LR test case datasets
