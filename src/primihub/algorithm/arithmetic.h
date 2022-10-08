@@ -35,11 +35,8 @@ private:
 
   int _LoadDatasetFromCSV(std::string &filename);
   MPCExpressExecutor *mpc_exec_;
-  std::string model_name_;
+  std::string res_name_;
   uint16_t local_id_;
-  eMatrix<double> train_input_;
-  eMatrix<double> test_input_;
-  eMatrix<double> model_;
   std::pair<std::string, uint16_t> next_addr_;
   std::pair<std::string, uint16_t> prev_addr_;
   Session ep_next_;
@@ -47,10 +44,11 @@ private:
   IOService ios_;
   std::string next_ip_, prev_ip_;
   uint16_t next_port_, prev_port_;
-  std::string data_filepath_;
+  std::string data_file_path_;
   std::map<std::string, u32> col_and_owner_;
   std::map<std::string, bool> col_and_dtype_;
   std::vector<uint32_t> parties_;
+  uint32_t party_id_;
   std::vector<double> final_val_double_;
   std::vector<int64_t> final_val_int64_;
   std::string expr_;
