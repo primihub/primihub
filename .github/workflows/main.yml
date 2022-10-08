@@ -140,7 +140,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli :test_opt_paillier_c2py 
+        bazel build --config=linux :node :cli :opt_paillier_c2py 
       
   
   build-on-mac_x86_64:
@@ -159,7 +159,7 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :test_opt_paillier_c2py  --sandbox_debug 
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py 
       shell: bash
     - name: Release copy
       run : |
