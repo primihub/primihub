@@ -136,7 +136,7 @@ private:
 class RedisDatasetMetaService : public DatasetMetaService {
 public:
   RedisDatasetMetaService(
-      std::string &redis_addr,
+      std::string &redis_addr, std::string &redis_passwd,
       std::shared_ptr<primihub::service::StorageBackend> local_db,
       std::shared_ptr<primihub::p2p::NodeStub> dummy);
   void putMeta(DatasetMeta &meta);
@@ -147,6 +147,7 @@ public:
 
 private:
   std::string redis_addr_;
+  std::string redis_passwd_;
   std::shared_ptr<StorageBackend> local_db_;
 };
 

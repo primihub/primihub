@@ -8,7 +8,7 @@ class RedisHelper {
 public:
   RedisHelper() {};
   ~RedisHelper();
-  int connect(std::string redis_addr);
+  int connect(std::string redis_addr, const std::string &redis_passwd);
   void disconnect(void);
   redisContext *getContext(void);
 private:

@@ -5,7 +5,7 @@
 #include "src/primihub/util/redis_helper.h"
 
 namespace primihub {
-int RedisHelper::connect(std::string redis_addr) {
+int RedisHelper::connect(std::string redis_addr, const std::string &redis_passwd) {
   auto pos = redis_addr.find(":");
   if (pos == std::string::npos) {
     LOG(ERROR)
@@ -25,6 +25,14 @@ int RedisHelper::connect(std::string redis_addr) {
   if (context_ == nullptr || context_->err == 1) {
     LOG(ERROR) << "Connect to redis server failed, " << context_->errstr << ".";
     return -2;
+  }
+
+  redisReply *reply = (redisReply*)redisCommand(context_, "AUTH %s", 
+		  				redis_passwd.c_str());
+  if (reply->type == REDIS_REPLY_ERROR) {
+    LOG(ERROR) << "Authorization failed: " << reply->str << ".";
+    freeReplyObject(reply);
+    return -3;
   }
 
   LOG(INFO) << "Connect to redis server " << host << ":" << port << " finish.";

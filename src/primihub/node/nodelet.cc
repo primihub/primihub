@@ -27,6 +27,7 @@ Nodelet::Nodelet(const std::string &config_file_path) {
 
   bool use_redis = false;
   std::string redis_addr;
+  std::string redis_passwd;
 
   auto redis_conf = config["redis_meta_service"];
   if (redis_conf) {
@@ -44,9 +45,16 @@ Nodelet::Nodelet(const std::string &config_file_path) {
       throw std::runtime_error("Get redis_addr from YAML failed.");
     }
 
+    auto password_node = redis_conf["redis_password"];
+    if (!password_node) {
+      LOG(ERROR) << "Get redis_password from YAML failed.";
+      throw std::runtime_error("Get redis_password from YAML failed.");
+    }
+
     // This is a dummy stub, not used in redis meta service.
     p2p_node_stub_ = std::make_shared<primihub::p2p::NodeStub>(bootstrap_nodes);
     redis_addr = addr_node.as<std::string>();
+    redis_passwd = password_node.as<std::string>();
 
     LOG(INFO) << "Use redis meta service instead of p2p network.";
   } else {
@@ -83,7 +91,7 @@ Nodelet::Nodelet(const std::string &config_file_path) {
   if (use_redis) {
     meta_service_ =
         std::make_shared<primihub::service::RedisDatasetMetaService>(
-            redis_addr, local_kv_, p2p_node_stub_);
+            redis_addr, redis_passwd, local_kv_, p2p_node_stub_);
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         meta_service_, nodelet_addr_);
 

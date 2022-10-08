@@ -470,18 +470,19 @@ outcome::result<void> CentralizedDatasetMetaService::findPeerListFromDatasets(
 }
 
 RedisDatasetMetaService::RedisDatasetMetaService(
-    std::string &redis_addr,
+    std::string &redis_addr, std::string &redis_passwd,
     std::shared_ptr<primihub::service::StorageBackend> local_db,
     std::shared_ptr<primihub::p2p::NodeStub> dummy)
     : DatasetMetaService(dummy, local_db) {
   this->redis_addr_ = redis_addr;
   this->local_db_ = local_db;
+  this->redis_passwd_ = redis_passwd;
 }
 
 void RedisDatasetMetaService::putMeta(DatasetMeta &meta) {
   RedisStringKVHelper helper;
-  if (helper.connect(this->redis_addr_)) {
-    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
+  if (helper.connect(this->redis_addr_, this->redis_passwd_)) {
+    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << " failed.";
     return;
   }
 
@@ -508,7 +509,7 @@ outcome::result<void>
 RedisDatasetMetaService::getMeta(const DatasetId &id,
                                  FoundMetaHandler handler) {
   RedisStringKVHelper helper;
-  if (helper.connect(this->redis_addr_)) {
+  if (helper.connect(this->redis_addr_, this->redis_passwd_)) {
     LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
     return outcome::success();
   }
@@ -537,7 +538,7 @@ outcome::result<void> RedisDatasetMetaService::findPeerListFromDatasets(
   std::vector<DatasetMetaWithParamTag> meta_list;
 
   RedisStringKVHelper helper;
-  if (helper.connect(this->redis_addr_)) {
+  if (helper.connect(this->redis_addr_, this->redis_passwd_)) {
     LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << "failed.";
     return outcome::success();
   }
