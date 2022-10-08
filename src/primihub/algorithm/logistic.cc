@@ -179,7 +179,7 @@ namespace primihub
       num_iter_ = param_map["NumIters"].value_int32();
       model_file_name_ = param_map["modelName"].value_string();
       if(model_file_name_ == "")
-      	model_file_name_="/tmp/" + model_name_ + ".csv";
+      	model_file_name_="./" + model_name_ + ".csv";
     }
     catch (std::exception &e)
     {

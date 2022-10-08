@@ -68,10 +68,9 @@ jobs:
         ./bazel-bin/falcon_lenet_test
         ./bazel-bin/common_test
         ./bazel-bin/network_test
-        # TODO: The two test always fail due to 'a dangling symbolic link' error in github action.
+
         # bazel test --test_output=all --config=linux test_opt_paillier_c2py 
         # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
-        
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
@@ -133,6 +132,9 @@ jobs:
       with:
         path: "~/.cache/bazel"
         key: bazel
+    - name: rm cache
+      run: |
+        sudo rm -fr /home/runner/.cache/
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
