@@ -14,6 +14,7 @@ class Channel:
 
     def __init__(self, session):
         self.socket = session.socket
+        self.context = session.context
 
     def send(self, data):
         self.socket.send(pickle.dumps(data))
@@ -35,6 +36,7 @@ class Channel:
 
     def stop(self):
         self.socket.close()
+        self.context.close()
 
     def send_json(self, data):
         self.socket.send_json(data)
@@ -51,20 +53,20 @@ class Session:
         self.session_mode = session_mode
 
     def addChannel(self, *args) -> Channel:
-        context = zmq.Context()
+        self.context = zmq.Context()
         ctx_async = zmq.asyncio.Context()
         # rep
         if self.session_mode == "server":
-            socket = context.socket(zmq.REP)
+            socket = self.context.socket(zmq.REP)
             socket.bind("tcp://{}:{}".format(self.ip, self.port))
         # req
         elif self.session_mode == "client":
-            socket = context.socket(zmq.REQ)
+            socket = self.context.socket(zmq.REQ)
             socket.connect("tcp://{}:{}".format(self.ip, self.port))
 
         # push
         elif self.session_mode == "producer":
-            socket = context.socket(zmq.PUSH)
+            socket = self.context.socket(zmq.PUSH)
             socket.connect("tcp://{}:{}".format(self.ip, self.port))
         # pull
         elif self.session_mode == "consumer":
