@@ -153,6 +153,7 @@ Sh3Task Sh3Encryptor::localBinMatrix(Sh3Task dep, const i64Matrix & m,
   return dep.then([this, &m, &ret](CommPkgBase* commPtr, Sh3Task self) {
     auto b0 = ret.i64Cols() != static_cast<u64>(m.cols());
     auto b1 = ret.i64Size() != static_cast<u64>(m.size());
+    
     if (b0 || b1)
         throw std::runtime_error(LOCATION);
 
