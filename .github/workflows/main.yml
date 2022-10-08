@@ -44,13 +44,13 @@ jobs:
     # - name: Install pytest
     #   run: sudo apt-get install python3-pip -y && pip3 install pytest
     - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
+    # - name: Setup bazelisk
+    #   uses: bazelbuild/setup-bazelisk@v2
+    # - name: Mount bazel cache  # Optional
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: "~/.cache/bazel"
+    #     key: bazel
 
     # - name: pytest
     #   run: |
@@ -124,7 +124,7 @@ jobs:
     #       && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
     # - name: Install python-devel
     #   run: sudo apt install python-dev
-    # - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
     # - name: Setup bazelisk
     #   uses: bazelbuild/setup-bazelisk@v2
     # - name: Mount bazel cache  # Optional
