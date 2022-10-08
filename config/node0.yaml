@@ -25,12 +25,7 @@ grpc_port: 50050
 
 # load datasets
 datasets:
-  - description: "test_party_0_self"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_0" 
-  - description: "test_party_0_next"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1" 
+  # ABY3 LR test case datasets
   - description: "train_party_0"
     model: "csv"
     source: "data/train_party_0.csv" 
@@ -41,6 +36,16 @@ datasets:
     model: "csv"
     source: "data/FL/wisconsin.data"
   
+    source: "data/test_party_0.csv" 
+
+  # MNIST test case datasets
+  - description: "test_party_0_self"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_0" 
+  - description: "test_party_0_next"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_1" 
+
     # Dataset authorization
     # authorization:
     #   - node:
@@ -53,7 +58,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmPtanp6tR1up2ofKSeb64DigJfT5C62i8d93YhjsMRkJF"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8886"
   dht_get_value_timeout:  60

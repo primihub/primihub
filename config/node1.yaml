@@ -21,26 +21,36 @@ grpc_port: 50051
 
 # load datasets
 datasets:
-  - description: "test_party_1_self"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1" 
-  - description: "test_party_1_next"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2" 
+  # ABY3 LR test case datasets
   - description: "train_party_1"
     model: "csv"
     source: "data/train_party_1.csv" 
   - description: "test_party_1"
     model: "csv"
     source: "data/test_party_1.csv" 
+  
+  # MNIST test case datasets
+  - description: "test_party_1_self"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_1" 
+  - description: "test_party_1_next"
+    model: "csv"
+    source: "data/falcon/dataset/MNIST/input_2" 
+  
+  # PIR test case dataset
   - description: "pir_server_data"
     model: "csv"
     source: "data/pir_server.csv"
+  
+  # PSI test case dataset
   - description: "psi_server_data"
     model: "csv"
     source: "data/server_e.csv"
+
+  #  FL xgb test case datasets
   - description: "label_dataset"
     model: "csv"
+<<<<<<< HEAD
     source: "data/FL/wisconsin_host.data"
   - description: "breast_1"
     model: "csv"
@@ -48,6 +58,12 @@ datasets:
   # - description: "test_dataset"
   #   model: "csv"
   #   source: "data/FL/wisconsin_test.data"
+=======
+    source: "data/FL/wisconsin_host.data"   
+  - description: "test_dataset"
+    model: "csv"
+    source: "data/FL/wisconsin_test.data"
+>>>>>>> develop
 
 localkv: 
   model: "leveldb"
@@ -56,7 +72,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmPtanp6tR1up2ofKSeb64DigJfT5C62i8d93YhjsMRkJF"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8887"
   dht_get_value_timeout:  60

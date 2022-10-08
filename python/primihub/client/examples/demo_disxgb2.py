@@ -17,10 +17,7 @@ limitations under the License.
 import primihub as ph
 from primihub.client import primihub_cli as cli
 from primihub import dataset, context
-# from primihub.primitive.opt_paillier_c2py_warpper import *
 from primihub.channel.zmq_channel import IOService, Session
-# from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
-# from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
 from primihub.FL.model.evaluation.evaluation import Regression_eva
@@ -60,7 +57,7 @@ ph.context.Context.func_params_map = {
 }
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000', task_type="regression")
+@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8001', task_type="regression")
 def xgb_host_logic(cry_pri="paillier"):
     logger.info("start xgb host logic...")
     logger.info(ph.context.Context.dataset_map)
@@ -237,7 +234,7 @@ def xgb_host_logic(cry_pri="paillier"):
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
+@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9002', task_type="regression")
 def xgb_guest_logic(cry_pri="paillier"):
     logger.info("start xgb guest logic...")
     ios = IOService()

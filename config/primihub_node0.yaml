@@ -5,21 +5,28 @@ location: "172.28.1.10"
 grpc_port: 50050
 
 datasets:
-  - description: "test_party_0_self"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_0" 
-  - description: "test_party_0_next"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_1" 
+  # ABY3 LR test case datasets
   - description: "train_party_0"
     model: "csv"
     source: "/tmp/train_party_0.csv" 
   - description: "test_party_0"
     model: "csv"
     source: "/tmp/test_party_0.csv"
+<<<<<<< HEAD
   - description: "breast_0"
     model: "csv"
     source: "/tmp/FL/wisconsin.data"
+=======
+  
+  # MNIST test case datasets
+  - description: "test_party_0_self"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_0" 
+  - description: "test_party_0_next"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
+
+>>>>>>> develop
 
 localkv: 
   model: "leveldb"
