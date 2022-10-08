@@ -12,6 +12,11 @@ datasets:
   - description: "test_party_0"
     model: "csv"
     source: "/tmp/test_party_0.csv"
+<<<<<<< HEAD
+  - description: "breast_0"
+    model: "csv"
+    source: "/tmp/FL/wisconsin.data"
+=======
   
   # MNIST test case datasets
   - description: "test_party_0_self"
@@ -21,6 +26,7 @@ datasets:
     model: "csv"
     source: "/tmp/falcon/dataset/MNIST/input_1" 
 
+>>>>>>> develop
 
 localkv: 
   model: "leveldb"

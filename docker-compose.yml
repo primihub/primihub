@@ -11,6 +11,9 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/:/app/python
+      - ../primihub:/primihub
+
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -32,6 +35,9 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/:/app/python
+      - ../primihub:/primihub
+
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -53,6 +59,9 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+      - ./python/:/app/python
+      - ../primihub:/primihub
+
     entrypoint:
       - "/bin/bash"
       - "-c"

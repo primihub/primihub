@@ -90,9 +90,10 @@ class TaskContext:
 
         type_set = set(type_list)
         logger.info(type_set)
+        logger.info(type_list)
         if len(type_set) != 1:
             logger.error("Task type in all role must be the same.")
-            raise RuntimeError("Task type in all role is not the same.")
+            # raise RuntimeError("Task type in all role is not the same.")
         else:
             return type_list[0]
 
@@ -155,7 +156,8 @@ class TaskContext:
 
         output_dir = os.path.dirname(self.guest_lookup_file_path).strip()
         self.mk_output_dir(output_dir)
-        logger.info("guest lookup table: {}".format(self.guest_lookup_file_path))
+        logger.info("guest lookup table: {}".format(
+            self.guest_lookup_file_path))
         return self.guest_lookup_file_path
 
     def get_role_node_map(self):
@@ -166,6 +168,8 @@ class TaskContext:
 
     def clean_content(self):
         self.role_nodeid_map.clear()
+        self.nodes_context.clear()
+        self.dataset_map.clear()
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["guest"] = []
         self.role_nodeid_map["arbiter"] = []
@@ -198,8 +202,10 @@ def set_task_context_node_addr_map(node_id_with_role, addr):
     nodeid, role = node_id_with_role.rsplit("_")
     Context.node_addr_map[nodeid] = addr
     Context.role_nodeid_map[role].append(nodeid)
-    logger.info("Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
-    logger.info("Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
+    logger.info(
+        "Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
+    logger.info(
+        "Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
 
 
 def set_task_context_params_map(key, value):

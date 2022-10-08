@@ -72,7 +72,8 @@ def xgb_host_logic(cry_pri="paillier"):
 
     eva_type = eva_type.lower()
     if eva_type != "classification" and eva_type != "regression":
-        logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
+        logger.error(
+            "Invalid value of taskType, possible value is 'regression', 'classification'.")
         return
 
     logger.info("Current task type is {}.".format(eva_type))
@@ -191,7 +192,6 @@ def xgb_host_logic(cry_pri="paillier"):
         elif eva_type == 'classification':
             Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
 
-
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
                             sid=0, min_child_weight=1, objective='linear', channel=channel)
@@ -227,8 +227,9 @@ def xgb_host_logic(cry_pri="paillier"):
             Regression_eva.get_result(y_true, y_pre, indicator_file_path)
         elif eva_type == 'classification':
             Classification_eva.get_result(y_true, y_pre, indicator_file_path)
-
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
+        channel.stop()
+        xgb_host.channel.stop()
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
@@ -249,7 +250,8 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     eva_type = eva_type.lower()
     if eva_type != "classification" and eva_type != "regression":
-        logger.error("Invalid value of taskType, possible value is 'regression', 'classification'.")
+        logger.error(
+            "Invalid value of taskType, possible value is 'regression', 'classification'.")
         return
 
     logger.info("Current task type is {}.".format(eva_type))
@@ -339,3 +341,5 @@ def xgb_guest_logic(cry_pri="paillier"):
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
         xgb_guest.predict(X_guest)
+        channel.stop()
+        xgb_guest.channel.stop()
