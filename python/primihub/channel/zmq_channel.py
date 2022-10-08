@@ -36,7 +36,7 @@ class Channel:
 
     def stop(self):
         self.socket.close()
-        self.context.close()
+        self.context.destroy()
 
     def send_json(self, data):
         self.socket.send_json(data)
