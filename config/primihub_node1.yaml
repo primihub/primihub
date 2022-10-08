@@ -5,24 +5,33 @@ location: "172.28.1.11"
 grpc_port: 50051
 
 datasets:
-  - description: "test_party_1_self"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_1" 
-  - description: "test_party_1_next"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_2" 
+  # ABY3 LR test case datasets
   - description: "train_party_1"
     model: "csv"
     source: "/tmp/train_party_1.csv" 
   - description: "test_party_1"
     model: "csv"
     source: "/tmp/test_party_1.csv"
+  
+  # MNIST test case datasets
+  - description: "test_party_1_self"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
+  - description: "test_party_1_next"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_2" 
+  
+  # PIR test case dataset
   - description: "pir_server_data"
     model: "csv"
     source: "/tmp/pir_server.csv" 
+  
+  # PSI test case dataset
   - description: "psi_server_data"
     model: "csv"
     source: "/tmp/server_e.csv" 
+  
+  #  FL xgb test case datasets
   - description: "label_dataset"
     model: "csv"
     source: "/tmp/FL/wisconsin_host.data"   
