@@ -7,6 +7,7 @@ on:
     branches: 
       - master
       - develop
+      - feature/deploy 
       - feature/workflow # for test
     # Publish semver tags as releases.
     tags: [ '*.*.*' ]
@@ -42,9 +43,9 @@ jobs:
     #   run: sudo apt install python-dev
     # - name: Install pytest
     #   run: sudo apt-get install python3-pip -y && pip3 install pytest
-    # - uses: actions/checkout@v3
-    # - name: Setup bazelisk
-    #   uses: bazelbuild/setup-bazelisk@v2
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
     - name: Mount bazel cache  # Optional
       uses: actions/cache@v3
       with:
@@ -78,30 +79,30 @@ jobs:
 
   
 
-  unit-test-on-macos_x86_64:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
-    - uses: actions/checkout@v3
-    - name: bazel build
-      run: |
-        ./pre_build.sh 
-        bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
-        ./bazel-bin/logistic_test
-        ./bazel-bin/common_test
-        ./bazel-bin/network_test
-        # bazel test --config=darwin_x86_64 --config=macos primitive_test
-        # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
-        # bazel test --config=darwin_x86_64 --config=macos prng_test
-        # bazel test --config=darwin_x86_64 --config=macos share_test
-      shell: bash
+  # unit-test-on-macos_x86_64:
+  #   runs-on: macos-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Setup bazelisk
+  #     uses: bazelbuild/setup-bazelisk@v2
+  #   - name: Mount bazel cache  # Optional
+  #     uses: actions/cache@v3
+  #     with:
+  #       path: "~/.cache/bazel"
+  #       key: bazel
+  #   - uses: actions/checkout@v3
+  #   - name: bazel build
+  #     run: |
+  #       ./pre_build.sh 
+  #       bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+  #       ./bazel-bin/logistic_test
+  #       ./bazel-bin/common_test
+  #       ./bazel-bin/network_test
+  #       # bazel test --config=darwin_x86_64 --config=macos primitive_test
+  #       # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
+  #       # bazel test --config=darwin_x86_64 --config=macos prng_test
+  #       # bazel test --config=darwin_x86_64 --config=macos share_test
+  #     shell: bash
 
   
   build-on-ubuntu:
@@ -143,35 +144,35 @@ jobs:
         bazel build --config=linux :node :cli :opt_paillier_c2py 
       
   
-  build-on-mac_x86_64:
-    needs: unit-test-on-macos_x86_64
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
-    - name: bazel build
-      run: |
-        # cc_binary
-        ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py 
-      shell: bash
-    - name: Release copy
-      run : |
-        cp ./bazel-bin/node ./bazel-bin/primihub-node
-        cp ./bazel-bin/cli ./bazel-bin/primihub-cli
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-          files: |
-            ./bazel-bin/primihub-node
-            ./bazel-bin/primihub-cli
+  # build-on-mac_x86_64:
+  #   needs: unit-test-on-macos_x86_64
+  #   runs-on: macos-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Setup bazelisk
+  #     uses: bazelbuild/setup-bazelisk@v2
+  #   - name: Mount bazel cache  # Optional
+  #     uses: actions/cache@v3
+  #     with:
+  #       path: "~/.cache/bazel"
+  #       key: bazel
+  #   - name: bazel build
+  #     run: |
+  #       # cc_binary
+  #       ./pre_build.sh
+  #       bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py 
+  #     shell: bash
+  #   - name: Release copy
+  #     run : |
+  #       cp ./bazel-bin/node ./bazel-bin/primihub-node
+  #       cp ./bazel-bin/cli ./bazel-bin/primihub-cli
+  #   - name: Release
+  #     uses: softprops/action-gh-release@v1
+  #     if: startsWith(github.ref, 'refs/tags/')
+  #     with:
+  #         files: |
+  #           ./bazel-bin/primihub-node
+  #           ./bazel-bin/primihub-cli
   
   docker-image-build-and-publish:
     needs: build-on-ubuntu
