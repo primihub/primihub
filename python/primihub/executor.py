@@ -56,7 +56,9 @@ def _run_in_process(target, *args, **kwargs):
         return process.exitcode
     finally:
         if process.is_alive():
-            process.terminate()
+            print("process is alive...")
+            ...
+            # process.terminate()
 
 
 class Executor:
