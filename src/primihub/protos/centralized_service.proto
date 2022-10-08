@@ -1,0 +1,47 @@
+syntax = "proto3";
+package primihub.rpc;
+
+enum RequestStatus {
+  FINISH = 0;
+  FAILED = 1;
+}
+
+message RegDatasetRequest {
+  string name = 1;
+  string dataset_url = 2;
+}
+
+message RegDatasetResponse {
+  string name = 1;
+  RequestStatus status = 2;
+  string msg = 3;
+}
+
+message FindDatasetRequest { string name = 1; }
+
+message FindDatasetResponse {
+  string name = 1;
+  RequestStatus status = 2;
+  string msg = 3;
+}
+
+message DelDatasetRequest { string name = 1; }
+
+message DelDatasetResponse {
+  string name = 1;
+  RequestStatus status = 2;
+  string msg = 3;
+}
+
+message ListDatasetRequest {}
+message ListDatasetResponse {
+  repeated string all_meta = 1;
+  RequestStatus status = 2;
+}
+
+service CentralizedDatasetService {
+  rpc RegDataset(RegDatasetRequest) returns (RegDatasetResponse);
+  rpc FindDataset(FindDatasetRequest) returns (FindDatasetResponse);
+  rpc DelDataset(DelDatasetRequest) returns (DelDatasetResponse);
+  rpc ListDataset(ListDatasetRequest) returns (ListDatasetResponse);
+}

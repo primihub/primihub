@@ -19,70 +19,109 @@
 #include "src/primihub/service/dataset/localkv/storage_leveldb.h"
 
 namespace primihub {
-Nodelet::Nodelet(const std::string& config_file_path) {
-    
-    // Get p2p address from config file
-    YAML::Node config = YAML::LoadFile(config_file_path);
-    auto bootstrap_nodes = config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
-    p2p_node_stub_ = std::make_shared<primihub::p2p::NodeStub>(std::move(bootstrap_nodes));
-    nodelet_addr_ = config["node"].as<std::string>() + ":"
-        + config["location"].as<std::string>() + ":"
-        + std::to_string(config["grpc_port"].as<uint64_t>());
+Nodelet::Nodelet(const std::string &config_file_path) {
+  // Get p2p address from config file
+  YAML::Node config = YAML::LoadFile(config_file_path);
+  auto bootstrap_nodes =
+      config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
+
+  bool use_redis = false;
+  std::string redis_addr;
+
+  auto redis_conf = config["redis_meta_service"];
+  if (redis_conf) {
+    auto use_redis_node = redis_conf["use_redis"];
+    if (use_redis_node) {
+      if (use_redis_node.as<bool>())
+        use_redis = true;
+    }
+  }
+
+  if (use_redis) {
+    auto addr_node = redis_conf["redis_addr"];
+    if (!addr_node) {
+      LOG(ERROR) << "Get redis_addr from YAML failed.";
+      throw std::runtime_error("Get redis_addr from YAML failed.");
+    }
+
+    // This is a dummy stub, not used in redis meta service.
+    p2p_node_stub_ = std::make_shared<primihub::p2p::NodeStub>(bootstrap_nodes);
+    redis_addr = addr_node.as<std::string>();
+
+    LOG(INFO) << "Use redis meta service instead of p2p network.";
+  } else {
+    p2p_node_stub_ =
+        std::make_shared<primihub::p2p::NodeStub>(std::move(bootstrap_nodes));
+    nodelet_addr_ = config["node"].as<std::string>() + ":" +
+                    config["location"].as<std::string>() + ":" +
+                    std::to_string(config["grpc_port"].as<uint64_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
-    
-    // Create and start notify service
-    auto notify_server_addr = config["notify_server"].as<std::string>();
-    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr);
-    std::thread notify_service_thread([this]() {
-        notify_service_->run();
-    });
-    notify_service_thread.detach();
+  }
 
-    // Wait for p2p node to start
-    sleep(3);
-    
-    // Create local kv storage defined in config file
-    auto localkv_c = config["localkv"]["model"].as<std::string>();
-    if (localkv_c == "default") {
-        local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
-    } else if (localkv_c == "leveldb") {
-        local_kv_ = std::make_shared<primihub::service::StorageBackendLevelDB>(
-             config["localkv"]["path"].as<std::string>()
-        );
-    } else {
-       local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
-    }
-   
-    // Init DatasetService with nodelet as stub
+  // Create and start notify service
+  auto notify_server_addr = config["notify_server"].as<std::string>();
+  notify_service_ =
+      std::make_shared<primihub::service::NotifyService>(notify_server_addr);
+  std::thread notify_service_thread([this]() { notify_service_->run(); });
+  notify_service_thread.detach();
+
+  // Wait for p2p node to start
+  sleep(3);
+
+  // Create local kv storage defined in config file
+  auto localkv_c = config["localkv"]["model"].as<std::string>();
+  if (localkv_c == "default") {
+    local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
+  } else if (localkv_c == "leveldb") {
+    local_kv_ = std::make_shared<primihub::service::StorageBackendLevelDB>(
+        config["localkv"]["path"].as<std::string>());
+  } else {
+    local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
+  }
+
+  if (use_redis) {
+    meta_service_ =
+        std::make_shared<primihub::service::RedisDatasetMetaService>(
+            redis_addr, local_kv_, p2p_node_stub_);
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
-        p2p_node_stub_, local_kv_, nodelet_addr_);
-    dataset_service_->restoreDatasetFromLocalStorage();
+        meta_service_, nodelet_addr_);
 
-    auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
-    loadConifg(config_file_path, timeout);
-    
+    LOG(INFO) << "Init redis meta service and dataset service finish.";
+  } else {
+    meta_service_ = std::make_shared<primihub::service::DatasetMetaService>(
+        p2p_node_stub_, local_kv_);
+    dataset_service_ = std::make_shared<primihub::service::DatasetService>(
+        meta_service_, nodelet_addr_);
+
+    LOG(INFO) << "Init p2p meta service and dataset service finish.";
+  }
+
+  dataset_service_->restoreDatasetFromLocalStorage();
+  auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
+  loadConifg(config_file_path, timeout);
 }
 
 Nodelet::~Nodelet() {
-    // TODO stop node and release all protocol/service resources
-    this->local_kv_.reset();
+  // TODO stop node and release all protocol/service resources
+  this->local_kv_.reset();
+  this->dataset_service_.reset();
+  this->meta_service_.reset();
 }
 
 std::shared_ptr<primihub::service::DatasetService> &Nodelet::getDataService() {
-    return dataset_service_;
+  return dataset_service_;
 }
 
-std::string Nodelet::getNodeletAddr() {
-    return nodelet_addr_;
-}
+std::string Nodelet::getNodeletAddr() { return nodelet_addr_; }
 
 // Load config file and load default datasets
-void Nodelet::loadConifg(const std::string &config_file_path, unsigned int dht_get_value_timeout) {
-    dataset_service_->loadDefaultDatasets(config_file_path);
-    dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
-    
-    // TODO other service load config
+void Nodelet::loadConifg(const std::string &config_file_path,
+                         unsigned int dht_get_value_timeout) {
+  dataset_service_->loadDefaultDatasets(config_file_path);
+  dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
+
+  // TODO other service load config
 }
 
 } // namespace primihub

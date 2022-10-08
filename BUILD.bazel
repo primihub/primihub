@@ -123,6 +123,30 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/service.proto"],
 )
 
+grpc_proto_library(
+    name = "cc_centralized_service",
+    srcs = ["src/primihub/protos/centralized_service.proto"],
+)
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+    name = "proto_centralized_service",
+    srcs = ["src/primihub/protos/centralized_service.proto"]
+)
+
+py_proto_library(
+    name = "py_centralized_service_proto",
+    deps = [":proto_centralized_service"]
+)
+
+py_grpc_library(
+    name = "py_centralized_service",
+    srcs = [":proto_centralized_service"],
+    deps = [":py_centralized_service_proto"]
+)
+
 cc_library(
     name = "common_lib",
     srcs = glob([
@@ -492,6 +516,28 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "aby3_operator",
+    srcs = [
+      "src/primihub/operator/aby3_operator.cc",
+      "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    hdrs = [
+      "src/primihub/operator/aby3_operator.h",
+      "src/primihub/common/type/type.h",
+      "src/primihub/common/type/fixed_point.h",
+      "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    deps = [
+      ":protocol_aby3_lib", 
+      "@com_github_glog_glog//:glog"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+)
+
 DEFAULT_TASK_LIB_DEPS = [
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
@@ -529,7 +575,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG, 
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -771,7 +817,8 @@ cc_library(
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
-             "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
+            "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
+            "src/primihub/util/redis_helper.cc"
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
@@ -781,6 +828,7 @@ cc_library(
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/localkv/storage_leveldb.h",    
             "src/primihub/service/dataset/util.hpp",     
+            "src/primihub/util/redis_helper.h"
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -793,10 +841,12 @@ cc_library(
         "@boost//:asio",
         "@boost//:thread",
         "@boost//:outcome",
+        "@com_github_redis_hiredis//:hiredis",
         ":common_lib",
         ":p2p_lib",
         ":data_store_lib",
         ":util_lib",
+        ":cc_centralized_service",
         "service_base",
     ],
     linkstatic = True,
@@ -1284,6 +1334,22 @@ cc_test(
             ":common_lib",
             ":network_lib",
             ":share_lib",
+    ],
+)
+
+cc_test(
+    name = "mpc_cmp_test",
+    srcs = [
+        "test/primihub/operator/cmp_op_test.cc"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_github_glog_glog//:glog",
+        ":aby3_operator",
     ],
 )
 
