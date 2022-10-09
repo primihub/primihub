@@ -1,7 +1,7 @@
 version: '3'
 services:
   node0:
-    image: primihub/primihub-node:2022-10-08-20-24-57
+    image: primihub/primihub-node:latest
     restart: "always"
     container_name: node0_primihub
     ports:
@@ -22,7 +22,7 @@ services:
       - redis 
 
   node1:
-    image: primihub/primihub-node:2022-10-08-20-24-57
+    image: primihub/primihub-node:latest
     restart: "always"
     container_name: node1_primihub
     ports:
@@ -43,7 +43,7 @@ services:
       - redis 
 
   node2:
-    image: primihub/primihub-node:2022-10-08-20-24-57
+    image: primihub/primihub-node:latest
     restart: "always"
     container_name: node2_primihub
     ports:
