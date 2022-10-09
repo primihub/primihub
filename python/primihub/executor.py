@@ -28,38 +28,33 @@ def _handle_timeout():
     raise TimeoutError('function timeout')
 
 
-# def timeout(interval, callback=None):
-#     def decorator(func):
-#         def wrapper(*args, **kwargs):
-#             import gevent  # noqa
-#             from gevent import monkey  # noqa
-#             monkey.patch_all()
-# 
-#             try:
-#                 gevent.with_timeout(interval, func, *args, **kwargs)
-#             except gevent.timeout.Timeout as e:
-#                 callback() if callback else None
-# 
-#         return wrapper
-# 
-#     return decorator
+def timeout(interval, callback=None):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            import gevent  # noqa
+            from gevent import monkey  # noqa
+            monkey.patch_all()
+
+            try:
+                gevent.with_timeout(interval, func, *args, **kwargs)
+            except gevent.timeout.Timeout as e:
+                callback() if callback else None
+
+        return wrapper
+
+    return decorator
 
 
-def _run_in_process(target, args=(), kwargs={}):
+def _run_in_process(target, *args, **kwargs):
     """Runs target in process and returns its exitcode after 10s (None if still alive)."""
+    import os
+    logger.debug("Run new FL task in pid {}".format(os.getpid()))
+
     process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
     process.daemon = True
-    try:
-        process.start()
-        # Do not need to wait much, 10s should be more than enough.
-        process.join(timeout=10)
-        return process.exitcode
-    finally:
-        if process.is_alive():
-            print("process is alive...")
-            ...
-            # process.terminate()
-
+    process.start()
+    return process
+  
 class Executor:
     def __init__(self):
         pass
@@ -89,8 +84,12 @@ class Executor:
             try:
                 logger.debug("start execute")
                 # func()
-                exitcode = _run_in_process(target=func)
-                logger.info("exitcode is: %s" % exitcode)
+                process = _run_in_process(target=func)
+                Context.clean_content()
+
+                while process.exitcode is None:
+                    process.join(timeout=5)
+                    logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
                 logger.debug("end execute")
             except Exception as e:
                 logger.error("Exception: ", str(e))
@@ -101,8 +100,6 @@ class Executor:
             try:
                 logger.debug("start execute with params")
                 # func(*func_params)
-                logger.debug(type(func_params))
-                logger.debug(func_params)
                 exitcode = _run_in_process(target=func, args=func_params)
                 logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
