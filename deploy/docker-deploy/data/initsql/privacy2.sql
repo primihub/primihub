@@ -515,6 +515,7 @@ INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_aut
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1056, '模型推理任务', 'ModelReasoningTask', 3, 1054, 1054, '1054,1056', '', 'own', 2, 1, 1, 0, 0, '2022-09-14 08:41:41.341', '2022-09-14 08:41:41.343');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1057, '模型推理详情', 'ModelReasoningDetail', 3, 1054, 1054, '1054,1057', '', 'own', 3, 1, 1, 0, 0, '2022-09-14 08:41:41.344', '2022-09-14 08:41:41.345');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1058, '日志', 'Log', 1, 0, 1058, '1058', '', 'own', 8, 0, 1, 0, 0, '2022-09-14 08:41:41.346', '2022-09-14 08:41:41.348');
+INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1059, '匿踪查询任务', 'PIRTask', 2, 1016, 1016, '1016,1059', ' ', 'own', 2, 2, 1, 0, 0, '2022-09-21 08:47:42.129', '2022-09-21 09:36:39.176');
 
 
 -- ----------------------------
@@ -581,6 +582,17 @@ INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) 
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1044, 1, 1045, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1045, 1, 1046, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1046, 1, 1047, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1047, 1, 1048, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1048, 1, 1049, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1049, 1, 1050, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1050, 1, 1051, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1051, 1, 1052, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1052, 1, 1053, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1053, 1, 1054, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1054, 1, 1055, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1055, 1, 1056, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1056, 1, 1057, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1057, 1, 1059, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 
 
 -- ----------------------------
