@@ -102,7 +102,7 @@ class Executor:
             try:
                 logger.debug("start execute with params")
                 # func(*func_params)
-                exitcode = _run_in_process(target=func, args=func_params)
+                exitcode = _run_in_process(target=func, *func_params)
                 logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
             except Exception as e:
