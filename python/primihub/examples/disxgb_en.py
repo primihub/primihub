@@ -227,9 +227,8 @@ def xgb_host_logic(cry_pri="paillier"):
             Regression_eva.get_result(y_true, y_pre, indicator_file_path)
         elif eva_type == 'classification':
             Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
-        channel.stop()
-        xgb_host.channel.stop()
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
@@ -341,5 +340,3 @@ def xgb_guest_logic(cry_pri="paillier"):
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
         xgb_guest.predict(X_guest)
-        channel.stop()
-        xgb_guest.channel.stop()

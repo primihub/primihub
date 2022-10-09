@@ -14,7 +14,7 @@ class Channel:
 
     def __init__(self, session):
         self.socket = session.socket
-        self.context = session.context
+        # self.context = session.context
 
     def send(self, data):
         self.socket.send(pickle.dumps(data))
@@ -34,9 +34,9 @@ class Channel:
             except Exception as e:
                 raise e
 
-    def stop(self):
-        self.socket.close()
-        self.context.destroy()
+    # def stop(self):
+    #     self.socket.close()
+    #     self.context.destroy()
 
     def send_json(self, data):
         self.socket.send_json(data)
