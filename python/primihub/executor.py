@@ -47,18 +47,14 @@ def timeout(interval, callback=None):
 
 def _run_in_process(target, *args, **kwargs):
     """Runs target in process and returns its exitcode after 10s (None if still alive)."""
+    import os
+    logger.debug("Run new FL task in pid {}".format(os.getpid()))
+
     process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
     process.daemon = True
-    try:
-        process.start()
-        # Do not need to wait much, 10s should be more than enough.
-        process.join(timeout=10)
-        return process.exitcode
-    finally:
-        if process.is_alive():
-            process.terminate()
-
-
+    process.start()
+    return process
+  
 class Executor:
     def __init__(self):
         pass
@@ -76,7 +72,6 @@ class Executor:
             raise e
 
     @staticmethod
-    @timeout(60 * 60, _handle_timeout)  # TODO TIMEOUT 60 * 60
     def execute_py(dumps_func):
         logger.info("execute py code.")
         func_name = loads(dumps_func).__name__
@@ -89,8 +84,12 @@ class Executor:
             try:
                 logger.debug("start execute")
                 # func()
-                exitcode = _run_in_process(target=func)
-                logger.info("exitcode is: %s" % exitcode)
+                process = _run_in_process(target=func)
+                Context.clean_content()
+
+                while process.exitcode is None:
+                    process.join(timeout=5)
+                    logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
                 logger.debug("end execute")
             except Exception as e:
                 logger.error("Exception: ", str(e))
