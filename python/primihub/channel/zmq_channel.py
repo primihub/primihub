@@ -14,7 +14,7 @@ class Channel:
 
     def __init__(self, session):
         self.socket = session.socket
-        self.context = session.context
+        # self.context = session.context
 
     def send(self, data):
         self.socket.send(pickle.dumps(data))
