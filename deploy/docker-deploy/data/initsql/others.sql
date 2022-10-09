@@ -616,6 +616,7 @@ CREATE TABLE `fusion_resource_field` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
 -- ----------------------------
 -- Table structure for fusion_organ_resource_auth
 -- ----------------------------
@@ -634,6 +635,7 @@ CREATE TABLE `fusion_organ_resource_auth`  (
                                                INDEX `resource_id_ix`(`resource_id`) USING BTREE,
                                                INDEX `organ_id_ix`(`organ_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = DYNAMIC;
+
 
 --
 -- Table structure for table `fusion_resource_tag`

@@ -44,6 +44,9 @@ datasets:
   - description: "guest_dataset"
     model: "csv"
     source: "data/FL/wisconsin_guest.data"
+  - description: "breast_2"
+    model: "csv"
+    source: "data/FL/wisconsin.data"
 
   # PSI test caset datasets
   - description: "psi_client_data"

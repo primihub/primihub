@@ -257,6 +257,7 @@ CREATE TABLE `data_psi_task`  (
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
+
 DROP TABLE IF EXISTS `data_pir_task`;
 CREATE TABLE `data_pir_task` (
                                  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'pir任务id',
@@ -271,6 +272,7 @@ CREATE TABLE `data_pir_task` (
                                  `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                                  PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'pir 任务表' ROW_FORMAT = DYNAMIC;
+
 
 -- ----------------------------
 -- Table structure for data_resource
@@ -535,6 +537,7 @@ INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_aut
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1059, '匿踪查询任务', 'PIRTask', 2, 1016, 1016, '1016,1059', ' ', 'own', 2, 2, 1, 0, 0, '2022-09-21 08:47:42.129', '2022-09-21 09:36:39.176');
 
 
+
 -- ----------------------------
 -- Table structure for sys_ra
 -- ----------------------------
@@ -610,6 +613,7 @@ INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) 
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1055, 1, 1056, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1056, 1, 1057, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1057, 1, 1059, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+
 
 
 -- ----------------------------

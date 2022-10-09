@@ -257,6 +257,7 @@ CREATE TABLE `data_psi_task`  (
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
+
 DROP TABLE IF EXISTS `data_pir_task`;
 CREATE TABLE `data_pir_task` (
                                  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'pir任务id',
@@ -271,6 +272,7 @@ CREATE TABLE `data_pir_task` (
                                  `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                                  PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'pir 任务表' ROW_FORMAT = DYNAMIC;
+
 
 -- ----------------------------
 -- Table structure for data_resource
