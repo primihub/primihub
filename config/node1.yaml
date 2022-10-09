@@ -50,20 +50,11 @@ datasets:
   #  FL xgb test case datasets
   - description: "label_dataset"
     model: "csv"
-<<<<<<< HEAD
-    source: "data/FL/wisconsin_host.data"
-  - description: "breast_1"
-    model: "csv"
-    source: "data/FL/wisconsin.data"
-  # - description: "test_dataset"
-  #   model: "csv"
-  #   source: "data/FL/wisconsin_test.data"
-=======
     source: "data/FL/wisconsin_host.data"   
   - description: "test_dataset"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
->>>>>>> develop
+
 
 localkv: 
   model: "leveldb"
