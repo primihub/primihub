@@ -256,6 +256,22 @@ CREATE TABLE `data_psi_task`  (
                                   `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+DROP TABLE IF EXISTS `data_pir_task`;
+CREATE TABLE `data_pir_task` (
+                                 `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'pir任务id',
+                                 `task_id` bigint(20) DEFAULT NULL COMMENT '任务ID',
+                                 `server_address` varchar(255) DEFAULT NULL COMMENT '中心节点地址',
+                                 `provider_organ_name` varchar(255) DEFAULT NULL COMMENT '协作方机构名称',
+                                 `resource_id` varchar(64) DEFAULT null COMMENT '资源ID',
+                                 `resource_name` varchar(64) DEFAULT null COMMENT '资源名称',
+                                 `retrieval_id` varchar(255) DEFAULT NULL COMMENT '检索ID',
+                                 `is_del` tinyint(4) DEFAULT '0' COMMENT '是否删除',
+                                 `create_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+                                 `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+                                 PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'pir 任务表' ROW_FORMAT = DYNAMIC;
+
 -- ----------------------------
 -- Table structure for data_resource
 -- ----------------------------
@@ -408,6 +424,7 @@ CREATE TABLE `data_reasoning` (
                                   `reasoning_type` tinyint DEFAULT NULL COMMENT '推理类型 0两方 1三方',
                                   `reasoning_state` tinyint DEFAULT NULL COMMENT '推理状态',
                                   `task_id` bigint DEFAULT NULL COMMENT '任务ID',
+                                  `run_task_id` bigint DEFAULT NULL COMMENT '任务ID',
                                   `user_id` bigint DEFAULT NULL COMMENT '用户ID',
                                   `release_date` datetime DEFAULT NULL COMMENT '发布日期',
                                   `is_del` tinyint DEFAULT '0' COMMENT '是否删除',
