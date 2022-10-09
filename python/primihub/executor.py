@@ -28,21 +28,21 @@ def _handle_timeout():
     raise TimeoutError('function timeout')
 
 
-def timeout(interval, callback=None):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            import gevent  # noqa
-            from gevent import monkey  # noqa
-            monkey.patch_all()
-
-            try:
-                gevent.with_timeout(interval, func, *args, **kwargs)
-            except gevent.timeout.Timeout as e:
-                callback() if callback else None
-
-        return wrapper
-
-    return decorator
+# def timeout(interval, callback=None):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             import gevent  # noqa
+#             from gevent import monkey  # noqa
+#             monkey.patch_all()
+#
+#             try:
+#                 gevent.with_timeout(interval, func, *args, **kwargs)
+#             except gevent.timeout.Timeout as e:
+#                 callback() if callback else None
+#
+#         return wrapper
+#
+#     return decorator
 
 
 def _run_in_process(target, *args, **kwargs):
@@ -77,7 +77,6 @@ class Executor:
             raise e
 
     @staticmethod
-    @timeout(60 * 60, _handle_timeout)  # TODO TIMEOUT 60 * 60
     def execute_py(dumps_func):
         logger.info("execute py code.")
         func_name = loads(dumps_func).__name__
@@ -102,8 +101,9 @@ class Executor:
             try:
                 logger.debug("start execute with params")
                 # func(*func_params)
-                (type(func_name), func_params)
-                exitcode = _run_in_process(target=func, **func_params)
+                logger.debug(type(func_name))
+                logger.debug(func_params)
+                exitcode = _run_in_process(target=func, *func_params)
                 logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
             except Exception as e:
