@@ -2,28 +2,37 @@ version: 1.0
 
 node: "node2"
 location: "172.28.1.12"
-grpc_port: 50050
+grpc_port: 50052
 
 datasets:
-  - description: "test_party_2_self"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_2" 
-  - description: "test_party_2_next"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_0" 
+  # ABY3 LR test case datasets
   - description: "train_party_2"
     model: "csv"
     source: "/tmp/train_party_2.csv" 
   - description: "test_party_2"
     model: "csv"
     source: "/tmp/test_party_2.csv"
-  - description: "psi_client_data"
+  
+  # MNIST test case datasets
+  - description: "test_party_2_self"
     model: "csv"
-    source: "/tmp/client_e.csv"
+    source: "/tmp/falcon/dataset/MNIST/input_2" 
+  - description: "test_party_2_next"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_0" 
+  
+  #  FL xgb test case datasets
   - description: "guest_dataset"
     model: "csv"
     source: "/tmp/FL/wisconsin_guest.data" 
-
+  - description: "breast_2"
+    model: "csv"
+    source: "/tmp/FL/wisconsin.data"
+  
+  # PSI test caset datasets
+  - description: "psi_client_data"
+    model: "csv"
+    source: "/tmp/client_e.csv"
 
 localkv: 
   model: "leveldb"

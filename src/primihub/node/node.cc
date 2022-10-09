@@ -59,16 +59,16 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
     pushTaskReply->set_job_id(pushTaskRequest->task().job_id());
 
-    if (running_set.find(job_task) != running_set.end()) {
-        pushTaskReply->set_ret_code(1);
-        return Status::OK;
-    }
+    // if (running_set.find(job_task) != running_set.end()) {
+    //     pushTaskReply->set_ret_code(1);
+    //     return Status::OK;
+    // }
 
     // actor
     if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
         pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
         LOG(INFO) << "start to schedule task";
-        absl::MutexLock lock(&parser_mutex_);
+        // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
         std::shared_ptr<LanguageParser> lan_parser_ =
             LanguageParserFactory::Create(*pushTaskRequest);
@@ -167,9 +167,9 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     auto worker = std::make_shared<Worker>(this->node_id, this->nodelet);
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id;
-    absl::MutexLock lock(&worker_map_mutex_);
+    // absl::MutexLock lock(&worker_map_mutex_);
 
-    workers_.emplace("simple_test_worker", worker);
+    // workers_.emplace("simple_test_worker", worker);
     LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id;
     return worker;
 }

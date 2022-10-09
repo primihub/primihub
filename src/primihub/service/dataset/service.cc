@@ -273,8 +273,9 @@ namespace primihub::service {
                                                         const std::vector<DatasetWithParamTag>& datasets_with_tag, 
                                                         FoundMetaListHandler handler) {
         std::vector<DatasetMetaWithParamTag> meta_list;
-        std::lock_guard<std::mutex> lock(meta_map_mutex_);
-        meta_map_.clear();
+        std::map<std::string, DatasetMetaWithParamTag> meta_map; // key: dataset_id
+        meta_map.clear();
+
         auto t_start = std::chrono::high_resolution_clock::now();
         bool is_timeout = false;
         for (;;) {
@@ -298,7 +299,7 @@ namespace primihub::service {
                     // meta_list.push_back(std::move(_meta));
                     LOG(INFO) << "Found local meta: " << res.value();
                     auto k = _meta->getDescription();
-                    meta_map_.insert({k, std::make_pair(_meta, dataset_tag)});
+                    meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
 
                 } else {
                 // Find in DHT
@@ -313,7 +314,7 @@ namespace primihub::service {
                                 LOG(INFO) << "Fount remote meta: " << rs.str();
                                 auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
                                 auto k = _meta->getDescription();
-                                meta_map_.insert({k, std::make_pair(_meta, dataset_tag)});
+                                meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
                             } catch (std::exception& e) {
                                 LOG(ERROR) << "<< Get meta failed: " << e.what();
                             }
@@ -321,7 +322,7 @@ namespace primihub::service {
                     });
                 }
             }
-            if (meta_map_.size() < datasets_with_tag.size()) {
+            if (meta_map.size() < datasets_with_tag.size()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             } else {
                 break;
@@ -330,7 +331,7 @@ namespace primihub::service {
         if (is_timeout) {
             return outcome::success();
         }
-        for (auto& meta : meta_map_) {
+        for (auto& meta : meta_map) {
             meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));
         }
         handler(meta_list);
