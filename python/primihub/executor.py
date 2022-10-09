@@ -34,18 +34,18 @@ def _handle_timeout():
 #             import gevent  # noqa
 #             from gevent import monkey  # noqa
 #             monkey.patch_all()
-#
+# 
 #             try:
 #                 gevent.with_timeout(interval, func, *args, **kwargs)
 #             except gevent.timeout.Timeout as e:
 #                 callback() if callback else None
-#
+# 
 #         return wrapper
-#
+# 
 #     return decorator
 
 
-def _run_in_process(target, *args, **kwargs):
+def _run_in_process(target, args=(), kwargs={}):
     """Runs target in process and returns its exitcode after 10s (None if still alive)."""
     process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
     process.daemon = True
@@ -101,9 +101,9 @@ class Executor:
             try:
                 logger.debug("start execute with params")
                 # func(*func_params)
-                logger.debug(type(func_name))
+                logger.debug(type(func_params))
                 logger.debug(func_params)
-                exitcode = _run_in_process(target=func, *func_params)
+                exitcode = _run_in_process(target=func, args=func_params)
                 logger.info("exitcode is: %s" % exitcode)
                 logger.debug("end execute with params")
             except Exception as e:
