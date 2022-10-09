@@ -199,6 +199,21 @@ namespace primihub::service {
         return nodelet_addr_;
     }
 
+    // Dataset service singleton.
+    std::shared_ptr<DatasetService> DatasetServiceSingleton::getOrCreate(
+        std::shared_ptr<primihub::p2p::NodeStub> stub, 
+        std::shared_ptr<StorageBackend> localkv, 
+        const std::string &nodelet_addr) {
+        static std::shared_ptr<DatasetService> dataset_service;
+        if (dataset_service.get() != nullptr) {
+            return dataset_service; 
+        } else {
+            dataset_service = std::make_shared<DatasetService>(
+                stub, localkv, nodelet_addr);
+            return dataset_service;
+        }
+    }
+ 
     // ======================== DatasetMetaService ====================================
     DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
                                    std::shared_ptr<StorageBackend> localKv) {

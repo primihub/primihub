@@ -55,7 +55,9 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     }
    
     // Init DatasetService with nodelet as stub
-    dataset_service_ = std::make_shared<primihub::service::DatasetService>(
+    // dataset_service_ = std::make_shared<primihub::service::DatasetService>(
+    //     p2p_node_stub_, local_kv_, nodelet_addr_);
+    dataset_service_ = service::DatasetServiceSingleton::getOrCreate(
         p2p_node_stub_, local_kv_, nodelet_addr_);
     dataset_service_->restoreDatasetFromLocalStorage();
 

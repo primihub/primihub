@@ -146,6 +146,20 @@ class DatasetService  {
 
 };
 
+class DatasetServiceSingleton {
+  public:
+    static std::shared_ptr<DatasetService> getOrCreate(
+        std::shared_ptr<primihub::p2p::NodeStub> stub, 
+        std::shared_ptr<StorageBackend> localkv,
+        const std::string &nodelet_addr); 
+
+  private:
+    DatasetServiceSingleton() {};
+    ~DatasetServiceSingleton() {};
+    DatasetServiceSingleton(const DatasetServiceSingleton &r) {};
+    DatasetServiceSingleton& operator= (const DatasetServiceSingleton &r) {};
+};
+
 /////////////////////////// Arrow Flight Server////////////////////////////////////
 struct IntegrationDataset {
     std::shared_ptr<arrow::Schema> schema;
