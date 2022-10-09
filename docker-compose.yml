@@ -1,7 +1,7 @@
 version: '3'
 services:
   node0:
-    image: primihub/primihub-node:2022-10-08-18-02-28
+    image: primihub/primihub-node:2022-10-08-20-24-57
     restart: "always"
     container_name: node0_primihub
     ports:
@@ -19,10 +19,10 @@ services:
       testing_net:
         ipv4_address: 172.28.1.10
     depends_on:
-      - simple_bootstrap_node
+      - redis 
 
   node1:
-    image: primihub/primihub-node:2022-10-08-18-02-28
+    image: primihub/primihub-node:2022-10-08-20-24-57
     restart: "always"
     container_name: node1_primihub
     ports:
@@ -40,10 +40,10 @@ services:
       testing_net:
         ipv4_address: 172.28.1.11
     depends_on:
-      - simple_bootstrap_node
+      - redis 
 
   node2:
-    image: primihub/primihub-node:2022-10-08-18-02-28
+    image: primihub/primihub-node:2022-10-08-20-24-57
     restart: "always"
     container_name: node2_primihub
     ports:
@@ -61,14 +61,14 @@ services:
       testing_net:
         ipv4_address: 172.28.1.12
     depends_on:
-      - simple_bootstrap_node
+      - redis 
 
   redis:
     image: redis:latest 
     container_name: redis_meta_service 
     restart: "always"
     ports:
-      - "6379:6379"
+      - "15550:15550"
     volumes:
       - ./config/redis.conf:/etc/redis/redis.conf
       - ./data:/data

@@ -19,6 +19,11 @@ node: "node1"
 location: "127.0.0.1"
 grpc_port: 50051
 
+redis_meta_service:
+  redis_addr: "192.168.99.31:15550"
+  use_redis: True
+  redis_password: "eGDe7qBy_N53blg8_*&S"
+
 # load datasets
 datasets:
   # ABY3 LR test case datasets
