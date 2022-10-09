@@ -1,5 +1,10 @@
 #/bin/bash
-tag=`date +%F-%H-%M-%S`
+
+if [ ! -n "$1" ] ; then
+    tag=`date +%F-%H-%M-%S`
+else
+    tag=$1
+fi
 
 bash pre_build.sh
 

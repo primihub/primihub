@@ -85,6 +85,7 @@ class Executor:
         func_params = Context.get_func_params_map().get(func_name, None)
         func = loads(dumps_func)
         logger.debug("func params: ", func_params)
+        logger.debug("params_map: ", Context.params_map)
         if not func_params:
             try:
                 logger.debug("start execute")
