@@ -30,9 +30,11 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
                  const TaskParam *task_param,
                  std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
-  auto temppp = task_param->params().param_map();
+
   if (function_name == "logistic_regression") {
     PartyConfig config(node_id, task_param_);
+    std::map<std::string, Node> &node_map = config.node_map;
+    LOG(INFO) << node_map.size();
     algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
         std::make_shared<primihub::LogisticRegressionExecutor>(
             config, dataset_service));
@@ -68,8 +70,10 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
   } else if (function_name == "random_forest") {
     // TODO: implement random forest
   } else if (function_name == "arithmetic") {
-    auto temppp = task_param->params().param_map();
     PartyConfig config(node_id, task_param_);
+    
+    std::map<std::string, Node> &node_map = config.node_map;
+    LOG(INFO) << node_map.size();
     try {
       algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
           std::make_shared<primihub::ArithmeticExecutor>(config,

@@ -31,20 +31,69 @@ ArithmeticExecutor::ArithmeticExecutor(
   this->algorithm_name_ = "arithmetic";
 
   mpc_exec_ = new MPCExpressExecutor();
-  party_id_ = 0;
-  next_ip_ = "127.0.0.1";
-  prev_ip_ = "127.0.0.1";
-  next_port_ = 10010;
-  prev_port_ = 10020;
-  if (config.node_id == "node1") {
-    party_id_ = 1;
-    next_port_ = 10030;
-    prev_port_ = 10010;
-  } else if (config.node_id == "node2") {
-    party_id_ = 2;
-    next_port_ = 10020;
-    prev_port_ = 10030;
+
+  std::map<std::string, Node> &node_map = config.node_map;
+  LOG(INFO) << node_map.size();
+  std::map<uint16_t, rpc::Node> party_id_node_map;
+  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+    rpc::Node &node = iter->second;
+    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
+    party_id_node_map[party_id] = node;
   }
+
+  auto iter = node_map.find(config.node_id); // node_id
+  if (iter == node_map.end()) {
+    stringstream ss;
+    ss << "Can't find " << config.node_id << " in node_map.";
+    throw std::runtime_error(ss.str());
+  }
+
+  party_id_ = iter->second.vm(0).party_id();
+  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
+
+  if (party_id_ == 0) {
+    rpc::Node &node = party_id_node_map[0];
+  
+    next_ip_ = node.ip();
+    next_port_ = node.vm(0).next().port();
+    
+    prev_ip_ = node.ip();
+    prev_port_ = node.vm(0).prev().port();
+    
+
+  } else if (party_id_ == 1) {
+    rpc::Node &node = party_id_node_map[1];
+
+    // A local server addr.
+    uint16_t port = node.vm(0).next().port();
+    // next_addr_ = std::make_pair(node.ip(), port);
+
+    // // A remote server addr.
+    // prev_addr_ =
+    //     std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
+
+    next_ip_ = node.ip();
+    next_port_ = port;
+
+    prev_ip_ = node.vm(0).prev().ip();
+    prev_port_ = node.vm(0).prev().port();
+  } else {
+    rpc::Node &node = party_id_node_map[2];
+
+    // Two remote server addr.
+    // next_addr_ =
+    //     std::make_pair(node.vm(0).next().ip(), node.vm(0).next().port());
+    // prev_addr_ =
+    //     std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
+
+
+    next_ip_ = node.vm(0).next().ip();
+    next_port_ = node.vm(0).next().port();
+
+    prev_ip_ = node.vm(0).prev().ip();
+    prev_port_ = node.vm(0).prev().port();
+  }
+
 }
 
 int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
