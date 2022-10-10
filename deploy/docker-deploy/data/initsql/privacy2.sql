@@ -5,7 +5,7 @@ USE `privacy_demo2`;
 -- ----------------------------
 -- Table structure for data_model
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_model`;
 CREATE TABLE `data_model` (
                               `model_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '模型id',
                               `model_uuid` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '模型uuid',
@@ -29,7 +29,7 @@ CREATE TABLE `data_model` (
 -- ----------------------------
 -- Table structure for data_model_component
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_model_component`;
 CREATE TABLE `data_model_component` (
                                         `mc_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '关系id',
                                         `model_id` bigint(20) DEFAULT NULL COMMENT '模型id',
@@ -46,7 +46,7 @@ CREATE TABLE `data_model_component` (
 -- ----------------------------
 -- Table structure for data_component
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_component`;
 CREATE TABLE `data_component` (
                                   `component_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '组件id',
                                   `front_component_id` varchar(255) DEFAULT NULL COMMENT '前端组件id',
@@ -74,7 +74,7 @@ CREATE TABLE `data_component` (
 -- ----------------------------
 -- Table structure for data_model_quota
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_model_quota`;
 CREATE TABLE `data_model_quota` (
                                     `quota_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '指标id',
                                     `quota_type` int(2) DEFAULT NULL COMMENT '样本集类型（训练样本集，测试样本集）',
@@ -97,7 +97,7 @@ CREATE TABLE `data_model_quota` (
 -- ----------------------------
 -- Table structure for data_model_task
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_model_task`;
 CREATE TABLE `data_model_task` (
                                    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增ID',
                                    `model_id` bigint DEFAULT NULL COMMENT '模型id',
@@ -113,7 +113,7 @@ CREATE TABLE `data_model_task` (
 -- ----------------------------
 -- Table structure for data_mr
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_mr`;
 CREATE TABLE `data_mr`  (
                             `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '资源id',
                             `model_id` bigint(20) DEFAULT NULL COMMENT '模型id',
@@ -128,7 +128,7 @@ CREATE TABLE `data_mr`  (
                             PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '模型资源表' ROW_FORMAT = Dynamic;
 
-
+DROP TABLE IF EXISTS `data_project`;
 CREATE TABLE `data_project` (
                                 `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增ID',
                                 `project_id` varchar(141) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '项目ID 机构后12位+UUID',
@@ -149,7 +149,7 @@ CREATE TABLE `data_project` (
                                 INDEX `created_organ_id_ix`(`created_organ_id`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci  COMMENT='项目表' ROW_FORMAT = Dynamic;
 
-
+DROP TABLE IF EXISTS `data_project_organ`;
 CREATE TABLE `data_project_organ` (
                                       `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
                                       `po_id` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '项目机构关联ID UUID',
@@ -169,7 +169,7 @@ CREATE TABLE `data_project_organ` (
 ) ENGINE=InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT='项目资源授权审核表' ROW_FORMAT = Dynamic;
 
 
-
+DROP TABLE IF EXISTS `data_project_resource`;
 CREATE TABLE `data_project_resource` (
                                          `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
                                          `pr_id` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '项目资源ID  UUID',
@@ -192,7 +192,7 @@ CREATE TABLE `data_project_resource` (
 -- ----------------------------
 -- Table structure for data_psi
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_psi`;
 CREATE TABLE `data_psi`  (
                              `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'psi 主键',
                              `own_organ_id` varchar(255) DEFAULT NULL COMMENT '本机构id',
@@ -221,7 +221,7 @@ CREATE TABLE `data_psi`  (
 -- ----------------------------
 -- Table structure for data_psi_resource
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_psi_resource`;
 CREATE TABLE `data_psi_resource`  (
                                       `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'psi资源id',
                                       `resource_id` bigint(20) DEFAULT NULL COMMENT '资源id',
@@ -240,7 +240,7 @@ CREATE TABLE `data_psi_resource`  (
 -- ----------------------------
 -- Table structure for data_psi_task
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_psi_task`;
 CREATE TABLE `data_psi_task`  (
                                   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'psi任务id',
                                   `psi_id` bigint(20) DEFAULT NULL COMMENT 'psi id',
@@ -256,10 +256,26 @@ CREATE TABLE `data_psi_task`  (
                                   `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+DROP TABLE IF EXISTS `data_pir_task`;
+CREATE TABLE `data_pir_task` (
+                                 `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'pir任务id',
+                                 `task_id` bigint(20) DEFAULT NULL COMMENT '任务ID',
+                                 `server_address` varchar(255) DEFAULT NULL COMMENT '中心节点地址',
+                                 `provider_organ_name` varchar(255) DEFAULT NULL COMMENT '协作方机构名称',
+                                 `resource_id` varchar(64) DEFAULT null COMMENT '资源ID',
+                                 `resource_name` varchar(64) DEFAULT null COMMENT '资源名称',
+                                 `retrieval_id` varchar(255) DEFAULT NULL COMMENT '检索ID',
+                                 `is_del` tinyint(4) DEFAULT '0' COMMENT '是否删除',
+                                 `create_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+                                 `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+                                 PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'pir 任务表' ROW_FORMAT = DYNAMIC;
+
 -- ----------------------------
 -- Table structure for data_resource
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_resource`;
 CREATE TABLE `data_resource`  (
                                   `resource_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '资源id',
                                   `resource_name` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '资源名称',
@@ -268,6 +284,8 @@ CREATE TABLE `data_resource`  (
                                   `resource_auth_type` int(1) DEFAULT NULL COMMENT '授权类型（公开，私有）',
                                   `resource_source` int(1) DEFAULT NULL COMMENT '资源来源（文件上传，数据库链接）',
                                   `resource_num` int(8) DEFAULT NULL COMMENT '资源数',
+                                  `resource_hash_code` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '资源hash值',
+                                  `resource_state` tinyint NOT NULL DEFAULT '0' COMMENT '资源状态 0上线 1下线',
                                   `file_id` int(8) DEFAULT NULL COMMENT '文件id',
                                   `file_size` int(32) DEFAULT NULL COMMENT '文件大小',
                                   `file_suffix` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '文件后缀',
@@ -293,7 +311,7 @@ CREATE TABLE `data_resource`  (
 -- ----------------------------
 -- Table structure for data_resource_tag
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_resource_tag`;
 CREATE TABLE `data_resource_tag`  (
                                       `tag_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '标签id',
                                       `tag_name` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '标签名称',
@@ -306,7 +324,7 @@ CREATE TABLE `data_resource_tag`  (
 -- ----------------------------
 -- Table structure for data_rt
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_rt`;
 CREATE TABLE `data_rt`  (
                             `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
                             `resource_id` bigint(20) DEFAULT NULL COMMENT '资源id',
@@ -320,7 +338,7 @@ CREATE TABLE `data_rt`  (
 -- ----------------------------
 -- Table structure for data_file_field
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_file_field`;
 CREATE TABLE `data_file_field` (
                                    `field_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '字段id',
                                    `file_id` bigint(20) DEFAULT NULL COMMENT '文件id',
@@ -341,7 +359,7 @@ CREATE TABLE `data_file_field` (
 -- ----------------------------
 -- Table structure for data_mpc_task
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_mpc_task`;
 CREATE TABLE `data_mpc_task` (
                                  `task_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '任务id',
                                  `task_id_name` varchar(255) DEFAULT NULL COMMENT '任务id对外展示',
@@ -360,7 +378,7 @@ CREATE TABLE `data_mpc_task` (
 -- ----------------------------
 -- Table structure for data_script
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_script`;
 CREATE TABLE `data_script`  (
                                 `script_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '脚本id',
                                 `name` varchar(255) DEFAULT NULL COMMENT '文件名称或文件夹名称',
@@ -379,7 +397,7 @@ CREATE TABLE `data_script`  (
 -- ----------------------------
 -- Table structure for data_task
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_task`;
 CREATE TABLE `data_task` (
                              `task_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '任务id',
                              `task_id_name` varchar(255) DEFAULT NULL COMMENT '任务id展示名',
@@ -400,6 +418,7 @@ CREATE TABLE `data_task` (
                              PRIMARY KEY (`task_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='数据任务表';
 
+DROP TABLE IF EXISTS `data_reasoning`;
 CREATE TABLE `data_reasoning` (
                                   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '推理ID',
                                   `reasoning_id` varchar(255) DEFAULT NULL COMMENT '推理展示uuid',
@@ -408,6 +427,7 @@ CREATE TABLE `data_reasoning` (
                                   `reasoning_type` tinyint DEFAULT NULL COMMENT '推理类型 0两方 1三方',
                                   `reasoning_state` tinyint DEFAULT NULL COMMENT '推理状态',
                                   `task_id` bigint DEFAULT NULL COMMENT '任务ID',
+                                  `run_task_id` bigint DEFAULT NULL COMMENT '任务ID',
                                   `user_id` bigint DEFAULT NULL COMMENT '用户ID',
                                   `release_date` datetime DEFAULT NULL COMMENT '发布日期',
                                   `is_del` tinyint DEFAULT '0' COMMENT '是否删除',
@@ -417,6 +437,7 @@ CREATE TABLE `data_reasoning` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='推理表';
 
 
+DROP TABLE IF EXISTS `data_reasoning_resource`;
 CREATE TABLE `data_reasoning_resource` (
                                            `id` bigint NOT NULL AUTO_INCREMENT COMMENT '推理资源ID',
                                            `reasoning_id` bigint DEFAULT NULL COMMENT '推理ID',
@@ -433,7 +454,7 @@ CREATE TABLE `data_reasoning_resource` (
 -- ----------------------------
 -- Table structure for sys_auth
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_auth`;
 CREATE TABLE `sys_auth`  (
                              `auth_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '权限id',
                              `auth_name` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '权限名称',
@@ -453,7 +474,6 @@ CREATE TABLE `sys_auth`  (
                              `u_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
                              PRIMARY KEY (`auth_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1001 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '权限表' ROW_FORMAT = DYNAMIC;
-
 -- ----------------------------
 -- Records of sys_auth
 -- ----------------------------
@@ -510,17 +530,13 @@ INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_aut
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1051, '项目启动', 'openProject', 3, 1003, 1001, '1001,1003,1051', '/project/openProject', 'own', 2, 2, 1, 0, 0, '2022-09-14 08:41:41.326', '2022-09-14 08:41:41.328');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1052, '模型任务删除', 'deleteModelTask', 3, 1003, 1001, '1001,1003,1052', '/task/deleteTask', 'own', 3, 2, 1, 0, 0, '2022-09-14 08:41:41.330', '2022-09-14 08:41:41.331');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1053, '模型复制', 'copyModelTask', 3, 1003, 1001, '1001,1003,1053', '', 'own', 4, 2, 1, 0, 0, '2022-09-14 08:41:41.332', '2022-09-14 08:41:41.334');
-INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1054, '模型推理', 'ModelReasoning', 1, 0, 1054, '1054', '', 'own', 7, 0, 1, 0, 0, '2022-09-14 08:41:41.335', '2022-09-14 08:41:41.337');
-INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1055, '模型推理列表', 'ModelReasoningList', 2, 1054, 1054, '1054,1055', '', 'own', 1, 1, 1, 0, 0, '2022-09-14 08:41:41.338', '2022-09-14 08:41:41.340');
-INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1056, '模型推理任务', 'ModelReasoningTask', 3, 1054, 1054, '1054,1056', '', 'own', 2, 1, 1, 0, 0, '2022-09-14 08:41:41.341', '2022-09-14 08:41:41.343');
-INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1057, '模型推理详情', 'ModelReasoningDetail', 3, 1054, 1054, '1054,1057', '', 'own', 3, 1, 1, 0, 0, '2022-09-14 08:41:41.344', '2022-09-14 08:41:41.345');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1058, '日志', 'Log', 1, 0, 1058, '1058', '', 'own', 8, 0, 1, 0, 0, '2022-09-14 08:41:41.346', '2022-09-14 08:41:41.348');
-
+INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1059, '匿踪查询任务', 'PIRTask', 2, 1016, 1016, '1016,1059', ' ', 'own', 2, 2, 1, 0, 0, '2022-09-21 08:47:42.129', '2022-09-21 09:36:39.176');
 
 -- ----------------------------
 -- Table structure for sys_ra
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_ra`;
 CREATE TABLE `sys_ra`  (
                            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '自增id',
                            `role_id` bigint(20) NOT NULL COMMENT '角色id',
@@ -581,12 +597,23 @@ INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) 
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1044, 1, 1045, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1045, 1, 1046, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1046, 1, 1047, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1047, 1, 1048, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1048, 1, 1049, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1049, 1, 1050, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1050, 1, 1051, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1051, 1, 1052, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1052, 1, 1053, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1053, 1, 1054, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1054, 1, 1055, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1055, 1, 1056, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1056, 1, 1057, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1057, 1, 1059, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 
 
 -- ----------------------------
 -- Table structure for sys_role
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_role`;
 CREATE TABLE `sys_role`  (
                              `role_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '角色id',
                              `role_name` varchar(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '角色名称',
@@ -606,7 +633,7 @@ INSERT INTO `sys_role` VALUES (1000, '业务权限', 1, 0, '2022-04-27 17:50:02.
 -- ----------------------------
 -- Table structure for sys_ur
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_ur`;
 CREATE TABLE `sys_ur`  (
                            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '自增id',
                            `user_id` bigint(20) NOT NULL COMMENT '用户id',
@@ -625,7 +652,7 @@ INSERT INTO `sys_ur` VALUES (1, 1, 1, 0, '2022-03-25 17:55:53.090', '2022-03-25 
 -- ----------------------------
 -- Table structure for sys_user
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_user`;
 CREATE TABLE `sys_user`  (
                              `user_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '用户id',
                              `user_account` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '账户名称',
@@ -650,7 +677,7 @@ INSERT INTO `sys_user` VALUES (1, 'admin', 'a0f34ffac5a82245e4fca2e21f358a42', '
 -- ----------------------------
 -- Table structure for sys_file
 -- ----------------------------
-
+DROP TABLE IF EXISTS `sys_file`;
 CREATE TABLE `sys_file`  (
                              `file_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '文件id',
                              `file_source` int(12) NOT NULL COMMENT '文件来源',
@@ -669,7 +696,7 @@ CREATE TABLE `sys_file`  (
 -- ----------------------------
 -- Table structure for data_fusion_copy_task
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_fusion_copy_task`;
 CREATE TABLE `data_fusion_copy_task` (
                                          `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
                                          `task_type` tinyint(4) NOT NULL COMMENT '任务类型 1 批量 2 单条',
@@ -691,7 +718,7 @@ CREATE TABLE `data_fusion_copy_task` (
 -- ----------------------------
 -- Table structure for data_resource_visibility_auth
 -- ----------------------------
-
+DROP TABLE IF EXISTS `data_resource_visibility_auth`;
 CREATE TABLE `data_resource_visibility_auth`  (
                                                   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
                                                   `resource_id` bigint(20) NOT NULL COMMENT '资源id',
@@ -705,5 +732,3 @@ CREATE TABLE `data_resource_visibility_auth`  (
                                                   INDEX `resource_id_ix`(`resource_id`) USING BTREE,
                                                   INDEX `organ_global_id_ix`(`organ_global_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
-GRANT ALL ON *.* TO 'primihub'@'%';
