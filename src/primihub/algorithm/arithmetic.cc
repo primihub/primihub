@@ -30,8 +30,6 @@ ArithmeticExecutor::ArithmeticExecutor(
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "arithmetic";
 
-  mpc_exec_ = new MPCExpressExecutor();
-
   std::map<std::string, Node> &node_map = config.node_map;
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
@@ -53,13 +51,12 @@ ArithmeticExecutor::ArithmeticExecutor(
 
   if (party_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
-  
+
     next_ip_ = node.ip();
     next_port_ = node.vm(0).next().port();
-    
+
     prev_ip_ = node.ip();
     prev_port_ = node.vm(0).prev().port();
-    
 
   } else if (party_id_ == 1) {
     rpc::Node &node = party_id_node_map[1];
@@ -86,14 +83,12 @@ ArithmeticExecutor::ArithmeticExecutor(
     // prev_addr_ =
     //     std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
 
-
     next_ip_ = node.vm(0).next().ip();
     next_port_ = node.vm(0).next().port();
 
     prev_ip_ = node.vm(0).prev().ip();
     prev_port_ = node.vm(0).prev().port();
   }
-
 }
 
 int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
@@ -125,6 +120,26 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
     // LOG(INFO) << col_and_dtype;
 
     expr_ = param_map["Expr"].value_string();
+    is_cmp = false;
+    if (expr_.substr(0, 3) == "CMP")
+      is_cmp = true;
+    if (is_cmp) {
+      std::string next_name;
+      std::string prev_name;
+      if (party_id_ == 0) {
+        next_name = "01";
+        prev_name = "02";
+      } else if (party_id_ == 1) {
+        next_name = "12";
+        prev_name = "01";
+      } else if (party_id_ == 2) {
+        next_name = "02";
+        prev_name = "12";
+      }
+      mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
+    } else {
+      mpc_exec_ = new MPCExpressExecutor();
+    }
     LOG(INFO) << expr_;
     std::string parties = param_map["Parties"].value_string();
     spiltStr(parties, ";", tmp3);
@@ -151,6 +166,10 @@ int ArithmeticExecutor::loadDataset() {
     LOG(ERROR) << "Load dataset for train failed.";
     return -1;
   }
+
+  if (is_cmp) {
+    return 0;
+  }
   mpc_exec_->initColumnConfig(party_id_);
   for (auto &pair : col_and_owner_)
     mpc_exec_->importColumnOwner(pair.first, pair.second);
@@ -170,12 +189,52 @@ int ArithmeticExecutor::loadDataset() {
 }
 
 int ArithmeticExecutor::initPartyComm(void) {
+  if (is_cmp) {
+    mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
+    return 0;
+  }
+
   mpc_exec_->initMPCRuntime(party_id_, next_ip_, prev_ip_, next_port_,
                             prev_port_);
   return 0;
 }
 
 int ArithmeticExecutor::execute() {
+  if (is_cmp) {
+    try {
+      sbMatrix sh_res;
+      f64Matrix<D16> m;
+      LOG(INFO) << expr_;
+      LOG(INFO) << expr_.substr(6, 1);
+      LOG(INFO) << expr_.substr(4, 1);
+      if (col_and_owner_[expr_.substr(4, 1)] == party_id_) {
+        m.resize(1, col_and_val_double[expr_.substr(4, 1)].size());
+        for (size_t i = 0; i < col_and_val_double[expr_.substr(4, 1)].size();
+             i++)
+          m(i) = col_and_val_double[expr_.substr(4, 1)][i];
+        mpc_op_exec_->MPC_Compare(m, sh_res);
+      } else if (col_and_owner_[expr_.substr(6, 1)] == party_id_) {
+        m.resize(1, col_and_val_double[expr_.substr(6, 1)].size());
+        for (size_t i = 0; i < col_and_val_double[expr_.substr(6, 1)].size();
+             i++)
+          m(i) = col_and_val_double[expr_.substr(6, 1)][i];
+        mpc_op_exec_->MPC_Compare(m, sh_res);
+      } else
+        mpc_op_exec_->MPC_Compare(sh_res);
+      // reveal
+      if (party_id_ == 0) {
+        i64Matrix tmp;
+        tmp = mpc_op_exec_->reveal(sh_res);
+        for (size_t i = 0; i < tmp.rows(); i++)
+          cmp_res_.emplace_back(static_cast<bool>(tmp(i, 0)));
+      } else {
+        mpc_op_exec_->reveal(sh_res, 0);
+      }
+    } catch (std::exception &e) {
+      LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
+    }
+    return 0;
+  }
   try {
     mpc_exec_->runMPCEvaluate();
     if (mpc_exec_->isFP64RunMode()) {
@@ -198,6 +257,11 @@ int ArithmeticExecutor::execute() {
 }
 
 int ArithmeticExecutor::finishPartyComm(void) {
+  if (is_cmp) {
+    mpc_op_exec_->fini();
+    delete mpc_op_exec_;
+    return 0;
+  }
   delete mpc_exec_;
   return 0;
 }
@@ -208,10 +272,12 @@ int ArithmeticExecutor::saveModel(void) {
   if (final_val_double_.size() != 0)
     for (int i = 0; i < final_val_double_.size(); i++)
       builder.Append(final_val_double_[i]);
-  else
+  else if (final_val_int64_.size() != 0)
     for (int i = 0; i < final_val_int64_.size(); i++)
       builder.Append(final_val_int64_[i]);
-
+  else
+    for (int i = 0; i < cmp_res_.size(); i++)
+      builder.Append(cmp_res_[i]);
   std::shared_ptr<arrow::Array> array;
   builder.Finish(&array);
 
@@ -219,13 +285,19 @@ int ArithmeticExecutor::saveModel(void) {
       arrow::field(expr_, arrow::float64())};
   std::vector<std::shared_ptr<arrow::Field>> schema_vector_int64 = {
       arrow::field(expr_, arrow::int64())};
+  std::vector<std::shared_ptr<arrow::Field>> schema_vector_bool = {
+      arrow::field(expr_, arrow::boolean())};
+
   std::shared_ptr<arrow::Table> table;
   if (final_val_double_.size() != 0)
     table = arrow::Table::Make(
         std::make_shared<arrow::Schema>(schema_vector_double), {array});
-  else
+  else if (final_val_int64_.size() != 0)
     table = arrow::Table::Make(
         std::make_shared<arrow::Schema>(schema_vector_int64), {array});
+  else
+    table = arrow::Table::Make(
+        std::make_shared<arrow::Schema>(schema_vector_bool), {array});
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
   std::shared_ptr<CSVDriver> csv_driver =
@@ -238,10 +310,10 @@ int ArithmeticExecutor::saveModel(void) {
   else
     ret = csv_driver->write(table, filepath);
   if (ret != 0) {
-    LOG(ERROR) << "Save LR model to file " << filepath << " failed.";
+    LOG(ERROR) << "Save res to file " << filepath << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save model to " << filepath << ".";
+  LOG(INFO) << "Save res to " << filepath << ".";
 
   return 0;
 }

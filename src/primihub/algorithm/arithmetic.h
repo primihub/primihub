@@ -34,7 +34,9 @@ private:
   //                      &test_data, sf64Matrix<D> &test_label);
 
   int _LoadDatasetFromCSV(std::string &filename);
+  bool is_cmp;
   MPCExpressExecutor *mpc_exec_;
+  MPCOperator *mpc_op_exec_;
   std::string res_name_;
   uint16_t local_id_;
   std::pair<std::string, uint16_t> next_addr_;
@@ -51,6 +53,7 @@ private:
   uint32_t party_id_;
   std::vector<double> final_val_double_;
   std::vector<int64_t> final_val_int64_;
+  std::vector<bool> cmp_res_;
   std::string expr_;
   std::map<std::string, std::vector<double>> col_and_val_double;
   std::map<std::string, std::vector<int64_t>> col_and_val_int;

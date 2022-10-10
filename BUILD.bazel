@@ -514,6 +514,27 @@ cc_library(
   linkopts = LINK_OPTS,
 )
 
+cc_library(
+    name = "aby3_operator",
+    srcs = [
+      "src/primihub/operator/aby3_operator.cc",
+      "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    hdrs = [
+      "src/primihub/operator/aby3_operator.h",
+      "src/primihub/common/type/type.h",
+      "src/primihub/common/type/fixed_point.h",
+      "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    deps = [
+      ":protocol_aby3_lib", 
+      "@com_github_glog_glog//:glog"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+)
 
 DEFAULT_TASK_LIB_DEPS = [
     "@com_github_glog_glog//:glog",
@@ -1227,6 +1248,22 @@ cc_test(
                 ":network_lib",
                 ":protocol_aby3_lib",
         ],
+)
+
+cc_test(
+    name = "mpc_cmp_test",
+    srcs = [
+        "test/primihub/operator/cmp_op_test.cc"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_github_glog_glog//:glog",
+        ":aby3_operator",
+    ],
 )
 
 cc_test(
