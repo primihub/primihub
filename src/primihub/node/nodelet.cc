@@ -25,6 +25,10 @@ Nodelet::Nodelet(const std::string &config_file_path) {
   auto bootstrap_nodes =
       config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
 
+  nodelet_addr_ = config["node"].as<std::string>() + ":"
+        + config["location"].as<std::string>() + ":"
+        + std::to_string(config["grpc_port"].as<uint64_t>());
+
   bool use_redis = false;
   std::string redis_addr;
   std::string redis_passwd;
