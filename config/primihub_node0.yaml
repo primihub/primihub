@@ -5,7 +5,7 @@ location: "172.28.1.10"
 grpc_port: 50050
 
 redis_meta_service:
-  redis_addr: "172.28.1.13:15550"
+  redis_addr: "redis:6379"
   use_redis: True
   redis_password: "primihub"
 

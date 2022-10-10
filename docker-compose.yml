@@ -68,7 +68,7 @@ services:
 
   redis:
     image: redis:latest 
-    container_name: redis_meta_service 
+    container_name: redis 
     restart: "always"
     ports:
       - "15550:15550"
