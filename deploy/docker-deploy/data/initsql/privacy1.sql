@@ -256,6 +256,24 @@ CREATE TABLE `data_psi_task`  (
                                   `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+
+DROP TABLE IF EXISTS `data_pir_task`;
+CREATE TABLE `data_pir_task` (
+                                 `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'pir任务id',
+                                 `task_id` bigint(20) DEFAULT NULL COMMENT '任务ID',
+                                 `server_address` varchar(255) DEFAULT NULL COMMENT '中心节点地址',
+                                 `provider_organ_name` varchar(255) DEFAULT NULL COMMENT '协作方机构名称',
+                                 `resource_id` varchar(64) DEFAULT null COMMENT '资源ID',
+                                 `resource_name` varchar(64) DEFAULT null COMMENT '资源名称',
+                                 `retrieval_id` varchar(255) DEFAULT NULL COMMENT '检索ID',
+                                 `is_del` tinyint(4) DEFAULT '0' COMMENT '是否删除',
+                                 `create_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+                                 `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+                                 PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'pir 任务表' ROW_FORMAT = DYNAMIC;
+
+
 -- ----------------------------
 -- Table structure for data_resource
 -- ----------------------------
@@ -408,6 +426,7 @@ CREATE TABLE `data_reasoning` (
                                   `reasoning_type` tinyint DEFAULT NULL COMMENT '推理类型 0两方 1三方',
                                   `reasoning_state` tinyint DEFAULT NULL COMMENT '推理状态',
                                   `task_id` bigint DEFAULT NULL COMMENT '任务ID',
+                                  `run_task_id` bigint DEFAULT NULL COMMENT '任务ID',
                                   `user_id` bigint DEFAULT NULL COMMENT '用户ID',
                                   `release_date` datetime DEFAULT NULL COMMENT '发布日期',
                                   `is_del` tinyint DEFAULT '0' COMMENT '是否删除',
@@ -515,6 +534,8 @@ INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_aut
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1056, '模型推理任务', 'ModelReasoningTask', 3, 1054, 1054, '1054,1056', '', 'own', 2, 1, 1, 0, 0, '2022-09-14 08:41:41.341', '2022-09-14 08:41:41.343');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1057, '模型推理详情', 'ModelReasoningDetail', 3, 1054, 1054, '1054,1057', '', 'own', 3, 1, 1, 0, 0, '2022-09-14 08:41:41.344', '2022-09-14 08:41:41.345');
 INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1058, '日志', 'Log', 1, 0, 1058, '1058', '', 'own', 8, 0, 1, 0, 0, '2022-09-14 08:41:41.346', '2022-09-14 08:41:41.348');
+INSERT INTO `sys_auth` (`auth_id`, `auth_name`, `auth_code`, `auth_type`, `p_auth_id`, `r_auth_id`, `full_path`, `auth_url`, `data_auth_code`, `auth_index`, `auth_depth`, `is_show`, `is_editable`, `is_del`, `c_time`, `u_time`) VALUES (1059, '匿踪查询任务', 'PIRTask', 2, 1016, 1016, '1016,1059', ' ', 'own', 2, 2, 1, 0, 0, '2022-09-21 08:47:42.129', '2022-09-21 09:36:39.176');
+
 
 
 -- ----------------------------
@@ -581,6 +602,18 @@ INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) 
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1044, 1, 1045, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1045, 1, 1046, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
 INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1046, 1, 1047, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1047, 1, 1048, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1048, 1, 1049, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1049, 1, 1050, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1050, 1, 1051, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1051, 1, 1052, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1052, 1, 1053, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1053, 1, 1054, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1054, 1, 1055, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1055, 1, 1056, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1056, 1, 1057, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+INSERT INTO `sys_ra` (`id`, `role_id`, `auth_id`, `is_del`, `c_time`, `u_time`) VALUES (1057, 1, 1059, 0, '2022-07-19 08:51:05.228', '2022-07-19 08:51:05.228');
+
 
 
 -- ----------------------------
