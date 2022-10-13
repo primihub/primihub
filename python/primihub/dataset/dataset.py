@@ -21,6 +21,27 @@ import pandas as pd
 import pyarrow as pa
 from primihub.context import Context
 from primihub.context import reg_dataset
+from primihub.utils.logger_util import logger
+
+import grpc
+import service_pb2_grpc
+import service_pb2
+
+def RegisterDataset(service_addr, driver, path, name):
+    channel = grpc.insecure_channel(service_addr)
+    stub = service_pb2_grpc.DataServiceStub(channel)
+    request = service_pb2.NewDatasetRequest()
+    request.fid = name
+    request.driver = driver
+    request.path = path
+
+    response = stub.NewDataset(request)
+    if response.ret_code != 0:
+        logger.error("Register dataset {} failed.".foramt(name));
+        raise RuntimeError("Register dataset {} failed.".format(name))
+    else:
+        logger.info("Register dataset {} finish, dataset url is {}.".format(
+            name, response.dataset_url))
 
 
 class DataDriver(abc.ABC):
