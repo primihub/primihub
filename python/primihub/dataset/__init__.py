@@ -23,7 +23,8 @@ from .dataset import (
     get,
     define,
     read,
-    put
+    put,
+    RegisterDataset
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     'define',
     'read',
     'put',
+    'RegisterDataset' 
 ]

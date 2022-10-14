@@ -170,6 +170,14 @@ int FLTask::execute() {
         for (auto &pair : this->params_map_)
             set_task_context_params_map(pair.first, pair.second);
 
+        {        
+          std::string nodelet_addr = 
+            this->dataset_service_->getNodeletAddr();
+          auto pos = nodelet_addr.find(":");
+          set_task_context_params_map("DatasetServiceAddr", 
+              nodelet_addr.substr(pos + 1, nodelet_addr.length()));
+        }
+
         set_task_context_params_map.release();
 
         // Run set_task_context_node_addr_map.

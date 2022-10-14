@@ -118,9 +118,29 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/pir.proto"],
 )
 
+
 grpc_proto_library(
     name = "service_proto",
     srcs = ["src/primihub/protos/service.proto"],
+)
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+  name = "proto_service",
+  srcs = ["src/primihub/protos/service.proto"]
+)
+
+py_proto_library(
+    name = "py_service_proto",
+    deps = [":proto_service"]
+)
+
+py_grpc_library(
+    name = "py_service_grpc",
+    srcs = [":proto_service"],
+    deps = [":py_service_proto"]
 )
 
 cc_library(
@@ -551,7 +571,7 @@ cc_library(
     copts = C_OPT,
     # pre_build.sh use it to help locate line content of which need replace, 
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG, 
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
