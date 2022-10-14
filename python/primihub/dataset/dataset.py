@@ -27,7 +27,7 @@ import grpc
 import service_pb2_grpc
 import service_pb2
 
-def RegisterDataset(service_addr, driver, path, name):
+def register_dataset(service_addr, driver, path, name):
     channel = grpc.insecure_channel(service_addr)
     stub = service_pb2_grpc.DataServiceStub(channel)
     request = service_pb2.NewDatasetRequest()
