@@ -1,4 +1,4 @@
-from primihub.dataset import RegisterDataset
+from primihub.dataset import register_dataset 
 import primihub as ph
 import numpy as np
 import random
@@ -17,4 +17,4 @@ def test_register():
     np.savetxt(path, array, delimiter=",")
 
     service_addr = ph.context.Context.params_map["DatasetServiceAddr"]
-    RegisterDataset(service_addr, "csv", path, name)
+    register_dataset(service_addr, "csv", path, name)
