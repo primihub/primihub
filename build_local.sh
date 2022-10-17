@@ -1,4 +1,5 @@
 #/bin/bash
+# When using this script, please make sure that the python version of the local machine is 3.8
 
 if [ ! -n "$1" ] ; then
     tag=`date +%F-%H-%M-%S`
@@ -8,7 +9,6 @@ fi
 
 bash pre_build.sh
 
-#build
 bazel build --config=linux :node :cli :opt_paillier_c2py
 
 if [ $? -ne 0 ]; then
