@@ -1,3 +1,4 @@
+version: '3'
 services:
   node0:
     image: primihub/primihub-node:latest
@@ -10,6 +11,7 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
+
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -25,16 +27,17 @@ services:
     restart: "always"
     container_name: node1_primihub
     ports:
-      - "8051:50050"
+      - "8051:50051"
       - "11120:12120"
       - "11121:12121"
     volumes:
       - ./config:/app/config
       - ./data:/data
+
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050 --node_id=node1 --config=/app/config/primihub_node1.yaml"
+      - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
     networks:
       testing_net:
         ipv4_address: 172.28.1.11
@@ -46,16 +49,17 @@ services:
     restart: "always"
     container_name: node2_primihub
     ports:
-      - "8052:50050"
+      - "8052:50052"
       - "12120:12120"
       - "12121:12121"
     volumes:
       - ./config:/app/config
       - ./data:/data
+
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050 --node_id=node2 --config=/app/config/primihub_node2.yaml"
+      - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
     networks:
       testing_net:
         ipv4_address: 172.28.1.12
@@ -80,4 +84,3 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/16
-          gateway: 172.28.0.1

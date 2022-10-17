@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3'
 services:
   node0:
     build:
@@ -105,4 +105,3 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/16
-          gateway: 172.28.0.1

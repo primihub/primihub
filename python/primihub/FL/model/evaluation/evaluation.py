@@ -210,11 +210,11 @@ class Regression_eva:
             for i in range(len(Evaluator.regression_metrics)):
                 metrics = Evaluator.regression_metrics[i]
                 method = Evaluator.regression_method[i]
-                if hasattr(Evaluator, method):
+                try:
                     f = getattr(Evaluator, method)
                     res[k][metrics] = f(y_true, y_pre)
-                else:
-                    res[k][metrics] = f"{method} is not support。"
+                except:
+                    res[k][metrics] = f"{method} is not support"
 
         Evaluator.write_json(path,res)
         return res
@@ -230,13 +230,18 @@ class Classification_eva:
         lable = [0,1]
         lable_true = list(set(y_true["train"]))
         lable_true.sort()
-        y = []
+        y = {"train":[],"test":[]}
         if lable_true != lable:
-            for i in y_true:
+            for i in y_true["train"]:
                 if i == lable_true[0]:
-                    y.append(lable[0])
+                    y["train"].append(lable[0])
                 else:
-                    y.append(lable[1])
+                    y["train"].append(lable[1])
+            for i in y_true["test"]:
+                if i == lable_true[0]:
+                    y["test"].append(lable[0])
+                else:
+                    y["test"].append(lable[1])
         else:
             y = y_true
 
@@ -270,20 +275,20 @@ class Classification_eva:
             for i in range(len(Evaluator.classification_metrics)):
                 metrics = Evaluator.classification_metrics[i]
                 method = Evaluator.classification_method[i]
-                if hasattr(Evaluator, method):
+                try:
                     f = getattr(Evaluator, method)
                     if (metrics in Evaluator.need_prob):
                         mere = f(y_t, y_p)
                     else:
                         mere = f(y_t, y_hat)
                     res[k][metrics] = mere
-                else:
-                    res[k][metrics] = f"{method} is not support。"
+                except:
+                    res[k][metrics] = f"{metrics} is not support"
         Evaluator.write_json(path,res)
         return res
 
 
-# if __name__ == "__main__":
-#     a = {"train":[1, 0, 1, 1, 1],"test":[1,1,0]}
-#     c = {"train":[0.8, 0.3, 0.2, 0.9, 0.7],"test":[0.9,0.7,0.8]}
-#     print(Classification_eva.get_result(a,c))
+if __name__ == "__main__":
+    a = {"train":[-1, 0, 1, 1, 1],"test":[1,1,0]}
+    c = {"train":[0.8, 0.3, 0.2, 0.9, 0.7],"test":[0.9,0.7,0.8]}
+    print(Regression_eva.get_result(a,c))

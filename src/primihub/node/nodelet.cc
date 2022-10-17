@@ -31,6 +31,14 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
     
+    // Create and start notify service
+    auto notify_server_addr = config["notify_server"].as<std::string>();
+    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr);
+    std::thread notify_service_thread([this]() {
+        notify_service_->run();
+    });
+    notify_service_thread.detach();
+
     // Wait for p2p node to start
     sleep(3);
     

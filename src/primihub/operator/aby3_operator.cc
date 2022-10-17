@@ -1,5 +1,6 @@
-
 #include "src/primihub/operator/aby3_operator.h"
+#include <glog/logging.h>
+
 namespace primihub {
 int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
                        u32 prev_port) {
@@ -328,5 +329,4 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
 
   LOG(INFO) << "Finish evaluate MSB circuit.";
 }
-
 } // namespace primihub

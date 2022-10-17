@@ -22,6 +22,8 @@
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
+#include "src/primihub/data_store/dataset.h"
+
 
 using namespace std;
 using namespace Eigen;
@@ -158,22 +160,29 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   model_name_ = ss.str();
 }
 
-int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
+int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task){
   auto param_map = task.params().param_map();
-  try {
+  try{
     train_input_filepath_ = param_map["TrainData"].value_string();
     test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
-  } catch (std::exception &e) {
+    model_file_name_ = param_map["modelName"].value_string();
+    if(model_file_name_ == "")
+      model_file_name_="./" + model_name_ + ".csv";
+  }
+  catch (std::exception &e)
+  {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;
   }
 
   LOG(INFO) << "Train data " << train_input_filepath_ << ", test data "
             << test_input_filepath_ << ".";
-  return 0;
+  return 0;  
 }
+
+
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
                                                     eMatrix<double> &m) {
@@ -527,7 +536,7 @@ int LogisticRegressionExecutor::execute() {
   return 0;
 }
 
-int LogisticRegressionExecutor::saveModel(void) {
+int LogisticRegressionExecutor::saveModel(void){
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
 
@@ -541,26 +550,24 @@ int LogisticRegressionExecutor::saveModel(void) {
       arrow::field("w", arrow::float64())};
   auto schema = std::make_shared<arrow::Schema>(schema_vector);
   std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
-
+    
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-  std::shared_ptr<CSVDriver> csv_driver =
-      std::dynamic_pointer_cast<CSVDriver>(driver);
 
-  std::string filepath = "data/" + model_name_ + ".csv";
-  int ret = csv_driver->write(table, filepath);
-  if (ret != 0) {
-    LOG(ERROR) << "Save LR model to file " << filepath << " failed.";
+  auto cursor = driver->initCursor(model_file_name_);
+  auto dataset = std::make_shared<primihub::Dataset>(table, driver);
+  int ret = cursor->write(dataset);
+  if (ret != 0)
+  {
+    LOG(ERROR) << "Save LR model to file " << model_file_name_ << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save model to " << filepath << ".";
+  LOG(INFO) << "Save model to " << model_file_name_ << ".";
 
-  std::shared_ptr<Dataset> dataset = std::make_shared<Dataset>(table, driver);
   service::DatasetMeta meta(dataset, model_name_,
                             service::DatasetVisbility::PUBLIC);
-  dataset_service_->regDataset(meta); //新的模型注册到分布式哈希表
+  dataset_service_->regDataset(meta);
   LOG(INFO) << "Register new dataset finish.";
-
   return 0;
 }
 

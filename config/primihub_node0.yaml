@@ -5,18 +5,24 @@ location: "172.28.1.10"
 grpc_port: 50050
 
 datasets:
-  - description: "test_party_0_self"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_0" 
-  - description: "test_party_0_next"
-    model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_1" 
+  # ABY3 LR test case datasets
   - description: "train_party_0"
     model: "csv"
     source: "/tmp/train_party_0.csv" 
   - description: "test_party_0"
     model: "csv"
     source: "/tmp/test_party_0.csv"
+  - description: "breast_0"
+    model: "csv"
+    source: "/tmp/FL/wisconsin.data"
+  
+  # MNIST test case datasets
+  - description: "test_party_0_self"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_0" 
+  - description: "test_party_0_next"
+    model: "csv"
+    source: "/tmp/falcon/dataset/MNIST/input_1" 
 
 localkv: 
   model: "leveldb"
@@ -26,5 +32,7 @@ p2p:
   bootstrap_nodes:
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/172.28.1.10/tcp/8880"
+  multi_addr: "/ip4/172.28.1.10/tcp/8886"
   dht_get_value_timeout:  120
+
+notify_server: 0.0.0.0:6666

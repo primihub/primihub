@@ -40,7 +40,7 @@ def get_logger(name):
     return logger
 
 
-logger = get_logger("xgb_host")
+logger = get_logger("hetero_xgb")
 
 dataset.define("guest_dataset")
 dataset.define("label_dataset")
@@ -56,18 +56,58 @@ num_tree = 1
 max_depth = 1
 
 
-@ph.context.function(role='host', protocol='xgboost', datasets=["label_dataset"], next_peer="*:12120")
+@ph.context.function(role='host', protocol='xgboost', datasets=['label_dataset'], port='8000', task_type="regression")
 def xgb_host_logic(cry_pri="paillier"):
-    print("start xgb host logic...")
-    next_peer = ph.context.Context.nodes_context["host"].next_peer
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
+    logger.info("start xgb host logic...")
+    logger.info(ph.context.Context.dataset_map)
+    logger.info(ph.context.Context.node_addr_map)
+    logger.info(ph.context.Context.role_nodeid_map)
+    logger.info(ph.context.Context.params_map)
+
+    eva_type = ph.context.Context.params_map.get("taskType", None)
+    if eva_type is None:
+        logger.warn(
+            "taskType is not specified, set to default value 'regression'.")
+        eva_type = "regression"
+
+    eva_type = eva_type.lower()
+    if eva_type != "classification" and eva_type != "regression":
+        logger.error(
+            "Invalid value of taskType, possible value is 'regression', 'classification'.")
+        return
+
+    logger.info("Current task type is {}.".format(eva_type))
+
+    data = ph.dataset.read(dataset_key="label_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = row[name]
+            try:
+                float(temp)
+            except ValueError:
+                logger.error(
+                    "Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
+    # Get host's ip address.
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label, "
+                     "so host party must have one, make sure it.")
+        return
+
+    host_node = role_node_map["host"][0]
+    next_peer = node_addr_map[host_node]
     ip, port = next_peer.split(":")
     ios = IOService()
     server = Session(ios, ip, port, "server")
-
     channel = server.addChannel()
-    data = ph.dataset.read(dataset_key="label_dataset").df_data
+
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
@@ -136,6 +176,7 @@ def xgb_host_logic(cry_pri="paillier"):
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+
         with open(model_file_path, 'wb') as fm:
             pickle.dump(xgb_host.tree_structure, fm)
         with open(lookup_file_path, 'wb') as fl:
@@ -144,9 +185,12 @@ def xgb_host_logic(cry_pri="paillier"):
         y_train_pre = xgb_host.predict_prob(X_host)
         y_train_pre.to_csv(predict_file_path)
         y_train_true = Y
-        Y_true = {"train":y_train_true,"test":y_true}
-        Y_pre = {"train":y_train_pre,"test":y_pre}
-        Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        Y_true = {"train": y_train_true, "test": y_true}
+        Y_pre = {"train": y_train_pre, "test": y_pre}
+        if eva_type == 'regression':
+            Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
 
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
@@ -173,29 +217,75 @@ def xgb_host_logic(cry_pri="paillier"):
         indicator_file_path = ph.context.Context.get_indicator_file_path()
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+
         with open(model_file_path, 'wb') as fm:
             pickle.dump(xgb_host.tree_structure, fm)
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
-        Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+        if eva_type == 'regression':
+            Regression_eva.get_result(y_true, y_pre, indicator_file_path)
+        elif eva_type == 'classification':
+            Classification_eva.get_result(y_true, y_pre, indicator_file_path)
+
         xgb_host.predict_prob(data_test).to_csv(predict_file_path)
 
 
-@ph.context.function(role='guest', protocol='xgboost', datasets=["guest_dataset"], next_peer="localhost:12120")
+@ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
 def xgb_guest_logic(cry_pri="paillier"):
     print("start xgb guest logic...")
     ios = IOService()
-    next_peer = ph.context.Context.nodes_context["guest"].next_peer
-    print(ph.context.Context.nodes_context["guest"])
-    print(ph.context.Context.datasets)
-    print(ph.context.Context.dataset_map)
-    print("guest next peer: ", next_peer)
+
+    logger.info(ph.context.Context.dataset_map)
+    logger.info(ph.context.Context.node_addr_map)
+    logger.info(ph.context.Context.role_nodeid_map)
+    logger.info(ph.context.Context.params_map)
+
+    eva_type = ph.context.Context.params_map.get("taskType", None)
+    if eva_type is None:
+        logger.warn(
+            "taskType is not specified, set to default value 'regression'.")
+        eva_type = "regression"
+
+    eva_type = eva_type.lower()
+    if eva_type != "classification" and eva_type != "regression":
+        logger.error(
+            "Invalid value of taskType, possible value is 'regression', 'classification'.")
+        return
+
+    logger.info("Current task type is {}.".format(eva_type))
+
+    # Check dataset.
+    data = ph.dataset.read(dataset_key="guest_dataset").df_data
+    columns_label_data = data.columns.tolist()
+    for index, row in data.iterrows():
+        for name in columns_label_data:
+            temp = row[name]
+            try:
+                float(temp)
+            except ValueError:
+                logger.error(
+                    "Find illegal string '{}', it's not a digit string.".format(temp))
+                return
+
+    # Get host's ip address.
+    role_node_map = ph.context.Context.get_role_node_map()
+    node_addr_map = ph.context.Context.get_node_addr_map()
+
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label,"
+                     "so host party must have one, make sure it.")
+        return
+
+    host_node = role_node_map["host"][0]
+    next_peer = node_addr_map[host_node]
+
     ip, port = next_peer.split(":")
     client = Session(ios, ip, port, "client")
     channel = client.addChannel()
 
-    data = ph.dataset.read(dataset_key="guest_dataset").df_data
     dim = data.shape[0]
     dim_train = dim / 10 * 8
     X_guest = data.loc[:dim_train, :].reset_index(drop=True)
@@ -220,7 +310,9 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0, pub)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)
@@ -241,7 +333,9 @@ def xgb_guest_logic(cry_pri="paillier"):
             xgb_guest.channel.send(gh_sum)
             xgb_guest.cart_tree(X_guest_gh, 0)
             xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
         xgb_guest.predict(data_test)

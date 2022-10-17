@@ -1,9 +1,9 @@
-# Primihub 
+# PrimiHub 
 ![build workflow](https://github.com/primihub/primihub/actions/workflows/main.yml/badge.svg?branch=master)
 [![Gitter](https://badges.gitter.im/primihub/community.svg)](https://gitter.im/primihub/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Feature
-Primihub is a platform that supports Multi-Party Computing(MPC), Federated Learning, Private set intersection (PSI), and Private Information Retrieval (PIR) features, and supports extensions of data source access, data consumption, access application, syntax, semantic and security protocols. For details, see Primihub [Core Feature](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
+PrimiHub is a platform that supports Multi-Party Computing(MPC), Federated Learning, Private set intersection (PSI), and Private Information Retrieval (PIR) features, and supports extensions of data source access, data consumption, access application, syntax, semantic and security protocols. For details, see PrimiHub [Core Feature](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)
 
 ## Quick start
 
@@ -74,8 +74,8 @@ $ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --s
 In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from *** node 0 ***. For the parameters that can be specified by cli, please refer to *** [Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1) ***
 
 ## Advanced use
-   To learn how to start from native applications and how to use Primihub features to implement more applications, see [Advanced Usage](http://docs.primihub.com/docs/category/%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8)
+   To learn how to start from native applications and how to use PrimiHub features to implement more applications, see [Advanced Usage](http://docs.primihub.com/docs/category/%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8)
 
 ## Developer
   * For how to build, see [Build](http://docs.primihub.com/docs/developer-docs/build)
-  * For how to contribute code, see [Primihub Open Source Community Governance](http://docs.primihub.com/docs/primihub-community)
+  * For how to contribute code, see [PrimiHub Open Source Community Governance](http://docs.primihub.com/docs/primihub-community)
