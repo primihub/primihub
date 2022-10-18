@@ -26,6 +26,20 @@ CREATE TABLE `data_model` (
                               `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
                               PRIMARY KEY (`model_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='模型表';
+
+DROP TABLE IF EXISTS `data_component_draft`;
+CREATE TABLE `data_component_draft` (
+                              `draft_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '草稿id',
+                              `draft_name` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '草稿名称',
+                              `user_id` bigint(20) DEFAULT NULL COMMENT '用户id',
+                              `component_json` blob COMMENT '组件json',
+                              `component_image` blob COMMENT '组件图',
+                              `is_del` tinyint(4) DEFAULT '0' COMMENT '是否删除',
+                              `create_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+                              `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
+                              PRIMARY KEY (`model_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='组件草稿表';
+
 -- ----------------------------
 -- Table structure for data_model_component
 -- ----------------------------
@@ -286,6 +300,8 @@ CREATE TABLE `data_resource`  (
                                   `resource_auth_type` int(1) DEFAULT NULL COMMENT '授权类型（公开，私有）',
                                   `resource_source` int(1) DEFAULT NULL COMMENT '资源来源（文件上传，数据库链接）',
                                   `resource_num` int(8) DEFAULT NULL COMMENT '资源数',
+                                  `resource_hash_code` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '资源hash值',
+                                  `resource_state` tinyint NOT NULL DEFAULT '0' COMMENT '资源状态 0上线 1下线',
                                   `file_id` int(8) DEFAULT NULL COMMENT '文件id',
                                   `file_size` int(32) DEFAULT NULL COMMENT '文件大小',
                                   `file_suffix` varchar(255) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '文件后缀',
@@ -669,15 +685,17 @@ CREATE TABLE `sys_user`  (
                              `is_del` tinyint(4) NOT NULL COMMENT '是否删除',
                              `c_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
                              `u_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更改时间',
+                             `auth_uuid` varchar(255) DEFAULT NULL COMMENT '第三方uuid',
                              `register_type` tinyint(4) NOT NULL COMMENT '注册类型1：管理员创建 2：邮箱 3：手机',
                              PRIMARY KEY (`user_id`) USING BTREE,
-                             UNIQUE INDEX `ix_unique_user_account`(`user_account`) USING BTREE COMMENT '账户名称唯一索引'
+                             UNIQUE INDEX `ix_unique_user_account`(`user_account`) USING BTREE COMMENT '账户名称唯一索引',
+                             KEY `ix_index_auth_uuid` (`auth_uuid`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1000 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_user
 -- ----------------------------
-INSERT INTO `sys_user` VALUES (1, 'admin', 'a0f34ffac5a82245e4fca2e21f358a42', 'admin', '1', 0, 1, 0, '2022-03-25 17:55:53.048', '2022-07-18 17:13:02.377', 1);
+INSERT INTO `sys_user` VALUES (1, 'admin', 'a0f34ffac5a82245e4fca2e21f358a42', 'admin', '1', 0, 1, 0, '2022-03-25 17:55:53.048', '2022-07-18 17:13:02.377','' ,1);
 
 -- ----------------------------
 -- Table structure for sys_file

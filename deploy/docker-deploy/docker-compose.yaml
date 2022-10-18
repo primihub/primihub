@@ -16,7 +16,7 @@ services:
         ipv4_address: 172.28.1.14
 
   redis:
-    image: redis:5
+    image: redis:7
     container_name: redis
     restart: always
     volumes:
