@@ -1376,6 +1376,24 @@ cc_test(
 )
 
 cc_test(
+    name = "arrow_test",
+    srcs = [
+        "test/primihub/tmp/arrow_test.cc"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_github_glog_glog//:glog",
+        "@arrow",
+        ":data_store_lib",
+    ],
+)   
+
+
+cc_test(
     name = "util_test",
     srcs = [
         #"test/primihub/util/model_util_test.cc",
