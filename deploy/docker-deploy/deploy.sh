@@ -1,7 +1,7 @@
-#/bin/bash
-# primihub 一键部署脚本
+#!/bin/bash
+# primihub deploy script
 
-#1.安装docker和docker-compose
+# First, install docker and docker-compose
 
 centos(){
     iptables -F
@@ -38,12 +38,26 @@ ubuntu(){
     fi
 }
 
-grep "Ubuntu" /etc/issue >> /dev/null
-if [ $? -eq 0 ];
+if [ $(uname -s) == "Linux" ];
 then
-    ubuntu
+  grep "Ubuntu" /etc/issue >> /dev/null
+  if [ $? -eq 0 ];
+  then
+      ubuntu
+  else
+      centos
+  fi
+elif [ $(uname -s) == "Darwin" ]; then
+  which docker-compose > /dev/null
+  if [ $? != 0 ];
+  then
+    echo "Cannot find docker compose, please install it first."
+    echo "Read the official document from https://docs.docker.com/compose/install/"
+    exit 1
+  fi
 else
-    centos
+  echo "not support yet"
+  exit 1
 fi
 
 docker-compose version
@@ -62,11 +76,11 @@ else
     fi
 fi
 
-# 提前拉镜像，避免启动时重复拉取
+# Pull all the necessary images to avoid pulling multiple times
 for i in `cat .env | cut -d '=' -f 2`
 do
     docker pull $i
 done
 
-# 2.启动应用
+# Finally, start the application
 docker-compose up -d
