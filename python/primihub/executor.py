@@ -32,6 +32,20 @@ def _run_in_process(target, args=(), kwargs={}):
     return process
 
 
+def _run_in_process(target, *args, **kwargs):
+    """Runs target in process and returns its exitcode after 10s (None if still alive)."""
+    process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
+    process.daemon = True
+    try:
+        process.start()
+        # Do not need to wait much, 10s should be more than enough.
+        process.join(timeout=10)
+        return process.exitcode
+    finally:
+        if process.is_alive():
+            process.terminate()
+
+
 class Executor:
     def __init__(self):
         pass
@@ -89,6 +103,7 @@ class Executor:
                 traceback.print_exc()
             finally:
                 Context.clean_content()
+
 
     @staticmethod
     def execute_test():
