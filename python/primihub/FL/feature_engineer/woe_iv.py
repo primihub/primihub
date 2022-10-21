@@ -28,6 +28,33 @@ class MyServerChannelProxy(ServerChannelProxy):
         return None
 
 
+def cal_hist_bins(features, cut_points, label):
+    m, _ = features.shape
+    pos_cnts = []
+    neg_cnts = []
+
+    for i in range(len(cut_points)):
+        tmp_point = cut_points[i, :]
+        exp_tmp_point = np.tile(tmp_point, (m, 1))
+
+        less_flag = (features < exp_tmp_point).astype('int').T
+        pos_num = np.dot(less_flag, label)
+        neg_num = np.dot(less_flag, 1-label)
+        # less_sum = np.sum(less_flag, axis=0)
+
+        if i == 0:
+            pos_cnts.append(pos_num)
+            neg_cnts.append(neg_num)
+        else:
+            pos_cnts.append(pos_num - pre_pos_num)
+            neg_cnts.append(neg_num - pre_neg_num)
+        # pre_sum = less_sum
+        pre_pos_num = pos_num
+        pre_neg_num = neg_num
+
+    return pos_cnts, neg_cnts
+
+
 @ph.context.function(role='arbiter', protocol='woe-iv', datasets=['breast_0'], port='9010', task_type="feature-engineer")
 def iv_arbiter(bins=15):
     logging.info("Start woe-iv arbiter.")
@@ -149,27 +176,8 @@ def iv_host():
         {'max_arr': max_arr, 'min_arr': min_arr}, "host_max_min")
 
     split_points = proxy_server.Get('split_points')
-    pos_cnts = []
-    neg_cnts = []
 
-    for i in range(len(split_points)):
-        tmp_point = split_points[i, :]
-        exp_tmp_point = np.tile(tmp_point, (m, 1))
-
-        less_flag = (data_arr < exp_tmp_point).astype('int').T
-        pos_num = np.dot(less_flag, label)
-        neg_num = np.dot(less_flag, 1-label)
-        # less_sum = np.sum(less_flag, axis=0)
-
-        if i == 0:
-            pos_cnts.append(pos_num)
-            neg_cnts.append(neg_num)
-        else:
-            pos_cnts.append(pos_num - pre_pos_num)
-            neg_cnts.append(neg_num - pre_neg_num)
-        # pre_sum = less_sum
-        pre_pos_num = pos_num
-        pre_neg_num = neg_num
+    pos_cnts, neg_cnts = cal_hist_bins(data_arr, split_points, label)
 
     logging.info('Host bin counts are: {} and {}'.format(
         np.array(pos_cnts), np.array(neg_cnts)))
@@ -215,27 +223,8 @@ def iv_guest():
         {'max_arr': max_arr, 'min_arr': min_arr}, "guest_max_min")
 
     split_points = proxy_server.Get('split_points')
-    pos_cnts = []
-    neg_cnts = []
 
-    for i in range(len(split_points)):
-        tmp_point = split_points[i, :]
-        exp_tmp_point = np.tile(tmp_point, (m, 1))
-
-        less_flag = (data_arr < exp_tmp_point).astype('int').T
-        pos_num = np.dot(less_flag, label)
-        neg_num = np.dot(less_flag, 1-label)
-        # less_sum = np.sum(less_flag, axis=0)
-
-        if i == 0:
-            pos_cnts.append(pos_num)
-            neg_cnts.append(neg_num)
-        else:
-            pos_cnts.append(pos_num - pre_pos_num)
-            neg_cnts.append(neg_num - pre_neg_num)
-        # pre_sum = less_sum
-        pre_pos_num = pos_num
-        pre_neg_num = neg_num
+    pos_cnts, neg_cnts = cal_hist_bins(data_arr, split_points, label)
 
     logging.info('Guest bin counts are: {} and {}'.format(
         np.array(pos_cnts), np.array(neg_cnts)))
