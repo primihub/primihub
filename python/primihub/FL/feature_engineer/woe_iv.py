@@ -91,7 +91,7 @@ def iv_arbiter(bins=15):
     global_pos_rates = (global_pos_cnts+1) / (global_cnts+1)
     global_neg_rates = (global_neg_cnts+1) / (global_cnts+1)
 
-    woes = np.log((global_pos_rates + 0.5) / (global_neg_rates + 0.5))
+    woes = np.log(global_pos_rates / global_neg_rates)
     logging.info("Global woes are: {}".format(woes))
 
 
