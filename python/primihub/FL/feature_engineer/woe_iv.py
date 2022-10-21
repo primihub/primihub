@@ -94,6 +94,10 @@ def iv_arbiter(bins=15):
     woes = np.log(global_pos_rates / global_neg_rates)
     logging.info("Global woes are: {}".format(woes))
 
+    diff = (global_pos_rates - global_neg_rates)
+    ivs = np.dot(diff.T, woes)
+    logging.info("Global ivs are: {}".format(ivs))
+
 
 @ph.context.function(role='host', protocol='woe-iv', datasets=['iv_host'], port='9020', task_type="feature-engineer")
 def iv_host():
