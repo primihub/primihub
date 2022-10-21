@@ -92,7 +92,7 @@ def iv_arbiter(bins=15):
     sum_neg_cnts = np.sum(global_neg_cnts, axis=0)
 
     exp_sum_pos_cnts = np.tile(sum_pos_cnts, (len(global_pos_cnts), 1))
-    exp_sum_neg_cnts = np.tile(sum_neg_cnts, (len(sum_neg_cnts), 1))
+    exp_sum_neg_cnts = np.tile(sum_neg_cnts, (len(global_neg_cnts), 1))
 
     global_pos_rates = np.maximum(global_pos_cnts, 0.5) / exp_sum_pos_cnts
     global_neg_rates = np.maximum(global_neg_cnts, 0.5) / exp_sum_neg_cnts
