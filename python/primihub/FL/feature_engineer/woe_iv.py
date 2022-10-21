@@ -8,7 +8,7 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 
 
-@ph.context.function(role='arbiter', protocol='woe-iv', datasets=['test_party_0_self'], port='9010', task_type="feature-engineer")
+@ph.context.function(role='arbiter', protocol='woe-iv', datasets=['breast_0'], port='9010', task_type="feature-engineer")
 def iv_arbiter(bins=15):
     logger.info("Start woe-iv arbiter.")
 
