@@ -87,15 +87,21 @@ def iv_arbiter(bins=15):
     logging.info("global_pos_cnts and global_neg_cnts are: {} {}".format(
         global_pos_cnts, global_neg_cnts))
 
-    global_cnts = global_pos_cnts + global_pos_cnts
-    global_pos_rates = (global_pos_cnts+1) / (global_cnts+1)
-    global_neg_rates = (global_neg_cnts+1) / (global_cnts+1)
+    # global_cnts = global_pos_cnts + global_pos_cnts
+    sum_pos_cnts = np.sum(global_pos_cnts, axis=0)
+    sum_neg_cnts = np.sum(global_neg_cnts, axis=0)
+
+    exp_sum_pos_cnts = np.tile(sum_pos_cnts, (len(global_pos_cnts), 1))
+    exp_sum_neg_cnts = np.tile(sum_neg_cnts, (len(sum_neg_cnts), 1))
+
+    global_pos_rates = np.maximum(global_pos_cnts, 0.5) / exp_sum_pos_cnts
+    global_neg_rates = np.maximum(global_neg_cnts, 0.5) / exp_sum_neg_cnts
 
     woes = np.log(global_pos_rates / global_neg_rates)
     logging.info("Global woes are: {}".format(woes))
 
     diff = (global_pos_rates - global_neg_rates)
-    ivs = np.dot(diff.T, woes)
+    ivs = np.dot(diff.T, woes).diagonal()
     logging.info("Global ivs are: {}".format(ivs))
 
 
