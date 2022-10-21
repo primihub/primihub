@@ -46,6 +46,70 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
                 handle_mixed_column(col)
 
 
+def replace_illegal_string(col_val, col_name, col_type):
+    if col_type == 2:
+        convert_fn = float
+    else:
+        convert_fn = int
+
+    col_sum = 0
+    count = 0
+    index_list = []
+    new_col_val = []
+
+    for val in col_val:
+        if val[0] is None:
+            new_col_val.append(None)
+            continue
+
+        try:
+            val = convert_fn(val[0])
+            col_sum = col_sum + val
+            count = count + 1
+            new_col_val.append(val)
+        except Exception as e:
+            index_list.append(index)
+            new_col_val.append(None)
+            logger.error("Can't convert string {} into number at column {} index {}.".format(
+                val, col_name, index))
+
+    if len(index_list) != 0:
+        if col_type == 2:
+            col_avg = col_sum / col_count
+        else:
+            col_avg = col_sum // col_count
+
+        for index in index_list:
+            new_col_val[index] = col_avg
+
+    return new_col_val
+
+# Now the abnormal value means that a column dtype of which is int or float but 
+# has string that can't convert to int or float value. There are four cases when 
+# handle abnormal value from database, and missing value in some position in some 
+# column is permited, no matter which case.
+#
+# case 1: a column contain number has type int or long or double, no string will
+#         insert into these column, just fill empty position to NA;
+#
+# case 2: a column contain number but type of them is string, and some string
+#         that can't convert into number inserted before, must find out these
+#         them then replace them with average value;
+#
+# case 3: a column contain number has type  of them is string, and all string in
+#         this column can converty to number, just fill empty position to NA;
+#
+# case 4: mix with case 1-3;
+#
+# Meaning of column dtype number:
+#   value 0: string,
+#   value 1: integer,
+#   value 2: double,
+#   value 3: long,
+#   value 4: enum,
+#   value 5: boolean.
+
+
 def handle_abnormal_value_for_mysql(path_or_info, col_info):
     db_info = json.loads(path_or_info)
 
@@ -94,25 +158,35 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
         new_col = []
         if col_info.get(col_name, None) is not None:
             col_type = col_info[col_name]
-            if type(col_val[0][0]) == int or type(col_val[0][0]) == float or type(col_val[0][0]) == str:
+            if type(col_val[0][0]) == int or type(col_val[0][0]) == float:
+                # Case 1: fill missing value with NA;
                 if col_type == 1 or col_type == 3:
                     index = 0
                     for val in col_val:
-                        if val[0] is None or val[0] == '':
+                        if val[0] is None:
                             new_col.append("NA")
-                            logger.info("Column {} index {} has empty value.".format(col_name, index))
+                            logger.info(
+                                "Column {} index {} has empty value.".format(col_name, index))
                         else:
                             new_col.append(int(val[0]))
                         index = index + 1
                 elif col_type == 2:
                     index = 0
                     for val in col_val:
-                        if val[0] is None or val[0] == '':
+                        if val[0] is None:
                             new_col.append("NA")
-                            logger.info("Column {} index {} has empty value.".format(col_name, index))
+                            logger.info(
+                                "Column {} index {} has empty value.".format(col_name, index))
                         else:
                             new_col.append(float(val[0]))
                         index = index + 1
+            elif type(col_val[0][0]) == str:
+                # case 3: fill missing value with NA.
+                # case 2: replace abnormal value with average, then do the same
+                #         as case 3.
+                if col_type == 2 or col_type == 3 or col_type == 1:
+                    new_col = replace_illegal_string(
+                        col_val, col_name, col_type)
 
         if len(new_col) == 0:
             for val in col_val:
@@ -153,6 +227,7 @@ def run_abnormal_process():
         df = handle_abnormal_value_for_mysql(path_or_info, col_info)
     else:
         df = handle_abnormal_value_for_csv(path_or_info, col_info)
-    
+
     df.to_csv(filename, index=False)
-    logger.info("Finish process abnormal value, result saves to {}.".format(filename))
+    logger.info(
+        "Finish process abnormal value, result saves to {}.".format(filename))
