@@ -55,6 +55,52 @@ def cal_hist_bins(features, cut_points, label):
     return pos_cnts, neg_cnts
 
 
+def woe_iv(host_bin_cnts, guest_bin_cnts):
+    global_pos_cnts = host_bin_cnts['pos_cnts'] + guest_bin_cnts['pos_cnts']
+    global_neg_cnts = host_bin_cnts['neg_cnts'] + guest_bin_cnts['neg_cnts']
+    logging.info("global_pos_cnts and global_neg_cnts are: {} {}".format(
+        global_pos_cnts, global_neg_cnts))
+
+    # global_cnts = global_pos_cnts + global_pos_cnts
+    sum_pos_cnts = np.sum(global_pos_cnts, axis=0)
+    sum_neg_cnts = np.sum(global_neg_cnts, axis=0)
+
+    exp_sum_pos_cnts = np.tile(sum_pos_cnts, (len(global_pos_cnts), 1))
+    exp_sum_neg_cnts = np.tile(sum_neg_cnts, (len(global_neg_cnts), 1))
+
+    global_pos_rates = np.maximum(global_pos_cnts, 0.5) / exp_sum_pos_cnts
+    global_neg_rates = np.maximum(global_neg_cnts, 0.5) / exp_sum_neg_cnts
+
+    woes = np.log(global_pos_rates / global_neg_rates)
+    logging.info("Global woes are: {}".format(woes))
+
+    diff = (global_pos_rates - global_neg_rates)
+    ivs = np.dot(diff.T, woes).diagonal()
+
+    return woes, ivs
+
+
+def cut_points(host_max_min, guest_max_min, bins=10):
+    max_arr = np.vstack([host_max_min['max_arr'], guest_max_min['max_arr']])
+    min_arr = np.vstack([host_max_min['min_arr'], guest_max_min['min_arr']])
+
+    global_max = np.max(max_arr, axis=0)
+    global_min = np.min(min_arr, axis=0)
+
+    split_points = []
+    bin_width = (global_max - global_min) / bins
+
+    for _ in range(bins):
+        cur_point = global_min + bin_width
+        global_min = cur_point
+
+        split_points.append(cur_point)
+
+    split_points = np.array(split_points)
+
+    return split_points
+
+
 @ph.context.function(role='arbiter', protocol='woe-iv', datasets=['breast_0'], port='9010', task_type="feature-engineer")
 def iv_arbiter(bins=15):
     logging.info("Start woe-iv arbiter.")
@@ -84,22 +130,7 @@ def iv_arbiter(bins=15):
     host_max_min = proxy_server.Get('host_max_min')
     guest_max_min = proxy_server.Get('guest_max_min')
 
-    max_arr = np.vstack([host_max_min['max_arr'], guest_max_min['max_arr']])
-    min_arr = np.vstack([host_max_min['min_arr'], guest_max_min['min_arr']])
-
-    global_max = np.max(max_arr, axis=0)
-    global_min = np.min(min_arr, axis=0)
-
-    split_points = []
-    bin_width = (global_max - global_min) / bins
-
-    for _ in range(bins):
-        cur_point = global_min + bin_width
-        global_min = cur_point
-
-        split_points.append(cur_point)
-
-    split_points = np.array(split_points)
+    split_points = cut_points(host_max_min, guest_max_min, bins=bins)
 
     logging.info("Starting send split points: {}".format(split_points))
     proxy_client_host.Remote(split_points, "split_points")
@@ -109,26 +140,8 @@ def iv_arbiter(bins=15):
     host_bin_cnts = proxy_server.Get('host_bin_cnts')
     guest_bin_cnts = proxy_server.Get('guest_bin_cnts')
 
-    global_pos_cnts = host_bin_cnts['pos_cnts'] + guest_bin_cnts['pos_cnts']
-    global_neg_cnts = host_bin_cnts['neg_cnts'] + guest_bin_cnts['neg_cnts']
-    logging.info("global_pos_cnts and global_neg_cnts are: {} {}".format(
-        global_pos_cnts, global_neg_cnts))
+    _, ivs = woe_iv(host_bin_cnts, guest_bin_cnts)
 
-    # global_cnts = global_pos_cnts + global_pos_cnts
-    sum_pos_cnts = np.sum(global_pos_cnts, axis=0)
-    sum_neg_cnts = np.sum(global_neg_cnts, axis=0)
-
-    exp_sum_pos_cnts = np.tile(sum_pos_cnts, (len(global_pos_cnts), 1))
-    exp_sum_neg_cnts = np.tile(sum_neg_cnts, (len(global_neg_cnts), 1))
-
-    global_pos_rates = np.maximum(global_pos_cnts, 0.5) / exp_sum_pos_cnts
-    global_neg_rates = np.maximum(global_neg_cnts, 0.5) / exp_sum_neg_cnts
-
-    woes = np.log(global_pos_rates / global_neg_rates)
-    logging.info("Global woes are: {}".format(woes))
-
-    diff = (global_pos_rates - global_neg_rates)
-    ivs = np.dot(diff.T, woes).diagonal()
     ivs_df = pd.DataFrame(ivs, columns=host_max_min['headers'])
     logging.info("Global ivs are: {}".format(ivs_df))
 
