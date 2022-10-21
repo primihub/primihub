@@ -3,15 +3,15 @@ from primihub import dataset
 import pandas as pd
 import numpy as np
 import os
-# import logging
-from loguru import logger
+import logging
+# from loguru import logger
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 
 
 @ph.context.function(role='arbiter', protocol='woe-iv', datasets=['breast_0'], port='9010', task_type="feature-engineer")
 def iv_arbiter(bins=15):
-    logger.info("Start woe-iv arbiter.")
+    logging.info("Start woe-iv arbiter.")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
@@ -20,7 +20,7 @@ def iv_arbiter(bins=15):
     guest_nodes = role_node_map["guest"]
     arbiter_nodes = role_node_map["arbiter"]
 
-    logger.info("host_nodes: {}, guest_nodes: {}, arbiter_nodes: {}".format(
+    logging.info("host_nodes: {}, guest_nodes: {}, arbiter_nodes: {}".format(
         host_nodes, guest_nodes, arbiter_nodes))
 
     arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
@@ -53,10 +53,10 @@ def iv_arbiter(bins=15):
 
     split_points = np.array(split_points)
 
-    logger.info("Starting send split points: {}".format(split_points))
+    logging.info("Starting send split points: {}".format(split_points))
     proxy_client_host.Remote(split_points, "split_points")
     proxy_client_guest.Remote(split_points, 'split_points')
-    logger.info("Ending send split points")
+    logging.info("Ending send split points")
 
     host_bin_cnts = proxy_server.Get('host_bin_cnts')
     guest_bin_cnts = proxy_server.Get('guest_bin_cnts')
@@ -66,7 +66,7 @@ def iv_arbiter(bins=15):
     global_cnts = global_pos_cnts + global_pos_cnts
 
     woes = np.log(global_pos_cnts / global_neg_cnts)
-    logger.info("Global woes are: {}".format(woes))
+    logging.info("Global woes are: {}".format(woes))
     # exp_global_cn
 
     # global_bin_cnts = host_bin_cnts + guest_bin_cnts
@@ -77,14 +77,14 @@ def iv_arbiter(bins=15):
 @ph.context.function(role='host', protocol='woe-iv', datasets=['iv_host'], port='9020', task_type="feature-engineer")
 def iv_host():
 
-    logger.info("Start woe-iv host.")
+    logging.info("Start woe-iv host.")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
     data_key = list(dataset_map.keys())[0]
 
-    logger.info("role_node_map: {}, node_addr_map: {}".format(
+    logging.info("role_node_map: {}, node_addr_map: {}".format(
         role_node_map, node_addr_map))
 
     host_nodes = role_node_map["host"]
@@ -97,14 +97,14 @@ def iv_host():
     # host_port = host_info['port']
     proxy_server = ServerChannelProxy(host_port)
     proxy_server.StartRecvLoop()
-    logger.info("Create server proxy for host, port {}.".format(host_port))
+    logging.info("Create server proxy for host, port {}.".format(host_port))
 
     # arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
     # arbiter_ip, arbiter_port = arbiter_info['ip'], arbiter_info['port']
     proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port,
                                               "arbiter")
-    logger.info("Create client proxy to arbiter,"
-                " ip {}, port {}.".format(arbiter_ip, arbiter_port))
+    logging.info("Create client proxy to arbiter,"
+                 " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
     data = ph.dataset.read(dataset_key=data_key).df_data
     label = data.pop('y').values
@@ -140,7 +140,7 @@ def iv_host():
         pre_pos_num = pos_num
         pre_neg_num = neg_num
 
-    logger.info('Host bin counts are: {} and {}'.format(
+    logging.info('Host bin counts are: {} and {}'.format(
         np.array(pos_cnts), np.array(neg_cnts)))
     proxy_client_arbiter.Remote({'pos_cnts': np.array(
         pos_cnts), 'neg_cnts': np.array(neg_cnts)}, 'host_bin_cnts')
@@ -149,14 +149,14 @@ def iv_host():
 @ph.context.function(role='guest', protocol='woe-iv', datasets=['iv_guest'], port='9030', task_type="feature-engineer")
 def iv_guest():
 
-    logger.info("Start woe-iv guest.")
+    logging.info("Start woe-iv guest.")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
     data_key = list(dataset_map.keys())[0]
 
-    logger.info("role_node_map: {}, node_addr_map: {}".format(
+    logging.info("role_node_map: {}, node_addr_map: {}".format(
         role_node_map, node_addr_map))
 
     guest_nodes = role_node_map["guest"]
@@ -206,7 +206,7 @@ def iv_guest():
         pre_pos_num = pos_num
         pre_neg_num = neg_num
 
-    logger.info('Guest bin counts are: {} and {}'.format(
+    logging.info('Guest bin counts are: {} and {}'.format(
         np.array(pos_cnts), np.array(neg_cnts)))
     proxy_client_arbiter.Remote({'pos_cnts': np.array(
         pos_cnts), 'neg_cnts': np.array(neg_cnts)}, 'guest_bin_cnts')
