@@ -49,8 +49,11 @@ datasets:
   - description: "homo_lr_test"
     model: "csv"
     source: "/tmp/FL/homo_lr_test.data"
+  - description: "iv_host"
+    model: "csv"
+    source: "/tmp/FL/feature_engineer/woe_iv/iv_host.csv"
 
-localkv:
+localkv: 
   model: "leveldb"
   path: "/data/localdb1"
 
