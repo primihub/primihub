@@ -84,15 +84,15 @@ def iv_arbiter(bins=15):
 
     global_pos_cnts = host_bin_cnts['pos_cnts'] + guest_bin_cnts['pos_cnts']
     global_neg_cnts = host_bin_cnts['neg_cnts'] + guest_bin_cnts['neg_cnts']
+    logging.info("global_pos_cnts and global_neg_cnts are: {} {}".format(
+        global_pos_cnts, global_neg_cnts))
+
     global_cnts = global_pos_cnts + global_pos_cnts
+    global_pos_rates = global_pos_cnts / global_cnts
+    global_neg_rates = global_neg_cnts / global_cnts
 
-    woes = np.log(global_pos_cnts / global_neg_cnts)
+    woes = np.log((global_pos_rates + 0.5) / (global_neg_rates + 0.5))
     logging.info("Global woes are: {}".format(woes))
-    # exp_global_cn
-
-    # global_bin_cnts = host_bin_cnts + guest_bin_cnts
-
-    # max_min = np.vstack([host_max_min, guest_max_min])
 
 
 @ph.context.function(role='host', protocol='woe-iv', datasets=['iv_host'], port='9020', task_type="feature-engineer")
