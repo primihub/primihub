@@ -142,7 +142,8 @@ def iv_arbiter(bins=15):
 
     _, ivs = woe_iv(host_bin_cnts, guest_bin_cnts)
 
-    ivs_df = pd.DataFrame(ivs, columns=host_max_min['headers'])
+    ivs_df = pd.DataFrame(ivs).reshape(1, -1)
+    ivs_df.columns = host_max_min['headers']
     logging.info("Global ivs are: {}".format(ivs_df))
 
 
