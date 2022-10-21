@@ -4,98 +4,16 @@ import pandas as pd
 import numpy as np
 import os
 import logging
-# from loguru import logger
 import time
-from concurrent.futures import ThreadPoolExecutor
-from primihub.channel.zmq_channel import IOService, Session
+# from loguru import logger
+from primihub.FL.proxy.proxy import ServerChannelProxy
+from primihub.FL.proxy.proxy import ClientChannelProxy
 
 
-class ClientChannelProxy:
-    def __init__(self, host, port, dest_role="NotSetYet"):
-        self.ios_ = IOService()
-        self.sess_ = Session(self.ios_, host, port, "client")
-        self.chann_ = self.sess_.addChannel()
-        self.executor_ = ThreadPoolExecutor()
-        self.host = host
-        self.port = port
-        self.dest_role = dest_role
-
-    # Send val and it's tag to server side, server
-    # has cached val when the method return.
-    def Remote(self, val, tag):
-        msg = {"v": val, "tag": tag}
-        self.chann_.send(msg)
-        _ = self.chann_.recv()
-        logging.debug(
-            "Send value with tag '{}' to {} finish".format(tag, self.dest_role))
-
-    # Send val and it's tag to server side, client begin the send action
-    # in a thread when the the method reutrn but not ensure that server
-    # has cached this val. Use 'fut.result()' to wait for server to cache it,
-    # this makes send value and other action running in the same time.
-    def RemoteAsync(self, val, tag):
-        def send_fn(channel, msg):
-            channel.send(msg)
-            _ = channel.recv()
-
-        msg = {"v": val, "tag": tag}
-        fut = self.executor_.submit(send_fn, self.chann_, msg)
-
-        return fut
-
-
-class ServerChannelProxy:
+class MyServerChannelProxy(ServerChannelProxy):
     def __init__(self, port):
-        self.ios_ = IOService()
-        self.sess_ = Session(self.ios_, "*", port, "server")
-        self.chann_ = self.sess_.addChannel()
-        self.executor_ = ThreadPoolExecutor()
-        self.recv_cache_ = {}
-        self.stop_signal_ = False
-        self.recv_loop_fut_ = None
+        super().__init__(port)
 
-    # Start a recv thread to receive value and cache it.
-    def StartRecvLoop(self):
-        def recv_loop():
-            logging.info("Start recv loop.")
-            while (not self.stop_signal_):
-                try:
-                    msg = self.chann_.recv(block=False)
-                except Exception as e:
-                    logging.error(e)
-                    break
-
-                if msg is None:
-                    continue
-
-                key = msg["tag"]
-                value = msg["v"]
-                if self.recv_cache_.get(key, None) is not None:
-                    logging.warn(
-                        "Hash entry for tag '{}' is not empty, replace old value".format(key))
-                    del self.recv_cache_[key]
-
-                logging.debug("Recv msg with tag '{}'.".format(key))
-                self.recv_cache_[key] = value
-                self.chann_.send("ok")
-            logging.info("Recv loop stops.")
-
-        self.recv_loop_fut_ = self.executor_.submit(recv_loop)
-
-    # Stop recv thread.
-    def StopRecvLoop(self):
-        self.stop_signal_ = True
-        self.recv_loop_fut_.result()
-        logging.info("Recv loop already exit, clean cached value.")
-        key_list = list(self.recv_cache_.keys())
-        for key in key_list:
-            del self.recv_cache_[key]
-            logging.warn(
-                "Remove value with tag '{}', not used until now.".format(key))
-        del self.recv_cache_
-
-    # Get value from cache, and the check will repeat at most 'retries' times,
-    # and sleep 0.3s after each check to avoid check all the time.
     def Get(self, tag, retries=100):
         for i in range(retries):
             val = self.recv_cache_.get(tag, None)
@@ -125,7 +43,7 @@ def iv_arbiter(bins=15):
         host_nodes, guest_nodes, arbiter_nodes))
 
     arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
-    proxy_server = ServerChannelProxy(arbiter_port)
+    proxy_server = MyServerChannelProxy(arbiter_port)
     proxy_server.StartRecvLoop()
 
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
@@ -198,7 +116,7 @@ def iv_host():
 
     # host_port = node_addr_map[host_nodes[0]].split(":")[1]
     # host_port = host_info['port']
-    proxy_server = ServerChannelProxy(host_port)
+    proxy_server = MyServerChannelProxy(host_port)
     proxy_server.StartRecvLoop()
     logging.info("Create server proxy for host, port {}.".format(host_port))
 
@@ -266,7 +184,7 @@ def iv_guest():
     arbiter_nodes = role_node_map["arbiter"]
 
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
-    proxy_server = ServerChannelProxy(guest_port)
+    proxy_server = MyServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
 
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
