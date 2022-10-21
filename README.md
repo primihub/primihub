@@ -1,6 +1,9 @@
 # PrimiHub 
 ![build workflow](https://github.com/primihub/primihub/actions/workflows/main.yml/badge.svg?branch=master)
+[![Contributors](https://img.shields.io/github/contributors/primihub/primihub.svg)](https://github.com/linuxsuren/github-go/graphs/contributors)
 [![Gitter](https://badges.gitter.im/primihub/community.svg)](https://gitter.im/primihub/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![GitHub release](https://img.shields.io/github/release/primihub/primihub.svg?label=release)](https://github.com/linuxsuren/github-go/releases/latest)
+[![Docker Pulls](https://img.shields.io/docker/pulls/primihub/primihub-node.svg)](https://hub.docker.com/r/primihub/primihub-node/tags)
 
 > English | [中文](README_CN.md)
 
@@ -66,7 +69,7 @@ $ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --s
 >  2. Which shared datasets are used.
 >  3. What kind of private computing tasks to do.
  
-In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from *** node 0 ***. For the parameters that can be specified by cli, please refer to *** [Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1) ***
+In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from ***node 0***. For the parameters that can be specified by cli, please refer to ***[Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***
 
 ## Advanced use
 To learn how to start from native applications and how to use PrimiHub features to implement more applications, see [Advanced Usage](http://docs.primihub.com/docs/category/%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8)
