@@ -129,7 +129,8 @@ def iv_arbiter(bins=15):
 
     diff = (global_pos_rates - global_neg_rates)
     ivs = np.dot(diff.T, woes).diagonal()
-    logging.info("Global ivs are: {}".format(ivs))
+    ivs_df = pd.DataFrame(ivs, columns=host_max_min['headers'])
+    logging.info("Global ivs are: {}".format(ivs_df))
 
 
 @ph.context.function(role='host', protocol='woe-iv', datasets=['iv_host'], port='9020', task_type="feature-engineer")
@@ -166,6 +167,7 @@ def iv_host():
 
     data = ph.dataset.read(dataset_key=data_key).df_data
     label = data.pop('y').values
+    headers = data.columns
 
     data_arr = data.values
     m, n = data_arr.shape
@@ -173,7 +175,7 @@ def iv_host():
     max_arr = np.max(data_arr, axis=0)
     min_arr = np.min(data_arr, axis=0)
     proxy_client_arbiter.Remote(
-        {'max_arr': max_arr, 'min_arr': min_arr}, "host_max_min")
+        {'max_arr': max_arr, 'min_arr': min_arr, 'headers': headers}, "host_max_min")
 
     split_points = proxy_server.Get('split_points')
 
