@@ -3,7 +3,8 @@ from primihub import dataset
 import pandas as pd
 import numpy as np
 import os
-from primihub.utils.logger_util import logger
+# import logging
+from loguru import logger
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 
@@ -174,6 +175,7 @@ def iv_guest():
     label = data.pop('y')
 
     data_arr = data.values
+    m, n = data_arr.shape
     # bins = 15
     max_arr = np.max(data_arr, axis=0)
     min_arr = np.min(data_arr, axis=0)
