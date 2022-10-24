@@ -44,18 +44,16 @@ $ docker-compose ps
 ```
 
 ```shell
-  CONTAINER ID   IMAGE                                COMMAND                  CREATED          STATUS          PORTS                                                                         NAMES
+CONTAINER ID   IMAGE                                COMMAND                  CREATED          STATUS          PORTS                                                                         NAMES
 cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:12120-12121->12120-12121/tcp, 0.0.0.0:8052->50050/tcp                 node2_primihub
 6a822ff5c6f7   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:10120->12120/tcp, 0.0.0.0:10121->12121/tcp, 0.0.0.0:8050->50050/tcp   node0_primihub
 11d55ce06ff0   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:11120->12120/tcp, 0.0.0.0:11121->12121/tcp, 0.0.0.0:8051->50050/tcp   node1_primihub
 68befa6ab2a5   primihub/simple-bootstrap-node:1.0   "/app/simple-bootstr…"   11 minutes ago   Up 11 minutes   0.0.0.0:4001->4001/tcp                                                        simple_bootstrap_node
-```                                                   
-
+```                                       
 
 ### 创建一个MPC任务
 
 ***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
-
 
 ```shell
 $ docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
@@ -81,3 +79,24 @@ $ docker run --network=host -it primihub/primihub-node:latest primihub-cli --ser
 ## 开发者
 * 关于如何编译，请见[编译](http://docs.primihub.com/docs/developer-docs/build)
 * 关于如何贡献代码，请见 [PrimiHub开源社区治理](http://docs.primihub.com/docs/primihub-community)
+
+
+## 如何贡献
+如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面随意开启一个新的话题，比如文档、创意、Bug等。
+
+同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](http://docs.primihub.com/docs/primihub-community)
+
+我们是一个开放共建的开源项目，欢迎参与到我们的项目中。
+
+## 贡献者
+<a href="https://github.com/primihub/primihub/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=primihub/primihub" />
+</a>
+
+[contrib.rocks](https://contrib.rocks)
+
+## 社区
+* Slack: [primihub.slack.com](https://join.slack.com/t/primihub/shared_invite/zt-1iftyi7x0-n_HqllTgPfoEcgqw5UzoYw)
+* 微信助手:
+
+![wechat_helper](./doc/wechat.jpeg)
