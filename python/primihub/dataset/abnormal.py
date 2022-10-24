@@ -212,7 +212,9 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
 
 @ph.context.function(role="host", protocol="None", datasets=["train_party_0"], port="-1")
 def run_abnormal_process():
-    path_or_info = ph.context.Context.dataset_map["train_party_0"]
+    # Get dataset path or dataset URL.
+    dataset_name = ph.context.Context.params_map["local_dataset"]
+    path_or_info = ph.context.Context.dataset_map[dataset_name]
 
     use_db = True
     try:

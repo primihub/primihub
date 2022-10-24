@@ -126,6 +126,15 @@ FLTask::FLTask(const std::string& node_id,
    
     for (auto &pair : param_map)
         this->params_map_[pair.first] = pair.second.value_string();
+    
+    std::string node_key = node_id + "_dataset";
+    auto iter = param_map.find(node_key);
+    if (iter == param_map.end()) {
+      LOG(ERROR) << "Can't find dataset name of node " << node_id << ".";
+      return;
+    }
+
+    this->params_map_["local_dataset"] = iter->second.value_string();
 }
 
 FLTask::~FLTask() {

@@ -124,25 +124,6 @@ grpc_proto_library(
     srcs = ["src/primihub/protos/service.proto"],
 )
 
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
-
-proto_library(
-  name = "proto_service",
-  srcs = ["src/primihub/protos/service.proto"]
-)
-
-py_proto_library(
-    name = "py_service_proto",
-    deps = [":proto_service"]
-)
-
-py_grpc_library(
-    name = "py_service_grpc",
-    srcs = [":proto_service"],
-    deps = [":py_service_proto"]
-)
-
 cc_library(
     name = "common_lib",
     srcs = glob([
