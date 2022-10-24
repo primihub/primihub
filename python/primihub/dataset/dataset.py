@@ -24,8 +24,8 @@ from primihub.context import reg_dataset
 from primihub.utils.logger_util import logger
 
 import grpc
-import service_pb2_grpc
-import service_pb2
+from primihub.client.ph_grpc.src.primihub.protos import service_pb2
+from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
 
 def register_dataset(service_addr, driver, path, name):
     channel = grpc.insecure_channel(service_addr)
