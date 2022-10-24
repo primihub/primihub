@@ -54,32 +54,44 @@ def replace_illegal_string(col_val, col_name, col_type):
 
     col_sum = 0
     count = 0
+    index = 0
     index_list = []
     new_col_val = []
 
     for val in col_val:
         if val[0] is None:
-            new_col_val.append(None)
+            logger.warning("Column {} index {} has empty value null.".format(col_name, index))
+            new_col_val.append("NA")
+            index = index + 1
             continue
 
+        if val[0] == "":
+            logger.warning("Column {} index {} has empty value ''.".format(col_name, index))
+            new_col_val.append("NA")
+            index = index + 1
+            continue
+        
         try:
-            val = convert_fn(val[0])
-            col_sum = col_sum + val
+            tmp = convert_fn(val[0])
+            col_sum = col_sum + tmp 
             count = count + 1
-            new_col_val.append(val)
+            new_col_val.append(tmp)
         except Exception as e:
             index_list.append(index)
-            new_col_val.append(None)
-            logger.error("Can't convert string {} into number at column {} index {}.".format(
-                val, col_name, index))
+            new_col_val.append(val[0])
+            logger.error("Can't convert string {} into number at column {} index {}, plan to replace it.".format(
+                val[0], col_name, index))
+
+        index = index + 1
 
     if len(index_list) != 0:
         if col_type == 2:
-            col_avg = col_sum / col_count
+            col_avg = col_sum / count
         else:
-            col_avg = col_sum // col_count
+            col_avg = col_sum // count
 
         for index in index_list:
+            logger.info("Replace column {} index {}'s origin value {} to new value {}.".format(col_name, index, new_col_val[index], col_avg))
             new_col_val[index] = col_avg
 
     return new_col_val
@@ -166,7 +178,7 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
                         if val[0] is None:
                             new_col.append("NA")
                             logger.info(
-                                "Column {} index {} has empty value.".format(col_name, index))
+                                "Column {} index {} has empty value null.".format(col_name, index))
                         else:
                             new_col.append(int(val[0]))
                         index = index + 1
@@ -176,7 +188,7 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
                         if val[0] is None:
                             new_col.append("NA")
                             logger.info(
-                                "Column {} index {} has empty value.".format(col_name, index))
+                                "Column {} index {} has empty value null.".format(col_name, index))
                         else:
                             new_col.append(float(val[0]))
                         index = index + 1
