@@ -40,7 +40,7 @@ docker-compose up -d
 或者，您也可以通过环境变量指定镜像服务地址以及版本号，例如：
 
 ```shell
-REGISTER=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
+REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 
 查看运行起来的 docker 容器：
