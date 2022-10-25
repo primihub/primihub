@@ -210,7 +210,7 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
     return df
 
 
-@ph.context.function(role="host", protocol="None", datasets=["train_party_0"], port="-1")
+@ph.context.function(role="host", protocol="None", datasets=["train_party_0", "train_party_1", "train_party_2"], port="-1")
 def run_abnormal_process():
     # Get dataset path or dataset URL.
     dataset_name = ph.context.Context.params_map["local_dataset"]
@@ -224,15 +224,15 @@ def run_abnormal_process():
         use_db = False
 
     # TODO: Remove it, add only for test.
-    use_db = True
-    db_info = {}
-    db_info["dbUrl"] = "192.168.99.21:10036"
-    db_info["dbName"] = "primihub"
-    db_info["dbTableName"] = "test_table"
-    db_info["dbUsername"] = "root"
-    db_info["dbPassword"] = "123456"
-    path_or_info = json.dumps(db_info)
-    filename = "/tmp/output1.csv"
+    # use_db = True
+    # db_info = {}
+    # db_info["dbUrl"] = "192.168.99.21:10036"
+    # db_info["dbName"] = "primihub"
+    # db_info["dbTableName"] = "test_table"
+    # db_info["dbUsername"] = "root"
+    # db_info["dbPassword"] = "123456"
+    # path_or_info = json.dumps(db_info)
+    # filename = "/tmp/output1.csv"
 
     col_info_str = ph.context.Context.params_map["ColumnDtype"]
     col_info = json.loads(col_info_str)
