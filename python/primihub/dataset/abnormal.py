@@ -238,13 +238,8 @@ def run_abnormal_process(params_map, dataset_map):
 
     col_info_str = params_map["ColumnInfo"]
     all_col_info = json.loads(col_info_str)
-    col_dtype_list = all_col_info[dataset_name]["columns"]
+    col_dtype = all_col_info[dataset_name]["columns"]
     new_dataset_id = all_col_info[dataset_name]["newDataSetId"]
-
-    col_dtype = {}
-    for col_and_dtype in col_dtype:
-        col_name, dtype = col_and_dtype.items()
-        col_dtype[col_name] = dtype
 
     if use_db is True:
         df = handle_abnormal_value_for_mysql(path_or_info, col_dtype)
