@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from loguru import logger
 import mysql.connector
+from primihub.dataset import register_dataset
 
 
 def handle_mixed_column(col):
@@ -39,11 +40,13 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
     df.info(verbose=True)
     df = df.fillna("NA")
 
-    for col_name, type in col_info.items():
+    for col_name, type in col_info:
         if type == 1 or type == 2 or type == 3:
             col = df[col_name]
             if col.dtype == object:
                 handle_mixed_column(col)
+    
+    return df
 
 
 def replace_illegal_string(col_val, col_name, col_type):
@@ -233,17 +236,30 @@ def run_abnormal_process(params_map, dataset_map):
     # path_or_info = json.dumps(db_info)
     # filename = "/tmp/output1.csv"
 
-    col_info_str = ph.context.Context.params_map["ColumnDtype"]
-    col_info = json.loads(col_info_str)
+    col_info_str = params_map["ColumnInfo"]
+    all_col_info = json.loads(col_info_str)
+    col_dtype_list = all_col_info[dataset_name]["columns"]
+    new_dataset_id = all_col_info[dataset_name]["newDataSetId"]
+
+    col_dtype = {}
+    for col_and_dtype in col_dtype:
+        col_name, dtype = col_and_dtype.items()
+        col_dtype[col_name] = dtype
 
     if use_db is True:
-        df = handle_abnormal_value_for_mysql(path_or_info, col_info)
+        df = handle_abnormal_value_for_mysql(path_or_info, col_dtype)
     else:
-        df = handle_abnormal_value_for_csv(path_or_info, col_info)
+        filename, _ = path_or_info.split(".csv")
+        save_path = filename + "_abnormal.csv"
+        df = handle_abnormal_value_for_csv(path_or_info, col_dtype)
 
-    df.to_csv(filename, index=False)
+    df.to_csv(save_path, index=False)
+    
+    dataset_id = all_col_info[dataset_name]["newDataSetId"]
+    register_dataset(params_map["DatasetServiceAddr"], "csv", save_path, new_dataset_id)
+
     logger.info(
-        "Finish process abnormal value, result saves to {}.".format(filename))
+        "Finish process abnormal value, result saves to {}.".format(save_path))
 
 # Use below code to start 'run_abnormal_process' in primihub:
 #
