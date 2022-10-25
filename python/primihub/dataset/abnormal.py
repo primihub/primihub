@@ -210,11 +210,10 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
     return df
 
 
-@ph.context.function(role="host", protocol="None", datasets=["train_party_0", "train_party_1", "train_party_2"], port="-1")
-def run_abnormal_process():
+def run_abnormal_process(params_map, dataset_map):
     # Get dataset path or dataset URL.
-    dataset_name = ph.context.Context.params_map["local_dataset"]
-    path_or_info = ph.context.Context.dataset_map[dataset_name]
+    dataset_name = params_map["local_dataset"]
+    path_or_info = dataset_map[dataset_name]
 
     use_db = True
     try:
@@ -245,3 +244,13 @@ def run_abnormal_process():
     df.to_csv(filename, index=False)
     logger.info(
         "Finish process abnormal value, result saves to {}.".format(filename))
+
+# Use below code to start 'run_abnormal_process' in primihub:
+#
+# import primihub as ph
+# from primihub.dataset.abnormal import run_abnormal_process
+# 
+# @ph.context.function(role="host", protocol="None", datasets=["train_party_0", "train_party_1", "train_party_2"], port="-1")
+# def dispatch_abnormal_process():
+#         run_abnormal_process(ph.context.Context.params_map,
+#                              ph.context.Context.dataset_map)
