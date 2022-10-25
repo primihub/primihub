@@ -38,7 +38,7 @@ docker-compose up -d
 or, you could specific the container register and version, such as:
 
 ```shell
-REGISTER=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
+REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 
 Check out the running docker **container**
