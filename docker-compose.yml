@@ -1,7 +1,7 @@
 version: '3'
 services:
   node0:
-    image: ${REGISTER:-docker.io}/primihub/primihub-node:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: node0_primihub
     ports:
@@ -23,7 +23,7 @@ services:
       - simple_bootstrap_node
 
   node1:
-    image: ${REGISTER:-docker.io}/primihub/primihub-node:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: node1_primihub
     ports:
@@ -45,7 +45,7 @@ services:
       - simple_bootstrap_node
 
   node2:
-    image: ${REGISTER:-docker.io}/primihub/primihub-node:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: node2_primihub
     ports:
@@ -67,7 +67,7 @@ services:
       - simple_bootstrap_node
 
   simple_bootstrap_node:
-    image: ${REGISTER:-docker.io}/primihub/simple-bootstrap-node:${BOOTTAG:-1.0}
+    image: ${REGISTRY:-docker.io}/primihub/simple-bootstrap-node:${BOOTTAG:-1.0}
     container_name: simple_bootstrap_node
     restart: "always"
     ports:
