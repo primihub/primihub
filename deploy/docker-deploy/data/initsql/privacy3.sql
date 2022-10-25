@@ -37,7 +37,7 @@ CREATE TABLE `data_component_draft` (
                               `is_del` tinyint(4) DEFAULT '0' COMMENT '是否删除',
                               `create_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
                               `update_date` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '修改时间',
-                              PRIMARY KEY (`model_id`) USING BTREE
+                              PRIMARY KEY (`draft_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='组件草稿表';
 
 -- ----------------------------
