@@ -417,7 +417,7 @@ new_git_repository(
   name = "com_github_primihub_seal_40",
   build_file = "//bazel:BUILD.seal",
   remote = "https://github.com/primihub/SEAL.git",
-  branch="main",
+  branch = "main",
 )
 
 http_archive(
@@ -555,6 +555,7 @@ new_git_repository(
     branch = "main",
     remote = "https://github.com/primihub/APSI.git",
 )
+
 # needed by APSI
 new_git_repository(
     name = "com_microsoft_kuku",

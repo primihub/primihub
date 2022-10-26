@@ -19,15 +19,6 @@ cmake(
     # cache_entries = {
     #     "__LINUX__": "1",
     # },
-     defines = [
-         # "APSI_FOURQ_ARM64",
-         "__LINUX__=1",
-     ],
-    copts = [
-        "-D__LINUX__=1",
-        #"-D_ARM64_",
-         "-D_AMD64_", # TODO x86_64
-    ],
     lib_source = ":all",
     out_static_libs = ["libapsi-0.8.a"],
     out_include_dir = "include/APSI-0.8/",

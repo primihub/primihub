@@ -27,12 +27,13 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
-#include "src/primihub/task/semantic/keyword_pir_client_task.h"
-#include "src/primihub/task/semantic/keyword_pir_server_task.h"
 
 #ifndef USE_MICROSOFT_APSI
 #include "src/primihub/task/semantic/pir_client_task.h"
 #include "src/primihub/task/semantic/pir_server_task.h"
+#else
+#include "src/primihub/task/semantic/keyword_pir_client_task.h"
+#include "src/primihub/task/semantic/keyword_pir_server_task.h"
 #endif
 
 #include "src/primihub/task/semantic/tee_task.h"
@@ -106,16 +107,18 @@ class TaskFactory {
             }
             const auto& job_id = request.task().job_id();
             const auto& task_id = request.task().task_id();
+#ifndef USE_MICROSOFT_APSI
             if (pir_type == PirType::ID_PIR) {
-#ifdef USE_MICROSOFT_APSI
+
+                return std::make_shared<PIRClientTask>(
+                    node_id, job_id, task_id, &task_param, dataset_service);
+            } else {
                 // TODO, using condition compile, fix in future
                 LOG(WARNING) << "ID_PIR is not supported when using MICROSOFT_APSI";
                 return nullptr;
+            }
 #else
-                return std::make_shared<PIRClientTask>(
-                    node_id, job_id, task_id, &task_param, dataset_service);
-#endif
-            } else if (pir_type == PirType::KEY_PIR) {
+            if (pir_type == PirType::KEY_PIR) {
                 auto param_map_it = param_map.find("serverAddress");
                 if (param_map_it == param_map.end()) {
                     return std::make_shared<KeywordPIRServerTask>(
@@ -128,6 +131,7 @@ class TaskFactory {
                 LOG(ERROR) << "Unsupported pir type: " << pir_type;
                 return nullptr;
             }
+#endif
         } else if (task_language == Language::PROTO &&
                 task_type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
             auto task_param = request.task();
