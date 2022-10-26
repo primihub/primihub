@@ -39,8 +39,10 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
     df = pd.read_csv(path_or_info)
     df.info(verbose=True)
     df = df.fillna("NA")
+    
+    logger.info(col_info)
 
-    for col_name, type in col_info:
+    for col_name, type in col_info.items():
         if type == 1 or type == 2 or type == 3:
             col = df[col_name]
             if col.dtype == object:
