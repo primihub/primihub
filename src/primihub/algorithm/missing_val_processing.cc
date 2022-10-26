@@ -1,9 +1,46 @@
-#include "src/primihub/algorithm/arithmetic.h"
+#include "src/primihub/algorithm/missing_val_processing.h"
+#include <glog/logging.h>
+
+#include "src/primihub/data_store/dataset.h"
+#include "src/primihub/data_store/driver.h"
+
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/factory.h"
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/result.h>
+
+#include <arrow/io/api.h>
+#include <arrow/io/file.h>
+#include <arrow/type.h>
+
+#include <iostream>
+#include <parquet/arrow/reader.h>
+#include <parquet/arrow/writer.h>
+#include <parquet/exception.h>
+#include <parquet/stream_reader.h>
+using arrow::Array;
+using arrow::DoubleArray;
+using arrow::Int64Array;
+using arrow::Table;
+namespace primihub {
+void MissingProcess::_spiltStr(string str, const string &split,
+                               std::vector<string> &strlist) {
+  strlist.clear();
+  if (str == "")
+    return;
+  string strs = str + split;
+  size_t pos = strs.find(split);
+  int steps = split.size();
+
+  while (pos != strs.npos) {
+    string temp = strs.substr(0, pos);
+    strlist.push_back(temp);
+    strs = strs.substr(pos + steps, strs.size());
+    pos = strs.find(split);
+  }
+}
+
 MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
@@ -74,21 +111,23 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
     data_file_path_ = param_map["Data_File"].value_string();
-    // col_and_owner
-    std::string col_and_owner = param_map["Col_And_Owner"].value_string();
-    std::vector<string> tmp1, tmp2, tmp3;
-    spiltStr(col_and_owner, ";", tmp1);
-    for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-      int pos = itr->find('-');
-      std::string col = itr->substr(0, pos);
-      int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-      col_and_owner_.insert(make_pair(col, owner));
-      LOG(INFO) << col << ":" << owner;
-    }
+    std::vector<string> tmp1, tmp2;
+    // Correct_Col_Names
+    std::string col_names = param_map["Correct_Col_Names"].value_string();
+    _spiltStr(col_names, ";", correct_col_names);
+
+    // _spiltStr(col_and_owner, ";", tmp1);
+    // for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+    //   int pos = itr->find('-');
+    //   std::string col = itr->substr(0, pos);
+    //   int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
+    //   col_and_owner_.insert(make_pair(col, owner));
+    //   LOG(INFO) << col << ":" << owner;
+    // }
     // LOG(INFO) << col_and_owner;
 
     std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
-    spiltStr(col_and_dtype, ";", tmp2);
+    _spiltStr(col_and_dtype, ";", tmp2);
     for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
       int pos = itr->find('-');
       std::string col = itr->substr(0, pos);
@@ -121,6 +160,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
 }
 int MissingProcess::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
+  LOG(INFO) << ret;
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset for train failed.";
@@ -137,75 +177,76 @@ int MissingProcess::execute() {
     arrow::Result<std::shared_ptr<Table>> res_table;
     std::shared_ptr<arrow::Table> new_table;
     std::shared_ptr<arrow::Array> doublearray;
-    for (auto itr = correct_col_names.begin(); itr != correct_col_names.end();
+    for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end();
          itr++) {
       std::vector<std::string>::iterator t =
-          std::find(local_col_names.begin(), local_col_names.end(), *itr);
-      double col_sum = 0;
+          std::find(local_col_names.begin(), local_col_names.end(), itr->first);
+      double double_sum = 0;
+      int int_sum = 0;
       if (t != local_col_names.end()) {
         int tmp_index = std::distance(local_col_names.begin(), t);
-        auto array = std::static_pointer_cast<DoubleArray>(
-            table->column(tmp_index)->chunk(0));
-        for (int64_t j = 0; j < array->length(); j++) {
-          col_sum += array->Value(j);
+        if (itr->second == 1) {
+          continue;
+        } else if (itr->second == 2) {
+          auto array = std::static_pointer_cast<DoubleArray>(
+              table->column(tmp_index)->chunk(0));
+          for (int64_t j = 0; j < array->length(); j++) {
+            double_sum += array->Value(j);
+          }
+          double_sum = double_sum / array->length();
+          // MPC compute
+          sf64<D16> sharedFixedInt;
+          mpc_op_exec_->createShares(double_sum, sharedFixedInt);
+          double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
+          new_sum = new_sum / 3;
+
+          int tmp_index = std::distance(local_col_names.begin(), t);
+          auto csv_array = std::static_pointer_cast<DoubleArray>(
+              table->column(tmp_index)->chunk(0));
+          LOG(INFO) << csv_array->length();
+          std::string data_str;
+          std::vector<std::string> tmp1;
+          std::vector<int> null_index;
+
+          data_str = csv_array->ToString();
+          LOG(INFO) << data_str;
+          _spiltStr(data_str, ",", tmp1);
+          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          for (int i = 0; i < tmp1.size(); i++) {
+            if (tmp1[i].find("null") != tmp1[i].npos) {
+              null_index.push_back(i);
+            }
+          }
+          std::vector<double> new_col;
+          for (int64_t i = 0; i < csv_array->length(); i++) {
+            new_col.push_back(csv_array->Value(i));
+          }
+          for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
+            new_col[*itr] = new_sum;
+            LOG(INFO) << *itr;
+          }
+          arrow::DoubleBuilder double_builder;
+          double_builder.AppendValues(new_col);
+          double_builder.Finish(&doublearray);
+
+          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(doublearray);
+
+          auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
+          res_table = table->SetColumn(
+              tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
+          table = res_table.ValueUnsafe();
+          std::vector<std::string> col_names1 = table->ColumnNames();
+          for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          array = std::static_pointer_cast<DoubleArray>(
+              table->column(tmp_index)->chunk(0));
+          for (int64_t j = 0; j < array->length(); j++) {
+            LOG(INFO) << j << ":" << array->Value(j);
+          }
         }
-        col_sum = col_sum / array->length();
-      }
-      //进行MPC计算，之后得到一个三方和，将和除以3，
-      ///把计算结果写入至本列中的null_index中，
-
-      sf64<D16> &sharedFixedInt;
-
-      mpc_op_exec_->CreateShare(col_sum, sharedFixedInt);
-      double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-      new_sum = new_sum / 3;
-      ///
-      //找到原数据列，并构造新数据列csv_array
-      int tmp_index = std::distance(local_col_names.begin(), t);
-      auto csv_array = std::static_pointer_cast<DoubleArray>(
-          table->column(tmp_index)->chunk(0));
-      LOG(INFO) << csv_array->length();
-      std::string data_str;
-      std::vector<std::string> tmp1;
-      std::vector<int> null_index;
-
-      data_str = csv_array->ToString();
-      LOG(INFO) << data_str;
-      spiltStr(data_str, ",", tmp1);
-      for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-        LOG(INFO) << *itr;
-      }
-      for (int i = 0; i < tmp1.size(); i++) {
-        if (tmp1[i].find("null") != tmp1[i].npos) {
-          null_index.push_back(i);
-        }
-      }
-      std::vector<double> new_col;
-      for (int64_t i = 0; i < csv_array->length(); i++) {
-        new_col.push_back(csv_array->Value(i));
-      }
-      for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
-        new_col[*itr] = new_sum;
-        LOG(INFO) << *itr;
-      }
-      arrow::DoubleBuilder double_builder;
-      double_builder.AppendValues(new_col);
-      double_builder.Finish(&doublearray);
-
-      arrow::ChunkedArray *new_array = new arrow::ChunkedArray(doublearray);
-
-      auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
-      res_table = table->SetColumn(
-          tmp_index, arrow::field(*itr, arrow::float64()), ptr_Array);
-      table = res_table.ValueUnsafe();
-      std::vector<std::string> col_names1 = table->ColumnNames();
-      for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
-        LOG(INFO) << *itr;
-      }
-      auto array = std::static_pointer_cast<DoubleArray>(
-          table->column(tmp_index)->chunk(0));
-      for (int64_t j = 0; j < array->length(); j++) {
-        LOG(INFO) << j << ":" << array->Value(j);
       }
     }
   } catch (std::exception &e) {
@@ -220,32 +261,56 @@ int MissingProcess::finishPartyComm(void) {
   return 0;
 }
 
-int ArithmeticExecutor::saveModel(void) {
-  std::shared_ptr<arrow::io::FileOutputStream> outfile;
-  PARQUET_ASSIGN_OR_THROW(outfile,
-                          arrow::io::FileOutputStream::Open(res_name_));
-  // The last argument to the function call is the size of the RowGroup in
-  // the parquet file. Normally you would choose this to be rather large but
-  // for the example, we use a small value to have multiple RowGroups.
-  PARQUET_THROW_NOT_OK(parquet::arrow::WriteTable(
-      table, arrow::default_memory_pool(), outfile, 3));
+int MissingProcess::saveModel(void) {
+  int num_rows = table->num_rows();
+  LOG(INFO) << num_rows;
+  std::shared_ptr<DataDriver> driver =
+      DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
+  std::shared_ptr<CSVDriver> csv_driver =
+      std::dynamic_pointer_cast<CSVDriver>(driver);
+
+  std::string filepath = "data/" + res_name_ + ".csv";
+  int ret = csv_driver->write(table, filepath);
+  if (ret != 0) {
+    LOG(ERROR) << "Save res to file " << filepath << " failed.";
+    return -1;
+  }
+  LOG(INFO) << "Save res to " << filepath << ".";
   return 0;
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
-  std::cout << "Reading data.parquet at once" << std::endl;
-  std::shared_ptr<arrow::io::ReadableFile> infile;
-  PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(
-                                      filename, arrow::default_memory_pool()));
-  std::unique_ptr<parquet::arrow::FileReader> reader;
-  PARQUET_THROW_NOT_OK(
-      parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
-  PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
-  std::cout << "Loaded " << table->num_rows() << " rows in "
-            << table->num_columns() << " columns." << std::endl;
-  local_col_names = table->ColumnNames();
+
+  // std::cout << "Reading data.parquet at once" << std::endl;
+  // std::shared_ptr<arrow::io::ReadableFile> infile1;
+  // std::shared_ptr<arrow::io::ReadableFile> infile;
+  // PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(
+  //                                     filename,
+  //                                     arrow::default_memory_pool()));
+  // std::unique_ptr<parquet::arrow::FileReader> reader;
+  // PARQUET_THROW_NOT_OK(
+  //     parquet::arrow::OpenFile(infile, arrow::default_memory_pool(),
+  //     &reader));
+  // PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
+
+  std::string nodeaddr("test address"); // TODO
+  std::shared_ptr<DataDriver> driver =
+      DataDirverFactory::getDriver("CSV", nodeaddr);
+  std::shared_ptr<Cursor> &cursor = driver->read(filename);
+  std::shared_ptr<Dataset> ds = cursor->read();
+  table = std::get<std::shared_ptr<Table>>(ds->data);
+
+  // Label column.
+  std::vector<std::string> col_names = table->ColumnNames();
+  // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
+  //   LOG(INFO) << *itr;
+  // }
   bool errors = false;
   int num_col = table->num_columns();
+
+  LOG(INFO) << "Loaded " << table->num_rows() << " rows in "
+            << table->num_columns() << " columns." << std::endl;
+  local_col_names = table->ColumnNames();
 
   // 'array' include values in a column of csv file.
   auto array = std::static_pointer_cast<DoubleArray>(
@@ -282,5 +347,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   }
   if (errors)
     return -1;
+  LOG(INFO) << errors;
+
   return array->length();
 }
+} // namespace primihub

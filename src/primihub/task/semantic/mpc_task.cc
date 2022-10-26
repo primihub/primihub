@@ -19,6 +19,7 @@
 #include "src/primihub/util/network/socket/session.h"
 
 #include "src/primihub/algorithm/arithmetic.h"
+#include "src/primihub/algorithm/missing_val_processing.h"
 
 #ifndef __APPLE__
 #include "src/primihub/algorithm/cryptflow2_maxpool.h"
@@ -82,7 +83,21 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
       LOG(ERROR) << error.what();
       algorithm_ = nullptr;
     }
-  } else if (function_name == "xgboost") {
+  }
+  else if (function_name == "missing_val_processing") 
+  {
+    PartyConfig config(node_id, task_param_);
+    std::map<std::string, Node> &node_map = config.node_map;
+    LOG(INFO) << node_map.size();
+    try {
+      algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+          std::make_shared<primihub::MissingProcess>(config, dataset_service));
+    } catch (const std::runtime_error &error) {
+      LOG(ERROR) << error.what();
+      algorithm_ = nullptr;
+    }
+  }
+   else if (function_name == "xgboost") {
     // TODO: implement xgboost
   } else if (function_name == "lightgbm") {
     // TODO: implement lightgbm
