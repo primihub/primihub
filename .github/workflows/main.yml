@@ -23,6 +23,7 @@ env:
 jobs:
   
   unit-test-on-ubuntu:
+    # runs-on: ubuntu-latest
     runs-on: self-hosted
     steps:
     # - name: Setup cmake
@@ -77,7 +78,7 @@ jobs:
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
 
-  
+
 
   unit-test-on-macos_x86_64:
     runs-on: macos-latest
@@ -107,6 +108,7 @@ jobs:
   
   build-on-ubuntu:
     needs: unit-test-on-ubuntu
+    # runs-on: ubuntu-latest
     runs-on: self-hosted
     steps:
     # - name: Setup cmake
