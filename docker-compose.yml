@@ -10,6 +10,7 @@ services:
       - "10121:12121"
       - "6666:6666"
     volumes:
+      - ./config:/app/config
       - ./data:/data
 
     entrypoint:
@@ -32,6 +33,7 @@ services:
       - "11121:12121"
       - "6667:6667"
     volumes:
+      - ./config:/app/config
       - ./data:/data
 
     entrypoint:
@@ -54,6 +56,7 @@ services:
       - "12121:12121"
       - "6668:6668"
     volumes:
+      - ./config:/app/config
       - ./data:/data
 
     entrypoint:
