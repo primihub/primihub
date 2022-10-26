@@ -113,7 +113,13 @@ int KeywordPIRClientTask::execute() {
     ZMQReceiverChannel channel;
     // extract server ip from server_address_
 
-    server_address_ = "tcp://127.0.0.1:1212";  // TODO
+    // server_address_ = "tcp://127.0.0.1:1212";  // TODO
+    std::string server_ip{"127.0.0.1"};
+    auto pos = server_address_.find(":");
+    if (pos == std::string::npos) {
+        server_ip = server_address_.substr(0, pos);
+    }
+    server_address_ = "tcp://" + server_ip + ":1212";
     VLOG(5) << "begin to connect to server: " << server_address_;
     channel.connect(server_address_);
     VLOG(5) << "connect to server: " << server_address_ << " end";
@@ -141,7 +147,7 @@ int KeywordPIRClientTask::execute() {
     }
 
     ThreadPoolMgr::SetThreadCount(8);
-    LOG(INFO) << "Keyword PIR setting thread count to " << ThreadPoolMgr::GetThreadCount();
+    VLOG(5) << "Keyword PIR setting thread count to " << ThreadPoolMgr::GetThreadCount();
 
     Receiver receiver(*params);
     auto [query_data, orig_items] = _LoadDataset();
@@ -149,10 +155,7 @@ int KeywordPIRClientTask::execute() {
         LOG(ERROR) << "Failed to read keyword PIR query file: terminating";
         return -1;
     }
-    VLOG(5) << "end of _LoadDataset, " << orig_items.size();
-    for (const auto& item : orig_items) {
-        VLOG(5) << "item: " << item;
-    }
+
     auto& items = std::get<CSVReader::UnlabeledData>(*query_data);
 
     std::vector<Item> items_vec(items.begin(), items.end());

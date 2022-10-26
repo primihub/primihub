@@ -549,11 +549,11 @@ leveldb_deps()
 
 
 # APSI
-# TODO use local for test
-new_local_repository(
-    name = "APSI",
-    path = "/home/primihub/Projects/APSI0",
+new_git_repository(
+    name = "mircrosoft_apsi",
     build_file = "//bazel:BUILD.APSI",
+    branch = "main",
+    remote = "https://github.com/primihub/APSI.git",
 )
 # needed by APSI
 new_git_repository(

@@ -110,52 +110,40 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
                    << dataset_path_ << "`: " << ex.what();
         return nullptr;
     }
-    VLOG(5) << "begin to build reader for dataset: " << dataset_path_;
     auto reader_ptr = std::make_unique<CSVReader::DBData>(std::move(db_data));
-    VLOG(5) << "begin to build reader for dataset end ";
     return reader_ptr;
 }
 
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
-    PSIParams::TableParams table_params;
-    // range [1, 8]
-    table_params.hash_func_count = 1;
-    // > 0
-    table_params.table_size = 409;
-    // range > 0
-    table_params.max_items_per_bin = 20;
-
-    PSIParams::ItemParams item_params;
-    // range [2, 32]
-    item_params.felts_per_item = 5;
-
-    PSIParams::QueryParams query_params;
-    // ps_low_degree < max_items_per_bin
-    query_params.ps_low_degree = 0;
-    //  is verified to not contain 0, to contain 1,
-    // and to not contain values larger than max_items_per_bin.
-    // Any value larger than ps_low_degree is verified to be divisible by ps_low_degree + 1
-    std::vector<uint32_t> query_powers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-    query_params.query_powers.insert(1);
-    for (const auto &power : query_powers) {
-        query_params.query_powers.insert(power);
+    std::string params_json;
+    std::string pir_server_config_path{"config/pir_server_config.json"};
+    VLOG(5) << "pir_server_config_path: " << pir_server_config_path;
+    try {
+        // throw_if_file_invalid(cmd.params_file());
+        std::fstream input_file(pir_server_config_path, std::ios_base::in);
+        if (!input_file.is_open()) {
+            LOG(ERROR) << "open " << pir_server_config_path << " encountes error";
+            return nullptr;
+        }
+        std::string line;
+        while (getline(input_file, line)) {
+            params_json.append(line);
+            params_json.append("\n");
+        }
+        input_file.close();
+    } catch (const std::exception &ex) {
+        LOG(ERROR) << "Error trying to read input file " << pir_server_config_path << ": " << ex.what();
+        return nullptr;
     }
 
-    PSIParams::SEALParams seal_params;
-    //const auto &coeff_modulus_bits = {49, 40, 20};
-    //
-    size_t poly_modulus_degree = 2048;
-    seal_params.set_poly_modulus_degree(poly_modulus_degree);
-    // is prime and congruent to 1 modulo 2 * poly_modulus_degree
-    seal_params.set_plain_modulus(65537);
-    vector<int> coeff_modulus_bit_sizes = {48};
-    seal_params.set_coeff_modulus(
-        CoeffModulus::Create(poly_modulus_degree, coeff_modulus_bit_sizes));
-    LOG(ERROR) << "begin to create PSIParams";
-    auto ptr = std::make_unique<PSIParams>(item_params, table_params, query_params, seal_params);
-
-    LOG(ERROR) << "begin to create PSIParams end";
-    return ptr;
+    std::unique_ptr<PSIParams> params{nullptr};
+    try {
+        params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
+    } catch (const std::exception &ex) {
+        LOG(ERROR) << "APSI threw an exception creating PSIParams: " << ex.what();
+        return nullptr;
+    }
+    return params;
 }
 
 int KeywordPIRServerTask::execute() {

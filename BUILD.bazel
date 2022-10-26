@@ -363,9 +363,12 @@ cc_library(
     "-mrdseed",
   ],
   linkopts = ["-fopenmp"],
-  deps = ["@com_microsoft_seal//:seal",
-	  "@com_github_gmp//:gmp",
-	  ":eigen"]
+  deps = [
+    "@com_microsoft_seal//:seal",
+    "@com_github_gmp//:gmp",
+    "@openssl",
+    ":eigen",
+  ]
 )
 
 cc_library(

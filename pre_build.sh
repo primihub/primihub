@@ -24,9 +24,15 @@ if ! command -v python$U_V1.$U_V2-config >/dev/null 2>&1; then
   exit
 fi
 #for mq
+#check operating system
+os_name=$(uname -s)
+if [[ "$os_name" == "Darwin" ]]; then
 zmq_lib_path=$(find /opt/ -name libzmq.a |head -n 1)
 zmq_lib_path=$(echo ${zmq_lib_path}|awk -F'libzmq.a' '{print $1}')
-echo "xxxxxxxxxx ${zmq_lib_path}"
+else
+zmq_lib_path=$(find /usr/local/ -name libzmq.a |head -n 1)
+zmq_lib_path=$(echo ${zmq_lib_path}|awk -F'libzmq.a' '{print $1}')
+fi
 CONFIG=`python$U_V1.$U_V2-config --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
 if [[ -n "${zmq_lib_path}" ]]; then
   NEWLINE="${NEWLINE} + [\"-L${zmq_lib_path}\"] + [\"-lzmq\"]"
