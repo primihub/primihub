@@ -1,3 +1,6 @@
+#ifndef SRC_PRIMIHUB_MISSINGPROCESS_H_
+#define SRC_PRIMIHUB_MISSINGPROCESS_H_
+
 #include "src/primihub/common/defines.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
@@ -34,6 +37,7 @@ private:
   //                      &test_data, sf64Matrix<D> &test_label);
 
   int _LoadDatasetFromCSV(std::string &filename);
+  void _spiltStr(string str, const string &split, std::vector<string> &strlist);
   bool is_cmp;
   MPCExpressExecutor *mpc_exec_;
   MPCOperator *mpc_op_exec_;
@@ -48,7 +52,7 @@ private:
   uint16_t next_port_, prev_port_;
   std::string data_file_path_;
   std::map<std::string, u32> col_and_owner_;
-  std::map<std::string, bool> col_and_dtype_;
+  std::map<std::string, uint32_t> col_and_dtype_;
   std::vector<uint32_t> parties_;
   uint32_t party_id_;
   std::vector<double> final_val_double_;
@@ -63,3 +67,4 @@ private:
 };
 
 } // namespace primihub
+#endif
