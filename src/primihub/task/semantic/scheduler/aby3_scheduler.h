@@ -61,11 +61,16 @@ class ABY3Scheduler : public VMScheduler {
           peer_dataset_map_(peer_dataset_map) {}
 
     void dispatch(const PushTaskRequest *pushTaskRequest) override;
+    virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {
+        this->dataset_owner_ = std::move(dataset_owner);
+    }
+
     void add_vm(Node *single_node, int i,
                 const PushTaskRequest *pushTaskRequest);
     private:
       const std::vector<Node> peer_list_;
       const PeerDatasetMap peer_dataset_map_;
+      std::map<std::string, std::string> dataset_owner_;
 };
 
 } // namespace primihub::task

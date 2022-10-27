@@ -32,7 +32,7 @@ class GRPCConnect(object):
     __instance_node = {}
     __first_init = False
 
-    def __new__(cls: type[Self], node, cert) -> Self:
+    def __new__(cls: type(Self), node, cert) -> Self:
         if node not in cls.__instance_node:
             cls.__instance_node[node] = super().__new__(cls)
         return cls.__instance_node[node]
