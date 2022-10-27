@@ -18,10 +18,8 @@ Install [docker](https://docs.docker.com/install/overview/) and [docker-compose]
 
 Download the code and switch to the code root path
 
-```shell
 git clone https://github.com/primihub/primihub.git
 cd primihub
-```
 
 ## Run an MPC case
 ![Depolyment](doc/tutorial-depolyment.jpg)
@@ -31,13 +29,10 @@ cd primihub
 Start three docker containers using docker-compose.
     The container includes: one simple bootstrap node, three nodes
 
-```shell
 docker-compose up -d
-```
 
 or, you could specific the container register and version, such as:
 
-```shell
 REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 

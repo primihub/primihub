@@ -18,7 +18,6 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 
 下载代码并切换到代码根路径
 
-```shell
 git clone https://github.com/primihub/primihub.git
 cd primihub
 ```
