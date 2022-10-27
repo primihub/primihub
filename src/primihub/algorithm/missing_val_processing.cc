@@ -176,30 +176,124 @@ int MissingProcess::execute() {
   try {
     arrow::Result<std::shared_ptr<Table>> res_table;
     std::shared_ptr<arrow::Table> new_table;
-    std::shared_ptr<arrow::Array> doublearray;
+    std::shared_ptr<arrow::Array> data_array;
     for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end();
          itr++) {
       std::vector<std::string>::iterator t =
           std::find(local_col_names.begin(), local_col_names.end(), itr->first);
       double double_sum = 0;
-      int int_sum = 0;
+      i64 int_sum = 0;
       if (t != local_col_names.end()) {
+        LOG(INFO) << "TEST!!!!!";
         int tmp_index = std::distance(local_col_names.begin(), t);
         if (itr->second == 1) {
-          continue;
+          LOG(INFO) << "TEST!!!!!";
+
+          auto array = std::static_pointer_cast<Int64Array>(
+              table->column(tmp_index)->chunk(0));
+          for (int64_t j = 0; j < array->length(); j++) {
+            int_sum += array->Value(j);
+          }
+          std::string data_str;
+          std::vector<std::string> tmp1;
+          std::vector<int> null_index;
+          data_str = array->ToString();
+          _spiltStr(data_str, ",", tmp1);
+          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          for (int i = 0; i < tmp1.size(); i++) {
+            if (tmp1[i].find("null") != tmp1[i].npos) {
+              null_index.push_back(i);
+            }
+          }
+          int_sum = int_sum / (array->length() - null_index.size());
         } else if (itr->second == 2) {
+          LOG(INFO) << "TEST!!!!!";
+
           auto array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
           for (int64_t j = 0; j < array->length(); j++) {
             double_sum += array->Value(j);
           }
+          std::string data_str;
+          std::vector<std::string> tmp1;
+          std::vector<int> null_index;
+          data_str = array->ToString();
+          _spiltStr(data_str, ",", tmp1);
+          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          for (int i = 0; i < tmp1.size(); i++) {
+            if (tmp1[i].find("null") != tmp1[i].npos) {
+              null_index.push_back(i);
+            }
+          }
+          int_sum = int_sum / (array->length() - null_index.size());
           double_sum = double_sum / array->length();
-          // MPC compute
-          sf64<D16> sharedFixedInt;
-          mpc_op_exec_->createShares(double_sum, sharedFixedInt);
-          double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-          new_sum = new_sum / 3;
+        }
+      }
+      if (itr->second == 1) {
+        LOG(INFO) << "TEST!!!!!";
+        si64 sharedInt;
+        mpc_op_exec_->createShares(int_sum, sharedInt);
+        i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
+        new_sum = new_sum / 3;
+        if (t != local_col_names.end()) {
+          LOG(INFO) << "TEST!!!!!";
 
+          int tmp_index = std::distance(local_col_names.begin(), t);
+          auto csv_array = std::static_pointer_cast<Int64Array>(
+              table->column(tmp_index)->chunk(0));
+          LOG(INFO) << csv_array->length();
+          std::string data_str;
+          std::vector<std::string> tmp1;
+          std::vector<int> null_index;
+          data_str = csv_array->ToString();
+          LOG(INFO) << data_str;
+          _spiltStr(data_str, ",", tmp1);
+          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          for (int i = 0; i < tmp1.size(); i++) {
+            if (tmp1[i].find("null") != tmp1[i].npos) {
+              null_index.push_back(i);
+            }
+          }
+          std::vector<i64> new_col;
+          for (int64_t i = 0; i < csv_array->length(); i++) {
+            new_col.push_back(csv_array->Value(i));
+          }
+          for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
+            new_col[*itr] = new_sum;
+            LOG(INFO) << *itr;
+          }
+          arrow::Int64Builder int64_builder;
+          int64_builder.AppendValues(new_col);
+          int64_builder.Finish(&data_array);
+
+          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
+
+          auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
+          res_table = table->SetColumn(
+              tmp_index, arrow::field(itr->first, arrow::int64()), ptr_Array);
+          table = res_table.ValueUnsafe();
+          std::vector<std::string> col_names1 = table->ColumnNames();
+          for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
+            LOG(INFO) << *itr;
+          }
+          auto array = std::static_pointer_cast<Int64Array>(
+              table->column(tmp_index)->chunk(0));
+          for (int64_t j = 0; j < array->length(); j++) {
+            LOG(INFO) << j << ":" << array->Value(j);
+          }
+        }
+      } else if (itr->second == 2) {
+        sf64<D16> sharedFixedInt;
+        mpc_op_exec_->createShares(double_sum, sharedFixedInt);
+        double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
+        new_sum = new_sum / 3;
+        if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
           auto csv_array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
@@ -229,9 +323,9 @@ int MissingProcess::execute() {
           }
           arrow::DoubleBuilder double_builder;
           double_builder.AppendValues(new_col);
-          double_builder.Finish(&doublearray);
+          double_builder.Finish(&data_array);
 
-          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(doublearray);
+          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
 
           auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
           res_table = table->SetColumn(
@@ -241,13 +335,140 @@ int MissingProcess::execute() {
           for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
             LOG(INFO) << *itr;
           }
-          array = std::static_pointer_cast<DoubleArray>(
+          auto array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
           for (int64_t j = 0; j < array->length(); j++) {
             LOG(INFO) << j << ":" << array->Value(j);
           }
         }
       }
+      // if (t != local_col_names.end()) {
+      //   int tmp_index = std::distance(local_col_names.begin(), t);
+      //   if (itr->second == 1) {
+      //     auto array = std::static_pointer_cast<Int64Array>(
+      //         table->column(tmp_index)->chunk(0));
+      //     for (int64_t j = 0; j < array->length(); j++) {
+      //       int_sum += array->Value(j);
+      //     }
+      //     int_sum = int_sum / array->length();
+      //     si64 sharedInt;
+      //     mpc_op_exec_->createShares(int_sum, sharedInt);
+      //     i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
+      //     new_sum = new_sum / 3;
+      //     int tmp_index = std::distance(local_col_names.begin(), t);
+      //     auto csv_array = std::static_pointer_cast<Int64Array>(
+      //         table->column(tmp_index)->chunk(0));
+      //     LOG(INFO) << csv_array->length();
+      //     std::string data_str;
+      //     std::vector<std::string> tmp1;
+      //     std::vector<int> null_index;
+      //     data_str = csv_array->ToString();
+      //     LOG(INFO) << data_str;
+      //     _spiltStr(data_str, ",", tmp1);
+      //     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+      //       LOG(INFO) << *itr;
+      //     }
+      //     for (int i = 0; i < tmp1.size(); i++) {
+      //       if (tmp1[i].find("null") != tmp1[i].npos) {
+      //         null_index.push_back(i);
+      //       }
+      //     }
+      //     std::vector<i64> new_col;
+      //     for (int64_t i = 0; i < csv_array->length(); i++) {
+      //       new_col.push_back(csv_array->Value(i));
+      //     }
+      //     for (auto itr = null_index.begin(); itr != null_index.end(); itr++)
+      //     {
+      //       new_col[*itr] = new_sum;
+      //       LOG(INFO) << *itr;
+      //     }
+      //     arrow::Int64Builder int64_builder;
+      //     int64_builder.AppendValues(new_col);
+      //     int64_builder.Finish(&data_array);
+
+      //     arrow::ChunkedArray *new_array = new
+      //     arrow::ChunkedArray(data_array);
+
+      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
+      //     res_table = table->SetColumn(
+      //         tmp_index, arrow::field(itr->first, arrow::int64()),
+      //         ptr_Array);
+      //     table = res_table.ValueUnsafe();
+      //     std::vector<std::string> col_names1 = table->ColumnNames();
+      //     for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++)
+      //     {
+      //       LOG(INFO) << *itr;
+      //     }
+      //     array = std::static_pointer_cast<Int64Array>(
+      //         table->column(tmp_index)->chunk(0));
+      //     for (int64_t j = 0; j < array->length(); j++) {
+      //       LOG(INFO) << j << ":" << array->Value(j);
+      //     }
+      //   } else if (itr->second == 2) {
+      //     auto array = std::static_pointer_cast<DoubleArray>(
+      //         table->column(tmp_index)->chunk(0));
+      //     for (int64_t j = 0; j < array->length(); j++) {
+      //       double_sum += array->Value(j);
+      //     }
+      //     double_sum = double_sum / array->length();
+      //     // MPC compute
+      //     sf64<D16> sharedFixedInt;
+      //     mpc_op_exec_->createShares(double_sum, sharedFixedInt);
+      //     double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
+      //     new_sum = new_sum / 3;
+
+      //     int tmp_index = std::distance(local_col_names.begin(), t);
+      //     auto csv_array = std::static_pointer_cast<DoubleArray>(
+      //         table->column(tmp_index)->chunk(0));
+      //     LOG(INFO) << csv_array->length();
+      //     std::string data_str;
+      //     std::vector<std::string> tmp1;
+      //     std::vector<int> null_index;
+
+      //     data_str = csv_array->ToString();
+      //     LOG(INFO) << data_str;
+      //     _spiltStr(data_str, ",", tmp1);
+      //     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+      //       LOG(INFO) << *itr;
+      //     }
+      //     for (int i = 0; i < tmp1.size(); i++) {
+      //       if (tmp1[i].find("null") != tmp1[i].npos) {
+      //         null_index.push_back(i);
+      //       }
+      //     }
+      //     std::vector<double> new_col;
+      //     for (int64_t i = 0; i < csv_array->length(); i++) {
+      //       new_col.push_back(csv_array->Value(i));
+      //     }
+      //     for (auto itr = null_index.begin(); itr != null_index.end(); itr++)
+      //     {
+      //       new_col[*itr] = new_sum;
+      //       LOG(INFO) << *itr;
+      //     }
+      //     arrow::DoubleBuilder double_builder;
+      //     double_builder.AppendValues(new_col);
+      //     double_builder.Finish(&data_array);
+
+      //     arrow::ChunkedArray *new_array = new
+      //     arrow::ChunkedArray(data_array);
+
+      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
+      //     res_table = table->SetColumn(
+      //         tmp_index, arrow::field(itr->first, arrow::float64()),
+      //         ptr_Array);
+      //     table = res_table.ValueUnsafe();
+      //     std::vector<std::string> col_names1 = table->ColumnNames();
+      //     for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++)
+      //     {
+      //       LOG(INFO) << *itr;
+      //     }
+      //     array = std::static_pointer_cast<DoubleArray>(
+      //         table->column(tmp_index)->chunk(0));
+      //     for (int64_t j = 0; j < array->length(); j++) {
+      //       LOG(INFO) << j << ":" << array->Value(j);
+      //     }
+      //   }
+      // }
     }
   } catch (std::exception &e) {
     LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
@@ -299,12 +520,11 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
   std::shared_ptr<Dataset> ds = cursor->read();
   table = std::get<std::shared_ptr<Table>>(ds->data);
-
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();
-  // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
-  //   LOG(INFO) << *itr;
-  // }
+  for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
+    LOG(INFO) << *itr;
+  }
   bool errors = false;
   int num_col = table->num_columns();
 
@@ -335,15 +555,16 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       errors = true;
       break;
     }
-    col_and_val_double.insert(
-        pair<string, std::vector<double>>(local_col_names[i], tmp_data));
-    for (auto itr = col_and_val_double.begin(); itr != col_and_val_double.end();
-         itr++) {
-      LOG(INFO) << itr->first;
-      auto tmp_vec = itr->second;
-      for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-        LOG(INFO) << *iter;
-    }
+    //   col_and_val_double.insert(
+    //       pair<string, std::vector<double>>(local_col_names[i], tmp_data));
+    //   for (auto itr = col_and_val_double.begin(); itr !=
+    //   col_and_val_double.end();
+    //        itr++) {
+    //     LOG(INFO) << itr->first;
+    //     auto tmp_vec = itr->second;
+    //     for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
+    //       LOG(INFO) << *iter;
+    //   }
   }
   if (errors)
     return -1;
