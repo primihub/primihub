@@ -47,7 +47,9 @@ class VMScheduler {
           singleton_(singleton) {}
 
     virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
-    
+    std::string get_node_id() const {
+      return node_id_;
+    }
   protected:
     const std::string node_id_;
     bool singleton_;

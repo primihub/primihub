@@ -5,7 +5,7 @@
 [![GitHub release](https://img.shields.io/github/release/primihub/primihub.svg?label=release)](https://github.com/linuxsuren/github-go/releases/latest)
 [![Docker Pulls](https://img.shields.io/docker/pulls/primihub/primihub-node.svg)](https://hub.docker.com/r/primihub/primihub-node/tags)
 
-> 中文 | [English](README_CN.md)
+> 中文 | [English](README.md)
 
 ## 特性
 PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](http://docs.primihub.com/docs/category/%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7)。
@@ -19,8 +19,8 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 下载代码并切换到代码根路径
 
 ```shell
-$ git clone https://github.com/primihub/primihub.git
-$ cd primihub
+git clone https://github.com/primihub/primihub.git
+cd primihub
 ```
 
 ## 运行一个MPC案例
@@ -34,13 +34,19 @@ $ cd primihub
 容器包括：启动点、三个节点
 
 ```bash
-$ docker-compose up -d
+docker-compose up -d
+```
+
+或者，您也可以通过环境变量指定镜像服务地址以及版本号，例如：
+
+```shell
+REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 
 查看运行起来的 docker 容器：
 
 ```shell
-$ docker-compose ps
+docker-compose ps
 ```
 
 ```shell
@@ -56,7 +62,7 @@ cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   1
 ***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
 
 ```shell
-$ docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
+docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
 ```
 
 > 💡 请求任务的节点
