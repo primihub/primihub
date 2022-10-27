@@ -46,6 +46,11 @@ enum PsiTag {
   KKRT = 1;
 }
 
+enum PirType {
+  ID_PIR = 0;
+  KEY_PIR = 1;
+}
+
 message int32_array {
   repeated int32 value_int32_array = 1;
 }
