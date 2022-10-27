@@ -14,7 +14,6 @@
  limitations under the License.
  */
 
-
 #include "src/primihub/primitive/ppa/kogge_stone.h"
 #include <cmath>
 #include <glog/logging.h>
@@ -218,8 +217,8 @@ void KoggeStoneLibrary::int_int_add_msb_build_optimized(
   u64 d = log2ceil(size_a1);
   node_by_depth_.resize(d);
 
-  VLOG(3) << "Depth of circuit is " << d;
-  VLOG(3) << "Size of input is " << size_a1;
+  // VLOG(3) << "Depth of circuit is " << d;
+  // VLOG(3) << "Size of input is " << size_a1;
 
   // Resolve the dependent of C[i-1] bit in circuit built by Kogge-Stone
   // algorithm.
@@ -252,8 +251,8 @@ void KoggeStoneLibrary::int_int_add_msb_build_optimized(
       NodeDesc tmp(input1, input1, input1 - step, prev_level);
       level_node.insert(tmp);
 
-      VLOG(3) << "Insert " << tmp.ToString() << " into level " << prev_level
-              << ", step " << step;
+      // VLOG(3) << "Insert " << tmp.ToString() << " into level " << prev_level
+      //         << ", step " << step;
 
       if (desc.node_ != 0) {
         if (start_pos > input2) {
@@ -270,8 +269,9 @@ void KoggeStoneLibrary::int_int_add_msb_build_optimized(
           NodeDesc tmp(input2, input2, input2 - step, prev_level);
           level_node.insert(tmp);
 
-          VLOG(3) << "Insert " << tmp.ToString() << " into level " << prev_level
-                  << ", step " << step;
+          // VLOG(3) << "Insert " << tmp.ToString() << " into level " <<
+          // prev_level
+          //         << ", step " << step;
         }
       }
     }

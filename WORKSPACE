@@ -547,7 +547,6 @@ leveldb_repos()
 load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
 leveldb_deps()
 
-
 # APSI
 new_git_repository(
     name = "mircrosoft_apsi",

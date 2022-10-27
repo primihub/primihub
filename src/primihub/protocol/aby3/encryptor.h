@@ -12,7 +12,7 @@
 #include "src/primihub/protocol/aby3/runtime.h"
 #include "src/primihub/protocol/aby3/sh3_gen.h"
 #include "src/primihub/protocol/aby3/transpose.h"
-
+#include "src/primihub/common/type/type.h"
 #include "src/primihub/util/log.h"
 
 namespace primihub {
