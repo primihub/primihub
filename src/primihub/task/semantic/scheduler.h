@@ -47,7 +47,11 @@ class VMScheduler {
           singleton_(singleton) {}
 
     virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
-    
+    virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
+    std::string get_node_id() const {
+      return node_id_;
+    }
+
   protected:
     const std::string node_id_;
     bool singleton_;
