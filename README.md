@@ -31,13 +31,19 @@ Start three docker containers using docker-compose.
     The container includes: one simple bootstrap node, three nodes
 
 ```shell
-$ docker-compose up -d
+docker-compose up -d
+```
+
+or, you could specific the container register and version, such as:
+
+```shell
+REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 
 Check out the running docker **container**
 
 ```shell
-$ docker-compose ps
+docker-compose ps
 ```
 
 ```shell
@@ -53,7 +59,7 @@ cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   1
 ***Let three nodes jointly perform a logistic regression task of multi-party secure computation (MPC)***
 
 ```shell
-$ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
+docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
 ```
 
 > 💡 The node response the task

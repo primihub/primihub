@@ -33,13 +33,19 @@ curl https://get.primihub.com/release/1.3.9/docker-compose.yml -s -o docker-comp
 容器包括：启动点、三个节点
 
 ```bash
-$ docker-compose up -d
+docker-compose up -d
+```
+
+或者，您也可以通过环境变量指定镜像服务地址以及版本号，例如：
+
+```shell
+REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 
 查看运行起来的 docker 容器：
 
 ```shell
-$ docker-compose ps
+docker-compose ps
 ```
 
 ```shell
@@ -55,7 +61,7 @@ cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   1
 ***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
 
 ```shell
-$ docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
+docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
 ```
 
 > 💡 请求任务的节点
