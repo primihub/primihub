@@ -19,6 +19,10 @@ RUN if ! cat /etc/group | grep -e "^pip-global:" > /dev/null 2>&1; then groupadd
 ARG NODE_VERSION="none"
 RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
 
+RUN apt update -y && apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm
+RUN npm install -g @bazel/bazelisk && bazel version
+RUN apt install -y libgmp-dev cmake
+
 RUN pip install --no-cache-dir --force-reinstall -Iv grpcio==1.47.0 grpcio-tools==1.47.0 protobuf==3.20.0 pyarrow==4.0.0 \
     scikit-learn==1.1.1 pandas pytest numpy cloudpickle pyzmq bitarray mmh3 pydantic sphinx loguru gevent
 
