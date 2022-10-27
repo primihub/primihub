@@ -215,6 +215,8 @@ int MissingProcess::loadDataset() {
     LOG(ERROR) << "Load dataset for train failed.";
     return -1;
   }
+
+  return 0;
 }
 
 int MissingProcess::initPartyComm(void) {
@@ -259,24 +261,24 @@ int MissingProcess::execute() {
           std::vector<int> null_index;
 
           data_str = csv_array->ToString();
-          LOG(INFO) << data_str;
           _spiltStr(data_str, ",", tmp1);
-          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
+
           for (int i = 0; i < tmp1.size(); i++) {
             if (tmp1[i].find("null") != tmp1[i].npos) {
               null_index.push_back(i);
             }
           }
+
           std::vector<double> new_col;
           for (int64_t i = 0; i < csv_array->length(); i++) {
             new_col.push_back(csv_array->Value(i));
           }
+
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
             LOG(INFO) << *itr;
           }
+
           arrow::DoubleBuilder double_builder;
           double_builder.AppendValues(new_col);
           double_builder.Finish(&doublearray);
@@ -288,14 +290,9 @@ int MissingProcess::execute() {
               tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
           table = res_table.ValueUnsafe();
           std::vector<std::string> col_names1 = table->ColumnNames();
-          for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
+
           array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
-          for (int64_t j = 0; j < array->length(); j++) {
-            LOG(INFO) << j << ":" << array->Value(j);
-          }
         }
       }
     }
@@ -312,20 +309,26 @@ int MissingProcess::finishPartyComm(void) {
 }
 
 int MissingProcess::saveModel(void) {
-  int num_rows = table->num_rows();
-  LOG(INFO) << num_rows;
+  std::vector<std::string> str_vec;
+  std::string delimiter = ".csv";
+  _spiltStr(data_file_path_, delimiter, str_vec);
+  std::string new_path = str_vec[0] + "_missing.csv";
+
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-  std::shared_ptr<CSVDriver> csv_driver =
-      std::dynamic_pointer_cast<CSVDriver>(driver);
 
-  std::string filepath = "data/" + res_name_ + ".csv";
-  int ret = csv_driver->write(table, filepath);
+  auto cursor = driver->initCursor(new_path);
+  auto dataset = std::make_shared<primihub::Dataset>(table, driver);
+  int ret = cursor->write(dataset);
   if (ret != 0) {
-    LOG(ERROR) << "Save res to file " << filepath << " failed.";
+    LOG(ERROR) << "Save result to file " << new_path << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save res to " << filepath << ".";
+
+  service::DatasetMeta meta(dataset, new_dataset_id_,
+                            service::DatasetVisbility::PUBLIC);
+  dataset_service_->regDataset(meta);
+
   return 0;
 }
 
