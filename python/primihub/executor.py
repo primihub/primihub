@@ -52,11 +52,11 @@ class Executor:
     def execute_py(dumps_func):
         logger.info("execute py code.")
         func_name = loads(dumps_func).__name__
-        logger.debug("func name: ", func_name)
+        logger.debug("func name: {}".format(func_name))
         func_params = Context.get_func_params_map().get(func_name, None)
         func = loads(dumps_func)
-        logger.debug("func params: ", func_params)
-        logger.debug("params_map: ", Context.params_map)
+        logger.debug("func params: {}".format(func_params))
+        logger.debug("params_map: {}".format(Context.params_map))
         if not func_params:
             try:
                 logger.debug("start execute")
