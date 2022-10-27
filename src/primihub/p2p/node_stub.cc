@@ -310,7 +310,7 @@ groups:
                 std::cerr << "Cannot get value: " << res.error().message() << std::endl;
                 return;
             } else {
-                std::cout << "Get value request success" << std::endl;
+                std::cout << "Get value request success " << std::endl;
             }
         });
     }

@@ -35,8 +35,6 @@ datasets:
   - description: "breast_0"
     model: "csv"
     source: "data/FL/wisconsin.data"
-  
-    source: "data/test_party_0.csv" 
 
   # MNIST test case datasets
   - description: "test_party_0_self"

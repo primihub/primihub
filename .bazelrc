@@ -4,6 +4,7 @@ build:linux --host_cxxopt=-std=c++17
 build:linux --copt=-w
 build:linux --copt=-DENABLE_SSE
 build:linux --linkopt=-lstdc++fs
+build:linux --define microsoft-apsi=false
 
 # Enable remote execution so actions are performed on the remote systems.
 build:remote --remote_executor=grpc://118.190.39.100:27941
