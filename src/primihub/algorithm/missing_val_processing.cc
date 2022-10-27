@@ -149,12 +149,8 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   // Column dtype.
   std::string json_str = param_map["ColumnInfo"].value_string();
 
-  LOG(INFO) << "Begin to parse json.";
-
   Document doc;
   doc.Parse(json_str.c_str());
-
-  LOG(INFO) << "Begin to get local dataset.";
 
   bool found = false;
   std::string local_dataset;
@@ -162,9 +158,6 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
        iter != doc.MemberEnd(); iter++) {
     std::string ds_name = iter->name.GetString();
     std::string ds_node = param_map[ds_name].value_string();
-    
-    LOG(INFO) << "name " << ds_name << ", node " << ds_node << ".";
-
     if (ds_node == this->node_id_) {
       local_dataset = iter->name.GetString();
       found = true;
@@ -187,11 +180,15 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   Value &vals = doc_ds["columns"];
   for (Value::ConstMemberIterator iter = vals.MemberBegin();
        iter != vals.MemberEnd(); iter++) {
+    std::string col_name = iter->name.GetString();
+    uint32_t col_dtype = iter->value.GetInt();
+    col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
     LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
               << iter->value.GetInt() << ".";
   }
 
-  throw std::runtime_error("None");
+  new_dataset_id_ = doc_ds["newDataSetId"].GetString();
+  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
 
   std::string next_name;
   std::string prev_name;
@@ -209,15 +206,17 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
 
   return 0;
 }
+
 int MissingProcess::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
-  LOG(INFO) << ret;
+
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset for train failed.";
     return -1;
   }
 }
+
 int MissingProcess::initPartyComm(void) {
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
   return 0;
@@ -351,12 +350,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   std::shared_ptr<Dataset> ds = cursor->read();
   table = std::get<std::shared_ptr<Table>>(ds->data);
 
-  // Label column.
-  std::vector<std::string> col_names = table->ColumnNames();
-  // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
-  //   LOG(INFO) << *itr;
-  // }
   bool errors = false;
+  std::vector<std::string> col_names = table->ColumnNames();
   int num_col = table->num_columns();
 
   LOG(INFO) << "Loaded " << table->num_rows() << " rows in "
@@ -374,11 +369,12 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   for (int i = 0; i < num_col; i++) {
     auto array =
         std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+
     std::vector<double> tmp_data;
     for (int64_t j = 0; j < array->length(); j++) {
       tmp_data.push_back(array->Value(j));
-      LOG(INFO) << array->Value(j);
     }
+
     if (array->length() != array_len) {
       LOG(ERROR) << "Column " << local_col_names[i] << " has "
                  << array->length() << " value, but other column has "
@@ -386,19 +382,13 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       errors = true;
       break;
     }
+
     col_and_val_double.insert(
         pair<string, std::vector<double>>(local_col_names[i], tmp_data));
-    for (auto itr = col_and_val_double.begin(); itr != col_and_val_double.end();
-         itr++) {
-      LOG(INFO) << itr->first;
-      auto tmp_vec = itr->second;
-      for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-        LOG(INFO) << *iter;
-    }
   }
+
   if (errors)
     return -1;
-  LOG(INFO) << errors;
 
   return array->length();
 }

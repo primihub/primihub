@@ -505,7 +505,8 @@ cc_library(
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-          ":protocol_falcon_lib"
+          ":protocol_falcon_lib",
+          "@rapidjson//:rapidjson"
     ],
 )
 
@@ -700,7 +701,7 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG, 
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
