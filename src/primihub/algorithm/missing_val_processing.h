@@ -64,6 +64,7 @@ private:
   std::vector<std::string> correct_col_names;
   std::vector<std::string> local_col_names;
   std::shared_ptr<arrow::Table> table;
+  std::string node_id_;
 };
 
 } // namespace primihub

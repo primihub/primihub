@@ -1,28 +1,33 @@
-#include "src/primihub/algorithm/missing_val_processing.h"
-#include <glog/logging.h>
+#include <iostream>
 
-#include "src/primihub/data_store/dataset.h"
-#include "src/primihub/data_store/driver.h"
-
-#include "src/primihub/data_store/csv/csv_driver.h"
-#include "src/primihub/data_store/factory.h"
 #include <arrow/api.h>
 #include <arrow/array.h>
-#include <arrow/result.h>
-
 #include <arrow/io/api.h>
 #include <arrow/io/file.h>
+#include <arrow/result.h>
 #include <arrow/type.h>
 
-#include <iostream>
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
 #include <parquet/exception.h>
 #include <parquet/stream_reader.h>
+
+#include <glog/logging.h>
+#include <rapidjson/document.h>
+
+#include "src/primihub/algorithm/missing_val_processing.h"
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/data_store/dataset.h"
+#include "src/primihub/data_store/driver.h"
+#include "src/primihub/data_store/factory.h"
+
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
 using arrow::Table;
+
+using namespace rapidjson;
+
 namespace primihub {
 void MissingProcess::_spiltStr(string str, const string &split,
                                std::vector<string> &strlist) {
@@ -105,57 +110,103 @@ MissingProcess::MissingProcess(PartyConfig &config,
     prev_ip_ = node.vm(0).prev().ip();
     prev_port_ = node.vm(0).prev().port();
   }
+
+  node_id_ = config.node_id;
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
-  try {
-    data_file_path_ = param_map["Data_File"].value_string();
-    std::vector<string> tmp1, tmp2;
-    // Correct_Col_Names
-    std::string col_names = param_map["Correct_Col_Names"].value_string();
-    _spiltStr(col_names, ";", correct_col_names);
+  // data_file_path_ = param_map["Data_File"].value_string();
+  // std::vector<string> tmp1, tmp2;
+  // Correct_Col_Names
+  // std::string col_names = param_map["Correct_Col_Names"].value_string();
+  // _spiltStr(col_names, ";", correct_col_names);
 
-    // _spiltStr(col_and_owner, ";", tmp1);
-    // for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-    //   int pos = itr->find('-');
-    //   std::string col = itr->substr(0, pos);
-    //   int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-    //   col_and_owner_.insert(make_pair(col, owner));
-    //   LOG(INFO) << col << ":" << owner;
-    // }
-    // LOG(INFO) << col_and_owner;
+  // _spiltStr(col_and_owner, ";", tmp1);
+  // for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
+  //   int pos = itr->find('-');
+  //   std::string col = itr->substr(0, pos);
+  //   int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
+  //   col_and_owner_.insert(make_pair(col, owner));
+  //   LOG(INFO) << col << ":" << owner;
+  // }
+  // LOG(INFO) << col_and_owner;
 
-    std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
-    _spiltStr(col_and_dtype, ";", tmp2);
-    for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
-      int pos = itr->find('-');
-      std::string col = itr->substr(0, pos);
-      int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-      col_and_dtype_.insert(make_pair(col, dtype));
-      LOG(INFO) << col << ":" << dtype;
+  // std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
+  // _spiltStr(col_and_dtype, ";", tmp2);
+  // for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
+  //   int pos = itr->find('-');
+  //   std::string col = itr->substr(0, pos);
+  //   int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
+  //   col_and_dtype_.insert(make_pair(col, dtype));
+  //   LOG(INFO) << col << ":" << dtype;
+  // }
+  // LOG(INFO) << col_and_dtype;
+
+  // File path.
+  data_file_path_ = param_map["Data_File"].value_string();
+
+  // Column dtype.
+  std::string json_str = param_map["ColumnInfo"].value_string();
+
+  LOG(INFO) << "Begin to parse json.";
+
+  Document doc;
+  doc.Parse(json_str.c_str());
+
+  LOG(INFO) << "Begin to get local dataset.";
+
+  bool found = false;
+  std::string local_dataset;
+  for (Value::ConstMemberIterator iter = doc.MemberBegin();
+       iter != doc.MemberEnd(); iter++) {
+    std::string ds_name = iter->name.GetString();
+    std::string ds_node = param_map[ds_name].value_string();
+    
+    LOG(INFO) << "name " << ds_name << ", node " << ds_node << ".";
+
+    if (ds_node == this->node_id_) {
+      local_dataset = iter->name.GetString();
+      found = true;
     }
-    // LOG(INFO) << col_and_dtype;
-
-    std::string next_name;
-    std::string prev_name;
-    if (party_id_ == 0) {
-      next_name = "01";
-      prev_name = "02";
-    } else if (party_id_ == 1) {
-      next_name = "12";
-      prev_name = "01";
-    } else if (party_id_ == 2) {
-      next_name = "02";
-      prev_name = "12";
-    }
-    mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
-
-    res_name_ = param_map["ResFileName"].value_string();
-  } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load params: " << e.what();
-    return -1;
   }
+
+  if (!found) {
+    // TODO: This request every node has dataset to handle, but sometimes only
+    // two node has dataset to handle, fix it later.
+    std::stringstream ss;
+    ss << "Can't not find dataset belong to " << this->node_id_ << ".";
+    LOG(ERROR) << ss.str();
+    throw std::runtime_error(ss.str());
+  }
+
+  Document doc_ds;
+  auto doc_iter = doc.FindMember(local_dataset.c_str());
+  doc_ds.Swap(doc_iter->value);
+
+  Value &vals = doc_ds["columns"];
+  for (Value::ConstMemberIterator iter = vals.MemberBegin();
+       iter != vals.MemberEnd(); iter++) {
+    LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
+              << iter->value.GetInt() << ".";
+  }
+
+  throw std::runtime_error("None");
+
+  std::string next_name;
+  std::string prev_name;
+  if (party_id_ == 0) {
+    next_name = "01";
+    prev_name = "02";
+  } else if (party_id_ == 1) {
+    next_name = "12";
+    prev_name = "01";
+  } else if (party_id_ == 2) {
+    next_name = "02";
+    prev_name = "12";
+  }
+  mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
+
   return 0;
 }
 int MissingProcess::loadDataset() {
