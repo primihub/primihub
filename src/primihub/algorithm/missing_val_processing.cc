@@ -192,7 +192,9 @@ int MissingProcess::loadDataset() {
 }
 
 int MissingProcess::initPartyComm(void) {
+  LOG(INFO) << "Begin to init party comm.";
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
+  LOG(INFO) << "Finish to init party comm.";
   return 0;
 }
 
@@ -231,8 +233,11 @@ int MissingProcess::execute() {
       }
       if (itr->second == 1) {
         si64 sharedInt;
+	LOG(INFO) << "Begin to handle column " << itr->first << ".";
+	LOG(INFO) << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(int_sum, sharedInt);
         i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
+	LOG(INFO) << "Finish to run MPC sum.";
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
@@ -263,8 +268,12 @@ int MissingProcess::execute() {
         }
       } else if (itr->second == 2) {
         sf64<D16> sharedFixedInt;
+	LOG(INFO) << "Begin to handle column " << itr->first << ".";
+	LOG(INFO) << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(double_sum, sharedFixedInt);
         double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
+	LOG(INFO) << "Finish to run MPC sum.";
+
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
@@ -305,6 +314,20 @@ int MissingProcess::execute() {
 }
 
 int MissingProcess::finishPartyComm(void) {
+  si64 tmp_share0, tmp_share1, tmp_share2;
+  if (party_id_ == 0)
+    mpc_op_exec_->createShares(1, tmp_share0);
+  else
+    mpc_op_exec_->createShares(tmp_share0);
+  // if (party_id_ == 1)
+  //   mpc_op_exec_->createShares(1, tmp_share1);
+  // else
+  //   mpc_op_exec_->createShares(tmp_share1);
+  // if (party_id_ == 2)
+  //   mpc_op_exec_->createShares(1, tmp_share2);
+  // else
+  //   mpc_op_exec_->createShares(tmp_share2);
+
   mpc_op_exec_->fini();
   delete mpc_op_exec_;
   return 0;
@@ -312,7 +335,7 @@ int MissingProcess::finishPartyComm(void) {
 
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
-  std::string delimiter = ".csv";
+  std::string delimiter = "_";
   _spiltStr(data_file_path_, delimiter, str_vec);
   std::string new_path = str_vec[0] + "_missing.csv";
 
