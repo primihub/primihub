@@ -1,4 +1,4 @@
-#include <iostream>
+#include "src/primihub/algorithm/missing_val_processing.h"
 
 #include <arrow/api.h>
 #include <arrow/array.h>
@@ -6,16 +6,15 @@
 #include <arrow/io/file.h>
 #include <arrow/result.h>
 #include <arrow/type.h>
-
+#include <glog/logging.h>
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
 #include <parquet/exception.h>
 #include <parquet/stream_reader.h>
-
-#include <glog/logging.h>
 #include <rapidjson/document.h>
 
-#include "src/primihub/algorithm/missing_val_processing.h"
+#include <iostream>
+
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
@@ -32,8 +31,7 @@ namespace primihub {
 void MissingProcess::_spiltStr(string str, const string &split,
                                std::vector<string> &strlist) {
   strlist.clear();
-  if (str == "")
-    return;
+  if (str == "") return;
   string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
@@ -60,7 +58,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id); // node_id
+  auto iter = node_map.find(config.node_id);  // node_id
   if (iter == node_map.end()) {
     stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -116,32 +114,6 @@ MissingProcess::MissingProcess(PartyConfig &config,
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
-  // data_file_path_ = param_map["Data_File"].value_string();
-  // std::vector<string> tmp1, tmp2;
-  // Correct_Col_Names
-  // std::string col_names = param_map["Correct_Col_Names"].value_string();
-  // _spiltStr(col_names, ";", correct_col_names);
-
-  // _spiltStr(col_and_owner, ";", tmp1);
-  // for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-  //   int pos = itr->find('-');
-  //   std::string col = itr->substr(0, pos);
-  //   int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-  //   col_and_owner_.insert(make_pair(col, owner));
-  //   LOG(INFO) << col << ":" << owner;
-  // }
-  // LOG(INFO) << col_and_owner;
-
-  // std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
-  // _spiltStr(col_and_dtype, ";", tmp2);
-  // for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
-  //   int pos = itr->find('-');
-  //   std::string col = itr->substr(0, pos);
-  //   int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-  //   col_and_dtype_.insert(make_pair(col, dtype));
-  //   LOG(INFO) << col << ":" << dtype;
-  // }
-  // LOG(INFO) << col_and_dtype;
 
   // File path.
   data_file_path_ = param_map["Data_File"].value_string();
@@ -236,81 +208,40 @@ int MissingProcess::execute() {
       double double_sum = 0;
       i64 int_sum = 0;
       if (t != local_col_names.end()) {
-        LOG(INFO) << "TEST!!!!!";
         int tmp_index = std::distance(local_col_names.begin(), t);
         if (itr->second == 1) {
-          LOG(INFO) << "TEST!!!!!";
-
           auto array = std::static_pointer_cast<Int64Array>(
               table->column(tmp_index)->chunk(0));
           for (int64_t j = 0; j < array->length(); j++) {
             int_sum += array->Value(j);
           }
-          std::string data_str;
-          std::vector<std::string> tmp1;
-          std::vector<int> null_index;
-          data_str = array->ToString();
-          _spiltStr(data_str, ",", tmp1);
-          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          for (int i = 0; i < tmp1.size(); i++) {
-            if (tmp1[i].find("null") != tmp1[i].npos) {
-              null_index.push_back(i);
-            }
-          }
-          int_sum = int_sum / (array->length() - null_index.size());
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          int_sum =
+              int_sum / (array->length() - tmp_array->data()->GetNullCount());
         } else if (itr->second == 2) {
-          LOG(INFO) << "TEST!!!!!";
-
           auto array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
           for (int64_t j = 0; j < array->length(); j++) {
             double_sum += array->Value(j);
           }
-          std::string data_str;
-          std::vector<std::string> tmp1;
-          std::vector<int> null_index;
-          data_str = array->ToString();
-          _spiltStr(data_str, ",", tmp1);
-          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          for (int i = 0; i < tmp1.size(); i++) {
-            if (tmp1[i].find("null") != tmp1[i].npos) {
-              null_index.push_back(i);
-            }
-          }
-          int_sum = int_sum / (array->length() - null_index.size());
-          double_sum = double_sum / array->length();
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          double_sum = double_sum /
+                       (array->length() - tmp_array->data()->GetNullCount());
         }
       }
       if (itr->second == 1) {
-        LOG(INFO) << "TEST!!!!!";
         si64 sharedInt;
         mpc_op_exec_->createShares(int_sum, sharedInt);
         i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
-          LOG(INFO) << "TEST!!!!!";
-
           int tmp_index = std::distance(local_col_names.begin(), t);
           auto csv_array = std::static_pointer_cast<Int64Array>(
               table->column(tmp_index)->chunk(0));
-          LOG(INFO) << csv_array->length();
-          std::string data_str;
-          std::vector<std::string> tmp1;
           std::vector<int> null_index;
-          data_str = csv_array->ToString();
-          LOG(INFO) << data_str;
-          _spiltStr(data_str, ",", tmp1);
-          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          for (int i = 0; i < tmp1.size(); i++) {
-            if (tmp1[i].find("null") != tmp1[i].npos) {
-              null_index.push_back(i);
-            }
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          for (int i = 0; i < tmp_array->length(); i++) {
+            if (tmp_array->IsNull(i)) null_index.push_back(i);
           }
           std::vector<i64> new_col;
           for (int64_t i = 0; i < csv_array->length(); i++) {
@@ -318,7 +249,6 @@ int MissingProcess::execute() {
           }
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
-            LOG(INFO) << *itr;
           }
           arrow::Int64Builder int64_builder;
           int64_builder.AppendValues(new_col);
@@ -330,15 +260,6 @@ int MissingProcess::execute() {
           res_table = table->SetColumn(
               tmp_index, arrow::field(itr->first, arrow::int64()), ptr_Array);
           table = res_table.ValueUnsafe();
-          std::vector<std::string> col_names1 = table->ColumnNames();
-          for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          auto array = std::static_pointer_cast<Int64Array>(
-              table->column(tmp_index)->chunk(0));
-          for (int64_t j = 0; j < array->length(); j++) {
-            LOG(INFO) << j << ":" << array->Value(j);
-          }
         }
       } else if (itr->second == 2) {
         sf64<D16> sharedFixedInt;
@@ -349,30 +270,19 @@ int MissingProcess::execute() {
           int tmp_index = std::distance(local_col_names.begin(), t);
           auto csv_array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
-          LOG(INFO) << csv_array->length();
-          std::string data_str;
-          std::vector<std::string> tmp1;
           std::vector<int> null_index;
-
-          data_str = csv_array->ToString();
-          _spiltStr(data_str, ",", tmp1);
-
-          for (int i = 0; i < tmp1.size(); i++) {
-            if (tmp1[i].find("null") != tmp1[i].npos) {
-              null_index.push_back(i);
-            }
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          for (int i = 0; i < tmp_array->length(); i++) {
+            if (tmp_array->IsNull(i)) null_index.push_back(i);
           }
 
           std::vector<double> new_col;
           for (int64_t i = 0; i < csv_array->length(); i++) {
             new_col.push_back(csv_array->Value(i));
           }
-
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
-            LOG(INFO) << *itr;
           }
-
           arrow::DoubleBuilder double_builder;
           double_builder.AppendValues(new_col);
           double_builder.Finish(&data_array);
@@ -383,138 +293,10 @@ int MissingProcess::execute() {
           res_table = table->SetColumn(
               tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
           table = res_table.ValueUnsafe();
-          std::vector<std::string> col_names1 = table->ColumnNames();
           auto array = std::static_pointer_cast<DoubleArray>(
               table->column(tmp_index)->chunk(0));
         }
       }
-      // if (t != local_col_names.end()) {
-      //   int tmp_index = std::distance(local_col_names.begin(), t);
-      //   if (itr->second == 1) {
-      //     auto array = std::static_pointer_cast<Int64Array>(
-      //         table->column(tmp_index)->chunk(0));
-      //     for (int64_t j = 0; j < array->length(); j++) {
-      //       int_sum += array->Value(j);
-      //     }
-      //     int_sum = int_sum / array->length();
-      //     si64 sharedInt;
-      //     mpc_op_exec_->createShares(int_sum, sharedInt);
-      //     i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
-      //     new_sum = new_sum / 3;
-      //     int tmp_index = std::distance(local_col_names.begin(), t);
-      //     auto csv_array = std::static_pointer_cast<Int64Array>(
-      //         table->column(tmp_index)->chunk(0));
-      //     LOG(INFO) << csv_array->length();
-      //     std::string data_str;
-      //     std::vector<std::string> tmp1;
-      //     std::vector<int> null_index;
-      //     data_str = csv_array->ToString();
-      //     LOG(INFO) << data_str;
-      //     _spiltStr(data_str, ",", tmp1);
-      //     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-      //       LOG(INFO) << *itr;
-      //     }
-      //     for (int i = 0; i < tmp1.size(); i++) {
-      //       if (tmp1[i].find("null") != tmp1[i].npos) {
-      //         null_index.push_back(i);
-      //       }
-      //     }
-      //     std::vector<i64> new_col;
-      //     for (int64_t i = 0; i < csv_array->length(); i++) {
-      //       new_col.push_back(csv_array->Value(i));
-      //     }
-      //     for (auto itr = null_index.begin(); itr != null_index.end(); itr++)
-      //     {
-      //       new_col[*itr] = new_sum;
-      //       LOG(INFO) << *itr;
-      //     }
-      //     arrow::Int64Builder int64_builder;
-      //     int64_builder.AppendValues(new_col);
-      //     int64_builder.Finish(&data_array);
-
-      //     arrow::ChunkedArray *new_array = new
-      //     arrow::ChunkedArray(data_array);
-
-      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
-      //     res_table = table->SetColumn(
-      //         tmp_index, arrow::field(itr->first, arrow::int64()),
-      //         ptr_Array);
-      //     table = res_table.ValueUnsafe();
-      //     std::vector<std::string> col_names1 = table->ColumnNames();
-      //     for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++)
-      //     {
-      //       LOG(INFO) << *itr;
-      //     }
-      //     array = std::static_pointer_cast<Int64Array>(
-      //         table->column(tmp_index)->chunk(0));
-      //     for (int64_t j = 0; j < array->length(); j++) {
-      //       LOG(INFO) << j << ":" << array->Value(j);
-      //     }
-      //   } else if (itr->second == 2) {
-      //     auto array = std::static_pointer_cast<DoubleArray>(
-      //         table->column(tmp_index)->chunk(0));
-      //     for (int64_t j = 0; j < array->length(); j++) {
-      //       double_sum += array->Value(j);
-      //     }
-      //     double_sum = double_sum / array->length();
-      //     // MPC compute
-      //     sf64<D16> sharedFixedInt;
-      //     mpc_op_exec_->createShares(double_sum, sharedFixedInt);
-      //     double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-      //     new_sum = new_sum / 3;
-
-      //     int tmp_index = std::distance(local_col_names.begin(), t);
-      //     auto csv_array = std::static_pointer_cast<DoubleArray>(
-      //         table->column(tmp_index)->chunk(0));
-      //     LOG(INFO) << csv_array->length();
-      //     std::string data_str;
-      //     std::vector<std::string> tmp1;
-      //     std::vector<int> null_index;
-
-      //     data_str = csv_array->ToString();
-      //     LOG(INFO) << data_str;
-      //     _spiltStr(data_str, ",", tmp1);
-      //     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-      //       LOG(INFO) << *itr;
-      //     }
-      //     for (int i = 0; i < tmp1.size(); i++) {
-      //       if (tmp1[i].find("null") != tmp1[i].npos) {
-      //         null_index.push_back(i);
-      //       }
-      //     }
-      //     std::vector<double> new_col;
-      //     for (int64_t i = 0; i < csv_array->length(); i++) {
-      //       new_col.push_back(csv_array->Value(i));
-      //     }
-      //     for (auto itr = null_index.begin(); itr != null_index.end(); itr++)
-      //     {
-      //       new_col[*itr] = new_sum;
-      //       LOG(INFO) << *itr;
-      //     }
-      //     arrow::DoubleBuilder double_builder;
-      //     double_builder.AppendValues(new_col);
-      //     double_builder.Finish(&data_array);
-
-      //     arrow::ChunkedArray *new_array = new
-      //     arrow::ChunkedArray(data_array);
-
-      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
-      //     res_table = table->SetColumn(
-      //         tmp_index, arrow::field(itr->first, arrow::float64()),
-      //         ptr_Array);
-      //     table = res_table.ValueUnsafe();
-      //     std::vector<std::string> col_names1 = table->ColumnNames();
-      //     for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++)
-      //     {
-      //       LOG(INFO) << *itr;
-      //     }
-      //     array = std::static_pointer_cast<DoubleArray>(
-      //         table->column(tmp_index)->chunk(0));
-      //     for (int64_t j = 0; j < array->length(); j++) {
-      //       LOG(INFO) << j << ":" << array->Value(j);
-      //     }
-      //   }
-      // }
     }
   } catch (std::exception &e) {
     LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
@@ -553,20 +335,7 @@ int MissingProcess::saveModel(void) {
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
-
-  // std::cout << "Reading data.parquet at once" << std::endl;
-  // std::shared_ptr<arrow::io::ReadableFile> infile1;
-  // std::shared_ptr<arrow::io::ReadableFile> infile;
-  // PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(
-  //                                     filename,
-  //                                     arrow::default_memory_pool()));
-  // std::unique_ptr<parquet::arrow::FileReader> reader;
-  // PARQUET_THROW_NOT_OK(
-  //     parquet::arrow::OpenFile(infile, arrow::default_memory_pool(),
-  //     &reader));
-  // PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
-
-  std::string nodeaddr("test address"); // TODO
+  std::string nodeaddr("test address");  // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
@@ -605,14 +374,9 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       break;
     }
 
-    //   col_and_val_double.insert(
-    //       pair<string, std::vector<double>>(local_col_names[i], tmp_data));
-    // }
-
-    if (errors)
-      return -1;
+    if (errors) return -1;
 
     return array->length();
   }
 }
-} // namespace primihub
+}  // namespace primihub
