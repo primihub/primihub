@@ -46,6 +46,63 @@ ABSL_FLAG(bool, singleton, false, "singleton mode"); // TODO: remove this flag
 ABSL_FLAG(int, service_port, 50050, "node service port");
 
 namespace primihub {
+Status VMNodeImpl::Send(ServerContext* context,
+        ServerReader<TaskRequest>* reader, TaskResponse* response) {
+    VLOG(5) << "VMNodeImpl::Send: received: ";
+
+    bool recv_meta_info{false};
+    std::string job_id;
+    std::string task_id;
+    int storage_type{-1};
+    std::string storage_info;
+    std::vector<std::string> recv_data;
+    VLOG(5) << "VMNodeImpl::Send: received xxx: ";
+    TaskRequest request;
+    while (reader->Read(&request)) {
+        VLOG(5) << "read finised";
+        if (!recv_meta_info) {
+            job_id = request.job_id();
+            task_id = request.task_id();
+            storage_type = request.storage_type();
+            storage_info = request.storage_info();
+            recv_meta_info = true;
+            VLOG(5) << "job_id: " << job_id << " "
+                    << "task_id: " << task_id << " "
+                    << "storage_type: " << storage_type << " "
+                    << "storage_info: " << storage_info;
+        }
+        auto item_size = request.data().size();
+        VLOG(5) << "item_size: " << item_size;
+        for (size_t i = 0; i < item_size; i++) {
+            recv_data.push_back(request.data(i));
+        }
+    }
+
+    if (storage_type == primihub::rpc::TaskRequest::FILE) {
+        std::string data_path = storage_info;
+        save_data_to_file(data_path, std::move(recv_data));
+    }
+    VLOG(5) << "end of read data from client";
+    response->set_ret_code(primihub::rpc::retcode::SUCCESS);
+    return Status::OK;
+}
+
+int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
+    if (validate_file_path(data_path)) {
+        LOG(ERROR) << "file path is not exist, please check";
+        return -1;
+    }
+    auto data = std::move(save_data);
+    if (data.empty()) {
+        return 0;
+    }
+    std::ofstream in_fs(data_path, std::ios::out);
+    for (const auto& data_item : data) {
+        in_fs << data_item << "\n";
+    }
+    in_fs.close();
+    return 0;
+}
 
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
@@ -153,7 +210,9 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
         LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
+        running_map.insert({job_task, worker});
         worker->execute(taskRequest, taskResponse);
+        running_map.erase(job_task);
         running_set.erase(job_task);
 
         return Status::OK;
@@ -177,7 +236,7 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
 void RunServer(primihub::VMNodeImpl *node_service,
-               primihub::DataServiceImpl *dataset_service, int service_port) {
+        primihub::DataServiceImpl *dataset_service, int service_port) {
 
     // Initialize server
     arrow::flight::Location location;
