@@ -32,7 +32,7 @@ def handle_mixed_column(col):
             col[index] = str(col_avg)
     else:
         logger.info(
-            "All content of column {} is string, do nothing.".format(col.name))
+            "Skip column {} due to only missing value in it.".format(col.name))
 
 
 def handle_abnormal_value_for_csv(path_or_info, col_info):
