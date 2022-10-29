@@ -236,12 +236,17 @@ int PSIClientTask::send_result_to_server() {
     constexpr size_t limited_size = 1 << 22;  // limit data size 4M
     size_t sended_size = 0;
     size_t sended_index = 0;
+    bool add_head_flag = false;
     do {
         primihub::rpc::TaskRequest task_request;
         task_request.set_job_id(this->job_id_);
         task_request.set_task_id(this->task_id_);
         task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
+        if (!add_head_flag) {
+            task_request.add_data("\"intersection_row\"");
+            add_head_flag = true;
+        }
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
             size_t item_len = data_item.size();
