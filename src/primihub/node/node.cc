@@ -31,6 +31,7 @@
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
+#include "src/primihub/util/file_util.h"
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -88,7 +89,7 @@ Status VMNodeImpl::Send(ServerContext* context,
 }
 
 int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
-    if (validate_file_path(data_path)) {
+    if (ValidateDir(data_path)) {
         LOG(ERROR) << "file path is not exist, please check";
         return -1;
     }
