@@ -23,7 +23,7 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
-#include <pybind11/embed.h>  
+#include <pybind11/embed.h>
 
 #include <algorithm>
 #include <cmath>
@@ -59,6 +59,8 @@ using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::Status;
 
+using primihub::rpc::TaskRequest;
+using primihub::rpc::TaskResponse;
 using primihub::rpc::ExecuteTaskRequest;
 using primihub::rpc::ExecuteTaskResponse;
 using primihub::rpc::Node;
@@ -94,10 +96,13 @@ class VMNodeImpl final: public VMNode::Service {
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
                       PushTaskReply *pushTaskReply) override;
-    
+
     Status ExecuteTask(ServerContext *context,
                        const ExecuteTaskRequest *taskRequest,
                        ExecuteTaskResponse *taskResponse) override;
+    Status Send(ServerContext* context,
+                ServerReader<TaskRequest>* reader,
+                TaskResponse* response) override;
 
     std::shared_ptr<Worker> CreateWorker();
 
@@ -108,7 +113,9 @@ class VMNodeImpl final: public VMNode::Service {
     std::string get_node_id() { return this->node_id; }
 
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
-
+ protected:
+    int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
+    int validate_file_path(const std::string& data_path) { return 0;}
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -124,6 +131,7 @@ class VMNodeImpl final: public VMNode::Service {
     // std::shared_ptr<LanguageParser> lan_parser_;
     bool singleton;
     std::set<std::string> running_set;
+    std::map<std::string, std::shared_ptr<Worker>> running_map;
 
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;

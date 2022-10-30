@@ -35,8 +35,26 @@ message ExecuteTaskResponse {
   }
 }
 
+message TaskRequest {
+  enum StorageType {
+    MEMORY = 0;
+    FILE = 1;
+  }
+  string job_id = 1;
+  string task_id = 2;
+  StorageType storage_type= 3;
+  string storage_info = 4;
+  repeated bytes data = 5;
+}
+
+message TaskResponse {
+  retcode ret_code = 1;
+  repeated bytes data = 2;
+}
+
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc Send(stream TaskRequest) returns (TaskResponse);
 }
 
