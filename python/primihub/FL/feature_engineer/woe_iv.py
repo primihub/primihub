@@ -201,7 +201,7 @@ def iv_host():
         pos_cnts), 'neg_cnts': np.array(neg_cnts)}, 'host_bin_cnts')
 
 
-@ph.context.function(role='guest', protocol='woe-iv', datasets=['iv_guest'], port='9030', task_type="feature-engineer")
+@ph.context.function(role='guest', protocol='woe-iv', datasets=['iv_guest', 'breast_2'], port='9030', task_type="feature-engineer")
 def iv_guest():
 
     logging.info("Start woe-iv guest.")
@@ -209,6 +209,7 @@ def iv_guest():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    logging.info("dataset_map is {}".format(dataset_map))
     data_key = list(dataset_map.keys())[0]
 
     logging.info("role_node_map: {}, node_addr_map: {}".format(
