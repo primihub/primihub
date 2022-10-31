@@ -34,7 +34,8 @@ namespace primihub {
 void MissingProcess::_spiltStr(string str, const string &split,
                                std::vector<string> &strlist) {
   strlist.clear();
-  if (str == "") return;
+  if (str == "")
+    return;
   string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
@@ -61,7 +62,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id);  // node_id
+  auto iter = node_map.find(config.node_id); // node_id
   if (iter == node_map.end()) {
     stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -235,7 +236,8 @@ int MissingProcess::execute() {
           std::vector<int> null_index;
           auto tmp_array = table->column(tmp_index)->chunk(0);
           for (int i = 0; i < tmp_array->length(); i++) {
-            if (tmp_array->IsNull(i)) null_index.push_back(i);
+            if (tmp_array->IsNull(i))
+              null_index.push_back(i);
           }
           std::vector<double> new_col;
           for (int64_t i = 0; i < csv_array->length(); i++) {
@@ -287,7 +289,8 @@ int MissingProcess::execute() {
           std::vector<int> null_index;
           auto tmp_array = table->column(tmp_index)->chunk(0);
           for (int i = 0; i < tmp_array->length(); i++) {
-            if (tmp_array->IsNull(i)) null_index.push_back(i);
+            if (tmp_array->IsNull(i))
+              null_index.push_back(i);
           }
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
@@ -317,15 +320,6 @@ int MissingProcess::finishPartyComm(void) {
     mpc_op_exec_->createShares(1, tmp_share0);
   else
     mpc_op_exec_->createShares(tmp_share0);
-  // if (party_id_ == 1)
-  //   mpc_op_exec_->createShares(1, tmp_share1);
-  // else
-  //   mpc_op_exec_->createShares(tmp_share1);
-  // if (party_id_ == 2)
-  //   mpc_op_exec_->createShares(1, tmp_share2);
-  // else
-  //   mpc_op_exec_->createShares(tmp_share2);
-
   mpc_op_exec_->fini();
   delete mpc_op_exec_;
   return 0;
@@ -334,10 +328,9 @@ int MissingProcess::finishPartyComm(void) {
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
   std::string delimiter = "_";
-  _spiltStr(data_file_path_, delimiter, str_vec);
-  // std::string new_path = new_dataset_id_ + "_missing.csv";
-  std::string new_path =
-      str_vec[0] + "_" + str_vec[1] + "_" + str_vec[2] + "_missing.csv";
+  int pos = data_file_path_.rfind(delimiter);
+
+  std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
 
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
@@ -355,7 +348,7 @@ int MissingProcess::saveModel(void) {
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address");  // TODO
+  std::string nodeaddr("test address"); // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
@@ -398,7 +391,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       break;
     }
 
-    if (errors) return -1;
+    if (errors)
+      return -1;
 
     return array->length();
   }
@@ -408,4 +402,4 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
 
   return array->length();
 }
-}  // namespace primihub
+} // namespace primihub
