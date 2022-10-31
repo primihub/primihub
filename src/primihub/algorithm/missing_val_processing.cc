@@ -194,26 +194,39 @@ int MissingProcess::execute() {
             int_sum += array->Value(j);
           }
           auto tmp_array = table->column(tmp_index)->chunk(0);
+
           int_sum =
               int_sum / (array->length() - tmp_array->data()->GetNullCount());
         } else if (itr->second == 2) {
-          auto array = std::static_pointer_cast<DoubleArray>(
-              table->column(tmp_index)->chunk(0));
-          for (int64_t j = 0; j < array->length(); j++) {
-            double_sum += array->Value(j);
+          // check schema
+          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
+            auto array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(0));
+            for (int64_t j = 0; j < array->length(); j++) {
+              double_sum += array->Value(j);
+            }
+            auto tmp_array = table->column(tmp_index)->chunk(0);
+            double_sum = double_sum /
+                         (array->length() - tmp_array->data()->GetNullCount());
+          } else {
+            auto array = std::static_pointer_cast<DoubleArray>(
+                table->column(tmp_index)->chunk(0));
+            for (int64_t j = 0; j < array->length(); j++) {
+              double_sum += array->Value(j);
+            }
+            auto tmp_array = table->column(tmp_index)->chunk(0);
+            double_sum = double_sum /
+                         (array->length() - tmp_array->data()->GetNullCount());
           }
-          auto tmp_array = table->column(tmp_index)->chunk(0);
-          double_sum = double_sum /
-                       (array->length() - tmp_array->data()->GetNullCount());
         }
       }
       if (itr->second == 1) {
         si64 sharedInt;
-	LOG(INFO) << "Begin to handle column " << itr->first << ".";
-	LOG(INFO) << "Begin to run MPC sum.";
+        LOG(INFO) << "Begin to handle column " << itr->first << ".";
+        LOG(INFO) << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(int_sum, sharedInt);
         i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
-	LOG(INFO) << "Finish to run MPC sum.";
+        LOG(INFO) << "Finish to run MPC sum.";
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
@@ -244,26 +257,37 @@ int MissingProcess::execute() {
         }
       } else if (itr->second == 2) {
         sf64<D16> sharedFixedInt;
-	LOG(INFO) << "Begin to handle column " << itr->first << ".";
-	LOG(INFO) << "Begin to run MPC sum.";
+        LOG(INFO) << "Begin to handle column " << itr->first << ".";
+        LOG(INFO) << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(double_sum, sharedFixedInt);
         double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-	LOG(INFO) << "Finish to run MPC sum.";
+        LOG(INFO) << "Finish to run MPC sum.";
 
         new_sum = new_sum / 3;
+
         if (t != local_col_names.end()) {
+          std::vector<double> new_col;
           int tmp_index = std::distance(local_col_names.begin(), t);
-          auto csv_array = std::static_pointer_cast<DoubleArray>(
-              table->column(tmp_index)->chunk(0));
+
+          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
+            auto csv_array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(0));
+
+            for (int64_t j = 0; j < csv_array->length(); j++) {
+              new_col.push_back(csv_array->Value(j));
+            }
+          } else {
+            auto csv_array = std::static_pointer_cast<DoubleArray>(
+                table->column(tmp_index)->chunk(0));
+
+            for (int64_t i = 0; i < csv_array->length(); i++) {
+              new_col.push_back(csv_array->Value(i));
+            }
+          }
           std::vector<int> null_index;
           auto tmp_array = table->column(tmp_index)->chunk(0);
           for (int i = 0; i < tmp_array->length(); i++) {
             if (tmp_array->IsNull(i)) null_index.push_back(i);
-          }
-
-          std::vector<double> new_col;
-          for (int64_t i = 0; i < csv_array->length(); i++) {
-            new_col.push_back(csv_array->Value(i));
           }
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
@@ -278,8 +302,6 @@ int MissingProcess::execute() {
           res_table = table->SetColumn(
               tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
           table = res_table.ValueUnsafe();
-          auto array = std::static_pointer_cast<DoubleArray>(
-              table->column(tmp_index)->chunk(0));
         }
       }
     }
@@ -313,7 +335,9 @@ int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
   std::string delimiter = "_";
   _spiltStr(data_file_path_, delimiter, str_vec);
-  std::string new_path = str_vec[0] + "_missing.csv";
+  // std::string new_path = new_dataset_id_ + "_missing.csv";
+  std::string new_path =
+      str_vec[0] + "_" + str_vec[1] + "_" + str_vec[2] + "_missing.csv";
 
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
