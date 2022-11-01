@@ -46,6 +46,8 @@ class MissingProcess : public AlgorithmBase {
   uint32_t party_id_;
   std::vector<std::string> local_col_names;
   std::shared_ptr<arrow::Table> table;
+  std::string node_id_;
+  std::string new_dataset_id_;
 };
 
 }  // namespace primihub
