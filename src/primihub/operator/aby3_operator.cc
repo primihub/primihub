@@ -100,8 +100,7 @@ void MPCOperator::createShares(si64 &dest) {
 }
 
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
-                          static_cast<unsigned long long>(val.cols())};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), static_cast<unsigned long long>(val.cols())};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   si64Matrix dest(size[0], size[1]);
@@ -125,8 +124,7 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 
 // only support val is column vector
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
-                          bitCount};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), bitCount};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   sbMatrix dest(size[0], size[1]);

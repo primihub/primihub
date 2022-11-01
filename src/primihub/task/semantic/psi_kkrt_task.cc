@@ -72,11 +72,23 @@ int PSIKkrtTask::_LoadParams(Task &task) {
         //role_tag_ = EpMode::Client;
         role_tag_ = 0;
         try {
+            VLOG(5) << "parse paramerter";
+            auto it = param_map.find("sync_result_to_server");
+            if (it != param_map.end()) {
+                sync_result_to_server = it->second.value_int32() > 0;
+                VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
+            }
+            it = param_map.find("server_outputFullFilname");
+            if (it != param_map.end()) {
+                server_result_path = it->second.value_string();
+                VLOG(5) << "server_outputFullFilname: " << server_result_path;
+            }
             data_index_ = param_map["clientIndex"].value_int32();
-	    psi_type_ = param_map["psiType"].value_int32();
+	        psi_type_ = param_map["psiType"].value_int32();
             dataset_path_ = param_map["clientData"].value_string();
             result_file_path_ = param_map["outputFullFilename"].value_string();
             host_address_ = param_map["serverAddress"].value_string();
+            VLOG(5) << "serverAddress: " << host_address_;
         } catch (std::exception &e) {
             LOG(ERROR) << "Failed to load params: " << e.what();
             return -1;
@@ -203,7 +215,7 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
         set[i] = toBlock(hash_dest);
         sha1.Reset();
     }
-    
+
     KkrtNcoOtSender otSend;
     KkrtPsiSender sendPSIs;
     //LOG(INFO) << "server step 1";
@@ -220,7 +232,7 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
 
     u64 dataSent = chl.getTotalDataSent();
     //LOG(INFO) << "server step 6";
-    
+
     chl.resetStats();
     //LOG(INFO) << "server step 7";
 }
@@ -249,6 +261,72 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
     return 0;
 }
 #endif
+
+
+int PSIKkrtTask::send_result_to_server() {
+#ifndef __APPLE__
+    // cause grpc port is alive along with node life duration,
+    // so send result data to server by grpc
+    grpc::ClientContext context;
+    VLOG(5) << "send_result_to_server";
+    auto channel = grpc::InsecureChannelCredentials();
+    // std::unique_ptr<VMNode::Stub>
+    auto stub = primihub::rpc::VMNode::NewStub(grpc::CreateChannel(host_address_, channel));
+    primihub::rpc::TaskResponse task_response;
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>>
+        writer(stub->Send(&context, &task_response));
+    constexpr size_t limited_size = 1 << 22;  // limit data size 4M
+    size_t sended_size = 0;
+    size_t sended_index = 0;
+    bool add_head_flag = false;
+    do {
+        primihub::rpc::TaskRequest task_request;
+        task_request.set_job_id(this->job_id_);
+        task_request.set_task_id(this->task_id_);
+        task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
+        task_request.set_storage_info(server_result_path);
+        if (!add_head_flag) {
+            task_request.add_data("\"intersection_row\"");
+            add_head_flag = true;
+        }
+        for (size_t i = sended_index; i < this->result_.size(); i++) {
+            auto& data_item = this->result_[i];
+            size_t item_len = data_item.size();
+            if (sended_size + item_len > limited_size) {
+                break;
+            }
+            task_request.add_data(data_item);
+            sended_size += item_len;
+            sended_index++;
+            VLOG(5) << "sended_size: " << sended_size << " sended_index: " << sended_index;
+        }
+        writer->Write(task_request);
+        VLOG(5) << "sended_size: " << sended_size << " "
+                << "sended_index: " << sended_index << " "
+                << "result size: " << this->result_.size();
+        if (sended_index >= this->result_.size()) {
+            VLOG(5) << " sended_index: " << sended_index << " result size: " << this->result_.size() << " end of send";
+            break;
+        }
+    } while(true);
+    writer->WritesDone();
+    grpc::Status status = writer->Finish();
+    VLOG(0) << "writer->Finish";
+    if (status.ok()) {
+        auto ret_code = task_response.ret_code();
+        if (ret_code) {
+            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+            return -1;
+        }
+    } else {
+        LOG(ERROR) << "client Node send result data to server failed. error_code: "
+                   << status.error_code() << ": " << status.error_message();
+        return -1;
+    }
+    VLOG(0) << "send result to server success";
+#endif
+    return 0;
+}
 
 int PSIKkrtTask::saveResult(void) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
@@ -285,8 +363,11 @@ int PSIKkrtTask::saveResult(void) {
         LOG(ERROR) << "Save PSI result to file " << result_file_path_ << " failed.";
         return -1;
     }
+    if (this->sync_result_to_server) {
+        send_result_to_server();
+    }
 
-    LOG(INFO) << "Save PSI result to " << result_file_path_ << "."; 
+    LOG(INFO) << "Save PSI result to " << result_file_path_ << ".";
     return 0;
 }
 
@@ -319,7 +400,7 @@ int PSIKkrtTask::execute() {
     std::string server_addr = addr_info[0] + ":1212";
     Endpoint ep(ios, server_addr, mode);
     Channel chl = ep.addChannel();
-    
+
     if (mode == EpMode::Client) {
         LOG(INFO) << "start recv.";
         try {
