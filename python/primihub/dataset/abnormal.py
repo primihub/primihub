@@ -12,7 +12,7 @@ def handle_mixed_column(col):
     col_count = 0
     index_list = []
     for index, val in col.items():
-        if val == "NA":
+        if val is None:
             logger.info("Column {} index {} has empty value.".format(
                 col.name, index))
             continue
@@ -32,13 +32,12 @@ def handle_mixed_column(col):
             col[index] = str(col_avg)
     else:
         logger.info(
-            "All content of column {} is string, do nothing.".format(col.name))
+            "Skip column {} due to only missing value in it.".format(col.name))
 
 
 def handle_abnormal_value_for_csv(path_or_info, col_info):
     df = pd.read_csv(path_or_info)
     df.info(verbose=True)
-    df = df.fillna("NA")
     
     logger.info(col_info)
 
@@ -47,7 +46,12 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
             col = df[col_name]
             if col.dtype == object:
                 handle_mixed_column(col)
+            if type == 1 or type == 3:
+                df[col_name] = col.astype("int")
+            else:
+                df[col_name] = col.astype("float") 
     
+    df = df.fillna("NA")
     return df
 
 
@@ -249,8 +253,9 @@ def run_abnormal_process(params_map, dataset_map):
         filename, _ = path_or_info.split(".csv")
         save_path = filename + "_abnormal.csv"
         df = handle_abnormal_value_for_csv(path_or_info, col_dtype)
-
-    df.to_csv(save_path, index=False)
+    
+    df.info(verbose=True)
+    df.to_csv(save_path, index=False, float_format='%.6f')
     
     dataset_id = all_col_info[dataset_name]["newDataSetId"]
     register_dataset(params_map["DatasetServiceAddr"], "csv", save_path, new_dataset_id)
