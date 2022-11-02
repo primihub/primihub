@@ -79,6 +79,9 @@ To learn how to start from native applications and how to use PrimiHub features 
 ## Developer
 * For how to build, see [Build](http://docs.primihub.com/docs/developer-docs/build)
 
+## [Roadmap](https://docs.primihub.com/en/docs/roadmap)
+
+
 ## How to contribute
 If you want to contribute to this project, feel free to create an issue at our [Issue](https://github.com/primihub/primihub/issues) page (e.g., documentation, new idea and proposal).
 
