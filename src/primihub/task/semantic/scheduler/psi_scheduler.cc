@@ -254,28 +254,30 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     LOG(INFO) << " 📧  Dispatch SubmitTask to PSI client node";
 
     std::vector<std::thread> thrds;
-    google::protobuf::Map<std::string, Node> node_map =
-        nodePushTaskRequest.task().node_map();
-
+    // google::protobuf::Map<std::string, Node>
+    const auto& node_map = nodePushTaskRequest.task().node_map();
+     std::set<std::string> duplicate_filter;
     for (auto &pair : node_map) {
         auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
         if (peer_dataset_map_it == this->peer_dataset_map_.end()) {
             LOG(ERROR) << "dispatchTask: peer_dataset_map not found";
             return;
         }
-
-        std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
-        for (const auto& item : dataset_param_list) {
-            LOG(ERROR) << "xxxxxxxxxx key: " << std::get<0>(item) << " value: " << std::get<1>(item);
-        }
+        // std::vector<DatasetWithParamTag>
+        const auto& dataset_param_list = peer_dataset_map_it->second;
         for (auto &dataset_param : dataset_param_list) {
             bool is_client = false;
             if (dataset_param.second == "clientData") {
                 is_client = true;
             }
-            std::string dest_node_address(
-                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-            DLOG(INFO) << "dest_node_address: " << dest_node_address;
+            //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
+            std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
+                VLOG(5) << "duplicate request for same destination, avoid";
+                continue;
+            }
+            duplicate_filter.emplace(dest_node_address);
+            VLOG(5) << "dest_node_address: " << dest_node_address;
 
             thrds.emplace_back(std::thread(node_push_psi_task,
                                            pair.first,              // node_id

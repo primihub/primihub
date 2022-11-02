@@ -24,46 +24,51 @@ datasets:
   # ABY3 LR test case datasets
   - description: "train_party_1"
     model: "csv"
-    source: "data/train_party_1.csv" 
+    source: "data/train_party_1.csv"
   - description: "test_party_1"
     model: "csv"
-    source: "data/test_party_1.csv" 
-  
+    source: "data/test_party_1.csv"
+
   # MNIST test case datasets
   - description: "test_party_1_self"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1" 
+    source: "data/falcon/dataset/MNIST/input_1"
   - description: "test_party_1_next"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2" 
-  
+    source: "data/falcon/dataset/MNIST/input_2"
+
   # PIR test case dataset
   - description: "pir_server_data"
     model: "csv"
     source: "data/pir_server.csv"
-  
+
   # PSI test case dataset
   - description: "psi_server_data"
     model: "csv"
     source: "data/server_e.csv"
 
+  - description: "psi_server_data_db"
+    model: "sqlite"
+    table_name: "psi_server_data"
+    source: "data/server_e.db3"
+
   #  FL xgb test case datasets
   - description: "label_dataset"
     model: "csv"
-    source: "data/FL/wisconsin_host.data"   
+    source: "data/FL/wisconsin_host.data"
   - description: "test_dataset"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
 
 
-localkv: 
+localkv:
   model: "leveldb"
   path: "./localdb/node1"
 
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmPtanp6tR1up2ofKSeb64DigJfT5C62i8d93YhjsMRkJF"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmaoqnKLY74VdY4P4Ujqyja3eZHy9xX7Q3tQaLWLcvuqHp"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8887"
   dht_get_value_timeout:  60

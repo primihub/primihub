@@ -41,16 +41,21 @@ void ServerTaskBase::setTaskParam(const Params *params) {
 }
 
 int ServerTaskBase::loadDatasetFromSQLite(const std::string& conn_str, int data_col,
-		                  std::vector<std::string>& col_array,
-                          int64_t max_num) {
-    //
-    std::string nodeaddr("test address"); // TODO
+		                  std::vector<std::string>& col_array, int64_t max_num) {
+    std::string nodeaddr("localhost"); // TODO
     // std::shared_ptr<DataDriver>
-    auto driver = DataDirverFactory::getDriver("CSV", nodeaddr);
+    auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
+    if (driver == nullptr) {
+        LOG(ERROR) << "create sqlite db driver failed";
+        return -1;
+    }
     // std::shared_ptr<Cursor> &cursor
     auto& cursor = driver->read(conn_str);
     // std::shared_ptr<Dataset>
     auto ds = cursor->read();
+    if (ds == nullptr) {
+        return -1;
+    }
     auto table = std::get<std::shared_ptr<Table>>(ds->data);
     int num_col = table->num_columns();
     if (num_col < data_col) {

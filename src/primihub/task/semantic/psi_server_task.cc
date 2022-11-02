@@ -64,6 +64,7 @@ int PSIServerTask::loadDataset() {
     } else {
         driver_type = dataset_path_;
     }
+    VLOG(5) << "driver_type: " << driver_type;
     // current we supportes [csv, sqlite] as dataset
     int ret = 0;
     if (match_word == driver_type) {

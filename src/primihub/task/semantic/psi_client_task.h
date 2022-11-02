@@ -78,15 +78,14 @@ private:
     std::string dataset_path_;
     std::string result_file_path_;
     bool reveal_intersection_;
-    std::vector <std::string> elements_;
-    std::vector <std::string> result_;
+    std::vector<std::string> elements_;
+    std::vector<std::string> result_;
 
     std::string server_address_;
     std::string server_dataset_;
     ParamValue server_index_;
     bool sync_result_to_server{false};
     std::string server_result_path;
-
 };
 
 } // namespace primihub::task

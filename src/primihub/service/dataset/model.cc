@@ -102,7 +102,7 @@ namespace primihub::service {
         this->driver_type =  dataset->getDataDriver()->getDriverType();
         auto nodelet_addr = dataset->getDataDriver()->getNodeletAddress();
         this->data_url =  nodelet_addr + ":" + dataset->getDataDriver()->getDataURL(); // TODO string connect node address
-        LOG(ERROR) << "this->data_url_this->data_url: " << this->data_url;
+        VLOG(5) << "data_url: " << this->data_url;
     }
 
     DatasetMeta::DatasetMeta(const std::string& json) {

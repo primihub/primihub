@@ -43,40 +43,6 @@ void CSVCursor::close() {
   // TODO
 }
 
-// std::shared_ptr<primihub::Dataset> CSVCursor::readDataMeta() {
-//   arrow::io::IOContext io_context = arrow::io::default_io_context();
-//   arrow::fs::LocalFileSystem local_fs(
-//       arrow::fs::LocalFileSystemOptions::Defaults());
-//   auto result_ifstream = local_fs.OpenInputStream(filePath);
-//   if (!result_ifstream.ok()) {
-//     std::cout << "Failed to open file: " << filePath << std::endl;
-//     return nullptr; // TODO throw exception
-//   }
-//   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
-
-//   auto read_options = arrow::csv::ReadOptions::Defaults();
-//   auto parse_options = arrow::csv::ParseOptions::Defaults();
-//   auto convert_options = arrow::csv::ConvertOptions::Defaults();
-
-//   // Instantiate TableReader from input stream and options
-//   auto maybe_reader = arrow::csv::TableReader::Make(
-//       io_context, input, read_options, parse_options, convert_options);
-//   if (!maybe_reader.ok()) {
-//     // TODO Handle TableReader instantiation error...
-//   }
-//   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
-
-//   // Read table from CSV file
-//   auto maybe_table = reader->Read();
-//   if (!maybe_table.ok()) {
-//     // TODO Handle CSV read error
-//     // (for example a CSV syntax error or failed type conversion)
-//   }
-//   std::shared_ptr<arrow::Table> table = *maybe_table;
-//   auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
-//   return dataset;
-// }
-
 // read all data from csv file
 std::shared_ptr<primihub::Dataset> CSVCursor::read() {
 

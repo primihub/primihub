@@ -24,14 +24,6 @@
 namespace primihub {
 class SQLiteDriver;
 
-// class SQLiteConnector : public DBConnector {
-//   public:
-//     SQLiteConnector(const std::string& db_path);
-//     ~SQLiteConnector();
-//   private:
-//     SQLite::Database db_conntion;
-// };
-
 class SQLiteCursor : public Cursor {
 public:
   SQLiteCursor(const std::string& sql, std::shared_ptr<SQLiteDriver> driver);
@@ -40,26 +32,42 @@ public:
   std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
   int write(std::shared_ptr<primihub::Dataset> dataset) override;
   void close() override;
+
  protected:
-  enum class SQLType : int8_t{
+  enum class sql_type_t : int8_t{
     STRING = 0,
     INT,
+    INT64,
     FLOAT,
     DOUBLE,
     UNKONW,
   };
   struct TypeContainer {
-    explicit TypeContainer(SQLType col_type) : col_type_(col_type) {}
+    explicit TypeContainer(sql_type_t col_type) : col_type_(col_type) {}
     std::vector<std::string> string_values;
     std::vector<float> float_values;
     std::vector<double> double_values;
     std::vector<int64_t> int_values;
-    SQLType col_type_;
+    sql_type_t col_type_;
   };
+  sql_type_t get_sql_type_by_type_name(const std::string& type_name) {
+    auto it = sql_type_name_to_enum.find(type_name);
+    if (it != sql_type_name_to_enum.end()) {
+      return it->second;
+    }
+    return sql_type_t::UNKONW;
+  }
+
  private:
   std::string sql_;
   unsigned long long offset = 0;
   std::shared_ptr<SQLiteDriver> driver_{nullptr};
+  std::map<std::string, sql_type_t> sql_type_name_to_enum {
+    {"TEXT", sql_type_t::STRING},
+    {"INTEGER", sql_type_t::INT64},
+    {"INT", sql_type_t::INT},
+    {"DOUBLE", sql_type_t::DOUBLE},
+  };
 };
 
 class SQLiteDriver : public DataDriver, public std::enable_shared_from_this<SQLiteDriver> {

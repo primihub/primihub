@@ -48,59 +48,55 @@ SQLiteCursor::read() {
   std::shared_ptr<arrow::Table> table{nullptr};
   auto& db_connector = this->driver_->getDBConnector();
   SQLite::Statement sql_query(*db_connector, sql_);
-  VLOG(5) << "11111111111111: ";
   std::map<std::string, std::unique_ptr<TypeContainer>> query_result;
-  std::vector<std::tuple<std::string, SQLType>> col_metas;
-  bool col_meta_collected;
+  std::vector<std::tuple<std::string, sql_type_t>> col_metas;
+  bool col_meta_collected{false};
   std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
   while (sql_query.executeStep()) {
     for (size_t i = 0; i < sql_query.getColumnCount(); i++) {
       std::string col_type = sql_query.getColumnDeclaredType(i);
       auto col_name = sql_query.getColumnOriginName(i);
       if (!col_meta_collected) {
-        VLOG(5) << "33333333333333: [" << col_type << "] colnumcount: " << sql_query.getColumnCount();
-        SQLType sql_col_type{SQLType::UNKONW};
-        if (col_type == "TEXT") {
-          VLOG(5) << "4444444 string: ";
-          sql_col_type = SQLType::STRING;
+        sql_type_t sql_col_type = this->get_sql_type_by_type_name(col_type);
+        switch (sql_col_type) {
+        case sql_type_t::STRING:
           col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
           result_schema_filed.push_back(arrow::field(col_name, arrow::binary()));
-        } else if (col_type == "INT") {
-          VLOG(5) << "4444444 int: ";
-          sql_col_type = SQLType::INT;
+          break;
+        case sql_type_t::INT:
           col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
           result_schema_filed.push_back(arrow::field(col_name, arrow::int64()));
-        } else if (col_type == "DOUBLE") {
-          VLOG(5) << "4444444 double: ";
-          sql_col_type = SQLType::DOUBLE;
+          break;
+        case sql_type_t::DOUBLE:
           col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
           result_schema_filed.push_back(arrow::field(col_name, arrow::float64()));
+          break;
+        default:
+          break;
         }
       }
+      // process data
       switch (std::get<1>(col_metas[i])) {
-      case SQLType::STRING:
-      {
+      case sql_type_t::STRING: {
         std::string col_value = sql_query.getColumn(i);
         if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] = std::make_unique<TypeContainer>(SQLType::STRING);
+          query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::STRING);
         }
         query_result[col_name]->string_values.emplace_back(std::move(col_value));
       }
       break;
-      case SQLType::INT:
-      {
+      case sql_type_t::INT: {
         int64_t col_value = sql_query.getColumn(i);
         if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] = std::make_unique<TypeContainer>(SQLType::INT);
+          query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::INT);
         }
         query_result[col_name]->int_values.emplace_back(col_value);
       }
       break;
-      case SQLType::DOUBLE:
-      {
+      case sql_type_t::DOUBLE: {
         double col_value = sql_query.getColumn(i);
         if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] = std::make_unique<TypeContainer>(SQLType::DOUBLE);
+          query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::DOUBLE);
 
         }
         query_result[col_name]->double_values.emplace_back(col_value);
@@ -119,7 +115,7 @@ SQLiteCursor::read() {
     auto& col_name = std::get<0>(col_metas[i]);
     auto& col_type = std::get<1>(col_metas[i]);
     switch (col_type) {
-    case SQLType::STRING:{
+    case sql_type_t::STRING:{
       arrow::StringBuilder builder;
       auto& string_values = query_result[col_name]->string_values;
       std::shared_ptr<arrow::Array> array;
@@ -128,7 +124,7 @@ SQLiteCursor::read() {
       array_data.push_back(std::move(array));
     }
     break;
-    case SQLType::INT:{
+    case sql_type_t::INT:{
       arrow::NumericBuilder<arrow::Int64Type> builder;
       auto& int_values = query_result[col_name]->int_values;
       std::shared_ptr<arrow::Array> array;
@@ -137,7 +133,7 @@ SQLiteCursor::read() {
       array_data.push_back(std::move(array));
     }
     break;
-    case SQLType::DOUBLE: {
+    case sql_type_t::DOUBLE: {
       arrow::NumericBuilder<arrow::DoubleType> builder;
       auto& double_values = query_result[col_name]->double_values;
       std::shared_ptr<arrow::Array> array;
@@ -184,8 +180,14 @@ std::shared_ptr<Cursor>& SQLiteDriver::initCursor(const std::string& conn_str) {
   auto& db_path = conn_info[CONN_FIELDS::DB_PATH];
   db_path_ = db_path;
   std::string& table_name = conn_info[CONN_FIELDS::TABLE_NAME];
-  LOG(ERROR) << "db_path: " << db_path << " table_name: " << table_name << " conn_info size: " << conn_info.size();
-  this->db_connector = std::make_unique<SQLite::Database>(db_path);
+  VLOG(5) << "db_path: " << db_path << " table_name: " << table_name << " conn_info size: " << conn_info.size();
+  try {
+    this->db_connector = std::make_unique<SQLite::Database>(db_path);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "create cursor failed: " << e.what();
+    return getCursor();  // nullptr
+  }
+
   std::string& query_condition = conn_info[CONN_FIELDS::QUERY_CONDITION];
   std::string sql_str = "select ";
   if (query_condition.empty()) {

@@ -44,7 +44,6 @@ namespace primihub {
 class Dataset;
 class Cursor {
   public:
-    // virtual std::shared_ptr<primihub::Dataset> readDataMeta(const std::string& data_url) = 0;
     virtual std::shared_ptr<primihub::Dataset> read() = 0;
     virtual std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit) = 0;
     virtual int write(std::shared_ptr<primihub::Dataset> dataset) = 0;
@@ -66,7 +65,7 @@ class DataDriver {
 
   protected:
     void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }
-    std::shared_ptr<Cursor> cursor;
+    std::shared_ptr<Cursor> cursor{nullptr};
     std::string driver_type;
     std::string nodelet_address;
 };

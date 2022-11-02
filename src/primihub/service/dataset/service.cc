@@ -24,7 +24,6 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
-#include "nlohmann/json.hpp"
 
 using namespace std::chrono_literals;
 
@@ -167,7 +166,6 @@ namespace primihub::service {
                     }
                     source = dataset_type + "#" + source;
                 }
-                LOG(ERROR) << "sourcesourcesourcesourcesource: " << source;
                 [[maybe_unused]] auto cursor = driver->read(source);
                 DatasetMeta meta;
                 newDataset(driver, dataset["description"].as<std::string>(), meta);
@@ -324,17 +322,7 @@ namespace primihub::service {
                                     auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
                                     auto k = _meta->getDescription();
                                     VLOG(5) << "Fount remote meta key: " << k;
-                                    {
-                                        meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
-                                    }
-                                    // // std::lock_guard<std::mutex> lck(meta_map_mtx);
-                                    // if (meta_map_mtx.try_lock_for(std::chrono::milliseconds(1000))) {
-
-                                    // } else {
-                                    //     LOG(ERROR) << "Fount remote meta key: " << k << " mutex get lock failed";
-                                    // }
-                                    // meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
-                                    // meta_map[k] = std::make_pair(_meta, dataset_tag);
+                                    meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
                                 } catch (std::exception& e) {
                                     LOG(ERROR) << "<< Get meta failed: " << e.what();
                                 }
@@ -351,7 +339,7 @@ namespace primihub::service {
                 }
             }
             if (meta_map.size() < datasets_with_tag.size()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             } else {
                 break;
             }
@@ -360,8 +348,6 @@ namespace primihub::service {
             return outcome::success();
         }
         for (auto& meta : meta_map) {
-            LOG(ERROR) << "meta.second.first: " << meta.second.first
-                << " meta.second.second: " << meta.second.second;
             meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));
         }
         handler(meta_list);
