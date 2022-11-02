@@ -40,8 +40,36 @@ void ServerTaskBase::setTaskParam(const Params *params) {
     params_.CopyFrom(*params);
 }
 
-int ServerTaskBase::loadDatasetFromCSV(std::string &filename, int data_col,
-                                       std::vector <std::string> &col_array,
+int ServerTaskBase::loadDatasetFromSQLite(const std::string& conn_str, int data_col,
+		                  std::vector<std::string>& col_array,
+                          int64_t max_num) {
+    //
+    std::string nodeaddr("test address"); // TODO
+    // std::shared_ptr<DataDriver>
+    auto driver = DataDirverFactory::getDriver("CSV", nodeaddr);
+    // std::shared_ptr<Cursor> &cursor
+    auto& cursor = driver->read(conn_str);
+    // std::shared_ptr<Dataset>
+    auto ds = cursor->read();
+    auto table = std::get<std::shared_ptr<Table>>(ds->data);
+    int num_col = table->num_columns();
+    if (num_col < data_col) {
+        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
+        return -1;
+    }
+    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
+    for (int64_t i = 0; i < array->length(); i++) {
+        if (max_num > 0 && max_num == i) {
+            break;
+        }
+        col_array.push_back(array->GetString(i));
+    }
+    VLOG(5) << "psi server loaded data records: " << col_array.size();
+    return array->length();
+}
+
+int ServerTaskBase::loadDatasetFromCSV(const std::string& filename, int data_col,
+                                       std::vector<std::string> &col_array,
                                        int64_t max_num) {
     std::string nodeaddr("test address"); // TODO
     std::shared_ptr<DataDriver> driver =
@@ -67,7 +95,7 @@ int ServerTaskBase::loadDatasetFromCSV(std::string &filename, int data_col,
     return array->length();
 }
 
-int ServerTaskBase::loadDatasetFromTXT(std::string &filename, 
+int ServerTaskBase::loadDatasetFromTXT(std::string &filename,
                                        std::vector <std::string> &col_array) {
     LOG(INFO) << "loading file ...";
     std::ifstream infile;

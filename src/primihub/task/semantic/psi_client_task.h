@@ -66,11 +66,10 @@ private:
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
                             std::vector <std::string> &col_array);
+    int _LoadDatasetFromSQLite(std::string &conn_str, int data_col,
+                                std::vector <std::string> &col_array);
     int _GetIntsection(const std::unique_ptr<PsiClient> &client,
                        ExecuteTaskResponse & taskResponse);
-
-
-
     const std::string node_id_;
     const std::string job_id_;
     const std::string task_id_;

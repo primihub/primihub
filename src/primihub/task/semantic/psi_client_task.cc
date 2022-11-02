@@ -70,6 +70,29 @@ int PSIClientTask::_LoadParams(Task &task) {
     return 0;
 }
 
+int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, std::vector<std::string>& col_array) {
+    //
+    std::string nodeaddr{"localhost"};
+    // std::shared_ptr<DataDriver>
+    auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
+    auto& cursor = driver->read(conn_str);
+    auto ds = cursor->read();
+    auto table = std::get<std::shared_ptr<Table>>(ds->data);
+    int col_count = table->num_columns();
+    if(col_count < data_col) {
+        LOG(ERROR) << "psi dataset colunum number is smaller than data_col, "
+            << "dataset total colum: " << col_count
+            << "expected col index: " << data_col;
+        return -1;
+    }
+    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
+    for (int64_t i = 0; i < array->length(); i++) {
+        col_array.push_back(array->GetString(i));
+    }
+    VLOG(0) << "loaded records number: " << col_array.size();
+    return col_array.size();
+}
+
 int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
                         int data_col,
                         std::vector <std::string> &col_array) {
@@ -95,10 +118,24 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
 }
 
 int PSIClientTask::_LoadDataset(void) {
-    int ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    // file reading error or file empty
+    // TODO fixme trick method, search sqlite as keyword and if find then laod data from sqlite
+    std::string match_word{"sqlite"};
+    std::string driver_type;
+    if (dataset_path_.size() > match_word.size()) {
+        driver_type = dataset_path_.substr(0, match_word.size());
+    } else {
+        driver_type = dataset_path_;
+    }
+    // current we supportes only two type of strage type [csv, sqlite] as dataset
+    int ret = 0;
+    if (match_word == driver_type) {
+        ret = _LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+    } else {
+        ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
+    }
+    // load datasets encountes error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi client failed.";
+        LOG(ERROR) << "Load dataset for psi client failed. dataset size: " << ret;
         return -1;
     }
     return 0;

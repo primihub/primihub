@@ -45,10 +45,10 @@ public:
     Params* getTaskParam();
 
 protected:
-    int loadDatasetFromCSV(std::string &filename, int data_col,
-		           std::vector <std::string> &col_array,
-			   int64_t max_num = 0);
-
+    int loadDatasetFromCSV(const std::string &filename, int data_col,
+		           std::vector <std::string> &col_array, int64_t max_num = 0);
+    int loadDatasetFromSQLite(const std::string& conn_str, int data_col,
+		           std::vector<std::string>& col_array, int64_t max_num = 0);
     int loadDatasetFromTXT(std::string &filename,
 		           std::vector <std::string> &col_array);
 

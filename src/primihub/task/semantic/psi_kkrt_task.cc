@@ -139,6 +139,26 @@ int PSIKkrtTask::_LoadDataset(void) {
         return -1;
     }
     return 0;
+    // std::string match_word{"sqlite"};
+    // std::string drivet_type;
+    // if (dataset_path_.size() > match_word.size()) {
+    //     driver_type = dataset_path_.substr(0, match_word.size());
+    // } else {
+    //     driver_type = dataset_path_;
+    // }
+    // // current we supportes [csv, sqlite] as dataset
+    // int ret = 0;
+    // if (match_word == driver_type) {
+    //     ret = LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+    // } else {
+    //     ret = loadDatasetFromCSV(dataset_path_, data_index_, elements_);
+    // }
+    //  // file reading error or file empty
+    // if (ret <= 0) {
+    //     LOG(ERROR) << "Load dataset for psi server failed. dataset size: " << ret;
+    //     return -1;
+    // }
+    // return 0;
 }
 
 #ifndef __APPLE__

@@ -68,7 +68,9 @@ private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
-                            std::vector <std::string> &col_array);
+                            std::vector<std::string>& col_array);
+    // int _LoadDatasetFromSQLite(std::string& conn_str, int data_col,
+    //                         std::vector<std::string>& col_array);
 #ifndef __APPLE__
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
