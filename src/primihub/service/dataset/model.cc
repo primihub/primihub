@@ -16,8 +16,9 @@
 
 
 #include <string>
-#include <sstream> // string stream 
-#include <iterator> // ostream_iterator 
+#include <sstream> // string stream
+#include <iterator> // ostream_iterator
+#include <glog/logging.h>
 #include <arrow/type.h>
 #include <libp2p/multi/content_identifier_codec.hpp>
 
@@ -30,7 +31,7 @@ namespace primihub {
 }
 namespace primihub::service {
 
-    
+
 
     // ======== DatasetSchema ========
 
@@ -88,12 +89,12 @@ namespace primihub::service {
     // Constructor from local dataset object.
     DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
                              const std::string & description,
-                             const DatasetVisbility &visibility) 
+                             const DatasetVisbility &visibility)
                             : visibility(visibility) {
-        
+
         SchemaConstructorParamType arrowSchemaParam = std::get<0>(dataset->data)->schema(); // TODO schema may not be available
-        this->data_type = DatasetType::TABLE;   // FIXME only support table now               
-        this->schema = NewDatasetSchema(data_type, arrowSchemaParam);     
+        this->data_type = DatasetType::TABLE;   // FIXME only support table now
+        this->schema = NewDatasetSchema(data_type, arrowSchemaParam);
         this->total_records = std::get<0>(dataset->data)->num_rows();
         // TODO Maybe description is duplicated with other dataset?
         this->id = DatasetId(description);
@@ -101,6 +102,7 @@ namespace primihub::service {
         this->driver_type =  dataset->getDataDriver()->getDriverType();
         auto nodelet_addr = dataset->getDataDriver()->getNodeletAddress();
         this->data_url =  nodelet_addr + ":" + dataset->getDataDriver()->getDataURL(); // TODO string connect node address
+        LOG(ERROR) << "this->data_url_this->data_url: " << this->data_url;
     }
 
     DatasetMeta::DatasetMeta(const std::string& json) {
@@ -123,13 +125,13 @@ namespace primihub::service {
         return ss.str();
     }
 
-    
+
     void DatasetMeta::fromJSON(const std::string &json)
     {
         nlohmann::json oJson = nlohmann::json::parse(json);
-        
+
         auto sid = oJson["id"].get<std::string>();
-        auto _id_data = libp2p::multi::ContentIdentifierCodec::encode(libp2p::multi::ContentIdentifierCodec::fromString(sid).value());    
+        auto _id_data = libp2p::multi::ContentIdentifierCodec::encode(libp2p::multi::ContentIdentifierCodec::fromString(sid).value());
         this->id.data = _id_data.value();
 
         this->data_url = oJson["data_url"].get<std::string>();

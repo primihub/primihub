@@ -19,28 +19,31 @@
 
 #include <memory>
 #include <boost/algorithm/string.hpp>
-
-#include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/data_store/sqlite/sqlite_driver.h"
 
 namespace primihub {
 class DataDirverFactory {
   public:
     static std::shared_ptr<DataDriver>
-    getDriver(const std::string &dirverName, const std::string &nodeletAddr) {
-        if ( boost::to_upper_copy(dirverName) == "CSV" ) {
+    getDriver(const std::string &dirverName, const std::string& nodeletAddr) {
+        if (boost::to_upper_copy(dirverName) == "CSV" ) {
             auto csvDriver = std::make_shared<CSVDriver>(nodeletAddr);
             return std::dynamic_pointer_cast<DataDriver>(csvDriver);
 
         } else if (dirverName == "HDFS") {
             // return new HDFSDriver(dirverName);
             // TODO not implemented yet
+        } else if (boost::to_upper_copy(dirverName) == "SQLITE" ) {
+            return std::make_shared<SQLiteDriver>(nodeletAddr);
         } else {
             throw std::invalid_argument(
                 "[DataDirverFactory]Invalid dirver name");
         }
     }
 };
+
 } // namespace primihub
 
 #endif // SRC_PRIMIHUB_DATA_STORE_FACTORY_H_

@@ -65,7 +65,7 @@ void set_psi_request_param(const std::string &node_id,
     if (!is_client)
         return;
 
-    
+
     // set server node dataset info
     // current psi task for one server with one dataset
     std::string server_address = "";
@@ -97,7 +97,7 @@ void set_psi_request_param(const std::string &node_id,
         pv.set_var_type(VarType::STRING);
         pv.set_value_string(dataset_path);
         (*param_map)[server_address] = pv;
-        DLOG(INFO) << "📤 push task dataset : " 
+        DLOG(INFO) << "📤 push task dataset : "
                    << server_address << ", " << dataset_path;
         break;
     }
@@ -195,7 +195,7 @@ void node_push_psi_task(const std::string &node_id,
         LOG(ERROR) << "psiTag is set error.";
         return ;
     }
-   
+
     // send request
     LOG(INFO) << "dest node " << dest_node_address;
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
@@ -265,6 +265,9 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
         }
 
         std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+        for (const auto& item : dataset_param_list) {
+            LOG(ERROR) << "xxxxxxxxxx key: " << std::get<0>(item) << " value: " << std::get<1>(item);
+        }
         for (auto &dataset_param : dataset_param_list) {
             bool is_client = false;
             if (dataset_param.second == "clientData") {

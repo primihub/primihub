@@ -24,7 +24,7 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
-
+#include "nlohmann/json.hpp"
 
 using namespace std::chrono_literals;
 
@@ -57,8 +57,8 @@ namespace primihub::service {
                                 std::shared_ptr<primihub::DataDriver> driver,
                                 const std::string& description, // TODO put description in meta
                                 DatasetMeta& meta) {
-
         // Read data using driver for get dataset & datameta
+        // TODO just get meta info from dataset
         auto dataset = driver->getCursor()->read();
         DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
         meta = _meta;
@@ -146,21 +146,28 @@ namespace primihub::service {
      * @param config_file_path [input]: Datasets configuration file path
      *
      */
-    void DatasetService::loadDefaultDatasets(const std::string&  config_file_path) {
+    void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
         LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
         YAML::Node config = YAML::LoadFile(config_file_path);
         // strcat nodelet address
+        // format: node_name:ip:port
         std::string nodelet_addr = config["node"].as<std::string>() + ":"
-        + config["location"].as<std::string>() + ":"
-        + std::to_string(config["grpc_port"].as<uint64_t>());
-
+            + config["location"].as<std::string>() + ":"
+            + std::to_string(config["grpc_port"].as<uint64_t>());
         if (config["datasets"]) {
-            for (auto dataset : config["datasets"]) {
-                auto driver = DataDirverFactory::getDriver(
-                    std::move(dataset["model"].as<std::string>()),
-                    nodelet_addr);
-
-                auto source = dataset["source"].as<std::string>();
+            for (const auto& dataset : config["datasets"]) {
+                auto dataset_type = dataset["model"].as<std::string>();
+                auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr);
+                std::string source = dataset["source"].as<std::string>();
+                if (dataset_type == "sqlite") {
+                    auto table_name = dataset["table_name"].as<std::string>();
+                    source.append("#").append(table_name).append("#");
+                    if (dataset["query_index"]) {
+                        source.append(dataset["query_index"].as<std::string>());
+                    }
+                    source = dataset_type + "#" + source;
+                }
+                LOG(ERROR) << "sourcesourcesourcesourcesource: " << source;
                 [[maybe_unused]] auto cursor = driver->read(source);
                 DatasetMeta meta;
                 newDataset(driver, dataset["description"].as<std::string>(), meta);
@@ -344,7 +351,7 @@ namespace primihub::service {
                 }
             }
             if (meta_map.size() < datasets_with_tag.size()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
             } else {
                 break;
             }
@@ -353,6 +360,8 @@ namespace primihub::service {
             return outcome::success();
         }
         for (auto& meta : meta_map) {
+            LOG(ERROR) << "meta.second.first: " << meta.second.first
+                << " meta.second.second: " << meta.second.second;
             meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));
         }
         handler(meta_list);

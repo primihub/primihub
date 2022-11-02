@@ -124,7 +124,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
 void ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<LanguageParser> python_parser) {
-    
+
     std::vector<NodeWithRoleTag> _peers_with_role_tag;
     PeerContextMap _peer_context_map;
 
@@ -234,7 +234,7 @@ void ProtocolSemanticParser::schedulePsiTask(
 }
 
 void ProtocolSemanticParser::metasToDatasetAndOwner(
-    const std::vector<DatasetMetaWithParamTag> &metas_with_tag, 
+    const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
     std::map<std::string, std::string> &dataset_owner) {
   for (auto &pair: metas_with_tag) {
       auto meta = pair.first;
@@ -245,11 +245,11 @@ void ProtocolSemanticParser::metasToDatasetAndOwner(
       DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
       dataset_owner.insert(std::make_pair(meta->getDescription(), node_id));
 
-      LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is " 
+      LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
                 << node_id << ".";
   }
 }
- 
+
 
 int ProtocolSemanticParser::transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
                                                 PushTaskRequest &taskRequest) {
@@ -352,7 +352,7 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     int node_port;
     std::string data_url = meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-    
+
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
@@ -397,8 +397,8 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     for (auto &peer_with_tag : peers_with_tag) {
       auto &node = peer_with_tag.first;
       count ++;
-      LOG(INFO) << "Node content: node_id " << node.node_id() << ", role " 
-                << peer_with_tag.second << ", ip " << node.ip() << ", port " 
+      LOG(INFO) << "Node content: node_id " << node.node_id() << ", role "
+                << peer_with_tag.second << ", ip " << node.ip() << ", port "
                 << node.port() << ", data port " << node.data_port() << ".";
     }
 
@@ -421,7 +421,7 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     int node_port;
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-  
+
     Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);

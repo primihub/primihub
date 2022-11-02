@@ -47,6 +47,7 @@ int PSIClientTask::_LoadParams(Task &task) {
         data_index_ = param_map["clientIndex"].value_int32();
         psi_type_ = param_map["psiType"].value_int32();
         dataset_path_ = param_map["clientData"].value_string();
+        LOG(ERROR) << "clientData: " << dataset_path_;
         result_file_path_ = param_map["outputFullFilename"].value_string();
         auto it = param_map.find("sync_result_to_server");
         if (it != param_map.end()) {

@@ -38,44 +38,38 @@
 #include "src/primihub/data_store/dataset.h"
 
 
-namespace primihub
-{
+namespace primihub {
+// ====== Data Store Driver ======
 
+class Dataset;
+class Cursor {
+  public:
+    // virtual std::shared_ptr<primihub::Dataset> readDataMeta(const std::string& data_url) = 0;
+    virtual std::shared_ptr<primihub::Dataset> read() = 0;
+    virtual std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit) = 0;
+    virtual int write(std::shared_ptr<primihub::Dataset> dataset) = 0;
+    virtual void close() = 0;
+};
 
+class DataDriver {
+  public:
+    explicit DataDriver(const std::string& nodelet_addr) {
+      nodelet_address = nodelet_addr;
+    }
+    virtual ~DataDriver() { };
+    virtual std::string getDataURL() const = 0;
+    virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
+    virtual std::shared_ptr<Cursor>& initCursor(const std::string &dataURL) = 0;
+    std::shared_ptr<Cursor>& getCursor();
+    std::string getDriverType() const;
+    std::string getNodeletAddress() const;
 
-  // ====== Data Store Driver ======
-
-  class Dataset;
-  class Cursor {
-    public:
-      virtual std::shared_ptr<primihub::Dataset> read() = 0;
-      virtual std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit) = 0;
-      virtual int write(std::shared_ptr<primihub::Dataset> dataset) = 0;
-      virtual void close() = 0;
-  };
-
-
-  class DataDriver
-  {
-    public:
-      explicit DataDriver(const std::string& nodelet_addr) {
-        nodelet_address = nodelet_addr;
-      }
-      virtual ~DataDriver() { };
-      virtual std::string getDataURL() const = 0;
-      virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
-      virtual std::shared_ptr<Cursor>& initCursor(const std::string &dataURL) = 0;
-  
-      std::shared_ptr<Cursor>& getCursor();
-      std::string getDriverType() const;
-      std::string getNodeletAddress() const;
-
-    protected:  
-      void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }
-      std::shared_ptr<Cursor> cursor;
-      std::string driver_type;
-      std::string nodelet_address;
-  };
+  protected:
+    void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }
+    std::shared_ptr<Cursor> cursor;
+    std::string driver_type;
+    std::string nodelet_address;
+};
 
 
 } // namespace primihub

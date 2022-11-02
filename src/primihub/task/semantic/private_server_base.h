@@ -38,18 +38,20 @@ public:
     virtual int execute() = 0;
     virtual int loadParams(Params & params) = 0;
     virtual int loadDataset(void) = 0;
-
+    std::shared_ptr<DatasetService>& getDatasetService() {
+        return dataset_service_;
+    }
     void setTaskParam(const Params *params);
     Params* getTaskParam();
-    
+
 protected:
     int loadDatasetFromCSV(std::string &filename, int data_col,
 		           std::vector <std::string> &col_array,
 			   int64_t max_num = 0);
 
-    int loadDatasetFromTXT(std::string &filename, 
+    int loadDatasetFromTXT(std::string &filename,
 		           std::vector <std::string> &col_array);
-                           
+
     Params params_;
     std::shared_ptr<DatasetService> dataset_service_;
 };

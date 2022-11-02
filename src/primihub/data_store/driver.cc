@@ -17,14 +17,10 @@
 
 #include "src/primihub/data_store/driver.h"
 
-
-
 namespace primihub {
-
-
 ///////////////////////////////// DataDriver //////////////////////////////////////////////
-  std::shared_ptr<Cursor>& DataDriver::getCursor() { return cursor; }
-  std::string DataDriver::getDriverType() const { return driver_type; }
-  std::string DataDriver::getNodeletAddress() const { return nodelet_address; }
+std::shared_ptr<Cursor>& DataDriver::getCursor() { return cursor; }
+std::string DataDriver::getDriverType() const { return driver_type; }
+std::string DataDriver::getNodeletAddress() const { return nodelet_address; }
 
 }  // namespace primihub
