@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package primihub.rpc;
 
+enum retcode {
+  SUCCESS = 0;
+  FAIL = 1;
+}
 enum Language {
   PYTHON = 0;
   JAVA = 1;
@@ -44,6 +48,11 @@ enum PsiType {
 enum PsiTag {
   ECDH = 0;
   KKRT = 1;
+}
+
+enum PirType {
+  ID_PIR = 0;
+  KEY_PIR = 1;
 }
 
 message int32_array {

@@ -1,5 +1,4 @@
 #include "src/primihub/operator/aby3_operator.h"
-#include <algorithm>
 #include <glog/logging.h>
 
 namespace primihub {
@@ -91,8 +90,17 @@ void MPCOperator::createShares(const i64Matrix &vals,
 void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 }
+
+void MPCOperator::createShares(i64 val, si64 &dest) {
+  enc.localInt(runtime, val, dest).get();
+}
+
+void MPCOperator::createShares(si64 &dest) {
+  enc.remoteInt(runtime, dest).get();
+}
+
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{val.rows(), val.cols()};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), static_cast<unsigned long long>(val.cols())};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   si64Matrix dest(size[0], size[1]);
@@ -116,7 +124,7 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 
 // only support val is column vector
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
-  std::array<u64, 2> size{val.rows(), bitCount};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), bitCount};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   sbMatrix dest(size[0], size[1]);
@@ -141,6 +149,12 @@ sbMatrix MPCOperator::createBinSharesByShape(u64 pIdx) {
 i64Matrix MPCOperator::revealAll(const si64Matrix &vals) {
   i64Matrix ret(vals.rows(), vals.cols());
   enc.revealAll(runtime, vals, ret).get();
+  return ret;
+}
+
+i64 MPCOperator::revealAll(const si64 &val){
+  i64 ret;
+  enc.revealAll(runtime, val, ret).get();
   return ret;
 }
 
@@ -243,6 +257,15 @@ si64Matrix MPCOperator::MPC_Mul(std::vector<si64Matrix> sharedInt) {
   for (u64 i = 1; i < sharedInt.size(); ++i)
     eval.asyncMul(runtime, prod, sharedInt[i], prod).get();
   return prod;
+}
+
+si64Matrix MPCOperator::MPC_Dot_Mul(const si64Matrix &A, const si64Matrix &B) {
+  if (A.cols() != B.cols() || A.rows() != B.rows())
+    throw std::runtime_error(LOCATION);
+
+  si64Matrix ret(A.rows(), A.cols());
+  eval.asyncDotMul(runtime, A, B, ret).get();
+  return ret;
 }
 
 si64 MPCOperator::MPC_Mul_Const(const i64 &constInt, const si64 &sharedInt) {

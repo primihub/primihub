@@ -63,6 +63,7 @@ public:
     ~PSIKkrtTask() {}
     int execute() override;
     int saveResult(void);
+    int send_result_to_server();
 private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);
@@ -73,7 +74,7 @@ private:
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
-                            
+
     const std::string node_id_;
     const std::string job_id_;
     const std::string task_id_;
@@ -86,6 +87,8 @@ private:
     std::vector <std::string> result_;
 
     std::string host_address_;
+    bool sync_result_to_server{false};
+    std::string server_result_path;
 
 };
 }
