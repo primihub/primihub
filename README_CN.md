@@ -85,6 +85,7 @@ docker run --network=host -it primihub/primihub-node:latest primihub-cli --serve
 * 关于如何编译，请见[编译](http://docs.primihub.com/docs/developer-docs/build)
 * 关于如何贡献代码，请见 [PrimiHub开源社区治理](http://docs.primihub.com/docs/primihub-community)
 
+## [路线图](https://docs.primihub.com/docs/roadmap/)
 
 ## 如何贡献
 如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面随意开启一个新的话题，比如文档、创意、Bug等。
