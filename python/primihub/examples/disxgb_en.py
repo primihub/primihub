@@ -113,7 +113,7 @@ def xgb_host_logic(cry_pri="paillier"):
     data_train = data.loc[:dim_train, :].reset_index(drop=True)
     data_test = data.loc[dim_train:dim, :].reset_index(drop=True)
     label_true = ['Class']
-    y_true = data_test['Class'].values
+    y_true = data_test['Class'].values.flatten()
     data_test = data_test[
         [x for x in data_test.columns if x not in label_true]
     ]
@@ -223,12 +223,15 @@ def xgb_host_logic(cry_pri="paillier"):
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_host.lookup_table_sum, fl)
         y_pre = xgb_host.predict_prob(data_test)
+        y_train_pre = xgb_host.predict_prob(X_host)
+        y_train_pre.to_csv(predict_file_path)
+        y_train_true = Y
+        Y_true = {"train": y_train_true, "test": y_true}
+        Y_pre = {"train": y_train_pre, "test": y_pre}
         if eva_type == 'regression':
-            Regression_eva.get_result(y_true, y_pre, indicator_file_path)
+            Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
         elif eva_type == 'classification':
-            Classification_eva.get_result(y_true, y_pre, indicator_file_path)
-
-        xgb_host.predict_prob(data_test).to_csv(predict_file_path)
+            Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
 
 
 @ph.context.function(role='guest', protocol='xgboost', datasets=['guest_dataset'], port='9000', task_type="regression")
