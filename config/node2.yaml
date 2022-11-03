@@ -20,22 +20,22 @@ location: "127.0.0.1"
 grpc_port: 50052
 
 # load datasets
-datasets: 
+datasets:
   # ABY3 LR test case datasets
   - description: "train_party_2"
     model: "csv"
-    source: "data/train_party_2.csv" 
+    source: "data/train_party_2.csv"
   - description: "test_party_2"
     model: "csv"
-    source: "data/test_party_2.csv" 
-  
+    source: "data/test_party_2.csv"
+
   # MNIST test case datasets
   - description: "test_party_2_self"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2" 
+    source: "data/falcon/dataset/MNIST/input_2"
   - description: "test_party_2_next"
     model: "csv"
-    source: "data/falcon/dataset/MNIST/input_0" 
+    source: "data/falcon/dataset/MNIST/input_0"
 
   #  FL xgb test case datasets
   - description: "xgb_predict_test_data"
@@ -51,17 +51,22 @@ datasets:
   # PSI test caset datasets
   - description: "psi_client_data"
     model: "csv"
-    source: "data/client_e.csv" 
-  
+    source: "data/client_e.csv"
 
-localkv: 
+  # PSI test case datasets for sqlite database
+  - description: "psi_client_data_db"
+    model: "sqlite"
+    table_name: "psi_client_data"
+    source: "data/client_e.db3"
+
+localkv:
   model: "leveldb"
   path: "./localdb/node2"
 
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmPtanp6tR1up2ofKSeb64DigJfT5C62i8d93YhjsMRkJF"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmaoqnKLY74VdY4P4Ujqyja3eZHy9xX7Q3tQaLWLcvuqHp"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
 
   multi_addr: "/ip4/127.0.0.1/tcp/8888"

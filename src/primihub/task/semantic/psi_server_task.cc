@@ -25,7 +25,7 @@ namespace primihub::task {
 
 void initRequest(const PsiRequest * request, Request & psi_request) {
     psi_request.set_reveal_intersection(request->reveal_intersection());
-    std::int64_t num_client_elements = 
+    std::int64_t num_client_elements =
         static_cast<std::int64_t>(request->encrypted_elements().size());
     for (std::int64_t i = 0; i < num_client_elements; i++) {
         psi_request.add_encrypted_elements(request->encrypted_elements()[i]);
@@ -57,10 +57,24 @@ int PSIServerTask::loadParams(Params & params) {
 }
 
 int PSIServerTask::loadDataset() {
-    int ret = loadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    // file reading error or file empty
+    std::string match_word{"sqlite"};
+    std::string driver_type;
+    if (dataset_path_.size() > match_word.size()) {
+        driver_type = dataset_path_.substr(0, match_word.size());
+    } else {
+        driver_type = dataset_path_;
+    }
+    VLOG(5) << "driver_type: " << driver_type;
+    // current we supportes [csv, sqlite] as dataset
+    int ret = 0;
+    if (match_word == driver_type) {
+        ret = loadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+    } else {
+        ret = loadDatasetFromCSV(dataset_path_, data_index_, elements_);
+    }
+     // file reading error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi server failed.";
+        LOG(ERROR) << "Load dataset for psi server failed. dataset size: " << ret;
         return -1;
     }
     return 0;
@@ -79,14 +93,14 @@ int PSIServerTask::execute() {
     Request psi_request;
     initRequest(request_, psi_request);
 
-    std::unique_ptr<PsiServer> server = 
+    std::unique_ptr<PsiServer> server =
         std::move(PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
 
-    std::int64_t num_client_elements = 
+    std::int64_t num_client_elements =
         static_cast<std::int64_t>(psi_request.encrypted_elements().size());
     psi_proto::ServerSetup server_setup =
         std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
-    
+
     psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
 
     std::int64_t num_response_elements =
