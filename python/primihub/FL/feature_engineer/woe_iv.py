@@ -12,6 +12,7 @@ from primihub.dataset import register_dataset
 
 
 class MyServerChannelProxy(ServerChannelProxy):
+
     def __init__(self, port):
         super().__init__(port)
 
@@ -40,7 +41,7 @@ def cal_hist_bins(features, cut_points, label):
 
         less_flag = (features < exp_tmp_point).astype('int').T
         pos_num = np.dot(less_flag, label)
-        neg_num = np.dot(less_flag, 1-label)
+        neg_num = np.dot(less_flag, 1 - label)
         # less_sum = np.sum(less_flag, axis=0)
 
         if i == 0:
@@ -102,8 +103,10 @@ def cut_points(host_max_min, guest_max_min, bins=10):
     return split_points
 
 
-@ph.context.function(role='arbiter', protocol='woe-iv', 
-                     datasets=['train_party_2'], port='9010', 
+@ph.context.function(role='arbiter',
+                     protocol='woe-iv',
+                     datasets=['breast_0'],
+                     port='9010',
                      task_type="feature-engineer")
 def iv_arbiter(bins=15):
     logging.info("Start woe-iv arbiter.")
@@ -148,6 +151,8 @@ def iv_arbiter(bins=15):
     ivs_df = pd.DataFrame(ivs.reshape(1, -1))
     ivs_df.columns = host_max_min['headers']
     logging.info("Global ivs are: {}".format(ivs_df))
+    proxy_client_host.Remote(ivs_df, 'ivs_df')
+    proxy_client_guest.Remote(ivs_df, 'ivs_df')
 
     proxy_client_host.Remote(ivs_df, "global_ivs")
     proxy_client_guest.Remote(ivs_df, "global_ivs")
@@ -155,8 +160,10 @@ def iv_arbiter(bins=15):
     proxy_server.StopRecvLoop()
 
 
-@ph.context.function(role='host', protocol='woe-iv', 
-                     datasets=['train_party_1'], port='9020', 
+@ph.context.function(role='host',
+                     protocol='woe-iv',
+                     datasets=['iv_host'],
+                     port='9020',
                      task_type="feature-engineer")
 def iv_host():
 
@@ -199,7 +206,11 @@ def iv_host():
     max_arr = np.max(data_arr, axis=0)
     min_arr = np.min(data_arr, axis=0)
     proxy_client_arbiter.Remote(
-        {'max_arr': max_arr, 'min_arr': min_arr, 'headers': headers}, "host_max_min")
+        {
+            'max_arr': max_arr,
+            'min_arr': min_arr,
+            'headers': headers
+        }, "host_max_min")
 
     split_points = proxy_server.Get('split_points')
 
@@ -207,9 +218,13 @@ def iv_host():
 
     logging.info('Host bin counts are: {} and {}'.format(
         np.array(pos_cnts), np.array(neg_cnts)))
-    proxy_client_arbiter.Remote({'pos_cnts': np.array(
-        pos_cnts), 'neg_cnts': np.array(neg_cnts)}, 'host_bin_cnts')
+    proxy_client_arbiter.Remote(
+        {
+            'pos_cnts': np.array(pos_cnts),
+            'neg_cnts': np.array(neg_cnts)
+        }, 'host_bin_cnts')
 
+    ivs = proxy_server.Get('ivs_df')
 
     ivs_df = proxy_server.Get("global_ivs")
     logging.info("Global ivs are: {}".format(ivs_df))
@@ -246,8 +261,10 @@ def iv_host():
     register_dataset(params_map["DatasetServiceAddr"], "csv", new_path, new_ds_id) 
 
 
-@ph.context.function(role='guest', protocol='woe-iv', 
-                     datasets=['train_party_0'], port='9030', 
+@ph.context.function(role='guest',
+                     protocol='woe-iv',
+                     datasets=['iv_guest', 'breast_2'],
+                     port='9030',
                      task_type="feature-engineer")
 def iv_guest():
 
@@ -282,8 +299,10 @@ def iv_guest():
     max_arr = np.max(data_arr, axis=0)
     min_arr = np.min(data_arr, axis=0)
 
-    proxy_client_arbiter.Remote(
-        {'max_arr': max_arr, 'min_arr': min_arr}, "guest_max_min")
+    proxy_client_arbiter.Remote({
+        'max_arr': max_arr,
+        'min_arr': min_arr
+    }, "guest_max_min")
 
     split_points = proxy_server.Get('split_points')
 
