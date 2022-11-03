@@ -162,19 +162,22 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py 
-      shell: bash
-    - name: Release copy
-      run : |
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py
         cp ./bazel-bin/node ./bazel-bin/primihub-node
         cp ./bazel-bin/cli ./bazel-bin/primihub-cli
+        chmod u+x ./bazel-bin/primihub-node
+        chmod u+x ./bazel-bin/primihub-cli
+
+        tar czvf primihub-cli-darwin-amd64.tar.gz -C bazel-bin primihub-cli
+        tar czvf primihub-node-darwin-amd64.tar.gz -C bazel-bin primihub-node
+      shell: bash
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
           files: |
-            ./bazel-bin/primihub-node
-            ./bazel-bin/primihub-cli
+            ./primihub-cli-darwin-amd64.tar.gz
+            ./primihub-node-darwin-amd64.tar.gz
   
   docker-image-build-and-publish:
     needs: build-on-ubuntu
