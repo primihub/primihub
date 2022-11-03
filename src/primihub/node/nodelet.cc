@@ -20,7 +20,7 @@
 
 namespace primihub {
 Nodelet::Nodelet(const std::string& config_file_path) {
-    
+
     // Get p2p address from config file
     YAML::Node config = YAML::LoadFile(config_file_path);
     auto bootstrap_nodes = config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
@@ -30,7 +30,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
         + std::to_string(config["grpc_port"].as<uint64_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
-    
+
     // Create and start notify service
     auto notify_server_addr = config["notify_server"].as<std::string>();
     notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr);
@@ -41,9 +41,10 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
     // Wait for p2p node to start
     sleep(3);
-    
+
     // Create local kv storage defined in config file
     auto localkv_c = config["localkv"]["model"].as<std::string>();
+    VLOG(5) << "localkv_c_localkv_c_localkv_c_localkv_c: " << localkv_c ;
     if (localkv_c == "default") {
         local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
     } else if (localkv_c == "leveldb") {
@@ -53,7 +54,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     } else {
        local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
     }
-   
+
     // Init DatasetService with nodelet as stub
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_, nodelet_addr_);
@@ -61,7 +62,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
     auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
     loadConifg(config_file_path, timeout);
-    
+
 }
 
 Nodelet::~Nodelet() {
@@ -81,7 +82,7 @@ std::string Nodelet::getNodeletAddr() {
 void Nodelet::loadConifg(const std::string &config_file_path, unsigned int dht_get_value_timeout) {
     dataset_service_->loadDefaultDatasets(config_file_path);
     dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
-    
+
     // TODO other service load config
 }
 

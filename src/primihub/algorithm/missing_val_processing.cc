@@ -1,28 +1,32 @@
 #include "src/primihub/algorithm/missing_val_processing.h"
-#include <glog/logging.h>
 
-#include "src/primihub/data_store/dataset.h"
-#include "src/primihub/data_store/driver.h"
-
-#include "src/primihub/data_store/csv/csv_driver.h"
-#include "src/primihub/data_store/factory.h"
 #include <arrow/api.h>
 #include <arrow/array.h>
-#include <arrow/result.h>
-
 #include <arrow/io/api.h>
 #include <arrow/io/file.h>
+#include <arrow/result.h>
 #include <arrow/type.h>
-
-#include <iostream>
+#include <glog/logging.h>
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
 #include <parquet/exception.h>
 #include <parquet/stream_reader.h>
+#include <rapidjson/document.h>
+
+#include <iostream>
+
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/data_store/dataset.h"
+#include "src/primihub/data_store/driver.h"
+#include "src/primihub/data_store/factory.h"
+
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
 using arrow::Table;
+
+using namespace rapidjson;
+
 namespace primihub {
 void MissingProcess::_spiltStr(string str, const string &split,
                                std::vector<string> &strlist) {
@@ -105,70 +109,93 @@ MissingProcess::MissingProcess(PartyConfig &config,
     prev_ip_ = node.vm(0).prev().ip();
     prev_port_ = node.vm(0).prev().port();
   }
+
+  node_id_ = config.node_id;
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
-  try {
-    data_file_path_ = param_map["Data_File"].value_string();
-    std::vector<string> tmp1, tmp2;
-    // Correct_Col_Names
-    std::string col_names = param_map["Correct_Col_Names"].value_string();
-    _spiltStr(col_names, ";", correct_col_names);
 
-    // _spiltStr(col_and_owner, ";", tmp1);
-    // for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-    //   int pos = itr->find('-');
-    //   std::string col = itr->substr(0, pos);
-    //   int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-    //   col_and_owner_.insert(make_pair(col, owner));
-    //   LOG(INFO) << col << ":" << owner;
-    // }
-    // LOG(INFO) << col_and_owner;
+  // File path.
+  data_file_path_ = param_map["Data_File"].value_string();
 
-    std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
-    _spiltStr(col_and_dtype, ";", tmp2);
-    for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
-      int pos = itr->find('-');
-      std::string col = itr->substr(0, pos);
-      int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-      col_and_dtype_.insert(make_pair(col, dtype));
-      LOG(INFO) << col << ":" << dtype;
+  // Column dtype.
+  std::string json_str = param_map["ColumnInfo"].value_string();
+
+  Document doc;
+  doc.Parse(json_str.c_str());
+
+  bool found = false;
+  std::string local_dataset;
+  for (Value::ConstMemberIterator iter = doc.MemberBegin();
+       iter != doc.MemberEnd(); iter++) {
+    std::string ds_name = iter->name.GetString();
+    std::string ds_node = param_map[ds_name].value_string();
+    if (ds_node == this->node_id_) {
+      local_dataset = iter->name.GetString();
+      found = true;
     }
-    // LOG(INFO) << col_and_dtype;
-
-    std::string next_name;
-    std::string prev_name;
-    if (party_id_ == 0) {
-      next_name = "01";
-      prev_name = "02";
-    } else if (party_id_ == 1) {
-      next_name = "12";
-      prev_name = "01";
-    } else if (party_id_ == 2) {
-      next_name = "02";
-      prev_name = "12";
-    }
-    mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
-
-    res_name_ = param_map["ResFileName"].value_string();
-  } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load params: " << e.what();
-    return -1;
   }
+
+  if (!found) {
+    // TODO: This request every node has dataset to handle, but sometimes only
+    // two node has dataset to handle, fix it later.
+    std::stringstream ss;
+    ss << "Can't not find dataset belong to " << this->node_id_ << ".";
+    LOG(ERROR) << ss.str();
+    throw std::runtime_error(ss.str());
+  }
+
+  Document doc_ds;
+  auto doc_iter = doc.FindMember(local_dataset.c_str());
+  doc_ds.Swap(doc_iter->value);
+
+  Value &vals = doc_ds["columns"];
+  for (Value::ConstMemberIterator iter = vals.MemberBegin();
+       iter != vals.MemberEnd(); iter++) {
+    std::string col_name = iter->name.GetString();
+    uint32_t col_dtype = iter->value.GetInt();
+    col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
+    LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
+              << iter->value.GetInt() << ".";
+  }
+
+  new_dataset_id_ = doc_ds["newDataSetId"].GetString();
+  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
+
+  std::string next_name;
+  std::string prev_name;
+  if (party_id_ == 0) {
+    next_name = "01";
+    prev_name = "02";
+  } else if (party_id_ == 1) {
+    next_name = "12";
+    prev_name = "01";
+  } else if (party_id_ == 2) {
+    next_name = "02";
+    prev_name = "12";
+  }
+  mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
+
   return 0;
 }
+
 int MissingProcess::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
-  LOG(INFO) << ret;
+
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset for train failed.";
     return -1;
   }
+
+  return 0;
 }
+
 int MissingProcess::initPartyComm(void) {
+  LOG(INFO) << "Begin to init party comm.";
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
+  LOG(INFO) << "Finish to init party comm.";
   return 0;
 }
 
@@ -176,76 +203,132 @@ int MissingProcess::execute() {
   try {
     arrow::Result<std::shared_ptr<Table>> res_table;
     std::shared_ptr<arrow::Table> new_table;
-    std::shared_ptr<arrow::Array> doublearray;
+    std::shared_ptr<arrow::Array> data_array;
     for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end();
          itr++) {
       std::vector<std::string>::iterator t =
           std::find(local_col_names.begin(), local_col_names.end(), itr->first);
       double double_sum = 0;
-      int int_sum = 0;
+      i64 int_sum = 0;
       if (t != local_col_names.end()) {
         int tmp_index = std::distance(local_col_names.begin(), t);
         if (itr->second == 1) {
-          continue;
-        } else if (itr->second == 2) {
-          auto array = std::static_pointer_cast<DoubleArray>(
+          auto array = std::static_pointer_cast<Int64Array>(
               table->column(tmp_index)->chunk(0));
           for (int64_t j = 0; j < array->length(); j++) {
-            double_sum += array->Value(j);
+            int_sum += array->Value(j);
           }
-          double_sum = double_sum / array->length();
-          // MPC compute
-          sf64<D16> sharedFixedInt;
-          mpc_op_exec_->createShares(double_sum, sharedFixedInt);
-          double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-          new_sum = new_sum / 3;
+          auto tmp_array = table->column(tmp_index)->chunk(0);
 
-          int tmp_index = std::distance(local_col_names.begin(), t);
-          auto csv_array = std::static_pointer_cast<DoubleArray>(
-              table->column(tmp_index)->chunk(0));
-          LOG(INFO) << csv_array->length();
-          std::string data_str;
-          std::vector<std::string> tmp1;
-          std::vector<int> null_index;
-
-          data_str = csv_array->ToString();
-          LOG(INFO) << data_str;
-          _spiltStr(data_str, ",", tmp1);
-          for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          for (int i = 0; i < tmp1.size(); i++) {
-            if (tmp1[i].find("null") != tmp1[i].npos) {
-              null_index.push_back(i);
+          int_sum =
+              int_sum / (array->length() - tmp_array->data()->GetNullCount());
+        } else if (itr->second == 2) {
+          // check schema
+          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
+            auto array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(0));
+            for (int64_t j = 0; j < array->length(); j++) {
+              double_sum += array->Value(j);
             }
+            auto tmp_array = table->column(tmp_index)->chunk(0);
+            double_sum = double_sum /
+                         (array->length() - tmp_array->data()->GetNullCount());
+          } else {
+            auto array = std::static_pointer_cast<DoubleArray>(
+                table->column(tmp_index)->chunk(0));
+            for (int64_t j = 0; j < array->length(); j++) {
+              double_sum += array->Value(j);
+            }
+            auto tmp_array = table->column(tmp_index)->chunk(0);
+            double_sum = double_sum /
+                         (array->length() - tmp_array->data()->GetNullCount());
           }
-          std::vector<double> new_col;
+        }
+      }
+      if (itr->second == 1) {
+        si64 sharedInt;
+        LOG(INFO) << "Begin to handle column " << itr->first << ".";
+        LOG(INFO) << "Begin to run MPC sum.";
+        mpc_op_exec_->createShares(int_sum, sharedInt);
+        i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
+        LOG(INFO) << "Finish to run MPC sum.";
+        new_sum = new_sum / 3;
+        if (t != local_col_names.end()) {
+          int tmp_index = std::distance(local_col_names.begin(), t);
+          auto csv_array = std::static_pointer_cast<Int64Array>(
+              table->column(tmp_index)->chunk(0));
+          std::vector<int> null_index;
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          for (int i = 0; i < tmp_array->length(); i++) {
+            if (tmp_array->IsNull(i))
+              null_index.push_back(i);
+          }
+          std::vector<i64> new_col;
           for (int64_t i = 0; i < csv_array->length(); i++) {
             new_col.push_back(csv_array->Value(i));
           }
           for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
             new_col[*itr] = new_sum;
-            LOG(INFO) << *itr;
+          }
+          arrow::Int64Builder int64_builder;
+          int64_builder.AppendValues(new_col);
+          int64_builder.Finish(&data_array);
+
+          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
+
+          auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
+          res_table = table->SetColumn(
+              tmp_index, arrow::field(itr->first, arrow::int64()), ptr_Array);
+          table = res_table.ValueUnsafe();
+        }
+      } else if (itr->second == 2) {
+        sf64<D16> sharedFixedInt;
+        LOG(INFO) << "Begin to handle column " << itr->first << ".";
+        LOG(INFO) << "Begin to run MPC sum.";
+        mpc_op_exec_->createShares(double_sum, sharedFixedInt);
+        double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
+        LOG(INFO) << "Finish to run MPC sum.";
+
+        new_sum = new_sum / 3;
+
+        if (t != local_col_names.end()) {
+          std::vector<double> new_col;
+          int tmp_index = std::distance(local_col_names.begin(), t);
+
+          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
+            auto csv_array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(0));
+
+            for (int64_t j = 0; j < csv_array->length(); j++) {
+              new_col.push_back(csv_array->Value(j));
+            }
+          } else {
+            auto csv_array = std::static_pointer_cast<DoubleArray>(
+                table->column(tmp_index)->chunk(0));
+
+            for (int64_t i = 0; i < csv_array->length(); i++) {
+              new_col.push_back(csv_array->Value(i));
+            }
+          }
+          std::vector<int> null_index;
+          auto tmp_array = table->column(tmp_index)->chunk(0);
+          for (int i = 0; i < tmp_array->length(); i++) {
+            if (tmp_array->IsNull(i))
+              null_index.push_back(i);
+          }
+          for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
+            new_col[*itr] = new_sum;
           }
           arrow::DoubleBuilder double_builder;
           double_builder.AppendValues(new_col);
-          double_builder.Finish(&doublearray);
+          double_builder.Finish(&data_array);
 
-          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(doublearray);
+          arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
 
           auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
           res_table = table->SetColumn(
               tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
           table = res_table.ValueUnsafe();
-          std::vector<std::string> col_names1 = table->ColumnNames();
-          for (auto itr = col_names1.begin(); itr != col_names1.end(); itr++) {
-            LOG(INFO) << *itr;
-          }
-          array = std::static_pointer_cast<DoubleArray>(
-              table->column(tmp_index)->chunk(0));
-          for (int64_t j = 0; j < array->length(); j++) {
-            LOG(INFO) << j << ":" << array->Value(j);
-          }
         }
       }
     }
@@ -256,56 +339,50 @@ int MissingProcess::execute() {
 }
 
 int MissingProcess::finishPartyComm(void) {
+  si64 tmp_share0, tmp_share1, tmp_share2;
+  if (party_id_ == 0)
+    mpc_op_exec_->createShares(1, tmp_share0);
+  else
+    mpc_op_exec_->createShares(tmp_share0);
   mpc_op_exec_->fini();
   delete mpc_op_exec_;
   return 0;
 }
 
 int MissingProcess::saveModel(void) {
-  int num_rows = table->num_rows();
-  LOG(INFO) << num_rows;
+  std::vector<std::string> str_vec;
+  std::string delimiter = "_";
+  int pos = data_file_path_.rfind(delimiter);
+
+  std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
+
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-  std::shared_ptr<CSVDriver> csv_driver =
-      std::dynamic_pointer_cast<CSVDriver>(driver);
 
-  std::string filepath = "data/" + res_name_ + ".csv";
-  int ret = csv_driver->write(table, filepath);
+  auto cursor = driver->initCursor(new_path);
+  auto dataset = std::make_shared<primihub::Dataset>(table, driver);
+  int ret = cursor->write(dataset);
   if (ret != 0) {
-    LOG(ERROR) << "Save res to file " << filepath << " failed.";
+    LOG(ERROR) << "Save result to file " << new_path << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save res to " << filepath << ".";
+
+  service::DatasetMeta meta(dataset, new_dataset_id_,
+                            service::DatasetVisbility::PUBLIC);
+  dataset_service_->regDataset(meta);
+
   return 0;
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
-
-  // std::cout << "Reading data.parquet at once" << std::endl;
-  // std::shared_ptr<arrow::io::ReadableFile> infile1;
-  // std::shared_ptr<arrow::io::ReadableFile> infile;
-  // PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(
-  //                                     filename,
-  //                                     arrow::default_memory_pool()));
-  // std::unique_ptr<parquet::arrow::FileReader> reader;
-  // PARQUET_THROW_NOT_OK(
-  //     parquet::arrow::OpenFile(infile, arrow::default_memory_pool(),
-  //     &reader));
-  // PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
-
   std::string nodeaddr("test address"); // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
   std::shared_ptr<Dataset> ds = cursor->read();
   table = std::get<std::shared_ptr<Table>>(ds->data);
-
-  // Label column.
-  std::vector<std::string> col_names = table->ColumnNames();
-  // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
-  //   LOG(INFO) << *itr;
-  // }
   bool errors = false;
+  std::vector<std::string> col_names = table->ColumnNames();
   int num_col = table->num_columns();
 
   LOG(INFO) << "Loaded " << table->num_rows() << " rows in "
@@ -323,11 +400,12 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   for (int i = 0; i < num_col; i++) {
     auto array =
         std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+
     std::vector<double> tmp_data;
     for (int64_t j = 0; j < array->length(); j++) {
       tmp_data.push_back(array->Value(j));
-      LOG(INFO) << array->Value(j);
     }
+
     if (array->length() != array_len) {
       LOG(ERROR) << "Column " << local_col_names[i] << " has "
                  << array->length() << " value, but other column has "
@@ -335,20 +413,11 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       errors = true;
       break;
     }
-    col_and_val_double.insert(
-        pair<string, std::vector<double>>(local_col_names[i], tmp_data));
-    for (auto itr = col_and_val_double.begin(); itr != col_and_val_double.end();
-         itr++) {
-      LOG(INFO) << itr->first;
-      auto tmp_vec = itr->second;
-      for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-        LOG(INFO) << *iter;
-    }
-  }
-  if (errors)
-    return -1;
-  LOG(INFO) << errors;
 
-  return array->length();
+    if (errors)
+      return -1;
+
+    return array->length();
+  }
 }
 } // namespace primihub
