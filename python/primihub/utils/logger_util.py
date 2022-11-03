@@ -6,13 +6,14 @@ from loguru import logger
 level_dict = {
     'INFO': logging.INFO,
     'DEBUG': logging.DEBUG,
-    'ERROR': logging.error,
+    'ERROR': logging.ERROR,
     'WARN': logging.WARN,
     'FATAL': logging.FATAL
 }
 
 
 class JobFilter(logging.Filter):
+    """Initialization user-define fields."""
 
     def __init__(self, name: str, id, task_id, task_type=None) -> None:
         super().__init__(name)
@@ -29,20 +30,21 @@ class JobFilter(logging.Filter):
 
 
 class FLFileHandler:
+    """Create logging file handler."""
 
     def __init__(self,
                  jb_id,
                  task_id,
                  task_type='FL',
                  log_file='fl_log.txt',
-                 log_level=logging.INFO):
+                 log_level='INFO'):
         self.filter = JobFilter(name='',
                                 id=jb_id,
                                 task_id=task_id,
                                 task_type=task_type)
-        self.format = "%(job_id)s - %(task_id)s - %(task_type)s - %(asctime)s - %(name)s - %(filename)s:%(lineno)s:%(funcName)s - %(levelname)s - %(message)s"
+        self.format = "%(asctime)s\t%(task_type)s\t%(levelname)s\t%(job_id)s\t%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
         self.log_file = log_file
-        self.log_level = log_level
+        self.log_level = level_dict[log_level.upper()]
 
     def set_format(self):
         logger = logging.getLogger(__name__)
@@ -61,14 +63,16 @@ class FLFileHandler:
 
 
 class FLConsoleHandler:
+    """Create console stream handler."""
 
     def __init__(self, jb_id, task_id, task_type='FL', log_level='INFO'):
         self.filter = JobFilter(name='',
                                 id=jb_id,
                                 task_id=task_id,
                                 task_type=task_type)
-        self.format = "%(job_id)s - %(task_id)s - %(task_type)s - %(asctime)s - %(name)s - %(filename)s:%(lineno)s:%(funcName)s - %(levelname)s - %(message)s"
-        self.log_level = log_level.upper()
+        self.format = "%(asctime)s\t%(task_type)s\t%(levelname)s\t%(job_id)s\t%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
+        self.log_level = level_dict[log_level.upper()]
+        print("self.log_level: ", self.log_level)
 
     def set_format(self):
         logger = logging.getLogger(__name__)
