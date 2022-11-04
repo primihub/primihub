@@ -70,7 +70,7 @@ new_git_repository(
         """sed -i.bak 's/value_byte_size/value_byte_size)/g' cpp/src/parquet/column_reader.cc""",
     ],
     branch = "release-4.0.0",
-    remote = "https://github.com/primihub/arrow.git",       
+    remote = "https://github.com/primihub/arrow.git",
 )
 
 
@@ -218,7 +218,7 @@ http_archive(
         "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://primihub.oss-cn-beijing.aliyuncs.com/double-conversion-3.1.5.tar.gz",
-        
+
     ],
 )
 
@@ -412,13 +412,12 @@ http_archive(
     ],
 )
 
-# seal 3.3.2, used by crypTFlow2
-http_archive(
-  name = "com_microsoft_seal_3.3.2",
-  sha256 = "7e29c36c81f2061b0680002fbb869cb9756ca7896b768a1f5d97d5dd08fc43a2",
+# seal primihub fork from microsoft, used by crypTFlow2 and APSI
+new_git_repository(
+  name = "com_github_primihub_seal_40",
   build_file = "//bazel:BUILD.seal",
-  strip_prefix = "SEAL-3.3.2/native/src/",
-  urls = ["https://github.com/microsoft/SEAL/archive/refs/tags/v3.3.2.zip"],
+  remote = "https://github.com/primihub/SEAL.git",
+  branch = "main",
 )
 
 http_archive(
@@ -547,3 +546,36 @@ leveldb_repos()
 
 load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
 leveldb_deps()
+
+# APSI
+new_git_repository(
+    name = "mircrosoft_apsi",
+    build_file = "//bazel:BUILD.APSI",
+    branch = "main",
+    remote = "https://github.com/primihub/APSI.git",
+)
+
+# needed by APSI
+new_git_repository(
+    name = "com_microsoft_kuku",
+    build_file = "//bazel:BUILD.kuku",
+    branch = "2.1.0",
+    remote = "https://github.com/microsoft/Kuku.git",
+)
+# needed by APSI
+git_repository(
+    name = "jsoncpp",
+    branch = "master",
+    remote = "https://github.com/open-source-parsers/jsoncpp.git",
+)
+
+#support sqlite
+http_archive(
+  name = "com_github_sqlite_wrapper",
+  build_file = "//bazel:BUILD.sqlite",
+  sha256 = "57f91ed44ef205fe97b8c6586002fe6031cd02771d1c5d8415d9c515ad1532d1",
+  strip_prefix = "SQLiteCpp-3.2.0",
+  urls = [
+    "https://github.com/SRombauts/SQLiteCpp/archive/refs/tags/3.2.0.tar.gz",
+  ]
+)

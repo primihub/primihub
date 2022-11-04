@@ -31,6 +31,7 @@
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
+#include "src/primihub/util/file_util.h"
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -46,6 +47,63 @@ ABSL_FLAG(bool, singleton, false, "singleton mode"); // TODO: remove this flag
 ABSL_FLAG(int, service_port, 50050, "node service port");
 
 namespace primihub {
+Status VMNodeImpl::Send(ServerContext* context,
+        ServerReader<TaskRequest>* reader, TaskResponse* response) {
+    VLOG(5) << "VMNodeImpl::Send: received: ";
+
+    bool recv_meta_info{false};
+    std::string job_id;
+    std::string task_id;
+    int storage_type{-1};
+    std::string storage_info;
+    std::vector<std::string> recv_data;
+    VLOG(5) << "VMNodeImpl::Send: received xxx: ";
+    TaskRequest request;
+    while (reader->Read(&request)) {
+        VLOG(5) << "read finised";
+        if (!recv_meta_info) {
+            job_id = request.job_id();
+            task_id = request.task_id();
+            storage_type = request.storage_type();
+            storage_info = request.storage_info();
+            recv_meta_info = true;
+            VLOG(5) << "job_id: " << job_id << " "
+                    << "task_id: " << task_id << " "
+                    << "storage_type: " << storage_type << " "
+                    << "storage_info: " << storage_info;
+        }
+        auto item_size = request.data().size();
+        VLOG(5) << "item_size: " << item_size;
+        for (size_t i = 0; i < item_size; i++) {
+            recv_data.push_back(request.data(i));
+        }
+    }
+
+    if (storage_type == primihub::rpc::TaskRequest::FILE) {
+        std::string data_path = storage_info;
+        save_data_to_file(data_path, std::move(recv_data));
+    }
+    VLOG(5) << "end of read data from client";
+    response->set_ret_code(primihub::rpc::retcode::SUCCESS);
+    return Status::OK;
+}
+
+int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
+    if (ValidateDir(data_path)) {
+        LOG(ERROR) << "file path is not exist, please check";
+        return -1;
+    }
+    auto data = std::move(save_data);
+    if (data.empty()) {
+        return 0;
+    }
+    std::ofstream in_fs(data_path, std::ios::out);
+    for (const auto& data_item : data) {
+        in_fs << data_item << "\n";
+    }
+    in_fs.close();
+    return 0;
+}
 
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
@@ -55,8 +113,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     google::protobuf::TextFormat::PrintToString(*pushTaskRequest, &str);
     LOG(INFO) << str << std::endl;
 
-    std::string job_task =
-        pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
+    std::string job_task = pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
     pushTaskReply->set_job_id(pushTaskRequest->task().job_id());
 
     // if (running_set.find(job_task) != running_set.end()) {
@@ -66,7 +123,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
 
     // actor
     if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
-        pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
+            pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
         LOG(INFO) << "start to schedule task";
         // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
@@ -85,10 +142,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
 
-    } else if (pushTaskRequest->task().type() ==
-                   primihub::rpc::TaskType::PIR_TASK ||
-               pushTaskRequest->task().type() ==
-                   primihub::rpc::TaskType::PSI_TASK) {
+    } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
+            pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
         LOG(INFO) << "start to schedule schedule task";
         absl::MutexLock lock(&parser_mutex_);
         std::shared_ptr<LanguageParser> lan_parser_ =
@@ -109,7 +164,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
-
+        auto _type = static_cast<int>(pushTaskRequest->task().type());
+        VLOG(5) << "end schedule schedule task for type: " << _type;
     } else {
         LOG(INFO) << "start to create worker for task";
         running_set.insert(job_task);
@@ -155,7 +211,9 @@ Status VMNodeImpl::ExecuteTask(ServerContext *context,
         LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
+        running_map.insert({job_task, worker});
         worker->execute(taskRequest, taskResponse);
+        running_map.erase(job_task);
         running_set.erase(job_task);
 
         return Status::OK;
@@ -179,7 +237,7 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
 void RunServer(primihub::VMNodeImpl *node_service,
-               primihub::DataServiceImpl *dataset_service, int service_port) {
+        primihub::DataServiceImpl *dataset_service, int service_port) {
 
     // Initialize server
     arrow::flight::Location location;
@@ -252,7 +310,6 @@ int main(int argc, char **argv) {
     data_service = new primihub::DataServiceImpl(
         node_service->getNodelet()->getDataService(),
         node_service->getNodelet()->getNodeletAddr());
-
     primihub::RunServer(node_service, data_service, service_port);
 
     return EXIT_SUCCESS;

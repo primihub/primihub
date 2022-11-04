@@ -40,6 +40,7 @@ namespace primihub::task {
 void node_push_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
+                    const std::map<std::string, std::string> &dataset_owner,
                     std::string dest_node_address) {
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
@@ -63,6 +64,14 @@ void node_push_task(const std::string &node_id,
         DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
         (*param_map)[dataset_param.second] = pv;
+    }
+
+    for (auto &pair : dataset_owner) {
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        pv.set_value_string(pair.second);
+        (*param_map)[pair.first] = pv;
+        DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
    
     // send request
@@ -105,7 +114,6 @@ void ABY3Scheduler::add_vm(Node *node, int i,
                       absl::StrCat(std::min(i, prev), std::max(i, prev)));
     ed_prev->set_link_type(i < prev ? LinkType::SERVER : LinkType::CLIENT);
 }
-
 
 
 /**
@@ -158,6 +166,7 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
                                                pair.first,              // node_id
                                                this->peer_dataset_map_,  // peer_dataset_map
                                                std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                                               this->dataset_owner_,
                                                dest_node_address));
             }
         }

@@ -63,6 +63,11 @@ void ProtocolSemanticParser::scheduleProtoTask(
     auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(proto_parser);
     auto datasets_with_tag = _proto_parser->getDatasets();
     // Start find peer node by dataset list
+
+    // for (auto &pair : datasets_with_tag) {
+    //   LOG(INFO) << "first: " << pair.first <<", second:" << pair.second;
+    // }
+
     std::thread t([&]() {
         LOG(INFO) << " 🔍 Proto task finding meta list from datasets...";
         dataset_service_->metaService_->findPeerListFromDatasets(
@@ -70,10 +75,14 @@ void ProtocolSemanticParser::scheduleProtoTask(
             [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
                 LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
                           << metas_with_param_tag.size();
+
                 std::vector<Node> peer_list;
                 PeerDatasetMap peer_dataset_map;
                 metasToPeerList(metas_with_param_tag, peer_list);
                 metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map);
+
+                std::map<std::string, std::string> dataset_owner;
+                metasToDatasetAndOwner(metas_with_param_tag, dataset_owner);
 
                 //  Generate MPC algorthim scheduler
                 auto pushTaskRequest = _proto_parser->getPushTaskRequest();
@@ -95,6 +104,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
                         std::make_shared<ABY3Scheduler>(node_id_, peer_list,
                                                         peer_dataset_map,
                                                         singleton_);
+                    scheduler->set_dataset_owner(dataset_owner);
                     scheduler->dispatch(&pushTaskRequest);
                 }
 
@@ -114,7 +124,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
 void ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<LanguageParser> python_parser) {
-    
+
     std::vector<NodeWithRoleTag> _peers_with_role_tag;
     PeerContextMap _peer_context_map;
 
@@ -223,6 +233,24 @@ void ProtocolSemanticParser::schedulePsiTask(
     }
 }
 
+void ProtocolSemanticParser::metasToDatasetAndOwner(
+    const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
+    std::map<std::string, std::string> &dataset_owner) {
+  for (auto &pair: metas_with_tag) {
+      auto meta = pair.first;
+      std::string node_id, node_ip, dataset_path;
+      int node_port;
+
+      std::string data_url = meta->getDataURL();
+      DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+      dataset_owner.insert(std::make_pair(meta->getDescription(), node_id));
+
+      LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
+                << node_id << ".";
+  }
+}
+
+
 int ProtocolSemanticParser::transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
                                                 PushTaskRequest &taskRequest) {
     if (lan_parser == nullptr) {
@@ -324,7 +352,7 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     int node_port;
     std::string data_url = meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-    
+
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
@@ -369,8 +397,8 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     for (auto &peer_with_tag : peers_with_tag) {
       auto &node = peer_with_tag.first;
       count ++;
-      LOG(INFO) << "Node content: node_id " << node.node_id() << ", role " 
-                << peer_with_tag.second << ", ip " << node.ip() << ", port " 
+      LOG(INFO) << "Node content: node_id " << node.node_id() << ", role "
+                << peer_with_tag.second << ", ip " << node.ip() << ", port "
                 << node.port() << ", data port " << node.data_port() << ".";
     }
 
@@ -393,7 +421,7 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     int node_port;
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-  
+
     Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);

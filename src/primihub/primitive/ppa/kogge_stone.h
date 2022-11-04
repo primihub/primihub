@@ -14,7 +14,6 @@
  limitations under the License.
  */
 
-
 #ifndef __KOGGE_STONE_H_
 #define __KOGGE_STONE_H_
 

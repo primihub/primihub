@@ -25,7 +25,6 @@
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
 
-
 using namespace std::chrono_literals;
 
 namespace primihub::service {
@@ -38,7 +37,7 @@ namespace primihub::service {
         nodelet_addr_ = nodelet_addr;
         // create Flight server
         // flight_server_ = std::make_shared<FlightIntegrationServer>(shared_from_this());
-        // 
+        //
     }
 
     /**
@@ -46,21 +45,21 @@ namespace primihub::service {
      * 1. Read data using driver for get dataset & datameta
      * 2. Save datameta in local storage.
      * 3. Publish dataset meta on libp2p network.
-     * 
+     *
      * @param driver [input]: Data driver
      * @param name [input]: Dataset name
      * @param description [input]: Dataset description
-     * @param meta [output]: Dataset meta 
-     * @return std::shared_ptr<primihub::Dataset> 
+     * @param meta [output]: Dataset meta
+     * @return std::shared_ptr<primihub::Dataset>
      */
     std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
-                                std::shared_ptr<primihub::DataDriver> driver, 
+                                std::shared_ptr<primihub::DataDriver> driver,
                                 const std::string& description, // TODO put description in meta
-                                DatasetMeta& meta) { 
-
+                                DatasetMeta& meta) {
         // Read data using driver for get dataset & datameta
+        // TODO just get meta info from dataset
         auto dataset = driver->getCursor()->read();
-        DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now. 
+        DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
         meta = _meta;
         // Save datameta in local storage.& Publish dataset meta on libp2p network.
         metaService_->putMeta(meta);
@@ -73,7 +72,7 @@ namespace primihub::service {
      * @param description [input]: Dataset description
      * @param meta [output]: Dataset metadata
      */
-    void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset, 
+    void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset,
                  const std::string &description,
                  DatasetMeta &meta /*output*/) {
         // dataset.write();
@@ -81,14 +80,14 @@ namespace primihub::service {
         DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
         meta = _meta;
         metaService_->putMeta(meta);
-    } 
+    }
 
 
     /**
      * @brief Register dataset use meta
-     * 
+     *
      * @param meta [input]: Dataset meta
-     */ 
+     */
     void DatasetService::regDataset(DatasetMeta& meta) {
         metaService_->putMeta(meta);
     }
@@ -101,7 +100,7 @@ namespace primihub::service {
      * @return outcome::result<void>
      *  TODO async style or callback style ?
      */
-    outcome::result<void> DatasetService::readDataset(const DatasetId& id, 
+    outcome::result<void> DatasetService::readDataset(const DatasetId& id,
                                                       ReadDatasetHandler handler) {
         metaService_->getMeta(id, [&](std::shared_ptr<DatasetMeta> meta) {
             if (meta) {
@@ -112,14 +111,14 @@ namespace primihub::service {
                 handler(dataset);
                 return outcome::success();
             }
-            
+
         });
         return outcome::success();
     }
 
     /**
      * @brief Find dataset by dataset uri
-     * 
+     *
      */
     outcome::result<void> DatasetService::findDataset(const DatasetId& id,
                                         FoundMetaHandler handler) {
@@ -128,39 +127,45 @@ namespace primihub::service {
     }
 
 
-    /** 
-     * @brief TODO Delete dataset 
+    /**
+     * @brief TODO Delete dataset
      * 1. Delete dataset meta from local storage.
      * 2. Delete dataset from libp2p network.
-     * 
+     *
      * @param id [input]: Dataset id
-     * @return int 
+     * @return int
      */
     int DatasetService::deleteDataset(const DatasetId& id) {
-        
+
         return 0;
     }
 
     /**
      * @brief Consture datasets from yaml datasets configurtion.
      * @param config_file_path [input]: Datasets configuration file path
-     * 
+     *
      */
-    void DatasetService::loadDefaultDatasets(const std::string&  config_file_path) {
+    void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
         LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
         YAML::Node config = YAML::LoadFile(config_file_path);
         // strcat nodelet address
+        // format: node_name:ip:port
         std::string nodelet_addr = config["node"].as<std::string>() + ":"
-        + config["location"].as<std::string>() + ":"
-        + std::to_string(config["grpc_port"].as<uint64_t>());
-
+            + config["location"].as<std::string>() + ":"
+            + std::to_string(config["grpc_port"].as<uint64_t>());
         if (config["datasets"]) {
-            for (auto dataset : config["datasets"]) {            
-                auto driver = DataDirverFactory::getDriver(
-                    std::move(dataset["model"].as<std::string>()), 
-                    nodelet_addr);  
-
-                auto source = dataset["source"].as<std::string>();
+            for (const auto& dataset : config["datasets"]) {
+                auto dataset_type = dataset["model"].as<std::string>();
+                auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr);
+                std::string source = dataset["source"].as<std::string>();
+                if (dataset_type == "sqlite") {
+                    auto table_name = dataset["table_name"].as<std::string>();
+                    source.append("#").append(table_name).append("#");
+                    if (dataset["query_index"]) {
+                        source.append(dataset["query_index"].as<std::string>());
+                    }
+                    source = dataset_type + "#" + source;
+                }
                 [[maybe_unused]] auto cursor = driver->read(source);
                 DatasetMeta meta;
                 newDataset(driver, dataset["description"].as<std::string>(), meta);
@@ -218,7 +223,7 @@ namespace primihub::service {
         }
         return outcome::success();
     }
-    
+
     std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
         auto res = localKv_->getValue(id);
         if (res.has_value()) {
@@ -238,7 +243,7 @@ namespace primihub::service {
     }
 
 
-    outcome::result<void> DatasetMetaService::getMeta(const DatasetId& id, 
+    outcome::result<void> DatasetMetaService::getMeta(const DatasetId& id,
                                     FoundMetaHandler handler) {
         // Try get meta from local storage or p2p network
         auto res = localKv_->getValue(id);
@@ -249,8 +254,8 @@ namespace primihub::service {
             return outcome::success();
         }
 
-        // Try get dataset from p2p network      
-        p2pStub_->getDHTValue(id, 
+        // Try get dataset from p2p network
+        p2pStub_->getDHTValue(id,
         [&](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
             if (result.has_value()) {
                 try {
@@ -270,12 +275,14 @@ namespace primihub::service {
 
 
       outcome::result<void> DatasetMetaService::findPeerListFromDatasets(
-                                                        const std::vector<DatasetWithParamTag>& datasets_with_tag, 
+                                                        const std::vector<DatasetWithParamTag>& datasets_with_tag,
                                                         FoundMetaListHandler handler) {
         std::vector<DatasetMetaWithParamTag> meta_list;
         std::map<std::string, DatasetMetaWithParamTag> meta_map; // key: dataset_id
         meta_map.clear();
-
+        std::mutex meta_map_mtx;
+        std::condition_variable meta_cond;
+        std::atomic get_value{false};
         auto t_start = std::chrono::high_resolution_clock::now();
         bool is_timeout = false;
         for (;;) {
@@ -302,24 +309,33 @@ namespace primihub::service {
                     meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
 
                 } else {
-                // Find in DHT
-                p2pStub_->getDHTValue(id, 
-                    [&, dataset_tag](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
-                        if (result.has_value()) {
-                            try {
-                                std::vector<std::shared_ptr<DatasetMeta>> meta_list;
-                                auto r = result.value();
-                                std::stringstream rs;
-                                std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
-                                LOG(INFO) << "Fount remote meta: " << rs.str();
-                                auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
-                                auto k = _meta->getDescription();
-                                meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
-                            } catch (std::exception& e) {
-                                LOG(ERROR) << "<< Get meta failed: " << e.what();
+                    // Find in DHT
+                    p2pStub_->getDHTValue(id,
+                        [&, dataset_tag](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
+                            if (result.has_value()) {
+                                try {
+                                    std::vector<std::shared_ptr<DatasetMeta>> meta_list;
+                                    auto r = result.value();
+                                    std::stringstream rs;
+                                    std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
+                                    LOG(INFO) << "Fount remote meta: " << rs.str();
+                                    auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
+                                    auto k = _meta->getDescription();
+                                    VLOG(5) << "Fount remote meta key: " << k;
+                                    meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
+                                } catch (std::exception& e) {
+                                    LOG(ERROR) << "<< Get meta failed: " << e.what();
+                                }
+
                             }
-                        }
-                    });
+                            get_value.store(true);
+                            meta_cond.notify_all();
+                        });
+                    std::unique_lock<std::mutex> lck(meta_map_mtx);
+                    while (!get_value.load()) {
+                        meta_cond.wait(lck);
+                    }
+                    get_value.store(false);
                 }
             }
             if (meta_map.size() < datasets_with_tag.size()) {
@@ -342,7 +358,7 @@ namespace primihub::service {
 
 ////////////////Flight Server ///////
 
-arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallContext &context, 
+arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallContext &context,
                             const arrow::flight::Ticket &request,
                             std::unique_ptr<FlightDataStream> *data_stream)  {
             // NOTE fligth ticket format : fligt.{dataset_id_str}
@@ -354,7 +370,7 @@ arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallCont
             }
             // read dataset from local driver
             auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
-            
+
             std::string node_id, node_ip, dataset_path;
             int node_port;
             std::string data_url = meta->getDataURL();

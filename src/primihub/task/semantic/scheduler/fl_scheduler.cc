@@ -67,6 +67,7 @@ namespace primihub::task {
         (*params_map)["protocol"] = pv_protocol;
 
         // Dataset meta
+        std::map<std::string, std::string> node_dataset_map;
         for (auto &dataset_meta : dataset_meta_list) {
             ParamValue pv_dataset;
             pv_dataset.set_var_type(VarType::STRING);
@@ -78,7 +79,19 @@ namespace primihub::task {
             // Only set dataset path
             pv_dataset.set_value_string(dataset_path);
             (*params_map)[dataset_meta->getDescription()] = pv_dataset;
+
+            node_dataset_map[node_id] = dataset_meta->getDescription();
         }
+        
+        // Save every node's dataset name.
+        for (auto pair : node_dataset_map) {
+          std::string key = pair.first + "_dataset";
+          ParamValue pv_name;
+          pv_name.set_var_type(VarType::STRING);
+          pv_name.set_value_string(pair.second);
+          (*params_map)[key] = pv_name;
+        }
+
         // Dataset key list
         for (size_t i = 0; i < node_context.datasets.size(); i++) {
            node_task_request->mutable_task()->add_input_datasets(node_context.datasets[i]);

@@ -29,6 +29,13 @@
 #include <thread>
 #include <vector>
 
+#ifdef USE_MICROSOFT_APSI
+#include <apsi/oprf/oprf_sender.h>
+#include <apsi/thread_pool_mgr.h>
+#include <apsi/version.h>
+#include <apsi/zmq/sender_dispatcher.h>
+#endif
+
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
@@ -46,13 +53,20 @@ using primihub::rpc::VMNode;
 using primihub::service::DatasetWithParamTag;
 using primihub::task::PeerDatasetMap;
 
+#ifdef USE_MICROSOFT_APSI
+using namespace apsi;
+using namespace apsi::sender;
+using namespace apsi::network;
+using namespace apsi::oprf;
+#endif
+
 namespace primihub::task {
 
 class PIRScheduler : public VMScheduler {
 public:
     PIRScheduler(const std::string &node_id,
                  const std::vector<Node> &peer_list,
-                 const PeerDatasetMap &peer_dataset_map, bool singleton) 
+                 const PeerDatasetMap &peer_dataset_map, bool singleton)
         : VMScheduler(node_id, singleton),
           peer_list_(peer_list),
           peer_dataset_map_(peer_dataset_map) {}

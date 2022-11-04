@@ -16,6 +16,7 @@ sphinx
 scikit-learn==1.1.1
 phe==1.5.0
 
+mysql-connector-python
 loguru
 gevent
 
