@@ -113,7 +113,7 @@ def cut_points(host_max_min, guest_max_min, arbiter_max_min, bins=10):
 
 @ph.context.function(role='arbiter',
                      protocol='woe-iv',
-                     datasets=['breast_0'],
+                     datasets=['train_party_2'],
                      port='9010',
                      task_type="feature-engineer")
 def iv_arbiter(bins=15):
@@ -188,6 +188,37 @@ def iv_arbiter(bins=15):
     proxy_client_guest.Remote(ivs_df, "global_ivs")
 
     proxy_server.StopRecvLoop()
+
+    iv_threshold = 0
+    params_map = ph.context.Context.params_map
+    if params_map.get("iv_threshold", None) is None:
+        iv_threshold = 0.1
+    else:
+        iv_threshold = float(params_map["iv_threshold"])
+
+    cols = []
+    for index, row in ivs_df.iteritems():
+        if row[0] < iv_threshold:
+            cols.append(index)
+            logging.info(
+                "Notice that column {} will be filtered due to IV value less than IV threshold.".format(index))
+
+    data = ph.dataset.read(dataset_key=data_key).df_data
+    for col in cols:
+        data.pop(col)
+    data.info(verbose=True)
+
+    # Save column that don't filter into csv and register them.
+    local_ds_id = params_map["local_dataset"]
+    new_id_dict = json.loads(params_map["ColumnInfo"])
+    new_ds_id = new_id_dict[local_ds_id]
+
+    old_path = dataset_map[local_ds_id]
+    new_path = old_path.split(".csv")[0] + "_iv.csv"
+    data.to_csv(new_path, index=False, float_format='%.6f')
+
+    register_dataset(params_map["DatasetServiceAddr"],
+                     "csv", new_path, new_ds_id)
 
 
 @ph.context.function(role='host', protocol='woe-iv',
