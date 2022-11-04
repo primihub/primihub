@@ -22,6 +22,7 @@
 #include "apsi/receiver.h"
 #include "apsi/item.h"
 #include "apsi/util/common_utils.h"
+#include "src/primihub/util/file_util.h"
 
 
 using namespace apsi;
@@ -142,6 +143,10 @@ int KeywordPIRClientTask::saveResult(
         csv_output << endl;
     }
     VLOG(5) << "result_file_path_: " << result_file_path_;
+    if (ValidateDir(result_file_path_)) {
+        LOG(ERROR) << "can't access file path: " << result_file_path_;
+        return -1;
+    }
     if (!result_file_path_.empty()) {
         std::ofstream ofs(result_file_path_);
         ofs << csv_output.str();
