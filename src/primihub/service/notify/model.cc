@@ -194,6 +194,7 @@ void GRPCNotifyServer::run() {
     });
     std::thread thread_publish_node_evt([this] {
         while (running_) {
+          std::this_thread::sleep_for(std::chrono::seconds(1));
             // TODO 此处应改为有session中消息队列中有TaskEvent时向client写入 
             // {
             //     std::lock_guard<std::mutex> local_lock_guard{mutex_sessions_};
