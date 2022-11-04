@@ -56,9 +56,11 @@ def cal_hist_bins(features, cut_points, label):
     return pos_cnts, neg_cnts
 
 
-def woe_iv(host_bin_cnts, guest_bin_cnts):
-    global_pos_cnts = host_bin_cnts['pos_cnts'] + guest_bin_cnts['pos_cnts']
-    global_neg_cnts = host_bin_cnts['neg_cnts'] + guest_bin_cnts['neg_cnts']
+def woe_iv(host_bin_cnts, guest_bin_cnts, arbiter_bin_cnts):
+    global_pos_cnts = host_bin_cnts['pos_cnts'] + guest_bin_cnts[
+        'pos_cnts'] + arbiter_bin_cnts['pos_cnts']
+    global_neg_cnts = host_bin_cnts['neg_cnts'] + guest_bin_cnts[
+        'neg_cnts'] + arbiter_bin_cnts['neg_cnts']
     logging.info("global_pos_cnts and global_neg_cnts are: {} {}".format(
         global_pos_cnts, global_neg_cnts))
 
@@ -81,9 +83,15 @@ def woe_iv(host_bin_cnts, guest_bin_cnts):
     return woes, ivs
 
 
-def cut_points(host_max_min, guest_max_min, bins=10):
-    max_arr = np.vstack([host_max_min['max_arr'], guest_max_min['max_arr']])
-    min_arr = np.vstack([host_max_min['min_arr'], guest_max_min['min_arr']])
+def cut_points(host_max_min, guest_max_min, arbiter_max_min, bins=10):
+    max_arr = np.vstack([
+        host_max_min['max_arr'], guest_max_min['max_arr'],
+        arbiter_max_min['max_arr']
+    ])
+    min_arr = np.vstack([
+        host_max_min['min_arr'], guest_max_min['min_arr'],
+        arbiter_max_min['min_arr']
+    ])
 
     global_max = np.max(max_arr, axis=0)
     global_min = np.min(min_arr, axis=0)
@@ -112,6 +120,8 @@ def iv_arbiter(bins=15):
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
+    dataset_map = ph.context.Context.dataset_map
+    data_key = list(dataset_map.keys())[0]
 
     host_nodes = role_node_map["host"]
     guest_nodes = role_node_map["guest"]
@@ -130,22 +140,42 @@ def iv_arbiter(bins=15):
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
     proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
 
+    data = ph.dataset.read(dataset_key=data_key).df_data
+    label = data.pop('y').values
+    headers = data.columns
+
+    data_arr = data.values
+
+    max_arr = np.max(data_arr, axis=0)
+    min_arr = np.min(data_arr, axis=0)
+
+    arbiter_max_min = {'max_arr': max_arr, 'min_arr': min_arr}
+
     # client_arbiter = Arbiter(proxy_server, proxy_client_host,
     #                          proxy_client_guest)
     host_max_min = proxy_server.Get('host_max_min')
     guest_max_min = proxy_server.Get('guest_max_min')
 
-    split_points = cut_points(host_max_min, guest_max_min, bins=bins)
+    split_points = cut_points(host_max_min,
+                              guest_max_min,
+                              arbiter_max_min,
+                              bins=bins)
 
     logging.info("Starting send split points: {}".format(split_points))
+
     proxy_client_host.Remote(split_points, "split_points")
     proxy_client_guest.Remote(split_points, 'split_points')
     logging.info("Ending send split points")
+    pos_cnts, neg_cnts = cal_hist_bins(data_arr, split_points, label)
+    arbiter_bin_cnts = {
+        'pos_cnts': np.array(pos_cnts),
+        'neg_cnts': np.array(neg_cnts)
+    }
 
     host_bin_cnts = proxy_server.Get('host_bin_cnts')
     guest_bin_cnts = proxy_server.Get('guest_bin_cnts')
 
-    _, ivs = woe_iv(host_bin_cnts, guest_bin_cnts)
+    _, ivs = woe_iv(host_bin_cnts, guest_bin_cnts, arbiter_bin_cnts)
 
     ivs_df = pd.DataFrame(ivs.reshape(1, -1))
     ivs_df.columns = host_max_min['headers']
