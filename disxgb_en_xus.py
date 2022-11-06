@@ -605,7 +605,7 @@ class XGB_GUEST_EN:
         self.objective = objective
         self.sid = sid
         self.record = record
-        self.lookup_table = lookup_table
+        self.lookup_table = {}
         self.lookup_table_sum = {}
         self.pub = None
 
@@ -750,9 +750,11 @@ class XGB_GUEST_EN:
                         'w_right': w_right
                     }, 'ids_w')
                 # updata guest lookup table
-                self.lookup_table.loc[self.record, 'record_id'] = self.record
-                self.lookup_table.loc[self.record, 'feature_id'] = best_var
-                self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+                self.lookup_table[self.record] = [best_var, best_cut]
+
+                # self.lookup_table.loc[self.record, 'record_id'] = self.record
+                # self.lookup_table.loc[self.record, 'feature_id'] = best_var
+                # self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
 
                 # self.guest_record += 1
                 self.record += 1
@@ -1206,6 +1208,7 @@ class XGB_HOST:
             lookup_table = self.lookup_table_sum[t + 1]
             y_t = pd.Series([0] * X.shape[0])
             self._get_tree_node_w(X, tree, lookup_table, y_t, t)
+            # self.host_get
             Y = Y + self.learning_rate * y_t
 
         # self.channel.send(-1)
@@ -1265,7 +1268,7 @@ class XGB_HOST_EN:
         self.prv = prv
         self.sid = sid
         self.record = record
-        self.lookup_table = lookup_table
+        self.lookup_table = {}
         self.tree_structure = {}
         self.lookup_table_sum = {}
         self.host_record = 0
@@ -1630,12 +1633,14 @@ class XGB_HOST_EN:
                         'w_right': w_right
                     }, 'ids_w')
 
-                self.lookup_table.loc[self.host_record,
-                                      'record_id'] = self.host_record
-                self.lookup_table.loc[self.host_record,
-                                      'feature_id'] = host_best['best_var']
-                self.lookup_table.loc[self.host_record,
-                                      'threshold_value'] = host_best['best_cut']
+                self.lookup_table[self.host_record] = [host_best['best_var'], host_best['best_cut']]
+
+                # self.lookup_table.loc[self.host_record,
+                #                       'record_id'] = self.host_record
+                # self.lookup_table.loc[self.host_record,
+                #                       'feature_id'] = host_best['best_var']
+                # self.lookup_table.loc[self.host_record,
+                #                       'threshold_value'] = host_best['best_cut']
 
                 self.host_record += 1
 
@@ -1663,6 +1668,8 @@ class XGB_HOST_EN:
                             record)][('right', w_right)] = self.host_tree_construct(
                                 X_host_right, f_t, current_depth + 1,
                                 plain_gh_right)
+            
+            return tree_structure
 
         #         pass
         #     else:
@@ -1678,7 +1685,7 @@ class XGB_HOST_EN:
             k = list(tree.keys())[0]
             role, record_id = k[0], k[1]
             self.proxy_client_guest.Remote(role, 'role')
-            print("role, record_id", role, record_id)
+            print("role, record_id", role, record_id, current_lookup)
 
             if role == 'guest':
                 self.proxy_client_guest.Remote(record_id, 'record_id')
@@ -1692,7 +1699,9 @@ class XGB_HOST_EN:
 
             else:
                 tmp_lookup = current_lookup
-                var, cut = tmp_lookup['feature_id'], tmp_lookup['threshold_value']
+                # var, cut = tmp_lookup['feature_id'], tmp_lookup['threshold_value']
+                var, cut = tmp_lookup[record_id][0], tmp_lookup[record_id][1]
+
                 host_test_left = host_test.loc[host_test[var] < cut]
                 id_left = host_test_left.index.tolist()
                 host_test_right = host_test.loc[host_test[var] >= cut]
@@ -1780,8 +1789,10 @@ class XGB_HOST_EN:
             tree = self.tree_structure[t + 1]
             lookup_table = self.lookup_table_sum[t + 1]
             y_t = pd.Series([0] * X.shape[0])
+            print("befor change", y_t)
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
+            print("after change", y_t)
             Y = Y + self.learning_rate * y_t
 
         # self.channel.send(-1)
@@ -2189,7 +2200,8 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port,
                                            "host")
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
