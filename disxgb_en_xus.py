@@ -718,6 +718,9 @@ class XGB_GUEST_EN:
 
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
+        
+        if host_best_gain is None or guest_best_gain is None:
+            return None
 
         guest_flag1 = (host_best_gain and guest_best_gain) and (guest_best_gain > host_best_gain)
         guest_flag2 = (guest_best_gain and not host_best_gain)
@@ -759,19 +762,17 @@ class XGB_GUEST_EN:
                 id_right = ids_w['id_right']
                 w_left = ids_w['w_left']
                 w_right = ids_w['w_right']
-        else:
-            return None
 
-        X_guest_left = X_guest.loc[id_left]
-        X_guest_right = X_guest.loc[id_right]
+            X_guest_left = X_guest.loc[id_left]
+            X_guest_right = X_guest.loc[id_right]
 
-        encrypted_ghs_left = encrypted_ghs.loc[id_left]
-        encrypted_ghs_right = encrypted_ghs.loc[id_right]
+            encrypted_ghs_left = encrypted_ghs.loc[id_left]
+            encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
-        self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                  current_depth + 1)
-        self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                  current_depth + 1)
+            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
+                                    current_depth + 1)
+            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
+                                    current_depth + 1)
 
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
@@ -1481,13 +1482,15 @@ class XGB_HOST_EN:
         if best_var is not None:
             w_left = -G_left_best / (H_left_best + self.reg_lambda)
             w_right = -G_right_best / (H_right_best + self.reg_lambda)
+            return dict({'w_left': w_left, 'w_right': w_right, 'best_var': best_var, 'best_cut':best_cut, 'best_gain': best_gain})
+
         else:
             return None
 
         return dict({'w_left': w_left, 'w_right': w_right, 'best_var': best_var, 'best_cut':best_cut, 'best_gain': best_gain})
-        return pd.DataFrame(
-            np.array([w_left, w_right, best_var, best_cut, best_gain]).flatten(),
-            columns=['w_left', 'w_right', 'best_var', 'best_cut', 'best_gain'])
+        # return pd.DataFrame(
+        #     np.array([w_left, w_right, best_var, best_cut, best_gain]).flatten(),
+        #     columns=['w_left', 'w_right', 'best_var', 'best_cut', 'best_gain'])
 
     def gh_sums_decrypted(self, gh_sums: pd.DataFrame, decryption_pools=50):
         decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
@@ -1580,6 +1583,9 @@ class XGB_HOST_EN:
 
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
+        
+        if host_best_gain is None and guest_best_gain is None:
+            return None
 
         flag_guest1 = (host_best_gain and guest_best_gain) and (guest_best_gain > host_best_gain)
         flag_guest2 = (not host_best_gain and guest_best_gain)
@@ -1632,33 +1638,31 @@ class XGB_HOST_EN:
                                       'threshold_value'] = host_best['best_cut']
 
                 self.host_record += 1
-        else:
-            return None
 
-        tree_structure = {(role, record): {}}
+            tree_structure = {(role, record): {}}
 
-        logging.info("current role: {}, current record: {}".format(
-            role, record))
-        print("role, record: ", role, record)
+            logging.info("current role: {}, current record: {}".format(
+                role, record))
+            print("role, record: ", role, record)
 
-        X_host_left = X_host.loc[id_left]
-        plain_gh_left = plain_gh.loc[id_left]
+            X_host_left = X_host.loc[id_left]
+            plain_gh_left = plain_gh.loc[id_left]
 
-        X_host_right = X_host.loc[id_right]
-        plain_gh_right = plain_gh.loc[id_right]
+            X_host_right = X_host.loc[id_right]
+            plain_gh_right = plain_gh.loc[id_right]
 
-        f_t[id_left] = w_left
-        f_t[id_right] = w_right
-        print("===========", (role, record, w_left, w_right))
+            f_t[id_left] = w_left
+            f_t[id_right] = w_right
+            print("===========", (role, record, w_left, w_right))
 
-        tree_structure[(role,
-                        record)][('left', w_left)] = self.host_tree_construct(
-                            X_host_left, f_t, current_depth + 1, plain_gh_left)
+            tree_structure[(role,
+                            record)][('left', w_left)] = self.host_tree_construct(
+                                X_host_left, f_t, current_depth + 1, plain_gh_left)
 
-        tree_structure[(role,
-                        record)][('right', w_right)] = self.host_tree_construct(
-                            X_host_right, f_t, current_depth + 1,
-                            plain_gh_right)
+            tree_structure[(role,
+                            record)][('right', w_right)] = self.host_tree_construct(
+                                X_host_right, f_t, current_depth + 1,
+                                plain_gh_right)
 
         #         pass
         #     else:
