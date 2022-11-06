@@ -1716,8 +1716,8 @@ class XGB_HOST_EN:
                     tree_right = tree[k][kk]
                     w[id_right] = kk[1]
             print("current w: ", w)
-            self.host_get_tree_node_weight(host_test_left, tree_left, w)
-            self.host_get_tree_node_weight(host_test_right, tree_right, w)
+            self.host_get_tree_node_weight(host_test_left, tree_left, current_lookup,  w)
+            self.host_get_tree_node_weight(host_test_right, tree_right,current_lookup, w)
         else:
             self.proxy_client_guest.Remote('guest', 'role')
             self.proxy_client_guest.Remote(None, 'record_id')
@@ -1817,13 +1817,13 @@ class XGB_HOST_EN:
         return (preds >= 0.5).astype('int')
 
 
-    def predict_raw(self, X: pd.DataFrame):
+    def predict_raw(self, X: pd.DataFrame, lookup_sum):
         #X = X.reset_index(drop='True')
         Y = pd.Series([self.base_score] * X.shape[0])
 
         for t in range(self.n_estimators):
             tree = self.tree_structure[t + 1]
-            lookup_table = self.lookup_table_sum[t + 1]
+            lookup_table = lookup_sum[t + 1]
             y_t = pd.Series([0] * X.shape[0])
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             self.host_get_tree_node_weight(X, tree, y_t, lookup_table)
@@ -1975,6 +1975,7 @@ def xgb_host_logic(cry_pri="paillier"):
         #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
         #                                                               )
         # pools = ActorPool([actor1, actor2, actor3])
+        lookup_table_sum = {}
 
         for t in range(xgb_host.n_estimators):
             print("Begin to trian tree: ", t + 1)
@@ -2042,7 +2043,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
             # xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(
             #     X_host, GH_guest, gh, f_t, 0)  # noqa
-            xgb_host.lookup_table_sum[t + 1] = xgb_host.lookup_table
+            lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
             logger.info("Finish to trian tree {}.".format(t + 1))
@@ -2124,7 +2125,7 @@ def xgb_host_logic(cry_pri="paillier"):
         #     Classification_eva.get_result(Y, y_pre, indicator_file_path)
 
         # xgb_host.predict_prob(X_host).to_csv(predict_file_path)
-    train_pred = xgb_host.predict(X_host)
+    train_pred = xgb_host.predict(X_host, lookup_table_sum)
     train_acc = metrics.accuracy_score(train_pred, Y)
 
     # validate for test
