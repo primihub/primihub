@@ -1781,13 +1781,13 @@ class XGB_HOST_EN:
                         self._get_tree_node_w(X_right, tree_right, lookup_table,
                                               w, t)
 
-    def predict_raw(self, X: pd.DataFrame):
+    def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
         Y = pd.Series([self.base_score] * X.shape[0])
 
         for t in range(self.n_estimators):
             tree = self.tree_structure[t + 1]
-            lookup_table = self.lookup_table_sum[t + 1]
+            lookup_table = lookup[t + 1]
             y_t = pd.Series([0] * X.shape[0])
             print("befor change", y_t)
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
@@ -1800,9 +1800,9 @@ class XGB_HOST_EN:
         # print(self.channel.recv())
         return Y
 
-    def predict_prob(self, X: pd.DataFrame):
+    def predict_prob(self, X: pd.DataFrame, lookup):
 
-        Y = self.predict_raw(X)
+        Y = self.predict_raw(X, lookup)
 
         def sigmoid(x):
             return 1 / (1 + np.exp(-x))
@@ -1811,8 +1811,8 @@ class XGB_HOST_EN:
 
         return Y
 
-    def predict(self, X: pd.DataFrame):
-        preds = self.predict_prob(X).values
+    def predict(self, X: pd.DataFrame, lookup):
+        preds = self.predict_prob(X, lookup).values
 
         return (preds >= 0.5).astype('int')
 
@@ -1834,9 +1834,9 @@ class XGB_HOST_EN:
         # print(self.channel.recv())
         return Y
 
-    def predict_prob(self, X: pd.DataFrame):
+    def predict_prob(self, X: pd.DataFrame, lookup_sum):
 
-        Y = self.predict_raw(X)
+        Y = self.predict_raw(X, lookup_sum)
 
         def sigmoid(x):
             return 1 / (1 + np.exp(-x))
@@ -1845,8 +1845,8 @@ class XGB_HOST_EN:
 
         return Y
 
-    def predict(self, X: pd.DataFrame):
-        preds = self.predict_prob(X).values
+    def predict(self, X: pd.DataFrame, lookup_sum):
+        preds = self.predict_prob(X, lookup_sum).values
 
         return (preds >= 0.5).astype('int')
 
@@ -2132,7 +2132,7 @@ def xgb_host_logic(cry_pri="paillier"):
     test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
     test_y = test_host.pop('y')
     test_data = test_host.copy()
-    test_pred = xgb_host.predict(test_data)
+    test_pred = xgb_host.predict(test_data, lookup_table_sum)
 
     test_acc = metrics.accuracy_score(test_pred, test_y.values)
     print("train and test validate acc: ", {
@@ -2272,7 +2272,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
-    xgb_guest.predict(X_guest)
+    xgb_guest.predict(X_guest, lookup_table_sum)
 
     # validate for test
     test_host = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
