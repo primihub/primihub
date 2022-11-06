@@ -1634,6 +1634,7 @@ class XGB_HOST_EN:
                     }, 'ids_w')
 
                 self.lookup_table[self.host_record] = [host_best['best_var'], host_best['best_cut']]
+                print("self.lookup_table", self.lookup_table)
 
                 # self.lookup_table.loc[self.host_record,
                 #                       'record_id'] = self.host_record
@@ -1817,40 +1818,6 @@ class XGB_HOST_EN:
         return (preds >= 0.5).astype('int')
 
 
-    def predict_raw(self, X: pd.DataFrame, lookup_sum):
-        #X = X.reset_index(drop='True')
-        Y = pd.Series([self.base_score] * X.shape[0])
-
-        for t in range(self.n_estimators):
-            tree = self.tree_structure[t + 1]
-            lookup_table = lookup_sum[t + 1]
-            y_t = pd.Series([0] * X.shape[0])
-            #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
-            self.host_get_tree_node_weight(X, tree, y_t, lookup_table)
-            Y = Y + self.learning_rate * y_t
-
-        # self.channel.send(-1)
-        #self.proxy_client_guest.Remote(-1, 'need_record')
-        # print(self.channel.recv())
-        return Y
-
-    def predict_prob(self, X: pd.DataFrame, lookup_sum):
-
-        Y = self.predict_raw(X, lookup_sum)
-
-        def sigmoid(x):
-            return 1 / (1 + np.exp(-x))
-
-        Y = Y.apply(sigmoid)
-
-        return Y
-
-    def predict(self, X: pd.DataFrame, lookup_sum):
-        preds = self.predict_prob(X, lookup_sum).values
-
-        return (preds >= 0.5).astype('int')
-
-
 def get_logger(name):
     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -1949,6 +1916,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # logger.debug("paillier pub key is : {}".format(public_k))
     # print("paillier pub key is :", public_k)
     # host_log = open('/app/host_log', 'w+')
+    lookup_table_sum = {}
 
     if cry_pri == "paillier":
         xgb_host = XGB_HOST_EN(n_estimators=num_tree,
@@ -1975,7 +1943,6 @@ def xgb_host_logic(cry_pri="paillier"):
         #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
         #                                                               )
         # pools = ActorPool([actor1, actor2, actor3])
-        lookup_table_sum = {}
 
         for t in range(xgb_host.n_estimators):
             print("Begin to trian tree: ", t + 1)
