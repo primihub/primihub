@@ -784,8 +784,8 @@ class XGB_GUEST_EN:
                 record_id = self.proxy_server.Get('record_id')
                 if record_id is None:
                     break
-                tmp_lookup = current_lookup.loc[record_id]
-                var, cut = tmp_lookup['feature_id'], tmp_lookup['threshold_value']
+                tmp_lookup = current_lookup[record_id]
+                var, cut = tmp_lookup[0], tmp_lookup[1]
                 guest_test_left = guest_test.loc[guest_test[var] < cut]
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
