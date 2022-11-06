@@ -908,9 +908,9 @@ class XGB_GUEST_EN:
 
         return id_after_record
 
-    def predict(self, X):
+    def predict(self, X, lookup_sum):
         for t in range(self.n_estimators):
-            current_lookup = self.lookup_table_sum[t + 1]
+            current_lookup = lookup_sum[t + 1]
             self.guest_get_tree_ids(X, current_lookup)
 
 
@@ -2215,6 +2215,7 @@ def xgb_guest_logic(cry_pri="paillier"):
         # pub = xgb_guest.channel.recv()
         pub = proxy_server.Get('xgb_pub')
         # xgb_guest.channel.send(b'recved pub')
+        lookup_table_sum = {}
 
         for t in range(xgb_guest.n_estimators):
             xgb_guest.record = 0
@@ -2235,7 +2236,7 @@ def xgb_guest_logic(cry_pri="paillier"):
             # gh_sum.to_csv('/app/guest_log.csv', sep='\t')
             # proxy_client_host.Remote(gh_sum, "gh_sum")
             # xgb_guest.cart_tree(X_guest_gh, 0, pub)
-            xgb_guest.lookup_table_sum[t + 1] = xgb_guest.lookup_table
+            lookup_table_sum[t + 1] = xgb_guest.lookup_table
 
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
 
@@ -2275,7 +2276,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     # validate for test
     test_host = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
-    xgb_guest.predict(test_host)
+    xgb_guest.predict(test_host, lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
