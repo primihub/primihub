@@ -798,8 +798,8 @@ class XGB_GUEST_EN:
                         'id_right': id_right
                     },
                     str(record_id) + '_ids')
-                self.guest_get_tree_ids(guest_test_left, current_lookup)
-                self.guest_get_tree_ids(guest_test_right, current_lookup)
+                # self.guest_get_tree_ids(guest_test_left, current_lookup)
+                # self.guest_get_tree_ids(guest_test_right, current_lookup)
             else:
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
