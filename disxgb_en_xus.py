@@ -1628,9 +1628,9 @@ class XGB_HOST_EN:
                        guest_best_gain) and (guest_best_gain > host_best_gain)
         flag_guest2 = (not host_best_gain and guest_best_gain)
 
-        flag_host1 = (host_best_gain and
-                      guest_best_gain) and (guest_best_gain < host_best_gain)
-        flag_host2 = (host_best_gain and not guest_best_gain)
+        # flag_host1 = (host_best_gain and
+        #               guest_best_gain) and (guest_best_gain < host_best_gain)
+        # flag_host2 = (host_best_gain and not guest_best_gain)
 
         if (host_best_gain or guest_best_gain):
             if flag_guest1 or flag_guest2:
@@ -1872,11 +1872,10 @@ ph.context.Context.func_params_map = {
 }
 
 # Number of tree to fit.
-num_tree = 1
-# Max depth of each tree.
+num_tree = 3
+# the depth of each tree
+max_depth = 2
 # max_depth = 5
-#max_depth = 1
-max_depth = 3
 
 
 @ph.context.function(role='host',
@@ -1944,11 +1943,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     Y = data.pop('y').values
     X_host = data.copy()
-    # X_host.pop('Sample code number')
-    # public_k, priv_k = paillier.generate_paillier_keypair()
-    # logger.debug("paillier pub key is : {}".format(public_k))
-    # print("paillier pub key is :", public_k)
-    # host_log = open('/app/host_log', 'w+')
+
     lookup_table_sum = {}
 
     if cry_pri == "paillier":
@@ -1976,12 +1971,10 @@ def xgb_host_logic(cry_pri="paillier"):
         #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
         #                                                               )
         # pools = ActorPool([actor1, actor2, actor3])
+        xgb_host.lookup_table = {}
 
         for t in range(xgb_host.n_estimators):
             print("Begin to trian tree: ", t + 1)
-
-            xgb_host.record = 0
-            xgb_host.lookup_table = {}
             f_t = pd.Series([0] * Y.shape[0])
 
             # host cal gradients and hessians with its own label
@@ -2008,40 +2001,6 @@ def xgb_host_logic(cry_pri="paillier"):
             xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
                 X_host.copy(), f_t, 0, gh)
 
-            # # start construct boosting trees
-            # xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(
-            #     X_host, GH_guest, gh, f_t, 0)  # noqa
-
-            # # GH_guest_en = xgb_host.channel.recv()
-            # GH_guest_en = proxy_server.Get('gh_sum')
-
-            # vars = GH_guest_en.pop('var')
-            # cuts = GH_guest_en.pop('cut')
-            # tmp_shape = GH_guest_en.shape
-            # tmp_columns = GH_guest_en.columns
-            # GH_guest_en_li = GH_guest_en.values.flatten().tolist()
-            # print("====GH_guest_en_li=====", len(GH_guest_en_li),
-            #       type(GH_guest_en_li[0]))
-
-            # GH_guest_dec_li = list(
-            #     pools.map(lambda a, v: a.pai_dec.remote(v), GH_guest_en_li))
-
-            # # rd_GH_guest_en_li = ray.data.from_items(GH_guest_en_li)
-            # # GH_guest_dec_li = rd_GH_guest_en_li.map(
-            # #     lambda x: phe_map_dec(xgb_host.pub, xgb_host.prv, x)).to_pandas().values.flatten()
-            # # GH_guest_dec_li = list(map(
-            # #     lambda x: phe_map_dec(xgb_host.pub, xgb_host.prv, x), GH_guest_en_li))
-            # # GH_guest = GH_guest_en.apply(
-            # #     opt_paillier_decrypt_crt, args=(xgb_host.pub, xgb_host.prv))
-            # GH_guest_dec = np.array(GH_guest_dec_li).reshape(tmp_shape)
-            # GH_guest = pd.DataFrame(GH_guest_dec, columns=tmp_columns)
-            # GH_guest = GH_guest / ratio
-
-            # GH_guest = pd.concat([GH_guest, vars, cuts], axis=1)
-            # print("GH_guest: ", GH_guest)
-
-            # xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(
-            #     X_host, GH_guest, gh, f_t, 0)  # noqa
             lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
@@ -2056,23 +2015,6 @@ def xgb_host_logic(cry_pri="paillier"):
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
-        # with open(model_file_path, 'wb') as fm:
-        #     pickle.dump(xgb_host.tree_structure, fm)
-        # with open(lookup_file_path, 'wb') as fl:
-        #     pickle.dump(xgb_host.lookup_table_sum, fl)
-
-        # y_pre = xgb_host.predict_prob(X_host)
-        # y_train_pre.to_csv(predict_file_path)
-        # y_train_true = Y
-        # # Y_true = {"train": y_train_true, "test": y_true}
-        # # Y_pre = {"train": y_train_pre, "test": y_pre}
-        # Y_true = {"train": y_train_true}
-        # Y_pre = {"train": y_train_pre}
-        # if eva_type == 'regression':
-        #     Regression_eva.get_result(Y_true, Y_pre, indicator_file_path)
-        # elif eva_type == 'classification':
-        #     Classification_eva.get_result(Y_true, Y_pre, indicator_file_path)
-
     elif cry_pri == "plaintext":
         xgb_host = XGB_HOST(n_estimators=num_tree,
                             max_depth=max_depth,
@@ -2084,11 +2026,13 @@ def xgb_host_logic(cry_pri="paillier"):
                             proxy_client_guest=proxy_client_guest)
         # channel.recv()
         y_hat = np.array([0.5] * Y.shape[0])
+        xgb_host.lookup_table = {}
+
         for t in range(xgb_host.n_estimators):
             logger.info("Begin to trian tree {}.".format(t))
 
-            xgb_host.record = 0
-            xgb_host.lookup_table = {}
+            # xgb_host.record = 0
+            # xgb_host.lookup_table = {}
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
             # xgb_host.channel.send(gh)
@@ -2223,10 +2167,10 @@ def xgb_guest_logic(cry_pri="paillier"):
         pub = proxy_server.Get('xgb_pub')
         # xgb_guest.channel.send(b'recved pub')
         lookup_table_sum = {}
+        xgb_guest.lookup_table = {}
 
         for t in range(xgb_guest.n_estimators):
             xgb_guest.record = 0
-            xgb_guest.lookup_table = {}
             # gh_host = xgb_guest.channel.recv()
             gh_en = proxy_server.Get('gh_en')
             xgb_guest.pub = pub
@@ -2235,14 +2179,6 @@ def xgb_guest_logic(cry_pri="paillier"):
 
             # stat construct boosting trees
 
-            # X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
-            # print("X_guest_gh: ", X_guest_gh.head)
-            # gh_sum = xgb_guest.get_GH(X_guest_gh, pub)
-            # xgb_guest.channel.send(gh_sum)
-            # print(f"gh_sum {gh_sum}: ", file=guest_log)
-            # gh_sum.to_csv('/app/guest_log.csv', sep='\t')
-            # proxy_client_host.Remote(gh_sum, "gh_sum")
-            # xgb_guest.cart_tree(X_guest_gh, 0, pub)
             lookup_table_sum[t + 1] = xgb_guest.lookup_table
 
         lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
@@ -2261,10 +2197,11 @@ def xgb_guest_logic(cry_pri="paillier"):
                               proxy_server=proxy_server,
                               proxy_client_host=proxy_client_host)  # noqa
         # channel.send(b'guest ready')
+        xgb_guest.lookup_table = {}
         for t in range(xgb_guest.n_estimators):
             xgb_guest.record = 0
-            xgb_guest.lookup_table = pd.DataFrame(
-                columns=['record_id', 'feature_id', 'threshold_value'])
+            # xgb_guest.lookup_table = pd.DataFrame(
+            #     columns=['record_id', 'feature_id', 'threshold_value'])
             # gh_host = xgb_guest.channel.recv()
             gh_host = proxy_server.Get('gh')
             X_guest_gh = pd.concat([X_guest, gh_host], axis=1)
