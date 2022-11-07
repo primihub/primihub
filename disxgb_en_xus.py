@@ -809,8 +809,8 @@ class XGB_GUEST_EN:
 
                 print("==predict===", guest_test.index, ids)
 
-            self.guest_get_tree_ids(guest_test_left, current_lookup)
-            self.guest_get_tree_ids(guest_test_right, current_lookup)
+            self.guest_get_tree_ids(guest_test_left.copy(), current_lookup)
+            self.guest_get_tree_ids(guest_test_right.copy(), current_lookup)
 
     def cart_tree(self, X_guest_gh, mdep, pub):
         print("guest dept", mdep)
