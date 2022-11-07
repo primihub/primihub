@@ -781,9 +781,9 @@ class XGB_GUEST_EN:
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
             role = self.proxy_server.Get('role')
-
+            record_id = self.proxy_server.Get('record_id')
             if role == "guest":
-                record_id = self.proxy_server.Get('record_id')
+
                 if record_id is None:
                     break
                 tmp_lookup = current_lookup[record_id]
@@ -796,11 +796,12 @@ class XGB_GUEST_EN:
                     {
                         'id_left': id_left,
                         'id_right': id_right
-                    }, 'ids')
+                    },
+                    str(record_id) + '_ids')
                 self.guest_get_tree_ids(guest_test_left, current_lookup)
                 self.guest_get_tree_ids(guest_test_right, current_lookup)
             else:
-                ids = self.proxy_server.Get('ids')
+                ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 guest_test_left = guest_test.loc[id_left]
                 id_right = ids['id_right']
@@ -808,8 +809,8 @@ class XGB_GUEST_EN:
 
                 print("==predict===", guest_test.index, ids)
 
-                self.guest_get_tree_ids(guest_test_left, current_lookup)
-                self.guest_get_tree_ids(guest_test_right, current_lookup)
+            self.guest_get_tree_ids(guest_test_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, current_lookup)
 
     def cart_tree(self, X_guest_gh, mdep, pub):
         print("guest dept", mdep)
@@ -1713,10 +1714,10 @@ class XGB_HOST_EN:
             role, record_id = k[0], k[1]
             self.proxy_client_guest.Remote(role, 'role')
             print("role, record_id", role, record_id, current_lookup)
+            self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
-                self.proxy_client_guest.Remote(record_id, 'record_id')
-                ids = self.proxy_server.Get('ids')
+                ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 id_right = ids['id_right']
                 host_test_left = host_test.loc[id_left]
@@ -1737,7 +1738,8 @@ class XGB_HOST_EN:
                     {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
-                    }, 'ids')
+                    },
+                    str(record_id) + '_ids')
 
             for kk in tree[k].keys():
                 if kk[0] == 'left':
