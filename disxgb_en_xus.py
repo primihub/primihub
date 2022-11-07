@@ -797,6 +797,8 @@ class XGB_GUEST_EN:
                         'id_left': id_left,
                         'id_right': id_right
                     }, 'ids')
+                self.guest_get_tree_ids(guest_test_left, current_lookup)
+                self.guest_get_tree_ids(guest_test_right, current_lookup)
             else:
                 ids = self.proxy_server.Get('ids')
                 id_left = ids['id_left']
@@ -806,8 +808,8 @@ class XGB_GUEST_EN:
 
                 print("==predict===", guest_test.index, ids)
 
-            self.guest_get_tree_ids(guest_test_left, current_lookup)
-            self.guest_get_tree_ids(guest_test_right, current_lookup)
+                self.guest_get_tree_ids(guest_test_left, current_lookup)
+                self.guest_get_tree_ids(guest_test_right, current_lookup)
 
     def cart_tree(self, X_guest_gh, mdep, pub):
         print("guest dept", mdep)
