@@ -1809,16 +1809,19 @@ class XGB_HOST_EN:
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
-        Y = pd.Series([self.base_score] * X.shape[0])
+        # Y = pd.Series([self.base_score] * X.shape[0])
+        Y = np.array([self.base_score] * len(X))
 
         for t in range(self.n_estimators):
             tree = self.tree_structure[t + 1]
             lookup_table = lookup[t + 1]
-            y_t = pd.Series([0] * X.shape[0])
+            # y_t = pd.Series([0] * X.shape[0])
+            y_t = np.zeros(len(X))
             print("befor change", y_t)
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
             print("after change", y_t)
+            # Y = Y + self.learning_rate * y_t
             Y = Y + self.learning_rate * y_t
 
         return Y
@@ -1827,10 +1830,11 @@ class XGB_HOST_EN:
 
         Y = self.predict_raw(X, lookup)
 
-        def sigmoid(x):
-            return 1 / (1 + np.exp(-x))
+        # def sigmoid(x):
+        #     return 1 / (1 + np.exp(-x))
 
-        Y = Y.apply(sigmoid)
+        # Y = Y.apply(sigmoid)
+        Y = 1 / (1 + np.exp(-Y))
 
         return Y
 
