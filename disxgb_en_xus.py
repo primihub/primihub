@@ -775,7 +775,7 @@ class XGB_GUEST_EN:
                 w_right = ids_w['w_right']
                 self.host_record += 1
 
-            print("===train==", X_guest.index, ids_w)
+            # print("===train==", X_guest.index, ids_w)
             tree_structure = {(role, record): {}}
 
             X_guest_left = X_guest.loc[id_left]
@@ -784,16 +784,21 @@ class XGB_GUEST_EN:
             encrypted_ghs_left = encrypted_ghs.loc[id_left]
             encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
-            tree_structure[(role,
-                            record)][('left',
-                                      w_left)] = self.guest_tree_construct(
-                                          X_guest_left, encrypted_ghs_left,
-                                          current_depth + 1)
-            tree_structure[(role,
-                            record)][('right',
-                                      w_right)] = self.guest_tree_construct(
-                                          X_guest_right, encrypted_ghs_right,
-                                          current_depth + 1)
+            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
+                                      current_depth + 1)
+            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
+                                      current_depth + 1)
+
+            # tree_structure[(role,
+            #                 record)][('left',
+            #                           w_left)] = self.guest_tree_construct(
+            #                               X_guest_left, encrypted_ghs_left,
+            #                               current_depth + 1)
+            # tree_structure[(role,
+            #                 record)][('right',
+            #                           w_right)] = self.guest_tree_construct(
+            #                               X_guest_right, encrypted_ghs_right,
+            #                               current_depth + 1)
 
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
