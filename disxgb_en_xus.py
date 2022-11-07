@@ -366,24 +366,22 @@ class ServerChannelProxy:
 class XGB_GUEST:
 
     def __init__(
-        self,
-        proxy_server=None,
-        proxy_client_host=None,
-        base_score=0.5,
-        max_depth=3,
-        n_estimators=10,
-        learning_rate=0.1,
-        reg_lambda=1,
-        gamma=0,
-        min_child_sample=1,
-        # min_child_sample=100,
-        min_child_weight=1,
-        objective='linear',
-        #  channel=None,
-        sid=0,
-        record=0,
-        lookup_table=pd.DataFrame(
-            columns=['record_id', 'feature_id', 'threshold_value'])):
+            self,
+            proxy_server=None,
+            proxy_client_host=None,
+            base_score=0.5,
+            max_depth=3,
+            n_estimators=10,
+            learning_rate=0.1,
+            reg_lambda=1,
+            gamma=0,
+            min_child_sample=1,
+            # min_child_sample=100,
+            min_child_weight=1,
+            objective='linear',
+            #  channel=None,
+            sid=0,
+            record=0):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -400,7 +398,7 @@ class XGB_GUEST:
         self.objective = objective
         self.sid = sid
         self.record = record
-        self.lookup_table = lookup_table
+        self.lookup_table = {}
         self.lookup_table_sum = {}
 
     def get_GH(self, X):
@@ -476,9 +474,8 @@ class XGB_GUEST:
             best_cut = var_cut_GH['best_cut']
             GH_best = var_cut_GH['GH_best']
             f_t = var_cut_GH['f_t']
-            self.lookup_table.loc[self.record, 'record_id'] = self.record
-            self.lookup_table.loc[self.record, 'feature_id'] = best_var
-            self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+            self.lookup_table[self.record] = [best_var, best_cut]
+
             f_t, id_right, id_left, w_right, w_left = self.split(
                 X_guest_gh, best_var, best_cut, GH_best, f_t)
             # .reset_index(drop='True'))
@@ -758,10 +755,6 @@ class XGB_GUEST_EN:
                 # updata guest lookup table
                 self.lookup_table[self.record] = [best_var, best_cut]
 
-                # self.lookup_table.loc[self.record, 'record_id'] = self.record
-                # self.lookup_table.loc[self.record, 'feature_id'] = best_var
-                # self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
-
                 # self.guest_record += 1
                 self.guest_record += 1
 
@@ -855,9 +848,8 @@ class XGB_GUEST_EN:
             best_cut = var_cut_GH['best_cut']
             GH_best = var_cut_GH['GH_best']
             f_t = var_cut_GH['f_t']
-            self.lookup_table.loc[self.record, 'record_id'] = self.record
-            self.lookup_table.loc[self.record, 'feature_id'] = best_var
-            self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+            self.lookup_table[self.record] = [best_var, best_cut]
+
             f_t, id_right, id_left, w_right, w_left = self.split(
                 X_guest_gh, best_var, best_cut, GH_best, f_t)
 
@@ -870,9 +862,8 @@ class XGB_GUEST_EN:
             best_cut = var_cut_GH['best_cut']
             GH_best = var_cut_GH['GH_best']
             f_t = var_cut_GH['f_t']
-            self.lookup_table.loc[self.record, 'record_id'] = self.record
-            self.lookup_table.loc[self.record, 'feature_id'] = best_var
-            self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+            self.lookup_table[self.record] = [best_var, best_cut]
+
             f_t, id_right, id_left, w_right, w_left = self.split(
                 X_guest_gh, best_var, best_cut, GH_best, f_t)
 
@@ -951,24 +942,22 @@ class XGB_GUEST_EN:
 class XGB_HOST:
 
     def __init__(
-        self,
-        proxy_server=None,
-        proxy_client_guest=None,
-        base_score=0.5,
-        max_depth=3,
-        n_estimators=10,
-        learning_rate=0.1,
-        reg_lambda=1,
-        gamma=0,
-        min_child_sample=1,
-        # min_child_sample=100,
-        min_child_weight=1,
-        objective='linear',
-        #  channel=None,
-        sid=0,
-        record=0,
-        lookup_table=pd.DataFrame(
-            columns=['record_id', 'feature_id', 'threshold_value'])):
+            self,
+            proxy_server=None,
+            proxy_client_guest=None,
+            base_score=0.5,
+            max_depth=3,
+            n_estimators=10,
+            learning_rate=0.1,
+            reg_lambda=1,
+            gamma=0,
+            min_child_sample=1,
+            # min_child_sample=100,
+            min_child_weight=1,
+            objective='linear',
+            #  channel=None,
+            sid=0,
+            record=0):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -984,7 +973,7 @@ class XGB_HOST:
         self.objective = objective
         self.sid = sid
         self.record = record
-        self.lookup_table = lookup_table
+        self.lookup_table = {}
         self.tree_structure = {}
         self.lookup_table_sum = {}
 
@@ -1125,9 +1114,8 @@ class XGB_HOST:
                 gh_sum_left = id_w_gh['gh_sum_left']
 
             else:
-                self.lookup_table.loc[self.record, 'record_id'] = self.record
-                self.lookup_table.loc[self.record, 'feature_id'] = best_var
-                self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
+                self.lookup_table[self.record] = [best_var, best_cut]
+
                 record_id = self.record
                 party_id = self.sid
                 tree_structure = {(party_id, record_id): {}}
@@ -1686,13 +1674,6 @@ class XGB_HOST_EN:
                 ]
                 print("self.lookup_table", self.lookup_table)
 
-                # self.lookup_table.loc[self.host_record,
-                #                       'record_id'] = self.host_record
-                # self.lookup_table.loc[self.host_record,
-                #                       'feature_id'] = host_best['best_var']
-                # self.lookup_table.loc[self.host_record,
-                #                       'threshold_value'] = host_best['best_cut']
-
                 self.host_record += 1
 
             tree_structure = {(role, record): {}}
@@ -2000,8 +1981,7 @@ def xgb_host_logic(cry_pri="paillier"):
             print("Begin to trian tree: ", t + 1)
 
             xgb_host.record = 0
-            xgb_host.lookup_table = pd.DataFrame(
-                columns=['record_id', 'feature_id', 'threshold_value'])
+            xgb_host.lookup_table = {}
             f_t = pd.Series([0] * Y.shape[0])
 
             # host cal gradients and hessians with its own label
@@ -2108,8 +2088,7 @@ def xgb_host_logic(cry_pri="paillier"):
             logger.info("Begin to trian tree {}.".format(t))
 
             xgb_host.record = 0
-            xgb_host.lookup_table = pd.DataFrame(
-                columns=['record_id', 'feature_id', 'threshold_value'])
+            xgb_host.lookup_table = {}
             f_t = pd.Series([0] * Y.shape[0])
             gh = xgb_host.get_gh(y_hat, Y)
             # xgb_host.channel.send(gh)
@@ -2247,8 +2226,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
         for t in range(xgb_guest.n_estimators):
             xgb_guest.record = 0
-            xgb_guest.lookup_table = pd.DataFrame(
-                columns=['record_id', 'feature_id', 'threshold_value'])
+            xgb_guest.lookup_table = {}
             # gh_host = xgb_guest.channel.recv()
             gh_en = proxy_server.Get('gh_en')
             xgb_guest.pub = pub
