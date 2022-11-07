@@ -809,8 +809,8 @@ class XGB_GUEST_EN:
                 id_right = ids['id_right']
                 guest_test_right = guest_test.loc[id_right]
 
-            self.guest_get_tree_ids(guest_test_left.copy(), current_lookup)
-            self.guest_get_tree_ids(guest_test_right.copy(), current_lookup)
+            self.guest_get_tree_ids(guest_test_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, current_lookup)
 
     def cart_tree(self, X_guest_gh, mdep, pub):
         print("guest dept", mdep)
@@ -2009,7 +2009,7 @@ def xgb_host_logic(cry_pri="paillier"):
             # start construct boosting trees
 
             xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
-                X_host, f_t, 0, gh)
+                X_host.copy(), f_t, 0, gh)
 
             # # start construct boosting trees
             # xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(
@@ -2100,7 +2100,7 @@ def xgb_host_logic(cry_pri="paillier"):
             # GH_guest = xgb_host.channel.recv()
             GH_guest = proxy_server.Get('gh_sum')
             xgb_host.tree_structure[t + 1], f_t = xgb_host.xgb_tree(
-                X_host, GH_guest, gh, f_t, 0)  # noqa
+                X_host.copy(), GH_guest, gh, f_t, 0)  # noqa
             xgb_host.lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
@@ -2233,7 +2233,7 @@ def xgb_guest_logic(cry_pri="paillier"):
             # gh_host = xgb_guest.channel.recv()
             gh_en = proxy_server.Get('gh_en')
             xgb_guest.pub = pub
-            xgb_guest.guest_tree_construct(X_guest, gh_en, 0)
+            xgb_guest.guest_tree_construct(X_guest.copy(), gh_en, 0)
 
             # stat construct boosting trees
 
@@ -2281,7 +2281,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
         with open(lookup_file_path, 'wb') as fl:
             pickle.dump(xgb_guest.lookup_table_sum, fl)
-    xgb_guest.predict(X_guest, lookup_table_sum)
+    xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # validate for test
     test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
