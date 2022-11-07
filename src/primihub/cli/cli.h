@@ -42,6 +42,7 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/file_util.h"
 
 using primihub::rpc::VMNode;
 using primihub::rpc::PushTaskRequest;

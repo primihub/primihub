@@ -41,7 +41,9 @@ public:
   void push_task(const std::string &node_id,
                 const PeerDatasetMap &peer_dataset_map,
                 const PushTaskRequest &request,
-                const std::string node_addr);
+                const std::string node_addr,
+                const std::string& local_node_id,
+                bool use_tls);
 
 protected:
   std::vector<Node> peer_list_;

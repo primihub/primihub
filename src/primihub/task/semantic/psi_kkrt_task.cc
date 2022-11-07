@@ -89,6 +89,14 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             result_file_path_ = param_map["outputFullFilename"].value_string();
             host_address_ = param_map["serverAddress"].value_string();
             V_VLOG(5) << "serverAddress: " << host_address_;
+            std::vector<std::string> server_info;
+            str_split(host_address_, &server_info, ':');
+            if (server_info.size() == 3) {
+                host_address_ = server_info[0] + ":" + server_info[1];
+                if (std::stoi(server_info[2])) {
+                    this->set_use_tls(true);
+                }
+            }
         } catch (std::exception &e) {
             LOG_ERROR() << "Failed to load params: " << e.what();
             return -1;
@@ -313,9 +321,10 @@ int PSIKkrtTask::send_result_to_server() {
     // so send result data to server by grpc
     grpc::ClientContext context;
     V_VLOG(5) << "send_result_to_server";
-    auto channel = grpc::InsecureChannelCredentials();
+    // auto channel = grpc::InsecureChannelCredentials();
+    auto channel = buildChannel(host_address_, node_id(), use_tls());
     // std::unique_ptr<VMNode::Stub>
-    auto stub = primihub::rpc::VMNode::NewStub(grpc::CreateChannel(host_address_, channel));
+    auto stub = primihub::rpc::VMNode::NewStub(channel);
     primihub::rpc::TaskResponse task_response;
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>>
         writer(stub->Send(&context, &task_response));

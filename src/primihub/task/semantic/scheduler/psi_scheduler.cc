@@ -24,6 +24,7 @@
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
+#include "src/primihub/util/util.h"
 
 #include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
 
@@ -74,7 +75,7 @@ void PSIScheduler::set_psi_request_param(const std::string &node_id,
             continue;
         }
         std::string server_addr(
-            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            absl::StrCat(pair.second.ip(), ":", pair.second.port(), ":", pair.second.use_tls()));
 
         if (server_address == "") {
             server_address = server_addr;
@@ -144,7 +145,7 @@ void PSIScheduler::set_kkrt_psi_request_param(const std::string &node_id,
         }
 
         std::string server_addr(
-            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            absl::StrCat(pair.second.ip(), ":", pair.second.port(), ":", pair.second.use_tls()));
 
         if (server_address == "") {
             server_address = server_addr;
@@ -170,8 +171,10 @@ void PSIScheduler::set_kkrt_psi_request_param(const std::string &node_id,
 void PSIScheduler::node_push_psi_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
-                    std::string dest_node_address,
-                    bool is_client) {
+                    const std::string& dest_node_address,
+                    bool is_client,
+                    const std::string& current_node_id,
+                    bool use_tls) {
     grpc::ClientContext context;
 
     PushTaskReply pushTaskReply;
@@ -198,13 +201,10 @@ void PSIScheduler::node_push_psi_task(const std::string &node_id,
 
     // send request
     LOG_INFO() << "dest node " << dest_node_address;
-    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials()));
-    // const auto& task_id = _1NodePushTaskRequest.task().task_id();
-    // const auto& job_id = _1NodePushTaskRequest.task().job_id();
-    // V_VLOG(5) << "task_id: " << task_id << " job_id: " << job_id;
-    Status status =
-        stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
+    auto channel = buildChannel(dest_node_address, "node0", use_tls);
+    VLOG(5) << "buildChannel finished";
+    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(channel);
+    Status status = stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
     if (status.ok()) {
         if (is_client) {
             LOG_INFO() << "Node push psi task rpc succeeded.";
@@ -277,6 +277,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             }
             //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
             std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            bool use_tls = pair.second.use_tls();
             if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
                 V_VLOG(5) << "duplicate request for same destination, avoid";
                 continue;
@@ -291,7 +292,9 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                             this->peer_dataset_map_,  // peer_dataset_map
                             std::ref(nodePushTaskRequest),  // nodePushTaskRequest
                             dest_node_address,
-                            is_client));
+                            is_client,
+                            this->get_node_id(),
+                            use_tls));
         }
     }
 

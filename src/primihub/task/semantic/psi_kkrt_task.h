@@ -64,6 +64,7 @@ public:
     int execute() override;
     int saveResult(void);
     int send_result_to_server();
+    inline std::string node_id() {return node_id_;};
 private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);

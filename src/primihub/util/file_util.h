@@ -11,12 +11,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <utility>
+#include <fstream>
 
 namespace primihub {
 
 std::vector<std::string> GetFiles(const std::string& path);
 int ValidateDir(const std::string &file_path);
-
+std::string getFileContents(const std::string& fpath);
 }
-
-#endif
+#endif  // SRC_primihub_UTIL_FILE_UTIL_H_

@@ -81,7 +81,9 @@ public:
     void node_push_pir_task(const std::string &node_id,
                         const PeerDatasetMap &peer_dataset_map,
                         const PushTaskRequest &nodePushTaskRequest,
-                        std::string dest_node_address, bool is_client);
+                        std::string dest_node_address, bool is_client,
+                        const std::string& local_node_id,
+                        bool use_tls);
 
  protected:
     void set_pir_request_param(const std::string &node_id,

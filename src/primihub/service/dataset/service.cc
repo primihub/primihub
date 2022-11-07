@@ -149,15 +149,20 @@ namespace primihub::service {
         LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
         YAML::Node config = YAML::LoadFile(config_file_path);
         // strcat nodelet address
-        // format: node_name:ip:port
+        // format: node_name:ip:port:use_tls
+        int32_t use_tls = config["use_tls"].as<int32_t>();
         std::string nodelet_addr = config["node"].as<std::string>() + ":"
             + config["location"].as<std::string>() + ":"
-            + std::to_string(config["grpc_port"].as<uint64_t>());
+            + std::to_string(config["grpc_port"].as<uint64_t>()) + ":"
+            + std::to_string(use_tls);
+        VLOG(0) << "nodelet_addr_nodelet_addr: " << nodelet_addr;
         if (config["datasets"]) {
             for (const auto& dataset : config["datasets"]) {
+                std::string description =  dataset["description"].as<std::string>();
                 auto dataset_type = dataset["model"].as<std::string>();
                 auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr);
                 std::string source = dataset["source"].as<std::string>();
+
                 if (dataset_type == "sqlite") {
                     auto table_name = dataset["table_name"].as<std::string>();
                     source.append("#").append(table_name).append("#");
@@ -168,7 +173,7 @@ namespace primihub::service {
                 }
                 [[maybe_unused]] auto cursor = driver->read(source);
                 DatasetMeta meta;
-                newDataset(driver, dataset["description"].as<std::string>(), meta);
+                newDataset(driver, description, meta);
             }
         }
     }
@@ -182,12 +187,13 @@ namespace primihub::service {
             // Update node let address.
             std::string node_id, node_ip, dataset_path;
             int node_port;
+            bool use_tls{false};
             std::string data_url = meta.getDataURL();
-            if (!DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path)) {
+            VLOG(0) << "data_url: " << data_url;
+            if (!DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path)) {
                 LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
                 continue;
             }
-
             meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
             // Publish dataset meta on libp2p network.
             metaService_->putMeta(meta);
@@ -373,9 +379,10 @@ arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallCont
 
             std::string node_id, node_ip, dataset_path;
             int node_port;
+            bool use_tls{false};
             std::string data_url = meta->getDataURL();
             LOG(INFO) << "DoGet dataset url:" << data_url;
-            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+            DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
             LOG(INFO) << "DoGet dataset path:" << dataset_path;
             auto cursor = driver->read(dataset_path);  // TODO only support Local file path now.
             auto dataset = cursor->read();

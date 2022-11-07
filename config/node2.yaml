@@ -17,7 +17,15 @@ version: 1.0
 
 node: "node2"
 location: "127.0.0.1"
+use_tls: 0
+#location: "www.primihub.server.com"
+#use_tls: 1
 grpc_port: 50052
+
+certificate:
+  root_ca: "data/cert/ca.crt"
+  key: "data/cert/node2.key"
+  cert: "data/cert/node2.crt"
 
 # load datasets
 datasets:
@@ -48,10 +56,10 @@ datasets:
     model: "csv"
     source: "data/FL/wisconsin.data"
 
-  # PSI test caset datasets
-  - description: "psi_client_data"
-    model: "csv"
-    source: "data/client_e.csv"
+  ## PSI test caset datasets
+  #- description: "psi_client_data"
+  #  model: "csv"
+  #  source: "data/client_e.csv"
 
   # PSI test case datasets for sqlite database
   - description: "psi_client_data_db"
@@ -66,7 +74,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmaoqnKLY74VdY4P4Ujqyja3eZHy9xX7Q3tQaLWLcvuqHp"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
 
   multi_addr: "/ip4/127.0.0.1/tcp/8888"
