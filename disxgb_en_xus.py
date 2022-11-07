@@ -1693,7 +1693,7 @@ class XGB_HOST_EN:
 
             f_t[id_left] = w_left
             f_t[id_right] = w_right
-            print("===========", (role, record, w_left, w_right))
+            # print("===========", (role, record, w_left, w_right))
 
             tree_structure[(role, record)][('left',
                                             w_left)] = self.host_tree_construct(
@@ -1714,7 +1714,7 @@ class XGB_HOST_EN:
             k = list(tree.keys())[0]
             role, record_id = k[0], k[1]
             self.proxy_client_guest.Remote(role, 'role')
-            print("role, record_id", role, record_id, current_lookup)
+            # print("role, record_id", role, record_id, current_lookup)
             self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
@@ -1743,7 +1743,7 @@ class XGB_HOST_EN:
                         'id_right': host_test_right.index
                     },
                     str(record_id) + '_ids')
-                print("==predict host===", host_test.index, id_left, id_right)
+                # print("==predict host===", host_test.index, id_left, id_right)
 
             for kk in tree[k].keys():
                 if kk[0] == 'left':
@@ -1985,15 +1985,21 @@ def xgb_host_logic(cry_pri="paillier"):
             # gh_large = (gh * ratio).astype('int')
 
             flat_gh = gh.values.flatten().tolist()
+
+            start_enc = time.time()
             enc_flat_gh = list(
                 paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
                                        flat_gh))
+
+            end_enc = time.time()
 
             enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
             enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
             # send all encrypted gradients and hessians to 'guest'
             proxy_client_guest.Remote(enc_gh_df, "gh_en")
+
+            end_send_gh = time.time()
             print("Encrypt finish.")
 
             # start construct boosting trees
@@ -2001,10 +2007,17 @@ def xgb_host_logic(cry_pri="paillier"):
             xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
                 X_host.copy(), f_t, 0, gh)
 
+            end_build_tree = time.time()
+
             lookup_table_sum[t + 1] = xgb_host.lookup_table
             y_hat = y_hat + xgb_host.learning_rate * f_t
 
             logger.info("Finish to trian tree {}.".format(t + 1))
+            check_time = [
+                end_enc - start_enc, end_send_gh - end_enc,
+                end_build_tree - end_send_gh
+            ]
+            print("build time ", check_time)
 
         end = time.time()
         # logger.info("lasting time for xgb %s".format(end-start))
