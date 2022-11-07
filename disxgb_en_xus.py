@@ -778,8 +778,6 @@ class XGB_GUEST_EN:
             self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
                                       current_depth + 1)
 
-
-
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
             role = self.proxy_server.Get('role')
@@ -1235,25 +1233,23 @@ class XGB_HOST:
 class XGB_HOST_EN:
 
     def __init__(
-        self,
-        proxy_server=None,
-        proxy_client_guest=None,
-        base_score=0.5,
-        max_depth=3,
-        n_estimators=10,
-        learning_rate=0.1,
-        reg_lambda=1,
-        gamma=0,
-        #min_child_sample=1,
-        min_child_sample=100,
-        min_child_weight=1,
-        objective='linear',
-        #  channel=None,
-        random_seed=112,
-        sid=0,
-        record=0,
-        lookup_table=pd.DataFrame(
-            columns=['record_id', 'feature_id', 'threshold_value'])):
+            self,
+            proxy_server=None,
+            proxy_client_guest=None,
+            base_score=0.5,
+            max_depth=3,
+            n_estimators=10,
+            learning_rate=0.1,
+            reg_lambda=1,
+            gamma=0,
+            #min_child_sample=1,
+            min_child_sample=100,
+            min_child_weight=1,
+            objective='linear',
+            #  channel=None,
+            random_seed=112,
+            sid=0,
+            record=0):
 
         # self.channel = channel
         self.proxy_server = proxy_server
