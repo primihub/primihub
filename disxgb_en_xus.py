@@ -2132,6 +2132,7 @@ def xgb_host_logic(cry_pri="paillier"):
     test_y = test_host.pop('y')
     test_data = test_host.copy()
     test_pred = xgb_host.predict(test_data, lookup_table_sum)
+    print("test_host: ", test_host.shape)
 
     test_acc = metrics.accuracy_score(test_pred, test_y.values)
     print("train and test validate acc: ", {
@@ -2280,6 +2281,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     # validate for test
     test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
+    print("test_guest: ", test_guest.shape)
     xgb_guest.predict(test_guest, lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
