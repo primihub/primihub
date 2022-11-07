@@ -1996,14 +1996,14 @@ def xgb_host_logic(cry_pri="paillier"):
             print("Encrypt finish.")
 
             # start construct boosting trees
-            lp = LineProfiler(xgb_host.host_tree_construct)
-            lp.run(
-                "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
-            )
-            lp.print_stats()
+            # lp = LineProfiler(xgb_host.host_tree_construct)
+            # lp.run(
+            #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
+            # )
+            # lp.print_stats()
 
-            # xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
-            #     X_host.copy(), f_t, 0, gh)
+            xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
+                X_host.copy(), f_t, 0, gh)
 
             end_build_tree = time.time()
 
