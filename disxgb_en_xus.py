@@ -375,8 +375,8 @@ class XGB_GUEST:
         learning_rate=0.1,
         reg_lambda=1,
         gamma=0,
-        #min_child_sample=1,
-        min_child_sample=100,
+        min_child_sample=1,
+        # min_child_sample=100,
         min_child_weight=1,
         objective='linear',
         #  channel=None,
@@ -581,8 +581,8 @@ class XGB_GUEST_EN:
             learning_rate=0.1,
             reg_lambda=1,
             gamma=0,
-            #min_child_sample=1,
-            min_child_sample=100,
+            min_child_sample=1,
+            # min_child_sample=100,
             min_child_weight=1,
             objective='linear',
             #  channel=None,
@@ -606,6 +606,9 @@ class XGB_GUEST_EN:
         self.lookup_table = {}
         self.lookup_table_sum = {}
         self.pub = None
+        self.tree_structure = {}
+        self.host_record = 0
+        self.guest_record = 0
         self.tree_structure = {}
 
     def get_GH(self, X, pub):
@@ -728,6 +731,8 @@ class XGB_GUEST_EN:
         if host_best_gain or guest_best_gain:
 
             if guest_flag1 or guest_flag2:
+                role = "guest"
+                record = self.guest_record
                 best_var = guest_best['var']
                 best_cut = guest_best['cut']
                 # calculate the left, right ids and leaf weight
@@ -757,15 +762,20 @@ class XGB_GUEST_EN:
                 # self.lookup_table.loc[self.record, 'threshold_value'] = best_cut
 
                 # self.guest_record += 1
-                self.record += 1
+                self.guest_record += 1
+
             else:
                 ids_w = self.proxy_server.Get('ids_w')
+                role = 'host'
+                record = self.host_record
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
                 w_left = ids_w['w_left']
                 w_right = ids_w['w_right']
+                self.host_record += 1
 
             print("===train==", X_guest.index, ids_w)
+            tree_structure = {(role, record): {}}
 
             X_guest_left = X_guest.loc[id_left]
             X_guest_right = X_guest.loc[id_right]
@@ -773,10 +783,16 @@ class XGB_GUEST_EN:
             encrypted_ghs_left = encrypted_ghs.loc[id_left]
             encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
-            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                      current_depth + 1)
-            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                      current_depth + 1)
+            tree_structure[(role,
+                            record)][('left',
+                                      w_left)] = self.guest_tree_construct(
+                                          X_guest_left, encrypted_ghs_left,
+                                          current_depth + 1)
+            tree_structure[(role,
+                            record)][('right',
+                                      w_right)] = self.guest_tree_construct(
+                                          X_guest_right, encrypted_ghs_right,
+                                          current_depth + 1)
 
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
@@ -802,8 +818,7 @@ class XGB_GUEST_EN:
                         'id_right': id_right
                     },
                     str(record_id) + '_ids')
-                # self.guest_get_tree_ids(guest_test_left, current_lookup)
-                # self.guest_get_tree_ids(guest_test_right, current_lookup)
+
             else:
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
@@ -939,8 +954,8 @@ class XGB_HOST:
         learning_rate=0.1,
         reg_lambda=1,
         gamma=0,
-        #min_child_sample=1,
-        min_child_sample=100,
+        min_child_sample=1,
+        # min_child_sample=100,
         min_child_weight=1,
         objective='linear',
         #  channel=None,
@@ -1251,8 +1266,8 @@ class XGB_HOST_EN:
             learning_rate=0.1,
             reg_lambda=1,
             gamma=0,
-            #min_child_sample=1,
-            min_child_sample=100,
+            min_child_sample=1,
+            # min_child_sample=100,
             min_child_weight=1,
             objective='linear',
             #  channel=None,
@@ -2123,6 +2138,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
         # xgb_host.predict_prob(X_host).to_csv(predict_file_path)
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
+    print("train_pred, Y: ", train_pred, Y)
     train_acc = metrics.accuracy_score(train_pred, Y)
     print("train_acc: ", train_acc)
 
@@ -2229,7 +2245,8 @@ def xgb_guest_logic(cry_pri="paillier"):
             # gh_host = xgb_guest.channel.recv()
             gh_en = proxy_server.Get('gh_en')
             xgb_guest.pub = pub
-            xgb_guest.guest_tree_construct(X_guest.copy(), gh_en, 0)
+            xgb_guest.tree_structure[t + 1] = xgb_guest.guest_tree_construct(
+                X_guest.copy(), gh_en, 0)
 
             # stat construct boosting trees
 
