@@ -22,6 +22,7 @@ from primihub.channel.zmq_channel import IOService, Session
 import functools
 import ray
 from ray.util import ActorPool
+from line_profiler import LineProfiler
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -753,7 +754,8 @@ class XGB_GUEST_EN:
                         'w_right': w_right
                     }, 'ids_w')
                 # updata guest lookup table
-                self.lookup_table[self.record] = [best_var, best_cut]
+                self.lookup_table[self.guest_record] = [best_var, best_cut]
+                print("guest look_up table:", self.lookup_table)
 
                 # self.guest_record += 1
                 self.guest_record += 1
@@ -797,7 +799,8 @@ class XGB_GUEST_EN:
         while (1):
             role = self.proxy_server.Get('role')
             record_id = self.proxy_server.Get('record_id')
-            print("record_id, role", role, record_id)
+            print("record_id, role, current_lookup", role, record_id,
+                  current_lookup)
 
             # if record_id is None:
             #     break
@@ -1829,9 +1832,6 @@ class XGB_HOST_EN:
             print("after change", y_t)
             Y = Y + self.learning_rate * y_t
 
-        # self.channel.send(-1)
-        #self.proxy_client_guest.Remote(-1, 'need_record')
-        # print(self.channel.recv())
         return Y
 
     def predict_prob(self, X: pd.DataFrame, lookup):
