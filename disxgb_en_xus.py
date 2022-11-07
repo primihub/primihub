@@ -803,11 +803,11 @@ class XGB_GUEST_EN:
             else:
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
+                print("==predict===", guest_test.index, ids)
+
                 guest_test_left = guest_test.loc[id_left]
                 id_right = ids['id_right']
                 guest_test_right = guest_test.loc[id_right]
-
-                print("==predict===", guest_test.index, ids)
 
             self.guest_get_tree_ids(guest_test_left.copy(), current_lookup)
             self.guest_get_tree_ids(guest_test_right.copy(), current_lookup)
