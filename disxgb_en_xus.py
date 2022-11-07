@@ -698,7 +698,8 @@ class XGB_GUEST_EN:
     def guest_tree_construct(self, X_guest, encrypted_ghs, current_depth):
         m, n = X_guest.shape
 
-        if m < self.min_child_sample or current_depth > self.max_depth:
+        if (self.min_child_sample and
+                m < self.min_child_sample) or current_depth > self.max_depth:
             return
 
         # calculate sums of encrypted 'g' and 'h'
@@ -1436,7 +1437,7 @@ class XGB_HOST_EN:
         w_left, w_right = None, None
 
         m, n = X_host.shape
-        if m < self.min_child_sample:
+        if self.min_child_sample and m < self.min_child_sample:
             return None
 
         if cal_hist:
@@ -1587,7 +1588,8 @@ class XGB_HOST_EN:
         m, n = X_host.shape
         print("current_depth: ", current_depth, m)
 
-        if m < self.min_child_sample or current_depth > self.max_depth:
+        if (self.min_child_sample and
+                m < self.min_child_sample) or current_depth > self.max_depth:
             return
 
         # get the best cut of 'host'
