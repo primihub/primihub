@@ -1839,7 +1839,7 @@ class XGB_HOST_EN:
         return Y
 
     def predict(self, X: pd.DataFrame, lookup):
-        preds = self.predict_prob(X, lookup).values
+        preds = self.predict_prob(X, lookup)
 
         return (preds >= 0.5).astype('int')
 
