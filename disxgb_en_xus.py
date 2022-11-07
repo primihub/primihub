@@ -1729,15 +1729,15 @@ class XGB_HOST_EN:
                 var, cut = tmp_lookup[record_id][0], tmp_lookup[record_id][1]
 
                 host_test_left = host_test.loc[host_test[var] < cut]
-                # id_left = host_test_left.index.tolist()
-                id_left = host_test_left.index
+                id_left = host_test_left.index.tolist()
+                # id_left = host_test_left.index
                 host_test_right = host_test.loc[host_test[var] >= cut]
-                # id_right = host_test_right.index.tolist()
-                id_right = host_test_right.index
+                id_right = host_test_right.index.tolist()
+                # id_right = host_test_right.index
                 self.proxy_client_guest.Remote(
                     {
-                        'id_left': id_left,
-                        'id_right': id_right
+                        'id_left': host_test_left.index,
+                        'id_right': host_test_right.index
                     },
                     str(record_id) + '_ids')
                 print("==predict host===", host_test.index, id_left, id_right)
@@ -1745,10 +1745,10 @@ class XGB_HOST_EN:
             for kk in tree[k].keys():
                 if kk[0] == 'left':
                     tree_left = tree[k][kk]
-                    w[id_left.tolist()] = kk[1]
+                    w[id_left] = kk[1]
                 elif kk[0] == 'right':
                     tree_right = tree[k][kk]
-                    w[id_right.tolist()] = kk[1]
+                    w[id_right] = kk[1]
             print("current w: ", w)
             self.host_get_tree_node_weight(host_test_left, tree_left,
                                            current_lookup, w)
