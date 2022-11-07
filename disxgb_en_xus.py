@@ -765,7 +765,7 @@ class XGB_GUEST_EN:
                 w_left = ids_w['w_left']
                 w_right = ids_w['w_right']
 
-            print("=====", X_guest.index, ids_w)
+            print("===train==", X_guest.index, ids_w)
 
             X_guest_left = X_guest.loc[id_left]
             X_guest_right = X_guest.loc[id_right]
@@ -803,6 +803,8 @@ class XGB_GUEST_EN:
                 guest_test_left = guest_test.loc[id_left]
                 id_right = ids['id_right']
                 guest_test_right = guest_test.loc[id_right]
+
+                print("==predict===", guest_test.index, ids)
 
             self.guest_get_tree_ids(guest_test_left, current_lookup)
             self.guest_get_tree_ids(guest_test_right, current_lookup)
@@ -2273,8 +2275,8 @@ def xgb_guest_logic(cry_pri="paillier"):
     xgb_guest.predict(X_guest, lookup_table_sum)
 
     # validate for test
-    test_host = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
-    xgb_guest.predict(test_host, lookup_table_sum)
+    test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
+    xgb_guest.predict(test_guest, lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
