@@ -2127,7 +2127,7 @@ def xgb_host_logic(cry_pri="paillier"):
         #     Classification_eva.get_result(Y, y_pre, indicator_file_path)
 
         # xgb_host.predict_prob(X_host).to_csv(predict_file_path)
-    train_pred = xgb_host.predict(X_host, lookup_table_sum)
+    train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
     train_acc = metrics.accuracy_score(train_pred, Y)
 
     # validate for test
