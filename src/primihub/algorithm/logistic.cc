@@ -20,15 +20,15 @@
 #include <glog/logging.h>
 
 #include "src/primihub/algorithm/logistic.h"
+#include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
-#include "src/primihub/data_store/dataset.h"
-
 
 using namespace std;
 using namespace Eigen;
 using arrow::Array;
 using arrow::DoubleArray;
+using arrow::Int64Array;
 using arrow::Table;
 
 namespace primihub {
@@ -160,29 +160,25 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   model_name_ = ss.str();
 }
 
-int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task){
+int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
-  try{
+  try {
     train_input_filepath_ = param_map["TrainData"].value_string();
     test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
     model_file_name_ = param_map["modelName"].value_string();
-    if(model_file_name_ == "")
-      model_file_name_="./" + model_name_ + ".csv";
-  }
-  catch (std::exception &e)
-  {
+    if (model_file_name_ == "")
+      model_file_name_ = "./" + model_name_ + ".csv";
+  } catch (std::exception &e) {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;
   }
 
   LOG(INFO) << "Train data " << train_input_filepath_ << ", test data "
             << test_input_filepath_ << ".";
-  return 0;  
+  return 0;
 }
-
-
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
                                                     eMatrix<double> &m) {
@@ -221,16 +217,20 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
     return -1;
 
   m.resize(array_len, num_col);
-  for (int i = 0; i < num_col - 1; i++) {
-    auto array =
-        std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
-    for (int64_t j = 0; j < array->length(); j++)
-      m(j, i) = array->Value(j);
-  }
-  auto array_lastCol = std::static_pointer_cast<arrow::Int64Array>(
-      table->column(num_col - 1)->chunk(0));
-  for (int64_t j = 0; j < array_lastCol->length(); j++) {
-    m(j, num_col - 1) = array_lastCol->Value(j);
+  for (int i = 0; i < num_col; i++) {
+    if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
+      auto array =
+          std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
+      for (int64_t j = 0; j < array->length(); j++) {
+        m(j, i) = array->Value(j);
+      }
+    } else {
+      auto array =
+          std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+      for (int64_t j = 0; j < array->length(); j++) {
+        m(j, i) = array->Value(j);
+      }
+    }
   }
   return array->length();
 }
@@ -536,7 +536,7 @@ int LogisticRegressionExecutor::execute() {
   return 0;
 }
 
-int LogisticRegressionExecutor::saveModel(void){
+int LogisticRegressionExecutor::saveModel(void) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
 
@@ -550,15 +550,14 @@ int LogisticRegressionExecutor::saveModel(void){
       arrow::field("w", arrow::float64())};
   auto schema = std::make_shared<arrow::Schema>(schema_vector);
   std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
-    
+
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 
   auto cursor = driver->initCursor(model_file_name_);
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
-  if (ret != 0)
-  {
+  if (ret != 0) {
     LOG(ERROR) << "Save LR model to file " << model_file_name_ << " failed.";
     return -1;
   }
