@@ -803,7 +803,7 @@ class XGB_GUEST_EN:
             else:
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
-                print("==predict===", guest_test.index, ids)
+                print("==predict guest===", guest_test.index, ids)
 
                 guest_test_left = guest_test.loc[id_left]
                 id_right = ids['id_right']
@@ -1734,12 +1734,14 @@ class XGB_HOST_EN:
                 id_left = host_test_left.index.tolist()
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
+
                 self.proxy_client_guest.Remote(
                     {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
                     },
                     str(record_id) + '_ids')
+                print("==predict host===", host_test.index, id_left, id_right)
 
             for kk in tree[k].keys():
                 if kk[0] == 'left':
@@ -2129,10 +2131,11 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # validate for test
     test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
+    print("test_host: ", test_host.shape)
+
     test_y = test_host.pop('y')
     test_data = test_host.copy()
     test_pred = xgb_host.predict(test_data, lookup_table_sum)
-    print("test_host: ", test_host.shape)
 
     test_acc = metrics.accuracy_score(test_pred, test_y.values)
     print("train and test validate acc: ", {
