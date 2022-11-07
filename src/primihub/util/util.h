@@ -20,6 +20,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include "src/primihub/protos/worker.grpc.pb.h"
+#include <grpcpp/channel.h>
 
 namespace primihub {
 
@@ -31,8 +32,8 @@ void peer_to_list(const std::vector<std::string>& peer,
                   std::vector<Node>* list);
 
 void sort_peers(std::vector<std::string>* peers);
-
-
+std::shared_ptr<grpc::Channel>
+buildChannel(const std::string& dest_node_address, const std::string& node_id, bool use_tls);
 class IOService;
 
 class Work {

@@ -2,8 +2,15 @@ version: 1.0
 
 node: "node1"
 location: "172.28.1.11"
+use_tls: 0
+#location: "www.primihub.server.com"
+#use_tls: 1
 grpc_port: 50051
 
+certificate:
+  root_ca: "data/cert/ca.crt"
+  key: "data/cert/node0.key"
+  cert: "data/cert/node0.crt"
 datasets:
   # ABY3 LR test case datasets
   - description: "train_party_1"
@@ -65,4 +72,3 @@ p2p:
   dht_get_value_timeout:  120
 
 notify_server: 0.0.0.0:6667
-

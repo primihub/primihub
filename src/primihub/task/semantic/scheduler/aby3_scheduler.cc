@@ -26,6 +26,7 @@
 #include "absl/strings/str_cat.h"
 
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
+#include "src/primihub/util/util.h"
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
@@ -41,7 +42,9 @@ void ABY3Scheduler::node_push_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
                     const std::map<std::string, std::string> &dataset_owner,
-                    std::string dest_node_address) {
+                    const std::string& dest_node_address,
+                    const std::string& local_node_id,
+                    bool use_tls) {
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
@@ -75,8 +78,8 @@ void ABY3Scheduler::node_push_task(const std::string &node_id,
     }
 
     // send request
-    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials()));
+    auto channel = buildChannel(dest_node_address, local_node_id, use_tls);
+    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(channel);
     Status status =
         stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
     if (status.ok()) {
@@ -146,8 +149,6 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
             (*mutable_node_map)[node_id] = single_node;
         }
     }
-
-
     LOG_INFO() << " 📧  Dispatch SubmitTask to "
         << nodePushTaskRequest.mutable_task()->mutable_node_map()->size() << " node";
     // schedule
@@ -161,7 +162,7 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
                 std::string dest_node_address(
                     absl::StrCat(pair.second.ip(), ":", pair.second.port()));
                 DLOG(INFO) << "dest_node_address: " << dest_node_address;
-
+                bool use_tls = pair.second.use_tls();
                 thrds.emplace_back(
                     std::thread(&ABY3Scheduler::node_push_task,
                                 this,
@@ -169,7 +170,9 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
                                 this->peer_dataset_map_,  // peer_dataset_map
                                 std::ref(nodePushTaskRequest),  // nodePushTaskRequest
                                 this->dataset_owner_,
-                                dest_node_address));
+                                dest_node_address,
+                                get_node_id(),
+                                use_tls));
             }
         }
     }

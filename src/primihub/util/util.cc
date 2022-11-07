@@ -16,6 +16,13 @@
 
 
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/file_util.h"
+#include <grpc/grpc.h>
+#include <grpcpp/channel.h>
+#include <grpcpp/client_context.h>
+#include <grpcpp/create_channel.h>
+#include <grpcpp/security/credentials.h>
+#include <glog/logging.h>
 
 namespace primihub {
 
@@ -41,7 +48,7 @@ void peer_to_list(const std::vector<std::string>& peer,
     node.set_node_id(v[0]);
     node.set_ip(v[1]);
     node.set_port(std::stoi(v[2]));
-    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ? 
+    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ?
     list->push_back(node);
   }
 }
@@ -61,5 +68,27 @@ void sort_peers(std::vector<std::string>* peers) {
     }
   }
 }
-
+std::shared_ptr<grpc::Channel> buildChannel(const std::string& dest_node_address,
+                                            const std::string& current_node_id, bool use_tls) {
+  std::shared_ptr<grpc::ChannelCredentials> creds{nullptr};
+  if (use_tls) {
+    std::string root_ca_file_path = "data/cert/ca.crt";
+    std::string cert_file_path = "data/cert/" + current_node_id + ".crt";
+    std::string key_file_path = "data/cert/" + current_node_id + ".key";
+    VLOG(5) << "root_ca_file_path: " << root_ca_file_path << " "
+      << "cert_file_path: " << cert_file_path << " "
+      << "key_file_path: " << key_file_path;
+    std::string key = getFileContents(key_file_path);
+    std::string cert = getFileContents(cert_file_path);
+    std::string root_ca = getFileContents(root_ca_file_path);
+    grpc::SslCredentialsOptions ssl_opts;
+    ssl_opts.pem_root_certs = root_ca;
+    ssl_opts.pem_private_key = key;
+    ssl_opts.pem_cert_chain = cert;
+    creds = grpc::SslCredentials(ssl_opts);
+  } else {
+    creds = grpc::InsecureChannelCredentials();
+  }
+  return grpc::CreateChannel(dest_node_address, creds);  // maybe using customized method
+}
 }  // namespace primihub

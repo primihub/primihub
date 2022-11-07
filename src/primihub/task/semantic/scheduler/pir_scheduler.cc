@@ -25,6 +25,7 @@
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
+#include "src/primihub/util/util.h"
 
 
 //using primihub::rpc::EndPoint;
@@ -159,7 +160,10 @@ void PIRScheduler::set_keyword_pir_request_param(const std::string &node_id,
 void PIRScheduler::node_push_pir_task(const std::string &node_id,
                         const PeerDatasetMap &peer_dataset_map,
                         const PushTaskRequest &nodePushTaskRequest,
-                        std::string dest_node_address, bool is_client) {
+                        std::string dest_node_address,
+                        bool is_client,
+                        const std::string& local_node_id,
+                        bool use_tls) {
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
@@ -184,9 +188,11 @@ void PIRScheduler::node_push_pir_task(const std::string &node_id,
     }
 
     // send request
-    VLOG(5) << "begin to submit task to: " << dest_node_address;
-    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials()));
+    VLOG(5) << "begin to submit task to: " << dest_node_address << " use_tls: " << use_tls;
+    auto channel = buildChannel(dest_node_address, local_node_id, use_tls);
+    // std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
+    //     dest_node_address, grpc::InsecureChannelCredentials()));
+    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(channel);
     Status status =
         stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
     if (status.ok()) {
@@ -249,6 +255,7 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             std::string dest_node_address(
                 absl::StrCat(pair.second.ip(), ":", pair.second.port()));
             V_VLOG(5) << "dest_node_address: " << dest_node_address;
+            bool use_tls = pair.second.use_tls();
 
             if (duplicate_server.find(dest_node_address) != duplicate_server.end()) {
                 continue;
@@ -261,7 +268,9 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                             this->peer_dataset_map_,         // peer_dataset_map
                             std::ref(nodePushTaskRequest),   // nodePushTaskRequest
                             dest_node_address,
-                            is_client));
+                            is_client,
+                            this->get_node_id(),
+                            use_tls));
         } else if (pirType == PirType::KEY_PIR) {
             auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
             for (const auto& it : peer_dataset_map_) {
@@ -291,6 +300,7 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                 continue;
             }
             duplicate_server.emplace(dest_node_address);
+            bool use_tls = pair.second.use_tls();
             thrds.emplace_back(
                 std::thread(&PIRScheduler::node_push_pir_task,
                             this,
@@ -298,7 +308,9 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                             this->peer_dataset_map_,        // peer_dataset_map
                             std::ref(nodePushTaskRequest),  // nodePushTaskRequest
                             dest_node_address,
-                            is_client));
+                            is_client,
+                            this->get_node_id(),
+                            use_tls));
             // }
         } else {
             LOG_ERROR() << "The pir type is error";

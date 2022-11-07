@@ -27,7 +27,8 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     p2p_node_stub_ = std::make_shared<primihub::p2p::NodeStub>(std::move(bootstrap_nodes));
     nodelet_addr_ = config["node"].as<std::string>() + ":"
         + config["location"].as<std::string>() + ":"
-        + std::to_string(config["grpc_port"].as<uint64_t>());
+        + std::to_string(config["grpc_port"].as<uint64_t>()) + ":"
+        + std::to_string(config["use_tls"].as<int32_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
 
@@ -62,7 +63,6 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
     auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
     loadConifg(config_file_path, timeout);
-
 }
 
 Nodelet::~Nodelet() {

@@ -60,6 +60,8 @@ class TaskBase {
       job_id_ = job_id;
       task_id_ = task_id;
     }
+   inline bool use_tls() {return use_tls_;}
+   inline void set_use_tls(bool use_tls) {use_tls_ = use_tls;}
 
  protected:
     TaskParam task_param_;
@@ -68,6 +70,7 @@ class TaskBase {
     std::string job_id_;
     std::string task_id_;
     primihub::PlatFormType platform_type_;
+    bool use_tls_{false};
 };
 
 } // namespace primihub::task

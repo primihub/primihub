@@ -83,9 +83,10 @@ class VMNodeImpl final: public VMNode::Service {
   public:
     explicit VMNodeImpl(const std::string &node_id_,
                         const std::string &node_ip_, int service_port_,
-                        bool singleton_, const std::string &config_file_path_)
+                        bool singleton_, const std::string &config_file_path_,
+                        bool use_tls)
         : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
-          singleton(singleton_), config_file_path(config_file_path_) {
+          singleton(singleton_), config_file_path(config_file_path_), use_tls_(use_tls) {
         running_set.clear();
         nodelet = std::make_shared<Nodelet>(config_file_path);
     }
@@ -108,9 +109,10 @@ class VMNodeImpl final: public VMNode::Service {
         return absl::StrCat(this->node_id, this->node_ip, this->service_port);
     }
 
-    std::string get_node_id() { return this->node_id; }
+    inline std::string get_node_id() { return this->node_id; }
+    inline std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
+    inline bool use_tls() const {return use_tls_;}
 
-    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
  protected:
     int process_task_reseponse(bool is_psi_response,
           const ExecuteTaskResponse& response,
@@ -121,6 +123,7 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
     int validate_file_path(const std::string& data_path) { return 0;}
+
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -140,6 +143,7 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
+    bool use_tls_{false};
 };
 
 } // namespace primihub

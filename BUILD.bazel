@@ -94,6 +94,11 @@ alias(
 
 # proto
 grpc_proto_library(
+    name = "hello_word",
+    srcs = ["src/primihub/protos/helloworld.proto"],
+)
+
+grpc_proto_library(
     name = "route_guide",
     srcs = ["src/primihub/protos/route_guide.proto"],
 )
@@ -1161,6 +1166,36 @@ py_library(
 #     ],
 # )
 ########### pybind11 warppers end ########
+cc_binary(
+    name = "grpc_test_server",
+    srcs = [
+        "src/primihub/grpc_test/grpc_test_server.cc",
+        "src/primihub/grpc_test/grpc_test_server.h",
+    ],
+    copts = ["-std=c++17",],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        ":hello_word",
+        "@com_github_glog_glog//:glog",
+        "@openssl",
+    ],
+
+)
+
+cc_binary(
+    name = "grpc_test_client",
+    srcs = [
+        "src/primihub/grpc_test/grpc_test_client.cc",
+        "src/primihub/grpc_test/grpc_test_client.h",
+    ],
+    copts = ["-std=c++17",],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        ":hello_word",
+        "@com_github_glog_glog//:glog",
+        "@openssl",
+    ],
+)
 
 cc_binary(
     name = "node",

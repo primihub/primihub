@@ -192,10 +192,12 @@ void ProtocolSemanticParser::schedulePirTask(
                 std::string node_id = addr_info[0];
                 std::string node_ip = addr_info[1];
                 int node_port = stoi(addr_info[2]);
+                bool use_tls = stoi(addr_info[3]);
                 Node client_node;
                 client_node.set_node_id(node_id);
                 client_node.set_ip(node_ip);
                 client_node.set_port(node_port);
+                client_node.set_use_tls(use_tls);
                 peer_list_.push_back(client_node);
 
                 metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
@@ -253,9 +255,9 @@ void ProtocolSemanticParser::metasToDatasetAndOwner(
       auto meta = pair.first;
       std::string node_id, node_ip, dataset_path;
       int node_port;
-
+      bool use_tls{false};
       std::string data_url = meta->getDataURL();
-      DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+      DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
       dataset_owner.insert(std::make_pair(meta->getDescription(), node_id));
 
       LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
@@ -305,13 +307,15 @@ void ProtocolSemanticParser::metasToPeerList(
     auto _meta = meta_with_tag.first;
     std::string node_id, node_ip, dataset_path;
     int node_port;
+    bool use_tls{false};
     std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
 
     Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);
     node.set_port(node_port);
+    node.set_use_tls(use_tls);
     bool is_new_peer = true;
     for (auto &peer : peers) {
       if (peer.node_id() == node_id) {
@@ -336,8 +340,9 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
                << _param_tag;
     std::string node_id, node_ip, dataset_path;
     int node_port;
+    bool use_tls{false};
     std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
 
     // find node_id in peer_dataset_map
     auto it = peer_dataset_map.find(node_id);
@@ -363,8 +368,9 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     auto tag = meta_with_tag.second;
     std::string node_id, node_ip, dataset_path;
     int node_port;
+    bool use_tls{false};
     std::string data_url = meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
 
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
@@ -432,8 +438,9 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     auto _tag = meta_with_tag.second;
     std::string node_id, node_ip, dataset_path;
     int node_port;
+    bool use_tls{false};
     std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
 
     Node node;
     node.set_node_id(node_id);

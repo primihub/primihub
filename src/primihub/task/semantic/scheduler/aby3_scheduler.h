@@ -71,7 +71,9 @@ class ABY3Scheduler : public VMScheduler {
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
                     const std::map<std::string, std::string> &dataset_owner,
-                    std::string dest_node_address);
+                    const std::string& dest_node_address,
+                    const std::string& local_node_id,
+                    bool use_tls);
     private:
       const std::vector<Node> peer_list_;
       const PeerDatasetMap peer_dataset_map_;

@@ -29,6 +29,7 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/service/notify/model.h"
+#include "src/primihub/util/util.h"
 
 using grpc::Channel;
 using grpc::ClientReader;
@@ -50,8 +51,8 @@ using primihub::service::EventBusNotifyDelegate;
 namespace primihub::task {
 
     void FLScheduler::nodeContext2TaskParam(NodeContext node_context,
-                               const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list,
-                               PushTaskRequest* node_task_request) {
+            const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list,
+            PushTaskRequest* node_task_request) {
         google::protobuf::Map<std::string, ParamValue> *params_map =
                     node_task_request->mutable_task()->mutable_params()->mutable_param_map();
         // Role
@@ -74,8 +75,9 @@ namespace primihub::task {
             // Get data path from data URL
             std::string node_id, node_ip, dataset_path;
             int node_port;
+            bool use_tls{false};
             std::string data_url = dataset_meta->getDataURL();
-            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+            DataURLToDetail(data_url, node_id, node_ip, node_port, use_tls, dataset_path);
             // Only set dataset path
             pv_dataset.set_value_string(dataset_path);
             (*params_map)[dataset_meta->getDescription()] = pv_dataset;
@@ -105,16 +107,17 @@ namespace primihub::task {
                           const std::string &dest_node_address,
                           const PushTaskRequest &nodePushTaskRequest,
                           const PeerContextMap peer_context_map,
-                          const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list) {
+                          const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list,
+                          const std::string& local_node_id,
+                          bool use_tls) {
         grpc::ClientContext context;
         PushTaskReply pushTaskReply;
         PushTaskRequest _1NodePushTaskRequest;
         _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
         NodeContext peer_context = peer_context_map.find(role)->second;
         nodeContext2TaskParam(peer_context, dataset_meta_list, &_1NodePushTaskRequest);
-
-        std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-            dest_node_address, grpc::InsecureChannelCredentials()));
+        auto channel = buildChannel(dest_node_address, local_node_id, use_tls);
+        std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(channel);
         Status status =
             stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
 
@@ -167,7 +170,6 @@ namespace primihub::task {
         LOG_INFO() << "nodePushTaskRequest task_id: " << taskId;
         LOG_INFO() << "nodePushTaskRequest submit_client_id: " << submitClientId;
 
-
         EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId,
                                                             "RUNNING",
                                                             "task status test message");
@@ -180,6 +182,7 @@ namespace primihub::task {
             std::string dest_node_address(
                     absl::StrCat(peer_with_tag.first.ip(), ":", peer_with_tag.first.port()));
             LOG_INFO() << "dest_node_address: " << dest_node_address;
+            bool use_tls = peer_with_tag.first.use_tls();
             // TODO 获取当Role的data meta list
             std::vector<std::shared_ptr<DatasetMeta>> data_meta_list;
             getDataMetaListByRole(peer_with_tag.second, &data_meta_list);
@@ -191,8 +194,9 @@ namespace primihub::task {
                                 dest_node_address,               // dest_node_address
                                 std::ref(nodePushTaskRequest), // nodePushTaskRequest
                                 this->peer_context_map_,
-                                data_meta_list
-                                ));
+                                data_meta_list,
+                                this->get_node_id(),
+                                use_tls));
 
         }
 
