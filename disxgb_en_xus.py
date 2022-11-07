@@ -784,12 +784,12 @@ class XGB_GUEST_EN:
             record_id = self.proxy_server.Get('record_id')
             print("record_id, role", role, record_id)
 
-            if record_id is None:
-                break
+            # if record_id is None:
+            #     break
             if role == "guest":
 
                 if record_id is None:
-                    break
+                    return
                 tmp_lookup = current_lookup[record_id]
                 var, cut = tmp_lookup[0], tmp_lookup[1]
                 guest_test_left = guest_test.loc[guest_test[var] < cut]
@@ -1703,15 +1703,6 @@ class XGB_HOST_EN:
 
             return tree_structure
 
-        #         pass
-        #     else:
-        #         pass
-
-        #                             result_right[0])
-        #         f_t = result_right[1]
-        # # self.proxy_server.StopRecvLoop()
-
-        # return tree_structure, f_t
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
         if tree is not None:
             k = list(tree.keys())[0]
@@ -1760,9 +1751,9 @@ class XGB_HOST_EN:
                                            current_lookup, w)
             self.host_get_tree_node_weight(host_test_right, tree_right,
                                            current_lookup, w)
-        else:
-            self.proxy_client_guest.Remote('guest', 'role')
-            self.proxy_client_guest.Remote(None, 'record_id')
+
+        self.proxy_client_guest.Remote('guest', 'role')
+        self.proxy_client_guest.Remote(None, 'record_id')
 
     def _get_tree_node_w(self, X, tree, lookup_table, w, t):
         if not tree is None:
