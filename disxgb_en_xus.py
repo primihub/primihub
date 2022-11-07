@@ -1517,17 +1517,6 @@ class XGB_HOST_EN:
         else:
             return None
 
-        return dict({
-            'w_left': w_left,
-            'w_right': w_right,
-            'best_var': best_var,
-            'best_cut': best_cut,
-            'best_gain': best_gain
-        })
-        # return pd.DataFrame(
-        #     np.array([w_left, w_right, best_var, best_cut, best_gain]).flatten(),
-        #     columns=['w_left', 'w_right', 'best_var', 'best_cut', 'best_gain'])
-
     def gh_sums_decrypted(self, gh_sums: pd.DataFrame, decryption_pools=50):
         decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
         decrypted_gh_sums = gh_sums[decrypted_items]
@@ -1591,7 +1580,7 @@ class XGB_HOST_EN:
         # get the best cut of 'host'
         host_best = self.host_best_cut(X_host,
                                        cal_hist=True,
-                                       bins=13,
+                                       bins=10,
                                        plain_gh=plain_gh)
 
         guest_gh_sums = self.proxy_server.Get(
@@ -1675,7 +1664,7 @@ class XGB_HOST_EN:
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
                 ]
-                print("self.lookup_table", self.lookup_table)
+                # print("self.lookup_table", self.lookup_table)
 
                 self.host_record += 1
 
@@ -1872,7 +1861,7 @@ ph.context.Context.func_params_map = {
 }
 
 # Number of tree to fit.
-num_tree = 2
+num_tree = 1
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
@@ -2003,9 +1992,14 @@ def xgb_host_logic(cry_pri="paillier"):
             print("Encrypt finish.")
 
             # start construct boosting trees
+            lp = LineProfiler(xgb_host.host_tree_construct)
+            lp.run(
+                "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
+            )
+            lp.print_stats()
 
-            xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
-                X_host.copy(), f_t, 0, gh)
+            # xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
+            #     X_host.copy(), f_t, 0, gh)
 
             end_build_tree = time.time()
 
