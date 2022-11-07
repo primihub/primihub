@@ -572,24 +572,22 @@ class XGB_GUEST:
 class XGB_GUEST_EN:
 
     def __init__(
-        self,
-        proxy_server=None,
-        proxy_client_host=None,
-        base_score=0.5,
-        max_depth=3,
-        n_estimators=10,
-        learning_rate=0.1,
-        reg_lambda=1,
-        gamma=0,
-        #min_child_sample=1,
-        min_child_sample=100,
-        min_child_weight=1,
-        objective='linear',
-        #  channel=None,
-        sid=0,
-        record=0,
-        lookup_table=pd.DataFrame(
-            columns=['record_id', 'feature_id', 'threshold_value'])):
+            self,
+            proxy_server=None,
+            proxy_client_host=None,
+            base_score=0.5,
+            max_depth=3,
+            n_estimators=10,
+            learning_rate=0.1,
+            reg_lambda=1,
+            gamma=0,
+            #min_child_sample=1,
+            min_child_sample=100,
+            min_child_weight=1,
+            objective='linear',
+            #  channel=None,
+            sid=0,
+            record=0):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -608,6 +606,7 @@ class XGB_GUEST_EN:
         self.lookup_table = {}
         self.lookup_table_sum = {}
         self.pub = None
+        self.tree_structure = {}
 
     def get_GH(self, X, pub):
 
@@ -718,11 +717,12 @@ class XGB_GUEST_EN:
 
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
-        
+
         if host_best_gain is None or guest_best_gain is None:
             return None
 
-        guest_flag1 = (host_best_gain and guest_best_gain) and (guest_best_gain > host_best_gain)
+        guest_flag1 = (host_best_gain and
+                       guest_best_gain) and (guest_best_gain > host_best_gain)
         guest_flag2 = (guest_best_gain and not host_best_gain)
 
         if host_best_gain or guest_best_gain:
@@ -765,6 +765,8 @@ class XGB_GUEST_EN:
                 w_left = ids_w['w_left']
                 w_right = ids_w['w_right']
 
+            print("=====", X_guest.index, ids_w)
+
             X_guest_left = X_guest.loc[id_left]
             X_guest_right = X_guest.loc[id_right]
 
@@ -772,9 +774,11 @@ class XGB_GUEST_EN:
             encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
             self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                    current_depth + 1)
+                                      current_depth + 1)
             self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                    current_depth + 1)
+                                      current_depth + 1)
+
+
 
     def guest_get_tree_ids(self, guest_test, current_lookup):
         while (1):
@@ -789,8 +793,12 @@ class XGB_GUEST_EN:
                 guest_test_left = guest_test.loc[guest_test[var] < cut]
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
-                id_right =  guest_test_right.index
-                self.proxy_client_host.Remote({'id_left':id_left, 'id_right': id_right}, 'ids')
+                id_right = guest_test_right.index
+                self.proxy_client_host.Remote(
+                    {
+                        'id_left': id_left,
+                        'id_right': id_right
+                    }, 'ids')
             else:
                 ids = self.proxy_server.Get('ids')
                 id_left = ids['id_left']
@@ -800,8 +808,6 @@ class XGB_GUEST_EN:
 
             self.guest_get_tree_ids(guest_test_left, current_lookup)
             self.guest_get_tree_ids(guest_test_right, current_lookup)
-
-
 
     def cart_tree(self, X_guest_gh, mdep, pub):
         print("guest dept", mdep)
@@ -912,8 +918,6 @@ class XGB_GUEST_EN:
         for t in range(self.n_estimators):
             current_lookup = lookup_sum[t + 1]
             self.guest_get_tree_ids(X, current_lookup)
-
-
 
 
 class XGB_HOST:
@@ -1485,12 +1489,24 @@ class XGB_HOST_EN:
         if best_var is not None:
             w_left = -G_left_best / (H_left_best + self.reg_lambda)
             w_right = -G_right_best / (H_right_best + self.reg_lambda)
-            return dict({'w_left': w_left, 'w_right': w_right, 'best_var': best_var, 'best_cut':best_cut, 'best_gain': best_gain})
+            return dict({
+                'w_left': w_left,
+                'w_right': w_right,
+                'best_var': best_var,
+                'best_cut': best_cut,
+                'best_gain': best_gain
+            })
 
         else:
             return None
 
-        return dict({'w_left': w_left, 'w_right': w_right, 'best_var': best_var, 'best_cut':best_cut, 'best_gain': best_gain})
+        return dict({
+            'w_left': w_left,
+            'w_right': w_right,
+            'best_var': best_var,
+            'best_cut': best_cut,
+            'best_gain': best_gain
+        })
         # return pd.DataFrame(
         #     np.array([w_left, w_right, best_var, best_cut, best_gain]).flatten(),
         #     columns=['w_left', 'w_right', 'best_var', 'best_cut', 'best_gain'])
@@ -1555,7 +1571,10 @@ class XGB_HOST_EN:
             return
 
         # get the best cut of 'host'
-        host_best = self.host_best_cut(X_host, cal_hist=True, bins=13, plain_gh=plain_gh)
+        host_best = self.host_best_cut(X_host,
+                                       cal_hist=True,
+                                       bins=13,
+                                       plain_gh=plain_gh)
 
         guest_gh_sums = self.proxy_server.Get(
             'encrypte_gh_sums'
@@ -1586,14 +1605,16 @@ class XGB_HOST_EN:
 
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
-        
+
         if host_best_gain is None and guest_best_gain is None:
             return None
 
-        flag_guest1 = (host_best_gain and guest_best_gain) and (guest_best_gain > host_best_gain)
+        flag_guest1 = (host_best_gain and
+                       guest_best_gain) and (guest_best_gain > host_best_gain)
         flag_guest2 = (not host_best_gain and guest_best_gain)
 
-        flag_host1 =  (host_best_gain and guest_best_gain) and (guest_best_gain < host_best_gain)
+        flag_host1 = (host_best_gain and
+                      guest_best_gain) and (guest_best_gain < host_best_gain)
         flag_host2 = (host_best_gain and not guest_best_gain)
 
         if (host_best_gain or guest_best_gain):
@@ -1633,7 +1654,9 @@ class XGB_HOST_EN:
                         'w_right': w_right
                     }, 'ids_w')
 
-                self.lookup_table[self.host_record] = [host_best['best_var'], host_best['best_cut']]
+                self.lookup_table[self.host_record] = [
+                    host_best['best_var'], host_best['best_cut']
+                ]
                 print("self.lookup_table", self.lookup_table)
 
                 # self.lookup_table.loc[self.host_record,
@@ -1661,15 +1684,18 @@ class XGB_HOST_EN:
             f_t[id_right] = w_right
             print("===========", (role, record, w_left, w_right))
 
-            tree_structure[(role,
-                            record)][('left', w_left)] = self.host_tree_construct(
-                                X_host_left, f_t, current_depth + 1, plain_gh_left)
+            tree_structure[(role, record)][('left',
+                                            w_left)] = self.host_tree_construct(
+                                                X_host_left, f_t,
+                                                current_depth + 1,
+                                                plain_gh_left)
 
             tree_structure[(role,
-                            record)][('right', w_right)] = self.host_tree_construct(
-                                X_host_right, f_t, current_depth + 1,
-                                plain_gh_right)
-            
+                            record)][('right',
+                                      w_right)] = self.host_tree_construct(
+                                          X_host_right, f_t, current_depth + 1,
+                                          plain_gh_right)
+
             return tree_structure
 
         #         pass
@@ -1707,7 +1733,11 @@ class XGB_HOST_EN:
                 id_left = host_test_left.index.tolist()
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
-                self.proxy_client_guest.Remote({'id_left': host_test_left.index, 'id_right':host_test_right.index}, 'ids')
+                self.proxy_client_guest.Remote(
+                    {
+                        'id_left': host_test_left.index,
+                        'id_right': host_test_right.index
+                    }, 'ids')
 
             for kk in tree[k].keys():
                 if kk[0] == 'left':
@@ -1717,13 +1747,13 @@ class XGB_HOST_EN:
                     tree_right = tree[k][kk]
                     w[id_right] = kk[1]
             print("current w: ", w)
-            self.host_get_tree_node_weight(host_test_left, tree_left, current_lookup,  w)
-            self.host_get_tree_node_weight(host_test_right, tree_right,current_lookup, w)
+            self.host_get_tree_node_weight(host_test_left, tree_left,
+                                           current_lookup, w)
+            self.host_get_tree_node_weight(host_test_right, tree_right,
+                                           current_lookup, w)
         else:
             self.proxy_client_guest.Remote('guest', 'role')
             self.proxy_client_guest.Remote(None, 'record_id')
-
-
 
     def _get_tree_node_w(self, X, tree, lookup_table, w, t):
         if not tree is None:
@@ -2145,7 +2175,8 @@ def xgb_guest_logic(cry_pri="paillier"):
     eva_type = eva_type.lower()
     if eva_type != "classification" and eva_type != "regression":
         logger.error(
-            "Invalid value of taskType, possible value is 'regression', 'classification'.")
+            "Invalid value of taskType, possible value is 'regression', 'classification'."
+        )
         return
 
     logger.info("Current task type is {}.".format(eva_type))
@@ -2166,17 +2197,21 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_nodes = role_node_map["host"]
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
-    proxy_client_host = ClientChannelProxy(host_ip, host_port,
-                                           "host")
+    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
     data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
     if cry_pri == "paillier":
-        xgb_guest = XGB_GUEST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1,
+        xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
+                                 max_depth=max_depth,
+                                 reg_lambda=1,
+                                 min_child_weight=1,
                                  objective='linear',
-                                 sid=1, proxy_server=proxy_server, proxy_client_host=proxy_client_host)  # noqa
+                                 sid=1,
+                                 proxy_server=proxy_server,
+                                 proxy_client_host=proxy_client_host)  # noqa
 
         # channel.send(b'guest ready')
         # pub = xgb_guest.channel.recv()
@@ -2248,4 +2283,3 @@ def xgb_guest_logic(cry_pri="paillier"):
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
     guest_log.close()
-
