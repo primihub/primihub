@@ -782,6 +782,10 @@ class XGB_GUEST_EN:
         while (1):
             role = self.proxy_server.Get('role')
             record_id = self.proxy_server.Get('record_id')
+            print("record_id, role", role, record_id)
+
+            if record_id is None:
+                break
             if role == "guest":
 
                 if record_id is None:
@@ -2129,6 +2133,7 @@ def xgb_host_logic(cry_pri="paillier"):
         # xgb_host.predict_prob(X_host).to_csv(predict_file_path)
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
     train_acc = metrics.accuracy_score(train_pred, Y)
+    print("train_acc: ", train_acc)
 
     # validate for test
     test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
