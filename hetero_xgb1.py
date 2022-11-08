@@ -1004,7 +1004,7 @@ class XGB_HOST_EN:
                 elif kk[0] == 'right':
                     tree_right = tree[k][kk]
                     w[id_right] = kk[1]
-            print("current w: ", w)
+            # print("current w: ", w)
             self.host_get_tree_node_weight(host_test_left, tree_left,
                                            current_lookup, w)
             self.host_get_tree_node_weight(host_test_right, tree_right,
