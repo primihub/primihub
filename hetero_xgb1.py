@@ -887,8 +887,8 @@ class XGB_HOST_EN:
         #             max_index], G_right[max_index], H_left[max_index], H_right[
         #                 max_index]
         if best_var is not None:
-            w_left = -G_left_best / (H_left_best + self.reg_lambda)
-            w_right = -G_right_best / (H_right_best + self.reg_lambda)
+            # w_left = -G_left_best / (H_left_best + self.reg_lambda)
+            # w_right = -G_right_best / (H_right_best + self.reg_lambda)
             return dict({
                 'w_left': w_left,
                 'w_right': w_right,
