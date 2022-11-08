@@ -949,14 +949,14 @@ class XGB_HOST_EN:
 
                 w_left = host_best['w_left']
                 w_right = host_best['w_right']
-                self.proxy_client_guest.Remote(
-                    {
-                        'id_left': id_left,
-                        'id_right': id_right,
-                        'w_left': w_left,
-                        'w_right': w_right
-                    },
-                    str(self.host_record) + '_ids_w')
+                ids_w = {
+                    'id_left': id_left,
+                    'id_right': id_right,
+                    'w_left': w_left,
+                    'w_right': w_right
+                }
+                self.proxy_client_guest.Remote(ids_w,
+                                               str(self.host_record) + '_ids_w')
 
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
