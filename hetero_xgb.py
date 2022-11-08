@@ -546,7 +546,8 @@ class XGB_GUEST_EN:
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    },
+                    str(self.guest_record) + '_ids_w')
                 # updata guest lookup table
                 self.lookup_table[self.guest_record] = [best_var, best_cut]
                 print("guest look_up table:", self.lookup_table)
@@ -555,7 +556,7 @@ class XGB_GUEST_EN:
                 self.guest_record += 1
 
             else:
-                ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.proxy_server.Get(str(self.host_record) + '_ids_w')
                 role = 'host'
                 record = self.host_record
                 id_left = ids_w['id_left']
@@ -924,7 +925,7 @@ class XGB_HOST_EN:
 
                 role = "guest"
                 record = self.guest_record
-                ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.proxy_server.Get(str(self.guest_record) + '_ids_w')
 
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
@@ -954,7 +955,8 @@ class XGB_HOST_EN:
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    },
+                    str(self.host_record) + '_ids_w')
 
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
