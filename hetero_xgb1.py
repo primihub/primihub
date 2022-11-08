@@ -1303,6 +1303,7 @@ def xgb_host_logic():
             flat_gh *= xgb_host.ratio
 
             flat_gh = flat_gh.astype('int')
+            print("flat_gh: ", flat_gh)
 
             start_enc = time.time()
             enc_flat_gh = list(
