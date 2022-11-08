@@ -564,8 +564,8 @@ class XGB_GUEST_EN:
                 w_right = ids_w['w_right']
                 self.host_record += 1
 
-            # print("===train==", X_guest.index, ids_w)
-            tree_structure = {(role, record): {}}
+                print("===train guest==", X_guest.index, ids_w)
+            # tree_structure = {(role, record): {}}
 
             X_guest_left = X_guest.loc[id_left]
             X_guest_right = X_guest.loc[id_right]
@@ -1107,7 +1107,8 @@ num_tree = 1
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
-is_encrypted = True
+# is_encrypted = True
+is_encrypted = False
 
 
 @ph.context.function(role='host',
