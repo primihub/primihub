@@ -38,7 +38,7 @@ RUN git clone https://github.com/zeromq/cppzmq.git \
   && cp cppzmq/zmq.hpp /usr/local/include/
 
 RUN git clone https://github.com/google/flatbuffers.git \
-  && cmake -G "Unix Makefiles" && make && make install && ldconfig
+  && cd flatbuffers && cmake -G "Unix Makefiles" && make && make install && ldconfig
 
 WORKDIR /src
 ADD . /src
