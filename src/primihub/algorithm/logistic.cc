@@ -180,8 +180,7 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   return 0;
 }
 
-int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
-                                                    eMatrix<double> &m) {
+int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
   std::string nodeaddr("test address"); // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
@@ -215,20 +214,34 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
 
   if (errors)
     return -1;
-
-  m.resize(array_len, num_col);
+  int64_t train_length = floor(array_len * 0.8);
+  int64_t test_length = array_len - train_length;
+  LOG(INFO)<<"array_len: "<<array_len;
+  LOG(INFO)<<"train_length: "<<train_length;
+  LOG(INFO)<<"test_length: "<<test_length;
+  train_input_.resize(train_length, num_col);
+  test_input_.resize(test_length, num_col);
+  // m.resize(array_len, num_col);
   for (int i = 0; i < num_col; i++) {
     if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
       auto array =
           std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
       for (int64_t j = 0; j < array->length(); j++) {
-        m(j, i) = array->Value(j);
+        if (j < train_length)
+          train_input_(j, i) = array->Value(j);
+        else
+          test_input_(j - train_length, i) = array->Value(j);
+        // m(j, i) = array->Value(j);
       }
     } else {
       auto array =
           std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
       for (int64_t j = 0; j < array->length(); j++) {
-        m(j, i) = array->Value(j);
+        if (j < train_length)
+          train_input_(j, i) = array->Value(j);
+        else
+          test_input_(j - train_length, i) = array->Value(j);
+        // m(j, i) = array->Value(j);
       }
     }
   }
@@ -236,19 +249,19 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
 }
 
 int LogisticRegressionExecutor::loadDataset() {
-  int ret = _LoadDatasetFromCSV(train_input_filepath_, train_input_);
+  int ret = _LoadDatasetFromCSV(train_input_filepath_);
   // file reading error or file empty
   if (ret <= 0) {
-    LOG(ERROR) << "Load dataset for train failed.";
+    LOG(ERROR) << "Load dataset failed.";
     return -1;
   }
 
-  ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
-  // file reading error or file empty
-  if (ret <= 0) {
-    LOG(ERROR) << "Load dataset for test failed.";
-    return -2;
-  }
+  // ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
+  // // file reading error or file empty
+  // if (ret <= 0) {
+  //   LOG(ERROR) << "Load dataset for test failed.";
+  //   return -2;
+  // }
 
   if (train_input_.cols() != test_input_.cols()) {
     LOG(ERROR)

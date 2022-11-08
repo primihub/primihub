@@ -13,7 +13,8 @@ using arrow::Table;
 namespace primihub {
 void spiltStr(string str, const string &split, std::vector<string> &strlist) {
   strlist.clear();
-  if (str == "") return;
+  if (str == "")
+    return;
   string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
@@ -41,7 +42,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id);  // node_id
+  auto iter = node_map.find(config.node_id); // node_id
   if (iter == node_map.end()) {
     stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -124,7 +125,8 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
 
     expr_ = param_map["Expr"].value_string();
     is_cmp = false;
-    if (expr_.substr(0, 3) == "CMP") is_cmp = true;
+    if (expr_.substr(0, 3) == "CMP")
+      is_cmp = true;
     if (is_cmp) {
       std::string next_name;
       std::string prev_name;
@@ -161,8 +163,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   return 0;
 }
 
-template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::loadDataset() {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
   // file reading error or file empty
   if (ret <= 0) {
@@ -191,8 +192,7 @@ int ArithmeticExecutor<Dbit>::loadDataset() {
   return 0;
 }
 
-template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::initPartyComm(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::initPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
     return 0;
@@ -203,8 +203,7 @@ int ArithmeticExecutor<Dbit>::initPartyComm(void) {
   return 0;
 }
 
-template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::execute() {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
   if (is_cmp) {
     try {
       sbMatrix sh_res;
@@ -244,14 +243,14 @@ int ArithmeticExecutor<Dbit>::execute() {
     mpc_exec_->runMPCEvaluate();
     if (mpc_exec_->isFP64RunMode()) {
       mpc_exec_->revealMPCResult(parties_, final_val_double_);
-      for (auto itr = final_val_double_.begin(); itr != final_val_double_.end();
-           itr++)
-        LOG(INFO) << *itr;
+      // for (auto itr = final_val_double_.begin(); itr != final_val_double_.end();
+      //      itr++)
+      //   LOG(INFO) << *itr;
     } else {
       mpc_exec_->revealMPCResult(parties_, final_val_int64_);
-      for (auto itr = final_val_int64_.begin(); itr != final_val_int64_.end();
-           itr++)
-        LOG(INFO) << *itr;
+      // for (auto itr = final_val_int64_.begin(); itr != final_val_int64_.end();
+      //      itr++)
+      //   LOG(INFO) << *itr;
     }
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
@@ -261,8 +260,7 @@ int ArithmeticExecutor<Dbit>::execute() {
   return 0;
 }
 
-template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->fini();
     delete mpc_op_exec_;
@@ -272,8 +270,7 @@ int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
   return 0;
 }
 
-template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::saveModel(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
   if (final_val_double_.size() != 0)
@@ -283,7 +280,8 @@ int ArithmeticExecutor<Dbit>::saveModel(void) {
     for (int i = 0; i < final_val_int64_.size(); i++)
       builder.Append(final_val_int64_[i]);
   else
-    for (int i = 0; i < cmp_res_.size(); i++) builder.Append(cmp_res_[i]);
+    for (int i = 0; i < cmp_res_.size(); i++)
+      builder.Append(cmp_res_[i]);
   std::shared_ptr<arrow::Array> array;
   builder.Finish(&array);
 
@@ -326,7 +324,7 @@ int ArithmeticExecutor<Dbit>::saveModel(void) {
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address");  // TODO
+  std::string nodeaddr("test address"); // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
@@ -351,6 +349,12 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
   // Force the same value count in every column.
   for (int i = 0; i < num_col; i++) {
     if (col_and_dtype_[col_names[i]] == 0) {
+      if (table->schema()->GetFieldByName(col_names[i])->type()->id() != 9) {
+        LOG(ERROR) << "Local data type is inconsistent with the demand data "
+                      "type!Demand data type is int,but local data type is "
+                      "double!Please input consistent data type!";
+        return -1;
+      }
       auto array =
           std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
       std::vector<int64_t> tmp_data;
@@ -406,20 +410,21 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
       }
       col_and_val_double.insert(
           pair<string, std::vector<double>>(col_names[i], tmp_data));
-      for (auto itr = col_and_val_double.begin();
-           itr != col_and_val_double.end(); itr++) {
-        LOG(INFO) << itr->first;
-        auto tmp_vec = itr->second;
-        for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-          LOG(INFO) << *iter;
-      }
+      // for (auto itr = col_and_val_double.begin();
+      //      itr != col_and_val_double.end(); itr++) {
+      //   LOG(INFO) << itr->first;
+      //   auto tmp_vec = itr->second;
+      //   for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
+      //     LOG(INFO) << *iter;
+      // }
     }
   }
-  if (errors) return -1;
+  if (errors)
+    return -1;
 
   return array->length();
 }
 template class ArithmeticExecutor<D32>;
 template class ArithmeticExecutor<D16>;
 
-}  // namespace primihub
+} // namespace primihub
