@@ -412,39 +412,6 @@ class XGB_GUEST_EN:
         self.tree_structure = {}
         self.encrypted = is_encrypted
 
-    def get_GH(self, X, pub):
-
-        bins = 13
-        items = [x for x in X.columns if x not in ['g', 'h']]
-        g = X['g']
-        h = X['h']
-        actor_nums = 50
-        generate_add_actors = ActorPool(
-            [ActorAdd.remote(pub) for _ in range(actor_nums)])
-
-        pools = ActorPool([
-            PallierAdd.remote(pub, actor_nums, generate_add_actors),
-            PallierAdd.remote(pub, actor_nums, generate_add_actors),
-            PallierAdd.remote(pub, actor_nums, generate_add_actors),
-            PallierAdd.remote(pub, actor_nums, generate_add_actors)
-        ])
-
-        maps = [
-            MapGH.remote(item=tmp_item,
-                         col=X[tmp_item],
-                         g=g,
-                         h=h,
-                         pub=pub,
-                         min_child_sample=self.min_child_sample,
-                         pools=pools) for tmp_item in items
-        ]
-
-        gh_reducer = ReduceGH.remote(maps)
-        gh_result = ray.get(gh_reducer.reduce_gh.remote(bins=bins))
-        GH = gh_result
-
-        return GH
-
     def sums_of_encrypted_ghs(self,
                               X_guest,
                               encrypted_ghs,
