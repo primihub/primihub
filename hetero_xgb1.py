@@ -1159,7 +1159,7 @@ def xgb_host_logic():
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
-    y_hat = np.array([0.5] * Y.shape[0])
+    # y_hat = np.array([0.5] * Y.shape[0])
     # ray.init()
     # pai_actor = PaillierActor(xgb_host.prv, xgb_host.pub)
     paillier_encryptor = ActorPool(
@@ -1170,6 +1170,7 @@ def xgb_host_logic():
     #                                                               )
     # pools = ActorPool([actor1, actor2, actor3])
     xgb_host.lookup_table = {}
+    y_hat = np.array([xgb_host.base_score] * len(Y))
 
     for t in range(xgb_host.n_estimators):
         print("Begin to trian tree: ", t + 1)
@@ -1215,6 +1216,7 @@ def xgb_host_logic():
 
         xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
             X_host.copy(), f_t, 0, gh)
+        y_hat = y_hat + xgb_host.learning_rate * f_t
 
         end_build_tree = time.time()
 
