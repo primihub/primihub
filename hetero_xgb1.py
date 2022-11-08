@@ -30,6 +30,111 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 
 
+def search_best_splits(X: pd.DataFrame,
+                       g,
+                       h,
+                       hist=True,
+                       bins=None,
+                       eps=0.001,
+                       reg_lambda=1,
+                       gamma=0,
+                       min_child_sample=None,
+                       min_child_weight=1):
+    X = X.copy()
+
+    if isinstance(g, pd.Series):
+        g = g.values
+
+    if isinstance(h, pd.Series):
+        h = h.values
+
+    best_gain = None
+    best_cut = None
+    best_var = None
+    G_left_best, G_right_best, H_left_best, H_right_best = None, None, None, None
+    w_left, w_right = None, None
+
+    m, n = X.shape
+    # x = X.values
+    vars = X.columns
+
+    if hist:
+        if bins is not None:
+            hist_0 = X.apply(np.histogram, args=(bins,), axis=0)
+        else:
+            hist_0 = X.apply(np.histogram, axis=0)
+        split_points = hist_0.iloc[1]
+        split_counts = hist_0.iloc[0]
+
+        # if valid_num is not None:
+        #     split_counts = hist_0.iloc[0].values
+        #     print("###########", split_counts, valid_num)
+        #     flag = split_counts > valid_num
+        #     split_points = split_points[flag]
+    else:
+        split_points = X.apply(np.unique, axis=0)
+
+    for item in vars:
+        tmp_var = item
+        try:
+            tmp_splits = split_points[item].values[1:]
+        except:
+            tmp_splits = split_points[item][1:]
+
+        tmp_col = X[item]
+        # print("+++++++++")
+        # print(tmp_splits, tmp_splits[0])
+        if len(tmp_splits) < 1:
+            print("current item ", item, split_points)
+            continue
+        # print("-------", type(tmp_splits), tmp_splits.shape, split_points)
+        tmp_splits[0] = tmp_splits[0] - eps
+        tmp_splits[-1] = tmp_splits[-1] + eps
+
+        exp_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
+        exp_col = np.tile(tmp_col, (len(tmp_splits), 1))
+        less_flag = (exp_col < exp_splits).astype('int')
+        larger_flag = 1 - less_flag
+        G_left = np.dot(less_flag, g)
+        G_right = np.dot(larger_flag, g)
+        H_left = np.dot(less_flag, h)
+        H_right = np.dot(larger_flag, h)
+        gain = G_left**2 / (H_left + reg_lambda) + G_right**2 / (
+            H_right + reg_lambda) - (G_left + G_right)**2 / (H_left + H_right +
+                                                             reg_lambda)
+
+        gain = gain / 2 - gamma
+
+        max_gain = max(gain)
+        max_index = gain.tolist().index(max_gain)
+        tmp_cut = tmp_splits[max_index]
+        if best_gain is None or max_gain > best_gain:
+            left_inds = (tmp_col < tmp_cut)
+            right_inds = (1 - left_inds).astype('bool')
+            if min_child_sample is not None:
+                if sum(left_inds) < min_child_sample or sum(
+                        right_inds) < min_child_sample:
+                    continue
+
+            if min_child_weight is not None:
+                if H_left[max_index] < min_child_weight or H_right[
+                        max_index] < min_child_weight:
+                    continue
+
+            best_gain = max_gain
+            best_cut = tmp_cut
+            best_var = tmp_var
+            G_left_best, G_right_best, H_left_best, H_right_best = G_left[
+                max_index], G_right[max_index], H_left[max_index], H_right[
+                    max_index]
+
+    if best_var is not None:
+        w_left = -G_left_best / (H_left_best + reg_lambda)
+        w_right = -G_right_best / (H_right_best + reg_lambda)
+
+    return w_left, w_right, best_var, best_cut, best_gain
+
+
 def opt_paillier_decrypt_crt(pub, prv, cipher_text):
 
     if not isinstance(cipher_text, Opt_paillier_ciphertext):
@@ -417,7 +522,7 @@ class XGB_GUEST_EN:
                               X_guest,
                               encrypted_ghs,
                               cal_hist=True,
-                              bins=13,
+                              bins=10,
                               add_actor_num=50,
                               map_pools=50,
                               limit_add_len=3):
@@ -686,7 +791,7 @@ class XGB_HOST_EN:
 
         return gh
 
-    def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
+    def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=10):
         host_colnames = X_host.columns
         # g = plain_gh['g'].values
         g = plain_gh['g'].values
@@ -704,74 +809,83 @@ class XGB_HOST_EN:
         if self.min_child_sample and m < self.min_child_sample:
             return None
 
-        if cal_hist:
-            hist_0 = X_host.apply(np.histogram, args=(bins,), axis=0)
-            bin_cut_points = hist_0.iloc[1]
-            uni_cut_points = X_host.apply(np.unique, axis=0)
-            #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
-        else:
-            cut_points = X_host.apply(np.unique, axis=0)
+        w_left, w_right, best_var, best_cut, best_gain = search_best_splits(
+            X_host,
+            g,
+            h,
+            reg_lambda=self.reg_lambda,
+            gamma=self.gamma,
+            min_child_sample=self.min_child_sample,
+            min_child_weight=self.min_child_weight)
 
-        for item in host_colnames:
-            #TODO: enhance with parallelization with ray
-            tmp_col = X_host[item]
+        # if cal_hist:
+        #     hist_0 = X_host.apply(np.histogram, args=(bins,), axis=0)
+        #     bin_cut_points = hist_0.iloc[1]
+        #     uni_cut_points = X_host.apply(np.unique, axis=0)
+        #     #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
+        # else:
+        #     cut_points = X_host.apply(np.unique, axis=0)
 
-            if cal_hist:
-                if len(bin_cut_points[item]) < len(uni_cut_points[item]):
-                    tmp_splits = bin_cut_points[item]
-                else:
-                    tmp_splits = uni_cut_points[item]
-            else:
-                tmp_splits = cut_points[item]
+        # for item in host_colnames:
+        #     #TODO: enhance with parallelization with ray
+        #     tmp_col = X_host[item]
 
-            if isinstance(tmp_splits, pd.Series):
-                tmp_splits = tmp_splits.values
-            #try:
-            #    tmp_splits = cut_points[item].values
-            #except:
-            #    tmp_splits = cut_points[item]
+        #     if cal_hist:
+        #         if len(bin_cut_points[item]) < len(uni_cut_points[item]):
+        #             tmp_splits = bin_cut_points[item]
+        #         else:
+        #             tmp_splits = uni_cut_points[item]
+        #     else:
+        #         tmp_splits = cut_points[item]
 
-            expand_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
-            expand_col = np.tile(tmp_col, (len(tmp_splits), 1))
-            less_flag = (expand_col < expand_splits).astype('int')
-            larger_flag = 1 - less_flag
+        #     if isinstance(tmp_splits, pd.Series):
+        #         tmp_splits = tmp_splits.values
+        #     #try:
+        #     #    tmp_splits = cut_points[item].values
+        #     #except:
+        #     #    tmp_splits = cut_points[item]
 
-            # get the sum of g-s and h-s based on vars
-            G_left = np.dot(less_flag, g)
-            G_right = np.dot(larger_flag, g)
-            H_left = np.dot(less_flag, h)
-            H_right = np.dot(larger_flag, h)
+        #     expand_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
+        #     expand_col = np.tile(tmp_col, (len(tmp_splits), 1))
+        #     less_flag = (expand_col < expand_splits).astype('int')
+        #     larger_flag = 1 - less_flag
 
-            # cal the gain for each var-cut
-            gain = G_left**2 / (H_left + self.reg_lambda) + G_right**2 / (
-                H_right + self.reg_lambda) - (G_left + G_right)**2 / (
-                    H_left + H_right + self.reg_lambda)
+        #     # get the sum of g-s and h-s based on vars
+        #     G_left = np.dot(less_flag, g)
+        #     G_right = np.dot(larger_flag, g)
+        #     H_left = np.dot(less_flag, h)
+        #     H_right = np.dot(larger_flag, h)
 
-            # print("host_gain: ", gain)
-            # recorrect the gain
-            gain = gain / 2 - self.gamma
-            max_gain = max(gain)
-            max_index = gain.tolist().index(max_gain)
-            tmp_cut = tmp_splits[max_index]
-            if best_gain is None or max_gain > best_gain:
-                left_inds = (tmp_col < tmp_cut)
-                right_inds = (1 - left_inds).astype('bool')
-                if self.min_child_sample is not None:
-                    if sum(left_inds) < self.min_child_sample or sum(
-                            right_inds) < self.min_child_sample:
-                        continue
+        #     # cal the gain for each var-cut
+        #     gain = G_left**2 / (H_left + self.reg_lambda) + G_right**2 / (
+        #         H_right + self.reg_lambda) - (G_left + G_right)**2 / (
+        #             H_left + H_right + self.reg_lambda)
 
-                if self.min_child_weight is not None:
-                    if H_left[max_index] < self.min_child_weight or H_right[
-                            max_index] < self.min_child_weight:
-                        continue
+        #     # print("host_gain: ", gain)
+        #     # recorrect the gain
+        #     gain = gain / 2 - self.gamma
+        #     max_gain = max(gain)
+        #     max_index = gain.tolist().index(max_gain)
+        #     tmp_cut = tmp_splits[max_index]
+        #     if best_gain is None or max_gain > best_gain:
+        #         left_inds = (tmp_col < tmp_cut)
+        #         right_inds = (1 - left_inds).astype('bool')
+        #         if self.min_child_sample is not None:
+        #             if sum(left_inds) < self.min_child_sample or sum(
+        #                     right_inds) < self.min_child_sample:
+        #                 continue
 
-                best_gain = max_gain
-                best_cut = tmp_cut
-                best_var = item
-                G_left_best, G_right_best, H_left_best, H_right_best = G_left[
-                    max_index], G_right[max_index], H_left[max_index], H_right[
-                        max_index]
+        #         if self.min_child_weight is not None:
+        #             if H_left[max_index] < self.min_child_weight or H_right[
+        #                     max_index] < self.min_child_weight:
+        #                 continue
+
+        #         best_gain = max_gain
+        #         best_cut = tmp_cut
+        #         best_var = item
+        #         G_left_best, G_right_best, H_left_best, H_right_best = G_left[
+        #             max_index], G_right[max_index], H_left[max_index], H_right[
+        #                 max_index]
         if best_var is not None:
             w_left = -G_left_best / (H_left_best + self.reg_lambda)
             w_right = -G_right_best / (H_right_best + self.reg_lambda)
