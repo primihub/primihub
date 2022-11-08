@@ -163,8 +163,8 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
-    train_input_filepath_ = param_map["TrainData"].value_string();
-    test_input_filepath_ = param_map["TestData"].value_string();
+    train_input_filepath_ = param_map["Data_File"].value_string();
+    // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
     model_file_name_ = param_map["modelName"].value_string();
