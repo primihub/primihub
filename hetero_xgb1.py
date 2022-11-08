@@ -539,35 +539,38 @@ class XGB_GUEST_EN:
             encrypted_ghs_left = encrypted_ghs.loc[id_left]
             encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
-            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                      current_depth + 1)
-            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                      current_depth + 1)
+            # self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
+            #                           current_depth + 1)
+            # self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
+            #                           current_depth + 1)
 
-            # tree_structure[(role,
-            #                 record)][('left',
-            #                           w_left)] = self.guest_tree_construct(
-            #                               X_guest_left, encrypted_ghs_left,
-            #                               current_depth + 1)
-            # tree_structure[(role,
-            #                 record)][('right',
-            #                           w_right)] = self.guest_tree_construct(
-            #                               X_guest_right, encrypted_ghs_right,
-            #                               current_depth + 1)
+            tree_structure[(role,
+                            record)][('left',
+                                      w_left)] = self.guest_tree_construct(
+                                          X_guest_left, encrypted_ghs_left,
+                                          current_depth + 1)
+            tree_structure[(role,
+                            record)][('right',
+                                      w_right)] = self.guest_tree_construct(
+                                          X_guest_right, encrypted_ghs_right,
+                                          current_depth + 1)
 
-    def guest_get_tree_ids(self, guest_test, current_lookup):
-        while (1):
-            role = self.proxy_server.Get('role')
-            record_id = self.proxy_server.Get('record_id')
+            return tree_structure
+
+    def guest_get_tree_ids(self, guest_test, tree, current_lookup):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+            # role = self.proxy_server.Get('role')
+            # record_id = self.proxy_server.Get('record_id')
             # print("record_id, role, current_lookup", role, record_id,
             #       current_lookup)
 
             # if record_id is None:
             #     break
             if role == "guest":
-
-                if record_id is None:
-                    return
+                # if record_id is None:
+                #     return
                 tmp_lookup = current_lookup[record_id]
                 var, cut = tmp_lookup[0], tmp_lookup[1]
                 guest_test_left = guest_test.loc[guest_test[var] < cut]
@@ -590,13 +593,21 @@ class XGB_GUEST_EN:
                 id_right = ids['id_right']
                 guest_test_right = guest_test.loc[id_right]
 
-            self.guest_get_tree_ids(guest_test_left, current_lookup)
-            self.guest_get_tree_ids(guest_test_right, current_lookup)
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+
+            self.guest_get_tree_ids(guest_test_left, tree_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, tree_right,
+                                    current_lookup)
 
     def predict(self, X, lookup_sum):
         for t in range(self.n_estimators):
+            tree = self.tree_structure[t + 1]
             current_lookup = lookup_sum[t + 1]
-            self.guest_get_tree_ids(X, current_lookup)
+            self.guest_get_tree_ids(X, tree, current_lookup)
 
 
 class XGB_HOST_EN:
@@ -966,9 +977,9 @@ class XGB_HOST_EN:
         if tree is not None:
             k = list(tree.keys())[0]
             role, record_id = k[0], k[1]
-            self.proxy_client_guest.Remote(role, 'role')
-            # print("role, record_id", role, record_id, current_lookup)
-            self.proxy_client_guest.Remote(record_id, 'record_id')
+            # self.proxy_client_guest.Remote(role, 'role')
+            # # print("role, record_id", role, record_id, current_lookup)
+            # self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
@@ -1011,8 +1022,8 @@ class XGB_HOST_EN:
             self.host_get_tree_node_weight(host_test_right, tree_right,
                                            current_lookup, w)
 
-        self.proxy_client_guest.Remote('guest', 'role')
-        self.proxy_client_guest.Remote(None, 'record_id')
+        # self.proxy_client_guest.Remote('guest', 'role')
+        # self.proxy_client_guest.Remote(None, 'record_id')
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
