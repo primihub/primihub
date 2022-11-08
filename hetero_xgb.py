@@ -562,11 +562,6 @@ class XGB_GUEST_EN:
                 # self.guest_record += 1
                 self.guest_record += 1
 
-                self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                          current_depth + 1)
-                self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                          current_depth + 1)
-
             else:
                 ids_w = self.proxy_server.Get(str(self.host_record) + '_ids_w')
                 print("guest record: ", self.host_record)
@@ -590,10 +585,10 @@ class XGB_GUEST_EN:
                 encrypted_ghs_right = encrypted_ghs.loc[id_right]
                 self.host_record += 1
 
-                self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                          current_depth + 1)
-                self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                          current_depth + 1)
+            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
+                                      current_depth + 1)
+            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
+                                      current_depth + 1)
 
             # tree_structure[(role,
             #                 record)][('left',
@@ -1247,7 +1242,7 @@ def xgb_host_logic():
             start_enc = time.time()
             enc_flat_gh = list(
                 paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-                                       flat_gh))
+                                       flat_gh.tolist()))
 
             end_enc = time.time()
 
