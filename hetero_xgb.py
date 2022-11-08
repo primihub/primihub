@@ -555,6 +555,13 @@ class XGB_GUEST_EN:
                 # self.guest_record += 1
                 self.guest_record += 1
 
+                X_guest_left = X_guest.loc[id_left]
+                print("======X_guest_left======", X_guest_left.index)
+                X_guest_right = X_guest.loc[id_right]
+
+                encrypted_ghs_left = encrypted_ghs.loc[id_left]
+                encrypted_ghs_right = encrypted_ghs.loc[id_right]
+
             else:
                 ids_w = self.proxy_server.Get(str(self.host_record) + '_ids_w')
                 role = 'host'
@@ -566,17 +573,18 @@ class XGB_GUEST_EN:
                 self.host_record += 1
 
                 print("===train guest==", X_guest.index, ids_w)
-            # tree_structure = {(role, record): {}}
+                # tree_structure = {(role, record): {}}
 
-            X_guest_left = X_guest.loc[id_left]
-            X_guest_right = X_guest.loc[id_right]
+                X_guest_left = X_guest.loc[id_left]
+                print("======X_guest_left======", X_guest_left.index)
+                X_guest_right = X_guest.loc[id_right]
 
-            encrypted_ghs_left = encrypted_ghs.loc[id_left]
-            encrypted_ghs_right = encrypted_ghs.loc[id_right]
+                encrypted_ghs_left = encrypted_ghs.loc[id_left]
+                encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
-            self.guest_tree_construct(X_guest_left.copy(), encrypted_ghs_left,
+            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
                                       current_depth + 1)
-            self.guest_tree_construct(X_guest_right.copy(), encrypted_ghs_right,
+            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
                                       current_depth + 1)
 
             # tree_structure[(role,
@@ -984,15 +992,15 @@ class XGB_HOST_EN:
 
             tree_structure[(role, record)][('left',
                                             w_left)] = self.host_tree_construct(
-                                                X_host_left.copy(), f_t,
+                                                X_host_left, f_t,
                                                 current_depth + 1,
                                                 plain_gh_left)
 
             tree_structure[(role,
                             record)][('right',
                                       w_right)] = self.host_tree_construct(
-                                          X_host_right.copy(), f_t,
-                                          current_depth + 1, plain_gh_right)
+                                          X_host_right, f_t, current_depth + 1,
+                                          plain_gh_right)
 
             return tree_structure
 
