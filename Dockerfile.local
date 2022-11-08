@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 RUN  apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip git \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libtool pkg-config git \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
