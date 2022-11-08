@@ -1076,7 +1076,7 @@ num_tree = 1
 max_depth = 2
 # max_depth = 5
 cry_pri = "paillier"
-is_encrypted = True
+is_encrypted = False
 
 
 @ph.context.function(role='host',
