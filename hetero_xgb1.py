@@ -114,7 +114,7 @@ class PallierAdd(object):
                 lambda x, y: opt_paillier_add(self.pub, x, y), inter_results)
             # final_results = ActorAdd.remote(self.pub, ray.get(inter_results)).add.remote()
         else:
-            print("not encrypted for add")
+            # print("not encrypted for add")
             final_result = sum(items)
 
         return final_result
