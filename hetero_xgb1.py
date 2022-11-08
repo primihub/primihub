@@ -1029,6 +1029,7 @@ class XGB_HOST_EN:
             print("after change", y_t)
             # Y = Y + self.learning_rate * y_t
             Y = Y + self.learning_rate * y_t
+            print("current Y: ", Y)
 
         return Y
 
@@ -1036,10 +1037,6 @@ class XGB_HOST_EN:
 
         Y = self.predict_raw(X, lookup)
 
-        # def sigmoid(x):
-        #     return 1 / (1 + np.exp(-x))
-
-        # Y = Y.apply(sigmoid)
         Y = 1 / (1 + np.exp(-Y))
 
         return Y
