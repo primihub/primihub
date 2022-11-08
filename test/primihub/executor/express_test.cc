@@ -26,38 +26,40 @@ std::string expr = "-100/A";
 // std::string expr = "-100/(5-(A*B-C+A+2-1)*2)/2";
 // std::string expr = "A*B-C+A*2.2";
 // std::string expr = "A*B-C+A*2";
-
-static void importColumnOwner(MPCExpressExecutor *mpc_exec,
+f64<D32 > bit_flag = 1.0;
+template <Decimal Dbit>
+static void importColumnOwner(MPCExpressExecutor<Dbit> *mpc_exec,
                               std::map<std::string, u32> &col_and_owner) {
   for (auto &pair : col_and_owner)
     mpc_exec->importColumnOwner(pair.first, pair.second);
   return;
 }
 
-static void importColumnDtype(MPCExpressExecutor *mpc_exec,
+template <Decimal Dbit>
+static void importColumnDtype(MPCExpressExecutor<Dbit> *mpc_exec,
                               std::map<std::string, bool> &col_and_dtype) {
   for (auto &pair : col_and_dtype)
     mpc_exec->importColumnDtype(pair.first, pair.second);
   return;
 }
 
-template <typename T>
+template <typename T, Decimal Dbit>
 static void
-importColumnValues(MPCExpressExecutor *mpc_exec,
+importColumnValues(MPCExpressExecutor<Dbit> *mpc_exec,
                    std::map<std::string, std::vector<T>> &col_and_val) {
   for (auto &pair : col_and_val)
     mpc_exec->importColumnValues(pair.first, pair.second);
   return;
 }
 
-template <typename T>
-static MPCExpressExecutor *
+template <typename T, Decimal Dbit>
+static MPCExpressExecutor<Dbit> *
 runParty(std::map<std::string, std::vector<T>> &col_and_val,
          std::map<std::string, bool> &col_and_dtype,
          std::map<std::string, u32> &col_and_owner, u32 party_id,
          std::string next_ip, std::string prev_ip, uint16_t next_port,
-         uint16_t prev_port) {
-  MPCExpressExecutor *mpc_exec = new MPCExpressExecutor();
+         uint16_t prev_port, f64<Dbit> bit_flag) {
+  MPCExpressExecutor<Dbit> *mpc_exec = new MPCExpressExecutor<Dbit>();
 
   mpc_exec->initColumnConfig(party_id);
   importColumnOwner(mpc_exec, col_and_owner);
@@ -92,6 +94,7 @@ runParty(std::map<std::string, std::vector<T>> &col_and_val,
 }
 
 TEST(mpc_express_executor, fp64_executor_test) {
+  LOG(INFO)<<"TEST!!!!!!!!!!!!!!!";
   std::vector<double> col_val_a;
   std::vector<double> col_val_b;
   std::vector<double> col_val_c;
@@ -138,7 +141,7 @@ TEST(mpc_express_executor, fp64_executor_test) {
     if (pid != 0) {
       // This subprocess is party 1.
       runParty(col_and_val_1, col_and_dtype, col_and_owner, 1, "127.0.0.1",
-               "127.0.0.1", 10030, 10010);
+               "127.0.0.1", 10030, 10010, bit_flag);
       return;
     }
 
@@ -146,29 +149,30 @@ TEST(mpc_express_executor, fp64_executor_test) {
     if (pid != 0) {
       // This subprocess is party 2.
       runParty(col_and_val_2, col_and_dtype, col_and_owner, 2, "127.0.0.1",
-               "127.0.0.1", 10020, 10030);
+               "127.0.0.1", 10020, 10030, bit_flag);
       return;
     }
 
     // The parent process is party 0.
     runParty(col_and_val_0, col_and_dtype, col_and_owner, 0, "127.0.0.1",
-             "127.0.0.1", 10010, 10020);
+             "127.0.0.1", 10010, 10020, bit_flag);
 
     // Wait for subprocess exit.
     int status;
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == "PARTY_0") {
-      MPCExpressExecutor *mpc_exec =
+      MPCExpressExecutor<D32 > *mpc_exec =
           runParty(col_and_val_0, col_and_dtype, col_and_owner, 0, "127.0.0.1",
-                   "127.0.0.1", 10010, 10020);
+                   "127.0.0.1", 10010, 10020, bit_flag);
 
       std::map<std::string, std::vector<double>> col_and_val_n;
       col_and_val_n.insert(std::make_pair("A", col_val_a));
       col_and_val_n.insert(std::make_pair("B", col_val_b));
       col_and_val_n.insert(std::make_pair("C", col_val_c));
 
-      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      LocalExpressExecutor<D32 > *local_exec =
+          new LocalExpressExecutor<D32 >(mpc_exec);
       local_exec->init(col_and_val_n);
       local_exec->runLocalEvaluate();
       std::vector<double> final_val;
@@ -177,14 +181,14 @@ TEST(mpc_express_executor, fp64_executor_test) {
         LOG(INFO) << *itr;
       delete local_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_1") {
-      MPCExpressExecutor *mpc_exec =
+      MPCExpressExecutor<D32 > *mpc_exec =
           runParty(col_and_val_1, col_and_dtype, col_and_owner, 1, "127.0.0.1",
-                   "127.0.0.1", 10030, 10010);
+                   "127.0.0.1", 10030, 10010, bit_flag);
       delete mpc_exec;
     } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_2") {
-      MPCExpressExecutor *mpc_exec =
+      MPCExpressExecutor<D32 > *mpc_exec =
           runParty(col_and_val_2, col_and_dtype, col_and_owner, 2, "127.0.0.1",
-                   "127.0.0.1", 10020, 10030);
+                   "127.0.0.1", 10020, 10030, bit_flag);
       delete mpc_exec;
     }
   }
@@ -235,7 +239,7 @@ TEST(mpc_express_executor, i64_executor_test) {
     if (pid != 0) {
       // This subprocess is party 1.
       runParty(col_and_val_1, col_and_dtype, col_and_owner, 1, "127.0.0.1",
-               "127.0.0.1", 10030, 10010);
+               "127.0.0.1", 10030, 10010, bit_flag);
       return;
     }
 
@@ -243,22 +247,22 @@ TEST(mpc_express_executor, i64_executor_test) {
     if (pid != 0) {
       // This subprocess is party 2.
       runParty(col_and_val_2, col_and_dtype, col_and_owner, 2, "127.0.0.1",
-               "127.0.0.1", 10020, 10030);
+               "127.0.0.1", 10020, 10030, bit_flag);
       return;
     }
 
     // The parent process is party 0.
     runParty(col_and_val_0, col_and_dtype, col_and_owner, 0, "127.0.0.1",
-             "127.0.0.1", 10010, 10020);
+             "127.0.0.1", 10010, 10020, bit_flag);
 
     // Wait for subprocess exit.
     int status;
     waitpid(-1, &status, 0);
   } else {
     if (std::string(std::getenv("MPC_PARTY")) == std::string("PARTY_0")) {
-      MPCExpressExecutor *mpc_exec =
+      MPCExpressExecutor<D32 > *mpc_exec =
           runParty(col_and_val_0, col_and_dtype, col_and_owner, 0, "127.0.0.1",
-                   "127.0.0.1", 10010, 10020);
+                   "127.0.0.1", 10010, 10020, bit_flag);
 
       std::map<std::string, std::vector<int64_t>> col_and_val_n;
 
@@ -266,7 +270,8 @@ TEST(mpc_express_executor, i64_executor_test) {
       col_and_val_n.insert(std::make_pair("B", col_val_b));
       col_and_val_n.insert(std::make_pair("C", col_val_c));
 
-      LocalExpressExecutor *local_exec = new LocalExpressExecutor(mpc_exec);
+      LocalExpressExecutor<D32 > *local_exec =
+          new LocalExpressExecutor<D32 >(mpc_exec);
       local_exec->init(col_and_val_n);
       // local_exec->creatNewFeedDict();
       // local_exec->importColumnValues(col_and_val_n);
@@ -274,11 +279,11 @@ TEST(mpc_express_executor, i64_executor_test) {
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_1")) {
       runParty(col_and_val_1, col_and_dtype, col_and_owner, 1, "127.0.0.1",
-               "127.0.0.1", 10030, 10010);
+               "127.0.0.1", 10030, 10010, bit_flag);
     } else if (std::string(std::getenv("MPC_PARTY")) ==
                std::string("PARTY_2")) {
       runParty(col_and_val_2, col_and_dtype, col_and_owner, 2, "127.0.0.1",
-               "127.0.0.1", 10020, 10030);
+               "127.0.0.1", 10020, 10030, bit_flag);
     }
   }
 }

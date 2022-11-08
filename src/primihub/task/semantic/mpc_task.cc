@@ -116,9 +116,17 @@ namespace primihub::task
       std::map<std::string, Node> &node_map = config.node_map;
       try 
       {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::ArithmeticExecutor>(config,
-                                                         dataset_service));
+        auto param_map = task_param_.params().param_map();
+        std::string accuracy = param_map["Accuracy"].value_string();
+        LOG(INFO)<<"accuracy: "<<accuracy;
+        if(accuracy=="D32")
+          algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+              std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
+                                                        dataset_service));
+        else  
+          algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+              std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
+                                                        dataset_service));
       } 
       catch (const std::runtime_error &error) 
       {
