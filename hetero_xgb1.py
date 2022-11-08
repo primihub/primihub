@@ -1262,7 +1262,7 @@ def xgb_host_logic():
                            reg_lambda=1,
                            sid=0,
                            min_child_weight=1,
-                           objective='linear',
+                           objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
                            encrypted=is_encrypted)
@@ -1447,7 +1447,7 @@ def xgb_guest_logic():
                              max_depth=max_depth,
                              reg_lambda=1,
                              min_child_weight=1,
-                             objective='linear',
+                             objective='logistic',
                              sid=1,
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
