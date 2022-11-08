@@ -678,9 +678,9 @@ class XGB_HOST_EN:
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
         host_colnames = X_host.columns
         # g = plain_gh['g'].values
-        g = plain_gh['g'].values / self.ratio
+        g = plain_gh['g'].values
         # h = plain_gh['h'].values
-        h = plain_gh['h'].values / self.ratio
+        h = plain_gh['h'].values
 
         # best_gain = None
         best_gain = 0
@@ -736,6 +736,7 @@ class XGB_HOST_EN:
                 H_right + self.reg_lambda) - (G_left + G_right)**2 / (
                     H_left + H_right + self.reg_lambda)
 
+            # print("host_gain: ", gain)
             # recorrect the gain
             gain = gain / 2 - self.gamma
             max_gain = max(gain)
