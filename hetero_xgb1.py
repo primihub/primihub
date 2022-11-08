@@ -1293,6 +1293,7 @@ def xgb_host_logic():
             'g': xgb_host._grad(y_hat, Y.flatten()),
             'h': xgb_host._hess(y_hat, Y.flatten())
         })
+        print("host gh", gh)
 
         # convert gradients and hessians to ints and encrypted with paillier
         # ratio = 10**3
