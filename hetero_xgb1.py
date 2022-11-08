@@ -782,15 +782,6 @@ class XGB_HOST_EN:
         else:
             raise KeyError('objective must be linear or logistic!')
 
-    def get_gh(self, y_hat, Y):
-        # Calculate the g and h of each sample based on the labels of the local data
-        gh = pd.DataFrame(columns=['g', 'h'])
-        for i in range(0, Y.shape[0]):
-            gh['g'] = self._grad(y_hat, Y)
-            gh['h'] = self._hess(y_hat, Y)
-
-        return gh
-
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=10):
         host_colnames = X_host.columns
         # g = plain_gh['g'].values
@@ -887,8 +878,6 @@ class XGB_HOST_EN:
         #             max_index], G_right[max_index], H_left[max_index], H_right[
         #                 max_index]
         if best_var is not None:
-            # w_left = -G_left_best / (H_left_best + self.reg_lambda)
-            # w_right = -G_right_best / (H_right_best + self.reg_lambda)
             return dict({
                 'w_left': w_left,
                 'w_right': w_right,
@@ -1300,7 +1289,10 @@ def xgb_host_logic():
         f_t = pd.Series([0] * Y.shape[0])
 
         # host cal gradients and hessians with its own label
-        gh = xgb_host.get_gh(y_hat, Y)
+        gh = pd.DataFrame({
+            'g': xgb_host._grad(y_hat, Y.flatten()),
+            'h': xgb_host._hess(y_hat, Y.flatten())
+        })
 
         # convert gradients and hessians to ints and encrypted with paillier
         # ratio = 10**3
