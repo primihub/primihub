@@ -1326,40 +1326,40 @@ def xgb_guest_logic():
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
-    if is_encrypted:
-        xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
-                                 max_depth=max_depth,
-                                 reg_lambda=1,
-                                 min_child_weight=1,
-                                 objective='linear',
-                                 sid=1,
-                                 proxy_server=proxy_server,
-                                 proxy_client_host=proxy_client_host,
-                                 is_encrypted=is_encrypted)  # noqa
+    # if is_encrypted:
+    xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
+                             max_depth=max_depth,
+                             reg_lambda=1,
+                             min_child_weight=1,
+                             objective='linear',
+                             sid=1,
+                             proxy_server=proxy_server,
+                             proxy_client_host=proxy_client_host,
+                             is_encrypted=is_encrypted)  # noqa
 
-        # channel.send(b'guest ready')
-        # pub = xgb_guest.channel.recv()
-        pub = proxy_server.Get('xgb_pub')
-        # xgb_guest.channel.send(b'recved pub')
-        lookup_table_sum = {}
-        xgb_guest.lookup_table = {}
+    # channel.send(b'guest ready')
+    # pub = xgb_guest.channel.recv()
+    pub = proxy_server.Get('xgb_pub')
+    # xgb_guest.channel.send(b'recved pub')
+    lookup_table_sum = {}
+    xgb_guest.lookup_table = {}
 
-        for t in range(xgb_guest.n_estimators):
-            xgb_guest.record = 0
-            # gh_host = xgb_guest.channel.recv()
-            gh_en = proxy_server.Get('gh_en')
-            xgb_guest.pub = pub
-            xgb_guest.tree_structure[t + 1] = xgb_guest.guest_tree_construct(
-                X_guest.copy(), gh_en, 0)
+    for t in range(xgb_guest.n_estimators):
+        xgb_guest.record = 0
+        # gh_host = xgb_guest.channel.recv()
+        gh_en = proxy_server.Get('gh_en')
+        xgb_guest.pub = pub
+        xgb_guest.tree_structure[t + 1] = xgb_guest.guest_tree_construct(
+            X_guest.copy(), gh_en, 0)
 
-            # stat construct boosting trees
+        # stat construct boosting trees
 
-            lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        lookup_table_sum[t + 1] = xgb_guest.lookup_table
 
-        lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+    lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
 
-        with open(lookup_file_path, 'wb') as fl:
-            pickle.dump(xgb_guest.lookup_table_sum, fl)
+    with open(lookup_file_path, 'wb') as fl:
+        pickle.dump(xgb_guest.lookup_table_sum, fl)
         # xgb_guest.predict(data_test)
         # xgb_guest.predict(X_guest)
 
