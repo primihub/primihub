@@ -1147,90 +1147,89 @@ def xgb_host_logic():
 
     lookup_table_sum = {}
 
-    if is_encrypted:
-        xgb_host = XGB_HOST_EN(n_estimators=num_tree,
-                               max_depth=max_depth,
-                               reg_lambda=1,
-                               sid=0,
-                               min_child_weight=1,
-                               objective='linear',
-                               proxy_server=proxy_server,
-                               proxy_client_guest=proxy_client_guest,
-                               encrypted=is_encrypted)
-        # channel.recv()
-        # xgb_host.channel.send(xgb_host.pub)
-        proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
-        # proxy_client_guest.Remote(public_k, "xgb_pub")
-        # print(xgb_host.channel.recv())
-        y_hat = np.array([0.5] * Y.shape[0])
-        # ray.init()
-        # pai_actor = PaillierActor(xgb_host.prv, xgb_host.pub)
-        paillier_encryptor = ActorPool([
-            PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(10)
-        ])
-        # actor1, actor2, actor3 = PaillierActor.remote(xgb_host.prv, xgb_host.pub
-        #                                       ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
-        #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
-        #                                                               )
-        # pools = ActorPool([actor1, actor2, actor3])
-        xgb_host.lookup_table = {}
+    # if is_encrypted:
+    xgb_host = XGB_HOST_EN(n_estimators=num_tree,
+                           max_depth=max_depth,
+                           reg_lambda=1,
+                           sid=0,
+                           min_child_weight=1,
+                           objective='linear',
+                           proxy_server=proxy_server,
+                           proxy_client_guest=proxy_client_guest,
+                           encrypted=is_encrypted)
+    # channel.recv()
+    # xgb_host.channel.send(xgb_host.pub)
+    proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    # proxy_client_guest.Remote(public_k, "xgb_pub")
+    # print(xgb_host.channel.recv())
+    y_hat = np.array([0.5] * Y.shape[0])
+    # ray.init()
+    # pai_actor = PaillierActor(xgb_host.prv, xgb_host.pub)
+    paillier_encryptor = ActorPool(
+        [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(10)])
+    # actor1, actor2, actor3 = PaillierActor.remote(xgb_host.prv, xgb_host.pub
+    #                                       ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
+    #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
+    #                                                               )
+    # pools = ActorPool([actor1, actor2, actor3])
+    xgb_host.lookup_table = {}
 
-        for t in range(xgb_host.n_estimators):
-            print("Begin to trian tree: ", t + 1)
-            f_t = pd.Series([0] * Y.shape[0])
+    for t in range(xgb_host.n_estimators):
+        print("Begin to trian tree: ", t + 1)
+        f_t = pd.Series([0] * Y.shape[0])
 
-            # host cal gradients and hessians with its own label
-            gh = xgb_host.get_gh(y_hat, Y)
+        # host cal gradients and hessians with its own label
+        gh = xgb_host.get_gh(y_hat, Y)
 
-            # convert gradients and hessians to ints and encrypted with paillier
-            # ratio = 10**3
-            # gh_large = (gh * ratio).astype('int')
-            if is_encrypted:
-                flat_gh = gh.values.flatten()
-                flat_gh *= xgb_host.ratio
+        # convert gradients and hessians to ints and encrypted with paillier
+        # ratio = 10**3
+        # gh_large = (gh * ratio).astype('int')
+        if is_encrypted:
+            flat_gh = gh.values.flatten()
+            flat_gh *= xgb_host.ratio
 
-                flat_gh.astype('int')
+            flat_gh.astype('int')
 
-                start_enc = time.time()
-                enc_flat_gh = list(
-                    paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-                                           flat_gh.tolist()))
+            start_enc = time.time()
+            enc_flat_gh = list(
+                paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                       flat_gh.tolist()))
 
-                end_enc = time.time()
+            end_enc = time.time()
 
-                enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
-                enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
+            enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
+            enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
-                # send all encrypted gradients and hessians to 'guest'
-                proxy_client_guest.Remote(enc_gh_df, "gh_en")
+            # send all encrypted gradients and hessians to 'guest'
+            proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
-                end_send_gh = time.time()
-                print("Encrypt finish.")
+            end_send_gh = time.time()
+            print("Encrypt finish.")
 
-            else:
-                proxy_client_guest.Remote(gh, "gh_en")
+        else:
+            proxy_client_guest.Remote(gh, "gh_en")
 
-            # start construct boosting trees
-            # lp = LineProfiler(xgb_host.host_tree_construct)
-            # lp.run(
-            #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
-            # )
-            # lp.print_stats()
+        # start construct boosting trees
+        # lp = LineProfiler(xgb_host.host_tree_construct)
+        # lp.run(
+        #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
+        # )
+        # lp.print_stats()
 
-            xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
-                X_host.copy(), f_t, 0, gh)
+        xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
+            X_host.copy(), f_t, 0, gh)
 
-            end_build_tree = time.time()
+        end_build_tree = time.time()
 
-            lookup_table_sum[t + 1] = xgb_host.lookup_table
-            y_hat = y_hat + xgb_host.learning_rate * f_t
+        lookup_table_sum[t + 1] = xgb_host.lookup_table
+        y_hat = y_hat + xgb_host.learning_rate * f_t
 
-            logger.info("Finish to trian tree {}.".format(t + 1))
-            check_time = [
-                end_enc - start_enc, end_send_gh - end_enc,
-                end_build_tree - end_send_gh
-            ]
-            print("build time ", check_time)
+        logger.info("Finish to trian tree {}.".format(t + 1))
+        check_time = [
+            end_enc - start_enc, end_send_gh - end_enc,
+            end_build_tree - end_send_gh
+        ]
+        print("build time ", check_time)
 
         end = time.time()
         # logger.info("lasting time for xgb %s".format(end-start))
