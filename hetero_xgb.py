@@ -962,6 +962,7 @@ class XGB_HOST_EN:
                     host_best['best_var'], host_best['best_cut']
                 ]
                 # print("self.lookup_table", self.lookup_table)
+                print("===train host==", X_host.index, ids_w)
 
                 self.host_record += 1
 
