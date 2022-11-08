@@ -480,7 +480,7 @@ class XGB_GUEST_EN:
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
 
-        if host_best_gain is None or guest_best_gain is None:
+        if host_best_gain is None and guest_best_gain is None:
             return None
 
         guest_flag1 = (host_best_gain and
