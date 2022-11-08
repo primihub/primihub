@@ -1225,11 +1225,11 @@ def xgb_host_logic():
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
         logger.info("Finish to trian tree {}.".format(t + 1))
-        check_time = [
-            end_enc - start_enc, end_send_gh - end_enc,
-            end_build_tree - end_send_gh
-        ]
-        print("build time ", check_time)
+        # check_time = [
+        #     end_enc - start_enc, end_send_gh - end_enc,
+        #     end_build_tree - end_send_gh
+        # ]
+        # print("build time ", check_time)
 
         end = time.time()
         # logger.info("lasting time for xgb %s".format(end-start))
