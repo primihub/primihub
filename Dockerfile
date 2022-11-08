@@ -25,8 +25,16 @@ RUN  apt update \
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
   && rm -rf /var/lib/apt/lists/*
 
-# install  bazelisk
+# Install  bazelisk
 RUN npm install -g @bazel/bazelisk
+
+# Install keyword PIR dependencies
+RUN git clone https://github.com/zeromq/libzmq.git \
+  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig \
+  && git clone https://github.com/zeromq/cppzmq.git \
+  && cp cppzmq/zmq.hpp /usr/local/include/ \
+  && git clone https://github.com/google/flatbuffers.git \
+  && cmake -G "Unix Makefiles" && make && make install && ldconfig
 
 WORKDIR /src
 ADD . /src
