@@ -1237,6 +1237,8 @@ def xgb_host_logic():
         model_file_path = ph.context.Context.get_model_file_path()
         lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
+    print("host structure: ", xgb_host.tree_structure)
+
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
     print("train_pred, Y: ", train_pred, Y)
     train_acc = metrics.accuracy_score(train_pred, Y)
