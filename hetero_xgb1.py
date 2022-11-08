@@ -80,37 +80,41 @@ class ActorAdd(object):
 @ray.remote
 class PallierAdd(object):
 
-    def __init__(self, pub, nums, add_actors):
+    def __init__(self, pub, nums, add_actors, encrypted):
         self.pub = pub
         self.nums = nums
         self.add_actors = add_actors
+        self.encrypted = encrypted
 
     def pai_add(self, items, min_num=3):
-        nums = self.nums * min_num
-        if len(items) < nums:
-            return functools.reduce(
-                lambda x, y: opt_paillier_add(self.pub, x, y), items)
-        N = int(len(items) / nums)
-        items_list = []
+        if self.encrypted:
+            nums = self.nums * min_num
+            if len(items) < nums:
+                return functools.reduce(
+                    lambda x, y: opt_paillier_add(self.pub, x, y), items)
+            N = int(len(items) / nums)
+            items_list = []
 
-        inter_results = []
-        for i in range(nums):
-            tmp_val = items[i * N:(i + 1) * N]
-            # tmp_add_actor = self.add_actors[i]
-            if i == (nums - 1):
-                tmp_val = items[i * N:]
-            items_list.append(tmp_val)
+            inter_results = []
+            for i in range(nums):
+                tmp_val = items[i * N:(i + 1) * N]
+                # tmp_add_actor = self.add_actors[i]
+                if i == (nums - 1):
+                    tmp_val = items[i * N:]
+                items_list.append(tmp_val)
 
-        inter_results = list(
-            self.add_actors.map(lambda a, v: a.add.remote(v), items_list))
+            inter_results = list(
+                self.add_actors.map(lambda a, v: a.add.remote(v), items_list))
 
-        #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
-        #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
-        # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
-        # final_result = ray.get(inter_results)
-        final_result = functools.reduce(
-            lambda x, y: opt_paillier_add(self.pub, x, y), inter_results)
-        # final_results = ActorAdd.remote(self.pub, ray.get(inter_results)).add.remote()
+            #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
+            #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
+            # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
+            # final_result = ray.get(inter_results)
+            final_result = functools.reduce(
+                lambda x, y: opt_paillier_add(self.pub, x, y), inter_results)
+            # final_results = ActorAdd.remote(self.pub, ray.get(inter_results)).add.remote()
+        else:
+            final_result = sum(items)
 
         return final_result
 
@@ -382,7 +386,8 @@ class XGB_GUEST_EN:
             objective='linear',
             #  channel=None,
             sid=0,
-            record=0):
+            record=0,
+            is_encrypted=None):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -405,6 +410,7 @@ class XGB_GUEST_EN:
         self.host_record = 0
         self.guest_record = 0
         self.tree_structure = {}
+        self.encrypted = is_encrypted
 
     def get_GH(self, X, pub):
 
@@ -439,19 +445,6 @@ class XGB_GUEST_EN:
 
         return GH
 
-    def split(self, X, best_var, best_cut, GH_best, w):
-        # Calculate the weight of leaf nodes after splitting
-        # print("=====guest index====", X.index, best_cut)
-        id_left = X.loc[X[best_var] < best_cut].index.tolist()
-        w_left = -GH_best['G_left_best'] / \
-            (GH_best['H_left_best'] + self.reg_lambda)
-        id_right = X.loc[X[best_var] >= best_cut].index.tolist()
-        w_right = -GH_best['G_right_best'] / \
-            (GH_best['H_right_best'] + self.reg_lambda)
-        w[id_left] = w_left
-        w[id_right] = w_right
-        return w, id_right, id_left, w_right, w_left
-
     def sums_of_encrypted_ghs(self,
                               X_guest,
                               encrypted_ghs,
@@ -472,8 +465,10 @@ class XGB_GUEST_EN:
             [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
         # generate actor pool for mapping
-        map_pool = ActorPool(
-            [PallierAdd.remote(self.pub, map_pools, paillier_add_actors)])
+        map_pool = ActorPool([
+            PallierAdd.remote(self.pub, map_pools, paillier_add_actors,
+                              self.encrypted)
+        ])
 
         sum_maps = [
             MapGH.remote(item=tmp_item,
@@ -655,7 +650,8 @@ class XGB_HOST_EN:
             #  channel=None,
             random_seed=112,
             sid=0,
-            record=0):
+            record=0,
+            encrypted=None):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -680,6 +676,7 @@ class XGB_HOST_EN:
         self.host_record = 0
         self.guest_record = 0
         self.ratio = 10**5
+        self.encrypted = encrypted
 
     def _grad(self, y_hat, Y):
 
@@ -708,10 +705,7 @@ class XGB_HOST_EN:
             gh['g'] = self._grad(y_hat, Y)
             gh['h'] = self._hess(y_hat, Y)
 
-        # convert g and h to int
-        gh *= self.ratio
-
-        return gh.astype('int')
+        return gh
 
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
         host_colnames = X_host.columns
@@ -814,24 +808,28 @@ class XGB_HOST_EN:
 
     def gh_sums_decrypted(self, gh_sums: pd.DataFrame, decryption_pools=50):
         decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
-        decrypted_gh_sums = gh_sums[decrypted_items]
-        m, n = decrypted_gh_sums.shape
-        gh_sums_flat = decrypted_gh_sums.values.flatten()
+        if self.encrypted:
+            decrypted_gh_sums = gh_sums[decrypted_items]
+            m, n = decrypted_gh_sums.shape
+            gh_sums_flat = decrypted_gh_sums.values.flatten()
 
-        encryption_pools = ActorPool([
-            PaillierActor.remote(self.prv, self.pub)
-            for _ in range(decryption_pools)
-        ])
+            encryption_pools = ActorPool([
+                PaillierActor.remote(self.prv, self.pub)
+                for _ in range(decryption_pools)
+            ])
 
-        dec_gh_sums_flat = list(
-            encryption_pools.map(lambda a, v: a.pai_dec.remote(v),
-                                 gh_sums_flat.tolist()))
+            dec_gh_sums_flat = list(
+                encryption_pools.map(lambda a, v: a.pai_dec.remote(v),
+                                     gh_sums_flat.tolist()))
 
-        dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
+            dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
 
-        # dec_gh_sums_df = pd.DataFrame(dec_gh_sums, columns=decrypted_items)
-        dec_gh_sums_df = pd.DataFrame(dec_gh_sums,
-                                      columns=decrypted_items) / self.ratio
+            # dec_gh_sums_df = pd.DataFrame(dec_gh_sums, columns=decrypted_items)
+            dec_gh_sums_df = pd.DataFrame(dec_gh_sums,
+                                          columns=decrypted_items) / self.ratio
+
+        else:
+            dec_gh_sums_df = gh_sums[decrypted_items]
 
         gh_sums['G_left'] = dec_gh_sums_df['G_left']
         gh_sums['G_right'] = dec_gh_sums_df['G_right']
@@ -1110,6 +1108,7 @@ num_tree = 1
 max_depth = 2
 # max_depth = 5
 cry_pri = "paillier"
+is_encrypted = True
 
 
 @ph.context.function(role='host',
@@ -1180,7 +1179,7 @@ def xgb_host_logic():
 
     lookup_table_sum = {}
 
-    if cry_pri == "paillier":
+    if is_encrypted:
         xgb_host = XGB_HOST_EN(n_estimators=num_tree,
                                max_depth=max_depth,
                                reg_lambda=1,
@@ -1188,7 +1187,8 @@ def xgb_host_logic():
                                min_child_weight=1,
                                objective='linear',
                                proxy_server=proxy_server,
-                               proxy_client_guest=proxy_client_guest)
+                               proxy_client_guest=proxy_client_guest,
+                               encrypted=is_encrypted)
         # channel.recv()
         # xgb_host.channel.send(xgb_host.pub)
         proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
@@ -1217,24 +1217,30 @@ def xgb_host_logic():
             # convert gradients and hessians to ints and encrypted with paillier
             # ratio = 10**3
             # gh_large = (gh * ratio).astype('int')
+            if is_encrypted:
+                flat_gh = gh.values.flatten()
+                flat_gh *= xgb_host.ratio
 
-            flat_gh = gh.values.flatten().tolist()
+                flat_gh.astype('int')
 
-            start_enc = time.time()
-            enc_flat_gh = list(
-                paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-                                       flat_gh))
+                start_enc = time.time()
+                enc_flat_gh = list(
+                    paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                           flat_gh.tolist()))
 
-            end_enc = time.time()
+                end_enc = time.time()
 
-            enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
-            enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
+                enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
+                enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
-            # send all encrypted gradients and hessians to 'guest'
-            proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                # send all encrypted gradients and hessians to 'guest'
+                proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
-            end_send_gh = time.time()
-            print("Encrypt finish.")
+                end_send_gh = time.time()
+                print("Encrypt finish.")
+
+            else:
+                proxy_client_guest.Remote(gh, "gh_en")
 
             # start construct boosting trees
             # lp = LineProfiler(xgb_host.host_tree_construct)
@@ -1352,7 +1358,7 @@ def xgb_guest_logic():
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
-    if cry_pri == "paillier":
+    if is_encrypted:
         xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
                                  max_depth=max_depth,
                                  reg_lambda=1,
@@ -1360,7 +1366,8 @@ def xgb_guest_logic():
                                  objective='linear',
                                  sid=1,
                                  proxy_server=proxy_server,
-                                 proxy_client_host=proxy_client_host)  # noqa
+                                 proxy_client_host=proxy_client_host,
+                                 is_encrypted=is_encrypted)  # noqa
 
         # channel.send(b'guest ready')
         # pub = xgb_guest.channel.recv()
