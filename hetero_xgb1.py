@@ -1071,9 +1071,6 @@ def get_logger(name):
 
 logger = get_logger("hetero_xgb")
 
-dataset.define("guest_dataset")
-dataset.define("label_dataset")
-
 ph.context.Context.func_params_map = {
     "xgb_host_logic": ("paillier",),
     "xgb_guest_logic": ("paillier",)
@@ -1228,7 +1225,7 @@ def xgb_host_logic():
 
         xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
             X_host.copy(), f_t, 0, gh)
-        y_hat = y_hat + xgb_host.learning_rate * f_t
+        # y_hat = y_hat + xgb_host.learning_rate * f_t
 
         end_build_tree = time.time()
 
