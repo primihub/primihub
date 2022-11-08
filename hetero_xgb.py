@@ -707,17 +707,14 @@ class XGB_HOST_EN:
             gh['g'] = self._grad(y_hat, Y)
             gh['h'] = self._hess(y_hat, Y)
 
-        # convert g and h to int
-        gh *= self.ratio
-
-        return gh.astype('int')
+        return gh
 
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
         host_colnames = X_host.columns
         # g = plain_gh['g'].values
-        g = plain_gh['g'].values / self.ratio
+        g = plain_gh['g'].values
         # h = plain_gh['h'].values
-        h = plain_gh['h'].values / self.ratio
+        h = plain_gh['h'].values
 
         # best_gain = None
         best_gain = 0
@@ -1219,9 +1216,12 @@ def xgb_host_logic():
         # ratio = 10**3
         # gh_large = (gh * ratio).astype('int')
 
-        flat_gh = gh.values.flatten().tolist()
-
         if is_encrypted:
+            # flat_gh = gh.values.flatten().tolist()
+            flat_gh = gh.values.flatten()
+            #convert ghs to 'ints' and encrypted with paillier
+            flat_gh = flat_gh * xgb_host.ratio
+            flat_gh.astype('int')
 
             start_enc = time.time()
             enc_flat_gh = list(
