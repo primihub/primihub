@@ -29,11 +29,15 @@ RUN  apt update \
 RUN npm install -g @bazel/bazelisk
 
 # Install keyword PIR dependencies
+WORKDIR /opt
+
 RUN git clone https://github.com/zeromq/libzmq.git \
-  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig \
-  && git clone https://github.com/zeromq/cppzmq.git \
-  && cp cppzmq/zmq.hpp /usr/local/include/ \
-  && git clone https://github.com/google/flatbuffers.git \
+  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
+
+RUN git clone https://github.com/zeromq/cppzmq.git \
+  && cp cppzmq/zmq.hpp /usr/local/include/
+
+RUN git clone https://github.com/google/flatbuffers.git \
   && cmake -G "Unix Makefiles" && make && make install && ldconfig
 
 WORKDIR /src
@@ -46,9 +50,13 @@ RUN bash pre_build.sh \
 FROM ubuntu:20.04 as runner
 
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
+WORKDIR /opt
 RUN apt-get update \
   && apt-get install -y python3 python3-dev libgomp1 python3-pip \
   && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/zeromq/libzmq.git \
+  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
 WORKDIR $TARGET_PATH
