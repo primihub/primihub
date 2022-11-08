@@ -1537,14 +1537,16 @@ class XGB_HOST_EN:
 
         dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
 
-        dec_gh_sums_df = pd.DataFrame(dec_gh_sums, columns=decrypted_items)
+        # dec_gh_sums_df = pd.DataFrame(dec_gh_sums, columns=decrypted_items)
+        dec_gh_sums_df = pd.DataFrame(dec_gh_sums,
+                                      columns=decrypted_items) / self.ratio
 
         gh_sums['G_left'] = dec_gh_sums_df['G_left']
         gh_sums['G_right'] = dec_gh_sums_df['G_right']
         gh_sums['H_left'] = dec_gh_sums_df['H_left']
         gh_sums['H_right'] = dec_gh_sums_df['H_right']
 
-        return gh_sums / self.ratio
+        return gh_sums
 
     def guest_best_cut(self, guest_gh_sums):
         best_gain = 0
