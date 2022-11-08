@@ -1294,6 +1294,7 @@ class XGB_HOST_EN:
         self.lookup_table_sum = {}
         self.host_record = 0
         self.guest_record = 0
+        self.ratio = 10**5
 
     def _grad(self, y_hat, Y):
 
@@ -1315,7 +1316,7 @@ class XGB_HOST_EN:
         else:
             raise KeyError('objective must be linear or logistic!')
 
-    def get_gh(self, y_hat, Y, ratio=10**5):
+    def get_gh(self, y_hat, Y):
         # Calculate the g and h of each sample based on the labels of the local data
         gh = pd.DataFrame(columns=['g', 'h'])
         for i in range(0, Y.shape[0]):
@@ -1323,7 +1324,7 @@ class XGB_HOST_EN:
             gh['h'] = self._hess(y_hat, Y)
 
         # convert g and h to int
-        gh *= ratio
+        gh *= self.ratio
 
         return gh.astype('int')
 
@@ -1422,8 +1423,10 @@ class XGB_HOST_EN:
 
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
         host_colnames = X_host.columns
-        g = plain_gh['g'].values
-        h = plain_gh['h'].values
+        # g = plain_gh['g'].values
+        g = plain_gh['g'].values / self.ratio
+        # h = plain_gh['h'].values
+        h = plain_gh['h'].values / self.ratio
 
         # best_gain = None
         best_gain = 0
@@ -1541,7 +1544,7 @@ class XGB_HOST_EN:
         gh_sums['H_left'] = dec_gh_sums_df['H_left']
         gh_sums['H_right'] = dec_gh_sums_df['H_right']
 
-        return gh_sums
+        return gh_sums / self.ratio
 
     def guest_best_cut(self, guest_gh_sums):
         best_gain = 0
