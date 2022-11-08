@@ -559,8 +559,8 @@ class XGB_GUEST_EN:
         while (1):
             role = self.proxy_server.Get('role')
             record_id = self.proxy_server.Get('record_id')
-            print("record_id, role, current_lookup", role, record_id,
-                  current_lookup)
+            # print("record_id, role, current_lookup", role, record_id,
+            #       current_lookup)
 
             # if record_id is None:
             #     break
