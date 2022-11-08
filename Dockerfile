@@ -50,11 +50,11 @@ RUN bash pre_build.sh \
 FROM ubuntu:20.04 as runner
 
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
-WORKDIR /opt
 RUN apt-get update \
   && apt-get install -y python3 python3-dev libgomp1 python3-pip \
   && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /opt
 RUN git clone https://github.com/zeromq/libzmq.git \
   && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
 
