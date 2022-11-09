@@ -75,16 +75,13 @@ def search_best_splits(X: pd.DataFrame,
         tmp_var = item
         if hist:
             try:
-                if len(split_points[item].values.flatten()) < len(
-                        uni_cut_points[item].values.flatten()):
+                if len(split_points[item].flatten()) < len(
+                        uni_cut_points[item].flatten()):
 
-                    tmp_splits = split_points[item].values
+                    tmp_splits = split_points[item]
                 else:
-                    tmp_splits = uni_cut_points[item].values
+                    tmp_splits = uni_cut_points[item]
             except:
-                tmp_splits = split_points[item].values[1:]
-
-            finally:
                 tmp_splits = split_points[item][1:]
 
         else:
