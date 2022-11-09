@@ -279,6 +279,13 @@ def xgb_host_infer():
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
 
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label, "
+                     "so host party must have one, make sure it.")
+        return
+
     host_nodes = role_node_map["host"]
     host_port = node_addr_map[host_nodes[0]].split(":")[1]
 
@@ -333,6 +340,13 @@ def xgb_guest_infer():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+
+    if len(role_node_map["host"]) != 1:
+        logger.error("Current node of host party: {}".format(
+            role_node_map["host"]))
+        logger.error("In hetero XGB, only dataset of host party has label,"
+                     "so host party must have one, make sure it.")
+        return
 
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
