@@ -114,7 +114,7 @@ double matrixOperations(u64 partyIdx, eMatrix<i64> &plainMatrix1,
 }
 
 TEST(mpc_mul, aby3_3pc_test) {
-  u64 rows = 1000000, cols = 1;
+  u64 rows = 100, cols = 1;
 
   eMatrix<i64> plainMatrix1(rows, cols);
   eMatrix<i64> plainMatrix2(rows, cols);
@@ -139,28 +139,46 @@ TEST(mpc_mul, aby3_3pc_test) {
     }
   }
 
-  pid_t pid = fork();
-  if (pid != 0) {
-    // Child proess as party 0.
-    matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
-    return;
-  }
+  bool standalone = true;
+  if (standalone) {
+    pid_t pid = fork();
+    if (pid != 0) {
+      // Child proess as party 0.
+      matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+      return;
+    }
 
-  pid = fork();
-  if (pid != 0) {
-    // Child process as party 1.
-    sleep(2);
-    matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
-    return;
-  }
+    pid = fork();
+    if (pid != 0) {
+      // Child process as party 1.
+      sleep(2);
+      matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+      return;
+    }
 
-  // Parent process as party 2.
-  sleep(3);
-  double mpc_time =
-      matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
-  
-  LOG(INFO) << "Record MPC time: " << mpc_time;
-  LOG(INFO) << "Record Plain time: " << matmul_time;
+    // Parent process as party 2.
+    sleep(3);
+    double mpc_time =
+        matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+
+    LOG(INFO) << "Record MPC time: " << mpc_time;
+    LOG(INFO) << "Record Plain time: " << matmul_time;
+  } else {
+    double mpc_time = 0;
+    if (std::string(std::getenv("MPC_PARTY")) == "PARTY_0") {
+      mpc_time = matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_1") {
+      mpc_time = matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_2") {
+      mpc_time = matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    }
+
+    LOG(INFO) << "Record MPC time: " << mpc_time;
+    LOG(INFO) << "Record Plain time: " << matmul_time;
+  }
 
   return;
 }

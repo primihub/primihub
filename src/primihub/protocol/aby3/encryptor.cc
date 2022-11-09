@@ -4,6 +4,47 @@
 #include "src/primihub/protocol/aby3/encryptor.h"
 
 namespace primihub {
+
+// Convert a u64 value from host order to network order.
+static unsigned long long htonll(unsigned long long val)
+{
+    if(__BYTE_ORDER == __LITTLE_ENDIAN) {
+        return (((unsigned long long) htonl((int)((val << 32) >> 32))) << 32) | 
+                (unsigned int) htonl((int)(val >> 32)); 
+    } else if (__BYTE_ORDER == __BIG_ENDIAN) {
+        return val;
+    }
+}
+
+// Print value in u64 array into multiple string.
+static void convertArrayToStrings(i64 *mat_ptr, size_t mat_num, 
+                                  std::vector<std::string> &lines) {
+  size_t index = 0;
+  size_t out_num = mat_num;
+
+  while (out_num != 0) {
+    if (out_num < 5) {
+      std::stringstream ss;
+      for (size_t i = 0; i < out_num; i ++) { 
+        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index))) 
+           << " ";
+        index += 1;
+      }
+      out_num = 0;
+      lines.emplace_back(ss.str());
+    } else {
+      std::stringstream ss;
+      for (size_t i = 0; i < 5; i ++) {
+        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index))) 
+           << " ";
+        index += 1;
+      }
+      out_num -= 5;
+      lines.emplace_back(ss.str());
+    }
+  }
+}
+
 void Sh3Encryptor::complateSharing(CommPkg& comm, span<i64> send,
                                     span<i64> recv) {
   comm.mNext().asyncSendCopy(send);
@@ -101,13 +142,44 @@ Sh3Task Sh3Encryptor::localIntMatrix(Sh3Task dep, const i64Matrix & m,
         ret.mShares[0](i) = mShareGen.getShare() + m(i);
     
     CommPkg& comm_cast = dynamic_cast< CommPkg&>(*commPtr);
+    
+#ifndef ENABLE_AUDIT 
+    {
+        std::vector<std::string> lines;
+        i64 *mat_ptr = ret.mShares[0].data();
+        size_t mat_num = ret.mShares[0].size();
+        convertArrayToStrings(mat_ptr, mat_num, lines);
+
+        LOG(INFO) << "\nDump matrix before send:";
+        for (auto line : lines) 
+            LOG(INFO) << line;
+        LOG(INFO) << "Dump finish.\n";
+    }
+#endif
+
     comm_cast.mNext().asyncSendCopy(ret.mShares[0].data(), ret.mShares[0].size());
+
     auto fu = comm_cast.mPrev().asyncRecv(ret.mShares[1].data(),
                                     ret.mShares[1].size());
 
     self.then([fu = std::move(fu)](CommPkgBase* comm, Sh3Task& self)mutable{
         fu.get();
     });
+
+#ifndef ENABLE_AUDIT
+    {
+        std::vector<std::string> lines;
+        i64 *mat_ptr = ret.mShares[1].data();
+        size_t mat_num = ret.mShares[1].size();
+        convertArrayToStrings(mat_ptr, mat_num, lines);
+
+        LOG(INFO) << "\nDump matrix after recv:";
+        for (auto line : lines) 
+            LOG(INFO) << line;
+        LOG(INFO) << "Dump finish.\n";
+    }
+#endif
+
   }).getClosure();
 }
 
@@ -115,8 +187,36 @@ void Sh3Encryptor::remoteIntMatrix(CommPkg & comm, si64Matrix & ret) {
   for (i64 i = 0; i < ret.mShares[0].size(); ++i)
     ret.mShares[0](i) = mShareGen.getShare();
 
+#ifndef ENABLE_AUDIT
+    {
+        std::vector<std::string> lines;
+        i64 *mat_ptr = ret.mShares[0].data();
+        size_t mat_num = ret.mShares[0].size();
+        convertArrayToStrings(mat_ptr, mat_num, lines);
+
+        LOG(INFO) << "\nDump matrix before send:";
+        for (auto line : lines) 
+            LOG(INFO) << line;
+        LOG(INFO) << "Dump finish.\n";
+    }
+#endif
+
   comm.mNext().asyncSendCopy(ret.mShares[0].data(), ret.mShares[0].size());
   comm.mPrev().recv(ret.mShares[1].data(), ret.mShares[1].size());
+  
+#ifndef ENABLE_AUDIT
+    {
+        std::vector<std::string> lines;
+        i64 *mat_ptr = ret.mShares[1].data();
+        size_t mat_num = ret.mShares[1].size();
+        convertArrayToStrings(mat_ptr, mat_num, lines);
+
+        LOG(INFO) << "\nDump matrix after recv:";
+        for (auto line : lines) 
+            LOG(INFO) << line;
+        LOG(INFO) << "Dump finish.\n";
+    }
+#endif
 }
 
 Sh3Task Sh3Encryptor::remoteIntMatrix(Sh3Task dep, si64Matrix & ret) {
