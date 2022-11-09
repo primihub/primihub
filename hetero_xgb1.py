@@ -60,32 +60,35 @@ def search_best_splits(X: pd.DataFrame,
 
     if hist:
         if bins is not None:
-            bin_cut_points = X.apply(np.histogram, args=(bins,), axis=0)
+            hist_0 = X.apply(np.histogram, args=(bins,), axis=0)
         else:
-            bin_cut_points = X.apply(np.histogram, axis=0)
-        # split_points = bin_cut_points.iloc[1]
-        # split_counts = bin_cut_points.iloc[0]
+            hist_0 = X.apply(np.histogram, axis=0)
+        split_points = hist_0.iloc[1]
 
         # bin_cut_points = hist_0.iloc[1]
         uni_cut_points = X.apply(np.unique, axis=0)
 
     else:
-        uniq_points = X.apply(np.unique, axis=0)
+        split_points = X.apply(np.unique, axis=0)
 
     for item in vars:
         tmp_var = item
         if hist:
-            #     if cal_hist:
-            if len(bin_cut_points[item]) < len(uni_cut_points[item]):
-                split_points = bin_cut_points[item]
-            else:
-                split_points = uni_cut_points[item]
+            try:
+                if len(split_points[item].values.flatten()) < len(
+                        uni_cut_points[item].values.flatten()):
+
+                    tmp_splits = split_points[item].values
+                else:
+                    tmp_splits = uni_cut_points[item].values
+            except:
+                tmp_splits = split_points[item].values[1:]
+
+            finally:
+                tmp_splits = split_points[item][1:]
+
         else:
-            split_points = uniq_points[item]
-        try:
-            tmp_splits = split_points.values[1:]
-        except:
-            tmp_splits = split_points[1:]
+            tmp_splits = split_points[item][1:]
 
         tmp_col = X[item]
         # print("+++++++++")
