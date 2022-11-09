@@ -30,6 +30,22 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 
 
+class MyContext(context.TaskContext):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def get_guest_model_path(self):
+        file_path = self.params_map.get("guestModelFile", None)
+        if file_path:
+            self.model_file_path = file_path
+
+        output_dir = os.path.dirname(self.model_file_path).strip()
+        self.mk_output_dir(output_dir)
+        logger.info("model: {}".format(self.model_file_path))
+        return self.model_file_path
+
+
 def search_best_splits(X: pd.DataFrame,
                        g,
                        h,
@@ -1499,8 +1515,9 @@ def xgb_guest_logic():
 
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
-    guest_model_path = ph.context.Context.get_guest_model_path()
+    # guest_model_path = ph.context.Context.get_guest_model_path()
     lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+    guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
 
     # save guest part model
     with open(guest_model_path, 'wb') as guestModel:
