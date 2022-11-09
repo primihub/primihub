@@ -539,7 +539,7 @@ class XGB_GUEST_EN:
         uniq_points = X_guest.apply(np.unique, axis=0)
 
         def select(hist_points, uniq_points, item):
-            if len(hist_points[item] < uniq_points[item]):
+            if len(hist_points[item]) < len(uniq_points[item]):
                 return hist_points[item]
 
             return uniq_points[item]
@@ -1195,7 +1195,6 @@ num_tree = 3
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
-cry_pri = "paillier"
 is_encrypted = False
 
 
@@ -1205,7 +1204,6 @@ is_encrypted = False
                      port='8000',
                      task_type="classification")
 def xgb_host_logic():
-    # def xgb_host_logic(cry_pri="plaintext"):
     start = time.time()
     logger.info("start xgb host logic...")
 
