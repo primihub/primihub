@@ -1400,7 +1400,7 @@ def xgb_host_logic():
     model_file_path = ph.context.Context.get_model_file_path()
 
     with open(model_file_path, 'wb') as hostModel:
-        pickle.dump(xgb_host, hostModel)
+        pickle.dump(xgb_host.tree_structure, hostModel)
 
     # save host-part table
     lookup_file_path = ph.context.Context.get_host_lookup_file_path()
@@ -1521,7 +1521,7 @@ def xgb_guest_logic():
 
     # save guest part model
     with open(guest_model_path, 'wb') as guestModel:
-        pickle.dump(xgb_guest, guestModel)
+        pickle.dump(xgb_guest.tree_structure, guestModel)
 
     # save guest part table
     with open(lookup_file_path, 'wb') as guestTable:
