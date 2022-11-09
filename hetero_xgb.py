@@ -30,22 +30,6 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 
 
-class MyContext(context.TaskContext):
-
-    def __init__(self) -> None:
-        super().__init__()
-
-    def get_guest_model_path(self):
-        file_path = self.params_map.get("guestModelFile", None)
-        if file_path:
-            self.model_file_path = file_path
-
-        output_dir = os.path.dirname(self.model_file_path).strip()
-        self.mk_output_dir(output_dir)
-        logger.info("model: {}".format(self.model_file_path))
-        return self.model_file_path
-
-
 def search_best_splits(X: pd.DataFrame,
                        g,
                        h,
@@ -1264,16 +1248,6 @@ def xgb_host_logic():
                      "so host party must have one, make sure it.")
         return
 
-    host_nodes = role_node_map["host"]
-    host_port = node_addr_map[host_nodes[0]].split(":")[1]
-
-    guest_nodes = role_node_map["guest"]
-    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-
-    proxy_server = ServerChannelProxy(host_port)
-    proxy_server.StartRecvLoop()
-
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
 
     Y = data.pop('y').values
     X_host = data.copy()
@@ -1397,13 +1371,17 @@ def xgb_host_logic():
     })
 
     # save host-part model
-    model_file_path = ph.context.Context.get_model_file_path()
+    model_file_path = ph.context.Context.get_model_file_path() + ".host"
 
     with open(model_file_path, 'wb') as hostModel:
-        pickle.dump(xgb_host.tree_structure, hostModel)
+        pickle.dump(
+            {
+                'tree_struct': xgb_host.tree_structure,
+                'lr': xgb_host.learning_rate
+            }, hostModel)
 
     # save host-part table
-    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path() + ".host"
     with open(lookup_file_path, 'wb') as hostTable:
         pickle.dump(lookup_table_sum, hostTable)
 
@@ -1516,12 +1494,17 @@ def xgb_guest_logic():
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
     # guest_model_path = ph.context.Context.get_guest_model_path()
-    lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+    lookup_file_path = ph.context.Context.get_guest_lookup_file_path(
+    ) + ".guest"
     guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
 
     # save guest part model
     with open(guest_model_path, 'wb') as guestModel:
-        pickle.dump(xgb_guest.tree_structure, guestModel)
+        pickle.dump(
+            {
+                'tree_struct': xgb_guest.tree_structure,
+                'lr': xgb_guest.learning_rate
+            }, guestModel)
 
     # save guest part table
     with open(lookup_file_path, 'wb') as guestTable:
