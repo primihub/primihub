@@ -242,7 +242,7 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     // google::protobuf::Map<std::string, Node>
     const auto& node_map = nodePushTaskRequest.task().node_map();
     for (const auto& pair : node_map) {
-        LOG(ERROR) << "pair.first_pair.first_pair.first: " << pair.first << " peer_list_: " << peer_list_.size();
+        VLOG(5) << "pair.first_pair.first_pair.first: " << pair.first << " peer_list_: " << peer_list_.size();
         if (pirType == PirType::ID_PIR) {
             bool is_client = pair.first == node_id_ ? true : false;
 
