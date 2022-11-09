@@ -319,6 +319,8 @@ def xgb_host_infer():
         test_acc = metrics.accuracy_score(pred_y, test_y)
         print("test_acc is :", test_acc)
 
+    print("prediction y: ", pred_y)
+
 
 @ph.context.function(role='host',
                      protocol='xgboost',

@@ -1198,11 +1198,12 @@ max_depth = 2
 is_encrypted = False
 
 
-@ph.context.function(role='host',
-                     protocol='xgboost',
-                     datasets=['train_hetero_xgb_host', 'test_hetero_xgb_host'],
-                     port='8000',
-                     task_type="classification")
+@ph.context.function(
+    role='host',
+    protocol='xgboost',
+    datasets=['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
+    port='8000',
+    task_type="classification")
 def xgb_host_logic():
     logger.info("start xgb host logic...")
 
@@ -1367,18 +1368,18 @@ def xgb_host_logic():
     print("train_acc: ", train_acc)
 
     # validate for test
-    test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
-    print("test_host: ", test_host.shape)
+    # test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
+    # print("test_host: ", test_host.shape)
 
-    test_y = test_host.pop('y')
-    test_data = test_host.copy()
-    test_pred = xgb_host.predict(test_data, lookup_table_sum)
+    # test_y = test_host.pop('y')
+    # test_data = test_host.copy()
+    # test_pred = xgb_host.predict(test_data, lookup_table_sum)
 
-    test_acc = metrics.accuracy_score(test_pred, test_y.values)
-    print("train and test validate acc: ", {
-        'train_acc': train_acc,
-        'test_acc': test_acc
-    })
+    # test_acc = metrics.accuracy_score(test_pred, test_y.values)
+    # print("train and test validate acc: ", {
+    #     'train_acc': train_acc,
+    #     'test_acc': test_acc
+    # })
 
     # save host-part model
     model_file_path = ph.context.Context.get_model_file_path() + ".host"
@@ -1415,7 +1416,7 @@ def xgb_host_logic():
 @ph.context.function(
     role='guest',
     protocol='xgboost',
-    datasets=['train_hetero_xgb_guest', 'test_hetero_xgb_guest'],
+    datasets=['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
     port='9000',
     task_type="classification")
 def xgb_guest_logic():
@@ -1523,9 +1524,9 @@ def xgb_guest_logic():
     xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # validate for test
-    test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
-    print("test_guest: ", test_guest.shape)
-    xgb_guest.predict(test_guest, lookup_table_sum)
+    # test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
+    # print("test_guest: ", test_guest.shape)
+    # xgb_guest.predict(test_guest, lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
