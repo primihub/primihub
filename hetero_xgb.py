@@ -1499,11 +1499,11 @@ def xgb_guest_logic():
 
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
-    model_file_path = ph.context.Context.get_model_file_path()
-    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+    guest_model_path = ph.context.Context.get_guest_model_path()
+    lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
 
     # save guest part model
-    with open(model_file_path, 'wb') as guestModel:
+    with open(guest_model_path, 'wb') as guestModel:
         pickle.dump(xgb_guest, guestModel)
 
     # save guest part table
