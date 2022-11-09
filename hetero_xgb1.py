@@ -942,7 +942,7 @@ class XGB_HOST_EN:
                 guest_gh_sums['H_left'] + guest_gh_sums['H_right'] + + self.reg_lambda)
 
         guest_gh_sums['gain'] = guest_gh_sums['gain'] / 2 - self.gamma
-        print("guest_gh_sums: ", guest_gh_sums)
+        # print("guest_gh_sums: ", guest_gh_sums)
 
         max_row = guest_gh_sums['gain'].idxmax()
         max_item = guest_gh_sums.iloc[max_row, :]
@@ -1149,13 +1149,9 @@ class XGB_HOST_EN:
             lookup_table = lookup[t + 1]
             # y_t = pd.Series([0] * X.shape[0])
             y_t = np.zeros(len(X))
-            print("befor change", y_t)
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
-            print("after change", y_t)
-            # Y = Y + self.learning_rate * y_t
             Y = Y + self.learning_rate * y_t
-            print("current Y: ", Y)
 
         return Y
 
@@ -1204,7 +1200,6 @@ is_encrypted = False
                      port='8000',
                      task_type="classification")
 def xgb_host_logic():
-    start = time.time()
     logger.info("start xgb host logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
@@ -1293,6 +1288,7 @@ def xgb_host_logic():
     xgb_host.lookup_table = {}
     y_hat = np.array([xgb_host.base_score] * len(Y))
 
+    start = time.time()
     for t in range(xgb_host.n_estimators):
         print("Begin to trian tree: ", t + 1)
         f_t = pd.Series([0] * Y.shape[0])
@@ -1302,7 +1298,6 @@ def xgb_host_logic():
             'g': xgb_host._grad(y_hat, Y.flatten()),
             'h': xgb_host._hess(y_hat, Y.flatten())
         })
-        print("host gh", gh)
 
         # convert gradients and hessians to ints and encrypted with paillier
         # ratio = 10**3
@@ -1312,7 +1307,6 @@ def xgb_host_logic():
             flat_gh *= xgb_host.ratio
 
             flat_gh = flat_gh.astype('int')
-            print("flat_gh: ", flat_gh)
 
             start_enc = time.time()
             enc_flat_gh = list(
@@ -1328,6 +1322,8 @@ def xgb_host_logic():
             proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
             end_send_gh = time.time()
+            print("Time for encryption and transfer: ", (end_enc - start_enc),
+                  (end_send_gh - end_enc))
             print("Encrypt finish.")
 
         else:
@@ -1350,22 +1346,17 @@ def xgb_host_logic():
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
         logger.info("Finish to trian tree {}.".format(t + 1))
-        # check_time = [
-        #     end_enc - start_enc, end_send_gh - end_enc,
-        #     end_build_tree - end_send_gh
-        # ]
-        # print("build time ", check_time)
 
-        end = time.time()
-        # logger.info("lasting time for xgb %s".format(end-start))
-        print("train encrypted time for xgb: ", (end - start))
+    end = time.time()
+    # logger.info("lasting time for xgb %s".format(end-start))
+    print("train time for xgboost: ", (end - start))
 
-        predict_file_path = ph.context.Context.get_predict_file_path()
-        indicator_file_path = ph.context.Context.get_indicator_file_path()
-        model_file_path = ph.context.Context.get_model_file_path()
-        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    model_file_path = ph.context.Context.get_model_file_path()
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
-    print("host structure: ", xgb_host.tree_structure)
+    # print("host structure: ", xgb_host.tree_structure)
 
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
     print("train_pred, Y: ", train_pred, Y)
@@ -1482,7 +1473,10 @@ def xgb_guest_logic():
 
         lookup_table_sum[t + 1] = xgb_guest.lookup_table
 
-    lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    model_file_path = ph.context.Context.get_model_file_path()
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
     with open(lookup_file_path, 'wb') as fl:
         pickle.dump(xgb_guest.lookup_table_sum, fl)
