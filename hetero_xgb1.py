@@ -60,26 +60,32 @@ def search_best_splits(X: pd.DataFrame,
 
     if hist:
         if bins is not None:
-            hist_0 = X.apply(np.histogram, args=(bins,), axis=0)
+            bin_cut_points = X.apply(np.histogram, args=(bins,), axis=0)
         else:
-            hist_0 = X.apply(np.histogram, axis=0)
-        split_points = hist_0.iloc[1]
-        split_counts = hist_0.iloc[0]
+            bin_cut_points = X.apply(np.histogram, axis=0)
+        # split_points = bin_cut_points.iloc[1]
+        # split_counts = bin_cut_points.iloc[0]
 
-        # if valid_num is not None:
-        #     split_counts = hist_0.iloc[0].values
-        #     print("###########", split_counts, valid_num)
-        #     flag = split_counts > valid_num
-        #     split_points = split_points[flag]
+        # bin_cut_points = hist_0.iloc[1]
+        uni_cut_points = X.apply(np.unique, axis=0)
+
     else:
-        split_points = X.apply(np.unique, axis=0)
+        uniq_points = X.apply(np.unique, axis=0)
 
     for item in vars:
         tmp_var = item
+        if hist:
+            #     if cal_hist:
+            if len(bin_cut_points[item]) < len(uni_cut_points[item]):
+                split_points = bin_cut_points[item]
+            else:
+                split_points = uni_cut_points[item]
+        else:
+            split_points = uniq_points[item]
         try:
-            tmp_splits = split_points[item].values[1:]
+            tmp_splits = split_points.values[1:]
         except:
-            tmp_splits = split_points[item][1:]
+            tmp_splits = split_points[1:]
 
         tmp_col = X[item]
         # print("+++++++++")
@@ -528,10 +534,15 @@ class XGB_GUEST_EN:
                               limit_add_len=3):
         if cal_hist:
             hist_0 = X_guest.apply(np.histogram, args=(bins,), axis=0)
-            cut_points = hist_0.iloc[1]
+            hist_points = hist_0.iloc[1]
             #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
-        else:
-            cut_points = X_guest.apply(np.unique, axis=0)
+        uniq_points = X_guest.apply(np.unique, axis=0)
+
+        def select(hist_points, uniq_points, item):
+            if len(hist_points[item] < uniq_points[item]):
+                return hist_points[item]
+
+            return uniq_points[item]
 
         # generate add actors with paillier encryption
         paillier_add_actors = ActorPool(
@@ -546,7 +557,7 @@ class XGB_GUEST_EN:
         sum_maps = [
             MapGH.remote(item=tmp_item,
                          col=X_guest[tmp_item],
-                         cut_points=cut_points[tmp_item],
+                         cut_points=select(hist_points, uniq_points, tmp_item),
                          g=encrypted_ghs['g'],
                          h=encrypted_ghs['h'],
                          pub=self.pub,
