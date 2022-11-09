@@ -1359,7 +1359,6 @@ def xgb_host_logic():
     # print("host structure: ", xgb_host.tree_structure)
 
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
-    print("train_pred, Y: ", train_pred, Y)
     train_acc = metrics.accuracy_score(train_pred, Y)
     print("train_acc: ", train_acc)
 
