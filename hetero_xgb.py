@@ -1248,6 +1248,16 @@ def xgb_host_logic():
                      "so host party must have one, make sure it.")
         return
 
+    host_nodes = role_node_map["host"]
+    host_port = node_addr_map[host_nodes[0]].split(":")[1]
+
+    guest_nodes = role_node_map["guest"]
+    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
+
+    proxy_server = ServerChannelProxy(host_port)
+    proxy_server.StartRecvLoop()
+
+    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
 
     Y = data.pop('y').values
     X_host = data.copy()
