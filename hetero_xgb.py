@@ -30,6 +30,117 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 
 
+def search_best_splits(X: pd.DataFrame,
+                       g,
+                       h,
+                       hist=True,
+                       bins=None,
+                       eps=0.001,
+                       reg_lambda=1,
+                       gamma=0,
+                       min_child_sample=None,
+                       min_child_weight=1):
+    X = X.copy()
+
+    if isinstance(g, pd.Series):
+        g = g.values
+
+    if isinstance(h, pd.Series):
+        h = h.values
+
+    best_gain = None
+    best_cut = None
+    best_var = None
+    G_left_best, G_right_best, H_left_best, H_right_best = None, None, None, None
+    w_left, w_right = None, None
+
+    m, n = X.shape
+    # x = X.values
+    vars = X.columns
+
+    if hist:
+        if bins is not None:
+            hist_0 = X.apply(np.histogram, args=(bins,), axis=0)
+        else:
+            hist_0 = X.apply(np.histogram, axis=0)
+        split_points = hist_0.iloc[1]
+
+        # bin_cut_points = hist_0.iloc[1]
+        uni_cut_points = X.apply(np.unique, axis=0)
+
+    else:
+        split_points = X.apply(np.unique, axis=0)
+
+    for item in vars:
+        tmp_var = item
+        if hist:
+            try:
+                if len(split_points[item].flatten()) < len(
+                        uni_cut_points[item].flatten()):
+
+                    tmp_splits = split_points[item]
+                else:
+                    tmp_splits = uni_cut_points[item]
+            except:
+                tmp_splits = split_points[item][1:]
+
+        else:
+            tmp_splits = split_points[item][1:]
+
+        tmp_col = X[item]
+        # print("+++++++++")
+        # print(tmp_splits, tmp_splits[0])
+        if len(tmp_splits) < 1:
+            print("current item ", item, split_points)
+            continue
+        # print("-------", type(tmp_splits), tmp_splits.shape, split_points)
+        tmp_splits[0] = tmp_splits[0] - eps
+        tmp_splits[-1] = tmp_splits[-1] + eps
+
+        exp_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
+        exp_col = np.tile(tmp_col, (len(tmp_splits), 1))
+        less_flag = (exp_col < exp_splits).astype('int')
+        larger_flag = 1 - less_flag
+        G_left = np.dot(less_flag, g)
+        G_right = np.dot(larger_flag, g)
+        H_left = np.dot(less_flag, h)
+        H_right = np.dot(larger_flag, h)
+        gain = G_left**2 / (H_left + reg_lambda) + G_right**2 / (
+            H_right + reg_lambda) - (G_left + G_right)**2 / (H_left + H_right +
+                                                             reg_lambda)
+
+        gain = gain / 2 - gamma
+
+        max_gain = max(gain)
+        max_index = gain.tolist().index(max_gain)
+        tmp_cut = tmp_splits[max_index]
+        if best_gain is None or max_gain > best_gain:
+            left_inds = (tmp_col < tmp_cut)
+            right_inds = (1 - left_inds).astype('bool')
+            if min_child_sample is not None:
+                if sum(left_inds) < min_child_sample or sum(
+                        right_inds) < min_child_sample:
+                    continue
+
+            if min_child_weight is not None:
+                if H_left[max_index] < min_child_weight or H_right[
+                        max_index] < min_child_weight:
+                    continue
+
+            best_gain = max_gain
+            best_cut = tmp_cut
+            best_var = tmp_var
+            G_left_best, G_right_best, H_left_best, H_right_best = G_left[
+                max_index], G_right[max_index], H_left[max_index], H_right[
+                    max_index]
+
+    if best_var is not None:
+        w_left = -G_left_best / (H_left_best + reg_lambda)
+        w_right = -G_right_best / (H_right_best + reg_lambda)
+
+    return w_left, w_right, best_var, best_cut, best_gain
+
+
 def opt_paillier_decrypt_crt(pub, prv, cipher_text):
 
     if not isinstance(cipher_text, Opt_paillier_ciphertext):
@@ -80,11 +191,11 @@ class ActorAdd(object):
 @ray.remote
 class PallierAdd(object):
 
-    def __init__(self, pub, nums, add_actors, is_encrypted=True):
+    def __init__(self, pub, nums, add_actors, encrypted):
         self.pub = pub
         self.nums = nums
         self.add_actors = add_actors
-        self.encrypted = is_encrypted
+        self.encrypted = encrypted
 
     def pai_add(self, items, min_num=3):
         if self.encrypted:
@@ -114,6 +225,7 @@ class PallierAdd(object):
                 lambda x, y: opt_paillier_add(self.pub, x, y), inter_results)
             # final_results = ActorAdd.remote(self.pub, ray.get(inter_results)).add.remote()
         else:
+            # print("not encrypted for add")
             final_result = sum(items)
 
         return final_result
@@ -387,7 +499,7 @@ class XGB_GUEST_EN:
             #  channel=None,
             sid=0,
             record=0,
-            encrypted=False):
+            is_encrypted=None):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -410,55 +522,27 @@ class XGB_GUEST_EN:
         self.host_record = 0
         self.guest_record = 0
         self.tree_structure = {}
-        self.is_encrypted = encrypted
-
-    # def get_GH(self, X, pub):
-
-    #     bins = 13
-    #     items = [x for x in X.columns if x not in ['g', 'h']]
-    #     g = X['g']
-    #     h = X['h']
-    #     actor_nums = 50
-    #     generate_add_actors = ActorPool(
-    #         [ActorAdd.remote(pub) for _ in range(actor_nums)])
-
-    #     pools = ActorPool([
-    #         PallierAdd.remote(pub, actor_nums, generate_add_actors),
-    #         PallierAdd.remote(pub, actor_nums, generate_add_actors),
-    #         PallierAdd.remote(pub, actor_nums, generate_add_actors),
-    #         PallierAdd.remote(pub, actor_nums, generate_add_actors)
-    #     ])
-
-    #     maps = [
-    #         MapGH.remote(item=tmp_item,
-    #                      col=X[tmp_item],
-    #                      g=g,
-    #                      h=h,
-    #                      pub=pub,
-    #                      min_child_sample=self.min_child_sample,
-    #                      pools=pools) for tmp_item in items
-    #     ]
-
-    #     gh_reducer = ReduceGH.remote(maps)
-    #     gh_result = ray.get(gh_reducer.reduce_gh.remote(bins=bins))
-    #     GH = gh_result
-
-    #     return GH
+        self.encrypted = is_encrypted
 
     def sums_of_encrypted_ghs(self,
                               X_guest,
                               encrypted_ghs,
                               cal_hist=True,
-                              bins=13,
+                              bins=10,
                               add_actor_num=50,
                               map_pools=50,
                               limit_add_len=3):
         if cal_hist:
             hist_0 = X_guest.apply(np.histogram, args=(bins,), axis=0)
-            cut_points = hist_0.iloc[1]
+            hist_points = hist_0.iloc[1]
             #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
-        else:
-            cut_points = X_guest.apply(np.unique, axis=0)
+        uniq_points = X_guest.apply(np.unique, axis=0)
+
+        def select(hist_points, uniq_points, item):
+            if len(hist_points[item]) < len(uniq_points[item]):
+                return hist_points[item]
+
+            return uniq_points[item]
 
         # generate add actors with paillier encryption
         paillier_add_actors = ActorPool(
@@ -466,16 +550,14 @@ class XGB_GUEST_EN:
 
         # generate actor pool for mapping
         map_pool = ActorPool([
-            PallierAdd.remote(self.pub,
-                              map_pools,
-                              paillier_add_actors,
-                              is_encrypted=self.is_encrypted)
+            PallierAdd.remote(self.pub, map_pools, paillier_add_actors,
+                              self.encrypted)
         ])
 
         sum_maps = [
             MapGH.remote(item=tmp_item,
                          col=X_guest[tmp_item],
-                         cut_points=cut_points[tmp_item],
+                         cut_points=select(hist_points, uniq_points, tmp_item),
                          g=encrypted_ghs['g'],
                          h=encrypted_ghs['h'],
                          pub=self.pub,
@@ -514,7 +596,7 @@ class XGB_GUEST_EN:
         if guest_best is not None:
             guest_best_gain = guest_best['gain']
 
-        if host_best_gain is None or guest_best_gain is None:
+        if host_best_gain is None and guest_best_gain is None:
             return None
 
         guest_flag1 = (host_best_gain and
@@ -546,74 +628,65 @@ class XGB_GUEST_EN:
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    },
-                    str(self.guest_record) + '_ids_w')
+                    }, 'ids_w')
                 # updata guest lookup table
                 self.lookup_table[self.guest_record] = [best_var, best_cut]
                 print("guest look_up table:", self.lookup_table)
-
-                X_guest_left = X_guest.loc[id_left]
-                print("======X_guest_left======", X_guest_left.index)
-                X_guest_right = X_guest.loc[id_right]
-
-                encrypted_ghs_left = encrypted_ghs.loc[id_left]
-                encrypted_ghs_right = encrypted_ghs.loc[id_right]
 
                 # self.guest_record += 1
                 self.guest_record += 1
 
             else:
-                ids_w = self.proxy_server.Get(str(self.host_record) + '_ids_w')
-                print("guest record: ", self.host_record)
+                ids_w = self.proxy_server.Get('ids_w')
                 role = 'host'
                 record = self.host_record
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
                 w_left = ids_w['w_left']
                 w_right = ids_w['w_right']
-                # self.host_record += 1
-
-                print("===train guest==", X_guest.index, ids_w,
-                      self.host_record)
-                # tree_structure = {(role, record): {}}
-
-                X_guest_left = X_guest.loc[id_left]
-                print("======X_guest_left======", X_guest_left.index)
-                X_guest_right = X_guest.loc[id_right]
-
-                encrypted_ghs_left = encrypted_ghs.loc[id_left]
-                encrypted_ghs_right = encrypted_ghs.loc[id_right]
                 self.host_record += 1
 
-            self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
-                                      current_depth + 1)
-            self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
-                                      current_depth + 1)
+            # print("===train==", X_guest.index, ids_w)
+            tree_structure = {(role, record): {}}
 
-            # tree_structure[(role,
-            #                 record)][('left',
-            #                           w_left)] = self.guest_tree_construct(
-            #                               X_guest_left, encrypted_ghs_left,
-            #                               current_depth + 1)
-            # tree_structure[(role,
-            #                 record)][('right',
-            #                           w_right)] = self.guest_tree_construct(
-            #                               X_guest_right, encrypted_ghs_right,
-            #                               current_depth + 1)
+            X_guest_left = X_guest.loc[id_left]
+            X_guest_right = X_guest.loc[id_right]
 
-    def guest_get_tree_ids(self, guest_test, current_lookup):
-        while (1):
-            role = self.proxy_server.Get('role')
-            record_id = self.proxy_server.Get('record_id')
-            print("record_id, role, current_lookup", role, record_id,
-                  current_lookup)
+            encrypted_ghs_left = encrypted_ghs.loc[id_left]
+            encrypted_ghs_right = encrypted_ghs.loc[id_right]
+
+            # self.guest_tree_construct(X_guest_left, encrypted_ghs_left,
+            #                           current_depth + 1)
+            # self.guest_tree_construct(X_guest_right, encrypted_ghs_right,
+            #                           current_depth + 1)
+
+            tree_structure[(role,
+                            record)][('left',
+                                      w_left)] = self.guest_tree_construct(
+                                          X_guest_left, encrypted_ghs_left,
+                                          current_depth + 1)
+            tree_structure[(role,
+                            record)][('right',
+                                      w_right)] = self.guest_tree_construct(
+                                          X_guest_right, encrypted_ghs_right,
+                                          current_depth + 1)
+
+            return tree_structure
+
+    def guest_get_tree_ids(self, guest_test, tree, current_lookup):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+            # role = self.proxy_server.Get('role')
+            # record_id = self.proxy_server.Get('record_id')
+            # print("record_id, role, current_lookup", role, record_id,
+            #       current_lookup)
 
             # if record_id is None:
             #     break
             if role == "guest":
-
-                if record_id is None:
-                    return
+                # if record_id is None:
+                #     return
                 tmp_lookup = current_lookup[record_id]
                 var, cut = tmp_lookup[0], tmp_lookup[1]
                 guest_test_left = guest_test.loc[guest_test[var] < cut]
@@ -636,13 +709,21 @@ class XGB_GUEST_EN:
                 id_right = ids['id_right']
                 guest_test_right = guest_test.loc[id_right]
 
-            self.guest_get_tree_ids(guest_test_left, current_lookup)
-            self.guest_get_tree_ids(guest_test_right, current_lookup)
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+
+            self.guest_get_tree_ids(guest_test_left, tree_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, tree_right,
+                                    current_lookup)
 
     def predict(self, X, lookup_sum):
         for t in range(self.n_estimators):
+            tree = self.tree_structure[t + 1]
             current_lookup = lookup_sum[t + 1]
-            self.guest_get_tree_ids(X, current_lookup)
+            self.guest_get_tree_ids(X, tree, current_lookup)
 
 
 class XGB_HOST_EN:
@@ -665,7 +746,7 @@ class XGB_HOST_EN:
             random_seed=112,
             sid=0,
             record=0,
-            encrpyted=True):
+            encrypted=None):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -690,7 +771,7 @@ class XGB_HOST_EN:
         self.host_record = 0
         self.guest_record = 0
         self.ratio = 10**5
-        self.is_encrypted = encrpyted
+        self.encrypted = encrypted
 
     def _grad(self, y_hat, Y):
 
@@ -712,16 +793,7 @@ class XGB_HOST_EN:
         else:
             raise KeyError('objective must be linear or logistic!')
 
-    def get_gh(self, y_hat, Y):
-        # Calculate the g and h of each sample based on the labels of the local data
-        gh = pd.DataFrame(columns=['g', 'h'])
-        for i in range(0, Y.shape[0]):
-            gh['g'] = self._grad(y_hat, Y)
-            gh['h'] = self._hess(y_hat, Y)
-
-        return gh
-
-    def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=13):
+    def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=10):
         host_colnames = X_host.columns
         # g = plain_gh['g'].values
         g = plain_gh['g'].values
@@ -739,76 +811,84 @@ class XGB_HOST_EN:
         if self.min_child_sample and m < self.min_child_sample:
             return None
 
-        if cal_hist:
-            hist_0 = X_host.apply(np.histogram, args=(bins,), axis=0)
-            bin_cut_points = hist_0.iloc[1]
-            uni_cut_points = X_host.apply(np.unique, axis=0)
-            #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
-        else:
-            cut_points = X_host.apply(np.unique, axis=0)
+        w_left, w_right, best_var, best_cut, best_gain = search_best_splits(
+            X_host,
+            g,
+            h,
+            reg_lambda=self.reg_lambda,
+            gamma=self.gamma,
+            min_child_sample=self.min_child_sample,
+            min_child_weight=self.min_child_weight)
 
-        for item in host_colnames:
-            #TODO: enhance with parallelization with ray
-            tmp_col = X_host[item]
+        # if cal_hist:
+        #     hist_0 = X_host.apply(np.histogram, args=(bins,), axis=0)
+        #     bin_cut_points = hist_0.iloc[1]
+        #     uni_cut_points = X_host.apply(np.unique, axis=0)
+        #     #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
+        # else:
+        #     cut_points = X_host.apply(np.unique, axis=0)
 
-            if cal_hist:
-                if len(bin_cut_points[item]) < len(uni_cut_points[item]):
-                    tmp_splits = bin_cut_points[item]
-                else:
-                    tmp_splits = uni_cut_points[item]
-            else:
-                tmp_splits = cut_points[item]
+        # for item in host_colnames:
+        #     #TODO: enhance with parallelization with ray
+        #     tmp_col = X_host[item]
 
-            if isinstance(tmp_splits, pd.Series):
-                tmp_splits = tmp_splits.values
-            #try:
-            #    tmp_splits = cut_points[item].values
-            #except:
-            #    tmp_splits = cut_points[item]
+        #     if cal_hist:
+        #         if len(bin_cut_points[item]) < len(uni_cut_points[item]):
+        #             tmp_splits = bin_cut_points[item]
+        #         else:
+        #             tmp_splits = uni_cut_points[item]
+        #     else:
+        #         tmp_splits = cut_points[item]
 
-            expand_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
-            expand_col = np.tile(tmp_col, (len(tmp_splits), 1))
-            less_flag = (expand_col < expand_splits).astype('int')
-            larger_flag = 1 - less_flag
+        #     if isinstance(tmp_splits, pd.Series):
+        #         tmp_splits = tmp_splits.values
+        #     #try:
+        #     #    tmp_splits = cut_points[item].values
+        #     #except:
+        #     #    tmp_splits = cut_points[item]
 
-            # get the sum of g-s and h-s based on vars
-            G_left = np.dot(less_flag, g)
-            G_right = np.dot(larger_flag, g)
-            H_left = np.dot(less_flag, h)
-            H_right = np.dot(larger_flag, h)
+        #     expand_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
+        #     expand_col = np.tile(tmp_col, (len(tmp_splits), 1))
+        #     less_flag = (expand_col < expand_splits).astype('int')
+        #     larger_flag = 1 - less_flag
 
-            # cal the gain for each var-cut
-            gain = G_left**2 / (H_left + self.reg_lambda) + G_right**2 / (
-                H_right + self.reg_lambda) - (G_left + G_right)**2 / (
-                    H_left + H_right + self.reg_lambda)
+        #     # get the sum of g-s and h-s based on vars
+        #     G_left = np.dot(less_flag, g)
+        #     G_right = np.dot(larger_flag, g)
+        #     H_left = np.dot(less_flag, h)
+        #     H_right = np.dot(larger_flag, h)
 
-            # recorrect the gain
-            gain = gain / 2 - self.gamma
-            max_gain = max(gain)
-            max_index = gain.tolist().index(max_gain)
-            tmp_cut = tmp_splits[max_index]
-            if best_gain is None or max_gain > best_gain:
-                left_inds = (tmp_col < tmp_cut)
-                right_inds = (1 - left_inds).astype('bool')
-                if self.min_child_sample is not None:
-                    if sum(left_inds) < self.min_child_sample or sum(
-                            right_inds) < self.min_child_sample:
-                        continue
+        #     # cal the gain for each var-cut
+        #     gain = G_left**2 / (H_left + self.reg_lambda) + G_right**2 / (
+        #         H_right + self.reg_lambda) - (G_left + G_right)**2 / (
+        #             H_left + H_right + self.reg_lambda)
 
-                if self.min_child_weight is not None:
-                    if H_left[max_index] < self.min_child_weight or H_right[
-                            max_index] < self.min_child_weight:
-                        continue
+        #     # print("host_gain: ", gain)
+        #     # recorrect the gain
+        #     gain = gain / 2 - self.gamma
+        #     max_gain = max(gain)
+        #     max_index = gain.tolist().index(max_gain)
+        #     tmp_cut = tmp_splits[max_index]
+        #     if best_gain is None or max_gain > best_gain:
+        #         left_inds = (tmp_col < tmp_cut)
+        #         right_inds = (1 - left_inds).astype('bool')
+        #         if self.min_child_sample is not None:
+        #             if sum(left_inds) < self.min_child_sample or sum(
+        #                     right_inds) < self.min_child_sample:
+        #                 continue
 
-                best_gain = max_gain
-                best_cut = tmp_cut
-                best_var = item
-                G_left_best, G_right_best, H_left_best, H_right_best = G_left[
-                    max_index], G_right[max_index], H_left[max_index], H_right[
-                        max_index]
+        #         if self.min_child_weight is not None:
+        #             if H_left[max_index] < self.min_child_weight or H_right[
+        #                     max_index] < self.min_child_weight:
+        #                 continue
+
+        #         best_gain = max_gain
+        #         best_cut = tmp_cut
+        #         best_var = item
+        #         G_left_best, G_right_best, H_left_best, H_right_best = G_left[
+        #             max_index], G_right[max_index], H_left[max_index], H_right[
+        #                 max_index]
         if best_var is not None:
-            w_left = -G_left_best / (H_left_best + self.reg_lambda)
-            w_right = -G_right_best / (H_right_best + self.reg_lambda)
             return dict({
                 'w_left': w_left,
                 'w_right': w_right,
@@ -822,8 +902,8 @@ class XGB_HOST_EN:
 
     def gh_sums_decrypted(self, gh_sums: pd.DataFrame, decryption_pools=50):
         decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
-        decrypted_gh_sums = gh_sums[decrypted_items]
-        if self.is_encrypted:
+        if self.encrypted:
+            decrypted_gh_sums = gh_sums[decrypted_items]
             m, n = decrypted_gh_sums.shape
             gh_sums_flat = decrypted_gh_sums.values.flatten()
 
@@ -837,11 +917,13 @@ class XGB_HOST_EN:
                                      gh_sums_flat.tolist()))
 
             dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
+
             # dec_gh_sums_df = pd.DataFrame(dec_gh_sums, columns=decrypted_items)
             dec_gh_sums_df = pd.DataFrame(dec_gh_sums,
                                           columns=decrypted_items) / self.ratio
+
         else:
-            dec_gh_sums_df = decrypted_gh_sums
+            dec_gh_sums_df = gh_sums[decrypted_items]
 
         gh_sums['G_left'] = dec_gh_sums_df['G_left']
         gh_sums['G_right'] = dec_gh_sums_df['G_right']
@@ -860,7 +942,7 @@ class XGB_HOST_EN:
                 guest_gh_sums['H_left'] + guest_gh_sums['H_right'] + + self.reg_lambda)
 
         guest_gh_sums['gain'] = guest_gh_sums['gain'] / 2 - self.gamma
-        print("guest_gh_sums: ", guest_gh_sums)
+        # print("guest_gh_sums: ", guest_gh_sums)
 
         max_row = guest_gh_sums['gain'].idxmax()
         max_item = guest_gh_sums.iloc[max_row, :]
@@ -936,7 +1018,7 @@ class XGB_HOST_EN:
 
                 role = "guest"
                 record = self.guest_record
-                ids_w = self.proxy_server.Get(str(self.guest_record) + '_ids_w')
+                ids_w = self.proxy_server.Get('ids_w')
 
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
@@ -960,16 +1042,13 @@ class XGB_HOST_EN:
 
                 w_left = host_best['w_left']
                 w_right = host_best['w_right']
-                ids_w = {
-                    'id_left': id_left,
-                    'id_right': id_right,
-                    'w_left': w_left,
-                    'w_right': w_right
-                }
-                print("===train host==", X_host.index, ids_w, self.host_record)
-
-                self.proxy_client_guest.Remote(ids_w,
-                                               str(self.host_record) + '_ids_w')
+                self.proxy_client_guest.Remote(
+                    {
+                        'id_left': id_left,
+                        'id_right': id_right,
+                        'w_left': w_left,
+                        'w_right': w_right
+                    }, 'ids_w')
 
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
@@ -1012,9 +1091,9 @@ class XGB_HOST_EN:
         if tree is not None:
             k = list(tree.keys())[0]
             role, record_id = k[0], k[1]
-            self.proxy_client_guest.Remote(role, 'role')
-            # print("role, record_id", role, record_id, current_lookup)
-            self.proxy_client_guest.Remote(record_id, 'record_id')
+            # self.proxy_client_guest.Remote(role, 'role')
+            # # print("role, record_id", role, record_id, current_lookup)
+            # self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
                 ids = self.proxy_server.Get(str(record_id) + '_ids')
@@ -1051,14 +1130,14 @@ class XGB_HOST_EN:
                 elif kk[0] == 'right':
                     tree_right = tree[k][kk]
                     w[id_right] = kk[1]
-            print("current w: ", w)
+            # print("current w: ", w)
             self.host_get_tree_node_weight(host_test_left, tree_left,
                                            current_lookup, w)
             self.host_get_tree_node_weight(host_test_right, tree_right,
                                            current_lookup, w)
 
-        self.proxy_client_guest.Remote('guest', 'role')
-        self.proxy_client_guest.Remote(None, 'record_id')
+        # self.proxy_client_guest.Remote('guest', 'role')
+        # self.proxy_client_guest.Remote(None, 'record_id')
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
@@ -1070,11 +1149,8 @@ class XGB_HOST_EN:
             lookup_table = lookup[t + 1]
             # y_t = pd.Series([0] * X.shape[0])
             y_t = np.zeros(len(X))
-            print("befor change", y_t)
             #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
             self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
-            print("after change", y_t)
-            # Y = Y + self.learning_rate * y_t
             Y = Y + self.learning_rate * y_t
 
         return Y
@@ -1083,10 +1159,6 @@ class XGB_HOST_EN:
 
         Y = self.predict_raw(X, lookup)
 
-        # def sigmoid(x):
-        #     return 1 / (1 + np.exp(-x))
-
-        # Y = Y.apply(sigmoid)
         Y = 1 / (1 + np.exp(-Y))
 
         return Y
@@ -1095,6 +1167,10 @@ class XGB_HOST_EN:
         preds = self.predict_prob(X, lookup)
 
         return (preds >= 0.5).astype('int')
+
+    def log_loss(self, actual, predict_prob):
+
+        return metrics.log_loss(actual, predict_prob)
 
 
 def get_logger(name):
@@ -1109,20 +1185,16 @@ def get_logger(name):
 
 logger = get_logger("hetero_xgb")
 
-dataset.define("guest_dataset")
-dataset.define("label_dataset")
-
 ph.context.Context.func_params_map = {
     "xgb_host_logic": ("paillier",),
     "xgb_guest_logic": ("paillier",)
 }
 
 # Number of tree to fit.
-num_tree = 1
+num_tree = 3
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
-# is_encrypted = True
 is_encrypted = False
 
 
@@ -1132,8 +1204,6 @@ is_encrypted = False
                      port='8000',
                      task_type="classification")
 def xgb_host_logic():
-    # def xgb_host_logic(cry_pri="plaintext"):
-    start = time.time()
     logger.info("start xgb host logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
@@ -1203,13 +1273,13 @@ def xgb_host_logic():
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
-                           encrpyted=is_encrypted)
+                           encrypted=is_encrypted)
     # channel.recv()
     # xgb_host.channel.send(xgb_host.pub)
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
-    y_hat = np.array([0.5] * Y.shape[0])
+    # y_hat = np.array([0.5] * Y.shape[0])
     # ray.init()
     # pai_actor = PaillierActor(xgb_host.prv, xgb_host.pub)
     paillier_encryptor = ActorPool(
@@ -1220,24 +1290,27 @@ def xgb_host_logic():
     #                                                               )
     # pools = ActorPool([actor1, actor2, actor3])
     xgb_host.lookup_table = {}
+    y_hat = np.array([xgb_host.base_score] * len(Y))
 
+    start = time.time()
     for t in range(xgb_host.n_estimators):
         print("Begin to trian tree: ", t + 1)
         f_t = pd.Series([0] * Y.shape[0])
 
         # host cal gradients and hessians with its own label
-        gh = xgb_host.get_gh(y_hat, Y)
+        gh = pd.DataFrame({
+            'g': xgb_host._grad(y_hat, Y.flatten()),
+            'h': xgb_host._hess(y_hat, Y.flatten())
+        })
 
         # convert gradients and hessians to ints and encrypted with paillier
         # ratio = 10**3
         # gh_large = (gh * ratio).astype('int')
-
         if is_encrypted:
-            # flat_gh = gh.values.flatten().tolist()
             flat_gh = gh.values.flatten()
-            #convert ghs to 'ints' and encrypted with paillier
-            flat_gh = flat_gh * xgb_host.ratio
-            flat_gh.astype('int')
+            flat_gh *= xgb_host.ratio
+
+            flat_gh = flat_gh.astype('int')
 
             start_enc = time.time()
             enc_flat_gh = list(
@@ -1253,6 +1326,8 @@ def xgb_host_logic():
             proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
             end_send_gh = time.time()
+            print("Time for encryption and transfer: ", (end_enc - start_enc),
+                  (end_send_gh - end_enc))
             print("Encrypt finish.")
 
         else:
@@ -1267,6 +1342,7 @@ def xgb_host_logic():
 
         xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
             X_host.copy(), f_t, 0, gh)
+        # y_hat = y_hat + xgb_host.learning_rate * f_t
 
         end_build_tree = time.time()
 
@@ -1274,31 +1350,19 @@ def xgb_host_logic():
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
         logger.info("Finish to trian tree {}.".format(t + 1))
-        check_time = [
-            end_enc - start_enc, end_send_gh - end_enc,
-            end_build_tree - end_send_gh
-        ]
-        print("build time ", check_time)
 
-        end = time.time()
-        # logger.info("lasting time for xgb %s".format(end-start))
-        print("train encrypted time for xgb: ", (end - start))
+    end = time.time()
+    # logger.info("lasting time for xgb %s".format(end-start))
+    print("train time for xgboost: ", (end - start))
 
-        predict_file_path = ph.context.Context.get_predict_file_path()
-        indicator_file_path = ph.context.Context.get_indicator_file_path()
-        model_file_path = ph.context.Context.get_model_file_path()
-        lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    model_file_path = ph.context.Context.get_model_file_path()
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
-        with open(model_file_path, 'wb') as fm:
-            pickle.dump(xgb_host.tree_structure, fm)
-        with open(lookup_file_path, 'wb') as fl:
-            pickle.dump(xgb_host.lookup_table_sum, fl)
-        end = time.time()
-        # logger.info("lasting time for xgb %s".format(end-start))
-        print("train plaintext time for xgb: ", (end - start))
+    # print("host structure: ", xgb_host.tree_structure)
 
     train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
-    print("train_pred, Y: ", train_pred, Y)
     train_acc = metrics.accuracy_score(train_pred, Y)
     print("train_acc: ", train_acc)
 
@@ -1315,6 +1379,31 @@ def xgb_host_logic():
         'train_acc': train_acc,
         'test_acc': test_acc
     })
+
+    # save host-part model
+    model_file_path = ph.context.Context.get_model_file_path()
+
+    with open(model_file_path, 'wb') as hostModel:
+        pickle.dump(xgb_host, hostModel)
+
+    # save host-part table
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
+    with open(lookup_file_path, 'wb') as hostTable:
+        pickle.dump(lookup_table_sum, hostTable)
+
+    # save train loss and acc
+    train_metrics = {
+        'train_acc':
+            train_acc,
+        'train_loss':
+            xgb_host.log_loss(Y, xgb_host.predict_prob(X_host,
+                                                       lookup_table_sum))
+    }
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+
+    with open(indicator_file_path, 'wb') as trainMetrics:
+        pickle.dump(train_metrics, trainMetrics)
+
     proxy_server.StopRecvLoop()
     # host_log.close()
 
@@ -1387,7 +1476,7 @@ def xgb_guest_logic():
                              sid=1,
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
-                             encrypted=is_encrypted)  # noqa
+                             is_encrypted=is_encrypted)  # noqa
 
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
@@ -1408,10 +1497,18 @@ def xgb_guest_logic():
 
         lookup_table_sum[t + 1] = xgb_guest.lookup_table
 
-    lookup_file_path = ph.context.Context.get_guest_lookup_file_path()
+    # predict_file_path = ph.context.Context.get_predict_file_path()
+    # indicator_file_path = ph.context.Context.get_indicator_file_path()
+    model_file_path = ph.context.Context.get_model_file_path()
+    lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
-    with open(lookup_file_path, 'wb') as fl:
-        pickle.dump(xgb_guest.lookup_table_sum, fl)
+    # save guest part model
+    with open(model_file_path, 'wb') as guestModel:
+        pickle.dump(xgb_guest, guestModel)
+
+    # save guest part table
+    with open(lookup_file_path, 'wb') as guestTable:
+        pickle.dump(lookup_table_sum, guestTable)
 
     xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
