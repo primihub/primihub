@@ -1397,17 +1397,17 @@ def xgb_host_logic():
         pickle.dump(lookup_table_sum, hostTable)
 
     # save train loss and acc
-    train_metrics = {
-        'train_acc':
-            train_acc,
-        'train_loss':
-            xgb_host.log_loss(Y, xgb_host.predict_prob(X_host,
-                                                       lookup_table_sum))
-    }
-    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    # train_metrics = {
+    #     'train_acc':
+    #         train_acc,
+    #     'train_loss':
+    #         xgb_host.log_loss(Y, xgb_host.predict_prob(X_host,
+    #                                                    lookup_table_sum))
+    # }
+    # indicator_file_path = ph.context.Context.get_indicator_file_path()
 
-    with open(indicator_file_path, 'wb') as trainMetrics:
-        pickle.dump(train_metrics, trainMetrics)
+    # with open(indicator_file_path, 'wb') as trainMetrics:
+    #     pickle.dump(train_metrics, trainMetrics)
 
     proxy_server.StopRecvLoop()
     # host_log.close()
