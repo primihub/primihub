@@ -92,8 +92,7 @@ class DatasetMetaService {
   private:
     std::shared_ptr<StorageBackend> localKv_;
     std::shared_ptr<primihub::p2p::NodeStub> p2pStub_;
-    std::map<std::string, DatasetMetaWithParamTag> meta_map_; // key: dataset_id
-    std::mutex meta_map_mutex_;
+    // std::map<std::string, DatasetMetaWithParamTag> meta_map_; // key: dataset_id
     unsigned int meta_search_timeout_ = 60; // seconds
 };
 

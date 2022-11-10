@@ -1,13 +1,14 @@
 #/bin/bash
+# When using this script, please make sure that the python version of the local machine is 3.8
 
 if [ ! -n "$1" ] ; then
-    echo "Please input 1st arg: docker image tag"
-    exit
+    tag=`date +%F-%H-%M-%S`
+else
+    tag=$1
 fi
 
 bash pre_build.sh
 
-#build
 bazel build --config=linux :node :cli :opt_paillier_c2py
 
 if [ $? -ne 0 ]; then
@@ -17,7 +18,7 @@ fi
 
 BASE_DIR=`ls -l | grep bazel-bin | awk '{print $11}'`
 
-if [ !$BASE_DIR ]; then
+if [ ! -d "$BASE_DIR" ]; then
     echo "BASE_DIR IS NULL"
     exit
 fi
@@ -40,4 +41,4 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$1 . -f Dockerfile.local 
+docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local 

@@ -77,7 +77,7 @@ class WorkerClient(GRPCConnect):
             task_map["node_map"] = node_map
 
         if input_datasets:
-            task_map["inout_datasets"] = input_datasets
+            task_map["input_datasets"] = input_datasets
 
         print(type(job_id), job_id)
         if job_id:

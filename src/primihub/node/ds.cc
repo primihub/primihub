@@ -38,7 +38,7 @@ namespace primihub {
             response->set_ret_code(2);
             return grpc::Status::OK;
         }
-        
+
         DatasetMeta mate;
         auto dataset = dataset_service_->newDataset(driver, fid, mate);
 

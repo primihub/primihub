@@ -145,7 +145,7 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
     LOG(ERROR) << "Write content to csv file failed.";
     return -2;
   }
-  
+
   return 0;
 }
 

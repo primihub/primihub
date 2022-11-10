@@ -36,10 +36,14 @@ void kkrtSend(
         for (auto cc : params.mNumThreads)
         {
             std::vector<Channel> sendChls = params.getChannels(cc);
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
 
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
-                std::vector<block> set(setSize);
+                std::vector<block> set(senderSize);
                 prng.get(set.data(), set.size());
 
                 KkrtNcoOtSender otSend;
@@ -50,7 +54,7 @@ void kkrtSend(
                 sendChls[0].asyncSend(dummy, 1);
                 sendChls[0].recv(dummy, 1);
 
-                sendPSIs.init(setSize, setSize, params.mStatSecParam, sendChls, otSend, prng.get<block>());
+                sendPSIs.init(senderSize, receiverSize, params.mStatSecParam, sendChls, otSend, prng.get<block>());
 
                 //sendChls[0].asyncSend(dummy, 1);
                 //sendChls[0].recv(dummy, 1);
@@ -89,16 +93,21 @@ void kkrtRecv(
         for (auto numThreads : params.mNumThreads)
         {
             auto chls = params.getChannels(numThreads);
-
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
+            std::cout << "senderSize:" << senderSize << std::endl;
+            std::cout << "receiverSize:" << receiverSize << std::endl;
 
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
                 std::string tag("kkrt");
 
-                std::vector<block> sendSet(setSize), recvSet(setSize);
-                for (u64 i = 0; i < setSize; ++i)
+                std::vector<block> recvSet(receiverSize);
+                for (u64 i = 0; i < receiverSize; ++i)
                 {
-                    sendSet[i] = recvSet[i] = prng.get<block>();
+                    recvSet[i] = prng.get<block>();
                 }
 
                 KkrtNcoOtReceiver otRecv;
@@ -117,7 +126,7 @@ void kkrtRecv(
 
                 auto start = timer.setTimePoint("start");
 
-                recvPSIs.init(setSize, setSize, params.mStatSecParam, chls, otRecv, prng.get<block>());
+                recvPSIs.init(senderSize, receiverSize, params.mStatSecParam, chls, otRecv, prng.get<block>());
 
                 //chls[0].asyncSend(dummy, 1);
                 //chls[0].recv(dummy, 1);
@@ -134,7 +143,7 @@ void kkrtRecv(
 
                 //auto byteSent = chls[0]->getTotalDataSent() *chls.size();
 
-                printTimings(tag, chls, offlineTime, onlineTime, params, setSize, numThreads);
+                printTimings(tag, chls, offlineTime, onlineTime, params, receiverSize, numThreads);
             }
         }
     }
@@ -143,7 +152,6 @@ void kkrtRecv(
 void mkkrtSend(
     LaunchParams& params)
 {
-#ifdef ENABLE_KKRT_PSI
     setThreadName("CP_Test_Thread");
 
     PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
@@ -155,14 +163,18 @@ void mkkrtSend(
         {
             std::vector<Channel> sendChls = params.getChannels(cc);
             std::vector<Channel> maskChls = params.getChannels2(cc);
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
 
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
-                std::vector<block> sendSet(setSize);
-                for (u64 i = 0; i < setSize; ++i)
+                std::vector<block> sendSet(senderSize);
+                for (u64 i = 0; i < senderSize; ++i)
                 {
                     sendSet[i] = prng.get<block>();
-                    if (i < setSize / 2) {
+                    if (i < senderSize / 2) {
                         memset(&sendSet[i], 0, sizeof(block));
                         ((u64 *)&sendSet[i])[0] = i;
                     } 
@@ -174,7 +186,7 @@ void mkkrtSend(
                 sendChls[0].asyncSend(dummy, 1);
                 sendChls[0].recv(dummy, 1);
 
-                sendPSIs.init(setSize, setSize, params.mStatSecParam, sendChls, prng.get<block>());
+                sendPSIs.init(senderSize, receiverSize, params.mStatSecParam, sendChls, prng.get<block>());
 
                 //sendChls[0].asyncSend(dummy, 1);
                 //sendChls[0].recv(dummy, 1);
@@ -189,15 +201,11 @@ void mkkrtSend(
         }
     }
 
-#else
-    std::cout << Color::Red << "KKRT PSI is not enabled" << std::endl << Color::Default;
-#endif
 }
 
 void mkkrtRecv(
     LaunchParams& params)
 {
-#ifdef ENABLE_KKRT_PSI
     setThreadName("CP_Test_Thread");
 
     //LinearCode code;
@@ -215,16 +223,22 @@ void mkkrtRecv(
         {
             auto chls = params.getChannels(numThreads);
             auto mchls = params.getChannels2(numThreads);
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
+            std::cout << "senderSize:" << senderSize << std::endl;
+            std::cout << "receiverSize:" << receiverSize << std::endl;
 
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
                 std::string tag("mkkrt");
 
-                std::vector<block> recvSet(setSize);
-                for (u64 i = 0; i < setSize; ++i)
+                std::vector<block> recvSet(receiverSize);
+                for (u64 i = 0; i < receiverSize; ++i)
                 {
                     recvSet[i] = prng.get<block>();
-                    if (i < setSize / 2) {
+                    if (i < receiverSize / 2) {
                         memset(&recvSet[i], 0, sizeof(block));
                         ((u64 *)&recvSet[i])[0] = i;
                     } 
@@ -244,7 +258,7 @@ void mkkrtRecv(
 
                 auto start = timer.setTimePoint("start");
 
-                recvPSIs.init(setSize, setSize, params.mStatSecParam, chls, prng.get<block>());
+                recvPSIs.init(senderSize, receiverSize, params.mStatSecParam, chls, prng.get<block>());
 
                 //chls[0].asyncSend(dummy, 1);
                 //chls[0].recv(dummy, 1);
@@ -261,10 +275,10 @@ void mkkrtRecv(
 
                 //auto byteSent = chls[0]->getTotalDataSent() *chls.size();
 
-                printTimings(tag, chls, offlineTime, onlineTime, params, setSize, numThreads);
+                printTimings(tag, chls, offlineTime, onlineTime, params, receiverSize, numThreads, 1, &mchls);
 
-                if (recvPSIs.mIntersection.size() != setSize / 2) {
-                    std::cout << "intersection size " << recvPSIs.mIntersection.size() << " not match" << setSize / 2 << std::endl;
+                if (recvPSIs.mIntersection.size() != receiverSize / 2) {
+                    std::cout << "intersection size " << recvPSIs.mIntersection.size() << " not match" << receiverSize / 2 << std::endl;
                 }
                 sort(recvPSIs.mIntersection.begin(), recvPSIs.mIntersection.end());
                 int i;
@@ -280,10 +294,8 @@ void mkkrtRecv(
         }
     }
 
-#else
-    std::cout << Color::Red << "KKRT PSI is not enabled" << std::endl << Color::Default;
-#endif
 }
+
 
 void cm20Send(
     LaunchParams& params)
@@ -299,13 +311,18 @@ void cm20Send(
         {
             std::vector<Channel> sendChls = params.getChannels(cc);
             double scale = params.mBinScaler.size() == 0 ? 1 : params.mBinScaler[0];
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
+
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
-                std::vector<block> sendSet(setSize);
-                for (u64 i = 0; i < setSize; ++i)
+                std::vector<block> sendSet(senderSize);
+                for (u64 i = 0; i < senderSize; ++i)
                 {
                     sendSet[i] = prng.get<block>();
-                    if (i < setSize / 2) {
+                    if (i < senderSize / 2) {
                         memset(&sendSet[i], 0, sizeof(block));
                         ((u64 *)&sendSet[i])[0] = i;
                     } 
@@ -319,7 +336,7 @@ void cm20Send(
                 sendChls[0].asyncSend(dummy, 1);
                 sendChls[0].recv(dummy, 1);
 
-                sendPSIs.init(setSize, setSize, scale, cc, params.mStatSecParam, sendChls, prng.get<block>());
+                sendPSIs.init(senderSize, receiverSize, scale, cc, params.mStatSecParam, sendChls, prng.get<block>());
 
                 //sendChls[0].asyncSend(dummy, 1);
                 //sendChls[0].recv(dummy, 1);
@@ -353,16 +370,23 @@ void cm20Recv(
         {
             auto chls = params.getChannels(numThreads);
             double scale = params.mBinScaler.size() == 0 ? 1 : params.mBinScaler[0];
+            u64 senderSize, receiverSize;
+            senderSize = receiverSize = setSize;
+            if (params.mCmd->isSet("ss")) senderSize = params.mCmd->get<u64>("ss");
+            if (params.mCmd->isSet("rs")) receiverSize = params.mCmd->get<u64>("rs");
+            std::cout << "senderSize:" << senderSize << std::endl;
+            std::cout << "receiverSize:" << receiverSize << std::endl;
+            std::cout << "scale:" << scale << std::endl;
 
             for (u64 jj = 0; jj < params.mTrials; jj++)
             {
                 std::string tag("cm20");
 
-                std::vector<block> recvSet(setSize);
-                for (u64 i = 0; i < setSize; ++i)
+                std::vector<block> recvSet(receiverSize);
+                for (u64 i = 0; i < receiverSize; ++i)
                 {
                     recvSet[i] = prng.get<block>();
-                    if (i < setSize / 2) {
+                    if (i < receiverSize / 2) {
                         memset(&recvSet[i], 0, sizeof(block));
                         ((u64 *)&recvSet[i])[0] = i;
                     } 
@@ -378,7 +402,7 @@ void cm20Recv(
                 recvPSIs.setTimer(timer);
                 auto start = timer.setTimePoint("start");
 
-                recvPSIs.init(setSize, setSize, scale, numThreads, params.mStatSecParam, chls, prng.get<block>());
+                recvPSIs.init(senderSize, receiverSize, scale, numThreads, params.mStatSecParam, chls, prng.get<block>());
 
                 //chls[0].asyncSend(dummy, 1);
                 //chls[0].recv(dummy, 1);
@@ -394,10 +418,10 @@ void cm20Recv(
 
                 //auto byteSent = chls[0]->getTotalDataSent() *chls.size();
 
-                printTimings(tag, chls, offlineTime, onlineTime, params, setSize, numThreads);
+                printTimings(tag, chls, offlineTime, onlineTime, params, receiverSize, numThreads);
 
-                if (recvPSIs.mIntersection.size() != setSize / 2) {
-                    std::cout << "intersection size " << recvPSIs.mIntersection.size() << " not match" << setSize / 2 << std::endl;
+                if (recvPSIs.mIntersection.size() != receiverSize / 2) {
+                    std::cout << "intersection size " << recvPSIs.mIntersection.size() << " not match" << receiverSize / 2 << std::endl;
                 }
                 sort(recvPSIs.mIntersection.begin(), recvPSIs.mIntersection.end());
                 int i;

@@ -17,11 +17,10 @@ limitations under the License.
 import primihub as ph
 from primihub.client import primihub_cli as cli
 from primihub import dataset, context
-from primihub import dataset, context
-from primihub.primitive.opt_paillier_c2py_warpper import *
+# from primihub.primitive.opt_paillier_c2py_warpper import *
 from primihub.channel.zmq_channel import IOService, Session
-from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
-from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
+# from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
+# from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
 from primihub.FL.model.xgboost.xgb_guest import XGB_GUEST
 from primihub.FL.model.xgboost.xgb_host import XGB_HOST
 from primihub.FL.model.evaluation.evaluation import Regression_eva
@@ -130,6 +129,9 @@ def xgb_host_logic(cry_pri="paillier"):
     Y = data_train['Class'].values
 
     if cry_pri == "paillier":
+        from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
+        from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
+        from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
         xgb_host = XGB_HOST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1,
                                sid=0, min_child_weight=1, objective='linear', channel=channel)
         channel.recv()
@@ -294,6 +296,9 @@ def xgb_guest_logic(cry_pri="paillier"):
     data_test = data.loc[dim_train:dim, :].reset_index(drop=True)
 
     if cry_pri == "paillier":
+        from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
+        from primihub.FL.model.xgboost.xgb_guest_en import XGB_GUEST_EN
+        from primihub.FL.model.xgboost.xgb_host_en import XGB_HOST_EN
         xgb_guest = XGB_GUEST_EN(n_estimators=num_tree, max_depth=max_depth, reg_lambda=1, min_child_weight=1,
                                  objective='linear',
                                  sid=1, channel=channel)  # noqa

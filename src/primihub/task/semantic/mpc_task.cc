@@ -17,6 +17,8 @@
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/util/network/socket/session.h"
+#include "src/primihub/algorithm/arithmetic.h"
+#include "src/primihub/algorithm/missing_val_processing.h"
 
 #ifndef __APPLE__
 #include "src/primihub/algorithm/falcon_lenet.h"
@@ -107,6 +109,46 @@ namespace primihub::task
     {
       // TODO: implement lstm
     }
+    else if (function_name == "arithmetic") 
+    {
+      PartyConfig config(node_id, task_param_);
+
+      std::map<std::string, Node> &node_map = config.node_map;
+      try 
+      {
+        auto param_map = task_param_.params().param_map();
+        std::string accuracy = param_map["Accuracy"].value_string();
+        LOG(INFO)<<"accuracy: "<<accuracy;
+        if(accuracy=="D32")
+          algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+              std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
+                                                        dataset_service));
+        else  
+          algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+              std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
+                                                        dataset_service));
+      } 
+      catch (const std::runtime_error &error) 
+      {
+        LOG(ERROR) << error.what();
+        algorithm_ = nullptr;
+      }
+    } 
+    else if (function_name == "missing_val_processing") 
+    {
+      PartyConfig config(node_id, task_param_);
+      std::map<std::string, Node> &node_map = config.node_map;
+      try 
+      {
+        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+            std::make_shared<primihub::MissingProcess>(config, dataset_service));
+      }
+      catch (const std::runtime_error &error) 
+      {
+        LOG(ERROR) << error.what();
+        algorithm_ = nullptr;
+      }
+    } 
     else
     {
       LOG(ERROR) << "Unsupported algorithm: " << function_name;

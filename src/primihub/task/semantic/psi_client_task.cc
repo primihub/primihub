@@ -33,8 +33,8 @@ namespace primihub::task {
 
 PSIClientTask::PSIClientTask(const std::string &node_id,
                              const std::string &job_id,
-                             const std::string &task_id, 
-                             const TaskParam *task_param, 
+                             const std::string &task_id,
+                             const TaskParam *task_param,
                              std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
@@ -48,7 +48,16 @@ int PSIClientTask::_LoadParams(Task &task) {
         psi_type_ = param_map["psiType"].value_int32();
         dataset_path_ = param_map["clientData"].value_string();
         result_file_path_ = param_map["outputFullFilename"].value_string();
-
+        auto it = param_map.find("sync_result_to_server");
+        if (it != param_map.end()) {
+            sync_result_to_server = it->second.value_int32();
+            VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
+        }
+        it = param_map.find("server_outputFullFilname");
+        if (it != param_map.end()) {
+            server_result_path = it->second.value_string();
+            VLOG(5) << "server_outputFullFilname: " << server_result_path;
+        }
         server_index_ = param_map["serverIndex"];
         server_address_ = param_map["serverAddress"].value_string();
         server_dataset_ = param_map[server_address_].value_string();
@@ -58,6 +67,29 @@ int PSIClientTask::_LoadParams(Task &task) {
         return -1;
     }
     return 0;
+}
+
+int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, std::vector<std::string>& col_array) {
+    //
+    std::string nodeaddr{"localhost"};
+    // std::shared_ptr<DataDriver>
+    auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
+    auto& cursor = driver->read(conn_str);
+    auto ds = cursor->read();
+    auto table = std::get<std::shared_ptr<Table>>(ds->data);
+    int col_count = table->num_columns();
+    if(col_count < data_col) {
+        LOG(ERROR) << "psi dataset colunum number is smaller than data_col, "
+            << "dataset total colum: " << col_count
+            << "expected col index: " << data_col;
+        return -1;
+    }
+    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
+    for (int64_t i = 0; i < array->length(); i++) {
+        col_array.push_back(array->GetString(i));
+    }
+    VLOG(0) << "loaded records number: " << col_array.size();
+    return col_array.size();
 }
 
 int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
@@ -85,16 +117,30 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
 }
 
 int PSIClientTask::_LoadDataset(void) {
-    int ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    // file reading error or file empty
+    // TODO fixme trick method, search sqlite as keyword and if find then laod data from sqlite
+    std::string match_word{"sqlite"};
+    std::string driver_type;
+    if (dataset_path_.size() > match_word.size()) {
+        driver_type = dataset_path_.substr(0, match_word.size());
+    } else {
+        driver_type = dataset_path_;
+    }
+    // current we supportes only two type of strage type [csv, sqlite] as dataset
+    int ret = 0;
+    if (match_word == driver_type) {
+        ret = _LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+    } else {
+        ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
+    }
+    // load datasets encountes error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi client failed.";
+        LOG(ERROR) << "Load dataset for psi client failed. dataset size: " << ret;
         return -1;
     }
     return 0;
 }
 
-int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client, 
+int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
                               ExecuteTaskResponse & taskResponse) {
     psi_proto::Response entrpy_response;
     const std::int64_t num_response_elements =
@@ -162,9 +208,9 @@ int PSIClientTask::execute() {
         return ret;
     }
 
-    std::unique_ptr<PsiClient> client = 
+    std::unique_ptr<PsiClient> client =
         std::move(PsiClient::CreateWithNewKey(reveal_intersection_)).value();
-    psi_proto::Request client_request = 
+    psi_proto::Request client_request =
         std::move(client->CreateRequest(elements_)).value();
     psi_proto::Response server_response;
 
@@ -174,9 +220,8 @@ int PSIClientTask::execute() {
 
     PsiRequest *ptr_request = taskRequest.mutable_psi_request();
     ptr_request->set_reveal_intersection(client_request.reveal_intersection());
-    const std::int64_t num_elements =
-        static_cast<std::int64_t>(client_request.encrypted_elements().size());
-    for (std::int64_t i = 0; i < num_elements; i++) {
+    size_t num_elements = client_request.encrypted_elements().size();
+    for (size_t i = 0; i < num_elements; i++) {
         ptr_request->add_encrypted_elements(client_request.encrypted_elements()[i]);
     }
 
@@ -190,20 +235,17 @@ int PSIClientTask::execute() {
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
         server_address_, grpc::InsecureChannelCredentials()));
 
-    Status status =
-        stub->ExecuteTask(&context, taskRequest, &taskResponse);
+    Status status = stub->ExecuteTask(&context, taskRequest, &taskResponse);
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
             LOG(ERROR) << "Node psi server process request error.";
             return -1;
         }
-
         int ret = _GetIntsection(client, taskResponse);
         if (ret) {
             LOG(ERROR) << "Node psi client get insection failed.";
             return -1;
         }
-
         ret = saveResult();
         if (ret) {
             LOG(ERROR) << "Save psi result failed.";
@@ -214,8 +256,66 @@ int PSIClientTask::execute() {
         LOG(ERROR) << status.error_code() << ": " << status.error_message();
         return -1;
     }
-
+    if (this->reveal_intersection_ && this->sync_result_to_server) {
+        send_result_to_server();
+    }
     return 0;
+}
+
+int PSIClientTask::send_result_to_server() {
+    grpc::ClientContext context;
+    VLOG(5) << "send_result_to_server";
+     // std::unique_ptr<VMNode::Stub>
+    auto channel = grpc::InsecureChannelCredentials();
+    auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    primihub::rpc::TaskResponse task_response;
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
+    constexpr size_t limited_size = 1 << 22;  // limit data size 4M
+    size_t sended_size = 0;
+    size_t sended_index = 0;
+    bool add_head_flag = false;
+    do {
+        primihub::rpc::TaskRequest task_request;
+        task_request.set_job_id(this->job_id_);
+        task_request.set_task_id(this->task_id_);
+        task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
+        task_request.set_storage_info(server_result_path);
+        if (!add_head_flag) {
+            task_request.add_data("\"intersection_row\"");
+            add_head_flag = true;
+        }
+        for (size_t i = sended_index; i < this->result_.size(); i++) {
+            auto& data_item = this->result_[i];
+            size_t item_len = data_item.size();
+            if (sended_size + item_len > limited_size) {
+                break;
+            }
+            task_request.add_data(data_item);
+            sended_size += item_len;
+            sended_index++;
+        }
+        writer->Write(task_request);
+        VLOG(5) << "sended_size: " << sended_size << " "
+                << "sended_index: " << sended_index << " "
+                << "result size: " << this->result_.size();
+        if (sended_index >= this->result_.size()) {
+            break;
+        }
+    } while(true);
+    writer->WritesDone();
+    Status status = writer->Finish();
+    if (status.ok()) {
+        auto ret_code = task_response.ret_code();
+        if (ret_code) {
+            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+            return -1;
+        }
+    } else {
+        LOG(ERROR) << "client Node send result data to server failed. error_code: "
+                   << status.error_code() << ": " << status.error_message();
+        return -1;
+    }
+    VLOG(5) << "send result to server success";
 }
 
 int PSIClientTask::saveResult() {
@@ -229,7 +329,7 @@ int PSIClientTask::saveResult() {
     std::shared_ptr<arrow::Array> array;
     builder.Finish(&array);
 
-    std::string col_title = 
+    std::string col_title =
         psi_type_ == PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
     std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
         arrow::field(col_title, arrow::int64())};

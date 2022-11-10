@@ -44,7 +44,6 @@
 #include "src/primihub/util/network/socket/session.h"
 
 namespace primihub {
-const Decimal D = D16;
 eMatrix<double>
 logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
               sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
@@ -71,6 +70,7 @@ private:
 
   int _LoadDatasetFromCSV(std::string &filename, eMatrix<double> &m);
 
+  std::string model_file_name_;
   std::string model_name_;
   uint16_t local_id_;
   eMatrix<double> train_input_;

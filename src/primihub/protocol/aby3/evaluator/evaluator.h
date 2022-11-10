@@ -126,7 +126,25 @@ class Sh3Evaluator {
 
   Sh3Task asyncConstMul_test(Sh3Task dependency, const i64& A, si64Matrix B,
                              si64Matrix& C);
-                             
+
+  Sh3Task asyncDotMul(Sh3Task dependency, const si64Matrix &A,
+                      const si64Matrix &B, si64Matrix &C, u64 shift);
+
+  template <Decimal D>
+  Sh3Task asyncDotMul(Sh3Task dependency, const sf64Matrix<D> &A,
+                      const sf64Matrix<D> &B, sf64Matrix<D> &C) {
+    return asyncDotMul(dependency, A.i64Cast(), B.i64Cast(), C.i64Cast(), D);
+  }
+
+  template <Decimal D>
+  Sh3Task asyncDotMul(Sh3Task dependency, const sf64Matrix<D> &A,
+                      const sf64Matrix<D> &B, sf64Matrix<D> &C, u64 shift) {
+    return asyncDotMul(dependency, A.i64Cast(), B.i64Cast(), C.i64Cast(),
+                       D + shift);
+  }
+
+  Sh3Task asyncDotMul(Sh3Task dependency, const si64Matrix &A,
+                      const si64Matrix &B, si64Matrix &C);                             
 };
 
 }  // namespace primihub

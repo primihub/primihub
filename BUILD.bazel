@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public",],)
-load("//bazel:prim.bzl", "COPTS", "PYX_COPTS", "PYX_SRCS", "copy_to_workspace")
+# load("//bazel:prim.bzl", "COPTS", "PYX_COPTS", "PYX_SRCS", "copy_to_workspace")
 
 config_setting(
     name = "msvc-cl",
@@ -29,6 +29,11 @@ config_setting(
 config_setting(
    name = "macos-build",
    values = {"define": "macos-build=true"},
+)
+
+config_setting(
+   name = "microsoft-apsi",
+   values = {"define": "microsoft-apsi=true"},
 )
 
 DEFAULT_LINK_OPTS = [
@@ -117,6 +122,7 @@ grpc_proto_library(
     name = "grpc_pir_proto",
     srcs = ["src/primihub/protos/pir.proto"],
 )
+
 
 grpc_proto_library(
     name = "service_proto",
@@ -317,7 +323,7 @@ cc_library(
       "src/primihub/protocol/cryptflow2/OT/*.cpp",
   ],
   exclude = [
-    "src/primihub/protocol/cryptflow2/globals_float.cpp", 
+    "src/primihub/protocol/cryptflow2/globals_float.cpp",
     "src/primihub/protocol/cryptflow2/library_float.cpp"]),
   hdrs = glob([
     "src/primihub/protocol/cryptflow2/*.h",
@@ -358,9 +364,12 @@ cc_library(
     "-mrdseed",
   ],
   linkopts = ["-fopenmp"],
-  deps = ["@com_microsoft_seal//:seal",
-	  "@com_github_gmp//:gmp",
-	  ":eigen"]
+  deps = [
+    "@com_microsoft_seal//:seal",
+    "@com_github_gmp//:gmp",
+    "@openssl",
+    ":eigen",
+  ]
 )
 
 cc_library(
@@ -459,7 +468,11 @@ cc_library(
             "src/primihub/algorithm/logistic.cc",
             "src/primihub/algorithm/logistic_plain.cc",
             "src/primihub/algorithm/plainML.cc",
-	    "src/primihub/algorithm/falcon_lenet.cc",
+            "src/primihub/algorithm/falcon_lenet.cc",
+            "src/primihub/algorithm/arithmetic.cc",
+            "src/primihub/executor/express.cc",
+            "src/primihub/operator/aby3_operator.cc",
+            "src/primihub/algorithm/missing_val_processing.cc",
     ]),
     hdrs = glob([
             "src/primihub/algorithm/base.h",
@@ -469,9 +482,13 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
-	    "src/primihub/algorithm/falcon_lenet.h",
+	        "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h",
+            "src/primihub/algorithm/arithmetic.h",
+            "src/primihub/executor/express.h",
+            "src/primihub/operator/aby3_operator.h",
+            "src/primihub/algorithm/missing_val_processing.h",
     ]),
     copts = C_OPT + [
       "-maes",
@@ -492,6 +509,47 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "mpc_express_executor",
+    srcs = [
+            "src/primihub/operator/aby3_operator.cc",
+            "src/primihub/executor/express.cc",
+    ],
+    hdrs = [
+            "src/primihub/executor/express.h",
+            "src/primihub/common/type/type.h",
+            "src/primihub/operator/aby3_operator.h",
+            "src/primihub/common/type/fixed_point.h",
+  ],
+    deps = [
+            ":protocol_aby3_lib",
+            "@com_github_glog_glog//:glog"
+  ],
+    linkopts = LINK_OPTS,
+)
+
+cc_library(
+    name = "aby3_operator",
+    srcs = [
+            "src/primihub/operator/aby3_operator.cc",
+            "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    hdrs = [
+            "src/primihub/operator/aby3_operator.h",
+            "src/primihub/common/type/type.h",
+            "src/primihub/common/type/fixed_point.h",
+            "src/primihub/primitive/ppa/kogge_stone.h"
+    ],
+    deps = [
+            ":protocol_aby3_lib",
+            "@com_github_glog_glog//:glog"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+)
+
 DEFAULT_TASK_LIB_DEPS = [
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
@@ -508,26 +566,139 @@ DEFAULT_TASK_LIB_DEPS = [
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
-    "@org_openmined_pir//pir/cpp:pir",
     #"@osu_libpsi//:libpsi",
 ]
 
-TASK_LIB_DEPS = select({
-    ":macos-build": DEFAULT_TASK_LIB_DEPS,
-    "//conditions:default": DEFAULT_TASK_LIB_DEPS + [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+PIR_LIB_DEPS = select({
+    "microsoft-apsi": ["@mircrosoft_apsi//:APSI",],
+    "//conditions:default": ["@org_openmined_pir//pir/cpp:pir"]
 })
+
+
+LINUX_X86_BUILD_LIBS = select({
+    ":macos-build": [] ,
+    "//conditions:default": [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+})
+
+TASK_LIB_DEPS = DEFAULT_TASK_LIB_DEPS + PIR_LIB_DEPS + LINUX_X86_BUILD_LIBS
+
+
 
 cc_library(
     name = "task_lib",
-    srcs = glob([
-            "src/primihub/task/**/*.cc",
-    ]),
-    hdrs = glob([
-             "src/primihub/task/**/*.h",
-	     "src/primihub/util/util.h"
-    ]),
-    copts = C_OPT,
-    # pre_build.sh use it to help locate line content of which need replace, 
+    srcs = select({
+        "microsoft-apsi": glob([
+            "src/primihub/task/language/proto_parser.cc",
+            "src/primihub/task/language/py_parser.cc",
+            "src/primihub/task/semantic/psi_kkrt_task.cc",
+            # "src/primihub/task/semantic/pir_server_task.cc",
+            # "src/primihub/task/semantic/pir_client_task.cc",
+            "src/primihub/task/semantic/parser.cc",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+            "src/primihub/task/semantic/mpc_task.cc",
+            "src/primihub/task/semantic/tee_task.cc",
+            "src/primihub/task/semantic/task.cc",
+            "src/primihub/task/semantic/psi_client_task.cc",
+            "src/primihub/task/semantic/private_server_base.cc",
+            "src/primihub/task/semantic/fl_task.cc",
+            "src/primihub/task/semantic/psi_server_task.cc",
+            "src/primihub/task/semantic/keyword_pir_client_task.cc",
+            "src/primihub/task/semantic/keyword_pir_server_task.cc",
+         ]),
+        "//conditions:default": glob([
+            "src/primihub/task/language/proto_parser.cc",
+            "src/primihub/task/language/py_parser.cc",
+            "src/primihub/task/semantic/psi_kkrt_task.cc",
+            "src/primihub/task/semantic/pir_server_task.cc",
+            "src/primihub/task/semantic/pir_client_task.cc",
+            "src/primihub/task/semantic/parser.cc",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.cc",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.cc",
+            "src/primihub/task/semantic/mpc_task.cc",
+            "src/primihub/task/semantic/tee_task.cc",
+            "src/primihub/task/semantic/task.cc",
+            "src/primihub/task/semantic/psi_client_task.cc",
+            "src/primihub/task/semantic/private_server_base.cc",
+            "src/primihub/task/semantic/fl_task.cc",
+            "src/primihub/task/semantic/psi_server_task.cc",
+        ]),
+    }),
+    hdrs = select({
+        "microsoft-apsi": glob([
+            "src/primihub/task/language/proto_parser.h",
+            "src/primihub/task/language/parser.h",
+            "src/primihub/task/language/py_parser.h",
+            "src/primihub/task/language/factory.h",
+            "src/primihub/task/semantic/task.h",
+            #"src/primihub/task/semantic/pir_server_task.h",
+            "src/primihub/task/semantic/private_server_base.h",
+            "src/primihub/task/semantic/parser.h",
+            #"src/primihub/task/semantic/pir_client_task.h",
+            "src/primihub/task/semantic/scheduler.h",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.h",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.h",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.h",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.h",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.h",
+            "src/primihub/task/semantic/psi_server_task.h",
+            "src/primihub/task/semantic/psi_kkrt_task.h",
+            "src/primihub/task/semantic/keyword_pir_client_task.h",
+            "src/primihub/task/semantic/keyword_pir_server_task.h",
+            "src/primihub/task/semantic/psi_client_task.h",
+            "src/primihub/task/semantic/factory.h",
+            "src/primihub/task/semantic/mpc_task.h",
+            "src/primihub/task/semantic/fl_task.h",
+            "src/primihub/task/semantic/tee_task.h",
+            "src/primihub/util/util.h",
+        ]),
+        "//conditions:default": glob([
+            "src/primihub/task/language/proto_parser.h",
+            "src/primihub/task/language/parser.h",
+            "src/primihub/task/language/py_parser.h",
+            "src/primihub/task/language/factory.h",
+            "src/primihub/task/semantic/task.h",
+            "src/primihub/task/semantic/pir_server_task.h",
+            "src/primihub/task/semantic/private_server_base.h",
+            "src/primihub/task/semantic/parser.h",
+            "src/primihub/task/semantic/pir_client_task.h",
+            "src/primihub/task/semantic/scheduler.h",
+            "src/primihub/task/semantic/scheduler/pir_scheduler.h",
+            "src/primihub/task/semantic/scheduler/fl_scheduler.h",
+            "src/primihub/task/semantic/scheduler/mpc_scheduler.h",
+            "src/primihub/task/semantic/scheduler/psi_scheduler.h",
+            "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
+            "src/primihub/task/semantic/scheduler/tee_scheduler.h",
+            "src/primihub/task/semantic/psi_server_task.h",
+            "src/primihub/task/semantic/psi_kkrt_task.h",
+            "src/primihub/task/semantic/psi_client_task.h",
+            "src/primihub/task/semantic/factory.h",
+            "src/primihub/task/semantic/mpc_task.h",
+            "src/primihub/task/semantic/fl_task.h",
+            "src/primihub/task/semantic/tee_task.h",
+            "src/primihub/util/util.h",
+        ]),
+    }),
+    copts = C_OPT + select({
+        "microsoft-apsi" : ["-D_ASPI"],
+        "//conditions:default": []
+    }),
+    defines = select({
+        "microsoft-apsi" : [
+            "USE_MICROSOFT_APSI",
+        ],
+        "//conditions:default": []
+    }),
+    # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
     linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
@@ -538,12 +709,12 @@ cc_library(
     name = "node_lib",
     srcs = glob([
             "src/primihub/node/worker/worker.cc",
-            
+
             "src/primihub/algorithm/dataload.cpp",
     ]),
     hdrs = glob([
             "src/primihub/node/worker/worker.h",
-            
+
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
@@ -688,10 +859,45 @@ cc_library(
     ],
 )
 
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+# load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 cc_library(
     name = "data_store_lib",
+    srcs = [
+        "src/primihub/data_store/driver_legcy.cc",
+        "src/primihub/data_store/driver.cc",
+        "src/primihub/data_store/csv/csv_driver.cc",
+        # "src/primihub/data_store/hdfs/hdfs_driver.cc",
+        "src/primihub/data_store/sqlite/sqlite_driver.cc",
+    ],
+    hdrs = [
+        "src/primihub/data_store/factory.h",
+        "src/primihub/data_store/dataset.h",
+        "src/primihub/data_store/driver_legcy.h",
+        "src/primihub/data_store/driver.h",
+        "src/primihub/data_store/csv/csv_driver.h",
+        #"src/primihub/data_store/hdfs/hdfs_driver.h",
+        "src/primihub/data_store/sqlite/sqlite_driver.h",
+    ],
+    linkopts = LINK_OPTS,
+    deps = [
+        "@arrow",
+        "@com_github_glog_glog//:glog",
+        ":eigen",
+        ":common_lib",
+        ":crypto_lib",
+        ":network_lib",
+        ":util_lib",
+        "@nlohmann_json",
+        "@com_github_sqlite_wrapper//:sqlite_wrapper",
+    ],
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+)
+
+
+cc_library(
+    name = "new_data_store_lib",
     srcs = [
             "src/primihub/data_store/driver.cc",
             "src/primihub/data_store/csv/csv_driver.cc",
@@ -706,21 +912,17 @@ cc_library(
 
             "src/primihub/data_store/csv/csv_driver.h",
             "src/primihub/data_store/hdfs/hdfs_driver.h",
-            
+
     ],
     linkopts = LINK_OPTS,
     deps = [
         "@arrow",
         "@com_github_glog_glog//:glog",
-        ":eigen",
-        ":common_lib",
-        ":crypto_lib",
-        ":network_lib",
-        ":util_lib",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
 )
+
 
 
 cc_library(
@@ -737,7 +939,7 @@ cc_library(
         "@boost//:thread",
     ],
     linkstatic = False,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -761,7 +963,7 @@ cc_library(
         "@boost//:outcome",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -771,16 +973,16 @@ cc_library(
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
-             "src/primihub/service/dataset/localkv/storage_leveldb.cc", 
+             "src/primihub/service/dataset/localkv/storage_leveldb.cc",
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
             "src/primihub/service/dataset/model.h",
-            "src/primihub/service/dataset/service.h",                 
+            "src/primihub/service/dataset/service.h",
             "src/primihub/service/dataset/storage_backend.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
-            "src/primihub/service/dataset/localkv/storage_leveldb.h",    
-            "src/primihub/service/dataset/util.hpp",     
+            "src/primihub/service/dataset/localkv/storage_leveldb.h",
+            "src/primihub/service/dataset/util.hpp",
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -800,7 +1002,7 @@ cc_library(
         "service_base",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -829,7 +1031,7 @@ cc_library(
         ":service_base",
     ],
     linkstatic = True,
-    visibility = ["//visibility:public"],   
+    visibility = ["//visibility:public"],
 )
 
 
@@ -855,7 +1057,7 @@ cc_library(
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 pybind_extension(
-    name = "primihub_channel", 
+    name = "primihub_channel",
     srcs = [
             "src/primihub/pybind_warpper/channel_warpper.cc",
     ],
@@ -871,9 +1073,19 @@ py_library(
     data = ["primihub_channel.so"],
 )
 
+pybind_extension(
+    name = "pybind_mpc",
+    srcs = [
+        "src/primihub/pybind_warpper/express_wrapper.cc",
+        "src/primihub/pybind_warpper/express_wrapper.h"
+    ],
+    deps = [
+        ":mpc_express_executor"
+    ],
+)
 
 pybind_extension(
-    name = "primihub_dataset_warpper", 
+    name = "primihub_dataset_warpper",
     srcs = [
             "src/primihub/pybind_warpper/dataset/dataset_warpper.cc",
             "src/primihub/pybind_warpper/dataset/dataset_warpper.hpp",
@@ -883,6 +1095,30 @@ pybind_extension(
         ":dataset_service",
         ":data_store_lib",
     ],
+)
+
+py_library(
+    name = "pybind_mpc",
+    data = ["pybind_mpc.so"]
+)
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+
+proto_library(
+    name = "proto_mpc_express_executor",
+    srcs = ["python/primihub/protos/express.proto"],
+)
+
+py_proto_library(
+    name = "py_proto_mpc_express_executor",
+    deps = [":proto_mpc_express_executor"]
+)
+
+py_grpc_library(
+    name = "py_mpc_express_grpc",
+    srcs = [":proto_mpc_express_executor"],
+    deps = [":py_proto_mpc_express_executor"]
 )
 
 py_library(
@@ -920,7 +1156,7 @@ cc_binary(
                   "src/primihub/node/ds.h",
             ]),
     copts = C_OPT,
-    includes = [    
+    includes = [
     ],
     linkstatic = True,
     linkopts = LINK_OPTS ,
@@ -940,7 +1176,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-       
+
     ],
 )
 
@@ -1063,7 +1299,7 @@ cc_test(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         ":dataset_service",
-        
+
     ],
 )
 
@@ -1143,15 +1379,15 @@ cc_test(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-	"@com_google_googletest//:gtest_main",
-	"@com_google_absl//absl/base",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
-	":crypto_lib",
+        ":crypto_lib",
         ":algorithm_lib",
      ],
 )
-# Some test case not in 'binary_evaluator_test.cc' will run into segment fault 
+# Some test case not in 'binary_evaluator_test.cc' will run into segment fault
 # or error, so this rule will not build all test case.
 cc_test(
     name = "protocol_aby3_test",
@@ -1172,6 +1408,144 @@ cc_test(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         ":protocol_aby3_lib",
+    ],
+)
+
+cc_test(
+  name = "aby3_div_test",
+  srcs = [
+    "test/primihub/algorithm/aby3_div_test.cc",
+    "src/primihub/operator/aby3_operator.h",
+    "src/primihub/operator/aby3_operator.cc",
+  ],
+  copts= C_OPT,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":network_lib",
+    ":protocol_aby3_lib",
+  ],
+)
+
+
+cc_test(
+    name = "aby3_A2B_test",
+    srcs = [
+      # "test/primihub/protocol/aby3/evaluator/evaluator_test.cc",
+      "test/primihub/algorithm/aby3_A2B_test.cc",
+      # "test/primihub/protocol/aby3/evaluator/piecewise_test.cc",
+      # "test/primihub/protocol/aby3/encryptor_test.cc",
+      # "test/primihub/protocol/aby3/runtime_test.cc",
+      # "test/primihub/protocol/aby3/sh3_gen_test.cc",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        ":protocol_aby3_lib",
+    ],
+)
+
+
+cc_test(
+  name = "aby3_add_test",
+  srcs = [
+    "test/primihub/algorithm/aby3_add_test.cc",
+    "src/primihub/operator/aby3_operator.h",
+    "src/primihub/operator/aby3_operator.cc",
+  ],
+  copts= C_OPT,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":network_lib",
+    ":protocol_aby3_lib",
+  ],
+)
+
+cc_test(
+  name = "aby3_mul_test",
+  srcs = [
+    "test/primihub/algorithm/aby3_mul_test.cc",
+    "src/primihub/operator/aby3_operator.h",
+    "src/primihub/operator/aby3_operator.cc",
+  ],
+  copts= C_OPT,
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":network_lib",
+    ":protocol_aby3_lib",
+  ],
+)
+
+cc_test(
+  name = "test_mpc_express_executor",
+  srcs = [
+    "test/primihub/executor/express_test.cc"
+  ],
+  copts = C_OPT,
+  linkopts = LINK_OPTS,
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":mpc_express_executor"
+  ]
+)
+
+cc_test(
+        name = "aby3_MSB_test",
+        srcs = [
+                "test/primihub/algorithm/aby3_MSB_test.cc",
+                "src/primihub/operator/aby3_operator.h",
+                "src/primihub/operator/aby3_operator.cc",
+        ],
+        copts= C_OPT,
+        linkopts = LINK_OPTS,
+        linkstatic = False,
+        deps = [
+                "@com_google_googletest//:gtest_main",
+                ":network_lib",
+                ":protocol_aby3_lib",
+        ],
+)
+
+cc_test(
+    name = "mpc_cmp_test",
+    srcs = [
+        "test/primihub/operator/cmp_op_test.cc"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_github_glog_glog//:glog",
+        ":aby3_operator",
+    ],
+)
+
+cc_test(
+    name = "arrow_test",
+    srcs = [
+        "test/primihub/tmp/arrow_test.cc"
+    ],
+    copts = C_OPT,
+    defines = DEFINES,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        "@com_github_glog_glog//:glog",
+        "@arrow",
+        ":data_store_lib",
     ],
 )
 
@@ -1286,6 +1660,8 @@ cc_test(
             ":share_lib",
     ],
 )
+
+
 
 
 cc_library(
@@ -1452,9 +1828,7 @@ cc_library(
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = True,
-    deps = [
-        "@osu_libpsi//:libpsi",
-    ],
+    deps = TASK_LIB_DEPS,
     visibility = ["//visibility:public"],
 )
 
