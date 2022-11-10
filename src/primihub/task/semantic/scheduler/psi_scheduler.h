@@ -50,17 +50,32 @@ namespace primihub::task {
 
 class PSIScheduler : public VMScheduler {
 public:
-    PSIScheduler(const std::string &node_id,
-                 const std::vector<Node> &peer_list,
-                 const PeerDatasetMap &peer_dataset_map, bool singleton) 
-        : VMScheduler(node_id, singleton),
-          peer_list_(peer_list),
-          peer_dataset_map_(peer_dataset_map) {}
+  PSIScheduler(const std::string &node_id,
+                const std::vector<Node> &peer_list,
+                const PeerDatasetMap &peer_dataset_map, bool singleton)
+      : VMScheduler(node_id, singleton),
+        peer_list_(peer_list),
+        peer_dataset_map_(peer_dataset_map) {}
 
-    void dispatch(const PushTaskRequest *pushTaskRequest) override;
+  void dispatch(const PushTaskRequest *pushTaskRequest) override;
 
-    void add_vm(Node *single_node, int i,
-		const PushTaskRequest *pushTaskRequest);
+  void add_vm(Node *single_node, int i,
+  const PushTaskRequest *pushTaskRequest);
+  void node_push_psi_task(const std::string &node_id,
+                    const PeerDatasetMap &peer_dataset_map,
+                    const PushTaskRequest &nodePushTaskRequest,
+                    std::string dest_node_address,
+                    bool is_client);
+
+ protected:
+  void set_psi_request_param(const std::string &node_id,
+                       const PeerDatasetMap &peer_dataset_map,
+                       PushTaskRequest &taskRequest,
+                       bool is_client);
+  void set_kkrt_psi_request_param(const std::string &node_id,
+                                const PeerDatasetMap &peer_dataset_map,
+                                PushTaskRequest &taskRequest,
+                                bool is_client);
 
 private:
     const std::vector<Node> peer_list_;

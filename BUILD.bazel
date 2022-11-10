@@ -173,7 +173,20 @@ cc_library(
                 "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         ],
 )
-
+cc_library(
+    name = "log_wrapper",
+    srcs = [
+        "src/primihub/util/log_wrapper.cc",
+    ],
+    hdrs = [
+         "src/primihub/util/log_wrapper.h",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_glog_glog//:glog",
+    ],
+)
 cc_library(
     name = "share_lib",
     srcs = glob([
@@ -567,6 +580,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     #"@osu_libpsi//:libpsi",
+    ":log_wrapper",
 ]
 
 PIR_LIB_DEPS = select({
@@ -700,7 +714,7 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-x86_64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"] + ["-L/usr/local/lib/"] + ["-lzmq"],
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )

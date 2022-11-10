@@ -29,10 +29,10 @@ TEEDataProviderTask::TEEDataProviderTask(
         this->server_addr_ = param_map["server"].value_string();
         this->dataset_ = param_map["dataset"].value_string();
     } catch (std::exception& e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return;
-    }    
-    
+    }
+
 }
 
 TEEDataProviderTask::~TEEDataProviderTask() {

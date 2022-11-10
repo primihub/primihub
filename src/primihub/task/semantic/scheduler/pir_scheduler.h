@@ -78,6 +78,21 @@ public:
 
     int transformRequest(PushTaskRequest &taskRequest);
 
+    void node_push_pir_task(const std::string &node_id,
+                        const PeerDatasetMap &peer_dataset_map,
+                        const PushTaskRequest &nodePushTaskRequest,
+                        std::string dest_node_address, bool is_client);
+
+ protected:
+    void set_pir_request_param(const std::string &node_id,
+                       const PeerDatasetMap &peer_dataset_map,
+                       PushTaskRequest &taskRequest,
+                       bool is_client);
+    void set_keyword_pir_request_param(const std::string &node_id,
+                                   const PeerDatasetMap &peer_dataset_map,
+                                   PushTaskRequest &taskRequest,
+                                   bool is_client);
+
 private:
     const std::vector<Node> peer_list_;
     const PeerDatasetMap peer_dataset_map_;

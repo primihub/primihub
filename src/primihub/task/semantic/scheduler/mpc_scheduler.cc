@@ -52,7 +52,7 @@ void MPCScheduler::push_task(const std::string &node_id,
       push_request.mutable_task()->mutable_params()->mutable_param_map();
   auto peer_dataset_map_it = peer_dataset_map.find(node_id);
   if (peer_dataset_map_it == peer_dataset_map.end()) {
-    LOG(ERROR) << "Error, peer_dataset_map not found.";
+    LOG_ERROR() << "Error, peer_dataset_map not found.";
     return;
   }
 
@@ -73,9 +73,9 @@ void MPCScheduler::push_task(const std::string &node_id,
       dest_node_address, grpc::InsecureChannelCredentials()));
   Status status = stub_->SubmitTask(&context, push_request, &pushTaskReply);
   if (status.ok()) {
-    LOG(INFO) << "Node push task rpc succeeded.";
+    LOG_INFO() << "Node push task rpc succeeded.";
   } else {
-    LOG(ERROR) << "Node push task rpc failed.";
+    LOG_ERROR() << "Node push task rpc failed.";
   }
 }
 
@@ -88,7 +88,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     request.mutable_task()->set_type(TaskType::NODE_TASK);
 
     if (peer_list_.size() != party_num_) {
-      LOG(ERROR) << "Only support two party in crypTFlow2 protocol.";
+      LOG_ERROR() << "Only support two party in crypTFlow2 protocol.";
       return;
     }
 
@@ -107,16 +107,16 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     std::string node_id = absl::StrCat("node", std::to_string(i));
     auto iter = node_map.find(node_id);
     if (iter == node_map.end()) {
-      LOG(ERROR) << "Can't find node " << node_id << " in node map.";
+      LOG_ERROR() << "Can't find node " << node_id << " in node map.";
       return;
     }
 
     std::string node_addr =
         absl::StrCat(iter->second.ip(), ":", iter->second.port());
 
-    threads.emplace_back(std::thread(push_task, iter->first,
-                                     this->peer_dataset_map_, std::ref(request),
-                                     node_addr));
+    threads.emplace_back(
+        std::thread(&MPCScheduler::push_task,
+            this, iter->first, this->peer_dataset_map_, std::ref(request), node_addr));
   }
 
   for (auto &t : threads)

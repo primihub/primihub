@@ -47,7 +47,7 @@ int PIRServerTask::loadParams(Params & params) {
     try {
         dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load pir server params: " << e.what();
+        LOG_ERROR() << "Failed to load pir server params: " << e.what();
         return -1;
     }
     return 0;
@@ -58,10 +58,10 @@ int PIRServerTask::loadDataset() {
     int ret = loadDatasetFromTXT(dataset_path_, elements_);
     // file reading error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi client failed.";
+        LOG_ERROR() << "Load dataset for psi client failed.";
         return -1;
     }
-    LOG(INFO) << "db size = " << ret;
+    LOG_INFO() << "db size = " << ret;
 
     // output the dataset length
     return ret;
@@ -71,16 +71,16 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
                             size_t elem_size, uint32_t poly_modulus_degree,
                             uint32_t plain_mod_bit_size, uint32_t bits_per_coeff,
                             bool use_ciphertext_multiplication) {
-    encryption_params_ = 
+    encryption_params_ =
         pir::GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
     pir_params_ = *(pir::CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
                                         use_ciphertext_multiplication, bits_per_coeff));
     db_size_ = dbsize;
 
     if (elements_.size() > dbsize) {
-        LOG(ERROR) << "Dataset size is not equal dbsize:" << elements_.size();
+        LOG_ERROR() << "Dataset size is not equal dbsize:" << elements_.size();
         for (int i = 0; i < elements_.size(); i++) {
-            LOG(INFO) << "elem: " << elements_[i];
+            LOG_INFO() << "elem: " << elements_[i];
         }
         return -1;
     } else if (elements_.size() < dbsize) {
@@ -105,7 +105,7 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
     }
     auto db_status = pir::PIRDatabase::Create(string_db, pir_params_);
     if (!db_status.ok()) {
-        LOG(ERROR) << db_status.status();
+        LOG_ERROR() << db_status.status();
         return -1;
     } else {
         pir_db_ = std::move(db_status).value();
@@ -121,8 +121,8 @@ uint32_t compute_plain_mod_bit_size_server(size_t dbsize, size_t elem_size) {
         uint64_t elem_per_plaintext = POLY_MODULUS_DEGREE_SVR \
                                     * (plain_mod_bit_size - 1) / 8 / elem_size;
         uint64_t num_plaintext = dbsize / elem_per_plaintext + 1;
-        if (num_plaintext <= 
-                (uint64_t)1 << (NOISE_BUDGET_BASE_SVR - 2 * plain_mod_bit_size)) 
+        if (num_plaintext <=
+                (uint64_t)1 << (NOISE_BUDGET_BASE_SVR - 2 * plain_mod_bit_size))
         {
             break;
         }
@@ -131,21 +131,21 @@ uint32_t compute_plain_mod_bit_size_server(size_t dbsize, size_t elem_size) {
 }
 
 int PIRServerTask::execute() {
-    LOG(INFO) << "load parameters";
+    LOG_INFO() << "load parameters";
     int ret = loadParams(params_);
     if (ret) {
-        LOG(ERROR) << "Load parameters for pir server fialed.";
+        LOG_ERROR() << "Load parameters for pir server fialed.";
         return -1;
     }
-    LOG(INFO) << "parameters loaded";
+    LOG_INFO() << "parameters loaded";
 
-    LOG(INFO) << "load dataset";
+    LOG_INFO() << "load dataset";
     int db_size = loadDataset();
     if (db_size <= 0) {
-        LOG(ERROR) << "Load dataset for pir server failed.";
+        LOG_ERROR() << "Load dataset for pir server failed.";
         return -1;
     }
-    LOG(INFO) << "dataset loaded";
+    LOG_INFO() << "dataset loaded";
 
     size_t dimensions = 1;
     size_t elem_size = ELEM_SIZE_SVR;
@@ -154,37 +154,37 @@ int PIRServerTask::execute() {
     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE_SVR;
     uint32_t bits_per_coeff = 0;
 
-    LOG(INFO) << "create database";
+    LOG_INFO() << "create database";
     ret = _SetUpDB(db_size, dimensions, elem_size, poly_modulus_degree,
                        plain_mod_bit_size, bits_per_coeff,
                        use_ciphertext_multiplication);
     if (ret) {
-        LOG(ERROR) << "Create pir db failed.";
+        LOG_ERROR() << "Create pir db failed.";
         return -1;
     }
-    LOG(INFO) << "database created";
+    LOG_INFO() << "database created";
 
     pir::Request pir_request;
     initRequest(request_, pir_request);
 
-    LOG(INFO) << "create server";
-    std::unique_ptr<pir::PIRServer> server = 
+    LOG_INFO() << "create server";
+    std::unique_ptr<pir::PIRServer> server =
         *(pir::PIRServer::Create(pir_db_, pir_params_));
 
     if (server == nullptr) {
-        LOG(ERROR) << "Failed to create pir server";
+        LOG_ERROR() << "Failed to create pir server";
         return -1;
     }
-    LOG(INFO) << "server created";
+    LOG_INFO() << "server created";
 
-    LOG(INFO) << "process request";
+    LOG_INFO() << "process request";
     auto  result_status = server->ProcessRequest(pir_request);
     if (!result_status.ok()) {
-        LOG(ERROR) << "Process pir request failed:"
+        LOG_ERROR() << "Process pir request failed:"
                    << result_status.status();
         return -1;
     }
-    LOG(INFO) << "request processed";
+    LOG_INFO() << "request processed";
 
     auto result_raw = std::move(result_status).value();
     const size_t num_reply = static_cast<size_t>(result_raw.reply().size());

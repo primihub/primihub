@@ -25,6 +25,7 @@
 #include "src/primihub/protos/psi.grpc.pb.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/private_server_base.h"
+#include "src/primihub/util/log_wrapper.h"
 
 using primihub::rpc::Params;
 using primihub::rpc::PsiRequest;

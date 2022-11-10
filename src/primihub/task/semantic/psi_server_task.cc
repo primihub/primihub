@@ -50,7 +50,7 @@ int PSIServerTask::loadParams(Params & params) {
         data_index_ = param_map["serverIndex"].value_int32();
         dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load psi server params: " << e.what();
+        LOG_ERROR() << "Failed to load psi server params: " << e.what();
         return -1;
     }
     return 0;
@@ -64,7 +64,7 @@ int PSIServerTask::loadDataset() {
     } else {
         driver_type = dataset_path_;
     }
-    VLOG(5) << "driver_type: " << driver_type;
+    V_VLOG(5) << "driver_type: " << driver_type;
     // current we supportes [csv, sqlite] as dataset
     int ret = 0;
     if (match_word == driver_type) {
@@ -74,7 +74,7 @@ int PSIServerTask::loadDataset() {
     }
      // file reading error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi server failed. dataset size: " << ret;
+        LOG_ERROR() << "Load dataset for psi server failed. dataset size: " << ret;
         return -1;
     }
     return 0;
@@ -83,7 +83,7 @@ int PSIServerTask::loadDataset() {
 int PSIServerTask::execute() {
     int ret = loadParams(params_);
     if (ret) {
-        LOG(ERROR) << "Load parameters for psi server fialed.";
+        LOG_ERROR() << "Load parameters for psi server fialed.";
         return -1;
     }
     ret = loadDataset();
@@ -92,7 +92,6 @@ int PSIServerTask::execute() {
     }
     Request psi_request;
     initRequest(request_, psi_request);
-
     std::unique_ptr<PsiServer> server =
         std::move(PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
 
