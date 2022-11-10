@@ -76,7 +76,6 @@ class ServerChannelProxy:
         self.recv_cache_ = {}
         self.stop_signal_ = False
         self.recv_loop_fut_ = None
-        self.base_score = 0.5
 
     # Start a recv thread to receive value and cache it.
     def StartRecvLoop(self):
@@ -153,6 +152,7 @@ class XGBHostInfer:
         self.proxy_server = proxy_server
         self.proxy_client_guest = proxy_client_guest
         self.learning_rate = lr
+        self.base_score = 0.5
 
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
         if tree is not None:
