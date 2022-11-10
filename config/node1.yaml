@@ -59,6 +59,12 @@ datasets:
   - description: "test_dataset"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
+  - description: "breast_1"
+    model: "csv"
+    source: "data/FL/wisconsin.data"
+  - description: "homo_lr_test"
+    model: "csv"
+    source: "data/FL/homo_lr_test.data"
 
 
 localkv:
