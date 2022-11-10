@@ -281,17 +281,19 @@ class XGBGuestInfer:
             self.guest_get_tree_ids(X, tree, current_lookup)
 
 
-@ph.context.function(role='host',
-                     protocol='xgboost',
-                     datasets=['test_hetero_xgb_host'],
-                     port='9005',
-                     task_type="classification")
+@ph.context.function(
+    role='host',
+    protocol='xgboost',
+    datasets=['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
+    port='8000',
+    task_type="classification")
 def xgb_host_infer():
-    logging.info("Start XGBoost host.")
+    logger.info("start xgb host logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    print("guest info ", role_node_map)
 
     if len(role_node_map["host"]) != 1:
         logger.error("Current node of host party: {}".format(
@@ -343,14 +345,13 @@ def xgb_host_infer():
     print("prediction y: ", pred_y)
 
 
-@ph.context.function(
-    role='host',
-    protocol='xgboost',
-    datasets=['test_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
-    port='8000',
-    task_type="classification")
-def xgb_host_infer():
-    logger.info("start xgb host logic...")
+@ph.context.function(role='guest',
+                     protocol='xgboost',
+                     datasets=['test_hetero_xgb_guest'],
+                     port='8000',
+                     task_type="classification")
+def xgb_guest_infer():
+    logger.info("start xgb guest logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
