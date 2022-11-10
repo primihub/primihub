@@ -58,10 +58,6 @@ datasets:
     model: "csv"
     source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_host.csv"
 
-  - description: "test_hetero_xgb_guest"
-    model: "csv"
-    source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
-
 localkv: 
   model: "leveldb"
   path: "/data/localdb1"
