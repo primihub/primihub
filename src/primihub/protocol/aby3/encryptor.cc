@@ -5,46 +5,6 @@
 
 namespace primihub {
 
-// Convert a u64 value from host order to network order.
-static unsigned long long htonll(unsigned long long val)
-{
-    if(__BYTE_ORDER == __LITTLE_ENDIAN) {
-        return (((unsigned long long) htonl((int)((val << 32) >> 32))) << 32) | 
-                (unsigned int) htonl((int)(val >> 32)); 
-    } else if (__BYTE_ORDER == __BIG_ENDIAN) {
-        return val;
-    }
-}
-
-// Print value in u64 array into multiple string.
-static void convertArrayToStrings(i64 *mat_ptr, size_t mat_num, 
-                                  std::vector<std::string> &lines) {
-  size_t index = 0;
-  size_t out_num = mat_num;
-
-  while (out_num != 0) {
-    if (out_num < 5) {
-      std::stringstream ss;
-      for (size_t i = 0; i < out_num; i ++) { 
-        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index))) 
-           << " ";
-        index += 1;
-      }
-      out_num = 0;
-      lines.emplace_back(ss.str());
-    } else {
-      std::stringstream ss;
-      for (size_t i = 0; i < 5; i ++) {
-        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index))) 
-           << " ";
-        index += 1;
-      }
-      out_num -= 5;
-      lines.emplace_back(ss.str());
-    }
-  }
-}
-
 void Sh3Encryptor::complateSharing(CommPkg& comm, span<i64> send,
                                     span<i64> recv) {
   comm.mNext().asyncSendCopy(send);

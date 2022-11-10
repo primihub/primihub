@@ -27,6 +27,11 @@
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
+
+// Print value in u64 array into string in network order.
+void convertArrayToStrings(i64 *mat_ptr, size_t mat_num,
+                           std::vector<std::string> &lines);
+
 class MPCOperator {
 public:
   Channel mNext, mPrev;
@@ -56,10 +61,58 @@ public:
     for (u64 i = 0; i < vals.size(); ++i)
       fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
+
+#ifdef ENABLE_AUDIT
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
+    
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+
+    LOG(INFO) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      LOG(INFO) << line; 
+    LOG(INFO) << "Dump finish.";
+
+    lines.clear();
+    
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    LOG(INFO) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      LOG(INFO) << line; 
+    LOG(INFO) << "Dump finish.";
+#endif
   }
 
   template <Decimal D> void createShares(sf64Matrix<D> &sharedMatrix) {
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
+
+#ifdef ENABLE_AUDIT
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
+    
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+
+    LOG(INFO) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      LOG(INFO) << line; 
+    LOG(INFO) << "Dump finish.";
+
+    lines.clear();
+    
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    LOG(INFO) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      LOG(INFO) << line; 
+    LOG(INFO) << "Dump finish.";
+#endif
   }
 
   template <Decimal D>
