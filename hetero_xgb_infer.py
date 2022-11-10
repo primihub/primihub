@@ -76,6 +76,7 @@ class ServerChannelProxy:
         self.recv_cache_ = {}
         self.stop_signal_ = False
         self.recv_loop_fut_ = None
+        self.base_score = 0.5
 
     # Start a recv thread to receive value and cache it.
     def StartRecvLoop(self):
