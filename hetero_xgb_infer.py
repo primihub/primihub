@@ -329,7 +329,7 @@ def xgb_host_infer():
     print("prediction y: ", pred_y)
 
 
-@ph.context.function(role='host',
+@ph.context.function(role='guest',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_guest'],
                      port='9001',
@@ -340,6 +340,7 @@ def xgb_guest_infer():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    print("guest info ", node_addr_map, role_node_map)
 
     if len(role_node_map["host"]) != 1:
         logger.error("Current node of host party: {}".format(
