@@ -77,21 +77,21 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             auto it = param_map.find("sync_result_to_server");
             if (it != param_map.end()) {
                 sync_result_to_server = it->second.value_int32() > 0;
-                VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
+                V_VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
             }
             it = param_map.find("server_outputFullFilname");
             if (it != param_map.end()) {
                 server_result_path = it->second.value_string();
-                VLOG(5) << "server_outputFullFilname: " << server_result_path;
+                V_VLOG(5) << "server_outputFullFilname: " << server_result_path;
             }
             data_index_ = param_map["clientIndex"].value_int32();
 	        psi_type_ = param_map["psiType"].value_int32();
             dataset_path_ = param_map["clientData"].value_string();
             result_file_path_ = param_map["outputFullFilename"].value_string();
             host_address_ = param_map["serverAddress"].value_string();
-            VLOG(5) << "serverAddress: " << host_address_;
+            V_VLOG(5) << "serverAddress: " << host_address_;
         } catch (std::exception &e) {
-            LOG(ERROR) << "Failed to load params: " << e.what();
+            LOG_ERROR() << "Failed to load params: " << e.what();
             return -1;
         }
     } else {
@@ -102,7 +102,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             dataset_path_ = param_map["serverData"].value_string();
             host_address_ = param_map["clientAddress"].value_string();
         } catch (std::exception &e) {
-            LOG(ERROR) << "Failed to load params: " << e.what();
+            LOG_ERROR() << "Failed to load params: " << e.what();
             return -1;
         }
     }
@@ -116,7 +116,7 @@ int PSIKkrtTask::_LoadDatasetFromSQLite(std::string& conn_str, int data_col,
     // std::shared_ptr<DataDriver>
     auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
     if (driver == nullptr) {
-        LOG(ERROR) << "create sqlite db driver failed";
+        LOG_ERROR() << "create sqlite db driver failed";
         return -1;
     }
     // std::shared_ptr<Cursor> &cursor
@@ -137,7 +137,7 @@ int PSIKkrtTask::_LoadDatasetFromSQLite(std::string& conn_str, int data_col,
     for (int64_t i = 0; i < array->length(); i++) {
         col_array.push_back(array->GetString(i));
     }
-    VLOG(5) << "psi server loaded data records: " << col_array.size();
+    V_VLOG(5) << "psi server loaded data records: " << col_array.size();
     return 0;
 }
 
@@ -151,7 +151,7 @@ int PSIKkrtTask::_LoadDatasetFromCSV(std::string &filename, int data_col,
 
     int num_col = table->num_columns();
     if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
+        LOG_ERROR() << "psi dataset colunum number is smaller than data_col";
         return -1;
     }
 
@@ -180,7 +180,7 @@ int PSIKkrtTask::_LoadDataset(void) {
     }
      // file reading error or file empty
     if (ret) {
-        LOG(ERROR) << "Load dataset for psi server failed. dataset size: " << ret;
+        LOG_ERROR() << "Load dataset for psi server failed. dataset size: " << ret;
         return -1;
     }
     return 0;
@@ -200,7 +200,7 @@ void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     std::vector<u64> dest;
     chl.recv(dest);
 
-    //LOG(INFO) << "send size:" << dest[0];
+    //LOG_INFO() << "send size:" << dest[0];
     sendSize = dest[0];
     std::vector<block> sendSet(sendSize), recvSet(recvSize);
 
@@ -215,21 +215,21 @@ void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     }
     KkrtNcoOtReceiver otRecv;
     KkrtPsiReceiver recvPSIs;
-    //LOG(INFO) << "client step 1";
+    //LOG_INFO() << "client step 1";
 
     //recvPSIs.setTimer(gTimer);
     chl.recv(dummy, 1);
-    //LOG(INFO) << "client step 2";
+    //LOG_INFO() << "client step 2";
     //gTimer.reset();
     chl.asyncSend(dummy, 1);
-    //LOG(INFO) << "client step 3";
+    //LOG_INFO() << "client step 3";
     //Timer timer;
     //auto start = timer.setTimePoint("start");
     recvPSIs.init(sendSize, recvSize, 40, chl, otRecv, prng.get<block>());
-    //LOG(INFO) << "client step 4";
+    //LOG_INFO() << "client step 4";
     //auto mid = timer.setTimePoint("init");
     recvPSIs.sendInput(recvSet, chl);
-    //LOG(INFO) << "client step 5";
+    //LOG_INFO() << "client step 5";
     //auto end = timer.setTimePoint("done");
 
     _GetIntsection(recvPSIs);
@@ -247,7 +247,7 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
     std::vector<u64> dest;
     chl.recv(dest);
 
-    //LOG(INFO) << "recv size:" << dest[0];
+    //LOG_INFO() << "recv size:" << dest[0];
     recvSize = dest[0];
     std::vector<block> set(sendSize);
     u8 block_size = sizeof(block);
@@ -263,28 +263,28 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
 
     KkrtNcoOtSender otSend;
     KkrtPsiSender sendPSIs;
-    //LOG(INFO) << "server step 1";
+    //LOG_INFO() << "server step 1";
 
     sendPSIs.setTimer(gTimer);
     chl.asyncSend(dummy, 1);
-    //LOG(INFO) << "server step 2";
+    //LOG_INFO() << "server step 2";
     chl.recv(dummy, 1);
-    //LOG(INFO) << "server step 3";
+    //LOG_INFO() << "server step 3";
     sendPSIs.init(sendSize, recvSize, 40, chl, otSend, prng.get<block>());
-    //LOG(INFO) << "server step 4";
+    //LOG_INFO() << "server step 4";
     sendPSIs.sendInput(set, chl);
-    //LOG(INFO) << "server step 5";
+    //LOG_INFO() << "server step 5";
 
     u64 dataSent = chl.getTotalDataSent();
-    //LOG(INFO) << "server step 6";
+    //LOG_INFO() << "server step 6";
 
     chl.resetStats();
-    //LOG(INFO) << "server step 7";
+    //LOG_INFO() << "server step 7";
 }
 
 int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
     /*for (auto pos : receiver.mIntersection) {
-        LOG(INFO) << pos;
+        LOG_INFO() << pos;
     }*/
 
     if (psi_type_ == PsiType::DIFFERENCE) {
@@ -313,7 +313,7 @@ int PSIKkrtTask::send_result_to_server() {
     // cause grpc port is alive along with node life duration,
     // so send result data to server by grpc
     grpc::ClientContext context;
-    VLOG(5) << "send_result_to_server";
+    V_VLOG(5) << "send_result_to_server";
     auto channel = grpc::InsecureChannelCredentials();
     // std::unique_ptr<VMNode::Stub>
     auto stub = primihub::rpc::VMNode::NewStub(grpc::CreateChannel(host_address_, channel));
@@ -345,32 +345,33 @@ int PSIKkrtTask::send_result_to_server() {
             pack_size += item_len;
             sended_index++;
         }
+
         writer->Write(task_request);
         sended_size += pack_size;
-        VLOG(5) << "sended_size: " << sended_size << " "
+        V_VLOG(5) << "sended_size: " << sended_size << " sended_index: " << sended_index;
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();
         if (sended_index >= this->result_.size()) {
-            VLOG(5) << " sended_index: " << sended_index
+            V_VLOG(5) << " sended_index: " << sended_index
                     << " result size: " << this->result_.size() << " end of send";
             break;
         }
     } while(true);
     writer->WritesDone();
     grpc::Status status = writer->Finish();
-    VLOG(0) << "writer->Finish";
+    V_VLOG(0) << "writer->Finish";
     if (status.ok()) {
         auto ret_code = task_response.ret_code();
         if (ret_code) {
-            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+            LOG_ERROR() << "client Node send result data to server return failed error code: " << ret_code;
             return -1;
         }
     } else {
-        LOG(ERROR) << "client Node send result data to server failed. error_code: "
+        LOG_ERROR() << "client Node send result data to server failed. error_code: "
                    << status.error_code() << ": " << status.error_message();
         return -1;
     }
-    VLOG(0) << "send result to server success";
+    V_VLOG(0) << "send result to server success";
 #endif
     return 0;
 }
@@ -400,21 +401,21 @@ int PSIKkrtTask::saveResult(void) {
 
 
     if (ValidateDir(result_file_path_)) {
-        LOG(ERROR) << "can't access file path: "
+        LOG_ERROR() << "can't access file path: "
                    << result_file_path_;
         return -1;
     }
     int ret = csv_driver->write(table, result_file_path_);
 
     if (ret != 0) {
-        LOG(ERROR) << "Save PSI result to file " << result_file_path_ << " failed.";
+        LOG_ERROR() << "Save PSI result to file " << result_file_path_ << " failed.";
         return -1;
     }
     if (this->sync_result_to_server) {
         send_result_to_server();
     }
 
-    LOG(INFO) << "Save PSI result to " << result_file_path_ << ".";
+    LOG_INFO() << "Save PSI result to " << result_file_path_ << ".";
     return 0;
 }
 
@@ -424,9 +425,9 @@ int PSIKkrtTask::execute() {
     int ret = _LoadParams(task_param_);
     if (ret) {
         if (role_tag_ == 0) {
-            LOG(ERROR) << "Kkrt psi client load task params failed.";
+            LOG_ERROR() << "Kkrt psi client load task params failed.";
         } else {
-            LOG(ERROR) << "Kkrt psi server load task params failed.";
+            LOG_ERROR() << "Kkrt psi server load task params failed.";
         }
         return ret;
     }
@@ -435,9 +436,9 @@ int PSIKkrtTask::execute() {
     ret = _LoadDataset();
     if (ret) {
         if (role_tag_ == 0) {
-            LOG(ERROR) << "Psi client load dataset failed.";
+            LOG_ERROR() << "Psi client load dataset failed.";
         } else {
-            LOG(ERROR) << "Psi server load dataset failed.";
+            LOG_ERROR() << "Psi server load dataset failed.";
         }
     }
     auto load_dataset_ts = timer.timeElapse();
@@ -453,12 +454,12 @@ int PSIKkrtTask::execute() {
     Channel chl = ep.addChannel();
 
     if (mode == EpMode::Client) {
-        LOG(INFO) << "start recv.";
+        LOG_INFO() << "start recv.";
         auto recv_data_start = timer.timeElapse();
         try {
             _kkrtRecv(chl);
         } catch (std::exception &e) {
-            LOG(ERROR) << "Kkrt psi client node task failed:"
+            LOG_ERROR() << "Kkrt psi client node task failed:"
 	               << e.what();
             chl.close();
             ep.stop();
@@ -469,12 +470,12 @@ int PSIKkrtTask::execute() {
         auto time_cost = recv_data_end - recv_data_start;
         VLOG(5) << "kkrt client process data time cost(ms): " << time_cost;
     } else {
-        LOG(INFO) << "start send";
+        LOG_INFO() << "start send";
         auto recv_data_start = timer.timeElapse();
         try {
             _kkrtSend(chl);
         } catch (std::exception &e) {
-            LOG(ERROR) << "Kkrt psi server node task failed:"
+            LOG_ERROR() << "Kkrt psi server node task failed:"
 		       << e.what();
             chl.close();
             ep.stop();
@@ -488,13 +489,13 @@ int PSIKkrtTask::execute() {
     chl.close();
     ep.stop();
     ios.stop();
-    LOG(INFO) << "kkrt psi run success";
+    LOG_INFO() << "kkrt psi run success";
 
     if (mode == EpMode::Client) {
         auto _start = timer.timeElapse();
         ret = saveResult();
         if (ret) {
-            LOG(ERROR) << "Save psi result failed.";
+            LOG_ERROR() << "Save psi result failed.";
             return -1;
         }
         auto _end = timer.timeElapse();

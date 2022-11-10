@@ -49,7 +49,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
                 recv_query_data_direct = true;   // read query data from clientData key directly
             }
             dataset_path_ = client_data.value_string();
-            VLOG(5) << "dataset_path_: " << dataset_path_;
+            V_VLOG(5) << "dataset_path_: " << dataset_path_;
         } else {
             LOG(ERROR) << "no keyword: clientData match found";
             return -1;
@@ -57,21 +57,21 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
         auto result_file_path_it = param_map.find("outputFullFilename");
         if (result_file_path_it != param_map.end()) {
             result_file_path_ = result_file_path_it->second.value_string();
-            VLOG(5) << "result_file_path_: " << result_file_path_;
+            V_VLOG(5) << "result_file_path_: " << result_file_path_;
         } else  {
-            LOG(ERROR) << "no keyword: outputFullFilename match found";
+            LOG_ERROR() << "no keyword: outputFullFilename match found";
             return -1;
         }
         auto server_address_it = param_map.find("serverAddress");
         if (server_address_it != param_map.end()) {
             server_address_ = server_address_it->second.value_string();
-            VLOG(5) << "server_address_: " << server_address_;
+            V_VLOG(5) << "server_address_: " << server_address_;
         } else {
-            LOG(ERROR) << "no keyword: serverAddress match found";
+            LOG_ERROR() << "no keyword: serverAddress match found";
             return -1;
         }
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
     }
     return 0;
@@ -84,7 +84,7 @@ KeywordPIRClientTask::_LoadDataFromDataset() {
         apsi::util::CSVReader reader(dataset_path_);
         std::tie(db_data, orig_items) = reader.read();
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Could not open or read file `"
+        LOG_ERROR() << "Could not open or read file `"
                    << dataset_path_ << "`: "
                    << ex.what();
         return { nullptr, orig_items };
@@ -125,7 +125,7 @@ int KeywordPIRClientTask::saveResult(
         const std::vector<Item>& items,
         const std::vector<MatchRecord>& intersection) {
     if (orig_items.size() != items.size()) {
-        LOG(ERROR) << "Keyword PIR orig_items must have the same size as items, detail: "
+        LOG_ERROR() << "Keyword PIR orig_items must have the same size as items, detail: "
             << "orig_items size: " << orig_items.size() << " items size: " << items.size();
         return -1;
     }
@@ -133,7 +133,7 @@ int KeywordPIRClientTask::saveResult(
     std::stringstream csv_output;
     for (size_t i = 0; i < orig_items.size(); i++) {
         if (!intersection[i].found) {
-            VLOG(5) << "no match result found for query: [" << orig_items[i] << "]";
+            V_VLOG(5) << "no match result found for query: [" << orig_items[i] << "]";
             continue;
         }
         csv_output << orig_items[i];    // original query
@@ -142,7 +142,7 @@ int KeywordPIRClientTask::saveResult(
         }
         csv_output << endl;
     }
-    VLOG(5) << "result_file_path_: " << result_file_path_;
+    V_VLOG(5) << "result_file_path_: " << result_file_path_;
     if (ValidateDir(result_file_path_)) {
         LOG(ERROR) << "can't access file path: " << result_file_path_;
         return -1;
@@ -158,7 +158,7 @@ int KeywordPIRClientTask::saveResult(
 int KeywordPIRClientTask::execute() {
     auto ret = _LoadParams(task_param_);
     if (ret) {
-        LOG(ERROR) << "Pir client load task params failed.";
+        LOG_ERROR() << "Pir client load task params failed.";
         return ret;
     }
     ZMQReceiverChannel channel;
@@ -170,40 +170,42 @@ int KeywordPIRClientTask::execute() {
     if (pos != std::string::npos) {
         server_ip = server_address_.substr(0, pos);
     }
+
     server_address_ = "tcp://" + server_ip + ":2222";
-    VLOG(5) << "begin to connect to server: " << server_address_;
+    V_VLOG(5) << "begin to connect to server: " << server_address_;
+
     channel.connect(server_address_);
-    VLOG(5) << "connect to server: " << server_address_ << " end";
+    V_VLOG(5) << "connect to server: " << server_address_ << " end";
     if (!channel.is_connected()) {
-        LOG(ERROR) << "Failed to connect to keyword PIR server: " << server_address_;
+        LOG_ERROR() << "Failed to connect to keyword PIR server: " << server_address_;
         return -1;
     }
-    VLOG(5) << "connect to server: " << server_address_ << " success, begin to create PSIParams";
+    V_VLOG(5) << "connect to server: " << server_address_ << " success, begin to create PSIParams";
     std::unique_ptr<PSIParams> params{nullptr};
     try {
         // params = std::make_unique<PSIParams>(Receiver::RequestParams(channel));
-        VLOG(5) << "begin to create PSIParams";
+        V_VLOG(5) << "begin to create PSIParams";
         auto psi_params = Receiver::RequestParams(channel);
-        VLOG(5) << "get reqeust param success";
-        VLOG(5) << "PSI parameters set to: " << psi_params.to_string();
-        VLOG(5) << "Derived parameters: "
+        V_VLOG(5) << "get reqeust param success";
+        V_VLOG(5) << "PSI parameters set to: " << psi_params.to_string();
+        V_VLOG(5) << "Derived parameters: "
             << "item_bit_count_per_felt: " << psi_params.item_bit_count_per_felt()
             << "; item_bit_count: " << psi_params.item_bit_count()
             << "; bins_per_bundle: " << psi_params.bins_per_bundle()
             << "; bundle_idx_count: " << psi_params.bundle_idx_count();
         params = std::make_unique<PSIParams>(psi_params);
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Failed to receive keyword PIR valid parameters: " << ex.what();
+        LOG_ERROR() << "Failed to receive keyword PIR valid parameters: " << ex.what();
         return -1;
     }
 
     ThreadPoolMgr::SetThreadCount(8);
-    VLOG(5) << "Keyword PIR setting thread count to " << ThreadPoolMgr::GetThreadCount();
+    V_VLOG(5) << "Keyword PIR setting thread count to " << ThreadPoolMgr::GetThreadCount();
 
     Receiver receiver(*params);
     auto [query_data, orig_items] = _LoadDataset();
     if (!query_data || !holds_alternative<CSVReader::UnlabeledData>(*query_data)) {
-        LOG(ERROR) << "Failed to read keyword PIR query file: terminating";
+        LOG_ERROR() << "Failed to read keyword PIR query file: terminating";
         return -1;
     }
 
@@ -212,26 +214,26 @@ int KeywordPIRClientTask::execute() {
     std::vector<Item> items_vec(items.begin(), items.end());
     std::vector<HashedItem> oprf_items;
     std::vector<LabelKey> label_keys;
-    VLOG(5) << "begin to Receiver::RequestOPRF";
+    V_VLOG(5) << "begin to Receiver::RequestOPRF";
     try {
-        VLOG(5) << "Sending OPRF request for " << items_vec.size() << " items";
+        V_VLOG(5) << "Sending OPRF request for " << items_vec.size() << " items";
         std::tie(oprf_items, label_keys) = Receiver::RequestOPRF(items_vec, channel);
-        VLOG(5) << "Received OPRF request for " << items_vec.size() << " items"
+        V_VLOG(5) << "Received OPRF request for " << items_vec.size() << " items"
             << " oprf_items: " << oprf_items.size() << " label_keys: " << label_keys.size();
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Keyword PIR OPRF request failed: " << ex.what();
+        LOG_ERROR() << "Keyword PIR OPRF request failed: " << ex.what();
         return -1;
     }
-    VLOG(5) << "Receiver::RequestOPRF end, begin to receiver.request_query";
+    V_VLOG(5) << "Receiver::RequestOPRF end, begin to receiver.request_query";
 
     std::vector<MatchRecord> query_result;
     try {
         query_result = receiver.request_query(oprf_items, label_keys, channel);
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Failed sending keyword PIR query: " << ex.what();
+        LOG_ERROR() << "Failed sending keyword PIR query: " << ex.what();
         return -1;
     }
-    VLOG(5) << "receiver.request_query end";
+    V_VLOG(5) << "receiver.request_query end";
 
     this->saveResult(orig_items, items, query_result);
     return 0;

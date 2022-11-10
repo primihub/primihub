@@ -37,8 +37,7 @@ PSIClientTask::PSIClientTask(const std::string &node_id,
                              const std::string &task_id,
                              const TaskParam *task_param,
                              std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id),
-      job_id_(job_id), task_id_(task_id) {}
+    : TaskBase(task_param, dataset_service) {}
 
 int PSIClientTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
@@ -52,19 +51,19 @@ int PSIClientTask::_LoadParams(Task &task) {
         auto it = param_map.find("sync_result_to_server");
         if (it != param_map.end()) {
             sync_result_to_server = it->second.value_int32();
-            VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
+            V_VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
         }
         it = param_map.find("server_outputFullFilname");
         if (it != param_map.end()) {
             server_result_path = it->second.value_string();
-            VLOG(5) << "server_outputFullFilname: " << server_result_path;
+            V_VLOG(5) << "server_outputFullFilname: " << server_result_path;
         }
         server_index_ = param_map["serverIndex"];
         server_address_ = param_map["serverAddress"].value_string();
         server_dataset_ = param_map[server_address_].value_string();
 
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
     }
     return 0;
@@ -80,7 +79,7 @@ int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, s
     auto table = std::get<std::shared_ptr<Table>>(ds->data);
     int col_count = table->num_columns();
     if(col_count < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col, "
+        LOG_ERROR() << "psi dataset colunum number is smaller than data_col, "
             << "dataset total colum: " << col_count
             << "expected col index: " << data_col;
         return -1;
@@ -89,7 +88,7 @@ int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, s
     for (int64_t i = 0; i < array->length(); i++) {
         col_array.push_back(array->GetString(i));
     }
-    VLOG(0) << "loaded records number: " << col_array.size();
+    V_VLOG(0) << "loaded records number: " << col_array.size();
     return col_array.size();
 }
 
@@ -105,7 +104,7 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
 
     int num_col = table->num_columns();
     if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
+        LOG_ERROR() << "psi dataset colunum number is smaller than data_col";
         return -1;
     }
 
@@ -135,7 +134,7 @@ int PSIClientTask::_LoadDataset(void) {
     }
     // load datasets encountes error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi client failed. dataset size: " << ret;
+        LOG_ERROR() << "Load dataset for psi client failed. dataset size: " << ret;
         return -1;
     }
     return 0;
@@ -166,7 +165,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
             taskResponse.psi_response().server_setup().bloom_filter().num_hash_functions()
         );
     } else {
-        LOG(ERROR) << "Node psi client get intersection error!";
+        LOG_ERROR() << "Node psi client get intersection error!";
         return -1;
     }
     auto build_response_time_cost = timer.timeElapse();
@@ -205,7 +204,7 @@ int PSIClientTask::execute() {
     SCopedTimer timer;
     int ret = _LoadParams(task_param_);
     if (ret) {
-        LOG(ERROR) << "Psi client load task params failed.";
+        LOG_ERROR() << "Psi client load task params failed.";
         return ret;
     }
     auto load_param_time_cost = timer.timeElapse();
@@ -213,7 +212,7 @@ int PSIClientTask::execute() {
 
     ret = _LoadDataset();
     if (ret) {
-        LOG(ERROR) << "Psi client load dataset failed.";
+        LOG_ERROR() << "Psi client load dataset failed.";
         return ret;
     }
     auto load_dataset_ts = timer.timeElapse();
@@ -229,6 +228,7 @@ int PSIClientTask::execute() {
     auto build_request_time_cost = build_request_ts - load_dataset_ts;
     VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     grpc::ClientContext context;
+
     grpc::ChannelArguments channel_args;
     channel_args.SetMaxReceiveMessageSize(128*1024*1024);
     std::shared_ptr<grpc::Channel> channel =
@@ -299,13 +299,13 @@ int PSIClientTask::execute() {
     Status status = client_stream->Finish();
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
-            LOG(ERROR) << "Node psi server process request error.";
+            LOG_ERROR() << "Node psi server process request error.";
             return -1;
         }
         auto _start = timer.timeElapse();
         int ret = _GetIntsection(client, taskResponse);
         if (ret) {
-            LOG(ERROR) << "Node psi client get insection failed.";
+            LOG_ERROR() << "Node psi client get insection failed.";
             return -1;
         }
         auto _end =  timer.timeElapse();
@@ -313,12 +313,12 @@ int PSIClientTask::execute() {
         VLOG(5) << "get intersection time cost(ms): " << get_intersection_time_cost;
         ret = saveResult();
         if (ret) {
-            LOG(ERROR) << "Save psi result failed.";
+            LOG_ERROR() << "Save psi result failed.";
             return -1;
         }
     } else {
-        LOG(ERROR) << "Node push psi server task rpc failed.";
-        LOG(ERROR) << status.error_code() << ": " << status.error_message();
+        LOG_ERROR() << "Node push psi server task rpc failed.";
+        LOG_ERROR() << status.error_code() << ": " << status.error_message();
         return -1;
     }
     if (this->reveal_intersection_ && this->sync_result_to_server) {
@@ -329,7 +329,7 @@ int PSIClientTask::execute() {
 
 int PSIClientTask::send_result_to_server() {
     grpc::ClientContext context;
-    VLOG(5) << "send_result_to_server";
+    V_VLOG(5) << "send_result_to_server";
      // std::unique_ptr<VMNode::Stub>
     auto channel = grpc::InsecureChannelCredentials();
     auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
@@ -362,7 +362,7 @@ int PSIClientTask::send_result_to_server() {
         }
         writer->Write(task_request);
         sended_size += pack_size;
-        VLOG(5) << "sended_size: " << sended_size << " "
+        V_VLOG(5) << "sended_size: " << sended_size << " "
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();
         if (sended_index >= this->result_.size()) {
@@ -374,15 +374,15 @@ int PSIClientTask::send_result_to_server() {
     if (status.ok()) {
         auto ret_code = task_response.ret_code();
         if (ret_code) {
-            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+            LOG_ERROR() << "client Node send result data to server return failed error code: " << ret_code;
             return -1;
         }
     } else {
-        LOG(ERROR) << "client Node send result data to server failed. error_code: "
+        LOG_ERROR() << "client Node send result data to server failed. error_code: "
                    << status.error_code() << ": " << status.error_message();
         return -1;
     }
-    VLOG(5) << "send result to server success";
+    V_VLOG(5) << "send result to server success";
 }
 
 int PSIClientTask::saveResult() {
@@ -410,18 +410,18 @@ int PSIClientTask::saveResult() {
 
 
     if (ValidateDir(result_file_path_)) {
-        LOG(ERROR) << "can't access file path: "
+        LOG_ERROR() << "can't access file path: "
                    << result_file_path_;
         return -1;
     }
     int ret = csv_driver->write(table, result_file_path_);
 
     if (ret != 0) {
-        LOG(ERROR) << "Save PSI result to file " << result_file_path_ << " failed.";
+        LOG_ERROR() << "Save PSI result to file " << result_file_path_ << " failed.";
         return -1;
     }
 
-    LOG(INFO) << "Save PSI result to " << result_file_path_ << ".";
+    LOG_INFO() << "Save PSI result to " << result_file_path_ << ".";
     return 0;
 }
 

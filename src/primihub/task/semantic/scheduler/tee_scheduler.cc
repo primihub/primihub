@@ -65,7 +65,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
         }
     }
 
-    LOG(INFO) << " 📧  Dispatching task to: "
+    LOG_INFO() << " 📧  Dispatching task to: "
               << request.mutable_task()->mutable_node_map()->size() << " nodes";
 
     google::protobuf::Map<std::string, Node> node_map =
@@ -78,8 +78,8 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
         std::string dest_node_address(
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
 
-        LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
-        this->push_task_to_node(pair.first, 
+        LOG_INFO() << " 📧  Dispatching task to: " << dest_node_address;
+        this->push_task_to_node(pair.first,
                                 this->peer_dataset_map_,
                                 std::ref(request),
                                 dest_node_address);
@@ -118,17 +118,17 @@ void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
 void TEEScheduler::push_task_to_node (const std::string &node_id,
                                       const PeerDatasetMap &peer_dataset_map,
                                       const PushTaskRequest &request,
-                                      const std::string &dest_node_address) {                              
+                                      const std::string &dest_node_address) {
     grpc::ClientContext context;
     PushTaskRequest _1NodePushTaskRequest;
-    _1NodePushTaskRequest.CopyFrom(request);  
+    _1NodePushTaskRequest.CopyFrom(request);
 
     // Add datasets params to request
     google::protobuf::Map<std::string, ParamValue> *param_map =
         _1NodePushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
     auto peer_dataset_map_it = peer_dataset_map.find(node_id);
     if (peer_dataset_map_it == peer_dataset_map.end()) {
-        LOG(ERROR) << "push_task_to_node: peer_dataset_map not found";
+        LOG_ERROR() << "push_task_to_node: peer_dataset_map not found";
         return;
     }
     std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
@@ -146,9 +146,9 @@ void TEEScheduler::push_task_to_node (const std::string &node_id,
     primihub::rpc::PushTaskReply response;
     grpc::Status status = stub->SubmitTask(&context, _1NodePushTaskRequest, &response);
     if (status.ok()) {
-        LOG(INFO) << "📤 TEE Task pushed to node: " << node_id;
+        LOG_INFO() << "📤 TEE Task pushed to node: " << node_id;
     } else {
-        LOG(ERROR) << "Failed to push task to node: " << node_id
+        LOG_ERROR() << "Failed to push task to node: " << node_id
                    << " with error: " << status.error_message();
     }
 }

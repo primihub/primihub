@@ -66,7 +66,7 @@ int PIRClientTask::_LoadParams(Task &task) {
             indices_.push_back(idx);
         }
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
     }
 
@@ -84,7 +84,7 @@ int PIRClientTask::_SetUpDB(size_t __dbsize, size_t dimensions, size_t elem_size
                                         use_ciphertext_multiplication, bits_per_coeff));
     client_ = *(PIRClient::Create(pir_params_));
     if (client_ == nullptr) {
-        LOG(ERROR) << "Failed to create pir client.";
+        LOG_ERROR() << "Failed to create pir client.";
         return -1;
     }
 
@@ -109,7 +109,7 @@ int PIRClientTask::_ProcessResponse(const ExecuteTaskResponse &taskResponse) {
             result_.push_back(std::move(result).value()[i]);
         }
     } else {
-        LOG(ERROR) << "Failed to process pir server response: "
+        LOG_ERROR() << "Failed to process pir server response: "
                    << result.status();
         return -1;
     }
@@ -138,7 +138,7 @@ int PIRClientTask::saveResult() {
         std::dynamic_pointer_cast<CSVDriver>(driver);
 
     if (validateDirection(result_file_path_)) {
-        LOG(ERROR) << "can't access file path: "
+        LOG_ERROR() << "can't access file path: "
                    << result_file_path_;
         return -1;
     }
@@ -146,11 +146,11 @@ int PIRClientTask::saveResult() {
     int ret = csv_driver->write(table, result_file_path_);
 
     if (ret != 0) {
-        LOG(ERROR) << "Save PIR result to file " << result_file_path_ << " failed.";
+        LOG_ERROR() << "Save PIR result to file " << result_file_path_ << " failed.";
         return -1;
     }
 
-    LOG(INFO) << "Save PIR result to " << result_file_path_ << ".";
+    LOG_INFO() << "Save PIR result to " << result_file_path_ << ".";
     return 0;
 }
 
@@ -173,7 +173,7 @@ uint32_t compute_plain_mod_bit_size(size_t dbsize, size_t elem_size) {
 int PIRClientTask::execute() {
     int ret = _LoadParams(task_param_);
     if (ret) {
-        LOG(ERROR) << "Pir client load task params failed.";
+        LOG_ERROR() << "Pir client load task params failed.";
         return ret;
     }
 
@@ -189,7 +189,7 @@ int PIRClientTask::execute() {
                        use_ciphertext_multiplication);
 
     if (ret) {
-        LOG(ERROR) << "Failed to initialize pir client.";
+        LOG_ERROR() << "Failed to initialize pir client.";
         return -1;
     }
     //pir::Request request_proto = std::move(client_->CreateRequest(indices_)).value();
@@ -198,10 +198,11 @@ int PIRClientTask::execute() {
     if (request_or.ok()) {
         request_proto = std::move(request_or).value();
     } else {
-        LOG(ERROR) << "Pir create request failed: "
+        LOG_ERROR() << "Pir create request failed: "
                    << request_or.status();
         return -1;
     }
+
     grpc::ClientContext client_context;
     grpc::ChannelArguments channel_args;
     channel_args.SetMaxReceiveMessageSize(128*1024*1024);
@@ -273,22 +274,22 @@ int PIRClientTask::execute() {
     Status status = client_stream->Finish();
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
-            LOG(ERROR) << "Node pir server process request error.";
+            LOG_ERROR() << "Node pir server process request error.";
             return -1;
         }
         int ret = _ProcessResponse(taskResponse);
         if (ret) {
-            LOG(ERROR) << "Node pir client process response failed.";
+            LOG_ERROR() << "Node pir client process response failed.";
             return -1;
         }
 
         ret = saveResult();
         if (ret) {
-            LOG(ERROR) << "Pir save result failed.";
+            LOG_ERROR() << "Pir save result failed.";
             return -1;
         }
     } else {
-        LOG(ERROR) << "Pir server return error: "
+        LOG_ERROR() << "Pir server return error: "
                    << status.error_code() << " " << status.error_message().c_str();
         return -1;
     }

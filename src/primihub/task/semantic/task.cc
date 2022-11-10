@@ -18,18 +18,18 @@
 
 namespace primihub::task {
 
-    TaskBase::TaskBase(const TaskParam *task_param,
-                       std::shared_ptr<DatasetService> dataset_service) {
-        setTaskParam(task_param);
-        dataset_service_ = dataset_service;
-    }
+TaskBase::TaskBase(const TaskParam *task_param,
+                    std::shared_ptr<DatasetService> dataset_service) {
+    setTaskParam(task_param);
+    dataset_service_ = dataset_service;
+}
 
-    TaskParam* TaskBase::getTaskParam()  {
-        return &task_param_;
-    }
+TaskParam* TaskBase::getTaskParam()  {
+    return &task_param_;
+}
 
-    void TaskBase::setTaskParam(const TaskParam *task_param) {
-        task_param_.CopyFrom(*task_param);
-    }
- 
+void TaskBase::setTaskParam(const TaskParam *task_param) {
+    task_param_.CopyFrom(*task_param);
+}
+
 } // namespace primihub::task

@@ -21,7 +21,7 @@
 #include "src/primihub/util/network/socket/session.h"
 #include "src/primihub/task/semantic/factory.h"
 #include "src/primihub/task/semantic/task.h"
-
+#include "src/primihub/util/log_wrapper.h"
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
@@ -33,26 +33,42 @@ using primihub::task::TaskFactory;
 using primihub::rpc::PsiTag;
 
 namespace primihub {
+#define PLATFORM typeToName(PlatFormType::WORKER_NODE)
+#undef V_VLOG
+#define V_VLOG(level, PLATFORM, JOB_ID, TASK_ID) \
+    VLOG_WRAPPER(level, PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_INFO
+#define LOG_INFO(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_INFO_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_WRANING
+#define LOG_WARNING(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_WARNING_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_ERROR
+#define LOG_ERROR(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_ERROR_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+
 
 void Worker::execute(const PushTaskRequest *pushTaskRequest) {
     auto type = pushTaskRequest->task().type();
-    VLOG(2) << "Worker::execute task type: " << type;
+    const auto& job_id = pushTaskRequest->task().job_id();
+    const auto& task_id = pushTaskRequest->task().task_id();
+    V_VLOG(2, PLATFORM, job_id, task_id) << "Worker::execute task type: " << type;
     if (type == rpc::TaskType::NODE_TASK ||
         type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create task failed.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Woker create task failed.";
             return;
         }
-        LOG(INFO) << " 🚀 Worker start execute task ";
+        LOG_INFO(PLATFORM, job_id, task_id) << " 🚀 Worker start execute task ";
         int ret = pTask->execute();
         if (ret != 0) {
-            LOG(ERROR) << "Error occurs during execute task.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Error occurs during execute task.";
         }
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "At least 2 nodes srunning with 2PC task now.";
             return;
         }
 
@@ -73,15 +89,15 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create psi task failed.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Woker create psi task failed.";
             return;
         }
         int ret = pTask->execute();
         if (ret != 0)
-            LOG(ERROR) << "Error occurs during execute psi task.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Error occurs during execute psi task.";
     } else if (type == rpc::TaskType::NODE_PIR_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "At least 2 nodes srunning with 2PC task now.";
             return;
         }
 
@@ -90,7 +106,7 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         auto param_it = param_map.find("pirType");
         if (param_it != param_map.end()) {
             pirType = param_it->second.value_int32();
-            VLOG(5) << "get pirType: " << pirType;
+            V_VLOG(5, PLATFORM, job_id, task_id) << "get pirType: " << pirType;
         }
 
         if (pirType == PirType::ID_PIR) {
@@ -103,15 +119,15 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         auto& dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create pir task failed.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Woker create pir task failed.";
             return ;
         }
         int ret = pTask->execute();
         if (ret != 0) {
-            LOG(ERROR) << "Error occurs during execute pir task.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Error occurs during execute pir task.";
         }
     } else {
-        LOG(WARNING) << "unsupported Requested task type: " << type;
+        LOG_WARNING(PLATFORM, job_id, task_id) << "unsupported Requested task type: " << type;
     }
 }
 
@@ -121,22 +137,27 @@ void Worker::execute(const ExecuteTaskRequest *taskRequest,
                      ExecuteTaskResponse *taskResponse) {
     auto request_type = taskRequest->algorithm_request_case();
     if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+        const auto& task_id = taskRequest->psi_request().task_id();
+        const auto& job_id = taskRequest->psi_request().job_id();
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id,
 			                             rpc::TaskType::NODE_PSI_TASK,
 			                             *taskRequest,
                                          taskResponse,
 					                     dataset_service);
+        pTask->set_task_info(primihub::PlatFormType::PSI, job_id, task_id);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create server node task failed.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Woker create server node task failed.";
             return;
         }
         int ret = pTask->execute();
         if (ret != 0) {
-            LOG(ERROR) << "Error occurs during server node execute task.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Error occurs during server node execute task.";
         }
     } else if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
-        VLOG(0) << "algorithm_request_case kPirRequest Worker::execute";
+        const auto& task_id = taskRequest->pir_request().task_id();
+        const auto& job_id = taskRequest->pir_request().job_id();
+        V_VLOG(0, PLATFORM, job_id, task_id) << "algorithm_request_case kPirRequest Worker::execute";
         auto dataset_service = nodelet->getDataService();
         auto pTask = TaskFactory::Create(this->node_id,
                                          rpc::TaskType::NODE_PIR_TASK,   // convert into internal task type
@@ -144,15 +165,15 @@ void Worker::execute(const ExecuteTaskRequest *taskRequest,
                                          taskResponse,
                                          dataset_service);
         if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create server node task failed.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Woker create server node task failed.";
             return;
         }
         int ret = pTask->execute();
         if (ret != 0) {
-            LOG(ERROR) << "Error occurs during server node execute task.";
+            LOG_ERROR(PLATFORM, job_id, task_id) << "Error occurs during server node execute task.";
         }
     } else {
-        LOG(WARNING) << "Requested task type is not supported.";
+        LOG_WARNING(PLATFORM, "job_id", "task_id") << "Requested task type is not supported.";
     }
 }
 

@@ -44,13 +44,13 @@ std::shared_ptr<SenderDB>
         size_t nonce_byte_count,
         bool compress) {
     if (!psi_params) {
-        LOG(ERROR) << "No Keyword pir parameters were given";
+        LOG_ERROR() << "No Keyword pir parameters were given";
         return nullptr;
     }
 
     std::shared_ptr<SenderDB> sender_db;
     if (holds_alternative<CSVReader::LabeledData>(db_data)) {
-        VLOG(5) << "CSVReader::LabeledData";
+        V_VLOG(5) << "CSVReader::LabeledData";
         try {
             auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
             // Find the longest label and use that as label size
@@ -59,19 +59,19 @@ std::shared_ptr<SenderDB>
                     [](auto &a, auto &b) {
                         return a.second.size() < b.second.size();
                     })->second.size();
-            VLOG(5) << "label_byte_count: " << label_byte_count << " nonce_byte_count: " << nonce_byte_count;
+            V_VLOG(5) << "label_byte_count: " << label_byte_count << " nonce_byte_count: " << nonce_byte_count;
             sender_db =
                 std::make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
             sender_db->set_data(labeled_db_data);
         } catch (const exception &ex) {
-            LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
+            LOG_ERROR() << "Failed to create keyword pir SenderDB: " << ex.what();
             return nullptr;
         }
     } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
-        LOG(ERROR) << "Loaded keyword pir database is without label";
+        LOG_ERROR() << "Loaded keyword pir database is without label";
         return nullptr;
     } else {
-        LOG(ERROR) << "Loaded keyword pir database is in an invalid state";
+        LOG_ERROR() << "Loaded keyword pir database is in an invalid state";
         return nullptr;
     }
 
@@ -99,7 +99,7 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
         }
         // dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
     }
     return 0;
@@ -109,11 +109,11 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
     CSVReader::DBData db_data;
 
     try {
-        VLOG(5) << "begin to read data, dataset path: " << dataset_path_;
+        V_VLOG(5) << "begin to read data, dataset path: " << dataset_path_;
         CSVReader reader(dataset_path_);
         tie(db_data, ignore) = reader.read();
     } catch (const exception &ex) {
-        LOG(ERROR) << "Could not open or read file `"
+        LOG_ERROR() << "Could not open or read file `"
                    << dataset_path_ << "`: " << ex.what();
         return nullptr;
     }
@@ -124,12 +124,12 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
     std::string params_json;
     std::string pir_server_config_path{"config/pir_server_config.json"};
-    VLOG(5) << "pir_server_config_path: " << pir_server_config_path;
+    V_VLOG(5) << "pir_server_config_path: " << pir_server_config_path;
     try {
         // throw_if_file_invalid(cmd.params_file());
         std::fstream input_file(pir_server_config_path, std::ios_base::in);
         if (!input_file.is_open()) {
-            LOG(ERROR) << "open " << pir_server_config_path << " encountes error";
+            LOG_ERROR() << "open " << pir_server_config_path << " encountes error";
             return nullptr;
         }
         std::string line;
@@ -139,7 +139,7 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
         }
         input_file.close();
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Error trying to read input file " << pir_server_config_path << ": " << ex.what();
+        LOG_ERROR() << "Error trying to read input file " << pir_server_config_path << ": " << ex.what();
         return nullptr;
     }
 
@@ -147,7 +147,7 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
     try {
         params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "APSI threw an exception creating PSIParams: " << ex.what();
+        LOG_ERROR() << "APSI threw an exception creating PSIParams: " << ex.what();
         return nullptr;
     }
     return params;
@@ -156,7 +156,7 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
 int KeywordPIRServerTask::execute() {
     int ret = _LoadParams(task_param_);
     if (ret) {
-        LOG(ERROR) << "Pir client load task params failed.";
+        LOG_ERROR() << "Pir client load task params failed.";
         return ret;
     }
     ThreadPoolMgr::SetThreadCount(1);
@@ -174,14 +174,14 @@ int KeywordPIRServerTask::execute() {
     }
 
     atomic<bool> stop = false;
-    VLOG(5) << "begin to create ZMQSenderDispatcher";
+    V_VLOG(5) << "begin to create ZMQSenderDispatcher";
     ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
     int port = 2222;
     // bool done_exit = true;
-    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(port);
+    V_VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(port);
     dispatcher.run(stop, port);
     if (stop.load(std::memory_order::memory_order_relaxed)) {
-        VLOG(5) << "key word pir task execute finished";
+        V_VLOG(5) << "key word pir task execute finished";
     }
     return 0;
 }

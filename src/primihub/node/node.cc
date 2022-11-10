@@ -32,6 +32,7 @@
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/util/log_wrapper.h"
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -47,6 +48,20 @@ ABSL_FLAG(bool, singleton, false, "singleton mode"); // TODO: remove this flag
 ABSL_FLAG(int, service_port, 50050, "node service port");
 
 namespace primihub {
+#define PLATFORM typeToName(PlatFormType::WORKER_NODE)
+#undef V_VLOG
+#define V_VLOG(level, PLATFORM, JOB_ID, TASK_ID) \
+    VLOG_WRAPPER(level, PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_INFO
+#define LOG_INFO(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_INFO_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_WRANING
+#define LOG_WRANING(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_WRANING_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+#undef LOG_ERROR
+#define LOG_ERROR(PLATFORM, JOB_ID, TASK_ID) \
+    LOG_ERROR_WRAPPER(PLATFORM, JOB_ID, TASK_ID)
+
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
     VLOG(5) << "VMNodeImpl::Send: received: ";
@@ -66,12 +81,11 @@ Status VMNodeImpl::Send(ServerContext* context,
             storage_type = request.storage_type();
             storage_info = request.storage_info();
             recv_meta_info = true;
-            VLOG(5) << "job_id: " << job_id << " "
-                    << "task_id: " << task_id << " "
-                    << "storage_type: " << storage_type << " "
+            V_VLOG(5, PLATFORM, job_id, task_id) << "storage_type: " << storage_type << " "
                     << "storage_info: " << storage_info;
         }
         auto item_size = request.data().size();
+        V_VLOG(5, PLATFORM, job_id, task_id) << "item_size: " << item_size;
         for (size_t i = 0; i < item_size; i++) {
             recv_data.push_back(request.data(i));
         }
@@ -79,16 +93,17 @@ Status VMNodeImpl::Send(ServerContext* context,
 
     if (storage_type == primihub::rpc::TaskRequest::FILE) {
         std::string data_path = storage_info;
-        save_data_to_file(data_path, std::move(recv_data));
+        save_data_to_file(job_id, task_id, data_path, std::move(recv_data));
     }
-    VLOG(5) << "end of read data from client";
+    V_VLOG(5, PLATFORM, job_id, task_id) << "end of read data from client";
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
     return Status::OK;
 }
 
-int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
+int VMNodeImpl::save_data_to_file(const std::string& job_id, const std::string& task_id,
+        const std::string& data_path, std::vector<std::string>&& save_data) {
     if (ValidateDir(data_path)) {
-        LOG(ERROR) << "file path is not exist, please check";
+        LOG_ERROR(PLATFORM, job_id, task_id) << "file path is not exist, please check";
         return -1;
     }
     auto data = std::move(save_data);
@@ -106,13 +121,14 @@ int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std:
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
                               PushTaskReply *pushTaskReply) {
-
+//
+    const auto& job_id = pushTaskRequest->task().job_id();
+    const auto& task_id = pushTaskRequest->task().task_id();
     std::string str;
     google::protobuf::TextFormat::PrintToString(*pushTaskRequest, &str);
-    LOG(INFO) << str << std::endl;
-
-    std::string job_task = pushTaskRequest->task().job_id() + pushTaskRequest->task().task_id();
-    pushTaskReply->set_job_id(pushTaskRequest->task().job_id());
+    LOG_INFO(PLATFORM, job_id, task_id) << str << std::endl;
+    std::string job_task = job_id + task_id;
+    pushTaskReply->set_job_id(job_id);
 
     // if (running_set.find(job_task) != running_set.end()) {
     //     pushTaskReply->set_ret_code(1);
@@ -120,9 +136,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     // }
 
     // actor
-    if (pushTaskRequest->task().type() == primihub::rpc::TaskType::ACTOR_TASK ||
-            pushTaskRequest->task().type() == primihub::rpc::TaskType::TEE_TASK) {
-        LOG(INFO) << "start to schedule task";
+    auto task_type = pushTaskRequest->task().type();
+    if (task_type == primihub::rpc::TaskType::ACTOR_TASK ||
+        task_type == primihub::rpc::TaskType::TEE_TASK) {
+        LOG_INFO(PLATFORM, job_id, task_id) << "start to schedule task";
         // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
         std::shared_ptr<LanguageParser> lan_parser_ =
@@ -139,11 +156,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->nodelet->getDataService());
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
-
-    } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
-            pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
-        LOG(INFO) << "start to schedule schedule task";
-        // absl::MutexLock lock(&parser_mutex_);
+    } else if (task_type == primihub::rpc::TaskType::PIR_TASK ||
+            task_type == primihub::rpc::TaskType::PSI_TASK) {
+        LOG_INFO(PLATFORM, job_id, task_id) << "start to schedule task";
+        absl::MutexLock lock(&parser_mutex_);
         std::shared_ptr<LanguageParser> lan_parser_ =
             LanguageParserFactory::Create(*pushTaskRequest);
         if (lan_parser_ == nullptr) {
@@ -164,9 +180,9 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             _psp.schedulePsiTask(lan_parser_);
         }
         auto _type = static_cast<int>(pushTaskRequest->task().type());
-        VLOG(5) << "end schedule schedule task for type: " << _type;
+        V_VLOG(5, PLATFORM, job_id, task_id) << "end schedule schedule task for type: " << _type;
     } else {
-        LOG(INFO) << "start to create worker for task";
+        LOG_INFO(PLATFORM, job_id, task_id) << "start to create worker for task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
         worker->execute(pushTaskRequest);
@@ -341,7 +357,9 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
     // process receive data
     if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
         taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
-        LOG(INFO) << "Start to create PSI/PIR server task";
+        const auto& task_id = taskRequest->psi_request().task_id();
+        const auto& job_id = taskRequest->psi_request().job_id();
+        LOG_INFO(PLATFORM, job_id, task_id) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
         running_map.insert({job_task, worker});
