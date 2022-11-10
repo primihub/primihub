@@ -217,7 +217,7 @@ class XGBHostInfer:
         return 1 / (1 + np.exp(-pred_y))
 
     def host_predict(self, X):
-        preds = self.predict_prob(X)
+        preds = self.host_predict_prob(X)
 
         return (preds >= 0.5).astype('int')
 
