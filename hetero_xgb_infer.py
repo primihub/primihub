@@ -270,7 +270,7 @@ class XGBGuestInfer:
 @ph.context.function(role='host',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_host'],
-                     port='8001',
+                     port='9005',
                      task_type="classification")
 def xgb_host_infer():
     logging.info("Start XGBoost host.")
