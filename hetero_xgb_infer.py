@@ -1,14 +1,28 @@
-import pickle
-import os
-import time
-import numpy as np
-import pandas as pd
 import primihub as ph
-from primihub import dataset
-import logging
+from primihub import dataset, context
+from phe import paillier
 from sklearn import metrics
+from primihub.primitive.opt_paillier_c2py_warpper import *
+from primihub.FL.model.evaluation.evaluation import Regression_eva
+from primihub.FL.model.evaluation.evaluation import Classification_eva
+import pandas as pd
+import numpy as np
+import logging
+import pickle
+
+from primihub.primitive.opt_paillier_c2py_warpper import *
+import time
+import pandas as pd
+import numpy as np
+import copy
+import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from primihub.channel.zmq_channel import IOService, Session
+import functools
+import ray
+from ray.util import ActorPool
+from line_profiler import LineProfiler
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -329,13 +343,14 @@ def xgb_host_infer():
     print("prediction y: ", pred_y)
 
 
-@ph.context.function(role='guest',
-                     protocol='xgboost',
-                     datasets=['test_hetero_xgb_guest'],
-                     port='9001',
-                     task_type="classification")
-def xgb_guest_infer():
-    logging.info("Start XGBoost guest.")
+@ph.context.function(
+    role='host',
+    protocol='xgboost',
+    datasets=['test_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
+    port='8000',
+    task_type="classification")
+def xgb_host_infer():
+    logger.info("start xgb host logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
