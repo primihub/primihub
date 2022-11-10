@@ -65,7 +65,7 @@ void set_psi_request_param(const std::string &node_id,
     if (!is_client)
         return;
 
-    
+
     // set server node dataset info
     // current psi task for one server with one dataset
     std::string server_address = "";
@@ -97,7 +97,7 @@ void set_psi_request_param(const std::string &node_id,
         pv.set_var_type(VarType::STRING);
         pv.set_value_string(dataset_path);
         (*param_map)[server_address] = pv;
-        DLOG(INFO) << "📤 push task dataset : " 
+        DLOG(INFO) << "📤 push task dataset : "
                    << server_address << ", " << dataset_path;
         break;
     }
@@ -195,7 +195,7 @@ void node_push_psi_task(const std::string &node_id,
         LOG(ERROR) << "psiTag is set error.";
         return ;
     }
-   
+
     // send request
     LOG(INFO) << "dest node " << dest_node_address;
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
@@ -254,25 +254,30 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     LOG(INFO) << " 📧  Dispatch SubmitTask to PSI client node";
 
     std::vector<std::thread> thrds;
-    google::protobuf::Map<std::string, Node> node_map =
-        nodePushTaskRequest.task().node_map();
-
+    // google::protobuf::Map<std::string, Node>
+    const auto& node_map = nodePushTaskRequest.task().node_map();
+     std::set<std::string> duplicate_filter;
     for (auto &pair : node_map) {
         auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
         if (peer_dataset_map_it == this->peer_dataset_map_.end()) {
             LOG(ERROR) << "dispatchTask: peer_dataset_map not found";
             return;
         }
-
-        std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
+        // std::vector<DatasetWithParamTag>
+        const auto& dataset_param_list = peer_dataset_map_it->second;
         for (auto &dataset_param : dataset_param_list) {
             bool is_client = false;
             if (dataset_param.second == "clientData") {
                 is_client = true;
             }
-            std::string dest_node_address(
-                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-            DLOG(INFO) << "dest_node_address: " << dest_node_address;
+            //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
+            std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
+                VLOG(5) << "duplicate request for same destination, avoid";
+                continue;
+            }
+            duplicate_filter.emplace(dest_node_address);
+            VLOG(5) << "dest_node_address: " << dest_node_address;
 
             thrds.emplace_back(std::thread(node_push_psi_task,
                                            pair.first,              // node_id
