@@ -94,7 +94,7 @@ double matrixOperations(u64 partyIdx, eMatrix<i64> &plainMatrix1,
     enc.remoteIntMatrix(runtime, sharedMatrix2).get();
 
   LOG(INFO) << "Finish.";
-
+  
   si64Matrix prod;
   clock_t st_clock = 0, ed_clock = 0;
 
@@ -139,7 +139,7 @@ TEST(mpc_mul, aby3_3pc_test) {
     }
   }
 
-  bool standalone = true;
+  bool standalone = false;
   if (standalone) {
     pid_t pid = fork();
     if (pid != 0) {
@@ -165,13 +165,13 @@ TEST(mpc_mul, aby3_3pc_test) {
     LOG(INFO) << "Record Plain time: " << matmul_time;
   } else {
     double mpc_time = 0;
-    if (std::string(std::getenv("MPC_PARTY")) == "PARTY_0") {
+    if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_0") {
       mpc_time = matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix,
                                   rows, cols);
-    } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_1") {
+    } else if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_1") {
       mpc_time = matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix,
                                   rows, cols);
-    } else if (std::string(std::getenv("MPC_PARTY")) == "PARTY_2") {
+    } else if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_2") {
       mpc_time = matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix,
                                   rows, cols);
     }
