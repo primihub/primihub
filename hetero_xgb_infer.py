@@ -281,12 +281,11 @@ class XGBGuestInfer:
             self.guest_get_tree_ids(X, tree, current_lookup)
 
 
-@ph.context.function(
-    role='host',
-    protocol='xgboost',
-    datasets=['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
-    port='8000',
-    task_type="classification")
+@ph.context.function(role='host',
+                     protocol='xgboost',
+                     datasets=['test_hetero_xgb_host'],
+                     port='8000',
+                     task_type="classification")
 def xgb_host_infer():
     logger.info("start xgb host logic...")
 
