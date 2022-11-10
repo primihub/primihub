@@ -2,6 +2,9 @@
 
 #include <arrow/api.h>
 #include <arrow/array.h>
+#include <arrow/csv/api.h>
+#include <arrow/csv/writer.h>
+#include <arrow/filesystem/localfs.h>
 #include <arrow/io/api.h>
 #include <arrow/io/file.h>
 #include <arrow/result.h>
@@ -19,7 +22,7 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
-
+#include <arrow/pretty_print.h>
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
@@ -210,39 +213,43 @@ int MissingProcess::execute() {
           std::find(local_col_names.begin(), local_col_names.end(), itr->first);
       double double_sum = 0;
       i64 int_sum = 0;
+      int null_num = 0;
       if (t != local_col_names.end()) {
         int tmp_index = std::distance(local_col_names.begin(), t);
         if (itr->second == 1) {
-          auto array = std::static_pointer_cast<Int64Array>(
-              table->column(tmp_index)->chunk(0));
-          for (int64_t j = 0; j < array->length(); j++) {
-            int_sum += array->Value(j);
+          int chunk_num = table->column(tmp_index)->chunks().size();
+          for (int k = 0; k < chunk_num; k++) {
+            auto array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(k));
+            null_num +=
+                table->column(tmp_index)->chunk(k)->data()->GetNullCount();
+            for (int64_t j = 0; j < array->length(); j++) {
+              int_sum += array->Value(j);
+            }
           }
-          auto tmp_array = table->column(tmp_index)->chunk(0);
-
-          int_sum =
-              int_sum / (array->length() - tmp_array->data()->GetNullCount());
+          int_sum = int_sum / (table->num_rows() - null_num);
         } else if (itr->second == 2) {
           // check schema
-          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
-            auto array = std::static_pointer_cast<Int64Array>(
-                table->column(tmp_index)->chunk(0));
-            for (int64_t j = 0; j < array->length(); j++) {
-              double_sum += array->Value(j);
+          int chunk_num = table->column(tmp_index)->chunks().size();
+          for (int k = 0; k < chunk_num; k++) {
+            if (table->schema()->GetFieldByName(itr->first)->type()->id() ==
+                9) {
+              auto array = std::static_pointer_cast<Int64Array>(
+                  table->column(tmp_index)->chunk(k));
+              for (int64_t j = 0; j < array->length(); j++) {
+                double_sum += array->Value(j);
+              }
+            } else {
+              auto array = std::static_pointer_cast<DoubleArray>(
+                  table->column(tmp_index)->chunk(k));
+              for (int64_t j = 0; j < array->length(); j++) {
+                double_sum += array->Value(j);
+              }
             }
-            auto tmp_array = table->column(tmp_index)->chunk(0);
-            double_sum = double_sum /
-                         (array->length() - tmp_array->data()->GetNullCount());
-          } else {
-            auto array = std::static_pointer_cast<DoubleArray>(
-                table->column(tmp_index)->chunk(0));
-            for (int64_t j = 0; j < array->length(); j++) {
-              double_sum += array->Value(j);
-            }
-            auto tmp_array = table->column(tmp_index)->chunk(0);
-            double_sum = double_sum /
-                         (array->length() - tmp_array->data()->GetNullCount());
+            null_num +=
+                table->column(tmp_index)->chunk(k)->data()->GetNullCount();
           }
+          double_sum = double_sum / (table->num_rows() - null_num);
         }
       }
       if (itr->second == 1) {
@@ -255,20 +262,28 @@ int MissingProcess::execute() {
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
-          auto csv_array = std::static_pointer_cast<Int64Array>(
-              table->column(tmp_index)->chunk(0));
-          std::vector<int> null_index;
-          auto tmp_array = table->column(tmp_index)->chunk(0);
-          for (int i = 0; i < tmp_array->length(); i++) {
-            if (tmp_array->IsNull(i))
-              null_index.push_back(i);
-          }
+          int chunk_num = table->column(tmp_index)->chunks().size();
           std::vector<i64> new_col;
-          for (int64_t i = 0; i < csv_array->length(); i++) {
-            new_col.push_back(csv_array->Value(i));
-          }
-          for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
-            new_col[*itr] = new_sum;
+          for (int k = 0; k < chunk_num; k++) {
+
+            auto csv_array = std::static_pointer_cast<Int64Array>(
+                table->column(tmp_index)->chunk(k));
+            std::vector<int> null_index;
+            auto tmp_array = table->column(tmp_index)->chunk(k);
+            for (int i = 0; i < tmp_array->length(); i++) {
+              if (tmp_array->IsNull(i))
+                null_index.push_back(i);
+            }
+            std::vector<i64> tmp_new_col;
+            for (int64_t i = 0; i < csv_array->length(); i++) {
+              tmp_new_col.push_back(csv_array->Value(i));
+            }
+            for (auto itr = null_index.begin(); itr != null_index.end();
+                 itr++) {
+              tmp_new_col[*itr] = new_sum;
+            }
+            new_col.insert(new_col.end(), tmp_new_col.begin(),
+                           tmp_new_col.end());
           }
           arrow::Int64Builder int64_builder;
           int64_builder.AppendValues(new_col);
@@ -292,32 +307,41 @@ int MissingProcess::execute() {
         new_sum = new_sum / 3;
 
         if (t != local_col_names.end()) {
-          std::vector<double> new_col;
           int tmp_index = std::distance(local_col_names.begin(), t);
+          std::vector<double> new_col;
+          int chunk_num = table->column(tmp_index)->chunks().size();
+          for (int k = 0; k < chunk_num; k++) {
+            std::vector<double> tmp_new_col;
 
-          if (table->schema()->GetFieldByName(itr->first)->type()->id() == 9) {
-            auto csv_array = std::static_pointer_cast<Int64Array>(
-                table->column(tmp_index)->chunk(0));
+            if (table->schema()->GetFieldByName(itr->first)->type()->id() ==
+                9) {
 
-            for (int64_t j = 0; j < csv_array->length(); j++) {
-              new_col.push_back(csv_array->Value(j));
+              auto csv_array = std::static_pointer_cast<Int64Array>(
+                  table->column(tmp_index)->chunk(k));
+
+              for (int64_t j = 0; j < csv_array->length(); j++) {
+                tmp_new_col.push_back(csv_array->Value(j));
+              }
+            } else {
+              auto csv_array = std::static_pointer_cast<DoubleArray>(
+                  table->column(tmp_index)->chunk(k));
+
+              for (int64_t i = 0; i < csv_array->length(); i++) {
+                tmp_new_col.push_back(csv_array->Value(i));
+              }
             }
-          } else {
-            auto csv_array = std::static_pointer_cast<DoubleArray>(
-                table->column(tmp_index)->chunk(0));
-
-            for (int64_t i = 0; i < csv_array->length(); i++) {
-              new_col.push_back(csv_array->Value(i));
+            std::vector<int> null_index;
+            auto tmp_array = table->column(tmp_index)->chunk(k);
+            for (int i = 0; i < tmp_array->length(); i++) {
+              if (tmp_array->IsNull(i))
+                null_index.push_back(i);
             }
-          }
-          std::vector<int> null_index;
-          auto tmp_array = table->column(tmp_index)->chunk(0);
-          for (int i = 0; i < tmp_array->length(); i++) {
-            if (tmp_array->IsNull(i))
-              null_index.push_back(i);
-          }
-          for (auto itr = null_index.begin(); itr != null_index.end(); itr++) {
-            new_col[*itr] = new_sum;
+            for (auto itr = null_index.begin(); itr != null_index.end();
+                 itr++) {
+              tmp_new_col[*itr] = new_sum;
+            }
+            new_col.insert(new_col.end(), tmp_new_col.begin(),
+                           tmp_new_col.end());
           }
           arrow::DoubleBuilder double_builder;
           double_builder.AppendValues(new_col);
@@ -336,7 +360,7 @@ int MissingProcess::execute() {
     LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
   }
   return 0;
-}
+} // namespace primihub
 
 int MissingProcess::finishPartyComm(void) {
   si64 tmp_share0, tmp_share1, tmp_share2;
@@ -380,9 +404,11 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
   std::shared_ptr<Dataset> ds = cursor->read();
+
   table = std::get<std::shared_ptr<Table>>(ds->data);
   bool errors = false;
   std::vector<std::string> col_names = table->ColumnNames();
+
   int num_col = table->num_columns();
 
   LOG(INFO) << "Loaded " << table->num_rows() << " rows in "
@@ -390,26 +416,33 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   local_col_names = table->ColumnNames();
 
   // 'array' include values in a column of csv file.
-  auto array = std::static_pointer_cast<DoubleArray>(
-      table->column(num_col - 1)->chunk(0));
-  int64_t array_len = array->length();
+  int chunk_num = table->column(num_col - 1)->chunks().size();
+  int array_len = 0;
+  for (int k = 0; k < chunk_num; k++) {
+    auto array = std::static_pointer_cast<DoubleArray>(
+        table->column(num_col - 1)->chunk(k));
+    array_len += array->length();
+  }
   LOG(INFO) << "Label column '" << local_col_names[num_col - 1] << "' has "
             << array_len << " values.";
 
   // Force the same value count in every column.
   for (int i = 0; i < num_col; i++) {
-    auto array =
-        std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
-
+    int chunk_num = table->column(i)->chunks().size();
     std::vector<double> tmp_data;
-    for (int64_t j = 0; j < array->length(); j++) {
-      tmp_data.push_back(array->Value(j));
-    }
+    int tmp_len = 0;
 
-    if (array->length() != array_len) {
-      LOG(ERROR) << "Column " << local_col_names[i] << " has "
-                 << array->length() << " value, but other column has "
-                 << array_len << " value.";
+    for (int k = 0; k < chunk_num; k++) {
+      auto array =
+          std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(k));
+      tmp_len += array->length();
+      for (int64_t j = 0; j < array->length(); j++) {
+        tmp_data.push_back(array->Value(j));
+      }
+    }
+    if (tmp_len != array_len) {
+      LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
+                 << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
     }
@@ -417,7 +450,7 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
     if (errors)
       return -1;
 
-    return array->length();
+    return array_len;
   }
 }
 } // namespace primihub
