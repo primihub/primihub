@@ -216,9 +216,9 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
     return -1;
   int64_t train_length = floor(array_len * 0.8);
   int64_t test_length = array_len - train_length;
-  LOG(INFO)<<"array_len: "<<array_len;
-  LOG(INFO)<<"train_length: "<<train_length;
-  LOG(INFO)<<"test_length: "<<test_length;
+  // LOG(INFO)<<"array_len: "<<array_len;
+  // LOG(INFO)<<"train_length: "<<train_length;
+  // LOG(INFO)<<"test_length: "<<test_length;
   train_input_.resize(train_length, num_col);
   test_input_.resize(test_length, num_col);
   // m.resize(array_len, num_col);
