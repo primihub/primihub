@@ -102,44 +102,13 @@ Sh3Task Sh3Encryptor::localIntMatrix(Sh3Task dep, const i64Matrix & m,
         ret.mShares[0](i) = mShareGen.getShare() + m(i);
     
     CommPkg& comm_cast = dynamic_cast< CommPkg&>(*commPtr);
-    
-#ifndef ENABLE_AUDIT 
-    {
-        std::vector<std::string> lines;
-        i64 *mat_ptr = ret.mShares[0].data();
-        size_t mat_num = ret.mShares[0].size();
-        convertArrayToStrings(mat_ptr, mat_num, lines);
-
-        LOG(INFO) << "Dump matrix before send:";
-        for (auto line : lines) 
-            LOG(INFO) << line;
-        LOG(INFO) << "Dump finish.\n";
-    }
-#endif
-
     comm_cast.mNext().asyncSendCopy(ret.mShares[0].data(), ret.mShares[0].size());
-
     auto fu = comm_cast.mPrev().asyncRecv(ret.mShares[1].data(),
                                     ret.mShares[1].size());
 
     self.then([fu = std::move(fu)](CommPkgBase* comm, Sh3Task& self)mutable{
         fu.get();
     });
-
-#ifndef ENABLE_AUDIT
-    {
-        std::vector<std::string> lines;
-        i64 *mat_ptr = ret.mShares[1].data();
-        size_t mat_num = ret.mShares[1].size();
-        convertArrayToStrings(mat_ptr, mat_num, lines);
-
-        LOG(INFO) << "Dump matrix after recv:";
-        for (auto line : lines) 
-            LOG(INFO) << line;
-        LOG(INFO) << "Dump finish.\n";
-    }
-#endif
-
   }).getClosure();
 }
 
@@ -147,36 +116,8 @@ void Sh3Encryptor::remoteIntMatrix(CommPkg & comm, si64Matrix & ret) {
   for (i64 i = 0; i < ret.mShares[0].size(); ++i)
     ret.mShares[0](i) = mShareGen.getShare();
 
-#ifndef ENABLE_AUDIT
-    {
-        std::vector<std::string> lines;
-        i64 *mat_ptr = ret.mShares[0].data();
-        size_t mat_num = ret.mShares[0].size();
-        convertArrayToStrings(mat_ptr, mat_num, lines);
-
-        LOG(INFO) << "Dump matrix before send:";
-        for (auto line : lines) 
-            LOG(INFO) << line;
-        LOG(INFO) << "Dump finish.\n";
-    }
-#endif
-
   comm.mNext().asyncSendCopy(ret.mShares[0].data(), ret.mShares[0].size());
   comm.mPrev().recv(ret.mShares[1].data(), ret.mShares[1].size());
-  
-#ifndef ENABLE_AUDIT
-    {
-        std::vector<std::string> lines;
-        i64 *mat_ptr = ret.mShares[1].data();
-        size_t mat_num = ret.mShares[1].size();
-        convertArrayToStrings(mat_ptr, mat_num, lines);
-
-        LOG(INFO) << "Dump matrix after recv:";
-        for (auto line : lines) 
-            LOG(INFO) << line;
-        LOG(INFO) << "Dump finish.\n";
-    }
-#endif
 }
 
 Sh3Task Sh3Encryptor::remoteIntMatrix(Sh3Task dep, si64Matrix & ret) {
