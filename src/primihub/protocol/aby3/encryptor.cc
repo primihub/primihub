@@ -110,7 +110,7 @@ Sh3Task Sh3Encryptor::localIntMatrix(Sh3Task dep, const i64Matrix & m,
         size_t mat_num = ret.mShares[0].size();
         convertArrayToStrings(mat_ptr, mat_num, lines);
 
-        LOG(INFO) << "\nDump matrix before send:";
+        LOG(INFO) << "Dump matrix before send:";
         for (auto line : lines) 
             LOG(INFO) << line;
         LOG(INFO) << "Dump finish.\n";
@@ -133,7 +133,7 @@ Sh3Task Sh3Encryptor::localIntMatrix(Sh3Task dep, const i64Matrix & m,
         size_t mat_num = ret.mShares[1].size();
         convertArrayToStrings(mat_ptr, mat_num, lines);
 
-        LOG(INFO) << "\nDump matrix after recv:";
+        LOG(INFO) << "Dump matrix after recv:";
         for (auto line : lines) 
             LOG(INFO) << line;
         LOG(INFO) << "Dump finish.\n";
@@ -154,7 +154,7 @@ void Sh3Encryptor::remoteIntMatrix(CommPkg & comm, si64Matrix & ret) {
         size_t mat_num = ret.mShares[0].size();
         convertArrayToStrings(mat_ptr, mat_num, lines);
 
-        LOG(INFO) << "\nDump matrix before send:";
+        LOG(INFO) << "Dump matrix before send:";
         for (auto line : lines) 
             LOG(INFO) << line;
         LOG(INFO) << "Dump finish.\n";
@@ -171,7 +171,7 @@ void Sh3Encryptor::remoteIntMatrix(CommPkg & comm, si64Matrix & ret) {
         size_t mat_num = ret.mShares[1].size();
         convertArrayToStrings(mat_ptr, mat_num, lines);
 
-        LOG(INFO) << "\nDump matrix after recv:";
+        LOG(INFO) << "Dump matrix after recv:";
         for (auto line : lines) 
             LOG(INFO) << line;
         LOG(INFO) << "Dump finish.\n";
