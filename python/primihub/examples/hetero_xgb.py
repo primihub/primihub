@@ -3,8 +3,6 @@ from primihub import dataset, context
 from phe import paillier
 from sklearn import metrics
 from primihub.primitive.opt_paillier_c2py_warpper import *
-from primihub.FL.model.evaluation.evaluation import Regression_eva
-from primihub.FL.model.evaluation.evaluation import Classification_eva
 import pandas as pd
 import numpy as np
 import logging
@@ -1292,6 +1290,7 @@ def xgb_host_logic():
     # pools = ActorPool([actor1, actor2, actor3])
     xgb_host.lookup_table = {}
     y_hat = np.array([xgb_host.base_score] * len(Y))
+    train_losses = []
 
     start = time.time()
     for t in range(xgb_host.n_estimators):
@@ -1351,6 +1350,11 @@ def xgb_host_logic():
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
         logger.info("Finish to trian tree {}.".format(t + 1))
+        current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
+        current_loss = xgb_host.log_loss(Y, current_pred)
+        train_losses.append(current_loss)
+
+        print("train_losses ", train_losses)
 
     end = time.time()
     # logger.info("lasting time for xgb %s".format(end-start))
@@ -1501,6 +1505,7 @@ def xgb_guest_logic():
         # stat construct boosting trees
 
         lookup_table_sum[t + 1] = xgb_guest.lookup_table
+        xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
