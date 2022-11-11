@@ -34,6 +34,10 @@ datasets:
     model: "csv"
     source: "/tmp/client_e.csv"
 
+  - description: "iv_guest"
+    model: "csv"
+    source: "/tmp/FL/feature_engineer/woe_iv/iv_guest.csv"
+
 localkv: 
   model: "leveldb"
   path: "/data/localdb2"
