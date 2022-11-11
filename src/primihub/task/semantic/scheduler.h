@@ -28,7 +28,7 @@
 
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
-
+#include "src/primihub/util/log_wrapper.h"
 
 using primihub::rpc::Node;
 using primihub::rpc::PushTaskReply;
@@ -37,24 +37,54 @@ using primihub::rpc::VMNode;
 using primihub::service::DatasetWithParamTag;
 
 namespace primihub::task {
+#define V_VLOG(level) \
+   VLOG_WRAPPER(level, platform(), job_id(), task_id())
+
+#define LOG_INFO() \
+   LOG_INFO_WRAPPER(platform(), job_id(), task_id())
+
+#define LOG_WARNING() \
+   LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
+
+#define LOG_ERROR() \
+   LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
+
 using PeerDatasetMap = std::map<std::string, std::vector<DatasetWithParamTag>>;
 
 class VMScheduler {
   public:
     VMScheduler(const std::string &node_id,
                  bool singleton)
-        : node_id_(node_id), 
+        : node_id_(node_id),
           singleton_(singleton) {}
 
     virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
     virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
-    std::string get_node_id() const {
+    inline std::string get_node_id() const {
       return node_id_;
+    }
+    inline std::string platform() {
+      return primihub::typeToName(platform_type_);
+    }
+    inline std::string task_id() {
+      return task_id_;
+    }
+    inline std::string job_id() {
+      return job_id_;
+    }
+    inline void set_scheduler_info(primihub::PlatFormType platform_type,
+        const std::string& job_id, const std::string& task_id) {
+      platform_type_ = platform_type;
+      job_id_ = job_id;
+      task_id_ = task_id;
     }
 
   protected:
-    const std::string node_id_;
+    std::string node_id_;
     bool singleton_;
+    std::string task_id_;
+    std::string job_id_;
+    primihub::PlatFormType platform_type_;
 };
 } // namespace primihub::task
 

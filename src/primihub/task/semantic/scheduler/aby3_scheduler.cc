@@ -37,7 +37,7 @@ using primihub::rpc::VarType;
 
 namespace primihub::task {
 
-void node_push_task(const std::string &node_id,
+void ABY3Scheduler::node_push_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
                     const std::map<std::string, std::string> &dataset_owner,
@@ -52,7 +52,7 @@ void node_push_task(const std::string &node_id,
         _1NodePushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
     auto peer_dataset_map_it = peer_dataset_map.find(node_id);
     if (peer_dataset_map_it == peer_dataset_map.end()) {
-        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
+        LOG_ERROR() << "node_push_task: peer_dataset_map not found";
         return;
     }
 
@@ -73,16 +73,16 @@ void node_push_task(const std::string &node_id,
         (*param_map)[pair.first] = pv;
         DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
-   
+
     // send request
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
         dest_node_address, grpc::InsecureChannelCredentials()));
     Status status =
         stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
     if (status.ok()) {
-        LOG(INFO) << "Node push task rpc succeeded.";
+        LOG_INFO() << "Node push task rpc succeeded.";
     } else {
-        LOG(ERROR) << "Node push task rpc failed.";
+        LOG_ERROR() << "Node push task rpc failed.";
     }
 }
 
@@ -118,13 +118,13 @@ void ABY3Scheduler::add_vm(Node *node, int i,
 
 /**
  * @brief  Dispatch ABY3  MPC task
- * 
+ *
  */
 void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     PushTaskRequest nodePushTaskRequest;
     nodePushTaskRequest.CopyFrom(*actorPushTaskRequest);
 
-    
+
     if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
         google::protobuf::Map<std::string, Node> *mutable_node_map =
             nodePushTaskRequest.mutable_task()->mutable_node_map();
@@ -145,10 +145,10 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
             }
             (*mutable_node_map)[node_id] = single_node;
         }
-    } 
-    
+    }
 
-    LOG(INFO) << " 📧  Dispatch SubmitTask to " 
+
+    LOG_INFO() << " 📧  Dispatch SubmitTask to "
         << nodePushTaskRequest.mutable_task()->mutable_node_map()->size() << " node";
     // schedule
     std::vector<std::thread> thrds;
@@ -161,13 +161,15 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
                 std::string dest_node_address(
                     absl::StrCat(pair.second.ip(), ":", pair.second.port()));
                 DLOG(INFO) << "dest_node_address: " << dest_node_address;
-              
-                thrds.emplace_back(std::thread(node_push_task,
-                                               pair.first,              // node_id
-                                               this->peer_dataset_map_,  // peer_dataset_map
-                                               std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                                               this->dataset_owner_,
-                                               dest_node_address));
+
+                thrds.emplace_back(
+                    std::thread(&ABY3Scheduler::node_push_task,
+                                this,
+                                pair.first,              // node_id
+                                this->peer_dataset_map_,  // peer_dataset_map
+                                std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                                this->dataset_owner_,
+                                dest_node_address));
             }
         }
     }

@@ -38,17 +38,16 @@ public:
   }
 
   void dispatch(const PushTaskRequest *pus_request) override;
+  void push_task(const std::string &node_id,
+                const PeerDatasetMap &peer_dataset_map,
+                const PushTaskRequest &request,
+                const std::string node_addr);
 
 protected:
   std::vector<Node> peer_list_;
   PeerDatasetMap peer_dataset_map_;
 
 private:
-  static void push_task(const std::string &node_id,
-                        const PeerDatasetMap &peer_dataset_map,
-                        const PushTaskRequest &request,
-                        const std::string node_addr);
-
   virtual void add_vm(Node *node, int i,
                       const PushTaskRequest *push_request) = 0;
   uint8_t party_num_;

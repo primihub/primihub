@@ -59,7 +59,7 @@ int ServerTaskBase::loadDatasetFromSQLite(const std::string& conn_str, int data_
     auto table = std::get<std::shared_ptr<Table>>(ds->data);
     int num_col = table->num_columns();
     if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
+        LOG_ERROR() << "psi dataset colunum number is smaller than data_col";
         return -1;
     }
     auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
@@ -69,7 +69,7 @@ int ServerTaskBase::loadDatasetFromSQLite(const std::string& conn_str, int data_
         }
         col_array.push_back(array->GetString(i));
     }
-    VLOG(5) << "psi server loaded data records: " << col_array.size();
+    V_VLOG(5) << "psi server loaded data records: " << col_array.size();
     return array->length();
 }
 
@@ -85,7 +85,7 @@ int ServerTaskBase::loadDatasetFromCSV(const std::string& filename, int data_col
 
     int num_col = table->num_columns();
     if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
+        LOG_ERROR() << "psi dataset colunum number is smaller than data_col";
         return -1;
     }
 
@@ -102,7 +102,7 @@ int ServerTaskBase::loadDatasetFromCSV(const std::string& filename, int data_col
 
 int ServerTaskBase::loadDatasetFromTXT(std::string &filename,
                                        std::vector <std::string> &col_array) {
-    LOG(INFO) << "loading file ...";
+    LOG_INFO() << "loading file ...";
     std::ifstream infile;
     infile.open(filename);
 
