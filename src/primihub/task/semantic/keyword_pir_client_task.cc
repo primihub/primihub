@@ -17,10 +17,13 @@
 
 #include <thread>
 #include <chrono>
-
+#include "src/primihub/util/util.h"
 #include "apsi/network/zmq/zmq_channel.h"
 #include "apsi/receiver.h"
+#include "apsi/item.h"
 #include "apsi/util/common_utils.h"
+#include "src/primihub/util/file_util.h"
+
 
 using namespace apsi;
 using namespace apsi::network;
@@ -37,23 +40,44 @@ KeywordPIRClientTask::KeywordPIRClientTask(
     : TaskBase(task_param, dataset_service), node_id_(node_id), job_id_(job_id), task_id_(task_id) {}
 
 int KeywordPIRClientTask::_LoadParams(Task &task) {
-    auto param_map = task.params().param_map();
+    const auto& param_map = task.params().param_map();
     try {
-        dataset_path_ = param_map["clientData"].value_string();
-        VLOG(5) << "dataset_path_: " << dataset_path_;
-        result_file_path_ = param_map["outputFullFilename"].value_string();
-        VLOG(5) << "result_file_path_: " << result_file_path_;
-        server_address_ = param_map["serverAddress"].value_string();
-        VLOG(5) << "server_address_: " << server_address_;
+        auto client_data_it = param_map.find("clientData");
+        if (client_data_it != param_map.end()) {
+            auto& client_data = client_data_it->second;
+            if (client_data.is_array()) {
+                recv_query_data_direct = true;   // read query data from clientData key directly
+            }
+            dataset_path_ = client_data.value_string();
+            VLOG(5) << "dataset_path_: " << dataset_path_;
+        } else {
+            LOG(ERROR) << "no keyword: clientData match found";
+            return -1;
+        }
+        auto result_file_path_it = param_map.find("outputFullFilename");
+        if (result_file_path_it != param_map.end()) {
+            result_file_path_ = result_file_path_it->second.value_string();
+            VLOG(5) << "result_file_path_: " << result_file_path_;
+        } else  {
+            LOG(ERROR) << "no keyword: outputFullFilename match found";
+            return -1;
+        }
+        auto server_address_it = param_map.find("serverAddress");
+        if (server_address_it != param_map.end()) {
+            server_address_ = server_address_it->second.value_string();
+            VLOG(5) << "server_address_: " << server_address_;
+        } else {
+            LOG(ERROR) << "no keyword: serverAddress match found";
+            return -1;
+        }
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return -1;
     }
     return 0;
 }
-
-std::pair<unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
-KeywordPIRClientTask::_LoadDataset(void) {
+std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
+KeywordPIRClientTask::_LoadDataFromDataset() {
     apsi::util::CSVReader::DBData db_data;
     std::vector<std::string> orig_items;
     try {
@@ -65,8 +89,31 @@ KeywordPIRClientTask::_LoadDataset(void) {
                    << ex.what();
         return { nullptr, orig_items };
     }
-
     return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), std::move(orig_items)};
+}
+
+std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
+KeywordPIRClientTask::_LoadDataFromRecvData() {
+    std::vector<std::string> orig_items;
+    str_split(this->dataset_path_, &orig_items, ';');
+    // build db_data;
+    // std::unqiue_ptr<apsi::util::CSVReader::DBData>
+    apsi::util::CSVReader::DBData db_data = apsi::util::CSVReader::UnlabeledData();
+    for(const auto& item_str : orig_items) {
+        apsi::Item db_item = item_str;
+        std::get<apsi::util::CSVReader::UnlabeledData>(db_data).push_back(std::move(db_item));
+    }
+    return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), std::move(orig_items)};
+    // return std::make_pair(std::move(db_data), std::move(orig_items));
+}
+
+std::pair<unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
+KeywordPIRClientTask::_LoadDataset(void) {
+    if (!recv_query_data_direct) {
+        return _LoadDataFromDataset();
+    } else {
+        return _LoadDataFromRecvData();
+    }
 }
 
 int KeywordPIRClientTask::_GetIntsection() {
@@ -96,6 +143,10 @@ int KeywordPIRClientTask::saveResult(
         csv_output << endl;
     }
     VLOG(5) << "result_file_path_: " << result_file_path_;
+    if (ValidateDir(result_file_path_)) {
+        LOG(ERROR) << "can't access file path: " << result_file_path_;
+        return -1;
+    }
     if (!result_file_path_.empty()) {
         std::ofstream ofs(result_file_path_);
         ofs << csv_output.str();

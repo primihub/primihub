@@ -88,9 +88,16 @@ KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
       job_id_(job_id), task_id_(task_id) {}
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
-    auto param_map = task.params().param_map();
+    const auto& param_map = task.params().param_map();
     try {
-        dataset_path_ = param_map["serverData"].value_string();
+        auto it = param_map.find("serverData");
+        if (it != param_map.end()) {
+            dataset_path_ = it->second.value_string();
+        } else {
+            LOG(ERROR) << "Failed to load params serverData, no match key find";
+            return -1;
+        }
+        // dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return -1;
