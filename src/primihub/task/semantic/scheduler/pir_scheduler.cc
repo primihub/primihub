@@ -292,7 +292,8 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             }
             duplicate_server.emplace(dest_node_address);
             thrds.emplace_back(
-                std::thread(node_push_pir_task,
+                std::thread(&PIRScheduler::node_push_pir_task,
+                            this,
                             pair.first,                     // node_id
                             this->peer_dataset_map_,        // peer_dataset_map
                             std::ref(nodePushTaskRequest),  // nodePushTaskRequest
