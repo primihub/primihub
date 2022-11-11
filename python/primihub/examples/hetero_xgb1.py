@@ -1366,12 +1366,19 @@ def xgb_host_logic(cry_pri="paillier"):
     start = time.time()
     # xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)
 
-    lp = LineProfiler(xgb_host.fit)
+    lp = LineProfiler()
     lp.add_function(xgb_host.host_tree_construct)
     lp.add_function(xgb_host.gh_sums_decrypted)
-
-    lp.run("xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)")
+    lp_wrapper = lp(xgb_host.fit)
+    lp_wrapper(X_host=X_host, Y=Y, paillier_encryptor=paillier_encryptor, lookup_table_sum=lookup_table_sum)
     lp.print_stats()
+
+    # lp = LineProfiler(xgb_host.fit)
+    # lp.add_function(xgb_host.host_tree_construct)
+    # lp.add_function(xgb_host.gh_sums_decrypted)
+
+    # lp.run("xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)")
+    # lp.print_stats()
     # for t in range(xgb_host.n_estimators):
     #     print("Begin to trian tree: ", t + 1)
     #     f_t = pd.Series([0] * Y.shape[0])
