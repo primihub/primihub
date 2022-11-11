@@ -1436,7 +1436,7 @@ def xgb_host_logic(cry_pri="paillier"):
     fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
     plt.plot(fpr, tpr)
     plt.title("train_acc={}".format(train_acc))
-    plt.save(indicator_file_path)
+    plt.savefig(indicator_file_path)
 
     # save pred_y to file
     preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
