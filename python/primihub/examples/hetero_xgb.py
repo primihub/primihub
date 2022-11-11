@@ -21,6 +21,7 @@ import functools
 import ray
 from ray.util import ActorPool
 from line_profiler import LineProfiler
+import matplotlib.pyplot as plt
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -1202,7 +1203,7 @@ is_encrypted = False
     datasets=['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
     port='8000',
     task_type="classification")
-def xgb_host_logic():
+def xgb_host_logic(cry_pri="paillier"):
     logger.info("start xgb host logic...")
 
     role_node_map = ph.context.Context.get_role_node_map()
@@ -1360,8 +1361,6 @@ def xgb_host_logic():
     # logger.info("lasting time for xgb %s".format(end-start))
     print("train time for xgboost: ", (end - start))
 
-    predict_file_path = ph.context.Context.get_predict_file_path()
-    indicator_file_path = ph.context.Context.get_indicator_file_path()
     model_file_path = ph.context.Context.get_model_file_path()
     lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
@@ -1413,6 +1412,22 @@ def xgb_host_logic():
     # with open(indicator_file_path, 'wb') as trainMetrics:
     #     pickle.dump(train_metrics, trainMetrics)
 
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+
+    # save results to png
+    plt.figure()
+    fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
+    plt.plot(fpr, tpr)
+    plt.title("train_acc={}".format(train_acc))
+    plt.save(indicator_file_path)
+
+    # save pred_y to file
+    preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
+    preds.to_csv(predict_file_path, index=False, sep='\t')
+    # with open(indicator_file_path, 'wb') as trainMetrics:
+    #     pickle.dump(train_metrics, trainMetrics)
+
     proxy_server.StopRecvLoop()
     # host_log.close()
 
@@ -1423,7 +1438,7 @@ def xgb_host_logic():
     datasets=['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
     port='9000',
     task_type="classification")
-def xgb_guest_logic():
+def xgb_guest_logic(cry_pri="paillier"):
     # def xgb_guest_logic(cry_pri="plaintext"):
     print("start xgb guest logic...")
     # ios = IOService()

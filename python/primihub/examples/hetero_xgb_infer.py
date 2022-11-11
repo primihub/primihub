@@ -344,6 +344,11 @@ def xgb_host_infer():
 
     print("prediction y: ", pred_y)
 
+    # save preds to file
+    predict_file_path = ph.context.Context.get_predict_file_path()
+    pred_df = pd.DataFrame({'pred_y': pred_y})
+    pred_df.to_csv(predict_file_path, index=False, sep='\t')
+
 
 @ph.context.function(role='guest',
                      protocol='xgboost',
@@ -378,6 +383,8 @@ def xgb_guest_infer():
     lookup_file_path = ph.context.Context.get_guest_lookup_file_path(
     ) + ".guest"
     guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
+
+    print("guest_model_path: ", guest_model_path)
 
     with open(guest_model_path, 'rb') as guestModel:
         guest_model = pickle.load(guestModel)
