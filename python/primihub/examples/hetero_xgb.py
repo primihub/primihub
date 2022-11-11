@@ -771,6 +771,8 @@ class XGB_HOST_EN:
         self.guest_record = 0
         self.ratio = 10**5
         self.encrypted = encrypted
+        self.global_transfer_time = 0
+        self.gloabl_construct_time = 0
 
     def _grad(self, y_hat, Y):
 
@@ -1086,6 +1088,19 @@ class XGB_HOST_EN:
 
             return tree_structure
 
+    def fit(self, Y, train_losses):
+        self.lookup_table = {}
+        y_hat = np.array([self.base_score] * len(Y))
+        for t in range(self.n_estimators):
+            print("Begin to trian tree: ", t + 1)
+            f_t = pd.Series([0] * Y.shape[0])
+            gh = pd.DataFrame({
+                'g': self._grad(y_hat, Y.flatten()),
+                'h': self._hess(y_hat, Y.flatten())
+            })
+
+        pass
+
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
         if tree is not None:
             k = list(tree.keys())[0]
@@ -1289,8 +1304,8 @@ def xgb_host_logic(cry_pri="paillier"):
     #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
     #                                                               )
     # pools = ActorPool([actor1, actor2, actor3])
-    xgb_host.lookup_table = {}
-    y_hat = np.array([xgb_host.base_score] * len(Y))
+    # xgb_host.lookup_table = {}
+    # y_hat = np.array([xgb_host.base_score] * len(Y))
     train_losses = []
 
     start = time.time()
@@ -1351,11 +1366,11 @@ def xgb_host_logic(cry_pri="paillier"):
         y_hat = y_hat + xgb_host.learning_rate * f_t
 
         logger.info("Finish to trian tree {}.".format(t + 1))
-        current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-        current_loss = xgb_host.log_loss(Y, current_pred)
-        train_losses.append(current_loss)
+        # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
+        # current_loss = xgb_host.log_loss(Y, current_pred)
+        # train_losses.append(current_loss)
 
-        print("train_losses ", train_losses)
+        # print("train_losses ", train_losses)
 
     end = time.time()
     # logger.info("lasting time for xgb %s".format(end-start))
