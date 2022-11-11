@@ -5,10 +5,14 @@ namespace primihub {
 
 // Convert a u64 value from host order to network order.
 static unsigned long long htonll(unsigned long long val) {
-  if (__BYTE_ORDER == __LITTLE_ENDIAN) {
+  int i = 1;
+  char c = *(reinterpret_cast<char *>(&i));
+  if (c) {
+    // This machine is LITTLE ENDIAN;
     return (((unsigned long long)htonl((int)((val << 32) >> 32))) << 32) |
            (unsigned int)htonl((int)(val >> 32));
-  } else if (__BYTE_ORDER == __BIG_ENDIAN) {
+  } else {
+    // This machine is BIG ENDIAN;
     return val;
   }
 }
@@ -126,57 +130,57 @@ void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
   enc.localIntMatrix(runtime, vals, sharedMatrix).get();
 
-#ifdef ENABLE_AUDIT
-  i64 *mat_ptr = sharedMatrix.mShares[0].data();
-  size_t mat_size = sharedMatrix.mShares[0].size();
-  std::vector<std::string> lines;
+  if (VLOG_IS_ON(7)) {
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
 
-  convertArrayToStrings(mat_ptr, mat_size, lines);
+    convertArrayToStrings(mat_ptr, mat_size, lines);
 
-  LOG(INFO) << "Dump value in first piece of secure share:";
-  for (auto line : lines)
-    LOG(INFO) << line;
-  LOG(INFO) << "Dump finish.";
+    VLOG(7) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
 
-  lines.clear();
+    lines.clear();
 
-  mat_ptr = sharedMatrix.mShares[1].data();
-  mat_size = sharedMatrix.mShares[1].size();
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
 
-  convertArrayToStrings(mat_ptr, mat_size, lines);
-  LOG(INFO) << "Dump value in second piece of secure share:";
-  for (auto line : lines)
-    LOG(INFO) << line;
-  LOG(INFO) << "Dump finish.";
-#endif
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    VLOG(7) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+  }
 }
 
 void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 
-#ifdef ENABLE_AUDIT
-  i64 *mat_ptr = sharedMatrix.mShares[0].data();
-  size_t mat_size = sharedMatrix.mShares[0].size();
-  std::vector<std::string> lines;
-  
-  convertArrayToStrings(mat_ptr, mat_size, lines);
+  if (VLOG_IS_ON(7)) {
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
 
-  LOG(INFO) << "Dump value in first piece of secure share:";
-  for (auto line : lines)
-    LOG(INFO) << line; 
-  LOG(INFO) << "Dump finish.";
+    convertArrayToStrings(mat_ptr, mat_size, lines);
 
-  lines.clear();
-  
-  mat_ptr = sharedMatrix.mShares[1].data();
-  mat_size = sharedMatrix.mShares[1].size();
+    VLOG(7) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
 
-  convertArrayToStrings(mat_ptr, mat_size, lines);
-  LOG(INFO) << "Dump value in second piece of secure share:";
-  for (auto line : lines)
-    LOG(INFO) << line; 
-  LOG(INFO) << "Dump finish.";
-#endif
+    lines.clear();
+
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    VLOG(7) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+  }
 }
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
   std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
