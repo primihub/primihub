@@ -54,7 +54,9 @@ public:
 
   int setup(std::string next_ip, std::string prev_ip, u32 next_port,
             u32 prev_port);
+
   void fini();
+
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
@@ -62,57 +64,57 @@ public:
       fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
 
-#ifdef ENABLE_AUDIT
-    i64 *mat_ptr = sharedMatrix.mShares[0].data();
-    size_t mat_size = sharedMatrix.mShares[0].size();
-    std::vector<std::string> lines;
-    
-    convertArrayToStrings(mat_ptr, mat_size, lines);
+    if (VLOG_IS_ON(7)) {
+      i64 *mat_ptr = sharedMatrix.mShares[0].data();
+      size_t mat_size = sharedMatrix.mShares[0].size();
+      std::vector<std::string> lines;
 
-    LOG(INFO) << "Dump value in first piece of secure share:";
-    for (auto line : lines)
-      LOG(INFO) << line; 
-    LOG(INFO) << "Dump finish.";
+      convertArrayToStrings(mat_ptr, mat_size, lines);
 
-    lines.clear();
-    
-    mat_ptr = sharedMatrix.mShares[1].data();
-    mat_size = sharedMatrix.mShares[1].size();
+      VLOG(7) << "Dump value in first piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
 
-    convertArrayToStrings(mat_ptr, mat_size, lines);
-    LOG(INFO) << "Dump value in second piece of secure share:";
-    for (auto line : lines)
-      LOG(INFO) << line; 
-    LOG(INFO) << "Dump finish.";
-#endif
+      lines.clear();
+
+      mat_ptr = sharedMatrix.mShares[1].data();
+      mat_size = sharedMatrix.mShares[1].size();
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+      VLOG(7) << "Dump value in second piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+    }
   }
 
   template <Decimal D> void createShares(sf64Matrix<D> &sharedMatrix) {
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
 
-#ifdef ENABLE_AUDIT
-    i64 *mat_ptr = sharedMatrix.mShares[0].data();
-    size_t mat_size = sharedMatrix.mShares[0].size();
-    std::vector<std::string> lines;
-    
-    convertArrayToStrings(mat_ptr, mat_size, lines);
+    if (VLOG_IS_ON(7)) {
+      i64 *mat_ptr = sharedMatrix.mShares[0].data();
+      size_t mat_size = sharedMatrix.mShares[0].size();
+      std::vector<std::string> lines;
 
-    LOG(INFO) << "Dump value in first piece of secure share:";
-    for (auto line : lines)
-      LOG(INFO) << line; 
-    LOG(INFO) << "Dump finish.";
+      convertArrayToStrings(mat_ptr, mat_size, lines);
 
-    lines.clear();
-    
-    mat_ptr = sharedMatrix.mShares[1].data();
-    mat_size = sharedMatrix.mShares[1].size();
+      VLOG(7) << "Dump value in first piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
 
-    convertArrayToStrings(mat_ptr, mat_size, lines);
-    LOG(INFO) << "Dump value in second piece of secure share:";
-    for (auto line : lines)
-      LOG(INFO) << line; 
-    LOG(INFO) << "Dump finish.";
-#endif
+      lines.clear();
+
+      mat_ptr = sharedMatrix.mShares[1].data();
+      mat_size = sharedMatrix.mShares[1].size();
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+      VLOG(7) << "Dump value in second piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+    }
   }
 
   template <Decimal D>
