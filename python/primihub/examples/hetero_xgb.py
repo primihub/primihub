@@ -1367,8 +1367,8 @@ def xgb_host_logic(cry_pri="paillier"):
 
         logger.info("Finish to trian tree {}.".format(t + 1))
         # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-        # current_loss = xgb_host.log_loss(Y, current_pred)
-        # train_losses.append(current_loss)
+        current_loss = xgb_host.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+        train_losses.append(current_loss)
 
         # print("train_losses ", train_losses)
 

@@ -1515,7 +1515,7 @@ def xgb_host_logic(cry_pri="paillier"):
     #     pickle.dump(train_metrics, trainMetrics)
 
     predict_file_path = ph.context.Context.get_predict_file_path()
-    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    indicator_file_path = ph.context.Context.get_indicator_file_path() + '.png'
 
     # save results to png
     current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
