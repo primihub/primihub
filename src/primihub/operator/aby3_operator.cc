@@ -57,16 +57,16 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
     ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
     ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Server, prev_name);
 
-    VLOG(3) << "Start server session, listen port " << next_port << ".";
-    VLOG(3) << "Start server session, listen port " << prev_port << ".";
+    V_VLOG(3) << "Start server session, listen port " << next_port << ".";
+    V_VLOG(3) << "Start server session, listen port " << prev_port << ".";
 
     break;
   case 1:
     ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
     ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
 
-    VLOG(3) << "Start server session, listen port " << next_port << ".";
-    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
+    V_VLOG(3) << "Start server session, listen port " << next_port << ".";
+    V_VLOG(3) << "Start client session, connect to " << prev_ip << ":"
             << prev_port << ".";
 
     break;
@@ -74,9 +74,9 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
     ep_next_.start(ios, next_ip, next_port, SessionMode::Client, next_name);
     ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
 
-    VLOG(3) << "Start client session, connect to " << next_ip << ":"
+    V_VLOG(3) << "Start client session, connect to " << next_ip << ":"
             << next_port << ".";
-    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
+    V_VLOG(3) << "Start client session, connect to " << prev_ip << ":"
             << prev_port << ".";
 
     break;
@@ -94,13 +94,13 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
   comm.mNext().recv(next_party);
   comm.mPrev().recv(prev_party);
   if (next_party != (partyIdx + 1) % 3) {
-    LOG(ERROR) << "Party " << partyIdx << ", expect next party id "
+    LOG_ERROR() << "Party " << partyIdx << ", expect next party id "
                << (partyIdx + 1) % 3 << ", but give " << next_party << ".";
     return -3;
   }
 
   if (prev_party != (partyIdx + 2) % 3) {
-    LOG(ERROR) << "Party " << partyIdx << ", expect prev party id "
+    LOG_ERROR() << "Party " << partyIdx << ", expect prev party id "
                << (partyIdx + 2) % 3 << ", but give " << prev_party << ".";
     return -3;
   }
@@ -137,10 +137,10 @@ void MPCOperator::createShares(const i64Matrix &vals,
 
     convertArrayToStrings(mat_ptr, mat_size, lines);
 
-    VLOG(7) << "Dump value in first piece of secure share:";
+    V_VLOG(7) << "Dump value in first piece of secure share:";
     for (auto line : lines)
-      VLOG(7) << line;
-    VLOG(7) << "Dump finish.";
+      V_VLOG(7) << line;
+    V_VLOG(7) << "Dump finish.";
 
     lines.clear();
 
@@ -148,10 +148,10 @@ void MPCOperator::createShares(const i64Matrix &vals,
     mat_size = sharedMatrix.mShares[1].size();
 
     convertArrayToStrings(mat_ptr, mat_size, lines);
-    VLOG(7) << "Dump value in second piece of secure share:";
+    V_VLOG(7) << "Dump value in second piece of secure share:";
     for (auto line : lines)
-      VLOG(7) << line;
-    VLOG(7) << "Dump finish.";
+      V_VLOG(7) << line;
+    V_VLOG(7) << "Dump finish.";
   }
 }
 
@@ -165,10 +165,10 @@ void MPCOperator::createShares(si64Matrix &sharedMatrix) {
 
     convertArrayToStrings(mat_ptr, mat_size, lines);
 
-    VLOG(7) << "Dump value in first piece of secure share:";
+    V_VLOG(7) << "Dump value in first piece of secure share:";
     for (auto line : lines)
-      VLOG(7) << line;
-    VLOG(7) << "Dump finish.";
+      V_VLOG(7) << line;
+    V_VLOG(7) << "Dump finish.";
 
     lines.clear();
 
@@ -176,10 +176,10 @@ void MPCOperator::createShares(si64Matrix &sharedMatrix) {
     mat_size = sharedMatrix.mShares[1].size();
 
     convertArrayToStrings(mat_ptr, mat_size, lines);
-    VLOG(7) << "Dump value in second piece of secure share:";
+    V_VLOG(7) << "Dump value in second piece of secure share:";
     for (auto line : lines)
-      VLOG(7) << line;
-    VLOG(7) << "Dump finish.";
+      V_VLOG(7) << line;
+    V_VLOG(7) << "Dump finish.";
   }
 }
 
@@ -396,11 +396,11 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
   }
 
   if (VLOG_IS_ON(2)) {
-    VLOG(2) << "Dump shape of all party's matrix:";
+    V_VLOG(2) << "Dump shape of all party's matrix:";
     for (uint64_t i = 0; i < 3; i++)
-      VLOG(2) << "Party 0: (" << all_party_shape[i][0] << ", "
+      V_VLOG(2) << "Party 0: (" << all_party_shape[i][0] << ", "
               << all_party_shape[i][1] << ")";
-    VLOG(2) << "Dump finish.";
+    V_VLOG(2) << "Dump finish.";
   }
 
   // Shape of matrix in two party shoubld be the same.
@@ -408,7 +408,7 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
       (all_party_shape[0][1] != all_party_shape[1][1]))
     throw std::runtime_error("Shape of matrix in two party must be the same.");
 
-  LOG(INFO) << "Party " << (partyIdx + 1) % 3 << " and party "
+  LOG_INFO() << "Party " << (partyIdx + 1) % 3 << " and party "
             << (partyIdx + 2) % 3 << " provide value for MPC compare.";
 
   // Create binary share.
@@ -420,7 +420,7 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
     sh_m_vec.emplace_back(sh_m);
   }
 
-  LOG(INFO) << "Create binary share for value from two party finish.";
+  LOG_INFO() << "Create binary share for value from two party finish.";
 
   // Build then run MSB circuit.
   KoggeStoneLibrary lib;
@@ -436,6 +436,15 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
   task = binEval.asyncEvaluate(task, cir, gen, input, output);
   task.get();
 
-  LOG(INFO) << "Finish evaluate MSB circuit.";
+  LOG_INFO() << "Finish evaluate MSB circuit.";
+}
+
+int MPCOperator::set_task_info(std::string platform_type,
+                                              std::string job_id,
+                                              std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
 }
 } // namespace primihub

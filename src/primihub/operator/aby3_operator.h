@@ -20,12 +20,20 @@
 #include "src/primihub/util/crypto/prng.h"
 #include "src/primihub/util/eigen_util.h"
 #include "src/primihub/util/log.h"
+#include "src/primihub/util/log_wrapper.h"
 #include "src/primihub/util/network/socket/channel.h"
 #include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
 
 namespace primihub {
+#define V_VLOG(level) VLOG_WRAPPER(level, platform(), job_id(), task_id())
+
+#define LOG_INFO() LOG_INFO_WRAPPER(platform(), job_id(), task_id())
+
+#define LOG_WARNING() LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
+
+#define LOG_ERROR() LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
 const uint8_t VAL_BITCOUNT = 64;
 
 // Print value in u64 array into string in network order.
@@ -56,7 +64,12 @@ public:
             u32 prev_port);
 
   void fini();
-
+  int set_task_info(std::string platform_type, std::string job_id,
+                    std::string task_id);
+  inline std::string platform() { return platform_type_; }
+  inline std::string job_id() { return job_id_; }
+  inline std::string task_id() { return task_id_; }
+  
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
@@ -72,10 +85,10 @@ public:
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
 
-      VLOG(7) << "Dump value in first piece of secure share:";
+      V_VLOG(7) << "Dump value in first piece of secure share:";
       for (auto line : lines)
-        VLOG(7) << line;
-      VLOG(7) << "Dump finish.";
+        V_VLOG(7) << line;
+      V_VLOG(7) << "Dump finish.";
 
       lines.clear();
 
@@ -84,10 +97,10 @@ public:
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
 
-      VLOG(7) << "Dump value in second piece of secure share:";
+      V_VLOG(7) << "Dump value in second piece of secure share:";
       for (auto line : lines)
-        VLOG(7) << line;
-      VLOG(7) << "Dump finish.";
+        V_VLOG(7) << line;
+      V_VLOG(7) << "Dump finish.";
     }
   }
 
@@ -102,10 +115,10 @@ public:
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
 
-      VLOG(7) << "Dump value in first piece of secure share:";
+      V_VLOG(7) << "Dump value in first piece of secure share:";
       for (auto line : lines)
-        VLOG(7) << line;
-      VLOG(7) << "Dump finish.";
+        V_VLOG(7) << line;
+      V_VLOG(7) << "Dump finish.";
 
       lines.clear();
 
@@ -113,10 +126,10 @@ public:
       mat_size = m.mShares[1].size();
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
-      VLOG(7) << "Dump value in second piece of secure share:";
+      V_VLOG(7) << "Dump value in second piece of secure share:";
       for (auto line : lines)
-        VLOG(7) << line;
-      VLOG(7) << "Dump finish.";
+        V_VLOG(7) << line;
+      V_VLOG(7) << "Dump finish.";
     }
   }
 
@@ -155,9 +168,9 @@ public:
 
   void createShares(si64Matrix &sharedMatrix);
 
-  void createShares(i64 val,si64& dest);
+  void createShares(i64 val, si64 &dest);
 
-  void createShares(si64& dest);
+  void createShares(si64 &dest);
 
   si64Matrix createSharesByShape(const i64Matrix &val);
 
@@ -644,13 +657,13 @@ public:
     sf64Matrix<D> quotient_sign(B.rows(), B.cols());
     MPC_Dotproduct(denominator_sign, numerator_sign, quotient_sign);
 
-    // LOG(INFO) << "denominator result: "
+    // LOG_INFO() << "denominator result: "
     //           << revealAll(denominator).format(HeavyFmt);
-    // LOG(INFO) << "numerator result: " <<
-    // revealAll(numerator).format(HeavyFmt); LOG(INFO) << "denominator_sign
+    // LOG_INFO() << "numerator result: " <<
+    // revealAll(numerator).format(HeavyFmt); LOG_INFO() << "denominator_sign
     // result: "
     //           << revealAll(denominator_sign).format(HeavyFmt);
-    // LOG(INFO) << "numerator_sign result: "
+    // LOG_INFO() << "numerator_sign result: "
     //           << revealAll(numerator_sign).format(HeavyFmt);
 
     /*because of the limitation of PIECEWISE, we have to input n rows and 1
@@ -812,11 +825,11 @@ public:
     }
 
     {
-      LOG(INFO) << "Dump shape of all party's matrix:";
+      LOG_INFO() << "Dump shape of all party's matrix:";
       for (uint64_t i = 0; i < 3; i++)
-        LOG(INFO) << "Party " << i << ": (" << all_party_shape[i][0] << ", "
+        LOG_INFO() << "Party " << i << ": (" << all_party_shape[i][0] << ", "
                   << all_party_shape[i][1] << ")";
-      LOG(INFO) << "Dump finish.";
+      LOG_INFO() << "Dump finish.";
     }
 
     // The compare is a binary operator, so only two party will provide value
@@ -863,7 +876,7 @@ public:
         m.mData = m.mData.array() * -1;
     }
 
-    LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
+    LOG_INFO() << "Party " << (skip_index + 1) % 3 << " and party "
               << (skip_index + 2) % 3 << " provide value for MPC compare.";
 
     // Create binary shares.
@@ -889,7 +902,7 @@ public:
       }
     }
 
-    LOG(INFO) << "Create binary share for value from two party finish.";
+    LOG_INFO() << "Create binary share for value from two party finish.";
 
     // Build then run MSB circuit.
     KoggeStoneLibrary lib;
@@ -912,10 +925,15 @@ public:
         m.mData = m.mData.array() * -1;
     }
 
-    LOG(INFO) << "Finish evalute MSB circuit.";
+    LOG_INFO() << "Finish evalute MSB circuit.";
   }
 
   void MPC_Compare(sbMatrix &sh_res);
+
+private:
+  std::string platform_type_ = "";
+  std::string job_id_ = "";
+  std::string task_id_ = "";
 };
 #endif
 } // namespace primihub

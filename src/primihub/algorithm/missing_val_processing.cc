@@ -54,7 +54,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
   this->algorithm_name_ = "missing_val_processing";
 
   std::map<std::string, Node> &node_map = config.node_map;
-  LOG(INFO) << node_map.size();
+  LOG_INFO() << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -70,7 +70,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
   }
 
   party_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
+  LOG_INFO() << "Note party id of this node is " << party_id_ << ".";
 
   if (party_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
@@ -145,7 +145,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     // two node has dataset to handle, fix it later.
     std::stringstream ss;
     ss << "Can't not find dataset belong to " << this->node_id_ << ".";
-    LOG(ERROR) << ss.str();
+    LOG_ERROR() << ss.str();
     throw std::runtime_error(ss.str());
   }
 
@@ -159,12 +159,12 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     std::string col_name = iter->name.GetString();
     uint32_t col_dtype = iter->value.GetInt();
     col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
-    LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
-              << iter->value.GetInt() << ".";
+    LOG_INFO() << "Type of column " << iter->name.GetString() << " is "
+               << iter->value.GetInt() << ".";
   }
 
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
-  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
+  LOG_INFO() << "New id of new dataset is " << new_dataset_id_ << ".";
 
   std::string next_name;
   std::string prev_name;
@@ -179,7 +179,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     prev_name = "12";
   }
   mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
-
+  mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
   return 0;
 }
 
@@ -188,7 +188,7 @@ int MissingProcess::loadDataset() {
 
   // file reading error or file empty
   if (ret <= 0) {
-    LOG(ERROR) << "Load dataset for train failed.";
+    LOG_ERROR() << "Load dataset for train failed.";
     return -1;
   }
 
@@ -196,9 +196,9 @@ int MissingProcess::loadDataset() {
 }
 
 int MissingProcess::initPartyComm(void) {
-  LOG(INFO) << "Begin to init party comm.";
+  LOG_INFO() << "Begin to init party comm.";
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-  LOG(INFO) << "Finish to init party comm.";
+  LOG_INFO() << "Finish to init party comm.";
   return 0;
 }
 
@@ -254,11 +254,11 @@ int MissingProcess::execute() {
       }
       if (itr->second == 1) {
         si64 sharedInt;
-        LOG(INFO) << "Begin to handle column " << itr->first << ".";
-        LOG(INFO) << "Begin to run MPC sum.";
+        LOG_INFO() << "Begin to handle column " << itr->first << ".";
+        LOG_INFO() << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(int_sum, sharedInt);
         i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
-        LOG(INFO) << "Finish to run MPC sum.";
+        LOG_INFO() << "Finish to run MPC sum.";
         new_sum = new_sum / 3;
         if (t != local_col_names.end()) {
           int tmp_index = std::distance(local_col_names.begin(), t);
@@ -298,11 +298,11 @@ int MissingProcess::execute() {
         }
       } else if (itr->second == 2) {
         sf64<D16> sharedFixedInt;
-        LOG(INFO) << "Begin to handle column " << itr->first << ".";
-        LOG(INFO) << "Begin to run MPC sum.";
+        LOG_INFO() << "Begin to handle column " << itr->first << ".";
+        LOG_INFO() << "Begin to run MPC sum.";
         mpc_op_exec_->createShares(double_sum, sharedFixedInt);
         double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-        LOG(INFO) << "Finish to run MPC sum.";
+        LOG_INFO() << "Finish to run MPC sum.";
 
         new_sum = new_sum / 3;
 
@@ -357,7 +357,7 @@ int MissingProcess::execute() {
       }
     }
   } catch (std::exception &e) {
-    LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
+    LOG_ERROR() << "In party " << party_id_ << ":\n" << e.what() << ".";
   }
   return 0;
 } // namespace primihub
@@ -387,7 +387,7 @@ int MissingProcess::saveModel(void) {
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
   if (ret != 0) {
-    LOG(ERROR) << "Save result to file " << new_path << " failed.";
+    LOG_ERROR() << "Save result to file " << new_path << " failed.";
     return -1;
   }
 
@@ -411,8 +411,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
 
   int num_col = table->num_columns();
 
-  LOG(INFO) << "Loaded " << table->num_rows() << " rows in "
-            << table->num_columns() << " columns." << std::endl;
+  LOG_INFO() << "Loaded " << table->num_rows() << " rows in "
+             << table->num_columns() << " columns." << std::endl;
   local_col_names = table->ColumnNames();
 
   // 'array' include values in a column of csv file.
@@ -423,8 +423,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
         table->column(num_col - 1)->chunk(k));
     array_len += array->length();
   }
-  LOG(INFO) << "Label column '" << local_col_names[num_col - 1] << "' has "
-            << array_len << " values.";
+  LOG_INFO() << "Label column '" << local_col_names[num_col - 1] << "' has "
+             << array_len << " values.";
 
   // Force the same value count in every column.
   for (int i = 0; i < num_col; i++) {
@@ -441,8 +441,8 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       }
     }
     if (tmp_len != array_len) {
-      LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
-                 << " value, but other column has " << array_len << " value.";
+      LOG_ERROR() << "Column " << local_col_names[i] << " has " << tmp_len
+                  << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
     }
@@ -452,5 +452,12 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
 
     return array_len;
   }
+}
+int MissingProcess::set_task_info(std::string platform_type, std::string job_id,
+                                  std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
 }
 } // namespace primihub

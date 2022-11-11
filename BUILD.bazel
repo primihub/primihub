@@ -518,7 +518,8 @@ cc_library(
           ":model_util_lib",
           ":util_lib",
           ":dataset_service",
-          ":protocol_falcon_lib"
+          ":protocol_falcon_lib",
+          ":log_wrapper"
     ],
 )
 

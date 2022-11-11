@@ -33,7 +33,7 @@ using arrow::Table;
 
 namespace primihub {
 eMatrix<double>
-logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
+LogisticRegressionExecutor::logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
               sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
               sf64Matrix<D> &test_label_0_1, aby3ML &p, int B, int IT, int pIdx,
               bool print, Session &chlPrev, Session &chlNext) {
@@ -59,13 +59,13 @@ logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
 
   auto start = std::chrono::system_clock::now();
 
-  LOG(INFO) << "(Learning rate):" << params.mLearningRate << ".\n";
-  LOG(INFO) << "(Epoch):" << params.mIterations << ".\n";
-  LOG(INFO) << "(Batchsize) :" << params.mBatchSize << ".\n";
-  LOG(INFO) << "(Train_loader size):"
+  LOG_INFO() << "(Learning rate):" << params.mLearningRate << ".\n";
+  LOG_INFO() << "(Epoch):" << params.mIterations << ".\n";
+  LOG_INFO() << "(Batchsize) :" << params.mBatchSize << ".\n";
+  LOG_INFO() << "(Train_loader size):"
             << (train_data_0_1.rows() / params.mBatchSize) << ".\n";
   for (int i = 0; i < IT; i++) {
-    LOG(INFO) << "Epochs : ( " << i << "/" << IT << " )";
+    LOG_INFO() << "Epochs : ( " << i << "/" << IT << " )";
     SGD_Logistic(params, p, train_data_0_1, train_label_0_1, W2_0_1,
                  &test_data_0_1, &test_label_0_1);
   }
@@ -105,7 +105,7 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   this->algorithm_name_ = "logistic_regression";
 
   std::map<std::string, Node> &node_map = config.node_map;
-  LOG(INFO) << node_map.size();
+  LOG_INFO() << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -121,7 +121,7 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   }
 
   local_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << local_id_ << ".";
+  LOG_INFO() << "Note party id of this node is " << local_id_ << ".";
 
   if (local_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
@@ -171,11 +171,11 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
     if (model_file_name_ == "")
       model_file_name_ = "./" + model_name_ + ".csv";
   } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load params: " << e.what();
+    LOG_ERROR() << "Failed to load params: " << e.what();
     return -1;
   }
 
-  LOG(INFO) << "Train data " << train_input_filepath_ << ", test data "
+  LOG_INFO() << "Train data " << train_input_filepath_ << ", test data "
             << test_input_filepath_ << ".";
   return 0;
 }
@@ -205,7 +205,7 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
     auto array =
         std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
     if (array->length() != array_len) {
-      LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
+      LOG_ERROR() << "Column " << col_names[i] << " has " << array->length()
                  << " value, but label column has " << array_len << " value.";
       errors = true;
       break;
@@ -216,9 +216,9 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
     return -1;
   int64_t train_length = floor(array_len * 0.8);
   int64_t test_length = array_len - train_length;
-  // LOG(INFO)<<"array_len: "<<array_len;
-  // LOG(INFO)<<"train_length: "<<train_length;
-  // LOG(INFO)<<"test_length: "<<test_length;
+  // LOG_INFO()<<"array_len: "<<array_len;
+  // LOG_INFO()<<"train_length: "<<train_length;
+  // LOG_INFO()<<"test_length: "<<test_length;
   train_input_.resize(train_length, num_col);
   test_input_.resize(test_length, num_col);
   // m.resize(array_len, num_col);
@@ -252,19 +252,19 @@ int LogisticRegressionExecutor::loadDataset() {
   int ret = _LoadDatasetFromCSV(train_input_filepath_);
   // file reading error or file empty
   if (ret <= 0) {
-    LOG(ERROR) << "Load dataset failed.";
+    LOG_ERROR() << "Load dataset failed.";
     return -1;
   }
 
   // ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
   // // file reading error or file empty
   // if (ret <= 0) {
-  //   LOG(ERROR) << "Load dataset for test failed.";
+  //   LOG_ERROR() << "Load dataset for test failed.";
   //   return -2;
   // }
 
   if (train_input_.cols() != test_input_.cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Dimension mismatch between local train dataset and test dataset.";
     return -3;
   }
@@ -297,13 +297,13 @@ int LogisticRegressionExecutor::initPartyComm(void) {
 
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
+    LOG_INFO() << "[Next] Init server session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Server, sess_name_2);
-    LOG(INFO) << "[Prev] Init server session, party " << local_id_ << ", "
+    LOG_INFO() << "[Prev] Init server session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
               << ", name " << sess_name_2 << ".";
   } else if (local_id_ == 1) {
@@ -317,13 +317,13 @@ int LogisticRegressionExecutor::initPartyComm(void) {
 
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
+    LOG_INFO() << "[Next] Init server session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
+    LOG_INFO() << "[Prev] Init client session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
               << ", name " << sess_name_2 << ".";
   } else {
@@ -338,13 +338,13 @@ int LogisticRegressionExecutor::initPartyComm(void) {
 
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Client, sess_name_1);
-    LOG(INFO) << "[Next] Init client session, party " << local_id_ << ", "
+    LOG_INFO() << "[Next] Init client session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
+    LOG_INFO() << "[Prev] Init client session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
               << ", name " << sess_name_2 << ".";
   }
@@ -364,13 +364,13 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   chann_prev.recv(prev_party);
 
   if (next_party != (local_id_ + 1) % 3) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect next party id "
+    LOG_ERROR() << "Party " << local_id_ << ", expect next party id "
                << (local_id_ + 1) % 3 << ", but give " << next_party << ".";
     return -3;
   }
 
   if (prev_party != (local_id_ + 2) % 3) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect prev party id "
+    LOG_ERROR() << "Party " << local_id_ << ", expect prev party id "
                << (local_id_ + 2) % 3 << ", but give " << prev_party << ".";
     return -3;
   }
@@ -379,7 +379,7 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   chann_prev.close();
 
   engine_.init(local_id_, ep_prev_, ep_next_, toBlock(local_id_));
-  LOG(INFO) << "Init party communication finish.";
+  LOG_INFO() << "Init party communication finish.";
 
   return 0;
 }
@@ -406,7 +406,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   }
 
   if (train_shares[0].cols() != train_shares[1].cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Count of column in train dataset mismatch between party 0 and 1, "
         << "party 0 has " << train_shares[0].cols() << " column, party 1 has "
         << train_shares[1].cols() << " column.";
@@ -414,7 +414,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   }
 
   if (train_shares[1].cols() != train_shares[2].cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Count of column in train dataset mismatch between party 1 and 2, "
         << "party 1 has " << train_shares[1].cols() << " column, party 2 has "
         << train_shares[2].cols() << " column.";
@@ -458,7 +458,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   }
 
   if (test_shares[0].cols() != test_shares[1].cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Count of column in test dataset mismatch between party 0 and 1, "
         << "party 0 has " << test_shares[0].cols() << " column, party 1 has "
         << test_shares[1].cols() << " column.";
@@ -466,7 +466,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   }
 
   if (test_shares[1].cols() != train_shares[0].cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Count of column mismatch between train dataset and test dataset, "
         << "train dataset has " << train_shares[0].cols()
         << ", test dataset has " << test_shares[1].cols() << " column.";
@@ -474,7 +474,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   }
 
   if (test_shares[1].cols() != test_shares[2].cols()) {
-    LOG(ERROR)
+    LOG_ERROR()
         << "Count of column in test dataset mismatch between party 1 and 2, "
         << "party 1 has " << test_shares[1].cols() << " column, party 2 has "
         << test_shares[2].cols() << " column.";
@@ -518,10 +518,10 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
     w = engine_.remoteInput<D>(0);
   }
 
-  LOG(INFO) << "Train dataset has " << train_data.rows()
+  LOG_INFO() << "Train dataset has " << train_data.rows()
             << " examples, dimension of each is " << train_data.cols() + 1
             << ".";
-  LOG(INFO) << "Test dataset has " << test_data.rows()
+  LOG_INFO() << "Test dataset has " << test_data.rows()
             << " examples, dimension of each is " << test_data.cols() + 1
             << ".";
   return 0;
@@ -545,7 +545,7 @@ int LogisticRegressionExecutor::execute() {
                          engine_, batch_size_, num_iter_, local_id_, false,
                          ep_prev_, ep_next_);
 
-  LOG(INFO) << "Party " << local_id_ << " train finish.";
+  LOG_INFO() << "Party " << local_id_ << " train finish.";
   return 0;
 }
 
@@ -571,16 +571,23 @@ int LogisticRegressionExecutor::saveModel(void) {
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
   if (ret != 0) {
-    LOG(ERROR) << "Save LR model to file " << model_file_name_ << " failed.";
+    LOG_ERROR() << "Save LR model to file " << model_file_name_ << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save model to " << model_file_name_ << ".";
+  LOG_INFO() << "Save model to " << model_file_name_ << ".";
 
   service::DatasetMeta meta(dataset, model_name_,
                             service::DatasetVisbility::PUBLIC);
   dataset_service_->regDataset(meta);
-  LOG(INFO) << "Register new dataset finish.";
+  LOG_INFO() << "Register new dataset finish.";
   return 0;
 }
-
+int LogisticRegressionExecutor::set_task_info(std::string platform_type,
+                                              std::string job_id,
+                                              std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
+}
 } // namespace primihub
