@@ -223,7 +223,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       } else
         mpc_op_exec_->MPC_Compare(sh_res);
       // reveal
-      for (auto party : parties_) {
+      for (const auto& party : parties_) {
         if (party_id_ == party) {
           i64Matrix tmp = mpc_op_exec_->reveal(sh_res);
           for (size_t i = 0; i < tmp.rows(); i++)
@@ -275,6 +275,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
   for (auto party : parties_) {
     if (party == party_id_) {
       is_reveal = true;
+      break;
     }
   }
   if (!is_reveal) {
