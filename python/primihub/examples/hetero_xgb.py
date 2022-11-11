@@ -1431,6 +1431,7 @@ def xgb_host_logic(cry_pri="paillier"):
     indicator_file_path = ph.context.Context.get_indicator_file_path()
 
     # save results to png
+    current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
     plt.figure()
     fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
     plt.plot(fpr, tpr)
@@ -1535,7 +1536,7 @@ def xgb_guest_logic(cry_pri="paillier"):
         # stat construct boosting trees
 
         lookup_table_sum[t + 1] = xgb_guest.lookup_table
-        xgb_guest.predict(X_guest.copy(), lookup_table_sum)
+        # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
@@ -1562,6 +1563,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     # test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
     # print("test_guest: ", test_guest.shape)
     # xgb_guest.predict(test_guest, lookup_table_sum)
+    xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
