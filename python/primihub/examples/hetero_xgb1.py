@@ -1088,74 +1088,6 @@ class XGB_HOST_EN:
 
             return tree_structure
 
-    def fit(self, X_host, Y, paillier_encryptor, lookup_table_sum):
-        y_hat = np.array([self.base_score] * len(Y))
-        train_losses = []
-
-        start = time.time()
-        for t in range(self.n_estimators):
-            print("Begin to trian tree: ", t + 1)
-            f_t = pd.Series([0] * Y.shape[0])
-
-            # host cal gradients and hessians with its own label
-            gh = pd.DataFrame({
-                'g': self._grad(y_hat, Y.flatten()),
-                'h': self._hess(y_hat, Y.flatten())
-            })
-
-            # convert gradients and hessians to ints and encrypted with paillier
-            # ratio = 10**3
-            # gh_large = (gh * ratio).astype('int')
-            if is_encrypted:
-                flat_gh = gh.values.flatten()
-                flat_gh *= self.ratio
-
-                flat_gh = flat_gh.astype('int')
-
-                start_enc = time.time()
-                enc_flat_gh = list(
-                    paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-                                           flat_gh.tolist()))
-
-                end_enc = time.time()
-
-                enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
-                enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
-
-                # send all encrypted gradients and hessians to 'guest'
-                self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
-
-                end_send_gh = time.time()
-                print("Time for encryption and transfer: ",
-                      (end_enc - start_enc), (end_send_gh - end_enc))
-                print("Encrypt finish.")
-
-            else:
-                self.proxy_client_guest.Remote(gh, "gh_en")
-
-            # start construct boosting trees
-            # lp = LineProfiler(xgb_host.host_tree_construct)
-            # lp.run(
-            #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
-            # )
-            # lp.print_stats()
-
-            self.tree_structure[t + 1] = self.host_tree_construct(
-                X_host.copy(), f_t, 0, gh)
-            # y_hat = y_hat + xgb_host.learning_rate * f_t
-
-            end_build_tree = time.time()
-
-            lookup_table_sum[t + 1] = self.lookup_table
-            y_hat = y_hat + self.learning_rate * f_t
-
-            logger.info("Finish to trian tree {}.".format(t + 1))
-            # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-            # current_loss = xgb_host.log_loss(Y, current_pred)
-            # train_losses.append(current_loss)
-
-            # print("train_losses ", train_losses)
-
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
         if tree is not None:
             k = list(tree.keys())[0]
@@ -1435,6 +1367,9 @@ def xgb_host_logic(cry_pri="paillier"):
     # xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)
 
     lp = LineProfiler(xgb_host.fit)
+    lp.add_function(xgb_host.host_tree_construct)
+    lp.add_function(xgb_host.gh_sums_decrypted)
+
     lp.run("xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)")
     lp.print_stats()
     # for t in range(xgb_host.n_estimators):
