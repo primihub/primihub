@@ -152,6 +152,10 @@ public:
 
   void createShares(si64Matrix &sharedMatrix);
 
+  void createShares(i64 val,si64& dest);
+
+  void createShares(si64& dest);
+
   si64Matrix createSharesByShape(const i64Matrix &val);
 
   si64Matrix createSharesByShape(u64 partyIdx);
@@ -179,6 +183,8 @@ public:
   }
 
   i64Matrix revealAll(const si64Matrix &vals);
+
+  i64 revealAll(const si64 &val);
 
   template <Decimal D> double revealAll(const sf64<D> &vals) {
     f64<D> ret;

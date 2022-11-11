@@ -1,0 +1,45 @@
+cc_library(
+  name = "sqlite_wrapper",
+  hdrs = glob([
+    "include",
+    "include/SQLiteCpp/*.h",
+  ]),
+  srcs = glob([
+    "src/*.cpp",
+  ]),
+  copts = [
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Wswitch-enum",
+    "-Wshadow",
+    "-Wno-long-long",
+    "-std=c++17",
+  ],
+  includes = [
+    "include",
+  ],
+  deps = [
+    ":sqlite_lib",
+  ],
+  visibility = ["//visibility:public"]
+)
+
+cc_library(
+  name = "sqlite_lib",
+  hdrs = [
+    "sqlite3/sqlite3.h",
+  ],
+  srcs = [
+    "sqlite3/sqlite3.c",
+  ],
+  includes = [
+    "sqlite3",
+  ],
+  defines = ["SQLITE_ENABLE_COLUMN_METADATA"],
+  linkopts = [
+    "-lpthread",
+    "-ldl",
+  ],
+)
+

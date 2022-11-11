@@ -1,9 +1,11 @@
 #include "src/primihub/algorithm/arithmetic.h"
-#include "src/primihub/data_store/csv/csv_driver.h"
-#include "src/primihub/data_store/factory.h"
+
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/result.h>
+
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/data_store/factory.h"
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
@@ -11,8 +13,7 @@ using arrow::Table;
 namespace primihub {
 void spiltStr(string str, const string &split, std::vector<string> &strlist) {
   strlist.clear();
-  if (str == "")
-    return;
+  if (str == "") return;
   string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
@@ -25,7 +26,8 @@ void spiltStr(string str, const string &split, std::vector<string> &strlist) {
   }
 }
 
-ArithmeticExecutor::ArithmeticExecutor(
+template <Decimal Dbit>
+ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "arithmetic";
@@ -39,7 +41,7 @@ ArithmeticExecutor::ArithmeticExecutor(
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id); // node_id
+  auto iter = node_map.find(config.node_id);  // node_id
   if (iter == node_map.end()) {
     stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -91,7 +93,8 @@ ArithmeticExecutor::ArithmeticExecutor(
   }
 }
 
-int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
     data_file_path_ = param_map["Data_File"].value_string();
@@ -121,8 +124,7 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
 
     expr_ = param_map["Expr"].value_string();
     is_cmp = false;
-    if (expr_.substr(0, 3) == "CMP")
-      is_cmp = true;
+    if (expr_.substr(0, 3) == "CMP") is_cmp = true;
     if (is_cmp) {
       std::string next_name;
       std::string prev_name;
@@ -138,7 +140,7 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
       }
       mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
     } else {
-      mpc_exec_ = new MPCExpressExecutor();
+      mpc_exec_ = new MPCExpressExecutor<Dbit>();
     }
     LOG(INFO) << expr_;
     std::string parties = param_map["Parties"].value_string();
@@ -159,7 +161,8 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
   return 0;
 }
 
-int ArithmeticExecutor::loadDataset() {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
   // file reading error or file empty
   if (ret <= 0) {
@@ -188,7 +191,8 @@ int ArithmeticExecutor::loadDataset() {
   return 0;
 }
 
-int ArithmeticExecutor::initPartyComm(void) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::initPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
     return 0;
@@ -199,11 +203,12 @@ int ArithmeticExecutor::initPartyComm(void) {
   return 0;
 }
 
-int ArithmeticExecutor::execute() {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::execute() {
   if (is_cmp) {
     try {
       sbMatrix sh_res;
-      f64Matrix<D16> m;
+      f64Matrix<Dbit> m;
       LOG(INFO) << expr_;
       LOG(INFO) << expr_.substr(6, 1);
       LOG(INFO) << expr_.substr(4, 1);
@@ -256,7 +261,8 @@ int ArithmeticExecutor::execute() {
   return 0;
 }
 
-int ArithmeticExecutor::finishPartyComm(void) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->fini();
     delete mpc_op_exec_;
@@ -266,7 +272,8 @@ int ArithmeticExecutor::finishPartyComm(void) {
   return 0;
 }
 
-int ArithmeticExecutor::saveModel(void) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::saveModel(void) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
   if (final_val_double_.size() != 0)
@@ -276,8 +283,7 @@ int ArithmeticExecutor::saveModel(void) {
     for (int i = 0; i < final_val_int64_.size(); i++)
       builder.Append(final_val_int64_[i]);
   else
-    for (int i = 0; i < cmp_res_.size(); i++)
-      builder.Append(cmp_res_[i]);
+    for (int i = 0; i < cmp_res_.size(); i++) builder.Append(cmp_res_[i]);
   std::shared_ptr<arrow::Array> array;
   builder.Finish(&array);
 
@@ -318,8 +324,9 @@ int ArithmeticExecutor::saveModel(void) {
   return 0;
 }
 
-int ArithmeticExecutor::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address"); // TODO
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
+  std::string nodeaddr("test address");  // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
   std::shared_ptr<Cursor> &cursor = driver->read(filename);
@@ -367,18 +374,35 @@ int ArithmeticExecutor::_LoadDatasetFromCSV(std::string &filename) {
           LOG(INFO) << *iter;
       }
     } else {
-      auto array =
-          std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
       std::vector<double> tmp_data;
-      for (int64_t j = 0; j < array->length(); j++) {
-        tmp_data.push_back(array->Value(j));
-        LOG(INFO) << array->Value(j);
-      }
-      if (array->length() != array_len) {
-        LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
-                   << " value, but other column has " << array_len << " value.";
-        errors = true;
-        break;
+      if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
+        auto array =
+            std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
+        for (int64_t j = 0; j < array->length(); j++) {
+          tmp_data.push_back(array->Value(j));
+          LOG(INFO) << array->Value(j);
+        }
+        if (array->length() != array_len) {
+          LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
+                     << " value, but other column has " << array_len
+                     << " value.";
+          errors = true;
+          break;
+        }
+      } else {
+        auto array =
+            std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+        for (int64_t j = 0; j < array->length(); j++) {
+          tmp_data.push_back(array->Value(j));
+          LOG(INFO) << array->Value(j);
+        }
+        if (array->length() != array_len) {
+          LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
+                     << " value, but other column has " << array_len
+                     << " value.";
+          errors = true;
+          break;
+        }
       }
       col_and_val_double.insert(
           pair<string, std::vector<double>>(col_names[i], tmp_data));
@@ -391,10 +415,11 @@ int ArithmeticExecutor::_LoadDatasetFromCSV(std::string &filename) {
       }
     }
   }
-  if (errors)
-    return -1;
+  if (errors) return -1;
 
   return array->length();
 }
+template class ArithmeticExecutor<D32>;
+template class ArithmeticExecutor<D16>;
 
-} // namespace primihub
+}  // namespace primihub

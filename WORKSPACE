@@ -70,7 +70,7 @@ new_git_repository(
         """sed -i.bak 's/value_byte_size/value_byte_size)/g' cpp/src/parquet/column_reader.cc""",
     ],
     branch = "release-4.0.0",
-    remote = "https://github.com/primihub/arrow.git",       
+    remote = "https://github.com/primihub/arrow.git",
 )
 
 
@@ -218,7 +218,7 @@ http_archive(
         "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://primihub.oss-cn-beijing.aliyuncs.com/double-conversion-3.1.5.tar.gz",
-        
+
     ],
 )
 
@@ -567,4 +567,15 @@ git_repository(
     name = "jsoncpp",
     branch = "master",
     remote = "https://github.com/open-source-parsers/jsoncpp.git",
+)
+
+#support sqlite
+http_archive(
+  name = "com_github_sqlite_wrapper",
+  build_file = "//bazel:BUILD.sqlite",
+  sha256 = "57f91ed44ef205fe97b8c6586002fe6031cd02771d1c5d8415d9c515ad1532d1",
+  strip_prefix = "SQLiteCpp-3.2.0",
+  urls = [
+    "https://github.com/SRombauts/SQLiteCpp/archive/refs/tags/3.2.0.tar.gz",
+  ]
 )

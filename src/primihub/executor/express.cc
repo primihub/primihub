@@ -3,19 +3,21 @@
 
 #include "src/primihub/executor/express.h"
 
-using TokenValue = primihub::MPCExpressExecutor::TokenValue;
+#define TokenValue typename primihub::MPCExpressExecutor<Dbit>::TokenValue
 
 namespace primihub {
 // Implement of class ColumnConfig.
+template <Decimal Dbit>
 std::string
-MPCExpressExecutor::ColumnConfig::DtypeToString(const ColDtype &dtype) {
+MPCExpressExecutor<Dbit>::ColumnConfig::DtypeToString(const ColDtype &dtype) {
   if (dtype == ColDtype::FP64)
     return std::string("FP64");
   else
     return std::string("I64");
 }
 
-int MPCExpressExecutor::ColumnConfig::importColumnDtype(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::importColumnDtype(
     const std::string &col_name, const ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter != col_dtype_.end()) {
@@ -29,7 +31,8 @@ int MPCExpressExecutor::ColumnConfig::importColumnDtype(
   return 0;
 }
 
-int MPCExpressExecutor::ColumnConfig::importColumnOwner(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::importColumnOwner(
     const std::string &col_name, const u32 &party_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
@@ -42,7 +45,8 @@ int MPCExpressExecutor::ColumnConfig::importColumnOwner(
   return 0;
 }
 
-int MPCExpressExecutor::ColumnConfig::getColumnDtype(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnDtype(
     const std::string &col_name, ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter == col_dtype_.end()) {
@@ -54,7 +58,8 @@ int MPCExpressExecutor::ColumnConfig::getColumnDtype(
   return 0;
 }
 
-int MPCExpressExecutor::ColumnConfig::resolveLocalColumn(void) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::resolveLocalColumn(void) {
   if (col_dtype_.size() != col_owner_.size()) {
     LOG(ERROR) << "Count of owner attr and dtype attr must be the same.";
     return -1;
@@ -96,7 +101,8 @@ int MPCExpressExecutor::ColumnConfig::resolveLocalColumn(void) {
   return 0;
 }
 
-int MPCExpressExecutor::ColumnConfig::getColumnLocality(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnLocality(
     const std::string &col_name, bool &is_local) {
   auto iter = local_col_.find(col_name);
   if (iter == local_col_.end()) {
@@ -109,7 +115,8 @@ int MPCExpressExecutor::ColumnConfig::getColumnLocality(
   return 0;
 }
 
-bool MPCExpressExecutor::ColumnConfig::hasFP64Column(void) {
+template <Decimal Dbit>
+bool MPCExpressExecutor<Dbit>::ColumnConfig::hasFP64Column(void) {
   bool fp64_col = false;
   for (auto iter = col_dtype_.begin(); iter != col_dtype_.end(); iter++) {
     if (iter->second == ColDtype::FP64) {
@@ -121,17 +128,22 @@ bool MPCExpressExecutor::ColumnConfig::hasFP64Column(void) {
   return fp64_col;
 }
 
-void MPCExpressExecutor::ColumnConfig::Clean(void) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::ColumnConfig::Clean(void) {
   col_owner_.clear();
   col_dtype_.clear();
   local_col_.clear();
   // node_id_ = "";
 }
 
-MPCExpressExecutor::ColumnConfig::~ColumnConfig() { Clean(); }
+template <Decimal Dbit>
+MPCExpressExecutor<Dbit>::ColumnConfig::~ColumnConfig() {
+  Clean();
+}
 
 // Implement of class FeedDict.
-int MPCExpressExecutor::FeedDict::checkLocalColumn(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::checkLocalColumn(
     const std::string &col_name) {
   bool is_local = false;
   int ret = col_config_->getColumnLocality(col_name, is_local);
@@ -145,7 +157,9 @@ int MPCExpressExecutor::FeedDict::checkLocalColumn(
     return 0;
 }
 
-int MPCExpressExecutor::FeedDict::setOrCheckValueCount(int64_t new_count) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::setOrCheckValueCount(
+    int64_t new_count) {
   if (val_count_ == -1)
     val_count_ = new_count;
 
@@ -155,7 +169,8 @@ int MPCExpressExecutor::FeedDict::setOrCheckValueCount(int64_t new_count) {
   return 0;
 }
 
-int MPCExpressExecutor::FeedDict::importColumnValues(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
     const std::string &col_name, std::vector<int64_t> &int64_vec) {
   {
     bool is_local = false;
@@ -171,7 +186,7 @@ int MPCExpressExecutor::FeedDict::importColumnValues(
     }
   }
 
-  ColumnConfig::ColDtype dtype;
+  typename ColumnConfig::ColDtype dtype;
   int ret = col_config_->getColumnDtype(col_name, dtype);
   if (ret) {
     LOG(ERROR) << "Get column " << col_name << "'s dtype failed.";
@@ -217,7 +232,8 @@ int MPCExpressExecutor::FeedDict::importColumnValues(
   return 0;
 }
 
-int MPCExpressExecutor::FeedDict::importColumnValues(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
     const std::string &col_name, std::vector<double> &fp64_vec) {
   {
     bool is_local = false;
@@ -255,7 +271,8 @@ int MPCExpressExecutor::FeedDict::importColumnValues(
   return 0;
 }
 
-int MPCExpressExecutor::FeedDict::getColumnValues(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::getColumnValues(
     const std::string &col_name, std::vector<int64_t> **p_col_vec) {
   {
     bool is_local = false;
@@ -286,7 +303,8 @@ int MPCExpressExecutor::FeedDict::getColumnValues(
   return 0;
 }
 
-int MPCExpressExecutor::FeedDict::getColumnValues(
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::getColumnValues(
     const std::string &col_name, std::vector<double> **p_col_vec) {
   {
     bool is_local = false;
@@ -317,29 +335,33 @@ int MPCExpressExecutor::FeedDict::getColumnValues(
   return 0;
 }
 
-void MPCExpressExecutor::FeedDict::Clean(void) {
+template <Decimal Dbit> void MPCExpressExecutor<Dbit>::FeedDict::Clean(void) {
   this->float_run_ = false;
   this->fp64_col_.clear();
   this->int64_col_.clear();
   this->col_config_ = nullptr;
 }
 
-MPCExpressExecutor::FeedDict::~FeedDict() { Clean(); }
+template <Decimal Dbit> MPCExpressExecutor<Dbit>::FeedDict::~FeedDict() {
+  Clean();
+}
 
-// Implement of class MPCExpressExecutor.
-MPCExpressExecutor::MPCExpressExecutor() {
+// Implement of class MPCExpressExecutor<Dbit>.
+template <Decimal Dbit> MPCExpressExecutor<Dbit>::MPCExpressExecutor() {
   col_config_ = nullptr;
   mpc_op_ = nullptr;
   feed_dict_ = nullptr;
 }
 
-bool MPCExpressExecutor::isOperator(const char op) {
+template <Decimal Dbit>
+bool MPCExpressExecutor<Dbit>::isOperator(const char op) {
   if (op == '+' || op == '-' || op == '*' || op == '/')
     return true;
   return false;
 }
 
-bool MPCExpressExecutor::isOperator(const std::string &op) {
+template <Decimal Dbit>
+bool MPCExpressExecutor<Dbit>::isOperator(const std::string &op) {
   if (op == "+")
     return true;
   else if (op == "-")
@@ -352,7 +374,7 @@ bool MPCExpressExecutor::isOperator(const std::string &op) {
     return false;
 }
 
-int MPCExpressExecutor::Priority(const char str) {
+template <Decimal Dbit> int MPCExpressExecutor<Dbit>::Priority(const char str) {
   int priv = 0;
   switch (str) {
   case '+':
@@ -372,7 +394,7 @@ int MPCExpressExecutor::Priority(const char str) {
   return priv;
 }
 
-bool MPCExpressExecutor::checkExpress(void) {
+template <Decimal Dbit> bool MPCExpressExecutor<Dbit>::checkExpress(void) {
   std::vector<std::string> suffix_vec;
   std::stack<std::string> tmp_stk = suffix_stk_;
 
@@ -417,7 +439,8 @@ bool MPCExpressExecutor::checkExpress(void) {
   return true;
 }
 
-void MPCExpressExecutor::parseExpress(const std::string &expr) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::parseExpress(const std::string &expr) {
   std::string temp;
   std::string op;
   std::string suffix;
@@ -523,12 +546,14 @@ void MPCExpressExecutor::parseExpress(const std::string &expr) {
   return;
 }
 
-void MPCExpressExecutor::initColumnConfig(const u32 &party_id) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::initColumnConfig(const u32 &party_id) {
   col_config_ = new ColumnConfig(party_id);
 }
 
-int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
-                                          bool is_fp64) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::importColumnDtype(const std::string &col_name,
+                                                bool is_fp64) {
   if (is_fp64)
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::FP64);
@@ -546,28 +571,32 @@ int MPCExpressExecutor::importColumnDtype(const std::string &col_name,
   return 0;
 }
 
-int MPCExpressExecutor::importColumnOwner(const std::string &col_name,
-                                          const u32 &party_id) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::importColumnOwner(const std::string &col_name,
+                                                const u32 &party_id) {
   LOG(INFO) << "Column " << col_name << " belong to " << party_id << ".";
   return col_config_->importColumnOwner(col_name, party_id);
 }
 
-void MPCExpressExecutor::InitFeedDict(void) {
+template <Decimal Dbit> void MPCExpressExecutor<Dbit>::InitFeedDict(void) {
   if (!feed_dict_)
     feed_dict_ = new FeedDict(col_config_, fp64_run_);
 }
 
-int MPCExpressExecutor::importColumnValues(const std::string &col_name,
-                                           std::vector<int64_t> &val_vec) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::importColumnValues(
+    const std::string &col_name, std::vector<int64_t> &val_vec) {
   return feed_dict_->importColumnValues(col_name, val_vec);
 }
 
-int MPCExpressExecutor::importColumnValues(const std::string &col_name,
-                                           std::vector<double> &val_vec) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::importColumnValues(const std::string &col_name,
+                                                 std::vector<double> &val_vec) {
   return feed_dict_->importColumnValues(col_name, val_vec);
 }
 
-int MPCExpressExecutor::importExpress(const std::string &expr) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::importExpress(const std::string &expr) {
   parseExpress(expr);
   bool ret = checkExpress();
   if (ret == false) {
@@ -578,7 +607,7 @@ int MPCExpressExecutor::importExpress(const std::string &expr) {
   return 0;
 }
 
-int MPCExpressExecutor::resolveRunMode(void) {
+template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
   std::stack<std::string> tmp_suffix = suffix_stk_;
   bool has_div_op = false;
   bool has_fp64_val = false;
@@ -600,7 +629,7 @@ int MPCExpressExecutor::resolveRunMode(void) {
       continue;
     }
 
-    ColumnConfig::ColDtype dtype;
+    typename ColumnConfig::ColDtype dtype;
     if (!col_config_->getColumnDtype(token, dtype)) {
       // Token is a column name.
       token_type_map_.insert(std::make_pair(token, TokenType::COLUMN));
@@ -628,11 +657,12 @@ int MPCExpressExecutor::resolveRunMode(void) {
   return 0;
 }
 
-void MPCExpressExecutor::initMPCRuntime(uint32_t party_id,
-                                        const std::string &next_ip,
-                                        const std::string &prev_ip,
-                                        uint16_t next_port,
-                                        uint16_t prev_port) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
+                                              const std::string &next_ip,
+                                              const std::string &prev_ip,
+                                              uint16_t next_port,
+                                              uint16_t prev_port) {
   std::string next_name;
   std::string prev_name;
 
@@ -654,7 +684,9 @@ void MPCExpressExecutor::initMPCRuntime(uint32_t party_id,
   return;
 }
 
-void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::constructI64Matrix(TokenValue &val,
+                                                  i64Matrix &m) {
   if (val.type == 3) {
     m.resize(1, 1);
     m(0, 0) = val.val_union.fp64_val;
@@ -670,7 +702,9 @@ void MPCExpressExecutor::constructI64Matrix(TokenValue &val, i64Matrix &m) {
   return;
 }
 
-void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::createI64Shares(TokenValue &val,
+                                               si64Matrix &sh_val) {
   if (val.type == 4) {
     mpc_op_->createShares(sh_val);
   } else {
@@ -681,8 +715,9 @@ void MPCExpressExecutor::createI64Shares(TokenValue &val, si64Matrix &sh_val) {
   return;
 }
 
-void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
-                                             eMatrix<double> &m) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::constructFP64Matrix(TokenValue &val,
+                                                   eMatrix<double> &m) {
   if (val.type == 2) {
     m.resize(1, 1);
     m(0, 0) = val.val_union.i64_val;
@@ -697,31 +732,36 @@ void MPCExpressExecutor::constructFP64Matrix(TokenValue &val,
   return;
 }
 
-void MPCExpressExecutor::createFP64Shares(TokenValue &val,
-                                          sf64Matrix<D> &sh_val) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::createFP64Shares(TokenValue &val,
+                                                sf64Matrix<Dbit> &sh_val) {
   if (val.type == 4) {
-    mpc_op_->createShares<D>(sh_val);
+    mpc_op_->createShares<Dbit>(sh_val);
   } else {
     eMatrix<double> m;
     constructFP64Matrix(val, m);
-    mpc_op_->createShares<D>(m, sh_val);
+    mpc_op_->createShares<Dbit>(m, sh_val);
   }
 
   return;
 }
 
-void MPCExpressExecutor::createTokenValue(sf64Matrix<D> *m, TokenValue &v) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::createTokenValue(sf64Matrix<Dbit> *m,
+                                                TokenValue &v) {
   v.val_union.sh_fp64_m = m;
   v.type = 5;
 }
 
-void MPCExpressExecutor::createTokenValue(si64Matrix *m, TokenValue &v) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::createTokenValue(si64Matrix *m, TokenValue &v) {
   v.val_union.sh_i64_m = m;
   v.type = 6;
 }
 
-int MPCExpressExecutor::createTokenValue(const std::string &token,
-                                         TokenValue &token_val) {
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
+                                               TokenValue &token_val) {
   TokenType type = token_type_map_[token];
   if (type == TokenType::COLUMN) {
     // Token is a column name, a remote column or a local column.
@@ -786,12 +826,13 @@ int MPCExpressExecutor::createTokenValue(const std::string &token,
   return 0;
 }
 
-void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
-                                       TokenValue &res) {
-  sf64Matrix<D> sh_val1, sh_val2;
-  sf64Matrix<D> *p_sh_val1 = nullptr;
-  sf64Matrix<D> *p_sh_val2 = nullptr;
-  f64<D> constfixed;
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
+                                             TokenValue &res) {
+  sf64Matrix<Dbit> sh_val1, sh_val2;
+  sf64Matrix<Dbit> *p_sh_val1 = nullptr;
+  sf64Matrix<Dbit> *p_sh_val2 = nullptr;
+  f64<Dbit> constfixed;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -815,9 +856,9 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
 
-  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  sf64Matrix<Dbit> *sh_res = new sf64Matrix<Dbit>(val_count, 1);
   if (val1.type != 2 && val2.type != 2) {
-    std::vector<sf64Matrix<D>> sh_val_vec;
+    std::vector<sf64Matrix<Dbit>> sh_val_vec;
     sh_val_vec.emplace_back(*p_sh_val1);
     sh_val_vec.emplace_back(*p_sh_val2);
 
@@ -832,8 +873,9 @@ void MPCExpressExecutor::runMPCAddFP64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
-                                      TokenValue &res) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
+                                            TokenValue &res) {
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
@@ -875,12 +917,13 @@ void MPCExpressExecutor::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
-                                       TokenValue &res) {
-  sf64Matrix<D> sh_val1, sh_val2;
-  sf64Matrix<D> *p_sh_val1 = nullptr;
-  sf64Matrix<D> *p_sh_val2 = nullptr;
-  f64<D> constfixed;
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
+                                             TokenValue &res) {
+  sf64Matrix<Dbit> sh_val1, sh_val2;
+  sf64Matrix<Dbit> *p_sh_val1 = nullptr;
+  sf64Matrix<Dbit> *p_sh_val2 = nullptr;
+  f64<Dbit> constfixed;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
@@ -904,9 +947,9 @@ void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
 
-  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  sf64Matrix<Dbit> *sh_res = new sf64Matrix<Dbit>(val_count, 1);
   if (val1.type != 2 && val2.type != 2) {
-    std::vector<sf64Matrix<D>> sh_val_vec;
+    std::vector<sf64Matrix<Dbit>> sh_val_vec;
     sh_val_vec.emplace_back(*p_sh_val2);
     *sh_res = mpc_op_->MPC_Sub(*p_sh_val1, sh_val_vec);
   } else {
@@ -918,8 +961,9 @@ void MPCExpressExecutor::runMPCSubFP64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
-                                      TokenValue &res) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCSubI64(TokenValue &val1, TokenValue &val2,
+                                            TokenValue &res) {
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
@@ -965,12 +1009,13 @@ void MPCExpressExecutor::runMPCSubI64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
-                                       TokenValue &res) {
-  sf64Matrix<D> sh_val1, sh_val2;
-  sf64Matrix<D> *p_sh_val1 = nullptr;
-  sf64Matrix<D> *p_sh_val2 = nullptr;
-  f64<D> constfixed;
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
+                                             TokenValue &res) {
+  sf64Matrix<Dbit> sh_val1, sh_val2;
+  sf64Matrix<Dbit> *p_sh_val1 = nullptr;
+  sf64Matrix<Dbit> *p_sh_val2 = nullptr;
+  f64<Dbit> constfixed;
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
   if (val1.type == 0 || val1.type == 4) {
@@ -992,7 +1037,7 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
-  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  sf64Matrix<Dbit> *sh_res = new sf64Matrix<Dbit>(val_count, 1);
   if (val1.type != 2 && val2.type != 2) {
     *sh_res = mpc_op_->MPC_Dot_Mul(*p_sh_val1, *p_sh_val2);
   } else {
@@ -1004,8 +1049,9 @@ void MPCExpressExecutor::runMPCMulFP64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
-                                      TokenValue &res) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
+                                            TokenValue &res) {
   si64Matrix sh_val1, sh_val2;
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
@@ -1046,13 +1092,14 @@ void MPCExpressExecutor::runMPCMulI64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
-                                       TokenValue &res) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
+                                             TokenValue &res) {
 
-  sf64Matrix<D> sh_val1, sh_val2;
-  sf64Matrix<D> *p_sh_val1 = nullptr;
-  sf64Matrix<D> *p_sh_val2 = nullptr;
-  f64<D> constfixed;
+  sf64Matrix<Dbit> sh_val1, sh_val2;
+  sf64Matrix<Dbit> *p_sh_val1 = nullptr;
+  sf64Matrix<Dbit> *p_sh_val2 = nullptr;
+  f64<Dbit> constfixed;
   eMatrix<double> temp_f64Matrix;
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
@@ -1067,9 +1114,9 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
       temp_f64Matrix(i, 0) = val1.val_union.fp64_val;
     // createshares
     if (party_id_ == 0)
-      mpc_op_->createShares<D>(temp_f64Matrix, sh_val1);
+      mpc_op_->createShares<Dbit>(temp_f64Matrix, sh_val1);
     else
-      mpc_op_->createShares<D>(sh_val1);
+      mpc_op_->createShares<Dbit>(sh_val1);
     p_sh_val1 = &sh_val1;
   } else {
     p_sh_val1 = val1.val_union.sh_fp64_m;
@@ -1083,7 +1130,7 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   } else {
     p_sh_val2 = val2.val_union.sh_fp64_m;
   }
-  sf64Matrix<D> *sh_res = new sf64Matrix<D>(val_count, 1);
+  sf64Matrix<Dbit> *sh_res = new sf64Matrix<Dbit>(val_count, 1);
   if (val1.type != 2 && val2.type != 2) {
     *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
   } else {
@@ -1097,10 +1144,11 @@ void MPCExpressExecutor::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   createTokenValue(sh_res, res);
 }
 
-void MPCExpressExecutor::BeforeMPCRun(std::stack<std::string> &token_stk,
-                                      std::stack<TokenValue> &val_stk,
-                                      TokenValue &val1, TokenValue &val2,
-                                      std::string &a, std::string &b) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::BeforeMPCRun(std::stack<std::string> &token_stk,
+                                            std::stack<TokenValue> &val_stk,
+                                            TokenValue &val1, TokenValue &val2,
+                                            std::string &a, std::string &b) {
   b = token_stk.top();
   token_stk.pop();
   a = token_stk.top();
@@ -1114,15 +1162,17 @@ void MPCExpressExecutor::BeforeMPCRun(std::stack<std::string> &token_stk,
   suffix_stk_.pop();
 }
 
-void MPCExpressExecutor::AfterMPCRun(std::stack<std::string> &token_stk,
-                                     std::stack<TokenValue> &val_stk,
-                                     std::string &new_token, TokenValue &res) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::AfterMPCRun(std::stack<std::string> &token_stk,
+                                           std::stack<TokenValue> &val_stk,
+                                           std::string &new_token,
+                                           TokenValue &res) {
   token_stk.push(new_token);
   token_val_map_[new_token] = res;
   val_stk.push(res);
 }
 
-int MPCExpressExecutor::runMPCEvaluate(void) {
+template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
   std::stack<std::string> stk1;
   std::stack<TokenValue> val_stk;
 
@@ -1215,13 +1265,14 @@ int MPCExpressExecutor::runMPCEvaluate(void) {
   return 0;
 }
 
-void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
-                                         std::vector<double> &val_vec) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
+                                               std::vector<double> &val_vec) {
   std::string final_token = suffix_stk_.top();
   suffix_stk_.pop();
 
   TokenValue val = token_val_map_[final_token];
-  sf64Matrix<D> *p_final_share = val.val_union.sh_fp64_m;
+  sf64Matrix<Dbit> *p_final_share = val.val_union.sh_fp64_m;
 
   for (auto party : parties) {
     if (party_id_ == party) {
@@ -1243,8 +1294,9 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
   return;
 }
 
-void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
-                                         std::vector<int64_t> &val_vec) {
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
+                                               std::vector<int64_t> &val_vec) {
   std::string final_token = suffix_stk_.top();
   suffix_stk_.pop();
 
@@ -1271,7 +1323,7 @@ void MPCExpressExecutor::revealMPCResult(std::vector<uint32_t> &parties,
   return;
 }
 
-void MPCExpressExecutor::Clean(void) {
+template <Decimal Dbit> void MPCExpressExecutor<Dbit>::Clean(void) {
   for (auto iter = token_val_map_.begin(); iter != token_val_map_.end();
        iter++) {
     switch (iter->second.type) {
@@ -1309,15 +1361,19 @@ void MPCExpressExecutor::Clean(void) {
   token_type_map_.clear();
 }
 
-MPCExpressExecutor::~MPCExpressExecutor() { Clean(); }
+template <Decimal Dbit> MPCExpressExecutor<Dbit>::~MPCExpressExecutor() {
+  Clean();
+}
 
-void LocalExpressExecutor::beforeLocalCalculate(
+template <Decimal Dbit>
+void LocalExpressExecutor<Dbit>::beforeLocalCalculate(
     std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
     TokenValue &val1, TokenValue &val2, std::string &a, std::string &b) {
   mpc_exec_->BeforeMPCRun(token_stk, val_stk, val1, val2, a, b);
 }
 
-void LocalExpressExecutor::afterLocalCalculate(
+template <Decimal Dbit>
+void LocalExpressExecutor<Dbit>::afterLocalCalculate(
     std::stack<std::string> &token_stk, std::stack<TokenValue> &val_stk,
     std::string &new_token, TokenValue &res) {
   token_stk.push(new_token);
@@ -1325,7 +1381,7 @@ void LocalExpressExecutor::afterLocalCalculate(
   val_stk.push(res);
 }
 
-int LocalExpressExecutor::runLocalEvaluate() {
+template <Decimal Dbit> int LocalExpressExecutor<Dbit>::runLocalEvaluate() {
   std::string expr = mpc_exec_->expr_;
   LOG(INFO) << expr;
   mpc_exec_->parseExpress(expr);
@@ -1552,30 +1608,36 @@ int LocalExpressExecutor::runLocalEvaluate() {
   return 0;
 }
 
-void LocalExpressExecutor::createNewColumnConfig() {
-  new_col_cfg =
-      new MPCExpressExecutor::ColumnConfig(mpc_exec_->col_config_->party_id_);
+template <Decimal Dbit>
+void LocalExpressExecutor<Dbit>::createNewColumnConfig() {
+  new_col_cfg = new typename MPCExpressExecutor<Dbit>::ColumnConfig(
+      mpc_exec_->col_config_->party_id_);
   std::map<std::string, bool> &local_col_outside =
       mpc_exec_->col_config_->local_col_;
   for (auto &pair : local_col_outside)
     new_col_cfg->local_col_.insert(std::make_pair(pair.first, true));
-  std::map<std::string, MPCExpressExecutor::ColumnConfig::ColDtype>
+  std::map<std::string,
+           typename MPCExpressExecutor<Dbit>::ColumnConfig::ColDtype>
       &local_col_dtype = mpc_exec_->col_config_->col_dtype_;
   for (auto &pair : local_col_dtype)
     new_col_cfg->col_dtype_.insert(std::make_pair(pair.first, pair.second));
 
-  std::map<std::string, MPCExpressExecutor::ColumnConfig::ColDtype> col_dtype_;
+  std::map<std::string,
+           typename MPCExpressExecutor<Dbit>::ColumnConfig::ColDtype>
+      col_dtype_;
 }
 
-void LocalExpressExecutor::creatNewFeedDict() {
-  new_feed =
-      new MPCExpressExecutor::FeedDict(new_col_cfg, mpc_exec_->fp64_run_);
+template <Decimal Dbit> void LocalExpressExecutor<Dbit>::creatNewFeedDict() {
+  new_feed = new typename MPCExpressExecutor<Dbit>::FeedDict(
+      new_col_cfg, mpc_exec_->fp64_run_);
 }
 
-int LocalExpressExecutor::createTokenValue(
-    const std::string &token, MPCExpressExecutor::TokenValue &token_val) {
-  MPCExpressExecutor::TokenType type = mpc_exec_->token_type_map_[token];
-  if (type == MPCExpressExecutor::TokenType::COLUMN) {
+template <Decimal Dbit>
+int LocalExpressExecutor<Dbit>::createTokenValue(const std::string &token,
+                                                 TokenValue &token_val) {
+  typename MPCExpressExecutor<Dbit>::TokenType type =
+      mpc_exec_->token_type_map_[token];
+  if (type == MPCExpressExecutor<Dbit>::TokenType::COLUMN) {
     if (mpc_exec_->fp64_run_) {
       if (new_feed->getColumnValues(token, &(token_val.val_union.fp64_vec))) {
         LOG(ERROR) << "Get column value with token '" << token << "' failed.";
@@ -1601,7 +1663,7 @@ int LocalExpressExecutor::createTokenValue(
   return 0;
 }
 
-LocalExpressExecutor::~LocalExpressExecutor() {
+template <Decimal Dbit> LocalExpressExecutor<Dbit>::~LocalExpressExecutor() {
   for (auto iter = token_val_map_.begin(); iter != token_val_map_.end();
        iter++) {
     switch (iter->second.type) {
@@ -1619,5 +1681,9 @@ LocalExpressExecutor::~LocalExpressExecutor() {
   delete new_col_cfg;
   token_val_map_.clear();
 }
+template class MPCExpressExecutor<D32>;
+template class LocalExpressExecutor<D32>;
 
+template class MPCExpressExecutor<D16>;
+template class LocalExpressExecutor<D16>;
 } // namespace primihub

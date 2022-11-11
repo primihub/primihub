@@ -182,6 +182,15 @@ void MPCOperator::createShares(si64Matrix &sharedMatrix) {
     VLOG(7) << "Dump finish.";
   }
 }
+
+void MPCOperator::createShares(i64 val, si64 &dest) {
+  enc.localInt(runtime, val, dest).get();
+}
+
+void MPCOperator::createShares(si64 &dest) {
+  enc.remoteInt(runtime, dest).get();
+}
+
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
   std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
                           static_cast<unsigned long long>(val.cols())};
@@ -234,6 +243,12 @@ sbMatrix MPCOperator::createBinSharesByShape(u64 pIdx) {
 i64Matrix MPCOperator::revealAll(const si64Matrix &vals) {
   i64Matrix ret(vals.rows(), vals.cols());
   enc.revealAll(runtime, vals, ret).get();
+  return ret;
+}
+
+i64 MPCOperator::revealAll(const si64 &val){
+  i64 ret;
+  enc.revealAll(runtime, val, ret).get();
   return ret;
 }
 

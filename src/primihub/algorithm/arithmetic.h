@@ -17,6 +17,8 @@
 #include "src/primihub/data_store/driver.h"
 
 namespace primihub {
+   
+template <Decimal Dbit>
 class ArithmeticExecutor : public AlgorithmBase {
 public:
   explicit ArithmeticExecutor(PartyConfig &config,
@@ -35,7 +37,7 @@ private:
 
   int _LoadDatasetFromCSV(std::string &filename);
   bool is_cmp;
-  MPCExpressExecutor *mpc_exec_;
+  MPCExpressExecutor<Dbit> *mpc_exec_;
   MPCOperator *mpc_op_exec_;
   std::string res_name_;
   uint16_t local_id_;
