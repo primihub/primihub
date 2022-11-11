@@ -15,11 +15,14 @@
 #include "src/primihub/algorithm/base.h"
 #include "src/primihub/common/defines.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/log_wrapper.h"
 
 namespace primihub {
-   
-template <Decimal Dbit>
-class ArithmeticExecutor : public AlgorithmBase {
+#define LOG_INFO() LOG_INFO_WRAPPER(platform(), job_id(), task_id())
+#define LOG_WARNING() LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
+#define LOG_ERROR() LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
+
+template <Decimal Dbit> class ArithmeticExecutor : public AlgorithmBase {
 public:
   explicit ArithmeticExecutor(PartyConfig &config,
                               std::shared_ptr<DatasetService> dataset_service);
@@ -29,6 +32,11 @@ public:
   int execute() override;
   int finishPartyComm(void) override;
   int saveModel(void);
+  int set_task_info(std::string platform_type, std::string job_id,
+                    std::string task_id);
+  inline std::string platform() { return platform_type_; }
+  inline std::string job_id() { return job_id_; }
+  inline std::string task_id() { return task_id_; }
 
 private:
   // int _ConstructShares(sf64Matrix<D> &w, sf64Matrix<D> &train_data,
@@ -59,6 +67,9 @@ private:
   std::string expr_;
   std::map<std::string, std::vector<double>> col_and_val_double;
   std::map<std::string, std::vector<int64_t>> col_and_val_int;
+  std::string platform_type_ = "";
+  std::string job_id_ = "";
+  std::string task_id_ = "";
 };
 
 } // namespace primihub

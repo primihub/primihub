@@ -21,9 +21,9 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::importColumnDtype(
     const std::string &col_name, const ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter != col_dtype_.end()) {
-    LOG(ERROR) << "Column " << col_name
-               << "'s dtype attr is imported, value is " << DtypeToString(dtype)
-               << ".";
+    LOG_ERROR() << "Column " << col_name
+                << "'s dtype attr is imported, value is "
+                << DtypeToString(dtype) << ".";
     return -1;
   }
 
@@ -36,8 +36,9 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::importColumnOwner(
     const std::string &col_name, const u32 &party_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
-    LOG(ERROR) << "Column " << col_name
-               << "'s owner attr is imported, value is " << iter->second << ".";
+    LOG_ERROR() << "Column " << col_name
+                << "'s owner attr is imported, value is " << iter->second
+                << ".";
     return -1;
   }
 
@@ -50,7 +51,7 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnDtype(
     const std::string &col_name, ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter == col_dtype_.end()) {
-    LOG(ERROR) << "Can't find dtype attr for column " << col_name << ".";
+    LOG_ERROR() << "Can't find dtype attr for column " << col_name << ".";
     return -1;
   }
 
@@ -61,14 +62,14 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnDtype(
 template <Decimal Dbit>
 int MPCExpressExecutor<Dbit>::ColumnConfig::resolveLocalColumn(void) {
   if (col_dtype_.size() != col_owner_.size()) {
-    LOG(ERROR) << "Count of owner attr and dtype attr must be the same.";
+    LOG_ERROR() << "Count of owner attr and dtype attr must be the same.";
     return -1;
   }
 
   for (auto iter = col_owner_.begin(); iter != col_owner_.end(); iter++) {
     if (col_dtype_.find(iter->first) == col_dtype_.end()) {
-      LOG(ERROR) << "Import column " << iter->first
-                 << "'s owner attr, but don't import it's dtype attr.";
+      LOG_ERROR() << "Import column " << iter->first
+                  << "'s owner attr, but don't import it's dtype attr.";
       return -2;
     }
   }
@@ -82,20 +83,20 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::resolveLocalColumn(void) {
 
   {
     uint8_t count = 0;
-    LOG(INFO) << "Dump column locality:";
+    LOG_INFO() << "Dump column locality:";
     for (auto iter = local_col_.begin(); iter != local_col_.end(); iter++) {
       count++;
       if (iter->second == true)
-        LOG(INFO) << "Column " << iter->first << ": local;";
+        LOG_INFO() << "Column " << iter->first << ": local;";
       else
-        LOG(INFO) << "Column " << iter->first << ": remote;";
+        LOG_INFO() << "Column " << iter->first << ": remote;";
     }
 
     if (count < 10)
-      LOG(INFO) << "Dump finish, dump count " << static_cast<char>(count + '0')
-                << ".";
+      LOG_INFO() << "Dump finish, dump count " << static_cast<char>(count + '0')
+                 << ".";
     else
-      LOG(INFO) << "Dump finish, dump count " << count << ".";
+      LOG_INFO() << "Dump finish, dump count " << count << ".";
   }
 
   return 0;
@@ -106,8 +107,8 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnLocality(
     const std::string &col_name, bool &is_local) {
   auto iter = local_col_.find(col_name);
   if (iter == local_col_.end()) {
-    LOG(ERROR) << "Can't find column locality by column name " << col_name
-               << ".";
+    LOG_ERROR() << "Can't find column locality by column name " << col_name
+                << ".";
     return -1;
   }
 
@@ -137,6 +138,15 @@ void MPCExpressExecutor<Dbit>::ColumnConfig::Clean(void) {
 }
 
 template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::ColumnConfig::set_task_info(
+    std::string platform_type, std::string job_id, std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
+}
+
+template <Decimal Dbit>
 MPCExpressExecutor<Dbit>::ColumnConfig::~ColumnConfig() {
   Clean();
 }
@@ -148,8 +158,8 @@ int MPCExpressExecutor<Dbit>::FeedDict::checkLocalColumn(
   bool is_local = false;
   int ret = col_config_->getColumnLocality(col_name, is_local);
   if (ret) {
-    LOG(ERROR) << "Get column locality by column name " << col_name
-               << " failed.";
+    LOG_ERROR() << "Get column locality by column name " << col_name
+                << " failed.";
     return -1;
   }
 
@@ -176,12 +186,12 @@ int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
-      LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
+      LOG_ERROR() << "Get column " << col_name << "'s locality failed.";
       return -1;
     }
 
     if (is_local == false) {
-      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
+      LOG_ERROR() << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
@@ -189,32 +199,32 @@ int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
   typename ColumnConfig::ColDtype dtype;
   int ret = col_config_->getColumnDtype(col_name, dtype);
   if (ret) {
-    LOG(ERROR) << "Get column " << col_name << "'s dtype failed.";
+    LOG_ERROR() << "Get column " << col_name << "'s dtype failed.";
     return -2;
   }
 
   if (dtype != ColumnConfig::ColDtype::INT64) {
-    LOG(ERROR) << "Try to import column values type of which is I64, but type "
-                  "of it is FP64 in column config.";
+    LOG_ERROR() << "Try to import column values type of which is I64, but type "
+                   "of it is FP64 in column config.";
     return -2;
   }
 
   if (setOrCheckValueCount(static_cast<int64_t>(int64_vec.size()))) {
-    LOG(ERROR) << "Column " << col_name << " has " << int64_vec.size()
-               << " value, but column imported before has " << val_count_
-               << " value.";
+    LOG_ERROR() << "Column " << col_name << " has " << int64_vec.size()
+                << " value, but column imported before has " << val_count_
+                << " value.";
     return -2;
   }
 
   if (float_run_ == true) {
-    LOG(INFO) << "Convert int64 value to fp64 value due to fp64 run mode.";
+    LOG_INFO() << "Convert int64 value to fp64 value due to fp64 run mode.";
     std::vector<double> fp64_vec;
     for (auto v : int64_vec)
       fp64_vec.emplace_back(static_cast<double>(v));
 
     int ret = importColumnValues(col_name, fp64_vec);
     if (ret) {
-      LOG(ERROR) << "Import values of column " << col_name << " failed.";
+      LOG_ERROR() << "Import values of column " << col_name << " failed.";
       return -3;
     }
 
@@ -224,7 +234,7 @@ int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
   }
 
   if (int64_col_.find(col_name) != int64_col_.end()) {
-    LOG(ERROR) << "Value of column " << col_name << " is already imported.";
+    LOG_ERROR() << "Value of column " << col_name << " is already imported.";
     return -4;
   }
 
@@ -239,35 +249,45 @@ int MPCExpressExecutor<Dbit>::FeedDict::importColumnValues(
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
-      LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
+      LOG_ERROR() << "Get column " << col_name << "'s locality failed.";
       return -1;
     }
 
     if (is_local == false) {
-      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
+      LOG_ERROR() << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
 
   if (setOrCheckValueCount(static_cast<int64_t>(fp64_vec.size()))) {
-    LOG(ERROR) << "Column " << col_name << " has " << fp64_vec.size()
-               << " value, but column imported before has " << val_count_
-               << " value.";
+    LOG_ERROR() << "Column " << col_name << " has " << fp64_vec.size()
+                << " value, but column imported before has " << val_count_
+                << " value.";
     return -2;
   }
 
   if (float_run_ == false) {
-    LOG(ERROR) << "Current run mode is int64, but import values type of which "
-                  "is fp64. This should be a bug, fix it.";
+    LOG_ERROR() << "Current run mode is int64, but import values type of which "
+                   "is fp64. This should be a bug, fix it.";
     return -1;
   }
 
   if (fp64_col_.find(col_name) != fp64_col_.end()) {
-    LOG(ERROR) << "Value of column " << col_name << " is already imported.";
+    LOG_ERROR() << "Value of column " << col_name << " is already imported.";
     return -2;
   }
 
   fp64_col_.insert(std::make_pair(col_name, std::move(fp64_vec)));
+  return 0;
+}
+
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::FeedDict::set_task_info(std::string platform_type,
+                                                      std::string job_id,
+                                                      std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
   return 0;
 }
 
@@ -278,24 +298,24 @@ int MPCExpressExecutor<Dbit>::FeedDict::getColumnValues(
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
-      LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
+      LOG_ERROR() << "Get column " << col_name << "'s locality failed.";
       return -1;
     }
 
     if (is_local == false) {
-      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
+      LOG_ERROR() << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
 
   if (float_run_ == true) {
-    LOG(ERROR) << "Current run mode is FP64 but want to get I64 values.";
+    LOG_ERROR() << "Current run mode is FP64 but want to get I64 values.";
     return -1;
   }
 
   auto iter = int64_col_.find(col_name);
   if (iter == int64_col_.end()) {
-    LOG(ERROR) << "Can't find values by column name " << col_name << ".";
+    LOG_ERROR() << "Can't find values by column name " << col_name << ".";
     return -2;
   }
 
@@ -310,24 +330,24 @@ int MPCExpressExecutor<Dbit>::FeedDict::getColumnValues(
     bool is_local = false;
     int ret = col_config_->getColumnLocality(col_name, is_local);
     if (ret < 0) {
-      LOG(ERROR) << "Get column " << col_name << "'s locality failed.";
+      LOG_ERROR() << "Get column " << col_name << "'s locality failed.";
       return -1;
     }
 
     if (is_local == false) {
-      LOG(ERROR) << "Column " << col_name << " isn't a local column.";
+      LOG_ERROR() << "Column " << col_name << " isn't a local column.";
       return -1;
     }
   }
 
   if (float_run_ == false) {
-    LOG(ERROR) << "Current run mode is I64 but want to get FP64 values.";
+    LOG_ERROR() << "Current run mode is I64 but want to get FP64 values.";
     return -1;
   }
 
   auto iter = fp64_col_.find(col_name);
   if (iter == fp64_col_.end()) {
-    LOG(ERROR) << "Can't find values by column name " << col_name << ".";
+    LOG_ERROR() << "Can't find values by column name " << col_name << ".";
     return -2;
   }
 
@@ -406,7 +426,7 @@ template <Decimal Dbit> bool MPCExpressExecutor<Dbit>::checkExpress(void) {
   // "(" and ")" can't appears in suffix express.
   for (auto str : suffix_vec) {
     if (str == "(" || str == ")") {
-      LOG(ERROR) << "Illegal express found, too many bracket in express.";
+      LOG_ERROR() << "Illegal express found, too many bracket in express.";
       return false;
     }
   }
@@ -419,19 +439,19 @@ template <Decimal Dbit> bool MPCExpressExecutor<Dbit>::checkExpress(void) {
   }
 
   if ((suffix_vec.size() - num_op) != (num_op + 1)) {
-    LOG(ERROR) << "Illegal express found, too many operator"
-               << " or column in express.";
+    LOG_ERROR() << "Illegal express found, too many operator"
+                << " or column in express.";
     return false;
   }
 
   for (auto str : suffix_vec) {
     if (str.find("(") != std::string::npos) {
-      LOG(ERROR) << "Illegal express found, lack operator in express.";
+      LOG_ERROR() << "Illegal express found, lack operator in express.";
       return false;
     }
 
     if (str.find(")") != std::string::npos) {
-      LOG(ERROR) << "Illegal express found, lack operator in express.";
+      LOG_ERROR() << "Illegal express found, lack operator in express.";
       return false;
     }
   }
@@ -540,8 +560,8 @@ void MPCExpressExecutor<Dbit>::parseExpress(const std::string &expr) {
     tmp.pop();
   }
 
-  LOG(INFO) << "Infix express is : " << expr << ".";
-  LOG(INFO) << "Suffix express is : " << suffix << ".";
+  LOG_INFO() << "Infix express is : " << expr << ".";
+  LOG_INFO() << "Suffix express is : " << suffix << ".";
 
   return;
 }
@@ -549,6 +569,7 @@ void MPCExpressExecutor<Dbit>::parseExpress(const std::string &expr) {
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::initColumnConfig(const u32 &party_id) {
   col_config_ = new ColumnConfig(party_id);
+  col_config_->set_task_info(platform_type_, job_id_, task_id_);
 }
 
 template <Decimal Dbit>
@@ -562,11 +583,11 @@ int MPCExpressExecutor<Dbit>::importColumnDtype(const std::string &col_name,
                                           ColumnConfig::ColDtype::INT64);
 
   if (is_fp64)
-    LOG(INFO) << "Column " << col_name << "'s dtype is "
-              << " FP64.";
+    LOG_INFO() << "Column " << col_name << "'s dtype is "
+               << " FP64.";
   else
-    LOG(INFO) << "Column " << col_name << "'s dtype is "
-              << " I64.";
+    LOG_INFO() << "Column " << col_name << "'s dtype is "
+               << " I64.";
 
   return 0;
 }
@@ -574,13 +595,14 @@ int MPCExpressExecutor<Dbit>::importColumnDtype(const std::string &col_name,
 template <Decimal Dbit>
 int MPCExpressExecutor<Dbit>::importColumnOwner(const std::string &col_name,
                                                 const u32 &party_id) {
-  LOG(INFO) << "Column " << col_name << " belong to " << party_id << ".";
+  LOG_INFO() << "Column " << col_name << " belong to " << party_id << ".";
   return col_config_->importColumnOwner(col_name, party_id);
 }
 
 template <Decimal Dbit> void MPCExpressExecutor<Dbit>::InitFeedDict(void) {
   if (!feed_dict_)
     feed_dict_ = new FeedDict(col_config_, fp64_run_);
+    feed_dict_->set_task_info(platform_type_, job_id_, task_id_);
 }
 
 template <Decimal Dbit>
@@ -600,7 +622,7 @@ int MPCExpressExecutor<Dbit>::importExpress(const std::string &expr) {
   parseExpress(expr);
   bool ret = checkExpress();
   if (ret == false) {
-    LOG(ERROR) << "Import express '" << expr << "' failed.";
+    LOG_ERROR() << "Import express '" << expr << "' failed.";
     return -1;
   }
   expr_ = expr;
@@ -614,7 +636,7 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
 
   int ret = col_config_->resolveLocalColumn();
   if (ret) {
-    LOG(ERROR) << "Find out local column failed.";
+    LOG_ERROR() << "Find out local column failed.";
     return -1;
   }
 
@@ -650,9 +672,9 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
     fp64_run_ = false;
 
   if (fp64_run_)
-    LOG(INFO) << "MPC run in FP64 mode.";
+    LOG_INFO() << "MPC run in FP64 mode.";
   else
-    LOG(INFO) << "MPC run in I64 mode.";
+    LOG_INFO() << "MPC run in I64 mode.";
 
   return 0;
 }
@@ -678,6 +700,7 @@ void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
   }
 
   mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
+  mpc_op_->set_task_info(platform_type_, job_id_, task_id_);
   mpc_op_->setup(next_ip, prev_ip, next_port, prev_port);
 
   party_id_ = party_id;
@@ -769,16 +792,16 @@ int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
       bool is_local = false;
       if (col_config_->getColumnLocality(token, is_local)) {
         errors = true;
-        LOG(ERROR) << "Get column locality with token '" << token
-                   << "' failed.";
+        LOG_ERROR() << "Get column locality with token '" << token
+                    << "' failed.";
         break;
       }
 
       if (is_local == false) {
         // Column is a remote column.
         token_val.type = 4;
-        LOG(INFO) << "Construct TokenValue instance for '" << token
-                  << "', type '" << token_val.TypeToString() << "'.";
+        LOG_INFO() << "Construct TokenValue instance for '" << token
+                   << "', type '" << token_val.TypeToString() << "'.";
         return 0;
       }
 
@@ -787,7 +810,8 @@ int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
         if (feed_dict_->getColumnValues(token,
                                         &(token_val.val_union.fp64_vec))) {
           errors = true;
-          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          LOG_ERROR() << "Get column value with token '" << token
+                      << "' failed.";
           break;
         }
 
@@ -796,7 +820,8 @@ int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
         if (feed_dict_->getColumnValues(token,
                                         &(token_val.val_union.i64_vec))) {
           errors = true;
-          LOG(ERROR) << "Get column value with token '" << token << "' failed.";
+          LOG_ERROR() << "Get column value with token '" << token
+                      << "' failed.";
           break;
         }
 
@@ -805,8 +830,8 @@ int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
     } while (0);
 
     if (errors) {
-      LOG(ERROR) << "Error occurs during create token value for local column '"
-                 << token << "'.";
+      LOG_ERROR() << "Error occurs during create token value for local column '"
+                  << token << "'.";
       return -2;
     }
   } else {
@@ -820,8 +845,8 @@ int MPCExpressExecutor<Dbit>::createTokenValue(const std::string &token,
     }
   }
 
-  LOG(INFO) << "Construct TokenValue instance for '" << token << "', type '"
-            << token_val.TypeToString() << "'.";
+  LOG_INFO() << "Construct TokenValue instance for '" << token << "', type '"
+             << token_val.TypeToString() << "'.";
   return 0;
 }
 
@@ -999,9 +1024,9 @@ void MPCExpressExecutor<Dbit>::runMPCSubI64(TokenValue &val1, TokenValue &val2,
     if (val1.type == 3)
       *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val2, false);
     else {
-      // LOG(INFO) << constInt;
-      // LOG(INFO) << (*p_sh_val1)[0](0, 0);
-      // LOG(INFO) << (*p_sh_val1)[1](0, 0);
+      // LOG_INFO() << constInt;
+      // LOG_INFO() << (*p_sh_val1)[0](0, 0);
+      // LOG_INFO() << (*p_sh_val1)[1](0, 0);
       *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val1, true);
     }
   }
@@ -1183,14 +1208,14 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
       if (fp64_run_) {
-        LOG(INFO) << "Run FP64 Add between '" << a << "' and '" << b << "'.";
+        LOG_INFO() << "Run FP64 Add between '" << a << "' and '" << b << "'.";
         runMPCAddFP64(val1, val2, res);
-        LOG(INFO) << "Run FP64 Add finish.";
+        LOG_INFO() << "Run FP64 Add finish.";
       } else {
-        LOG(INFO) << "Run I64 Add between '" << a << " and '" << b << "'.";
+        LOG_INFO() << "Run I64 Add between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
         runMPCAddI64(val1, val2, res);
-        LOG(INFO) << "Run I64 Add finish.";
+        LOG_INFO() << "Run I64 Add finish.";
       }
 
       std::string new_token = "(" + a + "+" + b + ")";
@@ -1201,14 +1226,14 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
       if (fp64_run_) {
-        LOG(INFO) << "Run FP64 Sub between '" << a << "' and '" << b << "'.";
+        LOG_INFO() << "Run FP64 Sub between '" << a << "' and '" << b << "'.";
         runMPCSubFP64(val1, val2, res);
-        LOG(INFO) << "Run FP64 Sub finish.";
+        LOG_INFO() << "Run FP64 Sub finish.";
       } else {
-        LOG(INFO) << "Run I64 Sub between '" << a << " and '" << b << "'.";
+        LOG_INFO() << "Run I64 Sub between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
         runMPCSubI64(val1, val2, res);
-        LOG(INFO) << "Run I64 Sub finish.";
+        LOG_INFO() << "Run I64 Sub finish.";
       }
 
       std::string new_token = "(" + a + "-" + b + ")";
@@ -1219,14 +1244,14 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
 
       if (fp64_run_) {
-        LOG(INFO) << "Run FP64 Mul between '" << a << "' and '" << b << "'.";
+        LOG_INFO() << "Run FP64 Mul between '" << a << "' and '" << b << "'.";
         runMPCMulFP64(val1, val2, res);
-        LOG(INFO) << "Run FP64 Mul finish.";
+        LOG_INFO() << "Run FP64 Mul finish.";
       } else {
-        LOG(INFO) << "Run I64 Mul between '" << a << " and '" << b << "'.";
+        LOG_INFO() << "Run I64 Mul between '" << a << " and '" << b << "'.";
         si64Matrix sh_sum;
         runMPCMulI64(val1, val2, res);
-        LOG(INFO) << "Run I64 Mul finish.";
+        LOG_INFO() << "Run I64 Mul finish.";
       }
 
       std::string new_token = "(" + a + "*" + b + ")";
@@ -1235,9 +1260,9 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
       std::string a, b;
       TokenValue val1, val2, res;
       BeforeMPCRun(stk1, val_stk, val1, val2, a, b);
-      LOG(INFO) << "Run FP64 Div between '" << a << "' and '" << b << "'.";
+      LOG_INFO() << "Run FP64 Div between '" << a << "' and '" << b << "'.";
       runMPCDivFP64(val1, val2, res);
-      LOG(INFO) << "Run FP64 Div finish.";
+      LOG_INFO() << "Run FP64 Div finish.";
       std::string new_token = "(" + a + "/" + b + ")";
       AfterMPCRun(stk1, val_stk, new_token, res);
     } else {
@@ -1246,8 +1271,8 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::runMPCEvaluate(void) {
 
       TokenValue token_val;
       if (createTokenValue(token, token_val)) {
-        LOG(ERROR) << "Construct token value for token '" << token
-                   << "' failed.";
+        LOG_ERROR() << "Construct token value for token '" << token
+                    << "' failed.";
         return -1;
       }
 
@@ -1282,9 +1307,9 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
         count++;
       }
 
-      LOG(INFO) << "Reveal MPC result to party "
-                << static_cast<char>(party + '0') << ", value count " << count
-                << ".";
+      LOG_INFO() << "Reveal MPC result to party "
+                 << static_cast<char>(party + '0') << ", value count " << count
+                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
     }
@@ -1311,9 +1336,9 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
         count++;
       }
 
-      LOG(INFO) << "Reveal MPC result to party "
-                << static_cast<char>(party + '0') << ", value count " << count
-                << ".";
+      LOG_INFO() << "Reveal MPC result to party "
+                 << static_cast<char>(party + '0') << ", value count " << count
+                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
     }
@@ -1362,6 +1387,16 @@ template <Decimal Dbit> void MPCExpressExecutor<Dbit>::Clean(void) {
 
 template <Decimal Dbit> MPCExpressExecutor<Dbit>::~MPCExpressExecutor() {
   Clean();
+}
+
+template <Decimal Dbit>
+int MPCExpressExecutor<Dbit>::set_task_info(std::string platform_type,
+                                            std::string job_id,
+                                            std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
 }
 
 template <Decimal Dbit>

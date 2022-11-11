@@ -64,6 +64,14 @@ public:
 
   void Clean(void);
 
+  int set_task_info(std::string platform_type, std::string job_id,
+                    std::string task_id);
+
+  inline std::string platform() { return platform_type_; }
+
+  inline std::string job_id() { return job_id_; }
+
+  inline std::string task_id() { return task_id_; }
   // A token means a column name and constant value string, and a TokenValue
   // saves values of a token. So:
   // 1. if token is a column name, instance of TokenValue saves column's
@@ -130,7 +138,9 @@ private:
   public:
     enum ColDtype { INT64, FP64 };
 
-    ColumnConfig(u32 party_id) { party_id_ = party_id; }
+    ColumnConfig(u32 party_id) {
+      party_id_ = party_id;
+    }
     ~ColumnConfig();
 
     int importColumnDtype(const std::string &col_name, const ColDtype &dtype);
@@ -141,12 +151,24 @@ private:
     bool hasFP64Column(void);
     void Clean(void);
 
+    int set_task_info(std::string platform_type, std::string job_id,
+                    std::string task_id);
+
+    inline std::string platform() { return platform_type_; }
+
+    inline std::string job_id() { return job_id_; }
+
+    inline std::string task_id() { return task_id_; }  
+    
     static std::string DtypeToString(const ColDtype &dtype);
 
     template <Decimal Dbits> friend class LocalExpressExecutor;
 
   private:
     u32 party_id_;
+    std::string platform_type_;
+    std::string job_id_;
+    std::string task_id_;
     std::map<std::string, u32> col_owner_;
     std::map<std::string, ColDtype> col_dtype_;
     std::map<std::string, bool> local_col_;
@@ -179,6 +201,15 @@ private:
 
     void Clean(void);
 
+    int set_task_info(std::string platform_type, std::string job_id,
+                    std::string task_id);
+
+    inline std::string platform() { return platform_type_; }
+
+    inline std::string job_id() { return job_id_; }
+
+    inline std::string task_id() { return task_id_; }  
+
   private:
     int checkLocalColumn(const std::string &col_name);
     int setOrCheckValueCount(int64_t new_count);
@@ -188,6 +219,9 @@ private:
     std::map<std::string, std::vector<double>> fp64_col_;
     std::map<std::string, std::vector<int64_t>> int64_col_;
     ColumnConfig *col_config_;
+    std::string platform_type_;
+    std::string job_id_;
+    std::string task_id_;  
   };
 
   inline int createTokenValue(const std::string &token, TokenValue &token_val);
@@ -241,6 +275,9 @@ private:
   std::map<std::string, TokenValue> token_val_map_;
   std::map<std::string, TokenType> token_type_map_;
   uint32_t party_id_;
+  std::string platform_type_ = "";
+  std::string job_id_ = "";
+  std::string task_id_ = "";
 };
 
 template <Decimal Dbit> class LocalExpressExecutor {
@@ -302,17 +339,18 @@ private:
       typename MPCExpressExecutor<Dbit>::TokenValue &val2, std::string &a,
       std::string &b);
 
-  inline void
-  afterLocalCalculate(std::stack<std::string> &token_stk,
-                      std::stack<typename MPCExpressExecutor<Dbit>::TokenValue> &val_stk,
-                      std::string &new_token,
-                      typename MPCExpressExecutor<Dbit>::TokenValue &res);
+  inline void afterLocalCalculate(
+      std::stack<std::string> &token_stk,
+      std::stack<typename MPCExpressExecutor<Dbit>::TokenValue> &val_stk,
+      std::string &new_token,
+      typename MPCExpressExecutor<Dbit>::TokenValue &res);
 
   // std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
   // std::map<std::string, std::vector<double> *> fp64_token_val_map_;
 
   MPCExpressExecutor<Dbit> *mpc_exec_;
-  std::map<std::string, typename MPCExpressExecutor<Dbit>::TokenValue> token_val_map_;
+  std::map<std::string, typename MPCExpressExecutor<Dbit>::TokenValue>
+      token_val_map_;
   typename MPCExpressExecutor<Dbit>::FeedDict *new_feed;
   typename MPCExpressExecutor<Dbit>::ColumnConfig *new_col_cfg;
   std::vector<double> final_val_double;

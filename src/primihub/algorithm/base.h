@@ -20,7 +20,6 @@
 #include <string>
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/protos/common.grpc.pb.h"
-
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
@@ -37,7 +36,7 @@ class AlgorithmBase {
     virtual int execute() = 0;
     virtual int finishPartyComm() = 0;
     virtual int saveModel() = 0;
-
+    virtual int set_task_info(std::string platform_type,std::string job_id,std::string task_id){ return 0; }
   protected:
     std::shared_ptr<DatasetService> dataset_service_;
     std::string algorithm_name_;
