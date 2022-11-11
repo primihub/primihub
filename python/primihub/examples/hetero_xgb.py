@@ -1370,7 +1370,7 @@ def xgb_host_logic(cry_pri="paillier"):
         current_loss = xgb_host.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
         train_losses.append(current_loss)
 
-        # print("train_losses ", train_losses)
+        print("train_losses ", train_losses)
 
     end = time.time()
     # logger.info("lasting time for xgb %s".format(end-start))
