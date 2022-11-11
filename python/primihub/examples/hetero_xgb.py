@@ -1304,8 +1304,8 @@ def xgb_host_logic(cry_pri="paillier"):
     #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
     #                                                               )
     # pools = ActorPool([actor1, actor2, actor3])
-    # xgb_host.lookup_table = {}
-    # y_hat = np.array([xgb_host.base_score] * len(Y))
+    xgb_host.lookup_table = {}
+    y_hat = np.array([xgb_host.base_score] * len(Y))
     train_losses = []
 
     start = time.time()
