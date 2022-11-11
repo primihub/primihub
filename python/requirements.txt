@@ -22,3 +22,4 @@ ray==1.10.0
 transformers
 requests
 line_profiler
+matplotlib
