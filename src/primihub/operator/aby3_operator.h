@@ -65,8 +65,9 @@ public:
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
 
     if (VLOG_IS_ON(7)) {
-      i64 *mat_ptr = sharedMatrix.mShares[0].data();
-      size_t mat_size = sharedMatrix.mShares[0].size();
+      si64Matrix &m = sharedMatrix.i64Cast();
+      i64 *mat_ptr = m.mShares[0].data();
+      size_t mat_size = m.mShares[0].size();
       std::vector<std::string> lines;
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
@@ -78,8 +79,8 @@ public:
 
       lines.clear();
 
-      mat_ptr = sharedMatrix.mShares[1].data();
-      mat_size = sharedMatrix.mShares[1].size();
+      mat_ptr = m.mShares[1].data();
+      mat_size = m.mShares[1].size();
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
       VLOG(7) << "Dump value in second piece of secure share:";
@@ -93,8 +94,9 @@ public:
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
 
     if (VLOG_IS_ON(7)) {
-      i64 *mat_ptr = sharedMatrix.mShares[0].data();
-      size_t mat_size = sharedMatrix.mShares[0].size();
+      si64Matrix &m = sharedMatrix.i64Cast();
+      i64 *mat_ptr = m.mShares[0].data();
+      size_t mat_size = m.mShares[0].size();
       std::vector<std::string> lines;
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
@@ -106,8 +108,8 @@ public:
 
       lines.clear();
 
-      mat_ptr = sharedMatrix.mShares[1].data();
-      mat_size = sharedMatrix.mShares[1].size();
+      mat_ptr = m.mShares[1].data();
+      mat_size = m.mShares[1].size();
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
       VLOG(7) << "Dump value in second piece of secure share:";
