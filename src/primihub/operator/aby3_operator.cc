@@ -2,6 +2,50 @@
 #include <glog/logging.h>
 
 namespace primihub {
+
+// Convert a u64 value from host order to network order.
+static unsigned long long htonll(unsigned long long val) {
+  int i = 1;
+  char c = *(reinterpret_cast<char *>(&i));
+  if (c) {
+    // This machine is LITTLE ENDIAN;
+    return (((unsigned long long)htonl((int)((val << 32) >> 32))) << 32) |
+           (unsigned int)htonl((int)(val >> 32));
+  } else {
+    // This machine is BIG ENDIAN;
+    return val;
+  }
+}
+
+// Print value in u64 array into multiple string.
+void convertArrayToStrings(i64 *mat_ptr, size_t mat_num,
+                           std::vector<std::string> &lines) {
+  size_t index = 0;
+  size_t out_num = mat_num;
+
+  while (out_num != 0) {
+    if (out_num < 5) {
+      std::stringstream ss;
+      for (size_t i = 0; i < out_num; i++) {
+        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index)))
+           << " ";
+        index += 1;
+      }
+      out_num = 0;
+      lines.emplace_back(ss.str());
+    } else {
+      std::stringstream ss;
+      for (size_t i = 0; i < 5; i++) {
+        ss << std::hex << htonll(static_cast<uint64_t>(*(mat_ptr + index)))
+           << " ";
+        index += 1;
+      }
+      out_num -= 5;
+      lines.emplace_back(ss.str());
+    }
+  }
+}
+
 int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
                        u32 prev_port) {
   CommPkg comm = CommPkg();
@@ -85,10 +129,58 @@ void MPCOperator::fini() {
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
   enc.localIntMatrix(runtime, vals, sharedMatrix).get();
+
+  if (VLOG_IS_ON(7)) {
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+
+    VLOG(7) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+
+    lines.clear();
+
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    VLOG(7) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+  }
 }
 
 void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
+
+  if (VLOG_IS_ON(7)) {
+    i64 *mat_ptr = sharedMatrix.mShares[0].data();
+    size_t mat_size = sharedMatrix.mShares[0].size();
+    std::vector<std::string> lines;
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+
+    VLOG(7) << "Dump value in first piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+
+    lines.clear();
+
+    mat_ptr = sharedMatrix.mShares[1].data();
+    mat_size = sharedMatrix.mShares[1].size();
+
+    convertArrayToStrings(mat_ptr, mat_size, lines);
+    VLOG(7) << "Dump value in second piece of secure share:";
+    for (auto line : lines)
+      VLOG(7) << line;
+    VLOG(7) << "Dump finish.";
+  }
 }
 
 void MPCOperator::createShares(i64 val, si64 &dest) {
@@ -100,7 +192,8 @@ void MPCOperator::createShares(si64 &dest) {
 }
 
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), static_cast<unsigned long long>(val.cols())};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
+                          static_cast<unsigned long long>(val.cols())};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   si64Matrix dest(size[0], size[1]);
@@ -124,7 +217,8 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 
 // only support val is column vector
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), bitCount};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
+                          bitCount};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
   sbMatrix dest(size[0], size[1]);

@@ -4,6 +4,7 @@
 #include "src/primihub/protocol/aby3/encryptor.h"
 
 namespace primihub {
+
 void Sh3Encryptor::complateSharing(CommPkg& comm, span<i64> send,
                                     span<i64> recv) {
   comm.mNext().asyncSendCopy(send);

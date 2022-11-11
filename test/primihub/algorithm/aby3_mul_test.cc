@@ -1,8 +1,4 @@
-// Copyright [2021] <primihub.com>
-#pragma once
-#include "gtest/gtest.h"
-// #include "src/primihub/algorithm/logistic.h"
-// #include "src/primihub/service/dataset/localkv/storage_default.h"
+#include <time.h>
 
 #include "src/primihub/operator/aby3_operator.h"
 #include "src/primihub/protocol/aby3/encryptor.h"
@@ -11,13 +7,14 @@
 #include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
+
+#include "glog/logging.h"
+#include "gtest/gtest.h"
+
 using namespace primihub;
+
 int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
           Sh3Runtime &runtime) {
-
-  // A CommPkg is a pair of Channels (network sockets) to the other parties.
-  // See cryptoTools\frontend_cryptoTools\Tutorials\Network.cpp
-  // for detials.
   CommPkg comm = CommPkg();
   Session ep_next_;
   Session ep_prev_;
@@ -36,6 +33,7 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
     ep_prev_.start(ios, "127.0.0.1", 1515, SessionMode::Client, "12");
     break;
   }
+
   comm.setNext(ep_next_.addChannel());
   comm.setPrev(ep_prev_.addChannel());
   comm.mNext().waitForConnection();
@@ -70,29 +68,21 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
   runtime.init(partyIdx, commPtr);
   return 1;
 }
-void matrixOperations(u64 partyIdx) {
+
+double matrixOperations(u64 partyIdx, eMatrix<i64> &plainMatrix1,
+                        eMatrix<i64> &plainMatrix2, eMatrix<i64> &outMatrix,
+                        u64 rows, u64 cols) {
   IOService ios;
   Sh3Encryptor enc;
   Sh3Evaluator eval;
   Sh3Runtime runtime;
+
   setup(partyIdx, ios, enc, eval, runtime);
-  // A plaintext matrix can be instantiated as
-  u64 rows = 3, cols = 1;
-  eMatrix<i64> plainMatrix1(rows, cols);
-  eMatrix<i64> plainMatrix2(rows, cols);
-  // We can populate is by
-  for (u64 i = 0; i < rows; ++i)
-    for (u64 j = 0; j < cols; ++j) {
-      plainMatrix1(i, j) = i + j + 1;
-      plainMatrix2(i, j) = i + j + 1;
-    }
-  LOG(INFO) << " plainMatrix1:" << plainMatrix1;
-  LOG(INFO) << " plainMatrix2:" << plainMatrix2;
 
-  // To encrypt it, we use
   si64Matrix sharedMatrix1(rows, cols);
-  si64Matrix sharedMatrix2(cols, rows);
+  si64Matrix sharedMatrix2(rows, cols);
 
+  LOG(INFO) << "Begin to create shares.";
   if (partyIdx == 0) {
     enc.localIntMatrix(runtime, plainMatrix1, sharedMatrix1).get();
   } else
@@ -102,176 +92,93 @@ void matrixOperations(u64 partyIdx) {
     enc.localIntMatrix(runtime, plainMatrix2, sharedMatrix2).get();
   } else
     enc.remoteIntMatrix(runtime, sharedMatrix2).get();
-  // if (partyIdx == 0)
-  //   enc.localIntMatrix(runtime, plainMatrix, sharedMatrix).get();
-  // else
-  //   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 
-  // We can multiply
+  LOG(INFO) << "Finish.";
+  
   si64Matrix prod;
-  Sh3Task mulTask =
-      eval.asyncDotMul(runtime, sharedMatrix1, sharedMatrix2, prod);
+  clock_t st_clock = 0, ed_clock = 0;
 
-  // we can reconstruct the secret shares
-  eMatrix<i64> plainMatrix(1, 1);
-  enc.revealAll(mulTask, prod, plainMatrix).get();
-  LOG(INFO) << plainMatrix;
+  LOG(INFO) << "Begin to run MPC Mul.";
+  st_clock = clock();
+  Sh3Task mulTask = eval.asyncMul(runtime, sharedMatrix1, sharedMatrix2, prod);
+  mulTask.get();
+  ed_clock = clock();
+  LOG(INFO) << "Finish.";
+
+  double mpc_time = (double)(ed_clock - st_clock) / CLOCKS_PER_SEC;
+  std::cerr << "MPC Mul use " << mpc_time << " seconds." << std::endl;
+
+  enc.revealAll(mulTask, prod, outMatrix).get();
+
+  return mpc_time;
 }
 
-void fixedPointOperations(u64 partyIdx) {
-  IOService ios;
-  Sh3Encryptor enc;
-  Sh3Evaluator eval;
-  Sh3Runtime runtime;
-  setup(partyIdx, ios, enc, eval, runtime);
+TEST(mpc_mul, aby3_3pc_test) {
+  u64 rows = 100, cols = 1;
 
-  // The framework also supports the ability to perform
-  // fixed point computation. This is similar to the
-  // double or float type in c++. The key difference is
-  // that it is implemented as an integer where a fixed
-  // number of the bits represent decimal/fraction part.
+  eMatrix<i64> plainMatrix1(rows, cols);
+  eMatrix<i64> plainMatrix2(rows, cols);
+  eMatrix<i64> outMatrix(rows, cols);
 
-  // This represent a plain 64-bit value where the bottom
-  // 8-bit of the integer represent the fractional part.
-  f64<D8> fixedInt = 34.62;
-
-  // We can encrypt this value in the similar way as an integer
-  sf64<D8> sharedFixedInt;
-  if (partyIdx == 0)
-    enc.localFixed(runtime, fixedInt, sharedFixedInt).get();
-  else
-    enc.remoteFixed(runtime, sharedFixedInt).get();
-
-  // We can add and multiply
-  sf64<D8> addition = sharedFixedInt + sharedFixedInt;
-  sf64<D8> prod;
-  eval.asyncMul(runtime, addition, sharedFixedInt, prod).get();
-
-  // We can also perform matrix operations.
-  u64 rows = 5, cols = 1;
-  f64Matrix<D20> fixedMatrix1(rows, cols);
-  f64Matrix<D20> fixedMatrix2(rows, cols);
-  std::vector<double> plaintext;
-
-  plaintext.emplace_back(5762.956599043853 * 3370.387429464423);
-  plaintext.emplace_back(4075.605739170733 * 9902.092442274614);
-  plaintext.emplace_back(7384.0757247129095 * 2888.276563618976);
-  plaintext.emplace_back(5997.638599294733 * 3930.800634388091);
-  plaintext.emplace_back(7787.552299068919 * 7265.431388578868);
-
-  fixedMatrix1(0, 0) = 5762.956599043853;
-  fixedMatrix1(1, 0) = 4075.605739170733;
-  fixedMatrix1(2, 0) = 7384.0757247129095;
-  fixedMatrix1(3, 0) = 5997.638599294733;
-  fixedMatrix1(4, 0) = 7787.552299068919;
-
-  fixedMatrix2(0, 0) = 3370.387429464423;
-  fixedMatrix2(1, 0) = 9902.092442274614;
-  fixedMatrix2(2, 0) = 2888.276563618976;
-  fixedMatrix2(3, 0) = 3930.800634388091;
-  fixedMatrix2(4, 0) = 7265.431388578868;
-  // We can populate is by
-  // for (u64 i = 0; i < rows; ++i)
-  //   for (u64 j = 0; j < cols; ++j) {
-  //     fixedMatrix1(i, j) = double(i) / j;
-  //     fixedMatrix2(i, j) = double(i) / j;
-  //   }
-  // To encrypt it, we use
-  sf64Matrix<D20> sharedMatrix1(rows, cols);
-  sf64Matrix<D20> sharedMatrix2(rows, cols);
-  if (partyIdx == 0)
-    enc.localFixedMatrix(runtime, fixedMatrix1, sharedMatrix1).get();
-  else
-    enc.remoteFixedMatrix(runtime, sharedMatrix1).get();
-
-  if (partyIdx == 0)
-    enc.localFixedMatrix(runtime, fixedMatrix2, sharedMatrix2).get();
-  else
-    enc.remoteFixedMatrix(runtime, sharedMatrix2).get();
-  // We can add locally
-  // sf64Matrix<D8> additionMtx = sharedMatrix + sharedMatrix;
-
-  // We can multiply
-  sf64Matrix<D20> prodMtx;
-  Sh3Task mulTask =
-      eval.asyncDotMul(runtime, sharedMatrix1, sharedMatrix2, prodMtx);
-
-  // we can reconstruct the secret shares
-  f64Matrix<D20> fixedMatrix(rows, cols);
-  enc.revealAll(mulTask, prodMtx, fixedMatrix).get();
-  if (partyIdx == 0) {
-    LOG(INFO) << "MPC A*B:" << fixedMatrix;
-    for (auto itr = plaintext.begin(); itr != plaintext.end(); itr++)
-      LOG(INFO) << "PLAIN A*B:" << std::fixed << static_cast<double>(*itr);
-  }
-}
-
-void fixedPointOperations1(u64 partyIdx) {
-  IOService ios;
-  Sh3Encryptor enc;
-  Sh3Evaluator eval;
-  Sh3Runtime runtime;
-  setup(partyIdx, ios, enc, eval, runtime);
-
-  // The framework also supports the ability to perform
-  // fixed point computation. This is similar to the
-  // double or float type in c++. The key difference is
-  // that it is implemented as an integer where a fixed
-  // number of the bits represent decimal/fraction part.
-
-  // This represent a plain 64-bit value where the bottom
-  // 8-bit of the integer represent the fractional part.
-  f64<D8> fixedInt1 = 3370.387429464423;
-  f64<D8> fixedInt2 = 5762.956599043853;
-  // We can encrypt this value in the similar way as an integer
-  sf64<D8> sharedFixedInt1;
-  sf64<D8> sharedFixedInt2;
-  if (partyIdx == 0)
-    enc.localFixed(runtime, fixedInt1, sharedFixedInt1).get();
-  else
-    enc.remoteFixed(runtime, sharedFixedInt1).get();
-
-  if (partyIdx == 0)
-    enc.localFixed(runtime, fixedInt2, sharedFixedInt2).get();
-  else
-    enc.remoteFixed(runtime, sharedFixedInt2).get();
-
-  // We can add and multiply
-  sf64<D8> prod;
-  f64<D8> result;
-  eval.asyncMul(runtime, sharedFixedInt1, sharedFixedInt2, prod).get();
-  enc.revealAll(runtime, prod, result).get();
-
-  double prod_plain = 3370.387429464423 * 5762.956599043853;
-  if (partyIdx == 0) {
-    LOG(INFO) << "MPC A*B:" << result;
-    LOG(INFO) << "MPC A*B:" << std::fixed << static_cast<double>(result);
-    LOG(INFO) << "PLAIN A*B:" << std::fixed << prod_plain;
-  }
-}
-
-TEST(add_operator, aby3_3pc_test) {
-  pid_t pid = fork();
-  if (pid != 0) {
-    // Child proess as party 0.
-    fixedPointOperations1(0);
-    return;
+  double matmul_time = 0;
+  {
+    clock_t st_clock = 0, ed_clock = 0;
+    eMatrix<i64> outMatrix(rows, cols);
+    st_clock = clock();
+    outMatrix = plainMatrix1 * plainMatrix2;
+    ed_clock = clock();
+    matmul_time = (double)(ed_clock - st_clock) / CLOCKS_PER_SEC;
+    std::cerr << "MatMul use " << matmul_time << " seconds." << std::endl;
   }
 
-  pid = fork();
-  if (pid != 0) {
-    // Child process as party 1.
-    sleep(1);
-    // integerOperations(1);
-    // fixedPointOperations(1);
-    fixedPointOperations1(1);
-    return;
+  srand(time(nullptr));
+  for (u64 i = 0; i < rows; ++i) {
+    for (u64 j = 0; j < cols; ++j) {
+      plainMatrix1(i, j) = rand() % 100;
+      plainMatrix2(i, j) = rand() % 100;
+    }
   }
 
-  // Parent process as party 2.
-  sleep(3);
+  bool standalone = false;
+  if (standalone) {
+    pid_t pid = fork();
+    if (pid != 0) {
+      // Child proess as party 0.
+      matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+      return;
+    }
 
-  fixedPointOperations1(2);
+    pid = fork();
+    if (pid != 0) {
+      // Child process as party 1.
+      sleep(2);
+      matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+      return;
+    }
+
+    // Parent process as party 2.
+    sleep(3);
+    double mpc_time =
+        matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix, rows, cols);
+
+    LOG(INFO) << "Record MPC time: " << mpc_time;
+    LOG(INFO) << "Record Plain time: " << matmul_time;
+  } else {
+    double mpc_time = 0;
+    if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_0") {
+      mpc_time = matrixOperations(0, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    } else if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_1") {
+      mpc_time = matrixOperations(1, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    } else if (std::string(std::getenv("MPC_PARTY")) == "MPC_PARTY_2") {
+      mpc_time = matrixOperations(2, plainMatrix1, plainMatrix2, outMatrix,
+                                  rows, cols);
+    }
+
+    LOG(INFO) << "Record MPC time: " << mpc_time;
+    LOG(INFO) << "Record Plain time: " << matmul_time;
+  }
 
   return;
 }

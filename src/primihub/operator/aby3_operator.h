@@ -27,6 +27,11 @@
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
+
+// Print value in u64 array into string in network order.
+void convertArrayToStrings(i64 *mat_ptr, size_t mat_num,
+                           std::vector<std::string> &lines);
+
 class MPCOperator {
 public:
   Channel mNext, mPrev;
@@ -49,17 +54,67 @@ public:
 
   int setup(std::string next_ip, std::string prev_ip, u32 next_port,
             u32 prev_port);
+
   void fini();
+
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
     for (u64 i = 0; i < vals.size(); ++i)
       fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
+
+    if (VLOG_IS_ON(7)) {
+      i64 *mat_ptr = sharedMatrix.mShares[0].data();
+      size_t mat_size = sharedMatrix.mShares[0].size();
+      std::vector<std::string> lines;
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+
+      VLOG(7) << "Dump value in first piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+
+      lines.clear();
+
+      mat_ptr = sharedMatrix.mShares[1].data();
+      mat_size = sharedMatrix.mShares[1].size();
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+      VLOG(7) << "Dump value in second piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+    }
   }
 
   template <Decimal D> void createShares(sf64Matrix<D> &sharedMatrix) {
     enc.remoteFixedMatrix(runtime, sharedMatrix).get();
+
+    if (VLOG_IS_ON(7)) {
+      i64 *mat_ptr = sharedMatrix.mShares[0].data();
+      size_t mat_size = sharedMatrix.mShares[0].size();
+      std::vector<std::string> lines;
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+
+      VLOG(7) << "Dump value in first piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+
+      lines.clear();
+
+      mat_ptr = sharedMatrix.mShares[1].data();
+      mat_size = sharedMatrix.mShares[1].size();
+
+      convertArrayToStrings(mat_ptr, mat_size, lines);
+      VLOG(7) << "Dump value in second piece of secure share:";
+      for (auto line : lines)
+        VLOG(7) << line;
+      VLOG(7) << "Dump finish.";
+    }
   }
 
   template <Decimal D>
