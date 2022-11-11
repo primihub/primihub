@@ -1209,7 +1209,7 @@ num_tree = 3
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
-is_encrypted = False
+is_encrypted = True
 
 
 @ph.context.function(

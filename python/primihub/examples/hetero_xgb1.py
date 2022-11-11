@@ -672,6 +672,20 @@ class XGB_GUEST_EN:
 
             return tree_structure
 
+    def fit(self, X_guest, lookup_table_sum):
+        for t in range(self.n_estimators):
+            self.record = 0
+            # gh_host = xgb_guest.channel.recv()
+            gh_en = self.proxy_server.Get('gh_en')
+            self.tree_structure[t + 1] = self.guest_tree_construct(
+                X_guest.copy(), gh_en, 0)
+
+            # stat construct boosting trees
+
+            lookup_table_sum[t + 1] = self.lookup_table
+
+            pass
+
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):
         if tree is not None:
             k = list(tree.keys())[0]
@@ -1264,7 +1278,7 @@ num_tree = 3
 # the depth of each tree
 max_depth = 2
 # max_depth = 5
-is_encrypted = False
+is_encrypted = True
 
 
 @ph.context.function(
@@ -1370,7 +1384,10 @@ def xgb_host_logic(cry_pri="paillier"):
     lp.add_function(xgb_host.host_tree_construct)
     lp.add_function(xgb_host.gh_sums_decrypted)
     lp_wrapper = lp(xgb_host.fit)
-    lp_wrapper(X_host=X_host, Y=Y, paillier_encryptor=paillier_encryptor, lookup_table_sum=lookup_table_sum)
+    lp_wrapper(X_host=X_host,
+               Y=Y,
+               paillier_encryptor=paillier_encryptor,
+               lookup_table_sum=lookup_table_sum)
     lp.print_stats()
 
     # lp = LineProfiler(xgb_host.fit)
@@ -1591,22 +1608,33 @@ def xgb_guest_logic(cry_pri="paillier"):
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
     pub = proxy_server.Get('xgb_pub')
+    xgb_guest.pub = pub
+
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
     xgb_guest.lookup_table = {}
 
-    for t in range(xgb_guest.n_estimators):
-        xgb_guest.record = 0
-        # gh_host = xgb_guest.channel.recv()
-        gh_en = proxy_server.Get('gh_en')
-        xgb_guest.pub = pub
-        xgb_guest.tree_structure[t + 1] = xgb_guest.guest_tree_construct(
-            X_guest.copy(), gh_en, 0)
+    lp = LineProfiler()
+    lp.add_function(xgb_guest.guest_tree_construct)
+    lp.add_function(xgb_guest.sums_of_encrypted_ghs)
 
-        # stat construct boosting trees
+    lp_wrapper = lp(xgb_guest.fit)
+    lp_wrapper(X_guest, lookup_table_sum)
+    lp.print_stats()
 
-        lookup_table_sum[t + 1] = xgb_guest.lookup_table
-        # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
+    # xgb_guest.fit(X_guest, lookup_table_sum)
+
+    # for t in range(xgb_guest.n_estimators):
+    #     xgb_guest.record = 0
+    #     # gh_host = xgb_guest.channel.recv()
+    #     gh_en = proxy_server.Get('gh_en')
+    #     xgb_guest.tree_structure[t + 1] = xgb_guest.guest_tree_construct(
+    #         X_guest.copy(), gh_en, 0)
+
+    #     # stat construct boosting trees
+
+    #     lookup_table_sum[t + 1] = xgb_guest.lookup_table
+    # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # predict_file_path = ph.context.Context.get_predict_file_path()
     # indicator_file_path = ph.context.Context.get_indicator_file_path()
