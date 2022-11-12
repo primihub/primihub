@@ -9,12 +9,12 @@ filegroup(
 
 cmake(
     name = "APSI",
-    env={
-        "HTTPS_PROXY": "http://127.0.0.1:7890",
-        "HTTP_PROXY": "http://127.0.0.1:7890",
-        "https_proxy": "http://127.0.0.1:7890",
-        "http_proxy": "http://127.0.0.1:7890",
-    },
+    #env={
+    #    "HTTPS_PROXY": "http://127.0.0.1:7890",
+    #    "HTTP_PROXY": "http://127.0.0.1:7890",
+    #    "https_proxy": "http://127.0.0.1:7890",
+    #    "http_proxy": "http://127.0.0.1:7890",
+    #},
     visibility = ["//visibility:public"],
     # cache_entries = {
     #     "__LINUX__": "1",
