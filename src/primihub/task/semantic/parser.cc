@@ -28,7 +28,7 @@
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
-
+#include "src/primihub/util/log_wrapper.h"
 using primihub::service::DataURLToDetail;
 using primihub::rpc::TaskType;
 
@@ -86,17 +86,20 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
                 //  Generate MPC algorthim scheduler
                 auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                const auto& job_id = pushTaskRequest.task().job_id();
+                const auto& task_id = pushTaskRequest.task().job_id();
                 if (pushTaskRequest.task().code() == "maxpool") {
                     std::shared_ptr<VMScheduler> scheduler =
                         std::make_shared<CRYPTFLOW2Scheduler>(
-                            node_id_, peer_list_, peer_dataset_map,
-                            singleton_);
+                            node_id_, peer_list_, peer_dataset_map, singleton_);
+                    scheduler->set_scheduler_info(primihub::PlatFormType::MPC, job_id, task_id);
                     scheduler->dispatch(&pushTaskRequest);
                 } else if (pushTaskRequest.task().code() == "lenet") {
                     std::shared_ptr<VMScheduler> scheduler =
                         std::make_shared<FalconScheduler>(node_id_, peer_list,
                                                           peer_dataset_map,
                                                           singleton_);
+                    scheduler->set_scheduler_info(primihub::PlatFormType::MPC, job_id, task_id);
                     scheduler->dispatch(&pushTaskRequest);
                 } else {
                     //  Generate ABY3 scheduler
@@ -104,6 +107,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
                         std::make_shared<ABY3Scheduler>(node_id_, peer_list,
                                                         peer_dataset_map,
                                                         singleton_);
+                    scheduler->set_scheduler_info(primihub::PlatFormType::MPC, job_id, task_id);
                     scheduler->set_dataset_owner(dataset_owner);
                     scheduler->dispatch(&pushTaskRequest);
                 }
@@ -145,13 +149,16 @@ void ProtocolSemanticParser::schedulePythonTask(
                 metasToPeerWithTagAndPort(metas_with_param_tag,
                                           _peer_context_map,
                                           _peers_with_role_tag);
+                auto pushTaskRequest = _python_parser->getPushTaskRequest();
+                const auto& job_id = pushTaskRequest.task().job_id();
+                const auto& task_id = pushTaskRequest.task().task_id();
                 std::shared_ptr<VMScheduler> scheduler =
                     std::make_shared<FLScheduler>(
                         node_id_, singleton_, _peers_with_role_tag,
                         _peer_context_map, metas_with_param_tag);
-
+                scheduler->set_scheduler_info(primihub::PlatFormType::FL, job_id, task_id);
                 // Dispatch task to worker nodes
-                auto pushTaskRequest = _python_parser->getPushTaskRequest();
+
                 scheduler->dispatch(&pushTaskRequest);
             });
     });
@@ -192,12 +199,15 @@ void ProtocolSemanticParser::schedulePirTask(
                 peer_list_.push_back(client_node);
 
                 metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
+                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                const auto& job_id = pushTaskRequest.task().job_id();
+                const auto& task_id = pushTaskRequest.task().task_id();
                 std::shared_ptr<VMScheduler> scheduler =
                     std::make_shared<PIRScheduler>(node_id_,
                                                    peer_list_,
                                                    peer_dataset_map_,
                                                    singleton_);
-                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                scheduler->set_scheduler_info(primihub::PlatFormType::PIR, job_id, task_id);
                 scheduler->dispatch(&pushTaskRequest);
             });
     }
@@ -222,12 +232,15 @@ void ProtocolSemanticParser::schedulePsiTask(
 
                 metasToPeerList(metas_with_param_tag, peer_list_);
                 metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
+                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                const auto& job_id = pushTaskRequest.task().job_id();
+                const auto& task_id = pushTaskRequest.task().task_id();
                 std::shared_ptr<VMScheduler> scheduler =
                     std::make_shared<PSIScheduler>(node_id_,
                                                    peer_list_,
                                                    peer_dataset_map_,
                                                    singleton_);
-                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+                scheduler->set_scheduler_info(primihub::PlatFormType::PIR, job_id, task_id);
                 scheduler->dispatch(&pushTaskRequest);
 	    });
     }

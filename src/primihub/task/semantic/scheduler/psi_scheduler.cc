@@ -39,7 +39,7 @@ using primihub::rpc::PsiTag;
 
 namespace primihub::task {
 
-void set_psi_request_param(const std::string &node_id,
+void PSIScheduler::set_psi_request_param(const std::string &node_id,
                        const PeerDatasetMap &peer_dataset_map,
                        PushTaskRequest &taskRequest,
                        bool is_client) {
@@ -48,7 +48,7 @@ void set_psi_request_param(const std::string &node_id,
         taskRequest.mutable_task()->mutable_params()->mutable_param_map();
     auto peer_dataset_map_it = peer_dataset_map.find(node_id);
     if (peer_dataset_map_it == peer_dataset_map.end()) {
-        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
+        LOG_ERROR() << "node_push_task: peer_dataset_map not found";
         return;
     }
 
@@ -57,7 +57,7 @@ void set_psi_request_param(const std::string &node_id,
     for (auto &dataset_param : dataset_param_list) {
         ParamValue pv;
         pv.set_var_type(VarType::STRING);
-        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        V_VLOG(5) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
         (*param_map)[dataset_param.second] = pv;
     }
@@ -97,7 +97,7 @@ void set_psi_request_param(const std::string &node_id,
         pv.set_var_type(VarType::STRING);
         pv.set_value_string(dataset_path);
         (*param_map)[server_address] = pv;
-        DLOG(INFO) << "📤 push task dataset : "
+        V_VLOG(1) << "📤 push task dataset : "
                    << server_address << ", " << dataset_path;
         break;
     }
@@ -105,11 +105,11 @@ void set_psi_request_param(const std::string &node_id,
     pv_addr.set_var_type(VarType::STRING);
     pv_addr.set_value_string(server_address);
     (*param_map)["serverAddress"] = pv_addr;
-    DLOG(INFO) << "📤 push psi task server address : server_address, "
+    V_VLOG(1) << "📤 push psi task server address : server_address, "
                << server_address;
 }
 
-void set_kkrt_psi_request_param(const std::string &node_id,
+void PSIScheduler::set_kkrt_psi_request_param(const std::string &node_id,
                                 const PeerDatasetMap &peer_dataset_map,
                                 PushTaskRequest &taskRequest,
                                 bool is_client) {
@@ -118,7 +118,7 @@ void set_kkrt_psi_request_param(const std::string &node_id,
         taskRequest.mutable_task()->mutable_params()->mutable_param_map();
     auto peer_dataset_map_it = peer_dataset_map.find(node_id);
     if (peer_dataset_map_it == peer_dataset_map.end()) {
-        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
+        LOG_ERROR() << "node_push_task: peer_dataset_map not found";
         return;
     }
 
@@ -126,7 +126,7 @@ void set_kkrt_psi_request_param(const std::string &node_id,
     for (auto &dataset_param : dataset_param_list) {
         ParamValue pv;
         pv.set_var_type(VarType::STRING);
-        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        V_VLOG(5) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
         (*param_map)[dataset_param.second] = pv;
     }
@@ -158,16 +158,16 @@ void set_kkrt_psi_request_param(const std::string &node_id,
     pv_addr.set_value_string(server_address);
     if (is_client) {
         (*param_map)["serverAddress"] = pv_addr;
-        DLOG(INFO) << "📤 push psi task server address : server_address, "
+        V_VLOG(5) << "📤 push psi task server address : server_address, "
                    << server_address;
     } else {
         (*param_map)["clientAddress"] = pv_addr;
-        DLOG(INFO) << "📤 push psi task client address : server_address, "
+        V_VLOG(5) << "📤 push psi task client address : server_address, "
                    << server_address;
     }
 }
 
-void node_push_psi_task(const std::string &node_id,
+void PSIScheduler::node_push_psi_task(const std::string &node_id,
                     const PeerDatasetMap &peer_dataset_map,
                     const PushTaskRequest &nodePushTaskRequest,
                     std::string dest_node_address,
@@ -192,28 +192,31 @@ void node_push_psi_task(const std::string &node_id,
         set_kkrt_psi_request_param(node_id, peer_dataset_map,
 			           _1NodePushTaskRequest, is_client);
     } else {
-        LOG(ERROR) << "psiTag is set error.";
+        LOG_ERROR() << "psiTag is set error.";
         return ;
     }
 
     // send request
-    LOG(INFO) << "dest node " << dest_node_address;
+    LOG_INFO() << "dest node " << dest_node_address;
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
         dest_node_address, grpc::InsecureChannelCredentials()));
+    // const auto& task_id = _1NodePushTaskRequest.task().task_id();
+    // const auto& job_id = _1NodePushTaskRequest.task().job_id();
+    // V_VLOG(5) << "task_id: " << task_id << " job_id: " << job_id;
     Status status =
         stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
     if (status.ok()) {
         if (is_client) {
-            LOG(INFO) << "Node push psi task rpc succeeded.";
+            LOG_INFO() << "Node push psi task rpc succeeded.";
         } else {
-            LOG(INFO) << "Psi task server node is active.";
+            LOG_INFO() << "Psi task server node is active.";
         }
     } else {
         if (is_client) {
-            LOG(ERROR) << "Node push psi task rpc failed. "
+            LOG_ERROR() << "Node push psi task rpc failed. "
                        << status.error_code() << ": " << status.error_message();
         } else {
-            LOG(ERROR) << "Psi task server node is inactive."
+            LOG_ERROR() << "Psi task server node is inactive."
                        << status.error_code() << ": " << status.error_message();
         }
     }
@@ -228,7 +231,9 @@ void PSIScheduler::add_vm(Node *node, int i,
 void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     PushTaskRequest nodePushTaskRequest;
     nodePushTaskRequest.CopyFrom(*pushTaskRequest);
-
+    // const auto& task_id = nodePushTaskRequest.task().task_id();
+    // const auto& job_id = nodePushTaskRequest.task().job_id();
+    // V_VLOG(5) << "task_id: " << task_id << " job_id: " << job_id;
     if (pushTaskRequest->task().type() == TaskType::PSI_TASK) {
         google::protobuf::Map<std::string, Node> *mutable_node_map =
             nodePushTaskRequest.mutable_task()->mutable_node_map();
@@ -251,7 +256,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
         }
     }
 
-    LOG(INFO) << " 📧  Dispatch SubmitTask to PSI client node";
+    LOG_INFO() << " 📧  Dispatch SubmitTask to PSI client node";
 
     std::vector<std::thread> thrds;
     // google::protobuf::Map<std::string, Node>
@@ -260,7 +265,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     for (auto &pair : node_map) {
         auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
         if (peer_dataset_map_it == this->peer_dataset_map_.end()) {
-            LOG(ERROR) << "dispatchTask: peer_dataset_map not found";
+            LOG_ERROR() << "dispatchTask: peer_dataset_map not found";
             return;
         }
         // std::vector<DatasetWithParamTag>
@@ -273,18 +278,20 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
             std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
             if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
-                VLOG(5) << "duplicate request for same destination, avoid";
+                V_VLOG(5) << "duplicate request for same destination, avoid";
                 continue;
             }
             duplicate_filter.emplace(dest_node_address);
-            VLOG(5) << "dest_node_address: " << dest_node_address;
+            V_VLOG(5) << "dest_node_address: " << dest_node_address;
 
-            thrds.emplace_back(std::thread(node_push_psi_task,
-                                           pair.first,              // node_id
-                                           this->peer_dataset_map_,  // peer_dataset_map
-                                           std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                                           dest_node_address,
-                                           is_client));
+            thrds.emplace_back(
+                std::thread(&PSIScheduler::node_push_psi_task,
+                            this,
+                            pair.first,              // node_id
+                            this->peer_dataset_map_,  // peer_dataset_map
+                            std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                            dest_node_address,
+                            is_client));
         }
     }
 

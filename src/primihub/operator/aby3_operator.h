@@ -83,6 +83,7 @@ public:
       mat_size = m.mShares[1].size();
 
       convertArrayToStrings(mat_ptr, mat_size, lines);
+
       VLOG(7) << "Dump value in second piece of secure share:";
       for (auto line : lines)
         VLOG(7) << line;

@@ -742,7 +742,6 @@ void MPCExpressExecutor<Dbit>::createFP64Shares(TokenValue &val,
     constructFP64Matrix(val, m);
     mpc_op_->createShares<Dbit>(m, sh_val);
   }
-
   return;
 }
 
@@ -1000,9 +999,9 @@ void MPCExpressExecutor<Dbit>::runMPCSubI64(TokenValue &val1, TokenValue &val2,
     if (val1.type == 3)
       *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val2, false);
     else {
-      LOG(INFO) << constInt;
-      LOG(INFO) << (*p_sh_val1)[0](0, 0);
-      LOG(INFO) << (*p_sh_val1)[1](0, 0);
+      // LOG(INFO) << constInt;
+      // LOG(INFO) << (*p_sh_val1)[0](0, 0);
+      // LOG(INFO) << (*p_sh_val1)[1](0, 0);
       *sh_res = mpc_op_->MPC_Sub_Const(constInt, *p_sh_val1, true);
     }
   }

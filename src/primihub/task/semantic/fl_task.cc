@@ -53,9 +53,9 @@ FLTask::FLTask(const std::string& node_id,
                 server_ip_str = iter->second.ip();
                 break;
             }
-            LOG(INFO) << "link type: " << vm.next().link_type();
+            LOG_INFO() << "link type: " << vm.next().link_type();
         }
-        LOG(INFO) << " --- iter first node ip: " << iter->second.ip()
+        LOG_INFO() << " --- iter first node ip: " << iter->second.ip()
                   << ", port: " << iter->second.port();
     }
 
@@ -63,7 +63,7 @@ FLTask::FLTask(const std::string& node_id,
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
     } catch (std::exception& e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
+        LOG_ERROR() << "Failed to load params: " << e.what();
         return;
     }
 
@@ -76,38 +76,38 @@ FLTask::FLTask(const std::string& node_id,
     // get next peer address
     auto node_it = task_param->node_map().find(node_id);
     if (node_it == task_param->node_map().end()) {
-        LOG(ERROR) << "Failed to find node: " << node_id;
+        LOG_ERROR() << "Failed to find node: " << node_id;
         return;
     }
 
     auto vm_list = node_it->second.vm();
     if (vm_list.empty()) {
-        LOG(ERROR) << "Failed to find vm list for node: " << node_id;
+        LOG_ERROR() << "Failed to find vm list for node: " << node_id;
         return;
     }
 
     for (auto& vm : vm_list) {
-        std::string full_addr = 
+        std::string full_addr =
             vm.next().ip() + ":" + std::to_string(vm.next().port());
 
         // Key is the combine of node's nodeid and role,
         // and value is 'ip:port'.
         node_addr_map_[vm.next().name()] = full_addr;
     }
-    
+
     {
         uint32_t count = 0;
         auto iter = node_addr_map_.begin();
 
-        LOG(INFO)
+        LOG_INFO()
             << "Dump node id with role and it's address used by FL algorithm.";
 
         for (iter; iter != node_addr_map_.end(); iter++) {
-            LOG(INFO) << "Node " << iter->first << ": [" << iter->second << "].";
+            LOG_INFO() << "Node " << iter->first << ": [" << iter->second << "].";
             count++;
         }
 
-        LOG(INFO) << "Dump finish, dump count " << count << ".";
+        LOG_INFO() << "Dump finish, dump count " << count << ".";
     }
 
     // Set datasets meta list in context
@@ -115,7 +115,7 @@ FLTask::FLTask(const std::string& node_id,
         // Get dataset path from task params map
         auto data_meta = param_map.find(input_dataset);
         if (data_meta == param_map.end()) {
-            LOG(ERROR) << "Failed to find dataset: " << input_dataset;
+            LOG_ERROR() << "Failed to find dataset: " << input_dataset;
             return;
         }
         std::string data_path = data_meta->second.value_string();
@@ -123,14 +123,14 @@ FLTask::FLTask(const std::string& node_id,
             std::make_pair(input_dataset, data_path));
     }
 
-   
+
     for (auto &pair : param_map)
         this->params_map_[pair.first] = pair.second.value_string();
-    
+
     std::string node_key = node_id + "_dataset";
     auto iter = param_map.find(node_key);
     if (iter == param_map.end()) {
-      LOG(ERROR) << "Can't find dataset name of node " << node_id << ".";
+      LOG_ERROR() << "Can't find dataset name of node " << node_id << ".";
       return;
     }
 
@@ -147,23 +147,23 @@ int FLTask::execute() {
     try {
         ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
         ph_context_m_ = py::module::import("primihub.context");
-        
+
         // Run set_node_context method.
-        py::object set_node_context; 
+        py::object set_node_context;
         set_node_context = ph_context_m_.attr("set_node_context");
 
         set_node_context(node_context_.role, node_context_.protocol,
                           py::cast(node_context_.datasets));
 
         set_node_context.release();
-        
-        // Run set_task_context_dataset_map method. 
+
+        // Run set_task_context_dataset_map method.
         py::object set_task_context_dataset_map;
         set_task_context_dataset_map =
             ph_context_m_.attr("set_task_context_dataset_map");
 
         for (auto& dataset_meta : this->dataset_meta_map_) {
-            LOG(INFO) << "Insert DATASET : " << dataset_meta.first
+            LOG_INFO() << "Insert DATASET : " << dataset_meta.first
                       << ", " << dataset_meta.second;
             set_task_context_dataset_map(dataset_meta.first,
                                          dataset_meta.second);
@@ -171,7 +171,7 @@ int FLTask::execute() {
 
         set_task_context_dataset_map.release();
 
-        // Run set_task_context_params_map. 
+        // Run set_task_context_params_map.
         py::object set_task_context_params_map;
         set_task_context_params_map =
             ph_context_m_.attr("set_task_context_params_map");
@@ -179,11 +179,11 @@ int FLTask::execute() {
         for (auto &pair : this->params_map_)
             set_task_context_params_map(pair.first, pair.second);
 
-        {        
-          std::string nodelet_addr = 
+        {
+          std::string nodelet_addr =
             this->dataset_service_->getNodeletAddr();
           auto pos = nodelet_addr.find(":");
-          set_task_context_params_map("DatasetServiceAddr", 
+          set_task_context_params_map("DatasetServiceAddr",
               nodelet_addr.substr(pos + 1, nodelet_addr.length()));
         }
 
@@ -198,29 +198,29 @@ int FLTask::execute() {
 
         set_node_addr_map.release();
     } catch (std::exception& e) {
-        LOG(ERROR) << "Failed: " << e.what();
+        LOG_ERROR() << "Failed: " << e.what();
         py::gil_scoped_release release;
         return -1;
     }
 
 
     try {
-        LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
+        LOG_INFO() << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
 
         // Execute python code.
         ph_exec_m_.attr("execute_py")(py::bytes(node_context_.dumps_func));
-        LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
+        LOG_INFO() << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
 
         // Fire task status event
         auto taskId = task_param_.task_id();
         auto submitClientId = task_request_.submit_client_id();
-        EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
-                                                            "SUCCESS", 
+        EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId,
+                                                            "SUCCESS",
                                                             "task finished");
 
     } catch (std::exception &e) {
         py::gil_scoped_release release;
-        LOG(ERROR) << "Failed to execute python: " << e.what();
+        LOG_ERROR() << "Failed to execute python: " << e.what();
         return -1;
     }
 

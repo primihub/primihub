@@ -114,7 +114,8 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
  protected:
-    int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
+    int save_data_to_file(const std::string& job_id, const std::string& task_id,
+      const std::string& data_path, std::vector<std::string>&& save_data);
     int validate_file_path(const std::string& data_path) { return 0;}
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>

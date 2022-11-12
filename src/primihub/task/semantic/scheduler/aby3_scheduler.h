@@ -67,6 +67,11 @@ class ABY3Scheduler : public VMScheduler {
 
     void add_vm(Node *single_node, int i,
                 const PushTaskRequest *pushTaskRequest);
+    void node_push_task(const std::string &node_id,
+                    const PeerDatasetMap &peer_dataset_map,
+                    const PushTaskRequest &nodePushTaskRequest,
+                    const std::map<std::string, std::string> &dataset_owner,
+                    std::string dest_node_address);
     private:
       const std::vector<Node> peer_list_;
       const PeerDatasetMap peer_dataset_map_;

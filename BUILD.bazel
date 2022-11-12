@@ -173,7 +173,20 @@ cc_library(
                 "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         ],
 )
-
+cc_library(
+    name = "log_wrapper",
+    srcs = [
+        "src/primihub/util/log_wrapper.cc",
+    ],
+    hdrs = [
+         "src/primihub/util/log_wrapper.h",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_glog_glog//:glog",
+    ],
+)
 cc_library(
     name = "share_lib",
     srcs = glob([
@@ -567,6 +580,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
     #"@osu_libpsi//:libpsi",
+    ":log_wrapper",
 ]
 
 PIR_LIB_DEPS = select({

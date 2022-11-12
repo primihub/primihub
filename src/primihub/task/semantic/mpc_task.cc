@@ -55,11 +55,11 @@ namespace primihub::task
       }
       catch (const std::runtime_error &error)
       {
-        LOG(ERROR) << error.what();
+        LOG_ERROR() << error.what();
         algorithm_ = nullptr;
       }
 #else
-      LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support for apple platform.";
+      LOG_WARNING() << "Skip init maxpool algorithm instance due to lack support for apple platform.";
 #endif
     }
     else if (function_name == "lenet")
@@ -70,7 +70,7 @@ namespace primihub::task
           std::make_shared<primihub::falcon::FalconLenetExecutor>(
 		  config, dataset_service));
 #else
-      LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple platform.";
+      LOG_WARNING() << "Skip init lenet algorithm instance due to lack support for apple platform.";
 #endif
     }
     else if (function_name == "decision_tree")
@@ -109,49 +109,49 @@ namespace primihub::task
     {
       // TODO: implement lstm
     }
-    else if (function_name == "arithmetic") 
+    else if (function_name == "arithmetic")
     {
       PartyConfig config(node_id, task_param_);
 
       std::map<std::string, Node> &node_map = config.node_map;
-      try 
+      try
       {
         auto param_map = task_param_.params().param_map();
         std::string accuracy = param_map["Accuracy"].value_string();
-        LOG(INFO)<<"accuracy: "<<accuracy;
+        LOG_INFO() << "accuracy: " << accuracy;
         if(accuracy=="D32")
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
                                                         dataset_service));
-        else  
+        else
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
                                                         dataset_service));
-      } 
-      catch (const std::runtime_error &error) 
+      }
+      catch (const std::runtime_error &error)
       {
-        LOG(ERROR) << error.what();
+        LOG_ERROR() << error.what();
         algorithm_ = nullptr;
       }
-    } 
-    else if (function_name == "missing_val_processing") 
+    }
+    else if (function_name == "missing_val_processing")
     {
       PartyConfig config(node_id, task_param_);
       std::map<std::string, Node> &node_map = config.node_map;
-      try 
+      try
       {
         algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
             std::make_shared<primihub::MissingProcess>(config, dataset_service));
       }
-      catch (const std::runtime_error &error) 
+      catch (const std::runtime_error &error)
       {
-        LOG(ERROR) << error.what();
+        LOG_ERROR() << error.what();
         algorithm_ = nullptr;
       }
-    } 
+    }
     else
     {
-      LOG(ERROR) << "Unsupported algorithm: " << function_name;
+      LOG_ERROR() << "Unsupported algorithm: " << function_name;
     }
   }
 
@@ -159,7 +159,7 @@ namespace primihub::task
   {
     if (algorithm_ == nullptr)
     {
-      LOG(ERROR) << "Algorithm is not initialized";
+      LOG_ERROR() << "Algorithm is not initialized";
       return -1;
     }
 
@@ -170,14 +170,14 @@ namespace primihub::task
       ret = algorithm_->loadDataset();
       if (ret)
       {
-        LOG(ERROR) << "Load dataset from file failed.";
+        LOG_ERROR() << "Load dataset from file failed.";
         break;
       }
 
       ret = algorithm_->initPartyComm();
       if (ret)
       {
-        LOG(ERROR) << "Initialize party communicate failed.";
+        LOG_ERROR() << "Initialize party communicate failed.";
         break;
       }
 
