@@ -129,11 +129,12 @@ def replace_illegal_string(col_val, col_name, col_type):
 
 def handle_abnormal_value_for_sqlite(path_or_info, col_info):
     db_info = json.loads(path_or_info)
+    db_table_name = db_info["dbTableName"]
     
     conn = sqlite3.connect(db_info["db_path"]) 
     cursor = conn.cursor()
 
-    sql_str = "desc {}".format(db_table_name)
+    sql_str = "PRAGMA table_info('{}')".format(db_table_name)
     try:
         cursor.execute(sql_str)
         table_schema = cursor.fetchall()
@@ -147,7 +148,8 @@ def handle_abnormal_value_for_sqlite(path_or_info, col_info):
 
     df = pd.DataFrame()
     for column_meta in table_schema:
-        col_name = column_meta[0]
+        col_name = column_meta[1]
+
         sql_str = "select {} from {}".format(col_name, db_table_name)
         try:
             cursor.execute(sql_str)
@@ -157,7 +159,7 @@ def handle_abnormal_value_for_sqlite(path_or_info, col_info):
             conn.rollback()
             conn.close()
             raise e
-
+        
         new_col = []
         if col_info.get(col_name, None) is not None:
             col_type = col_info[col_name]
@@ -217,12 +219,12 @@ def run_abnormal_process(params_map, dataset_map):
     use_db = True
     db_info = {}
     db_info["db_path"] = "/tmp/test.db"
+    db_info["dbTableName"] = "test_table"
     # db_info["dbName"] = "primihub"
-    # db_info["dbTableName"] = "test_table"
     # db_info["dbUsername"] = "root"
     # db_info["dbPassword"] = "123456"
     path_or_info = json.dumps(db_info)
-    filename = "/tmp/output1.csv"
+    filename = "/tmp/test"
 
     col_info_str = params_map["ColumnInfo"]
     all_col_info = json.loads(col_info_str)
@@ -230,7 +232,8 @@ def run_abnormal_process(params_map, dataset_map):
     new_dataset_id = all_col_info[dataset_name]["newDataSetId"]
 
     if use_db is True:
-        df = handle_abnormal_value_for_mysql(path_or_info, col_dtype)
+        df = handle_abnormal_value_for_sqlite(path_or_info, col_dtype)
+        save_path = filename + "_abnormal.csv"
     else:
         filename, _ = path_or_info.split(".csv")
         save_path = filename + "_abnormal.csv"
