@@ -3,13 +3,14 @@ from primihub import dataset
 import pandas as pd
 import numpy as np
 import os
-import logging
 import time
 import json
 from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 from primihub.dataset import register_dataset
+from primihub.utils.logger_util import FLConsoleHandler
 
+logger = None
 
 class MyServerChannelProxy(ServerChannelProxy):
 
@@ -117,6 +118,12 @@ def cut_points(host_max_min, guest_max_min, arbiter_max_min, bins=10):
                      port='9010',
                      task_type="feature-engineer")
 def iv_arbiter(bins=15):
+    # Init logger.
+    global logger
+    log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
+                                   task_type="abnormal", log_level='DEBUG')
+    logger = log_handler.set_format()
+
     logging.info("Start woe-iv arbiter.")
 
     role_node_map = ph.context.Context.get_role_node_map()
@@ -227,6 +234,11 @@ def iv_arbiter(bins=15):
                      port='9020',
                      task_type="feature-engineer")
 def iv_host():
+    # Init logger.
+    global logger
+    log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
+                                   task_type="abnormal", log_level='DEBUG')
+    logger = log_handler.set_format()
 
     logging.info("Start woe-iv host.")
 
@@ -328,6 +340,11 @@ def iv_host():
                      port='9030',
                      task_type="feature-engineer")
 def iv_guest():
+    # Init logger.
+    global logger
+    log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
+                                   task_type="abnormal", log_level='DEBUG')
+    logger = log_handler.set_format()
 
     logging.info("Start woe-iv guest.")
 
