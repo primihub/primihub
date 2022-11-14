@@ -118,7 +118,6 @@ namespace primihub::task
       {
         auto param_map = task_param_.params().param_map();
         std::string accuracy = param_map["Accuracy"].value_string();
-        LOG_INFO() << "accuracy: " << accuracy;
         if(accuracy=="D32")
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
@@ -162,7 +161,7 @@ namespace primihub::task
       LOG_ERROR() << "Algorithm is not initialized";
       return -1;
     }
-
+    algorithm_->set_task_info(platform(),job_id(),task_id());
     algorithm_->loadParams(task_param_);
     int ret = 0;
     do

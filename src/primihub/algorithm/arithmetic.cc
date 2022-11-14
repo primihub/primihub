@@ -34,7 +34,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
   this->algorithm_name_ = "arithmetic";
 
   std::map<std::string, Node> &node_map = config.node_map;
-  // LOG(INFO) << node_map.size();
+  // LOG_INFO() << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -50,7 +50,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
   }
 
   party_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
+  LOG_INFO() << "Note party id of this node is " << party_id_ << ".";
 
   if (party_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
@@ -108,9 +108,9 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_owner_.insert(make_pair(col, owner));
-      // LOG(INFO) << col << ":" << owner;
+      // LOG_INFO() << col << ":" << owner;
     }
-    // LOG(INFO) << col_and_owner;
+    // LOG_INFO() << col_and_owner;
 
     std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
     spiltStr(col_and_dtype, ";", tmp2);
@@ -119,9 +119,9 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_dtype_.insert(make_pair(col, dtype));
-      // LOG(INFO) << col << ":" << dtype;
+      // LOG_INFO() << col << ":" << dtype;
     }
-    // LOG(INFO) << col_and_dtype;
+    // LOG_INFO() << col_and_dtype;
 
     expr_ = param_map["Expr"].value_string();
     is_cmp = false;
@@ -141,22 +141,25 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
         prev_name = "12";
       }
       mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
+      mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
     } else {
       mpc_exec_ = new MPCExpressExecutor<Dbit>();
+      mpc_exec_->set_task_info(platform_type_, job_id_, task_id_);
+
     }
-    // LOG(INFO) << expr_;
+    // LOG_INFO() << expr_;
     std::string parties = param_map["Parties"].value_string();
     spiltStr(parties, ";", tmp3);
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
       uint32_t party = std::atoi((*itr).c_str());
       parties_.push_back(party);
-      // LOG(INFO) << party;
+      // LOG_INFO() << party;
     }
-    // LOG(INFO) << parties;
+    // LOG_INFO() << parties;
 
     res_name_ = param_map["ResFileName"].value_string();
   } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load params: " << e.what();
+    LOG_ERROR() << "Failed to load params: " << e.what();
     return -1;
   }
 
@@ -167,7 +170,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
   // file reading error or file empty
   if (ret <= 0) {
-    LOG(ERROR) << "Load dataset for train failed.";
+    LOG_ERROR() << "Load dataset for train failed.";
     return -1;
   }
 
@@ -233,7 +236,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
         }
       }
     } catch (std::exception &e) {
-      LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
+      LOG_ERROR() << "In party " << party_id_ << ":\n" << e.what() << ".";
     }
     return 0;
   }
@@ -244,13 +247,13 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       // for (auto itr = final_val_double_.begin(); itr !=
       // final_val_double_.end();
       //      itr++)
-      //   LOG(INFO) << *itr;
+      //   LOG_INFO() << *itr;
     } else {
       mpc_exec_->revealMPCResult(parties_, final_val_int64_);
       // for (auto itr = final_val_int64_.begin(); itr !=
       // final_val_int64_.end();
       //      itr++)
-      //   LOG(INFO) << *itr;
+      //   LOG_INFO() << *itr;
     }
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
@@ -324,10 +327,10 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
   else
     ret = csv_driver->write(table, filepath);
   if (ret != 0) {
-    LOG(ERROR) << "Save res to file " << filepath << " failed.";
+    LOG_ERROR() << "Save res to file " << filepath << " failed.";
     return -1;
   }
-  LOG(INFO) << "Save res to " << filepath << ".";
+  LOG_INFO() << "Save res to " << filepath << ".";
 
   return 0;
 }
@@ -344,7 +347,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();
   // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
-  //   LOG(INFO) << *itr;
+  //   LOG_INFO() << *itr;
   // }
   bool errors = false;
   int num_col = table->num_columns();
@@ -357,7 +360,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
     array_len += array->length();
   }
   
-  LOG(INFO) << "Label column '" << col_names[num_col - 1] << "' has "
+  LOG_INFO() << "Label column '" << col_names[num_col - 1] << "' has "
             << array_len << " values.";
   // Force the same value count in every column.
 
@@ -365,7 +368,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
     int chunk_num = table->column(i)->chunks().size();
     if (col_and_dtype_[col_names[i]] == 0) {
       if (table->schema()->GetFieldByName(col_names[i])->type()->id() != 9) {
-        LOG(ERROR) << "Local data type is inconsistent with the demand data "
+        LOG_ERROR() << "Local data type is inconsistent with the demand data "
                       "type!Demand data type is int,but local data type is "
                       "double!Please input consistent data type!";
         return -1;
@@ -378,11 +381,11 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
         tmp_len += array->length();
         for (int64_t j = 0; j < array->length(); j++) {
           tmp_data.push_back(array->Value(j));
-          // LOG(INFO) << array->Value(j);
+          // LOG_INFO() << array->Value(j);
         }
       }
       if (tmp_len != array_len) {
-        LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
+        LOG_ERROR() << "Column " << col_names[i] << " has " << tmp_len
                    << " value, but other column has " << array_len << " value.";
         errors = true;
         break;
@@ -391,10 +394,10 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
           pair<string, std::vector<int64_t>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_int.begin(); itr != col_and_val_int.end();
       //      itr++) {
-      //   LOG(INFO) << itr->first;
+      //   LOG_INFO() << itr->first;
       //   auto tmp_vec = itr->second;
       //   for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-      //     LOG(INFO) << *iter;
+      //     LOG_INFO() << *iter;
       // }
     } else {
       std::vector<double> tmp_data;
@@ -406,11 +409,11 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
           tmp_len += array->length();
           for (int64_t j = 0; j < array->length(); j++) {
             tmp_data.push_back(array->Value(j));
-            // LOG(INFO) << array->Value(j);
+            // LOG_INFO() << array->Value(j);
           }
         }
         if (tmp_len != array_len) {
-          LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
+          LOG_ERROR() << "Column " << col_names[i] << " has " << tmp_len
                      << " value, but other column has " << array_len
                      << " value.";
           errors = true;
@@ -423,11 +426,11 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
           tmp_len += array->length();
           for (int64_t j = 0; j < array->length(); j++) {
             tmp_data.push_back(array->Value(j));
-            // LOG(INFO) << array->Value(j);
+            // LOG_INFO() << array->Value(j);
           }
         }
         if (tmp_len != array_len) {
-          LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
+          LOG_ERROR() << "Column " << col_names[i] << " has " << tmp_len
                      << " value, but other column has " << array_len
                      << " value.";
           errors = true;
@@ -438,10 +441,10 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
           pair<string, std::vector<double>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_double.begin();
       //      itr != col_and_val_double.end(); itr++) {
-      //   LOG(INFO) << itr->first;
+      //   LOG_INFO() << itr->first;
       //   auto tmp_vec = itr->second;
       //   for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-      //     LOG(INFO) << *iter;
+      //     LOG_INFO() << *iter;
       // }
     }
   }
@@ -449,6 +452,16 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
     return -1;
 
   return array_len;
+}
+
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::set_task_info(std::string platform_type,
+                                              std::string job_id,
+                                              std::string task_id) {
+  platform_type_ = platform_type;
+  job_id_ = job_id;
+  task_id_ = task_id;
+  return 0;
 }
 template class ArithmeticExecutor<D32>;
 template class ArithmeticExecutor<D16>;
