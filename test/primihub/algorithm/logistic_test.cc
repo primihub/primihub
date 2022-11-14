@@ -75,9 +75,9 @@ TEST(logistic, logistic_3pc_test) {
   pv_train_input.set_var_type(rpc::VarType::STRING);
   pv_train_input.set_value_string("data/train_party_0.csv");
 
-  rpc::ParamValue pv_test_input;
-  pv_test_input.set_var_type(rpc::VarType::STRING);
-  pv_test_input.set_value_string("data/test_party_0.csv");
+  // rpc::ParamValue pv_test_input;
+  // pv_test_input.set_var_type(rpc::VarType::STRING);
+  // pv_test_input.set_value_string("data/test_party_0.csv");
 
   rpc::ParamValue pv_batch_size;
   pv_batch_size.set_var_type(rpc::VarType::INT32);
@@ -88,8 +88,8 @@ TEST(logistic, logistic_3pc_test) {
   pv_num_iter.set_value_int32(100);
 
   auto param_map = task1.mutable_params()->mutable_param_map();
-  (*param_map)["TrainData"] = pv_train_input;
-  (*param_map)["TestData"] = pv_test_input;
+  (*param_map)["Data_File"] = pv_train_input;
+  // (*param_map)["TestData"] = pv_test_input;
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
@@ -103,10 +103,10 @@ TEST(logistic, logistic_3pc_test) {
   task2.set_job_id("lr_job");
 
   pv_train_input.set_value_string("data/train_party_1.csv");
-  pv_test_input.set_value_string("data/test_party_1.csv");
+  // pv_test_input.set_value_string("data/test_party_1.csv");
   param_map = task2.mutable_params()->mutable_param_map();
-  (*param_map)["TrainData"] = pv_train_input;
-  (*param_map)["TestData"] = pv_test_input;
+  (*param_map)["Data_File"] = pv_train_input;
+  // (*param_map)["TestData"] = pv_test_input;
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
@@ -120,10 +120,10 @@ TEST(logistic, logistic_3pc_test) {
   task3.set_job_id("lr_job");
 
   pv_train_input.set_value_string("data/train_party_2.csv");
-  pv_test_input.set_value_string("data/test_party_2.csv");
+  // pv_test_input.set_value_string("data/test_party_2.csv");
   param_map = task3.mutable_params()->mutable_param_map();
-  (*param_map)["TrainData"] = pv_train_input;
-  (*param_map)["TestData"] = pv_test_input;
+  (*param_map)["Data_File"] = pv_train_input;
+  // (*param_map)["TestData"] = pv_test_input;
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 
