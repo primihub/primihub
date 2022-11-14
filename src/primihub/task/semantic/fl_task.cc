@@ -123,7 +123,6 @@ FLTask::FLTask(const std::string& node_id,
             std::make_pair(input_dataset, data_path));
     }
 
-
     for (auto &pair : param_map)
         this->params_map_[pair.first] = pair.second.value_string();
 
@@ -135,6 +134,9 @@ FLTask::FLTask(const std::string& node_id,
     }
 
     this->params_map_["local_dataset"] = iter->second.value_string();
+
+    jobid_ = task_request.task().job_id();
+    taskid_ = task_request.task().task_id();
 }
 
 FLTask::~FLTask() {
@@ -180,11 +182,16 @@ int FLTask::execute() {
             set_task_context_params_map(pair.first, pair.second);
 
         {
+          // Setup dataset address.
           std::string nodelet_addr =
             this->dataset_service_->getNodeletAddr();
           auto pos = nodelet_addr.find(":");
           set_task_context_params_map("DatasetServiceAddr",
               nodelet_addr.substr(pos + 1, nodelet_addr.length()));
+
+          // Setup task id and job id.
+          set_task_context_params_map("jobid", jobid_);
+          set_task_context_params_map("taskid", taskid_);
         }
 
         set_task_context_params_map.release();
@@ -202,7 +209,6 @@ int FLTask::execute() {
         py::gil_scoped_release release;
         return -1;
     }
-
 
     try {
         LOG_INFO() << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
