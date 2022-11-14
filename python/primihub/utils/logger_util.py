@@ -11,6 +11,8 @@ level_dict = {
     'FATAL': logging.FATAL
 }
 
+FORMAT = "%(asctime)s\tplatform=%(task_type)s\t%(levelname)s\t%(job_id)s\ttaskid=%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
+
 
 class JobFilter(logging.Filter):
     """Initialization user-define fields."""
@@ -37,12 +39,13 @@ class FLFileHandler:
                  task_id,
                  task_type='FL',
                  log_file='fl_log.txt',
-                 log_level='INFO'):
+                 log_level='INFO',
+                 format=FORMAT):
         self.filter = JobFilter(name='',
                                 id=jb_id,
                                 task_id=task_id,
                                 task_type=task_type)
-        self.format = "%(asctime)s\t%(task_type)s\t%(levelname)s\t%(job_id)s\t%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
+        self.format = format
         self.log_file = log_file
         self.log_level = level_dict[log_level.upper()]
 
@@ -65,12 +68,17 @@ class FLFileHandler:
 class FLConsoleHandler:
     """Create console stream handler."""
 
-    def __init__(self, jb_id, task_id, task_type='FL', log_level='INFO'):
+    def __init__(self,
+                 jb_id,
+                 task_id,
+                 task_type='FL',
+                 log_level='INFO',
+                 format=FORMAT):
         self.filter = JobFilter(name='',
                                 id=jb_id,
                                 task_id=task_id,
                                 task_type=task_type)
-        self.format = "%(asctime)s\t%(task_type)s\t%(levelname)s\t%(job_id)s\t%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
+        self.format = format
         self.log_level = level_dict[log_level.upper()]
         print("self.log_level: ", self.log_level)
 
@@ -86,3 +94,50 @@ class FLConsoleHandler:
         logger.addHandler(console_handler)
 
         return logger
+
+
+def log_file():
+    file_handler = FLFileHandler(jb_id=1,
+                                 task_id=1,
+                                 log_file='fl_log_info.txt',
+                                 log_level='INFO',
+                                 format=FORMAT)
+    fl_file_log = file_handler.set_format()
+    fl_file_log.info("This is information level log for file handler!")
+    fl_file_log.debug("This is debugging level log for file handler!")
+    fl_file_log.warning("This is warn level log for file handler!")
+    fl_file_log.error("This is error level log for file handler!")
+
+    file_handler = FLFileHandler(jb_id=1,
+                                 task_id=1,
+                                 log_file='fl_log_debug.txt',
+                                 log_level='DEBUG')
+    fl_file_log = file_handler.set_format()
+    fl_file_log.info("This is information level log for file handler!")
+    fl_file_log.debug("This is debugging level log for file handler!")
+    fl_file_log.warning("This is warn level log for file handler!")
+    fl_file_log.error("This is error level log for file handler!")
+
+
+def log_console():
+    console_handler = FLConsoleHandler(jb_id=1,
+                                       task_id=1,
+                                       log_level='info',
+                                       format=FORMAT)
+    fl_console_log = console_handler.set_format()
+    fl_console_log.info("This is information level log for console handler!")
+    fl_console_log.debug("This is debugging level log for console handler!")
+    fl_console_log.warning("This is warn level log for console handler!")
+    fl_console_log.error("This is error level log for console handler!")
+
+    console_handler = FLConsoleHandler(jb_id=1, task_id=1, log_level='DEBUG')
+    fl_console_log = console_handler.set_format()
+    fl_console_log.info("This is information level log for console handler!")
+    fl_console_log.debug("This is debugging level log for console handler!")
+    fl_console_log.warning("This is warn level log for console handler!")
+    fl_console_log.error("This is error level log for console handler!")
+
+
+if __name__ == "__main__":
+    log_file()
+    log_console()
