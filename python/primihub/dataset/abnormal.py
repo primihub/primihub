@@ -2,9 +2,11 @@ import primihub as ph
 import pyarrow
 import json
 import pandas as pd
-from loguru import logger
 import sqlite3
 from primihub.dataset import register_dataset
+from primihub.utils.logger_util import FLConsoleHandler
+
+logger = None
 
 
 def handle_mixed_column(col):
@@ -39,7 +41,7 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
     df = pd.read_csv(path_or_info)
     df.info(verbose=True)
     df = df.fillna("NA")
-    
+
     logger.info(col_info)
 
     for col_name, type in col_info.items():
@@ -47,7 +49,7 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
             col = df[col_name]
             if col.dtype == object:
                 handle_mixed_column(col)
-    
+
     return df
 
 
@@ -65,20 +67,22 @@ def replace_illegal_string(col_val, col_name, col_type):
 
     for val in col_val:
         if val[0] is None:
-            logger.warning("Column {} index {} has empty value null.".format(col_name, index))
+            logger.warning(
+                "Column {} index {} has empty value null.".format(col_name, index))
             new_col_val.append("NA")
             index = index + 1
             continue
 
         if val[0] == "":
-            logger.warning("Column {} index {} has empty value ''.".format(col_name, index))
+            logger.warning(
+                "Column {} index {} has empty value ''.".format(col_name, index))
             new_col_val.append("NA")
             index = index + 1
             continue
-        
+
         try:
             tmp = convert_fn(val[0])
-            col_sum = col_sum + tmp 
+            col_sum = col_sum + tmp
             count = count + 1
             new_col_val.append(tmp)
         except Exception as e:
@@ -96,14 +100,15 @@ def replace_illegal_string(col_val, col_name, col_type):
             col_avg = col_sum // count
 
         for index in index_list:
-            logger.info("Replace column {} index {}'s origin value {} to new value {}.".format(col_name, index, new_col_val[index], col_avg))
+            logger.info("Replace column {} index {}'s origin value {} to new value {}.".format(
+                col_name, index, new_col_val[index], col_avg))
             new_col_val[index] = col_avg
 
     return new_col_val
 
-# Now the abnormal value means that a column dtype of which is int or float but 
-# has string that can't convert to int or float value. There are four cases when 
-# handle abnormal value from database, and missing value in some position in some 
+# Now the abnormal value means that a column dtype of which is int or float but
+# has string that can't convert to int or float value. There are four cases when
+# handle abnormal value from database, and missing value in some position in some
 # column is permited, no matter which case.
 #
 # case 1: a column contain number has type int or long or double, no string will
@@ -130,8 +135,8 @@ def replace_illegal_string(col_val, col_name, col_type):
 def handle_abnormal_value_for_sqlite(path_or_info, col_info):
     db_info = json.loads(path_or_info)
     db_table_name = db_info["dbTableName"]
-    
-    conn = sqlite3.connect(db_info["db_path"]) 
+
+    conn = sqlite3.connect(db_info["db_path"])
     cursor = conn.cursor()
 
     sql_str = "PRAGMA table_info('{}')".format(db_table_name)
@@ -159,7 +164,7 @@ def handle_abnormal_value_for_sqlite(path_or_info, col_info):
             conn.rollback()
             conn.close()
             raise e
-        
+
         new_col = []
         if col_info.get(col_name, None) is not None:
             col_type = col_info[col_name]
@@ -204,6 +209,12 @@ def handle_abnormal_value_for_sqlite(path_or_info, col_info):
 
 
 def run_abnormal_process(params_map, dataset_map):
+    # Init logger.
+    global logger
+    log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
+                                   task_type="abnormal", log_level='DEBUG')
+    logger = log_handler.set_format()
+
     # Get dataset path or dataset URL.
     dataset_name = params_map["local_dataset"]
     path_or_info = dataset_map[dataset_name]
@@ -240,9 +251,10 @@ def run_abnormal_process(params_map, dataset_map):
         df = handle_abnormal_value_for_csv(path_or_info, col_dtype)
 
     df.to_csv(save_path, index=False)
-    
+
     dataset_id = all_col_info[dataset_name]["newDataSetId"]
-    register_dataset(params_map["DatasetServiceAddr"], "csv", save_path, new_dataset_id)
+    register_dataset(params_map["DatasetServiceAddr"],
+                     "csv", save_path, new_dataset_id)
 
     logger.info(
         "Finish process abnormal value, result saves to {}.".format(save_path))
@@ -251,7 +263,7 @@ def run_abnormal_process(params_map, dataset_map):
 #
 # import primihub as ph
 # from primihub.dataset.abnormal import run_abnormal_process
-# 
+#
 # @ph.context.function(role="host", protocol="None", datasets=["train_party_0", "train_party_1", "train_party_2"], port="-1")
 # def dispatch_abnormal_process():
 #         run_abnormal_process(ph.context.Context.params_map,

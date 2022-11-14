@@ -42,6 +42,9 @@ class FLTask : public TaskBase {
     int execute() override;
 
   private:
+    std::string jobid_;
+    std::string taskid_;
+
     PushTaskRequest task_request_;
     std::string py_code_;
     NodeContext node_context_;
