@@ -118,7 +118,6 @@ namespace primihub::task
       {
         auto param_map = task_param_.params().param_map();
         std::string accuracy = param_map["Accuracy"].value_string();
-        LOG(INFO)<<"accuracy: "<<accuracy;
         if(accuracy=="D32")
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
