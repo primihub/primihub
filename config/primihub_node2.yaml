@@ -39,6 +39,14 @@ datasets:
     model: "csv"
     source: "/tmp/client_e.csv"
 
+  - description: "train_hetero_xgb_guest"
+    model: "csv"
+    source: "/tmp/FL/hetero_xgb/train/train_breast_cancer_guest.csv"
+
+  - description: "test_hetero_xgb_guest"
+    model: "csv"
+    source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
+
 localkv: 
   model: "leveldb"
   path: "/data/localdb2"

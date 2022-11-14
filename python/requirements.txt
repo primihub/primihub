@@ -1,4 +1,4 @@
-pyarrow==4.0.0
+pyarrow==4.0.1
 pandas
 pytest
 numpy
@@ -18,4 +18,8 @@ phe==1.5.0
 
 loguru
 gevent
-
+ray==1.10.0
+transformers
+requests
+line_profiler
+matplotlib
