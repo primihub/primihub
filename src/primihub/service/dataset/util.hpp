@@ -27,28 +27,28 @@
 #include "src/primihub/service/dataset/storage_backend.h"
 
 namespace primihub::service {
-
-using primihub::str_split;
-
-
-static int DataURLToDetail(const std::string &data_url, 
-                              std::string &node_id,
-                              std::string &node_ip,
-                              int &node_port,
+static int DataURLToDetail(const std::string& data_url,
+                              std::string& node_id,
+                              std::string& node_ip,
+                              int& node_port,
+                              bool& use_tls,
                               std::string& dataset_path) {
     std::vector<std::string> v;
     primihub::str_split(data_url, &v);
-    if ( v.size() != 4 ) {
+    if (v.size() != 5) {
         LOG(ERROR) << "DataURLToDetail: data_url is invalid: " << data_url;
         return 0;
     }
+    // format: node_id:node_ip:node_port:use_tls:dataset_path
     node_id = v[0];
     node_ip = v[1];
     node_port = std::stoi(v[2]);
-    dataset_path = v[3];
-    DLOG(INFO) << "node_id:" << node_id 
-               << " ip:"<< node_ip   
-               << " port:"<< node_port << std::endl;
+    use_tls = std::stoi(v[3]);
+    dataset_path = v[4];
+    VLOG(5) << "node_id:" << node_id
+          << " ip:"<< node_ip
+          << " port:"<< node_port
+          << " use_tls: " << use_tls << std::endl;
      return 1;
 }
 

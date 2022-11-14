@@ -24,6 +24,7 @@ limitations under the License.
 #include "glog/logging.h"
 
 #include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
+#include "src/primihub/util/util.h"
 
 using grpc::Channel;
 // using grpc::ClientContext;
@@ -41,7 +42,9 @@ namespace primihub::task {
 void MPCScheduler::push_task(const std::string &node_id,
                              const PeerDatasetMap &peer_dataset_map,
                              const PushTaskRequest &nodePushTaskRequest,
-                             const std::string dest_node_address) {
+                             const std::string dest_node_address,
+                             const std::string& local_node_id,
+                             bool use_tls) {
   grpc::ClientContext context;
   PushTaskReply pushTaskReply;
   PushTaskRequest push_request;
@@ -69,8 +72,8 @@ void MPCScheduler::push_task(const std::string &node_id,
   }
 
   // send request
-  std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-      dest_node_address, grpc::InsecureChannelCredentials()));
+  auto channel = buildChannel(dest_node_address, local_node_id, use_tls);
+  std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(channel);
   Status status = stub_->SubmitTask(&context, push_request, &pushTaskReply);
   if (status.ok()) {
     LOG_INFO() << "Node push task rpc succeeded.";
@@ -114,13 +117,22 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     std::string node_addr =
         absl::StrCat(iter->second.ip(), ":", iter->second.port());
 
+    bool use_tls = iter->second.use_tls();
     threads.emplace_back(
         std::thread(&MPCScheduler::push_task,
-            this, iter->first, this->peer_dataset_map_, std::ref(request), node_addr));
+                    this,
+                    iter->first,
+                    this->peer_dataset_map_,
+                    std::ref(request),
+                    node_addr,
+                    this->get_node_id(),
+                    use_tls));
   }
 
-  for (auto &t : threads)
+  for (auto &t : threads) {
     t.join();
+  }
+
 }
 
 void CRYPTFLOW2Scheduler::add_vm(Node *node, int i,

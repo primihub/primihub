@@ -42,4 +42,11 @@ int ValidateDir(const std::string &file_path) {
     return 0;
 }
 
+std::string getFileContents(const std::string& fpath) {
+  std::ifstream finstream(fpath);
+  std::string contents((std::istreambuf_iterator<char>(finstream)),
+                       std::istreambuf_iterator<char>());
+  return contents;
 }
+
+}  // namespace primihub

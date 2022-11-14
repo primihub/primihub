@@ -19,6 +19,7 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/util/util.h"
 
 
 using arrow::Table;
@@ -36,7 +37,7 @@ PSIClientTask::PSIClientTask(const std::string &node_id,
                              const std::string &task_id,
                              const TaskParam *task_param,
                              std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service) {}
+    : TaskBase(task_param, dataset_service), node_id_(node_id) {}
 
 int PSIClientTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
@@ -60,7 +61,14 @@ int PSIClientTask::_LoadParams(Task &task) {
         server_index_ = param_map["serverIndex"];
         server_address_ = param_map["serverAddress"].value_string();
         server_dataset_ = param_map[server_address_].value_string();
-
+        std::vector<std::string> server_info;
+        str_split(server_address_, &server_info, ':');
+        if (server_info.size() == 3) {
+            server_address_ = server_info[0] + ":" + server_info[1];
+            if (std::stoi(server_info[2])) {
+                this->set_use_tls(true);
+            }
+        }
     } catch (std::exception &e) {
         LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
@@ -233,9 +241,8 @@ int PSIClientTask::execute() {
     (*ptr_params)["serverData"] = pv;
     (*ptr_params)["serverIndex"] = server_index_;
 
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
-        server_address_, grpc::InsecureChannelCredentials()));
-
+    auto channel = buildChannel(server_address_, node_id(), use_tls());
+    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
     Status status = stub->ExecuteTask(&context, taskRequest, &taskResponse);
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
@@ -267,8 +274,8 @@ int PSIClientTask::send_result_to_server() {
     grpc::ClientContext context;
     V_VLOG(5) << "send_result_to_server";
      // std::unique_ptr<VMNode::Stub>
-    auto channel = grpc::InsecureChannelCredentials();
-    auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    auto channel = buildChannel(server_address_, node_id(), use_tls());
+    auto stub = VMNode::NewStub(channel);
     primihub::rpc::TaskResponse task_response;
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
     constexpr size_t limited_size = 1 << 22;  // limit data size 4M

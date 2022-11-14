@@ -101,7 +101,8 @@ message Node {
   bytes ip = 2;
   int32 port = 3;
   int32 data_port = 4;
-  repeated VirtualMachine vm = 5;
+  bool use_tls = 5;
+  repeated VirtualMachine vm = 6;
 }
 
 message Task {

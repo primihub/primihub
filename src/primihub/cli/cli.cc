@@ -17,6 +17,7 @@
 #include "src/primihub/cli/cli.h"
 #include <fstream>  // std::ifstream
 #include <string>
+#include "src/primihub/util/util.h"
 
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
@@ -51,6 +52,7 @@ ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
 
 ABSL_FLAG(std::string, task_lang, "proto", "task language, proto or python");
 ABSL_FLAG(std::string, task_code, "logistic_regression", "task code");
+ABSL_FLAG(bool, use_tls, false, "enable tls or not");
 
 namespace primihub {
 
@@ -104,8 +106,8 @@ int SDKClient::SubmitTask() {
         return -1;
     }
 
-    google::protobuf::Map<std::string, ParamValue>* map =
-        pushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
+    // google::protobuf::Map<std::string, ParamValue>*
+    auto map = pushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
     const std::vector<std::string> params = absl::GetFlag(FLAGS_params);
     fill_param(params, map);
     // if given task code file, read it and set task code
@@ -135,7 +137,7 @@ int SDKClient::SubmitTask() {
                 input_datasets[i]);
         }
 
-    } 
+    }
 
     // TEE task
     if ( absl::GetFlag(FLAGS_task_type) == 6 ) {
@@ -151,8 +153,7 @@ int SDKClient::SubmitTask() {
 
     LOG(INFO) << " SubmitTask...";
 
-    grpc::Status status =
-        stub_->SubmitTask(&context, pushTaskRequest, &pushTaskReply);
+    grpc::Status status = stub_->SubmitTask(&context, pushTaskRequest, &pushTaskReply);
     if (status.ok()) {
         LOG(INFO) << "SubmitTask rpc succeeded.";
         if (pushTaskReply.ret_code() == 0) {
@@ -186,14 +187,14 @@ int main(int argc, char** argv) {
     FLAGS_stop_logging_if_full_disk = true;
 
     absl::ParseCommandLine(argc, argv);
-
+    bool use_tls = absl::GetFlag(FLAGS_use_tls);
+    LOG(INFO) << "use_tls_use_tls: " << use_tls;
     std::vector<std::string> peers;
     peers.push_back(absl::GetFlag(FLAGS_server));
-
     for (auto peer : peers) {
         LOG(INFO) << "SDK SubmitTask to: " << peer;
-        primihub::SDKClient client(
-            grpc::CreateChannel(peer, grpc::InsecureChannelCredentials()));
+        auto channel = primihub::buildChannel(peer, "client", use_tls);
+        primihub::SDKClient client(channel);
         if (!client.SubmitTask()) {
             break;
         }

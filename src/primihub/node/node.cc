@@ -199,6 +199,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
 Status VMNodeImpl::ExecuteTask(ServerContext *context,
                                const ExecuteTaskRequest *taskRequest,
                                ExecuteTaskResponse *taskResponse) {
+    VLOG(5) << "VMNodeImpl::ExecuteTask";
     std::string job_task = "";
     primihub::rpc::TaskType taskType;
     if (taskRequest->algorithm_request_case() ==
@@ -251,40 +252,99 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
 
 /**
  * @brief
+ * read certificate file from config file and create SslServerCredentials
+ * input: configure file
+ * output std::shared_ptr<grpc::ServerCredentials>
+*/
+std::shared_ptr<grpc::ServerCredentials>
+createSslServerCredentials(const std::string& config_file_path) {
+    std::string key;
+    std::string cert;
+    std::string root;
+    YAML::Node config = YAML::LoadFile(config_file_path);
+    std::string root_ca_file_path = config["certificate"]["root_ca"].as<std::string>();
+    std::string cert_file_path = config["certificate"]["cert"].as<std::string>();
+    std::string key_file_path = config["certificate"]["key"].as<std::string>();
+    key = getFileContents(key_file_path);
+    cert = getFileContents(cert_file_path);
+    root = getFileContents(root_ca_file_path);
+    grpc::SslServerCredentialsOptions::PemKeyCertPair keycert{key, cert};
+    grpc::SslServerCredentialsOptions ssl_opts(GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY);
+    ssl_opts.pem_root_certs = root;
+    ssl_opts.pem_key_cert_pairs.push_back(std::move(keycert));
+    std::shared_ptr<grpc::ServerCredentials> creds = grpc::SslServerCredentials(ssl_opts);
+    return creds;
+}
+/**
+ * @brief
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
 void RunServer(primihub::VMNodeImpl *node_service,
-        primihub::DataServiceImpl *dataset_service, int service_port) {
+        primihub::DataServiceImpl *dataset_service, int service_port, bool use_tls) {
+    //
+    grpc::ServerBuilder builder;
+    std::string server_address{"0.0.0.0:" + std::to_string(service_port)};
+    if (use_tls) {
+        std::string config_file = absl::GetFlag(FLAGS_config);
+        auto creds = createSslServerCredentials(config_file);
+        builder.AddListeningPort(server_address, creds);
+    } else {
+        // Listen on the given address without any authentication mechanism.
+        builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    }
+    // registe service
+    builder.RegisterService(node_service);
+    builder.RegisterService(dataset_service);
+    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+    VLOG(0) << "Server listening on " << server_address;
+    //等待服务
+    server->Wait();
 
-    // Initialize server
-    arrow::flight::Location location;
 
-    // Listen to all interfaces
-    ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTcp("0.0.0.0", service_port,
-                                                       &location));
-    arrow::flight::FlightServerOptions options(location);
-    auto server = std::unique_ptr<arrow::flight::FlightServerBase>(
-        new primihub::service::FlightIntegrationServer(
-            node_service->getNodelet()->getDataService()));
+    // // Initialize server
+    // arrow::flight::Location location;
 
-    // Use builder_hook to register grpc service
-    options.builder_hook = [&](void *raw_builder) {
-        auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
-        builder->RegisterService(node_service);
-        builder->RegisterService(dataset_service);
+    // // Listen to all interfaces
+    // ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTcp("0.0.0.0", service_port, &location));
+    // arrow::flight::FlightServerOptions options(location);
+    // // service tls
+    // options.verify_client = true;
+    // auto& tls_certificates = options.tls_certificates;
+    // auto& root_certificates = options.root_certificates;
+    // std::string cert_file_path{"data/cert/server.crt"};
+    // std::string key_file_path{"data/cert/server.key"};
+    // std::string root_file_path{"data/cert/ca.crt"};
+    // std::string key = getFileContents(key_file_path);
+    // std::string cert = getFileContents(cert_file_path);
+    // std::string root_ca = getFileContents(root_file_path);
+    // root_certificates = std::move(root_ca);
+    // arrow::flight::CertKeyPair cert_pair;
+    // cert_pair.pem_cert = std::move(cert);
+    // cert_pair.pem_key = std::move(key);
+    // tls_certificates.push_back(std::move(cert_pair));
 
-        // set the max message size to 128M
-        builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
-    };
+    // auto server = std::unique_ptr<arrow::flight::FlightServerBase>(
+    //     new primihub::service::FlightIntegrationServer(
+    //         node_service->getNodelet()->getDataService()));
 
-    // Start the server
-    ARROW_CHECK_OK(server->Init(options));
-    // Exit with a clean error code (0) on SIGTERM
-    ARROW_CHECK_OK(server->SetShutdownOnSignals({SIGTERM}));
+    // // Use builder_hook to register grpc service
+    // options.builder_hook = [&](void *raw_builder) {
+    //     auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
+    //     builder->RegisterService(node_service);
+    //     builder->RegisterService(dataset_service);
 
-    LOG(INFO) << " 💻 Node listening on port: " << service_port;
+    //     // set the max message size to 128M
+    //     builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
+    // };
 
-    ARROW_CHECK_OK(server->Serve());
+    // // Start the server
+    // ARROW_CHECK_OK(server->Init(options));
+    // // Exit with a clean error code (0) on SIGTERM
+    // ARROW_CHECK_OK(server->SetShutdownOnSignals({SIGTERM}));
+
+    // LOG(INFO) << " 💻 Node listening on port: " << service_port;
+
+    // ARROW_CHECK_OK(server->Serve());
 }
 
 } // namespace primihub
@@ -321,13 +381,15 @@ int main(int argc, char **argv) {
     int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
 
+    YAML::Node config = YAML::LoadFile(config_file);
+    bool use_tls = config["use_tls"].as<int32_t>();
     std::string node_ip = "0.0.0.0";
     node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port,
-                                            singleton, config_file);
+                                            singleton, config_file, use_tls);
     data_service = new primihub::DataServiceImpl(
         node_service->getNodelet()->getDataService(),
         node_service->getNodelet()->getNodeletAddr());
-    primihub::RunServer(node_service, data_service, service_port);
+    primihub::RunServer(node_service, data_service, service_port, use_tls);
 
     return EXIT_SUCCESS;
 }

@@ -46,7 +46,9 @@ public:
                          const std::string &dest_node_address,
                          const PushTaskRequest &nodePushTaskRequest,
                          const PeerContextMap peer_context_map,
-                         const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list);
+                         const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list,
+                         const std::string& local_node_id,
+                         bool use_tls);
 
 private:
      void nodeContext2TaskParam(NodeContext node_context,

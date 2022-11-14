@@ -17,7 +17,15 @@ version: 1.0
 
 node: "node1"
 location: "127.0.0.1"
+use_tls: 0
+#location: "www.primihub.server.com"
+#use_tls: 1 
 grpc_port: 50051
+
+certificate:
+  root_ca: "data/cert/ca.crt"
+  key: "data/cert/node1.key"
+  cert: "data/cert/node1.crt"
 
 # load datasets
 datasets:
@@ -68,7 +76,7 @@ localkv:
 # p2p paramaters
 p2p:
   bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmaoqnKLY74VdY4P4Ujqyja3eZHy9xX7Q3tQaLWLcvuqHp"
+    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
     - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
   multi_addr: "/ip4/127.0.0.1/tcp/8887"
   dht_get_value_timeout:  60
