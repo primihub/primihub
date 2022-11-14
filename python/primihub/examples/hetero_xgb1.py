@@ -277,15 +277,21 @@ class MapGH(object):
                     continue
 
             G_left_g = self.g[flag].tolist()
-            G_right_g = self.g[(1 - flag).astype('bool')].tolist()
+            # G_right_g = self.g[(1 - flag).astype('bool')].tolist()
             H_left_h = self.h[flag].tolist()
-            H_right_h = self.h[(1 - flag).astype('bool')].tolist()
-            print("++++++++++", len(G_left_g), len(G_right_g), len(H_left_h),
-                  len(H_right_h))
+            # H_right_h = self.h[(1 - flag).astype('bool')].tolist()
+            # print("++++++++++", len(G_left_g), len(G_right_g), len(H_left_h),
+            #       len(H_right_h))
 
-            tmp_g_left, tmp_g_right, tmp_h_left, tmp_h_right = list(
+            print("++++++++++", len(G_left_g), len(H_left_h))
+
+            # tmp_g_left, tmp_g_right, tmp_h_left, tmp_h_right = list(
+            #     self.pools.map(lambda a, v: a.pai_add.remote(v),
+            #                    [G_left_g, G_right_g, H_left_h, H_right_h]))
+
+            tmp_g_left, tmp_h_left = list(
                 self.pools.map(lambda a, v: a.pai_add.remote(v),
-                               [G_left_g, G_right_g, H_left_h, H_right_h]))
+                               [G_left_g, H_left_h]))
             # tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right = list(ray.get([self.pools.pai_add.remote(tmp_li, nums) for tmp_li in [G_left_g, G_right_g, H_left_h, H_right_h]]))
 
             # tmp_g_left = functools.reduce(
@@ -298,9 +304,16 @@ class MapGH(object):
             #     lambda x, y: opt_paillier_add(self.pub, x, y), H_right_h)
 
             G_lefts.append(tmp_g_left)
-            G_rights.append(tmp_g_right)
+
+            # Add 0s to to 'G_rights'
+            G_rights.append(0)
+
+            # G_rights.append(tmp_g_right)
             H_lefts.append(tmp_h_left)
-            H_rights.append(tmp_h_right)
+            # H_rights.append(tmp_h_right)
+
+            # Aadd 0s to 'H_rights'
+            H_rights.append(0)
             vars.append(self.item)
             cuts.append(tmp_cut)
 
@@ -684,8 +697,6 @@ class XGB_GUEST_EN:
 
             lookup_table_sum[t + 1] = self.lookup_table
 
-            pass
-
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):
         if tree is not None:
             k = list(tree.keys())[0]
@@ -915,8 +926,14 @@ class XGB_HOST_EN:
         else:
             return None
 
-    def gh_sums_decrypted(self, gh_sums: pd.DataFrame, decryption_pools=50):
-        decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
+    def gh_sums_decrypted(self,
+                          gh_sums: pd.DataFrame,
+                          decryption_pools=50,
+                          plain_gh_sums=None):
+        # decrypted_items = ['G_left', 'G_right', 'H_left', 'H_right']
+
+        # just decrypt 'G_left' and 'H_left'
+        decrypted_items = ['G_left', 'H_left']
         if self.encrypted:
             decrypted_gh_sums = gh_sums[decrypted_items]
             m, n = decrypted_gh_sums.shape
@@ -941,9 +958,11 @@ class XGB_HOST_EN:
             dec_gh_sums_df = gh_sums[decrypted_items]
 
         gh_sums['G_left'] = dec_gh_sums_df['G_left']
-        gh_sums['G_right'] = dec_gh_sums_df['G_right']
+        # gh_sums['G_right'] = dec_gh_sums_df['G_right']
+        gh_sums['G_right'] = plain_gh_sums['g'] - dec_gh_sums_df['G_left']
         gh_sums['H_left'] = dec_gh_sums_df['H_left']
-        gh_sums['H_right'] = dec_gh_sums_df['H_right']
+        # gh_sums['H_right'] = dec_gh_sums_df['H_right']
+        gh_sums['H_right'] = plain_gh_sums['h'] - dec_gh_sums_df['H_left']
 
         return gh_sums
 
@@ -987,12 +1006,15 @@ class XGB_HOST_EN:
                                        bins=10,
                                        plain_gh=plain_gh)
 
+        plain_gh_sums = plain_gh.sum(axis=0)
+
         guest_gh_sums = self.proxy_server.Get(
             'encrypte_gh_sums'
         )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
 
         # decrypted the 'guest_gh_sums' with paillier
-        dec_guest_gh_sums = self.gh_sums_decrypted(guest_gh_sums)
+        dec_guest_gh_sums = self.gh_sums_decrypted(guest_gh_sums,
+                                                   plain_gh_sums=plain_gh_sums)
 
         # get the best cut of 'guest'
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
@@ -1216,11 +1238,11 @@ class XGB_HOST_EN:
             y_hat = y_hat + self.learning_rate * f_t
 
             logger.info("Finish to trian tree {}.".format(t + 1))
-            # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-            # current_loss = xgb_host.log_loss(Y, current_pred)
-            # train_losses.append(current_loss)
 
-            # print("train_losses ", train_losses)
+            current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+            train_losses.append(current_loss)
+
+            print("train_losses ", train_losses)
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
@@ -1274,10 +1296,10 @@ ph.context.Context.func_params_map = {
 }
 
 # Number of tree to fit.
-num_tree = 3
+num_tree = 5
 # the depth of each tree
-max_depth = 2
-# max_depth = 5
+max_depth = 5
+# whether encrypted or not
 is_encrypted = True
 
 
