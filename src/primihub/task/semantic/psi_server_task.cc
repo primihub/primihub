@@ -15,8 +15,8 @@
  */
 
 #include "private_set_intersection/cpp/psi_server.h"
-
 #include "src/primihub/task/semantic/psi_server_task.h"
+#include <chrono>
 
 using psi_proto::Request;
 using private_set_intersection::PsiServer;
@@ -25,7 +25,7 @@ namespace primihub::task {
 
 void initRequest(const PsiRequest * request, Request & psi_request) {
     psi_request.set_reveal_intersection(request->reveal_intersection());
-    std::int64_t num_client_elements = 
+    std::int64_t num_client_elements =
         static_cast<std::int64_t>(request->encrypted_elements().size());
     for (std::int64_t i = 0; i < num_client_elements; i++) {
         psi_request.add_encrypted_elements(request->encrypted_elements()[i]);
@@ -49,6 +49,8 @@ int PSIServerTask::loadParams(Params & params) {
     try {
         data_index_ = param_map["serverIndex"].value_int32();
         dataset_path_ = param_map["serverData"].value_string();
+        VLOG(5) << "data_index_: " << data_index_ << " "
+            << "dataset_path_: " << dataset_path_;
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load psi server params: " << e.what();
         return -1;
@@ -76,34 +78,45 @@ int PSIServerTask::execute() {
     if (ret) {
         return -1;
     }
+    auto _start = std::chrono::high_resolution_clock::now();
     Request psi_request;
     initRequest(request_, psi_request);
+    auto _end = std::chrono::high_resolution_clock::now();
+    auto time_cost = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _start).count();
+    VLOG(5) << "initRequest time cost: " << time_cost;
 
-    std::unique_ptr<PsiServer> server = 
+    std::unique_ptr<PsiServer> server =
         std::move(PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
-
-    std::int64_t num_client_elements = 
+    auto ts_server = std::chrono::high_resolution_clock::now();
+    time_cost = std::chrono::duration_cast<std::chrono::milliseconds>(ts_server - _end).count();
+    VLOG(5) << "PsiServer time cost: " << time_cost;
+    std::int64_t num_client_elements =
         static_cast<std::int64_t>(psi_request.encrypted_elements().size());
     psi_proto::ServerSetup server_setup =
         std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
-    
+
     psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
 
     std::int64_t num_response_elements =
         static_cast<std::int64_t>(server_response.encrypted_elements().size());
-
+    _start = std::chrono::high_resolution_clock::now();
     for (std::int64_t i = 0; i < num_response_elements; i++) {
         response_->add_encrypted_elements(server_response.encrypted_elements()[i]);
     }
-
+    _end = std::chrono::high_resolution_clock::now();
+    time_cost = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _start).count();
+    VLOG(5) << "num_response_elements: " << num_response_elements
+            << " add_encrypted_elements time cost: " << time_cost;
     auto ptr_server_setup = response_->mutable_server_setup();
     ptr_server_setup->set_bits(server_setup.bits());
     if (server_setup.data_structure_case() ==
         psi_proto::ServerSetup::DataStructureCase::kGcs) {
+        VLOG(5) << "psi_proto::ServerSetup::DataStructureCase::kGcs";
         ptr_server_setup->mutable_gcs()->set_div(server_setup.gcs().div());
         ptr_server_setup->mutable_gcs()->set_hash_range(server_setup.gcs().hash_range());
     } else if (server_setup.data_structure_case() ==
                psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
+        VLOG(5) << "psi_proto::ServerSetup::DataStructureCase::kBloomFilter";
         ptr_server_setup->mutable_bloom_filter()->
             set_num_hash_functions(server_setup.bloom_filter().num_hash_functions());
     }

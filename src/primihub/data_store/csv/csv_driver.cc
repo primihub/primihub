@@ -28,6 +28,7 @@
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
+#include <sys/stat.h>
 
 namespace primihub {
 
@@ -46,6 +47,9 @@ void CSVCursor::close() {
 // read all data from csv file
 std::shared_ptr<primihub::Dataset> CSVCursor::read() {
 
+  struct stat file_info;
+  ::stat(filePath.c_str(), &file_info);
+  size_t file_size = file_info.st_size;
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(
       arrow::fs::LocalFileSystemOptions::Defaults());
@@ -55,8 +59,8 @@ std::shared_ptr<primihub::Dataset> CSVCursor::read() {
     return nullptr; // TODO throw exception
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
-
   auto read_options = arrow::csv::ReadOptions::Defaults();
+  read_options.block_size = file_size;
   auto parse_options = arrow::csv::ParseOptions::Defaults();
   auto convert_options = arrow::csv::ConvertOptions::Defaults();
 
@@ -145,7 +149,7 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
     LOG(ERROR) << "Write content to csv file failed.";
     return -2;
   }
-  
+
   return 0;
 }
 
