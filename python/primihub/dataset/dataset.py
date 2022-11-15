@@ -27,8 +27,25 @@ import grpc
 from primihub.client.ph_grpc.src.primihub.protos import service_pb2
 from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
 
+
 def register_dataset(service_addr, driver, path, name):
-    channel = grpc.insecure_channel(service_addr)
+    host_port, use_tls = service_addr.rsplit(":", 1)
+
+    if use_tls == '1':
+        with open("data/cert/ca.crt", 'rb') as f:
+            root_ca = f.read()
+
+        with open('data/cert/client.key', 'rb') as f:
+            private_key = f.read()
+
+        with open('data//cert/client.crt', 'rb') as f:
+            cert = f.read()
+
+        creds = grpc.ssl_channel_credentials(root_ca, private_key, cert)
+        channel = grpc.secure_channel(host_port, creds)
+    else:
+        channel = grpc.insecure_channel(service_addr)
+
     stub = service_pb2_grpc.DataServiceStub(channel)
     request = service_pb2.NewDatasetRequest()
     request.fid = name
@@ -37,11 +54,7 @@ def register_dataset(service_addr, driver, path, name):
 
     response = stub.NewDataset(request)
     if response.ret_code != 0:
-        logger.error("Register dataset {} failed.".foramt(name));
         raise RuntimeError("Register dataset {} failed.".format(name))
-    else:
-        logger.info("Register dataset {} finish, dataset url is {}.".format(
-            name, response.dataset_url))
 
 
 class DataDriver(abc.ABC):
@@ -191,7 +204,8 @@ def put(df_data: pd.DataFrame, dataset_key: str = None) -> DatasetRef:
     from primihub.dataset.dataset_cli import DatasetClientFactory
     # FIXME use primihub cli client
     # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
-    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
+    dataset_client = DatasetClientFactory.create(
+        "flight", primihub_cli.node, primihub_cli.cert)
     metas = dataset_client.do_put(df_data, dataset_key)
     dataset_ref = DatasetRef()
     dataset_ref.from_meta(metas[0])
@@ -207,7 +221,8 @@ def get(dataset_ref: DatasetRef) -> pd.DataFrame:
     from primihub.dataset.dataset_cli import DatasetClientFactory
     # FIXME use primihub cli client
     # dataset_client = DatasetClientFactory.create("flight", "192.168.99.23:50050", "")
-    dataset_client = DatasetClientFactory.create("flight", primihub_cli.node, primihub_cli.cert)
+    dataset_client = DatasetClientFactory.create(
+        "flight", primihub_cli.node, primihub_cli.cert)
     # get dataset use dataset id.
     df_data = dataset_client.do_get(dataset_ref.dataset_name)
     return df_data
