@@ -289,18 +289,19 @@ int PSIKkrtTask::send_result_to_server() {
             task_request.add_data("\"intersection_row\"");
             add_head_flag = true;
         }
+        size_t pack_size = 0;
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
             size_t item_len = data_item.size();
-            if (sended_size + item_len > limited_size) {
+            if (pack_size + item_len > limited_size) {
                 break;
             }
             task_request.add_data(data_item);
-            sended_size += item_len;
+            pack_size += item_len;
             sended_index++;
-            VLOG(5) << "sended_size: " << sended_size << " sended_index: " << sended_index;
         }
         writer->Write(task_request);
+        sended_size += pack_size;
         VLOG(5) << "sended_size: " << sended_size << " "
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();

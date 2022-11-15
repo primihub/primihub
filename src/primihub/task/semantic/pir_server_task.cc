@@ -71,7 +71,7 @@ int PIRServerTask::_SetUpDB(size_t dbsize, size_t dimensions,
                             size_t elem_size, uint32_t poly_modulus_degree,
                             uint32_t plain_mod_bit_size, uint32_t bits_per_coeff,
                             bool use_ciphertext_multiplication) {
-    encryption_params_ = 
+    encryption_params_ =
         pir::GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
     pir_params_ = *(pir::CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
                                         use_ciphertext_multiplication, bits_per_coeff));
@@ -121,8 +121,8 @@ uint32_t compute_plain_mod_bit_size_server(size_t dbsize, size_t elem_size) {
         uint64_t elem_per_plaintext = POLY_MODULUS_DEGREE_SVR \
                                     * (plain_mod_bit_size - 1) / 8 / elem_size;
         uint64_t num_plaintext = dbsize / elem_per_plaintext + 1;
-        if (num_plaintext <= 
-                (uint64_t)1 << (NOISE_BUDGET_BASE_SVR - 2 * plain_mod_bit_size)) 
+        if (num_plaintext <=
+                (uint64_t)1 << (NOISE_BUDGET_BASE_SVR - 2 * plain_mod_bit_size))
         {
             break;
         }
@@ -168,7 +168,7 @@ int PIRServerTask::execute() {
     initRequest(request_, pir_request);
 
     LOG(INFO) << "create server";
-    std::unique_ptr<pir::PIRServer> server = 
+    std::unique_ptr<pir::PIRServer> server =
         *(pir::PIRServer::Create(pir_db_, pir_params_));
 
     if (server == nullptr) {
@@ -184,9 +184,10 @@ int PIRServerTask::execute() {
                    << result_status.status();
         return -1;
     }
-    LOG(INFO) << "request processed";
+
 
     auto result_raw = std::move(result_status).value();
+    LOG(INFO) << "request processed, num_reply: " << result_raw.reply().size();
     const size_t num_reply = static_cast<size_t>(result_raw.reply().size());
     for (size_t i = 0; i < num_reply; i++) {
 	Ciphertexts* ptr_reply = response_->add_reply();
