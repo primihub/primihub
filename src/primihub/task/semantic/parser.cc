@@ -393,6 +393,8 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     // This port is tcp port used by gRPC.
     node.set_port(node_port);
 
+    node.set_use_tls(use_tls);
+
     bool is_new_peer = true;
     for (auto &peer : peers_with_tag) {
       if (peer.first.node_id() == node_id) {
