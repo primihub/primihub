@@ -10,7 +10,7 @@ RUN  apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
-RUN git clone https://gitee.com/primihub/libzmq.git \
+RUN git clone https://github.com/primihub/libzmq.git \
   && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
@@ -37,7 +37,7 @@ COPY ./src/primihub/protos/ ./src/primihub/protos/
 
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i http://mirrors.aliyun.com/pypi/simple \
+  && python3 -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple \
   && python3 setup.py develop \
   && python3 setup.py solib --solib-path $TARGET_PATH 
 
