@@ -77,14 +77,16 @@ class DatasetMetaService {
                        std::shared_ptr<StorageBackend> localKv);
     ~DatasetMetaService() {}
 
-    void putMeta(DatasetMeta &meta);
-    outcome::result<void> getAllLocalMetas(std::vector<DatasetMeta> &metas);
-    std::shared_ptr<DatasetMeta> getLocalMeta(const DatasetId &id);
-    outcome::result<void> getMeta(const DatasetId &id,
+    virtual void putMeta(DatasetMeta &meta);
+    virtual outcome::result<void> getMeta(const DatasetId &id,
                                   FoundMetaHandler handler);
-    outcome::result<void> findPeerListFromDatasets(
+    virtual outcome::result<void> findPeerListFromDatasets(
         const std::vector<DatasetWithParamTag> &datasets_with_tag,
         FoundMetaListHandler handler);
+
+    std::shared_ptr<DatasetMeta> getLocalMeta(const DatasetId &id);
+    outcome::result<void> getAllLocalMetas(std::vector<DatasetMeta> &metas);
+
     void setMetaSearchTimeout(unsigned int timeout) {
         meta_search_timeout_ = timeout;
     }
@@ -96,10 +98,27 @@ class DatasetMetaService {
     unsigned int meta_search_timeout_ = 60; // seconds
 };
 
+class RedisDatasetMetaService : public DatasetMetaService {
+public:
+  RedisDatasetMetaService(
+      std::string &redis_addr, std::string &redis_passwd,
+      std::shared_ptr<primihub::service::StorageBackend> local_db,
+      std::shared_ptr<primihub::p2p::NodeStub> dummy);
+  void putMeta(DatasetMeta &meta);
+  outcome::result<void> getMeta(const DatasetId &ID, FoundMetaHandler handler);
+  outcome::result<void> findPeerListFromDatasets(
+      const std::vector<DatasetWithParamTag> &datasets_with_tag,
+      FoundMetaListHandler handler);
+
+private:
+  std::string redis_addr_;
+  std::string redis_passwd_;
+  std::shared_ptr<StorageBackend> local_db_;
+};
+
 class DatasetService  {
   public:
-    explicit DatasetService(std::shared_ptr<primihub::p2p::NodeStub> stub,
-                            std::shared_ptr<StorageBackend> localkv,
+    explicit DatasetService(std::shared_ptr<DatasetMetaService> meta_service,
                             const std::string &nodelet_addr);
     ~DatasetService() {}
 
