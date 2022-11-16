@@ -9,6 +9,7 @@ RUN  apt-get update \
   && apt-get install -y python3 python3-dev libgmp-dev python3-pip libtool pkg-config git \
   && rm -rf /var/lib/apt/lists/*
 
+# Install Keyword PIR dependencies
 WORKDIR /opt
 RUN git clone https://github.com/primihub/libzmq.git \
   && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
