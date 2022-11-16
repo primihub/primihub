@@ -6,13 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 RUN  apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libtool pkg-config git \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 git \
   && rm -rf /var/lib/apt/lists/*
-
-# Install Keyword PIR dependencies
-WORKDIR /opt
-RUN git clone https://github.com/primihub/libzmq.git \
-  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
 
