@@ -18,7 +18,7 @@ version: 1.0
 node: "node0"
 location: "www.primihub.server.com"
 use_tls: 1
-grpc_port: 51050
+grpc_port: 50050
 
 certificate:
   root_ca: "data/cert/ca.crt"
