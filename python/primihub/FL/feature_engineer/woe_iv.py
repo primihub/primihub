@@ -10,7 +10,7 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 from primihub.dataset import register_dataset
 from primihub.utils.logger_util import FLConsoleHandler
 
-logger = None
+logging = None
 
 class MyServerChannelProxy(ServerChannelProxy):
 
@@ -114,15 +114,17 @@ def cut_points(host_max_min, guest_max_min, arbiter_max_min, bins=10):
 
 @ph.context.function(role='arbiter',
                      protocol='woe-iv',
-                     datasets=['train_party_2'],
+                     datasets=['usecase_106_node_2'],
                      port='9010',
                      task_type="feature-engineer")
 def iv_arbiter(bins=15):
+    params_map =  ph.context.Context.params_map
+
     # Init logger.
-    global logger
+    global logging 
     log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
                                    task_type="abnormal", log_level='DEBUG')
-    logger = log_handler.set_format()
+    logging = log_handler.set_format()
 
     logging.info("Start woe-iv arbiter.")
 
@@ -229,14 +231,16 @@ def iv_arbiter(bins=15):
 
 
 @ph.context.function(role='host', protocol='woe-iv',
-                     datasets=['train_party_1'], port='9020',
+                     datasets=['usecase_106_node_1'], port='9020',
                      task_type="feature-engineer")
 def iv_host():
+    params_map =  ph.context.Context.params_map
+
     # Init logger.
-    global logger
+    global logging 
     log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
                                    task_type="abnormal", log_level='DEBUG')
-    logger = log_handler.set_format()
+    logging = log_handler.set_format()
 
     logging.info("Start woe-iv host.")
 
@@ -333,14 +337,16 @@ def iv_host():
 
 
 @ph.context.function(role='guest', protocol='woe-iv',
-                     datasets=['train_party_0'], port='9030',
+                     datasets=['usecase_106_node_0'], port='9030',
                      task_type="feature-engineer")
 def iv_guest():
+    params_map =  ph.context.Context.params_map
+
     # Init logger.
-    global logger
+    global logging 
     log_handler = FLConsoleHandler(params_map["jobid"], params_map["taskid"],
                                    task_type="abnormal", log_level='DEBUG')
-    logger = log_handler.set_format()
+    logging = log_handler.set_format()
 
     logging.info("Start woe-iv guest.")
 
