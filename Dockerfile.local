@@ -13,7 +13,7 @@ ARG TARGET_PATH=/home/zxy/.cache/bazel/_bazel_zxy/9b552e3f7949d300c5a1f22b63d5e6
 WORKDIR /opt
 
 RUN git clone https://github.com/primihub/libzmq.git \
-  && cd libzmq && ./autogen.sh && ./configure && make install && ldconfig
+  && cd libzmq && ./autogen.sh && ./configure && make install -j 40 && ldconfig
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
 
@@ -29,6 +29,13 @@ WORKDIR /app
 # Make symlink to primihub-node & primihub-cli
 RUN mkdir data log \
   && ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+
+# Copy test data for caict into /app/data and test scripts for caict into /opt/scripts/.
+RUN git clone https://gitlab.primihub.com/openmpc/scripts-for-caict.git
+RUN mkdir /opt/scripts
+RUN cp scripts-for-caict/data/* /app/data/
+RUN cp scripts-for-caict/*.py /opt/scripts/
+RUN rm -rf scripts-for-caict
 
 # Copy all test config files to /app
 COPY ./config ./config
