@@ -17,6 +17,7 @@
 #include "src/primihub/cli/cli.h"
 #include <fstream>  // std::ifstream
 #include <string>
+#include <chrono>
 
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
@@ -135,7 +136,7 @@ int SDKClient::SubmitTask() {
                 input_datasets[i]);
         }
 
-    } 
+    }
 
     // TEE task
     if ( absl::GetFlag(FLAGS_task_type) == 6 ) {
@@ -194,9 +195,15 @@ int main(int argc, char** argv) {
         LOG(INFO) << "SDK SubmitTask to: " << peer;
         primihub::SDKClient client(
             grpc::CreateChannel(peer, grpc::InsecureChannelCredentials()));
-        if (!client.SubmitTask()) {
+        auto _start = std::chrono::high_resolution_clock::now();
+        auto ret = client.SubmitTask();
+        auto _end = std::chrono::high_resolution_clock::now();
+        auto time_cost = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _start).count();
+        LOG(INFO) << "SubmitTask time cost(ms): " << time_cost;
+        if (!ret) {
             break;
         }
+
     }
 
     return 0;
