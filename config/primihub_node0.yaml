@@ -1,16 +1,21 @@
 version: 1.0
 
 node: "node0"
-location: "172.28.1.10"
-use_tls: 0
-#location: "www.primihub.server.com"
-#use_tls: 1
+# location: "172.28.1.10"
+# use_tls: 0
+location: "www.primihub.server.com"
+use_tls: 1
 grpc_port: 50050
 
 certificate:
   root_ca: "data/cert/ca.crt"
   key: "data/cert/node0.key"
   cert: "data/cert/node0.crt"
+
+redis_meta_service:
+  redis_addr: "192.168.99.31:15550"
+  use_redis: True
+  redis_password: "primihub"
 
 datasets:
   # ABY3 LR test case datasets

@@ -16,16 +16,19 @@
 version: 1.0
 
 node: "node2"
-location: "127.0.0.1"
-use_tls: 0
-#location: "www.primihub.server.com"
-#use_tls: 1
-grpc_port: 50052
+location: "www.primihub.server.com"
+use_tls: 1
+grpc_port: 51052
 
 certificate:
   root_ca: "data/cert/ca.crt"
   key: "data/cert/node2.key"
   cert: "data/cert/node2.crt"
+
+redis_meta_service:
+  redis_addr: "192.168.99.31:15550"
+  use_redis: True
+  redis_password: "primihub"
 
 # load datasets
 datasets:
