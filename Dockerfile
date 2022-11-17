@@ -35,7 +35,8 @@ RUN wget https://github.com/zeromq/libzmq/archive/refs/tags/v4.3.4.tar.gz \
   && cmake .. && make && make install
 
 RUN wget https://github.com/zeromq/cppzmq/archive/refs/tags/v4.9.0.tar.gz \
-  && tar -zxf v4.9.0.tar.gz && cp cppzmq-4.9.0/zmq.hpp /usr/local/include/
+  && tar -zxf v4.9.0.tar.gz && mkdir cppzmq-4.9.0/build && cd cppzmq-4.9.0/build \
+  && cmake .. && make && make install
 
 RUN wget https://github.com/google/flatbuffers/archive/refs/tags/v2.0.0.tar.gz \
   && tar -zxf v2.0.0.tar.gz && mkdir flatbuffers-2.0.0/build && cd flatbuffers-2.0.0/build \
