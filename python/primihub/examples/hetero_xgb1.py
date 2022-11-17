@@ -21,7 +21,7 @@ import functools
 import ray
 from ray.util import ActorPool
 from line_profiler import LineProfiler
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -38,8 +38,12 @@ def search_best_splits(X: pd.DataFrame,
                        reg_lambda=1,
                        gamma=0,
                        min_child_sample=None,
-                       min_child_weight=1):
+                       min_child_weight=None):
     X = X.copy()
+
+    n = len(X)
+    if bins is None:
+        bins = int(np.ceil(np.log(n) / np.log(4))) # 4 is the base bite
 
     if isinstance(g, pd.Series):
         g = g.values
@@ -356,6 +360,16 @@ class ReduceGH(object):
         return GH
 
 
+class BatchGHSum:
+
+    def __init__(self, split_cuts) -> None:
+        self.split_cuts = split_cuts
+
+    def __call__(self, batch: pd.DataFrame):
+
+        pass
+
+
 def phe_map_enc(pub, pri, item):
     # return pub.encrypt(item)
     return opt_paillier_encrypt_crt(pub, pri, item)
@@ -540,10 +554,13 @@ class XGB_GUEST_EN:
                               X_guest,
                               encrypted_ghs,
                               cal_hist=True,
-                              bins=10,
+                              bins=None,
                               add_actor_num=50,
                               map_pools=50,
                               limit_add_len=3):
+        n = len(X_guest)
+        if bins is None:
+            bins = int(np.ceil(np.log(n) / np.log(4)))
         if cal_hist:
             hist_0 = X_guest.apply(np.histogram, args=(bins,), axis=0)
             hist_points = hist_0.iloc[1]
@@ -590,7 +607,7 @@ class XGB_GUEST_EN:
 
         # calculate sums of encrypted 'g' and 'h'
         #TODO: only calculate the right ids and left ids
-        encrypte_gh_sums = self.sums_of_encrypted_ghs(X_guest, encrypted_ghs)
+        encrypte_gh_sums = self.sums_of_encrypted_ghs(X_guest, encrypted_ghs, bins=)
         self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
         best_cut = self.proxy_server.Get('best_cut')
 
@@ -818,6 +835,9 @@ class XGB_HOST_EN:
             return np.array([1] * Y.shape[0])
         else:
             raise KeyError('objective must be linear or logistic!')
+
+    # def map_batch_best(self, ray_data):
+    #     pass
 
     def host_best_cut(self, X_host, cal_hist=True, plain_gh=None, bins=10):
         host_colnames = X_host.columns
@@ -1302,11 +1322,12 @@ max_depth = 5
 # whether encrypted or not
 is_encrypted = True
 
+min_child_weight = 5
 
 @ph.context.function(
     role='host',
     protocol='xgboost',
-    datasets=['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
+    datasets=['five_thous_host'], # ['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
     port='8000',
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
@@ -1375,7 +1396,7 @@ def xgb_host_logic(cry_pri="paillier"):
                            max_depth=max_depth,
                            reg_lambda=1,
                            sid=0,
-                           min_child_weight=1,
+                           min_child_weight=min_child_weight,
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
@@ -1541,11 +1562,11 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # save results to png
     current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-    plt.figure()
-    fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
-    plt.plot(fpr, tpr)
-    plt.title("train_acc={}".format(train_acc))
-    plt.savefig(indicator_file_path)
+    # plt.figure()
+    # fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
+    # plt.plot(fpr, tpr)
+    # plt.title("train_acc={}".format(train_acc))
+    # plt.savefig(indicator_file_path)
 
     # save pred_y to file
     preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
@@ -1560,7 +1581,7 @@ def xgb_host_logic(cry_pri="paillier"):
 @ph.context.function(
     role='guest',
     protocol='xgboost',
-    datasets=['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
+    datasets=['five_thous_guest'],#['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
     port='9000',
     task_type="classification")
 def xgb_guest_logic(cry_pri="paillier"):
@@ -1620,7 +1641,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
                              max_depth=max_depth,
                              reg_lambda=1,
-                             min_child_weight=1,
+                             min_child_weight=min_child_weight,
                              objective='logistic',
                              sid=1,
                              proxy_server=proxy_server,
