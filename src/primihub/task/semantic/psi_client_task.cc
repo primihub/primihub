@@ -178,27 +178,81 @@ int PSIClientTask::execute() {
     psi_proto::Response server_response;
 
     grpc::ClientContext context;
-    ExecuteTaskRequest taskRequest;
-    ExecuteTaskResponse taskResponse;
+    // ExecuteTaskRequest taskRequest;
 
-    PsiRequest *ptr_request = taskRequest.mutable_psi_request();
-    ptr_request->set_reveal_intersection(client_request.reveal_intersection());
-    size_t num_elements = client_request.encrypted_elements().size();
-    for (size_t i = 0; i < num_elements; i++) {
-        ptr_request->add_encrypted_elements(client_request.encrypted_elements()[i]);
-    }
-
-    auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
-    ParamValue pv;
-    pv.set_var_type(VarType::STRING);
-    pv.set_value_string(server_dataset_);
-    (*ptr_params)["serverData"] = pv;
-    (*ptr_params)["serverIndex"] = server_index_;
 
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
         server_address_, grpc::InsecureChannelCredentials()));
+    std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>> client_stream(stub->ExecuteTask(&context));
 
-    Status status = stub->ExecuteTask(&context, taskRequest, &taskResponse);
+    size_t limited_size = 1 << 21;
+    size_t num_elements = client_request.encrypted_elements().size();
+    const auto& encrypted_elements = client_request.encrypted_elements();
+    VLOG(5) << "num_elements_num_elements: " << num_elements;
+    size_t sended_index{0};
+    std::vector<ExecuteTaskRequest> send_requests;
+    do {
+        ExecuteTaskRequest taskRequest;
+        PsiRequest* ptr_request = taskRequest.mutable_psi_request();
+        ptr_request->set_reveal_intersection(client_request.reveal_intersection());
+        size_t pack_size = 0;
+        for (size_t i = sended_index; i < num_elements; i++) {
+            const auto& element = encrypted_elements[i];
+            auto element_len = element.size();
+            if (pack_size + element_len > limited_size) {
+                break;
+            }
+            ptr_request->add_encrypted_elements(element);
+            pack_size += element_len;
+            sended_index++;
+        }
+        auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        pv.set_value_string(server_dataset_);
+        (*ptr_params)["serverData"] = pv;
+        (*ptr_params)["serverIndex"] = server_index_;
+        send_requests.push_back(std::move(taskRequest));
+        if (sended_index >= num_elements) {
+            break;
+        }
+    } while (true);
+    VLOG(5) << "send_requests size: " << send_requests.size();
+    // send request to server
+    for (const auto& request : send_requests) {
+        client_stream->Write(request);
+    }
+    client_stream->WritesDone();
+    VLOG(5) << "client_stream->WritesDone";
+    ExecuteTaskResponse taskResponse;
+    ExecuteTaskResponse recv_response;
+    auto psi_response = taskResponse.mutable_psi_response();
+    bool is_initialized{false};
+    while (client_stream->Read(&recv_response)) {
+        const auto& _psi_response = recv_response.psi_response();
+        if (!is_initialized) {
+            const auto& res_server_setup = _psi_response.server_setup();
+            auto server_setup = psi_response->mutable_server_setup();
+            server_setup->set_bits(res_server_setup.bits());
+            if (res_server_setup.data_structure_case() ==
+                psi_proto::ServerSetup::DataStructureCase::kGcs) {
+                auto ptr_gcs = server_setup->mutable_gcs();
+                ptr_gcs->set_div(res_server_setup.gcs().div());
+                ptr_gcs->set_hash_range(res_server_setup.gcs().hash_range());
+            } else if (res_server_setup.data_structure_case() ==
+                    psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
+                auto ptr_bloom_filter = server_setup->mutable_bloom_filter();
+                ptr_bloom_filter->set_num_hash_functions(
+                    res_server_setup.bloom_filter().num_hash_functions()
+                );
+            }
+            is_initialized = true;
+        }
+        for (const auto& encrypted_element : _psi_response.encrypted_elements()) {
+            psi_response->add_encrypted_elements(encrypted_element);
+        }
+    }
+    Status status = client_stream->Finish();
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
             LOG(ERROR) << "Node psi server process request error.";
@@ -243,6 +297,7 @@ int PSIClientTask::send_result_to_server() {
         task_request.set_task_id(this->task_id_);
         task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
+        size_t pack_size = 0;
         if (!add_head_flag) {
             task_request.add_data("\"intersection_row\"");
             add_head_flag = true;
@@ -250,14 +305,15 @@ int PSIClientTask::send_result_to_server() {
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
             size_t item_len = data_item.size();
-            if (sended_size + item_len > limited_size) {
+            if (pack_size + item_len > limited_size) {
                 break;
             }
             task_request.add_data(data_item);
-            sended_size += item_len;
+            pack_size += item_len;
             sended_index++;
         }
         writer->Write(task_request);
+        sended_size += pack_size;
         VLOG(5) << "sended_size: " << sended_size << " "
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();

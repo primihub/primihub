@@ -183,45 +183,182 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
  * method runs on the node as psi or pir server
  *
  * *********************************************/
-Status VMNodeImpl::ExecuteTask(ServerContext *context,
-                               const ExecuteTaskRequest *taskRequest,
-                               ExecuteTaskResponse *taskResponse) {
+int VMNodeImpl::process_psi_response(const ExecuteTaskResponse& response,
+          std::vector<ExecuteTaskResponse>* splited_responses) {
+//
+    splited_responses->clear();
+    size_t limited_size = 1 << 21; // 4M
+    const auto& psi_res = response.psi_response();
+    const auto& server_setup = psi_res.server_setup();
+    size_t encrypted_elements_num = psi_res.encrypted_elements().size();
+    const auto& encrypted_elements = psi_res.encrypted_elements();
+    size_t sended_size = 0;
+    size_t sended_index = 0;
+    do {
+        ExecuteTaskResponse sub_resp;
+        auto sub_psi_res = sub_resp.mutable_psi_response();
+        sub_psi_res->set_ret_code(0);
+        size_t pack_size = 0;
+        auto sub_server_setup = sub_psi_res->mutable_server_setup();
+        sub_server_setup->CopyFrom(server_setup);
+        for (size_t i = sended_index; i < encrypted_elements_num; i++) {
+            const auto& data_item = encrypted_elements[i];
+            size_t item_len = data_item.size();
+            if (pack_size + item_len > limited_size) {
+                break;
+            }
+            sub_psi_res->add_encrypted_elements(data_item);
+            pack_size += item_len;
+            sended_index++;
+        }
+        splited_responses->push_back(std::move(sub_resp));
+        if (sended_index >= encrypted_elements_num) {
+            break;
+        }
+    } while(true);
+    return 0;
+}
+
+int VMNodeImpl::process_pir_response(const ExecuteTaskResponse& response,
+        std::vector<ExecuteTaskResponse>* splited_responses) {
+//
+    splited_responses->clear();
+    size_t limited_size = 1 << 21; // 4M
+    const auto& pir_res = response.pir_response();
+    size_t reply_num = pir_res.reply().size();
+    const auto& reply =  pir_res.reply();
+    size_t sended_size = 0;
+    size_t sended_index = 0;
+    do {
+        ExecuteTaskResponse sub_resp;
+        auto sub_pir_res = sub_resp.mutable_pir_response();
+        sub_pir_res->set_ret_code(0);
+        size_t pack_size = 0;
+        for (size_t i = sended_index; i < reply_num; i++) {
+            // get query len
+            size_t query_size = 0;
+            for (const auto& ct : reply[i].ct()) {
+                query_size += ct.size();
+            }
+            if (pack_size + query_size > limited_size) {
+                break;
+            }
+            auto _reply = sub_pir_res->add_reply();
+            for (const auto& ct : reply[i].ct()) {
+                _reply->add_ct(ct);
+            }
+            sended_index++;
+        }
+        splited_responses->push_back(std::move(sub_resp));
+        if (sended_index >= reply_num) {
+            break;
+        }
+    } while(true);
+    return 0;
+}
+
+int VMNodeImpl::process_task_reseponse(bool is_psi_response,
+        const ExecuteTaskResponse& response, std::vector<ExecuteTaskResponse>* splited_responses) {
+    if (is_psi_response) {
+        process_psi_response(response, splited_responses);
+    } else  {  // pir response
+        process_pir_response(response, splited_responses);
+    }
+    return 0;
+}
+
+Status VMNodeImpl::ExecuteTask(ServerContext* context,
+        grpc::ServerReaderWriter<ExecuteTaskResponse, ExecuteTaskRequest>* stream) {
+// recv data from client
+    VLOG(5) << "VMNodeImpl::ExecuteTask";
+    ExecuteTaskRequest task_request;
+    ExecuteTaskResponse task_response;
     std::string job_task = "";
     primihub::rpc::TaskType taskType;
-    if (taskRequest->algorithm_request_case() ==
-        ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
-        taskType = primihub::rpc::TaskType::NODE_PSI_TASK;
-        job_task = taskRequest->psi_request().job_id() +
-                   taskRequest->psi_request().task_id();
-        if (running_set.find(job_task) != running_set.end()) {
-            taskResponse->mutable_psi_response()->set_ret_code(1);
-            return Status::OK;
+    ExecuteTaskRequest recv_request;
+    bool first_visit_flag{false};
+    bool is_psi_request{false};
+    bool is_pir_request{false};
+    while (stream->Read(&recv_request)) {
+        if (!first_visit_flag) {
+            auto ptr_params = task_request.mutable_params()->mutable_param_map();
+            const auto& _params = recv_request.params().param_map();
+            for (auto it = _params.begin(); it != _params.end(); it++) {
+                const auto& key = it->first;
+                const auto& value = it->second;
+                ParamValue pv;
+                pv.CopyFrom(value);
+                (*ptr_params)[key] = pv;
+            }
+            auto req_type = recv_request.algorithm_request_case();
+            if (req_type == ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
+                is_psi_request = true;
+                taskType = primihub::rpc::TaskType::NODE_PSI_TASK;
+                const auto& psi_req = recv_request.psi_request();
+                job_task = psi_req.job_id() + psi_req.task_id();
+                auto psi_request = task_request.mutable_psi_request();
+                psi_request->set_job_id(psi_req.job_id());
+                psi_request->set_task_id(psi_req.task_id());
+                psi_request->set_reveal_intersection(psi_req.reveal_intersection());
+            } else if (req_type == ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
+                is_pir_request = true;
+                taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
+                const auto& pir_req = recv_request.pir_request();
+                job_task = pir_req.job_id() + pir_req.task_id();
+                auto pir_request = task_request.mutable_pir_request();
+                pir_request->set_galois_keys(pir_req.galois_keys());
+                pir_request->set_relin_keys(pir_req.relin_keys());
+                pir_request->set_job_id(pir_req.job_id());
+                pir_request->set_task_id(pir_req.task_id());
+            }
+            first_visit_flag = true;
         }
-    } else if (taskRequest->algorithm_request_case() ==
-               ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
-        taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
-        job_task = taskRequest->pir_request().job_id() +
-                   taskRequest->pir_request().task_id();
-        if (running_set.find(job_task) != running_set.end()) {
-            taskResponse->mutable_pir_response()->set_ret_code(1);
-            return Status::OK;
+        if (is_psi_request) {
+            const auto& recved_psi_req = recv_request.psi_request();
+            auto psi_request = task_request.mutable_psi_request();
+            for (const auto& encrypted_element : recved_psi_req.encrypted_elements()) {
+                psi_request->add_encrypted_elements(encrypted_element);
+            }
+        } else if (is_pir_request) {
+            const auto& recved_pir_req = recv_request.pir_request();
+            auto pir_request = task_request.mutable_pir_request();
+            for (const auto& query : recved_pir_req.query()) {
+                auto pir_query = pir_request->add_query();
+                for (const auto& ct : query.ct()) {
+                    pir_query->add_ct(ct);
+                }
+            }
         }
     }
-
+    if (running_set.find(job_task) != running_set.end()) {
+        if (is_psi_request) {
+            task_response.mutable_psi_response()->set_ret_code(1);
+        } else if (is_pir_request) {
+            task_response.mutable_pir_response()->set_ret_code(1);
+        }
+        stream->Write(task_response);
+        return Status::OK;
+    }
+    VLOG(5) << "VMNodeImpl::ExecuteTask recv data finished";
+    // process receive data
     if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
         taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
         LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();
         running_map.insert({job_task, worker});
-        worker->execute(taskRequest, taskResponse);
+        worker->execute(&task_request, &task_response);
         running_map.erase(job_task);
         running_set.erase(job_task);
-
-        return Status::OK;
-    } else {
-        return Status::OK;
     }
+
+    std::vector<ExecuteTaskResponse> splited_resp;
+    process_task_reseponse(is_psi_request, task_response, &splited_resp);
+    VLOG(5) << "ExecuteTaskResponse size: " << splited_resp.size();
+    for (const auto& res : splited_resp) {
+        stream->Write(res);
+    }
+    return Status::OK;
 }
 
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
