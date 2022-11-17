@@ -29,7 +29,7 @@ datasets:
   # keyword PIR test case dataset
   - description: "keyword_pir_server_data"
     model: "csv"
-    source: "data/keyword_pir_server.csv"
+    source: "/tmp/keyword_pir_server.csv"
 
   # PSI test case dataset
   - description: "psi_server_data"
