@@ -42,6 +42,10 @@ RUN wget https://github.com/google/flatbuffers/archive/refs/tags/v2.0.0.tar.gz \
   && tar -zxf v2.0.0.tar.gz && mkdir flatbuffers-2.0.0/build && cd flatbuffers-2.0.0/build \
   && cmake .. && make && make install
 
+RUN wget https://sourceforge.net/projects/tclap/files/tclap-1.2.5.tar.gz \
+  && tar -zxvf tclap-1.2.5.tar.gz && cd tclap-1.2.5 && ./configure \
+  && make && make install
+
 WORKDIR /src
 ADD . /src
 
