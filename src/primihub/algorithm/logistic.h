@@ -27,7 +27,8 @@
 #include <string>
 #include <time.h>
 #include <vector>
-
+#include <sys/stat.h>
+#include <errno.h>
 #include "Eigen/Dense"
 
 #include "src/primihub/algorithm/aby3ML.h"
@@ -80,6 +81,8 @@ private:
               sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
               sf64Matrix<D> &test_label_0_1, aby3ML &p, int B, int IT, int pIdx,
               bool print, Session &chlPrev, Session &chlNext);
+
+  int mkpath(std::string s,mode_t mode=0755);
 
   std::string model_file_name_;
   std::string model_name_;

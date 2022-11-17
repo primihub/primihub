@@ -566,7 +566,14 @@ int LogisticRegressionExecutor::saveModel(void) {
 
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-
+  std::string delimiter = "/";
+  int pos = model_file_name_.rfind(delimiter);
+  std::string dir_path = model_file_name_.substr(0, pos);
+  int mkret = mkpath(dir_path);
+  if(mkret) {
+    LOG_ERROR() << "Create path "<<dir_path<< " failed!";
+    return -1;
+  }
   auto cursor = driver->initCursor(model_file_name_);
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
@@ -589,5 +596,31 @@ int LogisticRegressionExecutor::set_task_info(std::string platform_type,
   job_id_ = job_id;
   task_id_ = task_id;
   return 0;
+}
+
+int LogisticRegressionExecutor::mkpath(std::string s,mode_t mode)
+{
+    size_t pos,pre=0;
+    std::string dir;
+    int mdret = 0;
+
+    if(s[s.size()-1]!='/'){
+        // force trailing / so we can handle everything in loop
+        s+='/';
+    }
+
+    while((pos=s.find_first_of('/',pre))!=std::string::npos){
+        dir=s.substr(0,pos++);
+        pre=pos;
+        if(dir.size()==0) continue;
+        if((mdret=mkdir(dir.c_str(),mode)) && errno!=EEXIST){
+            LOG_ERROR() << "Create new dir " << dir << " failed, " << strerror(errno) << ".";
+            return mdret;
+        }
+
+        mdret = 0;     
+    }
+
+    return mdret;
 }
 } // namespace primihub
