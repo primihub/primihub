@@ -43,7 +43,7 @@ def search_best_splits(X: pd.DataFrame,
 
     n = len(X)
     if bins is None:
-        bins = int(np.ceil(np.log(n) / np.log(4))) # 4 is the base bite
+        bins = int(np.ceil(np.log(n) / np.log(4)))  # 4 is the base bite
 
     if isinstance(g, pd.Series):
         g = g.values
@@ -607,7 +607,7 @@ class XGB_GUEST_EN:
 
         # calculate sums of encrypted 'g' and 'h'
         #TODO: only calculate the right ids and left ids
-        encrypte_gh_sums = self.sums_of_encrypted_ghs(X_guest, encrypted_ghs, bins=)
+        encrypte_gh_sums = self.sums_of_encrypted_ghs(X_guest, encrypted_ghs)
         self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
         best_cut = self.proxy_server.Get('best_cut')
 
@@ -1324,10 +1324,12 @@ is_encrypted = True
 
 min_child_weight = 5
 
+
 @ph.context.function(
     role='host',
     protocol='xgboost',
-    datasets=['five_thous_host'], # ['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
+    datasets=['five_thous_host'
+             ],  # ['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
     port='8000',
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
@@ -1581,7 +1583,8 @@ def xgb_host_logic(cry_pri="paillier"):
 @ph.context.function(
     role='guest',
     protocol='xgboost',
-    datasets=['five_thous_guest'],#['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
+    datasets=['five_thous_guest'
+             ],  #['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
     port='9000',
     task_type="classification")
 def xgb_guest_logic(cry_pri="paillier"):
