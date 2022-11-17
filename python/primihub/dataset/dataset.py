@@ -44,7 +44,7 @@ def register_dataset(service_addr, driver, path, name):
         creds = grpc.ssl_channel_credentials(root_ca, private_key, cert)
         channel = grpc.secure_channel(host_port, creds)
     else:
-        channel = grpc.insecure_channel(service_addr)
+        channel = grpc.insecure_channel(host_port)
 
     stub = service_pb2_grpc.DataServiceStub(channel)
     request = service_pb2.NewDatasetRequest()
