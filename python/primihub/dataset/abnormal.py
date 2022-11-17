@@ -243,9 +243,9 @@ def run_abnormal_process(params_map, dataset_map):
         df = handle_abnormal_value_for_sqlite(db_info, col_dtype)
         save_path = substr_arr[2].split(".db")[0] + "_abnormal.csv"
     else:
-        filename, _ = path_or_info.split(".csv")
+        filename, _ = csv_or_sqlite.split(".csv")
         save_path = filename + "_abnormal.csv"
-        df = handle_abnormal_value_for_csv(path_or_info, col_dtype)
+        df = handle_abnormal_value_for_csv(csv_or_sqlite, col_dtype)
 
     df.to_csv(save_path, index=False)
 
