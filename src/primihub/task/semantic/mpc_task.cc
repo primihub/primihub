@@ -162,6 +162,7 @@ namespace primihub::task
       return -1;
     }
     algorithm_->set_task_info(platform(),job_id(),task_id());
+    
     algorithm_->loadParams(task_param_);
     int ret = 0;
     do
@@ -183,7 +184,7 @@ namespace primihub::task
       ret = algorithm_->execute();
       if (ret)
       {
-        LOG(ERROR) << "Run train failed.";
+        LOG(ERROR) << "Run task failed.";
         break;
       }
 
