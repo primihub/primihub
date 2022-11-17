@@ -16,12 +16,12 @@
 #include <memory>
 #include <glog/logging.h>
 
-#include "src/primihub/service/notify/service.h"       
+#include "src/primihub/service/notify/service.h"
 
 using primihub::service::GRPCNotifyServer;
 
 namespace primihub::service {
-        
+
 NotifyService::NotifyService(const std::string &addr) {
     init(addr);
 }
@@ -32,17 +32,17 @@ NotifyService::~NotifyService() {
 
 void NotifyService::init(const std::string &addr) {
     // Composite GRPCNotifyServer & EventBusNotifyServerSubscriber
-    try {   
+    try {
         auto subscriber = std::make_shared<EventBusNotifyServerSubscriber>(GRPCNotifyServer::getInstance(),
                                                                         EventBusNotifyDelegate::getInstance().getEventBusPtr());
-        auto subscriber_cast = std::dynamic_pointer_cast<NotifyServerSubscriber>(subscriber);                                                                        
-        
+        auto subscriber_cast = std::dynamic_pointer_cast<NotifyServerSubscriber>(subscriber);
+
         // FIXME test parameters
         GRPCNotifyServer::getInstance().init(addr, subscriber_cast);
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to init notify server: " << e.what();
     }
-    
+
 }
 
 void NotifyService::run() {
@@ -53,14 +53,14 @@ void NotifyService::run() {
     }
 }
 
-void NotifyService::notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
-                                 const std::string &status, const std::string &message) {
-    EventBusNotifyDelegate::getInstance().notifyStatus(task_id, submit_client_id, status, message);
+void NotifyService::notifyStatus(const std::string& job_id, const std::string& task_id,
+        const std::string& submit_client_id, const std::string& status, const std::string& message) {
+    EventBusNotifyDelegate::getInstance().notifyStatus(job_id, task_id, submit_client_id, status, message);
 }
 
-void NotifyService::notifyResult(const std::string &task_id, const std::string &submit_client_id, 
-                                const std::string &result_dataset_url) {
-    EventBusNotifyDelegate::getInstance().notifyResult(task_id, submit_client_id, result_dataset_url);
+void NotifyService::notifyResult(const std::string& job_id, const std::string& task_id,
+        const std::string& submit_client_id, const std::string &result_dataset_url) {
+    EventBusNotifyDelegate::getInstance().notifyResult(job_id, task_id, submit_client_id, result_dataset_url);
 }
 
 /**
