@@ -165,7 +165,6 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
 
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
   LOG_INFO() << "New id of new dataset is " << new_dataset_id_ << ".";
-
   std::string next_name;
   std::string prev_name;
   if (party_id_ == 0) {
@@ -180,6 +179,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   }
   mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
   mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
+  
   return 0;
 }
 
@@ -204,6 +204,62 @@ int MissingProcess::initPartyComm(void) {
 
 int MissingProcess::execute() {
   try {
+    int cols_0,cols_1,cols_2;
+    //std::array<uint64_t, 1> cols_0;
+    //std::array<uint64_t, 1> cols_1;
+    //std::array<uint64_t, 1> cols_2;
+
+    for (uint64_t i = 0; i < 3; i++){
+      if (party_id_ == i) {
+        cols_0=col_and_dtype_.size();
+        mpc_op_exec_->mNext.asyncSendCopy(cols_0);
+        mpc_op_exec_->mPrev.asyncSendCopy(cols_0);      
+      } else {
+        if (party_id_ == (i + 1) % 3)
+          mpc_op_exec_->mPrev.recv(cols_2);
+        else if (party_id_ == (i + 2) % 3)
+          mpc_op_exec_->mNext.recv(cols_1);
+        else
+          throw std::runtime_error("Message recv logic error.");
+        }
+      }
+    if (cols_0!=cols_1 || cols_0!=cols_2 ||cols_1 !=cols_2 ){
+      LOG_ERROR()<<"The taget data columns of the three parties are inconsistent!";
+      return -1;
+    }
+    //std::vector<int> dtype_vec1, dtype_vec2, dtype_vec3;
+
+    int* arr_dtype0= new int[cols_0];
+    int* arr_dtype1= new int[cols_0];
+    int* arr_dtype2= new int[cols_0];
+    int tmp_index=0;
+    for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end(); itr++) {
+      arr_dtype0[tmp_index++]=itr->second;
+    }
+    for (uint64_t i = 0; i < 3; i++) {
+      if (party_id_ == i) {
+        mpc_op_exec_->mNext.asyncSendCopy(arr_dtype0,cols_0);
+        mpc_op_exec_->mPrev.asyncSendCopy(arr_dtype0,cols_0);     
+      } else {
+        if (party_id_ == (i + 1) % 3)
+          mpc_op_exec_->mPrev.recv(arr_dtype1,cols_0);
+        else if (party_id_ == (i + 2) % 3)
+          mpc_op_exec_->mNext.recv(arr_dtype2,cols_0);
+        else
+          throw std::runtime_error("Message recv logic error.");
+      }  
+    }
+    for (uint64_t i = 0; i < cols_0; i++) {
+      if ((arr_dtype0[i] != arr_dtype1[i]) || (arr_dtype0[i] != arr_dtype2[i]) ||
+          (arr_dtype1[i] != arr_dtype2[i])) {
+        LOG_ERROR()
+            << "The data column types of the three parties are inconsistent!";
+        return -1;
+      }
+    }
+    delete arr_dtype0;
+    delete arr_dtype1;
+    delete arr_dtype2;
     arrow::Result<std::shared_ptr<Table>> res_table;
     std::shared_ptr<arrow::Table> new_table;
     std::shared_ptr<arrow::Array> data_array;
