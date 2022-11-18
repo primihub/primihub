@@ -191,6 +191,35 @@ class ActorAdd(object):
         return tmp_sum
 
 
+def atom_paillier_sum(items, pub_key, add_actors, limit=3):
+    nums = items * limit
+    if len(items) < nums:
+        return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
+                                items)
+    N = int(len(items) / nums)
+    items_list = []
+
+    inter_results = []
+    for i in range(nums):
+        tmp_val = items[i * N:(i + 1) * N]
+        # tmp_add_actor = self.add_actors[i]
+        if i == (nums - 1):
+            tmp_val = items[i * N:]
+        items_list.append(tmp_val)
+
+    inter_results = list(
+        add_actors.map(lambda a, v: a.add.remote(v), items_list))
+
+    #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
+    #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
+    # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
+    # final_result = ray.get(inter_results)
+    final_result = functools.reduce(
+        lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
+
+    return final_result
+
+
 @ray.remote
 class PallierAdd(object):
 
@@ -1328,7 +1357,7 @@ min_child_weight = 5
 @ph.context.function(
     role='host',
     protocol='xgboost',
-    datasets=['five_thous_host'
+    datasets=['train_hetero_xgb_host'
              ],  # ['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
     port='8000',
     task_type="classification")
@@ -1364,7 +1393,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # 读取注册数据
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = ph.dataset.read(dataset_key='five_thous_host').df_data
+    data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
 
     # y = data.pop('Class').values
 
@@ -1434,75 +1463,6 @@ def xgb_host_logic(cry_pri="paillier"):
                paillier_encryptor=paillier_encryptor,
                lookup_table_sum=lookup_table_sum)
     lp.print_stats()
-
-    # lp = LineProfiler(xgb_host.fit)
-    # lp.add_function(xgb_host.host_tree_construct)
-    # lp.add_function(xgb_host.gh_sums_decrypted)
-
-    # lp.run("xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)")
-    # lp.print_stats()
-    # for t in range(xgb_host.n_estimators):
-    #     print("Begin to trian tree: ", t + 1)
-    #     f_t = pd.Series([0] * Y.shape[0])
-
-    #     # host cal gradients and hessians with its own label
-    #     gh = pd.DataFrame({
-    #         'g': xgb_host._grad(y_hat, Y.flatten()),
-    #         'h': xgb_host._hess(y_hat, Y.flatten())
-    #     })
-
-    #     # convert gradients and hessians to ints and encrypted with paillier
-    #     # ratio = 10**3
-    #     # gh_large = (gh * ratio).astype('int')
-    #     if is_encrypted:
-    #         flat_gh = gh.values.flatten()
-    #         flat_gh *= xgb_host.ratio
-
-    #         flat_gh = flat_gh.astype('int')
-
-    #         start_enc = time.time()
-    #         enc_flat_gh = list(
-    #             paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-    #                                    flat_gh.tolist()))
-
-    #         end_enc = time.time()
-
-    #         enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
-    #         enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
-
-    #         # send all encrypted gradients and hessians to 'guest'
-    #         proxy_client_guest.Remote(enc_gh_df, "gh_en")
-
-    #         end_send_gh = time.time()
-    #         print("Time for encryption and transfer: ", (end_enc - start_enc),
-    #               (end_send_gh - end_enc))
-    #         print("Encrypt finish.")
-
-    #     else:
-    #         proxy_client_guest.Remote(gh, "gh_en")
-
-    #     # start construct boosting trees
-    #     # lp = LineProfiler(xgb_host.host_tree_construct)
-    #     # lp.run(
-    #     #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
-    #     # )
-    #     # lp.print_stats()
-
-    #     xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(
-    #         X_host.copy(), f_t, 0, gh)
-    #     # y_hat = y_hat + xgb_host.learning_rate * f_t
-
-    #     end_build_tree = time.time()
-
-    #     lookup_table_sum[t + 1] = xgb_host.lookup_table
-    #     y_hat = y_hat + xgb_host.learning_rate * f_t
-
-    #     logger.info("Finish to trian tree {}.".format(t + 1))
-    # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
-    # current_loss = xgb_host.log_loss(Y, current_pred)
-    # train_losses.append(current_loss)
-
-    # print("train_losses ", train_losses)
 
     end = time.time()
     # logger.info("lasting time for xgb %s".format(end-start))
@@ -1583,8 +1543,9 @@ def xgb_host_logic(cry_pri="paillier"):
 @ph.context.function(
     role='guest',
     protocol='xgboost',
-    datasets=['five_thous_guest'
-             ],  #['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
+    datasets=[
+        'train_hetero_xgb_guest'  #'five_thous_guest'
+    ],  #['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
     port='9000',
     task_type="classification")
 def xgb_guest_logic(cry_pri="paillier"):
@@ -1636,7 +1597,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = ph.dataset.read(dataset_key='five_thous_guest').df_data
+    data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
