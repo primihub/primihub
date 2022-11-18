@@ -10,8 +10,10 @@
 #include "src/primihub/operator/aby3_operator.h"
 
 namespace primihub {
-class LocalExpressExecutor;
-class MPCExpressExecutor {
+
+template <Decimal Dbit> class LocalExpressExecutor;
+
+template <Decimal Dbit> class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
@@ -73,7 +75,7 @@ public:
   //    of it's result.
   enum TokenType { COLUMN, VALUE };
   union ValueUnion {
-    sf64Matrix<D> *sh_fp64_m;
+    sf64Matrix<Dbit> *sh_fp64_m;
     si64Matrix *sh_i64_m;
     std::vector<double> *fp64_vec;
     std::vector<int64_t> *i64_vec;
@@ -120,7 +122,7 @@ public:
     }
   };
 
-  friend class LocalExpressExecutor;
+  template <Decimal Dbits> friend class LocalExpressExecutor;
 
 private:
   // ColumnConfig saves column's owner and it's data type.
@@ -141,7 +143,7 @@ private:
 
     static std::string DtypeToString(const ColDtype &dtype);
 
-    friend class LocalExpressExecutor;
+    template <Decimal Dbits> friend class LocalExpressExecutor;
 
   private:
     u32 party_id_;
@@ -190,7 +192,7 @@ private:
 
   inline int createTokenValue(const std::string &token, TokenValue &token_val);
 
-  inline void createTokenValue(sf64Matrix<D> *m, TokenValue &token_val);
+  inline void createTokenValue(sf64Matrix<Dbit> *m, TokenValue &token_val);
 
   inline void createTokenValue(si64Matrix *m, TokenValue &token_val);
 
@@ -200,7 +202,7 @@ private:
 
   inline void createI64Shares(TokenValue &val, si64Matrix &sh_val);
 
-  inline void createFP64Shares(TokenValue &val, sf64Matrix<D> &sh_val);
+  inline void createFP64Shares(TokenValue &val, sf64Matrix<Dbit> &sh_val);
 
   inline void BeforeMPCRun(std::stack<std::string> &token_stk,
                            std::stack<TokenValue> &val_stk, TokenValue &val1,
@@ -241,9 +243,9 @@ private:
   uint32_t party_id_;
 };
 
-class LocalExpressExecutor {
+template <Decimal Dbit> class LocalExpressExecutor {
 public:
-  LocalExpressExecutor(MPCExpressExecutor *mpc_exec) {
+  LocalExpressExecutor(MPCExpressExecutor<Dbit> *mpc_exec) {
     this->mpc_exec_ = mpc_exec;
   }
 
@@ -255,7 +257,7 @@ public:
 
   int runLocalEvaluate();
 
-  void setMPCExpressExecutor(MPCExpressExecutor *mpc_exec) {
+  void setMPCExpressExecutor(MPCExpressExecutor<Dbit> *mpc_exec) {
     this->mpc_exec_ = mpc_exec;
   }
 
@@ -282,8 +284,9 @@ private:
 
   void creatNewFeedDict();
 
-  int createTokenValue(const std::string &token,
-                       MPCExpressExecutor::TokenValue &token_val);
+  int createTokenValue(
+      const std::string &token,
+      typename MPCExpressExecutor<Dbit>::TokenValue &token_val);
 
   template <typename T>
   void importColumnValues(std::map<std::string, std::vector<T>> &col_and_val) {
@@ -292,26 +295,26 @@ private:
     return;
   }
 
-  inline void
-  beforeLocalCalculate(std::stack<std::string> &token_stk,
-                       std::stack<MPCExpressExecutor::TokenValue> &val_stk,
-                       MPCExpressExecutor::TokenValue &val1,
-                       MPCExpressExecutor::TokenValue &val2, std::string &a,
-                       std::string &b);
+  inline void beforeLocalCalculate(
+      std::stack<std::string> &token_stk,
+      std::stack<typename MPCExpressExecutor<Dbit>::TokenValue> &val_stk,
+      typename MPCExpressExecutor<Dbit>::TokenValue &val1,
+      typename MPCExpressExecutor<Dbit>::TokenValue &val2, std::string &a,
+      std::string &b);
 
   inline void
   afterLocalCalculate(std::stack<std::string> &token_stk,
-                      std::stack<MPCExpressExecutor::TokenValue> &val_stk,
+                      std::stack<typename MPCExpressExecutor<Dbit>::TokenValue> &val_stk,
                       std::string &new_token,
-                      MPCExpressExecutor::TokenValue &res);
+                      typename MPCExpressExecutor<Dbit>::TokenValue &res);
 
   // std::map<std::string, std::vector<int64_t> *> i64_token_val_map_;
   // std::map<std::string, std::vector<double> *> fp64_token_val_map_;
 
-  MPCExpressExecutor *mpc_exec_;
-  std::map<std::string, MPCExpressExecutor::TokenValue> token_val_map_;
-  MPCExpressExecutor::FeedDict *new_feed;
-  MPCExpressExecutor::ColumnConfig *new_col_cfg;
+  MPCExpressExecutor<Dbit> *mpc_exec_;
+  std::map<std::string, typename MPCExpressExecutor<Dbit>::TokenValue> token_val_map_;
+  typename MPCExpressExecutor<Dbit>::FeedDict *new_feed;
+  typename MPCExpressExecutor<Dbit>::ColumnConfig *new_col_cfg;
   std::vector<double> final_val_double;
   std::vector<int64_t> final_val_int64;
 };

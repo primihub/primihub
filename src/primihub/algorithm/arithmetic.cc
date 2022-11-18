@@ -1,9 +1,11 @@
 #include "src/primihub/algorithm/arithmetic.h"
-#include "src/primihub/data_store/csv/csv_driver.h"
-#include "src/primihub/data_store/factory.h"
+
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/result.h>
+
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/data_store/factory.h"
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
@@ -25,13 +27,14 @@ void spiltStr(string str, const string &split, std::vector<string> &strlist) {
   }
 }
 
-ArithmeticExecutor::ArithmeticExecutor(
+template <Decimal Dbit>
+ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "arithmetic";
 
   std::map<std::string, Node> &node_map = config.node_map;
-  LOG(INFO) << node_map.size();
+  // LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -91,7 +94,8 @@ ArithmeticExecutor::ArithmeticExecutor(
   }
 }
 
-int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
     data_file_path_ = param_map["Data_File"].value_string();
@@ -104,7 +108,7 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_owner_.insert(make_pair(col, owner));
-      LOG(INFO) << col << ":" << owner;
+      // LOG(INFO) << col << ":" << owner;
     }
     // LOG(INFO) << col_and_owner;
 
@@ -115,7 +119,7 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_dtype_.insert(make_pair(col, dtype));
-      LOG(INFO) << col << ":" << dtype;
+      // LOG(INFO) << col << ":" << dtype;
     }
     // LOG(INFO) << col_and_dtype;
 
@@ -138,17 +142,17 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
       }
       mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
     } else {
-      mpc_exec_ = new MPCExpressExecutor();
+      mpc_exec_ = new MPCExpressExecutor<Dbit>();
     }
-    LOG(INFO) << expr_;
+    // LOG(INFO) << expr_;
     std::string parties = param_map["Parties"].value_string();
     spiltStr(parties, ";", tmp3);
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
       uint32_t party = std::atoi((*itr).c_str());
       parties_.push_back(party);
-      LOG(INFO) << party;
+      // LOG(INFO) << party;
     }
-    LOG(INFO) << parties;
+    // LOG(INFO) << parties;
 
     res_name_ = param_map["ResFileName"].value_string();
   } catch (std::exception &e) {
@@ -159,7 +163,7 @@ int ArithmeticExecutor::loadParams(primihub::rpc::Task &task) {
   return 0;
 }
 
-int ArithmeticExecutor::loadDataset() {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::loadDataset() {
   int ret = _LoadDatasetFromCSV(data_file_path_);
   // file reading error or file empty
   if (ret <= 0) {
@@ -188,7 +192,7 @@ int ArithmeticExecutor::loadDataset() {
   return 0;
 }
 
-int ArithmeticExecutor::initPartyComm(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::initPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
     return 0;
@@ -199,14 +203,11 @@ int ArithmeticExecutor::initPartyComm(void) {
   return 0;
 }
 
-int ArithmeticExecutor::execute() {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
   if (is_cmp) {
     try {
       sbMatrix sh_res;
-      f64Matrix<D16> m;
-      LOG(INFO) << expr_;
-      LOG(INFO) << expr_.substr(6, 1);
-      LOG(INFO) << expr_.substr(4, 1);
+      f64Matrix<Dbit> m;
       if (col_and_owner_[expr_.substr(4, 1)] == party_id_) {
         m.resize(1, col_and_val_double[expr_.substr(4, 1)].size());
         for (size_t i = 0; i < col_and_val_double[expr_.substr(4, 1)].size();
@@ -222,13 +223,14 @@ int ArithmeticExecutor::execute() {
       } else
         mpc_op_exec_->MPC_Compare(sh_res);
       // reveal
-      if (party_id_ == 0) {
-        i64Matrix tmp;
-        tmp = mpc_op_exec_->reveal(sh_res);
-        for (size_t i = 0; i < tmp.rows(); i++)
-          cmp_res_.emplace_back(static_cast<bool>(tmp(i, 0)));
-      } else {
-        mpc_op_exec_->reveal(sh_res, 0);
+      for (const auto& party : parties_) {
+        if (party_id_ == party) {
+          i64Matrix tmp = mpc_op_exec_->reveal(sh_res);
+          for (size_t i = 0; i < tmp.rows(); i++)
+            cmp_res_.emplace_back(static_cast<bool>(tmp(i, 0)));
+        } else {
+          mpc_op_exec_->reveal(sh_res, party);
+        }
       }
     } catch (std::exception &e) {
       LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
@@ -239,14 +241,16 @@ int ArithmeticExecutor::execute() {
     mpc_exec_->runMPCEvaluate();
     if (mpc_exec_->isFP64RunMode()) {
       mpc_exec_->revealMPCResult(parties_, final_val_double_);
-      for (auto itr = final_val_double_.begin(); itr != final_val_double_.end();
-           itr++)
-        LOG(INFO) << *itr;
+      // for (auto itr = final_val_double_.begin(); itr !=
+      // final_val_double_.end();
+      //      itr++)
+      //   LOG(INFO) << *itr;
     } else {
       mpc_exec_->revealMPCResult(parties_, final_val_int64_);
-      for (auto itr = final_val_int64_.begin(); itr != final_val_int64_.end();
-           itr++)
-        LOG(INFO) << *itr;
+      // for (auto itr = final_val_int64_.begin(); itr !=
+      // final_val_int64_.end();
+      //      itr++)
+      //   LOG(INFO) << *itr;
     }
   } catch (const std::exception &e) {
     std::string msg = "In party 0, ";
@@ -256,7 +260,7 @@ int ArithmeticExecutor::execute() {
   return 0;
 }
 
-int ArithmeticExecutor::finishPartyComm(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
   if (is_cmp) {
     mpc_op_exec_->fini();
     delete mpc_op_exec_;
@@ -266,7 +270,17 @@ int ArithmeticExecutor::finishPartyComm(void) {
   return 0;
 }
 
-int ArithmeticExecutor::saveModel(void) {
+template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
+  bool is_reveal = false;
+  for (auto party : parties_) {
+    if (party == party_id_) {
+      is_reveal = true;
+      break;
+    }
+  }
+  if (!is_reveal) {
+    return 0;
+  }
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
   if (final_val_double_.size() != 0)
@@ -318,7 +332,8 @@ int ArithmeticExecutor::saveModel(void) {
   return 0;
 }
 
-int ArithmeticExecutor::_LoadDatasetFromCSV(std::string &filename) {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
   std::string nodeaddr("test address"); // TODO
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", nodeaddr);
@@ -333,68 +348,109 @@ int ArithmeticExecutor::_LoadDatasetFromCSV(std::string &filename) {
   // }
   bool errors = false;
   int num_col = table->num_columns();
-
   // 'array' include values in a column of csv file.
-  auto array = std::static_pointer_cast<DoubleArray>(
-      table->column(num_col - 1)->chunk(0));
-  int64_t array_len = array->length();
+  int chunk_num = table->column(num_col - 1)->chunks().size();
+  int64_t array_len = 0;
+  for (int k = 0; k < chunk_num; k++) {
+    auto array = std::static_pointer_cast<DoubleArray>(
+        table->column(num_col - 1)->chunk(k));
+    array_len += array->length();
+  }
+  
   LOG(INFO) << "Label column '" << col_names[num_col - 1] << "' has "
             << array_len << " values.";
-
   // Force the same value count in every column.
+
   for (int i = 0; i < num_col; i++) {
+    int chunk_num = table->column(i)->chunks().size();
     if (col_and_dtype_[col_names[i]] == 0) {
-      auto array =
-          std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
-      std::vector<int64_t> tmp_data;
-      for (int64_t j = 0; j < array->length(); j++) {
-        tmp_data.push_back(array->Value(j));
-        LOG(INFO) << array->Value(j);
+      if (table->schema()->GetFieldByName(col_names[i])->type()->id() != 9) {
+        LOG(ERROR) << "Local data type is inconsistent with the demand data "
+                      "type!Demand data type is int,but local data type is "
+                      "double!Please input consistent data type!";
+        return -1;
       }
-      if (array->length() != array_len) {
-        LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
+      std::vector<int64_t> tmp_data;
+      int64_t tmp_len = 0;
+      for (int k = 0; k < chunk_num; k++) {
+        auto array =
+            std::static_pointer_cast<Int64Array>(table->column(i)->chunk(k));
+        tmp_len += array->length();
+        for (int64_t j = 0; j < array->length(); j++) {
+          tmp_data.push_back(array->Value(j));
+          // LOG(INFO) << array->Value(j);
+        }
+      }
+      if (tmp_len != array_len) {
+        LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
                    << " value, but other column has " << array_len << " value.";
         errors = true;
         break;
       }
       col_and_val_int.insert(
           pair<string, std::vector<int64_t>>(col_names[i], tmp_data));
-      for (auto itr = col_and_val_int.begin(); itr != col_and_val_int.end();
-           itr++) {
-        LOG(INFO) << itr->first;
-        auto tmp_vec = itr->second;
-        for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-          LOG(INFO) << *iter;
-      }
+      // for (auto itr = col_and_val_int.begin(); itr != col_and_val_int.end();
+      //      itr++) {
+      //   LOG(INFO) << itr->first;
+      //   auto tmp_vec = itr->second;
+      //   for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
+      //     LOG(INFO) << *iter;
+      // }
     } else {
-      auto array =
-          std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
       std::vector<double> tmp_data;
-      for (int64_t j = 0; j < array->length(); j++) {
-        tmp_data.push_back(array->Value(j));
-        LOG(INFO) << array->Value(j);
-      }
-      if (array->length() != array_len) {
-        LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
-                   << " value, but other column has " << array_len << " value.";
-        errors = true;
-        break;
+      int64_t tmp_len = 0;
+      if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
+        for (int k = 0; k < chunk_num; k++) {
+          auto array =
+              std::static_pointer_cast<Int64Array>(table->column(i)->chunk(k));
+          tmp_len += array->length();
+          for (int64_t j = 0; j < array->length(); j++) {
+            tmp_data.push_back(array->Value(j));
+            // LOG(INFO) << array->Value(j);
+          }
+        }
+        if (tmp_len != array_len) {
+          LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
+                     << " value, but other column has " << array_len
+                     << " value.";
+          errors = true;
+          break;
+        }
+      } else {
+        for (int k = 0; k < chunk_num; k++) {
+          auto array =
+              std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(k));
+          tmp_len += array->length();
+          for (int64_t j = 0; j < array->length(); j++) {
+            tmp_data.push_back(array->Value(j));
+            // LOG(INFO) << array->Value(j);
+          }
+        }
+        if (tmp_len != array_len) {
+          LOG(ERROR) << "Column " << col_names[i] << " has " << tmp_len
+                     << " value, but other column has " << array_len
+                     << " value.";
+          errors = true;
+          break;
+        }
       }
       col_and_val_double.insert(
           pair<string, std::vector<double>>(col_names[i], tmp_data));
-      for (auto itr = col_and_val_double.begin();
-           itr != col_and_val_double.end(); itr++) {
-        LOG(INFO) << itr->first;
-        auto tmp_vec = itr->second;
-        for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
-          LOG(INFO) << *iter;
-      }
+      // for (auto itr = col_and_val_double.begin();
+      //      itr != col_and_val_double.end(); itr++) {
+      //   LOG(INFO) << itr->first;
+      //   auto tmp_vec = itr->second;
+      //   for (auto iter = tmp_vec.begin(); iter != tmp_vec.end(); iter++)
+      //     LOG(INFO) << *iter;
+      // }
     }
   }
   if (errors)
     return -1;
 
-  return array->length();
+  return array_len;
 }
+template class ArithmeticExecutor<D32>;
+template class ArithmeticExecutor<D16>;
 
 } // namespace primihub

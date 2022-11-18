@@ -54,7 +54,7 @@ message TaskResponse {
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
-  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
   rpc Send(stream TaskRequest) returns (TaskResponse);
 }
 

@@ -55,7 +55,7 @@ std::shared_ptr<SenderDB>
             auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
             // Find the longest label and use that as label size
             size_t label_byte_count =
-                std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
+                 std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
                     [](auto &a, auto &b) {
                         return a.second.size() < b.second.size();
                     })->second.size();
@@ -88,9 +88,16 @@ KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
       job_id_(job_id), task_id_(task_id) {}
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
-    auto param_map = task.params().param_map();
+    const auto& param_map = task.params().param_map();
     try {
-        dataset_path_ = param_map["serverData"].value_string();
+        auto it = param_map.find("serverData");
+        if (it != param_map.end()) {
+            dataset_path_ = it->second.value_string();
+        } else {
+            LOG(ERROR) << "Failed to load params serverData, no match key find";
+            return -1;
+        }
+        // dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return -1;
@@ -169,7 +176,7 @@ int KeywordPIRServerTask::execute() {
     atomic<bool> stop = false;
     VLOG(5) << "begin to create ZMQSenderDispatcher";
     ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
-    int port = 1212;
+    int port = 2222;
     // bool done_exit = true;
     VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(port);
     dispatcher.run(stop, port);

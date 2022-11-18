@@ -46,6 +46,10 @@ class KeywordPIRClientTask : public TaskBase {
  private:
     int _LoadParams(Task &task);
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
+    // load dataset according by url
+    std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataFromDataset();
+    // load data from request directly
+    std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataFromRecvData();
     int _GetIntsection();
 
  private:
@@ -55,6 +59,7 @@ class KeywordPIRClientTask : public TaskBase {
     std::string dataset_path_;
     std::string result_file_path_;
     std::string server_address_;
+    bool recv_query_data_direct{false};
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_
