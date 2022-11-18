@@ -30,16 +30,16 @@ static std::string typeToName(PlatFormType type_) {
 }
 
 #define VLOG_WRAPPER(level, platform, job_id, task_id) \
-  VLOG(level) << "INFO" << platform << " " << job_id << " " << task_id << " "
+  VLOG(level) << " INFO " << platform << " " << job_id << " " << task_id << " "
 
 #define LOG_INFO_WRAPPER(platform, job_id, task_id) \
-  LOG(INFO) << "INFO" << platform << " " << job_id << " " << task_id << " "
+  LOG(INFO) << " INFO " << platform << " " << job_id << " " << task_id << " "
 
 #define LOG_WARNING_WRAPPER(platform, job_id, task_id) \
-  LOG(WARNING) << "WARN" << platform << " " << job_id << " " << task_id << " "
+  LOG(WARNING) << " WARN " << platform << " " << job_id << " " << task_id << " "
 
 #define LOG_ERROR_WRAPPER(platform, job_id, task_id) \
-  LOG(ERROR) << "ERROR" << platform << " " << job_id << " " << task_id << " "
+  LOG(ERROR) << " ERROR " << platform << " " << job_id << " " << task_id << " "
 
 #define V_VLOG(level, PLATFORM, JOB_ID, TASK_ID) \
     VLOG_WRAPPER(level, PLATFORM, JOB_ID, TASK_ID)
