@@ -43,7 +43,7 @@ def search_best_splits(X: pd.DataFrame,
 
     n = len(X)
     if bins is None:
-        bins = int(np.ceil(np.log(n) / np.log(4)))  # 4 is the base bite
+        bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)  # 4 is the base bite
 
     if isinstance(g, pd.Series):
         g = g.values
@@ -589,7 +589,7 @@ class XGB_GUEST_EN:
                               limit_add_len=3):
         n = len(X_guest)
         if bins is None:
-            bins = int(np.ceil(np.log(n) / np.log(4)))
+            bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
         if cal_hist:
             hist_0 = X_guest.apply(np.histogram, args=(bins,), axis=0)
             hist_points = hist_0.iloc[1]
