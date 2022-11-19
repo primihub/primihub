@@ -39,7 +39,7 @@ COPY ./src/primihub/protos/ ./src/primihub/protos/
 
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
+  && python3 -m pip install -r requirements.txt -i https://pypi.doubanio.com/simple/ --trusted-host pypi.doubanio.com \
   && python3 setup.py develop \
   && python3 setup.py solib --solib-path $TARGET_PATH 
 
