@@ -1,0 +1,19 @@
+name: Backup Git repository
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - develop
+
+jobs:
+  BackupGit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: backup
+      uses: jenkins-zh/git-backup-actions@v0.0.7
+      env:
+        GIT_DEPLOY_KEY: ${{ secrets.GIT_DEPLOY_KEY }}
+        TARGET_GIT: "git@gitee.com:primihub/primihub.git"
+        BRANCH: develop
