@@ -55,8 +55,8 @@ class SBO_ptr {
   struct SBOInterface {
     virtual ~SBOInterface() {};
 
-    // assumes dest is uninitialized and calls the 
-    // placement new move constructor with this as 
+    // assumes dest is uninitialized and calls the
+    // placement new move constructor with this as
     // dest destination.
     virtual void moveTo(SBO_ptr<T, StorageSize>& dest) = 0;
   };
@@ -188,6 +188,20 @@ enum  SessionMode  {
    Server
 };
 
+class SCopedTimer {
+ public:
+  SCopedTimer() {
+    start_ = std::chrono::high_resolution_clock::now();
+  }
+  template<typename T = std::chrono::milliseconds>
+  double timeElapse() {
+    auto now_ = std::chrono::high_resolution_clock::now();
+    auto time_diff = std::chrono::duration_cast<T>(now_ - start_).count();
+    return time_diff;
+  }
+ private:
+  std::chrono::high_resolution_clock::time_point start_;
+};
 
 }  // namespace primihub
 
