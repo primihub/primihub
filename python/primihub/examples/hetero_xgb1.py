@@ -895,74 +895,6 @@ class XGB_HOST_EN:
             min_child_sample=self.min_child_sample,
             min_child_weight=self.min_child_weight)
 
-        # if cal_hist:
-        #     hist_0 = X_host.apply(np.histogram, args=(bins,), axis=0)
-        #     bin_cut_points = hist_0.iloc[1]
-        #     uni_cut_points = X_host.apply(np.unique, axis=0)
-        #     #TODO: check whether the length of 'np.unique' is less than 'np.histogram'
-        # else:
-        #     cut_points = X_host.apply(np.unique, axis=0)
-
-        # for item in host_colnames:
-        #     #TODO: enhance with parallelization with ray
-        #     tmp_col = X_host[item]
-
-        #     if cal_hist:
-        #         if len(bin_cut_points[item]) < len(uni_cut_points[item]):
-        #             tmp_splits = bin_cut_points[item]
-        #         else:
-        #             tmp_splits = uni_cut_points[item]
-        #     else:
-        #         tmp_splits = cut_points[item]
-
-        #     if isinstance(tmp_splits, pd.Series):
-        #         tmp_splits = tmp_splits.values
-        #     #try:
-        #     #    tmp_splits = cut_points[item].values
-        #     #except:
-        #     #    tmp_splits = cut_points[item]
-
-        #     expand_splits = np.tile(tmp_splits, (len(tmp_col), 1)).T
-        #     expand_col = np.tile(tmp_col, (len(tmp_splits), 1))
-        #     less_flag = (expand_col < expand_splits).astype('int')
-        #     larger_flag = 1 - less_flag
-
-        #     # get the sum of g-s and h-s based on vars
-        #     G_left = np.dot(less_flag, g)
-        #     G_right = np.dot(larger_flag, g)
-        #     H_left = np.dot(less_flag, h)
-        #     H_right = np.dot(larger_flag, h)
-
-        #     # cal the gain for each var-cut
-        #     gain = G_left**2 / (H_left + self.reg_lambda) + G_right**2 / (
-        #         H_right + self.reg_lambda) - (G_left + G_right)**2 / (
-        #             H_left + H_right + self.reg_lambda)
-
-        #     # print("host_gain: ", gain)
-        #     # recorrect the gain
-        #     gain = gain / 2 - self.gamma
-        #     max_gain = max(gain)
-        #     max_index = gain.tolist().index(max_gain)
-        #     tmp_cut = tmp_splits[max_index]
-        #     if best_gain is None or max_gain > best_gain:
-        #         left_inds = (tmp_col < tmp_cut)
-        #         right_inds = (1 - left_inds).astype('bool')
-        #         if self.min_child_sample is not None:
-        #             if sum(left_inds) < self.min_child_sample or sum(
-        #                     right_inds) < self.min_child_sample:
-        #                 continue
-
-        #         if self.min_child_weight is not None:
-        #             if H_left[max_index] < self.min_child_weight or H_right[
-        #                     max_index] < self.min_child_weight:
-        #                 continue
-
-        #         best_gain = max_gain
-        #         best_cut = tmp_cut
-        #         best_var = item
-        #         G_left_best, G_right_best, H_left_best, H_right_best = G_left[
-        #             max_index], G_right[max_index], H_left[max_index], H_right[
-        #                 max_index]
         if best_var is not None:
             return dict({
                 'w_left': w_left,
@@ -1477,20 +1409,6 @@ def xgb_host_logic(cry_pri="paillier"):
     train_acc = metrics.accuracy_score(train_pred, Y)
     print("train_acc: ", train_acc)
 
-    # validate for test
-    # test_host = ph.dataset.read(dataset_key='test_hetero_xgb_host').df_data
-    # print("test_host: ", test_host.shape)
-
-    # test_y = test_host.pop('y')
-    # test_data = test_host.copy()
-    # test_pred = xgb_host.predict(test_data, lookup_table_sum)
-
-    # test_acc = metrics.accuracy_score(test_pred, test_y.values)
-    # print("train and test validate acc: ", {
-    #     'train_acc': train_acc,
-    #     'test_acc': test_acc
-    # })
-
     # save host-part model
     model_file_path = ph.context.Context.get_model_file_path() + ".host"
 
@@ -1505,19 +1423,6 @@ def xgb_host_logic(cry_pri="paillier"):
     lookup_file_path = ph.context.Context.get_host_lookup_file_path() + ".host"
     with open(lookup_file_path, 'wb') as hostTable:
         pickle.dump(lookup_table_sum, hostTable)
-
-    # save train loss and acc
-    # train_metrics = {
-    #     'train_acc':
-    #         train_acc,
-    #     'train_loss':
-    #         xgb_host.log_loss(Y, xgb_host.predict_prob(X_host,
-    #                                                    lookup_table_sum))
-    # }
-    # indicator_file_path = ph.context.Context.get_indicator_file_path()
-
-    # with open(indicator_file_path, 'wb') as trainMetrics:
-    #     pickle.dump(train_metrics, trainMetrics)
 
     predict_file_path = ph.context.Context.get_predict_file_path()
     indicator_file_path = ph.context.Context.get_indicator_file_path() + '.png'

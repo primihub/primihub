@@ -1,4 +1,4 @@
-pyarrow==4.0.1
+pyarrow==6.0.1
 pandas
 pytest
 numpy
@@ -18,7 +18,7 @@ phe==1.5.0
 
 loguru
 gevent
-ray==1.10.0
+ray==2.0.0
 transformers
 requests
 line_profiler
