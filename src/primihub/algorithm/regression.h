@@ -209,6 +209,8 @@ namespace primihub
       // extract the rows indexed by batchIndices and store them in XX, YY.
       extractBatch(XX, YY, X, Y, batchIndices);
 
+      VLOG(3) << "Generate a batch examples finish.";
+
       // std::cout << "E[" << i << "] " << ", after extractBatch" << std::endl;
       DEBUG_PRINT(engine << "X[" << i << "] "
                          << engine.reveal(XX).format(HeavyFmt) << std::endl);
@@ -221,6 +223,7 @@ namespace primihub
       Matrix xw = engine.mul(XX, w);
       // std::cout << "E[" << i << "] " << ", after engine.mul" << std::endl;
       Matrix fxw = engine.logisticFunc(xw);
+
       // std::cout << "E[" << i << "] " << ", after engine.logisticFunc" <<
       // std::endl;
       DEBUG_PRINT(engine << "P[" << i << "] "
@@ -240,24 +243,23 @@ namespace primihub
       // apply the update function  w = w - a/|B| (XX^T * (XX * w - YY))
       Matrix update = engine.mulTruncate(XX, error, aB);
 
+      VLOG(3) << "Calculate model update finish.";
+
       // std::cout << "U[" <<i<< "] = " << ", after engine.mulTruncate"  <<
       // std::endl;
       w = w - update;
 
+      VLOG(3) << "Update model finish.";
+
       DEBUG_PRINT(engine << "U[" << i << "] "
                          << engine.reveal(update).format(HeavyFmt) << std::endl);
-      if (X_test && i % 10 == 0 && i > (u64)(params.mIterations * 0.2))
+      if (X_test && i % 10 == 0)
       {
 
-        auto now = std::chrono::system_clock::now();
-        auto dur =
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
-                .count();
         auto score = test_logisticModel(engine, w, *X_test, *Y_test);
         auto l2 = score[0];
         auto percent = score[1];
-        LOG(INFO) << i << " @ " << ((i + 1) * 1000.0 / dur)
-                  << " iters/s  l2:" << l2 << " percent:" << percent << ".";
+        LOG(INFO) << i << ": " << "l2:" << l2 << ", percent:" << percent << ".";
       }
     }
   }
