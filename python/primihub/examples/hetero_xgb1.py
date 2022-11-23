@@ -313,7 +313,7 @@ class PallierSum(_AggregateOnKeyBase):
                 null_merge,
             ),
             finalize=_null_wrap_finalize(lambda a: a),
-            name=(f"enc_sum({str(on)})"),
+            name=(f"sum({str(on)})"),
         )
 
 
@@ -791,11 +791,15 @@ class XGB_GUEST_EN:
 
         for tmp_col in cols:
             tmp_group = buckets_x_guest.groupby(tmp_col)
-            tmp_sum = tmp_group._aggregate_on(PallierSum,
-                                              on=['g', 'h'],
-                                              ignore_nulls=True,
-                                              pub_key=self.pub,
-                                              add_actors=paillier_add_actors)
+            if is_encrypted:
+                tmp_sum = tmp_group._aggregate_on(
+                    PallierSum,
+                    on=['g', 'h'],
+                    ignore_nulls=True,
+                    pub_key=self.pub,
+                    add_actors=paillier_add_actors)
+            else:
+                tmp_sum = tmp_group.sum(on=['g', 'h'])
             total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
         return total_left_ghs
