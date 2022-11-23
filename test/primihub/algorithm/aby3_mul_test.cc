@@ -114,7 +114,7 @@ double matrixOperations(u64 partyIdx, eMatrix<i64> &plainMatrix1,
 }
 
 TEST(mpc_mul, aby3_3pc_test) {
-  u64 rows = 100, cols = 1;
+  u64 rows = 1000000, cols = 1;
 
   eMatrix<i64> plainMatrix1(rows, cols);
   eMatrix<i64> plainMatrix2(rows, cols);
@@ -139,7 +139,7 @@ TEST(mpc_mul, aby3_3pc_test) {
     }
   }
 
-  bool standalone = false;
+  bool standalone = true;
   if (standalone) {
     pid_t pid = fork();
     if (pid != 0) {
