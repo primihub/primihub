@@ -1260,6 +1260,7 @@ class XGB_HOST_EN:
         # print("guest_gh_sums: ", guest_gh_sums)
 
         max_row = guest_gh_sums['gain'].idxmax()
+        print("max_row: ", max_row)
         max_item = guest_gh_sums.iloc[max_row, :]
 
         max_gain = max_item['gain']
