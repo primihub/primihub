@@ -75,7 +75,7 @@ private:
                        sf64Matrix<D> &test_label);
 
   int _LoadDatasetFromCSV(std::string &filename);
-
+  int _LoadDatasetFromCSV(std::string &filename, eMatrix<double> &m);
   eMatrix<double>
   logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
               sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
