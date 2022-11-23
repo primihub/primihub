@@ -350,33 +350,33 @@ class ActorAdd(object):
         return tmp_sum
 
 
-def atom_paillier_sum(items, pub_key, add_actors, limit=3):
-    nums = items * limit
-    if len(items) < nums:
-        return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
-                                items)
-    N = int(len(items) / nums)
-    items_list = []
+# def atom_paillier_sum(items, pub_key, add_actors, limit=3):
+#     nums = items * limit
+#     if len(items) < nums:
+#         return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
+#                                 items)
+#     N = int(len(items) / nums)
+#     items_list = []
 
-    inter_results = []
-    for i in range(nums):
-        tmp_val = items[i * N:(i + 1) * N]
-        # tmp_add_actor = self.add_actors[i]
-        if i == (nums - 1):
-            tmp_val = items[i * N:]
-        items_list.append(tmp_val)
+#     inter_results = []
+#     for i in range(nums):
+#         tmp_val = items[i * N:(i + 1) * N]
+#         # tmp_add_actor = self.add_actors[i]
+#         if i == (nums - 1):
+#             tmp_val = items[i * N:]
+#         items_list.append(tmp_val)
 
-    inter_results = list(
-        add_actors.map(lambda a, v: a.add.remote(v), items_list))
+#     inter_results = list(
+#         add_actors.map(lambda a, v: a.add.remote(v), items_list))
 
-    #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
-    #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
-    # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
-    # final_result = ray.get(inter_results)
-    final_result = functools.reduce(
-        lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
+#     #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
+#     #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
+#     # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
+#     # final_result = ray.get(inter_results)
+#     final_result = functools.reduce(
+#         lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
 
-    return final_result
+#     return final_result
 
 
 @ray.remote
