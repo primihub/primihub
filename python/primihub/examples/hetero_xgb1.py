@@ -1847,7 +1847,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     lp.add_function(xgb_guest.sums_of_encrypted_ghs)
 
     lp_wrapper = lp(xgb_guest.fit)
-    lp_wrapper(X_guest, lookup_table_sum)
+    lp_wrapper(X_guest.copy(), lookup_table_sum)
     lp.print_stats()
 
     # xgb_guest.fit(X_guest, lookup_table_sum)
