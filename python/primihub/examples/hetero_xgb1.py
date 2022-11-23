@@ -1595,7 +1595,7 @@ num_tree = 5
 # the depth of each tree
 max_depth = 5
 # whether encrypted or not
-is_encrypted = False
+is_encrypted = True
 
 ray_group = True
 
