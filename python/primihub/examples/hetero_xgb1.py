@@ -802,6 +802,8 @@ class XGB_GUEST_EN:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
             total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
+        print("current total_left_ghs: ", total_left_ghs)
+
         return total_left_ghs
 
     def sums_of_encrypted_ghs(self,
@@ -1201,6 +1203,7 @@ class XGB_HOST_EN:
             'var': vars,
             'cut': cuts
         })
+        print("current gh_sums and plain_gh_sums: ", gh_sums, plain_gh_sums)
 
         gh_sums['G_right'] = plain_gh_sums['g'] - gh_sums['G_left']
         gh_sums['H_right'] = plain_gh_sums['h'] - gh_sums['H_left']
