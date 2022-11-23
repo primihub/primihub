@@ -797,7 +797,7 @@ class XGB_GUEST_EN:
 
         for tmp_col in cols:
             tmp_group = buckets_x_guest.groupby(tmp_col)
-            if is_encrypted:
+            if self.encrypted:
                 tmp_sum = tmp_group._aggregate_on(
                     PallierSum,
                     on=['g', 'h'],
@@ -1489,7 +1489,7 @@ class XGB_HOST_EN:
             # convert gradients and hessians to ints and encrypted with paillier
             # ratio = 10**3
             # gh_large = (gh * ratio).astype('int')
-            if is_encrypted:
+            if self.encrypted:
                 flat_gh = gh.values.flatten()
                 flat_gh *= self.ratio
 
