@@ -1257,7 +1257,7 @@ class XGB_HOST_EN:
                 guest_gh_sums['H_left'] + guest_gh_sums['H_right'] + + self.reg_lambda)
 
         guest_gh_sums['gain'] = guest_gh_sums['gain'] / 2 - self.gamma
-        # print("guest_gh_sums: ", guest_gh_sums)
+        print("guest_gh_sums: ", guest_gh_sums)
 
         max_row = guest_gh_sums['gain'].idxmax()
         print("max_row: ", max_row)
