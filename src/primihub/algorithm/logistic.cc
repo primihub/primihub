@@ -340,13 +340,9 @@ int LogisticRegressionExecutor::loadDataset() {
     return -3;
   }
 
-  VLOG(3) << "Train dataset has " << train_input_.rows()
-          << " examples, and dimension of each is " << train_input_.cols()
-          << ".";
-
-  VLOG(3) << "Test dataset has " << test_input_.rows()
-          << " examples, and dimension of each is " << test_input_.cols()
-          << ".";
+  LOG_INFO() << "Dataset has " << train_input_.rows()
+             << " examples, and dimension of each is " << train_input_.cols()
+             << ".";
 
   return 0;
 }
@@ -588,7 +584,8 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
   } else {
     w = engine_.remoteInput<D>(0);
   }
-
+  
+  LOG_INFO() << "Construct shares for triain dataset and test dataset finish.";
   LOG_INFO() << "Train dataset has " << train_data.rows()
             << " examples, dimension of each is " << train_data.cols() + 1
             << ".";
