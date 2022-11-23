@@ -815,9 +815,9 @@ class XGB_GUEST_EN:
                     add_actors=paillier_add_actors)
             else:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
-            total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
-                by=tmp_col, ascending=True)
-            # total_left_ghs[tmp_col] = tmp_sum.to_pandas()
+            # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
+            #     by=tmp_col, ascending=True)
+            total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
         print("current total_left_ghs: ", total_left_ghs)
 
@@ -1181,6 +1181,7 @@ class XGB_HOST_EN:
                         opt_paillier_decrypt_crt(self.pub, self.prv, item)
                         for item in val[col]
                     ]
+                val = val.sort_values(by=key, ascending=True)
 
                 cumsum_val = val.cumsum()
                 tmp_g_lefts = cumsum_val['sum(g)']
@@ -1197,6 +1198,9 @@ class XGB_HOST_EN:
         else:
             for key, val in gh_sums_dict.items():
                 m, n = val.shape
+
+                # sorted by col
+                val = val.sort_values(by=key, ascending=True)
                 tmp_var = [key] * m
                 tmp_cut = val[key].values.tolist()
                 # for col in sum_col:
