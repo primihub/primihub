@@ -1721,9 +1721,9 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # print("host structure: ", xgb_host.tree_structure)
 
-    train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
-    train_acc = metrics.accuracy_score(train_pred, Y)
-    print("train_acc: ", train_acc)
+    # train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
+    # train_acc = metrics.accuracy_score(train_pred, Y)
+    # print("train_acc: ", train_acc)
 
     # save host-part model
     model_file_path = ph.context.Context.get_model_file_path() + ".host"
@@ -1744,7 +1744,7 @@ def xgb_host_logic(cry_pri="paillier"):
     indicator_file_path = ph.context.Context.get_indicator_file_path() + '.png'
 
     # save results to png
-    current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
+    # current_pred = xgb_host.predict_prob(X_host.copy(), lookup_table_sum)
     # plt.figure()
     # fpr, tpr, threshold = metrics.roc_curve(Y, current_pred)
     # plt.plot(fpr, tpr)
@@ -1752,8 +1752,8 @@ def xgb_host_logic(cry_pri="paillier"):
     # plt.savefig(indicator_file_path)
 
     # save pred_y to file
-    preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
-    preds.to_csv(predict_file_path, index=False, sep='\t')
+    # preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
+    # preds.to_csv(predict_file_path, index=False, sep='\t')
     # with open(indicator_file_path, 'wb') as trainMetrics:
     #     pickle.dump(train_metrics, trainMetrics)
 
@@ -1883,13 +1883,13 @@ def xgb_guest_logic(cry_pri="paillier"):
     with open(lookup_file_path, 'wb') as guestTable:
         pickle.dump(lookup_table_sum, guestTable)
 
-    xgb_guest.predict(X_guest.copy(), lookup_table_sum)
+    # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # validate for test
     # test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
     # print("test_guest: ", test_guest.shape)
     # xgb_guest.predict(test_guest, lookup_table_sum)
-    xgb_guest.predict(X_guest.copy(), lookup_table_sum)
+    # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
