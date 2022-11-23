@@ -41,6 +41,7 @@ from ray.data._internal.null_aggregate import (_null_wrap_init,
                                                _null_wrap_finalize)
 # import matplotlib.pyplot as plt
 T = TypeVar("T", contravariant=True)
+U = TypeVar("U", covariant=True)
 
 Block = Union[List[T], "pyarrow.Table", "pandas.DataFrame", bytes]
 
@@ -1580,7 +1581,7 @@ num_tree = 5
 # the depth of each tree
 max_depth = 5
 # whether encrypted or not
-is_encrypted = True
+is_encrypted = False
 
 ray_group = True
 
