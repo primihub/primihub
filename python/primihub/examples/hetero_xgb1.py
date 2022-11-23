@@ -750,6 +750,8 @@ class XGB_GUEST_EN:
         if bins is None:
             bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
 
+        set_items = X_guest.apply(np.unique, axis=0)
+
         X_guest_max0 = X_guest.max(axis=0) + 0.005
         X_guest_min0 = X_guest.min(axis=0)
         X_guest_width = (X_guest_max0 - X_guest_min0) / bins
@@ -757,11 +759,18 @@ class XGB_GUEST_EN:
         X_guest['h'] = encrypted_ghs['h']
         cols = X_guest.columns.difference(['g', 'h'])
 
+        set_cols = [col for col in cols if len(set_items[col]) < bins]
+
         ray_x_guest = ray.data.from_pandas(X_guest)
 
         def hist_bin_transform(df: pd.DataFrame):
 
             def assign_bucket(s: pd.Series):
+
+                # check if current 's' in 'set_cols'
+                if s.name in set_cols:
+                    return s
+
                 # s_max = X_guest_max0[s.name] + 0.005
                 s_min = X_guest_min0[s.name]
                 s_width = X_guest_width[s.name]
@@ -806,7 +815,9 @@ class XGB_GUEST_EN:
                     add_actors=paillier_add_actors)
             else:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
-            total_left_ghs[tmp_col] = tmp_sum.to_pandas()
+            total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
+                by=tmp_col, ascending=True)
+            # total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
         print("current total_left_ghs: ", total_left_ghs)
 
