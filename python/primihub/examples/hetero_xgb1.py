@@ -777,8 +777,6 @@ class XGB_GUEST_EN:
 
         buckets_x_guest = ray_x_guest.map_batches(hist_bin_transform,
                                                   batch_format="pandas")
-        print("current x-guset and buckets_x_guest", X_guest,
-              buckets_x_guest.to_pandas())
 
         # add 'g' and 'h' to bucket guest
         buckets_x_guest = buckets_x_guest.add_column(
@@ -786,6 +784,9 @@ class XGB_GUEST_EN:
 
         buckets_x_guest = buckets_x_guest.add_column(
             "h", lambda df: encrypted_ghs['h'])
+
+        print("current x-guset and buckets_x_guest", X_guest,
+              buckets_x_guest.to_pandas())
 
         total_left_ghs = {}
         paillier_add_actors = ActorPool(
