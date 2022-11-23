@@ -201,7 +201,7 @@ namespace primihub
     u64 aB = std::log2(1 / (params.mLearningRate / params.mBatchSize));
     auto start = std::chrono::system_clock::now();
 
-    for (u64 i = 0; i < (X.rows() / params.mBatchSize); ++i)
+    for (u64 i = 0; i < params.mIterations; ++i)
     {
       // sample the next mini-batch without replacement.
       getSubset(batchIndices, indices, idxIter, prng);
@@ -246,7 +246,7 @@ namespace primihub
 
       DEBUG_PRINT(engine << "U[" << i << "] "
                          << engine.reveal(update).format(HeavyFmt) << std::endl);
-      if (X_test && i % 10 == 0 && i > (u64)(params.mIterations * 0.2))
+      if (X_test && i % 10 == 0)
       {
 
         auto now = std::chrono::system_clock::now();

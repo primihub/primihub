@@ -64,11 +64,9 @@ LogisticRegressionExecutor::logistic_main(sf64Matrix<D> &train_data_0_1, sf64Mat
   LOG_INFO() << "(Batchsize) :" << params.mBatchSize << ".\n";
   LOG_INFO() << "(Train_loader size):"
             << (train_data_0_1.rows() / params.mBatchSize) << ".\n";
-  for (int i = 0; i < IT; i++) {
-    LOG_INFO() << "Epochs : ( " << i << "/" << IT << " )";
-    SGD_Logistic(params, p, train_data_0_1, train_label_0_1, W2_0_1,
-                 &test_data_0_1, &test_label_0_1);
-  }
+
+  SGD_Logistic(params, p, train_data_0_1, train_label_0_1, W2_0_1, 
+                &test_data_0_1, &test_label_0_1);
 
   auto end = std::chrono::system_clock::now();
 
@@ -164,6 +162,14 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
     train_input_filepath_ = param_map["Data_File"].value_string();
+    if(train_input_filepath_==""){
+      train_input_filepath_ = param_map["TrainData"].value_string();
+      test_input_filepath_ = param_map["TestData"].value_string();
+      LOG_INFO() << "Train data " << train_input_filepath_ << ", test data "
+            << test_input_filepath_ << ".";
+    }
+    else
+      LOG_INFO() << "Train data " << train_input_filepath_; 
     // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
@@ -174,9 +180,6 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
     LOG_ERROR() << "Failed to load params: " << e.what();
     return -1;
   }
-
-  LOG_INFO() << "Train data " << train_input_filepath_ << ", test data "
-            << test_input_filepath_ << ".";
   return 0;
 }
 
@@ -248,20 +251,88 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
   return array->length();
 }
 
-int LogisticRegressionExecutor::loadDataset() {
-  int ret = _LoadDatasetFromCSV(train_input_filepath_);
-  // file reading error or file empty
-  if (ret <= 0) {
-    LOG_ERROR() << "Load dataset failed.";
-    return -1;
+int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename,
+                                                    eMatrix<double> &m) {
+  std::string nodeaddr("test address"); // TODO
+  std::shared_ptr<DataDriver> driver =
+      DataDirverFactory::getDriver("CSV", nodeaddr);
+  std::shared_ptr<Cursor> &cursor = driver->read(filename);
+  std::shared_ptr<Dataset> ds = cursor->read();
+  std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
+
+  // Label column.
+  std::vector<std::string> col_names = table->ColumnNames();
+  bool errors = false;
+  int num_col = table->num_columns();
+
+  // 'array' include values in a column of csv file.
+  auto array = std::static_pointer_cast<DoubleArray>(
+      table->column(num_col - 1)->chunk(0));
+  int64_t array_len = array->length();
+  VLOG(3) << "Label column '" << col_names[num_col - 1] << "' has " << array_len
+          << " values.";
+
+  // Force the same value count in every column.
+  for (int i = 0; i < num_col - 1; i++) {
+    auto array =
+        std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+    if (array->length() != array_len) {
+      LOG(ERROR) << "Column " << col_names[i] << " has " << array->length()
+                 << " value, but label column has " << array_len << " value.";
+      errors = true;
+      break;
+    }
   }
 
-  // ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
-  // // file reading error or file empty
-  // if (ret <= 0) {
-  //   LOG_ERROR() << "Load dataset for test failed.";
-  //   return -2;
-  // }
+  if (errors)
+    return -1;
+
+  m.resize(array_len, num_col);
+  for (int i = 0; i < num_col - 1; i++) {
+    if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
+      auto array =
+          std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
+      for (int64_t j = 0; j < array->length(); j++) {
+        m(j, i) = array->Value(j);
+      }
+    } else {
+      auto array =
+          std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
+      for (int64_t j = 0; j < array->length(); j++) {
+        m(j, i) = array->Value(j);
+      }
+    }
+  }
+  return array->length();
+}
+
+
+
+int LogisticRegressionExecutor::loadDataset() {
+  int ret;
+  if(test_input_filepath_==""){
+    ret = _LoadDatasetFromCSV(train_input_filepath_);
+    // file reading error or file empty
+    if (ret <= 0) {
+      LOG_ERROR() << "Load dataset failed.";
+      return -1;
+    }  
+  }
+  else{
+    ret = _LoadDatasetFromCSV(train_input_filepath_, train_input_);
+    // file reading error or file empty
+    if (ret <= 0) {
+      LOG_ERROR() << "Load dataset for train failed.";
+      return -2;
+    }
+    ret = _LoadDatasetFromCSV(test_input_filepath_, test_input_);
+    // file reading error or file empty
+    if (ret <= 0) {
+      LOG_ERROR() << "Load dataset for test failed.";
+      return -2;
+    }
+  }
+
 
   if (train_input_.cols() != test_input_.cols()) {
     LOG_ERROR()
