@@ -786,7 +786,8 @@ class XGB_GUEST_EN:
             "h", lambda df: encrypted_ghs['h'])
 
         print("current x-guset and buckets_x_guest", X_guest,
-              buckets_x_guest.to_pandas())
+              buckets_x_guest.to_pandas(), encrypted_ghs,
+              buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
         paillier_add_actors = ActorPool(
