@@ -7,7 +7,16 @@ import pandas as pd
 import numpy as np
 import logging
 import pickle
+from typing import (
+    List,
+    Optional,
+    Union,
+    TypeVar,
+)
+import pandas
+import pyarrow
 
+from ray.data.block import KeyFn, _validate_key_fn
 from primihub.primitive.opt_paillier_c2py_warpper import *
 import time
 import pandas as pd
@@ -17,11 +26,34 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from primihub.channel.zmq_channel import IOService, Session
+from ray.data._internal.pandas_block import PandasBlockAccessor
+from ray.data._internal.util import _check_pyarrow_version
+from typing import Callable, Optional
+from ray.data.block import BlockAccessor
 import functools
 import ray
 from ray.util import ActorPool
 from line_profiler import LineProfiler
+from ray.data.aggregate import _AggregateOnKeyBase
+from ray.data._internal.null_aggregate import (_null_wrap_init,
+                                               _null_wrap_merge,
+                                               _null_wrap_accumulate_block,
+                                               _null_wrap_finalize)
 # import matplotlib.pyplot as plt
+T = TypeVar("T", contravariant=True)
+
+Block = Union[List[T], "pyarrow.Table", "pandas.DataFrame", bytes]
+
+_pandas = None
+
+
+def lazy_import_pandas():
+    global _pandas
+    if _pandas is None:
+        import pandas
+        _pandas = pandas
+    return _pandas
+
 
 LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
@@ -156,6 +188,132 @@ def opt_paillier_decrypt_crt(pub, prv, cipher_text):
     decrypt_text_num = int(decrypt_text)
 
     return decrypt_text_num
+
+
+def atom_paillier_sum(items, pub_key, add_actors, limit=15):
+    # less 'limit' will create more parallels
+    # nums = items * limit
+    if isinstance(items, pd.Series):
+        items = items.values
+    if len(items) < limit:
+        return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
+                                items)
+    N = int(len(items) / limit)
+    items_list = []
+    inter_results = []
+    for i in range(N):
+        tmp_val = items[i * limit:(i + 1) * limit]
+        # tmp_add_actor = self.add_actors[i]
+        if i == (N - 1):
+            tmp_val = items[i * limit:]
+        items_list.append(tmp_val)
+    inter_results = list(
+        add_actors.map(lambda a, v: a.add.remote(v), items_list))
+    #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
+    #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
+    # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
+    # final_result = ray.get(inter_results)
+    final_result = functools.reduce(
+        lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
+    return final_result
+
+
+class MyPandasBlockAccessor(PandasBlockAccessor):
+
+    def sum(self, on: KeyFn, ignore_nulls: bool, encrypted: bool, pub_key: None,
+            add_actors) -> Optional[U]:
+        pd = lazy_import_pandas()
+        if on is not None and not isinstance(on, str):
+            raise ValueError(
+                "on must be a string or None when aggregating on Pandas blocks, but "
+                f"got: {type(on)}.")
+        if self.num_rows() == 0:
+            return None
+        col = self._table[on]
+        print("=====", self._table, col)
+        # if col.isnull().all():
+        #     # Short-circuit on an all-null column, returning None. This is required for
+        #     # sum() since it will otherwise return 0 when summing on an all-null column,
+        #     # which is not what we want.
+        #     return None
+        if not encrypted:
+            val = col.sum(skipna=ignore_nulls)
+        else:
+            val = atom_paillier_sum(col, pub_key, add_actors)
+            # tmp_val = {}
+            # for tmp_col in on:
+            #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
+            # val = pd.DataFrame(tmp_val)
+            # pass
+        if pd.isnull(val):
+            return None
+        return val
+
+
+class MyBlockAccessor(BlockAccessor):
+    """Provides accessor methods for a specific block.
+
+    Ideally, we wouldn't need a separate accessor classes for blocks. However,
+    this is needed if we want to support storing ``pyarrow.Table`` directly
+    as a top-level Ray object, without a wrapping class (issue #17186).
+
+    There are three types of block accessors: ``SimpleBlockAccessor``, which
+    operates over a plain Python list, ``ArrowBlockAccessor`` for
+    ``pyarrow.Table`` type blocks, ``PandasBlockAccessor`` for ``pandas.DataFrame``
+    type blocks.
+    """
+
+    @staticmethod
+    def for_block(block: Block) -> "BlockAccessor[T]":
+        """Create a block accessor for the given block."""
+        _check_pyarrow_version()
+        import pandas
+        import pyarrow
+        # if isinstance(block, pyarrow.Table):
+        #     from ray.data._internal.arrow_block import ArrowBlockAccessor
+        #     return ArrowBlockAccessor(block)
+        if isinstance(block, pandas.DataFrame):
+            # from ray.data._internal.pandas_block import PandasBlockAccessor
+            return MyPandasBlockAccessor(block)
+        # elif isinstance(block, bytes):
+        #     from ray.data._internal.arrow_block import ArrowBlockAccessor
+        #     return ArrowBlockAccessor.from_bytes(block)
+        # elif isinstance(block, list):
+        #     from ray.data._internal.simple_block import SimpleBlockAccessor
+        #     return SimpleBlockAccessor(block)
+        else:
+            raise TypeError("Not a block type: {} ({})".format(
+                block, type(block)))
+
+
+class PallierSum(_AggregateOnKeyBase):
+    """Define sum of encrypted items."""
+
+    def __init__(self,
+                 on: Optional[KeyFn] = None,
+                 ignore_nulls: bool = True,
+                 pub_key=None,
+                 add_actors=None):
+        self._set_key_fn(on)
+        # null_merge = _null_wrap_merge(ignore_nulls, lambda a1, a2: a1 + a2)
+        null_merge = _null_wrap_merge(
+            ignore_nulls, lambda a1, a2: opt_paillier_add(pub_key, a1, a2))
+        super().__init__(
+            init=_null_wrap_init(lambda k: 0),
+            merge=null_merge,
+            accumulate_block=_null_wrap_accumulate_block(
+                ignore_nulls,
+                lambda block: MyBlockAccessor.for_block(block).sum(
+                    on,
+                    ignore_nulls,
+                    encrypted=True,
+                    pub_key=pub_key,
+                    add_actors=add_actors),
+                null_merge,
+            ),
+            finalize=_null_wrap_finalize(lambda a: a),
+            name=(f"enc_sum({str(on)})"),
+        )
 
 
 @ray.remote
@@ -579,6 +737,68 @@ class XGB_GUEST_EN:
         self.tree_structure = {}
         self.encrypted = is_encrypted
 
+    def sums_of_encrypted_ghs_with_ray(self,
+                                       X_guest,
+                                       encrypted_ghs,
+                                       cal_hist=True,
+                                       bins=None,
+                                       add_actor_num=20,
+                                       map_pools=50,
+                                       limit_add_len=3):
+        n = len(X_guest)
+        if bins is None:
+            bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
+
+        X_guest_max0 = X_guest.max(axis=0) + 0.005
+        X_guest_min0 = X_guest.min(axis=0)
+        X_guest_width = (X_guest_max0 - X_guest_min0) / bins
+        cols = X_guest.columns
+
+        ray_x_guest = ray.data.from_pandas(X_guest)
+
+        def hist_bin_transform(df: pd.DataFrame):
+
+            def assign_bucket(s: pd.Series):
+                # s_max = X_guest_max0[s.name] + 0.005
+                s_min = X_guest_min0[s.name]
+                s_width = X_guest_width[s.name]
+                s_bin = np.ceil((s - s_min) // s_width)
+
+                s_split = s_min + s_bin * s_width
+
+                return round(s_split, 3)
+
+                # return int((s - s_min) // s_width)
+
+            df.loc[:, cols] = df.loc[:, cols].transform(assign_bucket)
+
+            return df
+
+        buckets_x_guest = ray_x_guest.map_batches(hist_bin_transform,
+                                                  batch_format="pandas")
+
+        # add 'g' and 'h' to bucket guest
+        buckets_x_guest = buckets_x_guest.add_column(
+            "g", lambda df: encrypted_ghs['g'])
+
+        buckets_x_guest = buckets_x_guest.add_column(
+            "h", lambda df: encrypted_ghs['h'])
+
+        total_left_ghs = {}
+        paillier_add_actors = ActorPool(
+            [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
+
+        for tmp_col in cols:
+            tmp_group = buckets_x_guest.groupby(tmp_col)
+            tmp_sum = tmp_group._aggregate_on(PallierSum,
+                                              on=['g', 'h'],
+                                              ignore_nulls=True,
+                                              pub_key=self.pub,
+                                              add_actors=paillier_add_actors)
+            total_left_ghs[tmp_col] = tmp_sum.to_pandas()
+
+        return total_left_ghs
+
     def sums_of_encrypted_ghs(self,
                               X_guest,
                               encrypted_ghs,
@@ -636,7 +856,12 @@ class XGB_GUEST_EN:
 
         # calculate sums of encrypted 'g' and 'h'
         #TODO: only calculate the right ids and left ids
-        encrypte_gh_sums = self.sums_of_encrypted_ghs(X_guest, encrypted_ghs)
+        if ray_group:
+            encrypte_gh_sums = self.sums_of_encrypted_ghs_with_ray(
+                X_guest, encrypted_ghs)
+        else:
+            encrypte_gh_sums = self.sums_of_encrypted_ghs(
+                X_guest, encrypted_ghs)
         self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
         best_cut = self.proxy_server.Get('best_cut')
 
@@ -907,6 +1132,76 @@ class XGB_HOST_EN:
         else:
             return None
 
+    def gh_sums_decrypted_with_ray(self,
+                                   gh_sums_dict,
+                                   plain_gh_sums,
+                                   decryption_pools=5):
+        sum_col = ['sum(g)', 'sum(h)']
+        G_lefts = []
+        G_rights = []
+        H_lefts = []
+        H_rights = []
+        cuts = []
+        vars = []
+        if self.encrypted:
+            # encryption_pools = ActorPool([
+            #     PaillierActor.remote(self.prv, self.pub)
+            #     for _ in range(decryption_pools)
+            # ])
+            for key, val in gh_sums_dict.items():
+                m, n = val.shape
+                tmp_var = [key] * m
+                tmp_cut = val[key].values.tolist()
+                for col in sum_col:
+                    val[col] = [
+                        opt_paillier_decrypt_crt(self.pub, self.prv, item)
+                        for item in val[col]
+                    ]
+
+                cumsum_val = val.cumsum()
+                tmp_g_lefts = cumsum_val['sum(g)']
+                tmp_h_lefts = cumsum_val['sum(h)']
+
+                G_lefts += tmp_g_lefts.values.tolist()
+                H_lefts += tmp_h_lefts.values.tolist()
+                vars += tmp_var
+                cuts += tmp_cut
+
+                # encrypted_sums = val[sum_col]
+                # m, n = encrypted_sums.shape
+                # encrypted_sums_flat = encrypted_sums.values.flatten()
+        else:
+            for key, val in gh_sums_dict.items():
+                m, n = val.shape
+                tmp_var = [key] * m
+                tmp_cut = val[key].values.tolist()
+                # for col in sum_col:
+                #     val[col] = [
+                #         opt_paillier_decrypt_crt(self.pub, self.prv, item)
+                #         for item in val[col]
+                #     ]
+
+                cumsum_val = val.cumsum()
+                tmp_g_lefts = cumsum_val['sum(g)']
+                tmp_h_lefts = cumsum_val['sum(h)']
+
+                G_lefts += tmp_g_lefts.values.tolist()
+                H_lefts += tmp_h_lefts.values.tolist()
+                vars += tmp_var
+                cuts += tmp_cut
+
+        gh_sums = pd.DataFrame({
+            'G_left': G_lefts,
+            'H_left': H_lefts,
+            'var': vars,
+            'cut': cuts
+        })
+
+        gh_sums['G_right'] = plain_gh_sums['g'] - gh_sums['G_left']
+        gh_sums['H_right'] = plain_gh_sums['h'] - gh_sums['H_left']
+
+        return gh_sums
+
     def gh_sums_decrypted(self,
                           gh_sums: pd.DataFrame,
                           decryption_pools=50,
@@ -994,8 +1289,12 @@ class XGB_HOST_EN:
         )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
 
         # decrypted the 'guest_gh_sums' with paillier
-        dec_guest_gh_sums = self.gh_sums_decrypted(guest_gh_sums,
-                                                   plain_gh_sums=plain_gh_sums)
+        if ray_group:
+            dec_guest_gh_sums = self.gh_sums_decrypted_with_ray(
+                guest_gh_sums, plain_gh_sums=plain_gh_sums)
+        else:
+            dec_guest_gh_sums = self.gh_sums_decrypted(
+                guest_gh_sums, plain_gh_sums=plain_gh_sums)
 
         # get the best cut of 'guest'
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
@@ -1282,6 +1581,8 @@ num_tree = 5
 max_depth = 5
 # whether encrypted or not
 is_encrypted = True
+
+ray_group = True
 
 min_child_weight = 5
 
