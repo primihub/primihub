@@ -753,7 +753,9 @@ class XGB_GUEST_EN:
         X_guest_max0 = X_guest.max(axis=0) + 0.005
         X_guest_min0 = X_guest.min(axis=0)
         X_guest_width = (X_guest_max0 - X_guest_min0) / bins
-        cols = X_guest.columns
+        X_guest['g'] = encrypted_ghs['g']
+        X_guest['h'] = encrypted_ghs['h']
+        cols = X_guest.columns.difference(['g', 'h'])
 
         ray_x_guest = ray.data.from_pandas(X_guest)
 
@@ -779,11 +781,11 @@ class XGB_GUEST_EN:
                                                   batch_format="pandas")
 
         # add 'g' and 'h' to bucket guest
-        buckets_x_guest = buckets_x_guest.add_column(
-            "g", lambda df: encrypted_ghs['g'])
+        # buckets_x_guest = buckets_x_guest.add_column(
+        #     "g", lambda df: encrypted_ghs['g'])
 
-        buckets_x_guest = buckets_x_guest.add_column(
-            "h", lambda df: encrypted_ghs['h'])
+        # buckets_x_guest = buckets_x_guest.add_column(
+        #     "h", lambda df: encrypted_ghs['h'])
 
         print("current x-guset and buckets_x_guest", X_guest,
               buckets_x_guest.to_pandas(), encrypted_ghs,
