@@ -1181,7 +1181,7 @@ class XGB_HOST_EN:
                         opt_paillier_decrypt_crt(self.pub, self.prv, item)
                         for item in val[col]
                     ]
-                val = val.sort_values(by=key, ascending=True)
+                val = val.sort_values(by=key, ascending=True) / self.ratio
 
                 cumsum_val = val.cumsum()
                 tmp_g_lefts = cumsum_val['sum(g)']
