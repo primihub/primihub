@@ -548,6 +548,24 @@ class ReduceGH(object):
         return GH
 
 
+@ray.remote
+class GroupPool:
+
+    def __init__(self, add_actors, pub) -> None:
+        self.add_actors = add_actors
+        self.pub = pub
+        pass
+
+    def groupby(self, group_col):
+        tmp_sum = group_col._aggregate_on(PallierSum,
+                                          on=['g', 'h'],
+                                          ignore_nulls=True,
+                                          pub_key=self.pub,
+                                          add_actors=self.add_actors)
+
+        return tmp_sum.to_pandas()
+
+
 class BatchGHSum:
 
     def __init__(self, split_cuts) -> None:
@@ -804,22 +822,39 @@ class XGB_GUEST_EN:
         paillier_add_actors = ActorPool(
             [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
+        grouppools = ActorPool([
+            GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
+        ])
+
+        groups = []
         for tmp_col in cols:
             tmp_group = buckets_x_guest.groupby(tmp_col)
-            if self.encrypted:
-                tmp_sum = tmp_group._aggregate_on(
-                    PallierSum,
-                    on=['g', 'h'],
-                    ignore_nulls=True,
-                    pub_key=self.pub,
-                    add_actors=paillier_add_actors)
-            else:
-                tmp_sum = tmp_group.sum(on=['g', 'h'])
-            # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
-            #     by=tmp_col, ascending=True)
-            total_left_ghs[tmp_col] = tmp_sum.to_pandas()
+            groups.append(tmp_group)
 
-        print("current total_left_ghs: ", total_left_ghs)
+        if self.encrypted:
+            res = list(grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+        else:
+            res = [
+                tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
+            ]
+
+        for key, val in zip(cols, res):
+            total_left_ghs[key] = val
+
+        #     if self.encrypted:
+        #         tmp_sum = tmp_group._aggregate_on(
+        #             PallierSum,
+        #             on=['g', 'h'],
+        #             ignore_nulls=True,
+        #             pub_key=self.pub,
+        #             add_actors=paillier_add_actors)
+        #     else:
+        #         tmp_sum = tmp_group.sum(on=['g', 'h'])
+        #     # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
+        #     #     by=tmp_col, ascending=True)
+        #     total_left_ghs[tmp_col] = tmp_sum.to_pandas()
+
+        # print("current total_left_ghs: ", total_left_ghs)
 
         return total_left_ghs
 
