@@ -33,8 +33,10 @@ RUN mkdir data log \
 # Copy test data for caict into /app/data and test scripts for caict into /opt/scripts/.
 RUN git clone https://gitlab.primihub.com/openmpc/scripts-for-caict.git
 RUN mkdir /caict
+RUN mkdir /app/data/caict
 RUN cp scripts-for-caict/* /caict/ -r
 RUN cp scripts-for-caict/data/* /app/data/
+RUN cp scripts-for-caict/data/cert/* /app/data/cert/
 RUN rm -rf scripts-for-caict
 
 # Copy all test config files to /app
