@@ -16,7 +16,7 @@
 
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
-
+#include <glog/logging.h>
 #include "src/primihub/protos/common.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
 
@@ -32,17 +32,20 @@ using TaskParam = primihub::rpc::Task;
  */
 class TaskBase {
  public:
-    TaskBase(const TaskParam *task_param,
-                std::shared_ptr<DatasetService> dataset_service);
-    virtual ~TaskBase() = default;
-    virtual int execute() = 0;
-
-    void setTaskParam(const TaskParam *task_param);
-    TaskParam* getTaskParam();
+   TaskBase(const TaskParam *task_param,
+            std::shared_ptr<DatasetService> dataset_service);
+   virtual ~TaskBase() = default;
+   virtual int execute() = 0;
+   virtual int kill_task() {
+      LOG(INFO) << "UNIMPLEMENT";
+   };
+   void setTaskParam(const TaskParam *task_param);
+   TaskParam* getTaskParam();
 
  protected:
-    TaskParam task_param_;
-    std::shared_ptr<DatasetService> dataset_service_;
+   std::atomic<bool> stop_{false};
+   TaskParam task_param_;
+   std::shared_ptr<DatasetService> dataset_service_;
 };
 
 } // namespace primihub::task

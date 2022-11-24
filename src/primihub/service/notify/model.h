@@ -29,12 +29,12 @@
 #include "src/primihub/common/eventbus/eventbus.hpp"
 #include "src/primihub/protos/service.grpc.pb.h"
 
-/* Primihub notification toplogy 
+/* Primihub notification toplogy
 
                                              {Inprocess}                            {Inprocess or Interprocess}                    {Interprocess}
 
    ---------    notifyStatus/notifyResult   ----------------   publish/subscribe    -----------------------------    Any channel  -----------------
-   |Nodelet| -----------------------------> |NotifyDelegate | --------------------> |NotifyServer Implemention 1| ------------> |Register Client 1| 
+   |Nodelet| -----------------------------> |NotifyDelegate | --------------------> |NotifyServer Implemention 1| ------------> |Register Client 1|
    ---------                                ----------------  |                     -----------------------------                -----------------
                                                               | publish/subscribe    ----------------------------                ------------------
                                                               |--------------------> |NotifyServer Implemention 2| ------------> |Register Client 2|
@@ -56,11 +56,12 @@ using primihub::common::event_bus;
 namespace primihub::service {
 
 class NotifyDelegate {
-    public:
-        virtual void notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
-                                 const std::string &status, const std::string &message) = 0;
-        virtual void notifyResult(const std::string &task_id, const std::string &submit_client_id, 
-                                  const std::string &result_dataset_url) = 0;
+ public:
+    virtual void notifyStatus(const std::string& job_id, const std::string& task_id,
+            const std::string& submit_client_id, const std::string& status,
+            const std::string& message) = 0;
+    virtual void notifyResult(const std::string& job_id, const std::string& task_id,
+            const std::string& submit_client_id, const std::string& result_dataset_url) = 0;
 };
 
 struct TaskStatusEvent {
@@ -80,29 +81,28 @@ struct TaskResultEvent {
 
 
 class EventBusNotifyDelegate {
-    public:
-        
-        EventBusNotifyDelegate(const EventBusNotifyDelegate&) = delete;
-        EventBusNotifyDelegate(EventBusNotifyDelegate&&) = delete;
-        EventBusNotifyDelegate &operator=(const EventBusNotifyDelegate &) = delete;
-        EventBusNotifyDelegate &operator=(EventBusNotifyDelegate &&) = delete;
+ public:
+    EventBusNotifyDelegate(const EventBusNotifyDelegate&) = delete;
+    EventBusNotifyDelegate(EventBusNotifyDelegate&&) = delete;
+    EventBusNotifyDelegate &operator=(const EventBusNotifyDelegate &) = delete;
+    EventBusNotifyDelegate &operator=(EventBusNotifyDelegate &&) = delete;
 
-        static EventBusNotifyDelegate &getInstance() {
-            static EventBusNotifyDelegate kSingleInstance;
-            return kSingleInstance;
-        }
+    static EventBusNotifyDelegate &getInstance() {
+        static EventBusNotifyDelegate kSingleInstance;
+        return kSingleInstance;
+    }
 
-        void notifyStatus(const std::string &task_id, const std::string &submit_client_id, 
-                         const std::string &status, const std::string &message);
-        void notifyResult(const std::string &task_id, const std::string &submit_client_id,
-                          const std::string &result_dataset_url);
-        primihub::common::event_bus* getEventBusPtr() { return &event_bus_; }
-    
-    private:
-        EventBusNotifyDelegate() = default;
-        virtual ~EventBusNotifyDelegate() = default;
+    void notifyStatus(const std::string& job_id, const std::string& task_id,
+            const std::string& submit_client_id, const std::string& status, const std::string& message);
+    void notifyResult(const std::string& job_id, const std::string& task_id,
+            const std::string& submit_client_id, const std::string& result_dataset_url);
+    primihub::common::event_bus* getEventBusPtr() { return &event_bus_; }
 
-        primihub::common::event_bus event_bus_;
+ private:
+    EventBusNotifyDelegate() = default;
+    virtual ~EventBusNotifyDelegate() = default;
+
+    primihub::common::event_bus event_bus_;
 };
 
 class NotifyServer;
@@ -159,9 +159,9 @@ class EventBusNotifyServerSubscriber : public NotifyServerSubscriber {
         // TODO not implement yet
         void subscribe(const std::string &topic) {};
         void unsubscribe(const std::string &topic) {};
-        
+
     private:
-        primihub::common::event_bus *event_bus_ptr_; 
+        primihub::common::event_bus *event_bus_ptr_;
         primihub::common::handler_registration task_stauts_reg_, task_result_reg_;
 
 };
@@ -188,7 +188,7 @@ class GRPCNotifyServer : public NotifyServer {
         // int subscribeTaskNotify(const rpc::TaskContext &task_context) {return 0};
         // int regClientContext(const rpc::ClientContext &client_context) {return 0};
         // int notifyProcess() {return 0};;
-        
+
         // Event handlers
         void onTaskStatusEvent(const TaskStatusEvent &e);
         void onTaskResultEvent(const TaskResultEvent &e);
@@ -196,14 +196,14 @@ class GRPCNotifyServer : public NotifyServer {
         // gRPC methods
         bool init(const std::string &server, const std::shared_ptr<NotifyServerSubscriber> &notify_server_subscriber);
         void run();
-        void stop(); 
-        
+        void stop();
+
         // gRPC client session methods
         std::shared_ptr<GRPCClientSession> addSession();
         void removeSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSession(uint64_t sessionId);
         std::shared_ptr<GRPCClientSession> getSessionByClientId(const std::string clientId);
-        void addClientSession(const std::string clientId, uint64_t sessionId);
+        void addClientSession(const std::string& clientId, const uint64_t sessionId);
 
         // gRPC members
         std::atomic_bool running_{false};
@@ -218,18 +218,18 @@ class GRPCNotifyServer : public NotifyServer {
         // better choice for production environment: boost::shared_mutex or std::shared_mutex(since C++17)
         mutable std::shared_mutex mutex_sessions_{};
         std::unordered_map<uint64_t /*session id*/, std::shared_ptr<GRPCClientSession>> sessions_{};
-    
+
     private:
         GRPCNotifyServer() {};
         ~GRPCNotifyServer() {};
-        std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_; 
+        std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_;
         // TODO task context -> grpc client map
         // std::map<std::string /*task id*/, Task> tasks_; //TODO new/delte task
         // TODO  add item when client submit new task
         mutable std::shared_mutex mutex_client_sessions_{};
         std::unordered_map<std::string /*client id*/, std::shared_ptr<GRPCClientSession>> client_sessions_;
         std::string node_id_;
-        
+
 };
 
 #include <iostream>
@@ -246,11 +246,11 @@ enum GrpcNotifyEvent {
 
 std::ostream& operator<<(std::ostream& os, GrpcNotifyEvent event);
 
-enum class GrpcClientSessionStatus { 
+enum class GrpcClientSessionStatus {
     WAIT_CONNECT,
     READY_TO_WRITE,
-    WAIT_WRITE_DONE, 
-    FINISHED 
+    WAIT_WRITE_DONE,
+    FINISHED
 };
 
 std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus);
@@ -258,7 +258,7 @@ std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus
 class GRPCClientSession {
     public:
         explicit GRPCClientSession(uint64_t sessionId) : session_id_(sessionId) {}
-        
+
         bool init();
 
         void process(GrpcNotifyEvent event);
@@ -271,7 +271,7 @@ class GRPCClientSession {
 
     public:
         const uint64_t session_id_{0}; // client id?
-        
+
         std::mutex mutex_{};
         GrpcClientSessionStatus status_{GrpcClientSessionStatus::WAIT_CONNECT};
 
@@ -280,7 +280,7 @@ class GRPCClientSession {
         primihub::rpc::ClientContext client_context_{};
 
         ::grpc::ServerAsyncWriter<primihub::rpc::NodeEventReply> subscribe_stream{&server_context_};
-        
+
         primihub::rpc::ClientContext request_{};
 
         std::string name_{};  // session name

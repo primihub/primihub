@@ -24,7 +24,7 @@
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
 #include <pybind11/embed.h>
-
+#include <sys/prctl.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -33,6 +33,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <future>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -48,7 +49,7 @@
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/task/semantic/parser.h"
-
+#include "src/primihub/util/threadsafe_queue.h"
 
 // using grpc::ClientContext;
 using grpc::Server;
@@ -87,9 +88,33 @@ class VMNodeImpl final: public VMNode::Service {
         : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
           singleton(singleton_), config_file_path(config_file_path_) {
         running_set.clear();
+        task_executor_map.clear();
         nodelet = std::make_shared<Nodelet>(config_file_path);
+        finished_worker_fut = std::async(std::launch::async,
+          [&]() {
+            prctl(PR_SET_NAME, "CleanFinishWorker");
+            while(true) {
+              std::string finished_worker_id;
+              fininished_workers.wait_and_pop(finished_worker_id);
+              if (stop_.load(std::memory_order::memory_order_relaxed)) {
+                break;
+              }
+              {
+                std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+                auto it = task_executor_map.find(finished_worker_id);
+                if (it != task_executor_map.end()) {
+                  VLOG(5) << "worker id : " << finished_worker_id << " has finished, begin to erase";
+                  task_executor_map.erase(finished_worker_id);
+                  VLOG(5) << "erase worker id : " << finished_worker_id << " success";
+                }
+              }
+            }
+          });
     }
     ~VMNodeImpl() override {
+      stop_.store(true);
+      fininished_workers.shutdown();
+      finished_worker_fut.get();
       this->nodelet.reset();
     }
 
@@ -103,6 +128,7 @@ class VMNodeImpl final: public VMNode::Service {
                 TaskResponse* response) override;
 
     std::shared_ptr<Worker> CreateWorker();
+    std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
 
     std::string get_node_address() {
         return absl::StrCat(this->node_id, this->node_ip, this->service_port);
@@ -121,6 +147,8 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
     int validate_file_path(const std::string& data_path) { return 0;}
+    int ClearWorker(const std::string& worker_id);
+    bool IsPSIECDHServer(const PushTaskRequest& request);  // for temp check
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -136,7 +164,13 @@ class VMNodeImpl final: public VMNode::Service {
     // std::shared_ptr<LanguageParser> lan_parser_;
     bool singleton;
     std::set<std::string> running_set;
-    std::map<std::string, std::shared_ptr<Worker>> running_map;
+    // key; job_id+task_id value: tasker
+    using task_executor_t = std::tuple<std::shared_ptr<Worker>, std::future<void>>;
+    std::mutex task_executor_mtx;
+    std::map<std::string, task_executor_t> task_executor_map;
+    ThreadSafeQueue<std::string> fininished_workers;
+    std::future<void> finished_worker_fut;
+    std::atomic<bool> stop_{false};
 
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
