@@ -26,6 +26,7 @@ message ExecuteTaskRequest {
   }
 
   Params params = 3;
+  bytes submit_client_id = 4;
 }
 
 message ExecuteTaskResponse {

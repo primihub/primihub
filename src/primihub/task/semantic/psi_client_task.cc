@@ -40,6 +40,21 @@ PSIClientTask::PSIClientTask(const std::string &node_id,
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
 
+PSIClientTask::PSIClientTask(const TaskParam *task_param,
+                  std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {}
+
+void PSIClientTask::setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id) {
+//
+    node_id_ = node_id;
+    task_id_ = task_id;
+    job_id_ = job_id;
+    submit_client_id_ = submit_client_id;
+}
+
 int PSIClientTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
 
@@ -247,8 +262,11 @@ int PSIClientTask::execute() {
     std::vector<ExecuteTaskRequest> send_requests;
     do {
         ExecuteTaskRequest taskRequest;
+        taskRequest.set_submit_client_id(submit_client_id_);
         PsiRequest* ptr_request = taskRequest.mutable_psi_request();
         ptr_request->set_reveal_intersection(client_request.reveal_intersection());
+        ptr_request->set_job_id(job_id_);
+        ptr_request->set_task_id(task_id_);
         size_t pack_size = 0;
         for (size_t i = sended_index; i < num_elements; i++) {
             const auto& element = encrypted_elements[i];

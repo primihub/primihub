@@ -65,6 +65,17 @@ PSIKkrtTask::PSIKkrtTask(const std::string &node_id,
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
 
+void PSIKkrtTask::setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id) {
+//
+    node_id_ = node_id;
+    job_id_ = job_id;
+    task_id_ = task_id;
+    submit_client_id_ = submit_client_id;
+}
+
 int PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");

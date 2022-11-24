@@ -33,27 +33,27 @@ using primihub::task::TaskFactory;
 using primihub::rpc::PsiTag;
 
 namespace primihub {
-
-void Worker::execute(const PushTaskRequest *pushTaskRequest) {
+int Worker::execute(const PushTaskRequest *pushTaskRequest) {
     auto type = pushTaskRequest->task().type();
     VLOG(2) << "Worker::execute task type: " << type;
     if (type == rpc::TaskType::NODE_TASK ||
         type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
         auto dataset_service = nodelet->getDataService();
-        auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (pTask == nullptr) {
+        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+        if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create task failed.";
-            return;
+            return -1;
         }
         LOG(INFO) << " 🚀 Worker start execute task ";
-        int ret = pTask->execute();
+        int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute task.";
+            return -1;
         }
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
-            return;
+            return -1;
         }
 
         const auto& param_map = pushTaskRequest->task().params().param_map();
@@ -66,23 +66,26 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         if (psiTag == PsiTag::ECDH) {
             auto param_map_it = param_map.find("serverAddress");
             if (param_map_it == param_map.end()) {
-                return;
+                return -1;
             }
         }
 
         auto dataset_service = nodelet->getDataService();
-        auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (pTask == nullptr) {
+        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+        if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create psi task failed.";
-            return;
+            return -1;
         }
-        int ret = pTask->execute();
-        if (ret != 0)
+        int ret = task_ptr->execute();
+        if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute psi task.";
+            return -1;
+        }
     } else if (type == rpc::TaskType::NODE_PIR_TASK) {
-        if (pushTaskRequest->task().node_map().size() < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
-            return;
+        size_t party_node_count = pushTaskRequest->task().node_map().size();
+        if (party_node_count < 2) {
+            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now. current_node_size: " << party_node_count;
+            return -1;
         }
 
         const auto& param_map = pushTaskRequest->task().params().param_map();
@@ -96,23 +99,25 @@ void Worker::execute(const PushTaskRequest *pushTaskRequest) {
         if (pirType == PirType::ID_PIR) {
             auto param_map_it = param_map.find("serverAddress");
             if (param_map_it == param_map.end()) {
-                return ;
+                return -1;
             }
         }
 
         auto& dataset_service = nodelet->getDataService();
-        auto pTask = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (pTask == nullptr) {
+        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+        if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create pir task failed.";
-            return ;
+            return -1;
         }
-        int ret = pTask->execute();
+        int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute pir task.";
+            return -1;
         }
     } else {
         LOG(WARNING) << "unsupported Requested task type: " << type;
     }
+    task_ptr.reset();
 }
 
 
@@ -122,37 +127,41 @@ void Worker::execute(const ExecuteTaskRequest *taskRequest,
     auto request_type = taskRequest->algorithm_request_case();
     if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
         auto dataset_service = nodelet->getDataService();
-        auto pTask = TaskFactory::Create(this->node_id,
+        task_server_ptr = TaskFactory::Create(this->node_id,
 			                             rpc::TaskType::NODE_PSI_TASK,
 			                             *taskRequest,
                                          taskResponse,
 					                     dataset_service);
-        if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create server node task failed.";
-            return;
-        }
-        int ret = pTask->execute();
-        if (ret != 0) {
-            LOG(ERROR) << "Error occurs during server node execute task.";
-        }
     } else if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
         VLOG(0) << "algorithm_request_case kPirRequest Worker::execute";
         auto dataset_service = nodelet->getDataService();
-        auto pTask = TaskFactory::Create(this->node_id,
+        task_server_ptr = TaskFactory::Create(this->node_id,
                                          rpc::TaskType::NODE_PIR_TASK,   // convert into internal task type
                                          *taskRequest,
                                          taskResponse,
                                          dataset_service);
-        if (pTask == nullptr) {
-            LOG(ERROR) << "Woker create server node task failed.";
-            return;
-        }
-        int ret = pTask->execute();
-        if (ret != 0) {
-            LOG(ERROR) << "Error occurs during server node execute task.";
-        }
     } else {
         LOG(WARNING) << "Requested task type is not supported.";
+        return;
+    }
+    if (task_server_ptr == nullptr) {
+        LOG(ERROR) << "Woker create server node task failed.";
+        return;
+    }
+    int ret = task_server_ptr->execute();
+    if (ret != 0) {
+        LOG(ERROR) << "Error occurs during server node execute task.";
+    }
+    task_server_ptr.reset();
+}
+
+// kill task which is running in the worker
+void Worker::kill_task() {
+    if (task_ptr) {
+        task_ptr->kill_task();
+    }
+    if (task_server_ptr) {
+        task_server_ptr->kill_task();
     }
 }
 
