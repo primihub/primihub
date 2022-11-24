@@ -97,10 +97,8 @@ class VMNodeImpl final: public VMNode::Service {
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
                       PushTaskReply *pushTaskReply) override;
-
-    Status ExecuteTask(ServerContext *context,
-                       const ExecuteTaskRequest *taskRequest,
-                       ExecuteTaskResponse *taskResponse) override;
+    Status ExecuteTask(ServerContext* context,
+        grpc::ServerReaderWriter<ExecuteTaskResponse, ExecuteTaskRequest>* stream) override;
     Status Send(ServerContext* context,
                 ServerReader<TaskRequest>* reader,
                 TaskResponse* response) override;
@@ -116,8 +114,15 @@ class VMNodeImpl final: public VMNode::Service {
     inline bool use_tls() const {return use_tls_;}
 
  protected:
-    int save_data_to_file(const std::string& job_id, const std::string& task_id,
-      const std::string& data_path, std::vector<std::string>&& save_data);
+    int process_task_reseponse(bool is_psi_response,
+          const ExecuteTaskResponse& response,
+          std::vector<ExecuteTaskResponse>* splited_responses);
+    int process_psi_response(const ExecuteTaskResponse& response,
+          std::vector<ExecuteTaskResponse>* splited_responses);
+    int process_pir_response(const ExecuteTaskResponse& response,
+          std::vector<ExecuteTaskResponse>* splited_responses);
+    int save_data_to_file(const std::string& job_id, const std::string& task_id, 
+                          const std::string& data_path, std::vector<std::string>&& save_data);
     int validate_file_path(const std::string& data_path) { return 0;}
 
   private:

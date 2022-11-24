@@ -17,6 +17,7 @@
 #include "src/primihub/cli/cli.h"
 #include <fstream>  // std::ifstream
 #include <string>
+#include <chrono>
 #include "src/primihub/util/util.h"
 
 using primihub::rpc::ParamValue;
@@ -198,6 +199,7 @@ int main(int argc, char** argv) {
         if (!client.SubmitTask()) {
             break;
         }
+
     }
 
     return 0;

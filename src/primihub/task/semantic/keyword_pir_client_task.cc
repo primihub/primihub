@@ -167,11 +167,13 @@ int KeywordPIRClientTask::execute() {
     // server_address_ = "tcp://127.0.0.1:1212";  // TODO
     std::string server_ip{"127.0.0.1"};
     auto pos = server_address_.find(":");
-    if (pos == std::string::npos) {
+    if (pos != std::string::npos) {
         server_ip = server_address_.substr(0, pos);
     }
-    server_address_ = "tcp://" + server_ip + ":1212";
+
+    server_address_ = "tcp://" + server_ip + ":2222";
     V_VLOG(5) << "begin to connect to server: " << server_address_;
+
     channel.connect(server_address_);
     V_VLOG(5) << "connect to server: " << server_address_ << " end";
     if (!channel.is_connected()) {

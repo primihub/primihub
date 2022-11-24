@@ -31,6 +31,7 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/file_util.h"
 #include <glog/logging.h>
+#include <chrono>
 
 #ifndef __APPLE__
 #include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
@@ -342,21 +343,24 @@ int PSIKkrtTask::send_result_to_server() {
             task_request.add_data("\"intersection_row\"");
             add_head_flag = true;
         }
+        size_t pack_size = 0;
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
             size_t item_len = data_item.size();
-            if (sended_size + item_len > limited_size) {
+            if (pack_size + item_len > limited_size) {
                 break;
             }
             task_request.add_data(data_item);
-            sended_size += item_len;
+            pack_size += item_len;
             sended_index++;
-            V_VLOG(5) << "sended_size: " << sended_size << " sended_index: " << sended_index;
         }
+
         writer->Write(task_request);
-        V_VLOG(5) << "sended_size: " << sended_size << " "
-                << "sended_index: " << sended_index << " "
-                << "result size: " << this->result_.size();
+        sended_size += pack_size;
+        V_VLOG(5) << "sended_size: " << sended_size 
+                  << "sended_index: " << sended_index << " "
+                  << "result size: " << this->result_.size();
+
         if (sended_index >= this->result_.size()) {
             V_VLOG(5) << " sended_index: " << sended_index
                     << " result size: " << this->result_.size() << " end of send";
@@ -427,6 +431,7 @@ int PSIKkrtTask::saveResult(void) {
 
 
 int PSIKkrtTask::execute() {
+    SCopedTimer timer;
     int ret = _LoadParams(task_param_);
     if (ret) {
         if (role_tag_ == 0) {
@@ -436,7 +441,8 @@ int PSIKkrtTask::execute() {
         }
         return ret;
     }
-
+    auto load_params_ts = timer.timeElapse();
+    VLOG(5) << "load_params time cost(ms): " << load_params_ts;
     ret = _LoadDataset();
     if (ret) {
         if (role_tag_ == 0) {
@@ -445,7 +451,9 @@ int PSIKkrtTask::execute() {
             LOG_ERROR() << "Psi server load dataset failed.";
         }
     }
-
+    auto load_dataset_ts = timer.timeElapse();
+    auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
+    VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
 #ifndef __APPLE__
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
@@ -457,6 +465,8 @@ int PSIKkrtTask::execute() {
 
     if (mode == EpMode::Client) {
         LOG_INFO() << "start recv.";
+
+        auto recv_data_start = timer.timeElapse();
         try {
             _kkrtRecv(chl);
         } catch (std::exception &e) {
@@ -467,8 +477,13 @@ int PSIKkrtTask::execute() {
             ios.stop();
 	    return -1;
         }
+        auto recv_data_end = timer.timeElapse();
+        auto time_cost = recv_data_end - recv_data_start;
+        VLOG(5) << "kkrt client process data time cost(ms): " << time_cost;
     } else {
         LOG_INFO() << "start send";
+
+        auto recv_data_start = timer.timeElapse();
         try {
             _kkrtSend(chl);
         } catch (std::exception &e) {
@@ -479,6 +494,9 @@ int PSIKkrtTask::execute() {
             ios.stop();
             return -1;
         }
+        auto recv_data_end = timer.timeElapse();
+        auto time_cost = recv_data_end - recv_data_start;
+        VLOG(5) << "kkrt server process data time cost(ms): " << time_cost;
     }
     chl.close();
     ep.stop();
@@ -486,11 +504,15 @@ int PSIKkrtTask::execute() {
     LOG_INFO() << "kkrt psi run success";
 
     if (mode == EpMode::Client) {
+        auto _start = timer.timeElapse();
         ret = saveResult();
         if (ret) {
             LOG_ERROR() << "Save psi result failed.";
             return -1;
         }
+        auto _end = timer.timeElapse();
+        auto time_cost = _end - _start;
+        VLOG(5) << "kkrt client save result data time cost(ms): " << time_cost;
     }
 #endif
     return 0;

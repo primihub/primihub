@@ -299,12 +299,14 @@ def iv_host():
             'neg_cnts': np.array(neg_cnts)
         }, 'host_bin_cnts')
 
+    ivs = proxy_server.Get('ivs_df')
     ivs_df = proxy_server.Get("global_ivs")
     logging.info("Global ivs are: {}".format(ivs_df))
 
     proxy_server.StopRecvLoop()
 
     iv_threshold = 0
+
     params_map = ph.context.Context.params_map
     if params_map.get("iv_threshold", None) is None:
         iv_threshold = 0.1
@@ -323,7 +325,7 @@ def iv_host():
         data.pop(col)
     data.info(verbose=True)
 
-    # Save column that don't filter into csv and register them.
+    # Save column that don't filter into csv and register them. 
     local_ds_id = params_map["local_dataset"]
     new_id_dict = json.loads(params_map["ColumnInfo"])
     new_ds_id = new_id_dict[local_ds_id]
@@ -334,7 +336,6 @@ def iv_host():
 
     register_dataset(params_map["DatasetServiceAddr"],
                      "csv", new_path, new_ds_id)
-
 
 @ph.context.function(role='guest', protocol='woe-iv',
                      datasets=['usecase_106_node_0'], port='9030',
@@ -399,7 +400,7 @@ def iv_guest():
 
     proxy_server.StopRecvLoop()
 
-    iv_threshold = 0
+    iv_threshold = 0 
     params_map = ph.context.Context.params_map
     if params_map.get("iv_threshold", None) is None:
         iv_threshold = 0.1
@@ -423,9 +424,8 @@ def iv_guest():
     new_id_dict = json.loads(params_map["ColumnInfo"])
     new_ds_id = new_id_dict[local_ds_id]
 
-    old_path = dataset_map[local_ds_id]
+    old_path =  dataset_map[local_ds_id]
     new_path = old_path.split(".csv")[0] + "_iv.csv"
     data.to_csv(new_path, index=False, float_format='%.6f')
-
-    register_dataset(params_map["DatasetServiceAddr"],
-                     "csv", new_path, new_ds_id)
+    
+    register_dataset(params_map["DatasetServiceAddr"], "csv", new_path, new_ds_id) 

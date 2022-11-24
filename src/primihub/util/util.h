@@ -189,6 +189,20 @@ enum  SessionMode  {
    Server
 };
 
+class SCopedTimer {
+ public:
+  SCopedTimer() {
+    start_ = std::chrono::high_resolution_clock::now();
+  }
+  template<typename T = std::chrono::milliseconds>
+  double timeElapse() {
+    auto now_ = std::chrono::high_resolution_clock::now();
+    auto time_diff = std::chrono::duration_cast<T>(now_ - start_).count();
+    return time_diff;
+  }
+ private:
+  std::chrono::high_resolution_clock::time_point start_;
+};
 
 }  // namespace primihub
 

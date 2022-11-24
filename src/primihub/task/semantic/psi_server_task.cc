@@ -17,6 +17,7 @@
 #include "private_set_intersection/cpp/psi_server.h"
 
 #include "src/primihub/task/semantic/psi_server_task.h"
+#include "src/primihub/util/util.h"
 
 using psi_proto::Request;
 using private_set_intersection::PsiServer;
@@ -81,17 +82,28 @@ int PSIServerTask::loadDataset() {
 }
 
 int PSIServerTask::execute() {
+    SCopedTimer timer;
     int ret = loadParams(params_);
     if (ret) {
         LOG_ERROR() << "Load parameters for psi server fialed.";
         return -1;
     }
+    auto load_param_time_cost = timer.timeElapse();
+    VLOG(5) << "load param time cost; " << load_param_time_cost;
     ret = loadDataset();
     if (ret) {
         return -1;
     }
+    auto load_dataset_ts = timer.timeElapse();
+    auto time_cost = load_dataset_ts - load_param_time_cost;
+    VLOG(5) << "loadDataset time cost(ms): " << time_cost;
     Request psi_request;
     initRequest(request_, psi_request);
+
+    auto init_req_ts = timer.timeElapse();
+    auto init_req_time_cost = init_req_ts - load_dataset_ts;
+    VLOG(5) << "init_req_time_cost(ms): " << init_req_time_cost;
+
     std::unique_ptr<PsiServer> server =
         std::move(PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
 
@@ -101,7 +113,9 @@ int PSIServerTask::execute() {
         std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
 
     psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
-
+    auto proceess_request_ts = timer.timeElapse();
+    auto proceess_request_time_cost = proceess_request_ts - init_req_ts;
+    VLOG(5) << "proceess_request_time_cost(ms): " << proceess_request_time_cost;
     std::int64_t num_response_elements =
         static_cast<std::int64_t>(server_response.encrypted_elements().size());
 
@@ -120,7 +134,9 @@ int PSIServerTask::execute() {
         ptr_server_setup->mutable_bloom_filter()->
             set_num_hash_functions(server_setup.bloom_filter().num_hash_functions());
     }
-
+    auto build_response_ts = timer.timeElapse();
+    auto build_response_time_cost = build_response_ts - proceess_request_ts;
+    VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
     return 0;
 
 }

@@ -203,36 +203,75 @@ int PIRClientTask::execute() {
         return -1;
     }
 
-    ExecuteTaskRequest taskRequest;
-    ExecuteTaskResponse taskResponse;
-    PirRequest * ptr_request = taskRequest.mutable_pir_request();
-    ptr_request->set_job_id(job_id());
-    ptr_request->set_task_id(task_id());
-    ptr_request->set_galois_keys(request_proto.galois_keys());
-    ptr_request->set_relin_keys(request_proto.relin_keys());
+    grpc::ClientContext client_context;
+    grpc::ChannelArguments channel_args;
+    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    std::shared_ptr<grpc::Channel> channel =
+        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
+    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    using stream_t = std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>>;
+    stream_t client_stream(stub->ExecuteTask(&client_context));
 
-    const std::int64_t num_query = static_cast<std::int64_t>(request_proto.query().size());
-    for (std::int64_t i = 0; i < num_query; i++) {
-        Ciphertexts* ptr_query = ptr_request->add_query();
-        std::int64_t num_ct = static_cast<std::int64_t>(request_proto.query()[i].ct().size());
-        for (std::int64_t j = 0; j < num_ct; j++) {
-            ptr_query->add_ct(request_proto.query()[i].ct()[j]);
+    size_t limited_size = 1 << 21;
+    size_t query_num = request_proto.query().size();
+    const auto& querys = request_proto.query();
+    size_t sended_index{0};
+    std::vector<ExecuteTaskRequest> send_requests;
+    do {
+        ExecuteTaskRequest taskRequest;
+        PirRequest * ptr_request = taskRequest.mutable_pir_request();
+        ptr_request->set_galois_keys(request_proto.galois_keys());
+        ptr_request->set_relin_keys(request_proto.relin_keys());
+        size_t pack_size = 0;
+        for (size_t i = sended_index; i < query_num; i++) {
+            // calculate length of query
+            size_t query_size = 0;
+            const auto& query = querys[i];
+            for (const auto& ct : query.ct()) {
+                query_size += ct.size();
+            }
+            if (pack_size + query_size > limited_size) {
+                break;
+            }
+            auto query_ptr = ptr_request->add_query();
+            for (const auto& ct : query.ct()) {
+                query_ptr->add_ct(ct);
+            }
+            sended_index++;
+        }
+        auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        pv.set_value_string(server_dataset_);
+        (*ptr_params)["serverData"] = pv;
+        send_requests.push_back(std::move(taskRequest));
+        if (sended_index >= query_num) {
+            break;
+        }
+    } while (true);
+    // send request to server
+    for (const auto& request : send_requests) {
+        client_stream->Write(request);
+    }
+    client_stream->WritesDone();
+    ExecuteTaskResponse taskResponse;
+    ExecuteTaskResponse recv_response;
+    auto pir_response = taskResponse.mutable_pir_response();
+    bool is_initialized{false};
+    while (client_stream->Read(&recv_response)) {
+        const auto& recv_pir_response = recv_response.pir_response();
+        if (!is_initialized) {
+            pir_response->set_ret_code(recv_pir_response.ret_code());
+            is_initialized = true;
+        }
+        for (const auto& reply : recv_pir_response.reply()) {
+            auto reply_ptr = pir_response->add_reply();
+            for (const auto& ct : reply.ct()) {
+                reply_ptr->add_ct(ct);
+            }
         }
     }
-    auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
-    ParamValue pv;
-    pv.set_var_type(VarType::STRING);
-    pv.set_value_string(server_dataset_);
-    (*ptr_params)["serverData"] = pv;
-
-    grpc::ChannelArguments channel_args;
-    channel_args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, 128*1024*1024);
-    std::shared_ptr<grpc::Channel> channel =
-        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(),
-                                  channel_args);
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
-    grpc::ClientContext client_context;
-    Status status = stub->ExecuteTask(&client_context, taskRequest, &taskResponse);
+    Status status = client_stream->Finish();
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
             LOG_ERROR() << "Node pir server process request error.";

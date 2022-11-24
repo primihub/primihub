@@ -16,8 +16,8 @@
 version: 1.0
 
 node: "node2"
-location: "www.primihub.server.com"
-use_tls: 1
+location: "127.0.0.1"
+use_tls: 0
 grpc_port: 50052
 
 certificate:

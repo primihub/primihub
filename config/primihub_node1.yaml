@@ -1,8 +1,10 @@
 version: 1.0
 
 node: "node1"
-location: "www.primihub.server.com"
-use_tls: 1
+location: "172.28.1.11"
+use_tls: 0
+#location: "www.primihub.server.com"
+#use_tls: 1
 grpc_port: 50051
 
 certificate:
@@ -19,33 +21,38 @@ datasets:
   # ABY3 LR test case datasets
   - description: "train_party_1"
     model: "csv"
-    source: "/tmp/train_party_1.csv" 
+    source: "/tmp/train_party_1.csv"
   - description: "test_party_1"
     model: "csv"
     source: "/tmp/test_party_1.csv"
-  
+
   # MNIST test case datasets
   - description: "test_party_1_self"
     model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_1" 
+    source: "/tmp/falcon/dataset/MNIST/input_1"
   - description: "test_party_1_next"
     model: "csv"
-    source: "/tmp/falcon/dataset/MNIST/input_2" 
-  
+    source: "/tmp/falcon/dataset/MNIST/input_2"
+
   # PIR test case dataset
   - description: "pir_server_data"
     model: "csv"
-    source: "/tmp/pir_server.csv" 
-  
+    source: "/tmp/pir_server.csv"
+
+  # keyword PIR test case dataset
+  - description: "keyword_pir_server_data"
+    model: "csv"
+    source: "/tmp/keyword_pir_server.csv"
+
   # PSI test case dataset
   - description: "psi_server_data"
     model: "csv"
-    source: "/tmp/server_e.csv" 
-  
+    source: "/tmp/server_e.csv"
+
   #  FL xgb test case datasets
   - description: "label_dataset"
     model: "csv"
-    source: "/tmp/FL/wisconsin_host.data"   
+    source: "/tmp/FL/wisconsin_host.data"
   - description: "test_dataset"
     model: "csv"
     source: "/tmp/FL/wisconsin_test.data"
@@ -55,6 +62,9 @@ datasets:
   - description: "homo_lr_test"
     model: "csv"
     source: "/tmp/FL/homo_lr_test.data"
+  - description: "iv_host"
+    model: "csv"
+    source: "/tmp/FL/feature_engineer/woe_iv/iv_host.csv"
 
   - description: "iv_host"
     model: "csv"

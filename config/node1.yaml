@@ -16,8 +16,8 @@
 version: 1.0
 
 node: "node1"
-location: "www.primihub.server.com"
-use_tls: 1 
+location: "127.0.0.1"
+use_tls: 0
 grpc_port: 50051
 
 certificate:
@@ -53,6 +53,11 @@ datasets:
     model: "csv"
     source: "data/pir_server.csv"
 
+  # keyword PIR test case dataset
+  - description: "keyword_pir_server_data"
+    model: "csv"
+    source: "data/keyword_pir_server.csv"
+
   # PSI test case dataset
   - description: "psi_server_data"
     model: "csv"
@@ -70,6 +75,12 @@ datasets:
   - description: "test_dataset"
     model: "csv"
     source: "data/FL/wisconsin_test.data"
+  - description: "breast_1"
+    model: "csv"
+    source: "data/FL/wisconsin.data"
+  - description: "homo_lr_test"
+    model: "csv"
+    source: "data/FL/homo_lr_test.data"
 
 
 localkv:
