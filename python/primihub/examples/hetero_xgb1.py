@@ -1656,7 +1656,10 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # 读取注册数据
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
+    # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
+    data = pd.read_csv(
+        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
+        header=0)
 
     # y = data.pop('Class').values
 
@@ -1833,7 +1836,11 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
+    # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
+    data = pd.read_csv(
+        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
+        header=0)
+
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
 
