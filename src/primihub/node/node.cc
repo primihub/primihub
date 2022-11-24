@@ -357,8 +357,8 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
     // process receive data
     if (taskType == primihub::rpc::TaskType::NODE_PSI_TASK ||
         taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
-        const auto& task_id = taskRequest->psi_request().task_id();
-        const auto& job_id = taskRequest->psi_request().job_id();
+        const auto& task_id = task_request.psi_request().task_id();
+        const auto& job_id = task_request.psi_request().job_id();
         LOG_INFO(PLATFORM, job_id, task_id) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker();

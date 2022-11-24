@@ -121,7 +121,8 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int process_pir_response(const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
-    int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
+    int save_data_to_file(const std::string& job_id, const std::string& task_id, 
+                          const std::string& data_path, std::vector<std::string>&& save_data);
     int validate_file_path(const std::string& data_path) { return 0;}
 
   private:

@@ -357,9 +357,9 @@ int PSIKkrtTask::send_result_to_server() {
 
         writer->Write(task_request);
         sended_size += pack_size;
-        V_VLOG(5) << "sended_size: " << sended_size << " sended_index: " << sended_index;
-                << "sended_index: " << sended_index << " "
-                << "result size: " << this->result_.size();
+        V_VLOG(5) << "sended_size: " << sended_size 
+                  << "sended_index: " << sended_index << " "
+                  << "result size: " << this->result_.size();
         if (sended_index >= this->result_.size()) {
             V_VLOG(5) << " sended_index: " << sended_index
                     << " result size: " << this->result_.size() << " end of send";
