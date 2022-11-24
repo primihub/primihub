@@ -755,6 +755,7 @@ class XGB_GUEST_EN:
         self.guest_record = 0
         self.tree_structure = {}
         self.encrypted = is_encrypted
+        self.chops = 20
 
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
@@ -1690,12 +1691,12 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    data = pd.read_csv(
-        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
-        header=0)
-    data = data.iloc[:, 550:]
+    # data = pd.read_csv(
+    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
+    #     header=0)
+    # data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -1871,12 +1872,12 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    data = pd.read_csv(
-        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
-        header=0)
-    data = data.iloc[:, :450]
+    # data = pd.read_csv(
+    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
+    #     header=0)
+    # data = data.iloc[:, :450]
 
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
