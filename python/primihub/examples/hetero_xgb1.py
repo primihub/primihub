@@ -566,6 +566,26 @@ class GroupPool:
         return tmp_sum.to_pandas()
 
 
+@ray.remote
+class GroupSum(object):
+
+    def __init__(self, groupdata, pub, add_actors) -> None:
+        self.groupdata = groupdata
+        self.pub = pub
+        self.add_actors = add_actors
+
+    def groupsum(self):
+        self.groupsum = self.groupdata._aggregate_on(PallierSum,
+                                                     on=['g', 'h'],
+                                                     ignore_nulls=True,
+                                                     pub_key=self.pub,
+                                                     add_actors=self.add_actors)
+
+    def getsum(self):
+        return self.groupsum.to_pandas()
+        # return groupsum.to_pandas()
+
+
 class BatchGHSum:
 
     def __init__(self, split_cuts) -> None:
@@ -823,9 +843,9 @@ class XGB_GUEST_EN:
         paillier_add_actors = ActorPool(
             [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
-        grouppools = ActorPool([
-            GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
-        ])
+        # grouppools = ActorPool([
+        #     GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
+        # ])
 
         groups = []
         for tmp_col in cols:
@@ -833,7 +853,17 @@ class XGB_GUEST_EN:
             groups.append(tmp_group)
 
         if self.encrypted:
-            res = list(grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+            groupsums = [
+                GroupSum.remote(tmp_group, self.pub, paillier_add_actors)
+                for tmp_group in groups
+            ]
+
+            [tmp_groupsum.groupsum.remote() for tmp_groupsum in groupsums]
+
+            res = ray.get(
+                [tmp_groupsum.getsum.remote() for tmp_groupsum in groupsums])
+
+            # res = list(grouppools.map(lambda a, v: a.groupby.remote(v), groups))
         else:
             res = [
                 tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
