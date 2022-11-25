@@ -62,6 +62,7 @@ FLTask::FLTask(const std::string& node_id,
     try {
         this->node_context_.role = param_map["role"].value_string();
         this->node_context_.protocol = param_map["protocol"].value_string();
+        this->node_context_.topic = param_map["topic"].value_string();
     } catch (std::exception& e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
@@ -135,6 +136,7 @@ FLTask::FLTask(const std::string& node_id,
     }
 
     this->params_map_["local_dataset"] = iter->second.value_string();
+
 }
 
 FLTask::~FLTask() {
@@ -147,14 +149,21 @@ int FLTask::execute() {
     try {
         ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
         ph_context_m_ = py::module::import("primihub.context");
-        
+
+//        // Run set_task_uuid
+//        py::object set_task_uuid;
+//        set_task_uuid = ph_context_m_.attr("set_task_uuid");
+//        auto task_uuid = set_task_uuid();
+//        LOG(INFO) << ">>> task uuid: " << task_uuid;
+//        set_task_uuid.release();
+
         // Run set_node_context method.
         py::object set_node_context; 
         set_node_context = ph_context_m_.attr("set_node_context");
-
-        set_node_context(node_context_.role, node_context_.protocol,
-                          py::cast(node_context_.datasets));
-
+        set_node_context(node_context_.role,
+                node_context_.protocol,
+                node_context_.topic,
+              py::cast(node_context_.datasets));
         set_node_context.release();
         
         // Run set_task_context_dataset_map method. 

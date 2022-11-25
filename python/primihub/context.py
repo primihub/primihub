@@ -1,6 +1,9 @@
 import functools
 import os
+import uuid
 from typing import Callable
+
+import zmq
 from cloudpickle import dumps
 from primihub.utils.logger_util import logger
 
@@ -13,8 +16,9 @@ class NodeContext:
         self.func = func
         self.dataset_port_map = dataset_port_map
         self.task_type = None
-
         self.dumps_func = None
+        self.topic = None
+
         if isinstance(func, Callable):
             # pickle dumps func
             self.dumps_func = dumps(func)
@@ -34,6 +38,13 @@ class NodeContext:
     def get_task_type(self):
         return self.task_type
 
+    # def set_topic(self, value):
+    #     self.topic = value
+    #
+    # def get_topic(self):
+    #     return self.topic
+    #
+
 
 class TaskContext:
     """ key: role, value:NodeContext """
@@ -51,12 +62,26 @@ class TaskContext:
 
     func_params_map = dict()
 
+    protocol = None
+    _uuid = None
+    topic = None
+
     def __init__(self) -> None:
         self.role_nodeid_map = {}
         self.role_nodeid_map["host"] = []
         self.role_nodeid_map["arbiter"] = []
         self.role_nodeid_map["guest"] = []
         self.params_map = {}
+
+    def uuid(self):
+        """Return task context UUID string."""
+        if not self._uuid:
+            self._uuid = uuid.uuid4()
+        return self._uuid
+
+    def get_topic(self):
+        topic = self.topic
+        return topic
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -65,12 +90,10 @@ class TaskContext:
         Returns:
             string: protocol string
         """
-        protocol = None
         try:
             protocol = list(self.nodes_context.values())[0].protocol
         except IndexError:
             protocol = None
-
         return protocol
 
     def get_roles(self):
@@ -187,15 +210,20 @@ class TaskContext:
 Context = TaskContext()
 
 
+# def set_task_uuid():
+#     return Context.uuid()
+
+
 def set_task_context_dataset_map(k, v):
     Context.dataset_map[k] = v
 
 
-def set_node_context(role, protocol, datasets):
+def set_node_context(role, protocol, topic, datasets):
     dataset_port_map = {}
     for dataset in datasets:
         dataset_port_map[dataset] = "0"
     Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
+    Context.topic = topic
 
 
 def set_task_context_node_addr_map(node_id_with_role, addr):
@@ -243,6 +271,8 @@ def function(protocol, role, datasets, port, task_type="default"):
 
         Context.nodes_context[role].set_task_type(task_type)
 
+        logger.debug(">>>>> uuid in {}'s node context is {}.".format(
+            role, Context.uuid()))
         logger.debug(">>>>> dataset_port_map in {}'s node context is {}.".format(
             role, Context.nodes_context[role].dataset_port_map))
         logger.debug(">>>>> dataset in {}'s node context is {}.".format(

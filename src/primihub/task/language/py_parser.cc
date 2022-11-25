@@ -50,6 +50,9 @@ void PyParser::parseTask() {
     // get protocol
     procotol_ = ph_context_.attr("get_protocol")().cast<std::string>();
 
+    // get topic
+//    topic_ = ph_context_.attr("get_topic")().cast<std::string>();
+
     // get roles
     auto roles = ph_context_.attr("get_roles")().cast<py::list>();
 
@@ -62,7 +65,7 @@ void PyParser::parseTask() {
       this->roles_.push_back(role.cast<std::string>());
     }
 
-    // get task type.
+    // get task type
     std::string task_type =
         ph_context_.attr("get_task_type")().cast<std::string>();
 
@@ -77,6 +80,8 @@ void PyParser::parseTask() {
       _node_context.dumps_func =
           node_context_obj.attr("dumps_func").cast<std::string>();
       _node_context.task_type = task_type;
+
+//      _node_context.topic = node_context_obj.attr("topic").cast<std::string>();
 
       auto datasets = node_context_obj.attr("datasets").cast<py::list>();
       for (auto &dataset : datasets) {

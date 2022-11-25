@@ -66,6 +66,19 @@ namespace primihub::task {
         pv_protocol.set_value_string(node_context.protocol);
         (*params_map)["protocol"] = pv_protocol;
 
+        // topic
+        std::string job_id = node_task_request->task().job_id();
+        std::string task_id = node_task_request->task().task_id();
+//        static std::atomic<int64_t> index = 0;
+//        std::string topic_content = job_id + task_id + std::to_string(index.load());
+        std::string topic_content = task_id;
+//        index++;
+        ParamValue pv_topic;
+        pv_topic.set_var_type(VarType::STRING);
+        pv_topic.set_value_string(topic_content);
+        (*params_map)["topic"] = pv_topic;
+
+
         // Dataset meta
         std::map<std::string, std::string> node_dataset_map;
         for (auto &dataset_meta : dataset_meta_list) {

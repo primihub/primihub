@@ -19,4 +19,5 @@ phe==1.5.0
 mysql-connector-python
 loguru
 gevent
+redis
 
