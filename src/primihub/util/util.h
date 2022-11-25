@@ -23,12 +23,10 @@
 
 namespace primihub {
 
-using primihub::rpc::Node;
-
 void str_split(const std::string& str, std::vector<std::string>* v,
                char delimiter = ':');
 void peer_to_list(const std::vector<std::string>& peer,
-                  std::vector<Node>* list);
+                  std::vector<primihub::rpc::Node>* list);
 
 void sort_peers(std::vector<std::string>* peers);
 
