@@ -31,17 +31,17 @@ void str_split(const std::string& str, std::vector<std::string>* v,
 }
 
 void peer_to_list(const std::vector<std::string>& peer,
-                  std::vector<Node>* list) {
+                  std::vector<primihub::rpc::Node>* list) {
   list->clear();
   for (auto iter : peer) {
     DLOG(INFO) << "split param list:" << iter;
     std::vector<std::string> v;
     str_split(iter, &v);
-    Node node;
+    primihub::rpc::Node node;
     node.set_node_id(v[0]);
     node.set_ip(v[1]);
     node.set_port(std::stoi(v[2]));
-    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ? 
+    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ?
     list->push_back(node);
   }
 }

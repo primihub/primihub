@@ -43,19 +43,31 @@ message TaskRequest {
   }
   string job_id = 1;
   string task_id = 2;
-  StorageType storage_type= 3;
-  string storage_info = 4;
-  repeated bytes data = 5;
+  string role = 3;
+  StorageType storage_type= 4;
+  string storage_info = 5;
+  repeated bytes data = 6;
 }
 
 message TaskResponse {
   retcode ret_code = 1;
-  repeated bytes data = 2;
+  string  msg_info = 2;
+  repeated bytes data = 3;
 }
+
+message ForwardTaskReqeust {
+  Node dest_node = 1;
+  TaskRequest task_request = 2;
+}
+
+
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
   rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
   rpc Send(stream TaskRequest) returns (TaskResponse);
+  rpc Recv(TaskRequest) returns (stream TaskResponse);
+  rpc ForwardSend(stream ForwardTaskReqeust) returns (TaskResponse); // forward data as proxy
+  rpc ForwardRecv(ForwardTaskReqeust) returns (stream TaskResponse);  // forward data as proxy
 }
 

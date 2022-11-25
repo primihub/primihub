@@ -19,7 +19,7 @@ FalconLenetExecutor::FalconLenetExecutor(
   this->algorithm_name_ = "Falcon_Lenet_Train";
 
   node_id_ = config.node_id;
-  std::map<std::string, Node> node_map = config.node_map;
+  auto& node_map = config.node_map;
   auto iter = node_map.find(node_id_);
   if (iter == node_map.end()) {
     std::stringstream ss;

@@ -123,9 +123,23 @@ class VMNodeImpl final: public VMNode::Service {
                       PushTaskReply *pushTaskReply) override;
     Status ExecuteTask(ServerContext* context,
         grpc::ServerReaderWriter<ExecuteTaskResponse, ExecuteTaskRequest>* stream) override;
+
     Status Send(ServerContext* context,
-                ServerReader<TaskRequest>* reader,
-                TaskResponse* response) override;
+        ServerReader<TaskRequest>* reader, TaskResponse* response) override;
+
+    Status Recv(::grpc::ServerContext* context,
+        const TaskRequest* request,
+        grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
+
+    // for communication between different process
+    Status ForwardSend(::grpc::ServerContext* context,
+        ::grpc::ServerReader< ::primihub::rpc::ForwardTaskReqeust>* reader,
+        ::primihub::rpc::TaskResponse* response) override;
+
+    // for communication between different process
+    Status ForwardRecv(::grpc::ServerContext* context,
+        const ::primihub::rpc::ForwardTaskReqeust* request,
+        ::grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
 
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
@@ -138,6 +152,7 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
  protected:
+    std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
     int process_task_reseponse(bool is_psi_response,
           const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);

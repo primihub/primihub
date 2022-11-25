@@ -88,6 +88,77 @@ Status VMNodeImpl::Send(ServerContext* context,
     return Status::OK;
 }
 
+Status VMNodeImpl::Recv(::grpc::ServerContext* context,
+        const TaskRequest* request,
+        grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) {
+//
+
+}
+
+// for communication between different process
+Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
+    ::grpc::ServerReader<::primihub::rpc::ForwardTaskReqeust>* reader,
+    ::primihub::rpc::TaskResponse* response) {
+    // send data to destination node specified by request
+    VLOG(5) << "enter VMNodeImpl::ForwardSend";
+    primihub::rpc::ForwardTaskReqeust forward_request;
+    primihub::rpc::Node dest_node;
+    std::unique_ptr<VMNode::Stub> stub{nullptr};
+    grpc::ClientContext client_context;
+    primihub::rpc::TaskResponse task_response;
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer{nullptr};
+    bool is_initialized{false};
+    while (reader->Read(&forward_request)) {
+        if (!is_initialized) {
+            dest_node = forward_request.dest_node();
+            const auto& task_request = forward_request.task_request();
+            std::string dest_address = dest_node.ip() + ":" + std::to_string(dest_node.port());
+            bool use_tls = false;
+            stub = get_stub(dest_address, use_tls);
+            writer = stub->Send(&client_context, &task_response);
+            is_initialized = true;
+            write->Write(task_request);
+        } else {
+            const auto& task_request = forward_request.task_request();
+            write->Write(task_request);
+        }
+    }
+    write->WriteDone();
+    Status status = writer->Finish();
+    if (status.ok()) {
+        auto ret_code = task_response.ret_code();
+        if (ret_code) {
+            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+        }
+        response->set_ret_code(ret_code);
+        response->set_msg_info(task_response.msg_info());
+    } else {
+        LOG(ERROR) << "client Node send result data to server failed. error_code: "
+                   << status.error_code() << ": " << status.error_message();
+        response->set_ret_code(ret_code);
+        response->set_msg_info(status.error_message());
+    }
+    return Status::OK;
+}
+
+// for communication between different process
+Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
+    const ::primihub::rpc::ForwardTaskReqeust* request,
+    ::grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) {
+//
+    // waiting for peer node send data
+}
+
+std::unique_ptr<VMNode::Stub> VMNodeImpl::get_stub(const std::string& dest_address, bool use_tls) {
+    grpc::ClientContext context;
+    grpc::ChannelArguments channel_args;
+    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    std::shared_ptr<grpc::Channel> channel =
+        grpc::CreateCustomChannel(dest_address, grpc::InsecureChannelCredentials(), channel_args);
+    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    return stub;
+}
+
 int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
     if (ValidateDir(data_path)) {
         LOG(ERROR) << "file path is not exist, please check";
