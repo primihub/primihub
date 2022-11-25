@@ -89,7 +89,7 @@ MaxPoolExecutor::MaxPoolExecutor(
   this->algorithm_name_ = "maxpool";
   // set the party id to be 1,2.
   uint16_t party_index = 0;
-  std::map<std::string, Node> &node_map = config.node_map;
+  auto& node_map = config.node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
     auto *vm = node.mutable_vm();

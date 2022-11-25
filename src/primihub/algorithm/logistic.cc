@@ -104,7 +104,7 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 {
   this->algorithm_name_ = "logistic_regression";
 
-  std::map<std::string, Node> &node_map = config.node_map;
+  auto& node_map = config.node_map;
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
