@@ -71,6 +71,7 @@ public:
 
     int execute() override;
     int saveResult(void);
+    std::string node_id() {return node_id_;}
 private:
     int _LoadParams(Task &task);
     int _SetUpDB(size_t dbsize, size_t dimensions, size_t elem_size,
@@ -84,7 +85,7 @@ private:
     std::string server_address_;
     std::string result_file_path_;
     std::vector<size_t> indices_;
-    std::vector<std::string> result_;   
+    std::vector<std::string> result_;
 
     std::string server_dataset_;
 
