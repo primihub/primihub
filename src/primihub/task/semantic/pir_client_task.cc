@@ -65,6 +65,14 @@ int PIRClientTask::_LoadParams(Task &task) {
             int idx = stoi(index);
             indices_.push_back(idx);
         }
+        std::vector<std::string> server_info;
+        str_split(server_address_, &server_info, ':');
+        if (server_info.size() == 3) {
+            server_address_ = server_info[0] + ":" + server_info[1];
+            if (std::stoi(server_info[2])) {
+                this->set_use_tls(true);
+            }
+        }
     } catch (std::exception &e) {
         LOG_ERROR() << "Failed to load params: " << e.what();
         return -1;
@@ -204,10 +212,11 @@ int PIRClientTask::execute() {
     }
 
     grpc::ClientContext client_context;
-    grpc::ChannelArguments channel_args;
-    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
-    std::shared_ptr<grpc::Channel> channel =
-        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
+    auto channel = buildChannel(server_address_, node_id(), use_tls());
+    // grpc::ChannelArguments channel_args;
+    // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    // std::shared_ptr<grpc::Channel> channel =
+    //     grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
     using stream_t = std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>>;
     stream_t client_stream(stub->ExecuteTask(&client_context));
