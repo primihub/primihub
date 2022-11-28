@@ -16,8 +16,10 @@ sphinx
 scikit-learn==1.1.1
 phe==1.5.0
 
+mysql-connector-python
 loguru
 gevent
+redis
 ray==2.0.0
 transformers
 requests
