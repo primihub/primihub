@@ -13,38 +13,7 @@
 # limitations under the License.
 
 
-FROM ubuntu:20.04 as builder
-
-ENV LANG C.UTF-8
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install dependencies
-RUN  apt update \
-  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake \
-  && apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm \
-  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
-  && rm -rf /var/lib/apt/lists/*
-
-# install  bazelisk
-RUN npm install -g @bazel/bazelisk
-
-# Install keyword PIR dependencies
-WORKDIR /opt
-RUN wget https://github.com/zeromq/libzmq/archive/refs/tags/v4.3.4.tar.gz \
-  && tar -zxf v4.3.4.tar.gz && mkdir libzmq-4.3.4/build && cd libzmq-4.3.4/build \
-  && cmake .. && make && make install
-
-RUN wget https://github.com/zeromq/cppzmq/archive/refs/tags/v4.9.0.tar.gz \
-  && tar -zxf v4.9.0.tar.gz && mkdir cppzmq-4.9.0/build && cd cppzmq-4.9.0/build \
-  && cmake .. && make && make install
-
-RUN wget https://github.com/google/flatbuffers/archive/refs/tags/v2.0.0.tar.gz \
-  && tar -zxf v2.0.0.tar.gz && mkdir flatbuffers-2.0.0/build && cd flatbuffers-2.0.0/build \
-  && cmake .. && make && make install
-
-RUN wget https://sourceforge.net/projects/tclap/files/tclap-1.2.5.tar.gz \
-  && tar -zxvf tclap-1.2.5.tar.gz && cd tclap-1.2.5 && ./configure \
-  && make && make install
+FROM primihub/primihub-node:build as builder
 
 WORKDIR /src
 ADD . /src
