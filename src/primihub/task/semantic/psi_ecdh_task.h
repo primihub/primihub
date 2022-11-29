@@ -75,12 +75,14 @@ class PSIECDHTask : public TaskBase {
   int saveResult();
   int sendRequetToServer(psi_proto::Request&& psi_request);
   int send_result_to_server();
+  int sendClientInfo();
 
   // server method
   int executeAsServer();
   int initRequest(psi_proto::Request* psi_request);
   int preparePSIResponse(psi_proto::Response&& psi_response, psi_proto::ServerSetup&& setup);
   int recvPSIResult();
+  int recvClientInfo(size_t* client_dataset_size, bool* reveal_intersection);
   void set_fpr(double fpr) {
     fpr_ = fpr;
   }

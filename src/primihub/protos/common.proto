@@ -17,7 +17,7 @@ enum WorkerType {
   WORKER = 0;
   DRIVER = 1;
 }
-  
+
 enum TaskType {
   ACTOR_TASK = 0;
   NODE_TASK = 1;
@@ -59,8 +59,12 @@ message int32_array {
   repeated int32 value_int32_array = 1;
 }
 
+message int64_array {
+  repeated int64 value_int64_array = 1;
+}
+
 message string_array {
-  repeated int32 value_string_array = 1;
+  repeated bytes value_string_array = 1;
 }
 
 message ParamValue {
@@ -71,6 +75,8 @@ message ParamValue {
     string value_string = 4;
     int32_array value_int32_array = 5;
     string_array value_string_array = 6;
+    int64 value_int64 = 7;
+    int64_array value_int64_array = 8;
   }
 }
 
@@ -111,7 +117,7 @@ message Task {
   Params params = 4;
   bytes code = 5;
   map<string, Node> node_map = 6; // key: node_id
-  repeated string input_datasets = 7; 
+  repeated string input_datasets = 7;
   bytes job_id = 8;
   bytes task_id = 9;
 }
