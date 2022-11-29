@@ -29,8 +29,6 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
 
-
-using primihub::rpc::Node;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
@@ -43,7 +41,7 @@ class VMScheduler {
   public:
     VMScheduler(const std::string &node_id,
                  bool singleton)
-        : node_id_(node_id), 
+        : node_id_(node_id),
           singleton_(singleton) {}
 
     virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;

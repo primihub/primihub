@@ -52,19 +52,24 @@ namespace primihub {
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
     VLOG(5) << "VMNodeImpl::Send: received: ";
-
     bool recv_meta_info{false};
     std::string job_id;
     std::string task_id;
+    std::string role;
     int storage_type{-1};
     std::string storage_info;
     std::vector<std::string> recv_data;
+    std::shared_ptr<Worker> worker_ptr{nullptr};
     VLOG(5) << "VMNodeImpl::Send: received xxx: ";
     TaskRequest request;
     while (reader->Read(&request)) {
         if (!recv_meta_info) {
             job_id = request.job_id();
             task_id = request.task_id();
+            role = request.role();
+            if (role.empty()) {
+                role = "default";
+            }
             storage_type = request.storage_type();
             storage_info = request.storage_info();
             recv_meta_info = true;
@@ -72,19 +77,81 @@ Status VMNodeImpl::Send(ServerContext* context,
                     << "task_id: " << task_id << " "
                     << "storage_type: " << storage_type << " "
                     << "storage_info: " << storage_info;
+            worker_ptr = this->getWorker(job_id, task_id);
+            if (worker_ptr == nullptr) {
+                std::string err_msg = "worker for job id: ";
+                err_msg.append(job_id).append(" task id: ").append(task_id)
+                    .append(" not found");
+                response->set_ret_code(rpc::retcode::FAIL);
+                response->set_msg_info("worker for task id ");
+                return Status::OK;
+            }
         }
-        auto item_size = request.data().size();
-        for (size_t i = 0; i < item_size; i++) {
-            recv_data.push_back(request.data(i));
-        }
+        request.set_last_frame(false);
+        auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+        recv_queue.push(request);
     }
-
-    if (storage_type == primihub::rpc::TaskRequest::FILE) {
-        std::string data_path = storage_info;
-        save_data_to_file(data_path, std::move(recv_data));
-    }
+    request.set_last_frame(true);
+    auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+    recv_queue.push(request);
     VLOG(5) << "end of read data from client";
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
+    return Status::OK;
+}
+Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
+        grpc::ServerReaderWriter<rpc::TaskResponse, rpc::TaskRequest>* stream) {
+//
+    VLOG(5) << "VMNodeImpl::SendRecv: received: ";
+    bool is_initialized{false};
+    std::string job_id;
+    std::string task_id;
+    std::string role;
+    int storage_type{-1};
+    std::string storage_info;
+    std::shared_ptr<Worker> worker_ptr{nullptr};
+    TaskRequest request;
+    rpc::TaskResponse response;
+    while (stream->Read(&request)) {
+        if (!is_initialized) {
+            job_id = request.job_id();
+            task_id = request.task_id();
+            role = request.role();
+            if (role.empty()) {
+                role = "default";
+            }
+            storage_type = request.storage_type();
+            storage_info = request.storage_info();
+            VLOG(5) << "job_id: " << job_id << " " << "task_id: " << task_id << " "
+                    << "storage_type: " << storage_type << " " << "storage_info: " << storage_info;
+            worker_ptr = this->getWorker(job_id, task_id);
+            if (worker_ptr == nullptr) {
+                std::string err_msg = "worker for job id: ";
+                err_msg.append(job_id).append(" task id: ").append(task_id)
+                    .append(" not found");
+                response.set_ret_code(rpc::retcode::FAIL);
+                response.set_msg_info(std::move(err_msg));
+                return Status::OK;
+            }
+            is_initialized = true;
+        }
+        request.set_last_frame(false);
+        auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+        recv_queue.push(std::move(request));
+    }
+    request.set_last_frame(true);
+    auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+    recv_queue.push(std::move(request));
+    VLOG(5) << "end of read data for server";
+    // waiting for response data send to client
+    auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
+    do {
+        rpc::TaskResponse response;
+        send_queue.wait_and_pop(response);
+        if (response.last_frame()) {
+            break;
+        }
+        stream->Write(response);
+    } while (true);
     return Status::OK;
 }
 
@@ -117,25 +184,25 @@ Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
             stub = get_stub(dest_address, use_tls);
             writer = stub->Send(&client_context, &task_response);
             is_initialized = true;
-            write->Write(task_request);
+            writer->Write(task_request);
         } else {
             const auto& task_request = forward_request.task_request();
-            write->Write(task_request);
+            writer->Write(task_request);
         }
     }
-    write->WriteDone();
+    writer->WritesDone();
     Status status = writer->Finish();
     if (status.ok()) {
         auto ret_code = task_response.ret_code();
         if (ret_code) {
             LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
         }
-        response->set_ret_code(ret_code);
+        response->set_ret_code(rpc::retcode::SUCCESS);
         response->set_msg_info(task_response.msg_info());
     } else {
         LOG(ERROR) << "client Node send result data to server failed. error_code: "
                    << status.error_code() << ": " << status.error_message();
-        response->set_ret_code(ret_code);
+        response->set_ret_code(rpc::retcode::FAIL);
         response->set_msg_info(status.error_message());
     }
     return Status::OK;
@@ -270,11 +337,8 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                 status = "FAIL";
                 status_info = "task execute encountes error";
             }
-            bool is_psi_ecdh_server = IsPSIECDHServer(request);
-            if (!is_psi_ecdh_server) {
-                EventBusNotifyDelegate::getInstance().notifyStatus(
-                    job_id, task_id, submit_client_id, status, status_info);
-            }
+            EventBusNotifyDelegate::getInstance().notifyStatus(
+                job_id, task_id, submit_client_id, status, status_info);
 
             VLOG(5) << "execute task end, begin to clean task";
             finished_worker_queue->push(worker->worker_id());
@@ -285,7 +349,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         std::string job_id = pushTaskRequest->task().job_id();
         LOG(INFO) << "start to create worker for task: "
                 << "job_id : " << job_id  << " task_id: " << task_id;
-        std::string worker_id = job_id + "_" + task_id;
+        std::string worker_id = getWorkerId(job_id, task_id);
         // running_set.insert(job_task);
         std::shared_ptr<Worker> worker = CreateWorker(worker_id);
         auto fut = std::async(std::launch::async,
@@ -307,6 +371,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     }
     return Status::OK;
 }
+
 bool VMNodeImpl::IsPSIECDHServer(const PushTaskRequest& request) {
     bool is_psi_ecdh_server{false};
     auto task_type = request.task().type();

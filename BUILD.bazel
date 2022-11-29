@@ -609,6 +609,7 @@ cc_library(
             "src/primihub/task/semantic/psi_server_task.cc",
             "src/primihub/task/semantic/keyword_pir_client_task.cc",
             "src/primihub/task/semantic/keyword_pir_server_task.cc",
+            "src/primihub/task/semantic/psi_ecdh_task.cc",
          ]),
         "//conditions:default": glob([
             "src/primihub/task/language/proto_parser.cc",
@@ -630,6 +631,7 @@ cc_library(
             "src/primihub/task/semantic/private_server_base.cc",
             "src/primihub/task/semantic/fl_task.cc",
             "src/primihub/task/semantic/psi_server_task.cc",
+            "src/primihub/task/semantic/psi_ecdh_task.cc",
         ]),
     }),
     hdrs = select({
@@ -660,6 +662,7 @@ cc_library(
             "src/primihub/task/semantic/fl_task.h",
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
+            "src/primihub/task/semantic/psi_ecdh_task.h",
         ]),
         "//conditions:default": glob([
             "src/primihub/task/language/proto_parser.h",
@@ -686,6 +689,7 @@ cc_library(
             "src/primihub/task/semantic/fl_task.h",
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
+            "src/primihub/task/semantic/psi_ecdh_task.h",
         ]),
     }),
     copts = C_OPT + select({

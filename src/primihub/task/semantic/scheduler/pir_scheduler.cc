@@ -28,7 +28,6 @@
 
 
 //using primihub::rpc::EndPoint;
-using primihub::rpc::Node;
 using primihub::rpc::LinkType;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
@@ -49,7 +48,7 @@ void set_pir_request_param(const std::string &node_id,
         return;
 
     std::string server_address = "";
-    for (auto &pair : taskRequest.task().node_map()) {
+    for (const auto &pair : taskRequest.task().node_map()) {
         if (pair.first == node_id) {
             continue;
         }
@@ -197,7 +196,7 @@ void node_push_pir_task(const std::string &node_id,
     VLOG(5) << "dest_node: " << dest_node_address << " reply success";
 }
 
-void PIRScheduler::add_vm(Node *node, int i,
+void PIRScheduler::add_vm(rpc::Node *node, int i,
                          const PushTaskRequest *pushTaskRequest) {
     VirtualMachine *vm = node->add_vm();
     vm->set_party_id(i);
@@ -215,12 +214,12 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     }
 
     if (pushTaskRequest->task().type() == TaskType::PIR_TASK) {
-        google::protobuf::Map<std::string, Node> *mutable_node_map =
-            nodePushTaskRequest.mutable_task()->mutable_node_map();
-        nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_PIR_TASK);
+        auto task_ptr = nodePushTaskRequest.mutable_task();
+        auto mutable_node_map = task_ptr->mutable_node_map();
+        task_ptr->set_type(TaskType::NODE_PIR_TASK);
 
         for (size_t i = 0; i < peer_list_.size(); i++) {
-            Node single_node;
+            rpc::Node single_node;
             single_node.CopyFrom(peer_list_[i]);
             std::string node_id = peer_list_[i].node_id();
             if (singleton_) {
@@ -313,12 +312,11 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
 
 int PIRScheduler::transformRequest(PushTaskRequest &taskRequest) {
     if (taskRequest.task().type() == TaskType::PIR_TASK) {
-        google::protobuf::Map<std::string, Node> *mutable_node_map =
-            taskRequest.mutable_task()->mutable_node_map();
+        auto mutable_node_map = taskRequest.mutable_task()->mutable_node_map();
         taskRequest.mutable_task()->set_type(TaskType::NODE_PIR_TASK);
 
         for (size_t i = 0; i < peer_list_.size(); i++) {
-            Node single_node;
+            rpc::Node single_node;
             single_node.CopyFrom(peer_list_[i]);
             std::string node_id = peer_list_[i].node_id();
             if (singleton_) {
@@ -334,8 +332,7 @@ int PIRScheduler::transformRequest(PushTaskRequest &taskRequest) {
         }
     }
 
-    google::protobuf::Map<std::string, Node> node_map =
-        taskRequest.task().node_map();
+    const auto& node_map = taskRequest.task().node_map();
 
     auto node_map_it = node_map.find(node_id_);
     if (node_map_it == node_map.end()) {

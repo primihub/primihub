@@ -112,6 +112,16 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             data_index_ = param_map["serverIndex"].value_int32();
             dataset_path_ = param_map["serverData"].value_string();
             host_address_ = param_map["clientAddress"].value_string();
+            auto it = param_map.find("sync_result_to_server");
+            if (it != param_map.end()) {
+                sync_result_to_server = it->second.value_int32() > 0;
+                VLOG(5) << "sync_result_to_server: " << sync_result_to_server;
+            }
+            it = param_map.find("server_outputFullFilname");
+            if (it != param_map.end()) {
+                server_result_path = it->second.value_string();
+                VLOG(5) << "server_outputFullFilname: " << server_result_path;
+            }
         } catch (std::exception &e) {
             LOG(ERROR) << "Failed to load params: " << e.what();
             return -1;
@@ -341,18 +351,19 @@ int PSIKkrtTask::send_result_to_server() {
         task_request.set_task_id(this->task_id_);
         task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
-        if (!add_head_flag) {
-            task_request.add_data("\"intersection_row\"");
-            add_head_flag = true;
-        }
+        auto data_ptr = task_request.mutable_data();
+        data_ptr->reserve(limited_size);
         size_t pack_size = 0;
+        size_t item_len = 0;
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
-            size_t item_len = data_item.size();
-            if (pack_size + item_len > limited_size) {
+            item_len = data_item.size();
+            if (pack_size + item_len + sizeof(size_t) > limited_size) {
                 break;
             }
-            task_request.add_data(data_item);
+            data_ptr->append(reinterpret_cast<char*>(&item_len), sizeof(item_len));
+            pack_size += sizeof(item_len);
+            data_ptr->append(data_item);
             pack_size += item_len;
             sended_index++;
         }
@@ -362,8 +373,6 @@ int PSIKkrtTask::send_result_to_server() {
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();
         if (sended_index >= this->result_.size()) {
-            VLOG(5) << " sended_index: " << sended_index
-                    << " result size: " << this->result_.size() << " end of send";
             break;
         }
     } while(true);
@@ -387,45 +396,12 @@ int PSIKkrtTask::send_result_to_server() {
 }
 
 int PSIKkrtTask::saveResult(void) {
-    arrow::MemoryPool *pool = arrow::default_memory_pool();
-    arrow::StringBuilder builder(pool);
-
-    for (std::int64_t i = 0; i < result_.size(); i++) {
-        builder.Append(result_[i]);
-    }
-
-    std::shared_ptr<arrow::Array> array;
-    builder.Finish(&array);
-
     std::string col_title =
         psi_type_ == PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
-    std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
-        arrow::field(col_title, arrow::int64())};
-    auto schema = std::make_shared<arrow::Schema>(schema_vector);
-    std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
-
-    std::shared_ptr<DataDriver> driver =
-        DataDirverFactory::getDriver("CSV", "psi result");
-    std::shared_ptr<CSVDriver> csv_driver =
-        std::dynamic_pointer_cast<CSVDriver>(driver);
-
-
-    if (ValidateDir(result_file_path_)) {
-        LOG(ERROR) << "can't access file path: "
-                   << result_file_path_;
-        return -1;
-    }
-    int ret = csv_driver->write(table, result_file_path_);
-
-    if (ret != 0) {
-        LOG(ERROR) << "Save PSI result to file " << result_file_path_ << " failed.";
-        return -1;
-    }
+    saveDataToCSVFile(result_, result_file_path_, col_title);
     if (this->sync_result_to_server) {
         send_result_to_server();
     }
-
-    LOG(INFO) << "Save PSI result to " << result_file_path_ << ".";
     return 0;
 }
 
@@ -511,8 +487,64 @@ int PSIKkrtTask::execute() {
         auto _end = timer.timeElapse();
         auto time_cost = _end - _start;
         VLOG(5) << "kkrt client save result data time cost(ms): " << time_cost;
+    } else if (mode == EpMode::Server) {
+        if (sync_result_to_server) {
+            recvIntersectionData();
+        }
     }
 #endif
+    return 0;
+}
+int PSIKkrtTask::recvIntersectionData() {
+    std::vector<std::string> psi_result;
+    auto& recv_queue = this->getTaskContext().getRecvQueue();
+    do {
+        rpc::TaskRequest request;
+        recv_queue.wait_and_pop(request);
+        if (request.last_frame()) {
+            break;
+        }
+        size_t offset = 0;
+        size_t data_len = request.data().length();
+        VLOG(5) << "data_len_data_len: " << data_len;
+        auto data_ptr = const_cast<char*>(request.data().c_str());
+        // format length: value
+        while (offset < data_len) {
+            auto len_ptr = reinterpret_cast<size_t*>(data_ptr+offset);
+            size_t len = *len_ptr;
+            offset += sizeof(size_t);
+            psi_result.push_back(std::string(data_ptr+offset, len));
+            offset += len;
+        }
+    } while (true);
+    VLOG(5) << "psi_result size: " << psi_result.size();
+    std::string col_title{"intersection_row"};
+    saveDataToCSVFile(psi_result, server_result_path, col_title);
+}
+
+int PSIKkrtTask::saveDataToCSVFile(const std::vector<std::string>& data,
+        const std::string& file_path, const std::string& col_title) {
+    arrow::MemoryPool *pool = arrow::default_memory_pool();
+    arrow::StringBuilder builder(pool);
+    builder.AppendValues(data);
+    std::shared_ptr<arrow::Array> array;
+    builder.Finish(&array);
+    std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
+        arrow::field(col_title, arrow::utf8())};
+    auto schema = std::make_shared<arrow::Schema>(schema_vector);
+    std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
+    auto driver = DataDirverFactory::getDriver("CSV", "test address");
+    auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
+    if (ValidateDir(file_path)) {
+        LOG(ERROR) << "can't access file path: " << file_path;
+        return -1;
+    }
+    int ret = csv_driver->write(table, file_path);
+    if (ret != 0) {
+        LOG(ERROR) << "Save PSI result to file " << file_path << " failed.";
+        return -1;
+    }
+    LOG(INFO) << "Save PSI result to " << file_path << ".";
     return 0;
 }
 

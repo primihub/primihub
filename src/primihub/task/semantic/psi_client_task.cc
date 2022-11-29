@@ -363,9 +363,11 @@ int PSIClientTask::send_result_to_server() {
         task_request.set_task_id(this->task_id_);
         task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
+        auto data_ptr = task_request.mutable_data();
+        data_ptr->reserve(limited_size);
         size_t pack_size = 0;
         if (!add_head_flag) {
-            task_request.add_data("\"intersection_row\"");
+            data_ptr->append("\"intersection_row\"\n");
             add_head_flag = true;
         }
         for (size_t i = sended_index; i < this->result_.size(); i++) {
@@ -374,7 +376,7 @@ int PSIClientTask::send_result_to_server() {
             if (pack_size + item_len > limited_size) {
                 break;
             }
-            task_request.add_data(data_item);
+            data_ptr->append(data_item).append("\n");
             pack_size += item_len;
             sended_index++;
         }
