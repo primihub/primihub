@@ -55,5 +55,6 @@ private:
     PsiResponse * response_;
 };
 
+
 } // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_SERVER_TASK_H_

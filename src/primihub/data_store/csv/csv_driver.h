@@ -49,7 +49,7 @@ public:
   std::string getDataURL() const override;
   // FIXME to be deleted
   int write(std::shared_ptr<arrow::Table> table,
-                     std::string &filePath);
+                    const std::string &filePath);
 
 private:
   std::string filePath_;

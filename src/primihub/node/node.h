@@ -63,7 +63,6 @@ using primihub::rpc::TaskRequest;
 using primihub::rpc::TaskResponse;
 using primihub::rpc::ExecuteTaskRequest;
 using primihub::rpc::ExecuteTaskResponse;
-using primihub::rpc::Node;
 using primihub::rpc::PirRequest;
 using primihub::rpc::PirResponse;
 using primihub::rpc::PsiRequest;
@@ -128,6 +127,8 @@ class VMNodeImpl final: public VMNode::Service {
     Status Recv(::grpc::ServerContext* context,
         const TaskRequest* request,
         grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
+    Status SendRecv(::grpc::ServerContext* context,
+        grpc::ServerReaderWriter< ::primihub::rpc::TaskResponse, ::primihub::rpc::TaskRequest>* stream) override;
 
     // for communication between different process
     Status ForwardSend(::grpc::ServerContext* context,
@@ -162,6 +163,21 @@ class VMNodeImpl final: public VMNode::Service {
     int validate_file_path(const std::string& data_path) { return 0;}
     int ClearWorker(const std::string& worker_id);
     bool IsPSIECDHServer(const PushTaskRequest& request);  // for temp check
+    std::shared_ptr<Worker> getWorker(const std::string& job_id, const std::string& task_id) {
+      std::string worker_id = getWorkerId(job_id, task_id);
+      std::lock_guard<std::mutex> lck(task_executor_mtx);
+      auto it = task_executor_map.find(worker_id);
+      if (it != task_executor_map.end()) {
+        return std::get<0>(it->second);
+      }
+      LOG(ERROR) << "no worker found for worker id: " << worker_id;
+      return nullptr;
+    }
+
+    inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
+      return job_id + "_" + task_id;
+    }
+
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -184,7 +200,6 @@ class VMNodeImpl final: public VMNode::Service {
     ThreadSafeQueue<std::string> fininished_workers;
     std::future<void> finished_worker_fut;
     std::atomic<bool> stop_{false};
-
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
 };

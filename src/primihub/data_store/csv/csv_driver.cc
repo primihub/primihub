@@ -125,7 +125,7 @@ std::shared_ptr<Cursor> &CSVDriver::initCursor(const std::string &filePath) {
 
 // FIXME to be deleted write file in driver directly.
 int CSVDriver::write(std::shared_ptr<arrow::Table> table,
-                     std::string &filePath) {
+                     const std::string& filePath) {
   filePath_ = filePath;
   auto result = arrow::io::FileOutputStream::Open(filePath);
   if (!result.ok()) {

@@ -39,11 +39,11 @@ class FLScheduler : public VMScheduler {
                     peer_context_map_(peer_context_map),
                     metas_with_role_tag_(metas_with_role_tag) {}
           ~FLScheduler() {}
-          
+
           void dispatch(const PushTaskRequest *pushTaskRequest) override;
-     
+
      private:
-                void add_vm(Node *node, int i, int role_num, 
+                void add_vm(rpc::Node *node, int i, int role_num,
                             const PushTaskRequest *pushTaskRequest);
 
           void getDataMetaListByRole(const std::string &role,

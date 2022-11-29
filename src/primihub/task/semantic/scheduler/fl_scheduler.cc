@@ -135,13 +135,13 @@ namespace primihub::task {
         nodePushTaskRequest.CopyFrom(*pushTaskRequest);
         // Construct node map
         if (pushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
-            google::protobuf::Map<std::string, Node> *mutable_node_map =
-                nodePushTaskRequest.mutable_task()->mutable_node_map();
-            nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_TASK);
+            auto task_ptr = nodePushTaskRequest.mutable_task();
+            auto mutable_node_map = task_ptr->mutable_node_map();
+            task_ptr->set_type(TaskType::NODE_TASK);
 
             // role: host -> party 0   role: guest -> party 1
             for (size_t i = 0; i < this->peers_with_tag_.size(); i++) {
-                Node single_node;
+                rpc::Node single_node;
 
                 single_node.CopyFrom(this->peers_with_tag_[i].first);
                 std::string node_id = this->peers_with_tag_[i].first.node_id();
@@ -195,7 +195,7 @@ namespace primihub::task {
         }
     }
 
-    void FLScheduler::add_vm(Node *node, int i, int role_num,
+    void FLScheduler::add_vm(rpc::Node *node, int i, int role_num,
                             const PushTaskRequest *pushTaskRequest) {
         int ret = 0;
         for (auto node_with_tag : peers_with_tag_) {

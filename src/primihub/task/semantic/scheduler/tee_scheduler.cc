@@ -37,7 +37,7 @@ using primihub::rpc::VirtualMachine;
 namespace primihub::task {
 void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
     PushTaskRequest request;
-    Node executor_node;
+    rpc::Node executor_node;
     request.CopyFrom(*push_request);
 
     if (push_request->task().type() == TaskType::TEE_TASK) {
@@ -56,7 +56,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 
             } else {
                 party_id += 1;
-                Node data_pvd_node;
+                rpc::Node data_pvd_node;
                 data_pvd_node.CopyFrom(this->peer_list_[i]);
                 (*mutable_node_map)[node_id] = data_pvd_node;
                 // update node_map
@@ -68,8 +68,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
     LOG(INFO) << " 📧  Dispatching task to: "
               << request.mutable_task()->mutable_node_map()->size() << " nodes";
 
-    google::protobuf::Map<std::string, Node> node_map =
-        request.task().node_map();
+    const auto& node_map = request.task().node_map();
     for (auto &pair : node_map) {
         if (executor_node.node_id() == pair.second.node_id()) {
             // do nothing to executor node
@@ -79,7 +78,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
 
         LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
-        this->push_task_to_node(pair.first, 
+        this->push_task_to_node(pair.first,
                                 this->peer_dataset_map_,
                                 std::ref(request),
                                 dest_node_address);
@@ -87,7 +86,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 }
 
 
-void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
+void TEEScheduler::add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
                           const PushTaskRequest *pushTaskRequest) {
     // Executor node
     VirtualMachine *dpv_vm = executor->add_vm();
@@ -118,10 +117,10 @@ void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
 void TEEScheduler::push_task_to_node (const std::string &node_id,
                                       const PeerDatasetMap &peer_dataset_map,
                                       const PushTaskRequest &request,
-                                      const std::string &dest_node_address) {                              
+                                      const std::string &dest_node_address) {
     grpc::ClientContext context;
     PushTaskRequest _1NodePushTaskRequest;
-    _1NodePushTaskRequest.CopyFrom(request);  
+    _1NodePushTaskRequest.CopyFrom(request);
 
     // Add datasets params to request
     google::protobuf::Map<std::string, ParamValue> *param_map =

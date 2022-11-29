@@ -31,7 +31,6 @@ using grpc::Status;
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
-using primihub::rpc::Node;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VarType;
@@ -93,7 +92,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     }
 
     for (uint8_t i = 0; i < party_num_; i++) {
-      Node node;
+      rpc::Node node;
       node.CopyFrom(peer_list_[i]);
       std::string node_id = node.node_id();
       add_vm(&node, i, &request);
@@ -123,7 +122,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     t.join();
 }
 
-void CRYPTFLOW2Scheduler::add_vm(Node *node, int i,
+void CRYPTFLOW2Scheduler::add_vm(rpc::Node *node, int i,
                                  const PushTaskRequest *push_request) {
   VirtualMachine *vm = node->add_vm();
   vm->set_party_id(i);
@@ -144,7 +143,7 @@ void CRYPTFLOW2Scheduler::add_vm(Node *node, int i,
   return;
 }
 
-void FalconScheduler::add_vm(Node *node, int i,
+void FalconScheduler::add_vm(rpc::Node *node, int i,
                              const PushTaskRequest *push_request) {
   VirtualMachine *vm0, *vm1;
   vm0 = node->add_vm();

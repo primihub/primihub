@@ -66,6 +66,9 @@ public:
     int send_result_to_server();
     void setTaskInfo(const std::string& node_id, const std::string& job_id,
         const std::string& task_id, const std::string& submit_client_id);
+    int recvIntersectionData();
+    int saveDataToCSVFile(const std::vector<std::string>& data,
+      const std::string& file_path, const std::string& col_title);
 private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);
@@ -90,11 +93,9 @@ private:
     std::string result_file_path_;
     std::vector <std::string> elements_;
     std::vector <std::string> result_;
-
     std::string host_address_;
     bool sync_result_to_server{false};
     std::string server_result_path;
-
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
