@@ -29,7 +29,6 @@
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
-using primihub::rpc::Node;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
@@ -73,7 +72,7 @@ void node_push_task(const std::string &node_id,
         (*param_map)[pair.first] = pv;
         DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
-   
+
     // send request
     std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
         dest_node_address, grpc::InsecureChannelCredentials()));
@@ -86,7 +85,7 @@ void node_push_task(const std::string &node_id,
     }
 }
 
-void ABY3Scheduler::add_vm(Node *node, int i,
+void ABY3Scheduler::add_vm(rpc::Node *node, int i,
                          const PushTaskRequest *pushTaskRequest) {
     VirtualMachine *vm = node->add_vm();
     vm->set_party_id(i);
@@ -118,20 +117,19 @@ void ABY3Scheduler::add_vm(Node *node, int i,
 
 /**
  * @brief  Dispatch ABY3  MPC task
- * 
+ *
  */
 void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     PushTaskRequest nodePushTaskRequest;
     nodePushTaskRequest.CopyFrom(*actorPushTaskRequest);
 
-    
+
     if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
-        google::protobuf::Map<std::string, Node> *mutable_node_map =
-            nodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
         nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_TASK);
 
         for (size_t i = 0; i < peer_list_.size(); i++) {
-            Node single_node;
+            rpc::Node single_node;
             single_node.CopyFrom(peer_list_[i]);
             std::string node_id = peer_list_[i].node_id();
             if (singleton_) {
@@ -145,15 +143,14 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
             }
             (*mutable_node_map)[node_id] = single_node;
         }
-    } 
-    
+    }
 
-    LOG(INFO) << " 📧  Dispatch SubmitTask to " 
+
+    LOG(INFO) << " 📧  Dispatch SubmitTask to "
         << nodePushTaskRequest.mutable_task()->mutable_node_map()->size() << " node";
     // schedule
     std::vector<std::thread> thrds;
-    google::protobuf::Map<std::string, Node> node_map =
-        nodePushTaskRequest.task().node_map();
+    const auto& node_map = nodePushTaskRequest.task().node_map();
     //  3 nodes request paramaeter are differents.
     for (int i = 0; i < 3; i++) {
         for (auto &pair : node_map) {
@@ -161,7 +158,7 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
                 std::string dest_node_address(
                     absl::StrCat(pair.second.ip(), ":", pair.second.port()));
                 DLOG(INFO) << "dest_node_address: " << dest_node_address;
-              
+
                 thrds.emplace_back(std::thread(node_push_task,
                                                pair.first,              // node_id
                                                this->peer_dataset_map_,  // peer_dataset_map

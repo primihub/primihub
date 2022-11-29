@@ -71,10 +71,16 @@ class Worker {
         : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {}
     int execute(const PushTaskRequest* pushTaskRequest);
 
-    void execute(const ExecuteTaskRequest *taskRequest,
+    int execute(const ExecuteTaskRequest *taskRequest,
                  ExecuteTaskResponse *taskResponse);
     inline std::string worker_id() {return worker_id_;}
     void kill_task();
+    std::shared_ptr<primihub::task::TaskBase> getTask() {
+        return task_ptr;
+    }
+    std::shared_ptr<primihub::task::ServerTaskBase> getServerTask() {
+        return task_server_ptr;
+    }
 
  private:
     std::unordered_map<std::string, std::shared_ptr<Worker>> workers_

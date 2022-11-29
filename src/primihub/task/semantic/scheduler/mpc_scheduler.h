@@ -22,13 +22,12 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/scheduler.h"
 
-using primihub::rpc::Node;
 using primihub::rpc::PushTaskRequest;
 
 namespace primihub::task {
 class MPCScheduler : public VMScheduler {
 public:
-  MPCScheduler(const std::string &node_id, const std::vector<Node> &peer_list,
+  MPCScheduler(const std::string &node_id, const std::vector<rpc::Node> &peer_list,
                const PeerDatasetMap &peer_dataset_map, uint8_t party_num,
                bool singleton)
       : VMScheduler(node_id, singleton) {
@@ -40,7 +39,7 @@ public:
   void dispatch(const PushTaskRequest *pus_request) override;
 
 protected:
-  std::vector<Node> peer_list_;
+  std::vector<rpc::Node> peer_list_;
   PeerDatasetMap peer_dataset_map_;
 
 private:
@@ -49,7 +48,7 @@ private:
                         const PushTaskRequest &request,
                         const std::string node_addr);
 
-  virtual void add_vm(Node *node, int i,
+  virtual void add_vm(rpc::Node *node, int i,
                       const PushTaskRequest *push_request) = 0;
   uint8_t party_num_;
 };
@@ -57,23 +56,23 @@ private:
 class CRYPTFLOW2Scheduler : public MPCScheduler {
 public:
   CRYPTFLOW2Scheduler(const std::string &node_id,
-                      const std::vector<Node> &peer_list,
+                      const std::vector<rpc::Node> &peer_list,
                       const PeerDatasetMap &peer_dataset_map, bool singleton)
       : MPCScheduler(node_id, peer_list, peer_dataset_map, 2, singleton) {}
 
 private:
-  void add_vm(Node *node, int i, const PushTaskRequest *push_request) override;
+  void add_vm(rpc::Node *node, int i, const PushTaskRequest *push_request) override;
 };
 
 class FalconScheduler : public MPCScheduler {
 public:
   FalconScheduler(const std::string &node_id,
-                  const std::vector<Node> &peer_list,
+                  const std::vector<rpc::Node> &peer_list,
                   const PeerDatasetMap &peer_dataset_map, bool singleton)
       : MPCScheduler(node_id, peer_list, peer_dataset_map, 3, singleton) {}
 
 private:
-  void add_vm(Node *node, int i, const PushTaskRequest *push_request) override;
+  void add_vm(rpc::Node *node, int i, const PushTaskRequest *push_request) override;
 };
 } // namespace primihub::task
 

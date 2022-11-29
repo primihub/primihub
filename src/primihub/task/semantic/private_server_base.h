@@ -23,7 +23,7 @@
 
 #include "src/primihub/protos/common.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
-
+#include "src/primihub/task/semantic/task.h"
 
 using primihub::rpc::Params;
 using primihub::service::DatasetService;
@@ -31,6 +31,7 @@ using primihub::service::DatasetService;
 namespace primihub::task {
 class ServerTaskBase {
 public:
+    using task_context_t = TaskContext<primihub::rpc::ExecuteTaskRequest, primihub::rpc::ExecuteTaskResponse>;
     ServerTaskBase(const Params *params,
                    std::shared_ptr<DatasetService> dataset_service);
     ~ServerTaskBase(){}
@@ -46,6 +47,12 @@ public:
     }
     void setTaskParam(const Params *params);
     Params* getTaskParam();
+    inline task_context_t& getTaskContext() {
+        return task_context_;
+    }
+    inline task_context_t* getMutableTaskContext() {
+        return &task_context_;
+    }
 
 protected:
     int loadDatasetFromCSV(const std::string &filename, int data_col,
@@ -57,6 +64,7 @@ protected:
 
     Params params_;
     std::shared_ptr<DatasetService> dataset_service_;
+    task_context_t task_context_;
 };
 } // namespace primihub::task
 

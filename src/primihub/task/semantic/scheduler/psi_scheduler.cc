@@ -29,7 +29,6 @@
 
 
 //using primihub::rpc::EndPoint;
-using primihub::rpc::Node;
 using primihub::rpc::LinkType;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
@@ -219,7 +218,7 @@ void node_push_psi_task(const std::string &node_id,
     }
 }
 
-void PSIScheduler::add_vm(Node *node, int i,
+void PSIScheduler::add_vm(rpc::Node *node, int i,
                          const PushTaskRequest *pushTaskRequest) {
     VirtualMachine *vm = node->add_vm();
     vm->set_party_id(i);
@@ -230,12 +229,11 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     nodePushTaskRequest.CopyFrom(*pushTaskRequest);
 
     if (pushTaskRequest->task().type() == TaskType::PSI_TASK) {
-        google::protobuf::Map<std::string, Node> *mutable_node_map =
-            nodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
         nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_PSI_TASK);
 
         for (size_t i = 0; i < peer_list_.size(); i++) {
-            Node single_node;
+            rpc::Node single_node;
             single_node.CopyFrom(peer_list_[i]);
             std::string node_id = peer_list_[i].node_id();
             if (singleton_) {

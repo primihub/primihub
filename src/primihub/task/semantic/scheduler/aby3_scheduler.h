@@ -41,7 +41,6 @@ using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
-using primihub::rpc::Node;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
@@ -54,7 +53,7 @@ namespace primihub::task {
 class ABY3Scheduler : public VMScheduler {
   public:
     ABY3Scheduler(const std::string &node_id,
-                  const std::vector<Node> &peer_list,
+                  const std::vector<rpc::Node> &peer_list,
                   const PeerDatasetMap &peer_dataset_map, bool singleton)
         : VMScheduler(node_id, singleton),
           peer_list_(peer_list),
@@ -65,10 +64,10 @@ class ABY3Scheduler : public VMScheduler {
         this->dataset_owner_ = std::move(dataset_owner);
     }
 
-    void add_vm(Node *single_node, int i,
+    void add_vm(rpc::Node *single_node, int i,
                 const PushTaskRequest *pushTaskRequest);
     private:
-      const std::vector<Node> peer_list_;
+      const std::vector<rpc::Node> peer_list_;
       const PeerDatasetMap peer_dataset_map_;
       std::map<std::string, std::string> dataset_owner_;
 };

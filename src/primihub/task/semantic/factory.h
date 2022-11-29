@@ -27,6 +27,7 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
+#include "src/primihub/task/semantic/psi_ecdh_task.h"
 
 #ifndef USE_MICROSOFT_APSI
 #include "src/primihub/task/semantic/pir_client_task.h"
@@ -72,19 +73,17 @@ class TaskFactory {
                                                     dataset_service);
             return std::dynamic_pointer_cast<TaskBase>(mpc_task);
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PSI_TASK) {
-            auto task_param = request.task();
+            const auto& task_param = request.task();
             const auto& param_map = task_param.params().param_map();
             int psi_tag = PsiTag::ECDH;
             auto param_it = param_map.find("psiTag");
             if (param_it != param_map.end()) {
                 psi_tag = param_it->second.value_int32();
             }
-
             if (psi_tag == PsiTag::ECDH) {
-                auto psi_task =
-                    std::make_shared<PSIClientTask>(&task_param, dataset_service);
+                auto psi_task = std::make_shared<PSIECDHTask>(&task_param, dataset_service);
                 psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
-                return std::dynamic_pointer_cast<TaskBase>(psi_task);
+                return psi_task;
             } else if (psi_tag == PsiTag::KKRT) {
                 auto psi_task = std::make_shared<PSIKkrtTask>(node_id,
                                                               request.task().job_id(),
