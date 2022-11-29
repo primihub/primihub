@@ -278,6 +278,40 @@ int PSIECDHTask::send_result_to_server() {
     VLOG(5) << "send result to server success";
 }
 
+int PSIECDHTask::sendClientInfo() {
+    rpc::TaskRequest request;
+    request.set_task_id(this->task_id_);
+    request.set_job_id(this->job_id_);
+    rpc::TaskResponse task_response;
+    auto param_map = request.mutable_params()->mutable_param_map();
+    // dataset size
+    ParamValue pv_datasize;
+    pv_datasize.set_var_type(rpc::VarType::INT64);
+    pv_datasize.set_value_int64(elements_.size());
+    pv_datasize.set_is_array(false);
+    (*param_map)["dataset_size"] = pv_datasize;
+    // reveal intersection
+    ParamValue pv_intersection;
+    pv_intersection.set_var_type(rpc::VarType::INT32);
+    pv_intersection.set_value_int32(this->reveal_intersection_ ? 1 : 0);
+    pv_intersection.set_is_array(false);
+    (*param_map)["reveal_intersection"] = pv_intersection;
+    grpc::ClientContext context;
+    auto channel = grpc::InsecureChannelCredentials();
+    auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
+    writer->Write(request);
+    writer->WritesDone();
+    Status status = writer->Finish();
+    if (status.ok()) {
+        LOG(INFO) << "send param to server success";
+    } else {
+        LOG(ERROR) << "send param to server failed, "
+                   << status.error_code() << " : " << status.error_message();
+    }
+    return 0;
+}
+
 int PSIECDHTask::saveResult() {
     std::string col_title =
         psi_type_ == PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
@@ -287,6 +321,7 @@ int PSIECDHTask::saveResult() {
 
 int PSIECDHTask::executeAsClient() {
     SCopedTimer timer;
+    sendClientInfo();
     auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
     psi_proto::Request client_request = client->CreateRequest(elements_).value();
     psi_proto::Response server_response;
@@ -397,18 +432,22 @@ int PSIECDHTask::executeAsClient() {
 
 int PSIECDHTask::executeAsServer() {
     SCopedTimer timer;
+    size_t num_client_elements{0};
+    bool reveal_intersection_flag{false};
+    recvClientInfo(&num_client_elements, &reveal_intersection_flag);
+    // prepare for local compuation
+    std::unique_ptr<openminded_psi::PsiServer> server =
+        std::move(openminded_psi::PsiServer::CreateWithNewKey(reveal_intersection_flag)).value();
+    // std::int64_t num_client_elements =
+    //     static_cast<std::int64_t>(psi_request.encrypted_elements().size());
+    psi_proto::ServerSetup server_setup =
+        std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
+    // recv request from clinet
     psi_proto::Request psi_request;
     initRequest(&psi_request);
     auto init_req_ts = timer.timeElapse();
     auto init_req_time_cost = init_req_ts;
     VLOG(5) << "init_req_time_cost(ms): " << init_req_time_cost;
-    std::unique_ptr<openminded_psi::PsiServer> server =
-        std::move(openminded_psi::PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
-    std::int64_t num_client_elements =
-        static_cast<std::int64_t>(psi_request.encrypted_elements().size());
-    psi_proto::ServerSetup server_setup =
-        std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
-
     psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
 
     preparePSIResponse(std::move(server_response), std::move(server_setup));
@@ -416,6 +455,31 @@ int PSIECDHTask::executeAsServer() {
     if (this->reveal_intersection_ && this->sync_result_to_server) {
         recvPSIResult();
     }
+}
+
+int PSIECDHTask::recvClientInfo(size_t* client_dataset_size, bool* reveal_intersection) {
+    auto& client_dataset_size_ = *client_dataset_size;
+    auto& reveal_flag = *reveal_intersection;
+    auto& recv_queue = this->getTaskContext().getRecvQueue();
+    do {
+        TaskRequest request;
+        recv_queue.wait_and_pop(request);
+        if (request.last_frame()) {
+            break;
+        }
+        const auto& parm_map = request.params().param_map();
+        auto it = parm_map.find("dataset_size");
+        if (it != parm_map.end()) {
+            client_dataset_size_ = it->second.value_int64();
+            VLOG(5) << "client_dataset_size_: " << client_dataset_size_;
+        }
+        it = parm_map.find("reveal_intersection");
+        if (it != parm_map.end()) {
+            reveal_flag = it->second.value_int32() > 0;
+            VLOG(5) << "reveal_intersection_: " << reveal_flag;
+        }
+    } while (true);
+    return 0;
 }
 
 int PSIECDHTask::preparePSIResponse(psi_proto::Response&& psi_response,
