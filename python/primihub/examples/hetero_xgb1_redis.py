@@ -1824,7 +1824,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     data_key = list(dataset_map.keys())[0]
 
-    host_redis = RedisProxy(host='localhost',
+    host_redis = RedisProxy(host='172.21.3.108',
                             port=15550,
                             db=0,
                             password='primihub')
@@ -1990,7 +1990,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
 
-    guest_redis = RedisProxy(host='localhost',
+    guest_redis = RedisProxy(host='172.21.3.108',
                              port=15550,
                              db=0,
                              password='primihub')
