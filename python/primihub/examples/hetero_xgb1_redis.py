@@ -1638,7 +1638,7 @@ class XGB_HOST_EN:
 
             else:
                 # self.proxy_client_guest.Remote(gh, "gh_en")
-                self.host_redis.lpush('gh_en', enc_gh_df)
+                self.host_redis.lpush('gh_en', gh)
 
             # start construct boosting trees
             # lp = LineProfiler(xgb_host.host_tree_construct)
@@ -1719,7 +1719,7 @@ num_tree = 5
 # the depth of each tree
 max_depth = 5
 # whether encrypted or not
-is_encrypted = True
+is_encrypted = False
 
 ray_group = True
 
