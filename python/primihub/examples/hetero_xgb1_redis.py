@@ -1733,22 +1733,25 @@ class RedisProxy:
         # self.port = port
         # self.db = db
         # self.password = password
-        self.redis = redis.Redis(host=host, port=port, db=db, password=password)
+        self.connection = redis.Redis(host=host,
+                                      port=port,
+                                      db=db,
+                                      password=password)
 
     def set(self, key, val):
         # flag = False
         # while not flag:
         try:
-            flag = self.redis.set(key, pickle.dumps(val))
+            flag = self.connection.set(key, pickle.dumps(val))
         except Exception as e:
-            raise ("Redis set exception is ", str(e))
+            raise KeyError("Redis set exception is ", str(e))
 
         logger.info("Redis set successful")
 
     def get(self, key, max_time=300, interval=0.01):
         start = time.time()
         while True:
-            res = pickle.loads(self.redis.get(key))
+            res = pickle.loads(self.connection.get(key))
             end = time.time()
 
             if res is not None:
@@ -1763,7 +1766,7 @@ class RedisProxy:
 
     def lpush(self, key, val):
         try:
-            flag = self.redis.lpush(key, pickle.dumps(val))
+            flag = self.connection.lpush(key, pickle.dumps(val))
         except Exception as e:
             logger.error("Redis set exception is ", str(e))
 
@@ -1773,7 +1776,7 @@ class RedisProxy:
         start = time.time()
 
         while True:
-            res = pickle.loads(self.redis.rpop(key))
+            res = pickle.loads(self.connection.rpop(key))
             end = time.time()
 
             if res is not None:
@@ -1788,13 +1791,13 @@ class RedisProxy:
 
     def delete(self, key):
         try:
-            flag = self.redis.delete(key)
+            flag = self.connection.delete(key)
         except Exception as e:
             logger.error("Redis set exception is ", str(e))
 
     def stop(self):
         try:
-            self.redis.shutdown()
+            self.connection.shutdown()
         except Exception as e:
             logger.error("Redis set exception is ", str(e))
 
