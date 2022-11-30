@@ -1265,6 +1265,7 @@ class XGB_HOST_EN:
                 tmp_var = [key] * m
                 tmp_cut = val[key].values.tolist()
                 for col in sum_col:
+                    print("val[col]: ", val[col])
                     val[col] = [
                         opt_paillier_decrypt_crt(self.pub, self.prv, item)
                         for item in val[col]
