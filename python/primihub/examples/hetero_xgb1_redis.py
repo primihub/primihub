@@ -1750,6 +1750,7 @@ class RedisProxy:
 
     def get(self, key, max_time=300, interval=0.01):
         start = time.time()
+        res = None
         while True:
             res = pickle.loads(self.connection.get(key))
             end = time.time()
@@ -1774,6 +1775,7 @@ class RedisProxy:
 
     def rpop(self, key, max_time=10000, interval=0.01):
         start = time.time()
+        res = None
 
         while True:
             try:
