@@ -1772,11 +1772,14 @@ class RedisProxy:
 
         logger.info("Redis lpush successful")
 
-    def rpop(self, key, max_time=300, interval=0.01):
+    def rpop(self, key, max_time=10000, interval=0.01):
         start = time.time()
 
         while True:
-            res = pickle.loads(self.connection.rpop(key))
+            try:
+                res = pickle.loads(self.connection.rpop(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
             end = time.time()
 
             if res is not None:
