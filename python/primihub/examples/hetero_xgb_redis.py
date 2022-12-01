@@ -2034,6 +2034,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
     # pub = proxy_server.Get('xgb_pub')
+    guest_redis.delete('xgb_pub')
     pub = guest_redis.get('xgb_pub')
     xgb_guest.pub = pub
 
