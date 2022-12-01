@@ -772,7 +772,7 @@ class RedisProxy:
             end = time.time()
 
             if res is not None:
-                # self.redis.delete(key)
+                self.connection.delete(key)
                 return res
 
             if (end - start) > max_time:
