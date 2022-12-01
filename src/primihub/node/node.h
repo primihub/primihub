@@ -24,7 +24,6 @@
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
 #include <pybind11/embed.h>
-#include <sys/prctl.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -92,7 +91,6 @@ class VMNodeImpl final: public VMNode::Service {
         nodelet = std::make_shared<Nodelet>(config_file_path);
         finished_worker_fut = std::async(std::launch::async,
           [&]() {
-            prctl(PR_SET_NAME, "CleanFinishWorker");
             while(true) {
               std::string finished_worker_id;
               fininished_workers.wait_and_pop(finished_worker_id);

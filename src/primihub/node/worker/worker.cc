@@ -118,6 +118,7 @@ int Worker::execute(const PushTaskRequest *pushTaskRequest) {
         LOG(WARNING) << "unsupported Requested task type: " << type;
     }
     task_ptr.reset();
+    return 0;
 }
 
 

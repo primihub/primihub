@@ -159,19 +159,6 @@ namespace primihub::task {
                 (*mutable_node_map)[node_id] = single_node;
             }
         }
-
-        // TODO Fire TASK_STATUS event using NotifyService
-        auto taskId = nodePushTaskRequest.task().task_id();
-        auto job_id = nodePushTaskRequest.task().job_id();
-        auto submitClientId = nodePushTaskRequest.submit_client_id();
-
-        LOG(INFO) << "nodePushTaskRequest task_id: " << taskId;
-        LOG(INFO) << "nodePushTaskRequest submit_client_id: " << submitClientId;
-
-
-        EventBusNotifyDelegate::getInstance().notifyStatus(
-                job_id, taskId, submitClientId, "RUNNING", "task status test message");
-
         // schedule
         std::vector<std::thread> thrds;
         for (size_t i = 0; i < peers_with_tag_.size(); i++) {

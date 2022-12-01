@@ -212,9 +212,6 @@ int FLTask::execute() {
         // Execute python code.
         ph_exec_m_.attr("execute_py")(py::bytes(node_context_.dumps_func));
         LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
-        // Fire task status event
-        event_notify_delegeate.notifyStatus(
-            job_id, taskId, submitClientId, "SUCCESS", "task finished");
 
     } catch (std::exception &e) {
         py::gil_scoped_release release;

@@ -155,7 +155,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
             pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
         LOG(INFO) << "start to schedule schedule task";
-        // absl::MutexLock lock(&parser_mutex_);
+        absl::MutexLock lock(&parser_mutex_);
         std::shared_ptr<LanguageParser> lan_parser_ =
             LanguageParserFactory::Create(*pushTaskRequest);
         if (lan_parser_ == nullptr) {
@@ -192,7 +192,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                     job_id, task_id, submit_client_id, status, status_info);
             auto result_info = worker->execute(&request);
 
-            if (result_info != 0) {
+            if (result_info == 0) {
                 status = "SUCCESS";
                 status_info = "task finished";
             } else {
