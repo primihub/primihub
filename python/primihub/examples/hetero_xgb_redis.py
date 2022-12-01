@@ -741,10 +741,11 @@ class RedisProxy:
         # self.db = db
         # self.password = password
 
-        self.connection = redis.StrictRedis(host=host,
-                                            port=port,
-                                            db=db,
-                                            password=password)
+        self.connection = redis.Redis(host=host,
+                                      port=port,
+                                      db=db,
+                                      password=password,
+                                      decode_responses=True)
 
     def set(self, key, val):
         # flag = False
