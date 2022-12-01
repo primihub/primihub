@@ -15,6 +15,7 @@ from typing import (
 )
 import pandas
 import pyarrow
+import redis
 
 from ray.data.block import KeyFn, _validate_key_fn
 from primihub.primitive.opt_paillier_c2py_warpper import *
