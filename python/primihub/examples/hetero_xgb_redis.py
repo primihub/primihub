@@ -735,7 +735,12 @@ class ServerChannelProxy:
 
 class RedisProxy:
 
-    def __init__(self, host, port, db=0, password='primihub') -> None:
+    def __init__(self,
+                 host,
+                 port,
+                 db=0,
+                 password='primihub',
+                 topic='hetero_xgb') -> None:
         # self.host = host
         # self.port = port
         # self.db = db
@@ -744,14 +749,13 @@ class RedisProxy:
         self.connection = redis.Redis(host=host,
                                       port=port,
                                       db=db,
-                                      password=password,
-                                      decode_responses=True)
+                                      password=password)
 
     def set(self, key, val):
         # flag = False
         # while not flag:
         try:
-            flag = self.connection.set(key, pickle.dumps(val))
+            self.connection.set(key, pickle.dumps(val))
         except Exception as e:
             raise KeyError("Redis set exception is ", str(e))
 
