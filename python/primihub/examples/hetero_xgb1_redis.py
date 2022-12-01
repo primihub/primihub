@@ -1731,11 +1731,17 @@ min_child_weight = 5
 
 class RedisProxy:
 
-    def __init__(self, host, port, db=0, password='primihub') -> None:
+    def __init__(self,
+                 host,
+                 port,
+                 db=0,
+                 password='primihub',
+                 topic='hetero_xgb') -> None:
         # self.host = host
         # self.port = port
         # self.db = db
         # self.password = password
+
         self.connection = redis.Redis(host=host,
                                       port=port,
                                       db=db,
@@ -1745,21 +1751,24 @@ class RedisProxy:
         # flag = False
         # while not flag:
         try:
-            flag = self.connection.set(key, pickle.dumps(val))
+            self.connection.set(key, pickle.dumps(val))
         except Exception as e:
             raise KeyError("Redis set exception is ", str(e))
 
         logger.info("Redis set successful")
 
-    def get(self, key, max_time=300, interval=0.01):
+    def get(self, key, max_time=300, interval=0.1):
         start = time.time()
         res = None
         while True:
-            res = pickle.loads(self.connection.get(key))
+            try:
+                res = pickle.loads(self.connection.get(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
             end = time.time()
 
             if res is not None:
-                self.connection.delete(key)
+                # self.redis.delete(key)
                 return res
 
             if (end - start) > max_time:
@@ -1776,7 +1785,7 @@ class RedisProxy:
 
         logger.info("Redis lpush successful")
 
-    def rpop(self, key, max_time=10000, interval=0.01):
+    def rpop(self, key, max_time=10000, interval=0.1):
         start = time.time()
         res = None
 
@@ -1903,7 +1912,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # xgb_host.channel.send(xgb_host.pub)
     # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     # host_redis.set("xgb_pub", pickle.dumps(xgb_host.pub))
-    host_redis.set("xgb_pub1", xgb_host.pub)
+    host_redis.set("xgb_pub2", xgb_host.pub)
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
     # y_hat = np.array([0.5] * Y.shape[0])
@@ -2070,7 +2079,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     # pub = xgb_guest.channel.recv()
     # pub = proxy_server.Get('xgb_pub')
     # pub = pickle.loads(guest_redis.get('xgb_pub'))
-    pub = guest_redis.get('xgb_pub1')
+    pub = guest_redis.get('xgb_pub2')
     # pub = guesproxy_server.Get('xgb_pub')
 
     xgb_guest.pub = pub
