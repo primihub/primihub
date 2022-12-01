@@ -1136,8 +1136,8 @@ class XGB_GUEST_EN:
         for t in range(self.n_estimators):
             self.record = 0
             # gh_host = xgb_guest.channel.recv()
-            # gh_en = self.proxy_server.Get('gh_en')
-            gh_en = self.guest_redis.rpop('gh_en')
+            gh_en = self.proxy_server.Get('gh_en')
+            # gh_en = self.guest_redis.rpop('gh_en')
 
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 X_guest.copy(), gh_en, 0)
@@ -1678,8 +1678,8 @@ class XGB_HOST_EN:
                 enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
                 # send all encrypted gradients and hessians to 'guest'
-                # self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
-                self.host_redis.lpush('gh_en', enc_gh_df)
+                self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                # self.host_redis.lpush('gh_en', enc_gh_df)
 
                 end_send_gh = time.time()
                 print("Time for encryption and transfer: ",
