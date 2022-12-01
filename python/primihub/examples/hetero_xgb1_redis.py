@@ -844,8 +844,8 @@ class XGB_GUEST_EN:
               buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
-        paillier_add_actors = ActorPool(
-            [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
+        # paillier_add_actors = ActorPool(
+        #     [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
         # grouppools = ActorPool([
         #     GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
@@ -882,7 +882,7 @@ class XGB_GUEST_EN:
                     on=['g', 'h'],
                     ignore_nulls=True,
                     pub_key=self.pub,
-                    add_actors=paillier_add_actors)
+                    add_actors=self.paillier_add_actors)
             else:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
             # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
