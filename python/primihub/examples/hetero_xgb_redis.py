@@ -765,7 +765,10 @@ class RedisProxy:
         start = time.time()
         res = None
         while True:
-            res = pickle.loads(self.connection.get(key))
+            try:
+                res = pickle.loads(self.connection.get(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
             end = time.time()
 
             if res is not None:
@@ -1870,7 +1873,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # channel.recv()
     # xgb_host.channel.send(xgb_host.pub)
     # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
-    host_redis.set('xgb_pub', xgb_host.pub)
+    host_redis.set('xgb_pub1', xgb_host.pub)
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
     # y_hat = np.array([0.5] * Y.shape[0])
@@ -2034,8 +2037,9 @@ def xgb_guest_logic(cry_pri="paillier"):
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
     # pub = proxy_server.Get('xgb_pub')
-    guest_redis.delete('xgb_pub')
-    pub = guest_redis.get('xgb_pub')
+    # guest_redis.delete('xgb_pub')
+    pub = guest_redis.get('xgb_pub1')
+    guest_redis.delete('xgb_pub1')
     xgb_guest.pub = pub
 
     # xgb_guest.channel.send(b'recved pub')
