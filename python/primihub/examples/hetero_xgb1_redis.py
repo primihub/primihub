@@ -1912,7 +1912,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # xgb_host.channel.send(xgb_host.pub)
     # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     # host_redis.set("xgb_pub", pickle.dumps(xgb_host.pub))
-    host_redis.set("xgb_pub2", xgb_host.pub)
+    host_redis.set("PUB", xgb_host.pub)
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
     # y_hat = np.array([0.5] * Y.shape[0])
@@ -2079,7 +2079,9 @@ def xgb_guest_logic(cry_pri="paillier"):
     # pub = xgb_guest.channel.recv()
     # pub = proxy_server.Get('xgb_pub')
     # pub = pickle.loads(guest_redis.get('xgb_pub'))
-    pub = guest_redis.get('xgb_pub2')
+    # pub = guest_redis.get('xgb_pub2')
+    pub = guest_redis.get('PUB')
+    guest_redis.delete('PUB')
     # pub = guesproxy_server.Get('xgb_pub')
 
     xgb_guest.pub = pub
