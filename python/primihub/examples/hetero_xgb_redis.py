@@ -755,7 +755,7 @@ class RedisProxy:
 
         logger.info("Redis set successful")
 
-    def get(self, key, max_time=300, interval=0.01):
+    def get(self, key, max_time=300, interval=0.1):
         start = time.time()
         res = None
         while True:
@@ -780,7 +780,7 @@ class RedisProxy:
 
         logger.info("Redis lpush successful")
 
-    def rpop(self, key, max_time=10000, interval=0.01):
+    def rpop(self, key, max_time=10000, interval=0.1):
         start = time.time()
         res = None
 
@@ -1679,6 +1679,7 @@ class XGB_HOST_EN:
 
                 # send all encrypted gradients and hessians to 'guest'
                 self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+
                 # self.host_redis.lpush('gh_en', enc_gh_df)
 
                 end_send_gh = time.time()
