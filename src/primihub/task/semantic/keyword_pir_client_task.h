@@ -42,7 +42,7 @@ class KeywordPIRClientTask : public TaskBase {
     int saveResult(const std::vector<std::string>& orig_items,
                    const std::vector<apsi::Item>& items,
                    const std::vector<apsi::receiver::MatchRecord>& intersection);
-
+   int waitForServerPortInfo();
  private:
     int _LoadParams(Task &task);
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
@@ -60,6 +60,7 @@ class KeywordPIRClientTask : public TaskBase {
     std::string result_file_path_;
     std::string server_address_;
     bool recv_query_data_direct{false};
+    uint32_t server_data_port{2222};
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_

@@ -112,6 +112,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             data_index_ = param_map["serverIndex"].value_int32();
             dataset_path_ = param_map["serverData"].value_string();
             host_address_ = param_map["clientAddress"].value_string();
+            VLOG(5) << "clientAddress: " << host_address_;
             auto it = param_map.find("sync_result_to_server");
             if (it != param_map.end()) {
                 sync_result_to_server = it->second.value_int32() > 0;
@@ -127,7 +128,16 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             return -1;
         }
     }
-
+    const auto& node_map = task.node_map();
+    for (const auto& it : node_map) {
+        std::string node_id = it.first;
+        if (node_id == node_id_) {
+            continue;
+        }
+        const auto& node = it.second;
+        peer_address_ = node.ip() + ":" + std::to_string(node.port());
+    }
+    VLOG(5) << "peer_address_: " << peer_address_;
     return 0;
 }
 
@@ -335,9 +345,8 @@ int PSIKkrtTask::send_result_to_server() {
     // so send result data to server by grpc
     grpc::ClientContext context;
     VLOG(5) << "send_result_to_server";
-    auto channel = grpc::InsecureChannelCredentials();
-    // std::unique_ptr<VMNode::Stub>
-    auto stub = primihub::rpc::VMNode::NewStub(grpc::CreateChannel(host_address_, channel));
+    bool use_tls = false;
+    auto& stub = getStub(peer_address_, use_tls);
     primihub::rpc::TaskResponse task_response;
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>>
         writer(stub->Send(&context, &task_response));
@@ -434,8 +443,18 @@ int PSIKkrtTask::execute() {
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
     std::vector<std::string> addr_info;
-    str_split(host_address_, &addr_info, ':');
-    std::string server_addr = addr_info[0] + ":1212";
+    str_split(peer_address_, &addr_info, ':');
+    getAvailablePort(&data_port);
+    VLOG(5) << "getAvailablePort: " << data_port;
+    exchangeDataPort();
+    // std::string server_addr = addr_info[0] + ":1212";
+    std::string server_addr;
+    if (mode == EpMode::Client) {
+        server_addr = addr_info[0] + ":" + std::to_string(peer_data_port);
+    } else {
+        server_addr = addr_info[0] + ":" + std::to_string(data_port);
+    }
+    VLOG(5) << "server_addr: " << server_addr;
     Endpoint ep(ios, server_addr, mode);
     Channel chl = ep.addChannel();
 
@@ -495,6 +514,7 @@ int PSIKkrtTask::execute() {
 #endif
     return 0;
 }
+
 int PSIKkrtTask::recvIntersectionData() {
     std::vector<std::string> psi_result;
     auto& recv_queue = this->getTaskContext().getRecvQueue();
@@ -546,6 +566,62 @@ int PSIKkrtTask::saveDataToCSVFile(const std::vector<std::string>& data,
     }
     LOG(INFO) << "Save PSI result to " << file_path << ".";
     return 0;
+}
+
+int PSIKkrtTask::exchangeDataPort() {
+    // prepare data port info and send to peer
+    rpc::TaskRequest request;
+    request.set_task_id(this->task_id_);
+    request.set_job_id(this->job_id_);
+    rpc::TaskResponse task_response;
+    auto param_map = request.mutable_params()->mutable_param_map();
+    // dataset size
+    rpc::ParamValue pv_data_port;
+    pv_data_port.set_var_type(rpc::VarType::INT32);
+    pv_data_port.set_value_int32(this->data_port);
+    pv_data_port.set_is_array(false);
+    (*param_map)["data_port"] = pv_data_port;
+
+    grpc::ClientContext context;
+    bool use_tls = false;
+    auto& stub = getStub(peer_address_, use_tls);
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>>
+        writer(stub->Send(&context, &task_response));
+    writer->Write(request);
+    writer->WritesDone();
+    grpc::Status status = writer->Finish();
+    if (status.ok()) {
+        LOG(INFO) << "send param to client success";
+    } else {
+        LOG(ERROR) << "send param to client failed, "
+                   << status.error_code() << " : " << status.error_message();
+    }
+    // wait for peer data port info
+    auto& recv_queue = this->getTaskContext().getRecvQueue();
+    do {
+        rpc::TaskRequest request;
+        recv_queue.wait_and_pop(request);
+        if (request.last_frame()) {
+            break;
+        }
+        const auto& parm_map = request.params().param_map();
+        auto it = parm_map.find("data_port");
+        if (it != parm_map.end()) {
+            peer_data_port = it->second.value_int32();
+            VLOG(5) << "peer_data_port: " << peer_data_port;
+        }
+    } while (true);
+    return 0;
+
+}
+std::unique_ptr<rpc::VMNode::Stub>&
+PSIKkrtTask::getStub(const std::string& dest_address, bool use_tls) {
+    if (this->peer_connection_ == nullptr) {
+        VLOG(5) << "send_result_to_server";
+        auto channel = grpc::InsecureChannelCredentials();
+        this->peer_connection_ = rpc::VMNode::NewStub(grpc::CreateChannel(dest_address, channel));
+    }
+    return this->peer_connection_;
 }
 
 } // namespace primihub::task

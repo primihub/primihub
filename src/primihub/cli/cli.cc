@@ -18,7 +18,8 @@
 #include <fstream>  // std::ifstream
 #include <string>
 #include <chrono>
-
+#include <random>
+#include "uuid.h"
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
 using primihub::rpc::TaskType;
@@ -145,8 +146,16 @@ int SDKClient::SubmitTask() {
     }
 
     // TODO Generate job id and task id
+    std::random_device rd;
+    auto seed_data = std::array<int, std::mt19937::state_size> {};
+    std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+    std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+    std::mt19937 generator(seq);
+    uuids::uuid_random_generator gen{generator};
+    uuids::uuid const id = gen();
+    std::string task_id = uuids::to_string(id);
     pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
-    pushTaskRequest.mutable_task()->set_task_id(absl::GetFlag(FLAGS_task_id));
+    pushTaskRequest.mutable_task()->set_task_id(task_id);
     pushTaskRequest.set_sequence_number(11);
     pushTaskRequest.set_client_processed_up_to(22);
 

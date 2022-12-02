@@ -16,7 +16,11 @@ message PushTaskRequest {
 
 message PushTaskReply {
   int32 ret_code = 1;  // 0: success  1: doing  2: error
-  bytes job_id = 2;
+  bytes node_id = 2;
+  bytes job_id = 3;
+  bytes task_id = 4;
+  bytes msg_info = 5;
+  repeated Node notify_server = 6;
 }
 
 message ExecuteTaskRequest {
@@ -60,6 +64,7 @@ message TaskResponse {
   retcode ret_code = 1;
   string  msg_info = 2;
   bool last_frame = 3;
+  Params params = 4;
   oneof response_type {
     bytes data = 20;
     PsiResponse psi_response = 21;
@@ -67,7 +72,7 @@ message TaskResponse {
   }
 }
 
-message ForwardTaskReqeust {
+message ForwardTaskRequest {
   Node dest_node = 1;
   TaskRequest task_request = 2;
 }
@@ -80,7 +85,7 @@ service VMNode {
   rpc Send(stream TaskRequest) returns (TaskResponse);
   rpc Recv(TaskRequest) returns (stream TaskResponse);
   rpc SendRecv(stream TaskRequest) returns (stream TaskResponse);
-  rpc ForwardSend(stream ForwardTaskReqeust) returns (TaskResponse); // forward data as proxy
-  rpc ForwardRecv(ForwardTaskReqeust) returns (stream TaskResponse);  // forward data as proxy
+  rpc ForwardSend(stream ForwardTaskRequest) returns (TaskResponse); // forward data as proxy
+  rpc ForwardRecv(TaskRequest) returns (stream TaskRequest);  // forward data as proxy
 }
 

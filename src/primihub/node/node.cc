@@ -33,6 +33,7 @@
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/service/notify/model.h"
+#include "src/primihub/util/util.h"
 
 
 using grpc::Server;
@@ -106,8 +107,6 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
     std::string job_id;
     std::string task_id;
     std::string role;
-    int storage_type{-1};
-    std::string storage_info;
     std::shared_ptr<Worker> worker_ptr{nullptr};
     TaskRequest request;
     rpc::TaskResponse response;
@@ -119,10 +118,7 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
-            storage_type = request.storage_type();
-            storage_info = request.storage_info();
-            VLOG(5) << "job_id: " << job_id << " " << "task_id: " << task_id << " "
-                    << "storage_type: " << storage_type << " " << "storage_info: " << storage_info;
+            VLOG(5) << "job_id: " << job_id << " " << "task_id: " << task_id;
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -158,36 +154,69 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
 Status VMNodeImpl::Recv(::grpc::ServerContext* context,
         const TaskRequest* request,
         grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) {
-//
-
+    std::string job_id = request->job_id();
+    std::string task_id = request->task_id();
+    std::string role = request->role();
+    auto worker_ptr = this->getWorker(job_id, task_id);
+    if (worker_ptr == nullptr) {
+        std::string err_msg  = "worker for job id: ";
+        err_msg.append(job_id).append(" task id: ")
+            .append(task_id).append(" not found");
+        LOG(ERROR) << err_msg;
+        TaskResponse response;
+        response.set_ret_code(rpc::retcode::FAIL);
+        response.set_msg_info(std::move(err_msg));
+        writer->Write(response);
+        return grpc::Status::OK;
+    }
+    auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
+    do {
+        TaskResponse response;
+        send_queue.wait_and_pop(response);
+        if (response.last_frame()) {
+            break;
+        }
+        writer->Write(response);
+    } while(true);
+    return grpc::Status::OK;
 }
 
 // for communication between different process
 Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
-    ::grpc::ServerReader<::primihub::rpc::ForwardTaskReqeust>* reader,
-    ::primihub::rpc::TaskResponse* response) {
+        ::grpc::ServerReader<::primihub::rpc::ForwardTaskRequest>* reader,
+        ::primihub::rpc::TaskResponse* response) {
     // send data to destination node specified by request
     VLOG(5) << "enter VMNodeImpl::ForwardSend";
-    primihub::rpc::ForwardTaskReqeust forward_request;
-    primihub::rpc::Node dest_node;
+    primihub::rpc::ForwardTaskRequest forward_request;
+    // primihub::rpc::Node dest_node;
     std::unique_ptr<VMNode::Stub> stub{nullptr};
     grpc::ClientContext client_context;
     primihub::rpc::TaskResponse task_response;
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer{nullptr};
     bool is_initialized{false};
+    bool write_success{false};
+    std::string dest_address;
     while (reader->Read(&forward_request)) {
         if (!is_initialized) {
-            dest_node = forward_request.dest_node();
+            const auto& dest_node = forward_request.dest_node();
             const auto& task_request = forward_request.task_request();
-            std::string dest_address = dest_node.ip() + ":" + std::to_string(dest_node.port());
+            dest_address = dest_node.ip() + ":" + std::to_string(dest_node.port());
             bool use_tls = false;
             stub = get_stub(dest_address, use_tls);
             writer = stub->Send(&client_context, &task_response);
             is_initialized = true;
-            writer->Write(task_request);
+            write_success = writer->Write(task_request);
+            if (!write_success) {
+                LOG(ERROR) << "forward data to " << dest_address << "failed";
+                break;
+            }
         } else {
             const auto& task_request = forward_request.task_request();
-            writer->Write(task_request);
+            write_success = writer->Write(task_request);
+            if (!write_success) {
+                LOG(ERROR) << "forward data to " << dest_address << "failed";
+                break;
+            }
         }
     }
     writer->WritesDone();
@@ -195,13 +224,15 @@ Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
     if (status.ok()) {
         auto ret_code = task_response.ret_code();
         if (ret_code) {
-            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
+            LOG(ERROR) << "client Node send result data to server: " << dest_address
+                    <<" return failed error code: " << ret_code;
         }
         response->set_ret_code(rpc::retcode::SUCCESS);
         response->set_msg_info(task_response.msg_info());
     } else {
-        LOG(ERROR) << "client Node send result data to server failed. error_code: "
-                   << status.error_code() << ": " << status.error_message();
+        LOG(ERROR) << "client Node send result data to server "  << dest_address
+                << " failed. error_code: "
+                << status.error_code() << ": " << status.error_message();
         response->set_ret_code(rpc::retcode::FAIL);
         response->set_msg_info(status.error_message());
     }
@@ -210,10 +241,29 @@ Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
 
 // for communication between different process
 Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
-    const ::primihub::rpc::ForwardTaskReqeust* request,
-    ::grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) {
-//
+        const ::primihub::rpc::TaskRequest* request,
+        ::grpc::ServerWriter<::primihub::rpc::TaskRequest>* writer) {
     // waiting for peer node send data
+    std::string job_id = request->job_id();
+    std::string task_id = request->task_id();
+    std::string role = request->role();
+    VLOG(5) << "enter ForwardRecv: job_id: " << job_id << " "
+        << "task id: " << task_id << " role: " << role;
+    auto worker = this->getWorker(job_id, task_id);
+    if (worker == nullptr) {
+        return grpc::Status::OK;
+    }
+    // fetch data from task recv queue
+    auto& recv_queue = worker->getTask()->getTaskContext().getRecvQueue(role);
+    do {
+        TaskRequest response;
+        recv_queue.wait_and_pop(response);
+        if (response.last_frame()) {
+            break;
+        }
+        writer->Write(response);
+    } while (true);
+    return grpc::Status::OK;
 }
 
 std::unique_ptr<VMNode::Stub> VMNodeImpl::get_stub(const std::string& dest_address, bool use_tls) {
@@ -224,23 +274,6 @@ std::unique_ptr<VMNode::Stub> VMNodeImpl::get_stub(const std::string& dest_addre
         grpc::CreateCustomChannel(dest_address, grpc::InsecureChannelCredentials(), channel_args);
     std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
     return stub;
-}
-
-int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data) {
-    if (ValidateDir(data_path)) {
-        LOG(ERROR) << "file path is not exist, please check";
-        return -1;
-    }
-    auto data = std::move(save_data);
-    if (data.empty()) {
-        return 0;
-    }
-    std::ofstream in_fs(data_path, std::ios::out);
-    for (const auto& data_item : data) {
-        in_fs << data_item << "\n";
-    }
-    in_fs.close();
-    return 0;
 }
 
 int VMNodeImpl::ClearWorker(const std::string& worker_id) {
@@ -368,30 +401,16 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         LOG(INFO) << "create worker thread for task: "
                 << "job_id : " << job_id  << " task_id: " << task_id << " finished";
         // running_set.erase(job_task);
+        auto& notify_server_info = this->nodelet->getNotifyServerConfig();
+        auto notify_server = pushTaskReply->add_notify_server();
+        notify_server->set_ip(notify_server_info.ip_);
+        notify_server->set_port(notify_server_info.port_);
+        notify_server->set_use_tls(notify_server_info.use_tls_);
+        return Status::OK;
     }
     return Status::OK;
 }
 
-bool VMNodeImpl::IsPSIECDHServer(const PushTaskRequest& request) {
-    bool is_psi_ecdh_server{false};
-    auto task_type = request.task().type();
-    bool send_success_message{true};
-    if (task_type == primihub::rpc::TaskType::NODE_PSI_TASK) {
-        const auto& params = request.task().params().param_map();
-        int psiTag = primihub::rpc::PsiTag::KKRT; // PsiTag::ECDH;
-        auto param_it = params.find("psiTag");
-        if (param_it != params.end()) {
-            psiTag = param_it->second.value_int32();
-        }
-        if (psiTag == primihub::rpc::PsiTag::ECDH) {
-            auto it = params.find("serverAddress");
-            if (it == params.end()) { // psi server sidd
-                is_psi_ecdh_server = true;
-            }
-        }
-    }
-    return is_psi_ecdh_server;
-}
 /***********************************************
  *
  * method runs on the node as psi or pir server

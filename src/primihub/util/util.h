@@ -18,6 +18,12 @@
 #include <unordered_map>
 #include <boost/asio.hpp>
 #include <boost/circular_buffer.hpp>
+#include <netdb.h>
+#include <errno.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "src/primihub/protos/worker.grpc.pb.h"
 
@@ -200,6 +206,8 @@ class SCopedTimer {
  private:
   std::chrono::high_resolution_clock::time_point start_;
 };
+
+int getAvailablePort(uint32_t* port);
 
 }  // namespace primihub
 

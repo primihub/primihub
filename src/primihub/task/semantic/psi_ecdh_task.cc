@@ -223,8 +223,8 @@ int PSIECDHTask::send_result_to_server() {
     grpc::ClientContext context;
     VLOG(5) << "send_result_to_server";
      // std::unique_ptr<VMNode::Stub>
-    auto channel = grpc::InsecureChannelCredentials();
-    auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    bool use_tls = false;
+    auto& stub = getStub(server_address_, use_tls);
     primihub::rpc::TaskResponse task_response;
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
     constexpr size_t limited_size = 1 << 22;  // limit data size 4M
@@ -278,8 +278,8 @@ int PSIECDHTask::send_result_to_server() {
     VLOG(5) << "send result to server success";
 }
 
-int PSIECDHTask::sendClientInfo() {
-    rpc::TaskRequest request;
+int PSIECDHTask::buildInitParam(rpc::TaskRequest* request_) {
+    auto& request = *request_;
     request.set_task_id(this->task_id_);
     request.set_job_id(this->job_id_);
     rpc::TaskResponse task_response;
@@ -296,9 +296,14 @@ int PSIECDHTask::sendClientInfo() {
     pv_intersection.set_value_int32(this->reveal_intersection_ ? 1 : 0);
     pv_intersection.set_is_array(false);
     (*param_map)["reveal_intersection"] = pv_intersection;
+    return 0;
+}
+
+int PSIECDHTask::sendInitParam(const rpc::TaskRequest& request) {
+    rpc::TaskResponse task_response;
     grpc::ClientContext context;
-    auto channel = grpc::InsecureChannelCredentials();
-    auto stub = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    bool use_tls = false;
+    auto& stub = getStub(server_address_, use_tls);
     std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
     writer->Write(request);
     writer->WritesDone();
@@ -308,6 +313,7 @@ int PSIECDHTask::sendClientInfo() {
     } else {
         LOG(ERROR) << "send param to server failed, "
                    << status.error_code() << " : " << status.error_message();
+        return 1;
     }
     return 0;
 }
@@ -319,21 +325,18 @@ int PSIECDHTask::saveResult() {
     return 0;
 }
 
-int PSIECDHTask::executeAsClient() {
+int PSIECDHTask::sendPSIRequestAndWaitResponse(
+        const psi_proto::Request& client_request, TaskResponse* response) {
     SCopedTimer timer;
-    sendClientInfo();
-    auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
-    psi_proto::Request client_request = client->CreateRequest(elements_).value();
-    psi_proto::Response server_response;
-    auto build_request_ts = timer.timeElapse();
-    auto build_request_time_cost = build_request_ts;
-    VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
+    auto& taskResponse = *response;
     grpc::ClientContext context;
-    grpc::ChannelArguments channel_args;
-    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
-    std::shared_ptr<grpc::Channel> channel =
-        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    bool use_tls = false;
+    auto& stub = getStub(server_address_, use_tls);
+    // grpc::ChannelArguments channel_args;
+    // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    // std::shared_ptr<grpc::Channel> channel =
+    //     grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
+    // std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
     // std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
     //     server_address_, grpc::InsecureChannelCredentials()));
     using stream_t = std::shared_ptr<grpc::ClientReaderWriter<TaskRequest, TaskResponse>>;
@@ -364,27 +367,22 @@ int PSIECDHTask::executeAsClient() {
             pack_size += element_len;
             sended_index++;
         }
-        // auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
-        // ParamValue pv;
-        // pv.set_var_type(VarType::STRING);
-        // pv.set_value_string(server_dataset_);
-        // (*ptr_params)["serverData"] = pv;
-        // (*ptr_params)["serverIndex"] = server_index_;
         send_requests.push_back(std::move(taskRequest));
         if (sended_index >= num_elements) {
             break;
         }
     } while (true);
+
     VLOG(5) << "send_requests size: " << send_requests.size();
     // send request to server
     for (const auto& request : send_requests) {
         client_stream->Write(request);
     }
     client_stream->WritesDone();
+
     auto send_data_ts = timer.timeElapse();
-    auto send_data_time_cost = send_data_ts - build_request_ts;
+    auto send_data_time_cost = send_data_ts;
     VLOG(5) << "client send request to server time cost(ms): " << send_data_time_cost;
-    TaskResponse taskResponse;
     TaskResponse recv_response;
     auto psi_response = taskResponse.mutable_psi_response();
     bool is_initialized{false};
@@ -406,23 +404,43 @@ int PSIECDHTask::executeAsClient() {
             LOG(ERROR) << "Node psi server process request error.";
             return -1;
         }
-        auto _start = timer.timeElapse();
-        int ret = this->GetIntsection(client, taskResponse);
-        if (ret) {
-            LOG(ERROR) << "Node psi client get insection failed.";
-            return -1;
-        }
-        auto _end =  timer.timeElapse();
-        auto get_intersection_time_cost = _end - _start;
-        VLOG(5) << "get intersection time cost(ms): " << get_intersection_time_cost;
-        ret = saveResult();
-        if (ret) {
-            LOG(ERROR) << "Save psi result failed.";
-            return -1;
-        }
+
     } else {
         LOG(ERROR) << "Node push psi server task rpc failed. "
                    << status.error_code() << ": " << status.error_message();
+        return -1;
+    }
+    return 0;
+}
+
+int PSIECDHTask::executeAsClient() {
+    SCopedTimer timer;
+    rpc::TaskRequest request;
+    buildInitParam(&request);
+    sendInitParam(request);
+    VLOG(5) << "client begin to prepare psi request";
+    // prepare psi data
+    auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
+    psi_proto::Request client_request = client->CreateRequest(elements_).value();
+    psi_proto::Response server_response;
+    auto build_request_ts = timer.timeElapse();
+    auto build_request_time_cost = build_request_ts;
+    VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
+    // send psi data to server
+    TaskResponse task_response;
+    sendPSIRequestAndWaitResponse(client_request, &task_response);
+    auto _start = timer.timeElapse();
+    int ret = this->GetIntsection(client, task_response);
+    if (ret) {
+        LOG(ERROR) << "Node psi client get insection failed.";
+        return -1;
+    }
+    auto _end =  timer.timeElapse();
+    auto get_intersection_time_cost = _end - _start;
+    VLOG(5) << "get intersection time cost(ms): " << get_intersection_time_cost;
+    ret = saveResult();
+    if (ret) {
+        LOG(ERROR) << "Save psi result failed.";
         return -1;
     }
     if (this->reveal_intersection_ && this->sync_result_to_server) {
@@ -436,22 +454,25 @@ int PSIECDHTask::executeAsServer() {
     bool reveal_intersection_flag{false};
     recvClientInfo(&num_client_elements, &reveal_intersection_flag);
     // prepare for local compuation
+    VLOG(5) << "sever begin to SetupMessage";
     std::unique_ptr<openminded_psi::PsiServer> server =
         std::move(openminded_psi::PsiServer::CreateWithNewKey(reveal_intersection_flag)).value();
     // std::int64_t num_client_elements =
     //     static_cast<std::int64_t>(psi_request.encrypted_elements().size());
     psi_proto::ServerSetup server_setup =
         std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
+    VLOG(5) << "sever end of SetupMessage";
     // recv request from clinet
+    VLOG(5) << "server begin to init reauest according to recv data from client";
     psi_proto::Request psi_request;
     initRequest(&psi_request);
     auto init_req_ts = timer.timeElapse();
     auto init_req_time_cost = init_req_ts;
     VLOG(5) << "init_req_time_cost(ms): " << init_req_time_cost;
     psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
-
+    VLOG(5) << "server end of process request, begin to build response";
     preparePSIResponse(std::move(server_response), std::move(server_setup));
-
+    VLOG(5) << "server end of build psi response";
     if (this->reveal_intersection_ && this->sync_result_to_server) {
         recvPSIResult();
     }
@@ -631,6 +652,14 @@ int PSIECDHTask::saveDataToCSVFile(const std::vector<std::string>& data,
     }
     LOG(INFO) << "Save PSI result to " << file_path << ".";
     return 0;
+}
+
+std::unique_ptr<rpc::VMNode::Stub>& PSIECDHTask::getStub(const std::string& dest_address, bool use_tls) {
+    if (peer_connection == nullptr) {
+        auto channel = grpc::InsecureChannelCredentials();
+        peer_connection = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
+    }
+    return peer_connection;
 }
 
 }   // namespace primihub::task

@@ -14,6 +14,9 @@
  limitations under the License.
  */
 #include "src/primihub/task/semantic/keyword_pir_client_task.h"
+#include <grpc/grpc.h>
+#include <grpcpp/channel.h>
+#include <grpcpp/create_channel.h>
 
 #include <thread>
 #include <chrono>
@@ -23,7 +26,7 @@
 #include "apsi/item.h"
 #include "apsi/util/common_utils.h"
 #include "src/primihub/util/file_util.h"
-
+#include "src/primihub/protos/worker.grpc.pb.h"
 
 using namespace apsi;
 using namespace apsi::network;
@@ -161,6 +164,7 @@ int KeywordPIRClientTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return ret;
     }
+    waitForServerPortInfo();
     ZMQReceiverChannel channel;
     // extract server ip from server_address_
 
@@ -170,7 +174,7 @@ int KeywordPIRClientTask::execute() {
     if (pos != std::string::npos) {
         server_ip = server_address_.substr(0, pos);
     }
-    server_address_ = "tcp://" + server_ip + ":2222";
+    server_address_ = "tcp://" + server_ip + ":" + std::to_string(server_data_port);
     VLOG(5) << "begin to connect to server: " << server_address_;
     channel.connect(server_address_);
     VLOG(5) << "connect to server: " << server_address_ << " end";
@@ -236,4 +240,23 @@ int KeywordPIRClientTask::execute() {
     this->saveResult(orig_items, items, query_result);
     return 0;
 }
+
+int KeywordPIRClientTask::waitForServerPortInfo() {
+    auto& recv_queue = this->getTaskContext().getRecvQueue();
+    do {
+        rpc::TaskRequest request;
+        recv_queue.wait_and_pop(request);
+        if (request.last_frame()) {
+            break;
+        }
+        const auto& parm_map = request.params().param_map();
+        auto it = parm_map.find("data_port");
+        if (it != parm_map.end()) {
+            server_data_port = it->second.value_int32();
+            VLOG(5) << "server_data_port: " << server_data_port;
+        }
+    } while (true);
+    return 0;
+}
+
 } // namespace primihub::task
