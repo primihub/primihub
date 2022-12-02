@@ -336,7 +336,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-@ray.remote(num_gpus=1)
+@ray.remote  #(num_gpus=1)
 class ActorAdd(object):
 
     def __init__(self, pub):
