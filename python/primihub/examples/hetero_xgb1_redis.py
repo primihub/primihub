@@ -1734,7 +1734,7 @@ class RedisProxy:
     def __init__(self,
                  host,
                  port,
-                 db=0,
+                 db=10,
                  password='primihub',
                  topic='hetero_xgb') -> None:
         # self.host = host
