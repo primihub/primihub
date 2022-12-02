@@ -70,6 +70,8 @@ public:
     int saveDataToCSVFile(const std::vector<std::string>& data,
       const std::string& file_path, const std::string& col_title);
 private:
+    std::unique_ptr<rpc::VMNode::Stub>& getStub(const std::string& dest_address, bool use_tls);
+    int exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
@@ -96,6 +98,10 @@ private:
     std::string host_address_;
     bool sync_result_to_server{false};
     std::string server_result_path;
+    uint32_t data_port{0};
+    std::string peer_address_;
+    uint32_t peer_data_port{1212};
+    std::unique_ptr<rpc::VMNode::Stub> peer_connection_{nullptr};
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
