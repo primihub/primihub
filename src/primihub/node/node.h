@@ -132,13 +132,13 @@ class VMNodeImpl final: public VMNode::Service {
 
     // for communication between different process
     Status ForwardSend(::grpc::ServerContext* context,
-        ::grpc::ServerReader< ::primihub::rpc::ForwardTaskReqeust>* reader,
+        ::grpc::ServerReader< ::primihub::rpc::ForwardTaskRequest>* reader,
         ::primihub::rpc::TaskResponse* response) override;
 
     // for communication between different process
     Status ForwardRecv(::grpc::ServerContext* context,
-        const ::primihub::rpc::ForwardTaskReqeust* request,
-        ::grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
+        const ::primihub::rpc::TaskRequest* request,
+        ::grpc::ServerWriter< ::primihub::rpc::TaskRequest>* writer) override;
 
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
@@ -159,10 +159,7 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int process_pir_response(const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
-    int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
-    int validate_file_path(const std::string& data_path) { return 0;}
     int ClearWorker(const std::string& worker_id);
-    bool IsPSIECDHServer(const PushTaskRequest& request);  // for temp check
     std::shared_ptr<Worker> getWorker(const std::string& job_id, const std::string& task_id) {
       std::string worker_id = getWorkerId(job_id, task_id);
       std::lock_guard<std::mutex> lck(task_executor_mtx);
@@ -202,6 +199,7 @@ class VMNodeImpl final: public VMNode::Service {
     std::atomic<bool> stop_{false};
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
+    std::unique_ptr<VMNode::Stub> stub_;
 };
 
 } // namespace primihub

@@ -15,7 +15,11 @@
  */
 
 #include "src/primihub/task/semantic/keyword_pir_server_task.h"
-
+#include <grpc/grpc.h>
+#include <grpcpp/channel.h>
+#include <grpcpp/create_channel.h>
+#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/util/util.h"
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
 #include "apsi/oprf/oprf_sender.h"
@@ -37,12 +41,13 @@ using namespace seal::util;
 namespace primihub::task {
 
 std::shared_ptr<SenderDB>
-    KeywordPIRServerTask::create_sender_db(
+KeywordPIRServerTask::create_sender_db(
         const CSVReader::DBData &db_data,
         std::unique_ptr<PSIParams> psi_params,
         OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress) {
+    SCopedTimer timer;
     if (!psi_params) {
         LOG(ERROR) << "No Keyword pir parameters were given";
         return nullptr;
@@ -67,6 +72,7 @@ std::shared_ptr<SenderDB>
             LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
             return nullptr;
         }
+
     } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
         LOG(ERROR) << "Loaded keyword pir database is without label";
         return nullptr;
@@ -76,6 +82,8 @@ std::shared_ptr<SenderDB>
     }
 
     oprf_key = sender_db->strip();
+    auto time_cost = timer.timeElapse();
+    VLOG(5) << "create_sender_db success, time cost(ms): " << time_cost;
     return sender_db;
 }
 
@@ -88,6 +96,17 @@ KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
       job_id_(job_id), task_id_(task_id) {}
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
+    const auto& node_map = task.node_map();
+    for (const auto& node_info : node_map) {
+        auto& _node_id = node_info.first;
+        if (_node_id == this->node_id_) {
+            continue;
+        }
+        auto& node = node_info.second;
+        this->client_address = node.ip() + ":" + std::to_string(node.port());
+        VLOG(5) << "client_address: " << this->client_address;
+    }
+
     const auto& param_map = task.params().param_map();
     try {
         auto it = param_map.find("serverData");
@@ -176,14 +195,41 @@ int KeywordPIRServerTask::execute() {
     atomic<bool> stop = false;
     VLOG(5) << "begin to create ZMQSenderDispatcher";
     ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
-    int port = 2222;
+    getAvailablePort(&data_port);
+    broadcastPortInfo();
     // bool done_exit = true;
-    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(port);
-    dispatcher.run(stop, port);
+    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(data_port);
+    dispatcher.run(stop, data_port);
     if (stop.load(std::memory_order::memory_order_relaxed)) {
         VLOG(5) << "key word pir task execute finished";
     }
     return 0;
 }
-
+int KeywordPIRServerTask::broadcastPortInfo() {
+    rpc::TaskRequest request;
+    request.set_task_id(this->task_id_);
+    request.set_job_id(this->job_id_);
+    rpc::TaskResponse task_response;
+    auto param_map = request.mutable_params()->mutable_param_map();
+    // dataset size
+    rpc::ParamValue pv_data_port;
+    pv_data_port.set_var_type(rpc::VarType::INT32);
+    pv_data_port.set_value_int32(this->data_port);
+    pv_data_port.set_is_array(false);
+    (*param_map)["data_port"] = pv_data_port;
+    grpc::ClientContext context;
+    auto channel = grpc::InsecureChannelCredentials();
+    auto stub = rpc::VMNode::NewStub(grpc::CreateChannel(this->client_address, channel));
+    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
+    writer->Write(request);
+    writer->WritesDone();
+    grpc::Status status = writer->Finish();
+    if (status.ok()) {
+        LOG(INFO) << "send param to client success";
+    } else {
+        LOG(ERROR) << "send param to client failed, "
+                   << status.error_code() << " : " << status.error_message();
+    }
+    return 0;
+}
 }  // namespace primihub::task

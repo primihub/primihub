@@ -76,6 +76,9 @@ class PSIECDHTask : public TaskBase {
   int sendRequetToServer(psi_proto::Request&& psi_request);
   int send_result_to_server();
   int sendClientInfo();
+  int buildInitParam(rpc::TaskRequest* request);
+  int sendInitParam(const rpc::TaskRequest& request);
+  int sendPSIRequestAndWaitResponse(const psi_proto::Request& request, TaskResponse* response);
 
   // server method
   int executeAsServer();
@@ -88,6 +91,7 @@ class PSIECDHTask : public TaskBase {
   }
 
  private:
+  std::unique_ptr<rpc::VMNode::Stub>& getStub(const std::string& dest_address, bool use_tls);
   int LoadParams(Task& task);
   int LoadDataset();
   int LoadDatasetFromCSV(const std::string& filename, int data_col,
@@ -114,6 +118,7 @@ class PSIECDHTask : public TaskBase {
   std::string server_result_path;
   double fpr_{0.0001};
   bool run_as_client_{false};
+  std::unique_ptr<rpc::VMNode::Stub> peer_connection{nullptr};
 };
 
 } // namespace primihub::task
