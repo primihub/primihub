@@ -319,7 +319,7 @@ class PallierSum(_AggregateOnKeyBase):
         )
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class PaillierActor(object):
 
     def __init__(self, prv, pub) -> None:
@@ -336,7 +336,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class ActorAdd(object):
 
     def __init__(self, pub):
@@ -381,7 +381,7 @@ class ActorAdd(object):
 #     return final_result
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class PallierAdd(object):
 
     def __init__(self, pub, nums, add_actors, encrypted):
@@ -424,7 +424,7 @@ class PallierAdd(object):
         return final_result
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class MapGH(object):
 
     def __init__(self, item, col, cut_points, g, h, pub, min_child_sample,
@@ -514,7 +514,7 @@ class MapGH(object):
         return G_lefts, G_rights, H_lefts, H_rights, vars, cuts
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class ReduceGH(object):
 
     def __init__(self, maps) -> None:
@@ -550,7 +550,7 @@ class ReduceGH(object):
         return GH
 
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class GroupPool:
 
     def __init__(self, add_actors, pub) -> None:
