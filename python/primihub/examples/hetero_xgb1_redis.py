@@ -2060,7 +2060,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     # data = data.iloc[:, :10]
 
     X_guest = data
-    guest_log = open('/app/guest_log', 'w+')
+    # guest_log = open('/app/guest_log', 'w+')
     add_actor_num = 50
     # if is_encrypted:
     xgb_guest = XGB_GUEST_EN(
@@ -2145,4 +2145,4 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     # xgb_guest.predict(X_guest)
     # proxy_server.StopRecvLoop()
-    guest_log.close()
+    # guest_log.close()
