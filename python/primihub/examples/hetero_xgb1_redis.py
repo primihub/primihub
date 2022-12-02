@@ -62,6 +62,7 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
+ray.init(num_gpus=1)
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -336,7 +337,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-@ray.remote  #(num_gpus=0.05)
+@ray.remote(num_gpus=0.05)
 class ActorAdd(object):
 
     def __init__(self, pub):
@@ -2061,7 +2062,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     X_guest = data
     # guest_log = open('/app/guest_log', 'w+')
-    add_actor_num = 50
+    add_actor_num = 20  #50
     # if is_encrypted:
     xgb_guest = XGB_GUEST_EN(
         n_estimators=num_tree,
