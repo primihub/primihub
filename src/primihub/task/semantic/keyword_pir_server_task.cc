@@ -104,7 +104,10 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
         }
         auto& node = node_info.second;
         this->client_address = node.ip() + ":" + std::to_string(node.port());
-        VLOG(5) << "client_address: " << this->client_address;
+        client_node_.ip_ = node.ip();
+        client_node_.port_ = node.port();
+        client_node_.use_tls_ = node.use_tls();
+        VLOG(5) << "client_address: " << this->client_node_.to_string();
     }
 
     const auto& param_map = task.params().param_map();
@@ -217,19 +220,8 @@ int KeywordPIRServerTask::broadcastPortInfo() {
     pv_data_port.set_value_int32(this->data_port);
     pv_data_port.set_is_array(false);
     (*param_map)["data_port"] = pv_data_port;
-    grpc::ClientContext context;
-    auto channel = grpc::InsecureChannelCredentials();
-    auto stub = rpc::VMNode::NewStub(grpc::CreateChannel(this->client_address, channel));
-    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
-    writer->Write(request);
-    writer->WritesDone();
-    grpc::Status status = writer->Finish();
-    if (status.ok()) {
-        LOG(INFO) << "send param to client success";
-    } else {
-        LOG(ERROR) << "send param to client failed, "
-                   << status.error_code() << " : " << status.error_message();
-    }
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(this->client_node_);
+    channel->send(request);
     return 0;
 }
 }  // namespace primihub::task
