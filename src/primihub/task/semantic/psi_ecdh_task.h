@@ -17,9 +17,9 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_ECDH_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_ECDH_TASK_H_
 
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/create_channel.h>
+// #include <grpc/grpc.h>
+// #include <grpcpp/channel.h>
+// #include <grpcpp/create_channel.h>
 
 #include <unordered_map>
 #include <memory>
@@ -27,32 +27,15 @@
 #include <set>
 
 #include "private_set_intersection/cpp/psi_client.h"
-
-#include "src/primihub/protos/common.grpc.pb.h"
-#include "src/primihub/protos/psi.grpc.pb.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/common/defines.h"
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/protos/psi.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 
-// using grpc::ClientContext;
-using grpc::Status;
-using grpc::Channel;
 namespace rpc = primihub::rpc;
-using primihub::rpc::Task;
-using primihub::rpc::ParamValue;
-using primihub::rpc::PsiType;
-using primihub::rpc::ExecuteTaskRequest;
-using primihub::rpc::ExecuteTaskResponse;
-using primihub::rpc::TaskRequest;
-using primihub::rpc::TaskResponse;
-using primihub::rpc::PsiRequest;
-using primihub::rpc::PsiResponse;
-using primihub::rpc::VMNode;
 namespace openminded_psi = private_set_intersection;
-// using private_set_intersection::PsiClient;
-// using private_set_intersection::PsiServer;
 namespace primihub::task {
-
 class PSIECDHTask : public TaskBase {
  public:
   explicit PSIECDHTask(const TaskParam* task_param,
@@ -78,7 +61,7 @@ class PSIECDHTask : public TaskBase {
   int sendClientInfo();
   int buildInitParam(rpc::TaskRequest* request);
   int sendInitParam(const rpc::TaskRequest& request);
-  int sendPSIRequestAndWaitResponse(const psi_proto::Request& request, TaskResponse* response);
+  int sendPSIRequestAndWaitResponse(const psi_proto::Request& request, rpc::TaskResponse* response);
 
   // server method
   int executeAsServer();
@@ -91,7 +74,6 @@ class PSIECDHTask : public TaskBase {
   }
 
  private:
-  std::unique_ptr<rpc::VMNode::Stub>& getStub(const std::string& dest_address, bool use_tls);
   int LoadParams(Task& task);
   int LoadDataset();
   int LoadDatasetFromCSV(const std::string& filename, int data_col,
@@ -99,7 +81,7 @@ class PSIECDHTask : public TaskBase {
   int LoadDatasetFromSQLite(const std::string &conn_str, int data_col,
                               std::vector <std::string>& col_array);
   int GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
-                    TaskResponse& taskResponse);
+                    rpc::TaskResponse& taskResponse);
   std::string node_id_;
   std::string job_id_;
   std::string task_id_;
@@ -113,12 +95,12 @@ class PSIECDHTask : public TaskBase {
   std::vector<std::string> result_;
   std::string server_address_;
   std::string server_dataset_;
-  ParamValue server_index_;
+  rpc::ParamValue server_index_;
   bool sync_result_to_server{false};
   std::string server_result_path;
   double fpr_{0.0001};
   bool run_as_client_{false};
-  std::unique_ptr<rpc::VMNode::Stub> peer_connection{nullptr};
+  primihub::Node peer_node;
 };
 
 } // namespace primihub::task

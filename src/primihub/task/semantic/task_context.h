@@ -16,6 +16,8 @@
 
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_
+#include "src/primihub/util/network/link_factory.h"
+#include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include <unordered_map>
 #include <queue>
@@ -24,12 +26,21 @@
 
 namespace primihub::task {
 // temp data storage
+/**
+ * TaskContext
+ * contains temperary storage, communication link info
+*/
 template<typename T = std::string, typename U = std::string,
         typename std::enable_if<!std::is_pointer<T>::value, T>::type* = nullptr,
         typename std::enable_if<!std::is_pointer<U>::value, U>::type* = nullptr>
 class TaskContext {
  public:
-  TaskContext() = default;
+  TaskContext() {
+    link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+  }
+  TaskContext(primihub::network::LinkMode mode) {
+    link_ctx_ = primihub::network::LinkFactory::createLinkContext(mode);
+  }
   primihub::ThreadSafeQueue<T>& getRecvQueue(const std::string& role = "default") {
     std::unique_lock<std::mutex> lck(this->in_queue_mtx);
     auto it = in_data_queue.find(role);
@@ -49,12 +60,16 @@ class TaskContext {
       return out_data_queue[role];
     }
   }
+  std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {
+    return link_ctx_;
+  }
 
  private:
   std::mutex in_queue_mtx;
   std::unordered_map<std::string, primihub::ThreadSafeQueue<T>> in_data_queue;
   std::mutex out_queue_mtx;
   std::unordered_map<std::string, primihub::ThreadSafeQueue<U>> out_data_queue;
+  std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
 };
 }  // namespace primihub::task
 #endif  // SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_
