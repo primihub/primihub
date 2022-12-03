@@ -22,6 +22,7 @@
 #include "apsi/match_record.h"
 #include "apsi/util/csv_reader.h"
 #include "src/primihub/task/semantic/task.h"
+#include "src/primihub/common/defines.h"
 
 using apsi::Item;
 using apsi::receiver::MatchRecord;
@@ -61,6 +62,7 @@ class KeywordPIRClientTask : public TaskBase {
     std::string server_address_;
     bool recv_query_data_direct{false};
     uint32_t server_data_port{2222};
+    primihub::Node peer_node_;
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_

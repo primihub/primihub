@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/task/semantic/task.h"
 
 #include "apsi/util/csv_reader.h"
@@ -55,6 +55,7 @@ class KeywordPIRServerTask : public TaskBase {
    std::string dataset_path_;
    uint32_t data_port{2222};
    std::string client_address;
+   primihub::Node client_node_;
 
 };
 } // namespace primihub::task
