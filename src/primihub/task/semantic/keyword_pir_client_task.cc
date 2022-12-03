@@ -14,9 +14,6 @@
  limitations under the License.
  */
 #include "src/primihub/task/semantic/keyword_pir_client_task.h"
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/create_channel.h>
 
 #include <thread>
 #include <chrono>
@@ -26,7 +23,7 @@
 #include "apsi/item.h"
 #include "apsi/util/common_utils.h"
 #include "src/primihub/util/file_util.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 
 using namespace apsi;
 using namespace apsi::network;

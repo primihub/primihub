@@ -98,14 +98,18 @@ struct Node {
   Node(const std::string ip, const uint32_t port, bool use_tls, std::string role)
       : ip_(ip), port_(port), use_tls_(use_tls), role_(role) {}
   std::string to_string() const {
+    std::string sep = ":";
     std::string node_info = ip_;
-    node_info.append("_").append(std::to_string(port_))
-        .append("_").append(role_).append("_").append(use_tls_ ? "1" : "0");
+    node_info.append(sep).append(std::to_string(port_))
+        .append(sep).append(role_).append(sep).append(use_tls_ ? "1" : "0");
     return node_info;
   }
+  std::string ip() {return ip_;}
+  uint32_t port() {return port_;}
+  bool use_tls() {return use_tls_;}
   std::string ip_;
   uint32_t port_;
-  std::string role_;
+  std::string role_{"default"};
   bool use_tls_{false};
 };
 
