@@ -23,31 +23,23 @@
 #include "libPSI/PSI/Kkrt/KkrtPsiReceiver.h"
 #endif
 
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/create_channel.h>
-
 #include <vector>
 #include <map>
 #include <memory>
 #include <string>
 #include <set>
 
-#include "src/primihub/protos/common.grpc.pb.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
-
+#include "src/primihub/common/defines.h"
 
 #ifndef __APPLE__
 using namespace osuCrypto;
-#endif
-using primihub::rpc::Task;
-using primihub::rpc::ParamValue;
-using primihub::rpc::PsiType;
-#ifndef __APPLE__
 using osuCrypto::KkrtPsiReceiver;
 #endif
 
+namespace rpc = primihub::rpc;
 
 
 namespace primihub::task {
@@ -55,10 +47,10 @@ namespace primihub::task {
 class PSIKkrtTask : public TaskBase {
 public:
     explicit PSIKkrtTask(const std::string &node_id,
-                             const std::string &job_id,
-                             const std::string &task_id,
-                             const TaskParam *task_param,
-                             std::shared_ptr<DatasetService> dataset_service);
+                        const std::string &job_id,
+                        const std::string &task_id,
+                        const TaskParam *task_param,
+                        std::shared_ptr<DatasetService> dataset_service);
 
     ~PSIKkrtTask() {}
     int execute() override;
@@ -70,7 +62,6 @@ public:
     int saveDataToCSVFile(const std::vector<std::string>& data,
       const std::string& file_path, const std::string& col_title);
 private:
-    std::unique_ptr<rpc::VMNode::Stub>& getStub(const std::string& dest_address, bool use_tls);
     int exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
@@ -99,9 +90,8 @@ private:
     bool sync_result_to_server{false};
     std::string server_result_path;
     uint32_t data_port{0};
-    std::string peer_address_;
     uint32_t peer_data_port{1212};
-    std::unique_ptr<rpc::VMNode::Stub> peer_connection_{nullptr};
+    primihub::Node peer_node;
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
