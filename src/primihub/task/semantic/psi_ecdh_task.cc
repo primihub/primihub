@@ -11,7 +11,6 @@ using arrow::StringArray;
 using arrow::DoubleArray;
 //using arrow::Int64Builder;
 using arrow::StringBuilder;
-using primihub::rpc::VarType;
 
 namespace primihub::task {
 PSIECDHTask::PSIECDHTask(const TaskParam *task_param,
@@ -65,6 +64,19 @@ int PSIECDHTask::LoadParams(Task &task) {
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return -1;
+    }
+    const auto& node_map = task.node_map();
+    for (const auto& it : node_map) {
+        std::string node_id = it.first;
+        if (node_id == this->node_id_) {
+            continue;
+        }
+        const auto& node_info = it.second;
+        peer_node.ip_ = node_info.ip();
+        peer_node.port_ = node_info.port();
+        peer_node.use_tls_ = node_info.use_tls();
+        VLOG(5) << "peer_node: " << peer_node.to_string();
+        break;
     }
     return 0;
 }
@@ -140,7 +152,7 @@ int PSIECDHTask::LoadDataset() {
 }
 
 int PSIECDHTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
-                              TaskResponse& taskResponse) {
+                              rpc::TaskResponse& taskResponse) {
     SCopedTimer timer;
     psi_proto::Response entrpy_response;
     size_t num_response_elements = taskResponse.psi_response().encrypted_elements().size();
@@ -175,7 +187,7 @@ int PSIECDHTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>&
     VLOG(5) << "get_intersection_time_cost: " << get_intersection_time_cost;
     size_t num_intersection = intersection.size();
 
-    if (psi_type_ == PsiType::DIFFERENCE) {
+    if (psi_type_ == rpc::PsiType::DIFFERENCE) {
         std::unordered_map<int64_t, int> inter_map(num_intersection);
         size_t num_elements = elements_.size();
         for (size_t i = 0; i < num_intersection; i++) {
@@ -220,22 +232,16 @@ int PSIECDHTask::execute() {
 }
 
 int PSIECDHTask::send_result_to_server() {
-    grpc::ClientContext context;
     VLOG(5) << "send_result_to_server";
-     // std::unique_ptr<VMNode::Stub>
-    bool use_tls = false;
-    auto& stub = getStub(server_address_, use_tls);
-    primihub::rpc::TaskResponse task_response;
-    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
+    std::vector<rpc::TaskRequest> results;
     constexpr size_t limited_size = 1 << 22;  // limit data size 4M
     size_t sended_size = 0;
     size_t sended_index = 0;
-    bool add_head_flag = false;
     do {
-        primihub::rpc::TaskRequest task_request;
+        rpc::TaskRequest task_request;
         task_request.set_job_id(this->job_id_);
         task_request.set_task_id(this->task_id_);
-        task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
+        task_request.set_storage_type(rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
         auto data_ptr = task_request.mutable_data();
         data_ptr->reserve(limited_size);
@@ -253,7 +259,7 @@ int PSIECDHTask::send_result_to_server() {
             pack_size += item_len;
             sended_index++;
         }
-        writer->Write(task_request);
+        results.emplace_back(std::move(task_request));
         sended_size += pack_size;
         VLOG(5) << "sended_size: " << sended_size << " "
                 << "sended_index: " << sended_index << " "
@@ -262,19 +268,8 @@ int PSIECDHTask::send_result_to_server() {
             break;
         }
     } while(true);
-    writer->WritesDone();
-    Status status = writer->Finish();
-    if (status.ok()) {
-        auto ret_code = task_response.ret_code();
-        if (ret_code) {
-            LOG(ERROR) << "client Node send result data to server return failed error code: " << ret_code;
-            return -1;
-        }
-    } else {
-        LOG(ERROR) << "client Node send result data to server failed. error_code: "
-                   << status.error_code() << ": " << status.error_message();
-        return -1;
-    }
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
+    channel->send(results);
     VLOG(5) << "send result to server success";
 }
 
@@ -285,13 +280,13 @@ int PSIECDHTask::buildInitParam(rpc::TaskRequest* request_) {
     rpc::TaskResponse task_response;
     auto param_map = request.mutable_params()->mutable_param_map();
     // dataset size
-    ParamValue pv_datasize;
+    rpc::ParamValue pv_datasize;
     pv_datasize.set_var_type(rpc::VarType::INT64);
     pv_datasize.set_value_int64(elements_.size());
     pv_datasize.set_is_array(false);
     (*param_map)["dataset_size"] = pv_datasize;
     // reveal intersection
-    ParamValue pv_intersection;
+    rpc::ParamValue pv_intersection;
     pv_intersection.set_var_type(rpc::VarType::INT32);
     pv_intersection.set_value_int32(this->reveal_intersection_ ? 1 : 0);
     pv_intersection.set_is_array(false);
@@ -300,56 +295,30 @@ int PSIECDHTask::buildInitParam(rpc::TaskRequest* request_) {
 }
 
 int PSIECDHTask::sendInitParam(const rpc::TaskRequest& request) {
-    rpc::TaskResponse task_response;
-    grpc::ClientContext context;
-    bool use_tls = false;
-    auto& stub = getStub(server_address_, use_tls);
-    std::unique_ptr<grpc::ClientWriter<primihub::rpc::TaskRequest>> writer(stub->Send(&context, &task_response));
-    writer->Write(request);
-    writer->WritesDone();
-    Status status = writer->Finish();
-    if (status.ok()) {
-        LOG(INFO) << "send param to server success";
-    } else {
-        LOG(ERROR) << "send param to server failed, "
-                   << status.error_code() << " : " << status.error_message();
-        return 1;
-    }
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
+    channel->send(request);
     return 0;
 }
 
 int PSIECDHTask::saveResult() {
     std::string col_title =
-        psi_type_ == PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
+        psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
     saveDataToCSVFile(result_, result_file_path_, col_title);
     return 0;
 }
 
 int PSIECDHTask::sendPSIRequestAndWaitResponse(
-        const psi_proto::Request& client_request, TaskResponse* response) {
+        const psi_proto::Request& client_request, rpc::TaskResponse* response) {
     SCopedTimer timer;
     auto& taskResponse = *response;
-    grpc::ClientContext context;
-    bool use_tls = false;
-    auto& stub = getStub(server_address_, use_tls);
-    // grpc::ChannelArguments channel_args;
-    // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
-    // std::shared_ptr<grpc::Channel> channel =
-    //     grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
-    // std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
-    // std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
-    //     server_address_, grpc::InsecureChannelCredentials()));
-    using stream_t = std::shared_ptr<grpc::ClientReaderWriter<TaskRequest, TaskResponse>>;
-    stream_t client_stream(stub->SendRecv(&context));
-
+    std::vector<rpc::TaskRequest> send_requests;
     size_t limited_size = 1 << 21;
     size_t num_elements = client_request.encrypted_elements().size();
     const auto& encrypted_elements = client_request.encrypted_elements();
     VLOG(5) << "num_elements_num_elements: " << num_elements;
     size_t sended_index{0};
-    std::vector<TaskRequest> send_requests;
     do {
-        TaskRequest taskRequest;
+        rpc::TaskRequest taskRequest;
         taskRequest.set_job_id(job_id_);
         taskRequest.set_task_id(task_id_);
         auto ptr_request = taskRequest.mutable_psi_request();
@@ -374,20 +343,17 @@ int PSIECDHTask::sendPSIRequestAndWaitResponse(
     } while (true);
 
     VLOG(5) << "send_requests size: " << send_requests.size();
-    // send request to server
-    for (const auto& request : send_requests) {
-        client_stream->Write(request);
+    std::vector<rpc::TaskResponse> recv_response;
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
+    channel->sendRecv(send_requests, &recv_response);
+    if (recv_response.empty()) {
+        return -1;
     }
-    client_stream->WritesDone();
-
-    auto send_data_ts = timer.timeElapse();
-    auto send_data_time_cost = send_data_ts;
-    VLOG(5) << "client send request to server time cost(ms): " << send_data_time_cost;
-    TaskResponse recv_response;
-    auto psi_response = taskResponse.mutable_psi_response();
+    VLOG(5) << "begin to merge task response";
     bool is_initialized{false};
-    while (client_stream->Read(&recv_response)) {
-        const auto& _psi_response = recv_response.psi_response();
+    auto psi_response = taskResponse.mutable_psi_response();
+    for (const auto& res : recv_response) {
+        const auto& _psi_response = res.psi_response();
         if (!is_initialized) {
             const auto& res_server_setup = _psi_response.server_setup();
             auto server_setup = psi_response->mutable_server_setup();
@@ -398,18 +364,7 @@ int PSIECDHTask::sendPSIRequestAndWaitResponse(
             psi_response->add_encrypted_elements(encrypted_element);
         }
     }
-    Status status = client_stream->Finish();
-    if (status.ok()) {
-        if (taskResponse.psi_response().ret_code()) {
-            LOG(ERROR) << "Node psi server process request error.";
-            return -1;
-        }
-
-    } else {
-        LOG(ERROR) << "Node push psi server task rpc failed. "
-                   << status.error_code() << ": " << status.error_message();
-        return -1;
-    }
+    VLOG(5) << "end of merge task response";
     return 0;
 }
 
@@ -427,7 +382,7 @@ int PSIECDHTask::executeAsClient() {
     auto build_request_time_cost = build_request_ts;
     VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     // send psi data to server
-    TaskResponse task_response;
+    rpc::TaskResponse task_response;
     sendPSIRequestAndWaitResponse(client_request, &task_response);
     auto _start = timer.timeElapse();
     int ret = this->GetIntsection(client, task_response);
@@ -483,7 +438,7 @@ int PSIECDHTask::recvClientInfo(size_t* client_dataset_size, bool* reveal_inters
     auto& reveal_flag = *reveal_intersection;
     auto& recv_queue = this->getTaskContext().getRecvQueue();
     do {
-        TaskRequest request;
+        rpc::TaskRequest request;
         recv_queue.wait_and_pop(request);
         if (request.last_frame()) {
             break;
@@ -511,34 +466,13 @@ int PSIECDHTask::preparePSIResponse(psi_proto::Response&& psi_response,
     auto server_response = std::move(psi_response);
     auto server_setup = std::move(setup_info);
     auto& send_queue = this->getTaskContext().getSendQueue();
-    // auto proceess_request_ts = timer.timeElapse();
-    // auto proceess_request_time_cost = proceess_request_ts - init_req_ts;
-    // VLOG(5) << "proceess_request_time_cost(ms): " << proceess_request_time_cost;
-    // std::int64_t num_response_elements =
-    //     static_cast<std::int64_t>(server_response.encrypted_elements().size());
-
-    // for (std::int64_t i = 0; i < num_response_elements; i++) {
-    //     response_->add_encrypted_elements(server_response.encrypted_elements()[i]);
-    // }
-
-    // auto ptr_server_setup = response_->mutable_server_setup();
-    // ptr_server_setup->set_bits(server_setup.bits());
-    // if (server_setup.data_structure_case() ==
-    //     psi_proto::ServerSetup::DataStructureCase::kGcs) {
-    //     ptr_server_setup->mutable_gcs()->set_div(server_setup.gcs().div());
-    //     ptr_server_setup->mutable_gcs()->set_hash_range(server_setup.gcs().hash_range());
-    // } else if (server_setup.data_structure_case() ==
-    //            psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
-    //     ptr_server_setup->mutable_bloom_filter()->
-    //         set_num_hash_functions(server_setup.bloom_filter().num_hash_functions());
-    // }
     size_t limited_size = 1 << 21; // 4M
     size_t encrypted_elements_num = server_response.encrypted_elements().size();
     const auto& encrypted_elements = server_response.encrypted_elements();
     size_t sended_size = 0;
     size_t sended_index = 0;
     do {
-        TaskResponse sub_resp;
+        rpc::TaskResponse sub_resp;
         sub_resp.set_last_frame(false);
         auto sub_psi_res = sub_resp.mutable_psi_response();
         sub_psi_res->set_ret_code(0);
@@ -572,7 +506,7 @@ int PSIECDHTask::preparePSIResponse(psi_proto::Response&& psi_response,
             break;
         }
     } while(true);
-    TaskResponse sub_resp;
+    rpc::TaskResponse sub_resp;
     sub_resp.set_last_frame(true);
     send_queue.push(std::move(sub_resp));
     auto build_response_ts = timer.timeElapse();
@@ -584,7 +518,7 @@ int PSIECDHTask::preparePSIResponse(psi_proto::Response&& psi_response,
 int PSIECDHTask::initRequest(psi_proto::Request* psi_request) {
     auto& recv_queue = this->getTaskContext().getRecvQueue();
     do {
-        TaskRequest request;
+        rpc::TaskRequest request;
         recv_queue.wait_and_pop(request);
         if (request.last_frame()) {
             break;
@@ -603,7 +537,7 @@ int PSIECDHTask::recvPSIResult() {
     std::vector<std::string> psi_result;
     auto& recv_queue = this->getTaskContext().getRecvQueue();
     do {
-        TaskRequest request;
+        rpc::TaskRequest request;
         recv_queue.wait_and_pop(request);
         if (request.last_frame()) {
             break;
@@ -652,14 +586,6 @@ int PSIECDHTask::saveDataToCSVFile(const std::vector<std::string>& data,
     }
     LOG(INFO) << "Save PSI result to " << file_path << ".";
     return 0;
-}
-
-std::unique_ptr<rpc::VMNode::Stub>& PSIECDHTask::getStub(const std::string& dest_address, bool use_tls) {
-    if (peer_connection == nullptr) {
-        auto channel = grpc::InsecureChannelCredentials();
-        peer_connection = VMNode::NewStub(grpc::CreateChannel(server_address_, channel));
-    }
-    return peer_connection;
 }
 
 }   // namespace primihub::task
