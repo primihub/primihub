@@ -34,7 +34,7 @@ ABSL_FLAG(std::vector<std::string>,
           params,
           std::vector<std::string>(
               {"BatchSize:INT32:0:128", "NumIters:INT32:0:100",
-               "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
+               "Data_File:STRING:0:train_party_0;train_party_1;train_party_2",
                "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
                "modelFileName:STRING:0:./model",
                "hostLookupTable:STRING:0:./hostlookuptable.csv",
@@ -45,7 +45,7 @@ ABSL_FLAG(std::vector<std::string>,
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>,
           input_datasets,
-          std::vector<std::string>({"TrainData", "TestData"}),
+          std::vector<std::string>({"Data_File", "TestData"}),
           "input datasets name list");
 
 ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate

@@ -388,27 +388,24 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             std::string status = "RUNNING";
             std::string status_info = "task is running";
             using EventBusNotifyDelegate = primihub::service::EventBusNotifyDelegate;
-            EventBusNotifyDelegate::getInstance().notifyStatus(
-                    job_id, task_id, submit_client_id, status, status_info);
+            auto& notify_proxy = EventBusNotifyDelegate::getInstance();
+            notify_proxy.notifyStatus(job_id, task_id, submit_client_id, status, status_info);
             auto result_info = worker->execute(&request);
 
-            if (result_info == 0) {
+            if (result_info == retcode::SUCCESS) {
                 status = "SUCCESS";
                 status_info = "task finished";
             } else {
                 status = "FAIL";
                 status_info = "task execute encountes error";
             }
-            EventBusNotifyDelegate::getInstance().notifyStatus(
-                job_id, task_id, submit_client_id, status, status_info);
+            notify_proxy.notifyStatus(job_id, task_id, submit_client_id, status, status_info);
 
             VLOG(5) << "execute task end, begin to clean task";
             finished_worker_queue->push(worker->worker_id());
             auto time_cost = timer.timeElapse();
             VLOG(5) << "execute task end, clean task finished, "
                     << "task total cost time(ms): " << time_cost;
-
-
         };
         std::string task_id = pushTaskRequest->task().task_id();
         std::string job_id = pushTaskRequest->task().job_id();
