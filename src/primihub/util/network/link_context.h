@@ -50,6 +50,7 @@ class IChannel {
   virtual retcode send(const std::string& role, const std::string& data) = 0;
   virtual retcode send(const std::string& role, std::string_view sv_data) = 0;
   virtual retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) = 0;
+  virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
   // virtual retcode send(const std::vector<std::string>& datas) = 0;
   // virtual retcode send(const std::vector<std::string_view> sv_datas) = 0;
   // virtual retcode send(const rpc::TaskRequest& data) = 0;

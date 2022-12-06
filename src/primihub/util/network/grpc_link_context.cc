@@ -131,6 +131,22 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
   return retcode::SUCCESS;
 }
 
+retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) {
+  grpc::ClientContext context;
+  grpc::Status status =
+      stub_->SubmitTask(&context, request, reply);
+  if (status.ok()) {
+      VLOG(5) << "submitTask to node: ["
+              <<  dest_node_.to_string() << "] rpc succeeded.";
+  } else {
+      LOG(ERROR) << "submitTask to Node ["
+                 <<  dest_node_.to_string() << "] rpc failed. "
+                 << status.error_code() << ": " << status.error_message();
+      return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
 std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(const primihub::Node& node, LinkContext* link_ctx) {
   return std::make_shared<GrpcChannel>(node, link_ctx);
 }

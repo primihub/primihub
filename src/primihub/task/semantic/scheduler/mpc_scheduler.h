@@ -21,6 +21,7 @@
 
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/common/defines.h"
 
 using primihub::rpc::PushTaskRequest;
 
@@ -37,17 +38,17 @@ public:
   }
 
   void dispatch(const PushTaskRequest *pus_request) override;
+ protected:
+  void push_task(const std::string &node_id,
+                  const PeerDatasetMap &peer_dataset_map,
+                  const PushTaskRequest &request,
+                  const Node& dest_node);
 
-protected:
+ protected:
   std::vector<rpc::Node> peer_list_;
   PeerDatasetMap peer_dataset_map_;
 
-private:
-  static void push_task(const std::string &node_id,
-                        const PeerDatasetMap &peer_dataset_map,
-                        const PushTaskRequest &request,
-                        const std::string node_addr);
-
+ private:
   virtual void add_vm(rpc::Node *node, int i,
                       const PushTaskRequest *push_request) = 0;
   uint8_t party_num_;

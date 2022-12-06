@@ -36,11 +36,11 @@ using primihub::rpc::VarType;
 
 namespace primihub::task {
 
-void node_push_task(const std::string &node_id,
-                    const PeerDatasetMap &peer_dataset_map,
-                    const PushTaskRequest &nodePushTaskRequest,
-                    const std::map<std::string, std::string> &dataset_owner,
-                    std::string dest_node_address) {
+void ABY3Scheduler::node_push_task(const std::string& node_id,
+                    const PeerDatasetMap& peer_dataset_map,
+                    const PushTaskRequest& nodePushTaskRequest,
+                    const std::map<std::string, std::string>& dataset_owner,
+                    const Node& dest_node) {
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
@@ -62,26 +62,24 @@ void node_push_task(const std::string &node_id,
         pv.set_var_type(VarType::STRING);
         DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
-        (*param_map)[dataset_param.second] = pv;
+        (*param_map)[dataset_param.second] = std::move(pv);
     }
 
     for (auto &pair : dataset_owner) {
         ParamValue pv;
         pv.set_var_type(VarType::STRING);
         pv.set_value_string(pair.second);
-        (*param_map)[pair.first] = pv;
+        (*param_map)[pair.first] = std::move(pv);
         DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
 
     // send request
-    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials()));
-    Status status =
-        stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
-    if (status.ok()) {
-        LOG(INFO) << "Node push task rpc succeeded.";
+    auto channel = this->getLinkContext()->getChannel(dest_node);
+    auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
+    if (ret == retcode::SUCCESS) {
+        // parse notify server info from reply
     } else {
-        LOG(ERROR) << "Node push task rpc failed.";
+        LOG(ERROR) << "Node push task node " << dest_node.to_string() << " rpc failed.";
     }
 }
 
@@ -152,20 +150,28 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     std::vector<std::thread> thrds;
     const auto& node_map = nodePushTaskRequest.task().node_map();
     //  3 nodes request paramaeter are differents.
+    std::map<std::string, Node> scheduled_nodes;
     for (int i = 0; i < 3; i++) {
         for (auto &pair : node_map) {
-            if ("node" + std::to_string(i) == pair.first) {
-                std::string dest_node_address(
-                    absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-                DLOG(INFO) << "dest_node_address: " << dest_node_address;
-
-                thrds.emplace_back(std::thread(node_push_task,
-                                               pair.first,              // node_id
-                                               this->peer_dataset_map_,  // peer_dataset_map
-                                               std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                                               this->dataset_owner_,
-                                               dest_node_address));
+            std::string party_name = "node" + std::to_string(i);
+            if (party_name != pair.first) {
+                continue;
             }
+            std::string dest_node_address(
+                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            DLOG(INFO) << "dest_node_address: " << dest_node_address;
+            auto& pb_node = pair.second;
+            Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+            scheduled_nodes[dest_node_address] = std::move(dest_node);
+            thrds.emplace_back(
+                std::thread(
+                    &ABY3Scheduler::node_push_task,
+                    this,
+                    pair.first,              // node_id
+                    std::ref(this->peer_dataset_map_),  // peer_dataset_map
+                    std::ref(nodePushTaskRequest),  // nodePushTaskRequest
+                    this->dataset_owner_,
+                    std::ref(scheduled_nodes[dest_node_address])));
         }
     }
 

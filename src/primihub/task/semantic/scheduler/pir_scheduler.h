@@ -39,6 +39,7 @@
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/common/defines.h"
 
 using grpc::Channel;
 // using grpc::ClientContext;
@@ -60,9 +61,9 @@ using namespace apsi::oprf;
 #endif
 
 namespace primihub::task {
-
+namespace rpc = primihub::rpc;
 class PIRScheduler : public VMScheduler {
-public:
+ public:
     PIRScheduler(const std::string &node_id,
                  const std::vector<rpc::Node> &peer_list,
                  const PeerDatasetMap &peer_dataset_map, bool singleton)
@@ -77,7 +78,13 @@ public:
 
     int transformRequest(PushTaskRequest &taskRequest);
 
-private:
+ protected:
+    void node_push_pir_task(const std::string& node_id,
+        const PeerDatasetMap& peer_dataset_map,
+        const PushTaskRequest& nodePushTaskRequest,
+        const Node& dest_node, bool is_client);
+
+ private:
     const std::vector<rpc::Node> peer_list_;
     const PeerDatasetMap peer_dataset_map_;
 };

@@ -24,6 +24,7 @@
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/defines.h"
 
 
 using primihub::service::DatasetMeta;
@@ -76,7 +77,7 @@ class TEEScheduler : public VMScheduler {
     void push_task_to_node(const std::string &node_id,
                            const PeerDatasetMap &peer_dataset_map,
                            const PushTaskRequest &request,
-                           const std::string &dest_node_address);
+                           const Node& dest_node_address);
 
     std::vector<rpc::Node> peer_list_;
     const PeerDatasetMap peer_dataset_map_;
