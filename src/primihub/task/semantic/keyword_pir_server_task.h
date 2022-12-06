@@ -29,14 +29,11 @@ namespace primihub::task {
 
 class KeywordPIRServerTask : public TaskBase {
  public:
-   explicit KeywordPIRServerTask(const std::string& node_id,
-                                 const std::string& job_id,
-                                 const std::string& task_id,
-                                 const TaskParam* task_param,
+   explicit KeywordPIRServerTask(const TaskParam* task_param,
                                  std::shared_ptr<DatasetService> dataset_service);
    ~KeywordPIRServerTask() = default;
    int execute() override;
-   int broadcastPortInfo();
+   retcode broadcastPortInfo();
  private:
     int _LoadParams(Task &task);
     std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
@@ -49,13 +46,11 @@ class KeywordPIRServerTask : public TaskBase {
         bool compress);
 
  private:
-   std::string node_id_;
-   std::string job_id_;
-   std::string task_id_;
    std::string dataset_path_;
    uint32_t data_port{2222};
    std::string client_address;
    primihub::Node client_node_;
+   std::string key{"default"};
 
 };
 } // namespace primihub::task

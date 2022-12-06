@@ -17,17 +17,24 @@ namespace primihub::network {
 namespace rpc = primihub::rpc;
 class GrpcChannel : public IChannel {
  public:
-  GrpcChannel(const primihub::Node& node);
+  GrpcChannel(const primihub::Node& node, LinkContext* link_ctx);
   virtual ~GrpcChannel() = default;
-  // virtual retcode send(const std::string& data) = 0;
-  // virtual retcode send(std::string_view sv_data) = 0;
+  retcode send(const std::string& role, const std::string& data) override;
+  retcode send(const std::string& role, std::string_view sv_data) override;
+  retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) override;
+  retcode buildTaskRequest(const std::string& role,
+                           const std::string& data,
+                           std::vector<rpc::TaskRequest>* send_pb_data);
+  retcode buildTaskRequest(const std::string& role,
+                           std::string_view sv_data,
+                           std::vector<rpc::TaskRequest>* send_pb_data);
   // virtual retcode send(const std::vector<std::string>& datas) = 0;
   // virtual retcode send(const std::vector<std::string_view> sv_datas) = 0;
-  retcode send(const rpc::TaskRequest& data) override;
-  retcode send(const std::vector<rpc::TaskRequest>& data) override;
-  retcode recv(const rpc::TaskRequest& request, std::vector<rpc::TaskResponse>* datas) override;
-  retcode sendRecv(const std::vector<rpc::TaskRequest>& senddata,
-                   std::vector<rpc::TaskResponse>* recv_data) override;
+  // retcode send(const rpc::TaskRequest& data) override;
+  // retcode send(const std::vector<rpc::TaskRequest>& data) override;
+  // retcode recv(const rpc::TaskRequest& request, std::vector<rpc::TaskResponse>* datas) override;
+  // retcode sendRecv(const std::vector<rpc::TaskRequest>& senddata,
+  //                  std::vector<rpc::TaskResponse>* recv_data) override;
   std::shared_ptr<grpc::Channel> buildChannel(std::string& server_addr, bool use_tls);
  private:
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
@@ -40,7 +47,7 @@ class GrpcLinkContext : public LinkContext {
  public:
   GrpcLinkContext() = default;
   virtual ~GrpcLinkContext() = default;
-  std::shared_ptr<IChannel> buildChannel(const primihub::Node& node);
+  std::shared_ptr<IChannel> buildChannel(const primihub::Node& node, LinkContext* link_ctx);
   std::shared_ptr<IChannel> getChannel(const primihub::Node& node) override;
 };
 

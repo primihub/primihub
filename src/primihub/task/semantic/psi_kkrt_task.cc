@@ -30,6 +30,7 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/util/endian_util.h"
 #include <glog/logging.h>
 #include <chrono>
 
@@ -56,25 +57,9 @@ using std::map;
 
 namespace primihub::task {
 
-
-PSIKkrtTask::PSIKkrtTask(const std::string &node_id,
-                         const std::string &job_id,
-                         const std::string &task_id,
-                         const TaskParam *task_param,
+PSIKkrtTask::PSIKkrtTask(const TaskParam *task_param,
                          std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id),
-      job_id_(job_id), task_id_(task_id) {}
-
-void PSIKkrtTask::setTaskInfo(const std::string& node_id,
-        const std::string& job_id,
-        const std::string& task_id,
-        const std::string& submit_client_id) {
-//
-    node_id_ = node_id;
-    job_id_ = job_id;
-    task_id_ = task_id;
-    submit_client_id_ = submit_client_id;
-}
+    : TaskBase(task_param, dataset_service) {}
 
 int PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
@@ -340,52 +325,28 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
 }
 #endif
 
-
-int PSIKkrtTask::send_result_to_server() {
+retcode PSIKkrtTask::broadcastResultToServer() {
+    retcode ret{retcode::SUCCESS};
 #ifndef __APPLE__
-    // cause service port is alive along with node life duration,
-    // so send result data to server by service communication
-    VLOG(5) << "send_result_to_server";
-    constexpr size_t limited_size = 1 << 22;  // limit data size 4M
-    size_t sended_size = 0;
-    size_t sended_index = 0;
-    std::vector<rpc::TaskRequest> results;
-    do {
-        rpc::TaskRequest task_request;
-        task_request.set_job_id(this->job_id_);
-        task_request.set_task_id(this->task_id_);
-        task_request.set_storage_type(rpc::TaskRequest::FILE);
-        task_request.set_storage_info(server_result_path);
-        auto data_ptr = task_request.mutable_data();
-        data_ptr->reserve(limited_size);
-        size_t pack_size = 0;
-        size_t item_len = 0;
-        for (size_t i = sended_index; i < this->result_.size(); i++) {
-            auto& data_item = this->result_[i];
-            item_len = data_item.size();
-            if (pack_size + item_len + sizeof(size_t) > limited_size) {
-                break;
-            }
-            data_ptr->append(reinterpret_cast<char*>(&item_len), sizeof(item_len));
-            pack_size += sizeof(item_len);
-            data_ptr->append(data_item);
-            pack_size += item_len;
-            sended_index++;
-        }
-        results.push_back(std::move(task_request));
-        sended_size += pack_size;
-        VLOG(5) << "sended_size: " << sended_size << " "
-                << "sended_index: " << sended_index << " "
-                << "result size: " << this->result_.size();
-        if (sended_index >= this->result_.size()) {
-            break;
-        }
-    } while(true);
+    VLOG(5) << "broadcast_result_to_server";
+    std::string result_str;
+    size_t total_size{0};
+    for (const auto& item : this->result_) {
+        total_size += item.size();
+    }
+    total_size += this->result_.size() * sizeof(uint64_t);
+    result_str.reserve(total_size);
+    for (const auto& item : this->result_) {
+        uint64_t item_len = item.size();
+        uint64_t be_item_len = htonll(item_len);
+        result_str.append(reinterpret_cast<char*>(&be_item_len), sizeof(be_item_len));
+        result_str.append(item);
+    }
     auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->send(results);
-    VLOG(0) << "send result to server success";
+    ret = channel->send(this->key, result_str);
+    VLOG(5) << "send result to server success";
 #endif
-    return 0;
+    return ret;
 }
 
 int PSIKkrtTask::saveResult(void) {
@@ -393,7 +354,7 @@ int PSIKkrtTask::saveResult(void) {
         psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
     saveDataToCSVFile(result_, result_file_path_, col_title);
     if (this->sync_result_to_server) {
-        send_result_to_server();
+        broadcastResultToServer();
     }
     return 0;
 }
@@ -497,30 +458,29 @@ int PSIKkrtTask::execute() {
 }
 
 int PSIKkrtTask::recvIntersectionData() {
+     VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
-    auto& recv_queue = this->getTaskContext().getRecvQueue();
-    do {
-        rpc::TaskRequest request;
-        recv_queue.wait_and_pop(request);
-        if (request.last_frame()) {
-            break;
-        }
-        size_t offset = 0;
-        size_t data_len = request.data().length();
-        VLOG(5) << "data_len_data_len: " << data_len;
-        auto data_ptr = const_cast<char*>(request.data().c_str());
-        // format length: value
-        while (offset < data_len) {
-            auto len_ptr = reinterpret_cast<size_t*>(data_ptr+offset);
-            size_t len = *len_ptr;
-            offset += sizeof(size_t);
-            psi_result.push_back(std::string(data_ptr+offset, len));
-            offset += len;
-        }
-    } while (true);
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    std::string recv_data_str;
+    recv_queue.wait_and_pop(recv_data_str);
+    uint64_t offset = 0;
+    uint64_t data_len = recv_data_str.length();
+    VLOG(5) << "data_len_data_len: " << data_len;
+    auto data_ptr = const_cast<char*>(recv_data_str.c_str());
+    // format length: value
+    while (offset < data_len) {
+        auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
+        uint64_t be_len = *len_ptr;
+        uint64_t len = ntohll(be_len);
+        offset += sizeof(uint64_t);
+        psi_result.push_back(std::string(data_ptr+offset, len));
+        offset += len;
+    }
+
     VLOG(5) << "psi_result size: " << psi_result.size();
     std::string col_title{"intersection_row"};
     saveDataToCSVFile(psi_result, server_result_path, col_title);
+    return 0;
 }
 
 int PSIKkrtTask::saveDataToCSVFile(const std::vector<std::string>& data,
@@ -549,40 +509,42 @@ int PSIKkrtTask::saveDataToCSVFile(const std::vector<std::string>& data,
     return 0;
 }
 
-int PSIKkrtTask::exchangeDataPort() {
-    // prepare data port info and send to peer
-    rpc::TaskRequest request;
-    request.set_task_id(this->task_id_);
-    request.set_job_id(this->job_id_);
-    rpc::TaskResponse task_response;
-    auto param_map = request.mutable_params()->mutable_param_map();
+retcode PSIKkrtTask::exchangeDataPort() {
+    std::string data_port_info_str;
+    rpc::Params data_port_params;
+    auto param_map = data_port_params.mutable_param_map();
     // dataset size
     rpc::ParamValue pv_data_port;
     pv_data_port.set_var_type(rpc::VarType::INT32);
     pv_data_port.set_value_int32(this->data_port);
     pv_data_port.set_is_array(false);
-    (*param_map)["data_port"] = pv_data_port;
-
+    (*param_map)["data_port"] = std::move(pv_data_port);
+    bool success = data_port_params.SerializeToString(&data_port_info_str);
+    if (!success) {
+        LOG(ERROR) << "serialize data port info failed";
+        return retcode::FAIL;
+    }
     auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->send(request);
-
-    // wait for peer data port info
-    auto& recv_queue = this->getTaskContext().getRecvQueue();
-    do {
-        rpc::TaskRequest request;
-        recv_queue.wait_and_pop(request);
-        if (request.last_frame()) {
-            break;
-        }
-        const auto& parm_map = request.params().param_map();
-        auto it = parm_map.find("data_port");
-        if (it != parm_map.end()) {
-            peer_data_port = it->second.value_int32();
-            VLOG(5) << "peer_data_port: " << peer_data_port;
-        }
-    } while (true);
-    return 0;
-
+    auto ret = channel->send(this->key, data_port_info_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send data port info to peer: [" << peer_node.to_string()
+            << "] failed";
+        return ret;
+    }
+    // // wait for peer data port info
+    VLOG(5) << "begin to recv data port info from peer.........";
+    std::string recv_data_port_info_str;
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    recv_queue.wait_and_pop(recv_data_port_info_str);
+    rpc::Params recv_data_port_info;
+    recv_data_port_info.ParseFromString(recv_data_port_info_str);
+    const auto& recv_param_map = recv_data_port_info.param_map();
+    auto it = recv_param_map.find("data_port");
+    if (it != recv_param_map.end()) {
+        peer_data_port = it->second.value_int32();
+        VLOG(5) << "peer_data_port: " << peer_data_port;
+    }
+    return retcode::SUCCESS;
 }
 
 } // namespace primihub::task

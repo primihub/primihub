@@ -153,6 +153,9 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
  protected:
+    void buildTaskResponse(const std::string& data, std::vector<rpc::TaskResponse>* response);
+    void buildTaskRequest(const std::string& job_id, const std::string& task_id, const std::string& role,
+        const std::string& data, std::vector<rpc::TaskRequest>* requests);
     std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
     int process_task_reseponse(bool is_psi_response,
           const ExecuteTaskResponse& response,
@@ -161,7 +164,6 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int process_pir_response(const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
-    int ClearWorker(const std::string& worker_id);
     std::shared_ptr<Worker> getWorker(const std::string& job_id, const std::string& task_id) {
       std::string worker_id = getWorkerId(job_id, task_id);
       std::lock_guard<std::mutex> lck(task_executor_mtx);

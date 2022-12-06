@@ -57,6 +57,7 @@ KeywordPIRServerTask::create_sender_db(
     if (holds_alternative<CSVReader::LabeledData>(db_data)) {
         VLOG(5) << "CSVReader::LabeledData";
         try {
+            auto _start = timer.timeElapse();
             auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
             // Find the longest label and use that as label size
             size_t label_byte_count =
@@ -64,10 +65,23 @@ KeywordPIRServerTask::create_sender_db(
                     [](auto &a, auto &b) {
                         return a.second.size() < b.second.size();
                     })->second.size();
-            VLOG(5) << "label_byte_count: " << label_byte_count << " nonce_byte_count: " << nonce_byte_count;
+
+            auto max_label_count_ts = timer.timeElapse();
+            VLOG(5) << "label_byte_count: " << label_byte_count << " "
+                    << "nonce_byte_count: " << nonce_byte_count << " "
+                    << "get max label count time cost(ms): " << max_label_count_ts;
             sender_db =
                 std::make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
+            auto _mid = timer.timeElapse();
+            VLOG(5) << "sender_db address: " << reinterpret_cast<uint64_t>(&(*sender_db));
+            auto constuct_sender_db_time_cost = _mid - max_label_count_ts;
             sender_db->set_data(labeled_db_data);
+            auto _end = timer.timeElapse();
+            auto set_data_time_cost = _end - _mid;
+            auto time_cost = _end - _start;
+            VLOG(5) << "construct sender db time cost(ms): " << constuct_sender_db_time_cost << " "
+                    << "set sender db data time cost(ms): " << time_cost << " "
+                    << "total cost(ms): " << time_cost;
         } catch (const exception &ex) {
             LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
             return nullptr;
@@ -87,13 +101,11 @@ KeywordPIRServerTask::create_sender_db(
     return sender_db;
 }
 
-KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
-                                           const std::string &job_id,
-                                           const std::string &task_id,
-                                           const TaskParam *task_param,
-                                           std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id),
-      job_id_(job_id), task_id_(task_id) {}
+KeywordPIRServerTask::KeywordPIRServerTask(
+    const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {
+
+}
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
     const auto& node_map = task.node_map();
@@ -208,20 +220,28 @@ int KeywordPIRServerTask::execute() {
     }
     return 0;
 }
-int KeywordPIRServerTask::broadcastPortInfo() {
-    rpc::TaskRequest request;
-    request.set_task_id(this->task_id_);
-    request.set_job_id(this->job_id_);
-    rpc::TaskResponse task_response;
-    auto param_map = request.mutable_params()->mutable_param_map();
+retcode KeywordPIRServerTask::broadcastPortInfo() {
+    std::string data_port_info_str;
+    rpc::Params data_port_params;
+    auto param_map = data_port_params.mutable_param_map();
     // dataset size
     rpc::ParamValue pv_data_port;
     pv_data_port.set_var_type(rpc::VarType::INT32);
     pv_data_port.set_value_int32(this->data_port);
     pv_data_port.set_is_array(false);
-    (*param_map)["data_port"] = pv_data_port;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(this->client_node_);
-    channel->send(request);
-    return 0;
+    (*param_map)["data_port"] = std::move(pv_data_port);
+    bool success = data_port_params.SerializeToString(&data_port_info_str);
+    if (!success) {
+        LOG(ERROR) << "serialize data port info failed";
+        return retcode::FAIL;
+    }
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(client_node_);
+    auto ret = channel->send(this->key, data_port_info_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send data port info to peer: [" << client_node_.to_string()
+            << "] failed";
+        return ret;
+    }
+    return retcode::SUCCESS;
 }
 }  // namespace primihub::task
