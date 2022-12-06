@@ -40,41 +40,36 @@ namespace primihub::task {
 void MPCScheduler::push_task(const std::string &node_id,
                              const PeerDatasetMap &peer_dataset_map,
                              const PushTaskRequest &nodePushTaskRequest,
-                             const std::string dest_node_address) {
-  grpc::ClientContext context;
+                             const Node& dest_node) {
   PushTaskReply pushTaskReply;
   PushTaskRequest push_request;
   push_request.CopyFrom(nodePushTaskRequest);
-
   // Add params to request
-  google::protobuf::Map<std::string, ParamValue> *param_map =
-      push_request.mutable_task()->mutable_params()->mutable_param_map();
+  // google::protobuf::Map<std::string, ParamValue> *param_map =
+  auto param_map = push_request.mutable_task()->mutable_params()->mutable_param_map();
   auto peer_dataset_map_it = peer_dataset_map.find(node_id);
   if (peer_dataset_map_it == peer_dataset_map.end()) {
     LOG(ERROR) << "Error, peer_dataset_map not found.";
     return;
   }
 
-  std::vector<DatasetWithParamTag> dataset_param_list =
-      peer_dataset_map_it->second;
-
-  for (auto &dataset_param : dataset_param_list) {
+  // std::vector<DatasetWithParamTag>
+  auto& dataset_param_list = peer_dataset_map_it->second;
+  for (auto& dataset_param : dataset_param_list) {
     ParamValue pv;
     pv.set_var_type(VarType::STRING);
     DLOG(INFO) << "push task dataset : " << dataset_param.first << ", "
                << dataset_param.second;
     pv.set_value_string(dataset_param.first);
-    (*param_map)[dataset_param.second] = pv;
+    (*param_map)[dataset_param.second] = std::move(pv);
   }
 
-  // send request
-  std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-      dest_node_address, grpc::InsecureChannelCredentials()));
-  Status status = stub_->SubmitTask(&context, push_request, &pushTaskReply);
-  if (status.ok()) {
-    LOG(INFO) << "Node push task rpc succeeded.";
+  auto channel = this->getLinkContext()->getChannel(dest_node);
+  auto ret = channel->submitTask(push_request, &pushTaskReply);
+  if (ret == retcode::SUCCESS) {
+    // parse notify server from reply
   } else {
-    LOG(ERROR) << "Node push task rpc failed.";
+    LOG(ERROR) << "submit task to node [" << dest_node.to_string() << "] failed";
   }
 }
 
@@ -101,6 +96,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
   }
 
   std::vector<std::thread> threads;
+  std::map<std::string, Node> scheduled_nodes;
   auto &node_map = request.task().node_map();
   for (int i = 0; i < party_num_; i++) {
     std::string node_id = absl::StrCat("node", std::to_string(i));
@@ -109,17 +105,24 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
       LOG(ERROR) << "Can't find node " << node_id << " in node map.";
       return;
     }
-
+    auto& pb_node = iter->second;
     std::string node_addr =
         absl::StrCat(iter->second.ip(), ":", iter->second.port());
-
-    threads.emplace_back(std::thread(push_task, iter->first,
-                                     this->peer_dataset_map_, std::ref(request),
-                                     node_addr));
+    Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+    scheduled_nodes[node_addr] = std::move(dest_node);
+    threads.emplace_back(
+      std::thread(
+        &CRYPTFLOW2Scheduler::push_task,
+        this,
+        iter->first,
+        this->peer_dataset_map_,
+        std::ref(request),
+        std::ref(scheduled_nodes[node_addr])));
   }
 
-  for (auto &t : threads)
+  for (auto &t : threads) {
     t.join();
+  }
 }
 
 void CRYPTFLOW2Scheduler::add_vm(rpc::Node *node, int i,

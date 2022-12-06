@@ -93,10 +93,14 @@ enum class retcode {
 
 struct Node {
   Node() = default;
-  Node(const std::string ip, const uint32_t port, bool use_tls)
+  Node(const std::string& ip, const uint32_t port, bool use_tls)
       : ip_(ip), port_(port), use_tls_(use_tls), role_("default") {}
-  Node(const std::string ip, const uint32_t port, bool use_tls, std::string role)
+  Node(const std::string& ip, const uint32_t port, bool use_tls, const std::string& role)
       : ip_(ip), port_(port), use_tls_(use_tls), role_(role) {}
+  Node(Node&&) = default;
+  Node(const Node&) = default;
+  Node& operator=(const Node&) = default;
+  Node& operator=(Node&&) = default;
   std::string to_string() const {
     std::string sep = ":";
     std::string node_info = ip_;

@@ -67,21 +67,24 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 
     LOG(INFO) << " 📧  Dispatching task to: "
               << request.mutable_task()->mutable_node_map()->size() << " nodes";
-
+    std::map<std::string, Node> scheduled_nodes;
     const auto& node_map = request.task().node_map();
     for (auto &pair : node_map) {
+        const auto& pb_node = pair.second;
+
         if (executor_node.node_id() == pair.second.node_id()) {
             // do nothing to executor node
             continue;
         }
         std::string dest_node_address(
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-
+        Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
         LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
+        scheduled_nodes[dest_node_address] = std::move(dest_node);
         this->push_task_to_node(pair.first,
                                 this->peer_dataset_map_,
                                 std::ref(request),
-                                dest_node_address);
+                                scheduled_nodes[dest_node_address]);
     }
 }
 
@@ -114,10 +117,10 @@ void TEEScheduler::add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
 }
 
 
-void TEEScheduler::push_task_to_node (const std::string &node_id,
+void TEEScheduler::push_task_to_node(const std::string &node_id,
                                       const PeerDatasetMap &peer_dataset_map,
                                       const PushTaskRequest &request,
-                                      const std::string &dest_node_address) {
+                                      const Node& dest_node) {
     grpc::ClientContext context;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(request);
@@ -139,16 +142,11 @@ void TEEScheduler::push_task_to_node (const std::string &node_id,
         (*param_map)[dataset_param.second] = pv;
     }
     // send request
-    auto channel = grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials());
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    auto channel = this->getLinkContext()->getChannel(dest_node);
     primihub::rpc::PushTaskReply response;
-    grpc::Status status = stub->SubmitTask(&context, _1NodePushTaskRequest, &response);
-    if (status.ok()) {
-        LOG(INFO) << "📤 TEE Task pushed to node: " << node_id;
-    } else {
-        LOG(ERROR) << "Failed to push task to node: " << node_id
-                   << " with error: " << status.error_message();
+    auto ret = channel->submitTask(_1NodePushTaskRequest, &response);
+    if (ret == retcode::SUCCESS) {
+        // Parse notify server info
     }
 }
 
