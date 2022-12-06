@@ -36,17 +36,13 @@
 namespace rpc = primihub::rpc;
 namespace openminded_psi = private_set_intersection;
 namespace primihub::task {
-class PSIECDHTask : public TaskBase {
+class PSIEcdhTask : public TaskBase {
  public:
-  explicit PSIECDHTask(const TaskParam* task_param,
+  explicit PSIEcdhTask(const TaskParam* task_param,
                         std::shared_ptr<DatasetService> dataset_service);
-  ~PSIECDHTask() = default;
+  ~PSIEcdhTask() = default;
 
   int execute() override;
-  void setTaskInfo(const std::string& node_id,
-      const std::string& job_id,
-      const std::string& task_id,
-      const std::string& submit_client_id);
 
   bool runAsClient() {
     return run_as_client_;
@@ -57,18 +53,17 @@ class PSIECDHTask : public TaskBase {
   int executeAsClient();
   int saveResult();
   int sendRequetToServer(psi_proto::Request&& psi_request);
-  int send_result_to_server();
-  int sendClientInfo();
-  int buildInitParam(rpc::TaskRequest* request);
-  int sendInitParam(const rpc::TaskRequest& request);
-  int sendPSIRequestAndWaitResponse(const psi_proto::Request& request, rpc::TaskResponse* response);
-
+  retcode broadcastResultToServer();
+  retcode buildInitParam(std::string* init_param);
+  retcode sendInitParam(const std::string& init_param);
+  retcode sendPSIRequestAndWaitResponse(const psi_proto::Request& request, rpc::PsiResponse* response);
+  retcode parsePsiResponseFromeString(const std::string& res_str, rpc::PsiResponse* response);
   // server method
   int executeAsServer();
   int initRequest(psi_proto::Request* psi_request);
   int preparePSIResponse(psi_proto::Response&& psi_response, psi_proto::ServerSetup&& setup);
   int recvPSIResult();
-  int recvClientInfo(size_t* client_dataset_size, bool* reveal_intersection);
+  int recvInitParam(size_t* client_dataset_size, bool* reveal_intersection);
   void set_fpr(double fpr) {
     fpr_ = fpr;
   }
@@ -81,11 +76,7 @@ class PSIECDHTask : public TaskBase {
   int LoadDatasetFromSQLite(const std::string &conn_str, int data_col,
                               std::vector <std::string>& col_array);
   int GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
-                    rpc::TaskResponse& taskResponse);
-  std::string node_id_;
-  std::string job_id_;
-  std::string task_id_;
-  std::string submit_client_id_;
+                    rpc::PsiResponse& taskResponse);
   int data_index_;
   int psi_type_;
   std::string dataset_path_;
@@ -101,6 +92,7 @@ class PSIECDHTask : public TaskBase {
   double fpr_{0.0001};
   bool run_as_client_{false};
   primihub::Node peer_node;
+  std::string key{"default"};
 };
 
 } // namespace primihub::task

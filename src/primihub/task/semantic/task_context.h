@@ -38,9 +38,15 @@ class TaskContext {
   TaskContext() {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
   }
+
   TaskContext(primihub::network::LinkMode mode) {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(mode);
   }
+
+  void setTaskInfo(const std::string& job_id, const std::string& task_id) {
+    link_ctx_->setTaskInfo(job_id, task_id);
+  }
+
   primihub::ThreadSafeQueue<T>& getRecvQueue(const std::string& role = "default") {
     std::unique_lock<std::mutex> lck(this->in_queue_mtx);
     auto it = in_data_queue.find(role);

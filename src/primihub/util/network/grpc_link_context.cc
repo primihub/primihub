@@ -3,7 +3,7 @@
 #include <glog/logging.h>
 
 namespace primihub::network {
-GrpcChannel::GrpcChannel(const primihub::Node& node) {
+GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) : IChannel(link_ctx) {
   dest_node_ = node;
   std::string address_ = node.ip_ + ":" + std::to_string(node.port_);
   auto channel = buildChannel(address_, node.use_tls_);
@@ -30,85 +30,22 @@ std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_add
   return grpc_channel_;
 }
 
-retcode GrpcChannel::send(const rpc::TaskRequest& data) {
-  grpc::ClientContext context;
-  primihub::rpc::TaskResponse task_response;
-  using writer_t = grpc::ClientWriter<primihub::rpc::TaskRequest>;
-  std::unique_ptr<writer_t> writer(stub_->Send(&context, &task_response));
-  writer->Write(data);
-  writer->WritesDone();
-  grpc::Status status = writer->Finish();
-  if (status.ok()) {
-      auto ret_code = task_response.ret_code();
-      if (ret_code) {
-          LOG(ERROR) << "send data to [" << dest_node_.to_string()
-            << "] return failed error code: " << ret_code;
-          return retcode::FAIL;
-      }
-  } else {
-      LOG(ERROR) << "send data to [" << dest_node_.to_string()
-                << "] failed. error_code: "
-                << status.error_code() << ": " << status.error_message();
-      return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
-}
-
-retcode GrpcChannel::send(const std::vector<rpc::TaskRequest>& send_datas) {
-  grpc::ClientContext context;
-  VLOG(5) << "send_result_to_server";
-  primihub::rpc::TaskResponse task_response;
-  using writer_t = grpc::ClientWriter<primihub::rpc::TaskRequest>;
-  std::unique_ptr<writer_t> writer(stub_->Send(&context, &task_response));
-  for (const auto& data : send_datas) {
-    writer->Write(data);
-  }
-  writer->WritesDone();
-  grpc::Status status = writer->Finish();
-  if (status.ok()) {
-      auto ret_code = task_response.ret_code();
-      if (ret_code) {
-          LOG(ERROR) << "send data to [" << dest_node_.to_string()
-            << "] return failed error code: " << ret_code;
-          return retcode::FAIL;
-      }
-  } else {
-      LOG(ERROR) << "send data to [" << dest_node_.to_string()
-                << "] failed. error_code: "
-                << status.error_code() << ": " << status.error_message();
-      return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
-}
-
-retcode GrpcChannel::recv(const rpc::TaskRequest& request, std::vector<rpc::TaskResponse>* recv_datas) {
-  recv_datas->clear();
-  grpc::ClientContext context;
-  rpc::TaskRequest task_request;
-  using reader_t = grpc::ClientReader<rpc::TaskResponse>;
-  std::unique_ptr<reader_t> reader(stub_->Recv(&context, task_request));
-  rpc::TaskResponse task_response;
-  while (reader->Read(&task_response)) {
-    recv_datas->emplace_back(std::move(task_response));
-  }
-  return retcode::SUCCESS;
-}
-
-retcode GrpcChannel::sendRecv(const std::vector<rpc::TaskRequest>& send_data,
-                          std::vector<rpc::TaskResponse>* recv_data) {
-//
+retcode GrpcChannel::sendRecv(const std::string& role,
+    const std::string& send_data, std::string* recv_data) {
   grpc::ClientContext context;
   using reader_writer_t = grpc::ClientReaderWriter<rpc::TaskRequest, rpc::TaskResponse>;
   std::shared_ptr<reader_writer_t> client_stream(stub_->SendRecv(&context));
-  // send request to server
-  for (const auto& data : send_data) {
-    client_stream->Write(data);
+  std::vector<rpc::TaskRequest> send_requests;
+  buildTaskRequest(role, send_data, &send_requests);
+  for (const auto& request : send_requests) {
+    client_stream->Write(request);
   }
   client_stream->WritesDone();
   // waiting for response
   rpc::TaskResponse recv_response;
   while (client_stream->Read(&recv_response)) {
-    recv_data->emplace_back(std::move(recv_response));
+    auto data = recv_response.data();
+    recv_data->append(data);
   }
   grpc::Status status = client_stream->Finish();
   if (!status.ok()) {
@@ -120,8 +57,82 @@ retcode GrpcChannel::sendRecv(const std::vector<rpc::TaskRequest>& send_data,
   return retcode::SUCCESS;
 }
 
-std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(const primihub::Node& node) {
-  return std::make_shared<GrpcChannel>(node);
+retcode GrpcChannel::send(const std::string& role, const std::string& data) {
+  std::string_view data_sv(data.c_str(), data.length());
+  return send(role, data_sv);
+}
+
+retcode GrpcChannel::send(const std::string& role, std::string_view data_sv) {
+  VLOG(5) << "execute GrpcChannel::send";
+  grpc::ClientContext context;
+  rpc::TaskResponse task_response;
+  using writer_t = grpc::ClientWriter<rpc::TaskRequest>;
+  std::unique_ptr<writer_t> writer(stub_->Send(&context, &task_response));
+  std::vector<rpc::TaskRequest> send_requests;
+  buildTaskRequest(role, data_sv, &send_requests);
+  for (const auto& request : send_requests) {
+    writer->Write(request);
+  }
+  writer->WritesDone();
+  grpc::Status status = writer->Finish();
+  if (status.ok()) {
+    auto ret_code = task_response.ret_code();
+    if (ret_code) {
+        LOG(ERROR) << "send data to [" << dest_node_.to_string()
+          << "] return failed error code: " << ret_code;
+        return retcode::FAIL;
+    }
+  } else {
+    LOG(ERROR) << "send data to [" << dest_node_.to_string()
+              << "] failed. error_code: "
+              << status.error_code() << ": " << status.error_message();
+    return retcode::FAIL;
+  }
+  VLOG(5) << "end of execute GrpcChannel::send";
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::buildTaskRequest(const std::string& role,
+    const std::string& data, std::vector<rpc::TaskRequest>* send_pb_data) {
+  std::string_view data_sv(data.c_str(), data.length());
+  return buildTaskRequest(role, data_sv, send_pb_data);
+}
+
+retcode GrpcChannel::buildTaskRequest(const std::string& role,
+    std::string_view data_sv, std::vector<rpc::TaskRequest>* send_pb_data) {
+  size_t sended_size = 0;
+  constexpr size_t max_package_size = 1 << 21;  // limit data size 4M
+  size_t total_length = data_sv.size();
+  char* send_buf = const_cast<char*>(data_sv.data());
+  std::string job_id = this->getLinkContext()->job_id();
+  std::string task_id = this->getLinkContext()->task_id();
+  VLOG(5) << "job_id: " << job_id << " "
+      << "task_id: " << task_id << " "
+      << "role: " << role << " "
+      << "send data length: " << total_length;
+  do {
+    rpc::TaskRequest task_request;
+    task_request.set_job_id(job_id);
+    task_request.set_task_id(task_id);
+    task_request.set_role(role);
+    auto data_ptr = task_request.mutable_data();
+    data_ptr->reserve(max_package_size);
+    size_t data_len = std::min(max_package_size, total_length - sended_size);
+    data_ptr->append(send_buf + sended_size, data_len);
+    sended_size += data_len;
+    VLOG(5) << "sended_size: " << sended_size << " data_len: " << data_len;
+    send_pb_data->emplace_back(std::move(task_request));
+    if (sended_size < total_length) {
+      continue;
+    } else {
+      break;
+    }
+  } while(true);
+  return retcode::SUCCESS;
+}
+
+std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(const primihub::Node& node, LinkContext* link_ctx) {
+  return std::make_shared<GrpcChannel>(node, link_ctx);
 }
 
 std::shared_ptr<IChannel> GrpcLinkContext::getChannel(const primihub::Node& node) {
@@ -134,7 +145,7 @@ std::shared_ptr<IChannel> GrpcLinkContext::getChannel(const primihub::Node& node
     }
   }
   // create channel
-  auto channel = buildChannel(node);
+  auto channel = buildChannel(node, this);
   {
     std::lock_guard<std::shared_mutex> lck(this->connection_mgr_mtx);
     connection_mgr[node_info] = channel;

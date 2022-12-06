@@ -4,6 +4,7 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/endian_util.h"
 
 
 using arrow::Table;
@@ -13,21 +14,11 @@ using arrow::DoubleArray;
 using arrow::StringBuilder;
 
 namespace primihub::task {
-PSIECDHTask::PSIECDHTask(const TaskParam *task_param,
+PSIEcdhTask::PSIEcdhTask(const TaskParam *task_param,
     std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {}
 
-void PSIECDHTask::setTaskInfo(const std::string& node_id,
-        const std::string& job_id,
-        const std::string& task_id,
-        const std::string& submit_client_id) {
-    node_id_ = node_id;
-    task_id_ = task_id;
-    job_id_ = job_id;
-    submit_client_id_ = submit_client_id;
-}
-
-int PSIECDHTask::LoadParams(Task &task) {
+int PSIEcdhTask::LoadParams(Task &task) {
     auto param_map = task.params().param_map();
 
     reveal_intersection_ = true;
@@ -81,7 +72,7 @@ int PSIECDHTask::LoadParams(Task &task) {
     return 0;
 }
 
-int PSIECDHTask::LoadDatasetFromSQLite(
+int PSIEcdhTask::LoadDatasetFromSQLite(
       const std::string &conn_str, int data_col, std::vector<std::string>& col_array) {
     std::string nodeaddr{"localhost"};
     // std::shared_ptr<DataDriver>
@@ -104,7 +95,7 @@ int PSIECDHTask::LoadDatasetFromSQLite(
     return col_array.size();
 }
 
-int PSIECDHTask::LoadDatasetFromCSV(
+int PSIEcdhTask::LoadDatasetFromCSV(
       const std::string &filename, int data_col, std::vector <std::string> &col_array) {
     std::string nodeaddr("test address"); // TODO
     std::shared_ptr<DataDriver> driver =
@@ -127,7 +118,7 @@ int PSIECDHTask::LoadDatasetFromCSV(
     return array->length();
 }
 
-int PSIECDHTask::LoadDataset() {
+int PSIEcdhTask::LoadDataset() {
     // TODO fixme trick method, search sqlite as keyword and if find then laod data from sqlite
     std::string match_word{"sqlite"};
     std::string driver_type;
@@ -136,7 +127,7 @@ int PSIECDHTask::LoadDataset() {
     } else {
         driver_type = dataset_path_;
     }
-    // current we supportes only two type of strage type [csv, sqlite] as dataset
+    // currently, we supportes only two kind of storage type [csv, sqlite] as dataset
     int ret = 0;
     if (match_word == driver_type) {
         ret = LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
@@ -151,27 +142,27 @@ int PSIECDHTask::LoadDataset() {
     return 0;
 }
 
-int PSIECDHTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
-                              rpc::TaskResponse& taskResponse) {
+int PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
+                              rpc::PsiResponse& response) {
     SCopedTimer timer;
     psi_proto::Response entrpy_response;
-    size_t num_response_elements = taskResponse.psi_response().encrypted_elements().size();
+    size_t num_response_elements = response.encrypted_elements().size();
     for (size_t i = 0; i < num_response_elements; i++) {
         entrpy_response.add_encrypted_elements(
-            taskResponse.psi_response().encrypted_elements()[i]);
+            response.encrypted_elements()[i]);
     }
     psi_proto::ServerSetup server_setup;
-    server_setup.set_bits(taskResponse.psi_response().server_setup().bits());
-    if (taskResponse.psi_response().server_setup().data_structure_case() ==
+    server_setup.set_bits(response.server_setup().bits());
+    if (response.server_setup().data_structure_case() ==
         psi_proto::ServerSetup::DataStructureCase::kGcs) {
         auto *ptr_gcs = server_setup.mutable_gcs();
-        ptr_gcs->set_div(taskResponse.psi_response().server_setup().gcs().div());
-        ptr_gcs->set_hash_range(taskResponse.psi_response().server_setup().gcs().hash_range());
-    } else if (taskResponse.psi_response().server_setup().data_structure_case() ==
+        ptr_gcs->set_div(response.server_setup().gcs().div());
+        ptr_gcs->set_hash_range(response.server_setup().gcs().hash_range());
+    } else if (response.server_setup().data_structure_case() ==
                psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
         auto *ptr_bloom_filter = server_setup.mutable_bloom_filter();
         ptr_bloom_filter->set_num_hash_functions(
-            taskResponse.psi_response().server_setup().bloom_filter().num_hash_functions()
+            response.server_setup().bloom_filter().num_hash_functions()
         );
     } else {
         LOG(ERROR) << "Node psi client get intersection error!";
@@ -195,20 +186,18 @@ int PSIECDHTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>&
         }
         for (size_t i = 0; i < num_elements; i++) {
             if (inter_map.find(i) == inter_map.end()) {
-                // outFile << i << std::endl;
                 result_.push_back(elements_[i]);
             }
         }
     } else {
         for (size_t i = 0; i < num_intersection; i++) {
-            // outFile << intersection[i] << std::endl;
             result_.push_back(elements_[intersection[i]]);
         }
     }
     return 0;
 }
 
-int PSIECDHTask::execute() {
+int PSIEcdhTask::execute() {
     SCopedTimer timer;
     int ret = LoadParams(task_param_);
     if (ret) {
@@ -230,55 +219,30 @@ int PSIECDHTask::execute() {
     }
     return 0;
 }
-
-int PSIECDHTask::send_result_to_server() {
+retcode PSIEcdhTask::broadcastResultToServer() {
     VLOG(5) << "send_result_to_server";
-    std::vector<rpc::TaskRequest> results;
-    constexpr size_t limited_size = 1 << 22;  // limit data size 4M
-    size_t sended_size = 0;
-    size_t sended_index = 0;
-    do {
-        rpc::TaskRequest task_request;
-        task_request.set_job_id(this->job_id_);
-        task_request.set_task_id(this->task_id_);
-        task_request.set_storage_type(rpc::TaskRequest::FILE);
-        task_request.set_storage_info(server_result_path);
-        auto data_ptr = task_request.mutable_data();
-        data_ptr->reserve(limited_size);
-        size_t pack_size = 0;
-        size_t item_len = 0;
-        for (size_t i = sended_index; i < this->result_.size(); i++) {
-            auto& data_item = this->result_[i];
-            item_len = data_item.size();
-            if (pack_size + item_len + sizeof(size_t) > limited_size) {
-                break;
-            }
-            data_ptr->append(reinterpret_cast<char*>(&item_len), sizeof(item_len));
-            pack_size += sizeof(item_len);
-            data_ptr->append(data_item);
-            pack_size += item_len;
-            sended_index++;
-        }
-        results.emplace_back(std::move(task_request));
-        sended_size += pack_size;
-        VLOG(5) << "sended_size: " << sended_size << " "
-                << "sended_index: " << sended_index << " "
-                << "result size: " << this->result_.size();
-        if (sended_index >= this->result_.size()) {
-            break;
-        }
-    } while(true);
+    std::string result_str;
+    size_t total_size{0};
+    for (const auto& item : this->result_) {
+        total_size += item.size();
+    }
+    total_size += this->result_.size() * sizeof(uint64_t);
+    result_str.reserve(total_size);
+    for (const auto& item : this->result_) {
+        uint64_t item_len = item.size();
+        uint64_t be_item_len = htonll(item_len);
+        result_str.append(reinterpret_cast<char*>(&be_item_len), sizeof(be_item_len));
+        result_str.append(item);
+    }
     auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->send(results);
+    auto ret = channel->send(this->key, result_str);
     VLOG(5) << "send result to server success";
+    return ret;
 }
 
-int PSIECDHTask::buildInitParam(rpc::TaskRequest* request_) {
-    auto& request = *request_;
-    request.set_task_id(this->task_id_);
-    request.set_job_id(this->job_id_);
-    rpc::TaskResponse task_response;
-    auto param_map = request.mutable_params()->mutable_param_map();
+retcode PSIEcdhTask::buildInitParam(std::string* init_params_str) {
+    rpc::Params init_params;
+    auto param_map = init_params.mutable_param_map();
     // dataset size
     rpc::ParamValue pv_datasize;
     pv_datasize.set_var_type(rpc::VarType::INT64);
@@ -291,88 +255,95 @@ int PSIECDHTask::buildInitParam(rpc::TaskRequest* request_) {
     pv_intersection.set_value_int32(this->reveal_intersection_ ? 1 : 0);
     pv_intersection.set_is_array(false);
     (*param_map)["reveal_intersection"] = pv_intersection;
-    return 0;
+    bool success = init_params.SerializeToString(init_params_str);
+    if (success) {
+        return retcode::SUCCESS;
+    } else {
+        LOG(ERROR) << "serialize init param failed";
+        return retcode::FAIL;
+    }
 }
 
-int PSIECDHTask::sendInitParam(const rpc::TaskRequest& request) {
+retcode PSIEcdhTask::sendInitParam(const std::string& init_param) {
     auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->send(request);
-    return 0;
+    channel->send(this->key, init_param);
+    return retcode::SUCCESS;
 }
 
-int PSIECDHTask::saveResult() {
+int PSIEcdhTask::saveResult() {
     std::string col_title =
         psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
     saveDataToCSVFile(result_, result_file_path_, col_title);
     return 0;
 }
 
-int PSIECDHTask::sendPSIRequestAndWaitResponse(
-        const psi_proto::Request& client_request, rpc::TaskResponse* response) {
-    SCopedTimer timer;
-    auto& taskResponse = *response;
-    std::vector<rpc::TaskRequest> send_requests;
-    size_t limited_size = 1 << 21;
-    size_t num_elements = client_request.encrypted_elements().size();
-    const auto& encrypted_elements = client_request.encrypted_elements();
-    VLOG(5) << "num_elements_num_elements: " << num_elements;
-    size_t sended_index{0};
-    do {
-        rpc::TaskRequest taskRequest;
-        taskRequest.set_job_id(job_id_);
-        taskRequest.set_task_id(task_id_);
-        auto ptr_request = taskRequest.mutable_psi_request();
-        ptr_request->set_reveal_intersection(client_request.reveal_intersection());
-        ptr_request->set_job_id(job_id_);
-        ptr_request->set_task_id(task_id_);
-        size_t pack_size = 0;
-        for (size_t i = sended_index; i < num_elements; i++) {
-            const auto& element = encrypted_elements[i];
-            auto element_len = element.size();
-            if (pack_size + element_len > limited_size) {
-                break;
-            }
-            ptr_request->add_encrypted_elements(element);
-            pack_size += element_len;
-            sended_index++;
-        }
-        send_requests.push_back(std::move(taskRequest));
-        if (sended_index >= num_elements) {
-            break;
-        }
-    } while (true);
-
-    VLOG(5) << "send_requests size: " << send_requests.size();
-    std::vector<rpc::TaskResponse> recv_response;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->sendRecv(send_requests, &recv_response);
-    if (recv_response.empty()) {
-        return -1;
-    }
+retcode PSIEcdhTask::parsePsiResponseFromeString(const std::string& response_str, rpc::PsiResponse* response) {
+    psi_proto::Response psi_response;
+    psi_proto::ServerSetup setup_info;
+    char* recv_buf = const_cast<char*>(response_str.c_str());
+    uint64_t* be_psi_res_len = reinterpret_cast<uint64_t*>(recv_buf);
+    uint64_t psi_res_len = ntohll(*be_psi_res_len);
+    recv_buf += sizeof(uint64_t);
+    psi_response.ParseFromArray(recv_buf, psi_res_len);
+    recv_buf += psi_res_len;
+    uint64_t* be_setup_info_len = reinterpret_cast<uint64_t*>(recv_buf);
+    uint64_t setup_info_len = ntohll(*be_setup_info_len);
+    recv_buf += sizeof(uint64_t);
+    setup_info.ParseFromArray(recv_buf, setup_info_len);
     VLOG(5) << "begin to merge task response";
-    bool is_initialized{false};
-    auto psi_response = taskResponse.mutable_psi_response();
-    for (const auto& res : recv_response) {
-        const auto& _psi_response = res.psi_response();
-        if (!is_initialized) {
-            const auto& res_server_setup = _psi_response.server_setup();
-            auto server_setup = psi_response->mutable_server_setup();
-            server_setup->CopyFrom(res_server_setup);
-            is_initialized = true;
-        }
-        for (const auto& encrypted_element : _psi_response.encrypted_elements()) {
-            psi_response->add_encrypted_elements(encrypted_element);
-        }
+
+    auto server_setup = response->mutable_server_setup();
+    server_setup->set_bits(setup_info.bits());
+    if (setup_info.data_structure_case() ==
+        psi_proto::ServerSetup::DataStructureCase::kGcs) {
+        auto ptr_gcs = server_setup->mutable_gcs();
+        ptr_gcs->set_div(setup_info.gcs().div());
+        ptr_gcs->set_hash_range(setup_info.gcs().hash_range());
+    } else if (setup_info.data_structure_case() ==
+               psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
+        auto ptr_bloom_filter = server_setup->mutable_bloom_filter();
+        ptr_bloom_filter->set_num_hash_functions(
+            setup_info.bloom_filter().num_hash_functions()
+        );
+    } else {
+        LOG(ERROR) << "Node psi client get intersection setup info error!";
+        return retcode::FAIL;
     }
-    VLOG(5) << "end of merge task response";
-    return 0;
+
+    for (const auto& encrypted_element : psi_response.encrypted_elements()) {
+        response->add_encrypted_elements(encrypted_element);
+    }
+    return retcode::SUCCESS;
 }
 
-int PSIECDHTask::executeAsClient() {
+retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
+        const psi_proto::Request& client_request, rpc::PsiResponse* response) {
+    SCopedTimer timer;
+    std::string psi_req_str;
+    client_request.SerializeToString(&psi_req_str);
+    std::string recv_data_str;
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
+    channel->sendRecv(this->key, psi_req_str, &recv_data_str);
+    if (recv_data_str.empty()) {
+        return retcode::FAIL;
+    }
+    auto ret = parsePsiResponseFromeString(recv_data_str, response);
+    VLOG(5) << "end of merge task response";
+    return ret;
+}
+
+int PSIEcdhTask::executeAsClient() {
     SCopedTimer timer;
     rpc::TaskRequest request;
-    buildInitParam(&request);
-    sendInitParam(request);
+    std::string init_param_str;
+    VLOG(5) << "begin to build init param";
+    buildInitParam(&init_param_str);
+    VLOG(5) << "build init param finished";
+    auto init_param_ts = timer.timeElapse();
+    auto init_param_time_cost = init_param_ts;
+    VLOG(5) << "buildInitParam time cost(ms): " << init_param_time_cost << " "
+            << "content length: " << init_param_str.size();
+    sendInitParam(init_param_str);
     VLOG(5) << "client begin to prepare psi request";
     // prepare psi data
     auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
@@ -382,7 +353,7 @@ int PSIECDHTask::executeAsClient() {
     auto build_request_time_cost = build_request_ts;
     VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     // send psi data to server
-    rpc::TaskResponse task_response;
+    rpc::PsiResponse task_response;
     sendPSIRequestAndWaitResponse(client_request, &task_response);
     auto _start = timer.timeElapse();
     int ret = this->GetIntsection(client, task_response);
@@ -399,15 +370,15 @@ int PSIECDHTask::executeAsClient() {
         return -1;
     }
     if (this->reveal_intersection_ && this->sync_result_to_server) {
-        send_result_to_server();
+        broadcastResultToServer();
     }
 }
 
-int PSIECDHTask::executeAsServer() {
+int PSIEcdhTask::executeAsServer() {
     SCopedTimer timer;
     size_t num_client_elements{0};
     bool reveal_intersection_flag{false};
-    recvClientInfo(&num_client_elements, &reveal_intersection_flag);
+    recvInitParam(&num_client_elements, &reveal_intersection_flag);
     // prepare for local compuation
     VLOG(5) << "sever begin to SetupMessage";
     std::unique_ptr<openminded_psi::PsiServer> server =
@@ -433,128 +404,90 @@ int PSIECDHTask::executeAsServer() {
     }
 }
 
-int PSIECDHTask::recvClientInfo(size_t* client_dataset_size, bool* reveal_intersection) {
+int PSIEcdhTask::recvInitParam(size_t* client_dataset_size, bool* reveal_intersection) {
     auto& client_dataset_size_ = *client_dataset_size;
     auto& reveal_flag = *reveal_intersection;
-    auto& recv_queue = this->getTaskContext().getRecvQueue();
-    do {
-        rpc::TaskRequest request;
-        recv_queue.wait_and_pop(request);
-        if (request.last_frame()) {
-            break;
-        }
-        const auto& parm_map = request.params().param_map();
-        auto it = parm_map.find("dataset_size");
-        if (it != parm_map.end()) {
-            client_dataset_size_ = it->second.value_int64();
-            VLOG(5) << "client_dataset_size_: " << client_dataset_size_;
-        }
-        it = parm_map.find("reveal_intersection");
-        if (it != parm_map.end()) {
-            reveal_flag = it->second.value_int32() > 0;
-            VLOG(5) << "reveal_intersection_: " << reveal_flag;
-        }
-    } while (true);
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    VLOG(5) << "begin to recvInitParam ";
+    std::string init_param_str;
+    recv_queue.wait_and_pop(init_param_str);
+    rpc::Params init_params;
+    init_params.ParseFromString(init_param_str);
+    const auto& parm_map = init_params.param_map();
+    auto it = parm_map.find("dataset_size");
+    if (it != parm_map.end()) {
+        client_dataset_size_ = it->second.value_int64();
+        VLOG(5) << "client_dataset_size_: " << client_dataset_size_;
+    }
+    it = parm_map.find("reveal_intersection");
+    if (it != parm_map.end()) {
+        reveal_flag = it->second.value_int32() > 0;
+        VLOG(5) << "reveal_intersection_: " << reveal_flag;
+    }
+    VLOG(5) << "end of recvInitParam ";
     return 0;
 }
 
-int PSIECDHTask::preparePSIResponse(psi_proto::Response&& psi_response,
+int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
                                     psi_proto::ServerSetup&& setup_info) {
     SCopedTimer timer;
     VLOG(5) << "preparePSIResponse";
     // prepare response to server
     auto server_response = std::move(psi_response);
     auto server_setup = std::move(setup_info);
-    auto& send_queue = this->getTaskContext().getSendQueue();
-    size_t limited_size = 1 << 21; // 4M
-    size_t encrypted_elements_num = server_response.encrypted_elements().size();
-    const auto& encrypted_elements = server_response.encrypted_elements();
-    size_t sended_size = 0;
-    size_t sended_index = 0;
-    do {
-        rpc::TaskResponse sub_resp;
-        sub_resp.set_last_frame(false);
-        auto sub_psi_res = sub_resp.mutable_psi_response();
-        sub_psi_res->set_ret_code(0);
-        size_t pack_size = 0;
-        // auto sub_server_setup = sub_psi_res->mutable_server_setup();
-        // sub_server_setup->CopyFrom(server_setup);
-        auto ptr_server_setup = sub_psi_res->mutable_server_setup();
-        ptr_server_setup->set_bits(server_setup.bits());
-        if (server_setup.data_structure_case() ==
-            psi_proto::ServerSetup::DataStructureCase::kGcs) {
-            ptr_server_setup->mutable_gcs()->set_div(server_setup.gcs().div());
-            ptr_server_setup->mutable_gcs()->set_hash_range(server_setup.gcs().hash_range());
-        } else if (server_setup.data_structure_case() ==
-                   psi_proto::ServerSetup::DataStructureCase::kBloomFilter) {
-            ptr_server_setup->mutable_bloom_filter()->
-                set_num_hash_functions(server_setup.bloom_filter().num_hash_functions());
-        }
-        for (size_t i = sended_index; i < encrypted_elements_num; i++) {
-            const auto& data_item = encrypted_elements[i];
-            size_t item_len = data_item.size();
-            if (pack_size + item_len > limited_size) {
-                break;
-            }
-            sub_psi_res->add_encrypted_elements(data_item);
-            pack_size += item_len;
-            sended_index++;
-        }
-        send_queue.push(std::move(sub_resp));
-        VLOG(5) << "pack_size+pack_size: " << pack_size;
-        if (sended_index >= encrypted_elements_num) {
-            break;
-        }
-    } while(true);
-    rpc::TaskResponse sub_resp;
-    sub_resp.set_last_frame(true);
-    send_queue.push(std::move(sub_resp));
+    auto& send_queue = this->getTaskContext().getSendQueue(this->key);
+    std::string response_str;
+    server_response.SerializeToString(&response_str);
+    std::string setup_info_str;
+    server_setup.SerializeToString(&setup_info_str);
+    uint64_t response_len = response_str.size();
+    uint64_t setup_info_len = setup_info_str.size();
+    std::string psi_res_str;
+    psi_res_str.reserve(response_len+setup_info_len+2*sizeof(uint64_t));
+    uint64_t be_response_len = htonll(response_len);
+    psi_res_str.append(reinterpret_cast<char*>(&be_response_len), sizeof(uint64_t));
+    psi_res_str.append(response_str);
+    uint64_t be_setup_info_len = htonll(setup_info_len);
+    psi_res_str.append(reinterpret_cast<char*>(&be_setup_info_len), sizeof(uint64_t));
+    psi_res_str.append(setup_info_str);
+    VLOG(5) << "preparePSIResponse data length: " << psi_res_str.size();
+    send_queue.push(std::move(psi_res_str));
     auto build_response_ts = timer.timeElapse();
     auto build_response_time_cost = build_response_ts;
     VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
     return 0;
 }
 
-int PSIECDHTask::initRequest(psi_proto::Request* psi_request) {
-    auto& recv_queue = this->getTaskContext().getRecvQueue();
-    do {
-        rpc::TaskRequest request;
-        recv_queue.wait_and_pop(request);
-        if (request.last_frame()) {
-            break;
-        }
-        const auto& req = request.psi_request();
-        psi_request->set_reveal_intersection(req.reveal_intersection());
-        for (const auto& encrypted_element : req.encrypted_elements()) {
-            psi_request->add_encrypted_elements(encrypted_element);
-        }
-    } while (true);
+int PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    // rpc::TaskRequest request;
+    std::string request_str;
+    recv_queue.wait_and_pop(request_str);
+    psi_proto::Request recv_psi_req;
+    recv_psi_req.ParseFromString(request_str);
+    *psi_request = std::move(recv_psi_req);
     return 0;
 }
 
-int PSIECDHTask::recvPSIResult() {
+int PSIEcdhTask::recvPSIResult() {
     VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
-    auto& recv_queue = this->getTaskContext().getRecvQueue();
-    do {
-        rpc::TaskRequest request;
-        recv_queue.wait_and_pop(request);
-        if (request.last_frame()) {
-            break;
-        }
-        size_t offset = 0;
-        size_t data_len = request.data().length();
-        VLOG(5) << "data_len_data_len: " << data_len;
-        auto data_ptr = const_cast<char*>(request.data().c_str());
-        // format length: value
-        while (offset < data_len) {
-            auto len_ptr = reinterpret_cast<size_t*>(data_ptr+offset);
-            size_t len = *len_ptr;
-            offset += sizeof(size_t);
-            psi_result.push_back(std::string(data_ptr+offset, len));
-            offset += len;
-        }
-    } while (true);
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    std::string recv_data_str;
+    recv_queue.wait_and_pop(recv_data_str);
+    uint64_t offset = 0;
+    uint64_t data_len = recv_data_str.length();
+    VLOG(5) << "data_len_data_len: " << data_len;
+    auto data_ptr = const_cast<char*>(recv_data_str.c_str());
+    // format length: value
+    while (offset < data_len) {
+        auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
+        uint64_t be_len = *len_ptr;
+        uint64_t len = ntohll(be_len);
+        offset += sizeof(uint64_t);
+        psi_result.push_back(std::string(data_ptr+offset, len));
+        offset += len;
+    }
 
     VLOG(5) << "psi_result size: " << psi_result.size();
     std::string col_title{"intersection_row"};
@@ -562,7 +495,7 @@ int PSIECDHTask::recvPSIResult() {
     return 0;
 }
 
-int PSIECDHTask::saveDataToCSVFile(const std::vector<std::string>& data,
+int PSIEcdhTask::saveDataToCSVFile(const std::vector<std::string>& data,
         const std::string& file_path, const std::string& col_title) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::StringBuilder builder(pool);

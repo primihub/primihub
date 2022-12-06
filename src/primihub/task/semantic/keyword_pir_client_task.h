@@ -32,10 +32,7 @@ namespace primihub::task {
 
 class KeywordPIRClientTask : public TaskBase {
  public:
-    explicit KeywordPIRClientTask(const std::string &node_id,
-                                  const std::string &job_id,
-                                  const std::string &task_id,
-                                  const TaskParam *task_param,
+    explicit KeywordPIRClientTask(const TaskParam *task_param,
                                   std::shared_ptr<DatasetService> dataset_service);
 
     ~KeywordPIRClientTask() = default;
@@ -63,6 +60,7 @@ class KeywordPIRClientTask : public TaskBase {
     bool recv_query_data_direct{false};
     uint32_t server_data_port{2222};
     primihub::Node peer_node_;
+    std::string key{"default"};
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_
