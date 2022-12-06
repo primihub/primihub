@@ -62,7 +62,7 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
-ray.init(num_gpus=1)
+# ray.init(num_gpus=1)
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -194,6 +194,7 @@ def opt_paillier_decrypt_crt(pub, prv, cipher_text):
     return decrypt_text_num
 
 
+@ray.remote(num_gpus=1)
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     # less 'limit' will create more parallels
     # nums = items * limit
@@ -337,7 +338,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-@ray.remote(num_gpus=0.05)
+#@ray.remote(num_gpus=0.05)
 class ActorAdd(object):
 
     def __init__(self, pub):
