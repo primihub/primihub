@@ -38,6 +38,9 @@ public:
     virtual int execute() = 0;
     virtual int loadParams(Params & params) = 0;
     virtual int loadDataset(void) = 0;
+    virtual int kill_task() {
+        LOG(WARNING) << "UNIMPLEMENT";
+    }
     std::shared_ptr<DatasetService>& getDatasetService() {
         return dataset_service_;
     }

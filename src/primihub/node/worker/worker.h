@@ -49,6 +49,9 @@
 #include "src/primihub/protocol/aby3/sh3_gen.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/task/semantic/task.h"
+#include "src/primihub/task/semantic/private_server_base.h"
+#include "src/primihub/common/defines.h"
 
 using namespace std;
 using namespace Eigen;
@@ -58,27 +61,32 @@ using primihub::rpc::ExecuteTaskRequest;
 using primihub::rpc::ExecuteTaskResponse;
 
 namespace primihub {
-
 class Worker {
  public:
     explicit Worker(const std::string& node_id_,
                      std::shared_ptr<Nodelet> nodelet_)
         : node_id(node_id_), nodelet(nodelet_) {}
-
-    void execute(const PushTaskRequest* pushTaskRequest);
+    Worker(const std::string& node_id_, const std::string& worker_id,
+            std::shared_ptr<Nodelet> nodelet_)
+        : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {}
+    int execute(const PushTaskRequest* pushTaskRequest);
 
     void execute(const ExecuteTaskRequest *taskRequest,
                  ExecuteTaskResponse *taskResponse);
+    inline std::string worker_id() {return worker_id_;}
+    void kill_task();
 
  private:
-  std::unordered_map<std::string, std::shared_ptr<Worker>> workers_
+    std::unordered_map<std::string, std::shared_ptr<Worker>> workers_
         GUARDED_BY(worker_map_mutex_);
 
     mutable absl::Mutex worker_map_mutex_;
+    std::shared_ptr<primihub::task::TaskBase> task_ptr{nullptr};
+    std::shared_ptr<primihub::task::ServerTaskBase> task_server_ptr{nullptr};
     const std::string& node_id;
     std::shared_ptr<Nodelet> nodelet;
+    std::string worker_id_;
 };
-
 
 }  // namespace primihub
 

@@ -32,6 +32,8 @@
 #include "src/primihub/task/language/factory.h"
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/service/notify/model.h"
+
 
 using grpc::Server;
 using primihub::rpc::Params;
@@ -103,6 +105,16 @@ int VMNodeImpl::save_data_to_file(const std::string& data_path, std::vector<std:
     return 0;
 }
 
+int VMNodeImpl::ClearWorker(const std::string& worker_id) {
+    std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+    auto it = this->task_executor_map.find(worker_id);
+    if (it != this->task_executor_map.end()) {
+        VLOG(5) << "begin to clear worker, worker id: " << worker_id;
+        // this->task_executor_map.erase(worker_id);
+    }
+    return 0;
+}
+
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
                               PushTaskReply *pushTaskReply) {
@@ -143,7 +155,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
             pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
         LOG(INFO) << "start to schedule schedule task";
-        // absl::MutexLock lock(&parser_mutex_);
+        absl::MutexLock lock(&parser_mutex_);
         std::shared_ptr<LanguageParser> lan_parser_ =
             LanguageParserFactory::Create(*pushTaskRequest);
         if (lan_parser_ == nullptr) {
@@ -166,15 +178,84 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         auto _type = static_cast<int>(pushTaskRequest->task().type());
         VLOG(5) << "end schedule schedule task for type: " << _type;
     } else {
-        LOG(INFO) << "start to create worker for task";
-        running_set.insert(job_task);
-        std::shared_ptr<Worker> worker = CreateWorker();
-        worker->execute(pushTaskRequest);
-        running_set.erase(job_task);
+        auto executor_func = [this](
+                std::shared_ptr<Worker> worker, PushTaskRequest request,
+                primihub::ThreadSafeQueue<std::string>* finished_worker_queue) -> void {
+            std::string submit_client_id = request.submit_client_id();
+            std::string task_id = request.task().task_id();
+            std::string job_id = request.task().job_id();
+            LOG(INFO) << "begin to execute task";
+            std::string status = "RUNNING";
+            std::string status_info = "task is running";
+            using EventBusNotifyDelegate = primihub::service::EventBusNotifyDelegate;
+            EventBusNotifyDelegate::getInstance().notifyStatus(
+                    job_id, task_id, submit_client_id, status, status_info);
+            auto result_info = worker->execute(&request);
+
+            if (result_info == 0) {
+                status = "SUCCESS";
+                status_info = "task finished";
+            } else {
+                status = "FAIL";
+                status_info = "task execute encountes error";
+            }
+            bool is_psi_ecdh_server = IsPSIECDHServer(request);
+            if (!is_psi_ecdh_server) {
+                EventBusNotifyDelegate::getInstance().notifyStatus(
+                    job_id, task_id, submit_client_id, status, status_info);
+            }
+
+            VLOG(5) << "execute task end, begin to clean task";
+            finished_worker_queue->push(worker->worker_id());
+            VLOG(5) << "execute task end, clean task finished";
+
+        };
+        std::string task_id = pushTaskRequest->task().task_id();
+        std::string job_id = pushTaskRequest->task().job_id();
+        LOG(INFO) << "start to create worker for task: "
+                << "job_id : " << job_id  << " task_id: " << task_id;
+        std::string worker_id = job_id + "_" + task_id;
+        // running_set.insert(job_task);
+        std::shared_ptr<Worker> worker = CreateWorker(worker_id);
+        auto fut = std::async(std::launch::async,
+              executor_func,
+              worker,
+              *pushTaskRequest,
+              &this->fininished_workers);
+        LOG(INFO) << "create worker thread future for task: "
+                << "job_id : " << job_id  << " task_id: " << task_id << " finished";
+        // save work for future use
+        {
+            std::lock_guard<std::mutex> lck(task_executor_mtx);
+            task_executor_map.insert(
+                {worker_id, std::make_tuple(std::move(worker), std::move(fut))});
+        }
+        LOG(INFO) << "create worker thread for task: "
+                << "job_id : " << job_id  << " task_id: " << task_id << " finished";
+        // running_set.erase(job_task);
     }
     return Status::OK;
 }
-
+bool VMNodeImpl::IsPSIECDHServer(const PushTaskRequest& request) {
+    bool is_psi_ecdh_server{false};
+    auto task_type = request.task().type();
+    bool send_success_message{true};
+    if (task_type == primihub::rpc::TaskType::NODE_PSI_TASK) {
+        const auto& params = request.task().params().param_map();
+        int psiTag = primihub::rpc::PsiTag::KKRT; // PsiTag::ECDH;
+        auto param_it = params.find("psiTag");
+        if (param_it != params.end()) {
+            psiTag = param_it->second.value_int32();
+        }
+        if (psiTag == primihub::rpc::PsiTag::ECDH) {
+            auto it = params.find("serverAddress");
+            if (it == params.end()) { // psi server sidd
+                is_psi_ecdh_server = true;
+            }
+        }
+    }
+    return is_psi_ecdh_server;
+}
 /***********************************************
  *
  * method runs on the node as psi or pir server
@@ -277,8 +358,13 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
     bool first_visit_flag{false};
     bool is_psi_request{false};
     bool is_pir_request{false};
+    std::string task_id;
+    std::string job_id;
+    std::string submit_client_id;
     while (stream->Read(&recv_request)) {
         if (!first_visit_flag) {
+            submit_client_id = recv_request.submit_client_id();
+            task_request.set_submit_client_id(submit_client_id);
             auto ptr_params = task_request.mutable_params()->mutable_param_map();
             const auto& _params = recv_request.params().param_map();
             for (auto it = _params.begin(); it != _params.end(); it++) {
@@ -293,21 +379,25 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
                 is_psi_request = true;
                 taskType = primihub::rpc::TaskType::NODE_PSI_TASK;
                 const auto& psi_req = recv_request.psi_request();
-                job_task = psi_req.job_id() + psi_req.task_id();
+                job_id = psi_req.job_id();
+                task_id = psi_req.task_id();
+                job_task = job_id + task_id;
                 auto psi_request = task_request.mutable_psi_request();
-                psi_request->set_job_id(psi_req.job_id());
-                psi_request->set_task_id(psi_req.task_id());
+                psi_request->set_job_id(job_id);
+                psi_request->set_task_id(task_id);
                 psi_request->set_reveal_intersection(psi_req.reveal_intersection());
             } else if (req_type == ExecuteTaskRequest::AlgorithmRequestCase::kPirRequest) {
                 is_pir_request = true;
                 taskType = primihub::rpc::TaskType::NODE_PIR_TASK;
                 const auto& pir_req = recv_request.pir_request();
-                job_task = pir_req.job_id() + pir_req.task_id();
+                job_id = pir_req.job_id();
+                task_id = pir_req.task_id();
+                job_task = job_id + task_id;
                 auto pir_request = task_request.mutable_pir_request();
                 pir_request->set_galois_keys(pir_req.galois_keys());
                 pir_request->set_relin_keys(pir_req.relin_keys());
-                pir_request->set_job_id(pir_req.job_id());
-                pir_request->set_task_id(pir_req.task_id());
+                pir_request->set_job_id(job_id);
+                pir_request->set_task_id(task_id);
             }
             first_visit_flag = true;
         }
@@ -343,10 +433,11 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
         taskType == primihub::rpc::TaskType::NODE_PIR_TASK) {
         LOG(INFO) << "Start to create PSI/PIR server task";
         running_set.insert(job_task);
-        std::shared_ptr<Worker> worker = CreateWorker();
-        running_map.insert({job_task, worker});
+        std::string worker_id = job_task;
+        std::shared_ptr<Worker> worker = CreateWorker(worker_id);
+        // running_map.insert({job_task, worker});
         worker->execute(&task_request, &task_response);
-        running_map.erase(job_task);
+        // running_map.erase(job_task);
         running_set.erase(job_task);
     }
 
@@ -356,14 +447,30 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
     for (const auto& res : splited_resp) {
         stream->Write(res);
     }
+    // the end of psi ecdh server
+    LOG(INFO) << "begin to execute task";
+    std::string status = "SUCCESS";
+    std::string status_info = "task is finished";
+    using EventBusNotifyDelegate = primihub::service::EventBusNotifyDelegate;
+    EventBusNotifyDelegate::getInstance().notifyStatus(
+            job_id, task_id, submit_client_id, status, status_info);
     return Status::OK;
 }
 
+std::shared_ptr<Worker> VMNodeImpl::CreateWorker(const std::string& worker_id) {
+    LOG(INFO) << " 🤖️ Start create worker " << this->node_id << " worker id: " << worker_id;
+    // absl::MutexLock lock(&worker_map_mutex_);
+    auto worker = std::make_shared<Worker>(this->node_id, worker_id, this->nodelet);
+    // workers_.emplace("simple_test_worker", worker);
+    LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id << " worker id: " << worker_id;
+    return worker;
+}
+
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
-    auto worker = std::make_shared<Worker>(this->node_id, this->nodelet);
+    std::string worker_id = "";
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id;
     // absl::MutexLock lock(&worker_map_mutex_);
-
+    auto worker = std::make_shared<Worker>(this->node_id, worker_id, this->nodelet);
     // workers_.emplace("simple_test_worker", worker);
     LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id;
     return worker;

@@ -56,8 +56,9 @@ class TaskFactory {
                                         std::shared_ptr<DatasetService> dataset_service) {
         auto task_language = request.task().language();
         auto task_type = request.task().type();
-
-
+        std::string job_id = request.task().job_id();
+        std::string task_id = request.task().task_id();
+        std::string submit_client_id = request.submit_client_id();
         if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
             auto task_param = request.task();
             auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
@@ -80,11 +81,9 @@ class TaskFactory {
             }
 
             if (psi_tag == PsiTag::ECDH) {
-                auto psi_task = std::make_shared<PSIClientTask>(node_id,
-                                                           request.task().job_id(),
-                                                           request.task().task_id(),
-                                                           &task_param,
-                                                           dataset_service);
+                auto psi_task =
+                    std::make_shared<PSIClientTask>(&task_param, dataset_service);
+                psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
                 return std::dynamic_pointer_cast<TaskBase>(psi_task);
             } else if (psi_tag == PsiTag::KKRT) {
                 auto psi_task = std::make_shared<PSIKkrtTask>(node_id,
@@ -92,6 +91,7 @@ class TaskFactory {
                                                               request.task().task_id(),
                                                               &task_param,
                                                               dataset_service);
+                psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
                 return std::dynamic_pointer_cast<TaskBase>(psi_task);
             } else {
                 LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
