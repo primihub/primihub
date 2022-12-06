@@ -579,3 +579,14 @@ http_archive(
     "https://github.com/SRombauts/SQLiteCpp/archive/refs/tags/3.2.0.tar.gz",
   ]
 )
+
+#generate uuid
+http_archive(
+  name = "com_github_stduuid",
+  build_file = "//bazel:BUILD.stduuid",
+  sha256 = "f554f6a9fe4d852fa217de6ab977afbf3f49e4a1dcb263afd61a94253c4c7a48",
+  strip_prefix = "stduuid-1.2.2",
+  urls = [
+    "https://github.com/mariusbancila/stduuid/archive/refs/tags/v1.2.2.tar.gz",
+  ]
+)

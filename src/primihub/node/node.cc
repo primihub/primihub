@@ -57,12 +57,12 @@ Status VMNodeImpl::Send(ServerContext* context,
     std::string job_id;
     std::string task_id;
     std::string role;
-    int storage_type{-1};
-    std::string storage_info;
     std::vector<std::string> recv_data;
     std::shared_ptr<Worker> worker_ptr{nullptr};
     VLOG(5) << "VMNodeImpl::Send: received xxx: ";
     TaskRequest request;
+    std::string received_data;
+    // received_data.reserve(10*1024*1024);
     while (reader->Read(&request)) {
         if (!recv_meta_info) {
             job_id = request.job_id();
@@ -71,37 +71,31 @@ Status VMNodeImpl::Send(ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
-            storage_type = request.storage_type();
-            storage_info = request.storage_info();
             recv_meta_info = true;
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
-                    << "storage_type: " << storage_type << " "
-                    << "storage_info: " << storage_info;
+                    << "role: " << role;
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
                 err_msg.append(job_id).append(" task id: ").append(task_id)
                     .append(" not found");
                 response->set_ret_code(rpc::retcode::FAIL);
-                response->set_msg_info("worker for task id ");
+                response->set_msg_info(std::move(err_msg));
                 return Status::OK;
             }
         }
-        request.set_last_frame(false);
-        auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
-        recv_queue.push(request);
+        received_data.append(request.data());
     }
-    request.set_last_frame(true);
     auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
-    recv_queue.push(request);
-    VLOG(5) << "end of read data from client";
+    recv_queue.push(std::move(received_data));
+    VLOG(5) << "end of VMNodeImpl::Send";
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
     return Status::OK;
 }
+
 Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
         grpc::ServerReaderWriter<rpc::TaskResponse, rpc::TaskRequest>* stream) {
-//
     VLOG(5) << "VMNodeImpl::SendRecv: received: ";
     bool is_initialized{false};
     std::string job_id;
@@ -110,6 +104,7 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
     std::shared_ptr<Worker> worker_ptr{nullptr};
     TaskRequest request;
     rpc::TaskResponse response;
+    std::string recv_data;
     while (stream->Read(&request)) {
         if (!is_initialized) {
             job_id = request.job_id();
@@ -118,7 +113,9 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
-            VLOG(5) << "job_id: " << job_id << " " << "task_id: " << task_id;
+            VLOG(5) << "job_id: " << job_id << " "
+                    << "task_id: " << task_id << " "
+                    << "role: " << role;
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -130,24 +127,22 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             }
             is_initialized = true;
         }
-        request.set_last_frame(false);
-        auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
-        recv_queue.push(std::move(request));
+        recv_data.append(request.data());
     }
-    request.set_last_frame(true);
+    VLOG(5) << "received data length: " << recv_data.size();
     auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
-    recv_queue.push(std::move(request));
+    recv_queue.push(std::move(recv_data));
     VLOG(5) << "end of read data for server";
     // waiting for response data send to client
     auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
-    do {
-        rpc::TaskResponse response;
-        send_queue.wait_and_pop(response);
-        if (response.last_frame()) {
-            break;
-        }
-        stream->Write(response);
-    } while (true);
+    std::string send_data;
+    send_queue.wait_and_pop(send_data);
+    VLOG(5) << "send data length: " << send_data.length();
+    std::vector<rpc::TaskResponse> response_data;
+    buildTaskResponse(send_data, &response_data);
+    for (const auto& res : response_data) {
+        stream->Write(res);
+    }
     return Status::OK;
 }
 
@@ -170,15 +165,61 @@ Status VMNodeImpl::Recv(::grpc::ServerContext* context,
         return grpc::Status::OK;
     }
     auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
-    do {
-        TaskResponse response;
-        send_queue.wait_and_pop(response);
-        if (response.last_frame()) {
-            break;
-        }
-        writer->Write(response);
-    } while(true);
+    std::string send_data;
+    send_queue.wait_and_pop(send_data);
+    std::vector<rpc::TaskResponse> response_data;
+    buildTaskResponse(send_data, &response_data);
+    for (const auto& res : response_data) {
+        writer->Write(res);
+    }
     return grpc::Status::OK;
+}
+
+void VMNodeImpl::buildTaskRequest(const std::string& job_id,
+        const std::string& task_id, const std::string& role,
+        const std::string& data, std::vector<rpc::TaskRequest>* requests) {
+  size_t sended_size = 0;
+  constexpr size_t max_package_size = 1 << 21;  // limit data size 4M
+  size_t total_length = data.size();
+  char* send_buf = const_cast<char*>(data.c_str());
+  do {
+    rpc::TaskRequest task_request;
+    task_request.set_job_id(job_id);
+    task_request.set_task_id(task_id);
+    task_request.set_role(role);
+    auto data_ptr = task_request.mutable_data();
+    data_ptr->reserve(max_package_size);
+    size_t data_len = std::min(max_package_size, total_length - sended_size);
+    data_ptr->append(send_buf + sended_size, data_len);
+    sended_size += data_len;
+    requests->emplace_back(std::move(task_request));
+    if (sended_size > total_length) {
+      break;
+    }
+  } while(true);
+}
+
+void VMNodeImpl::buildTaskResponse(const std::string& data,
+        std::vector<rpc::TaskResponse>* responses) {
+  size_t sended_size = 0;
+  constexpr size_t max_package_size = 1 << 21;  // limit data size 4M
+  size_t total_length = data.size();
+  char* send_buf = const_cast<char*>(data.c_str());
+  do {
+    rpc::TaskResponse task_response;
+    task_response.set_ret_code(rpc::retcode::SUCCESS);
+    auto data_ptr = task_response.mutable_data();
+    data_ptr->reserve(max_package_size);
+    size_t data_len = std::min(max_package_size, total_length - sended_size);
+    data_ptr->append(send_buf + sended_size, data_len);
+    sended_size += data_len;
+    responses->emplace_back(std::move(task_response));
+    if (sended_size < total_length) {
+      continue;
+    } else {
+      break;
+    }
+  } while(true);
 }
 
 // for communication between different process
@@ -188,7 +229,6 @@ Status VMNodeImpl::ForwardSend(::grpc::ServerContext* context,
     // send data to destination node specified by request
     VLOG(5) << "enter VMNodeImpl::ForwardSend";
     primihub::rpc::ForwardTaskRequest forward_request;
-    // primihub::rpc::Node dest_node;
     std::unique_ptr<VMNode::Stub> stub{nullptr};
     grpc::ClientContext client_context;
     primihub::rpc::TaskResponse task_response;
@@ -255,14 +295,13 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     }
     // fetch data from task recv queue
     auto& recv_queue = worker->getTask()->getTaskContext().getRecvQueue(role);
-    do {
-        TaskRequest response;
-        recv_queue.wait_and_pop(response);
-        if (response.last_frame()) {
-            break;
-        }
-        writer->Write(response);
-    } while (true);
+    std::string forward_recv_data;
+    recv_queue.wait_and_pop(forward_recv_data);
+    std::vector<rpc::TaskRequest> forward_recv_datas;
+    buildTaskRequest(job_id, task_id, role, forward_recv_data, &forward_recv_datas);
+    for (const auto& data_ : forward_recv_datas) {
+        writer->Write(data_);
+    }
     return grpc::Status::OK;
 }
 
@@ -276,20 +315,9 @@ std::unique_ptr<VMNode::Stub> VMNodeImpl::get_stub(const std::string& dest_addre
     return stub;
 }
 
-int VMNodeImpl::ClearWorker(const std::string& worker_id) {
-    std::lock_guard<std::mutex> lck(this->task_executor_mtx);
-    auto it = this->task_executor_map.find(worker_id);
-    if (it != this->task_executor_map.end()) {
-        VLOG(5) << "begin to clear worker, worker id: " << worker_id;
-        // this->task_executor_map.erase(worker_id);
-    }
-    return 0;
-}
-
 Status VMNodeImpl::SubmitTask(ServerContext *context,
                               const PushTaskRequest *pushTaskRequest,
                               PushTaskReply *pushTaskReply) {
-
     std::string str;
     google::protobuf::TextFormat::PrintToString(*pushTaskRequest, &str);
     LOG(INFO) << str << std::endl;
@@ -352,6 +380,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         auto executor_func = [this](
                 std::shared_ptr<Worker> worker, PushTaskRequest request,
                 primihub::ThreadSafeQueue<std::string>* finished_worker_queue) -> void {
+            SCopedTimer timer;
             std::string submit_client_id = request.submit_client_id();
             std::string task_id = request.task().task_id();
             std::string job_id = request.task().job_id();
@@ -375,7 +404,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
 
             VLOG(5) << "execute task end, begin to clean task";
             finished_worker_queue->push(worker->worker_id());
-            VLOG(5) << "execute task end, clean task finished";
+            auto time_cost = timer.timeElapse();
+            VLOG(5) << "execute task end, clean task finished, "
+                    << "task total cost time(ms): " << time_cost;
+
 
         };
         std::string task_id = pushTaskRequest->task().task_id();

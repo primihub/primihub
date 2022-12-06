@@ -46,23 +46,18 @@ namespace primihub::task {
 
 class PSIKkrtTask : public TaskBase {
 public:
-    explicit PSIKkrtTask(const std::string &node_id,
-                        const std::string &job_id,
-                        const std::string &task_id,
-                        const TaskParam *task_param,
+    explicit PSIKkrtTask(const TaskParam *task_param,
                         std::shared_ptr<DatasetService> dataset_service);
 
     ~PSIKkrtTask() {}
     int execute() override;
     int saveResult(void);
-    int send_result_to_server();
-    void setTaskInfo(const std::string& node_id, const std::string& job_id,
-        const std::string& task_id, const std::string& submit_client_id);
+    retcode broadcastResultToServer();
     int recvIntersectionData();
     int saveDataToCSVFile(const std::vector<std::string>& data,
       const std::string& file_path, const std::string& col_title);
 private:
-    int exchangeDataPort();
+    retcode exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
@@ -75,10 +70,6 @@ private:
     int _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
 
-    std::string node_id_;
-    std::string job_id_;
-    std::string task_id_;
-    std::string submit_client_id_;
     int data_index_;
     int psi_type_;
     int role_tag_;
@@ -92,6 +83,7 @@ private:
     uint32_t data_port{0};
     uint32_t peer_data_port{1212};
     primihub::Node peer_node;
+    std::string key{"default"};
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
