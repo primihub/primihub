@@ -69,7 +69,7 @@ class Worker {
     Worker(const std::string& node_id_, const std::string& worker_id,
             std::shared_ptr<Nodelet> nodelet_)
         : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {}
-    int execute(const PushTaskRequest* pushTaskRequest);
+    retcode execute(const PushTaskRequest* pushTaskRequest);
 
     int execute(const ExecuteTaskRequest *taskRequest,
                  ExecuteTaskResponse *taskResponse);
