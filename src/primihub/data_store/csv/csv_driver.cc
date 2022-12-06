@@ -45,9 +45,6 @@ void CSVCursor::close() {
 
 // read all data from csv file
 std::shared_ptr<primihub::Dataset> CSVCursor::read() {
-  struct stat file_info;
-  ::stat(filePath.c_str(), &file_info);
-  size_t file_size = file_info.st_size;
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(
       arrow::fs::LocalFileSystemOptions::Defaults());
@@ -59,7 +56,6 @@ std::shared_ptr<primihub::Dataset> CSVCursor::read() {
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
 
   auto read_options = arrow::csv::ReadOptions::Defaults();
-  read_options.block_size = file_size;
   auto parse_options = arrow::csv::ParseOptions::Defaults();
   auto convert_options = arrow::csv::ConvertOptions::Defaults();
 
