@@ -1,0 +1,34 @@
+# Description:
+package(default_visibility = ["//visibility:public"])
+cc_library(
+  name = "stduuid_lib",
+  hdrs = glob([
+    "include/uuid.h",
+  ]),
+  copts = [
+    '--std=c++17',
+  ],
+  includes = ["include",],
+  deps = [
+    ":internal_gsl_lib", 
+  ],
+)
+
+cc_library(
+  name = "internal_gsl_lib",
+  textual_hdrs = [
+    "gsl/span",
+    "gsl/gsl_assert",
+    "gsl/gsl_util",
+    "gsl/gsl_byte",
+    "gsl/gsl_algorithm",
+    "gsl/gsl",
+    "gsl/pointers",
+    "gsl/multi_span",
+    "gsl/string_span",
+  ],
+  includes = ["gsl"],
+  copts = [
+      "--std=c++17",
+  ],
+)
