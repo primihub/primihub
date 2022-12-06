@@ -235,7 +235,6 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
         LOG(ERROR) << "serialize data port info failed";
         return retcode::FAIL;
     }
-
     auto ret = this->send(this->key, client_node_, data_port_info_str);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send data port info to peer: [" << client_node_.to_string()
@@ -245,3 +244,4 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
     return retcode::SUCCESS;
 }
 }  // namespace primihub::task
+
