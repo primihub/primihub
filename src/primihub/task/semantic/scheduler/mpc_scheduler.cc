@@ -13,21 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-
+#include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
 #include "absl/strings/str_cat.h"
 #include "glog/logging.h"
-
-#include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
-
-using grpc::Channel;
-// using grpc::ClientContext;
-using grpc::Status;
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;

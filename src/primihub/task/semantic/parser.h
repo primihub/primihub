@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PARSER_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PARSER_H_
 
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/task/semantic/task.h"

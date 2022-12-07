@@ -18,9 +18,6 @@
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PIR_SCHEDULER_H_
 
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
-#include <grpc/grpc.h>
-
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -36,17 +33,11 @@
 #include <apsi/zmq/sender_dispatcher.h>
 #endif
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/common/defines.h"
 
-using grpc::Channel;
-// using grpc::ClientContext;
-using grpc::ClientReader;
-using grpc::ClientReaderWriter;
-using grpc::ClientWriter;
-using grpc::Status;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;

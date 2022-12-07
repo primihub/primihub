@@ -14,18 +14,11 @@
  limitations under the License.
  */
 
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-
+#include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-
-#include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;

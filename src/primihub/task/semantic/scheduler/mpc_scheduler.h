@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/common/defines.h"
 
