@@ -178,12 +178,13 @@ int PSIClientTask::execute() {
     psi_proto::Response server_response;
 
     grpc::ClientContext context;
-    // ExecuteTaskRequest taskRequest;
-
-
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
-        server_address_, grpc::InsecureChannelCredentials()));
-    std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>> client_stream(stub->ExecuteTask(&context));
+    grpc::ChannelArguments channel_args;
+    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    std::shared_ptr<grpc::Channel> channel =
+        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
+    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    using stream_t = std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>>;
+    stream_t client_stream(stub->ExecuteTask(&context));
 
     size_t limited_size = 1 << 21;
     size_t num_elements = client_request.encrypted_elements().size();

@@ -26,20 +26,22 @@ using primihub::rpc::NodeEventType;
 //////////////////////////////EventBusNotifyDelegate/////////////////////////////////////////////////
 
 // TODO job id is not used yet.
-void EventBusNotifyDelegate::notifyStatus(const std::string &task_id,
-                                          const std::string &submit_client_id, 
+void EventBusNotifyDelegate::notifyStatus(const std::string& job_id,
+                                          const std::string& task_id,
+                                          const std::string& submit_client_id,
                                           const std::string& status,
                                           const std::string& message) {
     // send status to event bus.
-    event_bus_.fire_event(TaskStatusEvent{task_id, "jobid", submit_client_id, status, message});
+    event_bus_.fire_event(TaskStatusEvent{task_id, job_id, submit_client_id, status, message});
 }
 
-void EventBusNotifyDelegate::notifyResult(const std::string &task_id, 
-                                         const std::string &submit_client_id, 
-                                         const std::string &result_dataset_url) {
+void EventBusNotifyDelegate::notifyResult(const std::string& job_id,
+                                         const std::string& task_id,
+                                         const std::string& submit_client_id,
+                                         const std::string& result_dataset_url) {
     // send result to event bus.
-    event_bus_.fire_event(TaskResultEvent{task_id, "jobId", submit_client_id, result_dataset_url});
-    
+    event_bus_.fire_event(TaskResultEvent{task_id, job_id, submit_client_id, result_dataset_url});
+
 }
 
 /////////////////////////////////////EventBusNotifyServerSubscriber//////////////////////////////////////////
@@ -52,7 +54,7 @@ EventBusNotifyServerSubscriber::EventBusNotifyServerSubscriber(NotifyServer& not
    task_result_reg_(std::move(event_bus_ptr_->register_handler<TaskResultEvent>(
         notify_server_ptr, &NotifyServer::onTaskResultEvent))) {
 
-} 
+}
 
 EventBusNotifyServerSubscriber::~EventBusNotifyServerSubscriber() {
     event_bus_ptr_->remove_handler(task_stauts_reg_);
@@ -106,7 +108,7 @@ void GRPCNotifyServer::onTaskResultEvent(const TaskResultEvent &e) {
 }
 
 
-bool GRPCNotifyServer::init(const std::string &server, 
+bool GRPCNotifyServer::init(const std::string &server,
     const std::shared_ptr<NotifyServerSubscriber> &notify_server_subscriber) {
     this->notify_server_subscriber_ = notify_server_subscriber;
     ::grpc::ServerBuilder builder;
@@ -187,7 +189,7 @@ void GRPCNotifyServer::run() {
                 std::lock_guard<std::mutex> local_lock_guard{session->mutex_};
                 // deal request
                 session->process(event);
-                
+
             }
         }
         LOG(INFO) << "completion queue(notification) exit";
@@ -195,7 +197,7 @@ void GRPCNotifyServer::run() {
     std::thread thread_publish_node_evt([this] {
         while (running_) {
           std::this_thread::sleep_for(std::chrono::seconds(1));
-            // TODO 此处应改为有session中消息队列中有TaskEvent时向client写入 
+            // TODO 此处应改为有session中消息队列中有TaskEvent时向client写入
             // {
             //     std::lock_guard<std::mutex> local_lock_guard{mutex_sessions_};
             //     for (const auto &it : sessions_) {
@@ -240,7 +242,7 @@ void GRPCNotifyServer::stop() {
 
 
 std::shared_ptr<GRPCClientSession> GRPCNotifyServer::addSession() {
-    auto new_session_id = session_id_allocator_++; 
+    auto new_session_id = session_id_allocator_++;
     auto new_session = std::make_shared<GRPCClientSession>(new_session_id);
     if (!new_session->init()) {
         LOG(ERROR) << "init new session failed";
@@ -289,7 +291,7 @@ bool GRPCClientSession::init() {
         GRPCNotifyServer::getInstance().completion_queue_notification_.get(),
         reinterpret_cast<void*>(session_id_ << GRPC_NOTIFY_EVENT_BIT_LENGTH | GRPC_NOTIFY_EVENT_CONNECTED));
     return true;
-} 
+}
 
 
 void GRPCClientSession::process(GrpcNotifyEvent event) {
@@ -298,7 +300,7 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
         case GRPC_NOTIFY_EVENT_CONNECTED:
 
             LOG(INFO) << "client context: " << client_context_.DebugString();
-            
+
             status_ = GrpcClientSessionStatus::READY_TO_WRITE;
             GRPCNotifyServer::getInstance().addSession();
             //Save client id & current session id pair
@@ -310,7 +312,7 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
             LOG(INFO) << "Prepare put NodeContext message to session: " << new_message_->ShortDebugString();
             this->putMessage(new_message_);
             return;
-            
+
         case GRPC_NOTIFY_EVENT_READ_DONE:
             // LOG(DEBUG) << "session_id_: " << session_id_ << ", new request: " << request_.ShortDebugString();
             // performance_.setName(name_);
@@ -350,7 +352,7 @@ void GRPCClientSession::process(GrpcNotifyEvent event) {
 //     }
 //     // auto new_message = std::make_shared<primihub::rpc::NodeEventReply>();
 //     //TODO  get reply from queue message front
-    
+
 //     if (status_ == GrpcSessionStatus::READY_TO_WRITE) {
 //         status_ = GrpcSessionStatus::WAIT_WRITE_DONE;
 //         subscribe_stream.Write(
