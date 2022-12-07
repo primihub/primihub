@@ -5,6 +5,7 @@ from sklearn import metrics
 from primihub.primitive.opt_paillier_c2py_warpper import *
 import pandas as pd
 import numpy as np
+import redis
 import logging
 import pickle
 from typing import (
@@ -46,6 +47,7 @@ U = TypeVar("U", covariant=True)
 Block = Union[List[T], "pyarrow.Table", "pandas.DataFrame", bytes]
 
 _pandas = None
+from primihub.utils.logger_util import logger
 
 
 def lazy_import_pandas():
@@ -60,6 +62,7 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
+# ray.init(num_gpus=1)
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -191,6 +194,7 @@ def opt_paillier_decrypt_crt(pub, prv, cipher_text):
     return decrypt_text_num
 
 
+@ray.remote(num_gpus=1)
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     # less 'limit' will create more parallels
     # nums = items * limit
@@ -317,7 +321,7 @@ class PallierSum(_AggregateOnKeyBase):
         )
 
 
-@ray.remote
+@ray.remote  #(num_gpus=1)
 class PaillierActor(object):
 
     def __init__(self, prv, pub) -> None:
@@ -334,7 +338,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-@ray.remote
+#@ray.remote(num_gpus=0.05)
 class ActorAdd(object):
 
     def __init__(self, pub):
@@ -379,7 +383,7 @@ class ActorAdd(object):
 #     return final_result
 
 
-@ray.remote
+@ray.remote  #(num_gpus=1)
 class PallierAdd(object):
 
     def __init__(self, pub, nums, add_actors, encrypted):
@@ -422,7 +426,7 @@ class PallierAdd(object):
         return final_result
 
 
-@ray.remote
+@ray.remote  #(num_gpus=1)
 class MapGH(object):
 
     def __init__(self, item, col, cut_points, g, h, pub, min_child_sample,
@@ -512,7 +516,7 @@ class MapGH(object):
         return G_lefts, G_rights, H_lefts, H_rights, vars, cuts
 
 
-@ray.remote
+@ray.remote  #(num_gpus=1)
 class ReduceGH(object):
 
     def __init__(self, maps) -> None:
@@ -548,7 +552,7 @@ class ReduceGH(object):
         return GH
 
 
-@ray.remote
+@ray.remote  #(num_gpus=1)
 class GroupPool:
 
     def __init__(self, add_actors, pub) -> None:
@@ -751,7 +755,8 @@ class XGB_GUEST_EN:
             #  channel=None,
             sid=0,
             record=0,
-            is_encrypted=None):
+            is_encrypted=None,
+            guest_redis=None):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -776,6 +781,7 @@ class XGB_GUEST_EN:
         self.tree_structure = {}
         self.encrypted = is_encrypted
         self.chops = 20
+        self.guest_redis = guest_redis
 
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
@@ -840,8 +846,8 @@ class XGB_GUEST_EN:
               buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
-        paillier_add_actors = ActorPool(
-            [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
+        # paillier_add_actors = ActorPool(
+        #     [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
         # grouppools = ActorPool([
         #     GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
@@ -878,7 +884,7 @@ class XGB_GUEST_EN:
                     on=['g', 'h'],
                     ignore_nulls=True,
                     pub_key=self.pub,
-                    add_actors=paillier_add_actors)
+                    add_actors=self.paillier_add_actors)
             else:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
             # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
@@ -952,8 +958,10 @@ class XGB_GUEST_EN:
         else:
             encrypte_gh_sums = self.sums_of_encrypted_ghs(
                 X_guest, encrypted_ghs)
-        self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
-        best_cut = self.proxy_server.Get('best_cut')
+        # self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
+        self.guest_redis.lpush('encrypte_gh_sums', encrypte_gh_sums)
+        # best_cut = self.proxy_server.Get('best_cut')
+        best_cut = self.guest_redis.rpop('best_cut')
 
         logging.info("current best cut: {}".format(best_cut))
 
@@ -995,13 +1003,20 @@ class XGB_GUEST_EN:
                 w_right = -guest_best['G_right'] / (guest_best['H_right'] +
                                                     self.reg_lambda)
 
-                self.proxy_client_host.Remote(
-                    {
+                # self.proxy_client_host.Remote(
+                # {
+                #     'id_left': id_left,
+                #     'id_right': id_right,
+                #     'w_left': w_left,
+                #     'w_right': w_right
+                # }, 'ids_w')
+                self.guest_redis.lpush(
+                    'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    })
                 # updata guest lookup table
                 self.lookup_table[self.guest_record] = [best_var, best_cut]
                 print("guest look_up table:", self.lookup_table)
@@ -1010,7 +1025,8 @@ class XGB_GUEST_EN:
                 self.guest_record += 1
 
             else:
-                ids_w = self.proxy_server.Get('ids_w')
+                # ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.guest_redis.rpop('ids_w')
                 role = 'host'
                 record = self.host_record
                 id_left = ids_w['id_left']
@@ -1050,7 +1066,8 @@ class XGB_GUEST_EN:
         for t in range(self.n_estimators):
             self.record = 0
             # gh_host = xgb_guest.channel.recv()
-            gh_en = self.proxy_server.Get('gh_en')
+            # gh_en = self.proxy_server.Get('gh_en')
+            gh_en = self.guest_redis.rpop('gh_en')
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 X_guest.copy(), gh_en, 0)
 
@@ -1078,15 +1095,22 @@ class XGB_GUEST_EN:
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
                 id_right = guest_test_right.index
-                self.proxy_client_host.Remote(
-                    {
+                self.guest_redis.lpush(
+                    str(record_id) + '_ids', {
                         'id_left': id_left,
                         'id_right': id_right
-                    },
-                    str(record_id) + '_ids')
+                    })
+
+                # self.proxy_client_host.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right
+                #     },
+                #     str(record_id) + '_ids')
 
             else:
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.guest_redis.rpop(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 print("==predict guest===", guest_test.index, ids)
 
@@ -1131,11 +1155,12 @@ class XGB_HOST_EN:
             random_seed=112,
             sid=0,
             record=0,
-            encrypted=None):
+            encrypted=None,
+            host_redis=None):
 
         # self.channel = channel
-        self.proxy_server = proxy_server
-        self.proxy_client_guest = proxy_client_guest
+        # self.proxy_server = proxy_server
+        # self.proxy_client_guest = proxy_client_guest
         self.base_score = base_score
         self.max_depth = max_depth
         self.n_estimators = n_estimators
@@ -1159,6 +1184,7 @@ class XGB_HOST_EN:
         self.encrypted = encrypted
         self.global_transfer_time = 0
         self.gloabl_construct_time = 0
+        self.host_redis = host_redis
 
     def _grad(self, y_hat, Y):
 
@@ -1243,6 +1269,7 @@ class XGB_HOST_EN:
                 tmp_var = [key] * m
                 tmp_cut = val[key].values.tolist()
                 for col in sum_col:
+                    print("val[col]: ", val[col])
                     val[col] = [
                         opt_paillier_decrypt_crt(self.pub, self.prv, item)
                         for item in val[col]
@@ -1380,9 +1407,10 @@ class XGB_HOST_EN:
 
         plain_gh_sums = plain_gh.sum(axis=0)
 
-        guest_gh_sums = self.proxy_server.Get(
-            'encrypte_gh_sums'
-        )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        # guest_gh_sums = self.proxy_server.Get(
+        #     'encrypte_gh_sums'
+        # )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        guest_gh_sums = self.host_redis.rpop('encrypte_gh_sums')
 
         # decrypted the 'guest_gh_sums' with paillier
         if ray_group:
@@ -1395,12 +1423,16 @@ class XGB_HOST_EN:
         # get the best cut of 'guest'
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
         # guest_best_gain = guest_best['gain']
+        self.host_redis.lpush('best_cut', {
+            'host_best': host_best,
+            'guest_best': guest_best
+        })
 
-        self.proxy_client_guest.Remote(
-            {
-                'host_best': host_best,
-                'guest_best': guest_best
-            }, 'best_cut')
+        # self.proxy_client_guest.Remote(
+        #     {
+        #         'host_best': host_best,
+        #         'guest_best': guest_best
+        #     }, 'best_cut')
 
         logging.info(
             "current depth: {}, host best var: {} and guest best var: {}".
@@ -1431,7 +1463,8 @@ class XGB_HOST_EN:
 
                 role = "guest"
                 record = self.guest_record
-                ids_w = self.proxy_server.Get('ids_w')
+                # ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.host_redis.rpop('ids_w')
 
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
@@ -1455,13 +1488,20 @@ class XGB_HOST_EN:
 
                 w_left = host_best['w_left']
                 w_right = host_best['w_right']
-                self.proxy_client_guest.Remote(
-                    {
+                self.host_redis.lpush(
+                    'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    })
+                # self.proxy_client_guest.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right,
+                #         'w_left': w_left,
+                #         'w_right': w_right
+                #     }, 'ids_w')
 
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
@@ -1509,7 +1549,8 @@ class XGB_HOST_EN:
             # self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.host_redis.rpop(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 id_right = ids['id_right']
                 host_test_left = host_test.loc[id_left]
@@ -1528,12 +1569,17 @@ class XGB_HOST_EN:
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
                 # id_right = host_test_right.index
-                self.proxy_client_guest.Remote(
-                    {
+                self.host_redis.lpush(
+                    str(record_id) + '_ids', {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
-                    },
-                    str(record_id) + '_ids')
+                    })
+                # self.proxy_client_guest.Remote(
+                #     {
+                #         'id_left': host_test_left.index,
+                #         'id_right': host_test_right.index
+                #     },
+                #     str(record_id) + '_ids')
                 # print("==predict host===", host_test.index, id_left, id_right)
 
             for kk in tree[k].keys():
@@ -1587,7 +1633,8 @@ class XGB_HOST_EN:
                 enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
                 # send all encrypted gradients and hessians to 'guest'
-                self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                # self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                self.host_redis.lpush('gh_en', enc_gh_df)
 
                 end_send_gh = time.time()
                 print("Time for encryption and transfer: ",
@@ -1595,7 +1642,8 @@ class XGB_HOST_EN:
                 print("Encrypt finish.")
 
             else:
-                self.proxy_client_guest.Remote(gh, "gh_en")
+                # self.proxy_client_guest.Remote(gh, "gh_en")
+                self.host_redis.lpush('gh_en', gh)
 
             # start construct boosting trees
             # lp = LineProfiler(xgb_host.host_tree_construct)
@@ -1683,6 +1731,96 @@ ray_group = True
 min_child_weight = 5
 
 
+class RedisProxy:
+
+    def __init__(self,
+                 host,
+                 port,
+                 db=10,
+                 password='primihub',
+                 topic='hetero_xgb') -> None:
+        # self.host = host
+        # self.port = port
+        # self.db = db
+        # self.password = password
+
+        self.connection = redis.Redis(host=host,
+                                      port=port,
+                                      db=db,
+                                      password=password)
+
+    def set(self, key, val):
+        # flag = False
+        # while not flag:
+        try:
+            self.connection.set(key, pickle.dumps(val))
+        except Exception as e:
+            raise KeyError("Redis set exception is ", str(e))
+
+        logger.info("Redis set successful")
+
+    def get(self, key, max_time=300, interval=0.1):
+        start = time.time()
+        res = None
+        while True:
+            try:
+                res = pickle.loads(self.connection.get(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
+            end = time.time()
+
+            if res is not None:
+                self.connection.delete(key)
+                return res
+
+            if (end - start) > max_time:
+                raise KeyError(
+                    "Can't get value for key {}, timeout.".format(key))
+
+            time.sleep(interval)
+
+    def lpush(self, key, val):
+        try:
+            flag = self.connection.lpush(key, pickle.dumps(val))
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+        logger.info("Redis lpush successful")
+
+    def rpop(self, key, max_time=10000, interval=0.1):
+        start = time.time()
+        res = None
+
+        while True:
+            try:
+                res = pickle.loads(self.connection.rpop(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
+            end = time.time()
+
+            if res is not None:
+                # self.redis.delete(key)
+                return res
+
+            if (end - start) > max_time:
+                raise KeyError(
+                    "Can't get value for key {}, timeout.".format(key))
+
+            time.sleep(interval)
+
+    def delete(self, key):
+        try:
+            flag = self.connection.delete(key)
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+    def stop(self):
+        try:
+            self.connection.shutdown()
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+
 @ph.context.function(
     role='host',
     protocol='xgboost',
@@ -1704,6 +1842,11 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.debug("node_addr_map {}".format(node_addr_map))
 
     data_key = list(dataset_map.keys())[0]
+
+    host_redis = RedisProxy(host='172.21.3.108',
+                            port=15550,
+                            db=0,
+                            password='primihub')
 
     eva_type = ph.context.Context.params_map.get("taskType", None)
     if eva_type is None:
@@ -1745,10 +1888,10 @@ def xgb_host_logic(cry_pri="paillier"):
     guest_nodes = role_node_map["guest"]
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
-    proxy_server = ServerChannelProxy(host_port)
-    proxy_server.StartRecvLoop()
+    # proxy_server = ServerChannelProxy(host_port)
+    # proxy_server.StartRecvLoop()
 
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
+    # proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
 
     Y = data.pop('y').values
     X_host = data.copy()
@@ -1756,18 +1899,22 @@ def xgb_host_logic(cry_pri="paillier"):
     lookup_table_sum = {}
 
     # if is_encrypted:
-    xgb_host = XGB_HOST_EN(n_estimators=num_tree,
-                           max_depth=max_depth,
-                           reg_lambda=1,
-                           sid=0,
-                           min_child_weight=min_child_weight,
-                           objective='logistic',
-                           proxy_server=proxy_server,
-                           proxy_client_guest=proxy_client_guest,
-                           encrypted=is_encrypted)
+    xgb_host = XGB_HOST_EN(
+        n_estimators=num_tree,
+        max_depth=max_depth,
+        reg_lambda=1,
+        sid=0,
+        min_child_weight=min_child_weight,
+        objective='logistic',
+        #    proxy_server=proxy_server,
+        #    proxy_client_guest=proxy_client_guest,
+        encrypted=is_encrypted,
+        host_redis=host_redis)
     # channel.recv()
     # xgb_host.channel.send(xgb_host.pub)
-    proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    # host_redis.set("xgb_pub", pickle.dumps(xgb_host.pub))
+    host_redis.set("PUB", xgb_host.pub)
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
     # y_hat = np.array([0.5] * Y.shape[0])
@@ -1842,7 +1989,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # with open(indicator_file_path, 'wb') as trainMetrics:
     #     pickle.dump(train_metrics, trainMetrics)
 
-    proxy_server.StopRecvLoop()
+    # proxy_server.StopRecvLoop()
     # host_log.close()
 
 
@@ -1861,6 +2008,11 @@ def xgb_guest_logic(cry_pri="paillier"):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+
+    guest_redis = RedisProxy(host='172.21.3.108',
+                             port=15550,
+                             db=0,
+                             password='primihub')
 
     logger.debug("dataset_map {}".format(dataset_map))
 
@@ -1894,14 +2046,14 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
-    proxy_server = ServerChannelProxy(guest_port)
-    proxy_server.StartRecvLoop()
+    # proxy_server = ServerChannelProxy(guest_port)
+    # proxy_server.StartRecvLoop()
     logger.debug("Create server proxy for guest, port {}.".format(guest_port))
 
     host_nodes = role_node_map["host"]
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
-    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
+    # proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     # data = pd.read_csv(
@@ -1910,23 +2062,35 @@ def xgb_guest_logic(cry_pri="paillier"):
     # data = data.iloc[:, :10]
 
     X_guest = data
-    guest_log = open('/app/guest_log', 'w+')
-
+    # guest_log = open('/app/guest_log', 'w+')
+    add_actor_num = 20  #50
     # if is_encrypted:
-    xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
-                             max_depth=max_depth,
-                             reg_lambda=1,
-                             min_child_weight=min_child_weight,
-                             objective='logistic',
-                             sid=1,
-                             proxy_server=proxy_server,
-                             proxy_client_host=proxy_client_host,
-                             is_encrypted=is_encrypted)  # noqa
+    xgb_guest = XGB_GUEST_EN(
+        n_estimators=num_tree,
+        max_depth=max_depth,
+        reg_lambda=1,
+        min_child_weight=min_child_weight,
+        objective='logistic',
+        sid=1,
+        #  proxy_server=proxy_server,
+        #  proxy_client_host=proxy_client_host,
+        is_encrypted=is_encrypted,
+        guest_redis=guest_redis)  # noqa
 
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
-    pub = proxy_server.Get('xgb_pub')
+    # pub = proxy_server.Get('xgb_pub')
+    # pub = pickle.loads(guest_redis.get('xgb_pub'))
+    # pub = guest_redis.get('xgb_pub2')
+    pub = guest_redis.get('PUB')
+    guest_redis.delete('PUB')
+    # pub = guesproxy_server.Get('xgb_pub')
+
     xgb_guest.pub = pub
+    paillier_add_actors = ActorPool(
+        [ActorAdd.remote(xgb_guest.pub) for _ in range(add_actor_num)])
+
+    xgb_guest.paillier_add_actors = paillier_add_actors
 
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
@@ -1982,5 +2146,5 @@ def xgb_guest_logic(cry_pri="paillier"):
     # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
-    proxy_server.StopRecvLoop()
-    guest_log.close()
+    # proxy_server.StopRecvLoop()
+    # guest_log.close()

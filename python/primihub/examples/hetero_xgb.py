@@ -1088,19 +1088,6 @@ class XGB_HOST_EN:
 
             return tree_structure
 
-    def fit(self, Y, train_losses):
-        self.lookup_table = {}
-        y_hat = np.array([self.base_score] * len(Y))
-        for t in range(self.n_estimators):
-            print("Begin to trian tree: ", t + 1)
-            f_t = pd.Series([0] * Y.shape[0])
-            gh = pd.DataFrame({
-                'g': self._grad(y_hat, Y.flatten()),
-                'h': self._hess(y_hat, Y.flatten())
-            })
-
-        pass
-
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
         if tree is not None:
             k = list(tree.keys())[0]

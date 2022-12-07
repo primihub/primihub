@@ -15,6 +15,7 @@ from typing import (
 )
 import pandas
 import pyarrow
+import redis
 
 from ray.data.block import KeyFn, _validate_key_fn
 from primihub.primitive.opt_paillier_c2py_warpper import *
@@ -732,6 +733,96 @@ class ServerChannelProxy:
         return None
 
 
+class RedisProxy:
+
+    def __init__(self,
+                 host,
+                 port,
+                 db=0,
+                 password='primihub',
+                 topic='hetero_xgb') -> None:
+        # self.host = host
+        # self.port = port
+        # self.db = db
+        # self.password = password
+
+        self.connection = redis.Redis(host=host,
+                                      port=port,
+                                      db=db,
+                                      password=password)
+
+    def set(self, key, val):
+        # flag = False
+        # while not flag:
+        try:
+            self.connection.set(key, pickle.dumps(val))
+        except Exception as e:
+            raise KeyError("Redis set exception is ", str(e))
+
+        logger.info("Redis set successful")
+
+    def get(self, key, max_time=300, interval=0.1):
+        start = time.time()
+        res = None
+        while True:
+            try:
+                res = pickle.loads(self.connection.get(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
+            end = time.time()
+
+            if res is not None:
+                self.connection.delete(key)
+                return res
+
+            if (end - start) > max_time:
+                raise KeyError(
+                    "Can't get value for key {}, timeout.".format(key))
+
+            time.sleep(interval)
+
+    def lpush(self, key, val):
+        try:
+            flag = self.connection.lpush(key, pickle.dumps(val))
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+        logger.info("Redis lpush successful")
+
+    def rpop(self, key, max_time=10000, interval=0.1):
+        start = time.time()
+        res = None
+
+        while True:
+            try:
+                res = pickle.loads(self.connection.rpop(key))
+            except TypeError as e:
+                logger.error("Current key error {}".format(e))
+            end = time.time()
+
+            if res is not None:
+                # self.redis.delete(key)
+                return res
+
+            if (end - start) > max_time:
+                raise KeyError(
+                    "Can't get value for key {}, timeout.".format(key))
+
+            time.sleep(interval)
+
+    def delete(self, key):
+        try:
+            flag = self.connection.delete(key)
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+    def stop(self):
+        try:
+            self.connection.shutdown()
+        except Exception as e:
+            logger.error("Redis set exception is ", str(e))
+
+
 class XGB_GUEST_EN:
 
     def __init__(
@@ -751,7 +842,8 @@ class XGB_GUEST_EN:
             #  channel=None,
             sid=0,
             record=0,
-            is_encrypted=None):
+            is_encrypted=None,
+            guest_redis=None):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -776,6 +868,7 @@ class XGB_GUEST_EN:
         self.tree_structure = {}
         self.encrypted = is_encrypted
         self.chops = 20
+        self.guest_redis = guest_redis
 
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
@@ -840,8 +933,6 @@ class XGB_GUEST_EN:
               buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
-        paillier_add_actors = ActorPool(
-            [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
         # grouppools = ActorPool([
         #     GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
@@ -878,7 +969,7 @@ class XGB_GUEST_EN:
                     on=['g', 'h'],
                     ignore_nulls=True,
                     pub_key=self.pub,
-                    add_actors=paillier_add_actors)
+                    add_actors=self.paillier_add_actors)
             else:
                 tmp_sum = tmp_group.sum(on=['g', 'h'])
             # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
@@ -952,7 +1043,9 @@ class XGB_GUEST_EN:
         else:
             encrypte_gh_sums = self.sums_of_encrypted_ghs(
                 X_guest, encrypted_ghs)
-        self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
+        # self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
+        self.guest_redis.lpush('encrypte_gh_sums', encrypte_gh_sums)
+
         best_cut = self.proxy_server.Get('best_cut')
 
         logging.info("current best cut: {}".format(best_cut))
@@ -1051,6 +1144,8 @@ class XGB_GUEST_EN:
             self.record = 0
             # gh_host = xgb_guest.channel.recv()
             gh_en = self.proxy_server.Get('gh_en')
+            # gh_en = self.guest_redis.rpop('gh_en')
+
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 X_guest.copy(), gh_en, 0)
 
@@ -1131,7 +1226,8 @@ class XGB_HOST_EN:
             random_seed=112,
             sid=0,
             record=0,
-            encrypted=None):
+            encrypted=None,
+            host_redis=None):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -1159,6 +1255,7 @@ class XGB_HOST_EN:
         self.encrypted = encrypted
         self.global_transfer_time = 0
         self.gloabl_construct_time = 0
+        self.host_redis = host_redis
 
     def _grad(self, y_hat, Y):
 
@@ -1380,9 +1477,10 @@ class XGB_HOST_EN:
 
         plain_gh_sums = plain_gh.sum(axis=0)
 
-        guest_gh_sums = self.proxy_server.Get(
-            'encrypte_gh_sums'
-        )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        # guest_gh_sums = self.proxy_server.Get(
+        #     'encrypte_gh_sums'
+        # )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        guest_gh_sums = self.host_redis.rpop('encrypte_gh_sums')
 
         # decrypted the 'guest_gh_sums' with paillier
         if ray_group:
@@ -1589,6 +1687,8 @@ class XGB_HOST_EN:
                 # send all encrypted gradients and hessians to 'guest'
                 self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
+                # self.host_redis.lpush('gh_en', enc_gh_df)
+
                 end_send_gh = time.time()
                 print("Time for encryption and transfer: ",
                       (end_enc - start_enc), (end_send_gh - end_enc))
@@ -1754,6 +1854,10 @@ def xgb_host_logic(cry_pri="paillier"):
     X_host = data.copy()
 
     lookup_table_sum = {}
+    host_redis = RedisProxy(host='172.21.3.108',
+                            port=15550,
+                            db=0,
+                            password='primihub')
 
     # if is_encrypted:
     xgb_host = XGB_HOST_EN(n_estimators=num_tree,
@@ -1764,10 +1868,12 @@ def xgb_host_logic(cry_pri="paillier"):
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
-                           encrypted=is_encrypted)
+                           encrypted=is_encrypted,
+                           host_redis=host_redis)
     # channel.recv()
     # xgb_host.channel.send(xgb_host.pub)
-    proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    host_redis.set('PUB', xgb_host.pub)
     # proxy_client_guest.Remote(public_k, "xgb_pub")
     # print(xgb_host.channel.recv())
     # y_hat = np.array([0.5] * Y.shape[0])
@@ -1908,6 +2014,10 @@ def xgb_guest_logic(cry_pri="paillier"):
     #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
     #     header=0)
     # data = data.iloc[:, :10]
+    guest_redis = RedisProxy(host='172.21.3.108',
+                             port=15550,
+                             db=0,
+                             password='primihub')
 
     X_guest = data
     guest_log = open('/app/guest_log', 'w+')
@@ -1921,16 +2031,24 @@ def xgb_guest_logic(cry_pri="paillier"):
                              sid=1,
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
-                             is_encrypted=is_encrypted)  # noqa
+                             is_encrypted=is_encrypted,
+                             guest_redis=guest_redis)  # noqa
 
     # channel.send(b'guest ready')
     # pub = xgb_guest.channel.recv()
-    pub = proxy_server.Get('xgb_pub')
+    # pub = proxy_server.Get('xgb_pub')
+    # guest_redis.delete('xgb_pub')
+    pub = guest_redis.get('PUB')
+    guest_redis.delete('PUB')
     xgb_guest.pub = pub
 
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
     xgb_guest.lookup_table = {}
+    add_actor_num = 20
+    paillier_add_actors = ActorPool(
+        [ActorAdd.remote(xgb_guest.pub) for _ in range(add_actor_num)])
+    xgb_guest.paillier_add_actors = paillier_add_actors
 
     lp = LineProfiler()
     lp.add_function(xgb_guest.guest_tree_construct)
