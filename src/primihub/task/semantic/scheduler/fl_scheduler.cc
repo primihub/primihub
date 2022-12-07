@@ -48,11 +48,11 @@ using primihub::service::DataURLToDetail;
 using primihub::service::EventBusNotifyDelegate;
 
 namespace primihub::task {
-    
-    void nodeContext2TaskParam(NodeContext node_context, 
+
+    void nodeContext2TaskParam(NodeContext node_context,
                                const std::vector<std::shared_ptr<DatasetMeta>> &dataset_meta_list,
                                PushTaskRequest* node_task_request) {
-        google::protobuf::Map<std::string, ParamValue> *params_map = 
+        google::protobuf::Map<std::string, ParamValue> *params_map =
                     node_task_request->mutable_task()->mutable_params()->mutable_param_map();
         // Role
         ParamValue pv_role;
@@ -82,7 +82,7 @@ namespace primihub::task {
 
             node_dataset_map[node_id] = dataset_meta->getDescription();
         }
-        
+
         // Save every node's dataset name.
         for (auto pair : node_dataset_map) {
           std::string key = pair.first + "_dataset";
@@ -127,10 +127,10 @@ namespace primihub::task {
 
     /**
      * @brief Dispatch FL task to different role. eg: xgboost host & guest.
-     * 
+     *
      */
     void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
-        
+
         PushTaskRequest nodePushTaskRequest;
         nodePushTaskRequest.CopyFrom(*pushTaskRequest);
         // Construct node map
@@ -138,7 +138,7 @@ namespace primihub::task {
             google::protobuf::Map<std::string, Node> *mutable_node_map =
                 nodePushTaskRequest.mutable_task()->mutable_node_map();
             nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_TASK);
-            
+
             // role: host -> party 0   role: guest -> party 1
             for (size_t i = 0; i < this->peers_with_tag_.size(); i++) {
                 Node single_node;
@@ -146,7 +146,7 @@ namespace primihub::task {
                 single_node.CopyFrom(this->peers_with_tag_[i].first);
                 std::string node_id = this->peers_with_tag_[i].first.node_id();
                 std::string role = this->peers_with_tag_[i].second;
-                
+
                 int party_id = 0;
                 if (role == "host") {
                    party_id = 0;
@@ -159,24 +159,11 @@ namespace primihub::task {
                 (*mutable_node_map)[node_id] = single_node;
             }
         }
-
-        // TODO Fire TASK_STATUS event using NotifyService
-        auto taskId = nodePushTaskRequest.task().task_id();
-        auto submitClientId = nodePushTaskRequest.submit_client_id();
-
-        LOG(INFO) << "nodePushTaskRequest task_id: " << taskId;
-        LOG(INFO) << "nodePushTaskRequest submit_client_id: " << submitClientId;
-        
-        
-        EventBusNotifyDelegate::getInstance().notifyStatus(taskId, submitClientId, 
-                                                            "RUNNING", 
-                                                            "task status test message");
-
         // schedule
         std::vector<std::thread> thrds;
         for (size_t i = 0; i < peers_with_tag_.size(); i++) {
             NodeWithRoleTag peer_with_tag = peers_with_tag_[i];
-          
+
             std::string dest_node_address(
                     absl::StrCat(peer_with_tag.first.ip(), ":", peer_with_tag.first.port()));
             LOG(INFO) << "dest_node_address: " << dest_node_address;
@@ -191,7 +178,7 @@ namespace primihub::task {
                                                this->peer_context_map_,
                                                data_meta_list
                                                ));
-            
+
         }
 
         for (auto &t : thrds) {
@@ -208,7 +195,7 @@ namespace primihub::task {
         }
     }
 
-    void FLScheduler::add_vm(Node *node, int i, int role_num, 
+    void FLScheduler::add_vm(Node *node, int i, int role_num,
                             const PushTaskRequest *pushTaskRequest) {
         int ret = 0;
         for (auto node_with_tag : peers_with_tag_) {

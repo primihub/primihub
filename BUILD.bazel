@@ -749,6 +749,7 @@ cc_library(
               "src/primihub/util/timer.h",
               "src/primihub/util/file_util.h",
               "src/primihub/util/eigen_util.h",
+              "src/primihub/util/threadsafe_queue.h",
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,

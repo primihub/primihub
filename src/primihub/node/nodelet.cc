@@ -32,13 +32,16 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     p2p_node_stub_->start(addr);
 
     // Create and start notify service
-    auto notify_server_addr = config["notify_server"].as<std::string>();
-    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr);
-    std::thread notify_service_thread([this]() {
-        notify_service_->run();
-    });
-    notify_service_thread.detach();
-
+    notify_server_addr_ = config["notify_server"].as<std::string>();
+    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr_);
+    // std::thread notify_service_thread([this]() {
+    //     notify_service_->run();
+    // });
+    // notify_service_thread.detach();
+    notify_service_fut = std::async(std::launch::async,
+        [this]() {
+            notify_service_->run();
+        });
     // Wait for p2p node to start
     sleep(3);
 
@@ -66,6 +69,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 }
 
 Nodelet::~Nodelet() {
+    notify_service_fut.get();
     // TODO stop node and release all protocol/service resources
     this->local_kv_.reset();
 }
@@ -76,6 +80,10 @@ std::shared_ptr<primihub::service::DatasetService> &Nodelet::getDataService() {
 
 std::string Nodelet::getNodeletAddr() {
     return nodelet_addr_;
+}
+
+std::string Nodelet::getNotifyServerAddr() {
+    return notify_server_addr_;
 }
 
 // Load config file and load default datasets

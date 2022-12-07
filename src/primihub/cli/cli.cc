@@ -87,7 +87,7 @@ int SDKClient::SubmitTask() {
     PushTaskRequest pushTaskRequest;
     PushTaskReply pushTaskReply;
     grpc::ClientContext context;
-
+    pushTaskRequest.set_submit_client_id("client_id_test");
     pushTaskRequest.set_intended_worker_id("1");
     pushTaskRequest.mutable_task()->set_type(
         (enum TaskType)absl::GetFlag(FLAGS_task_type));

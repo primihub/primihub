@@ -40,6 +40,21 @@ PSIClientTask::PSIClientTask(const std::string &node_id,
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
 
+PSIClientTask::PSIClientTask(const TaskParam *task_param,
+                  std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {}
+
+void PSIClientTask::setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id) {
+//
+    node_id_ = node_id;
+    task_id_ = task_id;
+    job_id_ = job_id;
+    submit_client_id_ = submit_client_id;
+}
+
 int PSIClientTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
 
@@ -109,12 +124,17 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
         return -1;
     }
 
-    auto array = std::static_pointer_cast<StringArray>(
-        table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
+    auto col_ptr = table->column(data_col);
+    size_t num_rows = table->num_rows();
+    int chunk_size = col_ptr->num_chunks();
+    col_array.reserve(num_rows);
+    for (int i = 0; i < chunk_size; i++) {
+        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
+        for (size_t j = 0; j < array->length(); j++) {
+            col_array.push_back(array->GetString(j));
+        }
     }
-    return array->length();
+    return col_array.size();
 }
 
 int PSIClientTask::_LoadDataset(void) {
@@ -186,6 +206,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
         for (std::int64_t i = 0; i < num_intersection; i++) {
             inter_map[intersection[i]] = 1;
         }
+        result_.reserve(num_elements);
         for (std::int64_t i = 0; i < num_elements; i++) {
             if (inter_map.find(i) == inter_map.end()) {
                 // outFile << i << std::endl;
@@ -193,6 +214,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
             }
         }
     } else {
+        result_.reserve(num_intersection);
         for (std::int64_t i = 0; i < num_intersection; i++) {
             // outFile << intersection[i] << std::endl;
             result_.push_back(elements_[intersection[i]]);
@@ -247,8 +269,11 @@ int PSIClientTask::execute() {
     std::vector<ExecuteTaskRequest> send_requests;
     do {
         ExecuteTaskRequest taskRequest;
+        taskRequest.set_submit_client_id(submit_client_id_);
         PsiRequest* ptr_request = taskRequest.mutable_psi_request();
         ptr_request->set_reveal_intersection(client_request.reveal_intersection());
+        ptr_request->set_job_id(job_id_);
+        ptr_request->set_task_id(task_id_);
         size_t pack_size = 0;
         for (size_t i = sended_index; i < num_elements; i++) {
             const auto& element = encrypted_elements[i];
@@ -388,11 +413,7 @@ int PSIClientTask::send_result_to_server() {
 int PSIClientTask::saveResult() {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::StringBuilder builder(pool);
-
-    for (std::int64_t i = 0; i < result_.size(); i++) {
-        builder.Append(result_[i]);
-    }
-
+    builder.AppendValues(result_);
     std::shared_ptr<arrow::Array> array;
     builder.Finish(&array);
 
