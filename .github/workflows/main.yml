@@ -5,8 +5,8 @@ on:
   #   - cron: '19 3 * * *'
   push:
     branches: 
-      - master
-      - develop
+    #  - master
+    #  - develop
       - feature/workflow # for test
     # Publish semver tags as releases.
     tags: [ '*.*.*' ]
