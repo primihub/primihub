@@ -12,7 +12,6 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -35,7 +34,6 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -58,7 +56,6 @@ services:
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -80,6 +77,20 @@ services:
     networks:
       testing_net:
         ipv4_address: 172.28.1.13
+
+  redis:
+    image: redis:latest 
+    container_name: redis 
+    restart: "always"
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./config/redis.conf:/etc/redis/redis.conf
+      - ./data:/data
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.14
 
 networks:
   testing_net:

@@ -20,7 +20,7 @@ location: "127.0.0.1"
 grpc_port: 50052
 
 redis_meta_service:
-  redis_addr: "192.168.99.31:15550"
+  redis_addr: "127.0.0.1:6379"
   use_redis: True
   redis_password: "primihub"
 
