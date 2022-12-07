@@ -19,7 +19,6 @@
 
 #include <string>
 #include <vector>
-
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/protos/common.pb.h"

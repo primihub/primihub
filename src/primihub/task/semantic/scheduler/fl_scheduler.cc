@@ -14,17 +14,9 @@
  limitations under the License.
  */
 
-#include <glog/logging.h>
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-#include <memory>
-
-#include "absl/strings/str_cat.h"
-
 #include "src/primihub/task/semantic/scheduler/fl_scheduler.h"
+#include <memory>
+#include "absl/strings/str_cat.h"
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/util.hpp"

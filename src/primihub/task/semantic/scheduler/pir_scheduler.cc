@@ -14,21 +14,11 @@
  limitations under the License.
  */
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
-
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
-
-//using primihub::rpc::EndPoint;
-using primihub::rpc::LinkType;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;

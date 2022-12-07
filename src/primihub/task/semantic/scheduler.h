@@ -26,7 +26,7 @@
 #include <thread>
 #include <vector>
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/network/link_factory.h"

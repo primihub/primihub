@@ -18,7 +18,7 @@
 #include <grpc/grpc.h>
 #include <grpcpp/channel.h>
 #include <grpcpp/create_channel.h>
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/util/util.h"
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
