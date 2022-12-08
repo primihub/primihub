@@ -103,9 +103,9 @@ class TaskContext:
         if output_dir:
             if not os.path.exists(output_dir):
                 try:
-                    os.makedir(output_dir)
-                except:
                     os.makedirs(output_dir)
+                except:
+                    os.mkdir(output_dir)
                 finally:
                     print(output_dir)
 
