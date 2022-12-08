@@ -24,10 +24,16 @@
 
 namespace primihub::common {
 
+struct DBInfo {
+    std::string db_name;
+    std::string table_name;
+};
+
 typedef struct Dataset {
     std::string description;
     std::string model;
     std::string source;
+    DBInfo db_info;
 } Dataset;
 
 typedef struct LocalKV {
@@ -51,11 +57,27 @@ typedef struct NodeConfig {
 } // namespace primihub::common
 
 namespace YAML {
-    
+
 using primihub::common::Dataset;
 using primihub::common::LocalKV;
 using primihub::common::P2P;
 using primihub::common::NodeConfig;
+using primihub::common::DBInfo;
+
+template <> struct convert<DBInfo> {
+    static Node encode(const DBInfo &db_info) {
+        Node node;
+        node["db_name"] = db_info.db_name;
+        node["table_name"] = db_info.table_name;
+        return node;
+    }
+
+    static bool decode(const Node &node, DBInfo &ds) {
+        ds.db_name  = node["db_name"].as<std::string>();
+        ds.table_name = node["table_name"].as<std::string>();
+        return true;
+    }
+};
 
 template <> struct convert<Dataset> {
     static Node encode(const Dataset &ds) {
@@ -63,6 +85,9 @@ template <> struct convert<Dataset> {
         node["description"] = ds.description;
         node["model"] = ds.model;
         node["source"] = ds.source;
+        if (ds.model == "sqlite") {
+            node["db_info"] = ds.db_info;
+        }
         return node;
     }
 
@@ -70,6 +95,9 @@ template <> struct convert<Dataset> {
         ds.description  = node["description"].as<std::string>();
         ds.model = node["model"].as<std::string>();
         ds.source = node["source"].as<std::string>();
+        if (ds.model == "sqlite") {
+            ds.db_info = node["db_info"].as<DBInfo>();
+        }
         return true;
     }
 };

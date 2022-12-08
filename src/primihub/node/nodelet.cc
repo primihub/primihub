@@ -20,7 +20,7 @@
 
 namespace primihub {
 Nodelet::Nodelet(const std::string& config_file_path) {
-    
+
     // Get p2p address from config file
     YAML::Node config = YAML::LoadFile(config_file_path);
     auto bootstrap_nodes = config["p2p"]["bootstrap_nodes"].as<std::vector<std::string>>();
@@ -30,20 +30,24 @@ Nodelet::Nodelet(const std::string& config_file_path) {
         + std::to_string(config["grpc_port"].as<uint64_t>());
     std::string addr = config["p2p"]["multi_addr"].as<std::string>();
     p2p_node_stub_->start(addr);
-    
-    // Create and start notify service
-    auto notify_server_addr = config["notify_server"].as<std::string>();
-    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr);
-    std::thread notify_service_thread([this]() {
-        notify_service_->run();
-    });
-    notify_service_thread.detach();
 
+    // Create and start notify service
+    notify_server_addr_ = config["notify_server"].as<std::string>();
+    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr_);
+    // std::thread notify_service_thread([this]() {
+    //     notify_service_->run();
+    // });
+    // notify_service_thread.detach();
+    notify_service_fut = std::async(std::launch::async,
+        [this]() {
+            notify_service_->run();
+        });
     // Wait for p2p node to start
     sleep(3);
-    
+
     // Create local kv storage defined in config file
     auto localkv_c = config["localkv"]["model"].as<std::string>();
+    VLOG(5) << "localkv_c_localkv_c_localkv_c_localkv_c: " << localkv_c ;
     if (localkv_c == "default") {
         local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
     } else if (localkv_c == "leveldb") {
@@ -53,7 +57,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     } else {
        local_kv_ = std::make_shared<primihub::service::StorageBackendDefault>();
     }
-   
+
     // Init DatasetService with nodelet as stub
     dataset_service_ = std::make_shared<primihub::service::DatasetService>(
         p2p_node_stub_, local_kv_, nodelet_addr_);
@@ -61,10 +65,11 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
     auto timeout = config["p2p"]["dht_get_value_timeout"].as<unsigned int>();
     loadConifg(config_file_path, timeout);
-    
+
 }
 
 Nodelet::~Nodelet() {
+    notify_service_fut.get();
     // TODO stop node and release all protocol/service resources
     this->local_kv_.reset();
 }
@@ -77,11 +82,15 @@ std::string Nodelet::getNodeletAddr() {
     return nodelet_addr_;
 }
 
+std::string Nodelet::getNotifyServerAddr() {
+    return notify_server_addr_;
+}
+
 // Load config file and load default datasets
 void Nodelet::loadConifg(const std::string &config_file_path, unsigned int dht_get_value_timeout) {
     dataset_service_->loadDefaultDatasets(config_file_path);
     dataset_service_->setMetaSearchTimeout(dht_get_value_timeout);
-    
+
     // TODO other service load config
 }
 

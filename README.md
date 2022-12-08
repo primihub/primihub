@@ -29,11 +29,12 @@ curl https://get.primihub.com/release/1.3.9/docker-compose.yml -s -o docker-comp
    
 Start three docker containers using docker-compose.
     The container includes: one simple bootstrap node, three nodes
-
+    
+```shell
 docker-compose up -d
-
+```
 or, you could specific the container register and version, such as:
-
+```shell
 REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
 ```
 

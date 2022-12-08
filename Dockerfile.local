@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 RUN  apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip git \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata \
   && rm -rf /var/lib/apt/lists/*
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/17a1cd4fb136f9bc7469e0db6305b35a/execroot/__main__/bazel-out/k8-fastbuild/bin
@@ -33,7 +33,7 @@ COPY ./src/primihub/protos/ ./src/primihub/protos/
 
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
+  && python3 -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple \
   && python3 setup.py develop \
   && python3 setup.py solib --solib-path $TARGET_PATH 
 

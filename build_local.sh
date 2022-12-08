@@ -9,7 +9,7 @@ fi
 
 bash pre_build.sh
 
-bazel build --config=linux :node :cli :opt_paillier_c2py
+bazel build --cxxopt=-D_AMD64_ --config=linux --define microsoft-apsi=true :node :cli :opt_paillier_c2py
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"

@@ -64,20 +64,25 @@ public:
     int execute() override;
     int saveResult(void);
     int send_result_to_server();
+    void setTaskInfo(const std::string& node_id, const std::string& job_id,
+        const std::string& task_id, const std::string& submit_client_id);
 private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
-                            std::vector <std::string> &col_array);
+                            std::vector<std::string>& col_array);
+    int _LoadDatasetFromSQLite(std::string& conn_str, int data_col,
+                               std::vector<std::string>& col_array);
 #ifndef __APPLE__
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
 
-    const std::string node_id_;
-    const std::string job_id_;
-    const std::string task_id_;
+    std::string node_id_;
+    std::string job_id_;
+    std::string task_id_;
+    std::string submit_client_id_;
     int data_index_;
     int psi_type_;
     int role_tag_;

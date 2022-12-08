@@ -86,6 +86,11 @@ enum class Errc_Status {
   success = 0
 };
 
+enum class retcode {
+  SUCCESS = 0,
+  FAIL,
+};
+
 }
 
 #endif  // SRC_primihub_UTIL_NETWORK_SOCKET_COMMON_DEFINES_H_

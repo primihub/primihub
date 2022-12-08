@@ -13,33 +13,20 @@
 # limitations under the License.
 
 
-FROM ubuntu:20.04 as builder
-
-ENV LANG C.UTF-8
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install dependencies
-RUN  apt update \
-  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake \
-  && apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm \
-  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
-  && rm -rf /var/lib/apt/lists/*
-
-# install  bazelisk
-RUN npm install -g @bazel/bazelisk
+FROM primihub/primihub-node:build as builder
 
 WORKDIR /src
 ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
-  && bazel build --cxxopt=-D_AMD64_ --config=linux :node :cli :opt_paillier_c2py
+  && bazel build --cxxopt=-D_AMD64_ --config=linux --define microsoft-apsi=true :node :cli :opt_paillier_c2py
 
 FROM ubuntu:20.04 as runner
 
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
 RUN apt-get update \
-  && apt-get install -y python3 python3-dev libgomp1 python3-pip \
+  && apt-get install -y python3 python3-dev libgomp1 python3-pip libzmq5 tzdata \
   && rm -rf /var/lib/apt/lists/*
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin

@@ -498,7 +498,7 @@ cc_library(
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-          ":eigen",        
+          ":eigen",
           ":common_lib",
           ":protocol_aby3_lib",
           ":data_store_lib",
@@ -541,7 +541,7 @@ cc_library(
             "src/primihub/primitive/ppa/kogge_stone.h"
     ],
     deps = [
-            ":protocol_aby3_lib", 
+            ":protocol_aby3_lib",
             "@com_github_glog_glog//:glog"
     ],
     copts = C_OPT,
@@ -700,7 +700,7 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG, 
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS,
 )
@@ -749,6 +749,7 @@ cc_library(
               "src/primihub/util/timer.h",
               "src/primihub/util/file_util.h",
               "src/primihub/util/eigen_util.h",
+              "src/primihub/util/threadsafe_queue.h",
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
@@ -864,19 +865,20 @@ cc_library(
 cc_library(
     name = "data_store_lib",
     srcs = [
-            "src/primihub/data_store/driver_legcy.cc",
-            "src/primihub/data_store/driver.cc",
-            "src/primihub/data_store/csv/csv_driver.cc",
-            # "src/primihub/data_store/hdfs/hdfs_driver.cc",
+        "src/primihub/data_store/driver_legcy.cc",
+        "src/primihub/data_store/driver.cc",
+        "src/primihub/data_store/csv/csv_driver.cc",
+        # "src/primihub/data_store/hdfs/hdfs_driver.cc",
+        "src/primihub/data_store/sqlite/sqlite_driver.cc",
     ],
     hdrs = [
-            "src/primihub/data_store/factory.h",
-            "src/primihub/data_store/dataset.h",
-            "src/primihub/data_store/driver_legcy.h",
-            "src/primihub/data_store/driver.h",
-            "src/primihub/data_store/csv/csv_driver.h",
-            "src/primihub/data_store/hdfs/hdfs_driver.h",
-
+        "src/primihub/data_store/factory.h",
+        "src/primihub/data_store/dataset.h",
+        "src/primihub/data_store/driver_legcy.h",
+        "src/primihub/data_store/driver.h",
+        "src/primihub/data_store/csv/csv_driver.h",
+        #"src/primihub/data_store/hdfs/hdfs_driver.h",
+        "src/primihub/data_store/sqlite/sqlite_driver.h",
     ],
     linkopts = LINK_OPTS,
     deps = [
@@ -887,6 +889,8 @@ cc_library(
         ":crypto_lib",
         ":network_lib",
         ":util_lib",
+        "@nlohmann_json",
+        "@com_github_sqlite_wrapper//:sqlite_wrapper",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
@@ -1071,7 +1075,7 @@ py_library(
 )
 
 pybind_extension(
-    name = "pybind_mpc", 
+    name = "pybind_mpc",
     srcs = [
         "src/primihub/pybind_warpper/express_wrapper.cc",
         "src/primihub/pybind_warpper/express_wrapper.h"
@@ -1492,7 +1496,7 @@ cc_test(
   linkopts = LINK_OPTS,
   deps = [
     "@com_google_googletest//:gtest_main",
-    ":mpc_express_executor" 
+    ":mpc_express_executor"
   ]
 )
 
@@ -1544,7 +1548,7 @@ cc_test(
         "@arrow",
         ":data_store_lib",
     ],
-)   
+)
 
 
 cc_test(

@@ -56,38 +56,43 @@ public:
                            const std::string &task_id,
                            const TaskParam *task_param,
                            std::shared_ptr<DatasetService> dataset_service);
+    PSIClientTask(const TaskParam *task_param,
+                  std::shared_ptr<DatasetService> dataset_service);
     ~PSIClientTask() {};
 
     int execute() override;
     int saveResult(void);
     int send_result_to_server();
+    void setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id);
 private:
     int _LoadParams(Task &task);
     int _LoadDataset(void);
     int _LoadDatasetFromCSV(std::string &filename, int data_col,
                             std::vector <std::string> &col_array);
+    int _LoadDatasetFromSQLite(std::string &conn_str, int data_col,
+                                std::vector <std::string> &col_array);
     int _GetIntsection(const std::unique_ptr<PsiClient> &client,
                        ExecuteTaskResponse & taskResponse);
-
-
-
-    const std::string node_id_;
-    const std::string job_id_;
-    const std::string task_id_;
+    std::string node_id_;
+    std::string job_id_;
+    std::string task_id_;
+    std::string submit_client_id_;
     int data_index_;
     int psi_type_;
     std::string dataset_path_;
     std::string result_file_path_;
     bool reveal_intersection_;
-    std::vector <std::string> elements_;
-    std::vector <std::string> result_;
+    std::vector<std::string> elements_;
+    std::vector<std::string> result_;
 
     std::string server_address_;
     std::string server_dataset_;
     ParamValue server_index_;
     bool sync_result_to_server{false};
     std::string server_result_path;
-
 };
 
 } // namespace primihub::task

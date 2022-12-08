@@ -20,6 +20,7 @@
 #define SRC_PRIMIHUB_NODE_NODELET_H_
 
 #include <string>
+#include <future>
 
 #include "src/primihub/p2p/node_stub.h"
 #include "src/primihub/service/dataset/service.h"
@@ -39,6 +40,7 @@ class Nodelet {
     ~Nodelet();
     std::shared_ptr<primihub::service::DatasetService> &getDataService();
     std::string getNodeletAddr();
+    std::string getNotifyServerAddr();
 
   private:
     void loadConifg(const std::string &config_file_path, unsigned int timeout);
@@ -49,6 +51,8 @@ class Nodelet {
     std::shared_ptr<primihub::service::DatasetService> dataset_service_;
     std::shared_ptr<primihub::service::NotifyService> notify_service_;
     std::string nodelet_addr_;
+    std::string notify_server_addr_;
+    std::future<void> notify_service_fut;
 };
 
 } // namespace primihub

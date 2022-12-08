@@ -19,6 +19,7 @@
 #include "src/primihub/task/semantic/psi_client_task.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/util/util.h"
 
 
 using arrow::Table;
@@ -38,6 +39,21 @@ PSIClientTask::PSIClientTask(const std::string &node_id,
                              std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
+
+PSIClientTask::PSIClientTask(const TaskParam *task_param,
+                  std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {}
+
+void PSIClientTask::setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id) {
+//
+    node_id_ = node_id;
+    task_id_ = task_id;
+    job_id_ = job_id;
+    submit_client_id_ = submit_client_id;
+}
 
 int PSIClientTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
@@ -69,6 +85,29 @@ int PSIClientTask::_LoadParams(Task &task) {
     return 0;
 }
 
+int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, std::vector<std::string>& col_array) {
+    //
+    std::string nodeaddr{"localhost"};
+    // std::shared_ptr<DataDriver>
+    auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
+    auto& cursor = driver->read(conn_str);
+    auto ds = cursor->read();
+    auto table = std::get<std::shared_ptr<Table>>(ds->data);
+    int col_count = table->num_columns();
+    if(col_count < data_col) {
+        LOG(ERROR) << "psi dataset colunum number is smaller than data_col, "
+            << "dataset total colum: " << col_count
+            << "expected col index: " << data_col;
+        return -1;
+    }
+    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
+    for (int64_t i = 0; i < array->length(); i++) {
+        col_array.push_back(array->GetString(i));
+    }
+    VLOG(0) << "loaded records number: " << col_array.size();
+    return col_array.size();
+}
+
 int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
                         int data_col,
                         std::vector <std::string> &col_array) {
@@ -85,19 +124,38 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
         return -1;
     }
 
-    auto array = std::static_pointer_cast<StringArray>(
-        table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
+    auto col_ptr = table->column(data_col);
+    size_t num_rows = table->num_rows();
+    int chunk_size = col_ptr->num_chunks();
+    col_array.reserve(num_rows);
+    for (int i = 0; i < chunk_size; i++) {
+        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
+        for (size_t j = 0; j < array->length(); j++) {
+            col_array.push_back(array->GetString(j));
+        }
     }
-    return array->length();
+    return col_array.size();
 }
 
 int PSIClientTask::_LoadDataset(void) {
-    int ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    // file reading error or file empty
+    // TODO fixme trick method, search sqlite as keyword and if find then laod data from sqlite
+    std::string match_word{"sqlite"};
+    std::string driver_type;
+    if (dataset_path_.size() > match_word.size()) {
+        driver_type = dataset_path_.substr(0, match_word.size());
+    } else {
+        driver_type = dataset_path_;
+    }
+    // current we supportes only two type of strage type [csv, sqlite] as dataset
+    int ret = 0;
+    if (match_word == driver_type) {
+        ret = _LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+    } else {
+        ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
+    }
+    // load datasets encountes error or file empty
     if (ret <= 0) {
-        LOG(ERROR) << "Load dataset for psi client failed.";
+        LOG(ERROR) << "Load dataset for psi client failed. dataset size: " << ret;
         return -1;
     }
     return 0;
@@ -105,6 +163,7 @@ int PSIClientTask::_LoadDataset(void) {
 
 int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
                               ExecuteTaskResponse & taskResponse) {
+    SCopedTimer timer;
     psi_proto::Response entrpy_response;
     const std::int64_t num_response_elements =
         static_cast<std::int64_t>(taskResponse.psi_response().encrypted_elements().size());
@@ -130,10 +189,14 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
         LOG(ERROR) << "Node psi client get intersection error!";
         return -1;
     }
+    auto build_response_time_cost = timer.timeElapse();
+    VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
 
     std::vector <int64_t> intersection =
         std::move(client->GetIntersection(server_setup, entrpy_response)).value();
-
+    auto get_intersection_ts = timer.timeElapse();
+    auto get_intersection_time_cost = get_intersection_ts - build_response_time_cost;
+    VLOG(5) << "get_intersection_time_cost: " << get_intersection_time_cost;
     const std::int64_t num_intersection =
         static_cast<std::int64_t>(intersection.size());
 
@@ -143,6 +206,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
         for (std::int64_t i = 0; i < num_intersection; i++) {
             inter_map[intersection[i]] = 1;
         }
+        result_.reserve(num_elements);
         for (std::int64_t i = 0; i < num_elements; i++) {
             if (inter_map.find(i) == inter_map.end()) {
                 // outFile << i << std::endl;
@@ -150,6 +214,7 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
             }
         }
     } else {
+        result_.reserve(num_intersection);
         for (std::int64_t i = 0; i < num_intersection; i++) {
             // outFile << intersection[i] << std::endl;
             result_.push_back(elements_[intersection[i]]);
@@ -159,56 +224,118 @@ int PSIClientTask::_GetIntsection(const std::unique_ptr<PsiClient> &client,
 }
 
 int PSIClientTask::execute() {
+    SCopedTimer timer;
     int ret = _LoadParams(task_param_);
     if (ret) {
         LOG(ERROR) << "Psi client load task params failed.";
         return ret;
     }
+    auto load_param_time_cost = timer.timeElapse();
+    VLOG(5) << "load params time cost(ms): " << load_param_time_cost;
 
     ret = _LoadDataset();
     if (ret) {
         LOG(ERROR) << "Psi client load dataset failed.";
         return ret;
     }
+    auto load_dataset_ts = timer.timeElapse();
+    auto load_dataset_time_cost = load_dataset_ts - load_param_time_cost;
+    VLOG(5) << "load dataset time cost(ms): " << load_dataset_time_cost;
 
     std::unique_ptr<PsiClient> client =
         std::move(PsiClient::CreateWithNewKey(reveal_intersection_)).value();
     psi_proto::Request client_request =
         std::move(client->CreateRequest(elements_)).value();
     psi_proto::Response server_response;
-
+    auto build_request_ts = timer.timeElapse();
+    auto build_request_time_cost = build_request_ts - load_dataset_ts;
+    VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     grpc::ClientContext context;
-    ExecuteTaskRequest taskRequest;
-    ExecuteTaskResponse taskResponse;
+    grpc::ChannelArguments channel_args;
+    channel_args.SetMaxReceiveMessageSize(128*1024*1024);
+    std::shared_ptr<grpc::Channel> channel =
+        grpc::CreateCustomChannel(server_address_, grpc::InsecureChannelCredentials(), channel_args);
+    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    // std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
+    //     server_address_, grpc::InsecureChannelCredentials()));
+    using stream_t = std::shared_ptr<grpc::ClientReaderWriter<ExecuteTaskRequest, ExecuteTaskResponse>>;
+    stream_t client_stream(stub->ExecuteTask(&context));
 
-    PsiRequest *ptr_request = taskRequest.mutable_psi_request();
-    ptr_request->set_reveal_intersection(client_request.reveal_intersection());
+    size_t limited_size = 1 << 21;
     size_t num_elements = client_request.encrypted_elements().size();
-    for (size_t i = 0; i < num_elements; i++) {
-        ptr_request->add_encrypted_elements(client_request.encrypted_elements()[i]);
+    const auto& encrypted_elements = client_request.encrypted_elements();
+    VLOG(5) << "num_elements_num_elements: " << num_elements;
+    size_t sended_index{0};
+    std::vector<ExecuteTaskRequest> send_requests;
+    do {
+        ExecuteTaskRequest taskRequest;
+        taskRequest.set_submit_client_id(submit_client_id_);
+        PsiRequest* ptr_request = taskRequest.mutable_psi_request();
+        ptr_request->set_reveal_intersection(client_request.reveal_intersection());
+        ptr_request->set_job_id(job_id_);
+        ptr_request->set_task_id(task_id_);
+        size_t pack_size = 0;
+        for (size_t i = sended_index; i < num_elements; i++) {
+            const auto& element = encrypted_elements[i];
+            auto element_len = element.size();
+            if (pack_size + element_len > limited_size) {
+                break;
+            }
+            ptr_request->add_encrypted_elements(element);
+            pack_size += element_len;
+            sended_index++;
+        }
+        auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
+        ParamValue pv;
+        pv.set_var_type(VarType::STRING);
+        pv.set_value_string(server_dataset_);
+        (*ptr_params)["serverData"] = pv;
+        (*ptr_params)["serverIndex"] = server_index_;
+        send_requests.push_back(std::move(taskRequest));
+        if (sended_index >= num_elements) {
+            break;
+        }
+    } while (true);
+    VLOG(5) << "send_requests size: " << send_requests.size();
+    // send request to server
+    for (const auto& request : send_requests) {
+        client_stream->Write(request);
     }
-
-    auto *ptr_params = taskRequest.mutable_params()->mutable_param_map();
-    ParamValue pv;
-    pv.set_var_type(VarType::STRING);
-    pv.set_value_string(server_dataset_);
-    (*ptr_params)["serverData"] = pv;
-    (*ptr_params)["serverIndex"] = server_index_;
-
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(grpc::CreateChannel(
-        server_address_, grpc::InsecureChannelCredentials()));
-
-    Status status = stub->ExecuteTask(&context, taskRequest, &taskResponse);
+    client_stream->WritesDone();
+    auto send_data_ts = timer.timeElapse();
+    auto send_data_time_cost = send_data_ts - build_request_ts;
+    VLOG(5) << "client send request to server time cost(ms): " << send_data_time_cost;
+    ExecuteTaskResponse taskResponse;
+    ExecuteTaskResponse recv_response;
+    auto psi_response = taskResponse.mutable_psi_response();
+    bool is_initialized{false};
+    while (client_stream->Read(&recv_response)) {
+        const auto& _psi_response = recv_response.psi_response();
+        if (!is_initialized) {
+            const auto& res_server_setup = _psi_response.server_setup();
+            auto server_setup = psi_response->mutable_server_setup();
+            server_setup->CopyFrom(res_server_setup);
+            is_initialized = true;
+        }
+        for (const auto& encrypted_element : _psi_response.encrypted_elements()) {
+            psi_response->add_encrypted_elements(encrypted_element);
+        }
+    }
+    Status status = client_stream->Finish();
     if (status.ok()) {
         if (taskResponse.psi_response().ret_code()) {
             LOG(ERROR) << "Node psi server process request error.";
             return -1;
         }
+        auto _start = timer.timeElapse();
         int ret = _GetIntsection(client, taskResponse);
         if (ret) {
             LOG(ERROR) << "Node psi client get insection failed.";
             return -1;
         }
+        auto _end =  timer.timeElapse();
+        auto get_intersection_time_cost = _end - _start;
+        VLOG(5) << "get intersection time cost(ms): " << get_intersection_time_cost;
         ret = saveResult();
         if (ret) {
             LOG(ERROR) << "Save psi result failed.";
@@ -243,6 +370,7 @@ int PSIClientTask::send_result_to_server() {
         task_request.set_task_id(this->task_id_);
         task_request.set_storage_type(primihub::rpc::TaskRequest::FILE);
         task_request.set_storage_info(server_result_path);
+        size_t pack_size = 0;
         if (!add_head_flag) {
             task_request.add_data("\"intersection_row\"");
             add_head_flag = true;
@@ -250,14 +378,15 @@ int PSIClientTask::send_result_to_server() {
         for (size_t i = sended_index; i < this->result_.size(); i++) {
             auto& data_item = this->result_[i];
             size_t item_len = data_item.size();
-            if (sended_size + item_len > limited_size) {
+            if (pack_size + item_len > limited_size) {
                 break;
             }
             task_request.add_data(data_item);
-            sended_size += item_len;
+            pack_size += item_len;
             sended_index++;
         }
         writer->Write(task_request);
+        sended_size += pack_size;
         VLOG(5) << "sended_size: " << sended_size << " "
                 << "sended_index: " << sended_index << " "
                 << "result size: " << this->result_.size();
@@ -284,11 +413,7 @@ int PSIClientTask::send_result_to_server() {
 int PSIClientTask::saveResult() {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::StringBuilder builder(pool);
-
-    for (std::int64_t i = 0; i < result_.size(); i++) {
-        builder.Append(result_[i]);
-    }
-
+    builder.AppendValues(result_);
     std::shared_ptr<arrow::Array> array;
     builder.Finish(&array);
 

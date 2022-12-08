@@ -26,6 +26,7 @@ message ExecuteTaskRequest {
   }
 
   Params params = 3;
+  bytes submit_client_id = 4;
 }
 
 message ExecuteTaskResponse {
@@ -54,7 +55,7 @@ message TaskResponse {
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
-  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
   rpc Send(stream TaskRequest) returns (TaskResponse);
 }
 

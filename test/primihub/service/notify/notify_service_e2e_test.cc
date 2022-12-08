@@ -36,7 +36,7 @@ void handler(int sig) {
 }
 
 // TODO read to simulate task stauts and result.
-    
+
 void stdin_func() {
     std::string line;
     std::cout << "waiting input: ";
@@ -50,12 +50,12 @@ void stdin_func() {
              // FIXME test code
             GRPCNotifyServer::getInstance().addTaskSession("1", GRPCNotifyServer::getInstance().getSession(0));
 
-            EventBusNotifyDelegate::getInstance().notifyStatus("1", "task test status");
-            
+            EventBusNotifyDelegate::getInstance().notifyStatus("1", "1", "task test status");
+
         } else if (line == "r") {
             // simulate send task status
             std::cout << "simulate send task result" << std::endl;
-            EventBusNotifyDelegate::getInstance().notifyResult("1", "task test result");
+            EventBusNotifyDelegate::getInstance().notifyResult("1", "1", "task test result");
         } else {
             std::cout << "input: " << line << std::endl;
         }
@@ -75,8 +75,8 @@ int main(int argc, const char **argv) {
     // run server in thread
     std::thread server_thread(server_func);
     stdin_thread.join();
-    server_thread.join(); 
-    
+    server_thread.join();
+
     return 0;
 }
 
