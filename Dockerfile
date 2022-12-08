@@ -24,9 +24,11 @@ RUN bash pre_build.sh \
 
 FROM ubuntu:20.04 as runner
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
 RUN apt-get update \
-  && apt-get install -y python3 python3-dev libgomp1 python3-pip libzmq5 tzdata \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata \
   && rm -rf /var/lib/apt/lists/*
 
 ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
