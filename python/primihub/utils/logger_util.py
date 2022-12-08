@@ -1,7 +1,8 @@
-import os
 import sys
 import logging
 from loguru import logger
+
+logger.add(sys.stdout, colorize=True)
 
 level_dict = {
     'INFO': logging.INFO,

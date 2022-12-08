@@ -1,4 +1,4 @@
-from primihub.utils import FLFileHandler, FLConsoleHandler, FORMAT
+from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 
 
 def log_file():
