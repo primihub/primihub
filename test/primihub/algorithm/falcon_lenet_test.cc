@@ -212,8 +212,13 @@ TEST(falcon, falcon_lenet_test)
     // Child process as party 0.
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11050");
+
+    std::shared_ptr<service::DatasetMetaService> meta_service = 
+	    std::make_shared<service::DatasetMetaService>(
+			    stub, std::make_shared<service::StorageBackendDefault>());
+
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+        meta_service, "test addr");
 
     google::InitGoogleLogging("LENET-Party0");
     RunFalconlenet("node_1", task1, service);
@@ -227,8 +232,13 @@ TEST(falcon, falcon_lenet_test)
     sleep(1);
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11060");
+
+    std::shared_ptr<service::DatasetMetaService> meta_service = 
+	    std::make_shared<service::DatasetMetaService>(
+			    stub, std::make_shared<service::StorageBackendDefault>());
+
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+        meta_service, "test addr");
 
     google::InitGoogleLogging("LENET-party1");
     RunFalconlenet("node_2", task2, service);
@@ -239,8 +249,14 @@ TEST(falcon, falcon_lenet_test)
   sleep(3);
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/11070");
+
+  std::shared_ptr<service::DatasetMetaService> meta_service = 
+	  std::make_shared<service::DatasetMetaService>(
+			  stub, std::make_shared<service::StorageBackendDefault>());
+
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      stub, std::make_shared<service::StorageBackendDefault>(), "test addr");
+      meta_service, "test addr");
+
 
   google::InitGoogleLogging("LENET-party2");
   RunFalconlenet("node_3", task3, service);
