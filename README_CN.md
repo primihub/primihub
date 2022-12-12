@@ -16,10 +16,11 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 
 安装 [docker](https://docs.docker.com/install/overview/) 和 [docker-compose](https://docs.docker.com/compose/install/)
 
-下载 `docker-compose` 文件：
+下载代码并进到代码根目录
 
 ```shell
-curl https://get.primihub.com/release/latest/docker-compose.yml -s -o docker-compose.yml
+git clone https://github.com/primihub/primihub.git
+cd primihub
 ```
 
 ## 运行一个MPC案例
