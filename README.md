@@ -16,10 +16,11 @@ Run an Multi-Party Computing application in 5 minutes
 
 Install [docker](https://docs.docker.com/install/overview/) and [docker-compose](https://docs.docker.com/compose/install/)
 
-Download the `docker-compose` file:
+Download the code and switch to the code root path
 
 ```shell
-curl https://get.primihub.com/release/latest/docker-compose.yml -s -o docker-compose.yml
+git clone https://github.com/primihub/primihub.git
+cd primihub
 ```
 
 ## Run an MPC case
