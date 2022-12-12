@@ -19,6 +19,7 @@ node: "node0"
 location: "127.0.0.1"
 grpc_port: 50050
 
+# Use redis by default, set `use_redis: False` to use libp2p
 redis_meta_service:
   redis_addr: "127.0.0.1:6379"
   use_redis: True
