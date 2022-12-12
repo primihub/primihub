@@ -20,15 +20,19 @@
 #include <grpcpp/create_channel.h>
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/defines.h"
+
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
 #include "apsi/oprf/oprf_sender.h"
 #include "apsi/zmq/sender_dispatcher.h"
+#include "apsi/item.h"
 
 #include "seal/context.h"
 #include "seal/modulus.h"
 #include "seal/util/common.h"
 #include "seal/util/defines.h"
+#include<sstream>
 
 using namespace apsi;
 using namespace apsi::sender;
@@ -104,7 +108,7 @@ KeywordPIRServerTask::create_sender_db(
 KeywordPIRServerTask::KeywordPIRServerTask(
     const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
-
+    oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
 }
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
@@ -184,6 +188,13 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
         LOG(ERROR) << "APSI threw an exception creating PSIParams: " << ex.what();
         return nullptr;
     }
+    SCopedTimer timer;
+    std::ostringstream param_ss;
+    size_t param_size = params->save(param_ss);
+    psi_params_str_ = param_ss.str();
+    auto time_cost = timer.timeElapse();
+    VLOG(5) << "param_size: " << param_size << " time cost(ms): " << time_cost;
+    VLOG(5) << "param_content: " << psi_params_str_.size();
     return params;
 }
 
@@ -194,11 +205,13 @@ int KeywordPIRServerTask::execute() {
         return ret;
     }
     ThreadPoolMgr::SetThreadCount(1);
-    OPRFKey oprf_key;
+
     std::unique_ptr<PSIParams> params = _SetPsiParams();
+    processPSIParams();
     std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
+    // OPRFKey oprf_key;
     std::shared_ptr<SenderDB> sender_db
-        = create_sender_db(*db_data, move(params), oprf_key, 16, false);
+        = create_sender_db(*db_data, move(params), *(this->oprf_key_), 16, false);
     uint32_t max_bin_bundles_per_bundle_idx = 0;
     for (uint32_t bundle_idx = 0; bundle_idx < sender_db->get_params().bundle_idx_count();
          bundle_idx++) {
@@ -206,18 +219,20 @@ int KeywordPIRServerTask::execute() {
             std::max(max_bin_bundles_per_bundle_idx,
                 static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
     }
+    processOprf();
 
-    atomic<bool> stop = false;
-    VLOG(5) << "begin to create ZMQSenderDispatcher";
-    ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
-    getAvailablePort(&data_port);
-    broadcastPortInfo();
-    // bool done_exit = true;
-    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(data_port);
-    dispatcher.run(stop, data_port);
-    if (stop.load(std::memory_order::memory_order_relaxed)) {
-        VLOG(5) << "key word pir task execute finished";
-    }
+    // atomic<bool> stop = false;
+    // VLOG(5) << "begin to create ZMQSenderDispatcher";
+    // ZMQSenderDispatcher dispatcher(sender_db, *(this->oprf_key_));
+    // getAvailablePort(&data_port);
+    // // broadcastPortInfo();
+    // // bool done_exit = true;
+    // VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(data_port);
+    // dispatcher.run(stop, data_port);
+    // if (stop.load(std::memory_order::memory_order_relaxed)) {
+    //     VLOG(5) << "key word pir task execute finished";
+    // }
+    VLOG(5) << "end of execute task";
     return 0;
 }
 retcode KeywordPIRServerTask::broadcastPortInfo() {
@@ -241,6 +256,55 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
             << "] failed";
         return ret;
     }
+    return retcode::SUCCESS;
+}
+retcode KeywordPIRServerTask::processPSIParams() {
+    std::string request_type_str;
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    recv_queue.wait_and_pop(request_type_str);
+    auto recv_type = reinterpret_cast<RequestType*>(const_cast<char*>(request_type_str.c_str()));
+    VLOG(5) << "recv_data type: " << static_cast<int>(*recv_type);
+    auto& send_queue = this->getTaskContext().getSendQueue(this->key);
+    std::string tmp_str;
+    for (const auto& chr : psi_params_str_) {
+        tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
+    }
+    VLOG(5) << "send data size: " << psi_params_str_.size() << " "
+            << "data content: " << tmp_str;
+    send_queue.push(psi_params_str_);
+    return retcode::SUCCESS;
+}
+
+retcode KeywordPIRServerTask::processOprf() {
+    VLOG(5) << "begin to process oprf";
+    std::string oprf_request_str;
+    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    recv_queue.wait_and_pop(oprf_request_str);
+    VLOG(5) << "received oprf request: " << oprf_request_str.size();
+    // // unsigned char* data_ptr = reinterpret_cast<unsigned char*>(const_cast<char*>(oprf_request_str.c_str()));
+    // std::vector<unsigned char> oprf_request(oprf_request_str.size());
+    // unsigned char* data_ptr = oprf_request.data();
+    // memcpy(data_ptr, oprf_request_str.c_str(), oprf_request_str.size());
+    apsi::OPRFRequest request_rquest = std::make_unique<apsi::network::SenderOperationOPRF>();
+    // std::vector<unsigned char> buff;
+    // gsl::span<unsigned char> data_span(buff);
+
+    OPRFKey key_oprf;
+    auto oprf_response = OPRFSender::ProcessQueries(oprf_request_str, key_oprf);
+    // auto oprf_response = OPRFSender::ProcessQueries(buff, *(this->oprf_key_));
+    // Item item;
+    // auto ret = OPRFSender::GetItemHash(item, *(this->oprf_key_));
+    auto& send_queue = this->getTaskContext().getSendQueue(this->key);
+    std::string tmp_str{"response_data_response_data_response_data_"};
+    std::string oprf_response_str{
+        reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_response.data())),
+        oprf_response.size()};
+    VLOG(5) << "send data size: " << oprf_response_str.size() << " "
+            << "data content: " << oprf_response_str;
+    send_queue.push(oprf_response_str);
+    return retcode::SUCCESS;
+}
+retcode KeywordPIRServerTask::processQuery() {
     return retcode::SUCCESS;
 }
 }  // namespace primihub::task

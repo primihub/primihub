@@ -29,11 +29,31 @@ namespace primihub::task {
 
 class KeywordPIRServerTask : public TaskBase {
  public:
-   explicit KeywordPIRServerTask(const TaskParam* task_param,
-                                 std::shared_ptr<DatasetService> dataset_service);
-   ~KeywordPIRServerTask() = default;
-   int execute() override;
-   retcode broadcastPortInfo();
+    enum class RequestType : uint8_t {
+      PsiParam = 0,
+      Opfr,
+      Query,
+   };
+    explicit KeywordPIRServerTask(const TaskParam* task_param,
+                                  std::shared_ptr<DatasetService> dataset_service);
+    ~KeywordPIRServerTask() = default;
+    int execute() override;
+    retcode broadcastPortInfo();
+
+ protected:
+    /**
+     * process a Get Parameters request to the Sender.
+    */
+    retcode processPSIParams();
+    /**
+      process an OPRF query request to the Sender.
+    */
+    retcode processOprf();
+    /**
+      process a Query request to the Sender.
+    */
+    retcode processQuery();
+
  private:
     int _LoadParams(Task &task);
     std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
@@ -46,12 +66,13 @@ class KeywordPIRServerTask : public TaskBase {
         bool compress);
 
  private:
-   std::string dataset_path_;
-   uint32_t data_port{2222};
-   std::string client_address;
-   primihub::Node client_node_;
-   std::string key{"default"};
-
+    std::string dataset_path_;
+    uint32_t data_port{2222};
+    std::string client_address;
+    primihub::Node client_node_;
+    std::string key{"default"};
+    std::string psi_params_str_;
+    std::unique_ptr<apsi::oprf::OPRFKey> oprf_key_{nullptr};
 };
 } // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
