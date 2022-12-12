@@ -51,9 +51,6 @@ class KeywordPIRClientTask : public TaskBase {
     int _GetIntsection();
 
  private:
-    std::string node_id_;
-    std::string job_id_;
-    std::string task_id_;
     std::string dataset_path_;
     std::string result_file_path_;
     std::string server_address_;

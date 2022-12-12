@@ -19,6 +19,7 @@
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
+#include "src/primihub/common/defines.h"
 #include <unordered_map>
 #include <queue>
 #include <mutex>
@@ -66,6 +67,15 @@ class TaskContext {
       return out_data_queue[role];
     }
   }
+  primihub::ThreadSafeQueue<retcode>& getCompleteQueue(const std::string& role = "default") {
+    std::unique_lock<std::mutex> lck(this->out_queue_mtx);
+    auto it = complete_queue.find(role);
+    if (it != complete_queue.end()) {
+      return it->second;
+    } else {
+      return complete_queue[role];
+    }
+  }
   std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {
     return link_ctx_;
   }
@@ -75,6 +85,7 @@ class TaskContext {
   std::unordered_map<std::string, primihub::ThreadSafeQueue<T>> in_data_queue;
   std::mutex out_queue_mtx;
   std::unordered_map<std::string, primihub::ThreadSafeQueue<U>> out_data_queue;
+  std::unordered_map<std::string, primihub::ThreadSafeQueue<retcode>> complete_queue;
   std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
 };
 }  // namespace primihub::task

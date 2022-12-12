@@ -59,6 +59,9 @@ class TaskBase {
   inline std::string task_id() {
     return task_id_;
   }
+  inline std::string node_id() {
+    return node_id_;
+  }
   inline task_context_t& getTaskContext() {
     return task_context_;
   }
@@ -67,7 +70,19 @@ class TaskBase {
   }
   void setTaskParam(const TaskParam *task_param);
   TaskParam* getTaskParam();
-
+  retcode send(const std::string& key, const Node& dest_node,const std::string& send_buff);
+  retcode send(const std::string& key, const Node& dest_node, std::string_view send_buff);
+  retcode recv(const std::string& key, std::string* recv_buff);
+  retcode recv(const std::string& key, char* recv_buff, size_t length);
+  retcode sendRecv(const std::string& key, const Node& dest_node,
+      const std::string& send_buff, std::string* recv_buff);
+  retcode sendRecv(const std::string& key, const Node& dest_node,
+      std::string_view send_buff, std::string* recv_buff);
+  /**
+   * prepare data for sendRecv interface called by peer,
+   * the server just prepare data and push into send queue
+  */
+  retcode pushDataToSendQueue(const std::string& key, std::string&& send_data);
  protected:
    std::atomic<bool> stop_{false};
    TaskParam task_param_;

@@ -237,8 +237,7 @@ int KeywordPIRClientTask::execute() {
 
 int KeywordPIRClientTask::waitForServerPortInfo() {
     std::string recv_data_port_info_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    recv_queue.wait_and_pop(recv_data_port_info_str);
+    this->recv(this->key, &recv_data_port_info_str);
     rpc::Params recv_data_port_info;
     recv_data_port_info.ParseFromString(recv_data_port_info_str);
     const auto& recv_param_map = recv_data_port_info.param_map();

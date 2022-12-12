@@ -149,7 +149,7 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::string get_node_id() { return this->node_id; }
 
-    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
+    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet;}
  protected:
     void buildTaskResponse(const std::string& data, std::vector<rpc::TaskResponse>* response);
     void buildTaskRequest(const std::string& job_id, const std::string& task_id, const std::string& role,
@@ -176,6 +176,7 @@ class VMNodeImpl final: public VMNode::Service {
     inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
       return job_id + "_" + task_id;
     }
+    retcode waitUntilWorkerReady(const std::string& worker_id, grpc::ServerContext* context, int timeout = -1);
 
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
