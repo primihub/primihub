@@ -234,8 +234,7 @@ retcode PSIEcdhTask::broadcastResultToServer() {
         result_str.append(reinterpret_cast<char*>(&be_item_len), sizeof(be_item_len));
         result_str.append(item);
     }
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    auto ret = channel->send(this->key, result_str);
+    auto ret = this->send(this->key, peer_node, result_str);
     VLOG(5) << "send result to server success";
     return ret;
 }
@@ -277,7 +276,8 @@ int PSIEcdhTask::saveResult() {
     return 0;
 }
 
-retcode PSIEcdhTask::parsePsiResponseFromeString(const std::string& response_str, rpc::PsiResponse* response) {
+retcode PSIEcdhTask::parsePsiResponseFromeString(
+        const std::string& response_str, rpc::PsiResponse* response) {
     psi_proto::Response psi_response;
     psi_proto::ServerSetup setup_info;
     char* recv_buf = const_cast<char*>(response_str.c_str());
@@ -322,9 +322,9 @@ retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
     std::string psi_req_str;
     client_request.SerializeToString(&psi_req_str);
     std::string recv_data_str;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->sendRecv(this->key, psi_req_str, &recv_data_str);
+    this->sendRecv(this->key, peer_node, psi_req_str, &recv_data_str);
     if (recv_data_str.empty()) {
+        LOG(ERROR) << "recv data is empty";
         return retcode::FAIL;
     }
     auto ret = parsePsiResponseFromeString(recv_data_str, response);
@@ -405,12 +405,12 @@ int PSIEcdhTask::executeAsServer() {
 }
 
 int PSIEcdhTask::recvInitParam(size_t* client_dataset_size, bool* reveal_intersection) {
-    auto& client_dataset_size_ = *client_dataset_size;
-    auto& reveal_flag = *reveal_intersection;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     VLOG(5) << "begin to recvInitParam ";
     std::string init_param_str;
-    recv_queue.wait_and_pop(init_param_str);
+    this->recv(this->key, &init_param_str);
+
+    auto& client_dataset_size_ = *client_dataset_size;
+    auto& reveal_flag = *reveal_intersection;
     rpc::Params init_params;
     init_params.ParseFromString(init_param_str);
     const auto& parm_map = init_params.param_map();
@@ -435,7 +435,6 @@ int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
     // prepare response to server
     auto server_response = std::move(psi_response);
     auto server_setup = std::move(setup_info);
-    auto& send_queue = this->getTaskContext().getSendQueue(this->key);
     std::string response_str;
     server_response.SerializeToString(&response_str);
     std::string setup_info_str;
@@ -451,7 +450,7 @@ int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
     psi_res_str.append(reinterpret_cast<char*>(&be_setup_info_len), sizeof(uint64_t));
     psi_res_str.append(setup_info_str);
     VLOG(5) << "preparePSIResponse data length: " << psi_res_str.size();
-    send_queue.push(std::move(psi_res_str));
+    pushDataToSendQueue(this->key, std::move(psi_res_str));
     auto build_response_ts = timer.timeElapse();
     auto build_response_time_cost = build_response_ts;
     VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
@@ -459,10 +458,8 @@ int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
 }
 
 int PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    // rpc::TaskRequest request;
     std::string request_str;
-    recv_queue.wait_and_pop(request_str);
+    this->recv(this->key, &request_str);
     psi_proto::Request recv_psi_req;
     recv_psi_req.ParseFromString(request_str);
     *psi_request = std::move(recv_psi_req);
@@ -472,9 +469,8 @@ int PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
 int PSIEcdhTask::recvPSIResult() {
     VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     std::string recv_data_str;
-    recv_queue.wait_and_pop(recv_data_str);
+    this->recv(this->key, &recv_data_str);
     uint64_t offset = 0;
     uint64_t data_len = recv_data_str.length();
     VLOG(5) << "data_len_data_len: " << data_len;

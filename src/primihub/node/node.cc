@@ -75,6 +75,7 @@ Status VMNodeImpl::Send(ServerContext* context,
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
                     << "role: " << role;
+
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -105,6 +106,7 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
     TaskRequest request;
     rpc::TaskResponse response;
     std::string recv_data;
+    int64_t timeout{-1};
     while (stream->Read(&request)) {
         if (!is_initialized) {
             job_id = request.job_id();
@@ -116,6 +118,8 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
                     << "role: " << role;
+            std::string worker_id = this->getWorkerId(job_id, task_id);
+            waitUntilWorkerReady(worker_id, context);
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -138,6 +142,9 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
     std::string send_data;
     send_queue.wait_and_pop(send_data);
     VLOG(5) << "send data length: " << send_data.length();
+    auto& complete_queue = worker_ptr->getTask()->getTaskContext().getCompleteQueue(role);
+    complete_queue.push(retcode::SUCCESS);
+
     std::vector<rpc::TaskResponse> response_data;
     buildTaskResponse(send_data, &response_data);
     for (const auto& res : response_data) {
@@ -167,6 +174,8 @@ Status VMNodeImpl::Recv(::grpc::ServerContext* context,
     auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
     std::string send_data;
     send_queue.wait_and_pop(send_data);
+    auto& complete_queue = worker_ptr->getTask()->getTaskContext().getCompleteQueue(role);
+    complete_queue.push(retcode::SUCCESS);
     std::vector<rpc::TaskResponse> response_data;
     buildTaskResponse(send_data, &response_data);
     for (const auto& res : response_data) {
@@ -520,8 +529,41 @@ int VMNodeImpl::process_pir_response(const ExecuteTaskResponse& response,
     return 0;
 }
 
+retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
+        grpc::ServerContext* context, int timeout_ms) {
+    if (context->IsCancelled()) {
+        LOG(ERROR) << "context is cancelled by client";
+        return retcode::FAIL;
+    }
+    std::condition_variable cv;
+    std::mutex mtx;
+    std::unique_lock<std::mutex> lck(mtx);
+    auto _start = std::chrono::high_resolution_clock::now();
+    while(cv.wait_for(lck, std::chrono::milliseconds(1)) == std::cv_status::timeout) {
+        std::lock_guard<std::mutex> lck(task_executor_mtx);
+        auto it = task_executor_map.find(worker_id);
+        if (it != task_executor_map.end()) {
+            break;
+        }
+        if (timeout_ms == -1) {
+            continue;
+        }
+        auto _now = std::chrono::high_resolution_clock::now();
+        auto time_cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(_now - _start).count();
+        if (time_cost_ms > timeout_ms) {
+            LOG(ERROR) << "wait for worker ready timeout";
+            return retcode::FAIL;
+        }
+        if (context->IsCancelled()) {
+            LOG(ERROR) << "context is cancelled by client";
+            return retcode::FAIL;
+        }
+    }
+    return retcode::SUCCESS;
+}
+
 int VMNodeImpl::process_task_reseponse(bool is_psi_response,
-        const ExecuteTaskResponse& response, std::vector<ExecuteTaskResponse>* splited_responses) {
+        const ExecuteTaskResponse &response, std::vector<ExecuteTaskResponse> *splited_responses) {
     if (is_psi_response) {
         process_psi_response(response, splited_responses);
     } else  {  // pir response

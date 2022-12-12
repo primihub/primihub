@@ -346,8 +346,7 @@ retcode PSIKkrtTask::broadcastResultToServer() {
         result_str.append(reinterpret_cast<char*>(&be_item_len), sizeof(be_item_len));
         result_str.append(item);
     }
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    ret = channel->send(this->key, result_str);
+    ret = this->send(this->key, peer_node, result_str);
     VLOG(5) << "send result to server success";
 #endif
     return ret;
