@@ -19,6 +19,11 @@ node: "node0"
 location: "127.0.0.1"
 grpc_port: 50050
 
+redis_meta_service:
+  redis_addr: "127.0.0.1:6379"
+  use_redis: True
+  redis_password: "primihub"
+
 # node_keypair:
 #     public_key:
 #     private_key:

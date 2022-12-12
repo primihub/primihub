@@ -974,7 +974,8 @@ cc_library(
             "src/primihub/service/dataset/model.cc",
             "src/primihub/service/dataset/service.cc",
             "src/primihub/service/dataset/localkv/storage_default.cc",
-             "src/primihub/service/dataset/localkv/storage_leveldb.cc",
+            "src/primihub/service/dataset/localkv/storage_leveldb.cc",
+            "src/primihub/util/redis_helper.cc"
     ],
     hdrs = [
             "src/primihub/service/dataset/auth.h",
@@ -984,11 +985,13 @@ cc_library(
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/localkv/storage_leveldb.h",
             "src/primihub/service/dataset/util.hpp",
+            "src/primihub/util/redis_helper.h"
     ],
     linkopts = LINK_OPTS,
     deps = [
         "@com_github_glog_glog//:glog",
         "@com_github_google_leveldb//:leveldb",
+        "@com_github_redis_hiredis//:hiredis",
         "@arrow",
         "@nlohmann_json",
         "@libp2p//:p2p",

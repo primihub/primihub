@@ -19,7 +19,7 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 下载 `docker-compose` 文件：
 
 ```shell
-curl https://get.primihub.com/release/1.3.9/docker-compose.yml -s -o docker-compose.yml
+curl https://get.primihub.com/release/latest/docker-compose.yml -s -o docker-compose.yml
 ```
 
 ## 运行一个MPC案例
@@ -29,8 +29,8 @@ curl https://get.primihub.com/release/1.3.9/docker-compose.yml -s -o docker-comp
  
 ***启动测试用的节点*** 
    
-使用docker-compose 启动三个docker容器。
-容器包括：启动点、三个节点
+使用docker-compose 启动容器。
+容器包括：启动点、redis、三个节点
 
 ```bash
 docker-compose up -d
@@ -39,7 +39,7 @@ docker-compose up -d
 或者，您也可以通过环境变量指定镜像服务地址以及版本号，例如：
 
 ```shell
-REGISTRY=registry.cn-beijing.aliyuncs.com TAG=1.4.0 docker-compose up -d
+echo -e "REGISTRY=registry.cn-beijing.aliyuncs.com\nTAG=1.5.0" >> .env && docker-compose up -d
 ```
 
 查看运行起来的 docker 容器：
@@ -49,11 +49,12 @@ docker-compose ps
 ```
 
 ```shell
-CONTAINER ID   IMAGE                                COMMAND                  CREATED          STATUS          PORTS                                                                         NAMES
-cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:12120-12121->12120-12121/tcp, 0.0.0.0:8052->50050/tcp                 node2_primihub
-6a822ff5c6f7   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:10120->12120/tcp, 0.0.0.0:10121->12121/tcp, 0.0.0.0:8050->50050/tcp   node0_primihub
-11d55ce06ff0   primihub/primihub-node:latest        "/bin/bash -c './pri…"   11 minutes ago   Up 11 minutes   0.0.0.0:11120->12120/tcp, 0.0.0.0:11121->12121/tcp, 0.0.0.0:8051->50050/tcp   node1_primihub
-68befa6ab2a5   primihub/simple-bootstrap-node:1.0   "/app/simple-bootstr…"   11 minutes ago   Up 11 minutes   0.0.0.0:4001->4001/tcp                                                        simple_bootstrap_node
+NAME                    COMMAND                  SERVICE                 STATUS              PORTS
+primihub-node0          "/bin/bash -c './pri…"   node0                   running             0.0.0.0:6666->6666/tcp, 0.0.0.0:8050->50050/tcp
+primihub-node1          "/bin/bash -c './pri…"   node1                   running             0.0.0.0:6667->6667/tcp, 0.0.0.0:8051->50051/tcp
+primihub-node2          "/bin/bash -c './pri…"   node2                   running             0.0.0.0:6668->6668/tcp, 0.0.0.0:8052->50052/tcp
+redis                   "docker-entrypoint.s…"   redis                   running             0.0.0.0:6379->6379/tcp
+simple_bootstrap_node   "/app/simple-bootstr…"   simple_bootstrap_node   running             0.0.0.0:4001->4001/tcp
 ```                                       
 
 ### 创建一个MPC任务
@@ -61,7 +62,7 @@ cf875c1280be   primihub/primihub-node:latest        "/bin/bash -c './pri…"   1
 ***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
 
 ```shell
-docker run --network=host -it primihub/primihub-node:latest primihub-cli --server=127.0.0.1:8050
+docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
 ```
 
 > 💡 请求任务的节点

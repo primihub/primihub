@@ -4,6 +4,11 @@ node: "node2"
 location: "172.28.1.12"
 grpc_port: 50052
 
+redis_meta_service:
+  redis_addr: "redis:6379"
+  use_redis: True
+  redis_password: "primihub"
+
 datasets:
   # ABY3 LR test case datasets
   - description: "train_party_2"

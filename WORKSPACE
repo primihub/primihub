@@ -484,6 +484,14 @@ new_git_repository(
     shallow_since = "1581106153 -0800",
 )
 
+http_archive(
+    name = "com_github_redis_hiredis",
+    build_file = "//bazel:BUILD.hiredis",
+    urls = ["https://github.com/redis/hiredis/archive/392de5d7f97353485df1237872cb682842e8d83f.tar.gz"],
+    sha256 = "2101650d39a8f13293f263e9da242d2c6dee0cda08d343b2939ffe3d95cf3b8b",
+    strip_prefix = "hiredis-392de5d7f97353485df1237872cb682842e8d83f"
+)
+
 # libote
 #http_archive(
 #    name = "osu_libote",
