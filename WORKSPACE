@@ -105,6 +105,7 @@ http_archive(
     sha256 = "9ddb9031798f4f8754d00fca2f1a68ecf9d0f83dfac7239af1311e4fd9a565c4",
 )
 
+
 # gflags Needed for glog
 http_archive(
     name = "com_github_gflags_gflags",
@@ -417,7 +418,8 @@ new_git_repository(
   name = "com_github_primihub_seal_40",
   build_file = "//bazel:BUILD.seal",
   remote = "https://github.com/primihub/SEAL.git",
-  branch = "main",
+  branch = "change_submodule_resource",
+  #branch = "main",
 )
 
 http_archive(
@@ -556,12 +558,14 @@ load("//3rdparty/bazel-rules-leveldb/bazel:deps.bzl", leveldb_deps="deps")
 leveldb_deps()
 
 # APSI
-new_git_repository(
+git_repository(
     name = "mircrosoft_apsi",
-    build_file = "//bazel:BUILD.APSI",
-    branch = "main",
+    branch = "bazel_version",
     remote = "https://github.com/primihub/APSI.git",
 )
+
+load("@mircrosoft_apsi//bazel:repositories.bzl", "apsi_dependencies")
+apsi_dependencies();
 
 # needed by APSI
 new_git_repository(
