@@ -15,9 +15,6 @@
  */
 
 #include "src/primihub/task/semantic/keyword_pir_server_task.h"
-// #include <grpc/grpc.h>
-// #include <grpcpp/channel.h>
-// #include <grpcpp/create_channel.h>
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/common/defines.h"
@@ -26,7 +23,6 @@
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
 #include "apsi/oprf/oprf_sender.h"
-#include "apsi/zmq/sender_dispatcher.h"
 #include "apsi/item.h"
 #include "apsi/powers.h"
 
@@ -222,7 +218,10 @@ int KeywordPIRServerTask::execute() {
     ThreadPoolMgr::SetThreadCount(1);
 
     std::unique_ptr<PSIParams> params = _SetPsiParams();
-    processPSIParams();
+    auto rt_code = processPSIParams();
+    if (rt_code != retcode::SUCCESS) {
+        return -1;
+    }
     std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
     // OPRFKey oprf_key;
     std::shared_ptr<SenderDB> sender_db
@@ -234,23 +233,18 @@ int KeywordPIRServerTask::execute() {
             std::max(max_bin_bundles_per_bundle_idx,
                 static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
     }
-    processOprf();
-
-    processQuery(sender_db);
-    // atomic<bool> stop = false;
-    // VLOG(5) << "begin to create ZMQSenderDispatcher";
-    // ZMQSenderDispatcher dispatcher(sender_db, *(this->oprf_key_));
-    // getAvailablePort(&data_port);
-    // // broadcastPortInfo();
-    // // bool done_exit = true;
-    // VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(data_port);
-    // dispatcher.run(stop, data_port);
-    // if (stop.load(std::memory_order::memory_order_relaxed)) {
-    //     VLOG(5) << "key word pir task execute finished";
-    // }
+    rt_code = processOprf();
+    if (rt_code != retcode::SUCCESS) {
+        return -1;
+    }
+    rt_code = processQuery(sender_db);
+    if (rt_code != retcode::SUCCESS) {
+        return -1;
+    }
     VLOG(5) << "end of execute task";
     return 0;
 }
+
 retcode KeywordPIRServerTask::broadcastPortInfo() {
     std::string data_port_info_str;
     rpc::Params data_port_params;
@@ -274,6 +268,7 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
     }
     return retcode::SUCCESS;
 }
+
 retcode KeywordPIRServerTask::processPSIParams() {
     std::string request_type_str;
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
@@ -281,15 +276,14 @@ retcode KeywordPIRServerTask::processPSIParams() {
     auto recv_type = reinterpret_cast<RequestType*>(const_cast<char*>(request_type_str.c_str()));
     VLOG(5) << "recv_data type: " << static_cast<int>(*recv_type);
 
-    std::string tmp_str;
-    for (const auto& chr : psi_params_str_) {
-        tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
+    if (VLOG_IS_ON(5)) {
+        std::string tmp_str;
+        for (const auto& chr : psi_params_str_) {
+            tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
+        }
+        VLOG(5) << "send data size: " << psi_params_str_.size();
     }
-    VLOG(5) << "send data size: " << psi_params_str_.size() << " "
-            << "data content: " << tmp_str;
-    // auto& send_queue = this->getTaskContext().getSendQueue(this->key);
-    // send_queue.push(psi_params_str_);
-     this->pushDataToSendQueue(this->key, std::move(psi_params_str_));
+    this->pushDataToSendQueue(this->key, std::move(psi_params_str_));
     return retcode::SUCCESS;
 }
 
@@ -299,29 +293,16 @@ retcode KeywordPIRServerTask::processOprf() {
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     recv_queue.wait_and_pop(oprf_request_str);
     VLOG(5) << "received oprf request: " << oprf_request_str.size();
-    // // unsigned char* data_ptr = reinterpret_cast<unsigned char*>(const_cast<char*>(oprf_request_str.c_str()));
-    // std::vector<unsigned char> oprf_request(oprf_request_str.size());
-    // unsigned char* data_ptr = oprf_request.data();
-    // memcpy(data_ptr, oprf_request_str.c_str(), oprf_request_str.size());
-    apsi::OPRFRequest request_rquest = std::make_unique<apsi::network::SenderOperationOPRF>();
-    // std::vector<unsigned char> buff;
-    // gsl::span<unsigned char> data_span(buff);
 
-    // OPRFKey key_oprf;
+    // // OPRFKey key_oprf;
     auto oprf_response = OPRFSender::ProcessQueries(oprf_request_str, *(this->oprf_key_));
-    // auto oprf_response = OPRFSender::ProcessQueries(buff, *(this->oprf_key_));
-    // Item item;
-    // auto ret = OPRFSender::GetItemHash(item, *(this->oprf_key_));
 
-    std::string tmp_str{"response_data_response_data_response_data_"};
     std::string oprf_response_str{
         reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_response.data())),
         oprf_response.size()};
     // VLOG(5) << "send data size: " << oprf_response_str.size() << " "
     //         << "data content: " << oprf_response_str;
     this->pushDataToSendQueue(this->key, std::move(oprf_response_str));
-    // auto& send_queue = this->getTaskContext().getSendQueue(this->key);
-    // send_queue.push(oprf_response_str);
     return retcode::SUCCESS;
 }
 
