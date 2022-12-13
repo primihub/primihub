@@ -203,6 +203,7 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
     std::unique_ptr<VMNode::Stub> stub_;
+    int wait_worker_ready_timeout_ms{60*1000};    // 60s
 };
 
 } // namespace primihub

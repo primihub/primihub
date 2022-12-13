@@ -75,7 +75,8 @@ Status VMNodeImpl::Send(ServerContext* context,
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
                     << "role: " << role;
-
+            std::string worker_id = this->getWorkerId(job_id, task_id);
+            waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -119,7 +120,7 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
                     << "task_id: " << task_id << " "
                     << "role: " << role;
             std::string worker_id = this->getWorkerId(job_id, task_id);
-            waitUntilWorkerReady(worker_id, context);
+            waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
                 std::string err_msg = "worker for job id: ";
@@ -134,22 +135,24 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
         recv_data.append(request.data());
     }
     VLOG(5) << "received data length: " << recv_data.size();
-    auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+    auto& task_context = worker_ptr->getTask()->getTaskContext();
+    auto& recv_queue = task_context.getRecvQueue(role);
     recv_queue.push(std::move(recv_data));
     VLOG(5) << "end of read data for server";
     // waiting for response data send to client
-    auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
+    auto& send_queue = task_context.getSendQueue(role);
     std::string send_data;
     send_queue.wait_and_pop(send_data);
     VLOG(5) << "send data length: " << send_data.length();
-    auto& complete_queue = worker_ptr->getTask()->getTaskContext().getCompleteQueue(role);
-    complete_queue.push(retcode::SUCCESS);
-
     std::vector<rpc::TaskResponse> response_data;
     buildTaskResponse(send_data, &response_data);
     for (const auto& res : response_data) {
         stream->Write(res);
     }
+    auto& complete_queue = task_context.getCompleteQueue(role);
+    // VLOG(5) << "get complete_queue success";
+    complete_queue.push(retcode::SUCCESS);
+    // VLOG(5) << "push success flag to complete queue success";
     return Status::OK;
 }
 
@@ -159,6 +162,8 @@ Status VMNodeImpl::Recv(::grpc::ServerContext* context,
     std::string job_id = request->job_id();
     std::string task_id = request->task_id();
     std::string role = request->role();
+    std::string worker_id = this->getWorkerId(job_id, task_id);
+    waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
     auto worker_ptr = this->getWorker(job_id, task_id);
     if (worker_ptr == nullptr) {
         std::string err_msg  = "worker for job id: ";
@@ -535,17 +540,25 @@ retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
         LOG(ERROR) << "context is cancelled by client";
         return retcode::FAIL;
     }
-    std::condition_variable cv;
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lck(mtx);
     auto _start = std::chrono::high_resolution_clock::now();
-    while(cv.wait_for(lck, std::chrono::milliseconds(1)) == std::cv_status::timeout) {
-        std::lock_guard<std::mutex> lck(task_executor_mtx);
-        auto it = task_executor_map.find(worker_id);
-        if (it != task_executor_map.end()) {
-            break;
+    do {
+        // try to get lock
+        {
+          std::unique_lock<std::mutex> lck(task_executor_mtx, std::try_to_lock);
+          if (lck.owns_lock()) {
+            auto it = task_executor_map.find(worker_id);
+            if (it != task_executor_map.end()) {
+                break;
+            }
+          }
         }
-        if (timeout_ms == -1) {
+        if (context->IsCancelled()) {
+            LOG(ERROR) << "context is cancelled by client";
+            return retcode::FAIL;
+        }
+        VLOG(5) << "sleep and wait for worker ready........";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+         if (timeout_ms == -1) {
             continue;
         }
         auto _now = std::chrono::high_resolution_clock::now();
@@ -554,11 +567,7 @@ retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
             LOG(ERROR) << "wait for worker ready timeout";
             return retcode::FAIL;
         }
-        if (context->IsCancelled()) {
-            LOG(ERROR) << "context is cancelled by client";
-            return retcode::FAIL;
-        }
-    }
+    } while(true);
     return retcode::SUCCESS;
 }
 
