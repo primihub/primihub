@@ -6,6 +6,16 @@ build:linux --copt=-DENABLE_SSE
 build:linux --linkopt=-lstdc++fs
 build:linux --define microsoft-apsi=false
 
+#build:linux --strip=never
+#build:linux --copt -fno-sanitize-recover=all
+#build:linux --copt -fsanitize=address
+#build:linux --copt -Og
+#build:linux --copt -g
+#build:linux --copt -fno-omit-frame-pointer
+#build:linux --linkopt -fsanitize=address
+#build:linux --linkopt -static-libasan
+
+
 # Enable remote execution so actions are performed on the remote systems.
 build:remote --remote_executor=grpc://118.190.39.100:27941
 

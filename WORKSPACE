@@ -565,7 +565,7 @@ git_repository(
 )
 
 load("@mircrosoft_apsi//bazel:repositories.bzl", "apsi_dependencies")
-apsi_dependencies();
+apsi_dependencies("mircrosoft_apsi");
 
 # needed by APSI
 new_git_repository(
