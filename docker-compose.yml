@@ -3,71 +3,62 @@ services:
   node0:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
-    container_name: node0_primihub
+    container_name: primihub-node0
     ports:
       - "8050:50050"
-      - "10120:12120"
-      - "10121:12121"
       - "6666:6666"
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.10
     depends_on:
-      - simple_bootstrap_node
+      - redis
 
   node1:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
-    container_name: node1_primihub
+    container_name: primihub-node1
     ports:
       - "8051:50051"
-      - "11120:12120"
-      - "11121:12121"
       - "6667:6667"
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.11
     depends_on:
-      - simple_bootstrap_node
+      - redis
 
   node2:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
-    container_name: node2_primihub
+    container_name: primihub-node2
     ports:
       - "8052:50052"
-      - "12120:12120"
-      - "12121:12121"
       - "6668:6668"
     volumes:
       - ./config:/app/config
       - ./data:/data
-
     entrypoint:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.12
     depends_on:
-      - simple_bootstrap_node
+      - redis
 
   simple_bootstrap_node:
     image: ${REGISTRY:-docker.io}/primihub/simple-bootstrap-node:${BOOTTAG:-1.0}
@@ -78,11 +69,25 @@ services:
     entrypoint: 
       - "/app/simple-bootstrap-node"
     networks:
-      testing_net:
+      primihub_net:
         ipv4_address: 172.28.1.13
 
+  redis:
+    image: ${REGISTRY:-docker.io}/primihub/redis:latest
+    container_name: redis 
+    restart: "always"
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./config/redis.conf:/etc/redis/redis.conf
+      - ./data:/data
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      primihub_net:
+        ipv4_address: 172.28.1.14
+
 networks:
-  testing_net:
+  primihub_net:
     driver: bridge
     ipam:
       config:

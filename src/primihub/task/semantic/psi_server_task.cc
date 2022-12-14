@@ -25,6 +25,7 @@ using private_set_intersection::PsiServer;
 namespace primihub::task {
 
 void initRequest(const PsiRequest * request, Request & psi_request) {
+    // use rvalue in future
     psi_request.set_reveal_intersection(request->reveal_intersection());
     std::int64_t num_client_elements =
         static_cast<std::int64_t>(request->encrypted_elements().size());
@@ -103,24 +104,32 @@ int PSIServerTask::execute() {
     auto init_req_time_cost = init_req_ts - load_dataset_ts;
     VLOG(5) << "init_req_time_cost(ms): " << init_req_time_cost;
     std::unique_ptr<PsiServer> server =
-        std::move(PsiServer::CreateWithNewKey(psi_request.reveal_intersection())).value();
-
+        PsiServer::CreateWithNewKey(psi_request.reveal_intersection()).value();
+    auto create_new_key_ts = timer.timeElapse();
+    auto create_new_key_time_cost = create_new_key_ts - init_req_ts;
+    VLOG(5) << "create_new_key_time_cost(ms): " << create_new_key_time_cost;
     std::int64_t num_client_elements =
         static_cast<std::int64_t>(psi_request.encrypted_elements().size());
     psi_proto::ServerSetup server_setup =
         std::move(server->CreateSetupMessage(fpr_, num_client_elements, elements_)).value();
-
-    psi_proto::Response server_response = std::move(server->ProcessRequest(psi_request)).value();
+    auto create_server_setup_ts = timer.timeElapse();
+    auto create_server_setup_tiem_cost = create_server_setup_ts - create_new_key_ts;
+    VLOG(5) << "create_server_setup_tiem_cost(ms): " << create_server_setup_tiem_cost;
+    psi_proto::Response server_response = server->ProcessRequest(psi_request).value();
     auto proceess_request_ts = timer.timeElapse();
     auto proceess_request_time_cost = proceess_request_ts - init_req_ts;
     VLOG(5) << "proceess_request_time_cost(ms): " << proceess_request_time_cost;
-    std::int64_t num_response_elements =
-        static_cast<std::int64_t>(server_response.encrypted_elements().size());
+    auto _start = timer.timeElapse();
+    // std::int64_t num_response_elements =
+    //     static_cast<std::int64_t>(server_response.encrypted_elements().size());
 
-    for (std::int64_t i = 0; i < num_response_elements; i++) {
-        response_->add_encrypted_elements(server_response.encrypted_elements()[i]);
-    }
-
+    // for (std::int64_t i = 0; i < num_response_elements; i++) {
+    //     response_->add_encrypted_elements(server_response.encrypted_elements()[i]);
+    // }
+    *(response_->mutable_encrypted_elements()) = std::move(*(server_response.mutable_encrypted_elements()));
+    auto _end = timer.timeElapse();
+    auto copy_time_cost = _end - _start;
+    VLOG(5) << "encrypted_elements_time cost(ms): " << copy_time_cost;
     auto ptr_server_setup = response_->mutable_server_setup();
     ptr_server_setup->set_bits(server_setup.bits());
     if (server_setup.data_structure_case() ==

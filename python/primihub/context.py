@@ -6,6 +6,7 @@ from primihub.utils.logger_util import logger
 
 
 class NodeContext:
+
     def __init__(self, role, protocol, dataset_port_map, func=None):
 
         self.role = role
@@ -103,9 +104,9 @@ class TaskContext:
         if output_dir:
             if not os.path.exists(output_dir):
                 try:
-                    os.makedir(output_dir)
-                except:
                     os.makedirs(output_dir)
+                except:
+                    os.mkdir(output_dir)
                 finally:
                     print(output_dir)
 
@@ -195,7 +196,8 @@ def set_node_context(role, protocol, datasets):
     dataset_port_map = {}
     for dataset in datasets:
         dataset_port_map[dataset] = "0"
-    Context.nodes_context[role] = NodeContext(role, protocol, dataset_port_map)  # noqa
+    Context.nodes_context[role] = NodeContext(role, protocol,
+                                              dataset_port_map)  # noqa
 
 
 def set_task_context_node_addr_map(node_id_with_role, addr):
@@ -203,9 +205,10 @@ def set_task_context_node_addr_map(node_id_with_role, addr):
     Context.node_addr_map[nodeid] = addr
     Context.role_nodeid_map[role].append(nodeid)
     logger.info(
-        "Insert node_id '{}' and it's addr '{}' into task context.".format(nodeid, addr))
-    logger.info(
-        "Insert role '{}' and nodeid '{}' into task context.".format(role, nodeid))
+        "Insert node_id '{}' and it's addr '{}' into task context.".format(
+            nodeid, addr))
+    logger.info("Insert role '{}' and nodeid '{}' into task context.".format(
+        role, nodeid))
 
 
 def set_task_context_params_map(key, value):
@@ -220,6 +223,7 @@ def set_text(role, protocol, datasets, dumps_func):
 
 # Register dataset decorator
 def reg_dataset(func):
+
     @functools.wraps(func)
     def reg_dataset_decorator(dataset):
         print("Register dataset:", dataset)
@@ -231,6 +235,7 @@ def reg_dataset(func):
 
 # Register task decorator
 def function(protocol, role, datasets, port, task_type="default"):
+
     def function_decorator(func):
         print("Register task:", func.__name__)
 
@@ -238,13 +243,14 @@ def function(protocol, role, datasets, port, task_type="default"):
         for dataset in datasets:
             dataset_port_map[dataset] = port
 
-        Context.nodes_context[role] = NodeContext(
-            role, protocol, dataset_port_map, func)
+        Context.nodes_context[role] = NodeContext(role, protocol,
+                                                  dataset_port_map, func)
 
         Context.nodes_context[role].set_task_type(task_type)
 
-        logger.debug(">>>>> dataset_port_map in {}'s node context is {}.".format(
-            role, Context.nodes_context[role].dataset_port_map))
+        logger.debug(
+            ">>>>> dataset_port_map in {}'s node context is {}.".format(
+                role, Context.nodes_context[role].dataset_port_map))
         logger.debug(">>>>> dataset in {}'s node context is {}.".format(
             role, Context.nodes_context[role].datasets))
         logger.debug(">>>>> role in {}'s node context is {}.".format(

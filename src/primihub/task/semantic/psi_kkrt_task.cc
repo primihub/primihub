@@ -65,6 +65,17 @@ PSIKkrtTask::PSIKkrtTask(const std::string &node_id,
     : TaskBase(task_param, dataset_service), node_id_(node_id),
       job_id_(job_id), task_id_(task_id) {}
 
+void PSIKkrtTask::setTaskInfo(const std::string& node_id,
+        const std::string& job_id,
+        const std::string& task_id,
+        const std::string& submit_client_id) {
+//
+    node_id_ = node_id;
+    job_id_ = job_id;
+    task_id_ = task_id;
+    submit_client_id_ = submit_client_id;
+}
+
 int PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");
@@ -154,11 +165,15 @@ int PSIKkrtTask::_LoadDatasetFromCSV(std::string &filename, int data_col,
         LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
         return -1;
     }
-
-    auto array = std::static_pointer_cast<StringArray>(
-        table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
+    int64_t num_rows = table->num_rows();
+    col_array.reserve(num_rows);
+    auto col_ptr = table->column(data_col);
+    int chunk_size = col_ptr->num_chunks();
+    for (int i = 0; i < chunk_size; i++) {
+        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
+        for (int64_t i = 0; i < array->length(); i++) {
+            col_array.push_back(array->GetString(i));
+        }
     }
     return 0;
 }
@@ -378,11 +393,7 @@ int PSIKkrtTask::send_result_to_server() {
 int PSIKkrtTask::saveResult(void) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::StringBuilder builder(pool);
-
-    for (std::int64_t i = 0; i < result_.size(); i++) {
-        builder.Append(result_[i]);
-    }
-
+    builder.AppendValues(result_);
     std::shared_ptr<arrow::Array> array;
     builder.Finish(&array);
 

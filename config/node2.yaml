@@ -19,6 +19,12 @@ node: "node2"
 location: "127.0.0.1"
 grpc_port: 50052
 
+# Use redis by default, set `use_redis: False` to use libp2p
+redis_meta_service:
+  redis_addr: "127.0.0.1:6379"
+  use_redis: True
+  redis_password: "primihub"
+
 # load datasets
 datasets:
   # ABY3 LR test case datasets

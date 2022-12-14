@@ -67,7 +67,7 @@ class Executor:
                 while process.exitcode is None:
                     process.join(timeout=5)
                     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.debug("end execute")
+                logger.debug("end execute {}".format(process.exitcode))
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
@@ -83,7 +83,7 @@ class Executor:
                 while process.exitcode is None:
                     process.join(timeout=5)
                     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.debug("end execute with params")
+                logger.debug("end execute {}".format(process.exitcode))
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
