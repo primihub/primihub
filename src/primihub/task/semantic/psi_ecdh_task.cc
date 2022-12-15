@@ -87,9 +87,15 @@ int PSIEcdhTask::LoadDatasetFromSQLite(
             << "expected col index: " << data_col;
         return -1;
     }
-    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
+    int64_t num_rows = table->num_rows();
+    col_array.reserve(num_rows);
+    auto col_ptr = table->column(data_col);
+    int chunk_size = col_ptr->num_chunks();
+    for (int i = 0; i < chunk_size; i++) {
+        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
+        for (int64_t j = 0; j < array->length(); j++) {
+            col_array.push_back(array->GetString(j));
+        }
     }
     VLOG(0) << "loaded records number: " << col_array.size();
     return col_array.size();
@@ -110,12 +116,17 @@ int PSIEcdhTask::LoadDatasetFromCSV(
         return -1;
     }
 
-    auto array = std::static_pointer_cast<StringArray>(
-        table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
+    int64_t num_rows = table->num_rows();
+    col_array.reserve(num_rows);
+    auto col_ptr = table->column(data_col);
+    int chunk_size = col_ptr->num_chunks();
+    for (int i = 0; i < chunk_size; i++) {
+        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
+        for (int64_t j = 0; j < array->length(); j++) {
+            col_array.push_back(array->GetString(j));
+        }
     }
-    return array->length();
+    return col_array.size();
 }
 
 int PSIEcdhTask::LoadDataset() {
