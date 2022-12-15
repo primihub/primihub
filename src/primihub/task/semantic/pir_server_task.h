@@ -66,7 +66,7 @@ private:
                  size_t elem_size, uint32_t poly_modulus_degree,
                  uint32_t plain_mod_bit_size, uint32_t bits_per_coeff,
                  bool use_ciphertext_multiplication);
-                 
+
     //int data_col_;
     std::string dataset_path_;
     size_t db_size_;

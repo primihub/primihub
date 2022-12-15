@@ -19,16 +19,15 @@
 
 #include <string>
 #include <vector>
-
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/defines.h"
 
 
 using primihub::service::DatasetMeta;
 using primihub::service::DatasetMetaWithParamTag;
-using primihub::rpc::Node;
 using primihub::rpc::Params;
 
 namespace primihub::task {
@@ -41,15 +40,15 @@ namespace primihub::task {
  */
 class TEEScheduler : public VMScheduler {
   public:
-    TEEScheduler(const std::string &node_id, 
-                 std::vector<Node> &peer_list,
-                 const PeerDatasetMap &peer_dataset_map, 
+    TEEScheduler(const std::string &node_id,
+                 std::vector<rpc::Node> &peer_list,
+                 const PeerDatasetMap &peer_dataset_map,
                  const Params params,
                  bool singleton)
         : VMScheduler(node_id, singleton), peer_list_(peer_list),
           peer_dataset_map_(peer_dataset_map) {
-        
-        Node node; 
+
+        rpc::Node node;
         node.set_node_id("TEE_Executor");
         auto param_map = params.param_map();
         try {
@@ -64,7 +63,7 @@ class TEEScheduler : public VMScheduler {
         } catch (std::exception &e) {
             LOG(ERROR) << "get TEE server addr error: " << e.what();
         }
-        
+
     }
 
     ~TEEScheduler() {}
@@ -72,14 +71,14 @@ class TEEScheduler : public VMScheduler {
     void dispatch(const PushTaskRequest *pushTaskRequest) override;
 
   private:
-    void add_vm(Node *executor, Node *dpv, int party_id,
+    void add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
                 const PushTaskRequest *pushTaskRequest);
     void push_task_to_node(const std::string &node_id,
                            const PeerDatasetMap &peer_dataset_map,
                            const PushTaskRequest &request,
-                           const std::string &dest_node_address);
+                           const Node& dest_node_address);
 
-    std::vector<Node> peer_list_;
+    std::vector<rpc::Node> peer_list_;
     const PeerDatasetMap peer_dataset_map_;
 
 }; // class TEEScheduler

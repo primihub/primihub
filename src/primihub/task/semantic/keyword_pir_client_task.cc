@@ -23,7 +23,7 @@
 #include "apsi/item.h"
 #include "apsi/util/common_utils.h"
 #include "src/primihub/util/file_util.h"
-
+#include "src/primihub/protos/worker.pb.h"
 
 using namespace apsi;
 using namespace apsi::network;
@@ -32,12 +32,9 @@ using namespace apsi::receiver;
 namespace primihub::task {
 
 KeywordPIRClientTask::KeywordPIRClientTask(
-        const std::string &node_id,
-        const std::string &job_id,
-        const std::string &task_id,
-        const TaskParam *task_param,
-        std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id), job_id_(job_id), task_id_(task_id) {}
+    const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {
+}
 
 int KeywordPIRClientTask::_LoadParams(Task &task) {
     const auto& param_map = task.params().param_map();
@@ -161,6 +158,7 @@ int KeywordPIRClientTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return ret;
     }
+    waitForServerPortInfo();
     ZMQReceiverChannel channel;
     // extract server ip from server_address_
 
@@ -170,7 +168,7 @@ int KeywordPIRClientTask::execute() {
     if (pos != std::string::npos) {
         server_ip = server_address_.substr(0, pos);
     }
-    server_address_ = "tcp://" + server_ip + ":2222";
+    server_address_ = "tcp://" + server_ip + ":" + std::to_string(server_data_port);
     VLOG(5) << "begin to connect to server: " << server_address_;
     channel.connect(server_address_);
     VLOG(5) << "connect to server: " << server_address_ << " end";
@@ -236,4 +234,19 @@ int KeywordPIRClientTask::execute() {
     this->saveResult(orig_items, items, query_result);
     return 0;
 }
+
+int KeywordPIRClientTask::waitForServerPortInfo() {
+    std::string recv_data_port_info_str;
+    this->recv(this->key, &recv_data_port_info_str);
+    rpc::Params recv_data_port_info;
+    recv_data_port_info.ParseFromString(recv_data_port_info_str);
+    const auto& recv_param_map = recv_data_port_info.param_map();
+    auto it = recv_param_map.find("data_port");
+    if (it != recv_param_map.end()) {
+        server_data_port = it->second.value_int32();
+        VLOG(5) << "server_data_port: " << server_data_port;
+    }
+    return 0;
+}
+
 } // namespace primihub::task

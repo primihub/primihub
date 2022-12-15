@@ -18,7 +18,8 @@
 #include <fstream>  // std::ifstream
 #include <string>
 #include <chrono>
-
+#include <random>
+#include "uuid.h"
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
 using primihub::rpc::TaskType;
@@ -33,7 +34,7 @@ ABSL_FLAG(std::vector<std::string>,
           params,
           std::vector<std::string>(
               {"BatchSize:INT32:0:128", "NumIters:INT32:0:100",
-               "TrainData:STRING:0:train_party_0;train_party_1;train_party_2",
+               "Data_File:STRING:0:train_party_0;train_party_1;train_party_2",
                "TestData:STRING:0:test_party_0;test_party_1;test_party_2",
                "modelFileName:STRING:0:./model",
                "hostLookupTable:STRING:0:./hostlookuptable.csv",
@@ -44,7 +45,7 @@ ABSL_FLAG(std::vector<std::string>,
           "task params, format is <name, type, is array, value>");
 ABSL_FLAG(std::vector<std::string>,
           input_datasets,
-          std::vector<std::string>({"TrainData", "TestData"}),
+          std::vector<std::string>({"Data_File", "TestData"}),
           "input datasets name list");
 
 ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
@@ -145,8 +146,16 @@ int SDKClient::SubmitTask() {
     }
 
     // TODO Generate job id and task id
+    std::random_device rd;
+    auto seed_data = std::array<int, std::mt19937::state_size> {};
+    std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+    std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+    std::mt19937 generator(seq);
+    uuids::uuid_random_generator gen{generator};
+    uuids::uuid const id = gen();
+    std::string task_id = uuids::to_string(id);
     pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
-    pushTaskRequest.mutable_task()->set_task_id(absl::GetFlag(FLAGS_task_id));
+    pushTaskRequest.mutable_task()->set_task_id(task_id);
     pushTaskRequest.set_sequence_number(11);
     pushTaskRequest.set_client_processed_up_to(22);
 

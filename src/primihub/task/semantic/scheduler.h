@@ -26,11 +26,11 @@
 #include <thread>
 #include <vector>
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
+#include "src/primihub/util/network/link_context.h"
+#include "src/primihub/util/network/link_factory.h"
 
-
-using primihub::rpc::Node;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
@@ -40,21 +40,26 @@ namespace primihub::task {
 using PeerDatasetMap = std::map<std::string, std::vector<DatasetWithParamTag>>;
 
 class VMScheduler {
-  public:
-    VMScheduler(const std::string &node_id,
-                 bool singleton)
-        : node_id_(node_id), 
-          singleton_(singleton) {}
+ public:
+  VMScheduler(const std::string &node_id, bool singleton)
+      : node_id_(node_id), singleton_(singleton) {
+    link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+  }
 
-    virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
-    virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
-    std::string get_node_id() const {
-      return node_id_;
-    }
+  std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {
+    return link_ctx_;
+  }
 
-  protected:
-    const std::string node_id_;
-    bool singleton_;
+  virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
+  virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
+  std::string get_node_id() const {
+    return node_id_;
+  }
+
+ protected:
+  const std::string node_id_;
+  bool singleton_;
+  std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
 };
 } // namespace primihub::task
 

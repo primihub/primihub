@@ -203,6 +203,38 @@ cc_library(
 )
 
 cc_library(
+    name = "endian_util",
+    hdrs = [
+        "src/primihub/util/endian_util.h",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+)
+
+cc_library(
+    name = "communication_lib",
+    srcs = [
+        "src/primihub/util/network/link_context.cc",
+        "src/primihub/util/network/grpc_link_context.cc",
+    ],
+    hdrs = [
+        "src/primihub/util/network/link_factory.h",
+        "src/primihub/util/network/link_context.h",
+        "src/primihub/util/network/grpc_link_context.h",
+    ],
+    copts = C_OPT,
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        "@com_github_glog_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        ":common_lib",
+        ":worker_proto",
+    ],
+)
+
+cc_library(
   name = "network_lib",
   srcs = glob([
       "src/primihub/util/network/socket/commpkg.cc",
@@ -603,12 +635,12 @@ cc_library(
             "src/primihub/task/semantic/mpc_task.cc",
             "src/primihub/task/semantic/tee_task.cc",
             "src/primihub/task/semantic/task.cc",
-            "src/primihub/task/semantic/psi_client_task.cc",
             "src/primihub/task/semantic/private_server_base.cc",
             "src/primihub/task/semantic/fl_task.cc",
-            "src/primihub/task/semantic/psi_server_task.cc",
             "src/primihub/task/semantic/keyword_pir_client_task.cc",
             "src/primihub/task/semantic/keyword_pir_server_task.cc",
+            "src/primihub/task/semantic/psi_ecdh_task.cc",
+             "src/primihub/task/semantic/task_context.cc",
          ]),
         "//conditions:default": glob([
             "src/primihub/task/language/proto_parser.cc",
@@ -626,10 +658,10 @@ cc_library(
             "src/primihub/task/semantic/mpc_task.cc",
             "src/primihub/task/semantic/tee_task.cc",
             "src/primihub/task/semantic/task.cc",
-            "src/primihub/task/semantic/psi_client_task.cc",
             "src/primihub/task/semantic/private_server_base.cc",
             "src/primihub/task/semantic/fl_task.cc",
-            "src/primihub/task/semantic/psi_server_task.cc",
+            "src/primihub/task/semantic/psi_ecdh_task.cc",
+             "src/primihub/task/semantic/task_context.cc",
         ]),
     }),
     hdrs = select({
@@ -650,16 +682,16 @@ cc_library(
             "src/primihub/task/semantic/scheduler/psi_scheduler.h",
             "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
             "src/primihub/task/semantic/scheduler/tee_scheduler.h",
-            "src/primihub/task/semantic/psi_server_task.h",
             "src/primihub/task/semantic/psi_kkrt_task.h",
             "src/primihub/task/semantic/keyword_pir_client_task.h",
             "src/primihub/task/semantic/keyword_pir_server_task.h",
-            "src/primihub/task/semantic/psi_client_task.h",
             "src/primihub/task/semantic/factory.h",
             "src/primihub/task/semantic/mpc_task.h",
             "src/primihub/task/semantic/fl_task.h",
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
+            "src/primihub/task/semantic/psi_ecdh_task.h",
+            "src/primihub/task/semantic/task_context.h",
         ]),
         "//conditions:default": glob([
             "src/primihub/task/language/proto_parser.h",
@@ -678,14 +710,14 @@ cc_library(
             "src/primihub/task/semantic/scheduler/psi_scheduler.h",
             "src/primihub/task/semantic/scheduler/aby3_scheduler.h",
             "src/primihub/task/semantic/scheduler/tee_scheduler.h",
-            "src/primihub/task/semantic/psi_server_task.h",
             "src/primihub/task/semantic/psi_kkrt_task.h",
-            "src/primihub/task/semantic/psi_client_task.h",
             "src/primihub/task/semantic/factory.h",
             "src/primihub/task/semantic/mpc_task.h",
             "src/primihub/task/semantic/fl_task.h",
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
+            "src/primihub/task/semantic/psi_ecdh_task.h",
+            "src/primihub/task/semantic/task_context.h",
         ]),
     }),
     copts = C_OPT + select({
@@ -702,7 +734,10 @@ cc_library(
     # don't remove it.
     linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
-    deps = TASK_LIB_DEPS,
+    deps = TASK_LIB_DEPS + [
+        ":communication_lib",
+        ":endian_util",
+    ],
 )
 
 cc_library(
@@ -1208,9 +1243,9 @@ cc_binary(
         ":common_lib",
         ":util_lib",
         "@openssl",
+        "@com_github_stduuid//:stduuid_lib",
     ],
 )
-
 
 ## end of primihub
 
