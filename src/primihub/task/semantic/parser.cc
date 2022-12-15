@@ -76,7 +76,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
                 LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
                           << metas_with_param_tag.size();
 
-                std::vector<Node> peer_list;
+                std::vector<rpc::Node> peer_list;
                 PeerDatasetMap peer_dataset_map;
                 metasToPeerList(metas_with_param_tag, peer_list);
                 metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map);
@@ -185,7 +185,7 @@ void ProtocolSemanticParser::schedulePirTask(
                 std::string node_id = addr_info[0];
                 std::string node_ip = addr_info[1];
                 int node_port = stoi(addr_info[2]);
-                Node client_node;
+                rpc::Node client_node;
                 client_node.set_node_id(node_id);
                 client_node.set_ip(node_ip);
                 client_node.set_port(node_port);
@@ -284,7 +284,7 @@ int ProtocolSemanticParser::transformPirRequest(std::shared_ptr<LanguageParser> 
 
 void ProtocolSemanticParser::metasToPeerList(
     const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
-    std::vector<Node> &peers) {
+    std::vector<rpc::Node> &peers) {
   // reset peers
   peers.clear();
 
@@ -295,7 +295,7 @@ void ProtocolSemanticParser::metasToPeerList(
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
 
-    Node node;
+    rpc::Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);
     node.set_port(node_port);
@@ -364,7 +364,7 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
       break;
     }
 
-    Node node;
+    rpc::Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);
 
@@ -422,7 +422,7 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
 
-    Node node;
+    rpc::Node node;
     node.set_node_id(node_id);
     node.set_ip(node_ip);
     node.set_port(node_port);

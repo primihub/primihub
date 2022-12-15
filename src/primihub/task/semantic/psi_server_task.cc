@@ -15,7 +15,6 @@
  */
 
 #include "private_set_intersection/cpp/psi_server.h"
-
 #include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/util/util.h"
 

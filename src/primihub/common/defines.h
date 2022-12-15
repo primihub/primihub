@@ -91,6 +91,32 @@ enum class retcode {
   FAIL,
 };
 
+struct Node {
+  Node() = default;
+  Node(const std::string& ip, const uint32_t port, bool use_tls)
+      : ip_(ip), port_(port), use_tls_(use_tls), role_("default") {}
+  Node(const std::string& ip, const uint32_t port, bool use_tls, const std::string& role)
+      : ip_(ip), port_(port), use_tls_(use_tls), role_(role) {}
+  Node(Node&&) = default;
+  Node(const Node&) = default;
+  Node& operator=(const Node&) = default;
+  Node& operator=(Node&&) = default;
+  std::string to_string() const {
+    std::string sep = ":";
+    std::string node_info = ip_;
+    node_info.append(sep).append(std::to_string(port_))
+        .append(sep).append(role_).append(sep).append(use_tls_ ? "1" : "0");
+    return node_info;
+  }
+  std::string ip() {return ip_;}
+  uint32_t port() {return port_;}
+  bool use_tls() {return use_tls_;}
+  std::string ip_;
+  uint32_t port_;
+  std::string role_{"default"};
+  bool use_tls_{false};
+};
+
 }
 
 #endif  // SRC_primihub_UTIL_NETWORK_SOCKET_COMMON_DEFINES_H_

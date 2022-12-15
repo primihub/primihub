@@ -25,7 +25,6 @@
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
-using primihub::rpc::Node;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
@@ -33,7 +32,7 @@ using primihub::task::TaskFactory;
 using primihub::rpc::PsiTag;
 
 namespace primihub {
-int Worker::execute(const PushTaskRequest *pushTaskRequest) {
+retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
     auto type = pushTaskRequest->task().type();
     VLOG(2) << "Worker::execute task type: " << type;
     if (type == rpc::TaskType::NODE_TASK ||
@@ -42,52 +41,38 @@ int Worker::execute(const PushTaskRequest *pushTaskRequest) {
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create task failed.";
-            return -1;
+            return retcode::FAIL;
         }
         LOG(INFO) << " 🚀 Worker start execute task ";
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute task.";
-            return -1;
+            return retcode::FAIL;
         }
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
-            return -1;
+            return retcode::FAIL;
         }
-
         const auto& param_map = pushTaskRequest->task().params().param_map();
-        int psiTag = PsiTag::ECDH;
-        auto param_it = param_map.find("psiTag");
-        if (param_it != param_map.end()) {
-            psiTag = param_it->second.value_int32();
-        }
-
-        if (psiTag == PsiTag::ECDH) {
-            auto param_map_it = param_map.find("serverAddress");
-            if (param_map_it == param_map.end()) {
-                return -1;
-            }
-        }
-
         auto dataset_service = nodelet->getDataService();
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create psi task failed.";
-            return -1;
+            return retcode::FAIL;
         }
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute psi task.";
-            return -1;
+            return retcode::FAIL;
         }
     } else if (type == rpc::TaskType::NODE_PIR_TASK) {
         size_t party_node_count = pushTaskRequest->task().node_map().size();
         if (party_node_count < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now. current_node_size: " << party_node_count;
-            return -1;
+            LOG(ERROR) << "At least 2 nodes srunning with 2PC task. "
+                       << "current_node_size: " << party_node_count;
+            return retcode::FAIL;
         }
-
         const auto& param_map = pushTaskRequest->task().params().param_map();
         int pirType = PirType::ID_PIR;
         auto param_it = param_map.find("pirType");
@@ -99,7 +84,8 @@ int Worker::execute(const PushTaskRequest *pushTaskRequest) {
         if (pirType == PirType::ID_PIR) {
             auto param_map_it = param_map.find("serverAddress");
             if (param_map_it == param_map.end()) {
-                return -1;
+                LOG(ERROR) << "config for serverAddress is not found in param map";
+                return retcode::FAIL;
             }
         }
 
@@ -107,23 +93,23 @@ int Worker::execute(const PushTaskRequest *pushTaskRequest) {
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create pir task failed.";
-            return -1;
+            return retcode::FAIL;
         }
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute pir task.";
-            return -1;
+            return retcode::FAIL;
         }
     } else {
         LOG(WARNING) << "unsupported Requested task type: " << type;
     }
     task_ptr.reset();
-    return 0;
+    return retcode::SUCCESS;
 }
 
 
 // PIR /PSI Server worker execution
-void Worker::execute(const ExecuteTaskRequest *taskRequest,
+int Worker::execute(const ExecuteTaskRequest *taskRequest,
                      ExecuteTaskResponse *taskResponse) {
     auto request_type = taskRequest->algorithm_request_case();
     if (request_type == ExecuteTaskRequest::AlgorithmRequestCase::kPsiRequest) {
@@ -143,17 +129,19 @@ void Worker::execute(const ExecuteTaskRequest *taskRequest,
                                          dataset_service);
     } else {
         LOG(WARNING) << "Requested task type is not supported.";
-        return;
+        return -1;
     }
     if (task_server_ptr == nullptr) {
         LOG(ERROR) << "Woker create server node task failed.";
-        return;
+        return -1;
     }
     int ret = task_server_ptr->execute();
     if (ret != 0) {
         LOG(ERROR) << "Error occurs during server node execute task.";
+        return -1;
     }
     task_server_ptr.reset();
+    return 0;
 }
 
 // kill task which is running in the worker

@@ -22,6 +22,7 @@
 #include "apsi/match_record.h"
 #include "apsi/util/csv_reader.h"
 #include "src/primihub/task/semantic/task.h"
+#include "src/primihub/common/defines.h"
 
 using apsi::Item;
 using apsi::receiver::MatchRecord;
@@ -31,10 +32,7 @@ namespace primihub::task {
 
 class KeywordPIRClientTask : public TaskBase {
  public:
-    explicit KeywordPIRClientTask(const std::string &node_id,
-                                  const std::string &job_id,
-                                  const std::string &task_id,
-                                  const TaskParam *task_param,
+    explicit KeywordPIRClientTask(const TaskParam *task_param,
                                   std::shared_ptr<DatasetService> dataset_service);
 
     ~KeywordPIRClientTask() = default;
@@ -42,7 +40,7 @@ class KeywordPIRClientTask : public TaskBase {
     int saveResult(const std::vector<std::string>& orig_items,
                    const std::vector<apsi::Item>& items,
                    const std::vector<apsi::receiver::MatchRecord>& intersection);
-
+   int waitForServerPortInfo();
  private:
     int _LoadParams(Task &task);
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
@@ -53,13 +51,13 @@ class KeywordPIRClientTask : public TaskBase {
     int _GetIntsection();
 
  private:
-    std::string node_id_;
-    std::string job_id_;
-    std::string task_id_;
     std::string dataset_path_;
     std::string result_file_path_;
     std::string server_address_;
     bool recv_query_data_direct{false};
+    uint32_t server_data_port{2222};
+    primihub::Node peer_node_;
+    std::string key{"default"};
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_

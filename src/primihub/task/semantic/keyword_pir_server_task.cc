@@ -15,7 +15,11 @@
  */
 
 #include "src/primihub/task/semantic/keyword_pir_server_task.h"
-
+#include <grpc/grpc.h>
+#include <grpcpp/channel.h>
+#include <grpcpp/create_channel.h>
+#include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/util/util.h"
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
 #include "apsi/oprf/oprf_sender.h"
@@ -37,12 +41,13 @@ using namespace seal::util;
 namespace primihub::task {
 
 std::shared_ptr<SenderDB>
-    KeywordPIRServerTask::create_sender_db(
+KeywordPIRServerTask::create_sender_db(
         const CSVReader::DBData &db_data,
         std::unique_ptr<PSIParams> psi_params,
         OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress) {
+    SCopedTimer timer;
     if (!psi_params) {
         LOG(ERROR) << "No Keyword pir parameters were given";
         return nullptr;
@@ -52,6 +57,7 @@ std::shared_ptr<SenderDB>
     if (holds_alternative<CSVReader::LabeledData>(db_data)) {
         VLOG(5) << "CSVReader::LabeledData";
         try {
+            auto _start = timer.timeElapse();
             auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
             // Find the longest label and use that as label size
             size_t label_byte_count =
@@ -59,14 +65,28 @@ std::shared_ptr<SenderDB>
                     [](auto &a, auto &b) {
                         return a.second.size() < b.second.size();
                     })->second.size();
-            VLOG(5) << "label_byte_count: " << label_byte_count << " nonce_byte_count: " << nonce_byte_count;
+
+            auto max_label_count_ts = timer.timeElapse();
+            VLOG(5) << "label_byte_count: " << label_byte_count << " "
+                    << "nonce_byte_count: " << nonce_byte_count << " "
+                    << "get max label count time cost(ms): " << max_label_count_ts;
             sender_db =
                 std::make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
+            auto _mid = timer.timeElapse();
+            VLOG(5) << "sender_db address: " << reinterpret_cast<uint64_t>(&(*sender_db));
+            auto constuct_sender_db_time_cost = _mid - max_label_count_ts;
             sender_db->set_data(labeled_db_data);
+            auto _end = timer.timeElapse();
+            auto set_data_time_cost = _end - _mid;
+            auto time_cost = _end - _start;
+            VLOG(5) << "construct sender db time cost(ms): " << constuct_sender_db_time_cost << " "
+                    << "set sender db data time cost(ms): " << time_cost << " "
+                    << "total cost(ms): " << time_cost;
         } catch (const exception &ex) {
             LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
             return nullptr;
         }
+
     } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
         LOG(ERROR) << "Loaded keyword pir database is without label";
         return nullptr;
@@ -76,18 +96,32 @@ std::shared_ptr<SenderDB>
     }
 
     oprf_key = sender_db->strip();
+    auto time_cost = timer.timeElapse();
+    VLOG(5) << "create_sender_db success, time cost(ms): " << time_cost;
     return sender_db;
 }
 
-KeywordPIRServerTask::KeywordPIRServerTask(const std::string &node_id,
-                                           const std::string &job_id,
-                                           const std::string &task_id,
-                                           const TaskParam *task_param,
-                                           std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id),
-      job_id_(job_id), task_id_(task_id) {}
+KeywordPIRServerTask::KeywordPIRServerTask(
+    const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {
+
+}
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
+    const auto& node_map = task.node_map();
+    for (const auto& node_info : node_map) {
+        auto& _node_id = node_info.first;
+        if (_node_id == this->node_id_) {
+            continue;
+        }
+        auto& node = node_info.second;
+        this->client_address = node.ip() + ":" + std::to_string(node.port());
+        client_node_.ip_ = node.ip();
+        client_node_.port_ = node.port();
+        client_node_.use_tls_ = node.use_tls();
+        VLOG(5) << "client_address: " << this->client_node_.to_string();
+    }
+
     const auto& param_map = task.params().param_map();
     try {
         auto it = param_map.find("serverData");
@@ -176,14 +210,38 @@ int KeywordPIRServerTask::execute() {
     atomic<bool> stop = false;
     VLOG(5) << "begin to create ZMQSenderDispatcher";
     ZMQSenderDispatcher dispatcher(sender_db, oprf_key);
-    int port = 2222;
+    getAvailablePort(&data_port);
+    broadcastPortInfo();
     // bool done_exit = true;
-    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(port);
-    dispatcher.run(stop, port);
+    VLOG(5) << "ZMQSenderDispatcher begin to run port: " << std::to_string(data_port);
+    dispatcher.run(stop, data_port);
     if (stop.load(std::memory_order::memory_order_relaxed)) {
         VLOG(5) << "key word pir task execute finished";
     }
     return 0;
 }
+retcode KeywordPIRServerTask::broadcastPortInfo() {
+    std::string data_port_info_str;
+    rpc::Params data_port_params;
+    auto param_map = data_port_params.mutable_param_map();
+    // dataset size
+    rpc::ParamValue pv_data_port;
+    pv_data_port.set_var_type(rpc::VarType::INT32);
+    pv_data_port.set_value_int32(this->data_port);
+    pv_data_port.set_is_array(false);
+    (*param_map)["data_port"] = std::move(pv_data_port);
+    bool success = data_port_params.SerializeToString(&data_port_info_str);
+    if (!success) {
+        LOG(ERROR) << "serialize data port info failed";
+        return retcode::FAIL;
+    }
 
+    auto ret = this->send(this->key, client_node_, data_port_info_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send data port info to peer: [" << client_node_.to_string()
+            << "] failed";
+        return ret;
+    }
+    return retcode::SUCCESS;
+}
 }  // namespace primihub::task

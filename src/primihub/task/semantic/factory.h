@@ -24,9 +24,8 @@
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/task/semantic/fl_task.h"
 #include "src/primihub/task/semantic/private_server_base.h"
-#include "src/primihub/task/semantic/psi_client_task.h"
-#include "src/primihub/task/semantic/psi_server_task.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
+#include "src/primihub/task/semantic/psi_ecdh_task.h"
 
 #ifndef USE_MICROSOFT_APSI
 #include "src/primihub/task/semantic/pir_client_task.h"
@@ -62,37 +61,33 @@ class TaskFactory {
         if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
             auto task_param = request.task();
             auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
-            return std::dynamic_pointer_cast<TaskBase>(fl_task);
-
+            fl_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+            return fl_task;
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_TASK) {
             auto _function_name = request.task().code();
             auto task_param = request.task();
             auto mpc_task = std::make_shared<MPCTask>(node_id,
                                                     _function_name, &task_param,
                                                     dataset_service);
-            return std::dynamic_pointer_cast<TaskBase>(mpc_task);
+            mpc_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+            return mpc_task;
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PSI_TASK) {
-            auto task_param = request.task();
+            const auto& task_param = request.task();
             const auto& param_map = task_param.params().param_map();
             int psi_tag = PsiTag::ECDH;
             auto param_it = param_map.find("psiTag");
             if (param_it != param_map.end()) {
                 psi_tag = param_it->second.value_int32();
             }
-
             if (psi_tag == PsiTag::ECDH) {
-                auto psi_task =
-                    std::make_shared<PSIClientTask>(&task_param, dataset_service);
+                auto psi_task = std::make_shared<PSIEcdhTask>(&task_param, dataset_service);
                 psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
-                return std::dynamic_pointer_cast<TaskBase>(psi_task);
+                return psi_task;
             } else if (psi_tag == PsiTag::KKRT) {
-                auto psi_task = std::make_shared<PSIKkrtTask>(node_id,
-                                                              request.task().job_id(),
-                                                              request.task().task_id(),
-                                                              &task_param,
-                                                              dataset_service);
+                auto psi_task =
+                    std::make_shared<PSIKkrtTask>(&task_param, dataset_service);
                 psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
-                return std::dynamic_pointer_cast<TaskBase>(psi_task);
+                return psi_task;
             } else {
                 LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
                 return nullptr;
@@ -121,11 +116,16 @@ class TaskFactory {
             if (pir_type == PirType::KEY_PIR) {
                 auto param_map_it = param_map.find("serverAddress");
                 if (param_map_it == param_map.end()) {
-                    return std::make_shared<KeywordPIRServerTask>(
-                        node_id, job_id, task_id, &task_param, dataset_service);
+                    auto task_ptr =
+                        std::make_shared<KeywordPIRServerTask>(&task_param, dataset_service);
+                    task_ptr->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                    return task_ptr;
                 } else {
-                   return std::make_shared<KeywordPIRClientTask>(
-                        node_id, job_id, task_id, &task_param, dataset_service);
+                    auto task_ptr =
+                        std::make_shared<KeywordPIRClientTask>(&task_param, dataset_service);
+                    task_ptr->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                    return task_ptr;
+
                 }
             } else {
                 LOG(ERROR) << "Unsupported pir type: " << pir_type;
@@ -138,7 +138,7 @@ class TaskFactory {
             auto tee_task = std::make_shared<TEEDataProviderTask>(node_id,
                                                     &task_param,
                                                     dataset_service);
-            return std::dynamic_pointer_cast<TaskBase>(tee_task);
+            return tee_task;
         } else {
             LOG(ERROR) << "Unsupported task type: "<< task_type <<","
                         << "language: "<< task_language;
@@ -159,10 +159,6 @@ class TaskFactory {
 #else
             return std::make_shared<PIRServerTask>(node_id, request, response, dataset_service);
 #endif
-        } else if (task_type == rpc::TaskType::NODE_PSI_TASK) {
-            auto psi_task = std::make_shared<PSIServerTask>(node_id, request,
-                                                            response, dataset_service);
-            return std::dynamic_pointer_cast<ServerTaskBase>(psi_task);
         } else {
             LOG(ERROR) << "Unsupported task type at server node: "<< task_type <<".";
             return nullptr;

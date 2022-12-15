@@ -13,17 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-
+#include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
 #include <glog/logging.h>
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
 
 #include "absl/strings/str_cat.h"
-
-#include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
@@ -37,7 +30,7 @@ using primihub::rpc::VirtualMachine;
 namespace primihub::task {
 void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
     PushTaskRequest request;
-    Node executor_node;
+    rpc::Node executor_node;
     request.CopyFrom(*push_request);
 
     if (push_request->task().type() == TaskType::TEE_TASK) {
@@ -56,7 +49,7 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 
             } else {
                 party_id += 1;
-                Node data_pvd_node;
+                rpc::Node data_pvd_node;
                 data_pvd_node.CopyFrom(this->peer_list_[i]);
                 (*mutable_node_map)[node_id] = data_pvd_node;
                 // update node_map
@@ -67,27 +60,29 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
 
     LOG(INFO) << " 📧  Dispatching task to: "
               << request.mutable_task()->mutable_node_map()->size() << " nodes";
-
-    google::protobuf::Map<std::string, Node> node_map =
-        request.task().node_map();
+    std::map<std::string, Node> scheduled_nodes;
+    const auto& node_map = request.task().node_map();
     for (auto &pair : node_map) {
+        const auto& pb_node = pair.second;
+
         if (executor_node.node_id() == pair.second.node_id()) {
             // do nothing to executor node
             continue;
         }
         std::string dest_node_address(
             absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-
+        Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
         LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
-        this->push_task_to_node(pair.first, 
+        scheduled_nodes[dest_node_address] = std::move(dest_node);
+        this->push_task_to_node(pair.first,
                                 this->peer_dataset_map_,
                                 std::ref(request),
-                                dest_node_address);
+                                scheduled_nodes[dest_node_address]);
     }
 }
 
 
-void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
+void TEEScheduler::add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
                           const PushTaskRequest *pushTaskRequest) {
     // Executor node
     VirtualMachine *dpv_vm = executor->add_vm();
@@ -115,13 +110,13 @@ void TEEScheduler::add_vm(Node *executor, Node *dpv, int party_id,
 }
 
 
-void TEEScheduler::push_task_to_node (const std::string &node_id,
+void TEEScheduler::push_task_to_node(const std::string &node_id,
                                       const PeerDatasetMap &peer_dataset_map,
                                       const PushTaskRequest &request,
-                                      const std::string &dest_node_address) {                              
+                                      const Node& dest_node) {
     grpc::ClientContext context;
     PushTaskRequest _1NodePushTaskRequest;
-    _1NodePushTaskRequest.CopyFrom(request);  
+    _1NodePushTaskRequest.CopyFrom(request);
 
     // Add datasets params to request
     google::protobuf::Map<std::string, ParamValue> *param_map =
@@ -140,16 +135,11 @@ void TEEScheduler::push_task_to_node (const std::string &node_id,
         (*param_map)[dataset_param.second] = pv;
     }
     // send request
-    auto channel = grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials());
-    std::unique_ptr<VMNode::Stub> stub = VMNode::NewStub(channel);
+    auto channel = this->getLinkContext()->getChannel(dest_node);
     primihub::rpc::PushTaskReply response;
-    grpc::Status status = stub->SubmitTask(&context, _1NodePushTaskRequest, &response);
-    if (status.ok()) {
-        LOG(INFO) << "📤 TEE Task pushed to node: " << node_id;
-    } else {
-        LOG(ERROR) << "Failed to push task to node: " << node_id
-                   << " with error: " << status.error_message();
+    auto ret = channel->submitTask(_1NodePushTaskRequest, &response);
+    if (ret == retcode::SUCCESS) {
+        // Parse notify server info
     }
 }
 
