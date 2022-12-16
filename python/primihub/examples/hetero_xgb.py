@@ -15,6 +15,7 @@ from typing import (
     Union,
     TypeVar,
 )
+import queue
 from multiprocessing import Process, Pool
 import pandas
 import pyarrow
@@ -801,7 +802,7 @@ class XGB_GUEST_EN:
         self.encrypted = is_encrypted
         self.chops = 20
 
-    def sum_job(self, tmp_group):
+    def sum_job(self, tmp_group, que):
         if self.encrypted:
             tmp_sum = tmp_group._aggregate_on(
                 PallierSum,
@@ -812,7 +813,7 @@ class XGB_GUEST_EN:
         else:
             tmp_group = tmp_group.sum(on=['g', 'h'])
 
-        return tmp_sum.to_pandas()
+        return que.put(tmp_sum.to_pandas())
 
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
@@ -877,6 +878,7 @@ class XGB_GUEST_EN:
               buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
+        res_que = queue.Queue()
         # paillier_add_actors = ActorPool(
         #     [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
 
@@ -895,11 +897,13 @@ class XGB_GUEST_EN:
         tasks = []
 
         for i in range(len(groups)):
-            tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
+            tmp_task = pool.apply_async(func=self.sum_job,
+                                        args=(groups[i], res_que))
             tasks.append(tmp_task)
 
         pool.close()
         pool.join()
+        res = [res_que.get() for _ in range(len(groups))]
 
         # for tmp_task in tasks:
         #     print(tmp_task.get())
@@ -921,8 +925,8 @@ class XGB_GUEST_EN:
         #         tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
         #     ]
 
-        for key, tmp_task in zip(cols, tasks):
-            total_left_ghs[key] = tmp_task.get()
+        for key, tmp_res in zip(cols, res):
+            total_left_ghs[key] = tmp_res
 
             # if self.encrypted:
             #     tmp_sum = tmp_group._aggregate_on(
