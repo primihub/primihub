@@ -756,6 +756,19 @@ def evaluate_ks_and_roc_auc(y_real, y_proba):
     return ks.statistic, roc_auc
 
 
+def sum_job(tmp_group, encrypted, pub, paillier_add_actors):
+    if encrypted:
+        tmp_sum = tmp_group._aggregate_on(PallierSum,
+                                          on=['g', 'h'],
+                                          ignore_nulls=True,
+                                          pub_key=pub,
+                                          add_actors=paillier_add_actors)
+    else:
+        tmp_group = tmp_group.sum(on=['g', 'h'])
+
+    return tmp_sum.to_pandas()
+
+
 class XGB_GUEST_EN:
 
     def __init__(
@@ -895,7 +908,15 @@ class XGB_GUEST_EN:
         tasks = []
 
         for i in range(len(groups)):
-            tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
+            # tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
+            tmp_task = pool.apply_async(func=sum_job,
+                                        args=(
+                                            groups[i],
+                                            self.encrypted,
+                                            self.pub,
+                                            self.paillier_add_actors,
+                                        ))
+
             tasks.append(tmp_task)
 
         pool.close()
