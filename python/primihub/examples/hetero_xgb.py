@@ -801,6 +801,19 @@ class XGB_GUEST_EN:
         self.encrypted = is_encrypted
         self.chops = 20
 
+    def sum_job(self, tmp_group):
+        if self.encrypted:
+            tmp_sum = tmp_group._aggregate_on(
+                PallierSum,
+                on=['g', 'h'],
+                ignore_nulls=True,
+                pub_key=self.pub,
+                add_actors=self.paillier_add_actors)
+        else:
+            tmp_group = tmp_group.sum(on=['g', 'h'])
+
+        return tmp_sum.to_pandas()
+
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
                                        encrypted_ghs,
@@ -876,26 +889,13 @@ class XGB_GUEST_EN:
             tmp_group = buckets_x_guest.groupby(tmp_col)
             groups.append(tmp_group)
 
-        def sum_job(tmp_group):
-            if self.encrypted:
-                tmp_sum = tmp_group._aggregate_on(
-                    PallierSum,
-                    on=['g', 'h'],
-                    ignore_nulls=True,
-                    pub_key=self.pub,
-                    add_actors=self.paillier_add_actors)
-            else:
-                tmp_group = tmp_group.sum(on=['g', 'h'])
-
-            return tmp_sum.to_pandas()
-
             # sum_que.put(tmp_sum.to_pandas())
 
         pool = Pool(7)
         tasks = []
 
         for i in range(len(groups)):
-            tmp_task = pool.apply_async(func=sum_job, args=(groups[i],))
+            tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
             tasks.append(tmp_task)
 
         pool.close()

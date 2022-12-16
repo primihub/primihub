@@ -304,7 +304,7 @@ class XGBGuestInfer:
 @ph.context.function(role='host',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_host'],
-                     port='8000',
+                     port='8008',
                      task_type="classification")
 def xgb_host_infer():
     logger.info("start xgb host logic...")
@@ -387,7 +387,7 @@ def xgb_host_infer():
 @ph.context.function(role='guest',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_guest'],
-                     port='8000',
+                     port='9009',
                      task_type="classification")
 def xgb_guest_infer():
     logger.info("start xgb guest logic...")
