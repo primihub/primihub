@@ -1,4 +1,4 @@
-pyarrow==4.0.0
+pyarrow==6.0.1
 pandas
 pytest
 numpy
@@ -7,8 +7,8 @@ pyzmq
 bitarray
 mmh3
 
-grpcio==1.47.0
-grpcio-tools==1.47.0
+grpcio==1.43.0
+grpcio-tools==1.43.0
 protobuf==3.20.0
 
 pydantic
@@ -19,4 +19,9 @@ phe==1.5.0
 mysql-connector-python
 loguru
 gevent
-
+redis
+ray==2.0.0
+transformers
+requests
+line_profiler
+matplotlib
