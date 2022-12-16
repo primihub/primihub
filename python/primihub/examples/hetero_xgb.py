@@ -872,7 +872,7 @@ class XGB_GUEST_EN:
 
         groups = []
         for tmp_col in cols:
-            tmp_group = buckets_x_guest[[tmp_col, 'g', 'h']].groupby(tmp_col)
+            tmp_group = buckets_x_guest.groupby(tmp_col)
             #     groups.append(tmp_group)
 
             # if self.encrypted:
