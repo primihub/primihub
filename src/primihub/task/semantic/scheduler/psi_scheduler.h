@@ -18,9 +18,6 @@
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_SCHEDULER_H_
 
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
-#include <grpc/grpc.h>
-
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -28,18 +25,11 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/common/defines.h"
 
-using grpc::Channel;
-// using grpc::ClientContext;
-using grpc::ClientReader;
-using grpc::ClientReaderWriter;
-using grpc::ClientWriter;
-using grpc::Status;
-using primihub::rpc::Node;
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
@@ -49,21 +39,23 @@ using primihub::task::PeerDatasetMap;
 namespace primihub::task {
 
 class PSIScheduler : public VMScheduler {
-public:
-    PSIScheduler(const std::string &node_id,
-                 const std::vector<Node> &peer_list,
-                 const PeerDatasetMap &peer_dataset_map, bool singleton) 
-        : VMScheduler(node_id, singleton),
-          peer_list_(peer_list),
-          peer_dataset_map_(peer_dataset_map) {}
+ public:
+  PSIScheduler(const std::string &node_id,
+                const std::vector<rpc::Node> &peer_list,
+                const PeerDatasetMap &peer_dataset_map, bool singleton)
+    : VMScheduler(node_id, singleton), peer_list_(peer_list),
+      peer_dataset_map_(peer_dataset_map) {}
 
-    void dispatch(const PushTaskRequest *pushTaskRequest) override;
-
-    void add_vm(Node *single_node, int i,
-		const PushTaskRequest *pushTaskRequest);
-
+  void dispatch(const PushTaskRequest *pushTaskRequest) override;
+  void add_vm(rpc::Node *single_node, int i, const PushTaskRequest *pushTaskRequest);
+ protected:
+  void node_push_psi_task(const std::string &node_id,
+                    const PeerDatasetMap &peer_dataset_map,
+                    const PushTaskRequest &nodePushTaskRequest,
+                    const Node& dest_node,
+                    bool is_client);
 private:
-    const std::vector<Node> peer_list_;
+    const std::vector<rpc::Node> peer_list_;
     const PeerDatasetMap peer_dataset_map_;
 };
 

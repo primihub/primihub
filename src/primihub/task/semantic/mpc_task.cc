@@ -109,12 +109,12 @@ namespace primihub::task
     {
       // TODO: implement lstm
     }
-    else if (function_name == "arithmetic") 
+    else if (function_name == "arithmetic")
     {
       PartyConfig config(node_id, task_param_);
 
-      std::map<std::string, Node> &node_map = config.node_map;
-      try 
+      auto& node_map = config.node_map;
+      try
       {
         auto param_map = task_param_.params().param_map();
         std::string accuracy = param_map["Accuracy"].value_string();
@@ -122,32 +122,32 @@ namespace primihub::task
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
                                                         dataset_service));
-        else  
+        else
           algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
               std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
                                                         dataset_service));
-      } 
-      catch (const std::runtime_error &error) 
+      }
+      catch (const std::runtime_error &error)
       {
         LOG(ERROR) << error.what();
         algorithm_ = nullptr;
       }
-    } 
-    else if (function_name == "missing_val_processing") 
+    }
+    else if (function_name == "missing_val_processing")
     {
       PartyConfig config(node_id, task_param_);
-      std::map<std::string, Node> &node_map = config.node_map;
-      try 
+      auto& node_map = config.node_map;
+      try
       {
         algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
             std::make_shared<primihub::MissingProcess>(config, dataset_service));
       }
-      catch (const std::runtime_error &error) 
+      catch (const std::runtime_error &error)
       {
         LOG(ERROR) << error.what();
         algorithm_ = nullptr;
       }
-    } 
+    }
     else
     {
       LOG(ERROR) << "Unsupported algorithm: " << function_name;
