@@ -640,7 +640,8 @@ cc_library(
             "src/primihub/task/semantic/keyword_pir_client_task.cc",
             "src/primihub/task/semantic/keyword_pir_server_task.cc",
             "src/primihub/task/semantic/psi_ecdh_task.cc",
-             "src/primihub/task/semantic/task_context.cc",
+            "src/primihub/task/semantic/psi_task.cc",
+            "src/primihub/task/semantic/task_context.cc",
          ]),
         "//conditions:default": glob([
             "src/primihub/task/language/proto_parser.cc",
@@ -661,6 +662,7 @@ cc_library(
             "src/primihub/task/semantic/private_server_base.cc",
             "src/primihub/task/semantic/fl_task.cc",
             "src/primihub/task/semantic/psi_ecdh_task.cc",
+            "src/primihub/task/semantic/psi_task.cc",
              "src/primihub/task/semantic/task_context.cc",
         ]),
     }),
@@ -691,6 +693,7 @@ cc_library(
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
             "src/primihub/task/semantic/psi_ecdh_task.h",
+            "src/primihub/task/semantic/psi_task.h",
             "src/primihub/task/semantic/task_context.h",
         ]),
         "//conditions:default": glob([
@@ -717,6 +720,7 @@ cc_library(
             "src/primihub/task/semantic/tee_task.h",
             "src/primihub/util/util.h",
             "src/primihub/task/semantic/psi_ecdh_task.h",
+            "src/primihub/task/semantic/psi_task.h",
             "src/primihub/task/semantic/task_context.h",
         ]),
     }),
