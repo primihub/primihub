@@ -1,5 +1,6 @@
 #include <arrow/api.h>
 #include <arrow/array.h>
+#include <arrow/array/array_binary.h>
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
 #include <arrow/filesystem/localfs.h>
@@ -8,13 +9,14 @@
 #include <arrow/pretty_print.h>
 #include <arrow/result.h>
 #include <arrow/type.h>
-#include <glog/logging.h>
-#include <iostream>
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
 #include <parquet/exception.h>
 #include <parquet/stream_reader.h>
 #include <rapidjson/document.h>
+
+#include <glog/logging.h>
+#include <iostream>
 
 #include "src/primihub/algorithm/missing_val_processing.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
@@ -25,6 +27,7 @@
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
+using arrow::StringArray;
 using arrow::Table;
 
 using namespace rapidjson;
@@ -49,6 +52,7 @@ void MissingProcess::_spiltStr(string str, const string &split,
 
 int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
   try {
+    VLOG(10) << "Convert string '" << str << "' into int64 value.";
     i64_val = stoll(str);
   } catch (std::invalid_argument const &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -65,6 +69,7 @@ int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
 
 int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
   try {
+    VLOG(10) << "Convert string '" << str << "' into double value.";
     d_val = std::stod(str);
   } catch (std::invalid_argument &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -74,6 +79,17 @@ int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
     LOG(ERROR) << "Can't convert string " << str
                << " to double value, value in string out of range.";
     return -2;
+  }
+
+  return 0;
+}
+
+int MissingProcess::_detectArrayType(std::shared_ptr<arrow::Array> array) {
+  auto str_array = static_pointer_cast<StringArray>(array);
+  if (str_array->total_values_length() == -1) {
+    LOG(INFO) << "Convert to StringArray is bad, convert to "
+                 "Int64Array should be better.";
+    return 1;
   }
 
   return 0;
@@ -199,7 +215,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   }
   mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
   mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
-  
+
   return 0;
 }
 
@@ -224,16 +240,12 @@ int MissingProcess::initPartyComm(void) {
 
 int MissingProcess::execute() {
   try {
-    int cols_0,cols_1,cols_2;
-    //std::array<uint64_t, 1> cols_0;
-    //std::array<uint64_t, 1> cols_1;
-    //std::array<uint64_t, 1> cols_2;
-
-    for (uint64_t i = 0; i < 3; i++){
+    int cols_0, cols_1, cols_2;
+    for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-        cols_0=col_and_dtype_.size();
+        cols_0 = col_and_dtype_.size();
         mpc_op_exec_->mNext.asyncSendCopy(cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(cols_0);      
+        mpc_op_exec_->mPrev.asyncSendCopy(cols_0);
       } else {
         if (party_id_ == (i + 1) % 3)
           mpc_op_exec_->mPrev.recv(cols_2);
@@ -241,47 +253,57 @@ int MissingProcess::execute() {
           mpc_op_exec_->mNext.recv(cols_1);
         else
           throw std::runtime_error("Message recv logic error.");
-        }
       }
-    if (cols_0!=cols_1 || cols_0!=cols_2 ||cols_1 !=cols_2 ){
-      LOG_ERROR()<<"The taget data columns of the three parties are inconsistent!";
+    }
+
+    if (cols_0 != cols_1 || cols_0 != cols_2 || cols_1 != cols_2) {
+      LOG_ERROR()
+          << "The taget data columns of the three parties are inconsistent!";
       return -1;
     }
-    //std::vector<int> dtype_vec1, dtype_vec2, dtype_vec3;
 
-    int* arr_dtype0= new int[cols_0];
-    int* arr_dtype1= new int[cols_0];
-    int* arr_dtype2= new int[cols_0];
-    int tmp_index=0;
-    for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end(); itr++) {
-      arr_dtype0[tmp_index++]=itr->second;
+    int *arr_dtype0 = new int[cols_0];
+    int *arr_dtype1 = new int[cols_0];
+    int *arr_dtype2 = new int[cols_0];
+
+    int tmp_index = 0;
+    for (auto itr = col_and_dtype_.begin(); itr != col_and_dtype_.end();
+         itr++) {
+      arr_dtype0[tmp_index++] = itr->second;
     }
+
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-        mpc_op_exec_->mNext.asyncSendCopy(arr_dtype0,cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(arr_dtype0,cols_0);     
+        mpc_op_exec_->mNext.asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mPrev.asyncSendCopy(arr_dtype0, cols_0);
       } else {
         if (party_id_ == (i + 1) % 3)
-          mpc_op_exec_->mPrev.recv(arr_dtype1,cols_0);
+          mpc_op_exec_->mPrev.recv(arr_dtype1, cols_0);
         else if (party_id_ == (i + 2) % 3)
-          mpc_op_exec_->mNext.recv(arr_dtype2,cols_0);
+          mpc_op_exec_->mNext.recv(arr_dtype2, cols_0);
         else
           throw std::runtime_error("Message recv logic error.");
-      }  
+      }
     }
+
     for (uint64_t i = 0; i < cols_0; i++) {
-      if ((arr_dtype0[i] != arr_dtype1[i]) || (arr_dtype0[i] != arr_dtype2[i]) ||
+      if ((arr_dtype0[i] != arr_dtype1[i]) ||
+          (arr_dtype0[i] != arr_dtype2[i]) ||
           (arr_dtype1[i] != arr_dtype2[i])) {
         LOG_ERROR()
             << "The data column types of the three parties are inconsistent!";
         return -1;
       }
     }
+
     delete arr_dtype0;
     delete arr_dtype1;
     delete arr_dtype2;
-    arrow::Result<std::shared_ptr<Table>> res_table;
-    std::shared_ptr<arrow::Array> data_array;
+
+    std::shared_ptr<Table> result_table;
+    std::vector<std::shared_ptr<arrow::Array>> result_array;
+    std::vector<std::shared_ptr<arrow::Field>> schema_array;
+    arrow::MemoryPool *pool = arrow::default_memory_pool();
 
     for (auto iter = col_and_dtype_.begin(); iter != col_and_dtype_.end();
          iter++) {
@@ -295,66 +317,77 @@ int MissingProcess::execute() {
 
       int null_num = 0;
       int abnormal_num = 0;
-      
-      // For each column type of which maybe double or int64, read every row as 
+
+      // For each column type of which maybe double or int64, read every row as
       // a string then try to convert string into int64 value or double value,
       // this value should be a abnormal value when convert failed.
       if (t != local_col_names.end()) {
-        std::vector<uint32_t> abnormal_indexs;
-        std::vector<uint32_t> null_indexs;
-
+        VLOG(10) << "Begin to check column " << iter->first << ":";
+        std::vector<std::vector<uint32_t>> abnormal_index;
         int col_index = std::distance(local_col_names.begin(), t);
+
         if (iter->second == 1) {
           // Type of this column is int64.
-          int chunk_num = table->column(col_index)->chunks().size();
-          for (int k = 0; k < chunk_num; k++) {
-            auto str_array = std::static_pointer_cast<std::string>(
-                table->column(col_index)->chunk(k));
+          VLOG(10) << "Table has " << table->num_columns() << " columns.";
+          int chunk_num = table->column(0)->chunks().size();
+          VLOG(10) << "Column " << col_index << " has " << chunk_num
+                   << " chunk(s).";
 
-            // Detect string that can't convert into int64_t value.
-            int ret = 0, i64_val = 0;
-            for (int64_t j = 0; j < array->length(); j++) {
-              ret = _strToInt64(array->Value(j));
-              if (ret != 0)
-                abnormal_num++;
-              else
-                int_sum += i64_val;
+          abnormal_index.resize(chunk_num);
+
+          for (int k = 0; k < chunk_num; k++) {
+            if (_detectArrayType(table->column(col_index)->chunk(k))) {
+              VLOG(10) << "Use Int64Array to handle value.";
+
+              auto int_array = static_pointer_cast<Int64Array>(
+                  table->column(col_index)->chunk(k));
+
+              for (int j = 0; j < int_array->length(); j ++) {
+                VLOG(10) << "Chunk " << k << ", index " << j << ":";
+                VLOG(10) << "Process " << int_array->Value(j);
+                VLOG(10) << "ok.";
+              }
+            } else {
+              VLOG(10) <<"Use StringArray to handle value.";
+              
+              auto str_array = static_pointer_cast<StringArray>(
+                  table->column(col_index)->chunk(k));
+
+              // Detect string that can't convert into int64_t value.
+              int ret = 0;
+              int64_t i64_val = 0;
+              for (int64_t j = 0; j < str_array->length(); j++) {
+                VLOG(10) << "Chunk " << k << ", index " << j << ":";
+                ret = _strToInt64(str_array->GetString(j), i64_val);
+                if (ret != 0) {
+                  abnormal_num++;
+                  abnormal_index[k].emplace_back(j);
+                  LOG(WARNING)
+                      << "Find abnormal value '" << str_array->GetString(j)
+                      << "' in column " << iter->first << ", chunk " << k
+                      << ", index " << j << ".";
+                } else {
+                  int_sum += i64_val;
+                  VLOG(10) << "ok.";
+                }
+              }
             }
 
             // Get count of position that is empty in this column.
             null_num +=
                 table->column(col_index)->chunk(k)->data()->GetNullCount();
           }
-<<<<<<< HEAD
-
-          int_count = table->num_rows() - null_num - abnormal_num;
         } else if (iter->second == 2) {
-          // Type of this column is double.
-=======
-          double_sum = double_sum / (table->num_rows() - null_num);
-        }
-      }
-      if (itr->second == 1) {
-        si64 sharedInt;
-        LOG_INFO() << "Begin to handle column " << itr->first << ".";
-        LOG_INFO() << "Begin to run MPC sum.";
-        mpc_op_exec_->createShares(int_sum, sharedInt);
-        i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
-        LOG_INFO() << "Finish to run MPC sum.";
-        new_sum = new_sum / 3;
-        if (t != local_col_names.end()) {
-          int tmp_index = std::distance(local_col_names.begin(), t);
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696
           int chunk_num = table->column(tmp_index)->chunks().size();
           for (int k = 0; k < chunk_num; k++) {
-            auto str_array = std::static_pointer_cast<std::string>(
+            auto str_array = std::static_pointer_cast<StringArray>(
                 table->column(tmp_index)->chunk(k));
 
             // Detect string that can't convert into double value.
             double d_val = 0;
             int ret = 0;
             for (int64_t j = 0; j < str_array->length(); j++) {
-              ret = _strToDouble(array->Value(j), d_val);
+              ret = _strToDouble(str_array->GetString(j), d_val);
               if (ret)
                 abnormal_num++;
               else
@@ -368,178 +401,94 @@ int MissingProcess::execute() {
 
           double_count = table->num_rows() - null_num - abnormal_num;
         }
-<<<<<<< HEAD
-        
+
         if (iter->second == 1) {
-          // Calculate sum of this column's sum and value count in three party. 
-          i64Matrix m(2,1);
+          // Calculate sum of this column's sum and value count in three party.
+          i64Matrix m(2, 1);
           m(0, 0) = int_sum;
           m(1, 0) = int_count;
 
           si64Matrix sh_m[3];
-          for (uint8_t i = 0; i < 3; i ++) {
+          for (uint8_t i = 0; i < 3; i++) {
             if (i == party_id_) {
-              sh_m.resize(2, 1);
-              mpc_op_exec_->createShares(m, sh_m);
-=======
-      } else if (itr->second == 2) {
-        sf64<D16> sharedFixedInt;
-        LOG_INFO() << "Begin to handle column " << itr->first << ".";
-        LOG_INFO() << "Begin to run MPC sum.";
-        mpc_op_exec_->createShares(double_sum, sharedFixedInt);
-        double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-        LOG_INFO() << "Finish to run MPC sum.";
-
-        new_sum = new_sum / 3;
-
-        if (t != local_col_names.end()) {
-          int tmp_index = std::distance(local_col_names.begin(), t);
-          std::vector<double> new_col;
-          int chunk_num = table->column(tmp_index)->chunks().size();
-          for (int k = 0; k < chunk_num; k++) {
-            std::vector<double> tmp_new_col;
-
-            if (table->schema()->GetFieldByName(itr->first)->type()->id() ==
-                9) {
-
-              auto csv_array = std::static_pointer_cast<Int64Array>(
-                  table->column(tmp_index)->chunk(k));
-
-              for (int64_t j = 0; j < csv_array->length(); j++) {
-                tmp_new_col.push_back(csv_array->Value(j));
-              }
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696
+              sh_m[i].resize(2, 1);
+              mpc_op_exec_->createShares(m, sh_m[i]);
             } else {
-              sh_m.resize(2, 1);
-              mpc_op_exec_->createShare(sh_m);
+              sh_m[i].resize(2, 1);
+              mpc_op_exec_->createShares(sh_m[i]);
             }
           }
 
           si64Matrix sh_sum(2, 1);
-          for (uint8_t i = 0; i < 3; i ++)
-            sh_sum += sh_m[i];
-          
+          for (uint8_t i = 0; i < 3; i++)
+            sh_sum = sh_sum + sh_m[i];
+
           i64Matrix plain_sum(2, 1);
           plain_sum = mpc_op_exec_->revealAll(sh_sum);
-        
-          // Update value in position that have null or abormal value with 
+
+          // Update value in position that have null or abormal value with
           // average value.
           int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
-          int chunk_num = table->column(tmp_index)->chunks().size();
+          int chunk_num = table->column(col_index)->chunks().size();
+
+          std::vector<std::vector<uint64_t>> new_col_val;
+          new_col_val.resize(chunk_num);
+          for (int k = 0; k < chunk_num; k++) {
+            auto array = std::static_pointer_cast<Int64Array>(
+                table->column(col_index)->chunk(k));
+
+            for (int j = 0; j < array->length(); j++)
+              if (array->IsNull(j))
+                new_col_val[j].emplace_back(col_avg);
+              else
+                new_col_val[j].emplace_back(array->Value(j));
+
+            for (size_t j = 0; j < abnormal_index[k].size(); j++) {
+              auto index = abnormal_index[k][j];
+              new_col_val[k][index] = col_avg;
+            }
+          }
+
+          for (int k = 1; k < chunk_num; k++) {
+            auto chunk_vals = new_col_val[k];
+            new_col_val[0].insert(new_col_val[0].end(), chunk_vals.begin(),
+                                  chunk_vals.end());
+          }
+
+          // Save value part of which is changed and it's schema.
+          schema_array.emplace_back(arrow::field(iter->first, arrow::int64()));
+
+          arrow::Int64Builder builder(pool);
+          for (auto i = 0; i < new_col_val[0].size(); i++)
+            builder.Append(new_col_val[0][i]);
+
+          std::shared_ptr<arrow::Array> array;
+          builder.Finish(&array);
+          result_array.emplace_back(array);
+
+          // Add only for test.
+          auto table_schema = std::make_shared<arrow::Schema>(schema_array);
+          result_table = arrow::Table::Make(table_schema, result_array);
+          std::shared_ptr<DataDriver> driver = DataDirverFactory::getDriver(
+              "CSV", dataset_service_->getNodeletAddr());
+
+          auto cursor = driver->initCursor("/tmp/result.csv");
+          auto dataset =
+              std::make_shared<primihub::Dataset>(result_table, driver);
+          cursor->write(dataset);
+        } else if (iter->second == 2) {
+          // Do nothing now temporarily.
         } else {
-          // Do nothing now temporarily.  
+          // Do not change value in this column, directly save it.
         }
+      } else {
+        // Do not change value in this column, directly save it.
       }
-
-      // if (iter->second == 1) {
-      //   si64 sharedInt;
-      //   mpc_op_exec_->createShares(int_sum, sharedInt);
-      //   i64 new_sum = mpc_op_exec_->revealAll(sharedInt);
-      //   new_sum = new_sum / 3;
-      //   if (t != local_col_names.end()) {
-      //     int tmp_index = std::distance(local_col_names.begin(), t);
-      //     int chunk_num = table->column(tmp_index)->chunks().size();
-      //     std::vector<i64> new_col;
-      //     for (int k = 0; k < chunk_num; k++) {
-      //       auto csv_array = std::static_pointer_cast<Int64Array>(
-      //           table->column(tmp_index)->chunk(k));
-
-      //       std::vector<int> null_index;
-      //       auto tmp_array = table->column(tmp_index)->chunk(k);
-      //       for (int i = 0; i < tmp_array->length(); i++) {
-      //         if (tmp_array->IsNull(i))
-      //           null_index.push_back(i);
-      //       }
-
-      //       std::vector<i64> tmp_new_col;
-      //       for (int64_t i = 0; i < csv_array->length(); i++) {
-      //         tmp_new_col.push_back(csv_array->Value(i));
-      //       }
-
-      //       for (auto itr = null_index.begin(); itr != null_index.end();
-      //            itr++) {
-      //         tmp_new_col[*itr] = new_sum;
-      //       }
-
-      //       new_col.insert(new_col.end(), tmp_new_col.begin(),
-      //                      tmp_new_col.end());
-      //     }
-
-      //     arrow::Int64Builder int64_builder;
-      //     int64_builder.AppendValues(new_col);
-      //     int64_builder.Finish(&data_array);
-
-      //     arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
-
-      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
-      //     res_table = table->SetColumn(
-      //         tmp_index, arrow::field(itr->first, arrow::int64()), ptr_Array);
-      //     table = res_table.ValueUnsafe();
-      //   }
-      // } else if (iter->second == 2) {
-      //   sf64<D16> sharedFixedInt;
-      //   LOG(INFO) << "Begin to handle column " << itr->first << ".";
-      //   LOG(INFO) << "Begin to run MPC sum.";
-      //   mpc_op_exec_->createShares(double_sum, sharedFixedInt);
-      //   double new_sum = mpc_op_exec_->revealAll(sharedFixedInt);
-      //   LOG(INFO) << "Finish to run MPC sum.";
-
-      //   new_sum = new_sum / 3;
-
-      //   if (t != local_col_names.end()) {
-      //     int tmp_index = std::distance(local_col_names.begin(), t);
-      //     std::vector<double> new_col;
-      //     int chunk_num = table->column(tmp_index)->chunks().size();
-      //     for (int k = 0; k < chunk_num; k++) {
-      //       std::vector<double> tmp_new_col;
-
-      //       if (table->schema()->GetFieldByName(itr->first)->type()->id() ==
-      //           9) {
-
-      //         auto csv_array = std::static_pointer_cast<Int64Array>(
-      //             table->column(tmp_index)->chunk(k));
-
-      //         for (int64_t j = 0; j < csv_array->length(); j++) {
-      //           tmp_new_col.push_back(csv_array->Value(j));
-      //         }
-      //       } else {
-      //         auto csv_array = std::static_pointer_cast<DoubleArray>(
-      //             table->column(tmp_index)->chunk(k));
-
-      //         for (int64_t i = 0; i < csv_array->length(); i++) {
-      //           tmp_new_col.push_back(csv_array->Value(i));
-      //         }
-      //       }
-      //       std::vector<int> null_index;
-      //       auto tmp_array = table->column(tmp_index)->chunk(k);
-      //       for (int i = 0; i < tmp_array->length(); i++) {
-      //         if (tmp_array->IsNull(i))
-      //           null_index.push_back(i);
-      //       }
-      //       for (auto itr = null_index.begin(); itr != null_index.end();
-      //            itr++) {
-      //         tmp_new_col[*itr] = new_sum;
-      //       }
-      //       new_col.insert(new_col.end(), tmp_new_col.begin(),
-      //                      tmp_new_col.end());
-      //     }
-
-      //     arrow::DoubleBuilder double_builder;
-      //     double_builder.AppendValues(new_col);
-      //     double_builder.Finish(&data_array);
-
-      //     arrow::ChunkedArray *new_array = new arrow::ChunkedArray(data_array);
-
-      //     auto ptr_Array = std::shared_ptr<arrow::ChunkedArray>(new_array);
-      //     res_table = table->SetColumn(
-      //         tmp_index, arrow::field(itr->first, arrow::float64()), ptr_Array);
-      //     table = res_table.ValueUnsafe();
-      //   }
-      // }
     }
   } catch (std::exception &e) {
     LOG_ERROR() << "In party " << party_id_ << ":\n" << e.what() << ".";
   }
+
   return 0;
 } // namespace primihub
 
@@ -580,20 +529,49 @@ int MissingProcess::saveModel(void) {
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address"); // TODO
-  std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver("CSV", nodeaddr);
-  std::shared_ptr<Cursor> &cursor = driver->read(filename);
-  std::shared_ptr<Dataset> ds = cursor->read();
+  arrow::io::IOContext io_context = arrow::io::default_io_context();
+  arrow::fs::LocalFileSystem local_fs(
+      arrow::fs::LocalFileSystemOptions::Defaults());
+  auto file_stream = local_fs.OpenInputStream(filename);
+  if (!file_stream.ok()) {
+    LOG(ERROR) << "Open file " << filename << " failed.";
+    return -1;
+  }
 
-  table = std::get<std::shared_ptr<Table>>(ds->data);
+  std::shared_ptr<arrow::io::InputStream> input = file_stream.ValueOrDie();
+
+  auto read_options = arrow::csv::ReadOptions::Defaults();
+  auto parse_options = arrow::csv::ParseOptions::Defaults();
+  auto convert_options = arrow::csv::ConvertOptions::Defaults();
+
+  // Force all column's type to string.
+  std::unordered_map<std::string, std::shared_ptr<arrow::DataType>> expect_type;
+  for (auto &pair : col_and_dtype_)
+    expect_type[pair.first] = ::arrow::utf8();
+
+  auto maybe_reader = arrow::csv::TableReader::Make(
+      io_context, input, read_options, parse_options, convert_options);
+  if (!maybe_reader.ok()) {
+    LOG(ERROR) << "Init csv reader failed.";
+    return -2;
+  }
+
+  std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
+  auto maybe_table = reader->Read();
+  if (!maybe_table.ok()) {
+    LOG(ERROR) << "Read file " << filename << "'s content failed.";
+    return -3;
+  }
+
+  table = *maybe_table;
+
   bool errors = false;
-  std::vector<std::string> col_names = table->ColumnNames();
-
   int num_col = table->num_columns();
+  std::vector<std::string> col_names = table->ColumnNames();
 
   LOG_INFO() << "Loaded " << table->num_rows() << " rows in "
              << table->num_columns() << " columns." << std::endl;
+
   local_col_names = table->ColumnNames();
 
   // 'array' include values in a column of csv file.
@@ -604,14 +582,9 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
         table->column(num_col - 1)->chunk(k));
     array_len += array->length();
   }
-<<<<<<< HEAD
 
   LOG(INFO) << "Label column '" << local_col_names[num_col - 1] << "' has "
             << array_len << " values.";
-=======
-  LOG_INFO() << "Label column '" << local_col_names[num_col - 1] << "' has "
-             << array_len << " values.";
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696
 
   // Force the same value count in every column.
   for (int i = 0; i < num_col; i++) {
@@ -640,9 +613,7 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
     return array_len;
   }
 }
-<<<<<<< HEAD
-} // namespace primihub
-=======
+
 int MissingProcess::set_task_info(std::string platform_type, std::string job_id,
                                   std::string task_id) {
   platform_type_ = platform_type;
@@ -651,4 +622,3 @@ int MissingProcess::set_task_info(std::string platform_type, std::string job_id,
   return 0;
 }
 } // namespace primihub
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696

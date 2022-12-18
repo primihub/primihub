@@ -41,12 +41,10 @@ public:
   inline std::string task_id() { return task_id_; }
 
 private:
-<<<<<<< HEAD
   inline int _strToInt64(const std::string &str, int64_t &i64_val);
   inline int _strToDouble(const std::string &str, double &d_val);
+  inline int _detectArrayType(std::shared_ptr<arrow::Array> array);
   
-=======
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696
   int _LoadDatasetFromCSV(std::string &filename);
   void _spiltStr(string str, const string &split, std::vector<string> &strlist);
 
@@ -62,17 +60,11 @@ private:
   std::vector<std::string> local_col_names;
 
   std::string data_file_path_;
-  std::string new_dataset_id_;
   std::shared_ptr<arrow::Table> table;
 
   std::string node_id_;
-<<<<<<< HEAD
   uint32_t party_id_;
-};
 
-} // namespace primihub
-#endif
-=======
   std::string new_dataset_id_;
   std::string platform_type_ = "";
   std::string job_id_ = "";
@@ -81,4 +73,3 @@ private:
 
 } // namespace primihub
 #endif
->>>>>>> 582482c6020cd7356129eb92a4c152d3ec0a3696
