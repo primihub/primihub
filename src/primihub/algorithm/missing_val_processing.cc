@@ -56,7 +56,7 @@ int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
     i64_val = stoll(str);
   } catch (std::invalid_argument const &ex) {
     LOG(ERROR) << "Can't convert string " << str
-               << "to int64 value, invalid numberic string.";
+               << " to int64 value, invalid numberic string.";
     return -1;
   } catch (std::out_of_range const &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -73,7 +73,7 @@ int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
     d_val = std::stod(str);
   } catch (std::invalid_argument &ex) {
     LOG(ERROR) << "Can't convert string " << str
-               << "to double value, invalid numberic string.";
+               << " to double value, invalid numberic string.";
     return -1;
   } catch (std::out_of_range &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -84,15 +84,63 @@ int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
   return 0;
 }
 
-int MissingProcess::_detectArrayType(std::shared_ptr<arrow::Array> array) {
-  auto str_array = static_pointer_cast<StringArray>(array);
-  if (str_array->total_values_length() == -1) {
-    LOG(INFO) << "Convert to StringArray is bad, convert to "
-                 "Int64Array should be better.";
+int MissingProcess::_avoidStringArray(std::shared_ptr<arrow::Array> array) {
+  auto result = array->View(::arrow::utf8());
+  if (!result.ok()) {
+    LOG(WARNING) << "StringArray is bad, " << result.status() << ".";
     return 1;
   }
 
   return 0;
+}
+
+void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
+                                     int col_index, const std::string &replace,
+                                     NestedVectorI32 &abnormal_index,
+                                     std::shared_ptr<arrow::Array> &new_array) {
+  int chunk_num = table->column(col_index)->chunks().size();
+
+  std::vector<std::vector<std::string>> new_col_val;
+  new_col_val.resize(chunk_num);
+
+  for (int k = 0; k < chunk_num; k++) {
+    auto array = std::static_pointer_cast<StringArray>(
+        table->column(col_index)->chunk(k));
+
+    // Copy value in array into vector, the null value will be replaced
+    // by average value.
+    for (int j = 0; j < array->length(); j++)
+      if (array->IsNull(j))
+        new_col_val[k].emplace_back(replace);
+      else
+        new_col_val[k].emplace_back(array->GetString(j));
+
+    // Replace abnormal value with average value.
+    for (size_t j = 0; j < abnormal_index[k].size(); j++) {
+      auto index = abnormal_index[k][j];
+      new_col_val[k][index] = replace;
+    }
+  }
+
+  // Combine all chunk's value.
+  for (int k = 1; k < chunk_num; k++) {
+    auto chunk_vals = new_col_val[k];
+    new_col_val[0].insert(new_col_val[0].end(), chunk_vals.begin(),
+                          chunk_vals.end());
+  }
+
+  {
+    VLOG(10) << "After rebuild, value in this column is:";
+    for (auto &val : new_col_val[0])
+      VLOG(10) << val;
+  }
+
+  arrow::MemoryPool *pool = arrow::default_memory_pool();
+  arrow::StringBuilder builder(pool);
+  for (auto i = 0; i < new_col_val[0].size(); i++)
+    builder.Append(new_col_val[0][i]);
+
+  builder.Finish(&new_array);
 }
 
 MissingProcess::MissingProcess(PartyConfig &config,
@@ -309,6 +357,7 @@ int MissingProcess::execute() {
          iter++) {
       auto t = std::find(local_col_names.begin(), local_col_names.end(),
                          iter->first);
+
       double double_sum = 0;
       uint32_t double_count = 0;
 
@@ -327,6 +376,11 @@ int MissingProcess::execute() {
         int col_index = std::distance(local_col_names.begin(), t);
 
         if (iter->second == 1) {
+          null_num = 0;
+          int_count = 0;
+          int_sum = 0;
+          abnormal_num = 0;
+
           // Type of this column is int64.
           VLOG(10) << "Table has " << table->num_columns() << " columns.";
           int chunk_num = table->column(0)->chunks().size();
@@ -336,48 +390,44 @@ int MissingProcess::execute() {
           abnormal_index.resize(chunk_num);
 
           for (int k = 0; k < chunk_num; k++) {
-            if (_detectArrayType(table->column(col_index)->chunk(k))) {
-              VLOG(10) << "Use Int64Array to handle value.";
+            auto str_array = static_pointer_cast<StringArray>(
+                table->column(col_index)->chunk(k));
 
-              auto int_array = static_pointer_cast<Int64Array>(
-                  table->column(col_index)->chunk(k));
-
-              for (int j = 0; j < int_array->length(); j ++) {
-                VLOG(10) << "Chunk " << k << ", index " << j << ":";
-                VLOG(10) << "Process " << int_array->Value(j);
-                VLOG(10) << "ok.";
+            // Detect string that can't convert into int64_t value.
+            int ret = 0;
+            int64_t i64_val = 0;
+            for (int64_t j = 0; j < str_array->length(); j++) {
+              VLOG(10) << "Chunk " << k << ", index " << j << ":";
+              if (str_array->IsNull(j)) {
+                VLOG(10) << "Null.";
+                continue;
               }
-            } else {
-              VLOG(10) <<"Use StringArray to handle value.";
-              
-              auto str_array = static_pointer_cast<StringArray>(
-                  table->column(col_index)->chunk(k));
 
-              // Detect string that can't convert into int64_t value.
-              int ret = 0;
-              int64_t i64_val = 0;
-              for (int64_t j = 0; j < str_array->length(); j++) {
-                VLOG(10) << "Chunk " << k << ", index " << j << ":";
-                ret = _strToInt64(str_array->GetString(j), i64_val);
-                if (ret != 0) {
-                  abnormal_num++;
-                  abnormal_index[k].emplace_back(j);
-                  LOG(WARNING)
-                      << "Find abnormal value '" << str_array->GetString(j)
-                      << "' in column " << iter->first << ", chunk " << k
-                      << ", index " << j << ".";
-                } else {
-                  int_sum += i64_val;
-                  VLOG(10) << "ok.";
-                }
+              ret = _strToInt64(str_array->GetString(j), i64_val);
+              if (ret != 0) {
+                abnormal_num++;
+                abnormal_index[k].emplace_back(j);
+                LOG(WARNING)
+                    << "Find abnormal value '" << str_array->GetString(j)
+                    << "' in column " << iter->first << ", chunk " << k
+                    << ", index " << j << ".";
+              } else {
+                int_sum += i64_val;
+                VLOG(10) << "ok.";
               }
             }
 
-            // Get count of position that is empty in this column.
             null_num +=
                 table->column(col_index)->chunk(k)->data()->GetNullCount();
           }
+
+          int_count = table->num_rows() - null_num - abnormal_num;
         } else if (iter->second == 2) {
+          null_num = 0;
+          double_count = 0;
+          double_sum = 0;
+          abnormal_num = 0;
+
           int chunk_num = table->column(tmp_index)->chunks().size();
           for (int k = 0; k < chunk_num; k++) {
             auto str_array = std::static_pointer_cast<StringArray>(
@@ -387,11 +437,24 @@ int MissingProcess::execute() {
             double d_val = 0;
             int ret = 0;
             for (int64_t j = 0; j < str_array->length(); j++) {
+              VLOG(10) << "Chunk " << k << ", index " << j << ":";
+              if (str_array->IsNull(j)) {
+                VLOG(10) << "Null.";
+                continue;
+              }
+
               ret = _strToDouble(str_array->GetString(j), d_val);
-              if (ret)
+              if (ret) {
                 abnormal_num++;
-              else
+                abnormal_index[k].emplace_back(j);
+                LOG(WARNING)
+                    << "Find abnormal value '" << str_array->GetString(j)
+                    << "' in column " << iter->first << ", chunk " << k
+                    << ", index " << j << ".";
+
+              } else {
                 double_sum += d_val;
+              }
             }
 
             // Get count of position that is empty in this column.
@@ -403,10 +466,11 @@ int MissingProcess::execute() {
         }
 
         if (iter->second == 1) {
-          // Calculate sum of this column's sum and value count in three party.
           i64Matrix m(2, 1);
           m(0, 0) = int_sum;
           m(1, 0) = int_count;
+
+          VLOG(10) << "Local sum is " << m(0, 0) << ".";
 
           si64Matrix sh_m[3];
           for (uint8_t i = 0; i < 3; i++) {
@@ -420,7 +484,8 @@ int MissingProcess::execute() {
           }
 
           si64Matrix sh_sum(2, 1);
-          for (uint8_t i = 0; i < 3; i++)
+          sh_sum = sh_m[0];
+          for (uint8_t i = 1; i < 3; i++)
             sh_sum = sh_sum + sh_m[i];
 
           i64Matrix plain_sum(2, 1);
@@ -428,43 +493,16 @@ int MissingProcess::execute() {
 
           // Update value in position that have null or abormal value with
           // average value.
+          VLOG(10) << "Sum of all is " << plain_sum(0, 0)
+                   << ", element count is " << plain_sum(1, 0) << ".";
+
           int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
-          int chunk_num = table->column(col_index)->chunks().size();
 
-          std::vector<std::vector<uint64_t>> new_col_val;
-          new_col_val.resize(chunk_num);
-          for (int k = 0; k < chunk_num; k++) {
-            auto array = std::static_pointer_cast<Int64Array>(
-                table->column(col_index)->chunk(k));
+          std::shared_ptr<arrow::Array> new_array;
+          _buildNewColumn(table, col_index, std::to_string(col_avg),
+                          abnormal_index, new_array);
 
-            for (int j = 0; j < array->length(); j++)
-              if (array->IsNull(j))
-                new_col_val[j].emplace_back(col_avg);
-              else
-                new_col_val[j].emplace_back(array->Value(j));
-
-            for (size_t j = 0; j < abnormal_index[k].size(); j++) {
-              auto index = abnormal_index[k][j];
-              new_col_val[k][index] = col_avg;
-            }
-          }
-
-          for (int k = 1; k < chunk_num; k++) {
-            auto chunk_vals = new_col_val[k];
-            new_col_val[0].insert(new_col_val[0].end(), chunk_vals.begin(),
-                                  chunk_vals.end());
-          }
-
-          // Save value part of which is changed and it's schema.
-          schema_array.emplace_back(arrow::field(iter->first, arrow::int64()));
-
-          arrow::Int64Builder builder(pool);
-          for (auto i = 0; i < new_col_val[0].size(); i++)
-            builder.Append(new_col_val[0][i]);
-
-          std::shared_ptr<arrow::Array> array;
-          builder.Finish(&array);
-          result_array.emplace_back(array);
+          result_array.emplace_back(new_array);
 
           // Add only for test.
           auto table_schema = std::make_shared<arrow::Schema>(schema_array);
@@ -477,7 +515,7 @@ int MissingProcess::execute() {
               std::make_shared<primihub::Dataset>(result_table, driver);
           cursor->write(dataset);
         } else if (iter->second == 2) {
-          // Do nothing now temporarily.
+          eMatrix<double> m(2, 1);
         } else {
           // Do not change value in this column, directly save it.
         }
@@ -544,10 +582,15 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   auto parse_options = arrow::csv::ParseOptions::Defaults();
   auto convert_options = arrow::csv::ConvertOptions::Defaults();
 
+  parse_options.ignore_empty_lines = false;
+
   // Force all column's type to string.
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>> expect_type;
   for (auto &pair : col_and_dtype_)
     expect_type[pair.first] = ::arrow::utf8();
+
+  convert_options.column_types = expect_type;
+  convert_options.strings_can_be_null = true;
 
   auto maybe_reader = arrow::csv::TableReader::Make(
       io_context, input, read_options, parse_options, convert_options);

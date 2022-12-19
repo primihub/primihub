@@ -41,10 +41,16 @@ public:
   inline std::string task_id() { return task_id_; }
 
 private:
+  using NestedVectorI32 = std::vector<std::vector<uint32_t>>;
+
   inline int _strToInt64(const std::string &str, int64_t &i64_val);
   inline int _strToDouble(const std::string &str, double &d_val);
-  inline int _detectArrayType(std::shared_ptr<arrow::Array> array);
-  
+  inline int _avoidStringArray(std::shared_ptr<arrow::Array> array);
+  inline void _buildNewColumn(std::shared_ptr<arrow::Table> table,
+                              int col_index, const std::string &replace,
+                              NestedVectorI32 &abnormal_index,
+                              std::shared_ptr<arrow::Array> &new_array);
+
   int _LoadDatasetFromCSV(std::string &filename);
   void _spiltStr(string str, const string &split, std::vector<string> &strlist);
 
