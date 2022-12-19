@@ -62,7 +62,6 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
-# ray.init(num_gpus=1)
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -194,7 +193,6 @@ def opt_paillier_decrypt_crt(pub, prv, cipher_text):
     return decrypt_text_num
 
 
-@ray.remote(num_gpus=1)
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     # less 'limit' will create more parallels
     # nums = items * limit
@@ -321,7 +319,7 @@ class PallierSum(_AggregateOnKeyBase):
         )
 
 
-@ray.remote  #(num_gpus=1)
+@ray.remote
 class PaillierActor(object):
 
     def __init__(self, prv, pub) -> None:
@@ -338,7 +336,7 @@ class PaillierActor(object):
         return opt_paillier_add(self.pub, enc1, enc2)
 
 
-#@ray.remote(num_gpus=0.05)
+@ray.remote
 class ActorAdd(object):
 
     def __init__(self, pub):
@@ -383,7 +381,7 @@ class ActorAdd(object):
 #     return final_result
 
 
-@ray.remote  #(num_gpus=1)
+@ray.remote
 class PallierAdd(object):
 
     def __init__(self, pub, nums, add_actors, encrypted):
@@ -426,7 +424,7 @@ class PallierAdd(object):
         return final_result
 
 
-@ray.remote  #(num_gpus=1)
+@ray.remote
 class MapGH(object):
 
     def __init__(self, item, col, cut_points, g, h, pub, min_child_sample,
@@ -516,7 +514,7 @@ class MapGH(object):
         return G_lefts, G_rights, H_lefts, H_rights, vars, cuts
 
 
-@ray.remote  #(num_gpus=1)
+@ray.remote
 class ReduceGH(object):
 
     def __init__(self, maps) -> None:
@@ -552,7 +550,7 @@ class ReduceGH(object):
         return GH
 
 
-@ray.remote  #(num_gpus=1)
+@ray.remote
 class GroupPool:
 
     def __init__(self, add_actors, pub) -> None:
@@ -1736,7 +1734,7 @@ class RedisProxy:
     def __init__(self,
                  host,
                  port,
-                 db=10,
+                 db=0,
                  password='primihub',
                  topic='hetero_xgb') -> None:
         # self.host = host
@@ -2063,7 +2061,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     X_guest = data
     # guest_log = open('/app/guest_log', 'w+')
-    add_actor_num = 20  #50
+    add_actor_num = 50
     # if is_encrypted:
     xgb_guest = XGB_GUEST_EN(
         n_estimators=num_tree,
