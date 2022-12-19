@@ -428,10 +428,12 @@ int MissingProcess::execute() {
           double_sum = 0;
           abnormal_num = 0;
 
-          int chunk_num = table->column(tmp_index)->chunks().size();
+          int chunk_num = table->column(col_index)->chunks().size();
+          abnormal_index.resize(chunk_num);
+
           for (int k = 0; k < chunk_num; k++) {
             auto str_array = std::static_pointer_cast<StringArray>(
-                table->column(tmp_index)->chunk(k));
+                table->column(col_index)->chunk(k));
 
             // Detect string that can't convert into double value.
             double d_val = 0;
@@ -459,7 +461,7 @@ int MissingProcess::execute() {
 
             // Get count of position that is empty in this column.
             null_num +=
-                table->column(tmp_index)->chunk(k)->data()->GetNullCount();
+                table->column(col_index)->chunk(k)->data()->GetNullCount();
           }
 
           double_count = table->num_rows() - null_num - abnormal_num;
@@ -516,6 +518,53 @@ int MissingProcess::execute() {
           cursor->write(dataset);
         } else if (iter->second == 2) {
           eMatrix<double> m(2, 1);
+          m(0, 0) = double_sum;
+          m(1, 0) = double_count; 
+
+          VLOG(10) << "Local sum is " << m(0, 0) << ".";
+
+          sf64Matrix<D16> sh_m[3];
+          for (uint8_t i = 0; i < 3; i++) {
+            if (i == party_id_) {
+              sh_m[i].resize(2, 1);
+              mpc_op_exec_->createShares(m, sh_m[i]);
+            } else {
+              sh_m[i].resize(2, 1);
+              mpc_op_exec_->createShares(sh_m[i]);
+            }
+          }
+          
+          sf64Matrix<D16> sh_sum;
+          sh_sum = sh_m[0];
+          for (int j = 1; j < 3; j ++)
+            sh_sum = sh_sum + sh_m[j];
+
+          eMatrix<double> plain_sum(2, 0);
+          plain_sum = mpc_op_exec_->revealAll(sh_sum);
+
+          // Update value in position that have null or abormal value with
+          // average value.
+          VLOG(10) << "Sum of all is " << plain_sum(0, 0)
+                   << ", element count is " << plain_sum(1, 0) << ".";
+          
+          double col_avg = plain_sum(0, 0) / plain_sum(1, 0);
+
+          std::shared_ptr<arrow::Array> new_array;
+          _buildNewColumn(table, col_index, std::to_string(col_avg),
+                          abnormal_index, new_array);
+
+          result_array.emplace_back(new_array);
+
+          // Add only for test.
+          auto table_schema = std::make_shared<arrow::Schema>(schema_array);
+          result_table = arrow::Table::Make(table_schema, result_array);
+          std::shared_ptr<DataDriver> driver = DataDirverFactory::getDriver(
+              "CSV", dataset_service_->getNodeletAddr());
+
+          auto cursor = driver->initCursor("/tmp/result.csv");
+          auto dataset =
+              std::make_shared<primihub::Dataset>(result_table, driver);
+          cursor->write(dataset);
         } else {
           // Do not change value in this column, directly save it.
         }
