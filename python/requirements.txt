@@ -7,8 +7,8 @@ pyzmq
 bitarray
 mmh3
 
-grpcio==1.47.0
-grpcio-tools==1.47.0
+grpcio==1.43.0
+grpcio-tools==1.43.0
 protobuf==3.20.0
 
 pydantic
