@@ -15,6 +15,7 @@
  */
 
 #include "src/primihub/cli/cli.h"
+#include "src/primihub/util/util.h"
 #include <fstream>  // std::ifstream
 #include <string>
 #include <chrono>
@@ -70,16 +71,34 @@ void fill_param(const std::vector<std::string>& params,
         v.push_back(substr);
 
         ParamValue pv;
+        bool is_array{false};
+        if (v[2] == std::string("1")) {
+            pv.set_is_array(true);
+            is_array = true;
+        } else {
+            pv.set_is_array(false);
+        }
+
         if (v[1] == "INT32") {
             pv.set_var_type(VarType::INT32);
-            pv.set_value_int32(std::stoi(v[3]));
+            if (is_array) {
+                auto array_value = pv.mutable_value_int32_array();
+                std::vector<std::string> result;
+                str_split(v[3], &result, ';');
+                for (const auto& r : result) {
+                    array_value->add_value_int32_array(std::stoi(r));
+                }
+            } else {
+                pv.set_value_int32(std::stoi(v[3]));
+            }
+
         } else if (v[1] == "STRING") {
             pv.set_var_type(VarType::STRING);
             pv.set_value_string(v[3]);
         } else if (v[1] == "BYTE") {
             // TODO
         }
-        pv.set_is_array(v[2] == "1" ? true : false);
+
         (*param_map)[v[0]] = pv;
     }
 }
