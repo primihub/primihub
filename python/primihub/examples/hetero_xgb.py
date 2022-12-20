@@ -233,7 +233,7 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
             encrypted: bool,
             pub_key: None,
             add_actors,
-            limit=500) -> Optional[U]:
+            limit=50) -> Optional[U]:
         pd = lazy_import_pandas()
         if on is not None and not isinstance(on, str):
             raise ValueError(
