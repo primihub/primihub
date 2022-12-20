@@ -931,38 +931,40 @@ class XGB_GUEST_EN:
             # for tmp_task in tasks:
             #     print(tmp_task.get())
 
+        if self.encrypted:
+            # groupsums = [
+            #     GroupSum.remote(tmp_group, self.pub, paillier_add_actors)
+            #     for tmp_group in groups
+            # ]
+
+            # [tmp_groupsum.groupsum.remote() for tmp_groupsum in groupsums]
+
+            # res = ray.get(
+            #     [tmp_groupsum.getsum.remote() for tmp_groupsum in groupsums])
+
+            res = list(
+                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+        else:
+            res = [
+                tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
+            ]
+
+        for key, tmp_task in zip(cols, res):
+            total_left_ghs[key] = tmp_task.get()
+
             # if self.encrypted:
-            #     groupsums = [
-            #         GroupSum.remote(tmp_group, self.pub, paillier_add_actors)
-            #         for tmp_group in groups
-            #     ]
-
-            #     [tmp_groupsum.groupsum.remote() for tmp_groupsum in groupsums]
-
-            #     res = ray.get(
-            #         [tmp_groupsum.getsum.remote() for tmp_groupsum in groupsums])
-
-            #     # res = list(grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+            #     tmp_sum = tmp_group._aggregate_on(
+            #         PallierSum,
+            #         on=['g', 'h'],
+            #         ignore_nulls=True,
+            #         pub_key=self.pub,
+            #         add_actors=self.paillier_add_actors)
             # else:
-            #     res = [
-            #         tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
-            #     ]
+            #     tmp_sum = tmp_group.sum(on=['g', 'h'])
+            # total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
-            # for key, tmp_task in zip(cols, tasks):
-            #     total_left_ghs[key] = tmp_task.get()
-
-            if self.encrypted:
-                tmp_sum = tmp_group._aggregate_on(
-                    PallierSum,
-                    on=['g', 'h'],
-                    ignore_nulls=True,
-                    pub_key=self.pub,
-                    add_actors=self.paillier_add_actors)
-            else:
-                tmp_sum = tmp_group.sum(on=['g', 'h'])
             # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
             #     by=tmp_col, ascending=True)
-            total_left_ghs[tmp_col] = tmp_sum.to_pandas()
 
         print("current total_left_ghs: ", total_left_ghs)
 
@@ -2026,7 +2028,12 @@ def xgb_guest_logic(cry_pri="paillier"):
     add_actor_num = 20
     paillier_add_actors = ActorPool(
         [ActorAdd.remote(xgb_guest.pub) for _ in range(add_actor_num)])
+
+    grouppools = ActorPool([
+        GroupPool.remote(paillier_add_actors, xgb_guest.pub) for _ in range(10)
+    ])
     xgb_guest.paillier_add_actors = paillier_add_actors
+    xgb_guest.grouppools = grouppools
 
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
