@@ -906,7 +906,7 @@ class XGB_GUEST_EN:
         groups = []
         for tmp_col in cols:
             tmp_group = buckets_x_guest.groupby(tmp_col)
-            #     groups.append(tmp_group)
+            groups.append(tmp_group)
 
             #     # sum_que.put(tmp_sum.to_pandas())
 
