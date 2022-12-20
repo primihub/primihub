@@ -94,9 +94,20 @@ int MissingProcess::_avoidStringArray(std::shared_ptr<arrow::Array> array) {
   return 0;
 }
 
+void MissingProcess::_buildNewColumn(std::vector<std::string> &col_val,
+                                     std::shared_ptr<arrow::Array> &array) {
+  arrow::MemoryPool *pool = arrow::default_memory_pool();
+  arrow::StringBuilder builder(pool);
+  for (auto i = 0; i < col_val.size(); i++)
+    builder.Append(col_val[i]);
+
+  builder.Finish(&array);
+}
+
 void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
                                      int col_index, const std::string &replace,
                                      NestedVectorI32 &abnormal_index,
+                                     bool need_double,
                                      std::shared_ptr<arrow::Array> &new_array) {
   int chunk_num = table->column(col_index)->chunks().size();
 
@@ -135,12 +146,19 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
       VLOG(10) << val;
   }
 
-  arrow::MemoryPool *pool = arrow::default_memory_pool();
-  arrow::StringBuilder builder(pool);
-  for (auto i = 0; i < new_col_val[0].size(); i++)
-    builder.Append(new_col_val[0][i]);
-
-  builder.Finish(&new_array);
+  if (need_double) {
+    arrow::MemoryPool *pool = arrow::default_memory_pool();
+    arrow::DoubleBuilder builder(pool);
+    for (auto i = 0; i < new_col_val[0].size(); i++)
+      builder.Append(std::stod(new_col_val[0][i]));
+    builder.Finish(&new_array);
+  } else {
+    arrow::MemoryPool *pool = arrow::default_memory_pool();
+    arrow::Int64Builder builder(pool);
+    for (auto i = 0; i < new_col_val[0].size(); i++)
+      builder.Append(std::stoll(new_col_val[0][i]));
+    builder.Finish(&new_array);
+  }
 }
 
 MissingProcess::MissingProcess(PartyConfig &config,
@@ -348,11 +366,6 @@ int MissingProcess::execute() {
     delete arr_dtype1;
     delete arr_dtype2;
 
-    std::shared_ptr<Table> result_table;
-    std::vector<std::shared_ptr<arrow::Array>> result_array;
-    std::vector<std::shared_ptr<arrow::Field>> schema_array;
-    arrow::MemoryPool *pool = arrow::default_memory_pool();
-
     for (auto iter = col_and_dtype_.begin(); iter != col_and_dtype_.end();
          iter++) {
       auto t = std::find(local_col_names.begin(), local_col_names.end(),
@@ -502,24 +515,27 @@ int MissingProcess::execute() {
 
           std::shared_ptr<arrow::Array> new_array;
           _buildNewColumn(table, col_index, std::to_string(col_avg),
-                          abnormal_index, new_array);
+                          abnormal_index, false, new_array);
 
-          result_array.emplace_back(new_array);
+          std::shared_ptr<arrow::ChunkedArray> chunk_array =
+              std::make_shared<arrow::ChunkedArray>(new_array);
+          std::shared_ptr<arrow::Field> field =
+              std::make_shared<arrow::Field>(iter->first, arrow::int64());
 
-          // Add only for test.
-          auto table_schema = std::make_shared<arrow::Schema>(schema_array);
-          result_table = arrow::Table::Make(table_schema, result_array);
-          std::shared_ptr<DataDriver> driver = DataDirverFactory::getDriver(
-              "CSV", dataset_service_->getNodeletAddr());
+          auto result = table->SetColumn(col_index, field, chunk_array);
+          if (!result.ok()) {
+            std::stringstream ss;
+            ss << "Replace content of column " << iter->first << " failed, "
+               << result.status();
+            LOG(ERROR) << ss.str();
+            throw std::runtime_error(ss.str());
+          }
 
-          auto cursor = driver->initCursor("/tmp/result.csv");
-          auto dataset =
-              std::make_shared<primihub::Dataset>(result_table, driver);
-          cursor->write(dataset);
+          table = result.ValueOrDie();
         } else if (iter->second == 2) {
           eMatrix<double> m(2, 1);
           m(0, 0) = double_sum;
-          m(1, 0) = double_count; 
+          m(1, 0) = double_count;
 
           VLOG(10) << "Local sum is " << m(0, 0) << ".";
 
@@ -533,10 +549,10 @@ int MissingProcess::execute() {
               mpc_op_exec_->createShares(sh_m[i]);
             }
           }
-          
+
           sf64Matrix<D16> sh_sum;
           sh_sum = sh_m[0];
-          for (int j = 1; j < 3; j ++)
+          for (int j = 1; j < 3; j++)
             sh_sum = sh_sum + sh_m[j];
 
           eMatrix<double> plain_sum(2, 0);
@@ -546,38 +562,40 @@ int MissingProcess::execute() {
           // average value.
           VLOG(10) << "Sum of all is " << plain_sum(0, 0)
                    << ", element count is " << plain_sum(1, 0) << ".";
-          
+
           double col_avg = plain_sum(0, 0) / plain_sum(1, 0);
 
           std::shared_ptr<arrow::Array> new_array;
           _buildNewColumn(table, col_index, std::to_string(col_avg),
-                          abnormal_index, new_array);
+                          abnormal_index, true, new_array);
 
-          result_array.emplace_back(new_array);
+          std::shared_ptr<arrow::ChunkedArray> chunk_array =
+              std::make_shared<arrow::ChunkedArray>(new_array);
+          std::shared_ptr<arrow::Field> field =
+              std::make_shared<arrow::Field>(iter->first, arrow::float64());
 
-          // Add only for test.
-          auto table_schema = std::make_shared<arrow::Schema>(schema_array);
-          result_table = arrow::Table::Make(table_schema, result_array);
-          std::shared_ptr<DataDriver> driver = DataDirverFactory::getDriver(
-              "CSV", dataset_service_->getNodeletAddr());
+          auto result = table->SetColumn(col_index, field, chunk_array);
+          if (!result.ok()) {
+            std::stringstream ss;
+            ss << "Replace content of column " << iter->first << " failed, "
+               << result.status();
+            LOG(ERROR) << ss.str();
+            throw std::runtime_error(ss.str());
+          }
 
-          auto cursor = driver->initCursor("/tmp/result.csv");
-          auto dataset =
-              std::make_shared<primihub::Dataset>(result_table, driver);
-          cursor->write(dataset);
-        } else {
-          // Do not change value in this column, directly save it.
+          table = result.ValueOrDie();
         }
       } else {
-        // Do not change value in this column, directly save it.
+        LOG(ERROR) << "Can't find value of column " << iter->first << ".";
       }
     }
   } catch (std::exception &e) {
     LOG_ERROR() << "In party " << party_id_ << ":\n" << e.what() << ".";
+    return -1;
   }
 
   return 0;
-} // namespace primihub
+}
 
 int MissingProcess::finishPartyComm(void) {
   si64 tmp_share0, tmp_share1, tmp_share2;
@@ -592,7 +610,7 @@ int MissingProcess::finishPartyComm(void) {
 
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
-  std::string delimiter = "_";
+  std::string delimiter = ".";
   int pos = data_file_path_.rfind(delimiter);
 
   std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
@@ -601,6 +619,9 @@ int MissingProcess::saveModel(void) {
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 
   auto cursor = driver->initCursor(new_path);
+
+  VLOG(10) << "A brief view of new table:" << table->ToString() << ".";
+
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
   if (ret != 0) {
@@ -635,8 +656,17 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
 
   // Force all column's type to string.
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>> expect_type;
-  for (auto &pair : col_and_dtype_)
-    expect_type[pair.first] = ::arrow::utf8();
+
+  std::vector<std::string> target_column;
+  for (auto &pair : col_and_dtype_) {
+    if (pair.second == 1 || pair.second == 2)
+      target_column.emplace_back(pair.first);
+  }
+
+  for (auto &col : target_column) {
+    expect_type[col] = ::arrow::utf8();
+    VLOG(10) << "Force type of column " << col << " be string.";
+  }
 
   convert_options.column_types = expect_type;
   convert_options.strings_can_be_null = true;
@@ -661,10 +691,11 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   int num_col = table->num_columns();
   std::vector<std::string> col_names = table->ColumnNames();
 
-  LOG_INFO() << "Loaded " << table->num_rows() << " rows in "
-             << table->num_columns() << " columns." << std::endl;
-
   local_col_names = table->ColumnNames();
+  VLOG(10) << "Local column is: ";
+  for (auto &col_name : local_col_names)
+    VLOG(10) << col_name;
+    
 
   // 'array' include values in a column of csv file.
   int chunk_num = table->column(num_col - 1)->chunks().size();
@@ -674,9 +705,6 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
         table->column(num_col - 1)->chunk(k));
     array_len += array->length();
   }
-
-  LOG(INFO) << "Label column '" << local_col_names[num_col - 1] << "' has "
-            << array_len << " values.";
 
   // Force the same value count in every column.
   for (int i = 0; i < num_col; i++) {

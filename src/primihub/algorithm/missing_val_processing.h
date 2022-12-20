@@ -46,9 +46,11 @@ private:
   inline int _strToInt64(const std::string &str, int64_t &i64_val);
   inline int _strToDouble(const std::string &str, double &d_val);
   inline int _avoidStringArray(std::shared_ptr<arrow::Array> array);
+  inline void _buildNewColumn(std::vector<std::string> &col_val,
+                              std::shared_ptr<arrow::Array> &array);
   inline void _buildNewColumn(std::shared_ptr<arrow::Table> table,
                               int col_index, const std::string &replace,
-                              NestedVectorI32 &abnormal_index,
+                              NestedVectorI32 &abnormal_index, bool need_double,
                               std::shared_ptr<arrow::Array> &new_array);
 
   int _LoadDatasetFromCSV(std::string &filename);

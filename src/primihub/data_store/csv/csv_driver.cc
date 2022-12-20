@@ -104,7 +104,8 @@ int CSVCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
       *(csv_table), options, mem_pool,
       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
   if (!status.ok()) {
-    LOG(ERROR) << "Write content to csv file failed.";
+    LOG(ERROR) << "Write content to csv file failed, " 
+               << status.message() << ".";
     return -2;
   }
   return 0;
@@ -139,6 +140,7 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
 
   auto stream = result.ValueOrDie();
   auto options = arrow::csv::WriteOptions::Defaults();
+
   auto csv_table = table.get();
   auto mem_pool = arrow::default_memory_pool();
   arrow::Status status = arrow::csv::WriteCSV(
