@@ -1721,12 +1721,12 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    # data = pd.read_csv(
-    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
-    #     header=0)
-    # data = data.iloc[:, 550:]
+    data = pd.read_csv(
+        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
+        header=0)
+    data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -1772,7 +1772,7 @@ def xgb_host_logic(cry_pri="paillier"):
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
 
     paillier_encryptor = ActorPool(
-        [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(10)])
+        [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(20)])
 
     xgb_host.lookup_table = {}
     start = time.time()
@@ -1900,10 +1900,10 @@ def xgb_guest_logic(cry_pri="paillier"):
     if 'id' in data.columns:
         data.pop('id')
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    # data = pd.read_csv(
-    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
-    #     header=0)
-    # data = data.iloc[:, :10]
+    data = pd.read_csv(
+        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
+        header=0)
+    data = data.iloc[:, :450]
 
     X_guest = data
     # guest_log = open('/app/guest_log', 'w+')
