@@ -9,6 +9,7 @@ from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score
 import logging
 import pickle
+import json
 from typing import (
     List,
     Optional,
@@ -1922,8 +1923,11 @@ def xgb_host_logic(cry_pri="paillier"):
     # save pred_y to file
     # preds = pd.DataFrame({'prob': current_pred, "binary_pred": train_pred})
     # preds.to_csv(predict_file_path, index=False, sep='\t')
-    with open(indicator_file_path, 'wb') as filePath:
-        pickle.dump(trainMetrics, filePath)
+    trainMetricsBuff = json.dumps(trainMetrics)
+    with open(indicator_file_path, 'w') as filePath:
+        filePath.write(trainMetricsBuff)
+
+        # pickle.dump(trainMetrics, filePath)
 
     proxy_server.StopRecvLoop()
     # host_log.close()

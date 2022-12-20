@@ -6,6 +6,7 @@ from primihub.primitive.opt_paillier_c2py_warpper import *
 import pandas as pd
 import numpy as np
 import logging
+import json
 import pickle
 from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score, accuracy_score
@@ -380,8 +381,11 @@ def xgb_host_infer():
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
 
-    with open(indicator_file_path, 'wb') as filePath:
-        pickle.dump(test_metrics, filePath)
+    test_metrics_buff = json.dumps(test_metrics)
+
+    with open(indicator_file_path, 'w') as filePath:
+        filePath.write(test_metrics_buff)
+        # pickle.dump(test_metrics, filePath)
 
 
 @ph.context.function(role='guest',
