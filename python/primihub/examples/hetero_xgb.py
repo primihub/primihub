@@ -950,7 +950,8 @@ class XGB_GUEST_EN:
             ]
 
         for key, tmp_task in zip(cols, res):
-            total_left_ghs[key] = tmp_task.get()
+            # total_left_ghs[key] = tmp_task.get()
+            total_left_ghs[key] = tmp_task
 
             # if self.encrypted:
             #     tmp_sum = tmp_group._aggregate_on(
