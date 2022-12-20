@@ -227,8 +227,13 @@ def atom_paillier_sum(items, pub_key, add_actors, limit=15):
 
 class MyPandasBlockAccessor(PandasBlockAccessor):
 
-    def sum(self, on: KeyFn, ignore_nulls: bool, encrypted: bool, pub_key: None,
-            add_actors) -> Optional[U]:
+    def sum(self,
+            on: KeyFn,
+            ignore_nulls: bool,
+            encrypted: bool,
+            pub_key: None,
+            add_actors,
+            limit=500) -> Optional[U]:
         pd = lazy_import_pandas()
         if on is not None and not isinstance(on, str):
             raise ValueError(
@@ -246,7 +251,7 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if not encrypted:
             val = col.sum(skipna=ignore_nulls)
         else:
-            val = atom_paillier_sum(col, pub_key, add_actors)
+            val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
