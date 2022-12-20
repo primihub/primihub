@@ -80,12 +80,24 @@ int PSIKkrtTask::_LoadParams(Task &task) {
                 server_result_path = it->second.value_string();
                 VLOG(5) << "server_outputFullFilname: " << server_result_path;
             }
-            data_index_ = param_map["clientIndex"].value_int32();
+            // data_index_ = param_map["clientIndex"].value_int32();
 	        psi_type_ = param_map["psiType"].value_int32();
             dataset_path_ = param_map["clientData"].value_string();
             result_file_path_ = param_map["outputFullFilename"].value_string();
             host_address_ = param_map["serverAddress"].value_string();
             VLOG(5) << "serverAddress: " << host_address_;
+            auto index_it = param_map.find("clientIndex");
+            if (index_it != param_map.end()) {
+                const auto& client_index = index_it->second;
+                if (client_index.is_array()) {
+                    const auto& array_values = client_index.value_int32_array().value_int32_array();
+                    for (const auto value : array_values) {
+                        data_index_.push_back(value);
+                    }
+                } else {
+                    data_index_.push_back(client_index.value_int32());
+                }
+            }
         } catch (std::exception &e) {
             LOG(ERROR) << "Failed to load params: " << e.what();
             return -1;
@@ -94,7 +106,19 @@ int PSIKkrtTask::_LoadParams(Task &task) {
         //role_tag_ = EpMode::Server;
         role_tag_ = 1;
         try {
-            data_index_ = param_map["serverIndex"].value_int32();
+            // data_index_ = param_map["serverIndex"].value_int32();
+            auto index_it = param_map.find("serverIndex");
+            if (index_it != param_map.end()) {
+                const auto& client_index = index_it->second;
+                if (client_index.is_array()) {
+                    const auto& array_values = client_index.value_int32_array().value_int32_array();
+                    for (const auto value : array_values) {
+                        data_index_.push_back(value);
+                    }
+                } else {
+                    data_index_.push_back(client_index.value_int32());
+                }
+            }
             dataset_path_ = param_map["serverData"].value_string();
             host_address_ = param_map["clientAddress"].value_string();
             VLOG(5) << "clientAddress: " << host_address_;
@@ -128,63 +152,6 @@ int PSIKkrtTask::_LoadParams(Task &task) {
     return 0;
 }
 
-int PSIKkrtTask::_LoadDatasetFromSQLite(std::string& conn_str, int data_col,
-                                        std::vector<std::string>& col_array) {
-    std::string nodeaddr("localhost");
-    // std::shared_ptr<DataDriver>
-    auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
-    if (driver == nullptr) {
-        LOG(ERROR) << "create sqlite db driver failed";
-        return -1;
-    }
-    // std::shared_ptr<Cursor> &cursor
-    auto& cursor = driver->read(conn_str);
-    // std::shared_ptr<Dataset>
-    auto ds = cursor->read();
-    if (ds == nullptr) {
-        return -1;
-    }
-    auto table = std::get<std::shared_ptr<Table>>(ds->data);
-    int num_col = table->num_columns();
-    if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
-        return -1;
-    }
-
-    auto array = std::static_pointer_cast<StringArray>(table->column(data_col)->chunk(0));
-    for (int64_t i = 0; i < array->length(); i++) {
-        col_array.push_back(array->GetString(i));
-    }
-    VLOG(5) << "psi server loaded data records: " << col_array.size();
-    return 0;
-}
-
-int PSIKkrtTask::_LoadDatasetFromCSV(std::string &filename, int data_col,
-                                     std::vector <std::string> &col_array) {
-    std::string nodeaddr("test address"); // TODO
-    std::shared_ptr<DataDriver> driver =  DataDirverFactory::getDriver("CSV", nodeaddr);
-    std::shared_ptr<Cursor> &cursor = driver->read(filename);
-    std::shared_ptr<Dataset> ds = cursor->read();
-    std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
-
-    int num_col = table->num_columns();
-    if (num_col < data_col) {
-        LOG(ERROR) << "psi dataset colunum number is smaller than data_col";
-        return -1;
-    }
-    int64_t num_rows = table->num_rows();
-    col_array.reserve(num_rows);
-    auto col_ptr = table->column(data_col);
-    int chunk_size = col_ptr->num_chunks();
-    for (int i = 0; i < chunk_size; i++) {
-        auto array = std::static_pointer_cast<StringArray>(col_ptr->chunk(i));
-        for (int64_t i = 0; i < array->length(); i++) {
-            col_array.push_back(array->GetString(i));
-        }
-    }
-    return 0;
-}
-
 int PSIKkrtTask::_LoadDataset(void) {
     std::string match_word{"sqlite"};
     std::string driver_type;
@@ -194,15 +161,15 @@ int PSIKkrtTask::_LoadDataset(void) {
         driver_type = dataset_path_;
     }
     // current we supportes [csv, sqlite] as dataset
-    int ret = -1;
+    retcode ret{retcode::SUCCESS};
     if (match_word == driver_type) {
-        ret = _LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
+        ret = LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
     } else {
-        ret = _LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
+        ret = LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
     }
      // file reading error or file empty
-    if (ret) {
-        LOG(ERROR) << "Load dataset for psi server failed. dataset size: " << ret;
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "Load dataset for psi server failed.";
         return -1;
     }
     return 0;
@@ -483,32 +450,6 @@ int PSIKkrtTask::recvIntersectionData() {
     VLOG(5) << "psi_result size: " << psi_result.size();
     std::string col_title{"intersection_row"};
     saveDataToCSVFile(psi_result, server_result_path, col_title);
-    return 0;
-}
-
-int PSIKkrtTask::saveDataToCSVFile(const std::vector<std::string>& data,
-        const std::string& file_path, const std::string& col_title) {
-    arrow::MemoryPool *pool = arrow::default_memory_pool();
-    arrow::StringBuilder builder(pool);
-    builder.AppendValues(data);
-    std::shared_ptr<arrow::Array> array;
-    builder.Finish(&array);
-    std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
-        arrow::field(col_title, arrow::utf8())};
-    auto schema = std::make_shared<arrow::Schema>(schema_vector);
-    std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, {array});
-    auto driver = DataDirverFactory::getDriver("CSV", "test address");
-    auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
-    if (ValidateDir(file_path)) {
-        LOG(ERROR) << "can't access file path: " << file_path;
-        return -1;
-    }
-    int ret = csv_driver->write(table, file_path);
-    if (ret != 0) {
-        LOG(ERROR) << "Save PSI result to file " << file_path << " failed.";
-        return -1;
-    }
-    LOG(INFO) << "Save PSI result to " << file_path << ".";
     return 0;
 }
 

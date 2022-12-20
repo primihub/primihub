@@ -27,10 +27,9 @@
 #include <vector>
 
 #ifdef USE_MICROSOFT_APSI
-#include <apsi/oprf/oprf_sender.h>
-#include <apsi/thread_pool_mgr.h>
-#include <apsi/version.h>
-#include <apsi/zmq/sender_dispatcher.h>
+#include "apsi/oprf/oprf_sender.h"
+#include "apsi/thread_pool_mgr.h"
+#include "apsi/version.h"
 #endif
 
 #include "src/primihub/protos/worker.pb.h"
@@ -43,13 +42,6 @@ using primihub::rpc::PushTaskRequest;
 using primihub::rpc::VMNode;
 using primihub::service::DatasetWithParamTag;
 using primihub::task::PeerDatasetMap;
-
-#ifdef USE_MICROSOFT_APSI
-using namespace apsi;
-using namespace apsi::sender;
-using namespace apsi::network;
-using namespace apsi::oprf;
-#endif
 
 namespace primihub::task {
 namespace rpc = primihub::rpc;

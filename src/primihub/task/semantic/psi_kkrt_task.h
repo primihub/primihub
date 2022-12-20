@@ -33,6 +33,7 @@
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/common/defines.h"
+#include "src/primihub/task/semantic/psi_task.h"
 
 #ifndef __APPLE__
 using namespace osuCrypto;
@@ -44,7 +45,7 @@ namespace rpc = primihub::rpc;
 
 namespace primihub::task {
 
-class PSIKkrtTask : public TaskBase {
+class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
 public:
     explicit PSIKkrtTask(const TaskParam *task_param,
                         std::shared_ptr<DatasetService> dataset_service);
@@ -54,23 +55,17 @@ public:
     int saveResult(void);
     retcode broadcastResultToServer();
     int recvIntersectionData();
-    int saveDataToCSVFile(const std::vector<std::string>& data,
-      const std::string& file_path, const std::string& col_title);
 private:
     retcode exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
-    int _LoadDatasetFromCSV(std::string &filename, int data_col,
-                            std::vector<std::string>& col_array);
-    int _LoadDatasetFromSQLite(std::string& conn_str, int data_col,
-                               std::vector<std::string>& col_array);
 #ifndef __APPLE__
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
 
-    int data_index_;
+    std::vector<int> data_index_;
     int psi_type_;
     int role_tag_;
     std::string dataset_path_;

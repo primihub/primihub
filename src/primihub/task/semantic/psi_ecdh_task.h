@@ -32,11 +32,12 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/psi.pb.h"
 #include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/task/semantic/psi_task.h"
 
 namespace rpc = primihub::rpc;
 namespace openminded_psi = private_set_intersection;
 namespace primihub::task {
-class PSIEcdhTask : public TaskBase {
+class PSIEcdhTask : public TaskBase, public PsiCommonOperator {
  public:
   explicit PSIEcdhTask(const TaskParam* task_param,
                         std::shared_ptr<DatasetService> dataset_service);
@@ -47,8 +48,6 @@ class PSIEcdhTask : public TaskBase {
   bool runAsClient() {
     return run_as_client_;
   }
-  int saveDataToCSVFile(const std::vector<std::string>& data,
-      const std::string& file_path, const std::string& col_title);
   // client method
   int executeAsClient();
   int saveResult();
@@ -70,14 +69,10 @@ class PSIEcdhTask : public TaskBase {
 
  private:
   int LoadParams(Task& task);
-  int LoadDataset();
-  int LoadDatasetFromCSV(const std::string& filename, int data_col,
-                          std::vector<std::string>& col_array);
-  int LoadDatasetFromSQLite(const std::string &conn_str, int data_col,
-                              std::vector <std::string>& col_array);
+  retcode LoadDataset();
   int GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
                     rpc::PsiResponse& taskResponse);
-  int data_index_;
+  std::vector<int> data_index_;
   int psi_type_;
   std::string dataset_path_;
   std::string result_file_path_;
