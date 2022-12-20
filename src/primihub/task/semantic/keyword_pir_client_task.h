@@ -23,24 +23,50 @@
 #include "apsi/util/csv_reader.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/common/defines.h"
+#include "apsi/receiver.h"
 
 using apsi::Item;
 using apsi::receiver::MatchRecord;
 using apsi::util::CSVReader;
+using namespace apsi::receiver;
 
 namespace primihub::task {
-
 class KeywordPIRClientTask : public TaskBase {
  public:
-    explicit KeywordPIRClientTask(const TaskParam *task_param,
-                                  std::shared_ptr<DatasetService> dataset_service);
+   enum class RequestType : uint8_t {
+      PsiParam = 0,
+      Oprf,
+      Query,
+   };
+   explicit KeywordPIRClientTask(const TaskParam *task_param,
+                                 std::shared_ptr<DatasetService> dataset_service);
 
-    ~KeywordPIRClientTask() = default;
-    int execute() override;
-    int saveResult(const std::vector<std::string>& orig_items,
-                   const std::vector<apsi::Item>& items,
-                   const std::vector<apsi::receiver::MatchRecord>& intersection);
+   ~KeywordPIRClientTask() = default;
+   int execute() override;
+   int saveResult(const std::vector<std::string>& orig_items,
+                  const std::vector<apsi::Item>& items,
+                  const std::vector<apsi::receiver::MatchRecord>& intersection);
    int waitForServerPortInfo();
+
+ protected:
+   /**
+    * Performs a parameter request from sender
+   */
+   retcode requestPSIParams();
+   /**
+    * Performs an OPRF request on a vector of items and returns a
+      vector of OPRF hashed items of the same size as the input vector.
+   */
+   retcode requestOprf(const std::vector<Item>& items,
+         std::vector<apsi::HashedItem>*, std::vector<apsi::LabelKey>*);
+   /**
+    * Performs a labeled PSI query. The query is a vector of
+      items, and the result is a same-size vector of MatchRecord objects. If an item is in the
+      intersection, the corresponding MatchRecord indicates it in the `found` field, and the
+      `label` field may contain the corresponding label if a sender's data included it.
+   */
+   retcode requestQuery();
+
  private:
     int _LoadParams(Task &task);
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
@@ -58,6 +84,8 @@ class KeywordPIRClientTask : public TaskBase {
     uint32_t server_data_port{2222};
     primihub::Node peer_node_;
     std::string key{"default"};
+    std::unique_ptr<apsi::PSIParams> psi_params_{nullptr};
+    std::unique_ptr<apsi::receiver::Receiver> receiver_{nullptr};
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_

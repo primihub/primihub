@@ -29,7 +29,9 @@ std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_add
   grpc_channel_ = grpc::CreateCustomChannel(server_address, creds, channel_args);
   return grpc_channel_;
 }
-retcode GrpcChannel::sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) {
+
+retcode GrpcChannel::sendRecv(const std::string& role,
+    std::string_view send_data, std::string* recv_data) {
   grpc::ClientContext context;
   using reader_writer_t = grpc::ClientReaderWriter<rpc::TaskRequest, rpc::TaskResponse>;
   std::shared_ptr<reader_writer_t> client_stream(stub_->SendRecv(&context));
@@ -54,6 +56,7 @@ retcode GrpcChannel::sendRecv(const std::string& role, std::string_view send_dat
   VLOG(5) << "recv data success, data size: " << recv_data->size();
   return retcode::SUCCESS;
 }
+
 retcode GrpcChannel::sendRecv(const std::string& role,
     const std::string& send_data, std::string* recv_data) {
   std::string_view data_sv{send_data.c_str(), send_data.length()};
