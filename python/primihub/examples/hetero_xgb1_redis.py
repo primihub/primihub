@@ -16,6 +16,8 @@ from typing import (
 )
 import pandas
 import pyarrow
+import yaml
+from pathlib import Path
 
 from ray.data.block import KeyFn, _validate_key_fn
 from primihub.primitive.opt_paillier_c2py_warpper import *
@@ -1819,6 +1821,16 @@ class RedisProxy:
             logger.error("Redis set exception is ", str(e))
 
 
+yaml_file = "/app/config/primihub_node0.yaml"
+yaml_dict = yaml.safe_load(Path(yaml_file).read_text())
+redis_meta = yaml_dict['redis_meta_service']
+
+redis_password = redis_meta['redis_password']
+redis_addr = redis_meta['redis_addr']
+redis_ip = redis_addr.split(":")[0]
+redis_port = int(redis_addr.split(":")[1])
+
+
 @ph.context.function(
     role='host',
     protocol='xgboost',
@@ -1841,10 +1853,14 @@ def xgb_host_logic(cry_pri="paillier"):
 
     data_key = list(dataset_map.keys())[0]
 
-    host_redis = RedisProxy(host='172.21.3.108',
-                            port=15550,
+    # host_redis = RedisProxy(host='172.21.3.108',
+    #                         port=15550,
+    #                         db=0,
+    #                         password='primihub')
+    host_redis = RedisProxy(host=redis_ip,
+                            port=redis_port,
                             db=0,
-                            password='primihub')
+                            password=redis_password)
 
     eva_type = ph.context.Context.params_map.get("taskType", None)
     if eva_type is None:
@@ -2007,10 +2023,14 @@ def xgb_guest_logic(cry_pri="paillier"):
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
 
-    guest_redis = RedisProxy(host='172.21.3.108',
-                             port=15550,
+    # guest_redis = RedisProxy(host='172.21.3.108',
+    #                          port=15550,
+    #                          db=0,
+    #                          password='primihub')
+    guest_redis = RedisProxy(host=redis_ip,
+                             port=redis_port,
                              db=0,
-                             password='primihub')
+                             password=redis_password)
 
     logger.debug("dataset_map {}".format(dataset_map))
 
