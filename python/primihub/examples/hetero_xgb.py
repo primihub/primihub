@@ -130,12 +130,11 @@ def search_best_splits(X: pd.DataFrame,
             tmp_splits = split_points[item][1:]
 
         tmp_col = X[item]
-        # print("+++++++++")
-        # print(tmp_splits, tmp_splits[0])
+
         if len(tmp_splits) < 1:
             print("current item ", item, split_points)
             continue
-        # print("-------", type(tmp_splits), tmp_splits.shape, split_points)
+
         tmp_splits[0] = tmp_splits[0] - eps
         tmp_splits[-1] = tmp_splits[-1] + eps
 
@@ -216,10 +215,7 @@ def atom_paillier_sum(items, pub_key, add_actors, limit=15):
         items_list.append(tmp_val)
     inter_results = list(
         add_actors.map(lambda a, v: a.add.remote(v), items_list))
-    #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
-    #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
-    # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
-    # final_result = ray.get(inter_results)
+
     final_result = functools.reduce(
         lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
     return final_result
@@ -361,35 +357,6 @@ class ActorAdd(object):
         return tmp_sum
 
 
-# def atom_paillier_sum(items, pub_key, add_actors, limit=3):
-#     nums = items * limit
-#     if len(items) < nums:
-#         return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
-#                                 items)
-#     N = int(len(items) / nums)
-#     items_list = []
-
-#     inter_results = []
-#     for i in range(nums):
-#         tmp_val = items[i * N:(i + 1) * N]
-#         # tmp_add_actor = self.add_actors[i]
-#         if i == (nums - 1):
-#             tmp_val = items[i * N:]
-#         items_list.append(tmp_val)
-
-#     inter_results = list(
-#         add_actors.map(lambda a, v: a.add.remote(v), items_list))
-
-#     #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
-#     #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
-#     # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
-#     # final_result = ray.get(inter_results)
-#     final_result = functools.reduce(
-#         lambda x, y: opt_paillier_add(pub_key, x, y), inter_results)
-
-#     return final_result
-
-
 @ray.remote
 class PallierAdd(object):
 
@@ -419,10 +386,6 @@ class PallierAdd(object):
             inter_results = list(
                 self.add_actors.map(lambda a, v: a.add.remote(v), items_list))
 
-            #     tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right  = list(
-            #         self.pools.map(lambda a, v: a.pai_add.remote(v), [G_left_g, G_right_g, H_left_h, H_right_h]))
-            # # inter_results = [ActorAdd.remote(self.pub, items[i*N:(i+1)*N]).add.remote() for i in range(nums)]
-            # final_result = ray.get(inter_results)
             final_result = functools.reduce(
                 lambda x, y: opt_paillier_add(self.pub, x, y), inter_results)
             # final_results = ActorAdd.remote(self.pub, ray.get(inter_results)).add.remote()
@@ -482,29 +445,12 @@ class MapGH(object):
             G_left_g = self.g[flag].tolist()
             # G_right_g = self.g[(1 - flag).astype('bool')].tolist()
             H_left_h = self.h[flag].tolist()
-            # H_right_h = self.h[(1 - flag).astype('bool')].tolist()
-            # print("++++++++++", len(G_left_g), len(G_right_g), len(H_left_h),
-            #       len(H_right_h))
 
             print("++++++++++", len(G_left_g), len(H_left_h))
-
-            # tmp_g_left, tmp_g_right, tmp_h_left, tmp_h_right = list(
-            #     self.pools.map(lambda a, v: a.pai_add.remote(v),
-            #                    [G_left_g, G_right_g, H_left_h, H_right_h]))
 
             tmp_g_left, tmp_h_left = list(
                 self.pools.map(lambda a, v: a.pai_add.remote(v),
                                [G_left_g, H_left_h]))
-            # tmp_g_left, tmp_g_right, tmp_h_left,tmp_h_right = list(ray.get([self.pools.pai_add.remote(tmp_li, nums) for tmp_li in [G_left_g, G_right_g, H_left_h, H_right_h]]))
-
-            # tmp_g_left = functools.reduce(
-            #     lambda x, y: opt_paillier_add(self.pub, x, y), G_left_g)
-            # tmp_g_right = functools.reduce(
-            #     lambda x, y: opt_paillier_add(self.pub, x, y), G_right_g)
-            # tmp_h_left = functools.reduce(
-            #     lambda x, y: opt_paillier_add(self.pub, x, y), H_left_h)
-            # tmp_h_right = functools.reduce(
-            #     lambda x, y: opt_paillier_add(self.pub, x, y), H_right_h)
 
             G_lefts.append(tmp_g_left)
 
@@ -621,10 +567,6 @@ def phe_map_dec(pub, prv, item):
 
 def phe_add(enc1, enc2):
     return enc1 + enc2
-
-
-# def opt_paillier_add(pub, x, y):
-#     return opt_paillier_add(pub, x, y)
 
 
 class ClientChannelProxy:
@@ -884,24 +826,11 @@ class XGB_GUEST_EN:
         buckets_x_guest = ray_x_guest.map_batches(hist_bin_transform,
                                                   batch_format="pandas")
 
-        # add 'g' and 'h' to bucket guest
-        # buckets_x_guest = buckets_x_guest.add_column(
-        #     "g", lambda df: encrypted_ghs['g'])
-
-        # buckets_x_guest = buckets_x_guest.add_column(
-        #     "h", lambda df: encrypted_ghs['h'])
-
         print("current x-guset and buckets_x_guest", X_guest,
               buckets_x_guest.to_pandas(), encrypted_ghs,
               buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
-        # paillier_add_actors = ActorPool(
-        #     [ActorAdd.remote(self.pub) for _ in range(add_actor_num)])
-
-        # grouppools = ActorPool([
-        #     GroupPool.remote(paillier_add_actors, self.pub) for _ in range(20)
-        # ])
 
         groups = []
         for tmp_col in cols:
@@ -932,15 +861,6 @@ class XGB_GUEST_EN:
             #     print(tmp_task.get())
 
         if self.encrypted:
-            # groupsums = [
-            #     GroupSum.remote(tmp_group, self.pub, paillier_add_actors)
-            #     for tmp_group in groups
-            # ]
-
-            # [tmp_groupsum.groupsum.remote() for tmp_groupsum in groupsums]
-
-            # res = ray.get(
-            #     [tmp_groupsum.getsum.remote() for tmp_groupsum in groupsums])
 
             res = list(
                 self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
@@ -1678,13 +1598,6 @@ class XGB_HOST_EN:
             else:
                 self.proxy_client_guest.Remote(gh, "gh_en")
 
-            # start construct boosting trees
-            # lp = LineProfiler(xgb_host.host_tree_construct)
-            # lp.run(
-            #     "xgb_host.tree_structure[t + 1] = xgb_host.host_tree_construct(X_host.copy(), f_t, 0, gh)"
-            # )
-            # lp.print_stats()
-
             self.tree_structure[t + 1] = self.host_tree_construct(
                 X_host.copy(), f_t, 0, gh)
             # y_hat = y_hat + xgb_host.learning_rate * f_t
@@ -1855,21 +1768,12 @@ def xgb_host_logic(cry_pri="paillier"):
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
                            encrypted=is_encrypted)
-    # channel.recv()
-    # xgb_host.channel.send(xgb_host.pub)
+
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
-    # proxy_client_guest.Remote(public_k, "xgb_pub")
-    # print(xgb_host.channel.recv())
-    # y_hat = np.array([0.5] * Y.shape[0])
-    # ray.init()
-    # pai_actor = PaillierActor(xgb_host.prv, xgb_host.pub)
+
     paillier_encryptor = ActorPool(
         [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(10)])
-    # actor1, actor2, actor3 = PaillierActor.remote(xgb_host.prv, xgb_host.pub
-    #                                       ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
-    #                                                               ), PaillierActor.remote(xgb_host.prv, xgb_host.pub
-    #                                                               )
-    # pools = ActorPool([actor1, actor2, actor3])
+
     xgb_host.lookup_table = {}
     start = time.time()
     xgb_host.fit(X_host, Y, paillier_encryptor, lookup_table_sum)
@@ -1890,12 +1794,6 @@ def xgb_host_logic(cry_pri="paillier"):
 
     model_file_path = ph.context.Context.get_model_file_path()
     lookup_file_path = ph.context.Context.get_host_lookup_file_path()
-
-    # print("host structure: ", xgb_host.tree_structure)
-
-    # train_pred = xgb_host.predict(X_host.copy(), lookup_table_sum)
-    # train_acc = metrics.accuracy_score(train_pred, Y)
-    # print("train_acc: ", train_acc)
 
     # save host-part model
     model_file_path = ph.context.Context.get_model_file_path() + ".host"
@@ -2021,8 +1919,6 @@ def xgb_guest_logic(cry_pri="paillier"):
                              proxy_client_host=proxy_client_host,
                              is_encrypted=is_encrypted)  # noqa
 
-    # channel.send(b'guest ready')
-    # pub = xgb_guest.channel.recv()
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
 
@@ -2061,12 +1957,6 @@ def xgb_guest_logic(cry_pri="paillier"):
     with open(lookup_file_path, 'wb') as guestTable:
         pickle.dump(lookup_table_sum, guestTable)
 
-    # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
-
-    # validate for test
-    # test_guest = ph.dataset.read(dataset_key='test_hetero_xgb_guest').df_data
-    # print("test_guest: ", test_guest.shape)
-    # xgb_guest.predict(test_guest, lookup_table_sum)
     # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
