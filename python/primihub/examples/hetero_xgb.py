@@ -525,7 +525,7 @@ class GroupPool:
         tmp_count = group_col.count().to_pandas()
 
         # return tmp_sum.to_pandas()
-        return pd.merge(tmp_sum, tmp_sum)
+        return pd.merge(tmp_sum, tmp_count)
 
 
 @ray.remote
