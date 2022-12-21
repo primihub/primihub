@@ -547,8 +547,8 @@ int MissingProcess::execute() {
           m(0, 0) = double_sum;
           m(1, 0) = double_count;
 
-          LOG(INFO) << "Local column: sum " << int_sum << ", count "
-                    << int_count << ".";
+          LOG(INFO) << "Local column: sum " << double_sum << ", count "
+                    << double_count << ".";
 
           sf64Matrix<D16> sh_m[3];
           for (uint8_t i = 0; i < 3; i++) {
