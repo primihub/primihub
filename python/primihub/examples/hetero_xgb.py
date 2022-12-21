@@ -789,9 +789,13 @@ class XGB_GUEST_EN:
         if bins is None:
             bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
 
-        X_guest['g'] = encrypted_ghs['g']
-        X_guest['h'] = encrypted_ghs['h']
-        cols = X_guest.columns.difference(['g', 'h'])
+        if self.merge_gh:
+            X_guest['g'] = encrypted_ghs['g']
+            cols = X_guest.columns.difference(['g', 'h'])
+        else:
+            X_guest['g'] = encrypted_ghs['g']
+            X_guest['h'] = encrypted_ghs['h']
+            cols = X_guest.columns.difference(['g', 'h'])
 
         set_items = X_guest[cols].apply(np.unique, axis=0)
         X_guest_max0 = X_guest[cols].max(axis=0) + 0.005
