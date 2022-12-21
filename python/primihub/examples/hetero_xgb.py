@@ -1268,8 +1268,14 @@ class XGB_HOST_EN:
                     val = val.sort_values(by=key, ascending=True)
                     val['sum(h)'] = val['sum(g)'] % (self.ratio * self.ratio)
                     val['sum(g)'] = val['sum(g)'] // (self.ratio * self.ratio)
-                    tmp_g_lefts = val['sum(g)'].cumsum() / self.ratio
-                    tmp_h_lefts = val['sum(h)'].cumsum() / self.ratio
+
+                    # substract const
+                    val['sum(g)'] = val[
+                        'sum(g)'] / self.ratio - self.const * val['count()']
+                    val['sum(h)'] = val['sum(h)'] / self.ratio
+                    tmp_g_lefts = val['sum(g)'].cumsum(
+                    )  #/ self.ratio - self.const * val['count']
+                    tmp_h_lefts = val['sum(h)'].cumsum()  #/ self.ratio
 
                     G_lefts += tmp_g_lefts.values.tolist()
                     H_lefts += tmp_h_lefts.values.tolist()
@@ -1610,12 +1616,15 @@ class XGB_HOST_EN:
             # gh_large = (gh * ratio).astype('int')
             if self.encrypted:
                 if self.merge_gh:
+                    cp_gh = gh.copy()
+                    cp_gh['g'] = cp_gh['g'] + self.const
+                    cp_gh = cp_gh * self.ratio
                     # make 'g' positive
-                    gh['g'] = gh['g'] + self.const
-                    gh *= self.ratio
+                    # gh['g'] = gh['g'] + self.const
+                    # gh *= self.ratio
 
-                    merge_gh = (gh['g'] * self.ratio * self.ratio +
-                                gh['h']).values.astype('int')
+                    merge_gh = (cp_gh['g'] * self.ratio * self.ratio +
+                                cp_gh['h']).values.astype('int')
                     start_enc = time.time()
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
