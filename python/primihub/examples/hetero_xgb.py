@@ -1606,12 +1606,13 @@ class XGB_HOST_EN:
 
                     merge_gh = (gh['g'] * self.ratio +
                                 gh['h']).values.astype('int')
-
+                    start_enc = time.time()
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
                                                merge_gh.tolist()))
 
                     enc_gh_df = pd.DataFrame({'g': enc_merge_gh})
+                    end_enc = time.time()
 
                     # merge_gh = (gh['g'] * self.g_ratio +
                     #             gh['h']).values.atype('int')
