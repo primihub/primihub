@@ -1605,7 +1605,7 @@ class XGB_HOST_EN:
                     gh *= self.ratio
 
                     merge_gh = (gh['g'] * self.ratio +
-                                gh['h']).values.atype('int')
+                                gh['h']).values.astype('int')
 
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
