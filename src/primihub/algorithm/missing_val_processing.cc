@@ -52,7 +52,7 @@ void MissingProcess::_spiltStr(string str, const string &split,
 
 int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
   try {
-    VLOG(10) << "Convert string '" << str << "' into int64 value.";
+    VLOG(5) << "Convert string '" << str << "' into int64 value.";
     i64_val = stoll(str);
   } catch (std::invalid_argument const &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -69,7 +69,7 @@ int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
 
 int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
   try {
-    VLOG(10) << "Convert string '" << str << "' into double value.";
+    VLOG(5) << "Convert string '" << str << "' into double value.";
     d_val = std::stod(str);
   } catch (std::invalid_argument &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -139,11 +139,11 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
     new_col_val[0].insert(new_col_val[0].end(), chunk_vals.begin(),
                           chunk_vals.end());
   }
-
-  {
-    VLOG(10) << "After rebuild, value in this column is:";
+  
+  if (VLOG_IS_ON(5)) {
+    VLOG(5) << "After rebuild, value in this column is:";
     for (auto &val : new_col_val[0])
-      VLOG(10) << val;
+      VLOG(5) << val;
   }
 
   if (need_double) {
@@ -384,7 +384,7 @@ int MissingProcess::execute() {
       // a string then try to convert string into int64 value or double value,
       // this value should be a abnormal value when convert failed.
       if (t != local_col_names.end()) {
-        VLOG(10) << "Begin to check column " << iter->first << ":";
+        LOG(INFO) << "Begin to process column " << iter->first << ":";
         std::vector<std::vector<uint32_t>> abnormal_index;
         int col_index = std::distance(local_col_names.begin(), t);
 
@@ -394,11 +394,9 @@ int MissingProcess::execute() {
           int_sum = 0;
           abnormal_num = 0;
 
-          // Type of this column is int64.
-          VLOG(10) << "Table has " << table->num_columns() << " columns.";
           int chunk_num = table->column(0)->chunks().size();
-          VLOG(10) << "Column " << col_index << " has " << chunk_num
-                   << " chunk(s).";
+          LOG(INFO) << "Column " << iter->first << " has " << chunk_num
+                    << " chunk(s), expect type is int64.";
 
           abnormal_index.resize(chunk_num);
 
@@ -410,9 +408,9 @@ int MissingProcess::execute() {
             int ret = 0;
             int64_t i64_val = 0;
             for (int64_t j = 0; j < str_array->length(); j++) {
-              VLOG(10) << "Chunk " << k << ", index " << j << ":";
               if (str_array->IsNull(j)) {
-                VLOG(10) << "Null.";
+                LOG(WARNING) << "Find missing value in column " << iter->first
+                             << ", chunk " << k << ", index " << j << ".";
                 continue;
               }
 
@@ -426,7 +424,6 @@ int MissingProcess::execute() {
                     << ", index " << j << ".";
               } else {
                 int_sum += i64_val;
-                VLOG(10) << "ok.";
               }
             }
 
@@ -442,6 +439,9 @@ int MissingProcess::execute() {
           abnormal_num = 0;
 
           int chunk_num = table->column(col_index)->chunks().size();
+          LOG(INFO) << "Column " << iter->first << " has " << chunk_num
+                    << " chunk(s), expect type is double.";
+
           abnormal_index.resize(chunk_num);
 
           for (int k = 0; k < chunk_num; k++) {
@@ -452,9 +452,9 @@ int MissingProcess::execute() {
             double d_val = 0;
             int ret = 0;
             for (int64_t j = 0; j < str_array->length(); j++) {
-              VLOG(10) << "Chunk " << k << ", index " << j << ":";
               if (str_array->IsNull(j)) {
-                VLOG(10) << "Null.";
+                LOG(WARNING) << "Find missing value in column " << iter->first
+                             << ", chunk " << k << ", index " << j << ".";
                 continue;
               }
 
@@ -485,7 +485,8 @@ int MissingProcess::execute() {
           m(0, 0) = int_sum;
           m(1, 0) = int_count;
 
-          VLOG(10) << "Local sum is " << m(0, 0) << ".";
+          LOG(INFO) << "Local column: sum " << int_sum << ", count "
+                    << int_count << ".";
 
           si64Matrix sh_m[3];
           for (uint8_t i = 0; i < 3; i++) {
@@ -503,16 +504,21 @@ int MissingProcess::execute() {
           for (uint8_t i = 1; i < 3; i++)
             sh_sum = sh_sum + sh_m[i];
 
+          LOG(INFO) << "Run MPC sum to get sum of all party.";
+
           i64Matrix plain_sum(2, 1);
           plain_sum = mpc_op_exec_->revealAll(sh_sum);
 
+          LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
+                    << ", sum of count in all party is " << plain_sum(1, 0)
+                    << ".";
+
+          LOG(INFO) << "Build new array to save column value, missing and "
+                       "abnormal value will be replaced by average value.";
+
           // Update value in position that have null or abormal value with
           // average value.
-          VLOG(10) << "Sum of all is " << plain_sum(0, 0)
-                   << ", element count is " << plain_sum(1, 0) << ".";
-
           int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
-
           std::shared_ptr<arrow::Array> new_array;
           _buildNewColumn(table, col_index, std::to_string(col_avg),
                           abnormal_index, false, new_array);
@@ -521,6 +527,9 @@ int MissingProcess::execute() {
               std::make_shared<arrow::ChunkedArray>(new_array);
           std::shared_ptr<arrow::Field> field =
               std::make_shared<arrow::Field>(iter->first, arrow::int64());
+
+          LOG(INFO) << "Replace column " << iter->first
+                    << " with new array in table.";
 
           auto result = table->SetColumn(col_index, field, chunk_array);
           if (!result.ok()) {
@@ -532,12 +541,14 @@ int MissingProcess::execute() {
           }
 
           table = result.ValueOrDie();
+          LOG(INFO) << "Finish.";
         } else if (iter->second == 2) {
           eMatrix<double> m(2, 1);
           m(0, 0) = double_sum;
           m(1, 0) = double_count;
 
-          VLOG(10) << "Local sum is " << m(0, 0) << ".";
+          LOG(INFO) << "Local column: sum " << int_sum << ", count "
+                    << int_count << ".";
 
           sf64Matrix<D16> sh_m[3];
           for (uint8_t i = 0; i < 3; i++) {
@@ -555,14 +566,20 @@ int MissingProcess::execute() {
           for (int j = 1; j < 3; j++)
             sh_sum = sh_sum + sh_m[j];
 
+          LOG(INFO) << "Run MPC sum to get sum of all party.";
+
           eMatrix<double> plain_sum(2, 0);
           plain_sum = mpc_op_exec_->revealAll(sh_sum);
 
+          LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
+                    << ", sum of count in all party is " << plain_sum(1, 0)
+                    << ".";
+
+          LOG(INFO) << "Build new array to save column value, missing and "
+                       "abnormal value will be replaced by average value.";
+
           // Update value in position that have null or abormal value with
           // average value.
-          VLOG(10) << "Sum of all is " << plain_sum(0, 0)
-                   << ", element count is " << plain_sum(1, 0) << ".";
-
           double col_avg = plain_sum(0, 0) / plain_sum(1, 0);
 
           std::shared_ptr<arrow::Array> new_array;
@@ -574,6 +591,9 @@ int MissingProcess::execute() {
           std::shared_ptr<arrow::Field> field =
               std::make_shared<arrow::Field>(iter->first, arrow::float64());
 
+          LOG(INFO) << "Replace column " << iter->first
+                    << " with new array in table.";
+
           auto result = table->SetColumn(col_index, field, chunk_array);
           if (!result.ok()) {
             std::stringstream ss;
@@ -584,6 +604,7 @@ int MissingProcess::execute() {
           }
 
           table = result.ValueOrDie();
+          LOG(INFO) << "Finish.";
         }
       } else {
         LOG(ERROR) << "Can't find value of column " << iter->first << ".";
@@ -620,7 +641,7 @@ int MissingProcess::saveModel(void) {
 
   auto cursor = driver->initCursor(new_path);
 
-  VLOG(10) << "A brief view of new table:" << table->ToString() << ".";
+  VLOG(5) << "A brief view of new table:\n" << table->ToString() << ".";
 
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
@@ -665,7 +686,7 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
 
   for (auto &col : target_column) {
     expect_type[col] = ::arrow::utf8();
-    VLOG(10) << "Force type of column " << col << " be string.";
+    VLOG(5) << "Force type of column " << col << " be string.";
   }
 
   convert_options.column_types = expect_type;
@@ -692,10 +713,6 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
   std::vector<std::string> col_names = table->ColumnNames();
 
   local_col_names = table->ColumnNames();
-  VLOG(10) << "Local column is: ";
-  for (auto &col_name : local_col_names)
-    VLOG(10) << col_name;
-    
 
   // 'array' include values in a column of csv file.
   int chunk_num = table->column(num_col - 1)->chunks().size();
