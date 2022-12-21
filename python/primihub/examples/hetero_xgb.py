@@ -520,9 +520,12 @@ class GroupPool:
             #   on=['g', 'h'],
             ignore_nulls=True,
             pub_key=self.pub,
-            add_actors=self.add_actors)
+            add_actors=self.add_actors).to_pandas()
 
-        return tmp_sum.to_pandas()
+        tmp_count = group_col.count().to_pandas()
+
+        # return tmp_sum.to_pandas()
+        return pd.merge(tmp_sum, tmp_sum)
 
 
 @ray.remote
@@ -1168,6 +1171,7 @@ class XGB_HOST_EN:
         self.host_record = 0
         self.guest_record = 0
         self.ratio = 10**6
+        self.const = 2
         self.g_ratio = 10**8
         self.encrypted = encrypted
         self.global_transfer_time = 0
@@ -1262,8 +1266,8 @@ class XGB_HOST_EN:
                         for item in val[col]
                     ]
                     val = val.sort_values(by=key, ascending=True)
-                    val['sum(h)'] = val['sum(g)'] % self.ratio
-                    val['sum(g)'] = val['sum(g)'] // self.ratio
+                    val['sum(h)'] = val['sum(g)'] % (self.ratio * self.ratio)
+                    val['sum(g)'] = val['sum(g)'] // (self.ratio * self.ratio)
                     tmp_g_lefts = val['sum(g)'].cumsum() / self.ratio
                     tmp_h_lefts = val['sum(h)'].cumsum() / self.ratio
 
@@ -1606,9 +1610,11 @@ class XGB_HOST_EN:
             # gh_large = (gh * ratio).astype('int')
             if self.encrypted:
                 if self.merge_gh:
+                    # make 'g' positive
+                    gh['g'] = gh['g'] + self.const
                     gh *= self.ratio
 
-                    merge_gh = (gh['g'] * self.ratio +
+                    merge_gh = (gh['g'] * self.ratio * self.ratio +
                                 gh['h']).values.astype('int')
                     start_enc = time.time()
                     enc_merge_gh = list(
