@@ -1266,16 +1266,24 @@ class XGB_HOST_EN:
                         for item in val[col]
                     ]
                     val = val.sort_values(by=key, ascending=True)
-                    val['sum(h)'] = val['sum(g)'] % (self.ratio * self.ratio)
-                    val['sum(g)'] = val['sum(g)'] // (self.ratio * self.ratio)
+                    val['g'] = val['sum(g)'] // self.ratio
+                    val['h'] = val['sum(g)'] - val['g'] * self.ratio
+                    val['g'] = val['g'] / 10**4 - self.const * val['count()']
+                    val['h'] = val['h'] / 10**4
 
-                    # substract const
-                    val['sum(g)'] = val[
-                        'sum(g)'] / self.ratio - self.const * val['count()']
-                    val['sum(h)'] = val['sum(h)'] / self.ratio
-                    tmp_g_lefts = val['sum(g)'].cumsum(
-                    )  #/ self.ratio - self.const * val['count']
-                    tmp_h_lefts = val['sum(h)'].cumsum()  #/ self.ratio
+                    tmp_g_lefts = val['g'].cumsum()
+                    tmp_h_lefts = val['h'].cumsum()
+
+                    # val['sum(h)'] = val['sum(g)'] % (self.ratio * self.ratio)
+                    # val['sum(g)'] = val['sum(g)'] // (self.ratio * self.ratio)
+
+                    # # substract const
+                    # val['sum(g)'] = val[
+                    #     'sum(g)'] / self.ratio - self.const * val['count()']
+                    # val['sum(h)'] = val['sum(h)'] / self.ratio
+                    # tmp_g_lefts = val['sum(g)'].cumsum(
+                    # )  #/ self.ratio - self.const * val['count']
+                    # tmp_h_lefts = val['sum(h)'].cumsum()  #/ self.ratio
 
                     G_lefts += tmp_g_lefts.values.tolist()
                     H_lefts += tmp_h_lefts.values.tolist()
@@ -1618,13 +1626,15 @@ class XGB_HOST_EN:
                 if self.merge_gh:
                     cp_gh = gh.copy()
                     cp_gh['g'] = cp_gh['g'] + self.const
-                    cp_gh = cp_gh * self.ratio
+                    cp_gh = np.round(cp_gh, 4)
+                    cp_gh = (cp_gh * 10**4).astype('int')
+                    # cp_gh = cp_gh * self.ratio
                     # make 'g' positive
                     # gh['g'] = gh['g'] + self.const
                     # gh *= self.ratio
+                    # cp_gh_int = (cp_gh * self.ratio).astype('int')
 
-                    merge_gh = (cp_gh['g'] * self.ratio * self.ratio +
-                                cp_gh['h']).values.astype('int')
+                    merge_gh = (cp_gh['g'] * self.ratio + cp_gh['h'])
                     start_enc = time.time()
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
