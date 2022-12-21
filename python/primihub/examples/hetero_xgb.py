@@ -508,17 +508,19 @@ class ReduceGH(object):
 @ray.remote
 class GroupPool:
 
-    def __init__(self, add_actors, pub) -> None:
+    def __init__(self, add_actors, pub, on_cols) -> None:
         self.add_actors = add_actors
         self.pub = pub
-        pass
+        self.on_cols = on_cols
 
     def groupby(self, group_col):
-        tmp_sum = group_col._aggregate_on(PallierSum,
-                                          on=['g', 'h'],
-                                          ignore_nulls=True,
-                                          pub_key=self.pub,
-                                          add_actors=self.add_actors)
+        tmp_sum = group_col._aggregate_on(
+            PallierSum,
+            on=self.on_cols,
+            #   on=['g', 'h'],
+            ignore_nulls=True,
+            pub_key=self.pub,
+            add_actors=self.add_actors)
 
         return tmp_sum.to_pandas()
 
@@ -834,8 +836,12 @@ class XGB_GUEST_EN:
 
         groups = []
         for tmp_col in cols:
-            tmp_group = buckets_x_guest.select_columns(
-                cols=[tmp_col, "g", "h"]).groupby(tmp_col)
+            if self.merge_gh:
+                tmp_group = buckets_x_guest.select_columns(
+                    cols=[tmp_col, "g"]).groupby(tmp_col)
+            else:
+                tmp_group = buckets_x_guest.select_columns(
+                    cols=[tmp_col, "g", "h"]).groupby(tmp_col)
             groups.append(tmp_group)
 
             #     # sum_que.put(tmp_sum.to_pandas())
@@ -1157,7 +1163,8 @@ class XGB_HOST_EN:
         self.lookup_table_sum = {}
         self.host_record = 0
         self.guest_record = 0
-        self.ratio = 10**5
+        self.ratio = 10**6
+        self.g_ratio = 10**8
         self.encrypted = encrypted
         self.global_transfer_time = 0
         self.gloabl_construct_time = 0
@@ -1241,24 +1248,45 @@ class XGB_HOST_EN:
             #     for _ in range(decryption_pools)
             # ])
             for key, val in gh_sums_dict.items():
-                m, n = val.shape
-                tmp_var = [key] * m
-                tmp_cut = val[key].values.tolist()
-                for col in sum_col:
+                if self.merge_gh:
+                    m = len(val)
+                    col = "sum(g)"
+                    tmp_var = [key] * m
+                    tmp_cut = val[key].values.tolist()
                     val[col] = [
                         opt_paillier_decrypt_crt(self.pub, self.prv, item)
                         for item in val[col]
                     ]
-                val = val.sort_values(by=key, ascending=True)
+                    val = val.sort_values(by=key, ascending=True)
+                    val['sum(h)'] = val['sum(g)'] % self.ratio
+                    val['sum(g)'] = val['sum(g)'] // self.ratio
+                    tmp_g_lefts = val['sum(g)'].cumsum() / self.ratio
+                    tmp_h_lefts = val['sum(h)'].cumsum() / self.ratio
 
-                cumsum_val = val.cumsum() / self.ratio
-                tmp_g_lefts = cumsum_val['sum(g)']
-                tmp_h_lefts = cumsum_val['sum(h)']
+                    G_lefts += tmp_g_lefts.values.tolist()
+                    H_lefts += tmp_h_lefts.values.tolist()
+                    vars += tmp_var
+                    cuts += tmp_cut
 
-                G_lefts += tmp_g_lefts.values.tolist()
-                H_lefts += tmp_h_lefts.values.tolist()
-                vars += tmp_var
-                cuts += tmp_cut
+                else:
+                    m, n = val.shape
+                    tmp_var = [key] * m
+                    tmp_cut = val[key].values.tolist()
+                    for col in sum_col:
+                        val[col] = [
+                            opt_paillier_decrypt_crt(self.pub, self.prv, item)
+                            for item in val[col]
+                        ]
+                    val = val.sort_values(by=key, ascending=True)
+
+                    cumsum_val = val.cumsum() / self.ratio
+                    tmp_g_lefts = cumsum_val['sum(g)']
+                    tmp_h_lefts = cumsum_val['sum(h)']
+
+                    G_lefts += tmp_g_lefts.values.tolist()
+                    H_lefts += tmp_h_lefts.values.tolist()
+                    vars += tmp_var
+                    cuts += tmp_cut
 
                 # encrypted_sums = val[sum_col]
                 # m, n = encrypted_sums.shape
@@ -1573,20 +1601,37 @@ class XGB_HOST_EN:
             # ratio = 10**3
             # gh_large = (gh * ratio).astype('int')
             if self.encrypted:
-                flat_gh = gh.values.flatten()
-                flat_gh *= self.ratio
+                if self.merge_gh:
+                    gh *= self.ratio
 
-                flat_gh = flat_gh.astype('int')
+                    merge_gh = (gh['g'] * self.ratio +
+                                gh['h']).values.atype('int')
 
-                start_enc = time.time()
-                enc_flat_gh = list(
-                    paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
-                                           flat_gh.tolist()))
+                    enc_merge_gh = list(
+                        paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                               merge_gh.tolist()))
 
-                end_enc = time.time()
+                    enc_gh_df = pd.DataFrame({'g': enc_merge_gh})
 
-                enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
-                enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
+                    # merge_gh = (gh['g'] * self.g_ratio +
+                    #             gh['h']).values.atype('int')
+                    # enc_gh_df = pd.DataFrame({'merge_gh': merge_gh})
+
+                else:
+                    flat_gh = gh.values.flatten()
+                    flat_gh *= self.ratio
+
+                    flat_gh = flat_gh.astype('int')
+
+                    start_enc = time.time()
+                    enc_flat_gh = list(
+                        paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                               flat_gh.tolist()))
+
+                    end_enc = time.time()
+
+                    enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
+                    enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
 
                 # send all encrypted gradients and hessians to 'guest'
                 self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
@@ -1678,6 +1723,7 @@ num_tree = 5
 max_depth = 5
 # whether encrypted or not
 is_encrypted = True
+merge_gh = True
 
 ray_group = True
 
@@ -1769,6 +1815,7 @@ def xgb_host_logic(cry_pri="paillier"):
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
                            encrypted=is_encrypted)
+    xgb_host.merge_gh = merge_gh
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
 
@@ -1922,14 +1969,23 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
+    xgb_guest.merge_gh = merge_gh
 
     add_actor_num = 20
     paillier_add_actors = ActorPool(
         [ActorAdd.remote(xgb_guest.pub) for _ in range(add_actor_num)])
 
-    grouppools = ActorPool([
-        GroupPool.remote(paillier_add_actors, xgb_guest.pub) for _ in range(10)
-    ])
+    if xgb_guest.merge_gh:
+        grouppools = ActorPool([
+            GroupPool.remote(paillier_add_actors, xgb_guest.pub, on_cols=['g'])
+            for _ in range(10)
+        ])
+    else:
+        grouppools = ActorPool([
+            GroupPool.remote(paillier_add_actors,
+                             xgb_guest.pub,
+                             on_cols=['g', 'h']) for _ in range(10)
+        ])
     xgb_guest.paillier_add_actors = paillier_add_actors
     xgb_guest.grouppools = grouppools
 
