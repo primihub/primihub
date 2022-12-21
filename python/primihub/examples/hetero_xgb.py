@@ -1170,7 +1170,7 @@ class XGB_HOST_EN:
         self.lookup_table_sum = {}
         self.host_record = 0
         self.guest_record = 0
-        self.ratio = 10**6
+        self.ratio = 10**8
         self.const = 2
         self.g_ratio = 10**8
         self.encrypted = encrypted
