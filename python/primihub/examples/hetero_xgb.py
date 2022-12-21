@@ -1208,7 +1208,7 @@ class XGB_HOST_EN:
         h = plain_gh['h'].values
 
         # best_gain = None
-        best_gain = 0
+        best_gain = 0.001
         best_cut = None
         best_var = None
         G_left_best, G_right_best, H_left_best, H_right_best = None, None, None, None
@@ -1390,7 +1390,7 @@ class XGB_HOST_EN:
         return gh_sums
 
     def guest_best_cut(self, guest_gh_sums):
-        best_gain = 0
+        best_gain = 0.001
         if guest_gh_sums.empty:
             return None
         guest_gh_sums['gain'] = guest_gh_sums['G_left'] ** 2 / (guest_gh_sums['H_left'] + self.reg_lambda) + \
