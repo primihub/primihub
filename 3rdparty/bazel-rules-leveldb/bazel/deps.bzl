@@ -9,7 +9,8 @@ def deps(repo_mapping = {}):
     if "com_github_google_leveldb" not in native.existing_rules():
         http_archive(
             name = "com_github_google_leveldb",
-            url = "https://github.com/google/leveldb/archive/refs/tags/1.23.zip",
+            #url = "https://github.com/google/leveldb/archive/refs/tags/1.23.zip",
+            url = "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb-1.23.zip",
             sha256 = "a6fa7eebd11de709c46bf1501600ed98bf95439d6967963606cc964931ce906f",
             strip_prefix = "leveldb-1.23",
             repo_mapping = repo_mapping,
