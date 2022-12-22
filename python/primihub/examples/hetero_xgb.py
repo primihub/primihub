@@ -66,7 +66,7 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
-ray.init(address='ray://172.21.3.16:6777')
+ray.init(address='ray://172.21.3.16:10001')
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -1770,6 +1770,7 @@ min_child_weight = 5
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
     logger.info("start xgb host logic...")
+    ray.init(address='ray://172.21.3.16:10001')
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
@@ -1929,6 +1930,8 @@ def xgb_host_logic(cry_pri="paillier"):
 def xgb_guest_logic(cry_pri="paillier"):
     # def xgb_guest_logic(cry_pri="plaintext"):
     print("start xgb guest logic...")
+    ray.init(address='ray://172.21.3.16:10001')
+
     # ios = IOService()
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
