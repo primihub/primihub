@@ -56,11 +56,12 @@ class PSIEcdhTask : public TaskBase, public PsiCommonOperator {
   retcode buildInitParam(std::string* init_param);
   retcode sendInitParam(const std::string& init_param);
   retcode sendPSIRequestAndWaitResponse(const psi_proto::Request& request, rpc::PsiResponse* response);
+  retcode sendPSIRequestAndWaitResponse(psi_proto::Request&& request, rpc::PsiResponse* response);
   retcode parsePsiResponseFromeString(const std::string& res_str, rpc::PsiResponse* response);
   // server method
   int executeAsServer();
   int initRequest(psi_proto::Request* psi_request);
-  int preparePSIResponse(psi_proto::Response&& psi_response, psi_proto::ServerSetup&& setup);
+  retcode preparePSIResponse(psi_proto::Response&& psi_response, psi_proto::ServerSetup&& setup);
   int recvPSIResult();
   int recvInitParam(size_t* client_dataset_size, bool* reveal_intersection);
   void set_fpr(double fpr) {
