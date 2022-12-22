@@ -66,6 +66,7 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
+ray.init(address='ray://172.21.3.16:6777')
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -1975,13 +1976,11 @@ def xgb_guest_logic(cry_pri="paillier"):
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
 
-
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     data = pd.read_csv(
         '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
         header=0)
     data = data.iloc[:, :450]
-
 
     if 'id' in data.columns:
         data.pop('id')
