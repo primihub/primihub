@@ -16,10 +16,13 @@ cmake(
    #    "https_proxy": "http://127.0.0.1:1080",
    #    "http_proxy": "http://127.0.0.1:1080",
    #},
+    build_args = [
+        "-j`nproc`",
+    ],
     cache_entries = {
         "SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT": "OFF",
     },
-   defines = [
+    defines = [
         "SEAL_USE_CXX17=ON",
         "SEAL_USE_INTRIN=ON",
         "SEAL_USE_MSGSL=ON",
@@ -27,7 +30,7 @@ cmake(
         "SEAL_BUILD_TESTS=OFF",
         "BUILD_SHARED_LIBS=OFF",
         "CMAKE_BUILD_TYPE=Release",
-   ],
+    ],
    install = True,
 #    make_commands = [
 #         "make -j",
