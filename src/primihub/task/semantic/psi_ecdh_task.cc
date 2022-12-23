@@ -282,25 +282,64 @@ retcode PSIEcdhTask::parsePsiResponseFromeString(
         LOG(ERROR) << "Node psi client get intersection setup info error!";
         return retcode::FAIL;
     }
-
-    for (const auto& encrypted_element : psi_response.encrypted_elements()) {
-        response->add_encrypted_elements(encrypted_element);
+    size_t elements_size = psi_response.encrypted_elements_size();
+    auto encrypted_elements_ptr = response->mutable_encrypted_elements();
+    encrypted_elements_ptr->Reserve(elements_size);
+    for (auto& encrypted_element : *(psi_response.mutable_encrypted_elements())) {
+        response->add_encrypted_elements(std::move(encrypted_element));
     }
     return retcode::SUCCESS;
 }
+retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
+        psi_proto::Request&& request, rpc::PsiResponse* response) {
+    SCopedTimer timer;
+    // send process
+    {
+        psi_proto::Request client_request = std::move(request);
+        std::string psi_req_str;
+        client_request.SerializeToString(&psi_req_str);
+        VLOG(5) << "begin to send psi request to server";
+        auto ret = this->send(this->key, peer_node, psi_req_str);
+        if (ret != retcode::SUCCESS) {
+            LOG(ERROR) << "send psi reuqest to [" << peer_node.to_string() << "] failed";
+            return retcode::FAIL;
+        }
+        VLOG(5) << "send psi request to server success";
+    }
 
+    VLOG(5) << "begin to recv psi response from server";
+    std::string recv_data_str;
+    auto ret = this->recv(this->key, &recv_data_str);
+    if (ret != retcode::SUCCESS || recv_data_str.empty()) {
+        LOG(ERROR) << "recv data is empty";
+        return retcode::FAIL;
+    }
+    VLOG(5) << "successfully recv psi response from server";
+    ret = parsePsiResponseFromeString(recv_data_str, response);
+    VLOG(5) << "end of merge task response";
+    return ret;
+}
 retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
         const psi_proto::Request& client_request, rpc::PsiResponse* response) {
     SCopedTimer timer;
     std::string psi_req_str;
     client_request.SerializeToString(&psi_req_str);
+    VLOG(5) << "begin to send psi request to server";
+    auto ret = this->send(this->key, peer_node, psi_req_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send psi reuqest to [" << peer_node.to_string() << "] failed";
+        return retcode::FAIL;
+    }
+    VLOG(5) << "send psi request to server success";
+    VLOG(5) << "begin to recv psi response from server";
     std::string recv_data_str;
-    this->sendRecv(this->key, peer_node, psi_req_str, &recv_data_str);
-    if (recv_data_str.empty()) {
+    ret = this->recv(this->key, &recv_data_str);
+    if (ret != retcode::SUCCESS || recv_data_str.empty()) {
         LOG(ERROR) << "recv data is empty";
         return retcode::FAIL;
     }
-    auto ret = parsePsiResponseFromeString(recv_data_str, response);
+    VLOG(5) << "successfully recv psi response from server";
+    ret = parsePsiResponseFromeString(recv_data_str, response);
     VLOG(5) << "end of merge task response";
     return ret;
 }
@@ -321,13 +360,13 @@ int PSIEcdhTask::executeAsClient() {
     // prepare psi data
     auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
     psi_proto::Request client_request = client->CreateRequest(elements_).value();
-    psi_proto::Response server_response;
+    // psi_proto::Response server_response;
     auto build_request_ts = timer.timeElapse();
     auto build_request_time_cost = build_request_ts;
     VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     // send psi data to server
     rpc::PsiResponse task_response;
-    sendPSIRequestAndWaitResponse(client_request, &task_response);
+    sendPSIRequestAndWaitResponse(std::move(client_request), &task_response);
     auto _start = timer.timeElapse();
     int ret = this->GetIntsection(client, task_response);
     if (ret) {
@@ -401,7 +440,7 @@ int PSIEcdhTask::recvInitParam(size_t* client_dataset_size, bool* reveal_interse
     return 0;
 }
 
-int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
+retcode PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
                                     psi_proto::ServerSetup&& setup_info) {
     SCopedTimer timer;
     VLOG(5) << "preparePSIResponse";
@@ -423,11 +462,18 @@ int PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
     psi_res_str.append(reinterpret_cast<char*>(&be_setup_info_len), sizeof(uint64_t));
     psi_res_str.append(setup_info_str);
     VLOG(5) << "preparePSIResponse data length: " << psi_res_str.size();
-    pushDataToSendQueue(this->key, std::move(psi_res_str));
+    // pushDataToSendQueue(this->key, std::move(psi_res_str));
+    VLOG(5) << "begin to send psi response to client";
+    auto ret = this->send(this->key, peer_node, psi_res_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send psi response data to [" << peer_node.to_string() << "] failed";
+        return retcode::FAIL;
+    }
+    VLOG(5) << "successfully send psi response to cleint";
     auto build_response_ts = timer.timeElapse();
     auto build_response_time_cost = build_response_ts;
     VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
-    return 0;
+    return retcode::SUCCESS;
 }
 
 int PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
