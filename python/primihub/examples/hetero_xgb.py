@@ -1701,8 +1701,8 @@ class XGB_HOST_EN:
         # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
         self.acc = train_acc
         fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
-        self.fpr = fpr
-        self.tpr = tpr
+        self.fpr = fpr.tolist()
+        self.tpr = tpr.tolist()
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')

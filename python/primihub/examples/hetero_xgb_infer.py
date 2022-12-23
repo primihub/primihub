@@ -369,8 +369,8 @@ def xgb_host_infer():
         "test_acc": acc,
         "test_ks": ks,
         "test_auc": auc,
-        "test_fpr": fpr,
-        "test_tpr": tpr
+        "test_fpr": fpr.tolist(),
+        "test_tpr": tpr.tolist()
     }
 
     # pred_y = xgb_host.host_predict(test_host)
