@@ -57,7 +57,7 @@ genrule(
             if ! ./configure --prefix=/tmp/gmp --enable-cxx --disable-assembly > $$CONFIGURE_LOG; then
                 cat $$CONFIGURE_LOG
             fi
-            if ! make > $$MAKE_LOG; then
+            if ! make -j`nproc` > $$MAKE_LOG; then
                 cat $$MAKE_LOG
             fi
             if ! make install > $$MAKE_LOG; then
