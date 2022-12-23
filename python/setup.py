@@ -45,9 +45,12 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
-
-    shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
-                    paths + "/opt_paillier_c2py.so")
+    
+    if os.path.isfile("../bazel-bin/opt_paillier_c2py.so"):
+        shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
+                paths + "/opt_paillier_c2py.so")
+    else:
+        print("Ignore opt_paillier_c2py.so due to not compiled.")
 
 
 def clean_proto():
