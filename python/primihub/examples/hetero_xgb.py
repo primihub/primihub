@@ -69,6 +69,10 @@ logger = logging.getLogger("proxy")
 # ray.init(address='ray://172.21.3.16:10001')
 
 
+def goss_sample():
+    pass
+
+
 def search_best_splits(X: pd.DataFrame,
                        g,
                        h,
@@ -1696,6 +1700,9 @@ class XGB_HOST_EN:
         train_acc = metrics.accuracy_score((y_hat >= 0.5).astype('int'), Y)
         # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
         self.acc = train_acc
+        fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
+        self.fpr = fpr
+        self.tpr = tpr
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
@@ -1800,12 +1807,12 @@ def xgb_host_logic(cry_pri="paillier"):
     logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    data = pd.read_csv(
-        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
-        header=0)
-    data = data.iloc[:, 550:]
+    # data = pd.read_csv(
+    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
+    #     header=0)
+    # data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -1895,7 +1902,9 @@ def xgb_host_logic(cry_pri="paillier"):
     trainMetrics = {
         "train_acc": xgb_host.acc,
         "train_auc": xgb_host.acc,
-        "train_ks": xgb_host.ks
+        "train_ks": xgb_host.ks,
+        "train_fpr": xgb_host.fpr,
+        "train_tpr": xgb_host.tpr
     }
 
     # save results to png
@@ -1976,13 +1985,13 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
 
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    data = pd.read_csv(
-        '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
-        header=0)
-    data = data.iloc[:, :450]
+    # data = pd.read_csv(
+    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
+    #     header=0)
+    # data = data.iloc[:, :450]
 
     if 'id' in data.columns:
         data.pop('id')
@@ -2008,7 +2017,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     paillier_add_actors = ActorPool(
         [ActorAdd.remote(xgb_guest.pub) for _ in range(add_actor_num)])
 
-    ray.init(address='ray://172.21.3.16:10001')
+    # ray.init(address='ray://172.21.3.16:10001')
 
     if xgb_guest.merge_gh:
         grouppools = ActorPool([

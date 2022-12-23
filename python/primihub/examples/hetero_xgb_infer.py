@@ -364,7 +364,14 @@ def xgb_host_infer():
     acc = accuracy_score((pred_prob >= 0.5).astype('int'), test_y)
 
     ks, auc = evaluate_ks_and_roc_auc(y_real=test_y, y_proba=pred_prob)
-    test_metrics = {"test_acc": acc, "test_ks": ks, "test_auc": auc}
+    fpr, tpr, threshold = metrics.roc_curve(test_y, pred_prob)
+    test_metrics = {
+        "test_acc": acc,
+        "test_ks": ks,
+        "test_auc": auc,
+        "test_fpr": fpr,
+        "test_tpr": tpr
+    }
 
     # pred_y = xgb_host.host_predict(test_host)
 
