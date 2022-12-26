@@ -1724,9 +1724,13 @@ class XGB_HOST_EN:
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
                                                merge_gh.values.tolist()))
 
-                    # enc_gh_df = pd.DataFrame({'g': enc_merge_gh})
-                    cp_gh['g'] = enc_merge_gh
-                    enc_gh_df = cp_gh['g']
+                    enc_gh_df = pd.DataFrame({
+                        'g': enc_merge_gh,
+                        'id': cp_gh.index.tolist()
+                    })
+                    # cp_gh['g'] = enc_merge_gh
+                    # enc_gh_df = cp_gh['g']
+                    enc_gh_df.reindex('id', inplace=True)
                     print("enc_gh_df: ", enc_gh_df)
                     end_enc = time.time()
 
