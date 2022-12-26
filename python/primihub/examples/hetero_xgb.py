@@ -5,6 +5,7 @@ from sklearn import metrics
 from primihub.primitive.opt_paillier_c2py_warpper import *
 import pandas as pd
 import numpy as np
+import random
 from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score
 import logging
@@ -69,8 +70,37 @@ logger = logging.getLogger("proxy")
 # ray.init(address='ray://172.21.3.16:10001')
 
 
-def goss_sample():
-    pass
+def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
+    df_g_cp = abs(df_g.copy())
+    g_arr = df_g_cp['g'].values
+    if top_rate < 0 or top_rate > 100:
+        raise ValueError("The ratio should be between 0 and 100.")
+    elif top_rate > 0 and top_rate < 1:
+        top_rate *= 100
+
+    top_rate = int(top_rate)
+    top_clip = np.percentile(g_arr, 100 - top_rate)
+    top_ids = df_g_cp[df_g_cp['g'] >= top_clip].index.tolist()
+    other_ids = df_g_cp[df_g_cp['g'] < top_clip].index.tolist()
+
+    assert other_rate > 0 and other_rate <= 1.0
+    other_num = int(len(other_ids) * other_rate)
+
+    low_ids = random.sample(other_ids, other_num)
+
+    return top_ids + low_ids
+
+
+def random_sample(df_g, top_rate=0.2, other_rate=0.2):
+    all_ids = df_g.index.tolist()
+    sample_rate = top_rate + other_rate
+
+    assert sample_rate > 0 and sample_rate <= 1.0
+    sample_num = int(len(all_ids) * sample_rate)
+
+    sample_ids = random.sample(all_ids, sample_num)
+
+    return sample_ids
 
 
 def search_best_splits(X: pd.DataFrame,
@@ -1070,10 +1100,15 @@ class XGB_GUEST_EN:
     def fit(self, X_guest, lookup_table_sum):
         for t in range(self.n_estimators):
             self.record = 0
+            sample_ids = self.proxy_server.Get('sample_ids')
+            if sample_ids is None:
+                current_x = X_guest.copy()
+            else:
+                current_x = X_guest.iloc[sample_ids].copy()
             # gh_host = xgb_guest.channel.recv()
             gh_en = self.proxy_server.Get('gh_en')
             self.tree_structure[t + 1] = self.guest_tree_construct(
-                X_guest.copy(), gh_en, 0)
+                current_x, gh_en, 0)
 
             # stat construct boosting trees
 
@@ -1151,7 +1186,10 @@ class XGB_HOST_EN:
             random_seed=112,
             sid=0,
             record=0,
-            encrypted=None):
+            encrypted=None,
+            top_ratio=0.2,
+            other_ratio=0.2,
+            sample_type='goss'):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -1181,6 +1219,9 @@ class XGB_HOST_EN:
         self.encrypted = encrypted
         self.global_transfer_time = 0
         self.gloabl_construct_time = 0
+        self.top_ratio = top_ratio
+        self.other_ratio = other_ratio
+        self.sample_type = sample_type
 
     def _grad(self, y_hat, Y):
 
@@ -1623,13 +1664,48 @@ class XGB_HOST_EN:
                 'g': self._grad(y_hat, Y.flatten()),
                 'h': self._hess(y_hat, Y.flatten())
             })
+            if self.sample_type == 'goss':
+                sample_ids = goss_sample(gh,
+                                         top_rate=self.top_ratio,
+                                         other_rate=self.other_ratio)
+
+            elif self.sample_type == 'random':
+                sample_ids = random_sample(gh,
+                                           top_rate=self.top_ratio,
+                                           other_rate=self.other_ratio)
+                # X_host = X_host.iloc[sample_ids].copy()
+                # Y = Y[sample_ids]
+                # ghs = ghs.iloc[sample_ids].copy()
+
+            else:
+                sample_ids = None
+
+            self.proxy_client_guest.Remote(sample_ids, "sample_ids")
+            if sample_ids is not None:
+                # select from 'X_host', Y and ghs
+                current_x = X_host.iloc[sample_ids].copy()
+                current_y = Y[sample_ids]
+                current_ghs = gh.iloc[sample_ids].copy()
+                current_y_hat = y_hat[sample_ids]
+                current_f_t = f_t.iloc[sample_ids].copy()
+            else:
+                current_x = X_host.copy()
+                current_y = Y
+                current_ghs = gh.copy()
+                current_y_hat = y_hat
+                current_f_t = f_t.copy()
+
+            # else:
+            #     sample_ids
+            #     raise ValueError("The {self.sample_type} was not defined!")
 
             # convert gradients and hessians to ints and encrypted with paillier
             # ratio = 10**3
             # gh_large = (gh * ratio).astype('int')
             if self.encrypted:
                 if self.merge_gh:
-                    cp_gh = gh.copy()
+                    # cp_gh = gh.copy()
+                    cp_gh = current_ghs.copy()
                     cp_gh['g'] = cp_gh['g'] + self.const
                     cp_gh = np.round(cp_gh, 4)
                     cp_gh = (cp_gh * 10**4).astype('int')
@@ -1653,7 +1729,8 @@ class XGB_HOST_EN:
                     # enc_gh_df = pd.DataFrame({'merge_gh': merge_gh})
 
                 else:
-                    flat_gh = gh.values.flatten()
+                    # flat_gh = gh.values.flatten()
+                    flat_gh = current_ghs.values.flatten()
                     flat_gh *= self.ratio
 
                     flat_gh = flat_gh.astype('int')
@@ -1677,32 +1754,28 @@ class XGB_HOST_EN:
                 print("Encrypt finish.")
 
             else:
-                self.proxy_client_guest.Remote(gh, "gh_en")
+                self.proxy_client_guest.Remote(current_ghs, "gh_en")
 
+            # self.tree_structure[t + 1] = self.host_tree_construct(
+            #     X_host.copy(), f_t, 0, gh)
             self.tree_structure[t + 1] = self.host_tree_construct(
-                X_host.copy(), f_t, 0, gh)
+                current_x.copy(), current_f_t, 0, current_ghs)
             # y_hat = y_hat + xgb_host.learning_rate * f_t
 
             end_build_tree = time.time()
 
             lookup_table_sum[t + 1] = self.lookup_table
-            y_hat = y_hat + self.learning_rate * f_t
+            # y_hat = y_hat + self.learning_rate * f_t
+            current_y_hat = current_y_hat + self.learning_rate * current_f_t
 
             logger.info("Finish to trian tree {}.".format(t + 1))
 
-            current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+            # current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+            current_loss = self.log_loss(current_y,
+                                         1 / (1 + np.exp(-current_y_hat)))
             train_losses.append(current_loss)
 
             print("train_losses ", train_losses)
-        ks, auc = evaluate_ks_and_roc_auc(y_real=Y, y_proba=y_hat)
-        self.ks = ks
-        self.auc = auc
-        train_acc = metrics.accuracy_score((y_hat >= 0.5).astype('int'), Y)
-        # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
-        self.acc = train_acc
-        fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
-        self.fpr = fpr.tolist()
-        self.tpr = tpr.tolist()
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
@@ -1878,6 +1951,17 @@ def xgb_host_logic(cry_pri="paillier"):
     end = time.time()
     # logger.info("lasting time for xgb %s".format(end-start))
     print("train time for xgboost: ", (end - start))
+    y_hat = xgb_host.predict_prob(X_host, lookup=lookup_table_sum)
+
+    ks, auc = evaluate_ks_and_roc_auc(y_real=Y, y_proba=y_hat)
+    xgb_host.ks = ks
+    xgb_host.auc = auc
+    train_acc = metrics.accuracy_score((y_hat >= 0.5).astype('int'), Y)
+    # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
+    xgb_host.acc = train_acc
+    fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
+    xgb_host.fpr = fpr.tolist()
+    xgb_host.tpr = tpr.tolist()
 
     model_file_path = ph.context.Context.get_model_file_path()
     lookup_file_path = ph.context.Context.get_host_lookup_file_path()
@@ -2058,7 +2142,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     with open(lookup_file_path, 'wb') as guestTable:
         pickle.dump(lookup_table_sum, guestTable)
 
-    # xgb_guest.predict(X_guest.copy(), lookup_table_sum)
+    xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
     proxy_server.StopRecvLoop()
