@@ -55,11 +55,11 @@ namespace primihub::task
       }
       catch (const std::runtime_error &error)
       {
-        LOG_ERROR() << error.what();
+        LOG(ERROR) << error.what();
         algorithm_ = nullptr;
       }
 #else
-      LOG_WARNING() << "Skip init maxpool algorithm instance due to lack support for apple platform.";
+      LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support for apple platform.";
 #endif
     }
     else if (function_name == "lenet")
@@ -70,7 +70,7 @@ namespace primihub::task
           std::make_shared<primihub::falcon::FalconLenetExecutor>(
 		  config, dataset_service));
 #else
-      LOG_WARNING() << "Skip init lenet algorithm instance due to lack support for apple platform.";
+      LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple platform.";
 #endif
     }
     else if (function_name == "decision_tree")
@@ -129,7 +129,7 @@ namespace primihub::task
       }
       catch (const std::runtime_error &error)
       {
-        LOG_ERROR() << error.what();
+        LOG(ERROR) << error.what();
         algorithm_ = nullptr;
       }
     }
@@ -144,13 +144,13 @@ namespace primihub::task
       }
       catch (const std::runtime_error &error)
       {
-        LOG_ERROR() << error.what();
+        LOG(ERROR) << error.what();
         algorithm_ = nullptr;
       }
     }
     else
     {
-      LOG_ERROR() << "Unsupported algorithm: " << function_name;
+      LOG(ERROR) << "Unsupported algorithm: " << function_name;
     }
   }
 
@@ -158,7 +158,7 @@ namespace primihub::task
   {
     if (algorithm_ == nullptr)
     {
-      LOG_ERROR() << "Algorithm is not initialized";
+      LOG(ERROR) << "Algorithm is not initialized";
       return -1;
     }
     algorithm_->set_task_info(platform(),job_id(),task_id());
@@ -170,14 +170,14 @@ namespace primihub::task
       ret = algorithm_->loadDataset();
       if (ret)
       {
-        LOG_ERROR() << "Load dataset from file failed.";
+        LOG(ERROR) << "Load dataset from file failed.";
         break;
       }
 
       ret = algorithm_->initPartyComm();
       if (ret)
       {
-        LOG_ERROR() << "Initialize party communicate failed.";
+        LOG(ERROR) << "Initialize party communicate failed.";
         break;
       }
 

@@ -17,12 +17,12 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/util/log_wrapper.h"
+// #include "src/primihub/util/log_wrapper.h"
 
 namespace primihub {
-#define LOG_INFO() LOG_INFO_WRAPPER(platform(), job_id(), task_id())
-#define LOG_WARNING() LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
-#define LOG_ERROR() LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
+// #define LOG_INFO() LOG_INFO_WRAPPER(platform(), job_id(), task_id())
+// #define LOG_WARNING() LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
+// #define LOG_ERROR() LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
 
 class MissingProcess : public AlgorithmBase {
 public:

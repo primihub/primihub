@@ -243,7 +243,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
   this->algorithm_name_ = "missing_val_processing";
 
   std::map<std::string, Node> &node_map = config.node_map;
-  LOG_INFO() << node_map.size();
+  LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -259,7 +259,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
   }
 
   party_id_ = iter->second.vm(0).party_id();
-  LOG_INFO() << "Note party id of this node is " << party_id_ << ".";
+  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
 
   if (party_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
@@ -332,7 +332,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     // two node has dataset to handle, fix it later.
     std::stringstream ss;
     ss << "Can't not find dataset belong to " << this->node_id_ << ".";
-    LOG_ERROR() << ss.str();
+    LOG(ERROR) << ss.str();
     throw std::runtime_error(ss.str());
   }
 
@@ -351,7 +351,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   }
 
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
-  LOG_INFO() << "New id of new dataset is " << new_dataset_id_ << ".";
+  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
   std::string next_name;
   std::string prev_name;
   if (party_id_ == 0) {
@@ -379,16 +379,16 @@ int MissingProcess::loadDataset() {
   }
   // file reading error or file empty
   if (ret <= 0) {
-    LOG_ERROR() << "Load dataset failed.";
+    LOG(ERROR) << "Load dataset failed.";
     return -1;
   }
   return 0;
 }
 
 int MissingProcess::initPartyComm(void) {
-  LOG_INFO() << "Begin to init party comm.";
+  LOG(INFO) << "Begin to init party comm.";
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-  LOG_INFO() << "Finish to init party comm.";
+  LOG(INFO) << "Finish to init party comm.";
   return 0;
 }
 
@@ -411,7 +411,7 @@ int MissingProcess::execute() {
     }
 
     if (cols_0 != cols_1 || cols_0 != cols_2 || cols_1 != cols_2) {
-      LOG_ERROR()
+      LOG(ERROR)
           << "The taget data columns of the three parties are inconsistent!";
       return -1;
     }
@@ -444,7 +444,7 @@ int MissingProcess::execute() {
       if ((arr_dtype0[i] != arr_dtype1[i]) ||
           (arr_dtype0[i] != arr_dtype2[i]) ||
           (arr_dtype1[i] != arr_dtype2[i])) {
-        LOG_ERROR()
+        LOG(ERROR)
             << "The data column types of the three parties are inconsistent!";
         return -1;
       }
@@ -563,7 +563,7 @@ int MissingProcess::execute() {
               int ret = 0;
               // LOG_INFO()<< str_array->length();
               for (int64_t j = 0; j < str_array->length(); j++) {
-                LOG_INFO() << str_array->GetString(j);
+                LOG(INFO) << str_array->GetString(j);
                 if (str_array->IsNull(j)) {
                   LOG(WARNING) << "Find missing value in column " << iter->first
                                << ", chunk " << k << ", index " << j << ".";
@@ -728,7 +728,7 @@ int MissingProcess::execute() {
       }
     }
   } catch (std::exception &e) {
-    LOG_ERROR() << "In party " << party_id_ << ":\n" << e.what() << ".";
+    LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
     return -1;
   }
 
@@ -763,7 +763,7 @@ int MissingProcess::saveModel(void) {
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);
   if (ret != 0) {
-    LOG_ERROR() << "Save result to file " << new_path << " failed.";
+    LOG(ERROR) << "Save result to file " << new_path << " failed.";
     return -1;
   }
 
@@ -855,7 +855,7 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
       }
     }
     if (tmp_len != array_len) {
-      LOG_ERROR() << "Column " << local_col_names[i] << " has " << tmp_len
+      LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
                   << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
@@ -884,7 +884,7 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
 
   local_col_names = table->ColumnNames();
   for (auto i = 0; i < local_col_names.size(); i++)
-    LOG_INFO() << local_col_names[i];
+    LOG(INFO) << local_col_names[i];
   // 'array' include values in a column of csv file.
   int chunk_num = table->column(num_col - 1)->chunks().size();
 
@@ -910,7 +910,7 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
       }
     }
     if (tmp_len != array_len) {
-      LOG_ERROR() << "Column " << local_col_names[i] << " has " << tmp_len
+      LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
                   << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
