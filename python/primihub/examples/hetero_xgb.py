@@ -1730,7 +1730,7 @@ class XGB_HOST_EN:
                     })
                     # cp_gh['g'] = enc_merge_gh
                     # enc_gh_df = cp_gh['g']
-                    enc_gh_df.reindex('id', inplace=True)
+                    enc_gh_df.set_index('id', inplace=True)
                     print("enc_gh_df: ", enc_gh_df)
                     end_enc = time.time()
 
