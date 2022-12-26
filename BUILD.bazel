@@ -1117,6 +1117,22 @@ py_library(
 )
 
 pybind_extension(
+    name = "linkcontext",
+    srcs = [
+        "src/primihub/pybind_warpper/network/link_context_wrapper.cc",
+    ],
+    deps = [
+        ":util_lib",
+        ":communication_lib",
+    ],
+)
+
+py_library(
+    name = "linkcontext",
+    data = ["linkcontext.so"],
+)
+
+pybind_extension(
     name = "pybind_mpc",
     srcs = [
         "src/primihub/pybind_warpper/express_wrapper.cc",

@@ -45,12 +45,18 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
-    
+
     if os.path.isfile("../bazel-bin/opt_paillier_c2py.so"):
-        shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
+        shutil.copyfile("../bazel-bin/opt_paillier_c2py.so",
                 paths + "/opt_paillier_c2py.so")
     else:
         print("Ignore opt_paillier_c2py.so due to not compiled.")
+
+    if os.path.isfile("../bazel-bin/linkcontext.so"):
+        shutil.copyfile("../bazel-bin/linkcontext.so",
+                paths + "/linkcontext.so")
+    else:
+        print("Ignore linkcontext.so due to not compiled.")
 
 
 def clean_proto():
@@ -65,7 +71,7 @@ def clean_proto():
             file_to_remove.append(f_name)
         if f_name.find("pb2_grpc.py") != -1:
             file_to_remove.append(f_name)
-    
+
     for fname in file_to_remove:
         os.remove(proto_dir + fname)
         print("Remove {}.".format(fname))
@@ -78,7 +84,7 @@ def compile_proto():
     print("compile proto...")
     os.chdir("../")
     print(os.getcwd())
-    
+
     python_out_dir = "python/primihub/client/ph_grpc"
     grpc_python_out = "python/primihub/client/ph_grpc"
 
@@ -99,7 +105,7 @@ def compile_proto():
     out, err = p.communicate()
     if p.returncode != 0:
         raise RuntimeError("Error compiling proto file: {0}".format(err))
-    
+
     os.chdir("python")
     print(os.getcwd())
 
@@ -145,7 +151,7 @@ class ProtoCommand(distutils.cmd.Command):
 
 
 class AddSoLibCommand(distutils.cmd.Command):
-    """Run command: 
+    """Run command:
         add so lib path to Python path.
     """
 
