@@ -242,7 +242,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
 
-  std::map<std::string, Node> &node_map = config.node_map;
+  std::map<std::string, rpc::Node> &node_map = config.node_map;
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
@@ -346,7 +346,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     std::string col_name = iter->name.GetString();
     uint32_t col_dtype = iter->value.GetInt();
     col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
-    LOG_INFO() << "Type of column " << iter->name.GetString() << " is "
+    LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
                << iter->value.GetInt() << ".";
   }
 
@@ -365,7 +365,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     prev_name = "12";
   }
   mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
-  mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
+  // mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
 
   return 0;
 }
