@@ -1107,6 +1107,7 @@ class XGB_GUEST_EN:
                 current_x = X_guest.iloc[sample_ids].copy()
             # gh_host = xgb_guest.channel.recv()
             gh_en = self.proxy_server.Get('gh_en')
+            print("gh_en: ", gh_en)
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 current_x, gh_en, 0)
 
@@ -1724,7 +1725,7 @@ class XGB_HOST_EN:
                                                merge_gh.values.tolist()))
 
                     enc_gh_df = pd.DataFrame({'g': enc_merge_gh})
-                    print("enc_merge_gh: ", enc_merge_gh)
+                    print("enc_gh_df: ", enc_gh_df)
                     end_enc = time.time()
 
                     # merge_gh = (gh['g'] * self.g_ratio +
