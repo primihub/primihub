@@ -1683,6 +1683,7 @@ class XGB_HOST_EN:
             self.proxy_client_guest.Remote(sample_ids, "sample_ids")
             if sample_ids is not None:
                 # select from 'X_host', Y and ghs
+                print("sample_ids: ", sample_ids)
                 current_x = X_host.iloc[sample_ids].copy()
                 current_y = Y[sample_ids]
                 current_ghs = gh.iloc[sample_ids].copy()
