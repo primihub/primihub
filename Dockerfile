@@ -20,7 +20,7 @@ ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
-  && bazel build --config=linux --define cpu=amd64 --define microsoft-apsi=true :node :cli :opt_paillier_c2py
+  && bazel build --config=linux --define cpu=amd64 --define microsoft-apsi=true :node :cli :opt_paillier_c2py :linkcontext
 
 FROM ubuntu:20.04 as runner
 
@@ -55,6 +55,8 @@ COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 
 # Copy opt_paillier_c2py.so to /app/python, this enable setup.py find it.
 RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/
+# Copy linkcontext.so to /app/python, this enable setup.py find it.
+RUN cp $TARGET_PATH/linkcontext.so /app/python/
 
 # The setup.py will copy opt_paillier_c2py.so to python library path.
 WORKDIR /app/python
@@ -63,6 +65,7 @@ RUN python3 -m pip install --upgrade pip \
   && python3 setup.py install
 
 RUN rm -rf /app/python/opt_paillier_c2py.so
+RUN rm -rf /app/python/linkcontext.so
 WORKDIR /app
 
 # gRPC server port

@@ -31,6 +31,7 @@ COPY ./config ./config
 COPY ./python ./python
 COPY ./src/primihub/protos/ ./src/primihub/protos/
 RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/
+RUN cp $TARGET_PATH/linkcontext.so /app/python/
 
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
