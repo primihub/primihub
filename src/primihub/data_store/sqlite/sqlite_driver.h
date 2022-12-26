@@ -20,6 +20,7 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "SQLiteCpp/SQLiteCpp.h"
+#include "SQLiteCpp/Column.h"
 
 namespace primihub {
 class SQLiteDriver;
@@ -30,6 +31,9 @@ public:
   ~SQLiteCursor();
   std::shared_ptr<primihub::Dataset> read() override;
   std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
+  std::shared_ptr<arrow::Table> 
+  read_from_abnormal(std::map<std::string, uint32_t> col_type,
+                     std::map<std::string, std::vector<int>> &index);
   int write(std::shared_ptr<primihub::Dataset> dataset) override;
   void close() override;
 
@@ -55,6 +59,10 @@ public:
     if (it != sql_type_name_to_enum.end()) {
       return it->second;
     }
+    else {
+      if(std::string::npos != type_name.find("VARCHAR"))
+        return sql_type_t::STRING;
+    }
     return sql_type_t::UNKONW;
   }
 
@@ -67,6 +75,7 @@ public:
     {"INTEGER", sql_type_t::INT64},
     {"INT", sql_type_t::INT},
     {"DOUBLE", sql_type_t::DOUBLE},
+    
   };
 };
 

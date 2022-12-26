@@ -155,6 +155,208 @@ SQLiteCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
+std::shared_ptr<arrow::Table> 
+SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
+                     std::map<std::string, std::vector<int>> &index){
+  std::shared_ptr<arrow::Table> table{nullptr};
+  auto& db_connector = this->driver_->getDBConnector();
+  SQLite::Statement sql_query(*db_connector, sql_);
+  std::map<std::string, std::unique_ptr<TypeContainer>> query_result;
+  std::vector<std::tuple<std::string, uint32_t>> col_metas;
+  // bool col_meta_collected{false};
+  std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
+
+  for(auto itr=col_type.begin();itr!=col_type.end();itr++){
+    switch(itr->second){
+    //int64
+    case 1:
+      result_schema_filed.push_back(arrow::field(itr->first, arrow::int64()));
+      break;
+    //double
+    case 2:
+      result_schema_filed.push_back(arrow::field(itr->first, arrow::float64()));
+      break;
+    default:
+      break;
+    }
+  }
+  int row=0;
+  while (sql_query.executeStep()) {
+    for (size_t i = 0; i < sql_query.getColumnCount(); i++) {
+      std::vector<int> vec_index;
+      auto col_name = sql_query.getColumnOriginName(i);
+      // process data
+      SQLite::Column col= sql_query.getColumn(col_name);
+      auto iter = col_type.find(col_name);
+
+      if(iter != col_type.end()){
+        std::map<std::string, std::vector<int>>::iterator index_iter;
+        if(row == 0){
+          if(iter->second==1){
+            col_metas.emplace_back(std::make_tuple(col_name, 1));
+            query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::INT64);
+          }
+          else if(iter->second==2){
+            col_metas.emplace_back(std::make_tuple(col_name, 2));
+            query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::DOUBLE);
+          }
+        }        
+        switch(col.getType()){
+        //  SQLite::SQLITE_NULL
+        case 5:{ 
+          //check row data whether is NULL
+          index_iter=index.find(col_name);
+          if(index_iter==index.end()){
+              index[col_name]=vec_index;
+          }
+          index[col_name].push_back(row);
+
+          if(iter->second==1){
+            query_result[col_name]->int_values.emplace_back(0);
+          }
+          else if(iter->second==2){
+            query_result[col_name]->double_values.emplace_back(0);
+          }
+        }
+        break;
+        case 3:{
+          //process string
+          const char* col_value = sql_query.getColumn(i);
+          char* endptr;
+          std::string tmp_val = col_value;
+          std::string::size_type tmp_index=tmp_val.find('.');
+          if (tmp_index == std::string::npos) {
+            int int_val = strtol((const char*)col_value, &endptr, 10);
+            if ((char*)col_value == endptr) {
+              // this data need to be corrected
+              index_iter=index.find(col_name);
+              if(index_iter==index.end()){
+                index[col_name]=vec_index;
+              }
+              index[col_name].push_back(row);
+
+              if(iter->second==1){
+                query_result[col_name]->int_values.emplace_back(0);
+              }
+              else if(iter->second==2){
+                query_result[col_name]->double_values.emplace_back(0);
+              }
+            }
+            else{
+              if(iter->second==1){
+                query_result[col_name]->int_values.emplace_back(int_val);
+              }
+              else if(iter->second==2){
+                query_result[col_name]->double_values.emplace_back(int_val);
+              }
+            }
+          }
+          else{
+            double d_val = strtod((const char*)col_value, &endptr);
+            if ((char*)col_value == endptr) {
+              // this data need to be corrected
+              index_iter=index.find(col_name);
+              if(index_iter==index.end()){
+                index[col_name]=vec_index;
+              }
+              index[col_name].push_back(row);
+
+              if(iter->second==1){
+                query_result[col_name]->int_values.emplace_back(0);
+              }
+              else if(iter->second==2){
+                query_result[col_name]->double_values.emplace_back(0);
+              }
+            }
+            else{
+              if(iter->second==1){
+                LOG(ERROR) << "The original data type of "<< col_name 
+                       <<"is double, but the target data type is integer. Please select the correct target type!";
+                return nullptr;
+              }
+              else if(iter->second==2){
+                query_result[col_name]->double_values.emplace_back(d_val);
+              }
+            }
+
+          }
+        }
+        break;
+        case 2:{
+          //process double
+          double col_value = sql_query.getColumn(i);
+          if(iter->second==1){
+            LOG(ERROR) << "The original data type of "<< col_name 
+                       <<"is double, but the target data type is integer. Please select the correct target type!";
+            return nullptr;
+          }
+          else if(iter->second==2){
+            query_result[col_name]->double_values.emplace_back(col_value);
+          }
+        }
+        break;
+        case 1:{
+          //process int64
+          int64_t col_value = sql_query.getColumn(i);
+          if(iter->second==1){
+            query_result[col_name]->int_values.emplace_back(col_value);
+          }
+          else if(iter->second==2){
+            query_result[col_name]->double_values.emplace_back(col_value);
+          }
+        }
+        break;
+        default:
+        LOG(ERROR) << "unknown sql type: ";
+        return nullptr;
+        }
+      }
+    }
+    row++;
+  }
+  // convert data to arrow array
+  std::vector<std::shared_ptr<arrow::Array>> array_data;
+  for (size_t i = 0; i < col_metas.size(); i++) {
+    auto& col_name = std::get<0>(col_metas[i]);
+    auto& col_type = std::get<1>(col_metas[i]);
+    switch (col_type) {
+    case 1:{
+      arrow::NumericBuilder<arrow::Int64Type> builder;
+      auto& int_values = query_result[col_name]->int_values;
+      std::shared_ptr<arrow::Array> array;
+      builder.AppendValues(int_values);
+      builder.Finish(&array);
+      array_data.push_back(std::move(array));
+    }
+    break;
+    case 2: {
+      arrow::NumericBuilder<arrow::DoubleType> builder;
+      auto& double_values = query_result[col_name]->double_values;
+      std::shared_ptr<arrow::Array> array;
+      builder.AppendValues(double_values);
+      builder.Finish(&array);
+      array_data.push_back(std::move(array));
+    }
+    break;
+    }
+  }
+  auto schema = std::make_shared<arrow::Schema>(result_schema_filed);
+  table = arrow::Table::Make(schema, array_data);
+  std::vector<std::string>  local_col_names = table->ColumnNames();
+  
+  // LOG(INFO)<<"result_schema_filed.size: "<<result_schema_filed.size();
+  // for(auto i=0;i<result_schema_filed.size();i++)
+  //   LOG(INFO)<<result_schema_filed[i];
+  // LOG(INFO)<<"local_col_names.size: "<<local_col_names.size();
+  // for(auto i=0;i<local_col_names.size();i++)
+  //   LOG(INFO)<<local_col_names[i];
+  // auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
+  return table;      
+}
+
+
+
+
 int SQLiteCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
 
 }
