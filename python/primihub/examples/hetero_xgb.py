@@ -1717,6 +1717,7 @@ class XGB_HOST_EN:
                     # cp_gh_int = (cp_gh * self.ratio).astype('int')
 
                     merge_gh = (cp_gh['g'] * self.ratio + cp_gh['h'])
+                    print("merge_gh: ", merge_gh.values)
                     start_enc = time.time()
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
