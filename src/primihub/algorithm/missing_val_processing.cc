@@ -204,8 +204,8 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
     // Combine all chunk's value.
     for (int k = 1; k < chunk_num; k++) {
       auto chunk_vals = new_int_col_val[k];
-      new_int_col_val[0].insert(new_int_col_val[0].end(),
-                                   chunk_vals.begin(), chunk_vals.end());
+      new_int_col_val[0].insert(new_int_col_val[0].end(), chunk_vals.begin(),
+                                chunk_vals.end());
     }
     // Replace abnormal and null value with average value.
     for (size_t j = 0; j < both_index.size(); j++) {
@@ -497,7 +497,7 @@ int MissingProcess::execute() {
                 int_sum += i64_val;
               }
             }
-            int_count = db_both_index[iter->first].size();
+            int_count = table->num_rows() - db_both_index[iter->first].size();
           } else {
             for (int k = 0; k < chunk_num; k++) {
               auto str_array = static_pointer_cast<StringArray>(
@@ -552,7 +552,8 @@ int MissingProcess::execute() {
                 double_sum += d_val;
               }
             }
-            double_count = db_both_index[iter->first].size();
+            double_count =
+                table->num_rows() - db_both_index[iter->first].size();
           } else {
             for (int k = 0; k < chunk_num; k++) {
               auto str_array = std::static_pointer_cast<StringArray>(
