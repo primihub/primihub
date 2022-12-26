@@ -45,14 +45,25 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
-    
+
     if os.path.isfile("../bazel-bin/opt_paillier_c2py.so"):
         shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
                 paths + "/opt_paillier_c2py.so")
+        print("Install opt_paillier_c2py.so finish, file found in '../bazel-bin'.")
+        return
     else:
-        print("Ignore opt_paillier_c2py.so due to not compiled.")
+        print("Can't not find file ../bazel-bin/opt_paillier_c2py.so, try to find ./opt_paillier_c2py.so.")
 
+    if os.path.isfile("./opt_paillier_c2py.so"):
+        shutil.copyfile("./opt_paillier_c2py.so", 
+                paths + "/opt_paillier_c2py.so")
+        print("Install opt_paillier_c2py.so finish, file found in './'.")
+        return
+    else:
+        print("Can't not find file ./opt_paillier_c2py.so.")
+        print("Ignore opt_paillier_c2py.so due to file not found.")
 
+   
 def clean_proto():
     os.chdir("../")
     python_out_dir = "python/primihub/client/ph_grpc"
@@ -112,7 +123,6 @@ class PostDevelopCommand(develop):
         compile_proto()
         develop.run(self)
         solib2sitepackage()
-        clean_proto()
 
 
 class PostInstallCommand(install):
