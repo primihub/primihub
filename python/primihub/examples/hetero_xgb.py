@@ -88,7 +88,7 @@ def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
 
     low_ids = random.sample(other_ids, other_num)
 
-    return top_ids + low_ids
+    return top_ids, low_ids
 
 
 def random_sample(df_g, top_rate=0.2, other_rate=0.2):
@@ -1666,14 +1666,23 @@ class XGB_HOST_EN:
                 'h': self._hess(y_hat, Y.flatten())
             })
             if self.sample_type == 'goss':
-                sample_ids = goss_sample(gh,
-                                         top_rate=self.top_ratio,
-                                         other_rate=self.other_ratio)
+                top_ids, low_ids = goss_sample(gh,
+                                               top_rate=self.top_ratio,
+                                               other_rate=self.other_ratio)
+
+                amply_rate = (1 - self.top_ratio) / self.other_ratio
+
+                # amplify the selected smaller gradients
+                gh['g'][low_ids] *= amply_rate
+
+                sample_ids = top_ids + low_ids
 
             elif self.sample_type == 'random':
                 sample_ids = random_sample(gh,
                                            top_rate=self.top_ratio,
                                            other_rate=self.other_ratio)
+
+                # TODO: Amplify the sample gradients
                 # X_host = X_host.iloc[sample_ids].copy()
                 # Y = Y[sample_ids]
                 # ghs = ghs.iloc[sample_ids].copy()
