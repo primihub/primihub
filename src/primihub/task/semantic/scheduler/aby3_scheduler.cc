@@ -34,6 +34,7 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
                     const PushTaskRequest& nodePushTaskRequest,
                     const std::map<std::string, std::string>& dataset_owner,
                     const Node& dest_node) {
+    SET_THREAD_NAME("ABY3Scheduler");
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
@@ -74,6 +75,7 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
     } else {
         LOG(ERROR) << "Node push task node " << dest_node.to_string() << " rpc failed.";
     }
+    parseNotifyServer(pushTaskReply);
 }
 
 void ABY3Scheduler::add_vm(rpc::Node *node, int i,

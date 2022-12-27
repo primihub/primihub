@@ -40,8 +40,10 @@
 #include "absl/strings/str_cat.h"
 
 #include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/protos/service.grpc.pb.h"
 
 using primihub::rpc::VMNode;
 using primihub::rpc::PushTaskRequest;
