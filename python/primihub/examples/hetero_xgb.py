@@ -1859,6 +1859,8 @@ ray_group = True
 
 min_child_weight = 5
 
+sample_type = "random"
+
 
 @ph.context.function(
     role='host',
@@ -1949,6 +1951,7 @@ def xgb_host_logic(cry_pri="paillier"):
     xgb_host.merge_gh = merge_gh
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    xgb_host.sample_type = sample_type
 
     paillier_encryptor = ActorPool(
         [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(20)])
