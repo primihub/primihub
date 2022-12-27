@@ -63,14 +63,14 @@ def lazy_import_pandas():
     return _pandas
 
 
-# LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
-# DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-# logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-# logger = logging.getLogger("proxy")
+LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
+DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+logger = logging.getLogger("proxy")
 # ray.init(address='ray://172.21.3.16:10001')
 console_handler = FLConsoleHandler(jb_id=1,
                                    task_id=1,
-                                   log_level='debug',
+                                   log_level='info',
                                    format=FORMAT)
 fl_console_log = console_handler.set_format()
 
@@ -761,7 +761,6 @@ def evaluate_ks_and_roc_auc(y_real, y_proba):
 
     ks = ks_2samp(class0['proba'], class1['proba'])
     roc_auc = roc_auc_score(df['real'], df['proba'])
-    fl_console_log.info()
 
     print(f"KS: {ks.statistic:.4f} (p-value: {ks.pvalue:.3e})")
     print(f"ROC AUC: {roc_auc:.4f}")
@@ -1867,17 +1866,6 @@ class XGB_HOST_EN:
         return metrics.log_loss(actual, predict_prob)
 
 
-# def get_logger(name):
-#     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
-#     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-#     logging.basicConfig(level=logging.DEBUG,
-#                         format=LOG_FORMAT,
-#                         datefmt=DATE_FORMAT)
-#     logger = logging.getLogger(name)
-#     return logger
-
-# logger = get_logger("hetero_xgb")
-
 ph.context.Context.func_params_map = {
     "xgb_host_logic": ("paillier",),
     "xgb_guest_logic": ("paillier",)
@@ -1906,8 +1894,8 @@ sample_type = "random"
     port='8000',
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
-    fl_console_log.info("start xgb host logic...")
-    # logger.info("start xgb host logic...")
+    # fl_console_log.info("start xgb host logic...")
+    logger.info("start xgb host logic...")
     # ray.init(address='ray://172.21.3.16:10001')
 
     role_node_map = ph.context.Context.get_role_node_map()
@@ -2001,6 +1989,7 @@ def xgb_host_logic(cry_pri="paillier"):
                            proxy_client_guest=proxy_client_guest,
                            encrypted=is_encrypted)
     xgb_host.merge_gh = merge_gh
+    xgb_host.fl_console_log = fl_console_log
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     xgb_host.sample_type = sample_type
