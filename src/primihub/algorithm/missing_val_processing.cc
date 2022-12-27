@@ -563,7 +563,7 @@ int MissingProcess::execute() {
               int ret = 0;
               // LOG_INFO()<< str_array->length();
               for (int64_t j = 0; j < str_array->length(); j++) {
-                LOG(INFO) << str_array->GetString(j);
+                // LOG(INFO) << str_array->GetString(j);
                 if (str_array->IsNull(j)) {
                   LOG(WARNING) << "Find missing value in column " << iter->first
                                << ", chunk " << k << ", index " << j << ".";
