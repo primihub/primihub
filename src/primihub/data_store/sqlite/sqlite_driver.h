@@ -21,6 +21,7 @@
 #include "src/primihub/data_store/driver.h"
 #include "SQLiteCpp/SQLiteCpp.h"
 #include "SQLiteCpp/Column.h"
+#include <iomanip>
 
 namespace primihub {
 class SQLiteDriver;

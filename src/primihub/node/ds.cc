@@ -26,20 +26,23 @@ using primihub::service::DatasetMeta;
 namespace primihub {
 grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
                             NewDatasetResponse *response) {
-    LOG(INFO) << "start to create dataset.";
     std::string driver_type = request->driver();
     std::string path = request->path();
     std::string fid = request->fid();
     VLOG(5) << "driver_type: " << driver_type << " fid: " << fid
         << " paht: " << path;
-    std::shared_ptr<DataDriver> driver =
-            DataDirverFactory::getDriver(driver_type, nodelet_addr_);
-    processMetaData(driver_type, &path);   // if modify needed, inplace
+    LOG(INFO) << "start to create dataset."<<" path: "<< path
+            <<" fid: "<< fid <<" driver_type: "<< driver_type;
+    std::shared_ptr<DataDriver> driver{nullptr};
     try {
+        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_);
+        processMetaData(driver_type, &path);   // if modify needed, inplace
         [[maybe_unused]] auto cursor = driver->read(path);
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load dataset from path: "
-                    << e.what();
+        LOG(ERROR) << "Failed to load dataset from path: "<< path <<" "
+                << "driver_type: "<< driver_type << " "
+                << "fid: "<< fid << " "
+                << "exception:" << e.what();
         response->set_ret_code(2);
         return grpc::Status::OK;
     }

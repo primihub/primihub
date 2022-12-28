@@ -230,7 +230,7 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
     builder.Finish(&new_array);
   } else {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
-    arrow::DoubleBuilder builder(pool);
+    arrow::Int64Builder builder(pool);
     for (auto i = 0; i < new_int_col_val[0].size(); i++)
       builder.Append(new_int_col_val[0][i]);
     builder.Finish(&new_array);
@@ -476,7 +476,7 @@ int MissingProcess::execute() {
         std::vector<std::vector<uint32_t>> abnormal_index;
         int col_index = std::distance(local_col_names.begin(), t);
 
-        if (iter->second == 1) {
+        if (iter->second == 1 || iter->second == 3) {
           null_num = 0;
           int_count = 0;
           int_sum = 0;
@@ -591,7 +591,7 @@ int MissingProcess::execute() {
           }
         }
 
-        if (iter->second == 1) {
+        if (iter->second == 1 || iter->second == 3) {
           i64Matrix m(2, 1);
           m(0, 0) = int_sum;
           m(1, 0) = int_count;
@@ -645,6 +645,11 @@ int MissingProcess::execute() {
           LOG(INFO) << "Replace column " << iter->first
                     << " with new array in table.";
 
+          LOG(INFO)<<"col_index:"<<col_index;
+          LOG(INFO)<<"name:"<< field->name();
+          LOG(INFO)<<"type:"<< field->type();
+          LOG(INFO)<<"table->type:"<< table->field(col_index)->type();
+                        
           auto result = table->SetColumn(col_index, field, chunk_array);
           if (!result.ok()) {
             std::stringstream ss;

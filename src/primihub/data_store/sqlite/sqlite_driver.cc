@@ -168,6 +168,10 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
 
   for(auto itr=col_type.begin();itr!=col_type.end();itr++){
     switch(itr->second){
+    //string
+    case 0:
+      result_schema_filed.push_back(arrow::field(itr->first, arrow::binary()));
+      break;
     //int64
     case 1:
       result_schema_filed.push_back(arrow::field(itr->first, arrow::int64()));
@@ -176,6 +180,14 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
     case 2:
       result_schema_filed.push_back(arrow::field(itr->first, arrow::float64()));
       break;
+    //LONG
+    case 3:
+      result_schema_filed.push_back(arrow::field(itr->first, arrow::int64()));
+      break;
+    // //BOOLEAN
+    // case 5:
+    //   result_schema_filed.push_back(arrow::field(itr->first, arrow::boolean()));
+    //   break;
     default:
       break;
     }
@@ -192,6 +204,10 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
       if(iter != col_type.end()){
         std::map<std::string, std::vector<int>>::iterator index_iter;
         if(row == 0){
+          if(iter->second==0){
+            col_metas.emplace_back(std::make_tuple(col_name, 0));
+            query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::STRING);
+          }          
           if(iter->second==1){
             col_metas.emplace_back(std::make_tuple(col_name, 1));
             query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::INT64);
@@ -200,92 +216,129 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
             col_metas.emplace_back(std::make_tuple(col_name, 2));
             query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::DOUBLE);
           }
+          else if(iter->second==3){
+            col_metas.emplace_back(std::make_tuple(col_name, 3));
+            query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::INT64);
+          }
+          // else if(iter->second==5){
+          //   col_metas.emplace_back(std::make_tuple(col_name, 5));
+          //   query_result[col_name] = std::make_unique<TypeContainer>(sql_type_t::BOOLEAN);
+          // }
         }        
         switch(col.getType()){
         //  SQLite::SQLITE_NULL
         case 5:{ 
           //check row data whether is NULL
-          index_iter=index.find(col_name);
-          if(index_iter==index.end()){
-              index[col_name]=vec_index;
+          if(iter->second==0){
+            query_result[col_name]->string_values.emplace_back(std::move(""));
           }
-          index[col_name].push_back(row);
+          else{
+            index_iter=index.find(col_name);
+            if(index_iter==index.end()){
+                index[col_name]=vec_index;
+            }
+            index[col_name].push_back(row);
 
-          if(iter->second==1){
-            query_result[col_name]->int_values.emplace_back(0);
-          }
-          else if(iter->second==2){
-            query_result[col_name]->double_values.emplace_back(0);
+            if(iter->second==1){
+              query_result[col_name]->int_values.emplace_back(0);
+            }
+            else if(iter->second==2){
+              query_result[col_name]->double_values.emplace_back(0);
+            }
+            else if(iter->second==3){
+              query_result[col_name]->double_values.emplace_back(0);
+            }
           }
         }
         break;
         case 3:{
-          //process string
           const char* col_value = sql_query.getColumn(i);
-          char* endptr;
-          std::string tmp_val = col_value;
-          std::string::size_type tmp_index=tmp_val.find('.');
-          if (tmp_index == std::string::npos) {
-            int int_val = strtol((const char*)col_value, &endptr, 10);
-            if ((char*)col_value == endptr) {
-              // this data need to be corrected
-              index_iter=index.find(col_name);
-              if(index_iter==index.end()){
-                index[col_name]=vec_index;
-              }
-              index[col_name].push_back(row);
 
-              if(iter->second==1){
-                query_result[col_name]->int_values.emplace_back(0);
-              }
-              else if(iter->second==2){
-                query_result[col_name]->double_values.emplace_back(0);
-              }
-            }
-            else{
-              if(iter->second==1){
-                query_result[col_name]->int_values.emplace_back(int_val);
-              }
-              else if(iter->second==2){
-                query_result[col_name]->double_values.emplace_back(int_val);
-              }
-            }
+            //process string
+          if(iter->second==0){
+            query_result[col_name]->string_values.emplace_back(std::move(col_value));
           }
           else{
-            double d_val = strtod((const char*)col_value, &endptr);
-            if ((char*)col_value == endptr) {
-              // this data need to be corrected
-              index_iter=index.find(col_name);
-              if(index_iter==index.end()){
-                index[col_name]=vec_index;
-              }
-              index[col_name].push_back(row);
+            char* endptr;
+            std::string tmp_val = col_value;
+            std::string::size_type tmp_index=tmp_val.find('.');
+            if (tmp_index == std::string::npos) {
+              int int_val = strtol((const char*)col_value, &endptr, 10);
+              if ((char*)col_value == endptr) {
+                // this data need to be corrected
+                index_iter=index.find(col_name);
+                if(index_iter==index.end()){
+                  index[col_name]=vec_index;
+                }
+                index[col_name].push_back(row);
 
-              if(iter->second==1){
-                query_result[col_name]->int_values.emplace_back(0);
+                if(iter->second==1){
+                  query_result[col_name]->int_values.emplace_back(0);
+                }
+                else if(iter->second==2){
+                  query_result[col_name]->double_values.emplace_back(0);
+                }
+                else if(iter->second==3){
+                  query_result[col_name]->int_values.emplace_back(0);
+                }
               }
-              else if(iter->second==2){
-                query_result[col_name]->double_values.emplace_back(0);
+              else{
+                if(iter->second==1){
+                  query_result[col_name]->int_values.emplace_back(int_val);
+                }
+                else if(iter->second==2){
+                  query_result[col_name]->double_values.emplace_back(int_val);
+                }
+                else if(iter->second==3){
+                  query_result[col_name]->int_values.emplace_back(int_val);
+                }                
               }
             }
             else{
-              if(iter->second==1){
-                LOG(ERROR) << "The original data type of "<< col_name 
-                       <<"is double, but the target data type is integer. Please select the correct target type!";
-                return nullptr;
-              }
-              else if(iter->second==2){
-                query_result[col_name]->double_values.emplace_back(d_val);
-              }
-            }
+              double d_val = strtod((const char*)col_value, &endptr);
+              if ((char*)col_value == endptr) {
+                // this data need to be corrected
+                index_iter=index.find(col_name);
+                if(index_iter==index.end()){
+                  index[col_name]=vec_index;
+                }
+                index[col_name].push_back(row);
 
+                if(iter->second==1){
+                  query_result[col_name]->int_values.emplace_back(0);
+                }
+                else if(iter->second==2){
+                  query_result[col_name]->double_values.emplace_back(0);
+                }
+                else if(iter->second==3){
+                  query_result[col_name]->int_values.emplace_back(0);
+                }
+              }
+              else{
+                if(iter->second==1 || iter->second==3){
+                  LOG(ERROR) << "The original data type of "<< col_name 
+                         <<"is double, but the target data type is integer. Please select the correct target type!";
+                  return nullptr;
+                }
+                else if(iter->second==2){
+                  query_result[col_name]->double_values.emplace_back(d_val);
+                }
+              }
+
+            }
           }
+
         }
         break;
         case 2:{
           //process double
           double col_value = sql_query.getColumn(i);
-          if(iter->second==1){
+          if(iter->second==0){
+            std::stringstream ss;
+            ss << std::setprecision(17) << col_value;
+            query_result[col_name]->string_values.emplace_back(std::move(ss.str()));
+          }
+          else if(iter->second==1 || iter->second==3){
             LOG(ERROR) << "The original data type of "<< col_name 
                        <<"is double, but the target data type is integer. Please select the correct target type!";
             return nullptr;
@@ -298,11 +351,19 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
         case 1:{
           //process int64
           int64_t col_value = sql_query.getColumn(i);
-          if(iter->second==1){
+          if(iter->second==0){
+            std::stringstream ss;
+            ss << std::setprecision(17) << col_value;
+            query_result[col_name]->string_values.emplace_back(std::move(ss.str()));
+          }
+          else if(iter->second==1){
             query_result[col_name]->int_values.emplace_back(col_value);
           }
           else if(iter->second==2){
             query_result[col_name]->double_values.emplace_back(col_value);
+          }
+          else if(iter->second==3){
+            query_result[col_name]->int_values.emplace_back(col_value);
           }
         }
         break;
@@ -320,6 +381,15 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
     auto& col_name = std::get<0>(col_metas[i]);
     auto& col_type = std::get<1>(col_metas[i]);
     switch (col_type) {
+    case 0:{
+      arrow::StringBuilder builder;
+      auto& string_values = query_result[col_name]->string_values;
+      std::shared_ptr<arrow::Array> array;
+      builder.AppendValues(string_values);
+      builder.Finish(&array);
+      array_data.push_back(std::move(array));
+    }
+    break;
     case 1:{
       arrow::NumericBuilder<arrow::Int64Type> builder;
       auto& int_values = query_result[col_name]->int_values;
@@ -338,6 +408,15 @@ SQLiteCursor::read_from_abnormal(std::map<std::string, uint32_t> col_type,
       array_data.push_back(std::move(array));
     }
     break;
+    case 3:{
+      arrow::NumericBuilder<arrow::Int64Type> builder;
+      auto& int_values = query_result[col_name]->int_values;
+      std::shared_ptr<arrow::Array> array;
+      builder.AppendValues(int_values);
+      builder.Finish(&array);
+      array_data.push_back(std::move(array));
+    }
+    break;    
     }
   }
   auto schema = std::make_shared<arrow::Schema>(result_schema_filed);
