@@ -49,6 +49,7 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/threadsafe_queue.h"
+#include "src/primihub/common/defines.h"
 
 // using grpc::ClientContext;
 using grpc::Server;
@@ -90,6 +91,7 @@ class VMNodeImpl final: public VMNode::Service {
         nodelet = std::make_shared<Nodelet>(config_file_path);
         finished_worker_fut = std::async(std::launch::async,
           [&]() {
+            SET_THREAD_NAME("cleanFinihsedTask");
             while(true) {
               std::string finished_worker_id;
               fininished_workers.wait_and_pop(finished_worker_id);
