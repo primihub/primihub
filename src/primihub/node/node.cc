@@ -35,7 +35,6 @@
 #include "src/primihub/service/notify/model.h"
 #include "src/primihub/util/util.h"
 
-
 using grpc::Server;
 using primihub::rpc::Params;
 using primihub::rpc::ParamValue;
@@ -364,6 +363,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->nodelet->getDataService());
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
+        _psp.prepareReply(pushTaskReply);
 
     } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
             pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
@@ -388,12 +388,14 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
+        _psp.prepareReply(pushTaskReply);
         auto _type = static_cast<int>(pushTaskRequest->task().type());
         VLOG(5) << "end schedule schedule task for type: " << _type;
     } else {
         auto executor_func = [this](
                 std::shared_ptr<Worker> worker, PushTaskRequest request,
                 primihub::ThreadSafeQueue<std::string>* finished_worker_queue) -> void {
+            SET_THREAD_NAME("task_executor");
             SCopedTimer timer;
             std::string submit_client_id = request.submit_client_id();
             std::string task_id = request.task().task_id();

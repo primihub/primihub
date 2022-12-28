@@ -30,12 +30,12 @@ COPY ./config ./config
 # Copy primihub python sources to /app and setup to system python3
 COPY ./python ./python
 COPY ./src/primihub/protos/ ./src/primihub/protos/
+RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/
 
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple \
-  && python3 setup.py develop \
-  && python3 setup.py solib --solib-path $TARGET_PATH 
+  && python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/ \
+  && python3 setup.py develop
 
 WORKDIR /app
 # ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH

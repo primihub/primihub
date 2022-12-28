@@ -55,11 +55,30 @@ class VMScheduler {
   std::string get_node_id() const {
     return node_id_;
   }
-
+  void parseNotifyServer(const PushTaskReply& reply) {
+    for (const auto& node : reply.notify_server()) {
+        Node notify_server_info(node.ip(), node.port(), node.use_tls(), node.role());
+        VLOG(5) << "notify_server_info: " << notify_server_info.to_string();
+        this->addNotifyServer(std::move(notify_server_info));
+    }
+  }
+  void addNotifyServer(Node&& node_info) {
+    std::lock_guard<std::mutex> lck(notify_server_mtx);
+    notify_server_info.push_back(std::move(node_info));
+  }
+  void addNotifyServer(const Node& node_info) {
+    std::lock_guard<std::mutex> lck(notify_server_mtx);
+    notify_server_info.push_back(node_info);
+  }
+  std::vector<Node>& notifyServer() {
+    return notify_server_info;
+  }
  protected:
   const std::string node_id_;
   bool singleton_;
   std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
+  std::mutex notify_server_mtx;
+  std::vector<Node> notify_server_info;
 };
 } // namespace primihub::task
 
