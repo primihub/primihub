@@ -55,8 +55,13 @@ class ProtocolSemanticParser {
     void schedulePsiTask(std::shared_ptr<LanguageParser> lan_parser);
     int transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
                             PushTaskRequest &taskRequest);
-
+    void prepareReply(primihub::rpc::PushTaskReply* reply);
   private:
+    void parseNofifyServer(const std::vector<Node> notify_servers) {
+        for (const auto& node : notify_servers) {
+            notify_server.push_back(node);
+        }
+    }
     void scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);
     void schedulePythonTask( std::shared_ptr<LanguageParser> python_parser);
     void metasToPeerList(
@@ -86,6 +91,7 @@ class ProtocolSemanticParser {
     // proto task use
     std::vector<rpc::Node> peer_list_;
     PeerDatasetMap peer_dataset_map_;
+    std::vector<Node> notify_server;
 
 };
 

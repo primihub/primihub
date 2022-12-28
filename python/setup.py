@@ -1,8 +1,11 @@
 import os
+import sys
 import shlex
 import subprocess
+import shutil
 import sys
 import distutils
+import tempfile
 from distutils.sysconfig import get_python_lib
 from os import path
 import site
@@ -38,32 +41,58 @@ with open('requirements.txt', encoding='utf-8') as reqs:
 
 
 def solib2sitepackage(solib_path=None):
-    # add ../bazel-bin to PYTHONPATH on LINUX
-    print("ADD ../bazel-bin to PYTHONPATH on LINUX")
-    if not solib_path:
-        solib_path = path.abspath(path.join(path.dirname(__file__), "../bazel-bin"))  # noqa
-    SOLIB_PATH = solib_path
-    print("SOLIB_PATH: ", SOLIB_PATH)
-    print("* " * 30)
-    site_packages_path = get_python_lib()
-    print(site_packages_path)
-    pth_file = site_packages_path + "/primihub_so.pth"
-    print(pth_file)
-    try:
-        with open(pth_file, "w") as pth:
-            print("--", SOLIB_PATH)
-            pth.write(SOLIB_PATH)
-        site.addsitedir(SOLIB_PATH)
-        print("sys path: ", sys.path)
-    except Exception as e:
-        print(e)
+    if '--user' in sys.argv:
+        paths = site.getusersitepackages()
+    else:
+        paths = get_python_lib()
+
+    if os.path.isfile("../bazel-bin/opt_paillier_c2py.so"):
+        shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
+                paths + "/opt_paillier_c2py.so")
+        print("Install opt_paillier_c2py.so finish, file found in '../bazel-bin'.")
+        return
+    else:
+        print("Can't not find file ../bazel-bin/opt_paillier_c2py.so, try to find ./opt_paillier_c2py.so.")
+
+    if os.path.isfile("./opt_paillier_c2py.so"):
+        shutil.copyfile("./opt_paillier_c2py.so", 
+                paths + "/opt_paillier_c2py.so")
+        print("Install opt_paillier_c2py.so finish, file found in './'.")
+        return
+    else:
+        print("Can't not find file ./opt_paillier_c2py.so.")
+        print("Ignore opt_paillier_c2py.so due to file not found.")
+
+   
+def clean_proto():
+    os.chdir("../")
+    python_out_dir = "python/primihub/client/ph_grpc"
+    proto_dir = python_out_dir + "/src/primihub/protos/"
+
+    dir_files = os.listdir(proto_dir)
+    file_to_remove = []
+    for f_name in dir_files:
+        if f_name.find("pb2.py") != -1:
+            file_to_remove.append(f_name)
+        if f_name.find("pb2_grpc.py") != -1:
+            file_to_remove.append(f_name)
+    
+    for fname in file_to_remove:
+        os.remove(proto_dir + fname)
+        print("Remove {}.".format(fname))
+
+    os.chdir("python")
+    print(os.getcwd())
 
 
 def compile_proto():
     print("compile proto...")
+    os.chdir("../")
     print(os.getcwd())
-    os.chdir("..")
-    print(os.getcwd())
+    
+    python_out_dir = "python/primihub/client/ph_grpc"
+    grpc_python_out = "python/primihub/client/ph_grpc"
+
     cmd_str = """{pyexe} -m grpc_tools.protoc \
                         --python_out={python_out} \
                         --grpc_python_out={grpc_python_out} -I. \
@@ -71,8 +100,8 @@ def compile_proto():
                         src/primihub/protos/service.proto \
                         src/primihub/protos/worker.proto \
                         src/primihub/protos/pir.proto \
-                        src/primihub/protos/psi.proto""".format(python_out="python/primihub/client/ph_grpc",
-                                                                grpc_python_out="python/primihub/client/ph_grpc",
+                        src/primihub/protos/psi.proto""".format(python_out=python_out_dir,
+                                                                grpc_python_out=grpc_python_out,
                                                                 pyexe=sys.executable)
 
     print("cmd: %s" % cmd_str)
@@ -81,6 +110,7 @@ def compile_proto():
     out, err = p.communicate()
     if p.returncode != 0:
         raise RuntimeError("Error compiling proto file: {0}".format(err))
+    
     os.chdir("python")
     print(os.getcwd())
 
@@ -90,9 +120,9 @@ class PostDevelopCommand(develop):
 
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        compile_proto()
         develop.run(self)
         solib2sitepackage()
-        compile_proto()
 
 
 class PostInstallCommand(install):
@@ -100,9 +130,10 @@ class PostInstallCommand(install):
 
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        compile_proto()
         install.run(self)
         solib2sitepackage()
-        compile_proto()
+        clean_proto()
 
 
 class ProtoCommand(distutils.cmd.Command):

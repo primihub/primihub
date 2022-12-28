@@ -28,6 +28,7 @@ from primihub.client.ph_grpc.src.primihub.protos import service_pb2
 from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
 
 def register_dataset(service_addr, driver, path, name):
+    logger.info("Dataset service is {}.".format(service_addr))
     channel = grpc.insecure_channel(service_addr)
     stub = service_pb2_grpc.DataServiceStub(channel)
     request = service_pb2.NewDatasetRequest()
