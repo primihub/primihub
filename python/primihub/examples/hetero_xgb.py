@@ -1910,6 +1910,14 @@ def xgb_host_logic(cry_pri="paillier"):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    taskId = ph.context.Context.params_map['taskid']
+    jobId = ph.context.Context.params_map['jobid']
+
+    host_log_console = FLConsoleHandler(jb_id=jobId,
+                                        task_id=taskId,
+                                        log_level='info',
+                                        format=FORMAT)
+    fl_console_log = host_log_console.set_format()
 
     # logger.debug("dataset_map {}".format(dataset_map))
     fl_console_log.debug("dataset_map {}".format(dataset_map))
@@ -2102,6 +2110,14 @@ def xgb_guest_logic(cry_pri="paillier"):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    taskId = ph.context.Context.params_map['taskid']
+    jobId = ph.context.Context.params_map['jobid']
+
+    guest_log_console = FLConsoleHandler(jb_id=jobId,
+                                         task_id=taskId,
+                                         log_level='info',
+                                         format=FORMAT)
+    fl_console_log = guest_log_console.set_format()
     fl_console_log.debug("dataset_map {}".format(dataset_map))
 
     # logger.debug("dataset_map {}".format(dataset_map))
