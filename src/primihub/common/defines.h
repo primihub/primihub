@@ -11,6 +11,13 @@
 #include <string>
 #include <vector>
 
+#ifdef __linux__
+#include <sys/prctl.h>
+#define SET_THREAD_NAME(name)  prctl(PR_SET_NAME, name)
+#else
+#define SET_THREAD_NAME(name)
+#endif
+
 #ifdef ENABLE_FULL_GSL
 #include "src/primihub/common/gsl/span"
 #else

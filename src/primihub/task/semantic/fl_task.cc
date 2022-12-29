@@ -135,6 +135,8 @@ FLTask::FLTask(const std::string& node_id,
     }
 
     this->params_map_["local_dataset"] = iter->second.value_string();
+    jobid_ = task_request.task().job_id();
+    taskid_ = task_request.task().task_id();
 }
 
 FLTask::~FLTask() {
@@ -185,8 +187,12 @@ int FLTask::execute() {
           auto pos = nodelet_addr.find(":");
           set_task_context_params_map("DatasetServiceAddr",
               nodelet_addr.substr(pos + 1, nodelet_addr.length()));
-        }
 
+          // Setup task id and job id.
+          set_task_context_params_map("jobid", jobid_);
+          set_task_context_params_map("taskid", taskid_);
+        }
+  
         set_task_context_params_map.release();
 
         // Run set_task_context_node_addr_map.

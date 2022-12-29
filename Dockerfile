@@ -53,12 +53,16 @@ RUN mkdir -p src/primihub/protos data log
 COPY --from=builder /src/python ./python
 COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 
+# Copy opt_paillier_c2py.so to /app/python, this enable setup.py find it.
+RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/
+
+# The setup.py will copy opt_paillier_c2py.so to python library path.
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
   && python3 -m pip install -r requirements.txt \
-  && python3 setup.py install \
-  && python3 setup.py solib --solib-path $TARGET_PATH 
+  && python3 setup.py install
 
+RUN rm -rf /app/python/opt_paillier_c2py.so
 WORKDIR /app
 
 # gRPC server port

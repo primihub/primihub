@@ -538,10 +538,10 @@ http_archive(
 # APSI
 git_repository(
    name = "mircrosoft_apsi",
-   # branch = "bazel_version",
-   commit = "f40677b172c7e0885520122bd660699f4d325202",  # bazel_version branch
+   branch = "bazel_version",
    remote = "https://gitee.com/primihub/APSI.git",
 )
+
 load("@mircrosoft_apsi//bazel:repositories.bzl", "apsi_dependencies")
 apsi_dependencies("mircrosoft_apsi");
 

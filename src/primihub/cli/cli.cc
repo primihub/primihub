@@ -20,6 +20,9 @@
 #include <string>
 #include <chrono>
 #include <random>
+#include <vector>
+#include <future>
+#include <thread>
 #include "uuid.h"
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
@@ -101,6 +104,43 @@ void fill_param(const std::vector<std::string>& params,
 
         (*param_map)[v[0]] = pv;
     }
+}
+int get_task_execute_status(const primihub::rpc::Node& notify_server, const PushTaskRequest& request_info) {
+    LOG(INFO) << "get_task_execute_status for "
+        << notify_server.ip() << " port: " << notify_server.port()
+        <<  " use_tls: " << notify_server.use_tls();
+    std::string node_info = notify_server.ip() + ":" + std::to_string(notify_server.port());
+    auto channel = grpc::CreateChannel(node_info, grpc::InsecureChannelCredentials());
+    auto stub = primihub::rpc::NodeService::NewStub(channel);
+    using ClientContext = primihub::rpc::ClientContext;
+    using NodeEventReply = primihub::rpc::NodeEventReply;
+    do {
+        bool is_finished{false};
+        grpc::ClientContext context;
+        ClientContext request;
+        request.set_client_id(request_info.submit_client_id());
+        request.set_client_ip("127.0.0.1");
+        request.set_client_port(12345);
+        std::unique_ptr<grpc::ClientReader<NodeEventReply>> reader(
+            stub->SubscribeNodeEvent(&context, request));
+        NodeEventReply reply;
+        std::string server_node = notify_server.ip();
+        while (reader->Read(&reply)) {
+            const auto& task_status = reply.task_status();
+            std::string status = task_status.status();
+            LOG(INFO) << "get reply from " << server_node << " with status: "
+                    << status;
+            if (status == std::string("SUCCESS") || status == std::string("FAIL")) {
+                is_finished = true;
+                break;
+            }
+        }
+        if (is_finished) {
+            break;
+        }
+    } while (true);
+
+    return 0;
 }
 
 int SDKClient::SubmitTask() {
@@ -195,6 +235,19 @@ int SDKClient::SubmitTask() {
         LOG(INFO) << "ERROR: " << status.error_message();
         LOG(INFO) << "SubmitTask rpc failed.";
         return -1;
+    }
+    std::vector<std::future<int>> wait_result_futs;
+    for (const auto& server_info : pushTaskReply.notify_server()) {
+        wait_result_futs.push_back(
+            std::async(
+                std::launch::async,
+                get_task_execute_status,
+                std::ref(server_info),
+                std::ref(pushTaskRequest)
+            ));
+    }
+    for (auto&& fut : wait_result_futs) {
+        fut.get();
     }
     return 0;
 }

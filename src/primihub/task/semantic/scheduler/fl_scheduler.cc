@@ -99,6 +99,7 @@ void FLScheduler::push_node_py_task(const std::string& node_id,
                         const PushTaskRequest& nodePushTaskRequest,
                         const PeerContextMap& peer_context_map,
                         const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list) {
+    SET_THREAD_NAME("FLScheduler");
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
@@ -111,6 +112,7 @@ void FLScheduler::push_node_py_task(const std::string& node_id,
     } else {
         LOG(ERROR) << "Node push task node " << dest_node.to_string() << " rpc failed.";
     }
+    parseNotifyServer(pushTaskReply);
 }
 
 /**

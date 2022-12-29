@@ -51,14 +51,15 @@ void MPCScheduler::push_task(const std::string &node_id,
     pv.set_value_string(dataset_param.first);
     (*param_map)[dataset_param.second] = std::move(pv);
   }
-
+  std::string dest_node_address = dest_node.to_string();
   auto channel = this->getLinkContext()->getChannel(dest_node);
   auto ret = channel->submitTask(push_request, &pushTaskReply);
   if (ret == retcode::SUCCESS) {
-    // parse notify server from reply
+      VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
-    LOG(ERROR) << "submit task to node [" << dest_node.to_string() << "] failed";
+      LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
   }
+  parseNotifyServer(pushTaskReply);
 }
 
 void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
