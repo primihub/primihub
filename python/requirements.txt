@@ -20,7 +20,7 @@ mysql-connector-python
 loguru
 gevent
 redis
-ray==2.0.0
+ray==2.2.0
 transformers
 requests
 line_profiler
