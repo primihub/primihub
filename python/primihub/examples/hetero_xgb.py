@@ -74,6 +74,13 @@ console_handler = FLConsoleHandler(jb_id=1,
                                    format=FORMAT)
 fl_console_log = console_handler.set_format()
 
+file_handler = FLFileHandler(jb_id=1,
+                             task_id=1,
+                             log_file='fl_log_info.txt',
+                             log_level='INFO',
+                             format=FORMAT)
+fl_file_log = file_handler.set_format()
+
 
 def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
     df_g_cp = abs(df_g.copy())
@@ -1908,7 +1915,7 @@ def xgb_host_logic(cry_pri="paillier"):
     # logger.debug("role_nodeid_map {}".format(role_node_map))
     fl_console_log.debug("role_nodeid_map {}".format(role_node_map))
 
-    # logger.debug("node_addr_map {}".format(node_addr_map))
+    # logger.debug("node_addr_map {}".format(no de_addr_map))
     fl_console_log.debug("node_addr_map {}".format(node_addr_map))
     data_key = list(dataset_map.keys())[0]
 
