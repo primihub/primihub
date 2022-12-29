@@ -1903,6 +1903,8 @@ sample_type = "random"
 def xgb_host_logic(cry_pri="paillier"):
     # fl_console_log.info("start xgb host logic...")
     logger.info("start xgb host logic...")
+    fl_file_log.debug("xgb host logic file")
+    fl_file_log.info("xgb host logic file")
     # ray.init(address='ray://172.21.3.16:10001')
 
     role_node_map = ph.context.Context.get_role_node_map()
