@@ -2104,7 +2104,7 @@ def xgb_host_logic(cry_pri="paillier"):
     task_type="classification")
 def xgb_guest_logic(cry_pri="paillier"):
     # def xgb_guest_logic(cry_pri="plaintext"):
-    fl_console_log.info("start xgb guest logic...")
+    # fl_console_log.info("start xgb guest logic...")
 
     # ios = IOService()
     role_node_map = ph.context.Context.get_role_node_map()
