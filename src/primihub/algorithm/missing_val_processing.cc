@@ -37,7 +37,8 @@ namespace primihub {
 void MissingProcess::_spiltStr(string str, const string &split,
                                std::vector<string> &strlist) {
   strlist.clear();
-  if (str == "") return;
+  if (str == "")
+    return;
   string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
@@ -53,7 +54,11 @@ void MissingProcess::_spiltStr(string str, const string &split,
 int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
   try {
     VLOG(5) << "Convert string '" << str << "' into int64 value.";
-    i64_val = stoll(str);
+    size_t conv_length = 0;
+    i64_val = stoll(str, &conv_length);
+    if (conv_length != str.length()) {
+      throw std::invalid_argument("Invalid stoll argument");
+    }
   } catch (std::invalid_argument const &ex) {
     LOG(ERROR) << "Can't convert string " << str
                << " to int64 value, invalid numberic string.";
@@ -70,7 +75,11 @@ int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
 int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
   try {
     VLOG(5) << "Convert string '" << str << "' into double value.";
-    d_val = std::stod(str);
+    size_t conv_length = 0;
+    d_val = std::stod(str, &conv_length);
+    if (conv_length != str.length()) {
+      throw std::invalid_argument("Invalid stod argument");
+    }
   } catch (std::invalid_argument &ex) {
     LOG(ERROR) << "Can't convert string " << str
                << " to double value, invalid numberic string.";
@@ -98,7 +107,8 @@ void MissingProcess::_buildNewColumn(std::vector<std::string> &col_val,
                                      std::shared_ptr<arrow::Array> &array) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::StringBuilder builder(pool);
-  for (auto i = 0; i < col_val.size(); i++) builder.Append(col_val[i]);
+  for (auto i = 0; i < col_val.size(); i++)
+    builder.Append(col_val[i]);
 
   builder.Finish(&array);
 }
@@ -141,7 +151,8 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
 
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "After rebuild, value in this column is:";
-    for (auto &val : new_col_val[0]) VLOG(5) << val;
+    for (auto &val : new_col_val[0])
+      VLOG(5) << val;
   }
 
   if (need_double) {
@@ -217,9 +228,11 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "After rebuild, value in this column is:";
     if (need_double)
-      for (auto &val : new_double_col_val[0]) VLOG(5) << val;
+      for (auto &val : new_double_col_val[0])
+        VLOG(5) << val;
     else
-      for (auto &val : new_int_col_val[0]) VLOG(5) << val;
+      for (auto &val : new_int_col_val[0])
+        VLOG(5) << val;
   }
 
   if (need_double) {
@@ -251,7 +264,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id);  // node_id
+  auto iter = node_map.find(config.node_id); // node_id
   if (iter == node_map.end()) {
     stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -347,7 +360,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     uint32_t col_dtype = iter->value.GetInt();
     col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
     LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
-               << iter->value.GetInt() << ".";
+              << iter->value.GetInt() << ".";
   }
 
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
@@ -612,7 +625,8 @@ int MissingProcess::execute() {
 
           si64Matrix sh_sum(2, 1);
           sh_sum = sh_m[0];
-          for (uint8_t i = 1; i < 3; i++) sh_sum = sh_sum + sh_m[i];
+          for (uint8_t i = 1; i < 3; i++)
+            sh_sum = sh_sum + sh_m[i];
 
           LOG(INFO) << "Run MPC sum to get sum of all party.";
 
@@ -645,11 +659,11 @@ int MissingProcess::execute() {
           LOG(INFO) << "Replace column " << iter->first
                     << " with new array in table.";
 
-          LOG(INFO)<<"col_index:"<<col_index;
-          LOG(INFO)<<"name:"<< field->name();
-          LOG(INFO)<<"type:"<< field->type();
-          LOG(INFO)<<"table->type:"<< table->field(col_index)->type();
-                        
+          LOG(INFO) << "col_index:" << col_index;
+          LOG(INFO) << "name:" << field->name();
+          LOG(INFO) << "type:" << field->type();
+          LOG(INFO) << "table->type:" << table->field(col_index)->type();
+
           auto result = table->SetColumn(col_index, field, chunk_array);
           if (!result.ok()) {
             std::stringstream ss;
@@ -682,7 +696,8 @@ int MissingProcess::execute() {
 
           sf64Matrix<D16> sh_sum;
           sh_sum = sh_m[0];
-          for (int j = 1; j < 3; j++) sh_sum = sh_sum + sh_m[j];
+          for (int j = 1; j < 3; j++)
+            sh_sum = sh_sum + sh_m[j];
 
           LOG(INFO) << "Run MPC sum to get sum of all party.";
 
@@ -861,12 +876,13 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
     }
     if (tmp_len != array_len) {
       LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
-                  << " value, but other column has " << array_len << " value.";
+                 << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
     }
 
-    if (errors) return -1;
+    if (errors)
+      return -1;
 
     return array_len;
   }
@@ -916,12 +932,13 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
     }
     if (tmp_len != array_len) {
       LOG(ERROR) << "Column " << local_col_names[i] << " has " << tmp_len
-                  << " value, but other column has " << array_len << " value.";
+                 << " value, but other column has " << array_len << " value.";
       errors = true;
       break;
     }
 
-    if (errors) return -1;
+    if (errors)
+      return -1;
 
     return array_len;
   }
@@ -934,4 +951,4 @@ int MissingProcess::set_task_info(std::string platform_type, std::string job_id,
   task_id_ = task_id;
   return 0;
 }
-}  // namespace primihub
+} // namespace primihub
