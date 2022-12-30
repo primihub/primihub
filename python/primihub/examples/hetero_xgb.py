@@ -1813,7 +1813,10 @@ class XGB_HOST_EN:
                     end_enc = time.time()
 
                     enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
+                    # enc_gh_df = pd.DataFrame(enc_gh, )
                     enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
+                    enc_gh_df['id'] = current_ghs.index.tolist()
+                    enc_gh_df.set_index('id', inplace=True)
 
                 # send all encrypted gradients and hessians to 'guest'
                 self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
@@ -1897,7 +1900,7 @@ num_tree = 5
 max_depth = 5
 # whether encrypted or not
 is_encrypted = True
-merge_gh = True
+merge_gh = False
 
 ray_group = True
 
