@@ -8,7 +8,6 @@ import numpy as np
 import random
 from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score
-import logging
 import pickle
 import json
 from typing import (
@@ -20,8 +19,6 @@ from typing import (
 from multiprocessing import Process, Pool
 import pandas
 import pyarrow
-from scipy.stats import ks_2samp
-from sklearn.metrics import roc_auc_score
 
 from ray.data.block import KeyFn, _validate_key_fn
 from primihub.primitive.opt_paillier_c2py_warpper import *
@@ -46,6 +43,9 @@ from ray.data._internal.null_aggregate import (_null_wrap_init,
                                                _null_wrap_merge,
                                                _null_wrap_accumulate_block,
                                                _null_wrap_finalize)
+
+from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
+
 # import matplotlib.pyplot as plt
 T = TypeVar("T", contravariant=True)
 U = TypeVar("U", covariant=True)
@@ -68,6 +68,18 @@ DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 # ray.init(address='ray://172.21.3.16:10001')
+console_handler = FLConsoleHandler(jb_id=1,
+                                   task_id=1,
+                                   log_level='info',
+                                   format=FORMAT)
+fl_console_log = console_handler.set_format()
+
+file_handler = FLFileHandler(jb_id=1,
+                             task_id=1,
+                             log_file='fl_log_info.txt',
+                             log_level='INFO',
+                             format=FORMAT)
+fl_file_log = file_handler.set_format()
 
 
 def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
@@ -167,7 +179,10 @@ def search_best_splits(X: pd.DataFrame,
         tmp_col = X[item]
 
         if len(tmp_splits) < 1:
-            print("current item ", item, split_points)
+            fl_console_log.info(
+                "current item is {} and split_point is {}".format(
+                    item, split_points))
+            # print("current item ", item, split_points)
             continue
 
         tmp_splits[0] = tmp_splits[0] - eps
@@ -220,7 +235,10 @@ def search_best_splits(X: pd.DataFrame,
 def opt_paillier_decrypt_crt(pub, prv, cipher_text):
 
     if not isinstance(cipher_text, Opt_paillier_ciphertext):
-        print(f"{cipher_text} should be type of Opt_paillier_ciphertext()")
+        fl_console_log.error(
+            "The input should be type of Opt_paillier_ciphertext but {}".format(
+                type(cipher_text)))
+        # print(f"{cipher_text} should be type of Opt_paillier_ciphertext()")
         return
 
     decrypt_text = opt_paillier_c2py.opt_paillier_decrypt_crt_warpper(
@@ -273,7 +291,7 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if self.num_rows() == 0:
             return None
         col = self._table[on]
-        print("=====", self._table, col)
+        # print("=====", self._table, col)
         # if col.isnull().all():
         #     # Short-circuit on an all-null column, returning None. This is required for
         #     # sum() since it will otherwise return 0 when summing on an all-null column,
@@ -481,7 +499,7 @@ class MapGH(object):
             # G_right_g = self.g[(1 - flag).astype('bool')].tolist()
             H_left_h = self.h[flag].tolist()
 
-            print("++++++++++", len(G_left_g), len(H_left_h))
+            # print("++++++++++", len(G_left_g), len(H_left_h))
 
             tmp_g_left, tmp_h_left = list(
                 self.pools.map(lambda a, v: a.pai_add.remote(v),
@@ -626,8 +644,11 @@ class ClientChannelProxy:
         msg = {"v": pickle.dumps(val), "tag": tag}
         self.chann_.send(msg)
         _ = self.chann_.recv()
-        logger.debug("Send value with tag '{}' to {} finish".format(
+        fl_console_log.debug("Send value with tag '{}' to {} finish".format(
             tag, self.dest_role))
+
+        # logger.debug("Send value with tag '{}' to {} finish".format(
+        #     tag, self.dest_role))
 
     # Send val and it's tag to server side, client begin the send action
     # in a thread when the the method reutrn but not ensure that server
@@ -660,12 +681,14 @@ class ServerChannelProxy:
     def StartRecvLoop(self):
 
         def recv_loop():
-            logger.info("Start recv loop.")
+            fl_console_log.info("Start recv loop.")
+            # logger.info("Start recv loop.")
             while (not self.stop_signal_):
                 try:
                     msg = self.chann_.recv(block=False)
                 except Exception as e:
-                    logger.error(e)
+                    fl_console_log.error(e)
+                    # logger.error(e)
                     break
 
                 if msg is None:
@@ -674,15 +697,20 @@ class ServerChannelProxy:
                 key = msg["tag"]
                 value = msg["v"]
                 if self.recv_cache_.get(key, None) is not None:
-                    logger.warn(
+                    fl_console_log.warn(
                         "Hash entry for tag '{}' is not empty, replace old value"
                         .format(key))
+                    # logger.warn(
+                    #     "Hash entry for tag '{}' is not empty, replace old value"
+                    #     .format(key))
                     del self.recv_cache_[key]
 
-                logger.debug("Recv msg with tag '{}'.".format(key))
+                fl_console_log.debug("Recv msg with tag '{}'.".format(key))
+                # logger.debug("Recv msg with tag '{}'.".format(key))
                 self.recv_cache_[key] = value
                 self.chann_.send("ok")
-            logger.info("Recv loop stops.")
+            fl_console_log.info("Recv loop stops.")
+            # logger.info("Recv loop stops.")
 
         self.recv_loop_fut_ = self.executor_.submit(recv_loop)
 
@@ -690,18 +718,18 @@ class ServerChannelProxy:
     def StopRecvLoop(self):
         self.stop_signal_ = True
         self.recv_loop_fut_.result()
-        logger.info("Recv loop already exit, clean cached value.")
+        fl_console_log.info("Recv loop already exit, clean cached value.")
+        # logger.info("Recv loop already exit, clean cached value.")
         key_list = list(self.recv_cache_.keys())
         for key in key_list:
             del self.recv_cache_[key]
-            logger.warn(
+            fl_console_log.warn(
                 "Remove value with tag '{}', not used until now.".format(key))
-        # del self.recv_cache_
-        logger.info("Release system resource!")
+            # logger.warn(
+            #     "Remove value with tag '{}', not used until now.".format(key))
+        # logger.info("Release system resource!")
+        fl_console_log.info("Release system resource!")
         self.chann_.socket.close()
-        # self.chann_.term()
-        # self.chann_.context.destroy()
-        # self.chann_.socket.destroy()
 
     # Get value from cache, and the check will repeat at most 'retries' times,
     # and sleep 0.3s after each check to avoid check all the time.
@@ -712,11 +740,13 @@ class ServerChannelProxy:
             end = time.time()
             if val is not None:
                 del self.recv_cache_[tag]
-                logger.debug("Get val with tag '{}' finish.".format(tag))
+                fl_console_log.debug(
+                    "Get val with tag '{}' finish.".format(tag))
+                # logger.debug("Get val with tag '{}' finish.".format(tag))
                 return pickle.loads(val)
 
             if (end - start) > max_time:
-                logger.warn(
+                fl_console_log.warn(
                     "Can't get value for tag '{}', timeout.".format(tag))
                 break
 
@@ -870,9 +900,9 @@ class XGB_GUEST_EN:
         buckets_x_guest = ray_x_guest.map_batches(hist_bin_transform,
                                                   batch_format="pandas")
 
-        print("current x-guset and buckets_x_guest", X_guest,
-              buckets_x_guest.to_pandas(), encrypted_ghs,
-              buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
+        # print("current x-guset and buckets_x_guest", X_guest,
+        #       buckets_x_guest.to_pandas(), encrypted_ghs,
+        #       buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
 
@@ -936,7 +966,7 @@ class XGB_GUEST_EN:
             # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
             #     by=tmp_col, ascending=True)
 
-        print("current total_left_ghs: ", total_left_ghs)
+        # print("current total_left_ghs: ", total_left_ghs)
 
         return total_left_ghs
 
@@ -1006,7 +1036,8 @@ class XGB_GUEST_EN:
         self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
         best_cut = self.proxy_server.Get('best_cut')
 
-        logging.info("current best cut: {}".format(best_cut))
+        # logging.info("current best cut: {}".format(best_cut))
+        fl_console_log.info("current best cut: {}".format(best_cut))
 
         host_best = best_cut['host_best']
         guest_best = best_cut['guest_best']
@@ -1055,7 +1086,9 @@ class XGB_GUEST_EN:
                     }, 'ids_w')
                 # updata guest lookup table
                 self.lookup_table[self.guest_record] = [best_var, best_cut]
-                print("guest look_up table:", self.lookup_table)
+                fl_console_log.info("guest look_up table is {}".format(
+                    self.lookup_table))
+                # print("guest look_up table:", self.lookup_table)
 
                 # self.guest_record += 1
                 self.guest_record += 1
@@ -1107,7 +1140,7 @@ class XGB_GUEST_EN:
                 current_x = X_guest.iloc[sample_ids].copy()
             # gh_host = xgb_guest.channel.recv()
             gh_en = self.proxy_server.Get('gh_en')
-            print("gh_en: ", gh_en)
+            # print("gh_en: ", gh_en)
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 current_x, gh_en, 0)
 
@@ -1389,7 +1422,7 @@ class XGB_HOST_EN:
             'var': vars,
             'cut': cuts
         })
-        print("current gh_sums and plain_gh_sums: ", gh_sums, plain_gh_sums)
+        # print("current gh_sums and plain_gh_sums: ", gh_sums, plain_gh_sums)
 
         gh_sums['G_right'] = plain_gh_sums['g'] - gh_sums['G_left']
         gh_sums['H_right'] = plain_gh_sums['h'] - gh_sums['H_left']
@@ -1446,10 +1479,11 @@ class XGB_HOST_EN:
                 guest_gh_sums['H_left'] + guest_gh_sums['H_right'] + + self.reg_lambda)
 
         guest_gh_sums['gain'] = guest_gh_sums['gain'] / 2 - self.gamma
-        print("guest_gh_sums: ", guest_gh_sums)
+        # print("guest_gh_sums: ", guest_gh_sums)
 
         max_row = guest_gh_sums['gain'].idxmax()
-        print("max_row: ", max_row)
+        fl_console_log.info("max_row: {}".format(max_row))
+        # print("max_row: ", max_row)
         max_item = guest_gh_sums.iloc[max_row, :]
 
         max_gain = max_item['gain']
@@ -1465,7 +1499,7 @@ class XGB_HOST_EN:
                             current_depth,
                             plain_gh=pd.DataFrame(columns=['g', 'h'])):
         m, n = X_host.shape
-        print("current_depth: ", current_depth, m)
+        # print("current_depth: ", current_depth, m)
 
         if (self.min_child_sample and
                 m < self.min_child_sample) or current_depth > self.max_depth:
@@ -1501,10 +1535,15 @@ class XGB_HOST_EN:
                 'guest_best': guest_best
             }, 'best_cut')
 
-        logging.info(
+        fl_console_log.info(
             "current depth: {}, host best var: {} and guest best var: {}".
             format(current_depth, host_best, guest_best))
-        print("host and guest best", host_best, guest_best)
+
+        # logging.info(
+        #     "current depth: {}, host best var: {} and guest best var: {}".
+        #     format(current_depth, host_best, guest_best))
+        fl_console_log.info("Best host is {} and best guest is {}".format(
+            host_best, guest_best))
         host_best_gain = None
         guest_best_gain = None
 
@@ -1570,10 +1609,8 @@ class XGB_HOST_EN:
                 self.host_record += 1
 
             tree_structure = {(role, record): {}}
-
-            logging.info("current role: {}, current record: {}".format(
+            fl_console_log.info("current role: {}, current record: {}".format(
                 role, record))
-            print("role, record: ", role, record)
 
             X_host_left = X_host.loc[id_left]
             plain_gh_left = plain_gh.loc[id_left]
@@ -1657,7 +1694,8 @@ class XGB_HOST_EN:
 
         start = time.time()
         for t in range(self.n_estimators):
-            print("Begin to trian tree: ", t + 1)
+            fl_console_log.info("Begin to trian tree {}".format(t + 1))
+            # print("Begin to trian tree: ", t + 1)
             f_t = pd.Series([0] * Y.shape[0])
 
             # host cal gradients and hessians with its own label
@@ -1693,7 +1731,7 @@ class XGB_HOST_EN:
             self.proxy_client_guest.Remote(sample_ids, "sample_ids")
             if sample_ids is not None:
                 # select from 'X_host', Y and ghs
-                print("sample_ids: ", sample_ids)
+                # print("sample_ids: ", sample_ids)
                 current_x = X_host.iloc[sample_ids].copy()
                 current_y = Y[sample_ids]
                 current_ghs = gh.iloc[sample_ids].copy()
@@ -1727,7 +1765,7 @@ class XGB_HOST_EN:
                     # cp_gh_int = (cp_gh * self.ratio).astype('int')
 
                     merge_gh = (cp_gh['g'] * self.ratio + cp_gh['h'])
-                    print("merge_gh: ", merge_gh.values)
+                    # print("merge_gh: ", merge_gh.values)
                     start_enc = time.time()
                     enc_merge_gh = list(
                         paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
@@ -1740,7 +1778,7 @@ class XGB_HOST_EN:
                     # cp_gh['g'] = enc_merge_gh
                     # enc_gh_df = cp_gh['g']
                     enc_gh_df.set_index('id', inplace=True)
-                    print("enc_gh_df: ", enc_gh_df)
+                    # print("enc_gh_df: ", enc_gh_df)
                     end_enc = time.time()
 
                     # merge_gh = (gh['g'] * self.g_ratio +
@@ -1768,9 +1806,13 @@ class XGB_HOST_EN:
                 self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
 
                 end_send_gh = time.time()
-                print("Time for encryption and transfer: ",
-                      (end_enc - start_enc), (end_send_gh - end_enc))
-                print("Encrypt finish.")
+                fl_console_log.info(
+                    "The encrypted time is {} and the transfer time is {}".
+                    format((end_enc - start_enc), (end_send_gh - end_enc)))
+                # print("Time for encryption and transfer: ",
+                #       (end_enc - start_enc), (end_send_gh - end_enc))
+                fl_console_log.info("Encrypt finish.")
+                # print("Encrypt finish.")
 
             else:
                 self.proxy_client_guest.Remote(current_ghs, "gh_en")
@@ -1786,15 +1828,16 @@ class XGB_HOST_EN:
             lookup_table_sum[t + 1] = self.lookup_table
             # y_hat = y_hat + self.learning_rate * f_t
             current_y_hat = current_y_hat + self.learning_rate * current_f_t
+            fl_console_log.info("Finish to trian tree {}.".format(t + 1))
 
-            logger.info("Finish to trian tree {}.".format(t + 1))
+            # logger.info("Finish to trian tree {}.".format(t + 1))
 
             # current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
             current_loss = self.log_loss(current_y,
                                          1 / (1 + np.exp(-current_y_hat)))
             train_losses.append(current_loss)
 
-            print("train_losses ", train_losses)
+            fl_console_log.info("train_losses are {}.".format(train_losses))
 
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
@@ -1830,18 +1873,6 @@ class XGB_HOST_EN:
         return metrics.log_loss(actual, predict_prob)
 
 
-def get_logger(name):
-    LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
-    DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-    logging.basicConfig(level=logging.DEBUG,
-                        format=LOG_FORMAT,
-                        datefmt=DATE_FORMAT)
-    logger = logging.getLogger(name)
-    return logger
-
-
-logger = get_logger("hetero_xgb")
-
 ph.context.Context.func_params_map = {
     "xgb_host_logic": ("paillier",),
     "xgb_guest_logic": ("paillier",)
@@ -1870,35 +1901,55 @@ sample_type = "random"
     port='8000',
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
+    # fl_console_log.info("start xgb host logic...")
     logger.info("start xgb host logic...")
+    fl_file_log.debug("xgb host logic file")
+    fl_file_log.info("xgb host logic file")
     # ray.init(address='ray://172.21.3.16:10001')
 
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    taskId = ph.context.Context.params_map['taskid']
+    jobId = ph.context.Context.params_map['jobid']
 
-    logger.debug("dataset_map {}".format(dataset_map))
+    host_log_console = FLConsoleHandler(jb_id=jobId,
+                                        task_id=taskId,
+                                        log_level='info',
+                                        format=FORMAT)
+    fl_console_log = host_log_console.set_format()
 
-    logger.debug("role_nodeid_map {}".format(role_node_map))
+    # logger.debug("dataset_map {}".format(dataset_map))
+    fl_console_log.debug("dataset_map {}".format(dataset_map))
 
-    logger.debug("node_addr_map {}".format(node_addr_map))
+    # logger.debug("role_nodeid_map {}".format(role_node_map))
+    fl_console_log.debug("role_nodeid_map {}".format(role_node_map))
 
+    # logger.debug("node_addr_map {}".format(no de_addr_map))
+    fl_console_log.debug("node_addr_map {}".format(node_addr_map))
     data_key = list(dataset_map.keys())[0]
 
     eva_type = ph.context.Context.params_map.get("taskType", None)
     if eva_type is None:
-        logger.warn(
+        fl_console_log.warn(
             "taskType is not specified, set to default value 'regression'.")
+        # logger.warn(
+        #     "taskType is not specified, set to default value 'regression'.")
         eva_type = "regression"
 
     eva_type = eva_type.lower()
     if eva_type != "classification" and eva_type != "regression":
-        logger.error(
+        fl_console_log.error(
             "Invalid value of taskType, possible value is 'regression', 'classification'."
         )
+        # logger.error(
+        #     "Invalid value of taskType, possible value is 'regression', 'classification'."
+        # )
         return
 
-    logger.info("Current task type is {}.".format(eva_type))
+    fl_console_log.info("Current task type is {}.".format(eva_type))
+
+    # logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
     data = ph.dataset.read(dataset_key=data_key).df_data
@@ -1910,13 +1961,19 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # y = data.pop('Class').values
 
-    print("host data: ", data)
+    # print("host data: ", data)
 
     if len(role_node_map["host"]) != 1:
-        logger.error("Current node of host party: {}".format(
+        fl_console_log.error("Current node of host party: {}".format(
             role_node_map["host"]))
-        logger.error("In hetero XGB, only dataset of host party has label, "
-                     "so host party must have one, make sure it.")
+
+        fl_console_log.error(
+            "In hetero XGB, only dataset of host party has label, "
+            "so host party must have one, make sure it.")
+        # logger.error("Current node of host party: {}".format(
+        #     role_node_map["host"]))
+        # logger.error("In hetero XGB, only dataset of host party has label, "
+        #              "so host party must have one, make sure it.")
         return
 
     host_nodes = role_node_map["host"]
@@ -1949,6 +2006,7 @@ def xgb_host_logic(cry_pri="paillier"):
                            proxy_client_guest=proxy_client_guest,
                            encrypted=is_encrypted)
     xgb_host.merge_gh = merge_gh
+    xgb_host.fl_console_log = fl_console_log
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     xgb_host.sample_type = sample_type
@@ -1971,8 +2029,10 @@ def xgb_host_logic(cry_pri="paillier"):
     # lp.print_stats()
 
     end = time.time()
-    # logger.info("lasting time for xgb %s".format(end-start))
-    print("train time for xgboost: ", (end - start))
+
+    fl_console_log.info("train time for is {}".format(end - start))
+
+    # print("train time for xgboost: ", (end - start))
     y_hat = xgb_host.predict_prob(X_host, lookup=lookup_table_sum)
 
     ks, auc = evaluate_ks_and_roc_auc(y_real=Y, y_proba=y_hat)
@@ -2044,48 +2104,70 @@ def xgb_host_logic(cry_pri="paillier"):
     task_type="classification")
 def xgb_guest_logic(cry_pri="paillier"):
     # def xgb_guest_logic(cry_pri="plaintext"):
-    print("start xgb guest logic...")
+    # fl_console_log.info("start xgb guest logic...")
 
     # ios = IOService()
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
+    taskId = ph.context.Context.params_map['taskid']
+    jobId = ph.context.Context.params_map['jobid']
 
-    logger.debug("dataset_map {}".format(dataset_map))
+    guest_log_console = FLConsoleHandler(jb_id=jobId,
+                                         task_id=taskId,
+                                         log_level='info',
+                                         format=FORMAT)
+    fl_console_log = guest_log_console.set_format()
+    fl_console_log.debug("dataset_map {}".format(dataset_map))
 
-    logger.debug("role_nodeid_map {}".format(role_node_map))
+    # logger.debug("dataset_map {}".format(dataset_map))
+    fl_console_log.debug("role_nodeid_map {}".format(role_node_map))
 
-    logger.debug("node_addr_map {}".format(node_addr_map))
+    # logger.debug("role_nodeid_map {}".format(role_node_map))
+    fl_console_log.debug("node_addr_map {}".format(node_addr_map))
+
+    # logger.debug("node_addr_map {}".format(node_addr_map))
 
     data_key = list(dataset_map.keys())[0]
 
     eva_type = ph.context.Context.params_map.get("taskType", None)
     if eva_type is None:
-        logger.warn(
+        fl_console_log.warn(
             "taskType is not specified, set to default value 'regression'.")
+        # logger.warn(
+        #     "taskType is not specified, set to default value 'regression'.")
         eva_type = "regression"
 
     eva_type = eva_type.lower()
     if eva_type != "classification" and eva_type != "regression":
-        logger.error(
+        fl_console_log.error(
             "Invalid value of taskType, possible value is 'regression', 'classification'."
         )
+        # logger.error(
+        #     "Invalid value of taskType, possible value is 'regression', 'classification'."
+        # )
         return
 
-    logger.info("Current task type is {}.".format(eva_type))
+    fl_console_log.info("Current task type is {}.".format(eva_type))
 
     if len(role_node_map["host"]) != 1:
-        logger.error("Current node of host party: {}".format(
+        fl_console_log.error("Current node of host party: {}".format(
             role_node_map["host"]))
-        logger.error("In hetero XGB, only dataset of host party has label,"
-                     "so host party must have one, make sure it.")
+        # logger.error("Current node of host party: {}".format(
+        #     role_node_map["host"]))
+        fl_console_log.error(
+            "In hetero XGB, only dataset of host party has label,"
+            "so host party must have one, make sure it.")
+        # logger.error("In hetero XGB, only dataset of host party has label,"
+        #              "so host party must have one, make sure it.")
         return
 
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
     proxy_server = ServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
-    logger.debug("Create server proxy for guest, port {}.".format(guest_port))
+    fl_console_log.debug(
+        "Create server proxy for guest, port {}.".format(guest_port))
 
     host_nodes = role_node_map["host"]
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
