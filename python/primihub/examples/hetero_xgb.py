@@ -2210,7 +2210,7 @@ def xgb_guest_logic(cry_pri="paillier"):
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
                              is_encrypted=is_encrypted,
-                             feature_sample=0.3)  # noqa
+                             sample_ratio=0.3)  # noqa
 
     if feature_sample:
         guest_cols = X_guest.columns.tolist()
