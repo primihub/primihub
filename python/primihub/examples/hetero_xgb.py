@@ -115,6 +115,17 @@ def random_sample(df_g, top_rate=0.2, other_rate=0.2):
     return sample_ids
 
 
+def col_sample(feature_list, sample_ratio=0.3, threshold=30):
+    if len(feature_list) < threshold:
+        return feature_list
+
+    sample_num = int(len(feature_list) * sample_ratio)
+
+    sample_features = random.sample(feature_list, sample_num)
+
+    return sample_features
+
+
 def search_best_splits(X: pd.DataFrame,
                        g,
                        h,
@@ -806,7 +817,8 @@ class XGB_GUEST_EN:
             #  channel=None,
             sid=0,
             record=0,
-            is_encrypted=None):
+            is_encrypted=None,
+            sample_ratio=0.3):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -831,6 +843,7 @@ class XGB_GUEST_EN:
         self.tree_structure = {}
         self.encrypted = is_encrypted
         self.chops = 20
+        self.feature_ratio = sample_ratio
 
     def sum_job(self, tmp_group):
         if self.encrypted:
@@ -1892,6 +1905,8 @@ min_child_weight = 5
 
 sample_type = "random"
 
+feature_sample = True
+
 
 @ph.context.function(
     role='host',
@@ -1954,10 +1969,10 @@ def xgb_host_logic(cry_pri="paillier"):
     # 读取注册数据
     data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    # data = pd.read_csv(
-    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.host',
-    #     header=0)
-    # data = data.iloc[:, 550:]
+    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
+
+    # samples-50000, cols-450
+    data = data.iloc[:50000, 550:]
 
     # y = data.pop('Class').values
 
@@ -2173,19 +2188,18 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
 
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    # data = pd.read_csv(
-    #     '/primihub/data/FL/hetero_xgb/train/epsilon_normalized.t.guest',
-    #     header=0)
-    # data = data.iloc[:, :450]
+    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
+
+    # samples-50000, cols-450
+    data = data.iloc[:50000, :450]
 
     if 'id' in data.columns:
         data.pop('id')
     X_guest = data
     # guest_log = open('/app/guest_log', 'w+')
-
     # if is_encrypted:
     xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
                              max_depth=max_depth,
@@ -2195,7 +2209,14 @@ def xgb_guest_logic(cry_pri="paillier"):
                              sid=1,
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
-                             is_encrypted=is_encrypted)  # noqa
+                             is_encrypted=is_encrypted,
+                             feature_sample=0.3)  # noqa
+
+    if feature_sample:
+        guest_cols = X_guest.columns.tolist()
+        selected_features = col_sample(guest_cols,
+                                       sample_ratio=xgb_guest.feature_ratio)
+        X_guest = X_guest[selected_features]
 
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
