@@ -33,6 +33,12 @@ std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_add
 retcode GrpcChannel::sendRecv(const std::string& role,
     std::string_view send_data, std::string* recv_data) {
   grpc::ClientContext context;
+  auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
+  if (send_tiemout_ms > 0) {
+    auto deadline = std::chrono::system_clock::now() +
+      std::chrono::milliseconds(send_tiemout_ms);
+    context.set_deadline(deadline);
+  }
   using reader_writer_t = grpc::ClientReaderWriter<rpc::TaskRequest, rpc::TaskResponse>;
   std::shared_ptr<reader_writer_t> client_stream(stub_->SendRecv(&context));
   std::vector<rpc::TaskRequest> send_requests;
@@ -63,6 +69,23 @@ retcode GrpcChannel::sendRecv(const std::string& role,
   return sendRecv(role, data_sv, recv_data);
 }
 
+int GrpcChannel::send_wrapper(const std::string& role, const std::string& data) {
+    auto ret = this->send(role, data);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send data encountes error";
+        return -1;
+    }
+    return 0;
+}
+
+int GrpcChannel::send_wrapper(const std::string& role, std::string_view sv_data) {
+    auto ret = this->send(role, sv_data);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send data encountes error";
+        return -1;
+    }
+    return 0;
+}
 retcode GrpcChannel::send(const std::string& role, const std::string& data) {
   std::string_view data_sv(data.c_str(), data.length());
   return send(role, data_sv);
@@ -71,6 +94,12 @@ retcode GrpcChannel::send(const std::string& role, const std::string& data) {
 retcode GrpcChannel::send(const std::string& role, std::string_view data_sv) {
   VLOG(5) << "execute GrpcChannel::send";
   grpc::ClientContext context;
+  auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
+  if (send_tiemout_ms > 0) {
+    auto deadline = std::chrono::system_clock::now() +
+      std::chrono::milliseconds(send_tiemout_ms);
+    context.set_deadline(deadline);
+  }
   rpc::TaskResponse task_response;
   using writer_t = grpc::ClientWriter<rpc::TaskRequest>;
   std::unique_ptr<writer_t> writer(stub_->Send(&context, &task_response));
@@ -121,6 +150,7 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
     task_request.set_job_id(job_id);
     task_request.set_task_id(task_id);
     task_request.set_role(role);
+    task_request.set_data_len(total_length);
     auto data_ptr = task_request.mutable_data();
     data_ptr->reserve(max_package_size);
     size_t data_len = std::min(max_package_size, total_length - sended_size);
@@ -135,6 +165,51 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
     }
   } while(true);
   return retcode::SUCCESS;
+}
+
+std::string GrpcChannel::forwardRecv(const std::string& role) {
+    grpc::ClientContext context;
+    auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
+    if (send_tiemout_ms > 0) {
+      auto deadline = std::chrono::system_clock::now() +
+        std::chrono::milliseconds(send_tiemout_ms);
+      context.set_deadline(deadline);
+    }
+    rpc::TaskRequest send_request;
+    send_request.set_task_id(this->getLinkContext()->task_id());
+    send_request.set_job_id(this->getLinkContext()->job_id());
+    send_request.set_role(role);
+    VLOG(5) << "send request info: job_id: " << this->getLinkContext()->job_id()
+            << " task_id: " << this->getLinkContext()->task_id()
+            << " role: " << role
+            << " nodeinfo: " << this->dest_node_.to_string();
+    using reader_t = grpc::ClientReader<rpc::TaskRequest>;
+    auto client_reader = this->stub_->ForwardRecv(&context, send_request);
+
+    // waiting for response
+    std::string tmp_buff;
+    rpc::TaskRequest recv_response;
+    bool init_flag{false};
+    while (client_reader->Read(&recv_response)) {
+        auto data = recv_response.data();
+        if (!init_flag) {
+          size_t data_len = recv_response.data_len();
+          tmp_buff.reserve(data_len);
+          init_flag = true;
+        }
+        VLOG(5) << "data: " << data;
+        tmp_buff.append(data);
+    }
+
+    grpc::Status status = client_reader->Finish();
+    VLOG(5) << "received data: " << tmp_buff;
+    if (!status.ok()) {
+        LOG(ERROR) << "recv data encountes error, detail: "
+            << status.error_code() << ": " << status.error_message();
+        return std::string("");
+    }
+    VLOG(5) << "recv data success, data size: " << tmp_buff.size();
+    return tmp_buff;
 }
 
 retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) {

@@ -143,7 +143,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli :opt_paillier_c2py 
+        bazel build --config=linux :node :cli :opt_paillier_c2py :linkcontext 
       
   
   build-on-mac_x86_64:
@@ -162,7 +162,7 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py
+        bazel build --config=darwin_x86_64 --config=macos :node :cli :opt_paillier_c2py :linkcontext
         cp ./bazel-bin/node ./bazel-bin/primihub-node
         cp ./bazel-bin/cli ./bazel-bin/primihub-cli
         chmod u+x ./bazel-bin/primihub-node
