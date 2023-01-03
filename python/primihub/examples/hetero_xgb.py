@@ -81,7 +81,7 @@ file_handler = FLFileHandler(jb_id=1,
                              format=FORMAT)
 fl_file_log = file_handler.set_format()
 
-ray.init("ray://172.21.3.108:10001")
+# ray.init("ray://172.21.3.108:10001")
 
 
 def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
@@ -2338,12 +2338,12 @@ def xgb_guest_logic(cry_pri="paillier"):
     xgb_guest.paillier_add_actors = paillier_add_actors
     xgb_guest.grouppools = grouppools
 
-    cli1 = ray.init("ray://172.21.3.126:10001", allow_multiple=True)
+    # cli1 = ray.init("ray://172.21.3.126:10001", allow_multiple=True)
 
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
     xgb_guest.lookup_table = {}
-    xgb_guest.cli1 = cli1
+    # xgb_guest.cli1 = cli1
 
     xgb_guest.fit(X_guest, lookup_table_sum)
 
