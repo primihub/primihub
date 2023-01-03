@@ -955,43 +955,42 @@ class XGB_GUEST_EN:
             #     print(tmp_task.get())
 
         if self.encrypted:
-            if len(groups) > 20:
-                mid = int(len(groups) / 2)
-                groups1 = groups[:mid]
-                groups2 = groups[mid:]
+            # if len(groups) > 20:
+            #     mid = int(len(groups) / 2)
+            #     groups1 = groups[:mid]
+            #     groups2 = groups[mid:]
 
-                res1 = list(
-                    self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                                        groups1))
+            #     res1 = list(
+            #         self.grouppools.map(lambda a, v: a.groupby.remote(v),
+            #                             groups1))
 
-                with self.cli1:
-                    if self.merge_gh:
-                        res2 = [
-                            tmp_group._aggregate_on(
-                                PallierSum,
-                                on=['g'],
-                                ignore_nulls=True,
-                                pub_key=self.pub,
-                                add_actors=self.paillier_add_actors).to_pandas(
-                                ) for tmp_group in groups2
-                        ]
+            #     with self.cli1:
+            #         if self.merge_gh:
+            #             res2 = [
+            #                 tmp_group._aggregate_on(
+            #                     PallierSum,
+            #                     on=['g'],
+            #                     ignore_nulls=True,
+            #                     pub_key=self.pub,
+            #                     add_actors=self.paillier_add_actors).to_pandas(
+            #                     ) for tmp_group in groups2
+            #             ]
 
-                    else:
-                        res2 = [
-                            tmp_group._aggregate_on(
-                                PallierSum,
-                                on=['g', 'h'],
-                                ignore_nulls=True,
-                                pub_key=self.pub,
-                                add_actors=self.paillier_add_actors).to_pandas(
-                                ) for tmp_group in groups2
-                        ]
+            #         else:
+            #             res2 = [
+            #                 tmp_group._aggregate_on(
+            #                     PallierSum,
+            #                     on=['g', 'h'],
+            #                     ignore_nulls=True,
+            #                     pub_key=self.pub,
+            #                     add_actors=self.paillier_add_actors).to_pandas(
+            #                     ) for tmp_group in groups2
+            #             ]
 
-                res = res1 + res2
-            else:
-                res = list(
-                    self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                                        groups))
+            #     res = res1 + res2
+            # else:
+            res = list(
+                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 
             # if len(groups) > 20:
             #     mid = int(len(groups) / 2)
