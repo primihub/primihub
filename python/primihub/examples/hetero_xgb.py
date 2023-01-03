@@ -953,7 +953,8 @@ class XGB_GUEST_EN:
             #     print(tmp_task.get())
 
         if self.encrypted:
-            res = list(self.grouppools.map(lambda a, v: a.groupby.remote(v),groups))
+            res = list(
+                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 
             # if len(groups) > 20:
             #     mid = int(len(groups) / 2)
@@ -988,30 +989,30 @@ class XGB_GUEST_EN:
             #             ]
 
             #     res = res1 + res2
-                # if self.merge_gh:
-                #     grouppools2 = ActorPool([
-                #         GroupPool.remote(self.paillier_add_actors,
-                #                          self.pub,
-                #                          on_cols=['g']) for _ in range(10)
-                #     ])
-                # else:
-                #     grouppools2 = ActorPool([
-                #         GroupPool.remote(self.paillier_add_actors,
-                #                          self.pub,
-                #                          on_cols=['g', 'h'])
-                #         for _ in range(10)
-                #     ])
+            # if self.merge_gh:
+            #     grouppools2 = ActorPool([
+            #         GroupPool.remote(self.paillier_add_actors,
+            #                          self.pub,
+            #                          on_cols=['g']) for _ in range(10)
+            #     ])
+            # else:
+            #     grouppools2 = ActorPool([
+            #         GroupPool.remote(self.paillier_add_actors,
+            #                          self.pub,
+            #                          on_cols=['g', 'h'])
+            #         for _ in range(10)
+            #     ])
 
-                # res2 = list(
-                #     self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                #                         groups1))
+            # res2 = list(
+            #     self.grouppools.map(lambda a, v: a.groupby.remote(v),
+            #                         groups1))
 
-                # pass
+            # pass
 
-            else:
-                res = list(
-                    self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                                        groups))
+            # else:
+            #     res = list(
+            #         self.grouppools.map(lambda a, v: a.groupby.remote(v),
+            #                             groups))
         else:
             res = [
                 tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
