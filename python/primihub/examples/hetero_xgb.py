@@ -81,7 +81,7 @@ file_handler = FLFileHandler(jb_id=1,
                              format=FORMAT)
 fl_file_log = file_handler.set_format()
 
-# ray.init("ray://172.21.3.108:10001")
+ray.init("ray://172.21.3.108:10001")
 
 
 def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
