@@ -1831,7 +1831,7 @@ class XGB_HOST_EN:
                 'g': self._grad(y_hat, Y.flatten()),
                 'h': self._hess(y_hat, Y.flatten())
             })
-            if self.sample_type == 'goss' and len(X_host) > self.limit_size:
+            if self.sample_type == 'goss':  # and len(X_host) > self.limit_size:
                 top_ids, low_ids = goss_sample(gh,
                                                top_rate=self.top_ratio,
                                                other_rate=self.other_ratio)
@@ -1843,7 +1843,7 @@ class XGB_HOST_EN:
 
                 sample_ids = top_ids + low_ids
 
-            elif self.sample_type == 'random' and len(X_host) > self.limit_size:
+            elif self.sample_type == 'random':  # and len(X_host) > self.limit_size:
                 sample_ids = random_sample(gh,
                                            top_rate=self.top_ratio,
                                            other_rate=self.other_ratio)
