@@ -1861,15 +1861,15 @@ class XGB_HOST_EN:
                 # select from 'X_host', Y and ghs
                 # print("sample_ids: ", sample_ids)
                 current_x = X_host.iloc[sample_ids].copy()
-                current_y = Y[sample_ids]
+                # current_y = Y[sample_ids]
                 current_ghs = gh.iloc[sample_ids].copy()
                 current_y_hat = y_hat[sample_ids]
                 current_f_t = f_t.iloc[sample_ids].copy()
             else:
                 current_x = X_host.copy()
-                current_y = Y
+                # current_y = Y.copy()
                 current_ghs = gh.copy()
-                current_y_hat = y_hat
+                current_y_hat = y_hat.copy()
                 current_f_t = f_t.copy()
 
             # else:
@@ -1958,14 +1958,21 @@ class XGB_HOST_EN:
 
             lookup_table_sum[t + 1] = self.lookup_table
             # y_hat = y_hat + self.learning_rate * f_t
-            current_y_hat = current_y_hat + self.learning_rate * current_f_t
+            if sample_ids is None:
+                y_hat = y_hat + self.learning_rate * current_f_t
+
+            else:
+                y_hat[sample_ids] = y_hat[
+                    sample_ids] + self.learning_rate * current_f_t
+
+            # current_y_hat = current_y_hat + self.learning_rate * current_f_t
             fl_console_log.info("Finish to trian tree {}.".format(t + 1))
 
             # logger.info("Finish to trian tree {}.".format(t + 1))
 
-            # current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
-            current_loss = self.log_loss(current_y,
-                                         1 / (1 + np.exp(-current_y_hat)))
+            current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+            # current_loss = self.log_loss(current_y,
+            #                              1 / (1 + np.exp(-current_y_hat)))
             train_losses.append(current_loss)
 
             fl_console_log.info("train_losses are {}.".format(train_losses))
