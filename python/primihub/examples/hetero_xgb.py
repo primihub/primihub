@@ -68,7 +68,7 @@ DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
 
-ray.init(address='ray://172.21.3.108:10001')
+# ray.init(address='ray://172.21.3.108:10001')
 console_handler = FLConsoleHandler(jb_id=1,
                                    task_id=1,
                                    log_level='info',
@@ -581,18 +581,24 @@ class GroupPool:
         self.on_cols = on_cols
 
     def groupby(self, group_col):
-        tmp_sum = group_col._aggregate_on(
-            PallierSum,
-            on=self.on_cols,
-            #   on=['g', 'h'],
-            ignore_nulls=True,
-            pub_key=self.pub,
-            add_actors=self.add_actors).to_pandas()
+        df_list = []
+        for tmp_col in group_col:
+            tmp_sum = tmp_col._aggregate_on(
+                PallierSum,
+                on=self.on_cols,
+                #   on=['g', 'h'],
+                ignore_nulls=True,
+                pub_key=self.pub,
+                add_actors=self.add_actors).to_pandas()
 
-        tmp_count = group_col.count().to_pandas()
+            tmp_count = tmp_col.count().to_pandas()
+            tmp_df = pd.merge(tmp_sum, tmp_count)
+
+            df_list.append(tmp_df)
 
         # return tmp_sum.to_pandas()
-        return pd.merge(tmp_sum, tmp_count)
+        # return pd.merge(tmp_sum, tmp_count)
+        return df_list
 
 
 @ray.remote
@@ -923,6 +929,8 @@ class XGB_GUEST_EN:
         total_left_ghs = {}
 
         groups = []
+        batch_size = 5
+        tmp_groups = []
         for tmp_col in cols:
             if self.merge_gh:
                 tmp_group = buckets_x_guest.select_columns(
@@ -930,7 +938,12 @@ class XGB_GUEST_EN:
             else:
                 tmp_group = buckets_x_guest.select_columns(
                     cols=[tmp_col, "g", "h"]).groupby(tmp_col)
-            groups.append(tmp_group)
+
+            if len(tmp_groups) <= batch_size:
+                tmp_groups.append(tmp_group)
+            else:
+                groups.append(tmp_group)
+                tmp_groups = []
 
             #     # sum_que.put(tmp_sum.to_pandas())
 
@@ -956,6 +969,12 @@ class XGB_GUEST_EN:
             #     print(tmp_task.get())
 
         if self.encrypted:
+            internal_res = list(
+                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+
+            res = []
+            for tmp_res in internal_res:
+                res += tmp_res
 
             # if len(groups) > 20:
             #     mid = int(len(groups) / 2)
@@ -991,42 +1010,40 @@ class XGB_GUEST_EN:
 
             #     res = res1 + res2
             # else:
-            res = list(
-                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 
-            if len(groups) > 20:
-                mid = int(len(groups) / 2)
-                groups1 = groups[:mid]
-                groups2 = groups[mid:]
+            # if len(groups) > 20:
+            #     mid = int(len(groups) / 2)
+            #     groups1 = groups[:mid]
+            #     groups2 = groups[mid:]
 
-                res1 = list(
-                    self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                                        groups1))
+            #     res1 = list(
+            #         self.grouppools.map(lambda a, v: a.groupby.remote(v),
+            #                             groups1))
 
-                with self.cli1:
-                    if self.merge_gh:
-                        res2 = [
-                            tmp_group._aggregate_on(
-                                PallierSum,
-                                on=['g'],
-                                ignore_nulls=True,
-                                pub_key=self.pub,
-                                add_actors=self.paillier_add_actors).to_pandas(
-                                ) for tmp_group in groups2
-                        ]
+            #     with self.cli1:
+            #         if self.merge_gh:
+            #             res2 = [
+            #                 tmp_group._aggregate_on(
+            #                     PallierSum,
+            #                     on=['g'],
+            #                     ignore_nulls=True,
+            #                     pub_key=self.pub,
+            #                     add_actors=self.paillier_add_actors).to_pandas(
+            #                     ) for tmp_group in groups2
+            #             ]
 
-                    else:
-                        res2 = [
-                            tmp_group._aggregate_on(
-                                PallierSum,
-                                on=['g', 'h'],
-                                ignore_nulls=True,
-                                pub_key=self.pub,
-                                add_actors=self.paillier_add_actors).to_pandas(
-                                ) for tmp_group in groups2
-                        ]
+            #         else:
+            #             res2 = [
+            #                 tmp_group._aggregate_on(
+            #                     PallierSum,
+            #                     on=['g', 'h'],
+            #                     ignore_nulls=True,
+            #                     pub_key=self.pub,
+            #                     add_actors=self.paillier_add_actors).to_pandas(
+            #                     ) for tmp_group in groups2
+            #             ]
 
-                res = res1 + res2
+            #     res = res1 + res2
             # if self.merge_gh:
             #     grouppools2 = ActorPool([
             #         GroupPool.remote(self.paillier_add_actors,
@@ -1047,10 +1064,9 @@ class XGB_GUEST_EN:
 
             # pass
 
-            else:
-                res = list(
-                    self.grouppools.map(lambda a, v: a.groupby.remote(v),
-                                        groups))
+            # else:
+            # res = list(
+            #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
         else:
             res = [
                 tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
@@ -2067,10 +2083,10 @@ def xgb_host_logic(cry_pri="paillier"):
     # 读取注册数据
     data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
+    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
 
-    # samples-50000, cols-450
-    data = data.iloc[:50000, 550:]
+    # # samples-50000, cols-450
+    # data = data.iloc[:50000, 550:]
 
     # y = data.pop('Class').values
 
@@ -2288,11 +2304,11 @@ def xgb_guest_logic(cry_pri="paillier"):
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
 
-    # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
+    data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
+    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
 
-    # samples-50000, cols-450
-    data = data.iloc[:50000, :450]
+    # # samples-50000, cols-450
+    # data = data.iloc[:50000, :450]
 
     if 'id' in data.columns:
         data.pop('id')
@@ -2340,12 +2356,12 @@ def xgb_guest_logic(cry_pri="paillier"):
     xgb_guest.paillier_add_actors = paillier_add_actors
     xgb_guest.grouppools = grouppools
 
-    cli1 = ray.init("ray://172.21.3.126:10001", allow_multiple=True)
+    # cli1 = ray.init("ray://172.21.3.126:10001", allow_multiple=True)
 
     # xgb_guest.channel.send(b'recved pub')
     lookup_table_sum = {}
     xgb_guest.lookup_table = {}
-    xgb_guest.cli1 = cli1
+    # xgb_guest.cli1 = cli1
 
     xgb_guest.fit(X_guest, lookup_table_sum)
 
