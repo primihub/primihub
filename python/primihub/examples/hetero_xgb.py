@@ -827,7 +827,8 @@ class XGB_GUEST_EN:
             sid=0,
             record=0,
             is_encrypted=None,
-            sample_ratio=0.3):
+            sample_ratio=0.3,
+            batch_size=8):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -853,6 +854,7 @@ class XGB_GUEST_EN:
         self.encrypted = is_encrypted
         self.chops = 20
         self.feature_ratio = sample_ratio
+        self.batch_size = batch_size
 
     def sum_job(self, tmp_group):
         if self.encrypted:
@@ -939,7 +941,7 @@ class XGB_GUEST_EN:
                 tmp_group = buckets_x_guest.select_columns(
                     cols=[tmp_col, "g", "h"]).groupby(tmp_col)
 
-            if len(tmp_groups) <= batch_size:
+            if len(tmp_groups) <= self.batch_size:
                 tmp_groups.append(tmp_group)
             else:
                 groups.append(tmp_group)
@@ -1347,7 +1349,8 @@ class XGB_HOST_EN:
             encrypted=None,
             top_ratio=0.2,
             other_ratio=0.2,
-            sample_type='goss'):
+            sample_type='goss',
+            limit_size=20000):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -1380,6 +1383,7 @@ class XGB_HOST_EN:
         self.top_ratio = top_ratio
         self.other_ratio = other_ratio
         self.sample_type = sample_type
+        self.limit_size = limit_size
 
     def _grad(self, y_hat, Y):
 
@@ -1827,7 +1831,7 @@ class XGB_HOST_EN:
                 'g': self._grad(y_hat, Y.flatten()),
                 'h': self._hess(y_hat, Y.flatten())
             })
-            if self.sample_type == 'goss':
+            if self.sample_type == 'goss' and len(X_host) > self.limit_size:
                 top_ids, low_ids = goss_sample(gh,
                                                top_rate=self.top_ratio,
                                                other_rate=self.other_ratio)
@@ -1839,7 +1843,7 @@ class XGB_HOST_EN:
 
                 sample_ids = top_ids + low_ids
 
-            elif self.sample_type == 'random':
+            elif self.sample_type == 'random' and len(X_host) > self.limit_size:
                 sample_ids = random_sample(gh,
                                            top_rate=self.top_ratio,
                                            other_rate=self.other_ratio)
@@ -2196,7 +2200,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     trainMetrics = {
         "train_acc": xgb_host.acc,
-        "train_auc": xgb_host.acc,
+        "train_auc": xgb_host.auc,
         "train_ks": xgb_host.ks,
         "train_fpr": xgb_host.fpr,
         "train_tpr": xgb_host.tpr
@@ -2335,6 +2339,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
     xgb_guest.merge_gh = merge_gh
+    xgb_guest.batch_size = 8
 
     add_actor_num = 20
     paillier_add_actors = ActorPool(
