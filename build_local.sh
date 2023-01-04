@@ -9,7 +9,7 @@ fi
 
 bash pre_build.sh
 
-bazel build --config=linux --define cpu=amd64 --define microsoft-apsi=true :node :cli :opt_paillier_c2py
+bazel build --config=linux --define cpu=amd64 --define microsoft-apsi=true :node :cli :opt_paillier_c2py :linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
