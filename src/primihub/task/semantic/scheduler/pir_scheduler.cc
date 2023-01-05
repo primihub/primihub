@@ -148,6 +148,7 @@ void PIRScheduler::node_push_pir_task(const std::string& node_id,
         const PeerDatasetMap& peer_dataset_map,
         const PushTaskRequest& nodePushTaskRequest,
         const Node& dest_node, bool is_client) {
+    SET_THREAD_NAME("PIRScheduler");
     grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
@@ -176,11 +177,12 @@ void PIRScheduler::node_push_pir_task(const std::string& node_id,
     auto channel = this->getLinkContext()->getChannel(dest_node);
     auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
     if (ret == retcode::SUCCESS) {
-        VLOG(5) << "dest_node: " << dest_node_address << " reply success";
+        VLOG(5) << "submit task to: " << dest_node_address << " reply success";
         // (TODO) parse reply and get notify server info
     } else {
-        VLOG(5) << "dest_node: " << dest_node_address << " reply failed";
+        LOG(ERROR) << "submit task to: " << dest_node_address << " reply failed";
     }
+    parseNotifyServer(pushTaskReply);
 }
 
 void PIRScheduler::add_vm(rpc::Node *node, int i,

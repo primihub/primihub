@@ -21,6 +21,7 @@
 #include "src/primihub/service/dataset/localkv/storage_default.h"
 #include "src/primihub/service/dataset/localkv/storage_leveldb.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/defines.h"
 
 namespace primihub {
 Nodelet::Nodelet(const std::string& config_file_path) {
@@ -90,6 +91,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     // notify_service_thread.detach();
     notify_service_fut = std::async(std::launch::async,
         [this]() {
+            SET_THREAD_NAME("notifyServer");
             notify_service_->run();
         });
     // Wait for p2p node to start

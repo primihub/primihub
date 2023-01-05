@@ -6,6 +6,7 @@ from primihub.primitive.opt_paillier_c2py_warpper import *
 import pandas as pd
 import numpy as np
 import logging
+import json
 import pickle
 from scipy.stats import ks_2samp
 from sklearn.metrics import roc_auc_score, accuracy_score
@@ -304,7 +305,7 @@ class XGBGuestInfer:
 @ph.context.function(role='host',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_host'],
-                     port='8000',
+                     port='8008',
                      task_type="classification")
 def xgb_host_infer():
     logger.info("start xgb host logic...")
@@ -363,7 +364,14 @@ def xgb_host_infer():
     acc = accuracy_score((pred_prob >= 0.5).astype('int'), test_y)
 
     ks, auc = evaluate_ks_and_roc_auc(y_real=test_y, y_proba=pred_prob)
-    test_metrics = {"test_acc": acc, "test_ks": ks, "test_auc": auc}
+    fpr, tpr, threshold = metrics.roc_curve(test_y, pred_prob)
+    test_metrics = {
+        "test_acc": acc,
+        "test_ks": ks,
+        "test_auc": auc,
+        "test_fpr": fpr.tolist(),
+        "test_tpr": tpr.tolist()
+    }
 
     # pred_y = xgb_host.host_predict(test_host)
 
@@ -380,14 +388,17 @@ def xgb_host_infer():
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
 
-    with open(indicator_file_path, 'wb') as filePath:
-        pickle.dump(test_metrics, filePath)
+    test_metrics_buff = json.dumps(test_metrics)
+
+    with open(indicator_file_path, 'w') as filePath:
+        filePath.write(test_metrics_buff)
+        # pickle.dump(test_metrics, filePath)
 
 
 @ph.context.function(role='guest',
                      protocol='xgboost',
                      datasets=['test_hetero_xgb_guest'],
-                     port='8000',
+                     port='9009',
                      task_type="classification")
 def xgb_guest_infer():
     logger.info("start xgb guest logic...")

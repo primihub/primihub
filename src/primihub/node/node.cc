@@ -35,7 +35,6 @@
 #include "src/primihub/service/notify/model.h"
 #include "src/primihub/util/util.h"
 
-
 using grpc::Server;
 using primihub::rpc::Params;
 using primihub::rpc::ParamValue;
@@ -71,6 +70,8 @@ Status VMNodeImpl::Send(ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
+            size_t data_len = request.data_len();
+            received_data.reserve(data_len);
             recv_meta_info = true;
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
@@ -86,6 +87,7 @@ Status VMNodeImpl::Send(ServerContext* context,
                 response->set_msg_info(std::move(err_msg));
                 return Status::OK;
             }
+
         }
         received_data.append(request.data());
     }
@@ -116,6 +118,8 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
+            size_t data_len = request.data_len();
+            recv_data.reserve(data_len);
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
                     << "role: " << role;
@@ -201,13 +205,16 @@ void VMNodeImpl::buildTaskRequest(const std::string& job_id,
     task_request.set_job_id(job_id);
     task_request.set_task_id(task_id);
     task_request.set_role(role);
+    task_request.set_data_len(total_length);
     auto data_ptr = task_request.mutable_data();
     data_ptr->reserve(max_package_size);
     size_t data_len = std::min(max_package_size, total_length - sended_size);
     data_ptr->append(send_buf + sended_size, data_len);
     sended_size += data_len;
     requests->emplace_back(std::move(task_request));
-    if (sended_size > total_length) {
+    if (sended_size < total_length) {
+      continue;
+    } else {
       break;
     }
   } while(true);
@@ -222,6 +229,7 @@ void VMNodeImpl::buildTaskResponse(const std::string& data,
   do {
     rpc::TaskResponse task_response;
     task_response.set_ret_code(rpc::retcode::SUCCESS);
+    task_response.set_data_len(total_length);
     auto data_ptr = task_response.mutable_data();
     data_ptr->reserve(max_package_size);
     size_t data_len = std::min(max_package_size, total_length - sended_size);
@@ -303,6 +311,8 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     std::string role = request->role();
     VLOG(5) << "enter ForwardRecv: job_id: " << job_id << " "
         << "task id: " << task_id << " role: " << role;
+    std::string worker_id = this->getWorkerId(job_id, task_id);
+    waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
     auto worker = this->getWorker(job_id, task_id);
     if (worker == nullptr) {
         return grpc::Status::OK;
@@ -364,6 +374,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
                                            this->nodelet->getDataService());
         // Parse and dispatch task.
         _psp.parseTaskSyntaxTree(lan_parser_);
+        _psp.prepareReply(pushTaskReply);
 
     } else if (pushTaskRequest->task().type() == primihub::rpc::TaskType::PIR_TASK ||
             pushTaskRequest->task().type() == primihub::rpc::TaskType::PSI_TASK) {
@@ -388,12 +399,14 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         } else {
             _psp.schedulePsiTask(lan_parser_);
         }
+        _psp.prepareReply(pushTaskReply);
         auto _type = static_cast<int>(pushTaskRequest->task().type());
         VLOG(5) << "end schedule schedule task for type: " << _type;
     } else {
         auto executor_func = [this](
                 std::shared_ptr<Worker> worker, PushTaskRequest request,
                 primihub::ThreadSafeQueue<std::string>* finished_worker_queue) -> void {
+            SET_THREAD_NAME("task_executor");
             SCopedTimer timer;
             std::string submit_client_id = request.submit_client_id();
             std::string task_id = request.task().task_id();

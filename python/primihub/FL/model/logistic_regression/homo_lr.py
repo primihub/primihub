@@ -267,6 +267,7 @@ def run_homo_lr_arbiter(role_node_map,
             client_arbiter.broadcast_global_model_param(host_param, guest_param,
                                                         host_data_weight,
                                                         guest_data_weight)
+                                                        
             log_handler.info("batch={} done".format(j+1))
 
             y_hat = client_arbiter.predict_prob(x)
@@ -292,8 +293,6 @@ def run_homo_lr_arbiter(role_node_map,
         filePath.write(trainMetricsBuff)
 
     log_handler.info("####### start predict ######")
-
-    
     log_handler.info("All process done.")
     proxy_server.StopRecvLoop()
 
@@ -479,6 +478,7 @@ def run_homo_lr_host(role_node_map,
                 "global_host_model_param")
             log_handler.info("batch={} done".format(j+1))
         log_handler.info("epoch={} done".format(i+1))
+
     log_handler.info("host training process done.")
     model_file_path = ph.context.Context.get_model_file_path()
     log_handler.info("Current model file path is: {}".format(model_file_path))
@@ -636,7 +636,7 @@ def run_homo_lr_guest(role_node_map,
             client_guest.model.theta = proxy_server.Get(
                 "global_guest_model_param")
             log_handler.info("batch={} done".format(j+1))
-        log_handler.info("epoch={} done".format(i+1))
+
     log_handler.info("guest training process done.")
 
     proxy_server.StopRecvLoop()

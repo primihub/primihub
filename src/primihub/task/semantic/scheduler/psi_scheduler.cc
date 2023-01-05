@@ -159,6 +159,7 @@ void PSIScheduler::node_push_psi_task(const std::string& node_id,
                                     const PushTaskRequest& nodePushTaskRequest,
                                     const Node& dest_node,
                                     bool is_client) {
+    SET_THREAD_NAME("PSIScheduler");
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
@@ -179,9 +180,16 @@ void PSIScheduler::node_push_psi_task(const std::string& node_id,
     }
 
     // send request
-    LOG(INFO) << "dest node " << dest_node.to_string();
+    std::string dest_node_address = dest_node.to_string();
+    LOG(INFO) << "dest node " << dest_node_address;
     auto channel = this->getLinkContext()->getChannel(dest_node);
-    channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
+    auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
+    if (ret == retcode::SUCCESS) {
+        VLOG(5) << "submit task to : " << dest_node_address << " reply success";
+    } else {
+        LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
+    }
+    parseNotifyServer(pushTaskReply);
 }
 
 void PSIScheduler::add_vm(rpc::Node *node, int i,

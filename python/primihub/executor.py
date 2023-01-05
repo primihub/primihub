@@ -67,10 +67,16 @@ class Executor:
                 while process.exitcode is None:
                     process.join(timeout=5)
                     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.debug("end execute {}".format(process.exitcode))
+                logger.info("end execute with exit code: {}".format(process.exitcode))
+                # process.exitcode 0 success, -exit_code failed
+                if (process.exitcode != 0):
+                    err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
+                    logger.error(err_msg)
+                    raise Exception(err_msg)
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
+                raise e
             finally:
                 Context.clean_content()
         else:
@@ -83,10 +89,16 @@ class Executor:
                 while process.exitcode is None:
                     process.join(timeout=5)
                     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.debug("end execute {}".format(process.exitcode))
+                logger.info("end execute with exit code: {}".format(process.exitcode))
+                # process.exitcode 0 success, -exit_code failed
+                if (process.exitcode != 0):
+                    err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
+                    logger.error(err_msg)
+                    raise Exception(err_msg)
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
+                raise e
             finally:
                 Context.clean_content()
 

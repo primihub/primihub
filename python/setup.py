@@ -45,12 +45,26 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
-    
-    if os.path.isfile("../bazel-bin/opt_paillier_c2py.so"):
-        shutil.copyfile("../bazel-bin/opt_paillier_c2py.so", 
-                paths + "/opt_paillier_c2py.so")
-    else:
-        print("Ignore opt_paillier_c2py.so due to not compiled.")
+
+    module_list = ["opt_paillier_c2py.so", "linkcontext.so"]
+    for module_name in module_list:
+        module_installed = False
+        if os.path.isfile("../bazel-bin/{}".format(module_name)):
+            shutil.copyfile("../bazel-bin/{}".format(module_name),
+                    paths + "/{}".format(module_name))
+            print("Install {} finish, file found in '../bazel-bin'.".format(module_name))
+            module_installed = True
+        else:
+            print("Can't not find file ../bazel-bin/{}, try to find ./{}.".format(module_name, module_name))
+        if module_installed:
+            continue
+        if os.path.isfile("./{}".format(module_name)):
+            shutil.copyfile("./{}".format(module_name),
+                    paths + "/{}".format(module_name))
+            print("Install {} finish, file found in './'.".format(module_name))
+        else:
+            print("Can't not find file ./{}.".format(module_name))
+            print("Ignore {} due to file not found.".format(module_name))
 
 
 def clean_proto():
@@ -65,7 +79,7 @@ def clean_proto():
             file_to_remove.append(f_name)
         if f_name.find("pb2_grpc.py") != -1:
             file_to_remove.append(f_name)
-    
+
     for fname in file_to_remove:
         os.remove(proto_dir + fname)
         print("Remove {}.".format(fname))
@@ -78,7 +92,7 @@ def compile_proto():
     print("compile proto...")
     os.chdir("../")
     print(os.getcwd())
-    
+
     python_out_dir = "python/primihub/client/ph_grpc"
     grpc_python_out = "python/primihub/client/ph_grpc"
 
@@ -99,7 +113,7 @@ def compile_proto():
     out, err = p.communicate()
     if p.returncode != 0:
         raise RuntimeError("Error compiling proto file: {0}".format(err))
-    
+
     os.chdir("python")
     print(os.getcwd())
 
@@ -112,7 +126,6 @@ class PostDevelopCommand(develop):
         compile_proto()
         develop.run(self)
         solib2sitepackage()
-        clean_proto()
 
 
 class PostInstallCommand(install):
@@ -145,7 +158,7 @@ class ProtoCommand(distutils.cmd.Command):
 
 
 class AddSoLibCommand(distutils.cmd.Command):
-    """Run command: 
+    """Run command:
         add so lib path to Python path.
     """
 
