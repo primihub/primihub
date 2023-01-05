@@ -339,8 +339,8 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if not encrypted:
             val = col.sum(skipna=ignore_nulls)
         else:
-            val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
-            # val = batch_paillier_sum(col, pub_key)
+            # val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
+            val = batch_paillier_sum.remote(col, pub_key)
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
@@ -1027,21 +1027,21 @@ class XGB_GUEST_EN:
         print("==============", cols, groups, len(groups))
 
         if self.encrypted:
-            # internal_res = list(
-            #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+            internal_res = list(
+                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 
-            if self.merge_gh:
-                internal_res = ray.get(
-                    groupby_sum(group_col=groups,
-                                pub=self.pub,
-                                on_cols=['g'],
-                                add_actors=self.grouppools))
-            else:
-                internal_res = ray.get(
-                    groupby_sum(group_col=groups,
-                                pub=self.pub,
-                                on_cols=['g', 'h'],
-                                add_actors=self.grouppools))
+            # if self.merge_gh:
+            #     internal_res = ray.get(
+            #         groupby_sum.remote(group_col=groups,
+            #                            pub=self.pub,
+            #                            on_cols=['g'],
+            #                            add_actors=self.grouppools))
+            # else:
+            #     internal_res = ray.get(
+            #         groupby_sum.remote(group_col=groups,
+            #                            pub=self.pub,
+            #                            on_cols=['g', 'h'],
+            #                            add_actors=self.grouppools))
 
             res = []
             for tmp_res in internal_res:
