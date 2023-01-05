@@ -339,8 +339,8 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if not encrypted:
             val = col.sum(skipna=ignore_nulls)
         else:
-            # val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
-            val = batch_paillier_sum(col, pub_key)
+            val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
+            # val = batch_paillier_sum(col, pub_key)
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
@@ -596,6 +596,25 @@ class ReduceGH(object):
         })
 
         return GH
+
+
+@ray.remote
+def groupby_sum(group_col, pub, on_cols, add_actors):
+    df_list = []
+    for tmp_col in group_col:
+        tmp_sum = tmp_col._aggregate_on(
+            PallierSum,
+            on=on_cols,
+            #   on=['g', 'h'],
+            ignore_nulls=True,
+            pub_key=pub,
+            add_actors=add_actors).to_pandas()
+
+        tmp_count = tmp_col.count().to_pandas()
+        tmp_df = pd.merge(tmp_sum, tmp_count)
+        df_list.append(tmp_df)
+
+    return df_list
 
 
 @ray.remote
@@ -1008,8 +1027,21 @@ class XGB_GUEST_EN:
         print("==============", cols, groups, len(groups))
 
         if self.encrypted:
-            internal_res = list(
-                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+            # internal_res = list(
+            #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+
+            if self.merge_gh:
+                internal_res = ray.get(
+                    groupby_sum(group_col=groups,
+                                pub=self.pub,
+                                on_cols=['g'],
+                                add_actors=self.grouppools))
+            else:
+                internal_res = ray.get(
+                    groupby_sum(group_col=groups,
+                                pub=self.pub,
+                                on_cols=['g', 'h'],
+                                add_actors=self.grouppools))
 
             res = []
             for tmp_res in internal_res:
@@ -2133,13 +2165,13 @@ def xgb_host_logic(cry_pri="paillier"):
     # logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
+    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, 550:]
-    data = data.iloc[:, 550:]
+    # data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -2355,14 +2387,14 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
 
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
+    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, :450]
-    data = data.iloc[:, :450]
+    # data = data.iloc[:, :450]
 
     if 'id' in data.columns:
         data.pop('id')
