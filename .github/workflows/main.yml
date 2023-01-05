@@ -21,7 +21,7 @@ env:
 
 
 jobs:
-  
+
   unit-test-on-ubuntu:
     # runs-on: ubuntu-latest
     runs-on: self-hosted
@@ -59,11 +59,11 @@ jobs:
     #     pytest -v feature_test/test_onehot.py
     #     pytest -v feature_test/test_minmax_standard.py
     #     pytest -v test_disxgb_en.py
- 
+
     - name: bazel test
       run: |
         ./pre_build.sh
-        bazel build --config=linux logistic_test maxpool_test falcon_lenet_test common_test network_test
+        bazel build --config=linux_x86_64 logistic_test maxpool_test falcon_lenet_test common_test network_test
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
         ./bazel-bin/falcon_lenet_test
@@ -71,7 +71,7 @@ jobs:
         ./bazel-bin/network_test
 
         # bazel test --test_output=all --config=linux test_opt_paillier_c2py 
-        # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py 
+        # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py
         # bazel test --test_output=errors --config=linux common_test
         # bazel test --test_output=errors --config=linux network_test
         # bazel test --config=linux primitive_test
@@ -105,7 +105,7 @@ jobs:
         # bazel test --config=darwin_x86_64 --config=macos share_test
       shell: bash
 
-  
+
   build-on-ubuntu:
     needs: unit-test-on-ubuntu
     # runs-on: ubuntu-latest
@@ -143,9 +143,9 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux :node :cli :opt_paillier_c2py :linkcontext 
-      
-  
+        bazel build --config=linux_x86_64 :node :cli :opt_paillier_c2py :linkcontext
+
+
   build-on-mac_x86_64:
     needs: unit-test-on-macos_x86_64
     runs-on: macos-latest
@@ -178,7 +178,7 @@ jobs:
           files: |
             ./primihub-cli-darwin-amd64.tar.gz
             ./primihub-node-darwin-amd64.tar.gz
-  
+
   docker-image-build-and-publish:
     needs: build-on-ubuntu
     runs-on: ubuntu-latest

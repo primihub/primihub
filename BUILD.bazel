@@ -36,6 +36,16 @@ config_setting(
    values = {"define": "microsoft-apsi=true"},
 )
 
+config_setting(
+    name = "aarch64",
+    values = {"define": "cpu_arch=aarch64"},
+)
+
+config_setting(
+    name = "x86_64",
+    values = {"define": "cpu_arch=x86_64"},
+)
+
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
@@ -66,10 +76,12 @@ C_OPT = [
     "-Wall",
     "-ggdb",
     "-rdynamic",
-    "-maes",
-    "-mpclmul",
     "-Wno-reserved-user-defined-literal",
-]
+] + select({
+    ":x86_64": ["-maes", "-mpclmul"],
+    ":aarch64": [],
+    "//conditions:default": [],
+})
 
 ## start of primihub
 load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
@@ -376,32 +388,32 @@ cc_library(
   ],
   exclude = ["src/primihub/protocol/cryptflow2/globals_float.h"]),
   linkstatic = False,
-  copts = [
-    "-I src/primihub/protocol/cryptflow2/",
-    "-I src/primihub/protocol/cryptflow2/BuildingBlocks/",
-    "-I src/primihub/protocol/cryptflow2/FloatingPoint/",
-    "-I src/primihub/protocol/cryptflow2/GC/",
-    "-I src/primihub/protocol/cryptflow2/LinearHE/",
-    "-I src/primihub/protocol/cryptflow2/LinearOT/",
-    "-I src/primihub/protocol/cryptflow2/Math/",
-    "-I src/primihub/protocol/cryptflow2/Millionaire/",
-    "-I src/primihub/protocol/cryptflow2/NonLinear/",
-    "-I src/primihub/protocol/cryptflow2/OT/",
-    "-I src/primihub/protocol/cryptflow2/utils/",
-    "-D SCI_OT",
-    "-maes",
-    "-msse4.1",
-    "-mavx2",
-    "-pthread",
-    "-mrdseed",
-  ],
-  linkopts = ["-fopenmp"],
-  deps = [
-    "@com_microsoft_seal//:seal",
-    "@com_github_gmp//:gmp",
-    "@openssl",
-    ":eigen",
-  ]
+    copts = [
+        "-I src/primihub/protocol/cryptflow2/",
+        "-I src/primihub/protocol/cryptflow2/BuildingBlocks/",
+        "-I src/primihub/protocol/cryptflow2/FloatingPoint/",
+        "-I src/primihub/protocol/cryptflow2/GC/",
+        "-I src/primihub/protocol/cryptflow2/LinearHE/",
+        "-I src/primihub/protocol/cryptflow2/LinearOT/",
+        "-I src/primihub/protocol/cryptflow2/Math/",
+        "-I src/primihub/protocol/cryptflow2/Millionaire/",
+        "-I src/primihub/protocol/cryptflow2/NonLinear/",
+        "-I src/primihub/protocol/cryptflow2/OT/",
+        "-I src/primihub/protocol/cryptflow2/utils/",
+        "-D SCI_OT",
+        "-pthread",
+    ] + select({
+        ":x86_64": ["-maes", "-msse4.1", "-mavx2", "-mrdseed",],
+        ":aarch64": [],
+        "//conditions:default": [],
+    }),
+    linkopts = ["-fopenmp"],
+    deps = [
+        "@com_microsoft_seal//:seal",
+        "@com_github_gmp//:gmp",
+        "@openssl",
+        ":eigen",
+    ]
 )
 
 cc_library(
@@ -419,13 +431,15 @@ cc_library(
     ]),
     copts = [
 	    # TODO: Consider to remove -I flag.
-            "-I src/primihub/protocol/falcon-public/",
-            "-I src/primihub/protocol/falcon-public/util/",
-            "-mpclmul",
-            "-maes",
-            "-fpic",
+        "-I src/primihub/protocol/falcon-public/",
+        "-I src/primihub/protocol/falcon-public/util/",
+        "-fpic",
 	    "-Wno-narrowing",
-    ],
+    ] + select({
+        ":x86_64": ["-maes", "-mpclmul"],
+        ":aarch64": [],
+        "//conditions:default": [],
+    }),
     linkstatic = False,
     deps = [
 	    ":eigen",
@@ -436,59 +450,59 @@ cc_library(
 cc_library(
     name = "primitive_lib",
     srcs = glob([
-          "src/primihub/primitive/ot/share_ot.cc",
-          "src/primihub/primitive/circuit/garble.cc",
-          "src/primihub/primitive/circuit/circuit_library.cc",
-          "src/primihub/primitive/circuit/beta_circuit.cc",
-          "src/primihub/primitive/circuit/beta_library.cc",
-          "src/primihub/primitive/ppa/kogge_stone.cpp",
+        "src/primihub/primitive/ot/share_ot.cc",
+        "src/primihub/primitive/circuit/garble.cc",
+        "src/primihub/primitive/circuit/circuit_library.cc",
+        "src/primihub/primitive/circuit/beta_circuit.cc",
+        "src/primihub/primitive/circuit/beta_library.cc",
+        "src/primihub/primitive/ppa/kogge_stone.cpp",
     ]),
     hdrs = glob([
-          "src/primihub/primitive/ot/share_ot.h",
-          "src/primihub/primitive/circuit/garble.h",
-          "src/primihub/primitive/circuit/gate.h",
-          "src/primihub/primitive/circuit/circuit_library.h",
-          "src/primihub/primitive/circuit/beta_circuit.h",
-          "src/primihub/primitive/circuit/beta_library.h",
-          "src/primihub/primitive/ppa/kogge_stone.h",
+        "src/primihub/primitive/ot/share_ot.h",
+        "src/primihub/primitive/circuit/garble.h",
+        "src/primihub/primitive/circuit/gate.h",
+        "src/primihub/primitive/circuit/circuit_library.h",
+        "src/primihub/primitive/circuit/beta_circuit.h",
+        "src/primihub/primitive/circuit/beta_library.h",
+        "src/primihub/primitive/ppa/kogge_stone.h",
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-            ":eigen",
-            "@nlohmann_json",
-            ":common_lib",
-            ":crypto_lib",
-            ":network_lib",
-        ],
+        ":eigen",
+        "@nlohmann_json",
+        ":common_lib",
+        ":crypto_lib",
+        ":network_lib",
+    ],
 )
 
 cc_library(
     name = "cryptflow2_algorithm_lib",
     srcs = glob([
-           "src/primihub/algorithm/cryptflow2_maxpool.cc",
+        "src/primihub/algorithm/cryptflow2_maxpool.cc",
     ]),
     hdrs = glob([
-           "src/primihub/algorithm/base.h",
-           "src/primihub/algorithm/cryptflow2_maxpool.h",
-           "src/primihub/service/dataset/localkv/storage_default.h",
-           "src/primihub/service/dataset/storage_backend.h",
-	   "src/primihub/util/cpu_check.h"
+        "src/primihub/algorithm/base.h",
+        "src/primihub/algorithm/cryptflow2_maxpool.h",
+        "src/primihub/service/dataset/localkv/storage_default.h",
+        "src/primihub/service/dataset/storage_backend.h",
+	    "src/primihub/util/cpu_check.h"
     ]),
-    copts = C_OPT + [
-      	   "-maes",
-      	   "-mavx2",
-      	   "-mrdseed",
-    ],
+    copts = C_OPT + select({
+        ":x86_64": ["-maes", "-mrdseed", "-mavx2"],
+        ":aarch64": [],
+        "//conditions:default": [],
+    }),
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-           ":eigen",
-           ":common_lib",
-           ":data_store_lib",
-           ":dataset_service",
-	   ":protocol_cryptflow2_ot_lib",
+        ":eigen",
+        ":common_lib",
+        ":data_store_lib",
+        ":dataset_service",
+        ":protocol_cryptflow2_ot_lib",
     ],
 )
 
@@ -522,22 +536,22 @@ cc_library(
             "src/primihub/operator/aby3_operator.h",
             "src/primihub/algorithm/missing_val_processing.h",
     ]),
-    copts = C_OPT + [
-      "-maes",
-      "-msse4.1",
-      "-mrdseed",
-    ],
+    copts = C_OPT + select({
+        ":x86_64": ["-maes", "-mrdseed", "-msse4.1"],
+        ":aarch64": [],
+        "//conditions:default": [],
+    }),
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-          ":eigen",
-          ":common_lib",
-          ":protocol_aby3_lib",
-          ":data_store_lib",
-          ":model_util_lib",
-          ":util_lib",
-          ":dataset_service",
-          ":protocol_falcon_lib"
+        ":eigen",
+        ":common_lib",
+        ":protocol_aby3_lib",
+        ":data_store_lib",
+        ":model_util_lib",
+        ":util_lib",
+        ":dataset_service",
+        ":protocol_falcon_lib"
     ],
 )
 
@@ -609,7 +623,9 @@ PIR_LIB_DEPS = select({
 
 LINUX_X86_BUILD_LIBS = select({
     ":macos-build": [] ,
-    "//conditions:default": [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+    ":aarch64": [],
+    ":x86_64": [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+    "//conditions:default": [],
 })
 
 TASK_LIB_DEPS = DEFAULT_TASK_LIB_DEPS + PIR_LIB_DEPS + LINUX_X86_BUILD_LIBS
@@ -736,7 +752,7 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-aarch64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"],
     linkstatic = False,
     deps = TASK_LIB_DEPS + [
         ":communication_lib",
