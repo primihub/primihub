@@ -958,9 +958,9 @@ class XGB_GUEST_EN:
 
         groups = []
         batch_size = 5
-        tmp_groups = []
+        internal_groups = []
         for tmp_col in cols:
-            print("=====tmp_col======", tmp_col)
+            # print("=====tmp_col======", tmp_col)
             if self.merge_gh:
                 tmp_group = buckets_x_guest.select_columns(
                     cols=[tmp_col, "g"]).groupby(tmp_col)
@@ -968,35 +968,44 @@ class XGB_GUEST_EN:
                 tmp_group = buckets_x_guest.select_columns(
                     cols=[tmp_col, "g", "h"]).groupby(tmp_col)
 
-            if len(tmp_groups) <= self.batch_size:
-                tmp_groups.append(tmp_group)
-            else:
-                groups.append(tmp_group)
-                tmp_groups = []
+            internal_groups.append(tmp_group)
 
-            #     # sum_que.put(tmp_sum.to_pandas())
+        # each_bin = int(len(internal_groups) / self.batch_size)
 
-            # pool = Pool(7)
-            # tasks = []
+        groups = [
+            internal_groups[x:x + self.batch_size]
+            for x in range(0, len(internal_groups), self.batch_size)
+        ]
 
-            # for i in range(len(groups)):
-            #     # tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
-            #     tmp_task = pool.apply_async(func=sum_job,
-            #                                 args=(
-            #                                     groups[i],
-            #                                     self.encrypted,
-            #                                     self.pub,
-            #                                     self.paillier_add_actors,
-            #                                 ))
+        # if len(tmp_groups) <= self.batch_size:
+        #     tmp_groups.append(tmp_group)
+        # else:
+        #     groups.append(tmp_group)
+        #     tmp_groups = []
 
-            #     tasks.append(tmp_task)
+        #     # sum_que.put(tmp_sum.to_pandas())
 
-            # pool.close()
-            # pool.join()
+        # pool = Pool(7)
+        # tasks = []
 
-            # for tmp_task in tasks:
-            #     print(tmp_task.get())
-        print("==============", cols, groups, len(groups), len(tmp_groups))
+        # for i in range(len(groups)):
+        #     # tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
+        #     tmp_task = pool.apply_async(func=sum_job,
+        #                                 args=(
+        #                                     groups[i],
+        #                                     self.encrypted,
+        #                                     self.pub,
+        #                                     self.paillier_add_actors,
+        #                                 ))
+
+        #     tasks.append(tmp_task)
+
+        # pool.close()
+        # pool.join()
+
+        # for tmp_task in tasks:
+        #     print(tmp_task.get())
+        print("==============", cols, groups, len(groups))
 
         if self.encrypted:
             internal_res = list(
