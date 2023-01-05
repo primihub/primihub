@@ -288,7 +288,7 @@ def batch_paillier_sum(items, pub_key, limit_size=50):
     return opt_paillier_add(pub_key, ray.get(left_sum), ray.get(right_sum))
 
 
-def atom_paillier_sum(items, pub_key, add_actors, limit=15):
+def atom_paillier_sum(items, pub_key, add_actors, limit=20):
     # less 'limit' will create more parallels
     # nums = items * limit
     if isinstance(items, pd.Series):
@@ -296,15 +296,17 @@ def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     if len(items) < limit:
         return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
                                 items)
-    N = int(len(items) / limit)
-    items_list = []
-    inter_results = []
-    for i in range(N):
-        tmp_val = items[i * limit:(i + 1) * limit]
-        # tmp_add_actor = self.add_actors[i]
-        if i == (N - 1):
-            tmp_val = items[i * limit:]
-        items_list.append(tmp_val)
+
+    items_list = [items[x:x + limit] for x in range(0, len(items), limit)]
+    # N = int(len(items) / limit)
+    # items_list = []
+    # inter_results = []
+    # for i in range(N):
+    #     tmp_val = items[i * limit:(i + 1) * limit]
+    #     # tmp_add_actor = self.add_actors[i]
+    #     if i == (N - 1):
+    #         tmp_val = items[i * limit:]
+    #     items_list.append(tmp_val)
     inter_results = list(
         add_actors.map(lambda a, v: a.add.remote(v), items_list))
 
@@ -339,8 +341,8 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if not encrypted:
             val = col.sum(skipna=ignore_nulls)
         else:
-            # val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
-            val = ray.get(batch_paillier_sum.remote(col, pub_key))
+            val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
+            # val = ray.get(batch_paillier_sum.remote(col, pub_key))
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
