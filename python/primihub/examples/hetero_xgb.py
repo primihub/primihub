@@ -1029,21 +1029,21 @@ class XGB_GUEST_EN:
         print("==============", cols, groups, len(groups))
 
         if self.encrypted:
-            internal_res = list(
-                self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
+            # internal_res = list(
+            #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 
-            # if self.merge_gh:
-            #     internal_res = ray.get(
-            #         groupby_sum.remote(group_col=groups,
-            #                            pub=self.pub,
-            #                            on_cols=['g'],
-            #                            add_actors=self.grouppools))
-            # else:
-            #     internal_res = ray.get(
-            #         groupby_sum.remote(group_col=groups,
-            #                            pub=self.pub,
-            #                            on_cols=['g', 'h'],
-            #                            add_actors=self.grouppools))
+            if self.merge_gh:
+                internal_res = ray.get(
+                    groupby_sum.remote(group_col=groups,
+                                       pub=self.pub,
+                                       on_cols=['g'],
+                                       add_actors=self.grouppools))
+            else:
+                internal_res = ray.get(
+                    groupby_sum.remote(group_col=groups,
+                                       pub=self.pub,
+                                       on_cols=['g', 'h'],
+                                       add_actors=self.grouppools))
 
             res = []
             for tmp_res in internal_res:
