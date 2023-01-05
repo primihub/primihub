@@ -960,6 +960,7 @@ class XGB_GUEST_EN:
         batch_size = 5
         tmp_groups = []
         for tmp_col in cols:
+            print("=====tmp_col======", tmp_col)
             if self.merge_gh:
                 tmp_group = buckets_x_guest.select_columns(
                     cols=[tmp_col, "g"]).groupby(tmp_col)
