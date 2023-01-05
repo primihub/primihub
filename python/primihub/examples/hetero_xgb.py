@@ -995,6 +995,7 @@ class XGB_GUEST_EN:
 
             # for tmp_task in tasks:
             #     print(tmp_task.get())
+        print("==============", cols, groups)
 
         if self.encrypted:
             internal_res = list(
