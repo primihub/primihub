@@ -268,8 +268,24 @@ def map(obj, f):
     return f(obj)
 
 
-def batch_paillier_sum():
-    pass
+@ray.remote
+def batch_paillier_sum(items, pub_key, limit_size=50):
+    if isinstance(items, pd.Series):
+        items = items.values
+
+    n = len(items)
+
+    if n < limit_size:
+        return functools.reduce(lambda x, y: opt_paillier_add(pub_key, x, y),
+                                items)
+
+    mid = int(n / 2)
+    left = items[:mid]
+    right = items[mid:]
+
+    left_sum = batch_paillier_sum.remote(left, pub_key)
+    right_sum = batch_paillier_sum.remote(right, pub_key)
+    return ray.get(left_sum) + ray.get(right_sum)
 
 
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
@@ -323,7 +339,8 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
         if not encrypted:
             val = col.sum(skipna=ignore_nulls)
         else:
-            val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
+            # val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
+            val = batch_paillier_sum(col, pub_key)
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
