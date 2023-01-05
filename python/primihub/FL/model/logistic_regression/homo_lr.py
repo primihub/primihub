@@ -35,6 +35,14 @@ from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 # dataset.define("breast_1")
 # dataset.define("breast_2")
 
+config = {
+    'epochs': 10,
+    'lr': 1.0,
+    'batch_size': 100,
+    'need_one_vs_rest': False,
+    'need_encrypt': 'False',
+    'category': 2
+}
 
 class Arbiter:
     """
@@ -112,19 +120,22 @@ class Arbiter:
     def model_aggregate(self, host_parm, guest_param, host_data_weight,
                         guest_data_weight):
         param = []
-        weight_all = []
+        weight = []
         if self.need_encrypt == 'YES':
             if self.need_one_vs_rest == False:
                 param.append(self.decrypt_vector(host_parm))
             else:
                 param.append(self.decrypt_matrix(host_parm))
-            weight_all.append(self.decrypt_vector(host_data_weight)[0])
+            weight.append(self.decrypt_vector(host_data_weight)[0])
         else:
             param.append(host_parm)
-            weight_all.append(host_data_weight)
+            weight.append(host_data_weight)
         param.append(guest_param)
-        weight_all.append(guest_data_weight)
-        weight = np.array([weight * 1.0 for weight in weight_all])
+        weight.append(guest_data_weight)
+
+        param = np.array(param)
+        weight = np.array(weight)
+
         if self.need_one_vs_rest == True:
             agg_param = np.zeros_like(np.array(param))
             for id_c, p in enumerate(param):
@@ -133,15 +144,9 @@ class Arbiter:
                     d = np.array(d)
                     agg_param[id_c, id_d] += d * w
             self.theta = np.sum(agg_param, axis=0)
-            return list(self.theta)
         else:
-            agg_param = np.zeros(len(host_parm))
-            for id_c, p in enumerate(param):
-                w = weight[id_c] / np.sum(weight, axis=0)
-                for id_d, d in enumerate(p):
-                    agg_param[id_d] += d * w
-            self.theta = agg_param
-            return list(self.theta)
+            self.theta = np.average(param, weights=weight/weight.sum(), axis=0)
+        return list(self.theta)
 
     def broadcast_global_model_param(self, host_param, guest_param,
                                      host_data_weight, guest_data_weight):
@@ -229,14 +234,17 @@ def run_homo_lr_arbiter(role_node_map,
 
     proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
     log_handler.debug("Create client proxy to guest,"
-                      " ip {}, port {}.".format(guest_ip, guest_port))
+                      " ip {}, port {}.".format(guest_ip, guest_port))   
+        
+    x = ph.dataset.read(dataset_key=data_key).df_data
 
-    config = {
-        'epochs': 1,
-        'batch_size': 100,
-        'need_one_vs_rest': False,
-        'category': 2
-    }
+    if 'id' in x.columns:
+        x.pop('id')
+
+    y = x.pop('y').values
+
+    x = LRModel.normalization(x)
+
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
                              proxy_client_guest)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
@@ -251,19 +259,41 @@ def run_homo_lr_arbiter(role_node_map,
     guest_data_weight = proxy_server.Get("guest_data_weight")
 
     for i in range(config['epochs']):
-        log_handler.info("##### epoch %s ##### " % i)
+        log_handler.info("##### epoch {} ##### ".format(i+1))
         for j in range(batch_num):
-            log_handler.info("-----epoch={}, batch={}-----".format(i, j))
+            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
             host_param = proxy_server.Get("host_param")
             guest_param = proxy_server.Get("guest_param")
             client_arbiter.broadcast_global_model_param(host_param, guest_param,
                                                         host_data_weight,
                                                         guest_data_weight)
-            log_handler.info("batch={} done".format(j))
-        log_handler.info("epoch={} done".format(i))
+            log_handler.info("batch={} done".format(j+1))
+
+            y_hat = client_arbiter.predict_prob(x)
+            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
+            auc = evaluator.getAUC(y, y_hat)
+            fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
+
+            log_handler.info("acc={}, auc={}, ks={}, fpr={}, tpr={}".format(acc, auc, ks, fpr, tpr))
+
+        log_handler.info("epoch={} done".format(i+1))
+
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
+    trainMetrics = {
+        "train_acc": acc,
+        "train_auc": auc,
+        "train_ks": ks,
+        "train_fpr": fpr.tolist(),
+        "train_tpr": tpr.tolist()
+    }
+    trainMetricsBuff = json.dumps(trainMetrics)
+    with open(indicator_file_path, 'w') as filePath:
+        filePath.write(trainMetricsBuff)
 
     log_handler.info("####### start predict ######")
 
+    
     log_handler.info("All process done.")
     proxy_server.StopRecvLoop()
 
@@ -403,18 +433,14 @@ def run_homo_lr_host(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    config = {
-        'epochs': 1,
-        'lr': 0.05,
-        'batch_size': 100,
-        'need_encrypt': 'False',
-        'category': 2
-    }
     # x, label = data_binary(dataset_filepath)
     print("********",)
     # data = pd.read_csv(host_info['dataset'], header=0)
 
     data = ph.dataset.read(dataset_key=data_key).df_data
+    
+    if 'id' in data.columns:
+        data.pop('id')
 
     # label = data.pop('y').values
     label = data.iloc[:, -1].values
@@ -441,20 +467,18 @@ def run_homo_lr_host(role_node_map,
     batch_gen_host = client_host.batch_generator([x, label],
                                                  config['batch_size'], False)
     for i in range(config['epochs']):
-        log_handler.info("##### epoch %s ##### " % i)
+        log_handler.info("##### epoch {} ##### ".format(i+1))
         for j in range(batch_num_train):
-            log_handler.info("-----epoch=%s, batch=%s-----" % (i, j))
+            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
             batch_host_x, batch_host_y = next(batch_gen_host)
-            log_handler.info("batch_host_x.shape:{}".format(batch_host_x.shape))
-            log_handler.info("batch_host_y.shape:{}".format(batch_host_y.shape))
             host_param = client_host.fit(batch_host_x, batch_host_y,
                                          config['category'])
 
             proxy_client_arbiter.Remote(host_param, "host_param")
             client_host.model.theta = proxy_server.Get(
                 "global_host_model_param")
-            log_handler.info("batch=%s done" % j)
-        log_handler.info("epoch=%i done" % i)
+            log_handler.info("batch={} done".format(j+1))
+        log_handler.info("epoch={} done".format(i+1))
     log_handler.info("host training process done.")
     model_file_path = ph.context.Context.get_model_file_path()
     log_handler.info("Current model file path is: {}".format(model_file_path))
@@ -575,18 +599,21 @@ def run_homo_lr_guest(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    config = {'epochs': 1, 'lr': 0.05, 'batch_size': 100, 'category': 2}
-
     # x, label = data_binary(dataset_filepath)
     # data = pd.read_csv(guest_info['dataset'], header=0)
     # x, label = data_iris()
     # data = pd.read_csv(guest_info['dataset'], header=0)
     data = ph.dataset.read(dataset_key=datakey).df_data
+    
+    if 'id' in data.columns:
+        data.pop('id')
 
     # label = data.pop('y').values
     label = data.iloc[:, -1].values
     # x = data.copy().values
     x = data.iloc[:, 0:-1].values
+
+    x = LRModel.normalization(x)
 
     count_train = x.shape[0]
     batch_num_train = (count_train - 1) // config['batch_size'] + 1
@@ -600,18 +627,16 @@ def run_homo_lr_guest(role_node_map,
     # batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
 
     for i in range(config['epochs']):
-        log_handler.info("##### epoch %s ##### " % i)
+        log_handler.info("##### epoch {} ##### ".format(i))
         for j in range(batch_num_train):
-            log_handler.info("-----epoch=%s, batch=%s-----" % (i, j))
+            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
             batch_x, batch_y = next(batch_gen_guest)
-            log_handler.info("batch_host_x.shape:{}".format(batch_x.shape))
-            log_handler.info("batch_host_y.shape:{}".format(batch_y.shape))
             guest_param = client_guest.fit(batch_x, batch_y, config['category'])
             proxy_client_arbiter.Remote(guest_param, "guest_param")
             client_guest.model.theta = proxy_server.Get(
                 "global_guest_model_param")
-            log_handler.info("batch=%s done" % j)
-        log_handler.info("epoch=%i done" % i)
+            log_handler.info("batch={} done".format(j+1))
+        log_handler.info("epoch={} done".format(i+1))
     log_handler.info("guest training process done.")
 
     proxy_server.StopRecvLoop()
