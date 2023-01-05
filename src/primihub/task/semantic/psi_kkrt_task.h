@@ -23,78 +23,62 @@
 #include "libPSI/PSI/Kkrt/KkrtPsiReceiver.h"
 #endif
 
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/create_channel.h>
-
 #include <vector>
 #include <map>
 #include <memory>
 #include <string>
 #include <set>
 
-#include "src/primihub/protos/common.grpc.pb.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
-
+#include "src/primihub/common/defines.h"
+#include "src/primihub/task/semantic/psi_task.h"
 
 #ifndef __APPLE__
 using namespace osuCrypto;
-#endif
-using primihub::rpc::Task;
-using primihub::rpc::ParamValue;
-using primihub::rpc::PsiType;
-#ifndef __APPLE__
 using osuCrypto::KkrtPsiReceiver;
 #endif
 
+namespace rpc = primihub::rpc;
 
 
 namespace primihub::task {
 
-class PSIKkrtTask : public TaskBase {
+class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
 public:
-    explicit PSIKkrtTask(const std::string &node_id,
-                             const std::string &job_id,
-                             const std::string &task_id,
-                             const TaskParam *task_param,
-                             std::shared_ptr<DatasetService> dataset_service);
+    explicit PSIKkrtTask(const TaskParam *task_param,
+                        std::shared_ptr<DatasetService> dataset_service);
 
     ~PSIKkrtTask() {}
     int execute() override;
     int saveResult(void);
-    int send_result_to_server();
-    void setTaskInfo(const std::string& node_id, const std::string& job_id,
-        const std::string& task_id, const std::string& submit_client_id);
+    retcode broadcastResultToServer();
+    int recvIntersectionData();
 private:
+    retcode exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
-    int _LoadDatasetFromCSV(std::string &filename, int data_col,
-                            std::vector<std::string>& col_array);
-    int _LoadDatasetFromSQLite(std::string& conn_str, int data_col,
-                               std::vector<std::string>& col_array);
 #ifndef __APPLE__
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
 
-    std::string node_id_;
-    std::string job_id_;
-    std::string task_id_;
-    std::string submit_client_id_;
-    int data_index_;
+    std::vector<int> data_index_;
     int psi_type_;
     int role_tag_;
     std::string dataset_path_;
     std::string result_file_path_;
     std::vector <std::string> elements_;
     std::vector <std::string> result_;
-
     std::string host_address_;
     bool sync_result_to_server{false};
     std::string server_result_path;
-
+    uint32_t data_port{0};
+    uint32_t peer_data_port{1212};
+    primihub::Node peer_node;
+    std::string key{"default"};
 };
 }
 #endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_

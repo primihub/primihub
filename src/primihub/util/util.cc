@@ -16,7 +16,7 @@
 
 
 #include "src/primihub/util/util.h"
-
+#include <glog/logging.h>
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v,
@@ -31,17 +31,17 @@ void str_split(const std::string& str, std::vector<std::string>* v,
 }
 
 void peer_to_list(const std::vector<std::string>& peer,
-                  std::vector<Node>* list) {
+                  std::vector<primihub::rpc::Node>* list) {
   list->clear();
   for (auto iter : peer) {
     DLOG(INFO) << "split param list:" << iter;
     std::vector<std::string> v;
     str_split(iter, &v);
-    Node node;
+    primihub::rpc::Node node;
     node.set_node_id(v[0]);
     node.set_ip(v[1]);
     node.set_port(std::stoi(v[2]));
-    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ? 
+    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ?
     list->push_back(node);
   }
 }
@@ -60,6 +60,35 @@ void sort_peers(std::vector<std::string>* peers) {
       }
     }
   }
+}
+
+int getAvailablePort(uint32_t* port) {
+    uint32_t tmp_port = 0;
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+      return -1;
+    }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = 0;        // system will allocate one available port when call bind if sin_port is 0
+    int ret = bind(sock, (struct sockaddr *) &addr, sizeof addr);
+    do {
+      if (0 != ret) {     // 4. acquire available port by calling getsockname
+        break;
+      }
+      struct sockaddr_in sockaddr;
+      int len = sizeof(sockaddr);
+      ret = getsockname(sock, (struct sockaddr *) &sockaddr, (socklen_t *)&len);
+      if (0 != ret) {
+        break;
+      }
+      tmp_port = ntohs(sockaddr.sin_port);  // the available socket port get here
+      *port = tmp_port;
+    } while (false);
+    close(sock);
+    VLOG(5) << "get available port: " << *port;
+    return 0;
 }
 
 }  // namespace primihub

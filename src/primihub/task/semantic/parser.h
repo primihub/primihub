@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PARSER_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PARSER_H_
 
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler.h"
 #include "src/primihub/task/semantic/task.h"
@@ -25,7 +25,6 @@
 #include "src/primihub/task/language/py_parser.h"
 
 using primihub::rpc::Task;
-using primihub::rpc::Node;
 using primihub::rpc::Language;
 using primihub::service::DatasetService;
 using primihub::service::DatasetWithParamTag;
@@ -34,7 +33,7 @@ using primihub::service::DatasetMetaWithParamTag;
 namespace primihub::task {
 
 using PeerDatasetMap = std::map<std::string, std::vector<DatasetWithParamTag>>;
-using NodeWithRoleTag = std::pair<Node, std::string>;
+using NodeWithRoleTag = std::pair<rpc::Node, std::string>;
 using PeerContextMap = std::map<std::string, NodeContext>; // key: role name
 
 // Primihub semantic layer.
@@ -56,13 +55,18 @@ class ProtocolSemanticParser {
     void schedulePsiTask(std::shared_ptr<LanguageParser> lan_parser);
     int transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
                             PushTaskRequest &taskRequest);
-
+    void prepareReply(primihub::rpc::PushTaskReply* reply);
   private:
+    void parseNofifyServer(const std::vector<Node> notify_servers) {
+        for (const auto& node : notify_servers) {
+            notify_server.push_back(node);
+        }
+    }
     void scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);
     void schedulePythonTask( std::shared_ptr<LanguageParser> python_parser);
     void metasToPeerList(
         const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
-        std::vector<Node> &peers);
+        std::vector<rpc::Node> &peers);
     void metasToPeerDatasetMap(
           const std::vector<DatasetMetaWithParamTag> &metas_with_param_tag,
           PeerDatasetMap &peer_dataset_map);
@@ -79,15 +83,16 @@ class ProtocolSemanticParser {
     void metasToDatasetAndOwner(
         const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
         std::map<std::string, std::string> &dataset_owner);
-    
+
     const std::string node_id_;
     bool singleton_;
     std::shared_ptr<DatasetService> dataset_service_;
 
     // proto task use
-    std::vector<Node> peer_list_;
+    std::vector<rpc::Node> peer_list_;
     PeerDatasetMap peer_dataset_map_;
-   
+    std::vector<Node> notify_server;
+
 };
 
 } // namespace primihub::task

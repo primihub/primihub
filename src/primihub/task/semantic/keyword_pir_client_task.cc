@@ -17,27 +17,25 @@
 
 #include <thread>
 #include <chrono>
+#include <sstream>
+
 #include "src/primihub/util/util.h"
-#include "apsi/network/zmq/zmq_channel.h"
-#include "apsi/receiver.h"
+
 #include "apsi/item.h"
 #include "apsi/util/common_utils.h"
 #include "src/primihub/util/file_util.h"
-
-
+#include "src/primihub/protos/worker.pb.h"
+#include "seal/util/common.h"
 using namespace apsi;
 using namespace apsi::network;
-using namespace apsi::receiver;
+
 
 namespace primihub::task {
 
 KeywordPIRClientTask::KeywordPIRClientTask(
-        const std::string &node_id,
-        const std::string &job_id,
-        const std::string &task_id,
-        const TaskParam *task_param,
-        std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), node_id_(node_id), job_id_(job_id), task_id_(task_id) {}
+    const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
+    : TaskBase(task_param, dataset_service) {
+}
 
 int KeywordPIRClientTask::_LoadParams(Task &task) {
     const auto& param_map = task.params().param_map();
@@ -74,8 +72,17 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return -1;
     }
+    const auto& node_map = task.node_map();
+    for (const auto& [_node_id, pb_node] : node_map) {
+        if (_node_id == this->node_id()) {
+            continue;
+        }
+        peer_node_ = Node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+        VLOG(5) << "peer_node: " << peer_node_.to_string();
+    }
     return 0;
 }
+
 std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
 KeywordPIRClientTask::_LoadDataFromDataset() {
     apsi::util::CSVReader::DBData db_data;
@@ -154,6 +161,79 @@ int KeywordPIRClientTask::saveResult(
 
     return 0;
 }
+retcode KeywordPIRClientTask::requestPSIParams() {
+    RequestType type = RequestType::PsiParam;
+    std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
+    VLOG(5) << "send_data length: " << request.length();
+    std::string response_str;
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+    auto ret = channel->sendRecv(this->key, request, &response_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "send requestPSIParams to peer: [" << peer_node_.to_string()
+            << "] failed";
+        return ret;
+    }
+    std::string tmp_str;
+    for (const auto& chr : response_str) {
+        tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
+    }
+    VLOG(5) << "recv_data size: " << response_str.size() << " "
+            << "data content: " << tmp_str;
+    // create psi params
+    // static std::pair<PSIParams, std::size_t> Load(std::istream &in);
+    std::istringstream stream_in(response_str);
+    auto [parse_data, ret_size] = PSIParams::Load(stream_in);
+    psi_params_ = std::make_unique<PSIParams>(parse_data);
+    VLOG(5) << "parsed psi param, size: " << ret_size << " "
+            << "content: " << psi_params_->to_string();
+    return retcode::SUCCESS;
+}
+
+static std::string to_hexstring(const Item &item)
+{
+    std::stringstream ss;
+    ss << std::hex;
+
+    auto item_string = item.to_string();
+    for(int i(0); i < 16; ++i)
+        ss << std::setw(2) << std::setfill('0') << (int)item_string[i];
+
+    return ss.str();
+}
+
+retcode KeywordPIRClientTask::requestOprf(const std::vector<Item>& items,
+        std::vector<apsi::HashedItem>* res_items_ptr,
+        std::vector<apsi::LabelKey>* res_label_keys_ptr) {
+    RequestType type = RequestType::Oprf;
+    std::string oprf_response;
+    auto oprf_receiver = this->receiver_->CreateOPRFReceiver(items);
+    auto& res_items = *res_items_ptr;
+    auto& res_label_keys = *res_label_keys_ptr;
+    res_items.resize(oprf_receiver.item_count());
+    res_label_keys.resize(oprf_receiver.item_count());
+    auto oprf_request = oprf_receiver.query_data();
+    VLOG(5) << "oprf_request data length: " << oprf_request.size();
+    std::string_view oprf_request_sv{
+        reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_request.data())), oprf_request.size()};
+    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+
+    auto ret = channel->sendRecv(this->key, oprf_request_sv, &oprf_response);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "requestOprf to peer: [" << peer_node_.to_string()
+            << "] failed";
+        return ret;
+    }
+    VLOG(5) << "received oprf response length: " << oprf_response.length() << " ";
+    oprf_receiver.process_responses(oprf_response, res_items, res_label_keys);
+    return retcode::SUCCESS;
+}
+
+retcode KeywordPIRClientTask::requestQuery() {
+    RequestType type = RequestType::Query;
+    std::string send_data{reinterpret_cast<char*>(&type), sizeof(type)};
+    VLOG(5) << "send_data length: " << send_data.length();
+    return retcode::SUCCESS;
+}
 
 int KeywordPIRClientTask::execute() {
     auto ret = _LoadParams(task_param_);
@@ -161,46 +241,11 @@ int KeywordPIRClientTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return ret;
     }
-    ZMQReceiverChannel channel;
-    // extract server ip from server_address_
-
-    // server_address_ = "tcp://127.0.0.1:1212";  // TODO
-    std::string server_ip{"127.0.0.1"};
-    auto pos = server_address_.find(":");
-    if (pos != std::string::npos) {
-        server_ip = server_address_.substr(0, pos);
+    VLOG(5) << "begin to request psi params";
+    auto ret_code = requestPSIParams();
+    if (ret_code != retcode::SUCCESS) {
+      return -1;
     }
-    server_address_ = "tcp://" + server_ip + ":2222";
-    VLOG(5) << "begin to connect to server: " << server_address_;
-    channel.connect(server_address_);
-    VLOG(5) << "connect to server: " << server_address_ << " end";
-    if (!channel.is_connected()) {
-        LOG(ERROR) << "Failed to connect to keyword PIR server: " << server_address_;
-        return -1;
-    }
-    VLOG(5) << "connect to server: " << server_address_ << " success, begin to create PSIParams";
-    std::unique_ptr<PSIParams> params{nullptr};
-    try {
-        // params = std::make_unique<PSIParams>(Receiver::RequestParams(channel));
-        VLOG(5) << "begin to create PSIParams";
-        auto psi_params = Receiver::RequestParams(channel);
-        VLOG(5) << "get reqeust param success";
-        VLOG(5) << "PSI parameters set to: " << psi_params.to_string();
-        VLOG(5) << "Derived parameters: "
-            << "item_bit_count_per_felt: " << psi_params.item_bit_count_per_felt()
-            << "; item_bit_count: " << psi_params.item_bit_count()
-            << "; bins_per_bundle: " << psi_params.bins_per_bundle()
-            << "; bundle_idx_count: " << psi_params.bundle_idx_count();
-        params = std::make_unique<PSIParams>(psi_params);
-    } catch (const std::exception &ex) {
-        LOG(ERROR) << "Failed to receive keyword PIR valid parameters: " << ex.what();
-        return -1;
-    }
-
-    ThreadPoolMgr::SetThreadCount(8);
-    VLOG(5) << "Keyword PIR setting thread count to " << ThreadPoolMgr::GetThreadCount();
-
-    Receiver receiver(*params);
     auto [query_data, orig_items] = _LoadDataset();
     if (!query_data || !holds_alternative<CSVReader::UnlabeledData>(*query_data)) {
         LOG(ERROR) << "Failed to read keyword PIR query file: terminating";
@@ -208,32 +253,75 @@ int KeywordPIRClientTask::execute() {
     }
 
     auto& items = std::get<CSVReader::UnlabeledData>(*query_data);
-
     std::vector<Item> items_vec(items.begin(), items.end());
     std::vector<HashedItem> oprf_items;
     std::vector<LabelKey> label_keys;
     VLOG(5) << "begin to Receiver::RequestOPRF";
-    try {
-        VLOG(5) << "Sending OPRF request for " << items_vec.size() << " items";
-        std::tie(oprf_items, label_keys) = Receiver::RequestOPRF(items_vec, channel);
-        VLOG(5) << "Received OPRF request for " << items_vec.size() << " items"
-            << " oprf_items: " << oprf_items.size() << " label_keys: " << label_keys.size();
-    } catch (const std::exception &ex) {
-        LOG(ERROR) << "Keyword PIR OPRF request failed: " << ex.what();
-        return -1;
+    ret_code = requestOprf(items_vec, &oprf_items, &label_keys);
+    if (ret_code != retcode::SUCCESS) {
+      return -1;
     }
+
+    if (VLOG_IS_ON(5)) {
+        for (int i = 0; i < items_vec.size(); i++) {
+            VLOG(5) << "item[" << i << "]'s PRF value: " << to_hexstring(oprf_items[i]);
+        }
+    }
+
     VLOG(5) << "Receiver::RequestOPRF end, begin to receiver.request_query";
 
+    // request query
+    this->receiver_ = std::make_unique<Receiver>(*psi_params_);
     std::vector<MatchRecord> query_result;
     try {
-        query_result = receiver.request_query(oprf_items, label_keys, channel);
+        auto query = this->receiver_->create_query(oprf_items);
+        // chl.send(move(query.first));
+        auto request_query_data = std::move(query.first);
+        std::ostringstream string_ss;
+        request_query_data->save(string_ss);
+        std::string query_data_str = string_ss.str();
+        auto itt = move(query.second);
+        VLOG(5) << "query_data_str size: " << query_data_str.size();
+        this->send(this->key, peer_node_, query_data_str);
+        // receive package count
+        uint32_t package_count = 0;
+        this->recv("package_count", reinterpret_cast<char*>(&package_count), sizeof(package_count));
+        VLOG(5) << "received package count: " << package_count;
+        std::vector<apsi::ResultPart> result_packages;
+        for (size_t i = 0; i < package_count; i++) {
+            std::string recv_data;
+            this->recv(this->key, &recv_data);
+            VLOG(5) << "client received data length: " << recv_data.size();
+            std::istringstream stream_in(recv_data);
+            apsi::ResultPart result_part = std::make_unique<apsi::network::ResultPackage>();
+            auto seal_context = this->receiver_->get_seal_context();
+            result_part->load(stream_in, seal_context);
+            result_packages.push_back(std::move(result_part));
+        }
+        query_result = this->receiver_->process_result(label_keys, itt, result_packages);
+        VLOG(5) << "query_resultquery_resultquery_resultquery_result: " << query_result.size();
     } catch (const std::exception &ex) {
         LOG(ERROR) << "Failed sending keyword PIR query: " << ex.what();
         return -1;
     }
     VLOG(5) << "receiver.request_query end";
-
     this->saveResult(orig_items, items, query_result);
     return 0;
 }
+
+int KeywordPIRClientTask::waitForServerPortInfo() {
+    std::string recv_data_port_info_str;
+    this->recv(this->key, &recv_data_port_info_str);
+    rpc::Params recv_data_port_info;
+    recv_data_port_info.ParseFromString(recv_data_port_info_str);
+    const auto& recv_param_map = recv_data_port_info.param_map();
+    auto it = recv_param_map.find("data_port");
+    if (it != recv_param_map.end()) {
+        server_data_port = it->second.value_int32();
+        VLOG(5) << "server_data_port: " << server_data_port;
+    }
+    return 0;
+}
+
 } // namespace primihub::task
+

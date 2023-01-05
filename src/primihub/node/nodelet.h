@@ -26,6 +26,7 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/storage_backend.h"
 #include "src/primihub/service/notify/service.h"
+#include "src/primihub/common/defines.h"
 
 namespace primihub {
 
@@ -41,6 +42,9 @@ class Nodelet {
     std::shared_ptr<primihub::service::DatasetService> &getDataService();
     std::string getNodeletAddr();
     std::string getNotifyServerAddr();
+    Node& getNotifyServerConfig() {
+      return notify_server_info_;
+    }
 
   private:
     void loadConifg(const std::string &config_file_path, unsigned int timeout);
@@ -54,6 +58,7 @@ class Nodelet {
     std::string nodelet_addr_;
     std::string notify_server_addr_;
     std::future<void> notify_service_fut;
+    Node notify_server_info_;
 };
 
 } // namespace primihub

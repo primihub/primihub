@@ -15,8 +15,13 @@
  */
 
 #include "src/primihub/node/nodelet.h"
+#include <vector>
+#include <string>
+
 #include "src/primihub/service/dataset/localkv/storage_default.h"
 #include "src/primihub/service/dataset/localkv/storage_leveldb.h"
+#include "src/primihub/util/util.h"
+#include "src/primihub/common/defines.h"
 
 namespace primihub {
 Nodelet::Nodelet(const std::string& config_file_path) {
@@ -73,6 +78,12 @@ Nodelet::Nodelet(const std::string& config_file_path) {
 
     // Create and start notify service
     notify_server_addr_ = config["notify_server"].as<std::string>();
+    std::vector<std::string> server_info;
+    str_split(notify_server_addr_, &server_info, ':');
+    if (server_info.size() > 1) {
+        notify_server_info_.port_ = std::stoi(server_info[1]);
+        notify_server_info_.ip_ = config["location"].as<std::string>();
+    }
     notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr_);
     // std::thread notify_service_thread([this]() {
     //     notify_service_->run();
@@ -80,6 +91,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     // notify_service_thread.detach();
     notify_service_fut = std::async(std::launch::async,
         [this]() {
+            SET_THREAD_NAME("notifyServer");
             notify_service_->run();
         });
     // Wait for p2p node to start

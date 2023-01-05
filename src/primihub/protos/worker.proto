@@ -16,7 +16,11 @@ message PushTaskRequest {
 
 message PushTaskReply {
   int32 ret_code = 1;  // 0: success  1: doing  2: error
-  bytes job_id = 2;
+  bytes node_id = 2;
+  bytes job_id = 3;
+  bytes task_id = 4;
+  bytes msg_info = 5;
+  repeated Node notify_server = 6;
 }
 
 message ExecuteTaskRequest {
@@ -37,25 +41,34 @@ message ExecuteTaskResponse {
 }
 
 message TaskRequest {
-  enum StorageType {
-    MEMORY = 0;
-    FILE = 1;
-  }
   string job_id = 1;
   string task_id = 2;
-  StorageType storage_type= 3;
-  string storage_info = 4;
-  repeated bytes data = 5;
+  string role = 3;
+  uint64 data_len = 4;
+  bytes data = 22;
 }
 
 message TaskResponse {
   retcode ret_code = 1;
-  repeated bytes data = 2;
+  string  msg_info = 2;
+  uint64 data_len = 4;
+  bytes data = 20;
 }
+
+message ForwardTaskRequest {
+  Node dest_node = 1;
+  TaskRequest task_request = 2;
+}
+
+
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
   rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
   rpc Send(stream TaskRequest) returns (TaskResponse);
+  rpc Recv(TaskRequest) returns (stream TaskResponse);
+  rpc SendRecv(stream TaskRequest) returns (stream TaskResponse);
+  rpc ForwardSend(stream ForwardTaskRequest) returns (TaskResponse); // forward data as proxy
+  rpc ForwardRecv(TaskRequest) returns (stream TaskRequest);  // forward data as proxy
 }
 

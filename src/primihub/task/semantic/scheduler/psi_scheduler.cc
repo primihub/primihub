@@ -13,24 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-
-#include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
-
+#include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
-#include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
-
-
-//using primihub::rpc::EndPoint;
-using primihub::rpc::Node;
-using primihub::rpc::LinkType;
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
@@ -166,60 +154,45 @@ void set_kkrt_psi_request_param(const std::string &node_id,
                    << server_address;
     }
 }
-
-void node_push_psi_task(const std::string &node_id,
-                    const PeerDatasetMap &peer_dataset_map,
-                    const PushTaskRequest &nodePushTaskRequest,
-                    std::string dest_node_address,
-                    bool is_client) {
-    grpc::ClientContext context;
-
+void PSIScheduler::node_push_psi_task(const std::string& node_id,
+                                    const PeerDatasetMap& peer_dataset_map,
+                                    const PushTaskRequest& nodePushTaskRequest,
+                                    const Node& dest_node,
+                                    bool is_client) {
+    SET_THREAD_NAME("PSIScheduler");
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
 
-    auto params = nodePushTaskRequest.task().params().param_map();
+    const auto& params = nodePushTaskRequest.task().params().param_map();
     int psiTag = PsiTag::ECDH;
     auto param_it = params.find("psiTag");
     if (param_it != params.end()) {
-        psiTag = params["psiTag"].value_int32();
+        psiTag =param_it->second.value_int32();
     }
-
     if (psiTag == PsiTag::ECDH) {
-        set_psi_request_param(node_id, peer_dataset_map,
-                              _1NodePushTaskRequest, is_client);
+        set_psi_request_param(node_id, peer_dataset_map, _1NodePushTaskRequest, is_client);
     } else if (psiTag == PsiTag::KKRT) {
-        set_kkrt_psi_request_param(node_id, peer_dataset_map,
-			           _1NodePushTaskRequest, is_client);
+        set_kkrt_psi_request_param(node_id, peer_dataset_map, _1NodePushTaskRequest, is_client);
     } else {
-        LOG(ERROR) << "psiTag is set error.";
+        LOG(ERROR) << "Unknown psiTag: " << psiTag;
         return ;
     }
 
     // send request
+    std::string dest_node_address = dest_node.to_string();
     LOG(INFO) << "dest node " << dest_node_address;
-    std::unique_ptr<VMNode::Stub> stub_ = VMNode::NewStub(grpc::CreateChannel(
-        dest_node_address, grpc::InsecureChannelCredentials()));
-    Status status =
-        stub_->SubmitTask(&context, _1NodePushTaskRequest, &pushTaskReply);
-    if (status.ok()) {
-        if (is_client) {
-            LOG(INFO) << "Node push psi task rpc succeeded.";
-        } else {
-            LOG(INFO) << "Psi task server node is active.";
-        }
+    auto channel = this->getLinkContext()->getChannel(dest_node);
+    auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
+    if (ret == retcode::SUCCESS) {
+        VLOG(5) << "submit task to : " << dest_node_address << " reply success";
     } else {
-        if (is_client) {
-            LOG(ERROR) << "Node push psi task rpc failed. "
-                       << status.error_code() << ": " << status.error_message();
-        } else {
-            LOG(ERROR) << "Psi task server node is inactive."
-                       << status.error_code() << ": " << status.error_message();
-        }
+        LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
     }
+    parseNotifyServer(pushTaskReply);
 }
 
-void PSIScheduler::add_vm(Node *node, int i,
+void PSIScheduler::add_vm(rpc::Node *node, int i,
                          const PushTaskRequest *pushTaskRequest) {
     VirtualMachine *vm = node->add_vm();
     vm->set_party_id(i);
@@ -230,12 +203,11 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     nodePushTaskRequest.CopyFrom(*pushTaskRequest);
 
     if (pushTaskRequest->task().type() == TaskType::PSI_TASK) {
-        google::protobuf::Map<std::string, Node> *mutable_node_map =
-            nodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
         nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_PSI_TASK);
 
         for (size_t i = 0; i < peer_list_.size(); i++) {
-            Node single_node;
+            rpc::Node single_node;
             single_node.CopyFrom(peer_list_[i]);
             std::string node_id = peer_list_[i].node_id();
             if (singleton_) {
@@ -254,6 +226,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     LOG(INFO) << " 📧  Dispatch SubmitTask to PSI client node";
 
     std::vector<std::thread> thrds;
+    std::map<std::string, Node> scheduled_nodes;
     // google::protobuf::Map<std::string, Node>
     const auto& node_map = nodePushTaskRequest.task().node_map();
      std::set<std::string> duplicate_filter;
@@ -271,20 +244,29 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                 is_client = true;
             }
             //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
+            auto& pb_node = pair.second;
+            auto& ip = pb_node.ip();
+            auto port = pb_node.port();
+            auto use_tls = pb_node.use_tls();
+            auto& role = pb_node.role();
             std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
             if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
                 VLOG(5) << "duplicate request for same destination, avoid";
                 continue;
             }
+            Node dest_node(ip, port, use_tls, role);
             duplicate_filter.emplace(dest_node_address);
             VLOG(5) << "dest_node_address: " << dest_node_address;
-
-            thrds.emplace_back(std::thread(node_push_psi_task,
-                                           pair.first,              // node_id
-                                           this->peer_dataset_map_,  // peer_dataset_map
-                                           std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                                           dest_node_address,
-                                           is_client));
+            scheduled_nodes[dest_node_address] = std::move(dest_node);
+            thrds.emplace_back(
+                std::thread(
+                    &PSIScheduler::node_push_psi_task,
+                    this,
+                    pair.first,              // node_id
+                    this->peer_dataset_map_,  // peer_dataset_map
+                    std::ref(nodePushTaskRequest),  // task request
+                    std::ref(scheduled_nodes[dest_node_address]),
+                    is_client));
         }
     }
 

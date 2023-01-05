@@ -49,6 +49,7 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/threadsafe_queue.h"
+#include "src/primihub/common/defines.h"
 
 // using grpc::ClientContext;
 using grpc::Server;
@@ -63,7 +64,6 @@ using primihub::rpc::TaskRequest;
 using primihub::rpc::TaskResponse;
 using primihub::rpc::ExecuteTaskRequest;
 using primihub::rpc::ExecuteTaskResponse;
-using primihub::rpc::Node;
 using primihub::rpc::PirRequest;
 using primihub::rpc::PirResponse;
 using primihub::rpc::PsiRequest;
@@ -91,6 +91,7 @@ class VMNodeImpl final: public VMNode::Service {
         nodelet = std::make_shared<Nodelet>(config_file_path);
         finished_worker_fut = std::async(std::launch::async,
           [&]() {
+            SET_THREAD_NAME("cleanFinihsedTask");
             while(true) {
               std::string finished_worker_id;
               fininished_workers.wait_and_pop(finished_worker_id);
@@ -121,9 +122,25 @@ class VMNodeImpl final: public VMNode::Service {
                       PushTaskReply *pushTaskReply) override;
     Status ExecuteTask(ServerContext* context,
         grpc::ServerReaderWriter<ExecuteTaskResponse, ExecuteTaskRequest>* stream) override;
+
     Status Send(ServerContext* context,
-                ServerReader<TaskRequest>* reader,
-                TaskResponse* response) override;
+        ServerReader<TaskRequest>* reader, TaskResponse* response) override;
+
+    Status Recv(::grpc::ServerContext* context,
+        const TaskRequest* request,
+        grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
+    Status SendRecv(::grpc::ServerContext* context,
+        grpc::ServerReaderWriter< ::primihub::rpc::TaskResponse, ::primihub::rpc::TaskRequest>* stream) override;
+
+    // for communication between different process
+    Status ForwardSend(::grpc::ServerContext* context,
+        ::grpc::ServerReader< ::primihub::rpc::ForwardTaskRequest>* reader,
+        ::primihub::rpc::TaskResponse* response) override;
+
+    // for communication between different process
+    Status ForwardRecv(::grpc::ServerContext* context,
+        const ::primihub::rpc::TaskRequest* request,
+        ::grpc::ServerWriter< ::primihub::rpc::TaskRequest>* writer) override;
 
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
@@ -134,8 +151,12 @@ class VMNodeImpl final: public VMNode::Service {
 
     std::string get_node_id() { return this->node_id; }
 
-    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet; }
+    std::shared_ptr<Nodelet> getNodelet() { return this->nodelet;}
  protected:
+    void buildTaskResponse(const std::string& data, std::vector<rpc::TaskResponse>* response);
+    void buildTaskRequest(const std::string& job_id, const std::string& task_id, const std::string& role,
+        const std::string& data, std::vector<rpc::TaskRequest>* requests);
+    std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
     int process_task_reseponse(bool is_psi_response,
           const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
@@ -143,10 +164,22 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int process_pir_response(const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
-    int save_data_to_file(const std::string& data_path, std::vector<std::string>&& save_data);
-    int validate_file_path(const std::string& data_path) { return 0;}
-    int ClearWorker(const std::string& worker_id);
-    bool IsPSIECDHServer(const PushTaskRequest& request);  // for temp check
+    std::shared_ptr<Worker> getWorker(const std::string& job_id, const std::string& task_id) {
+      std::string worker_id = getWorkerId(job_id, task_id);
+      std::lock_guard<std::mutex> lck(task_executor_mtx);
+      auto it = task_executor_map.find(worker_id);
+      if (it != task_executor_map.end()) {
+        return std::get<0>(it->second);
+      }
+      LOG(ERROR) << "no worker found for worker id: " << worker_id;
+      return nullptr;
+    }
+
+    inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
+      return job_id + "_" + task_id;
+    }
+    retcode waitUntilWorkerReady(const std::string& worker_id, grpc::ServerContext* context, int timeout = -1);
+
   private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -169,9 +202,10 @@ class VMNodeImpl final: public VMNode::Service {
     ThreadSafeQueue<std::string> fininished_workers;
     std::future<void> finished_worker_fut;
     std::atomic<bool> stop_{false};
-
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
+    std::unique_ptr<VMNode::Stub> stub_;
+    int wait_worker_ready_timeout_ms{60*1000};    // 60s
 };
 
 } // namespace primihub

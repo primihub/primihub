@@ -16,7 +16,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_FL_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_FL_TASK_H_
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/task/semantic/task.h"
 #include <pybind11/embed.h>
@@ -42,6 +42,9 @@ class FLTask : public TaskBase {
     int execute() override;
 
   private:
+    std::string jobid_;
+    std::string taskid_;
+
     PushTaskRequest task_request_;
     std::string py_code_;
     NodeContext node_context_;

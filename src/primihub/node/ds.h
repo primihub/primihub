@@ -42,12 +42,13 @@ class DataServiceImpl final: public DataService::Service {
         explicit DataServiceImpl(std::shared_ptr<primihub::service::DatasetService> dataset_service,
                                  std::string nodelet_addr)
         : dataset_service_(dataset_service), nodelet_addr_(nodelet_addr) {
-            
+
         }
-        
+
         grpc::Status NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
                                 NewDatasetResponse *response) override;
-
+    protected:
+        int processMetaData(const std::string& driver_type, std::string* meta_data);
     private:
         std::shared_ptr<primihub::service::DatasetService> dataset_service_;
         std::string nodelet_addr_;
