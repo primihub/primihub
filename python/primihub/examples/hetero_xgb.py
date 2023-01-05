@@ -285,7 +285,7 @@ def batch_paillier_sum(items, pub_key, limit_size=50):
 
     left_sum = batch_paillier_sum.remote(left, pub_key)
     right_sum = batch_paillier_sum.remote(right, pub_key)
-    return opt_paillier_add(pub_key, ray.get(left_sum) + ray.get(right_sum))
+    return opt_paillier_add(pub_key, ray.get(left_sum), ray.get(right_sum))
 
 
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
