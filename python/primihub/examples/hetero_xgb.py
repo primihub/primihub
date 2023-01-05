@@ -263,6 +263,15 @@ def opt_paillier_decrypt_crt(pub, prv, cipher_text):
     return decrypt_text_num
 
 
+@ray.remote
+def map(obj, f):
+    return f(obj)
+
+
+def batch_paillier_sum():
+    pass
+
+
 def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     # less 'limit' will create more parallels
     # nums = items * limit
@@ -2041,6 +2050,10 @@ feature_sample = True
     port='8000',
     task_type="classification")
 def xgb_host_logic(cry_pri="paillier"):
+
+    items = list(range(100))
+    map_func = lambda i: i * 2
+    output = ray.get([map.remote(i, map_func) for i in items])
     # fl_console_log.info("start xgb host logic...")
     logger.info("start xgb host logic...")
     fl_file_log.debug("xgb host logic file")
@@ -2098,6 +2111,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, 550:]
+    # data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -2313,13 +2327,14 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
 
-    data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
+    # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, :450]
+    # data = data.iloc[:, :450]
 
     if 'id' in data.columns:
         data.pop('id')
@@ -2346,7 +2361,7 @@ def xgb_guest_logic(cry_pri="paillier"):
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
     xgb_guest.merge_gh = merge_gh
-    xgb_guest.batch_size = 8
+    xgb_guest.batch_size = 10
 
     add_actor_num = 20
     paillier_add_actors = ActorPool(
