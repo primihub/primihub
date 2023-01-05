@@ -2122,13 +2122,13 @@ def xgb_host_logic(cry_pri="paillier"):
     # logger.info("Current task type is {}.".format(eva_type))
 
     # 读取注册数据
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
+    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, 550:]
-    # data = data.iloc[:, 550:]
+    data = data.iloc[:, 550:]
 
     # y = data.pop('Class').values
 
@@ -2344,14 +2344,14 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
 
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
-    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
+    data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, :450]
-    # data = data.iloc[:, :450]
+    data = data.iloc[:, :450]
 
     if 'id' in data.columns:
         data.pop('id')
