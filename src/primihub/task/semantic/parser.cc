@@ -116,7 +116,11 @@ void ProtocolSemanticParser::scheduleProtoTask(
             });
     });
     t.join();
-    parseNofifyServer(scheduler->notifyServer());
+    if (scheduler == nullptr) {
+        LOG(ERROR) << "no scheduler created to dispatch task";
+    } else {
+        parseNofifyServer(scheduler->notifyServer());
+    }
 }
 
 void ProtocolSemanticParser::schedulePythonTask(
@@ -153,7 +157,11 @@ void ProtocolSemanticParser::schedulePythonTask(
             });
     });
     t.join();
-    parseNofifyServer(scheduler->notifyServer());
+    if (scheduler == nullptr) {
+        LOG(ERROR) << "no scheduler created to dispatch task";
+    } else {
+        parseNofifyServer(scheduler->notifyServer());
+    }
 }
 
 void ProtocolSemanticParser::schedulePirTask(
