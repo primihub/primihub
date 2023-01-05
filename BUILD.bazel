@@ -45,6 +45,10 @@ config_setting(
     name = "x86_64",
     values = {"define": "cpu_arch=x86_64"},
 )
+config_setting(
+    name = "darwin_x86_64",
+    values = {"define": "cpu_arch=darwin_x86_64"},
+)
 
 DEFAULT_LINK_OPTS = [
     "-pthread",
@@ -437,6 +441,7 @@ cc_library(
 	    "-Wno-narrowing",
     ] + select({
         ":x86_64": ["-maes", "-mpclmul"],
+        ":darwin_x86_64": ["-maes", "-mpclmul"],
         ":aarch64": [],
         "//conditions:default": [],
     }),
@@ -622,9 +627,9 @@ PIR_LIB_DEPS = select({
 
 
 LINUX_X86_BUILD_LIBS = select({
-    ":macos-build": [] ,
     ":aarch64": [],
-    ":x86_64": [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+    ":x86_64":  [":cryptflow2_algorithm_lib", "@osu_libpsi//:libpsi"],
+    ":darwin_x86_64": [],
     "//conditions:default": [],
 })
 
@@ -752,7 +757,7 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + ["-L/usr/lib/python3.8/config-3.8-aarch64-linux-gnu -L/usr/lib  -lcrypt -lpthread -ldl  -lutil -lm -lm "] + ["-lpython3.8"],
+    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
     linkstatic = False,
     deps = TASK_LIB_DEPS + [
         ":communication_lib",
