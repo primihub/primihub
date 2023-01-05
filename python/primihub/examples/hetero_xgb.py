@@ -288,7 +288,7 @@ def batch_paillier_sum(items, pub_key, limit_size=50):
     return opt_paillier_add(pub_key, ray.get(left_sum), ray.get(right_sum))
 
 
-def atom_paillier_sum(items, pub_key, add_actors, limit=20):
+def atom_paillier_sum(items, pub_key, add_actors, limit=15):
     # less 'limit' will create more parallels
     # nums = items * limit
     if isinstance(items, pd.Series):
