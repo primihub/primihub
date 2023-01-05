@@ -340,7 +340,7 @@ class MyPandasBlockAccessor(PandasBlockAccessor):
             val = col.sum(skipna=ignore_nulls)
         else:
             # val = atom_paillier_sum(col, pub_key, add_actors, limit=limit)
-            val = batch_paillier_sum.remote(col, pub_key)
+            val = ray.get(batch_paillier_sum.remote(col, pub_key))
             # tmp_val = {}
             # for tmp_col in on:
             #     tmp_val[tmp_col] = atom_paillier_sum(col[tmp_col], pub_key, add_actors)
