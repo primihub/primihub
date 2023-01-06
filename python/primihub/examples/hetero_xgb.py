@@ -2067,7 +2067,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     trainMetrics = {
         "train_acc": xgb_host.acc,
-        "train_auc": xgb_host.acc,
+        "train_auc": xgb_host.auc,
         "train_ks": xgb_host.ks,
         "train_fpr": xgb_host.fpr,
         "train_tpr": xgb_host.tpr

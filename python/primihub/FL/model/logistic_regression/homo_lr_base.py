@@ -26,8 +26,7 @@ class LRModel:
         data normalization
         """
         scaler = MinMaxScaler()
-        scaler = scaler.fit(x)
-        x = scaler.transform(x)
+        x = scaler.fit_transform(x)
         return x
 
     def sigmoid(self, x):
