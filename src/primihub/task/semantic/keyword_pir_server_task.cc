@@ -106,7 +106,9 @@ KeywordPIRServerTask::create_sender_db(
 KeywordPIRServerTask::KeywordPIRServerTask(
     const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
+    VLOG(0) << "enter KeywordPIRServerTask ctr";
     oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
+    VLOG(0) << "begin to exit KeywordPIRServerTask ctr";
 }
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {

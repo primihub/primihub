@@ -20,7 +20,7 @@
 #include "src/primihub/algorithm/arithmetic.h"
 #include "src/primihub/algorithm/missing_val_processing.h"
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "src/primihub/algorithm/falcon_lenet.h"
 #include "src/primihub/algorithm/cryptflow2_maxpool.h"
 #endif
@@ -45,7 +45,7 @@ namespace primihub::task
     }
     else if (function_name == "maxpool")
     {
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
       PartyConfig config(node_id, task_param_);
       try
       {
@@ -59,18 +59,18 @@ namespace primihub::task
         algorithm_ = nullptr;
       }
 #else
-      LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support for apple platform.";
+      LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support for apple and aarch64 platform.";
 #endif
     }
     else if (function_name == "lenet")
     {
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
       PartyConfig config(node_id, task_param_);
       algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
           std::make_shared<primihub::falcon::FalconLenetExecutor>(
 		  config, dataset_service));
 #else
-      LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple platform.";
+      LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple and aarch64 platform.";
 #endif
     }
     else if (function_name == "decision_tree")
@@ -161,7 +161,7 @@ namespace primihub::task
       return -1;
     }
     // algorithm_->set_task_info(platform(),job_id(),task_id());
-    
+
     algorithm_->loadParams(task_param_);
     int ret = 0;
     do

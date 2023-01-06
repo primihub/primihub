@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Common/Defines.h"
 #include "libPSI/PSI/Kkrt/KkrtPsiReceiver.h"
@@ -35,7 +35,7 @@
 #include "src/primihub/common/defines.h"
 #include "src/primihub/task/semantic/psi_task.h"
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 using namespace osuCrypto;
 using osuCrypto::KkrtPsiReceiver;
 #endif
@@ -59,7 +59,7 @@ private:
     retcode exchangeDataPort();
     int _LoadParams(Task &task);
     int _LoadDataset(void);
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
