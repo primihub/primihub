@@ -9,7 +9,149 @@ from phe import paillier
 import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
-from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
+#from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
+import numpy as np
+from primihub.FL.feature_engineer.onehot_encode import HorOneHotEncoder
+from sklearn.preprocessing import MinMaxScaler
+
+
+class LRModel:
+    def __init__(self, X, y, category, alpha=0.0001, w=None):
+        self.w_size = X.shape[1] + 1
+        self.coef = None
+        self.intercept = None
+        self.theta = None
+        self.alpha = alpha # regularization parameter
+        self.t = 0 # iteration number, used for learning rate decay
+        self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, self.w_size))
+        if w is not None:
+            self.theta = w
+        else:
+            # init model parameters
+            self.theta = np.random.uniform(-0.5, 0.5, (self.w_size,))
+
+        # 'optimal' learning rate
+        def dloss(p, y):
+            z = p * y
+            if z > 18.0:
+                return np.exp(-z) * -y
+            if z < -18.0:
+                return -y
+            return -y / (np.exp(z) + 1.0)
+
+        typw = np.sqrt(1.0 / np.sqrt(alpha))
+        # computing eta0, the initial learning rate
+        initial_eta0 = typw / max(1.0, dloss(-typw, 1.0))
+        # initialize t such that eta at first sample equals eta0
+        self.optimal_init = 1.0 / (initial_eta0 * alpha)
+
+        # if encrypted == True:
+        #     self.theta = self.utils.encrypt_vector(public_key, self.theta)
+
+    @staticmethod
+    def normalization(x):
+        """
+        data normalization
+        """
+        scaler = MinMaxScaler()
+        x = scaler.fit_transform(x)
+        return x
+
+    def sigmoid(self, x):
+        x = np.array(x, dtype=np.float64)
+        y = 1.0 / (1.0 + np.exp(-x))
+        return y
+
+    def loss_func(self, theta, x_b, y):
+        """
+        loss function
+        :param theta: intercept and coef
+        :param x_b: training data
+        :param y: label
+        :return:
+        """
+        temp = x_b.dot(theta)
+        try:
+            return (np.maximum(temp, 0.).sum() - y.dot(temp) +
+                    np.log(1 + np.exp(-np.abs(temp))).sum() +
+                    0.5 * self.alpha * theta.dot(theta)) / x_b.shape[0]
+        except:
+            return float('inf')
+
+    def d_loss_func(self, theta, x_b, y):
+        theta = np.array(theta)
+        out = self.sigmoid(x_b.dot(theta))
+        return (x_b.T.dot(out - y) + self.alpha * theta) / len(x_b)
+
+    def gradient_descent(self, x_b, y, theta, eta):
+        """
+        :param x_b: training data
+        :param y: label
+        :param theta: model parameters
+        :param eta: learning rate
+        :return:
+        """
+        gradient = self.d_loss_func(theta, x_b, y)
+        theta = theta - eta * gradient
+        return theta
+        
+    def gradient_descent_olr(self, x_b, y, theta):
+        """
+        optimal learning rate
+        """
+        gradient = self.d_loss_func(theta, x_b, y)
+        eta = 1.0 / (self.alpha * (self.optimal_init + self.t))
+        self.t += 1
+        theta -= eta * gradient
+        return theta
+    
+    def fit(self, train_data, train_label, theta, eta=0.01,):
+        assert train_data.shape[0] == train_label.shape[0], "The length of the training data set shall " \
+                                                            "be consistent with the length of the label"
+        x_b = np.hstack([np.ones((train_data.shape[0], 1)), train_data])
+
+        # self.theta = self.gradient_descent(x_b, train_label, theta, eta)
+        self.theta = self.gradient_descent_olr(x_b, train_label, theta)
+        self.intercept = self.theta[0]
+        self.coef = self.theta[1:]
+        return self.theta
+
+    def predict_prob(self, x_predict):
+        x_b = np.hstack([np.ones((len(x_predict), 1)), x_predict])
+        return self.sigmoid(x_b.dot(self.theta))
+
+    def predict(self, x_predict):
+        """
+        classification
+        """
+        prob = self.predict_prob(x_predict)
+        return np.array(prob > 0.5, dtype='int')
+
+    def one_vs_rest(self, X, y, k):
+        all_theta = np.zeros((k, X.shape[1]))  # K个分类器的最终权重
+        for i in range(1, k + 1):  # 因为y的取值为1，，，，10
+            # 将y的值划分为二分类：0和1
+            y_i = np.array([1 if label == i else 0 for label in y])
+            theta = self.fit(X, y_i)
+            # Whether to print the result rather than returning it
+            all_theta[i - 1, :] = theta
+        return all_theta
+
+    def predict_all(self, X_predict, all_theta):
+        y_pre = self.sigmoid(X_predict.dot(all_theta))
+        y_argmax = np.argmax(y_pre, axis=1)
+        return y_argmax
+
+# def prepare_dummies(self, data, idxs):
+#     self.onehot_encoder = HorOneHotEncoder()
+#     return self.onehot_encoder.get_cats(data, idxs)
+#
+# def get_dummies(self, data, idxs):
+#     return self.onehot_encoder.transform(data, idxs)
+#
+# def load_dummies(self, union_cats_len, union_cats_idxs):
+#     self.onehot_encoder.cats_len = union_cats_len
+#     self.onehot_encoder.cats_idxs = union_cats_idxs
 import numpy as np
 import pandas as pd
 import copy
@@ -17,7 +159,6 @@ from primihub.FL.proxy.proxy import ServerChannelProxy
 from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
 import logging
-from sklearn.datasets import load_iris
 from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 
 # def get_logger(name):
@@ -36,9 +177,12 @@ from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 # dataset.define("breast_2")
 
 config = {
-    'epochs': 10,
-    'lr': 1.0,
+    'lr': 2.0,
+    'alpha': 0.0001,
     'batch_size': 100,
+    'max_iter': 1000,
+    'n_iter_no_change': 5,
+    'compare_threshold': 1e-6,
     'need_one_vs_rest': False,
     'need_encrypt': 'False',
     'category': 2
@@ -54,7 +198,6 @@ class Arbiter:
         self.public_key = None
         self.private_key = None
         self.need_encrypt = None
-        self.epoch = None
         self.weight_host = None
         self.weight_guest = None
         self.theta = None
@@ -242,8 +385,7 @@ def run_homo_lr_arbiter(role_node_map,
         x.pop('id')
 
     y = x.pop('y').values
-
-    x = LRModel.normalization(x)
+    x = x.to_numpy()
 
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
                              proxy_client_guest)
@@ -254,30 +396,70 @@ def run_homo_lr_arbiter(role_node_map,
         client_arbiter.need_encrypt = 'YES'
         client_arbiter.broadcast_key()
 
-    batch_num = proxy_server.Get("batch_num")
     host_data_weight = proxy_server.Get("host_data_weight")
     guest_data_weight = proxy_server.Get("guest_data_weight")
 
-    for i in range(config['epochs']):
-        log_handler.info("##### epoch {} ##### ".format(i+1))
-        for j in range(batch_num):
-            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
-            host_param = proxy_server.Get("host_param")
-            guest_param = proxy_server.Get("guest_param")
-            client_arbiter.broadcast_global_model_param(host_param, guest_param,
-                                                        host_data_weight,
-                                                        guest_data_weight)
+    # data preprocessing
+    # minmaxscaler
+    host_data_max = np.array(proxy_server.Get("host_data_max"))
+    guest_data_max = np.array(proxy_server.Get("guest_data_max"))
+    host_data_min = np.array(proxy_server.Get("host_data_min"))
+    guest_data_min = np.array(proxy_server.Get("guest_data_min"))
+
+    data_max = np.maximum(host_data_max, guest_data_max)
+    data_min = np.minimum(host_data_min, guest_data_min)
+ 
+    x = (x - data_min) / (data_max - data_min)
+
+    data_max = list(data_max) 
+    data_min = list(data_min)
+    proxy_client_host.Remote(data_max, "data_max")
+    proxy_client_guest.Remote(data_max, "data_max")
+    proxy_client_host.Remote(data_min, "data_min")
+    proxy_client_guest.Remote(data_min, "data_min")
+
+    n_iter_no_change = config['n_iter_no_change']
+    compare_threshold = config['compare_threshold']
+    count_iter_no_change = 0
+    convergence = 'NO'
+    
+    last_acc = 0
+
+    for i in range(config['max_iter']):
+        log_handler.info("-------- start iteration {} --------".format(i+1))
+            
+        host_param = proxy_server.Get("host_param")
+        guest_param = proxy_server.Get("guest_param")
+        client_arbiter.broadcast_global_model_param(host_param, guest_param,
+                                                    host_data_weight,
+                                                    guest_data_weight)
                                                         
-            log_handler.info("batch={} done".format(j+1))
+        y_hat = client_arbiter.predict_prob(x)
+        acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
+        auc = evaluator.getAUC(y, y_hat)
+        fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
 
-            y_hat = client_arbiter.predict_prob(x)
-            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
-            auc = evaluator.getAUC(y, y_hat)
-            fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
+        # only print acc, auc, ks
+        # fpr and tpr can be finded in the json file
+        log_handler.info("acc={}, auc={}, ks={}".format(acc, auc, ks))
+        
+        # convergence is checked using acc
+        print(type(acc),type(compare_threshold))
+        if abs(last_acc - acc) < compare_threshold:
+            count_iter_no_change += 1
+        else:
+            count_iter_no_change = 0
+        last_acc = acc
 
-            log_handler.info("acc={}, auc={}, ks={}, fpr={}, tpr={}".format(acc, auc, ks, fpr, tpr))
+        if count_iter_no_change > n_iter_no_change:
+            convergence = 'YES'
+            
+        proxy_client_host.Remote(convergence, "convergence")
+        proxy_client_guest.Remote(convergence, "convergence")
 
-        log_handler.info("epoch={} done".format(i+1))
+        if convergence == 'YES':
+            log_handler.info("-------- end at iteration {} --------".format(i+1))
+            break
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
@@ -303,7 +485,7 @@ class Host:
         self.X = X
         self.y = y
         self.config = config
-        self.model = LRModel(X, y, self.config['category'])
+        self.model = LRModel(X, y, self.config['category'], self.config['alpha'])
         self.public_key = None
         self.need_encrypt = self.config['need_encrypt']
         self.lr = self.config['lr']
@@ -446,13 +628,8 @@ def run_homo_lr_host(role_node_map,
     # x = data.copy().values
     x = data.iloc[:, 0:-1].values
 
-    # x, label = data_iris()
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
-    x = LRModel.normalization(x)
-    count_train = x.shape[0]
     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
-    batch_num_train = (count_train - 1) // config['batch_size'] + 1
-    proxy_client_arbiter.Remote(batch_num_train, "batch_num")
     host_data_weight = config['batch_size']
     # client_host.need_encrypt = task_params['encrypted']
     # client_host.need_encrypt = task_params['encrypted']
@@ -462,22 +639,37 @@ def run_homo_lr_host(role_node_map,
         host_data_weight = client_host.encrypt_vector([host_data_weight])
 
     proxy_client_arbiter.Remote(host_data_weight, "host_data_weight")
+  
+    # data preprocessing
+    # minmaxscaler
+    data_max = x.max(axis=0)
+    data_min = x.min(axis=0)
 
+    proxy_client_arbiter.Remote(list(data_max), "host_data_max")
+    proxy_client_arbiter.Remote(list(data_min), "host_data_min")
+
+    data_max = np.array(proxy_server.Get("data_max"))
+    data_min = np.array(proxy_server.Get("data_min"))
+
+    x = (x - data_min) / (data_max - data_min)
+    
     batch_gen_host = client_host.batch_generator([x, label],
                                                  config['batch_size'], False)
-    for i in range(config['epochs']):
-        log_handler.info("##### epoch {} ##### ".format(i+1))
-        for j in range(batch_num_train):
-            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
-            batch_host_x, batch_host_y = next(batch_gen_host)
-            host_param = client_host.fit(batch_host_x, batch_host_y,
-                                         config['category'])
 
-            proxy_client_arbiter.Remote(host_param, "host_param")
-            client_host.model.theta = proxy_server.Get(
+    for i in range(config['max_iter']):
+        log_handler.info("-------- start iteration {} --------".format(i+1))
+        
+        batch_host_x, batch_host_y = next(batch_gen_host)
+        host_param = client_host.fit(batch_host_x, batch_host_y,
+                                     config['category'])
+
+        proxy_client_arbiter.Remote(host_param, "host_param")
+        client_host.model.theta = proxy_server.Get(
                 "global_host_model_param")
-            log_handler.info("batch={} done".format(j+1))
-        log_handler.info("epoch={} done".format(i+1))
+
+        if proxy_server.Get('convergence') == 'YES':
+            log_handler.info("-------- end at iteration {} --------".format(i+1))
+            break
 
     log_handler.info("host training process done.")
     model_file_path = ph.context.Context.get_model_file_path()
@@ -495,7 +687,7 @@ class Guest:
         self.y = y
         self.config = config
         self.lr = self.config['lr']
-        self.model = LRModel(X, y, self.config['category'])
+        self.model = LRModel(X, y, self.config['category'], self.config['alpha'])
         self.need_one_vs_rest = None
         self.need_encrypt = False
         self.batch_size = self.config['batch_size']
@@ -509,12 +701,9 @@ class Guest:
             pre = self.model.predict(data)
         return pre
 
-    def fit_binary(self, X, y, theta=None):
-        if self.need_one_vs_rest == False:
-            theta = self.model.theta
-        self.model.theta = self.model.fit(X, y, theta, eta=self.lr)
-        self.model.theta = list(self.model.theta)
-        return self.model.theta
+    def fit_binary(self, X, y):
+        self.model.theta = self.model.fit(X, y, self.model.theta, eta=self.lr)
+        return list(self.model.theta)
 
     def one_vs_rest(self, X, y, k):
         all_theta = []
@@ -601,8 +790,6 @@ def run_homo_lr_guest(role_node_map,
 
     # x, label = data_binary(dataset_filepath)
     # data = pd.read_csv(guest_info['dataset'], header=0)
-    # x, label = data_iris()
-    # data = pd.read_csv(guest_info['dataset'], header=0)
     data = ph.dataset.read(dataset_key=datakey).df_data
     
     if 'id' in data.columns:
@@ -613,29 +800,38 @@ def run_homo_lr_guest(role_node_map,
     # x = data.copy().values
     x = data.iloc[:, 0:-1].values
 
-    x = LRModel.normalization(x)
-
-    count_train = x.shape[0]
-    batch_num_train = (count_train - 1) // config['batch_size'] + 1
-
     guest_data_weight = config['batch_size']
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
     client_guest = Guest(x, label, config, proxy_server, proxy_client_arbiter)
 
+    # data preprocessing
+    # minmaxscaler
+    data_max = x.max(axis=0)
+    data_min = x.min(axis=0)
+  
+    proxy_client_arbiter.Remote(list(data_max), "guest_data_max")
+    proxy_client_arbiter.Remote(list(data_min), "guest_data_min")
+
+    data_max = np.array(proxy_server.Get("data_max"))
+    data_min = np.array(proxy_server.Get("data_min"))
+
+    x = (x - data_min) / (data_max - data_min)
+    
     batch_gen_guest = client_guest.batch_generator([x, label],
                                                    config['batch_size'], False)
-    # batch_gen_host = client_guest.iterate_minibatches(x, label, config['batch_size'], False)
 
-    for i in range(config['epochs']):
-        log_handler.info("##### epoch {} ##### ".format(i))
-        for j in range(batch_num_train):
-            log_handler.info("-----epoch={}, batch={}-----".format(i+1, j+1))
-            batch_x, batch_y = next(batch_gen_guest)
-            guest_param = client_guest.fit(batch_x, batch_y, config['category'])
-            proxy_client_arbiter.Remote(guest_param, "guest_param")
-            client_guest.model.theta = proxy_server.Get(
+    for i in range(config['max_iter']):
+        log_handler.info("-------- start iteration {} --------".format(i+1))
+        
+        batch_x, batch_y = next(batch_gen_guest)
+        guest_param = client_guest.fit(batch_x, batch_y, config['category'])
+        proxy_client_arbiter.Remote(guest_param, "guest_param")
+        client_guest.model.theta = proxy_server.Get(
                 "global_guest_model_param")
-            log_handler.info("batch={} done".format(j+1))
+                
+        if proxy_server.Get('convergence') == 'YES':
+            log_handler.info("-------- end at iteration {} --------".format(i+1))
+            break
 
     log_handler.info("guest training process done.")
 
