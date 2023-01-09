@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Endpoint.h"
 #include "cryptoTools/Network/SocketAdapter.h"
@@ -34,7 +34,7 @@
 #include <glog/logging.h>
 #include <chrono>
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
 
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
@@ -45,7 +45,7 @@
 #include <numeric>
 
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 using namespace osuCrypto;
 #endif
 using arrow::Table;
@@ -175,7 +175,7 @@ int PSIKkrtTask::_LoadDataset(void) {
     return 0;
 }
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     u8 dummy[1];
     PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
@@ -298,7 +298,7 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
 
 retcode PSIKkrtTask::broadcastResultToServer() {
     retcode ret{retcode::SUCCESS};
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
     VLOG(5) << "broadcast_result_to_server";
     std::string result_str;
     size_t total_size{0};
@@ -354,7 +354,7 @@ int PSIKkrtTask::execute() {
     auto load_dataset_ts = timer.timeElapse();
     auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
     VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
     getAvailablePort(&data_port);
