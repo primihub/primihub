@@ -794,7 +794,14 @@ int MissingProcess::saveModel(void) {
   return 0;
 }
 
-int MissingProcess::_LoadDatasetFromCSV(std::string &filename) {
+int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
+  auto driver = this->datasetService()->getDriver(dataset_id);
+  auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
+  if (access_info == nullptr) {
+    LOG(ERROR) << "get csv access info for dataset: " << dataset_id << " failed";
+    return -1;
+  }
+  auto& filename = access_info->file_path_;
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(
       arrow::fs::LocalFileSystemOptions::Defaults());

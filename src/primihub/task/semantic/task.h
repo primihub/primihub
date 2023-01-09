@@ -70,6 +70,9 @@ class TaskBase {
   }
   void setTaskParam(const TaskParam *task_param);
   TaskParam* getTaskParam();
+  std::shared_ptr<DatasetService>& getDatasetService() {
+    return dataset_service_;
+  }
   retcode send(const std::string& key, const Node& dest_node,const std::string& send_buff);
   retcode send(const std::string& key, const Node& dest_node, std::string_view send_buff);
   retcode recv(const std::string& key, std::string* recv_buff);

@@ -764,8 +764,6 @@ void RunServer(primihub::VMNodeImpl *node_service,
 
 } // namespace primihub
 
-primihub::VMNodeImpl *node_service;
-primihub::DataServiceImpl *data_service;
 
 int main(int argc, char **argv) {
 
@@ -774,8 +772,6 @@ int main(int argc, char **argv) {
 
     signal(SIGINT, [](int sig) {
         LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
-        delete node_service;
-        delete data_service;
         exit(0);
     });
 
@@ -797,12 +793,12 @@ int main(int argc, char **argv) {
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port,
-                                            singleton, config_file);
-    data_service = new primihub::DataServiceImpl(
+    auto node_service = std::make_unique<primihub::VMNodeImpl>(
+            node_id, node_ip, service_port, singleton, config_file);
+    auto data_service = std::make_unique<primihub::DataServiceImpl>(
         node_service->getNodelet()->getDataService(),
         node_service->getNodelet()->getNodeletAddr());
-    primihub::RunServer(node_service, data_service, service_port);
+    primihub::RunServer(node_service.get(), data_service.get(), service_port);
 
     return EXIT_SUCCESS;
 }

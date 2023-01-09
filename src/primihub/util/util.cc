@@ -17,6 +17,9 @@
 
 #include "src/primihub/util/util.h"
 #include <glog/logging.h>
+#include <algorithm>
+#include <string>
+#include <cctype>
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v,
@@ -89,6 +92,20 @@ int getAvailablePort(uint32_t* port) {
     close(sock);
     VLOG(5) << "get available port: " << *port;
     return 0;
+}
+
+std::string strToUpper(const std::string& str) {
+    std::string upper_str = str;
+    // to upper
+    std::transform(upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
+    return upper_str;
+}
+
+std::string strToLower(const std::string& str) {
+    std::string lower_str = str;
+    // to lower
+    std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::tolower);
+    return lower_str;
 }
 
 }  // namespace primihub

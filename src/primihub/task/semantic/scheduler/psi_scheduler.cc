@@ -42,10 +42,10 @@ void set_psi_request_param(const std::string &node_id,
 
     std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
 
-    for (auto &dataset_param : dataset_param_list) {
+    for (auto& dataset_param : dataset_param_list) {
         ParamValue pv;
         pv.set_var_type(VarType::STRING);
-        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
+        VLOG(5) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
         (*param_map)[dataset_param.second] = pv;
     }

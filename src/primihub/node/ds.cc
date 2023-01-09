@@ -19,7 +19,8 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include "src/primihub/service/dataset/model.h"
-#include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/util.h"
+
 
 using primihub::service::DatasetMeta;
 
@@ -35,9 +36,16 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const New
             <<" fid: "<< fid <<" driver_type: "<< driver_type;
     std::shared_ptr<DataDriver> driver{nullptr};
     try {
-        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_);
-        processMetaData(driver_type, &path);   // if modify needed, inplace
-        [[maybe_unused]] auto cursor = driver->read(path);
+        auto access_info = this->dataset_service_->createAccessInfo(driver_type, path);
+        if (access_info == nullptr) {
+            std::string err_msg = "create access info failed";
+            throw std::invalid_argument(err_msg);
+        }
+        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
+        this->dataset_service_->registerDriver(fid, driver);
+        // processMetaData(driver_type, &path);   // if modify needed, inplace
+        // [[maybe_unused]] auto cursor = driver->read(path);
+        driver->read();
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load dataset from path: "<< path <<" "
                 << "driver_type: "<< driver_type << " "
@@ -57,10 +65,11 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const New
     return grpc::Status::OK;
 }
 
-int DataServiceImpl::processMetaData(const std::string& driver_type, std::string* meta_data) {
-    std::string driver_type_ = driver_type;
-    // to upper
-    std::transform(driver_type_.begin(), driver_type_.end(), driver_type_.begin(), ::toupper);
+retcode DataServiceImpl::processMetaData(const std::string& driver_type, std::string* meta_data) {
+    // std::string driver_type_ = driver_type;
+    // // to upper
+    // std::transform(driver_type_.begin(), driver_type_.end(), driver_type_.begin(), ::toupper);
+    std::string driver_type_ = strToUpper(driver_type);
     if (driver_type_ == "SQLITE") {
         nlohmann::json js = nlohmann::json::parse(*meta_data);
         // driver_type#db_path#table_name#column
@@ -69,12 +78,12 @@ int DataServiceImpl::processMetaData(const std::string& driver_type, std::string
         VLOG(5) << meta;
         if (!js.contains("db_path")) {
             LOG(ERROR) << "key: db_path is not found";
-            return -1;
+            return retcode::FAIL;
         }
         meta.append("#").append(js["db_path"]);
         if (!js.contains("tableName")) {
             LOG(ERROR) << "key: tableName is not found";
-            return -1;
+            return retcode::FAIL;
         }
         meta.append("#").append(js["tableName"]);
         if (js.contains("query_index")) {
@@ -84,7 +93,7 @@ int DataServiceImpl::processMetaData(const std::string& driver_type, std::string
         }
         VLOG(5) << "sqlite info: " << meta;
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
 } // namespace primihub

@@ -22,9 +22,21 @@
 #include "SQLiteCpp/SQLiteCpp.h"
 #include "SQLiteCpp/Column.h"
 #include <iomanip>
+#include <vector>
 
 namespace primihub {
 class SQLiteDriver;
+
+struct SQLiteAccessInfo : public DataSetAccessInfo {
+  SQLiteAccessInfo() = default;
+  SQLiteAccessInfo(const std::string& db_path, const std::string& tab_name,
+      const std::vector<std::string>& query_colums)
+      : db_path_(db_path), table_name_(tab_name), query_colums_(query_colums) {}
+
+  std::string db_path_;
+  std::string table_name_;
+  std::vector<std::string> query_colums_;
+};
 
 class SQLiteCursor : public Cursor {
 public:
@@ -32,7 +44,7 @@ public:
   ~SQLiteCursor();
   std::shared_ptr<primihub::Dataset> read() override;
   std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
-  std::shared_ptr<arrow::Table> 
+  std::shared_ptr<arrow::Table>
   read_from_abnormal(std::map<std::string, uint32_t> col_type,
                      std::map<std::string, std::vector<int>> &index);
   int write(std::shared_ptr<primihub::Dataset> dataset) override;
@@ -76,16 +88,17 @@ public:
     {"INTEGER", sql_type_t::INT64},
     {"INT", sql_type_t::INT},
     {"DOUBLE", sql_type_t::DOUBLE},
-    
+
   };
 };
 
 class SQLiteDriver : public DataDriver, public std::enable_shared_from_this<SQLiteDriver> {
 public:
   // explicit SQLiteDriver(const std::string &nodelet_addr);
-  SQLiteDriver(const std::string &nodelet_addr);
+  explicit SQLiteDriver(const std::string &nodelet_addr);
+  SQLiteDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
   ~SQLiteDriver() = default;
-
+  std::shared_ptr<Cursor>& read() override;
   std::shared_ptr<Cursor>& read(const std::string& conn_str) override;
   std::shared_ptr<Cursor>& initCursor(const std::string& conn_str) override;
   std::string getDataURL() const override;
@@ -93,18 +106,19 @@ public:
   // write data to specifiy db table
   int write(std::shared_ptr<arrow::Table> table, const std::string& table_name);
  protected:
+  void setDriverType();
   enum CONN_FIELDS {
     DRIVER_TYPE = 0,
     DB_PATH,
     TABLE_NAME,
     QUERY_CONDITION,
   };
+  std::string buildQuerySQL(SQLiteAccessInfo* access_info);
+  std::string buildQuerySQL(const std::string& table_name, const std::string& query_index);
  private:
   std::string conn_info_;
   std::string db_path_;
   std::unique_ptr<SQLite::Database> db_connector{nullptr};
-
-
 };
 
 } // namespace primihub

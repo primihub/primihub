@@ -52,14 +52,14 @@ public:
 
     ~PSIKkrtTask() {}
     int execute() override;
-    int saveResult(void);
+    retcode saveResult();
     retcode broadcastResultToServer();
     int recvIntersectionData();
 private:
     retcode exchangeDataPort();
-    int _LoadParams(Task &task);
-    int _LoadDataset(void);
 #if defined(__linux__) && defined(__x86_64__)
+    retcode _LoadParams(Task &task);
+    retcode _LoadDataset();
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);
@@ -69,6 +69,7 @@ private:
     int psi_type_;
     int role_tag_;
     std::string dataset_path_;
+    std::string dataset_id_;
     std::string result_file_path_;
     std::vector <std::string> elements_;
     std::vector <std::string> result_;
