@@ -1113,7 +1113,8 @@ class XGB_GUEST_EN:
             #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
         else:
             res = [
-                tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
+                tmp_group.sum(on=['g', 'h']).to_pandas()
+                for tmp_group in internal_groups
             ]
 
         for key, tmp_task in zip(cols, res):
