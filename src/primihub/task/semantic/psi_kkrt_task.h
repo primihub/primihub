@@ -57,9 +57,9 @@ public:
     int recvIntersectionData();
 private:
     retcode exchangeDataPort();
-#if defined(__linux__) && defined(__x86_64__)
     retcode _LoadParams(Task &task);
     retcode _LoadDataset();
+#if defined(__linux__) && defined(__x86_64__)
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
     int _GetIntsection(KkrtPsiReceiver &receiver);

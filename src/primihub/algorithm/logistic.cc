@@ -376,7 +376,7 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   chann_prev.close();
 
   engine_.init(local_id_, ep_prev_, ep_next_, toBlock(local_id_));
-  LOG(INFO) << "Init party communication finish.";
+  LOG(INFO) << "Init party: " << local_id_ << " communication finish.";
 
   return 0;
 }
