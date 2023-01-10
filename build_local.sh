@@ -9,7 +9,9 @@ fi
 
 bash pre_build.sh
 
-bazel build --config=linux_x86_64 :node :cli :opt_paillier_c2py :linkcontext
+ARCH=`arch`
+
+bazel build --config=linux_$ARCH :node :cli :opt_paillier_c2py :linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
