@@ -16,6 +16,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class LRModel:
+    # l2 regularization by default, alpha is the penalty parameter
     def __init__(self, X, y, category, alpha=0.0001, w=None):
         self.w_size = X.shape[1] + 1
         self.coef = None
