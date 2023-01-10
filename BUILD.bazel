@@ -329,8 +329,11 @@ cc_library(
       "src/primihub/protocol/aby3/evaluator/piecewise.cc",
       "src/primihub/protocol/aby3/runtime.cc",
       "src/primihub/protocol/aby3/encryptor.cc",
+      "src/primihub/protocol/aby3/aby3_channel.cc"
   ]),
   hdrs = glob([
+      "src/primihub/util/threadsafe_queue.h",
+      "src/primihub/protocol/aby3/aby3_channel.h",
       "src/primihub/protocol/aby3/evaluator/evaluator.h",
       "src/primihub/protocol/aby3/evaluator/binary_evaluator.h",
       "src/primihub/protocol/aby3/evaluator/piecewise.h",
@@ -353,6 +356,7 @@ cc_library(
           ":util_lib",
           ":primitive_lib",
           "crypto_lib",
+          "communication_lib",
       ],
 )
 

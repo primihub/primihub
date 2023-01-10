@@ -6,8 +6,10 @@
 #include "src/primihub/util/network/grpc_link_context.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/network/socket/channel.h"
+#include "src/primihub/util/threadsafe_queue.h"
 
 #include <string_view>
+#include <sstream>
 
 namespace primihub {
 class Aby3Channel {
@@ -17,12 +19,17 @@ public:
     local_node_ = local_node_id;
     task_id_ = task_id;
     job_id_ = job_id;
+    counter_ = 0;
   }
+
+  using GetRecvQueueFunc =
+      std::function<ThreadSafeQueue<std::string> &(const std::string &key)>;
 
   Aby3Channel() = delete;
 
   void SetupCommChannel(const std::string &peer_node_id,
-                        std::shared_ptr<network::IChannel> channel);
+                        std::shared_ptr<network::IChannel> channel,
+                        GetRecvQueueFunc get_func);
 
   // Send a single value.
   template <typename T> void asyncSendCopy(const T &val);
@@ -36,21 +43,40 @@ public:
   template <typename T> void asyncSend(const T *c, uint64_t elem_num);
   template <typename T> void asyncSendCopy(const T *c, uint64_t elem_num);
 
+  // Recv a single value.
+  template <typename T> void asyncRecv(T &dest);
+
+  // Recv value into matrix.
+  template <typename T> void asyncRecv(eMatrix<T> &dest);
+
+  // Recv value into contiguous memory.
+  template <typename T> void asyncRecv(T *ptr, uint64_t elem_num);
+
 private:
   template <typename T> inline void _channelSend(const T &val);
+
   template <typename T>
   inline void _channelSend(const T *ptr, uint64_t elem_num);
+
+  inline int _channelRecv(ThreadSafeQueue<std::string> &queue, char *recv_ptr,
+                          uint64_t recv_size);
+
+  inline uint64_t _GetCounterValue(void);
 
   std::string job_id_;
   std::string task_id_;
   std::string local_node_;
   std::string peer_node_;
   std::shared_ptr<network::IChannel> channel_;
+  GetRecvQueueFunc get_queue_func_;
+  std::mutex counter_mu_;
+  uint64_t counter_;
 };
 
 template <typename T> void Aby3Channel::_channelSend(const T &val) {
   std::stringstream ss;
-  ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_send";
+  ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
+     << _GetCounterValue();
   std::string key = ss.str();
 
   std::string send_str = std::to_string(val);
@@ -77,7 +103,8 @@ void Aby3Channel::_channelSend(const T *ptr, uint64_t elem_num) {
   std::string_view str(raw_ptr, raw_size);
 
   std::stringstream key_ss;
-  key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_send";
+  key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
+         << _GetCounterValue();
 
   auto ret = channel_->send(key_ss.str(), str);
   if (ret != retcode::SUCCESS) {
@@ -91,7 +118,7 @@ void Aby3Channel::_channelSend(const T *ptr, uint64_t elem_num) {
 
   VLOG(5) << "Issue send finish, pointer " << std::hex
           << reinterpret_cast<uint64_t>(raw_ptr) << ", send size " << raw_size
-          << ".";
+          << ", send key " << key_ss.str() << ".";
 }
 
 template <typename T> void Aby3Channel::asyncSendCopy(const T &val) {
@@ -136,6 +163,75 @@ void Aby3Channel::asyncSendCopy(const T *val, uint64_t elem_num) {
     throw std::runtime_error("Only support send int64_t array.");
 
   _channelSend(reinterpret_cast<char *>(val), elem_num);
+}
+
+template <typename T> void Aby3Channel::asyncRecv(T &dest) {
+  if (!(std::is_same<T, std::int64_t>::value))
+    throw std::runtime_error("Only support recv int64_t value.");
+
+  std::stringstream key_ss;
+  key_ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_"
+         << _GetCounterValue();
+
+  auto &recv_queue = get_queue_func_(key_ss.str());
+  char *recv_ptr = reinterpret_cast<char *>(&dest);
+  uint64_t recv_size = sizeof(T);
+
+  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
+
+  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
+  if (ret) {
+    LOG(ERROR) << "Recv failed, buffer size mismatch.";
+    throw std::runtime_error("Recv failed, buffer size mismatch.");
+  }
+
+  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
+}
+
+template <typename T> void Aby3Channel::asyncRecv(eMatrix<T> &dest) {
+  if (!(std::is_same<T, std::int64_t>::value))
+    throw std::runtime_error("Only support int64_t matrix.");
+
+  std::stringstream key_ss;
+  key_ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_"
+         << _GetCounterValue();
+
+  auto &recv_queue = get_queue_func_(key_ss.str());
+  char *recv_ptr = reinterpret_cast<char *>(dest.data());
+  uint64_t recv_size = dest.size() * sizeof(T);
+
+  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
+
+  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
+  if (ret) {
+    LOG(ERROR) << "Recv failed, buffer size mismatch.";
+    throw std::runtime_error("Recv failed, buffer size mismatch.");
+  }
+
+  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
+}
+
+template <typename T> void Aby3Channel::asyncRecv(T *ptr, uint64_t elem_num) {
+  if (!(std::is_same<T, std::int64_t>::value))
+    throw std::runtime_error("Only support int64_t matrix.");
+
+  std::stringstream key_ss;
+  key_ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_"
+         << _GetCounterValue();
+
+  auto &recv_queue = get_queue_func_(key_ss.str());
+  char *recv_ptr = reinterpret_cast<char *>(ptr);
+  uint64_t recv_size = elem_num * sizeof(T);
+
+  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
+
+  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
+  if (ret) {
+    LOG(ERROR) << "Recv failed, buffer size mismatch.";
+    throw std::runtime_error("Recv failed, buffer size mismatch.");
+  }
+
+  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
 }
 
 }; // namespace primihub
