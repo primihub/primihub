@@ -185,8 +185,25 @@ config = {
     'compare_threshold': 1e-6,
     'need_one_vs_rest': False,
     'need_encrypt': 'False',
-    'category': 2
+    'category': 2,
+    'feature_names': None,
 }
+
+def feature_selection(x, feature_names):
+    if feature_names != None:
+        return x[feature_names]
+    else:
+        return x
+
+def read_data(dataset_key):
+    x = ph.dataset.read(dataset_key).df_data
+
+    if 'id' in x.columns:
+        x.pop('id')
+
+    y = x.pop('y').values
+    x = feature_selection(x, config['feature_names']).to_numpy()
+    return x, y
 
 class Arbiter:
     """
@@ -379,13 +396,7 @@ def run_homo_lr_arbiter(role_node_map,
     log_handler.debug("Create client proxy to guest,"
                       " ip {}, port {}.".format(guest_ip, guest_port))   
         
-    x = ph.dataset.read(dataset_key=data_key).df_data
-
-    if 'id' in x.columns:
-        x.pop('id')
-
-    y = x.pop('y').values
-    x = x.to_numpy()
+    x, y= read_data(data_key)
 
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
                              proxy_client_guest)
@@ -444,7 +455,6 @@ def run_homo_lr_arbiter(role_node_map,
         log_handler.info("acc={}, auc={}, ks={}".format(acc, auc, ks))
         
         # convergence is checked using acc
-        print(type(acc),type(compare_threshold))
         if abs(last_acc - acc) < compare_threshold:
             count_iter_no_change += 1
         else:
@@ -614,19 +624,7 @@ def run_homo_lr_host(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    # x, label = data_binary(dataset_filepath)
-    print("********",)
-    # data = pd.read_csv(host_info['dataset'], header=0)
-
-    data = ph.dataset.read(dataset_key=data_key).df_data
-    
-    if 'id' in data.columns:
-        data.pop('id')
-
-    # label = data.pop('y').values
-    label = data.iloc[:, -1].values
-    # x = data.copy().values
-    x = data.iloc[:, 0:-1].values
+    x, label = read_data(data_key)
 
     client_host = Host(x, label, config, proxy_server, proxy_client_arbiter)
     proxy_client_arbiter.Remote(client_host.need_encrypt, "need_encrypt")
@@ -751,7 +749,7 @@ class Guest:
 
 def run_homo_lr_guest(role_node_map,
                       node_addr_map,
-                      datakey,
+                      data_key,
                       task_params={},
                       log_handler=None):
     guest_nodes = role_node_map["guest"]
@@ -788,17 +786,7 @@ def run_homo_lr_guest(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    # x, label = data_binary(dataset_filepath)
-    # data = pd.read_csv(guest_info['dataset'], header=0)
-    data = ph.dataset.read(dataset_key=datakey).df_data
-    
-    if 'id' in data.columns:
-        data.pop('id')
-
-    # label = data.pop('y').values
-    label = data.iloc[:, -1].values
-    # x = data.copy().values
-    x = data.iloc[:, 0:-1].values
+    x, label = read_data(data_key)
 
     guest_data_weight = config['batch_size']
     proxy_client_arbiter.Remote(guest_data_weight, "guest_data_weight")
@@ -981,7 +969,7 @@ def run_guest_party():
 
     run_homo_lr_guest(role_node_map,
                       node_addr_map,
-                      datakey=data_key,
+                      data_key=data_key,
                       log_handler=fl_console_log)
 
     fl_console_log.info("Finish homo-LR guest logic.")
