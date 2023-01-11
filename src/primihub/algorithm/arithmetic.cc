@@ -33,7 +33,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "arithmetic";
 
-  auto& node_map = config.node_map;
+  auto &node_map = config.node_map;
   // LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
@@ -223,7 +223,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       } else
         mpc_op_exec_->MPC_Compare(sh_res);
       // reveal
-      for (const auto& party : parties_) {
+      for (const auto &party : parties_) {
         if (party_id_ == party) {
           i64Matrix tmp = mpc_op_exec_->reveal(sh_res);
           for (size_t i = 0; i < tmp.rows(); i++)
@@ -452,5 +452,90 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
 }
 template class ArithmeticExecutor<D32>;
 template class ArithmeticExecutor<D16>;
+
+MPCSendRecvExecutor::MPCSendRecvExecutor(
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service) {
+  std::ignore = dataset_service;
+  this->algorithm_name_ = "mpc_channel_sendrecv";
+
+  auto &node_map = config.node_map;
+
+  // Save all party's party id and node config..
+  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+    const rpc::Node &node = iter->second;
+    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
+    partyid_node_map_[party_id] = node;
+  }
+
+  // Resolve local node config.
+  auto iter = node_map.find(config.node_id);
+  if (iter == node_map.end()) {
+    std::stringstream ss;
+    ss << "Can't find node config with node id " << config.node_id << ".";
+    throw std::runtime_error(ss.str());
+  }
+
+  local_party_id_ = iter->second.vm(0).party_id();
+  local_node_ = iter->second;
+
+  next_party_id_ = (local_party_id_ + 1) % 3;
+  prev_party_id_ = (local_party_id_ + 2) % 3;
+  auto next_node = partyid_node_map_[next_party_id];
+  auto prev_node = partyid_node_map_[prev_party_id];
+
+  LOG(INFO) << "Local party: party id " << local_party_id_ << ", node "
+            << local_node_.to_string() << ".";
+
+  LOG(INFO) << "Next party: party id " << next_party_id << ", node "
+            << next_node.to_string() << ".";
+
+  LOG(INFO) << "Prev party: party id " << prev_party_id << ", node "
+            << prev_node.to_string() << ".";
+}
+
+int MPCSendRecvExecutor::initPartyComm(void) {
+  channel_next_ = this->getTaskContext()->getLinkContext()->getChannel(
+      partyid_node_map_[next_party_id_]);
+  if (channel_next_.get() == nullptr) {
+    LOG(ERROR) << "Get channel to party " << next_party_id_ << " failed, node "
+               << partyid_node_map_[next_party_id_].to_string() << ".";
+    return -1;
+  }
+
+  channel_prev_ = this->getTaskContext()->getLinkContext()->getChannel(
+      partyid_node_map_[prev_party_id_]);
+  if (channel_prev_.get() == nullptr) {
+    LOG(ERROR) << "Get channel to party " << prev_party_id_ << " failed, node "
+               << node << partyid_node_map_[prev_party_id_].to_string() << ".";
+    return -2;
+  }
+
+  get_queue_fn_ =
+      [this](const std::string &key) -> ThreadSafeQueue<std::string> & {
+    return this->getTaskContext().getRecvQueue(key);
+  };
+
+  mpc_channel_next_ =
+      std::make_shared<Aby3Channel>(job_id_, task_id_, local_node_.node_id());
+  if (mpc_channel_next_.get() == nullptr) {
+    return -3;
+  }
+
+  mpc_channel_prev_ =
+      std::make_shared<Aby3Channel>(job_id_, task_id_, local_node_.node_id());
+  if (mpc_channel_prev_.get() == nullptr) {
+    return -4;
+  }
+}
+
+int MPCSendRecvExecutor::loadParams(rpc::Task &task) {
+  // Do nothing.
+  return 0;
+}
+
+int MPCSendRecvExecutor::loadDataset(void) {
+  // Do nothing.
+  return 0;
+}
 
 } // namespace primihub
