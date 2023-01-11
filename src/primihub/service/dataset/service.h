@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <shared_mutex>
 
 #include <arrow/buffer.h>
 #include <arrow/filesystem/filesystem.h>
@@ -30,6 +31,7 @@
 #include <arrow/record_batch.h>
 #include <arrow/table.h>
 
+#include "src/primihub/common/defines.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
@@ -72,7 +74,7 @@ using arrow::fs::FileSystem;
 using primihub::DataDirverFactory;
 
 class DatasetMetaService {
-  public:
+ public:
     DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
                        std::shared_ptr<StorageBackend> localKv);
     ~DatasetMetaService() {}
@@ -90,8 +92,7 @@ class DatasetMetaService {
     void setMetaSearchTimeout(unsigned int timeout) {
         meta_search_timeout_ = timeout;
     }
-
-  private:
+ private:
     std::shared_ptr<StorageBackend> localKv_;
     std::shared_ptr<primihub::p2p::NodeStub> p2pStub_;
     // std::map<std::string, DatasetMetaWithParamTag> meta_map_; // key: dataset_id
@@ -117,7 +118,7 @@ private:
 };
 
 class DatasetService  {
-  public:
+ public:
     explicit DatasetService(std::shared_ptr<DatasetMetaService> meta_service,
                             const std::string &nodelet_addr);
     ~DatasetService() {}
@@ -147,6 +148,9 @@ class DatasetService  {
     void restoreDatasetFromLocalStorage(void);
     void setMetaSearchTimeout(unsigned int timeout);
     std::string getNodeletAddr(void);
+    std::shared_ptr<DatasetMetaService>& metaService() {
+        return metaService_;
+    }
     // void
     // findPeerListFromDatasets(const std::vector<std::string>
     // &dataset_namae_list,
@@ -158,11 +162,22 @@ class DatasetService  {
     void updateDataset(const std::string &id, const std::string &description,
                        const std::string &schema_url) {}
     // DatasetSchema &getDatasetSchema(const std::string &id) const {}
+    retcode registerDriver(const std::string& dataset_id, std::shared_ptr<DataDriver>);
+    std::shared_ptr<DataDriver> getDriver(const std::string& dataset_id);
+    retcode unRegisterDriver(const std::string& dataset_id);
+    // local config file
+    std::unique_ptr<DataSetAccessInfo>
+    createAccessInfo(const std::string driver_type, const YAML::Node& meta_info);
+    // NewDataset rpc interface json format
+    std::unique_ptr<DataSetAccessInfo>
+    createAccessInfo(const std::string driver_type, const std::string& meta_info);
 
+ private:
     //  private:
     std::shared_ptr<DatasetMetaService> metaService_;
     std::string nodelet_addr_;
-
+    std::shared_mutex driver_mtx_;
+    std::unordered_map<std::string, std::shared_ptr<DataDriver>> driver_manager_;
 };
 
 /////////////////////////// Arrow Flight Server////////////////////////////////////
@@ -180,7 +195,7 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
     /// a sequence of FlightData messages to be written to a gRPC stream
     class ARROW_FLIGHT_EXPORT NumberingStream : public FlightDataStream {
       public:
-        explicit NumberingStream(std::unique_ptr<FlightDataStream> stream)  
+        explicit NumberingStream(std::unique_ptr<FlightDataStream> stream)
         : counter_(0), stream_(std::move(stream)) {}
 
         std::shared_ptr<Schema> schema() override  { return stream_->schema(); }
@@ -216,7 +231,7 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
             }
             DatasetId id(request.path[0]);
             std::shared_ptr<DatasetMeta> meta =
-                dataset_service_->metaService_->getLocalMeta(id);
+                dataset_service_->metaService()->getLocalMeta(id);
             if (meta == nullptr) {
                 return arrow::Status::KeyError(
                     "Could not find flight.",
@@ -292,7 +307,7 @@ class FlightIntegrationServer : public arrow::flight::FlightServerBase {
         DatasetMeta meta;
         dataset_service_->writeDataset(
             ph_dataset, key /*NOTE from upload description*/, meta);
-        LOG(INFO) << "====DoPut 4====";    
+        LOG(INFO) << "====DoPut 4====";
         auto metadata_buf = arrow::Buffer::FromString(meta.toJSON());
         RETURN_NOT_OK(writer->WriteMetadata(*metadata_buf));
         LOG(INFO) << "====DoPut 5====";

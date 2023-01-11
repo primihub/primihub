@@ -1288,6 +1288,30 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "reg_cli_test",
+    srcs = [
+        "src/primihub/cli/reg_cli.cc",
+        "src/primihub/cli/reg_cli.h",
+    ],
+    copts = C_OPT,
+    includes = [
+    ],
+    linkstatic = True,
+    linkopts = LINK_OPTS,
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        ":worker_proto",
+        ":service_proto",
+        "@openssl",
+        "@com_github_stduuid//:stduuid_lib",
+    ],
+)
 ## end of primihub
 
 ## unit tests

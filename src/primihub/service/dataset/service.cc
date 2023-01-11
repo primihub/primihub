@@ -29,7 +29,7 @@
 using namespace std::chrono_literals;
 
 namespace primihub::service {
-    
+
     // DatasetService::DatasetService(
     //                         std::shared_ptr<primihub::p2p::NodeStub> stub,
     //                         std::shared_ptr<StorageBackend> localkv,
@@ -166,19 +166,13 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
         if (config["datasets"]) {
             for (const auto& dataset : config["datasets"]) {
                 auto dataset_type = dataset["model"].as<std::string>();
-                auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr);
-                std::string source = dataset["source"].as<std::string>();
-                if (dataset_type == "sqlite") {
-                    auto table_name = dataset["table_name"].as<std::string>();
-                    source.append("#").append(table_name).append("#");
-                    if (dataset["query_index"]) {
-                        source.append(dataset["query_index"].as<std::string>());
-                    }
-                    source = dataset_type + "#" + source;
-                }
-                [[maybe_unused]] auto cursor = driver->read(source);
+                auto dataset_uid = dataset["description"].as<std::string>();
+                auto access_info = createAccessInfo(dataset_type, dataset);
+                auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr, std::move(access_info));
+                this->registerDriver(dataset_uid, driver);
+                driver->read();
                 DatasetMeta meta;
-                newDataset(driver, dataset["description"].as<std::string>(), meta);
+                newDataset(driver, dataset_uid, meta);
             }
         }
     }
@@ -213,6 +207,95 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
     std::string DatasetService::getNodeletAddr(void) {
         return nodelet_addr_;
     }
+
+primihub::retcode DatasetService::registerDriver(
+        const std::string& dataset_id, std::shared_ptr<primihub::DataDriver> driver) {
+    std::lock_guard<std::shared_mutex> lck(driver_mtx_);
+    auto it = driver_manager_.find(dataset_id);
+    if (it != driver_manager_.end()) {
+        LOG(WARNING) << "update driver for dataset: " << dataset_id;
+        it->second = std::move(driver);
+    } else {
+        driver_manager_.insert({dataset_id, std::move(driver)});
+    }
+    VLOG(5) << "dataset uid: " << dataset_id << " regiseter success";
+    return primihub::retcode::SUCCESS;
+}
+
+std::shared_ptr<primihub::DataDriver>
+DatasetService::getDriver(const std::string& dataset_id) {
+    std::shared_lock<std::shared_mutex> lck(driver_mtx_);
+    auto it = driver_manager_.find(dataset_id);
+    if (it != driver_manager_.end()) {
+        return it->second;
+    }
+    LOG(ERROR) << "invalid dataset id: " << dataset_id;
+    return nullptr;
+}
+
+primihub::retcode DatasetService::unRegisterDriver(const std::string& dataset_id) {
+    std::lock_guard<std::shared_mutex> lck(driver_mtx_);
+    auto it = driver_manager_.find(dataset_id);
+    if (it != driver_manager_.end()) {
+        LOG(WARNING) << "erase driver for dataset: " << dataset_id;
+        driver_manager_.erase(dataset_id);
+    } else {  // do nothing
+    }
+    return primihub::retcode::SUCCESS;
+}
+
+std::unique_ptr<DataSetAccessInfo>
+DatasetService::createAccessInfo(const std::string driver_type, const YAML::Node& meta_info) {
+    auto driver_type_ = strToUpper(driver_type);
+    VLOG(5) << "driver_type_: " << driver_type_;
+    if (driver_type_ == std::string("SQLITE")) {  // Move to specifiy Access parse
+        auto db_path = meta_info["source"].as<std::string>();
+        auto table_name = meta_info["table_name"].as<std::string>();
+        std::vector<std::string> query_cols;
+        if (meta_info["query_index"]) {
+            std::string query_index = meta_info["query_index"].as<std::string>();
+            str_split(query_index, &query_cols, ',');
+        }
+        return DataDirverFactory::createSQLiteAccessInfo(db_path, table_name, query_cols);
+    } else if (driver_type_ == std::string("CSV")) {
+        auto file_path = meta_info["source"].as<std::string>();
+        return DataDirverFactory::createCSVAccessInfo(file_path);
+    } else {
+        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+        return nullptr;
+    }
+
+}
+
+std::unique_ptr<DataSetAccessInfo>
+DatasetService::createAccessInfo(const std::string driver_type, const std::string& meta_info) {
+    std::string driver_type_ = strToUpper(driver_type);
+    if (driver_type_ == "SQLITE") {
+        nlohmann::json js = nlohmann::json::parse(meta_info);
+        // driver_type#db_path#table_name#column
+        if (!js.contains("db_path")) {
+            LOG(ERROR) << "key: db_path is not found";
+            return nullptr;
+        }
+        std::string db_path = js["db_path"];
+        if (!js.contains("tableName")) {
+            LOG(ERROR) << "key: tableName is not found";
+            return nullptr;
+        }
+        std::string tab_name = js["tableName"];
+        std::vector<std::string> query_cols;
+        if (js.contains("query_index")) {
+            std::string query_index_info = js["query_index"];
+            str_split(query_index_info, &query_cols, ',');
+        }
+        return DataDirverFactory::createSQLiteAccessInfo(db_path, tab_name, query_cols);
+    } else if (driver_type_ == "CSV") {
+        return DataDirverFactory::createCSVAccessInfo(meta_info);
+    } else {
+        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+        return nullptr;
+    }
+}
 
     // ======================== DatasetMetaService ====================================
     DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
@@ -475,42 +558,42 @@ outcome::result<void> RedisDatasetMetaService::findPeerListFromDatasets(
 arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallContext &context,
                             const arrow::flight::Ticket &request,
                             std::unique_ptr<FlightDataStream> *data_stream)  {
-            // NOTE fligth ticket format : fligt.{dataset_id_str}
-            DatasetId id(request.ticket);
-            std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService_->getLocalMeta(id);
-            if (meta == nullptr) {
-                LOG(WARNING) << "Could not find flight ticket: " << request.ticket;
-                return arrow::Status::KeyError("Could not find flight ticket: ",  request.ticket); // NOTE path is dataset description
-            }
-            // read dataset from local driver
-            auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
+    // NOTE fligth ticket format : fligt.{dataset_id_str}
+    DatasetId id(request.ticket);
+    std::shared_ptr<DatasetMeta> meta = dataset_service_->metaService()->getLocalMeta(id);
+    if (meta == nullptr) {
+        LOG(WARNING) << "Could not find flight ticket: " << request.ticket;
+        return arrow::Status::KeyError("Could not find flight ticket: ",  request.ticket); // NOTE path is dataset description
+    }
+    // read dataset from local driver
+    auto driver = DataDirverFactory::getDriver(meta->getDriverType(), dataset_service_->getNodeletAddr());
 
-            std::string node_id, node_ip, dataset_path;
-            int node_port;
-            std::string data_url = meta->getDataURL();
-            LOG(INFO) << "DoGet dataset url:" << data_url;
-            DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-            LOG(INFO) << "DoGet dataset path:" << dataset_path;
-            auto cursor = driver->read(dataset_path);  // TODO only support Local file path now.
-            auto dataset = cursor->read();
-            LOG(INFO) << "DoGet dataset read done";
+    std::string node_id, node_ip, dataset_path;
+    int node_port;
+    std::string data_url = meta->getDataURL();
+    LOG(INFO) << "DoGet dataset url:" << data_url;
+    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    LOG(INFO) << "DoGet dataset path:" << dataset_path;
+    auto cursor = driver->read(dataset_path);  // TODO only support Local file path now.
+    auto dataset = cursor->read();
+    LOG(INFO) << "DoGet dataset read done";
 
-            // NOTE that we can't directly pass TableBatchReader to
-            // RecordBatchStream because TableBatchReader keeps a non-owning
-            // reference to the underlying Table, which would then get freed
-            // when we exit this function
-            auto table = std::get<0>(dataset->data);
-            std::vector<std::shared_ptr<arrow::RecordBatch>> batches;
-            arrow::TableBatchReader batch_reader(*table);
-            // ARROW_ASSIGN_OR_RAISE(batches, batch_reader.ToRecordBatches());
-            batch_reader.ReadAll(&batches);
+    // NOTE that we can't directly pass TableBatchReader to
+    // RecordBatchStream because TableBatchReader keeps a non-owning
+    // reference to the underlying Table, which would then get freed
+    // when we exit this function
+    auto table = std::get<0>(dataset->data);
+    std::vector<std::shared_ptr<arrow::RecordBatch>> batches;
+    arrow::TableBatchReader batch_reader(*table);
+    // ARROW_ASSIGN_OR_RAISE(batches, batch_reader.ToRecordBatches());
+    batch_reader.ReadAll(&batches);
 
-            ARROW_ASSIGN_OR_RAISE(auto owning_reader, arrow::RecordBatchReader::Make(
-                                                  std::move(batches), table->schema()));
-            *data_stream = std::unique_ptr<arrow::flight::FlightDataStream>(
-                     new arrow::flight::RecordBatchStream(owning_reader));
-            LOG(INFO) << "DoGet dataset send to client done";
-            return arrow::Status::OK();
-        }
+    ARROW_ASSIGN_OR_RAISE(auto owning_reader, arrow::RecordBatchReader::Make(
+                                            std::move(batches), table->schema()));
+    *data_stream = std::unique_ptr<arrow::flight::FlightDataStream>(
+                new arrow::flight::RecordBatchStream(owning_reader));
+    LOG(INFO) << "DoGet dataset send to client done";
+    return arrow::Status::OK();
+}
 
 } // namespace primihub::service

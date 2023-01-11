@@ -110,7 +110,26 @@ int CSVCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
 
 CSVDriver::CSVDriver(const std::string &nodelet_addr)
     : DataDriver(nodelet_addr) {
+  setDriverType();
+}
+
+CSVDriver::CSVDriver(const std::string &nodelet_addr,
+    std::unique_ptr<DataSetAccessInfo> access_info)
+    : DataDriver(nodelet_addr, std::move(access_info)) {
+  setDriverType();
+}
+
+void CSVDriver::setDriverType() {
   driver_type = "CSV";
+}
+
+std::shared_ptr<Cursor>& CSVDriver::read() {
+  auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
+  if (csv_access_info == nullptr) {
+    LOG(ERROR) << "file access info is unavailable";
+    return getCursor();
+  }
+  return this->initCursor(csv_access_info->file_path_);
 }
 
 std::shared_ptr<Cursor> &CSVDriver::read(const std::string &filePath) {

@@ -37,6 +37,9 @@ class AlgorithmBase {
     virtual int execute() = 0;
     virtual int finishPartyComm() = 0;
     virtual int saveModel() = 0;
+    std::shared_ptr<DatasetService>& datasetService() {
+      return dataset_service_;
+    }
 
   protected:
     std::shared_ptr<DatasetService> dataset_service_;

@@ -419,11 +419,75 @@ int SQLiteCursor::write(std::shared_ptr<primihub::Dataset> dataset) {}
 
 SQLiteDriver::SQLiteDriver(const std::string &nodelet_addr)
     : DataDriver(nodelet_addr) {
+  setDriverType();
+}
+
+SQLiteDriver::SQLiteDriver(const std::string &nodelet_addr,
+    std::unique_ptr<DataSetAccessInfo> access_info)
+    : DataDriver(nodelet_addr, std::move(access_info)) {
+  setDriverType();
+}
+
+void SQLiteDriver::setDriverType() {
   driver_type = "SQLITE";
+}
+
+std::shared_ptr<Cursor>& SQLiteDriver::read() {
+  auto access_info_ptr = dynamic_cast<SQLiteAccessInfo*>(this->access_info_.get());
+  if (access_info_ptr == nullptr) {
+    LOG(ERROR) << "sqlite access info is not unavailable";
+    return getCursor();
+  }
+  try {
+    this->db_connector = std::make_unique<SQLite::Database>(access_info_ptr->db_path_);
+  } catch (std::exception &e) {
+    LOG(ERROR) << "create cursor failed: " << e.what();
+    return getCursor(); // nullptr
+  }
+  std::string query_sql = buildQuerySQL(access_info_ptr);
+  this->cursor = std::make_shared<SQLiteCursor>(query_sql, shared_from_this());
+  return getCursor();
 }
 
 std::shared_ptr<Cursor> &SQLiteDriver::read(const std::string &conn_str) {
   return this->initCursor(conn_str);
+}
+
+std::string SQLiteDriver::buildQuerySQL(SQLiteAccessInfo* access_info) {
+  const auto& table_name = access_info->table_name_;
+  const auto& query_cols = access_info->query_colums_;
+  std::string sql_str = "SELECT ";
+  if (query_cols.empty()) {
+    sql_str.append("*");
+  } else {
+    for (int i = 0; i < query_cols.size(); ++i) {
+      auto& col_name = query_cols[i];
+      if (col_name.empty()) {
+        continue;
+      }
+      if (i == query_cols.size()-1) {
+        sql_str.append(col_name).append(" ");
+      } else {
+        sql_str.append(col_name).append(",");
+      }
+    }
+  }
+  sql_str.append(" FROM ").append(table_name);
+  VLOG(5) << "query sql: " << sql_str;
+  return sql_str;
+}
+
+std::string SQLiteDriver::buildQuerySQL(const std::string& table_name,
+    const std::string& query_condition) {
+  std::string sql_str = "SELECT ";
+  if (query_condition.empty()) {
+    sql_str.append("*");
+  } else {
+    sql_str.append(query_condition);
+  }
+  sql_str.append(" FROM ").append(table_name);
+  VLOG(5) << "query sql: " << sql_str;
+  return sql_str;
 }
 
 std::shared_ptr<Cursor> &SQLiteDriver::initCursor(const std::string &conn_str) {
@@ -436,25 +500,18 @@ std::shared_ptr<Cursor> &SQLiteDriver::initCursor(const std::string &conn_str) {
   auto driver_type = conn_info[CONN_FIELDS::DRIVER_TYPE];
   auto &db_path = conn_info[CONN_FIELDS::DB_PATH];
   db_path_ = db_path;
-  std::string &table_name = conn_info[CONN_FIELDS::TABLE_NAME];
+  std::string& table_name = conn_info[CONN_FIELDS::TABLE_NAME];
   VLOG(5) << "db_path: " << db_path << " table_name: " << table_name
           << " conn_info size: " << conn_info.size();
   try {
     this->db_connector = std::make_unique<SQLite::Database>(db_path);
-  } catch (std::exception &e) {
+  } catch (std::exception& e) {
     LOG(ERROR) << "create cursor failed: " << e.what();
     return getCursor(); // nullptr
   }
 
   std::string &query_condition = conn_info[CONN_FIELDS::QUERY_CONDITION];
-  std::string sql_str = "select ";
-  if (query_condition.empty()) {
-    sql_str.append("*");
-  } else {
-    sql_str.append(query_condition);
-  }
-  sql_str.append(" from ").append(table_name);
-  VLOG(5) << "query sql: " << sql_str;
+  auto sql_str = buildQuerySQL(table_name, query_condition);
   this->cursor = std::make_shared<SQLiteCursor>(sql_str, shared_from_this());
   return getCursor();
 }

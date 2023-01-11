@@ -88,6 +88,7 @@ class KeywordPIRServerTask : public TaskBase {
 
  private:
     std::string dataset_path_;
+    std::string dataset_id_;
     uint32_t data_port{2222};
     std::string client_address;
     primihub::Node client_node_;
