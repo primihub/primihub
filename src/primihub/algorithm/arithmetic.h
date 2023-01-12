@@ -3,8 +3,8 @@
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
-#include "src/primihub/service/dataset/service.h"
 #include "src/primihub/protocol/aby3/aby3_channel.h"
+#include "src/primihub/service/dataset/service.h"
 
 #include <algorithm>
 #include <iostream>
@@ -64,35 +64,41 @@ class MPCSendRecvExecutor : public AlgorithmBase {
 public:
   explicit MPCSendRecvExecutor(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service);
+  using TaskGetChannelFunc = 
+      std::function<std::shared_ptr<network::IChannel>(primihub::Node &node)>;
+  using TaskGetRecvQueueFunc =
+      std::function<ThreadSafeQueue<std::string> &(const std::string &key)>;
 
   int loadParams(rpc::Task &task) override;
   int loadDataset(void) override;
   int initPartyComm(void) override;
-  int executor() override;
+  int execute() override;
   int finishPartyComm(void) override;
   int saveModel(void);
+  void setupGetQueueFn(TaskGetRecvQueueFunc fn);
+  void setupGetChannelFn(TaskGetChannelFunc fn);
 
 private:
   std::string job_id_;
   std::string task_id_;
 
   std::shared_ptr<network::IChannel> grpc_channel_next_;
-  std::shared_ptr<network::Ichannel> grpc_channel_prev_;
+  std::shared_ptr<network::IChannel> grpc_channel_prev_;
 
   std::shared_ptr<Aby3Channel> mpc_channel_next_;
   std::shared_ptr<Aby3Channel> mpc_channel_prev_;
 
-  Aby3Channel mpc_channel_prev_;
-
   Aby3Channel::GetRecvQueueFunc get_queue_fn_;
+  TaskGetRecvQueueFunc task_get_queue_fn_;
+  TaskGetChannelFunc task_get_channel_fn_;
 
-  std::map<uint16_t, rpc::Node> partyid_node_map_;
+  std::map<uint16_t, primihub::Node> partyid_node_map_;
 
   uint16_t local_party_id_;
   uint16_t next_party_id_;
   uint16_t prev_party_id_;
 
-  rpc::Node local_node_;
-}
+  primihub::Node local_node_;
+};
 
 } // namespace primihub

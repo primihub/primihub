@@ -73,9 +73,27 @@ namespace primihub::task
       LOG(WARNING) << "Skip init lenet algorithm instance due to lack support for apple and aarch64 platform.";
 #endif
     }
-    else if (function_name == "decision_tree")
+    else if (function_name == "mpc_sendrecv_op")
     {
-      // TODO: implement decision tree
+      PartyConfig config(node_id, task_param_);
+      std::shared_ptr<primihub::MPCSendRecvExecutor> executor = 
+        std::make_shared<primihub::MPCSendRecvExecutor>(config, dataset_service);
+      
+      // TODO: How to enable algorithm instance to get channel and grpc channel?
+      auto get_queue_fn = [this](const std::string &key)->
+        ThreadSafeQueue<std::string> & {
+        return this->getTaskContext().getRecvQueue(key);
+      };
+
+      auto get_channel_fn = [this](const primihub::Node &node)->
+        std::shared_ptr<network::IChannel> {
+        return this->getTaskContext().getLinkContext()->getChannel(node); 
+      };
+
+      executor->setupGetQueueFn(get_queue_fn);
+      executor->setupGetChannelFn(get_channel_fn);
+
+      algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(executor);
     }
     else if (function_name == "random_forest")
     {

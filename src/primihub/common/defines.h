@@ -118,8 +118,10 @@ struct Node {
   std::string ip() {return ip_;}
   uint32_t port() {return port_;}
   bool use_tls() {return use_tls_;}
+  std::string node_id() {return node_id_;}
   std::string ip_;
   uint32_t port_;
+  std::string node_id_;
   std::string role_{"default"};
   bool use_tls_{false};
 };
