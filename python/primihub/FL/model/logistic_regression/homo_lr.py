@@ -11,27 +11,22 @@ from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 #from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 import numpy as np
-from primihub.FL.feature_engineer.onehot_encode import HorOneHotEncoder
-from sklearn.preprocessing import MinMaxScaler
-
 
 class LRModel:
     # l2 regularization by default, alpha is the penalty parameter
-    def __init__(self, X, y, category, alpha=0.0001, w=None):
-        self.w_size = X.shape[1] + 1
-        self.coef = None
-        self.intercept = None
-        self.theta = None
+    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001):
+        self.learning_rate = learning_rate
         self.alpha = alpha # regularization parameter
         self.t = 0 # iteration number, used for learning rate decay
-        self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, self.w_size))
-        if w is not None:
-            self.theta = w
-        else:
-            # init model parameters
-            self.theta = np.random.uniform(-0.5, 0.5, (self.w_size,))
 
-        # 'optimal' learning rate
+        if category == 2:
+            self.theta = np.random.uniform(-0.5, 0.5, (X.shape[1] + 1,))
+            self.multi_class = False
+        else:
+            self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, X.shape[1] + 1))
+            self.multi_class = True
+        
+        # 'optimal' learning rate refer to sklearn SGDClassifier
         def dloss(p, y):
             z = p * y
             if z > 18.0:
@@ -49,83 +44,54 @@ class LRModel:
         # if encrypted == True:
         #     self.theta = self.utils.encrypt_vector(public_key, self.theta)
 
-    @staticmethod
-    def normalization(x):
-        """
-        data normalization
-        """
-        scaler = MinMaxScaler()
-        x = scaler.fit_transform(x)
-        return x
-
     def sigmoid(self, x):
-        x = np.array(x, dtype=np.float64)
         y = 1.0 / (1.0 + np.exp(-x))
         return y
 
-    def loss_func(self, theta, x_b, y):
-        """
-        loss function
-        :param theta: intercept and coef
-        :param x_b: training data
-        :param y: label
-        :return:
-        """
-        temp = x_b.dot(theta)
+    def get_theta(self):
+        return self.theta
+
+    def set_theta(self, theta):
+        if not isinstance(theta, np.ndarray):
+            theta = np.array(theta)
+        self.theta = theta
+
+    def loss(self, x_b, y):
+        temp = x_b.dot(self.theta)
         try:
             return (np.maximum(temp, 0.).sum() - y.dot(temp) +
                     np.log(1 + np.exp(-np.abs(temp))).sum() +
-                    0.5 * self.alpha * theta.dot(theta)) / x_b.shape[0]
+                    0.5 * self.alpha * self.theta.dot(self.theta)) / x_b.shape[0]
         except:
             return float('inf')
 
-    def d_loss_func(self, theta, x_b, y):
-        theta = np.array(theta)
-        out = self.sigmoid(x_b.dot(theta))
-        return (x_b.T.dot(out - y) + self.alpha * theta) / len(x_b)
+    def compute_grad(self, x_b, y):
+        out = self.sigmoid(x_b.dot(self.theta))
+        return (x_b.T.dot(out - y) + self.alpha * self.theta) / len(x_b)
 
-    def gradient_descent(self, x_b, y, theta, eta):
-        """
-        :param x_b: training data
-        :param y: label
-        :param theta: model parameters
-        :param eta: learning rate
-        :return:
-        """
-        gradient = self.d_loss_func(theta, x_b, y)
-        theta = theta - eta * gradient
-        return theta
+    def gradient_descent(self, x_b, y):
+        grad = self.compute_grad(x_b, y)
+        self.theta -= self.learning_rate * grad
         
-    def gradient_descent_olr(self, x_b, y, theta):
+    def gradient_descent_olr(self, x_b, y):
         """
         optimal learning rate
         """
-        gradient = self.d_loss_func(theta, x_b, y)
-        eta = 1.0 / (self.alpha * (self.optimal_init + self.t))
+        grad = self.compute_grad(x_b, y)
+        learning_rate = 1.0 / (self.alpha * (self.optimal_init + self.t))
         self.t += 1
-        theta -= eta * gradient
-        return theta
+        self.theta -= learning_rate * grad
     
-    def fit(self, train_data, train_label, theta, eta=0.01,):
-        assert train_data.shape[0] == train_label.shape[0], "The length of the training data set shall " \
-                                                            "be consistent with the length of the label"
-        x_b = np.hstack([np.ones((train_data.shape[0], 1)), train_data])
+    def fit(self, x, y):
+        x_b = np.hstack([np.ones((x.shape[0], 1)), x])
+        self.gradient_descent_olr(x_b, y)
 
-        # self.theta = self.gradient_descent(x_b, train_label, theta, eta)
-        self.theta = self.gradient_descent_olr(x_b, train_label, theta)
-        self.intercept = self.theta[0]
-        self.coef = self.theta[1:]
-        return self.theta
-
-    def predict_prob(self, x_predict):
-        x_b = np.hstack([np.ones((len(x_predict), 1)), x_predict])
+    def predict_prob(self, x):
+        x_b = np.hstack([np.ones((len(x), 1)), x])
         return self.sigmoid(x_b.dot(self.theta))
 
-    def predict(self, x_predict):
-        """
-        classification
-        """
-        prob = self.predict_prob(x_predict)
+    def predict(self, x):
+        prob = self.predict_prob(x)
         return np.array(prob > 0.5, dtype='int')
 
     def one_vs_rest(self, X, y, k):
@@ -178,7 +144,7 @@ from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 # dataset.define("breast_2")
 
 config = {
-    'lr': 2.0,
+    'learning_rate': 2.0,
     'alpha': 0.0001,
     'batch_size': 100,
     'max_iter': 1000,
@@ -206,7 +172,7 @@ def read_data(dataset_key):
     x = feature_selection(x, config['feature_names']).to_numpy()
     return x, y
 
-class Arbiter:
+class Arbiter(LRModel):
     """
     Tips: Arbiter is a trusted third party !!!
     """
@@ -216,17 +182,10 @@ class Arbiter:
         self.public_key = None
         self.private_key = None
         self.need_encrypt = None
-        self.weight_host = None
-        self.weight_guest = None
         self.theta = None
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
         self.proxy_client_guest = proxy_client_guest
-
-    def sigmoid(self, x):
-        x = np.array(x, dtype=np.float64)
-        y = 1.0 / (1.0 + np.exp(-x))
-        return y
 
     def generate_key(self, length=1024):
         public_key, private_key = paillier.generate_paillier_keypair(
@@ -244,19 +203,14 @@ class Arbiter:
             print("Arbiter broadcast key pair error : %s" % e)
             # logger.info("Arbiter broadcast key pair error : %s" % e)
 
-    def predict_prob(self, data):
+    def predict_prob(self, x):
         if self.need_encrypt:
             global_theta = self.decrypt_vector(self.theta)
-            data = np.hstack([np.ones((len(data), 1)), data])
-            prob = self.sigmoid(data.dot(global_theta))
+            x = np.hstack([np.ones((len(x), 1)), x])
+            prob = self.sigmoid(x.dot(global_theta))
             return prob
         else:
-            data = np.hstack([np.ones((len(data), 1)), data])
-            prob = self.sigmoid(data.dot(self.theta))
-            return prob
-
-    def predict_binary(self, prob):
-        return np.array(prob > 0.5, dtype='int')
+            return super().predict_prob(x)
 
     def predict_one_vs_rest(self, data):
         data = np.hstack([np.ones((len(data), 1)), data])
@@ -271,12 +225,9 @@ class Arbiter:
 
     def predict(self, data, category):
         if category == 2:
-            return self.predict_binary(self.predict_prob(data))
+            return super().predict(data)
         else:
             return self.predict_one_vs_rest(data)
-
-    def evaluation(self, y, y_hat):
-        return evaluator.getAccuracy(y, y_hat)
 
     def model_aggregate(self, host_parm, guest_param, host_data_weight,
                         guest_data_weight):
@@ -489,28 +440,25 @@ def run_homo_lr_arbiter(role_node_map,
     proxy_server.StopRecvLoop()
 
 
-class Client:
+class Client(LRModel):
 
-    def __init__(self, X, y, config, proxy_server, proxy_client_arbiter):
-        self.config = config
-        self.model = LRModel(X, y, self.config['category'], self.config['alpha'])
+    def __init__(self, X, y, proxy_server, proxy_client_arbiter):
+        super().__init__(X, y, category=config['category'], learning_rate=config['learning_rate'], alpha=config['alpha'])
         self.public_key = None
-        self.need_encrypt = self.config['need_encrypt']
-        self.lr = self.config['lr']
+        self.need_encrypt = config['need_encrypt']
         self.need_one_vs_rest = None
-        self.batch_size = self.config['batch_size']
         self.flag = True
         self.proxy_server = proxy_server
         self.proxy_client_arbiter = proxy_client_arbiter
+    
+    def get_theta(self):
+        return list(super().get_theta())
 
-    def predict(self, data=None):
-        pass
-
-    def fit_binary(self, batch_x, batch_y, theta=None):
+    def fit_binary(self, batch_x, batch_y):
         if self.need_one_vs_rest == False:
-            theta = self.model.theta
+            theta = self.theta
         else:
-            theta = list(theta)
+            theta = list(self.theta)
         if self.need_encrypt == 'YES':
             if self.flag == True:
                 # Only need to encrypt once
@@ -529,27 +477,23 @@ class Client:
             return theta
 
         else:  # Plaintext
-            self.model.theta = self.model.fit(batch_x,
-                                              batch_y,
-                                              theta,
-                                              eta=self.lr)
-            return list(self.model.theta)
-
+            super().fit(batch_x, batch_y)
+            
     def one_vs_rest(self, X, y, k):
         all_theta = []
         for i in range(0, k):
             y_i = np.array([1 if label == i else 0 for label in y])
-            theta = self.fit_binary(X, y_i, self.model.one_vs_rest_theta[i])
+            theta = self.fit_binary(X, y_i, self.one_vs_rest_theta[i])
             all_theta.append(theta)
         return all_theta
 
-    def fit(self, X, y, category):
-        if category == 2:
+    def fit(self, X, y):
+        if not self.multi_class:
             self.need_one_vs_rest = False
-            return self.fit_binary(X, y)
+            self.fit_binary(X, y)
         else:
             self.need_one_vs_rest = True
-            return self.one_vs_rest(X, y, category)
+            self.one_vs_rest(X, y, category)
 
     def batch_generator(self, all_data, batch_size, shuffle=True):
         """
@@ -618,7 +562,7 @@ def run_homo_lr_client(role_node_map,
 
     x, label = read_data(data_key)
 
-    client = Client(x, label, config, proxy_server, proxy_client_arbiter)
+    client = Client(x, label, proxy_server, proxy_client_arbiter)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
     
@@ -649,12 +593,11 @@ def run_homo_lr_client(role_node_map,
         log_handler.info("-------- start iteration {} --------".format(i+1))
         
         batch_x, batch_y = next(batch_gen)
-        param = client.fit(batch_x, batch_y,
-                                     config['category'])
+        client.fit(batch_x, batch_y)
 
-        proxy_client_arbiter.Remote(param, client_name+"_param")
-        client.model.theta = proxy_server.Get(
-                    "global_"+client_name+"_model_param")
+        proxy_client_arbiter.Remote(client.get_theta(), client_name+"_param")
+        client.set_theta(proxy_server.Get(
+                        "global_"+client_name+"_model_param"))
 
         if proxy_server.Get('convergence') == 'YES':
             log_handler.info("-------- end at iteration {} --------".format(i+1))
@@ -664,7 +607,7 @@ def run_homo_lr_client(role_node_map,
     model_file_path = ph.context.Context.get_model_file_path()
     log_handler.info("Current model file path is: {}".format(model_file_path))
     with open(model_file_path, 'wb') as fm:
-        pickle.dump(client.model.theta, fm)
+        pickle.dump(client.get_theta(), fm)
 
     proxy_server.StopRecvLoop()
 
