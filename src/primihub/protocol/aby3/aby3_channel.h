@@ -98,11 +98,10 @@ int Aby3Channel::_channelRecv(ThreadSafeQueue<std::string> &queue,
 
 template <typename T> void Aby3Channel::_channelSend(const T &val) {
   std::stringstream ss;
-  ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_" << peer_node_
-     << "_" << _GetCounterValue();
+  ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_" << peer_node_;
   std::string key = ss.str();
-
-  std::string send_str = std::to_string(val);
+  
+  std::string_view send_str(reinterpret_cast<const char*>(&val), sizeof(T));
 
   auto ret = channel_->send(key, send_str);
   if (ret != retcode::SUCCESS) {
@@ -120,6 +119,12 @@ template <typename T> void Aby3Channel::_channelSend(const T &val) {
 
 template <typename T>
 void Aby3Channel::_channelSend(const T *ptr, uint64_t elem_num) {
+  if (VLOG_IS_ON(5)) {
+    const std::type_info &r = typeid(T);
+    VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
+            << ", elem_num " << elem_num << ".";
+  }
+
   const char *raw_ptr = reinterpret_cast<const char *>(ptr);
   uint64_t raw_size = elem_num * sizeof(T);
 
@@ -127,7 +132,10 @@ void Aby3Channel::_channelSend(const T *ptr, uint64_t elem_num) {
 
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_"
-         << peer_node_ << "_" << _GetCounterValue();
+         << peer_node_;
+
+  LOG(INFO) << "Send key is " << key_ss.str() << ", send length " << raw_size
+            << " bytes.";
 
   auto ret = channel_->send(key_ss.str(), str);
   if (ret != retcode::SUCCESS) {
@@ -138,10 +146,6 @@ void Aby3Channel::_channelSend(const T *ptr, uint64_t elem_num) {
     LOG(ERROR) << ss.str();
     throw std::runtime_error(ss.str());
   }
-
-  VLOG(5) << "Issue send finish, pointer " << std::hex
-          << reinterpret_cast<uint64_t>(raw_ptr) << ", send size " << raw_size
-          << ", send key " << key_ss.str() << ".";
 }
 
 template <typename T> void Aby3Channel::asyncSendCopy(const T &val) {
@@ -162,14 +166,14 @@ template <typename T> void Aby3Channel::asyncSend(const eMatrix<T> &c) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support send int64_t matrix .");
 
-  _channelSend(reinterpret_cast<const char *>(c.data()), c.size());
+  _channelSend(c.data(), c.size());
 }
 
 template <typename T> void Aby3Channel::asyncSendCopy(const eMatrix<T> &c) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support send int64_t matrix .");
 
-  _channelSend(reinterpret_cast<const char *>(c.data()), c.size());
+  _channelSend(c.data(), c.size());
 }
 
 template <typename T>
@@ -177,7 +181,7 @@ void Aby3Channel::asyncSend(const T *val, uint64_t elem_num) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support send int64_t array.");
 
-  _channelSend(reinterpret_cast<const char *>(val), elem_num);
+  _channelSend(val, elem_num);
 }
 
 template <typename T>
@@ -185,7 +189,7 @@ void Aby3Channel::asyncSendCopy(const T *val, uint64_t elem_num) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support send int64_t array.");
 
-  _channelSend(reinterpret_cast<const char *>(val), elem_num);
+  _channelSend(val, elem_num);
 }
 
 template <typename T> void Aby3Channel::asyncRecv(T &dest) {
@@ -194,7 +198,7 @@ template <typename T> void Aby3Channel::asyncRecv(T &dest) {
 
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
-         << local_node_ << "_" << _GetCounterValue();
+         << local_node_;
 
   auto &recv_queue = get_queue_func_(key_ss.str());
   char *recv_ptr = reinterpret_cast<char *>(&dest);
@@ -215,9 +219,15 @@ template <typename T> void Aby3Channel::asyncRecv(eMatrix<T> &dest) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support int64_t matrix.");
 
+  if (VLOG_IS_ON(5)) {
+    const std::type_info &r = typeid(T);
+    VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
+            << ", elem_num " << dest.size() << ".";
+  }
+
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
-         << local_node_ << "_" << _GetCounterValue();
+         << local_node_;
 
   auto &recv_queue = get_queue_func_(key_ss.str());
   char *recv_ptr = reinterpret_cast<char *>(dest.data());
@@ -238,9 +248,15 @@ template <typename T> void Aby3Channel::asyncRecv(T *ptr, uint64_t elem_num) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support int64_t matrix.");
 
+  if (VLOG_IS_ON(5)) {
+    const std::type_info &r = typeid(T);
+    VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
+            << ", elem_num " << elem_num << ".";
+  }
+
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
-         << local_node_ << "_" << _GetCounterValue();
+         << local_node_;
 
   auto &recv_queue = get_queue_func_(key_ss.str());
   char *recv_ptr = reinterpret_cast<char *>(ptr);

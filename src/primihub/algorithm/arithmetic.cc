@@ -467,6 +467,7 @@ MPCSendRecvExecutor::MPCSendRecvExecutor(
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     partyid_node_map_[party_id] =
         primihub::Node(node.ip(), node.port(), node.use_tls());
+    partyid_node_map_[party_id].node_id_ = node.node_id();
   }
 
   auto iter = node_map.find(config.node_id);
@@ -510,15 +511,28 @@ int MPCSendRecvExecutor::initPartyComm(void) {
       std::make_shared<Aby3Channel>(job_id_, task_id_, local_node_.node_id());
   mpc_channel_prev_ =
       std::make_shared<Aby3Channel>(job_id_, task_id_, local_node_.node_id());
+
+  mpc_channel_next_->SetupCommChannel(
+      partyid_node_map_[next_party_id_].node_id(), grpc_channel_next_,
+      get_queue_fn_);
+  mpc_channel_prev_->SetupCommChannel(
+      partyid_node_map_[prev_party_id_].node_id(), grpc_channel_prev_,
+      get_queue_fn_);
+
+  return 0;
 }
 
 int MPCSendRecvExecutor::execute() {
   block next_seed(0, 0);
   block prev_seed(0, 0);
-  si64Matrix sh_m(100, 100);
-  Sh3ShareGen sh_gen;
 
+  Sh3ShareGen sh_gen;
   sh_gen.init(next_seed, prev_seed);
+
+  // Phase 1: simulate the communication in the creation of matrix's arithmetic
+  // share.
+  LOG(INFO) << "Send and recv si64Matrix.";
+  si64Matrix sh_m(100, 100);
   for (uint64_t i = 0; i < sh_m.mShares[0].size(); i++) {
     sh_m.mShares[0](i) = sh_gen.getShare();
     sh_m.mShares[1](i) = 0;
@@ -536,6 +550,87 @@ int MPCSendRecvExecutor::execute() {
       throw std::runtime_error(ss.str());
     }
   }
+
+  mpc_channel_next_->asyncSendCopy(sh_m.mShares[0]);
+  mpc_channel_prev_->asyncRecv(sh_m.mShares[1]);
+
+  for (uint64_t i = 0; i < sh_m.mShares[0].size(); i++) {
+    if (sh_m.mShares[0](i) != sh_m.mShares[1](i)) {
+      std::stringstream ss;
+      ss << "Find value mismatch, index " << i << ".";
+      LOG(ERROR) << ss.str();
+      throw std::runtime_error(ss.str());
+    }
+  }
+
+  LOG(INFO) << "Finish.";
+
+  // Phase 2: simulate the communication in the creation of matrix's binary
+  // share.
+  LOG(INFO) << "Send and recv sbMatrix.";
+  sbMatrix sh_bin_m(100, 64);
+
+  for (uint64_t i = 0; i < sh_bin_m.mShares[0].size(); i++) {
+    sh_bin_m.mShares[0](i) = sh_gen.getBinaryShare();
+    sh_bin_m.mShares[1](i) = 0;
+  }
+
+  mpc_channel_next_->asyncSendCopy(sh_bin_m.mShares[0].data(),
+                                   sh_bin_m.mShares[0].size());
+  mpc_channel_prev_->asyncRecv(sh_bin_m.mShares[1].data(),
+                               sh_bin_m.mShares[1].size());
+
+  for (uint64_t i = 0; i < sh_bin_m.mShares[0].size(); i++) {
+    if (sh_bin_m.mShares[0](i) != sh_bin_m.mShares[1](i)) {
+      std::stringstream ss;
+      ss << "Find value mismatch, index " << i << ".";
+      LOG(ERROR) << ss.str();
+      throw std::runtime_error(ss.str());
+    }
+  }
+
+  LOG(INFO) << "Finish.";
+
+  // Phase 3: simulate the communicate in the creatin of a value's arithmetic
+  // share.
+  LOG(INFO) << "Send and recv si64.";
+
+  si64 sh_val1;
+  sh_val1.mData[0] = sh_gen.getShare();
+  sh_val1.mData[1] = 0;
+
+  mpc_channel_next_->asyncSendCopy(sh_val1.mData[0]);
+  mpc_channel_prev_->asyncRecv(sh_val1.mData[1]);
+
+  if (sh_val1.mData[0] != sh_val1.mData[1]) {
+    std::stringstream ss;
+    ss << "Find value mismatch.";
+    LOG(ERROR) << ss.str();
+    throw std::runtime_error(ss.str());
+  }
+
+  LOG(INFO) << "Finish.";
+
+
+  // Phase 4: simulate the communicate in the creation of a value's binary 
+  // share.
+  LOG(INFO) << "Send and recv sb64.";
+
+  sb64 sh_val2;
+  sh_val2.mData[0] = sh_gen.getBinaryShare();
+  sh_val2.mData[1] = 0;
+
+  mpc_channel_next_->asyncSendCopy(sh_val2.mData[0]);
+  mpc_channel_prev_->asyncRecv(sh_val2.mData[1]);
+
+  if (sh_val2.mData[0] != sh_val2.mData[1]) {
+    std::stringstream ss;
+    ss << "Find value mismatch.";
+    LOG(ERROR) << ss.str();
+    throw std::runtime_error(ss.str());
+  }
+
+  LOG(INFO) << "Finish.";
 
   return 0;
 }
