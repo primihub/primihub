@@ -43,4 +43,4 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local 
+docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local
