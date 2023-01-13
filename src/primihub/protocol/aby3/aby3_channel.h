@@ -8,6 +8,7 @@
 #include "src/primihub/util/network/socket/channel.h"
 #include "src/primihub/util/threadsafe_queue.h"
 
+#include <atomic>
 #include <sstream>
 #include <string_view>
 
@@ -19,7 +20,36 @@ public:
     local_node_ = local_node_id;
     task_id_ = task_id;
     job_id_ = job_id;
-    counter_ = 0;
+    status_.store(2);
+
+    recv_fn_ = [this](ThreadSafeQueue<std::string> &recv_queue, char *recv_ptr,
+                      uint64_t recv_size) -> int {
+      int ret = 0;
+      status_.fetch_add(2);
+
+      do {
+        ret = this->_channelRecv(recv_queue, recv_ptr, recv_size);
+        if (ret == 0)
+          break;
+        else if (ret == 1)
+          sleep(0.5);
+        else
+          break;
+      } while ((status_.load() & 1) == 0);
+
+      status_.fetch_sub(2);
+      return ret;
+    };
+  }
+
+  ~Aby3Channel() {
+    // Set channel to invalid status.
+    status_++;
+
+    // Wait for async recv quit.
+    do {
+      sleep(0.5);
+    } while (status_.load() != 2);
   }
 
   using GetRecvQueueFunc =
@@ -44,13 +74,13 @@ public:
   template <typename T> void asyncSendCopy(const T *c, uint64_t elem_num);
 
   // Recv a single value.
-  template <typename T> void asyncRecv(T &dest);
+  template <typename T> std::future<int> asyncRecv(T &dest);
 
   // Recv value into matrix.
-  template <typename T> void asyncRecv(eMatrix<T> &dest);
+  template <typename T> std::future<int> asyncRecv(eMatrix<T> &dest);
 
   // Recv value into contiguous memory.
-  template <typename T> void asyncRecv(T *ptr, uint64_t elem_num);
+  template <typename T> std::future<int> asyncRecv(T *ptr, uint64_t elem_num);
 
 private:
   template <typename T> inline void _channelSend(const T &val);
@@ -61,30 +91,31 @@ private:
   inline int _channelRecv(ThreadSafeQueue<std::string> &queue, char *recv_ptr,
                           uint64_t recv_size);
 
-  inline uint64_t _GetCounterValue(void);
+  // Value of 'status_' indicate different channel status:
+  // status_ == 2: channel is valid;
+  // status_ % 2 == 1: channel is invalid;
+  // (status_ > 2) && (status % 2 == 0): async recv runs in ths channel.
+  std::atomic_uint32_t status_;
+
+  std::function<int(ThreadSafeQueue<std::string> &, char *, uint64_t)> recv_fn_;
 
   std::string job_id_;
   std::string task_id_;
   std::string local_node_;
   std::string peer_node_;
+
   std::shared_ptr<network::IChannel> channel_;
   GetRecvQueueFunc get_queue_func_;
-  std::mutex counter_mu_;
-  uint64_t counter_;
 };
-
-uint64_t Aby3Channel::_GetCounterValue(void) {
-  uint64_t counter_val = 0;
-  counter_mu_.lock();
-  counter_val = counter_++;
-  counter_mu_.unlock();
-  return counter_val;
-}
 
 int Aby3Channel::_channelRecv(ThreadSafeQueue<std::string> &queue,
                               char *recv_ptr, uint64_t recv_size) {
   std::string recv_str;
-  queue.wait_and_pop(recv_str);
+  if (queue.try_pop(recv_str) == false) {
+    VLOG(5) << "Recv queue 0x" << std::hex << reinterpret_cast<uint64_t>(&queue)
+            << " is empty.";
+    return 1;
+  }
 
   if (recv_str.size() != recv_size) {
     LOG(ERROR) << "Recv buffer size mismatch, expect " << recv_str.size()
@@ -93,6 +124,10 @@ int Aby3Channel::_channelRecv(ThreadSafeQueue<std::string> &queue,
   }
 
   memcpy(recv_ptr, recv_str.c_str(), recv_size);
+
+  VLOG(5) << "Recv finish, recv size " << recv_size << ", recv queue 0x"
+          << std::hex << reinterpret_cast<uint64_t>(&queue) << ".";
+
   return 0;
 }
 
@@ -100,8 +135,8 @@ template <typename T> void Aby3Channel::_channelSend(const T &val) {
   std::stringstream ss;
   ss << job_id_ << "_" << task_id_ << "_" << local_node_ << "_" << peer_node_;
   std::string key = ss.str();
-  
-  std::string_view send_str(reinterpret_cast<const char*>(&val), sizeof(T));
+
+  std::string_view send_str(reinterpret_cast<const char *>(&val), sizeof(T));
 
   auto ret = channel_->send(key, send_str);
   if (ret != retcode::SUCCESS) {
@@ -192,30 +227,31 @@ void Aby3Channel::asyncSendCopy(const T *val, uint64_t elem_num) {
   _channelSend(val, elem_num);
 }
 
-template <typename T> void Aby3Channel::asyncRecv(T &dest) {
+template <typename T> std::future<int> Aby3Channel::asyncRecv(T &dest) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support recv int64_t value.");
+
+  if ((status_.load() & 1) != 0)
+    throw std::runtime_error("Forbid recv due to invalid channel.");
+
+  if (status_.load() != 2)
+    throw std::runtime_error("Don't support parallel recv.");
 
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
          << local_node_;
 
-  auto &recv_queue = get_queue_func_(key_ss.str());
+  std::string recv_key = key_ss.str();
+  auto &recv_queue = get_queue_func_(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(&dest);
   uint64_t recv_size = sizeof(T);
 
-  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
-
-  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
-  if (ret) {
-    LOG(ERROR) << "Recv failed, buffer size mismatch.";
-    throw std::runtime_error("Recv failed, buffer size mismatch.");
-  }
-
-  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
+  return std::async(std::launch::async, recv_fn_, std::ref(recv_queue),
+                    recv_ptr, recv_size);
 }
 
-template <typename T> void Aby3Channel::asyncRecv(eMatrix<T> &dest) {
+template <typename T>
+std::future<int> Aby3Channel::asyncRecv(eMatrix<T> &dest) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support int64_t matrix.");
 
@@ -225,26 +261,27 @@ template <typename T> void Aby3Channel::asyncRecv(eMatrix<T> &dest) {
             << ", elem_num " << dest.size() << ".";
   }
 
+  if ((status_.load() & 1) != 0)
+    throw std::runtime_error("Forbid recv due to invalid channel.");
+
+  if (status_.load() != 2)
+    throw std::runtime_error("Don't support parallel recv.");
+
   std::stringstream key_ss;
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
          << local_node_;
 
-  auto &recv_queue = get_queue_func_(key_ss.str());
+  std::string recv_key = key_ss.str();
+  auto &recv_queue = get_queue_func_(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(dest.data());
   uint64_t recv_size = dest.size() * sizeof(T);
 
-  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
-
-  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
-  if (ret) {
-    LOG(ERROR) << "Recv failed, buffer size mismatch.";
-    throw std::runtime_error("Recv failed, buffer size mismatch.");
-  }
-
-  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
+  return std::async(std::launch::async, recv_fn_, std::ref(recv_queue),
+                    recv_ptr, recv_size);
 }
 
-template <typename T> void Aby3Channel::asyncRecv(T *ptr, uint64_t elem_num) {
+template <typename T>
+std::future<int> Aby3Channel::asyncRecv(T *ptr, uint64_t elem_num) {
   if (!(std::is_same<T, std::int64_t>::value))
     throw std::runtime_error("Only support int64_t matrix.");
 
@@ -258,19 +295,19 @@ template <typename T> void Aby3Channel::asyncRecv(T *ptr, uint64_t elem_num) {
   key_ss << job_id_ << "_" << task_id_ << "_" << peer_node_ << "_"
          << local_node_;
 
-  auto &recv_queue = get_queue_func_(key_ss.str());
+  std::string recv_key = key_ss.str();
+  auto &recv_queue = get_queue_func_(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(ptr);
   uint64_t recv_size = elem_num * sizeof(T);
 
-  VLOG(5) << "Recv start, recv key " << key_ss.str() << ".";
+  if ((status_.load() & 1) != 0)
+    throw std::runtime_error("Forbid recv due to invalid channel.");
 
-  int ret = _channelRecv(recv_queue, recv_ptr, recv_size);
-  if (ret) {
-    LOG(ERROR) << "Recv failed, buffer size mismatch.";
-    throw std::runtime_error("Recv failed, buffer size mismatch.");
-  }
+  if (status_.load() != 2)
+    throw std::runtime_error("Don't support parallel recv.");
 
-  VLOG(5) << "Recv finish, recv key " << key_ss.str() << ".";
+  return std::async(std::launch::async, recv_fn_, std::ref(recv_queue),
+                    recv_ptr, recv_size);
 }
 
 }; // namespace primihub

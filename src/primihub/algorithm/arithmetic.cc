@@ -523,24 +523,24 @@ int MPCSendRecvExecutor::initPartyComm(void) {
 }
 
 int MPCSendRecvExecutor::execute() {
-  block next_seed(0, 0);
-  block prev_seed(0, 0);
-
-  Sh3ShareGen sh_gen;
-  sh_gen.init(next_seed, prev_seed);
 
   // Phase 1: simulate the communication in the creation of matrix's arithmetic
   // share.
   LOG(INFO) << "Send and recv si64Matrix.";
+
   si64Matrix sh_m(100, 100);
+
+  srand(100);
   for (uint64_t i = 0; i < sh_m.mShares[0].size(); i++) {
-    sh_m.mShares[0](i) = sh_gen.getShare();
+    sh_m.mShares[0](i) = rand();
     sh_m.mShares[1](i) = 0;
   }
 
   mpc_channel_next_->asyncSendCopy(sh_m.mShares[0].data(),
                                    sh_m.mShares[0].size());
-  mpc_channel_prev_->asyncRecv(sh_m.mShares[1].data(), sh_m.mShares[1].size());
+  auto fut = mpc_channel_prev_->asyncRecv(sh_m.mShares[1].data(),
+                                          sh_m.mShares[1].size());
+  fut.get();
 
   for (uint64_t i = 0; i < sh_m.mShares[0].size(); i++) {
     if (sh_m.mShares[0](i) != sh_m.mShares[1](i)) {
@@ -552,7 +552,8 @@ int MPCSendRecvExecutor::execute() {
   }
 
   mpc_channel_next_->asyncSendCopy(sh_m.mShares[0]);
-  mpc_channel_prev_->asyncRecv(sh_m.mShares[1]);
+  fut = mpc_channel_prev_->asyncRecv(sh_m.mShares[1]);
+  fut.get();
 
   for (uint64_t i = 0; i < sh_m.mShares[0].size(); i++) {
     if (sh_m.mShares[0](i) != sh_m.mShares[1](i)) {
@@ -569,16 +570,18 @@ int MPCSendRecvExecutor::execute() {
   // share.
   LOG(INFO) << "Send and recv sbMatrix.";
   sbMatrix sh_bin_m(100, 64);
-
+  
+  srand(100);
   for (uint64_t i = 0; i < sh_bin_m.mShares[0].size(); i++) {
-    sh_bin_m.mShares[0](i) = sh_gen.getBinaryShare();
+    sh_bin_m.mShares[0](i) = rand();
     sh_bin_m.mShares[1](i) = 0;
   }
 
   mpc_channel_next_->asyncSendCopy(sh_bin_m.mShares[0].data(),
                                    sh_bin_m.mShares[0].size());
-  mpc_channel_prev_->asyncRecv(sh_bin_m.mShares[1].data(),
-                               sh_bin_m.mShares[1].size());
+  fut = mpc_channel_prev_->asyncRecv(sh_bin_m.mShares[1].data(),
+                                     sh_bin_m.mShares[1].size());
+  fut.get();
 
   for (uint64_t i = 0; i < sh_bin_m.mShares[0].size(); i++) {
     if (sh_bin_m.mShares[0](i) != sh_bin_m.mShares[1](i)) {
@@ -595,12 +598,14 @@ int MPCSendRecvExecutor::execute() {
   // share.
   LOG(INFO) << "Send and recv si64.";
 
+  srand(100);
   si64 sh_val1;
-  sh_val1.mData[0] = sh_gen.getShare();
+  sh_val1.mData[0] = rand();
   sh_val1.mData[1] = 0;
 
   mpc_channel_next_->asyncSendCopy(sh_val1.mData[0]);
-  mpc_channel_prev_->asyncRecv(sh_val1.mData[1]);
+  fut = mpc_channel_prev_->asyncRecv(sh_val1.mData[1]);
+  fut.get();
 
   if (sh_val1.mData[0] != sh_val1.mData[1]) {
     std::stringstream ss;
@@ -611,17 +616,17 @@ int MPCSendRecvExecutor::execute() {
 
   LOG(INFO) << "Finish.";
 
-
-  // Phase 4: simulate the communicate in the creation of a value's binary 
+  // Phase 4: simulate the communicate in the creation of a value's binary
   // share.
   LOG(INFO) << "Send and recv sb64.";
 
   sb64 sh_val2;
-  sh_val2.mData[0] = sh_gen.getBinaryShare();
+  sh_val2.mData[0] = 1; 
   sh_val2.mData[1] = 0;
 
   mpc_channel_next_->asyncSendCopy(sh_val2.mData[0]);
-  mpc_channel_prev_->asyncRecv(sh_val2.mData[1]);
+  fut = mpc_channel_prev_->asyncRecv(sh_val2.mData[1]);
+  fut.get();
 
   if (sh_val2.mData[0] != sh_val2.mData[1]) {
     std::stringstream ss;
