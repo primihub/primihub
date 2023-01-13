@@ -37,6 +37,7 @@
 // #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/defines.h"
+#include <glog/logging.h>
 
 namespace primihub {
 // ====== Data Store Driver ======
