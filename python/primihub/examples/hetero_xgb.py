@@ -1089,7 +1089,7 @@ class XGB_GUEST_EN:
 
         # calculate sums of encrypted 'g' and 'h'
         #TODO: only calculate the right ids and left ids
-        if ray_group:
+        if config['ray_group']:
             encrypte_gh_sums = self.sums_of_encrypted_ghs_with_ray(
                 X_guest, encrypted_ghs)
         else:
@@ -1582,7 +1582,7 @@ class XGB_HOST_EN:
         )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
 
         # decrypted the 'guest_gh_sums' with paillier
-        if ray_group:
+        if config['ray_group']:
             dec_guest_gh_sums = self.gh_sums_decrypted_with_ray(
                 guest_gh_sums, plain_gh_sums=plain_gh_sums)
         else:
@@ -1952,21 +1952,16 @@ ph.context.Context.func_params_map = {
     "xgb_guest_logic": ("paillier",)
 }
 
-# Number of tree to fit.
-num_tree = 5
-# the depth of each tree
-max_depth = 5
-# whether encrypted or not
-is_encrypted = True
-merge_gh = True
-
-ray_group = True
-
-min_child_weight = 5
-
-sample_type = "random"
-
-feature_sample = True
+config = {
+    'num_tree': 5,
+    'max_depth': 5,
+    'is_encrypted': True,
+    'merge_gh': True,
+    'ray_group': True,
+    'min_child_weight': 5,
+    'sample_type': "random",
+    'feature_sample': True
+}
 
 
 @ph.context.function(
@@ -2077,20 +2072,20 @@ def xgb_host_logic(cry_pri="paillier"):
     lookup_table_sum = {}
 
     # if is_encrypted:
-    xgb_host = XGB_HOST_EN(n_estimators=num_tree,
-                           max_depth=max_depth,
+    xgb_host = XGB_HOST_EN(n_estimators=config['num_tree'],
+                           max_depth=config['max_depth'],
                            reg_lambda=1,
                            sid=0,
-                           min_child_weight=min_child_weight,
+                           min_child_weight=config['min_child_weight'],
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
-                           encrypted=is_encrypted)
-    xgb_host.merge_gh = merge_gh
+                           encrypted=config['is_encrypted'])
+    xgb_host.merge_gh = config['merge_gh']
     xgb_host.fl_console_log = fl_console_log
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
-    xgb_host.sample_type = sample_type
+    xgb_host.sample_type = config['sample_type']
 
     paillier_encryptor = ActorPool(
         [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(20)])
@@ -2268,18 +2263,18 @@ def xgb_guest_logic(cry_pri="paillier"):
     X_guest = data
     # guest_log = open('/app/guest_log', 'w+')
     # if is_encrypted:
-    xgb_guest = XGB_GUEST_EN(n_estimators=num_tree,
-                             max_depth=max_depth,
+    xgb_guest = XGB_GUEST_EN(n_estimators=config['num_tree'],
+                             max_depth=config['max_depth'],
                              reg_lambda=1,
-                             min_child_weight=min_child_weight,
+                             min_child_weight=config['min_child_weight'],
                              objective='logistic',
                              sid=1,
                              proxy_server=proxy_server,
                              proxy_client_host=proxy_client_host,
-                             is_encrypted=is_encrypted,
+                             is_encrypted=config['is_encrypted'],
                              sample_ratio=0.3)  # noqa
 
-    if feature_sample:
+    if config['feature_sample']:
         guest_cols = X_guest.columns.tolist()
         selected_features = col_sample(guest_cols,
                                        sample_ratio=xgb_guest.feature_ratio)
@@ -2287,7 +2282,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     pub = proxy_server.Get('xgb_pub')
     xgb_guest.pub = pub
-    xgb_guest.merge_gh = merge_gh
+    xgb_guest.merge_gh = config['merge_gh']
     xgb_guest.batch_size = 10
 
     add_actor_num = 20
