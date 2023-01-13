@@ -73,7 +73,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
     std::shared_ptr<VMScheduler> scheduler{nullptr};
     std::thread t([&]() {
         LOG(INFO) << " 🔍 Proto task finding meta list from datasets...";
-        dataset_service_->metaService_->findPeerListFromDatasets(
+        dataset_service_->metaService()->findPeerListFromDatasets(
             datasets_with_tag,
             [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
                 LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
@@ -116,7 +116,11 @@ void ProtocolSemanticParser::scheduleProtoTask(
             });
     });
     t.join();
-    parseNofifyServer(scheduler->notifyServer());
+    if (scheduler == nullptr) {
+        LOG(ERROR) << "no scheduler created to dispatch task";
+    } else {
+        parseNofifyServer(scheduler->notifyServer());
+    }
 }
 
 void ProtocolSemanticParser::schedulePythonTask(
@@ -134,7 +138,7 @@ void ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<VMScheduler> scheduler{nullptr};
     std::thread t([&]() {
         LOG(INFO) << " 🔍 Python task finding meta list from datasets...";
-        dataset_service_->metaService_->findPeerListFromDatasets(
+        dataset_service_->metaService()->findPeerListFromDatasets(
             datasets_with_tag,
             [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
                 LOG(INFO) << " 🔍 Python task found meta list from datasets: "
@@ -153,7 +157,11 @@ void ProtocolSemanticParser::schedulePythonTask(
             });
     });
     t.join();
-    parseNofifyServer(scheduler->notifyServer());
+    if (scheduler == nullptr) {
+        LOG(ERROR) << "no scheduler created to dispatch task";
+    } else {
+        parseNofifyServer(scheduler->notifyServer());
+    }
 }
 
 void ProtocolSemanticParser::schedulePirTask(
@@ -169,7 +177,7 @@ void ProtocolSemanticParser::schedulePirTask(
     auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(lan_parser);
     auto datasets_with_tag = _proto_parser->getDatasets();
     LOG(INFO) << " 🔍 Finding meta list from datasets...";
-    dataset_service_->metaService_->findPeerListFromDatasets(
+    dataset_service_->metaService()->findPeerListFromDatasets(
         datasets_with_tag,
         [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
             LOG(INFO) << " 🔍 Found meta list from datasets: "
@@ -214,7 +222,7 @@ void ProtocolSemanticParser::schedulePsiTask(
     auto datasets_with_tag = _proto_parser->getDatasets();
     // Start find peer node by dataset list
     LOG(INFO) << " 🔍 PSI task finding meta list from datasets...";
-    dataset_service_->metaService_->findPeerListFromDatasets(
+    dataset_service_->metaService()->findPeerListFromDatasets(
         datasets_with_tag,
         [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
             LOG(INFO) << " 🔍 PSItask found meta list from datasets: "
@@ -324,17 +332,17 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
     int node_port;
     std::string data_url = _meta->getDataURL();
     DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-
+    std::string dataset_id = _meta->getDescription();
     // find node_id in peer_dataset_map
     auto it = peer_dataset_map.find(node_id);
     if (it == peer_dataset_map.end()) {
       // create new peer
       std::vector<DatasetWithParamTag> datasets_with_tag;
-      datasets_with_tag.push_back(std::make_pair(dataset_path, _param_tag));
+      datasets_with_tag.push_back(std::make_pair(dataset_id, _param_tag));
       peer_dataset_map[node_id] = datasets_with_tag;
     } else {
       // add dataset to peer
-      it->second.push_back(std::make_pair(dataset_path, _param_tag));
+      it->second.push_back(std::make_pair(dataset_id, _param_tag));
     }
   }
 }
