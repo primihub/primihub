@@ -1960,7 +1960,9 @@ config = {
     'ray_group': True,
     'min_child_weight': 5,
     'sample_type': "random",
-    'feature_sample': True
+    'feature_sample': True,
+    'host_columns': None,
+    'guest_columns': ['mean radius', 'mean texture']
 }
 
 
@@ -2028,6 +2030,12 @@ def xgb_host_logic(cry_pri="paillier"):
 
     # 读取注册数据
     data = ph.dataset.read(dataset_key=data_key).df_data
+
+    host_cols = config['host_columns']
+    if host_cols is None:
+        fl_console_log.info("select all columns")
+    else:
+        data = data[host_cols]
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
     # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
 
@@ -2251,6 +2259,12 @@ def xgb_guest_logic(cry_pri="paillier"):
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     data = ph.dataset.read(dataset_key=data_key).df_data
 
+    guest_cols = config['guest_columns']
+    if guest_cols is None:
+        fl_console_log.info("select all columns")
+    else:
+        fl_console_log.info("select  columns are {}".format(guest_cols))
+        data = data[guest_cols]
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_guest').df_data
     # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.guest', header=0)
 
