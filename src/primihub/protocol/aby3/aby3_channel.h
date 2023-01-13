@@ -49,7 +49,7 @@ public:
     // Wait for async recv quit.
     do {
       sleep(0.5);
-    } while (status_.load() != 2);
+    } while (status_.load() != 3);
   }
 
   using GetRecvQueueFunc =
