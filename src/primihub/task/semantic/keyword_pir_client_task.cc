@@ -47,6 +47,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
                 recv_query_data_direct = true;   // read query data from clientData key directly
             }
             dataset_path_ = client_data.value_string();
+            dataset_id_ = client_data.value_string();
             VLOG(5) << "dataset_path_: " << dataset_path_;
         } else {
             LOG(ERROR) << "no keyword: clientData match found";
@@ -87,6 +88,17 @@ std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::strin
 KeywordPIRClientTask::_LoadDataFromDataset() {
     apsi::util::CSVReader::DBData db_data;
     std::vector<std::string> orig_items;
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+        return std::make_pair(nullptr, std::vector<std::string>());
+    }
+    auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
+    if (access_info == nullptr) {
+        LOG(ERROR) << "get data accessinfo for dataset: " << this->dataset_id_ << " failed";
+        return std::make_pair(nullptr, std::vector<std::string>());
+    }
+    dataset_path_ = access_info->file_path_;
     try {
         apsi::util::CSVReader reader(dataset_path_);
         std::tie(db_data, orig_items) = reader.read();

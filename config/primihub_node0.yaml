@@ -30,6 +30,11 @@ datasets:
     model: "csv"
     source: "/tmp/falcon/dataset/MNIST/input_1" 
 
+  # FL homo lr test case datasets
+  - description: "homo_lr_data"
+    model: "csv"
+    source: "/tmp/FL/homo_lr/breast_cancer.csv"
+
 localkv: 
   model: "leveldb"
   path: "/data/localdb0"

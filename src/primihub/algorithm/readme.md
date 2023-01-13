@@ -7,9 +7,9 @@ cd test/primihub/script
 sh gen_logistic_data.sh
 cd ../../..
 ```
-#### 1.2 Build for linux
+#### 1.2 Build for linux x86_64
 ```
-bazel build --config=linux :algorithm_test
+bazel build --config=linux_x86_64 :algorithm_test
 ```
 #### 1.3 Run
 ```

@@ -4,7 +4,6 @@ from typing import Callable
 from cloudpickle import dumps
 from primihub.utils.logger_util import logger
 
-
 class NodeContext:
 
     def __init__(self, role, protocol, dataset_port_map, func=None):
@@ -58,6 +57,8 @@ class TaskContext:
         self.role_nodeid_map["arbiter"] = []
         self.role_nodeid_map["guest"] = []
         self.params_map = {}
+        self.link_context = None
+
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -184,6 +185,26 @@ class TaskContext:
             return None
         return node_context.dataset_service_shared_ptr
 
+    def task_id(self):
+        return self.params_map["taskid"]
+
+    def job_id(self):
+        return self.params_map["jobid"]
+
+    def init_link_context(self):
+        import linkcontext
+        self.link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
+        self.link_context.setTaskInfo(self.job_id(), self.task_id())
+
+    def get_link_conext(self):
+        if not self.link_context:
+            self.init_link_context()
+        return self.link_context
+
+    def Node(self, ip, port, use_tls, nodename = "default"):
+        import linkcontext
+        return linkcontext.Node(ip, port, use_tls, nodename)
+
 
 Context = TaskContext()
 
@@ -263,3 +284,4 @@ def function(protocol, role, datasets, port, task_type="default"):
         return wapper
 
     return function_decorator
+

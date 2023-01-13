@@ -54,6 +54,11 @@ datasets:
     model: "csv"
     source: "data/FL/wisconsin.data"
 
+  # FL homo lr test case datasets
+  - description: "train_homo_lr_guest"
+    model: "csv"
+    source: "data/FL/homo_lr/train/train_breast_cancer_guest.csv"
+
   # PSI test caset datasets
   - description: "psi_client_data"
     model: "csv"

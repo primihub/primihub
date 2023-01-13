@@ -7,7 +7,7 @@ The `PPA`(`Parallel Prefix Adder`) circuit built by kogge-stone algorithm has mi
 The test code contian cases for `PPA` and `MSB` integrated with aby3, so more approach to actual use.    
 In the root directory of the project:
 ```
-bazel build --config=linux :protocol_aby3_test
+bazel build --config=linux_x86_64 :protocol_aby3_test
 ./bazel-out/k8-fastbuild/bin/protocol_aby3_test.runfiles/__main__/protocol_aby3_test
 ```
 Then test code output message like:
@@ -41,7 +41,7 @@ Then test code output message like:
 Test case only for circuit itself which is not integrated with aby3 aim to check the circuit built is right or not.    
 In the root directory of the project:
 ```
-bazel build --config=linux :primitive_test
+bazel build --config=linux_x86_64 :primitive_test
 ./bazel-out/k8-fastbuild/bin/primitive_test.runfiles/__main__/primitive_test
 ```
 Then test code output message like:    

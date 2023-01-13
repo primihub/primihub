@@ -44,12 +44,14 @@ message TaskRequest {
   string job_id = 1;
   string task_id = 2;
   string role = 3;
+  uint64 data_len = 4;
   bytes data = 22;
 }
 
 message TaskResponse {
   retcode ret_code = 1;
   string  msg_info = 2;
+  uint64 data_len = 4;
   bytes data = 20;
 }
 
