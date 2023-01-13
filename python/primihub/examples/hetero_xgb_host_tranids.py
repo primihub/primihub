@@ -1,5 +1,6 @@
 import primihub as ph
 from primihub import dataset, context
+from multiprocessing import cpu_count
 from phe import paillier
 from sklearn import metrics
 from primihub.primitive.opt_paillier_c2py_warpper import *
@@ -16,6 +17,7 @@ from typing import (
     Union,
     TypeVar,
 )
+import pathos
 from multiprocessing import Process, Pool
 import pandas
 import pyarrow
@@ -622,29 +624,27 @@ def groupby_sum(group_col, pub, on_cols, add_actors):
 @ray.remote
 class GroupPool:
 
-    def __init__(self, add_actors, pub, on_cols) -> None:
-        self.add_actors = add_actors
-        self.pub = pub
-        self.on_cols = on_cols
+    def __init__(self, merge_gh) -> None:
+        self.merge_gh = merge_gh
 
-    def groupby(self, group_col):
+    def groupby(self, internal_groups):
         df_list = []
-        for tmp_col in group_col:
-            tmp_sum = tmp_col._aggregate_on(
-                PallierSum,
-                on=self.on_cols,
-                #   on=['g', 'h'],
-                ignore_nulls=True,
-                pub_key=self.pub,
-                add_actors=self.add_actors).to_pandas()
+        if self.merge_gh:
+            for tmp_col in internal_groups:
+                tmp_sum = tmp_col.sum(on=['g']).to_pandas()
+                tmp_cnt = tmp_col.count().to_pandas()
+                tmp_df = pd.merge(tmp_sum, tmp_cnt)
+                df_list.append(tmp_df)
+        else:
+            for tmp_col in internal_groups:
+                tmp_sum = tmp_col.sum(on=['g', 'h']).to_pandas()
+                tmp_sum.rename(columns={
+                    'sum(g)': 'g',
+                    'sum(h)': 'h'
+                },
+                               inplace=True)
+                df_list.append(tmp_sum)
 
-            tmp_count = tmp_col.count().to_pandas()
-            tmp_df = pd.merge(tmp_sum, tmp_count)
-
-            df_list.append(tmp_df)
-
-        # return tmp_sum.to_pandas()
-        # return pd.merge(tmp_sum, tmp_count)
         return df_list
 
 
@@ -878,7 +878,8 @@ class XGB_HOST_EN:
             top_ratio=0.2,
             other_ratio=0.2,
             sample_type='goss',
-            limit_size=20000):
+            limit_size=20000,
+            host_iter=0):
 
         # self.channel = channel
         self.proxy_server = proxy_server
@@ -902,7 +903,7 @@ class XGB_HOST_EN:
         self.lookup_table_sum = {}
         self.host_record = 0
         self.guest_record = 0
-        self.ratio = 10**8
+        self.ratio = 10**10
         self.const = 2
         self.g_ratio = 10**8
         self.encrypted = encrypted
@@ -912,6 +913,7 @@ class XGB_HOST_EN:
         self.other_ratio = other_ratio
         self.sample_type = sample_type
         self.limit_size = limit_size
+        self.host_iter = host_iter
 
     def _grad(self, y_hat, Y):
 
@@ -974,6 +976,202 @@ class XGB_HOST_EN:
 
         else:
             return None
+
+    def get_sum_on_ids(self, df_buckest: pd.DataFrame, plain_gh: pd.DataFrame):
+        if 'g' in df_buckest.columns:
+            df_buckest.pop('g')
+
+        if 'h' in df_buckest.columns:
+            df_buckest.pop('h')
+
+        m, n = df_buckest.shape
+        print("=========", plain_gh)
+
+        df_buckest['g'] = plain_gh['g']
+        df_buckest['h'] = plain_gh['h']
+        iter_cols = df_buckest.columns.difference(['g', 'h'])
+        ray_ds = ray.data.from_pandas(df_buckest)
+        plain_gh_sums = plain_gh.sum(axis=0)
+
+        G_lefts = []
+        G_rights = []
+        H_lefts = []
+        H_rights = []
+        cuts = []
+        vars = []
+
+        for current_col in iter_cols:
+            current_ds = ray_ds.select_columns(cols=[current_col, 'g', 'h'])
+            # tmp_cnt = current_ds.count()
+            current_gpdata = current_ds.groupby(current_col)
+            gh_sums = current_gpdata.sum(on=['g', 'h']).to_pandas()
+
+            gh_sums.rename(columns={'sum(g)': 'g', 'sum(h)': 'h'}, inplace=True)
+
+            sorted_gh_sums = gh_sums.sort_values(by=current_col, ascending=True)
+            cumsum_sorted_gh_sums = sorted_gh_sums.cumsum()
+            current_m, current_n = cumsum_sorted_gh_sums.shape
+
+            # tmp_g_lefts = cumsum_sorted_gh_sums['g']
+            tmp_g_lefts = cumsum_sorted_gh_sums['g']
+            # tmp_h_lefts = cumsum_sorted_gh_sums['h']
+            tmp_h_lefts = cumsum_sorted_gh_sums['h']
+
+            tmp_var = [current_col] * current_m
+            tmp_cut = sorted_gh_sums[current_col]
+
+            G_lefts += tmp_g_lefts.values.tolist()
+            H_lefts += tmp_h_lefts.values.tolist()
+            vars += tmp_var
+            cuts += tmp_cut.values.tolist()
+
+            print("=======", tmp_g_lefts, tmp_h_lefts, tmp_var, tmp_cut)
+
+        GHS = pd.DataFrame({
+            'G_left': G_lefts,
+            'H_left': H_lefts,
+            'var': vars,
+            'cut': cuts
+        })
+
+        GHS['G_right'] = plain_gh_sums['g'] - GHS['G_left']
+        GHS['H_right'] = plain_gh_sums['h'] - GHS['H_left']
+
+        return GHS
+
+    def assign_or_append(self, obj, buffer):
+        if obj is None:
+            return buffer
+
+        return obj + buffer
+
+    def sum_bygroup(self, select_group):
+        select_res = []
+        for tmp_group in select_group:
+            bucket_ghs_sum = tmp_group.sum(on=['g', 'h']).to_pandas()
+            bucket_ghs_sum.rename(columns={
+                'sum(g)': 'g',
+                'sum(h)': 'h'
+            },
+                                  inplace=True)
+
+            values = bucket_ghs_sum.values
+            col_names = bucket_ghs_sum.columns
+            select_res.append((values, col_names))
+
+        return select_res
+
+    def gh_sums_bucket_guest(self, bucket_guest: pd.DataFrame, plain_gh):
+        print("current bucket_guest: ", bucket_guest)
+
+        # merge_df = pd.concat([bucket_guest, plain_gh], axis=1)
+        # plain_gh = self.gh.iloc[bucket_guest.index]
+
+        bucket_guest['g'] = plain_gh['g']
+        bucket_guest['h'] = plain_gh['h']
+        if self.merge_gh:
+            bucket_guest['g'] = self.G['g']
+
+        ray_ds = ray.data.from_pandas(bucket_guest)
+
+        plain_gh_sums = plain_gh.sum(axis=0)
+
+        gh_cols = ['g', 'h']
+
+        cols = bucket_guest.columns.difference(['g', 'h'])
+
+        G1 = None
+        G2 = None
+        H1 = None
+        H2 = None
+        Cuts = None
+        Vars = None
+
+        internal_groups = []
+
+        for tmp_col in cols:
+            select_cols = [tmp_col] + gh_cols
+            select_ds = ray_ds.select_columns(cols=select_cols)
+            select_group = select_ds.groupby(tmp_col)
+            internal_groups.append(select_group)
+
+        self.batch_size = 8
+        groups = [
+            internal_groups[x:x + self.batch_size]
+            for x in range(0, len(internal_groups), self.batch_size)
+        ]
+        res = list(
+            self.group_pools.map(lambda a, v: a.groupby.remote(v), groups))
+
+        plat_res = []
+        for tmp_res in res:
+            plat_res += tmp_res
+
+        # pool = pathos.multiprocessing.Pool()
+        # res = pool.map_async(self.sum_bygroup, groups).get()
+        # for cur_res in res:
+        #     for internal in cur_res:
+        #         values = internal[0]
+        #         col_names = internal[1]
+        #         inter_df = pd.DataFrame(values, columns=col_names)
+        #         plat_res.append(inter_df)
+        if self.merge_gh:
+            for tmp_col, bucket_ghs_sum in zip(cols, plat_res):
+                ascending_ghs_sum = bucket_ghs_sum.sort_values(by=tmp_col,
+                                                               ascending=True)
+                ascending_ghs_sum[
+                    'g'] = ascending_ghs_sum['sum(g)'] // self.ratio
+                ascending_ghs_sum['h'] = ascending_ghs_sum[
+                    'sum(g)'] - ascending_ghs_sum['g'] * self.ratio
+
+                ascending_ghs_sum['g'] = ascending_ghs_sum[
+                    'g'] - self.const * ascending_ghs_sum['count()']
+                cum_ghs_sum = ascending_ghs_sum.cumsum()
+                g_lefts = cum_ghs_sum['g'].values.tolist()
+                h_lefts = cum_ghs_sum['h'].values.tolist()
+                g_rights = (plain_gh_sums['g'] -
+                            cum_ghs_sum['g']).values.tolist()
+                h_rights = (plain_gh_sums['h'] -
+                            cum_ghs_sum['h']).values.tolist()
+                var_name = [tmp_col] * len(g_lefts)
+                vat_cuts = bucket_ghs_sum[tmp_col].values.tolist()
+
+                G1 = self.assign_or_append(G1, g_lefts)
+                G2 = self.assign_or_append(G2, g_rights)
+                H1 = self.assign_or_append(H1, h_lefts)
+                H2 = self.assign_or_append(H2, h_rights)
+                Vars = self.assign_or_append(Vars, var_name)
+                Cuts = self.assign_or_append(Cuts, vat_cuts)
+
+        else:
+            for tmp_col, bucket_ghs_sum in zip(cols, plat_res):
+                ascending_ghs_sum = bucket_ghs_sum.sort_values(by=tmp_col,
+                                                               ascending=True)
+                cum_ghs_sum = ascending_ghs_sum.cumsum()
+                g_lefts = cum_ghs_sum['g'].values.tolist()
+                h_lefts = cum_ghs_sum['h'].values.tolist()
+                g_rights = (plain_gh_sums['g'] -
+                            cum_ghs_sum['g']).values.tolist()
+                h_rights = (plain_gh_sums['h'] -
+                            cum_ghs_sum['h']).values.tolist()
+                var_name = [tmp_col] * len(g_lefts)
+                vat_cuts = bucket_ghs_sum[tmp_col].values.tolist()
+
+                G1 = self.assign_or_append(G1, g_lefts)
+                G2 = self.assign_or_append(G2, g_rights)
+                H1 = self.assign_or_append(H1, h_lefts)
+                H2 = self.assign_or_append(H2, h_rights)
+                Vars = self.assign_or_append(Vars, var_name)
+                Cuts = self.assign_or_append(Cuts, vat_cuts)
+
+        return pd.DataFrame({
+            'G_left': G1,
+            'G_right': G2,
+            'H_left': H1,
+            'H_right': H2,
+            'var': Vars,
+            'cut': Cuts
+        })
 
     def gh_sums_decrypted_with_ray(self,
                                    gh_sums_dict,
@@ -1155,7 +1353,9 @@ class XGB_HOST_EN:
                             current_depth,
                             plain_gh=pd.DataFrame(columns=['g', 'h'])):
         m, n = X_host.shape
-        # print("current_depth: ", current_depth, m)
+        self.host_iter += 1
+        print("current_depth: ", current_depth, self.host_iter, X_host,
+              plain_gh)
 
         if (self.min_child_sample and
                 m < self.min_child_sample) or current_depth > self.max_depth:
@@ -1170,16 +1370,23 @@ class XGB_HOST_EN:
         plain_gh_sums = plain_gh.sum(axis=0)
 
         guest_gh_sums = self.proxy_server.Get(
-            'encrypte_gh_sums'
+            'encrypte_gh_sums' + str(self.host_iter)
         )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
 
         # decrypted the 'guest_gh_sums' with paillier
-        if ray_group:
-            dec_guest_gh_sums = self.gh_sums_decrypted_with_ray(
-                guest_gh_sums, plain_gh_sums=plain_gh_sums)
+        if trans_guest_buckets:
+            # dec_guest_gh_sums = self.get_sum_on_ids(guest_gh_sums, plain_gh)
+            # self.get_sum_on_ids(guest_gh_sums, )
+            dec_guest_gh_sums = self.gh_sums_bucket_guest(
+                guest_gh_sums, plain_gh)
+
         else:
-            dec_guest_gh_sums = self.gh_sums_decrypted(
-                guest_gh_sums, plain_gh_sums=plain_gh_sums)
+            if ray_group:
+                dec_guest_gh_sums = self.gh_sums_decrypted_with_ray(
+                    guest_gh_sums, plain_gh_sums=plain_gh_sums)
+            else:
+                dec_guest_gh_sums = self.gh_sums_decrypted(
+                    guest_gh_sums, plain_gh_sums=plain_gh_sums)
 
         # get the best cut of 'guest'
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
@@ -1276,7 +1483,6 @@ class XGB_HOST_EN:
 
             f_t[id_left] = w_left
             f_t[id_right] = w_right
-            # print("===========", (role, record, w_left, w_right))
 
             tree_structure[(role, record)][('left',
                                             w_left)] = self.host_tree_construct(
@@ -1359,6 +1565,7 @@ class XGB_HOST_EN:
                 'g': self._grad(y_hat, Y.flatten()),
                 'h': self._hess(y_hat, Y.flatten())
             })
+            self.gh = gh
             if self.sample_type == 'goss' and len(X_host) > self.limit_size:
                 top_ids, low_ids = goss_sample(gh,
                                                top_rate=self.top_ratio,
@@ -1474,7 +1681,20 @@ class XGB_HOST_EN:
                 # print("Encrypt finish.")
 
             else:
-                self.proxy_client_guest.Remote(current_ghs, "gh_en")
+                if self.merge_gh:
+                    cp_gh = current_ghs.copy()
+                    cp_gh['g'] = cp_gh['g'] + self.const
+                    cp_gh = np.round(cp_gh, 5)
+
+                    merge_gh = (cp_gh['g'] * self.ratio + cp_gh['h'])
+
+                    self.G = pd.DataFrame({'g': merge_gh})
+                    # current_ghs['g'] = merge_gh
+
+                    self.proxy_client_guest.Remote(
+                        pd.DataFrame({'g': merge_gh}), "gh_en")
+                else:
+                    self.proxy_client_guest.Remote(current_ghs, "gh_en")
 
             # self.tree_structure[t + 1] = self.host_tree_construct(
             #     X_host.copy(), f_t, 0, gh)
@@ -1540,12 +1760,12 @@ class XGB_HOST_EN:
 
 
 # Number of tree to fit.
-num_tree = 1
+num_tree = 10
 # the depth of each tree
 max_depth = 3
 # whether encrypted or not
 is_encrypted = False
-merge_gh = True
+merge_gh = False
 
 ray_group = True
 
@@ -1554,6 +1774,9 @@ min_child_weight = 5
 sample_type = "random"
 
 feature_sample = True
+
+trans_guest_buckets = True
+cpu_number = cpu_count()
 
 if __name__ == "__main__":
 
@@ -1565,10 +1788,6 @@ if __name__ == "__main__":
     #     port='8000',
     #     task_type="classification")
     # def xgb_host_logic(cry_pri="paillier"):
-
-    items = list(range(100))
-    map_func = lambda i: i * 2
-    output = ray.get([map.remote(i, map_func) for i in items])
     # fl_console_log.info("start xgb host logic...")
     logger.info("start xgb host logic...")
     fl_file_log.debug("xgb host logic file")
@@ -1623,9 +1842,10 @@ if __name__ == "__main__":
 
     # 读取注册数据
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = pd.read_csv("data/FL/hetero_xgb/train/train_breast_cancer_host.csv")
+    # data = pd.read_csv("data/FL/hetero_xgb/train/train_breast_cancer_host.csv")
     # data = ph.dataset.read(dataset_key='train_hetero_xgb_host').df_data
-    # data = pd.read_csv('/home/xusong/data/epsilon_normalized.t.host', header=0)
+    data = pd.read_csv('/home/xusong/data/epsilon_normalized.host',
+                       header=0).iloc[:, 550:]
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, 550:]
@@ -1679,15 +1899,23 @@ if __name__ == "__main__":
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
-                           encrypted=is_encrypted)
+                           encrypted=is_encrypted,
+                           top_ratio=0.2,
+                           other_ratio=0.1)
+
     xgb_host.merge_gh = merge_gh
     xgb_host.fl_console_log = fl_console_log
+    group_pools = ActorPool(
+        [GroupPool.remote(merge_gh) for _ in range(cpu_number - 3)])
 
     proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
     xgb_host.sample_type = sample_type
+    xgb_host.group_pools = group_pools
 
-    paillier_encryptor = ActorPool(
-        [PaillierActor.remote(xgb_host.prv, xgb_host.pub) for _ in range(20)])
+    paillier_encryptor = ActorPool([
+        PaillierActor.remote(xgb_host.prv, xgb_host.pub)
+        for _ in range(cpu_number - 3)
+    ])
 
     xgb_host.lookup_table = {}
     start = time.time()
