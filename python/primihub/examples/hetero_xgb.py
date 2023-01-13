@@ -298,15 +298,7 @@ def atom_paillier_sum(items, pub_key, add_actors, limit=15):
                                 items)
 
     items_list = [items[x:x + limit] for x in range(0, len(items), limit)]
-    # N = int(len(items) / limit)
-    # items_list = []
-    # inter_results = []
-    # for i in range(N):
-    #     tmp_val = items[i * limit:(i + 1) * limit]
-    #     # tmp_add_actor = self.add_actors[i]
-    #     if i == (N - 1):
-    #         tmp_val = items[i * limit:]
-    #     items_list.append(tmp_val)
+
     inter_results = list(
         add_actors.map(lambda a, v: a.add.remote(v), items_list))
 
@@ -1005,34 +997,6 @@ class XGB_GUEST_EN:
             for x in range(0, len(internal_groups), self.batch_size)
         ]
 
-        # if len(tmp_groups) <= self.batch_size:
-        #     tmp_groups.append(tmp_group)
-        # else:
-        #     groups.append(tmp_group)
-        #     tmp_groups = []
-
-        #     # sum_que.put(tmp_sum.to_pandas())
-
-        # pool = Pool(7)
-        # tasks = []
-
-        # for i in range(len(groups)):
-        #     # tmp_task = pool.apply_async(func=self.sum_job, args=(groups[i],))
-        #     tmp_task = pool.apply_async(func=sum_job,
-        #                                 args=(
-        #                                     groups[i],
-        #                                     self.encrypted,
-        #                                     self.pub,
-        #                                     self.paillier_add_actors,
-        #                                 ))
-
-        #     tasks.append(tmp_task)
-
-        # pool.close()
-        # pool.join()
-
-        # for tmp_task in tasks:
-        #     print(tmp_task.get())
         print("==============", cols, groups, len(groups))
 
         if self.encrypted:
@@ -1056,121 +1020,15 @@ class XGB_GUEST_EN:
             for tmp_res in internal_res:
                 res += tmp_res
 
-            # if len(groups) > 20:
-            #     mid = int(len(groups) / 2)
-            #     groups1 = groups[:mid]
-            #     groups2 = groups[mid:]
-
-            #     res1 = list(
-            #         self.grouppools.map(lambda a, v: a.groupby.remote(v),
-            #                             groups1))
-
-            #     with self.cli1:
-            #         if self.merge_gh:
-            #             res2 = [
-            #                 tmp_group._aggregate_on(
-            #                     PallierSum,
-            #                     on=['g'],
-            #                     ignore_nulls=True,
-            #                     pub_key=self.pub,
-            #                     add_actors=self.paillier_add_actors).to_pandas(
-            #                     ) for tmp_group in groups2
-            #             ]
-
-            #         else:
-            #             res2 = [
-            #                 tmp_group._aggregate_on(
-            #                     PallierSum,
-            #                     on=['g', 'h'],
-            #                     ignore_nulls=True,
-            #                     pub_key=self.pub,
-            #                     add_actors=self.paillier_add_actors).to_pandas(
-            #                     ) for tmp_group in groups2
-            #             ]
-
-            #     res = res1 + res2
-            # else:
-
-            # if len(groups) > 20:
-            #     mid = int(len(groups) / 2)
-            #     groups1 = groups[:mid]
-            #     groups2 = groups[mid:]
-
-            #     res1 = list(
-            #         self.grouppools.map(lambda a, v: a.groupby.remote(v),
-            #                             groups1))
-
-            #     with self.cli1:
-            #         if self.merge_gh:
-            #             res2 = [
-            #                 tmp_group._aggregate_on(
-            #                     PallierSum,
-            #                     on=['g'],
-            #                     ignore_nulls=True,
-            #                     pub_key=self.pub,
-            #                     add_actors=self.paillier_add_actors).to_pandas(
-            #                     ) for tmp_group in groups2
-            #             ]
-
-            #         else:
-            #             res2 = [
-            #                 tmp_group._aggregate_on(
-            #                     PallierSum,
-            #                     on=['g', 'h'],
-            #                     ignore_nulls=True,
-            #                     pub_key=self.pub,
-            #                     add_actors=self.paillier_add_actors).to_pandas(
-            #                     ) for tmp_group in groups2
-            #             ]
-
-            #     res = res1 + res2
-            # if self.merge_gh:
-            #     grouppools2 = ActorPool([
-            #         GroupPool.remote(self.paillier_add_actors,
-            #                          self.pub,
-            #                          on_cols=['g']) for _ in range(10)
-            #     ])
-            # else:
-            #     grouppools2 = ActorPool([
-            #         GroupPool.remote(self.paillier_add_actors,
-            #                          self.pub,
-            #                          on_cols=['g', 'h'])
-            #         for _ in range(10)
-            #     ])
-
-            # res2 = list(
-            #     self.grouppools.map(lambda a, v: a.groupby.remote(v),
-            #                         groups1))
-
-            # pass
-
-            # else:
-            # res = list(
-            #     self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
         else:
             res = [
-                tmp_group.sum(on=['g', 'h']).to_pandas() for tmp_group in groups
+                tmp_group.sum(on=['g', 'h']).to_pandas()
+                for tmp_group in internal_groups
             ]
 
         for key, tmp_task in zip(cols, res):
             # total_left_ghs[key] = tmp_task.get()
             total_left_ghs[key] = tmp_task
-
-            # if self.encrypted:
-            #     tmp_sum = tmp_group._aggregate_on(
-            #         PallierSum,
-            #         on=['g', 'h'],
-            #         ignore_nulls=True,
-            #         pub_key=self.pub,
-            #         add_actors=self.paillier_add_actors)
-            # else:
-            #     tmp_sum = tmp_group.sum(on=['g', 'h'])
-            # total_left_ghs[tmp_col] = tmp_sum.to_pandas()
-
-            # total_left_ghs[tmp_col] = tmp_sum.to_pandas().sort_values(
-            #     by=tmp_col, ascending=True)
-
-        # print("current total_left_ghs: ", total_left_ghs)
 
         return total_left_ghs
 
