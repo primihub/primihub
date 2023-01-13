@@ -70,11 +70,11 @@ datasets:
     table_name: "psi_client_data"
     source: "data/client_e.db3"
 
-  - description: "train_hetero_xgb_host"
+  - description: "train_hetero_xgb_guest"
     model: "csv"
     source: "data/FL/hetero_xgb/train/train_breast_cancer_guest.csv"
 
-  - description: "test_hetero_xgb_host"
+  - description: "test_hetero_xgb_guest"
     model: "csv"
     source: "data/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
 
