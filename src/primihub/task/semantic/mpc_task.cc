@@ -113,7 +113,6 @@ namespace primihub::task
     {
       PartyConfig config(node_id, task_param_);
 
-      auto& node_map = config.node_map;
       try
       {
         auto param_map = task_param_.params().param_map();
@@ -133,10 +132,10 @@ namespace primihub::task
         algorithm_ = nullptr;
       }
     }
-    else if (function_name == "missing_val_processing")
+    else if (function_name == "AbnormalProcessTask")
     {
       PartyConfig config(node_id, task_param_);
-      auto& node_map = config.node_map;
+      // std::map<std::string, Node> &node_map = config.node_map;
       try
       {
         algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
@@ -161,7 +160,8 @@ namespace primihub::task
       LOG(ERROR) << "Algorithm is not initialized";
       return -1;
     }
-
+    // algorithm_->set_task_info(platform(),job_id(),task_id());
+    
     algorithm_->loadParams(task_param_);
     int ret = 0;
     do
@@ -183,7 +183,7 @@ namespace primihub::task
       ret = algorithm_->execute();
       if (ret)
       {
-        LOG(ERROR) << "Run train failed.";
+        LOG(ERROR) << "Run task failed.";
         break;
       }
 

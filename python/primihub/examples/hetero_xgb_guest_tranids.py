@@ -875,7 +875,8 @@ class XGB_GUEST_EN:
             record=0,
             is_encrypted=None,
             sample_ratio=0.3,
-            batch_size=8):
+            batch_size=8,
+            guest_iter=0):
         # self.channel = channel
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
@@ -902,6 +903,7 @@ class XGB_GUEST_EN:
         self.chops = 20
         self.feature_ratio = sample_ratio
         self.batch_size = batch_size
+        self.guest_iter = guest_iter
 
     def sum_job(self, tmp_group):
         if self.encrypted:
@@ -915,6 +917,93 @@ class XGB_GUEST_EN:
             tmp_group = tmp_group.sum(on=['g', 'h'])
 
         return tmp_sum.to_pandas()
+
+    def transfer_bin_buckets(self, X_guest, cal_hist=True, bins=None):
+        n = len(X_guest)
+        if bins is None:
+            bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
+
+        # if self.merge_gh:
+        #     X_guest['g'] = encrypted_ghs['g']
+        #     cols = X_guest.columns.difference(['g', 'h'])
+        # else:
+        #     X_guest['g'] = encrypted_ghs['g']
+        #     X_guest['h'] = encrypted_ghs['h']
+        cols = X_guest.columns.difference(['g', 'h'])
+
+        set_items = X_guest[cols].apply(np.unique, axis=0)
+        X_guest_max0 = X_guest[cols].max(axis=0) + 0.005
+        X_guest_min0 = X_guest[cols].min(axis=0)
+        X_guest_width = (X_guest_max0 - X_guest_min0) / bins
+
+        set_cols = [col for col in cols if len(set_items[col]) < bins]
+
+        # ray_x_guest = ray.data.from_pandas(X_guest)
+
+        # binning X_guest
+        for tmp_col in cols:
+            if tmp_col in set_cols:
+                continue
+            current_col = X_guest[tmp_col]
+            col_min = X_guest_min0[tmp_col]
+            col_width = X_guest_width[tmp_col]
+            col_bin = np.ceil((current_col - col_min) // col_width)
+
+            # col_split = round(col_min + col_bin * col_width, 3)
+            # X_guest[tmp_col] = col_split
+            X_guest[tmp_col] = col_bin
+
+        min_width_dict = {'min': X_guest_min0, 'width': X_guest_width}
+
+        return X_guest, min_width_dict
+
+    def buckets_with_ray(self, X_guest, bins=None):
+        n, _ = X_guest.shape
+        if bins is None:
+            bins = max(int(np.ceil(np.log(n) / np.log(4))), 2)
+
+        cols = X_guest.columns
+        index = X_guest.index.tolist()
+        set_items = X_guest[cols].apply(np.unique, axis=0)
+        X_guest_max0 = X_guest[cols].max(axis=0) + 0.005
+        X_guest_min0 = X_guest[cols].min(axis=0)
+        X_guest_width = (X_guest_max0 - X_guest_min0) / bins
+
+        set_cols = [col for col in cols if len(set_items[col]) < bins]
+
+        ray_x_guest = ray.data.from_pandas(X_guest)
+
+        def hist_bin_transform(df: pd.DataFrame):
+
+            def assign_bucket(s: pd.Series):
+
+                # check if current 's' in 'set_cols'
+                if s.name in set_cols:
+                    return s
+
+                # s_max = X_guest_max0[s.name] + 0.005
+                s_min = X_guest_min0[s.name]
+                s_width = X_guest_width[s.name]
+                s_bin = np.ceil((s - s_min) // s_width)
+
+                # s_split = s_min + s_bin * s_width
+
+                return s_bin
+
+                # return int((s - s_min) // s_width)
+
+            df.loc[:, cols] = df.loc[:, cols].transform(assign_bucket)
+
+            return df
+
+        buckets_x_guest = ray_x_guest.map_batches(
+            hist_bin_transform,
+            batch_format="pandas").to_pandas(limit=140000).astype('int')
+
+        buckets_x_guest['id'] = index
+        buckets_x_guest.set_index('id', inplace=True)
+
+        return buckets_x_guest, X_guest_min0, X_guest_width
 
     def sums_of_encrypted_ghs_with_ray(self,
                                        X_guest,
@@ -1198,6 +1287,8 @@ class XGB_GUEST_EN:
 
     def guest_tree_construct(self, X_guest, encrypted_ghs, current_depth):
         m, n = X_guest.shape
+        self.guest_iter += 1
+        print("current dept", current_depth, self.guest_iter)
 
         if (self.min_child_sample and
                 m < self.min_child_sample) or current_depth > self.max_depth:
@@ -1205,13 +1296,18 @@ class XGB_GUEST_EN:
 
         # calculate sums of encrypted 'g' and 'h'
         #TODO: only calculate the right ids and left ids
-        if ray_group:
-            encrypte_gh_sums = self.sums_of_encrypted_ghs_with_ray(
-                X_guest, encrypted_ghs)
+        if trans_guest_buckets:
+            encrypte_gh_sums, buckets_min, buckets_width = self.buckets_with_ray(
+                X_guest)
         else:
-            encrypte_gh_sums = self.sums_of_encrypted_ghs(
-                X_guest, encrypted_ghs)
-        self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
+            if ray_group:
+                encrypte_gh_sums = self.sums_of_encrypted_ghs_with_ray(
+                    X_guest, encrypted_ghs)
+            else:
+                encrypte_gh_sums = self.sums_of_encrypted_ghs(
+                    X_guest, encrypted_ghs)
+        self.proxy_client_host.Remote(encrypte_gh_sums,
+                                      'encrypte_gh_sums' + str(self.guest_iter))
         best_cut = self.proxy_server.Get('best_cut')
 
         # logging.info("current best cut: {}".format(best_cut))
@@ -1243,6 +1339,10 @@ class XGB_GUEST_EN:
                 record = self.guest_record
                 best_var = guest_best['var']
                 best_cut = guest_best['cut']
+                if trans_guest_buckets:
+                    best_cut = round(
+                        buckets_min[best_var] +
+                        best_cut * buckets_width[best_var], 3)
                 # calculate the left, right ids and leaf weight
                 current_col = X_guest[best_var]
                 less_flag = (current_col < best_cut)
@@ -1281,7 +1381,6 @@ class XGB_GUEST_EN:
                 w_right = ids_w['w_right']
                 self.host_record += 1
 
-            # print("===train==", X_guest.index, ids_w)
             tree_structure = {(role, record): {}}
 
             X_guest_left = X_guest.loc[id_left]
@@ -1379,7 +1478,7 @@ class XGB_GUEST_EN:
 
 
 # Number of tree to fit.
-num_tree = 1
+num_tree = 10
 # the depth of each tree
 max_depth = 3
 # whether encrypted or not
@@ -1393,6 +1492,8 @@ min_child_weight = 5
 sample_type = "random"
 
 feature_sample = True
+
+trans_guest_buckets = True
 
 if __name__ == "__main__":
 
@@ -1482,11 +1583,11 @@ if __name__ == "__main__":
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = pd.read_csv("data/FL/hetero_xgb/train/train_breast_cancer_guest.csv")
+    # data = pd.read_csv("data/FL/hetero_xgb/train/train_breast_cancer_guest.csv")
 
     # data = ph.dataset.read(dataset_key='train_heter_xxgb_guest').df_data
-    # data = pd.read_csv('/home/primihub/xusong/data/epsilon_normalized.t.guest',
-    #                    header=0)
+    data = pd.read_csv('/home/primihub/xusong/data/epsilon_normalized.guest',
+                       header=0).iloc[:, :450]
 
     # # samples-50000, cols-450
     # data = data.iloc[:50000, :450]
