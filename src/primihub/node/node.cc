@@ -70,6 +70,8 @@ Status VMNodeImpl::Send(ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
+            size_t data_len = request.data_len();
+            received_data.reserve(data_len);
             recv_meta_info = true;
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
@@ -85,6 +87,7 @@ Status VMNodeImpl::Send(ServerContext* context,
                 response->set_msg_info(std::move(err_msg));
                 return Status::OK;
             }
+
         }
         received_data.append(request.data());
     }
@@ -115,6 +118,8 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
             if (role.empty()) {
                 role = "default";
             }
+            size_t data_len = request.data_len();
+            recv_data.reserve(data_len);
             VLOG(5) << "job_id: " << job_id << " "
                     << "task_id: " << task_id << " "
                     << "role: " << role;
@@ -200,13 +205,16 @@ void VMNodeImpl::buildTaskRequest(const std::string& job_id,
     task_request.set_job_id(job_id);
     task_request.set_task_id(task_id);
     task_request.set_role(role);
+    task_request.set_data_len(total_length);
     auto data_ptr = task_request.mutable_data();
     data_ptr->reserve(max_package_size);
     size_t data_len = std::min(max_package_size, total_length - sended_size);
     data_ptr->append(send_buf + sended_size, data_len);
     sended_size += data_len;
     requests->emplace_back(std::move(task_request));
-    if (sended_size > total_length) {
+    if (sended_size < total_length) {
+      continue;
+    } else {
       break;
     }
   } while(true);
@@ -221,6 +229,7 @@ void VMNodeImpl::buildTaskResponse(const std::string& data,
   do {
     rpc::TaskResponse task_response;
     task_response.set_ret_code(rpc::retcode::SUCCESS);
+    task_response.set_data_len(total_length);
     auto data_ptr = task_response.mutable_data();
     data_ptr->reserve(max_package_size);
     size_t data_len = std::min(max_package_size, total_length - sended_size);
@@ -302,6 +311,8 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     std::string role = request->role();
     VLOG(5) << "enter ForwardRecv: job_id: " << job_id << " "
         << "task id: " << task_id << " role: " << role;
+    std::string worker_id = this->getWorkerId(job_id, task_id);
+    waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
     auto worker = this->getWorker(job_id, task_id);
     if (worker == nullptr) {
         return grpc::Status::OK;
@@ -753,8 +764,6 @@ void RunServer(primihub::VMNodeImpl *node_service,
 
 } // namespace primihub
 
-primihub::VMNodeImpl *node_service;
-primihub::DataServiceImpl *data_service;
 
 int main(int argc, char **argv) {
 
@@ -763,8 +772,6 @@ int main(int argc, char **argv) {
 
     signal(SIGINT, [](int sig) {
         LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
-        delete node_service;
-        delete data_service;
         exit(0);
     });
 
@@ -786,12 +793,12 @@ int main(int argc, char **argv) {
     std::string config_file = absl::GetFlag(FLAGS_config);
 
     std::string node_ip = "0.0.0.0";
-    node_service = new primihub::VMNodeImpl(node_id, node_ip, service_port,
-                                            singleton, config_file);
-    data_service = new primihub::DataServiceImpl(
+    auto node_service = std::make_unique<primihub::VMNodeImpl>(
+            node_id, node_ip, service_port, singleton, config_file);
+    auto data_service = std::make_unique<primihub::DataServiceImpl>(
         node_service->getNodelet()->getDataService(),
         node_service->getNodelet()->getNodeletAddr());
-    primihub::RunServer(node_service, data_service, service_port);
+    primihub::RunServer(node_service.get(), data_service.get(), service_port);
 
     return EXIT_SUCCESS;
 }

@@ -64,6 +64,11 @@ datasets:
     model: "csv"
     source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_host.csv"
 
+  # FL homo lr test case datasets
+  - description: "train_homo_lr_host"
+    model: "csv"
+    source: "/tmp/FL/homo_lr/train/train_breast_cancer_host.csv"
+
 localkv:
   model: "leveldb"
   path: "/data/localdb1"

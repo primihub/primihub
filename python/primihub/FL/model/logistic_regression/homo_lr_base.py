@@ -5,17 +5,34 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class LRModel:
-    def __init__(self, X, y, category, w=None):
+    def __init__(self, X, y, category, alpha=0.0001, w=None):
         self.w_size = X.shape[1] + 1
         self.coef = None
         self.intercept = None
         self.theta = None
+        self.alpha = alpha # regularization parameter
+        self.t = 0 # iteration number, used for learning rate decay
         self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, self.w_size))
         if w is not None:
             self.theta = w
         else:
             # init model parameters
             self.theta = np.random.uniform(-0.5, 0.5, (self.w_size,))
+
+        # 'optimal' learning rate
+        def dloss(p, y):
+            z = p * y
+            if z > 18.0:
+                return np.exp(-z) * -y
+            if z < -18.0:
+                return -y
+            return -y / (np.exp(z) + 1.0)
+
+        typw = np.sqrt(1.0 / np.sqrt(alpha))
+        # computing eta0, the initial learning rate
+        initial_eta0 = typw / max(1.0, dloss(-typw, 1.0))
+        # initialize t such that eta at first sample equals eta0
+        self.optimal_init = 1.0 / (initial_eta0 * alpha)
 
         # if encrypted == True:
         #     self.theta = self.utils.encrypt_vector(public_key, self.theta)
@@ -26,8 +43,7 @@ class LRModel:
         data normalization
         """
         scaler = MinMaxScaler()
-        scaler = scaler.fit(x)
-        x = scaler.transform(x)
+        x = scaler.fit_transform(x)
         return x
 
     def sigmoid(self, x):
@@ -43,15 +59,18 @@ class LRModel:
         :param y: label
         :return:
         """
-        p_predict = self.sigmoid(x_b.dot(theta))
+        temp = x_b.dot(theta)
         try:
-            return -np.sum(y * np.log(p_predict) + (1 - y) * np.log(1 - p_predict))
+            return (np.maximum(temp, 0.).sum() - y.dot(temp) +
+                    np.log(1 + np.exp(-np.abs(temp))).sum() +
+                    0.5 * self.alpha * theta.dot(theta)) / x_b.shape[0]
         except:
             return float('inf')
 
     def d_loss_func(self, theta, x_b, y):
+        theta = np.array(theta)
         out = self.sigmoid(x_b.dot(theta))
-        return x_b.T.dot(out - y) / len(x_b)
+        return (x_b.T.dot(out - y) + self.alpha * theta) / len(x_b)
 
     def gradient_descent(self, x_b, y, theta, eta):
         """
@@ -64,13 +83,24 @@ class LRModel:
         gradient = self.d_loss_func(theta, x_b, y)
         theta = theta - eta * gradient
         return theta
-
+        
+    def gradient_descent_olr(self, x_b, y, theta):
+        """
+        optimal learning rate
+        """
+        gradient = self.d_loss_func(theta, x_b, y)
+        eta = 1.0 / (self.alpha * (self.optimal_init + self.t))
+        self.t += 1
+        theta -= eta * gradient
+        return theta
+    
     def fit(self, train_data, train_label, theta, eta=0.01,):
         assert train_data.shape[0] == train_label.shape[0], "The length of the training data set shall " \
                                                             "be consistent with the length of the label"
         x_b = np.hstack([np.ones((train_data.shape[0], 1)), train_data])
 
-        self.theta = self.gradient_descent(x_b, train_label, theta, eta)
+        # self.theta = self.gradient_descent(x_b, train_label, theta, eta)
+        self.theta = self.gradient_descent_olr(x_b, train_label, theta)
         self.intercept = self.theta[0]
         self.coef = self.theta[1:]
         return self.theta

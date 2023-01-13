@@ -35,7 +35,13 @@ class LinkContext {
    * if channel is not exist, create
   */
   virtual std::shared_ptr<IChannel> getChannel(const primihub::Node& node) = 0;
+  void setRecvTimeout(int32_t recv_timeout_ms) {recv_timeout_ms_ = recv_timeout_ms;}
+  void setSendTimeout(int32_t send_timeout_ms) {send_timeout_ms_ = send_timeout_ms;}
+  int32_t sendTimeout() const {return send_timeout_ms_;}
+  int32_t recvTimeout() const {return recv_timeout_ms_;}
  protected:
+  int32_t recv_timeout_ms_{-1};
+  int32_t send_timeout_ms_{-1};
   std::shared_mutex connection_mgr_mtx;
   std::unordered_map<std::string, std::shared_ptr<IChannel>> connection_mgr;
   std::string job_id_;
@@ -49,9 +55,12 @@ class IChannel {
   virtual ~IChannel() = default;
   virtual retcode send(const std::string& role, const std::string& data) = 0;
   virtual retcode send(const std::string& role, std::string_view sv_data) = 0;
+  virtual int send_wrapper(const std::string& role, const std::string& data) = 0;
+  virtual int send_wrapper(const std::string& role, std::string_view sv_data) = 0;
   virtual retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) = 0;
   virtual retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) = 0;
   virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
+  virtual std::string forwardRecv(const std::string& role) = 0;
   // virtual retcode send(const std::vector<std::string>& datas) = 0;
   // virtual retcode send(const std::vector<std::string_view> sv_datas) = 0;
   // virtual retcode send(const rpc::TaskRequest& data) = 0;

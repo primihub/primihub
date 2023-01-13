@@ -36,10 +36,14 @@
 // #include "src/primihub/common/clp.h"
 // #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
-
+#include "src/primihub/common/defines.h"
 
 namespace primihub {
 // ====== Data Store Driver ======
+struct DataSetAccessInfo {
+  DataSetAccessInfo() = default;
+  virtual ~DataSetAccessInfo() = default;
+};
 
 class Dataset;
 class Cursor {
@@ -51,23 +55,36 @@ class Cursor {
 };
 
 class DataDriver {
-  public:
+ public:
     explicit DataDriver(const std::string& nodelet_addr) {
-      nodelet_address = nodelet_addr;
+        nodelet_address = nodelet_addr;
     }
-    virtual ~DataDriver() { };
+    DataDriver(const std::string& nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info) {
+        nodelet_address = nodelet_addr;
+        access_info_ = std::move(access_info);
+    }
+    virtual ~DataDriver() = default;
     virtual std::string getDataURL() const = 0;
     virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
+    /**
+     * data access info read from internal access_info_
+    */
+    virtual std::shared_ptr<Cursor>& read() = 0;
     virtual std::shared_ptr<Cursor>& initCursor(const std::string &dataURL) = 0;
     std::shared_ptr<Cursor>& getCursor();
     std::string getDriverType() const;
     std::string getNodeletAddress() const;
 
-  protected:
+    std::unique_ptr<DataSetAccessInfo>& dataSetAccessInfo() {
+      return access_info_;
+    }
+
+ protected:
     void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }
     std::shared_ptr<Cursor> cursor{nullptr};
     std::string driver_type;
     std::string nodelet_address;
+    std::unique_ptr<DataSetAccessInfo> access_info_{nullptr};
 };
 
 

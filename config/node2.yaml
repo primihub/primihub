@@ -54,6 +54,11 @@ datasets:
     model: "csv"
     source: "data/FL/wisconsin.data"
 
+  # FL homo lr test case datasets
+  - description: "train_homo_lr_guest"
+    model: "csv"
+    source: "data/FL/homo_lr/train/train_breast_cancer_guest.csv"
+
   # PSI test caset datasets
   - description: "psi_client_data"
     model: "csv"
@@ -64,6 +69,15 @@ datasets:
     model: "sqlite"
     table_name: "psi_client_data"
     source: "data/client_e.db3"
+
+  - description: "train_hetero_xgb_host"
+    model: "csv"
+    source: "data/FL/hetero_xgb/train/train_breast_cancer_guest.csv"
+
+  - description: "test_hetero_xgb_host"
+    model: "csv"
+    source: "data/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
+
 
 localkv:
   model: "leveldb"
