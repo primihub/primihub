@@ -8,11 +8,12 @@
 using namespace primihub;
 
 static void RunFalconlenet(std::string node_id, rpc::Task &task,
-                           std::shared_ptr<DatasetService> data_service)
+                           std::shared_ptr<DatasetService> data_service, 
+                           std::unique_ptr<LinkContext> &link_context)
 {
   PartyConfig config(node_id, task);
 
-  falcon::FalconLenetExecutor exec(config, data_service);
+  falcon::FalconLenetExecutor exec(config, data_service, link_context);
   EXPECT_EQ(exec.loadParams(task), 0);
   EXPECT_EQ(exec.initPartyComm(), 0);
   EXPECT_EQ(exec.loadDataset(), 0);
@@ -219,9 +220,11 @@ TEST(falcon, falcon_lenet_test)
 
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         meta_service, "test addr");
+    
+    std::unique_ptr<LinkContext> link_context(nullptr);
 
     google::InitGoogleLogging("LENET-Party0");
-    RunFalconlenet("node_1", task1, service);
+    RunFalconlenet("node_1", task1, service, link_context);
     return;
   }
 
@@ -240,8 +243,10 @@ TEST(falcon, falcon_lenet_test)
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         meta_service, "test addr");
 
+    std::unique_ptr<LinkContext> link_context(nullptr);
+
     google::InitGoogleLogging("LENET-party1");
-    RunFalconlenet("node_2", task2, service);
+    RunFalconlenet("node_2", task2, service, link_context);
     return;
   }
 
@@ -257,8 +262,9 @@ TEST(falcon, falcon_lenet_test)
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
       meta_service, "test addr");
 
+  std::unique_ptr<LinkContext> link_context(nullptr);
 
   google::InitGoogleLogging("LENET-party2");
-  RunFalconlenet("node_3", task3, service);
+  RunFalconlenet("node_3", task3, service, link_context);
   return;
 }

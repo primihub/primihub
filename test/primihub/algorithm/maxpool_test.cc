@@ -7,11 +7,12 @@ using namespace primihub;
 using namespace primihub::cryptflow2;
 
 static void RunMaxpool(std::string node_id, rpc::Task &task,
-                       std::shared_ptr<DatasetService> data_service) {
+                       std::shared_ptr<DatasetService> data_service,
+                       std::unique_ptr<LinkContext> &link_context) {
   PartyConfig config(node_id, task);
 
   try {
-    MaxPoolExecutor exec(config, data_service);
+    MaxPoolExecutor exec(config, data_service, link_context);
     EXPECT_EQ(exec.loadParams(task), 0);
     EXPECT_EQ(exec.initPartyComm(), 0);
     EXPECT_EQ(exec.loadDataset(), 0);
@@ -109,7 +110,9 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
     std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         meta_service, "test addr");
 
-    RunMaxpool("node_2", task2, service);
+    std::unique_ptr<LinkContext> link_context(nullptr);
+
+    RunMaxpool("node_2", task2, service, link_context);
     return;
   }
 
@@ -124,6 +127,8 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
         meta_service, "test addr");
 
-  RunMaxpool("node_1", task1, service);
+  std::unique_ptr<LinkContext> link_context(nullptr);
+
+  RunMaxpool("node_1", task1, service, link_context);
   return;
 }

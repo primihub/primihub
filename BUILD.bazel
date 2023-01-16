@@ -427,22 +427,22 @@ cc_library(
 cc_library(
     name = "protocol_falcon_lib",
     srcs = glob([
-            "src/primihub/protocol/falcon-public/*.cpp",
-            "src/primihub/protocol/falcon-public/util/*.cpp"
+        "src/primihub/protocol/falcon-public/*.cpp",
+        "src/primihub/protocol/falcon-public/util/*.cpp"
     ]),
     hdrs = glob([
-            "src/primihub/protocol/falcon-public/*.h",
-            "src/primihub/protocol/falcon-public/util/*.h",
-	    "src/primihub/common/defines.h",
-	    "src/primihub/common/gsl/*.h",
-	    "src/primihub/common/gsl/*.hpp"
+        "src/primihub/protocol/falcon-public/*.h",
+        "src/primihub/protocol/falcon-public/util/*.h",
+        "src/primihub/common/defines.h",
+        "src/primihub/common/gsl/*.h",
+        "src/primihub/common/gsl/*.hpp"
     ]),
     copts = [
-	    # TODO: Consider to remove -I flag.
+	      # TODO: Consider to remove -I flag.
         "-I src/primihub/protocol/falcon-public/",
         "-I src/primihub/protocol/falcon-public/util/",
         "-fpic",
-	    "-Wno-narrowing",
+	      "-Wno-narrowing",
     ] + select({
         ":x86_64": ["-maes", "-mpclmul"],
         ":darwin_x86_64": ["-maes", "-mpclmul"],
@@ -451,8 +451,8 @@ cc_library(
     }),
     linkstatic = False,
     deps = [
-	    ":eigen",
-	    "@openssl",
+	      ":eigen",
+	      "@openssl",
     ]
 )
 
@@ -497,7 +497,7 @@ cc_library(
         "src/primihub/algorithm/cryptflow2_maxpool.h",
         "src/primihub/service/dataset/localkv/storage_default.h",
         "src/primihub/service/dataset/storage_backend.h",
-	    "src/primihub/util/cpu_check.h"
+	      "src/primihub/util/cpu_check.h"
     ]),
     copts = C_OPT + select({
         ":x86_64": ["-maes", "-mrdseed", "-mavx2"],
@@ -512,6 +512,7 @@ cc_library(
         ":data_store_lib",
         ":dataset_service",
         ":protocol_cryptflow2_ot_lib",
+        ":communication_lib"
     ],
 )
 
@@ -537,7 +538,7 @@ cc_library(
             "src/primihub/algorithm/logistic_plain.h",
             "src/primihub/algorithm/plainML.h",
             "src/primihub/algorithm/regression.h",
-	        "src/primihub/algorithm/falcon_lenet.h",
+	          "src/primihub/algorithm/falcon_lenet.h",
             "src/primihub/service/dataset/localkv/storage_default.h",
             "src/primihub/service/dataset/storage_backend.h",
             "src/primihub/algorithm/arithmetic.h",
