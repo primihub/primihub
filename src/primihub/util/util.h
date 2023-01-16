@@ -36,7 +36,6 @@ void peer_to_list(const std::vector<std::string>& peer,
 
 void sort_peers(std::vector<std::string>* peers);
 
-
 class IOService;
 
 class Work {
@@ -208,7 +207,8 @@ class SCopedTimer {
 };
 
 int getAvailablePort(uint32_t* port);
-
+std::string strToUpper(const std::string& str);
+std::string strToLower(const std::string& str);
 }  // namespace primihub
 
 #endif  // SRC_primihub_UTIL_UTIL_H_

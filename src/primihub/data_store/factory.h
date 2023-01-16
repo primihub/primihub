@@ -22,25 +22,44 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
+#define CSV_DRIVER_NAME "CSV"
+#define SQLITE_DRIVER_NAME "SQLITE"
+#define HDFS_DRIVER_NAME "HDFS"
 
 namespace primihub {
 class DataDirverFactory {
-  public:
+ public:
+    using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
     static std::shared_ptr<DataDriver>
-    getDriver(const std::string &dirverName, const std::string& nodeletAddr) {
-        if (boost::to_upper_copy(dirverName) == "CSV" ) {
-            auto csvDriver = std::make_shared<CSVDriver>(nodeletAddr);
-            return std::dynamic_pointer_cast<DataDriver>(csvDriver);
-
-        } else if (dirverName == "HDFS") {
+    getDriver(const std::string &dirverName, const std::string& nodeletAddr, DataSetAccessInfoPtr access_info = nullptr) {
+        if (boost::to_upper_copy(dirverName) == CSV_DRIVER_NAME) {
+            if (access_info == nullptr) {
+                return std::make_shared<CSVDriver>(nodeletAddr);
+            } else {
+                return std::make_shared<CSVDriver>(nodeletAddr, std::move(access_info));
+            }
+        } else if (dirverName == HDFS_DRIVER_NAME) {
             // return new HDFSDriver(dirverName);
             // TODO not implemented yet
-        } else if (boost::to_upper_copy(dirverName) == "SQLITE" ) {
-            return std::make_shared<SQLiteDriver>(nodeletAddr);
+        } else if (boost::to_upper_copy(dirverName) == SQLITE_DRIVER_NAME) {
+            if (access_info == nullptr) {
+                return std::make_shared<SQLiteDriver>(nodeletAddr);
+            } else {
+                return std::make_shared<SQLiteDriver>(nodeletAddr, std::move(access_info));
+            }
         } else {
-            throw std::invalid_argument(
-                "[DataDirverFactory]Invalid dirver name");
+            std::string err_msg = "[DataDirverFactory]Invalid dirver name [" + dirverName + "]";
+            throw std::invalid_argument(err_msg);
         }
+    }
+
+    static DataSetAccessInfoPtr createCSVAccessInfo(const std::string& file_path) {
+        return std::make_unique<CSVAccessInfo>(file_path);
+    }
+
+    static DataSetAccessInfoPtr createSQLiteAccessInfo(const std::string& db_path,
+            const std::string& tab_name, const std::vector<std::string>& query_index) {
+        return std::make_unique<SQLiteAccessInfo>(db_path, tab_name, query_index);
     }
 };
 
