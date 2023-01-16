@@ -94,6 +94,17 @@ int main(int argc, char** argv) {
     std::vector<std::tuple<std::string, std::string, std::string>> meta_info = {
         {"psi_client_data", "csv", "data/client_e.csv"},
         {"psi_client_data_db", "sqlite", R"""({"tableName": "psi_client_data", "db_path": "data/client_e.db3"})"""},
+        {"psi_client_data_mysql", "mysql",
+            R"""({
+                "password": "primihub@123",
+                "database": "privacy_test1",
+                "port": 30306,
+                "dbName": "privacy_test1",
+                "host": "192.168.99.13",
+                "type": "mysql",
+                "username": "primihub",
+                "tableName": "sys_user"}
+                )"""},
     };
     for (auto peer : peers) {
         LOG(INFO) << "SDK SubmitTask to: " << peer;
@@ -110,7 +121,6 @@ int main(int argc, char** argv) {
                         << "meta_info: " << data_path << " failed";
             }
         }
-
 
         auto _end = std::chrono::high_resolution_clock::now();
         auto time_cost = std::chrono::duration_cast<std::chrono::milliseconds>(_end - _start).count();
