@@ -101,6 +101,8 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
     data_file_path_ = param_map["Data_File"].value_string();
+    LOG(INFO) << "Data file path is " << data_file_path_ << ".";
+
     // col_and_owner
     std::string col_and_owner = param_map["Col_And_Owner"].value_string();
     std::vector<string> tmp1, tmp2, tmp3;
@@ -335,19 +337,15 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
 }
 
 template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address"); // TODO
-  std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver("CSV", nodeaddr);
-  std::shared_ptr<Cursor> &cursor = driver->read(filename);
+int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
+  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto& cursor = driver->read();
   std::shared_ptr<Dataset> ds = cursor->read();
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();
-  // for (auto itr = col_names.begin(); itr != col_names.end(); itr++) {
-  //   LOG(INFO) << *itr;
-  // }
+
   bool errors = false;
   int num_col = table->num_columns();
   // 'array' include values in a column of csv file.
