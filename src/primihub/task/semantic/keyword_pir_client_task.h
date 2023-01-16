@@ -78,6 +78,7 @@ class KeywordPIRClientTask : public TaskBase {
 
  private:
     std::string dataset_path_;
+    std::string dataset_id_;
     std::string result_file_path_;
     std::string server_address_;
     bool recv_query_data_direct{false};

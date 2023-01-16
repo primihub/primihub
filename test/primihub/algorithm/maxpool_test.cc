@@ -25,8 +25,21 @@ static void RunMaxpool(std::string node_id, rpc::Task &task,
               << std::endl;
   }
 }
+using meta_type_t = std::tuple<std::string, std::string, std::string>;
+void registerDataSet(const std::vector<meta_type_t>& meta_infos,
+    std::shared_ptr<DatasetService> service) {
+  for (auto& meta : meta_infos) {
+    auto& dataset_id = std::get<0>(meta);
+    auto& dataset_type = std::get<1>(meta);
+    auto& dataset_path = std::get<2>(meta);
+    auto access_info = service->createAccessInfo(dataset_type, dataset_path);
+    auto driver = DataDirverFactory::getDriver(dataset_type, "test addr", std::move(access_info));
+    service->registerDriver(dataset_id, driver);
+  }
+}
 
 TEST(cryptflow2_maxpool, maxpool_2pc_test) {
+  uint32_t base_port = 8000;
   // Node 1.
   rpc::Node node_1;
   node_1.set_node_id("node0");
@@ -38,7 +51,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   rpc::EndPoint *next = vm->mutable_next();
 
   next->set_ip("127.0.0.1");
-  next->set_port(8000);
+  next->set_port(base_port);
   next->set_link_type(rpc::LinkType::SERVER);
   next->set_name("CRYPTFLOW2_Server");
 
@@ -52,7 +65,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
   next = vm->mutable_next();
   next->set_ip("127.0.0.1");
-  next->set_port(8000);
+  next->set_port(base_port);
   next->set_name("CRYPTFLOW2_client");
   next->set_link_type(rpc::LinkType::CLIENT);
 
@@ -67,7 +80,8 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);
-    pv_train_data.set_value_string("data/train_party_0.csv");
+    // pv_train_data.set_value_string("data/train_party_0.csv");
+    pv_train_data.set_value_string("train_party_0");
 
     auto param_map = task1.mutable_params()->mutable_param_map();
     (*param_map)["TrainData"] = pv_train_data;
@@ -84,7 +98,8 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);
-    pv_train_data.set_value_string("data/train_party_1.csv");
+    // pv_train_data.set_value_string("data/train_party_1.csv");
+    pv_train_data.set_value_string("train_party_1");
 
     auto param_map = task2.mutable_params()->mutable_param_map();
     (*param_map)["TrainData"] = pv_train_data;
@@ -103,7 +118,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/65533");
 
-    std::shared_ptr<service::DatasetMetaService> meta_service = 
+    std::shared_ptr<service::DatasetMetaService> meta_service =
 	    std::make_shared<service::DatasetMetaService>(
 			    stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -112,6 +127,12 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
     std::unique_ptr<LinkContext> link_context(nullptr);
 
+    using meta_type_t = std::tuple<std::string, std::string, std::string>;
+    std::vector<meta_type_t> meta_infos {
+      {"train_party_1", "csv", "data/train_party_0.csv"},
+    };
+
+    registerDataSet(meta_infos, service);
     RunMaxpool("node_2", task2, service, link_context);
     return;
   }
@@ -120,7 +141,7 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/65534");
 
-  std::shared_ptr<service::DatasetMetaService> meta_service = 
+  std::shared_ptr<service::DatasetMetaService> meta_service =
 	  std::make_shared<service::DatasetMetaService>(
 			  stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -129,6 +150,12 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
 
   std::unique_ptr<LinkContext> link_context(nullptr);
 
+  using meta_type_t = std::tuple<std::string, std::string, std::string>;
+  std::vector<meta_type_t> meta_infos {
+    {"train_party_0", "csv", "data/train_party_0.csv"},
+  };
+  registerDataSet(meta_infos, service);
   RunMaxpool("node_1", task1, service, link_context);
+
   return;
 }

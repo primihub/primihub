@@ -174,17 +174,14 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;
   }
-
   LOG(INFO) << "Train data " << train_input_filepath_ << ", test data "
             << test_input_filepath_ << ".";
   return 0;
 }
 
-int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &filename) {
-  std::string nodeaddr("test address"); // TODO
-  std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver("CSV", nodeaddr);
-  std::shared_ptr<Cursor> &cursor = driver->read(filename);
+int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
+  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto& cursor = driver->read();
   std::shared_ptr<Dataset> ds = cursor->read();
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 
@@ -379,7 +376,7 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   chann_prev.close();
 
   engine_.init(local_id_, ep_prev_, ep_next_, toBlock(local_id_));
-  LOG(INFO) << "Init party communication finish.";
+  LOG(INFO) << "Init party: " << local_id_ << " communication finish.";
 
   return 0;
 }

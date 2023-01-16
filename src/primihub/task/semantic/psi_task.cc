@@ -17,7 +17,6 @@
 #include <glog/logging.h>
 #include <string>
 #include <set>
-#include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/file_util.h"
 
 namespace primihub::task {
@@ -119,6 +118,26 @@ retcode PsiCommonOperator::LoadDatasetFromSQLite(
     return LoadDatasetInternal("SQLITE", conn_str, data_col, col_array);
 }
 retcode PsiCommonOperator::LoadDatasetInternal(
+        std::shared_ptr<DataDriver>& driver,
+        const std::vector<int>& data_cols,
+        std::vector<std::string>& col_array) {
+//
+    auto& cursor = driver->read();
+    auto ds = cursor->read();
+    if (ds == nullptr) {
+        LOG(ERROR) << "get data failed";
+        return retcode::FAIL;
+    }
+    auto& table = std::get<std::shared_ptr<arrow::Table>>(ds->data);
+    int col_count = table->num_columns();
+    bool all_colum_valid = validationDataColum(data_cols, col_count);
+    if(!all_colum_valid) {
+        return retcode::FAIL;
+    }
+    return LoadDatasetFromTable(table, data_cols, col_array);
+}
+
+retcode PsiCommonOperator::LoadDatasetInternal(
         const std::string& driver_name,
         const std::string& conn_str,
         const std::vector<int>& data_cols,
@@ -128,6 +147,9 @@ retcode PsiCommonOperator::LoadDatasetInternal(
         DataDirverFactory::getDriver(driver_name, nodeaddr);
     std::shared_ptr<Cursor> &cursor = driver->read(conn_str);
     std::shared_ptr<Dataset> ds = cursor->read();
+    if (ds == nullptr) {
+        return retcode::FAIL;
+    }
     auto& table = std::get<std::shared_ptr<arrow::Table>>(ds->data);
     int col_count = table->num_columns();
     bool all_colum_valid = validationDataColum(data_cols, col_count);
@@ -136,6 +158,7 @@ retcode PsiCommonOperator::LoadDatasetInternal(
     }
     return LoadDatasetFromTable(table, data_cols, col_array);
 }
+
 retcode PsiCommonOperator::saveDataToCSVFile(const std::vector<std::string>& data,
         const std::string& file_path, const std::string& col_title) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();

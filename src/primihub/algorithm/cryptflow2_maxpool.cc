@@ -152,13 +152,11 @@ int MaxPoolExecutor::loadDataset() {
   // }
 
   // read data from csv
-  std::string nodeaddr("test address"); // TODO
-  std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver("CSV", nodeaddr);
-  std::shared_ptr<Cursor> &cursor = driver->read(input_filepath_);
+  std::string dataset_id = input_filepath_;
+  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto& cursor = driver->read();
   std::shared_ptr<Dataset> ds = cursor->read();
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
-
   // Label column.
   bool errors = false;
   num_cols = table->num_columns();

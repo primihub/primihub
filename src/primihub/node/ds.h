@@ -28,6 +28,8 @@
 #include "src/primihub/protos/service.grpc.pb.h"
 #include "src/primihub/protos/service.pb.h"
 #include "src/primihub/service/dataset/service.h"
+#include "src/primihub/data_store/factory.h"
+#include "src/primihub/common/defines.h"
 
 using grpc::ServerContext;
 using primihub::rpc::DataService;
@@ -36,22 +38,18 @@ using primihub::rpc::NewDatasetResponse;
 using primihub::service::DatasetService;
 
 namespace primihub {
-
 class DataServiceImpl final: public DataService::Service {
-    public:
-        explicit DataServiceImpl(std::shared_ptr<primihub::service::DatasetService> dataset_service,
-                                 std::string nodelet_addr)
-        : dataset_service_(dataset_service), nodelet_addr_(nodelet_addr) {
+ public:
+   explicit DataServiceImpl(std::shared_ptr<primihub::service::DatasetService> dataset_service,
+                                std::string nodelet_addr)
+      : dataset_service_(dataset_service), nodelet_addr_(nodelet_addr) {}
 
-        }
+   grpc::Status NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
+                            NewDatasetResponse *response) override;
 
-        grpc::Status NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
-                                NewDatasetResponse *response) override;
-    protected:
-        int processMetaData(const std::string& driver_type, std::string* meta_data);
-    private:
-        std::shared_ptr<primihub::service::DatasetService> dataset_service_;
-        std::string nodelet_addr_;
+ private:
+   std::shared_ptr<primihub::service::DatasetService> dataset_service_;
+   std::string nodelet_addr_;
 };
 
 } // namespace primihub
