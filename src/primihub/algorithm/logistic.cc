@@ -98,13 +98,13 @@ logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
 }
 
 LogisticRegressionExecutor::LogisticRegressionExecutor(
-    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service)
-
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service,
+    std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context)
 {
   this->algorithm_name_ = "logistic_regression";
 
-  auto& node_map = config.node_map;
+  auto &node_map = config.node_map;
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {

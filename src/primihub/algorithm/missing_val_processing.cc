@@ -251,8 +251,9 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
 }
 
 MissingProcess::MissingProcess(PartyConfig &config,
-                               std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+                               std::shared_ptr<DatasetService> dataset_service,
+                               std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context) {
   this->algorithm_name_ = "missing_val_processing";
 
   std::map<std::string, rpc::Node> &node_map = config.node_map;

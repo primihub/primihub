@@ -53,7 +53,8 @@ logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
 class LogisticRegressionExecutor : public AlgorithmBase {
 public:
   explicit LogisticRegressionExecutor(
-      PartyConfig &config, std::shared_ptr<DatasetService> dataset_service);
+      PartyConfig &config, std::shared_ptr<DatasetService> dataset_service,
+      std::unique_ptr<LinkContext> &link_context);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
   int initPartyComm(void) override;

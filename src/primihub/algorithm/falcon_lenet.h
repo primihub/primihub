@@ -33,7 +33,8 @@ namespace falcon {
 class FalconLenetExecutor : public AlgorithmBase {
 public:
   explicit FalconLenetExecutor(PartyConfig &config,
-                               std::shared_ptr<DatasetService> dataset_service);
+                               std::shared_ptr<DatasetService> dataset_service, 
+                               std::unique_ptr<LinkContext> &link_context);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
   int initPartyComm(void) override;

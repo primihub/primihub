@@ -30,8 +30,9 @@ void spiltStr(string str, const string &split, std::vector<string> &strlist) {
 
 template <Decimal Dbit>
 ArithmeticExecutor<Dbit>::ArithmeticExecutor(
-    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service,
+    std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context) {
   this->algorithm_name_ = "arithmetic";
 
   auto &node_map = config.node_map;
@@ -455,8 +456,9 @@ template class ArithmeticExecutor<D32>;
 template class ArithmeticExecutor<D16>;
 
 MPCSendRecvExecutor::MPCSendRecvExecutor(
-    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service,
+    std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context) {
   std::ignore = dataset_service;
   this->algorithm_name_ = "mpc_channel_sendrecv";
 
@@ -499,8 +501,10 @@ MPCSendRecvExecutor::MPCSendRecvExecutor(
 }
 
 int MPCSendRecvExecutor::initPartyComm(void) {
-  grpc_channel_next_ = task_get_channel_fn_(partyid_node_map_[next_party_id_]);
-  grpc_channel_prev_ = task_get_channel_fn_(partyid_node_map_[prev_party_id_]);
+  grpc_channel_next_ =
+      this->link_context_->getChannel(partyid_node_map_[next_party_id_]);
+  grpc_channel_prev_ =
+      this->link_context_->getChannel(partyid_node_map_[prev_party_id_]);
 
   get_queue_fn_ =
       [this](const std::string &key) -> ThreadSafeQueue<std::string> & {
@@ -570,7 +574,7 @@ int MPCSendRecvExecutor::execute() {
   // share.
   LOG(INFO) << "Send and recv sbMatrix.";
   sbMatrix sh_bin_m(100, 64);
-  
+
   srand(100);
   for (uint64_t i = 0; i < sh_bin_m.mShares[0].size(); i++) {
     sh_bin_m.mShares[0](i) = rand();
@@ -621,7 +625,7 @@ int MPCSendRecvExecutor::execute() {
   LOG(INFO) << "Send and recv sb64.";
 
   sb64 sh_val2;
-  sh_val2.mData[0] = 1; 
+  sh_val2.mData[0] = 1;
   sh_val2.mData[1] = 0;
 
   mpc_channel_next_->asyncSendCopy(sh_val2.mData[0]);
@@ -649,10 +653,6 @@ int MPCSendRecvExecutor::loadParams(rpc::Task &task) {
 
 void MPCSendRecvExecutor::setupGetQueueFn(TaskGetRecvQueueFunc fn) {
   task_get_queue_fn_ = fn;
-}
-
-void MPCSendRecvExecutor::setupGetChannelFn(TaskGetChannelFunc fn) {
-  task_get_channel_fn_ = fn;
 }
 
 int MPCSendRecvExecutor::loadDataset(void) {

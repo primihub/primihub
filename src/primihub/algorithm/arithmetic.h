@@ -20,7 +20,8 @@ namespace primihub {
 template <Decimal Dbit> class ArithmeticExecutor : public AlgorithmBase {
 public:
   explicit ArithmeticExecutor(PartyConfig &config,
-                              std::shared_ptr<DatasetService> dataset_service);
+                              std::shared_ptr<DatasetService> dataset_service,
+                              std::unique_ptr<LinkContext> &link_context);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
   int initPartyComm(void) override;
@@ -63,8 +64,9 @@ private:
 class MPCSendRecvExecutor : public AlgorithmBase {
 public:
   explicit MPCSendRecvExecutor(PartyConfig &config,
-                               std::shared_ptr<DatasetService> dataset_service);
-  using TaskGetChannelFunc = 
+                               std::shared_ptr<DatasetService> dataset_service,
+                               std::unique_ptr<LinkContext> &link_context);
+  using TaskGetChannelFunc =
       std::function<std::shared_ptr<network::IChannel>(primihub::Node &node)>;
   using TaskGetRecvQueueFunc =
       std::function<ThreadSafeQueue<std::string> &(const std::string &key)>;
@@ -76,7 +78,6 @@ public:
   int finishPartyComm(void) override;
   int saveModel(void);
   void setupGetQueueFn(TaskGetRecvQueueFunc fn);
-  void setupGetChannelFn(TaskGetChannelFunc fn);
 
 private:
   std::string job_id_;
@@ -90,7 +91,6 @@ private:
 
   Aby3Channel::GetRecvQueueFunc get_queue_fn_;
   TaskGetRecvQueueFunc task_get_queue_fn_;
-  TaskGetChannelFunc task_get_channel_fn_;
 
   std::map<uint16_t, primihub::Node> partyid_node_map_;
 

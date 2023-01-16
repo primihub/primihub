@@ -27,8 +27,9 @@ int port = 32000;             // network ports
 } // namespace primihub::cryptflow2
 
 MaxPoolExecutor::MaxPoolExecutor(
-    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service,
+    std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context) {
 
   if (checkInstructionSupport("aes")) {
     LOG(ERROR) << "aes is required but not support in this platform.";
@@ -51,7 +52,6 @@ MaxPoolExecutor::MaxPoolExecutor(
   } else {
     LOG(INFO) << "Current cpu support avx instruction.";
   }
-
 
   if (checkInstructionSupport("avx2")) {
     LOG(ERROR) << "avx2 is required but not support in this platform.";
@@ -89,7 +89,7 @@ MaxPoolExecutor::MaxPoolExecutor(
   this->algorithm_name_ = "maxpool";
   // set the party id to be 1,2.
   uint16_t party_index = 0;
-  auto& node_map = config.node_map;
+  auto &node_map = config.node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
     auto *vm = node.mutable_vm();

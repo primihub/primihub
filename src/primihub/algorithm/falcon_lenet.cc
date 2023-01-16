@@ -14,8 +14,9 @@ extern smallType subtractModPrime[PRIME_NUMBER][PRIME_NUMBER];
 extern smallType multiplicationModPrime[PRIME_NUMBER][PRIME_NUMBER];
 
 FalconLenetExecutor::FalconLenetExecutor(
-    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    PartyConfig &config, std::shared_ptr<DatasetService> dataset_service, 
+    std::unique_ptr<LinkContext> &link_context)
+    : AlgorithmBase(dataset_service, link_context) {
   this->algorithm_name_ = "Falcon_Lenet_Train";
 
   node_id_ = config.node_id;

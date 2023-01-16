@@ -18,29 +18,34 @@
 #define SRC_PRIMIHUB_ALGORITHM_BASE_H_
 
 #include <string>
-#include "src/primihub/service/dataset/service.h"
-#include "src/primihub/protos/common.grpc.pb.h"
 
+#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/service/dataset/service.h"
+#include "src/primihub/util/network/link_context.h"
+
+using primihub::network::LinkContext;
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub {
 class AlgorithmBase {
-  public:
-    explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service)
-        : dataset_service_(dataset_service) {};
-    virtual ~AlgorithmBase(){};
+public:
+  explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service,
+                         std::unique_ptr<LinkContext> &link_context)
+      : dataset_service_(dataset_service), link_context_(link_context){};
+  virtual ~AlgorithmBase(){};
 
-    virtual int loadParams(primihub::rpc::Task &task) = 0;
-    virtual int loadDataset() = 0;
-    virtual int initPartyComm() = 0;
-    virtual int execute() = 0;
-    virtual int finishPartyComm() = 0;
-    virtual int saveModel() = 0;
+  virtual int loadParams(primihub::rpc::Task &task) = 0;
+  virtual int loadDataset() = 0;
+  virtual int initPartyComm() = 0;
+  virtual int execute() = 0;
+  virtual int finishPartyComm() = 0;
+  virtual int saveModel() = 0;
 
-  protected:
-    std::shared_ptr<DatasetService> dataset_service_;
-    std::string algorithm_name_;
+protected:
+  std::shared_ptr<DatasetService> dataset_service_;
+  std::unique_ptr<LinkContext>& link_context_;
+  std::string algorithm_name_;
 };
 } // namespace primihub
 
