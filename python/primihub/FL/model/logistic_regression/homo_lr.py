@@ -146,7 +146,7 @@ config = {
     'learning_rate': 2.0,
     'alpha': 0.0001,
     'batch_size': 100,
-    'max_iter': 1000,
+    'max_iter': 200,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
     'need_one_vs_rest': False,
@@ -606,10 +606,17 @@ def run_homo_lr_client(role_node_map,
             break
 
     log_handler.info("{} training process done.".format(client_name))
-    model_file_path = ph.context.Context.get_model_file_path()
+    model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
     log_handler.info("Current model file path is: {}".format(model_file_path))
+
+    model = {
+        'feature_names': config['feature_names'],
+        'data_max': data_max,
+        'data_min': data_min,
+        'theta': client.theta,
+    }
     with open(model_file_path, 'wb') as fm:
-        pickle.dump(client.get_theta(), fm)
+        pickle.dump(model, fm)
 
     proxy_server.StopRecvLoop()
 
