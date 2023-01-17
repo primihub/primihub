@@ -117,6 +117,13 @@ private:
   std::shared_ptr<StorageBackend> local_db_;
 };
 
+enum class dataset_type_t : uint8_t {
+    CSV,
+    SQLITE,
+    MYSQL,
+    UNKNOWN,
+};
+
 class DatasetService  {
  public:
     explicit DatasetService(std::shared_ptr<DatasetMetaService> meta_service,
@@ -172,12 +179,30 @@ class DatasetService  {
     std::unique_ptr<DataSetAccessInfo>
     createAccessInfo(const std::string driver_type, const std::string& meta_info);
 
+ protected:
+    using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
+    DataSetAccessInfoPtr parseAndCreateMySQLAccessInfo(const std::string& meta_info);
+    DataSetAccessInfoPtr parseAndCreateMySQLAccessInfo(const YAML::Node& meta_info);
+    DataSetAccessInfoPtr parseAndCreateSQLiteAccessInfo(const YAML::Node& meta_info);
+    DataSetAccessInfoPtr parseAndCreateSQLiteAccessInfo(const std::string& meta_info);
+    dataset_type_t datasetType(const std::string& driver_type) {
+        auto it = dataset_type_info.find(driver_type);
+        if (it != dataset_type_info.end()) {
+            return it->second;
+        }
+        return dataset_type_t::UNKNOWN;
+    }
  private:
     //  private:
     std::shared_ptr<DatasetMetaService> metaService_;
     std::string nodelet_addr_;
     std::shared_mutex driver_mtx_;
     std::unordered_map<std::string, std::shared_ptr<DataDriver>> driver_manager_;
+    std::unordered_map<std::string, dataset_type_t> dataset_type_info {
+        {"CSV", dataset_type_t::CSV},
+        {"SQLITE", dataset_type_t::SQLITE},
+        {"MYSQL", dataset_type_t::MYSQL},
+    };
 };
 
 /////////////////////////// Arrow Flight Server////////////////////////////////////

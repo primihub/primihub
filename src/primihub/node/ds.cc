@@ -28,15 +28,13 @@ namespace primihub {
 grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
                             NewDatasetResponse *response) {
     std::string driver_type = request->driver();
-    std::string path = request->path();
-    std::string fid = request->fid();
-    VLOG(5) << "driver_type: " << driver_type << " fid: " << fid
-        << " paht: " << path;
-    LOG(INFO) << "start to create dataset."<<" path: "<< path
-            <<" fid: "<< fid <<" driver_type: "<< driver_type;
+    const auto& meta_info = request->path();
+    const auto& fid = request->fid();
+    LOG(INFO) << "start to create dataset. meta info: " << meta_info << " "
+            << "fid: " << fid << " driver_type: " << driver_type;
     std::shared_ptr<DataDriver> driver{nullptr};
     try {
-        auto access_info = this->dataset_service_->createAccessInfo(driver_type, path);
+        auto access_info = this->dataset_service_->createAccessInfo(driver_type, meta_info);
         if (access_info == nullptr) {
             std::string err_msg = "create access info failed";
             throw std::invalid_argument(err_msg);
@@ -45,10 +43,10 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const New
         this->dataset_service_->registerDriver(fid, driver);
         driver->read();  // just init cursor
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load dataset from path: "<< path <<" "
-                << "driver_type: "<< driver_type << " "
-                << "fid: "<< fid << " "
-                << "exception:" << e.what();
+        LOG(ERROR) << "Failed to load dataset from path: " << meta_info << " "
+                << "driver_type: " << driver_type << " "
+                << "fid: " << fid << " "
+                << "exception: " << e.what();
         response->set_ret_code(2);
         return grpc::Status::OK;
     }

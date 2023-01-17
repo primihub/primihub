@@ -37,6 +37,7 @@
 // #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/defines.h"
+#include <glog/logging.h>
 
 namespace primihub {
 // ====== Data Store Driver ======
@@ -65,6 +66,7 @@ class DataDriver {
     }
     virtual ~DataDriver() = default;
     virtual std::string getDataURL() const = 0;
+    [[deprecated("use read instead")]]
     virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
     /**
      * data access info read from internal access_info_

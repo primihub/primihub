@@ -27,9 +27,9 @@
 #include "src/primihub/util/redis_helper.h"
 
 using namespace std::chrono_literals;
+using DataSetAccessInfoPtr = std::unique_ptr<primihub::DataSetAccessInfo>;
 
 namespace primihub::service {
-
     // DatasetService::DatasetService(
     //                         std::shared_ptr<primihub::p2p::NodeStub> stub,
     //                         std::shared_ptr<StorageBackend> localkv,
@@ -244,57 +244,152 @@ primihub::retcode DatasetService::unRegisterDriver(const std::string& dataset_id
     return primihub::retcode::SUCCESS;
 }
 
-std::unique_ptr<DataSetAccessInfo>
-DatasetService::createAccessInfo(const std::string driver_type, const YAML::Node& meta_info) {
+DataSetAccessInfoPtr DatasetService::createAccessInfo(
+        const std::string driver_type, const YAML::Node& meta_info) {
     auto driver_type_ = strToUpper(driver_type);
     VLOG(5) << "driver_type_: " << driver_type_;
-    if (driver_type_ == std::string("SQLITE")) {  // Move to specifiy Access parse
-        auto db_path = meta_info["source"].as<std::string>();
+    auto dataset_type = datasetType(driver_type_);
+    switch (dataset_type) {
+    case dataset_type_t::CSV: {
+        auto file_path = meta_info["source"].as<std::string>();
+        return DataDirverFactory::createCSVAccessInfo(file_path);
+    }
+    case dataset_type_t::SQLITE: {
+        return parseAndCreateSQLiteAccessInfo(meta_info);
+    }
+    case dataset_type_t::MYSQL:
+        return parseAndCreateMySQLAccessInfo(meta_info);
+    default:
+        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+        return nullptr;
+    }
+}
+
+DataSetAccessInfoPtr DatasetService::createAccessInfo(
+        const std::string driver_type, const std::string& meta_info) {
+    std::string driver_type_ = strToUpper(driver_type);
+    auto dataset_type = datasetType(driver_type_);
+    switch (dataset_type) {
+    case dataset_type_t::CSV:
+        return DataDirverFactory::createCSVAccessInfo(meta_info);
+    case dataset_type_t::SQLITE:
+        return parseAndCreateSQLiteAccessInfo(meta_info);
+    case dataset_type_t::MYSQL:
+        return parseAndCreateMySQLAccessInfo(meta_info);
+    default:
+        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+        return nullptr;
+    }
+}
+
+DataSetAccessInfoPtr DatasetService::parseAndCreateMySQLAccessInfo(const std::string& meta_info) {
+    nlohmann::json js = nlohmann::json::parse(meta_info);
+    // ip
+    if (!js.contains("host")) {
+        LOG(ERROR) << "key: host is not found";
+        return nullptr;
+    }
+    std::string ip = js["host"];
+    // port
+    if (!js.contains("port")) {
+        LOG(ERROR) << "key: port is not found";
+        return nullptr;
+    }
+    uint32_t port = js["port"];
+    // username
+    if (!js.contains("username")) {
+        LOG(ERROR) << "key: username is not found";
+        return nullptr;
+    }
+    std::string username = js["username"];
+    // password
+    if (!js.contains("password")) {
+        LOG(ERROR) << "key: password is not found";
+        return nullptr;
+    }
+    std::string password = js["password"];
+    // database
+    if (!js.contains("database")) {
+        LOG(ERROR) << "key: database is not found";
+        return nullptr;
+    }
+    std::string database = js["database"];
+    // dbName
+    if (!js.contains("dbName")) {
+        LOG(ERROR) << "key: dbName is not found";
+        return nullptr;
+    }
+    std::string db_name = js["dbName"];
+    // tableName
+    if (!js.contains("tableName")) {
+        LOG(ERROR) << "key: tableName is not found";
+        return nullptr;
+    }
+    std::string table_name = js["tableName"];
+    std::vector<std::string> query_cols;
+    if (js.contains("query_index")) {
+        std::string query_index = js["query_index"];
+        str_split(query_index, &query_cols, ',');
+    }
+    return DataDirverFactory::createMySQLAccessInfo(
+            ip, port, username, password, database, db_name, table_name, query_cols);
+}
+
+DataSetAccessInfoPtr DatasetService::parseAndCreateMySQLAccessInfo(const YAML::Node& meta_info) {
+    try {
+        auto ip = meta_info["ip"].as<std::string>();
+        auto port = meta_info["port"].as<uint32_t>();
+        auto user_name = meta_info["user_name"].as<std::string>();
+        auto password = meta_info["password"].as<std::string>();
+        std::string database;
+        if (meta_info["database"]) {
+            database = meta_info["database"].as<std::string>();
+        }
+        auto db_name = meta_info["db_name"].as<std::string>();
         auto table_name = meta_info["table_name"].as<std::string>();
         std::vector<std::string> query_cols;
         if (meta_info["query_index"]) {
             std::string query_index = meta_info["query_index"].as<std::string>();
             str_split(query_index, &query_cols, ',');
         }
-        return DataDirverFactory::createSQLiteAccessInfo(db_path, table_name, query_cols);
-    } else if (driver_type_ == std::string("CSV")) {
-        auto file_path = meta_info["source"].as<std::string>();
-        return DataDirverFactory::createCSVAccessInfo(file_path);
-    } else {
-        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+        return DataDirverFactory::createMySQLAccessInfo(
+                ip, port, user_name, password, database, db_name, table_name, query_cols);
+    } catch (std::exception& e) {
+        LOG(ERROR) << e.what();
         return nullptr;
     }
-
 }
 
-std::unique_ptr<DataSetAccessInfo>
-DatasetService::createAccessInfo(const std::string driver_type, const std::string& meta_info) {
-    std::string driver_type_ = strToUpper(driver_type);
-    if (driver_type_ == "SQLITE") {
-        nlohmann::json js = nlohmann::json::parse(meta_info);
-        // driver_type#db_path#table_name#column
-        if (!js.contains("db_path")) {
-            LOG(ERROR) << "key: db_path is not found";
-            return nullptr;
-        }
-        std::string db_path = js["db_path"];
-        if (!js.contains("tableName")) {
-            LOG(ERROR) << "key: tableName is not found";
-            return nullptr;
-        }
-        std::string tab_name = js["tableName"];
-        std::vector<std::string> query_cols;
-        if (js.contains("query_index")) {
-            std::string query_index_info = js["query_index"];
-            str_split(query_index_info, &query_cols, ',');
-        }
-        return DataDirverFactory::createSQLiteAccessInfo(db_path, tab_name, query_cols);
-    } else if (driver_type_ == "CSV") {
-        return DataDirverFactory::createCSVAccessInfo(meta_info);
-    } else {
-        LOG(ERROR) << "unknow Driver Type: " << driver_type;
+DataSetAccessInfoPtr DatasetService::parseAndCreateSQLiteAccessInfo(const YAML::Node& meta_info) {
+    auto db_path = meta_info["source"].as<std::string>();
+    auto table_name = meta_info["table_name"].as<std::string>();
+    std::vector<std::string> query_cols;
+    if (meta_info["query_index"]) {
+        std::string query_index = meta_info["query_index"].as<std::string>();
+        str_split(query_index, &query_cols, ',');
+    }
+    return DataDirverFactory::createSQLiteAccessInfo(db_path, table_name, query_cols);
+}
+
+DataSetAccessInfoPtr DatasetService::parseAndCreateSQLiteAccessInfo(const std::string& meta_info) {
+    nlohmann::json js = nlohmann::json::parse(meta_info);
+    // driver_type#db_path#table_name#column
+    if (!js.contains("db_path")) {
+        LOG(ERROR) << "key: db_path is not found";
         return nullptr;
     }
+    std::string db_path = js["db_path"];
+    if (!js.contains("tableName")) {
+        LOG(ERROR) << "key: tableName is not found";
+        return nullptr;
+    }
+    std::string tab_name = js["tableName"];
+    std::vector<std::string> query_cols;
+    if (js.contains("query_index")) {
+        std::string query_index_info = js["query_index"];
+        str_split(query_index_info, &query_cols, ',');
+    }
+    return DataDirverFactory::createSQLiteAccessInfo(db_path, tab_name, query_cols);
 }
 
     // ======================== DatasetMetaService ====================================
