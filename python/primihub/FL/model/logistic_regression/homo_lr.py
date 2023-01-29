@@ -161,14 +161,14 @@ def feature_selection(x, feature_names):
     else:
         return x
 
-def read_data(dataset_key):
+def read_data(dataset_key, feature_names):
     x = ph.dataset.read(dataset_key).df_data
 
     if 'id' in x.columns:
         x.pop('id')
 
     y = x.pop('y').values
-    x = feature_selection(x, config['feature_names']).to_numpy()
+    x = feature_selection(x, feature_names).to_numpy()
     return x, y
 
 class Arbiter(LRModel):
@@ -297,6 +297,8 @@ class Arbiter(LRModel):
 def run_homo_lr_arbiter(role_node_map,
                         node_addr_map,
                         data_key,
+                        check_convergence,
+                        feature_names,
                         task_params={},
                         log_handler=None):
     host_nodes = role_node_map["host"]
@@ -346,7 +348,7 @@ def run_homo_lr_arbiter(role_node_map,
     log_handler.debug("Create client proxy to guest,"
                       " ip {}, port {}.".format(guest_ip, guest_port))   
         
-    x, y= read_data(data_key)
+    x, y = read_data(data_key, feature_names)
 
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
                              proxy_client_guest)
@@ -378,13 +380,13 @@ def run_homo_lr_arbiter(role_node_map,
     proxy_client_guest.Remote(data_max, "data_max")
     proxy_client_host.Remote(data_min, "data_min")
     proxy_client_guest.Remote(data_min, "data_min")
-
-    n_iter_no_change = config['n_iter_no_change']
-    compare_threshold = config['compare_threshold']
-    count_iter_no_change = 0
-    convergence = 'NO'
     
-    last_acc = 0
+    if check_convergence:
+        n_iter_no_change = config['n_iter_no_change']
+        compare_threshold = config['compare_threshold']
+        count_iter_no_change = 0
+        convergence = 'NO'
+        last_acc = 0
 
     for i in range(config['max_iter']):
         log_handler.info("-------- start iteration {} --------".format(i+1))    
@@ -405,22 +407,23 @@ def run_homo_lr_arbiter(role_node_map,
         # fpr and tpr can be finded in the json file
         log_handler.info("loss={}, acc={}, auc={}, ks={}".format(loss, acc, auc, ks))
         
-        # convergence is checked using acc
-        if abs(last_acc - acc) < compare_threshold:
-            count_iter_no_change += 1
-        else:
-            count_iter_no_change = 0
-        last_acc = acc
-
-        if count_iter_no_change > n_iter_no_change:
-            convergence = 'YES'
+        if check_convergence:
+            # convergence is checked using acc
+            if abs(last_acc - acc) < compare_threshold:
+                count_iter_no_change += 1
+            else:
+                count_iter_no_change = 0
+            last_acc = acc
+    
+            if count_iter_no_change > n_iter_no_change:
+                convergence = 'YES'
             
-        proxy_client_host.Remote(convergence, "convergence")
-        proxy_client_guest.Remote(convergence, "convergence")
+            proxy_client_host.Remote(convergence, "convergence")
+            proxy_client_guest.Remote(convergence, "convergence")
 
-        if convergence == 'YES':
-            log_handler.info("-------- end at iteration {} --------".format(i+1))
-            break
+            if convergence == 'YES':
+                log_handler.info("-------- end at iteration {} --------".format(i+1))
+                break
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
@@ -531,6 +534,8 @@ class Client(LRModel):
 def run_homo_lr_client(role_node_map,
                        node_addr_map,
                        data_key,
+                       check_convergence,
+                       feature_names,
                        client_name,
                        task_params={},
                        log_handler=None):
@@ -562,7 +567,7 @@ def run_homo_lr_client(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    x, y = read_data(data_key)
+    x, y = read_data(data_key, feature_names)
 
     client = Client(x, y, proxy_server, proxy_client_arbiter)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
@@ -601,9 +606,10 @@ def run_homo_lr_client(role_node_map,
         client.set_theta(proxy_server.Get(
                         "global_"+client_name+"_model_param"))
 
-        if proxy_server.Get('convergence') == 'YES':
-            log_handler.info("-------- end at iteration {} --------".format(i+1))
-            break
+        if check_convergence:
+            if proxy_server.Get('convergence') == 'YES':
+                log_handler.info("-------- end at iteration {} --------".format(i+1))
+                break
 
     log_handler.info("{} training process done.".format(client_name))
     model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
@@ -663,7 +669,9 @@ def load_info():
 # logger = get_logger("Homo-LR")
 
 
-def run_party(party_name):
+def run_party(party_name, feature_names,
+              run_homo_lr_client,
+              check_convergence=True):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -689,11 +697,15 @@ def run_party(party_name):
         run_homo_lr_arbiter(role_node_map,
                             node_addr_map,
                             data_key,
+                            check_convergence,
+                            feature_names,
                             log_handler=fl_console_log)
     else:
         run_homo_lr_client(role_node_map,
                            node_addr_map,
                            data_key,
+                           check_convergence,
+                           feature_names,
                            client_name=party_name,
                            log_handler=fl_console_log)
 
@@ -706,7 +718,8 @@ def run_party(party_name):
                      port='9010',
                      task_type="lr-train")
 def run_arbiter_party():
-    run_party('arbiter')
+    run_party('arbiter', config['feature_names'],
+              run_homo_lr_client)
 
 
 @ph.context.function(role='host',
@@ -715,7 +728,8 @@ def run_arbiter_party():
                      port='9020',
                      task_type="lr-train")
 def run_host_party():
-    run_party('host')
+    run_party('host', config['feature_names'],
+              run_homo_lr_client)
 
 
 @ph.context.function(role='guest',
@@ -724,4 +738,5 @@ def run_host_party():
                      port='9030',
                      task_type="lr-train")
 def run_guest_party():
-    run_party('guest')
+    run_party('guest', config['feature_names'],
+              run_homo_lr_client)
