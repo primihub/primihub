@@ -22,10 +22,13 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
+#ifdef ENABLE_MYSQL_DRIVER
+#include "src/primihub/data_store/mysql/mysql_driver.h"
+#endif
 #define CSV_DRIVER_NAME "CSV"
 #define SQLITE_DRIVER_NAME "SQLITE"
 #define HDFS_DRIVER_NAME "HDFS"
-
+#define MYSQL_DRIVER_NAME "MYSQL"
 namespace primihub {
 class DataDirverFactory {
  public:
@@ -47,7 +50,17 @@ class DataDirverFactory {
             } else {
                 return std::make_shared<SQLiteDriver>(nodeletAddr, std::move(access_info));
             }
-        } else {
+        }
+#ifdef ENABLE_MYSQL_DRIVER
+        else if (boost::to_upper_copy(dirverName) == MYSQL_DRIVER_NAME) {
+            if (access_info == nullptr) {
+                return std::make_shared<MySQLDriver>(nodeletAddr);
+            } else {
+                return std::make_shared<MySQLDriver>(nodeletAddr, std::move(access_info));
+            }
+        }
+#endif
+        else {
             std::string err_msg = "[DataDirverFactory]Invalid dirver name [" + dirverName + "]";
             throw std::invalid_argument(err_msg);
         }
@@ -61,6 +74,30 @@ class DataDirverFactory {
             const std::string& tab_name, const std::vector<std::string>& query_index) {
         return std::make_unique<SQLiteAccessInfo>(db_path, tab_name, query_index);
     }
+
+    static DataSetAccessInfoPtr createMySQLAccessInfo(const std::string& ip,
+            uint32_t port, const std::string& user_name,
+            const std::string& password, const std::string& database,
+            const std::string& db_name, const std::string& table_name,
+            const std::vector<std::string>& query_colums) {
+        VLOG(5) << "ip: " << ip << " "
+                <<  " port: " << port << " "
+                << " user_name: " << user_name << " "
+                << "password: " << password << " "
+                << "database: " << database << " "
+                << "db_name: " << db_name << " "
+                << "table_name: " << table_name << " "
+                << "query_colums size: " << query_colums.size();
+#ifdef ENABLE_MYSQL_DRIVER
+        return std::make_unique<MySQLAccessInfo>(ip, port, user_name,
+                password, database, db_name, table_name, query_colums);
+#else
+        LOG(ERROR) << "MySQL is not enabled";
+        return nullptr;
+#endif
+    }
+
+
 };
 
 } // namespace primihub

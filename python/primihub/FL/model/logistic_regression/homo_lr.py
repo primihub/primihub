@@ -56,39 +56,38 @@ class LRModel:
             theta = np.array(theta)
         self.theta = theta
 
-    def loss(self, x_b, y):
-        temp = x_b.dot(self.theta)
+    def loss(self, x, y):
+        temp = x.dot(self.theta[1:]) + self.theta[0]
         try:
             return (np.maximum(temp, 0.).sum() - y.dot(temp) +
                     np.log(1 + np.exp(-np.abs(temp))).sum() +
-                    0.5 * self.alpha * self.theta.dot(self.theta)) / x_b.shape[0]
+                    0.5 * self.alpha * self.theta.dot(self.theta)) / x.shape[0]
         except:
             return float('inf')
 
-    def compute_grad(self, x_b, y):
-        out = self.sigmoid(x_b.dot(self.theta))
-        return (x_b.T.dot(out - y) + self.alpha * self.theta) / len(x_b)
+    def compute_grad(self, x, y):
+        temp = self.predict_prob(x) - y
+        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
+                + self.alpha * self.theta) / x.shape[0]
 
-    def gradient_descent(self, x_b, y):
-        grad = self.compute_grad(x_b, y)
+    def gradient_descent(self, x, y):
+        grad = self.compute_grad(x, y)
         self.theta -= self.learning_rate * grad
         
-    def gradient_descent_olr(self, x_b, y):
+    def gradient_descent_olr(self, x, y):
         """
         optimal learning rate
         """
-        grad = self.compute_grad(x_b, y)
+        grad = self.compute_grad(x, y)
         learning_rate = 1.0 / (self.alpha * (self.optimal_init + self.t))
         self.t += 1
         self.theta -= learning_rate * grad
     
     def fit(self, x, y):
-        x_b = np.hstack([np.ones((x.shape[0], 1)), x])
-        self.gradient_descent_olr(x_b, y)
+        self.gradient_descent_olr(x, y)
 
     def predict_prob(self, x):
-        x_b = np.hstack([np.ones((len(x), 1)), x])
-        return self.sigmoid(x_b.dot(self.theta))
+        return self.sigmoid(x.dot(self.theta[1:]) + self.theta[0])
 
     def predict(self, x):
         prob = self.predict_prob(x)
@@ -147,7 +146,7 @@ config = {
     'learning_rate': 2.0,
     'alpha': 0.0001,
     'batch_size': 100,
-    'max_iter': 1000,
+    'max_iter': 200,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
     'need_one_vs_rest': False,
@@ -183,6 +182,7 @@ class Arbiter(LRModel):
         self.private_key = None
         self.need_encrypt = None
         self.theta = None
+        self.alpha = config['alpha']
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
         self.proxy_client_guest = proxy_client_guest
@@ -206,8 +206,7 @@ class Arbiter(LRModel):
     def predict_prob(self, x):
         if self.need_encrypt:
             global_theta = self.decrypt_vector(self.theta)
-            x = np.hstack([np.ones((len(x), 1)), x])
-            prob = self.sigmoid(x.dot(global_theta))
+            prob = self.sigmoid(x.dot(global_theta[1:]) + global_theta[0])
             return prob
         else:
             return super().predict_prob(x)
@@ -260,21 +259,21 @@ class Arbiter(LRModel):
                     agg_param[id_c, id_d] += d * w
             self.theta = np.sum(agg_param, axis=0)
         else:
-            self.theta = np.average(param, weights=weight/weight.sum(), axis=0)
-        return list(self.theta)
+            self.set_theta(np.average(param, weights=weight/weight.sum(), axis=0))
 
     def broadcast_global_model_param(self, host_param, guest_param,
                                      host_data_weight, guest_data_weight):
-        self.theta = self.model_aggregate(host_param, guest_param,
-                                          host_data_weight, guest_data_weight)
+        self.model_aggregate(host_param, guest_param,
+                             host_data_weight, guest_data_weight)
         if self.need_encrypt == 'YES':
             if self.need_one_vs_rest == False:
                 self.theta = self.encrypt_vector(self.theta)
             else:
                 self.theta = self.encrypt_matrix(self.theta)
-
-        self.proxy_client_host.Remote(self.theta, "global_host_model_param")
-        self.proxy_client_guest.Remote(self.theta, "global_guest_model_param")
+        
+        global_theta = list(self.theta)
+        self.proxy_client_host.Remote(global_theta, "global_host_model_param")
+        self.proxy_client_guest.Remote(global_theta, "global_guest_model_param")
 
     def decrypt_vector(self, x):
         return [self.private_key.decrypt(i) for i in x]
@@ -388,22 +387,23 @@ def run_homo_lr_arbiter(role_node_map,
     last_acc = 0
 
     for i in range(config['max_iter']):
-        log_handler.info("-------- start iteration {} --------".format(i+1))
-            
+        log_handler.info("-------- start iteration {} --------".format(i+1))    
+        
         host_param = proxy_server.Get("host_param")
         guest_param = proxy_server.Get("guest_param")
         client_arbiter.broadcast_global_model_param(host_param, guest_param,
                                                     host_data_weight,
                                                     guest_data_weight)
-                                                        
+        
+        loss = client_arbiter.loss(x, y)
         y_hat = client_arbiter.predict_prob(x)
         acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
         auc = evaluator.getAUC(y, y_hat)
         fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
 
-        # only print acc, auc, ks
+        # only print loss, acc, auc, ks
         # fpr and tpr can be finded in the json file
-        log_handler.info("acc={}, auc={}, ks={}".format(acc, auc, ks))
+        log_handler.info("loss={}, acc={}, auc={}, ks={}".format(loss, acc, auc, ks))
         
         # convergence is checked using acc
         if abs(last_acc - acc) < compare_threshold:
@@ -443,7 +443,9 @@ def run_homo_lr_arbiter(role_node_map,
 class Client(LRModel):
 
     def __init__(self, X, y, proxy_server, proxy_client_arbiter):
-        super().__init__(X, y, category=config['category'], learning_rate=config['learning_rate'], alpha=config['alpha'])
+        super().__init__(X, y, category=config['category'],
+                               learning_rate=config['learning_rate'],
+                               alpha=config['alpha'])
         self.public_key = None
         self.need_encrypt = config['need_encrypt']
         self.need_one_vs_rest = None
@@ -560,9 +562,9 @@ def run_homo_lr_client(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    x, label = read_data(data_key)
+    x, y = read_data(data_key)
 
-    client = Client(x, label, proxy_server, proxy_client_arbiter)
+    client = Client(x, y, proxy_server, proxy_client_arbiter)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
     
@@ -586,7 +588,7 @@ def run_homo_lr_client(role_node_map,
 
     x = (x - data_min) / (data_max - data_min)
     
-    batch_gen = client.batch_generator([x, label],
+    batch_gen = client.batch_generator([x, y],
                                             config['batch_size'], False)
 
     for i in range(config['max_iter']):
@@ -604,10 +606,17 @@ def run_homo_lr_client(role_node_map,
             break
 
     log_handler.info("{} training process done.".format(client_name))
-    model_file_path = ph.context.Context.get_model_file_path()
+    model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
     log_handler.info("Current model file path is: {}".format(model_file_path))
+
+    model = {
+        'feature_names': config['feature_names'],
+        'data_max': data_max,
+        'data_min': data_min,
+        'theta': client.theta,
+    }
     with open(model_file_path, 'wb') as fm:
-        pickle.dump(client.get_theta(), fm)
+        pickle.dump(model, fm)
 
     proxy_server.StopRecvLoop()
 
@@ -693,7 +702,7 @@ def run_party(party_name):
 
 @ph.context.function(role='arbiter',
                      protocol='lr',
-                     datasets=['homo_lr_data'],
+                     datasets=['train_homo_lr'],
                      port='9010',
                      task_type="lr-train")
 def run_arbiter_party():

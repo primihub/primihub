@@ -25,3 +25,5 @@ transformers
 requests
 line_profiler
 matplotlib
+
+dp-accounting==0.3.0

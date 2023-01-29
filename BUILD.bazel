@@ -50,6 +50,11 @@ config_setting(
     values = {"define": "cpu_arch=darwin_x86_64"},
 )
 
+config_setting(
+    name = "enable_mysql_driver",
+    values = {"define": "enable_mysql_driver=true"},
+)
+
 DEFAULT_LINK_OPTS = [
     "-pthread",
     "-ldl",
@@ -930,7 +935,12 @@ cc_library(
         "src/primihub/data_store/csv/csv_driver.cc",
         # "src/primihub/data_store/hdfs/hdfs_driver.cc",
         "src/primihub/data_store/sqlite/sqlite_driver.cc",
-    ],
+    ] + select({
+        "enable_mysql_driver": [
+            "src/primihub/data_store/mysql/mysql_driver.cc",
+        ],
+        "//conditions:default": []
+    }),
     hdrs = [
         "src/primihub/data_store/factory.h",
         "src/primihub/data_store/dataset.h",
@@ -939,8 +949,21 @@ cc_library(
         "src/primihub/data_store/csv/csv_driver.h",
         #"src/primihub/data_store/hdfs/hdfs_driver.h",
         "src/primihub/data_store/sqlite/sqlite_driver.h",
-    ],
-    linkopts = LINK_OPTS,
+    ] + select({
+        "enable_mysql_driver": [
+            "src/primihub/data_store/mysql/mysql_driver.h",
+        ],
+        "//conditions:default": []
+    }),
+
+    defines = select({
+        "enable_mysql_driver": ["ENABLE_MYSQL_DRIVER"],
+        "//conditions:default": []
+    }),
+    linkopts = LINK_OPTS + select({
+        "enable_mysql_driver": ["-lmysqlclient"],
+        "//conditions:default": []
+    }),
     deps = [
         "@arrow",
         "@com_github_glog_glog//:glog",
@@ -956,15 +979,12 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-
 cc_library(
     name = "new_data_store_lib",
     srcs = [
             "src/primihub/data_store/driver.cc",
             "src/primihub/data_store/csv/csv_driver.cc",
             # "src/primihub/data_store/hdfs/hdfs_driver.cc",
-
-
     ],
     hdrs = [
             "src/primihub/data_store/factory.h",
