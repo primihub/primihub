@@ -22,15 +22,27 @@
 #include <cctype>
 namespace primihub {
 
-void str_split(const std::string& str, std::vector<std::string>* v,
-               char delimiter) {
-  std::stringstream ss(str);
+void str_split(const std::string& str, std::vector<std::string>* v, char delimiter) {
+    std::stringstream ss(str);
+    while (ss.good()) {
+        std::string substr;
+        getline(ss, substr, delimiter);
+        v->push_back(substr);
+    }
+}
 
-  while (ss.good()) {
-      std::string substr;
-      getline(ss, substr, delimiter);
-      v->push_back(substr);
-  }
+void str_split(const std::string& str, std::vector<std::string>* v, const std::string& pattern) {
+    std::string::size_type pos1, pos2;
+    pos2 = str.find(pattern);
+    pos1 = 0;
+    while (std::string::npos != pos2) {
+        v->push_back(str.substr(pos1, pos2 - pos1));
+        pos1 = pos2 + pattern.size();
+        pos2 = str.find(pattern, pos1);
+    }
+    if (pos1 != str.length()) {
+        v->push_back(str.substr(pos1));
+    }
 }
 
 void peer_to_list(const std::vector<std::string>& peer,
@@ -49,21 +61,36 @@ void peer_to_list(const std::vector<std::string>& peer,
   }
 }
 
-
-
 void sort_peers(std::vector<std::string>* peers) {
-  std::string str_temp;
-
-  for (size_t i = 0; i < peers->size(); i++) {
-    for (size_t j = i + 1; j < peers->size(); j++) {
-      if ((*peers)[i].compare((*peers)[j]) > 0) {
-        str_temp = (*peers)[i];
-        (*peers)[i] = (*peers)[j];
-        (*peers)[j] = str_temp;
-      }
+    if (peers->empty() || peers->size() == 1) {
+        return;
     }
-  }
+    auto& peers_ref = *peers;
+    std::stable_sort(
+        std::begin(peers_ref),
+        std::end(peers_ref),
+        [](const std::string& first, const std::string& second) -> bool {
+            if (first.compare(second) < 0) {
+                return true;
+            } else {
+                return false;
+            }
+        });
 }
+
+// void sort_peers(std::vector<std::string>* peers) {
+//   std::string str_temp;
+
+//   for (size_t i = 0; i < peers->size(); i++) {
+//     for (size_t j = i + 1; j < peers->size(); j++) {
+//       if ((*peers)[i].compare((*peers)[j]) > 0) {
+//         str_temp = (*peers)[i];
+//         (*peers)[i] = (*peers)[j];
+//         (*peers)[j] = str_temp;
+//       }
+//     }
+//   }
+// }
 
 int getAvailablePort(uint32_t* port) {
     uint32_t tmp_port = 0;

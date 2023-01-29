@@ -155,11 +155,18 @@ int KeywordPIRClientTask::saveResult(
             VLOG(5) << "no match result found for query: [" << orig_items[i] << "]";
             continue;
         }
-        csv_output << orig_items[i];    // original query
         if (intersection[i].label) {
-            csv_output << "," << intersection[i].label.to_string();     // matched result
+            std::string label_info = intersection[i].label.to_string();
+            std::vector<std::string> labels;
+            std::string sep = "#####";
+            str_split(label_info, &labels, sep);
+            for (const auto& lable_ : labels) {
+                csv_output << orig_items[i] << "," << lable_ << endl;
+            }
+        } else {
+            csv_output << orig_items[i] << endl;
         }
-        csv_output << endl;
+
     }
     VLOG(5) << "result_file_path_: " << result_file_path_;
     if (ValidateDir(result_file_path_)) {
