@@ -16,7 +16,7 @@ from primihub.FL.model.logistic_regression.homo_lr import read_data, Client, run
 class LRModel_DPSGD(LRModel):
 
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, 
-                    noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=False):
+                    noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
         super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
         self.noise_multiplier = noise_multiplier
         self.l2_norm_clip = l2_norm_clip
@@ -101,7 +101,7 @@ def compute_epsilon(steps, num_train_examples):
 
 class Client_DPSGD(Client, LRModel_DPSGD):
 
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter):
+    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
         LRModel_DPSGD.__init__(self, X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'],
@@ -124,11 +124,11 @@ class Client_DPSGD(Client, LRModel_DPSGD):
             self.one_vs_rest(X, y, category)
 
 
-def run_homo_lr_client(role_node_map,
+def run_homo_lr_client(config,
+                       role_node_map,
                        node_addr_map,
                        data_key,
                        check_convergence,
-                       feature_names,
                        client_name,
                        task_params={},
                        log_handler=None):
@@ -160,10 +160,9 @@ def run_homo_lr_client(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    x, y = read_data(data_key, feature_names)
-    num_train_examples = x.shape[0]
+    x, y = read_data(data_key, config['feature_names'])
 
-    client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter)
+    client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
     
@@ -205,6 +204,7 @@ def run_homo_lr_client(role_node_map,
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
    
+    num_train_examples = x.shape[0]
     eps = compute_epsilon(i+1, num_train_examples)
     log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
 
@@ -230,7 +230,7 @@ def run_homo_lr_client(role_node_map,
                      port='9010',
                      task_type="lr-train")
 def run_arbiter_party():
-    run_party('arbiter', config['feature_names'],
+    run_party('arbiter', config,
               run_homo_lr_client,
               check_convergence=False)
 
@@ -241,7 +241,7 @@ def run_arbiter_party():
                      port='9020',
                      task_type="lr-train")
 def run_host_party():
-    run_party('host', config['feature_names'],
+    run_party('host', config,
               run_homo_lr_client,
               check_convergence=False)
 
@@ -252,6 +252,6 @@ def run_host_party():
                      port='9030',
                      task_type="lr-train")
 def run_guest_party():
-    run_party('guest', config['feature_names'],
+    run_party('guest', config,
               run_homo_lr_client,
               check_convergence=False)

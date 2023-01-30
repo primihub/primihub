@@ -176,7 +176,7 @@ class Arbiter(LRModel):
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest):
+    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest, config):
         self.need_one_vs_rest = None
         self.public_key = None
         self.private_key = None
@@ -294,11 +294,11 @@ class Arbiter(LRModel):
         return ret
 
 
-def run_homo_lr_arbiter(role_node_map,
+def run_homo_lr_arbiter(config,
+                        role_node_map,
                         node_addr_map,
                         data_key,
                         check_convergence,
-                        feature_names,
                         task_params={},
                         log_handler=None):
     host_nodes = role_node_map["host"]
@@ -348,10 +348,10 @@ def run_homo_lr_arbiter(role_node_map,
     log_handler.debug("Create client proxy to guest,"
                       " ip {}, port {}.".format(guest_ip, guest_port))   
         
-    x, y = read_data(data_key, feature_names)
+    x, y = read_data(data_key, config['feature_names'])
 
     client_arbiter = Arbiter(proxy_server, proxy_client_host,
-                             proxy_client_guest)
+                             proxy_client_guest, config)
     client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
     need_encrypt = proxy_server.Get("need_encrypt")
 
@@ -445,7 +445,7 @@ def run_homo_lr_arbiter(role_node_map,
 
 class Client(LRModel):
 
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter):
+    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
         super().__init__(X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'])
@@ -531,11 +531,11 @@ class Client(LRModel):
         return [self.public_key.encrypt(i) for i in x]
 
 
-def run_homo_lr_client(role_node_map,
+def run_homo_lr_client(config,
+                       role_node_map,
                        node_addr_map,
                        data_key,
                        check_convergence,
-                       feature_names,
                        client_name,
                        task_params={},
                        log_handler=None):
@@ -567,9 +567,9 @@ def run_homo_lr_client(role_node_map,
     log_handler.debug("Create client proxy to arbiter,"
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
-    x, y = read_data(data_key, feature_names)
+    x, y = read_data(data_key, config['feature_names'])
 
-    client = Client(x, y, proxy_server, proxy_client_arbiter)
+    client = Client(x, y, proxy_server, proxy_client_arbiter, config)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
     
@@ -669,7 +669,7 @@ def load_info():
 # logger = get_logger("Homo-LR")
 
 
-def run_party(party_name, feature_names,
+def run_party(party_name, config,
               run_homo_lr_client,
               check_convergence=True):
     role_node_map = ph.context.Context.get_role_node_map()
@@ -694,18 +694,18 @@ def run_party(party_name, feature_names,
     fl_console_log.info("Start homo-LR {} logic.".format(party_name))
     
     if party_name == 'arbiter':
-        run_homo_lr_arbiter(role_node_map,
+        run_homo_lr_arbiter(config,
+                            role_node_map,
                             node_addr_map,
                             data_key,
                             check_convergence,
-                            feature_names,
                             log_handler=fl_console_log)
     else:
-        run_homo_lr_client(role_node_map,
+        run_homo_lr_client(config,
+                           role_node_map,
                            node_addr_map,
                            data_key,
                            check_convergence,
-                           feature_names,
                            client_name=party_name,
                            log_handler=fl_console_log)
 
@@ -718,7 +718,7 @@ def run_party(party_name, feature_names,
                      port='9010',
                      task_type="lr-train")
 def run_arbiter_party():
-    run_party('arbiter', config['feature_names'],
+    run_party('arbiter', config,
               run_homo_lr_client)
 
 
@@ -728,7 +728,7 @@ def run_arbiter_party():
                      port='9020',
                      task_type="lr-train")
 def run_host_party():
-    run_party('host', config['feature_names'],
+    run_party('host', config,
               run_homo_lr_client)
 
 
@@ -738,5 +738,5 @@ def run_host_party():
                      port='9030',
                      task_type="lr-train")
 def run_guest_party():
-    run_party('guest', config['feature_names'],
+    run_party('guest', config,
               run_homo_lr_client)
