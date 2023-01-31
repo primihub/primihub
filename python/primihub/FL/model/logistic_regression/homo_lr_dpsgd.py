@@ -10,7 +10,7 @@ import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
-from primihub.FL.model.logistic_regression.homo_lr import Client, run_party
+from primihub.FL.model.logistic_regression.homo_lr import run_party
 
 
 class LRModel_DPSGD(LRModel):
