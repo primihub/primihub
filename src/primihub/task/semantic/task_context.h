@@ -57,6 +57,10 @@ class TaskContext {
     if (it != in_data_queue.end()) {
       return it->second;
     } else {
+      in_data_queue[role];
+      if (stop_.load(std::memory_order::memory_order_relaxed)) {
+          in_data_queue[role].shutdown();
+      }
       return in_data_queue[role];
     }
   }
@@ -83,6 +87,30 @@ class TaskContext {
     return link_ctx_;
   }
 
+  void clean() {
+    stop_.store(true);
+    LOG(ERROR) << "stop all in data queue";
+    {
+        std::lock_guard<std::mutex> lck(in_queue_mtx);
+        for(auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+    LOG(ERROR) << "stop all out data queue";
+    {
+        std::lock_guard<std::mutex> lck(out_queue_mtx);
+        for(auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+    LOG(ERROR) << "stop all complete queue";
+    {
+        std::lock_guard<std::mutex> lck(complete_queue_mtx);
+        for(auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+  }
  protected:
     void initCertificate() {
         auto& server_config = primihub::ServerConfig::getInstance();
@@ -100,6 +128,7 @@ class TaskContext {
   std::mutex complete_queue_mtx;
   std::unordered_map<std::string, primihub::ThreadSafeQueue<retcode>> complete_queue;
   std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
+  std::atomic<bool> stop_{false};
 };
 }  // namespace primihub::task
 #endif  // SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_

@@ -68,22 +68,22 @@ retcode GrpcChannel::sendRecv(const std::string& role,
   return sendRecv(role, data_sv, recv_data);
 }
 
-int GrpcChannel::send_wrapper(const std::string& role, const std::string& data) {
+bool GrpcChannel::send_wrapper(const std::string& role, const std::string& data) {
     auto ret = this->send(role, data);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send data encountes error";
-        return -1;
+        return false;
     }
-    return 0;
+    return true;
 }
 
-int GrpcChannel::send_wrapper(const std::string& role, std::string_view sv_data) {
+bool GrpcChannel::send_wrapper(const std::string& role, std::string_view sv_data) {
     auto ret = this->send(role, sv_data);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send data encountes error";
-        return -1;
+        return false;
     }
-    return 0;
+    return true;
 }
 retcode GrpcChannel::send(const std::string& role, const std::string& data) {
   std::string_view data_sv(data.c_str(), data.length());
@@ -212,19 +212,35 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
 }
 
 retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) {
-  grpc::ClientContext context;
-  grpc::Status status =
-      stub_->SubmitTask(&context, request, reply);
-  if (status.ok()) {
-      VLOG(5) << "submitTask to node: ["
-              <<  dest_node_.to_string() << "] rpc succeeded.";
-  } else {
-      LOG(ERROR) << "submitTask to Node ["
-                 <<  dest_node_.to_string() << "] rpc failed. "
-                 << status.error_code() << ": " << status.error_message();
-      return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
+    grpc::ClientContext context;
+    grpc::Status status =
+        stub_->SubmitTask(&context, request, reply);
+    if (status.ok()) {
+        VLOG(5) << "submitTask to node: ["
+                <<  dest_node_.to_string() << "] rpc succeeded.";
+    } else {
+        LOG(ERROR) << "submitTask to Node ["
+                  <<  dest_node_.to_string() << "] rpc failed. "
+                  << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) {
+    grpc::ClientContext context;
+    grpc::Status status =
+        stub_->KillTask(&context, request, reply);
+    if (status.ok()) {
+        VLOG(5) << "killTask to node: ["
+                <<  dest_node_.to_string() << "] rpc succeeded.";
+    } else {
+        LOG(ERROR) << "killTask to Node ["
+                  <<  dest_node_.to_string() << "] rpc failed. "
+                  << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
 }
 
 std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(const primihub::Node& node, LinkContext* link_ctx) {

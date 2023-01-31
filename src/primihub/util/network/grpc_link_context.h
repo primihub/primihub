@@ -21,11 +21,12 @@ class GrpcChannel : public IChannel {
   virtual ~GrpcChannel() = default;
   retcode send(const std::string& role, const std::string& data) override;
   retcode send(const std::string& role, std::string_view sv_data) override;
-  int send_wrapper(const std::string& role, const std::string& data) override;
-  int send_wrapper(const std::string& role, std::string_view sv_data) override;
+  bool send_wrapper(const std::string& role, const std::string& data) override;
+  bool send_wrapper(const std::string& role, std::string_view sv_data) override;
   retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) override;
   retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) override;
   retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) override;
+  retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) override;
   std::string forwardRecv(const std::string& role) override;
   retcode buildTaskRequest(const std::string& role,
                            const std::string& data,

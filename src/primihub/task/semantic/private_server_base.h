@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <atomic>
 #include <glog/logging.h>
 
 #include "src/primihub/protos/common.grpc.pb.h"
@@ -30,7 +31,7 @@ using primihub::service::DatasetService;
 
 namespace primihub::task {
 class ServerTaskBase {
-public:
+ public:
     using task_context_t = TaskContext<primihub::rpc::ExecuteTaskRequest, primihub::rpc::ExecuteTaskResponse>;
     ServerTaskBase(const Params *params,
                    std::shared_ptr<DatasetService> dataset_service);
@@ -39,8 +40,13 @@ public:
     virtual int execute() = 0;
     virtual int loadParams(Params & params) = 0;
     virtual int loadDataset(void) = 0;
-    virtual int kill_task() {
-        LOG(WARNING) << "UNIMPLEMENT";
+    virtual void kill_task() {
+        LOG(WARNING) << "task receives kill task request and stop stauts";
+        stop_.store(true);
+        task_context_.clean();
+    }
+    bool has_stopped() {
+        return stop_.load(std::memory_order_relaxed);
     }
     std::shared_ptr<DatasetService>& getDatasetService() {
         return dataset_service_;
@@ -61,7 +67,7 @@ protected:
 		           std::vector<std::string>& col_array, int64_t max_num = 0);
     int loadDatasetFromTXT(std::string &filename,
 		           std::vector <std::string> &col_array);
-
+    std::atomic<bool> stop_{false};
     Params params_;
     std::shared_ptr<DatasetService> dataset_service_;
     task_context_t task_context_;

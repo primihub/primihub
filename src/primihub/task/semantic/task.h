@@ -17,10 +17,55 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
 #include <glog/logging.h>
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/task_context.h"
+
+#define CHECK_RETCODE_WITH_RETVALUE(ret_code, retvalue)  \
+    do {                                                \
+        if (ret_code != retcode::SUCCESS) {             \
+            return retvalue;                            \
+        }                                               \
+    } while(0);
+
+#define CHECK_RETCODE(ret_code)                 \
+    do {                                        \
+        if (ret_code != retcode::SUCCESS) {     \
+            return retcode::FAIL;               \
+        }                                       \
+    } while(0);
+
+#define CHECK_RETCODE_WITH_ERROR_MSG(ret_code, error_msg)   \
+    do {                                                    \
+        if (ret_code != retcode::SUCCESS) {                 \
+            LOG(ERROR) << error_msg;                        \
+            return retcode::FAIL;                           \
+        }                                                   \
+    } while(0);
+
+#define CHECK_NULLPOINTER(ptr, ret_code)          \
+    do {                                          \
+        if (ptr == nullptr) {                     \
+            return ret_code;                      \
+        }                                         \
+    } while(0);
+
+#define CHECK_NULLPOINTER_WITH_ERROR_MSG(ptr, error_msg)    \
+    do {                                                    \
+        if (ret_code == nullptr) {                          \
+            LOG(ERROR) << error_msg;                        \
+            return retcode::FAIL;                           \
+        }                                                   \
+    } while(0);
+
+#define CHECK_TASK_STOPPED(ret_data)                        \
+    do {                                                    \
+        if (this->has_stopped()) {                          \
+            LOG(ERROR) << "task has been set stopped";      \
+            return ret_data;                                \
+        }                                                   \
+    } while(0);
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
@@ -42,9 +87,14 @@ class TaskBase {
 
   virtual ~TaskBase() = default;
   virtual int execute() = 0;
-  virtual int kill_task() {
-    LOG(INFO) << "UNIMPLEMENT";
+  virtual void kill_task() {
+    LOG(WARNING) << "task receives kill task request and stop stauts";
+    stop_.store(true);
+    task_context_.clean();
   };
+  bool has_stopped() {
+    return stop_.load(std::memory_order_relaxed);
+  }
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
       const std::string& task_id, const std::string& submit_client_id) {
     job_id_ = job_id;
@@ -89,6 +139,7 @@ class TaskBase {
    * the server just prepare data and push into send queue
   */
   retcode pushDataToSendQueue(const std::string& key, std::string&& send_data);
+
  protected:
    std::atomic<bool> stop_{false};
    TaskParam task_param_;

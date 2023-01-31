@@ -59,14 +59,16 @@ namespace primihub {
 
 class SDKClient {
  public:
-  explicit SDKClient(std::shared_ptr<primihub::network::IChannel> channel)
-    : channel_(channel) {
-  }
+    explicit SDKClient(std::shared_ptr<primihub::network::IChannel> channel,
+          primihub::network::LinkContext* link_ctx)
+        : channel_(channel), link_ctx_ref_(link_ctx) {
+    }
 
-  int SubmitTask();
+    int SubmitTask();
 
  private:
-  std::shared_ptr<primihub::network::IChannel> channel_;
+    std::shared_ptr<primihub::network::IChannel> channel_{nullptr};
+    primihub::network::LinkContext* link_ctx_ref_{nullptr};
 };
 
 }  // namespace primihub

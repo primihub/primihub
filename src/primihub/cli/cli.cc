@@ -131,6 +131,7 @@ int get_task_execute_status(const primihub::rpc::Node& notify_server, const Push
     auto stub = primihub::rpc::NodeService::NewStub(channel);
     using ClientContext = primihub::rpc::ClientContext;
     using NodeEventReply = primihub::rpc::NodeEventReply;
+    bool has_error{false};
     do {
         bool is_finished{false};
         grpc::ClientContext context;
@@ -149,6 +150,9 @@ int get_task_execute_status(const primihub::rpc::Node& notify_server, const Push
                     << status;
             if (status == std::string("SUCCESS") || status == std::string("FAIL")) {
                 is_finished = true;
+                if (status == std::string("FAIL")) {
+                    has_error = true;
+                }
                 break;
             }
         }
@@ -156,6 +160,9 @@ int get_task_execute_status(const primihub::rpc::Node& notify_server, const Push
             break;
         }
     } while (true);
+    if (has_error) {
+        return -1;
+    }
 
     return 0;
 }
@@ -164,7 +171,7 @@ int SDKClient::SubmitTask() {
     PushTaskRequest pushTaskRequest;
     PushTaskReply pushTaskReply;
     grpc::ClientContext context;
-    pushTaskRequest.set_submit_client_id("client_id_test");
+    // pushTaskRequest.set_submit_client_id("client_id_test");
     pushTaskRequest.set_intended_worker_id("1");
     pushTaskRequest.mutable_task()->set_type(
         (enum TaskType)absl::GetFlag(FLAGS_task_type));
@@ -228,13 +235,14 @@ int SDKClient::SubmitTask() {
     std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
     std::mt19937 generator(seq);
     uuids::uuid_random_generator gen{generator};
-    uuids::uuid const id = gen();
+    const uuids::uuid id = gen();
     std::string task_id = uuids::to_string(id);
-    pushTaskRequest.mutable_task()->set_job_id(absl::GetFlag(FLAGS_job_id));
+    std::string job_id = absl::GetFlag(FLAGS_job_id);
+    pushTaskRequest.mutable_task()->set_job_id(job_id);
     pushTaskRequest.mutable_task()->set_task_id(task_id);
     pushTaskRequest.set_sequence_number(11);
     pushTaskRequest.set_client_processed_up_to(22);
-
+    pushTaskRequest.set_submit_client_id(job_id + "_" + task_id);
     LOG(INFO) << " SubmitTask...";
 
     auto ret = channel_->submitTask(pushTaskRequest, &pushTaskReply);
@@ -242,6 +250,7 @@ int SDKClient::SubmitTask() {
         return -1;
     }
     std::vector<std::future<int>> wait_result_futs;
+    std::vector<bool> result_fetched;
     for (const auto& server_info : pushTaskReply.notify_server()) {
         wait_result_futs.push_back(
             std::async(
@@ -250,9 +259,82 @@ int SDKClient::SubmitTask() {
                 std::ref(server_info),
                 std::ref(pushTaskRequest)
             ));
+        result_fetched.push_back(false);
     }
-    for (auto&& fut : wait_result_futs) {
-        fut.get();
+
+    bool has_error{false};
+    do {
+        for (int i = 0; i < wait_result_futs.size(); i++) {
+            if (result_fetched[i]) {
+                continue;
+            } else {
+                auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
+                if (st == std::future_status::ready) {
+                    auto result = wait_result_futs[i].get();
+                    result_fetched[i] = true;
+                    if (result != 0) {
+                        has_error = true;
+                        break;
+                    }
+                }
+            }
+        }
+        bool is_all_fininshed{true};
+        for (auto fetched : result_fetched) {
+            if (!fetched) {
+                is_all_fininshed = false;
+            }
+        }
+        if (is_all_fininshed) {
+            break;
+        }
+        if (has_error) {
+            break;
+        }
+    } while (true);
+
+    if (has_error) {
+        LOG(INFO) << "begin to send kill task";
+        for (const auto& server_info: pushTaskReply.task_server()) {
+            VLOG(0) << "node: " << server_info.ip() << " port: " << server_info.port();
+            Node remote_node(server_info.ip(), server_info.port(), server_info.use_tls());
+            auto channel = link_ctx_ref_->getChannel(remote_node);
+            rpc::KillTaskRequest request;
+            request.set_job_id(job_id);
+            request.set_task_id(task_id);
+            request.set_executor(rpc::KillTaskRequest::SCHEDULER);
+            rpc::KillTaskResponse reponse;
+            channel->killTask(request, &reponse);
+        }
+        LOG(INFO) << "end of send kill task to all node";
+        do {
+            for (int i = 0; i < wait_result_futs.size(); i++) {
+                if (result_fetched[i]) {
+                    continue;
+                } else {
+                    auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
+                    if (st == std::future_status::ready) {
+                        auto result = wait_result_futs[i].get();
+                        result_fetched[i] = true;
+                        if (result != 0) {
+                            has_error = true;
+                            break;
+                        }
+                    } else {
+                        LOG(ERROR) << "unready";
+                    }
+                }
+            }
+            bool all_fetched = true;
+            for (size_t i = 0; i < result_fetched.size(); i++) {
+                if (!result_fetched[i]) {
+                    all_fetched = false;
+                }
+            }
+            if (all_fetched) {
+                break;
+            }
+        } while (true);
     }
     return 0;
 }
@@ -308,7 +390,7 @@ int main(int argc, char** argv) {
             LOG(ERROR) << "link_ctx->getChannel(peer_node); failed";
             return -1;
         }
-        primihub::SDKClient client(channel);
+        primihub::SDKClient client(channel, link_ctx.get());
         auto _start = std::chrono::high_resolution_clock::now();
         auto ret = client.SubmitTask();
         auto _end = std::chrono::high_resolution_clock::now();
