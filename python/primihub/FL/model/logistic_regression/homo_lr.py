@@ -10,7 +10,6 @@ import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
-from primihub.FL.model.logistic_regression.homo_lr_dpsgd import compute_epsilon
 
 import numpy as np
 import pandas as pd
@@ -20,7 +19,7 @@ from primihub.FL.proxy.proxy import ClientChannelProxy
 from os import path
 import logging
 from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
-
+import dp_accounting
 
 config = {
     'learning_rate': 2.0,
@@ -35,11 +34,13 @@ config = {
     'feature_names': None,
 }
 
+
 def feature_selection(x, feature_names):
     if feature_names != None:
         return x[feature_names]
     else:
         return x
+
 
 def read_data(dataset_key, feature_names):
     x = ph.dataset.read(dataset_key).df_data
@@ -50,6 +51,25 @@ def read_data(dataset_key, feature_names):
     y = x.pop('y').values
     x = feature_selection(x, feature_names).to_numpy()
     return x, y
+
+
+def compute_epsilon(steps, num_train_examples, config):
+    """Computes epsilon value for given hyperparameters."""
+    if config['noise_multiplier'] == 0.0:
+        return float('inf')
+    orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+    accountant = dp_accounting.rdp.RdpAccountant(orders)
+
+    sampling_probability = config['batch_size'] / num_train_examples
+    event = dp_accounting.SelfComposedDpEvent(
+        dp_accounting.PoissonSampledDpEvent(
+            sampling_probability,
+            dp_accounting.GaussianDpEvent(config['noise_multiplier'])), steps)
+
+    accountant.compose(event)
+    
+    assert config['delta'] < 1. / num_train_examples
+    return accountant.get_epsilon(target_delta=config['delta'])
 
 
 class LRModel_DPSGD(LRModel):

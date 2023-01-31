@@ -1,8 +1,5 @@
 import primihub as ph
-
 from primihub.FL.model.logistic_regression.homo_lr import run_party
-
-import dp_accounting
 
 
 config = {
@@ -20,25 +17,6 @@ config = {
     'delta': 1e-3,
     'secure_mode': True,
 }
-
-
-def compute_epsilon(steps, num_train_examples, config):
-    """Computes epsilon value for given hyperparameters."""
-    if config['noise_multiplier'] == 0.0:
-        return float('inf')
-    orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-    accountant = dp_accounting.rdp.RdpAccountant(orders)
-
-    sampling_probability = config['batch_size'] / num_train_examples
-    event = dp_accounting.SelfComposedDpEvent(
-        dp_accounting.PoissonSampledDpEvent(
-            sampling_probability,
-            dp_accounting.GaussianDpEvent(config['noise_multiplier'])), steps)
-
-    accountant.compose(event)
-    
-    assert config['delta'] < 1. / num_train_examples
-    return accountant.get_epsilon(target_delta=config['delta'])
 
 
 @ph.context.function(role='arbiter',
