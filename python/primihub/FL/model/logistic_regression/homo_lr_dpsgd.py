@@ -100,26 +100,6 @@ def compute_epsilon(steps, num_train_examples, config):
     return accountant.get_epsilon(target_delta=config['delta'])
 
 
-class Client_DPSGD(Client, LRModel_DPSGD):
-
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
-        LRModel_DPSGD.__init__(self, X, y, category=config['category'],
-                               learning_rate=config['learning_rate'],
-                               alpha=config['alpha'],
-                               noise_multiplier=config['noise_multiplier'],
-                               l2_norm_clip=config['l2_norm_clip'],
-                               secure_mode=config['secure_mode'])
-        self.public_key = None
-        self.need_encrypt = config['need_encrypt']
-        self.need_one_vs_rest = None
-        self.flag = True
-        self.proxy_server = proxy_server
-        self.proxy_client_arbiter = proxy_client_arbiter
-    
-    def fit(self, X, y):
-        LRModel_DPSGD.fit(self, X, y)
-        
-
 @ph.context.function(role='arbiter',
                      protocol='lr',
                      datasets=['train_homo_lr'],
