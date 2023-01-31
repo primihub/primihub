@@ -10,7 +10,7 @@ import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
 from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
-from primihub.FL.model.logistic_regression.homo_lr_dpsgd import LRModel_DPSGD, compute_epsilon
+from primihub.FL.model.logistic_regression.homo_lr_dpsgd import compute_epsilon
 
 import numpy as np
 import pandas as pd
@@ -50,6 +50,48 @@ def read_data(dataset_key, feature_names):
     y = x.pop('y').values
     x = feature_selection(x, feature_names).to_numpy()
     return x, y
+
+
+class LRModel_DPSGD(LRModel):
+
+    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, 
+                    noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
+        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
+        self.noise_multiplier = noise_multiplier
+        self.l2_norm_clip = l2_norm_clip
+        self.secure_mode = secure_mode
+
+    def set_noise_multiplier(self, noise_multiplier):
+        self.noise_multiplier = noise_multiplier
+
+    def set_l2_norm_clip(self, l2_norm_clip):
+        self.l2_norm_clip = l2_norm_clip
+    
+    def compute_grad(self, x, y):
+        batch_size = x.shape[0]
+        
+        temp = self.predict_prob(x) - y
+        batch_grad = np.hstack([np.expand_dims(temp, axis=1),
+                                x * np.expand_dims(temp, axis=1)])
+
+        batch_grad_l2_norm = np.sqrt((batch_grad ** 2).sum(axis=1))
+        clip = np.maximum(1., batch_grad_l2_norm / self.l2_norm_clip)
+
+        grad = (batch_grad / np.expand_dims(clip, axis=1)).sum(axis=0)
+
+        if self.secure_mode:
+            noise = np.zeros(grad.shape)
+            n = 2
+            for _ in range(2 * n):
+                noise += np.random.normal(0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
+            noise /= np.sqrt(2 * n)
+        else:
+            noise = np.random.normal(0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
+
+        grad += noise
+
+        return grad / x.shape[0]
+        
 
 class Arbiter(LRModel):
     """
