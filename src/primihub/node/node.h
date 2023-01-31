@@ -142,6 +142,10 @@ class VMNodeImpl final: public VMNode::Service {
         const ::primihub::rpc::TaskRequest* request,
         ::grpc::ServerWriter< ::primihub::rpc::TaskRequest>* writer) override;
 
+    Status KillTask(::grpc::ServerContext* context,
+        const ::primihub::rpc::KillTaskRequest* request,
+        ::primihub::rpc::KillTaskResponse* response) override;
+
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
 
@@ -174,6 +178,11 @@ class VMNodeImpl final: public VMNode::Service {
       LOG(ERROR) << "no worker found for worker id: " << worker_id;
       return nullptr;
     }
+    std::shared_ptr<Worker> getSchedulerWorker(const std::string& job_id, const std::string& task_id) {
+        std::string worker_id = getWorkerId(job_id, task_id);
+        // UNIMPLEMENT
+        return nullptr;
+    }
 
     inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
       return job_id + "_" + task_id;
@@ -205,7 +214,7 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
     std::unique_ptr<VMNode::Stub> stub_;
-    int wait_worker_ready_timeout_ms{60*1000};    // 60s
+    int wait_worker_ready_timeout_ms{30*1000};    // 60s
 };
 
 } // namespace primihub

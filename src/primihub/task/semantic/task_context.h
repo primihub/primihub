@@ -80,6 +80,30 @@ class TaskContext {
     return link_ctx_;
   }
 
+  void clean() {
+    LOG(ERROR) << "stop all in data queue";
+    {
+        std::lock_guard<std::mutex> lck(in_queue_mtx);
+        for(auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+    LOG(ERROR) << "stop all out data queue";
+    {
+        std::lock_guard<std::mutex> lck(out_queue_mtx);
+        for(auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+    LOG(ERROR) << "stop all complete queue";
+    {
+        std::lock_guard<std::mutex> lck(complete_queue_mtx);
+        for(auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
+            it->second.shutdown();
+        }
+    }
+  }
+
  private:
   std::mutex in_queue_mtx;
   std::unordered_map<std::string, primihub::ThreadSafeQueue<T>> in_data_queue;

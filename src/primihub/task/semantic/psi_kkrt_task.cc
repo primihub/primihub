@@ -262,7 +262,7 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
     //LOG(INFO) << "server step 7";
 }
 
-int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
+retcode PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
     /*for (auto pos : receiver.mIntersection) {
         LOG(INFO) << pos;
     }*/
@@ -283,7 +283,7 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
             result_.push_back(elements_[pos]);
         }
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 #endif
 
@@ -419,8 +419,8 @@ int PSIKkrtTask::execute() {
     return 0;
 }
 
-int PSIKkrtTask::recvIntersectionData() {
-     VLOG(5) << "recvPSIResult from client";
+retcode PSIKkrtTask::recvIntersectionData() {
+    VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     std::string recv_data_str;
@@ -441,8 +441,7 @@ int PSIKkrtTask::recvIntersectionData() {
 
     VLOG(5) << "psi_result size: " << psi_result.size();
     std::string col_title{"intersection_row"};
-    saveDataToCSVFile(psi_result, server_result_path, col_title);
-    return 0;
+    return saveDataToCSVFile(psi_result, server_result_path, col_title);
 }
 
 retcode PSIKkrtTask::exchangeDataPort() {
@@ -476,10 +475,11 @@ retcode PSIKkrtTask::exchangeDataPort() {
     recv_data_port_info.ParseFromString(recv_data_port_info_str);
     const auto& recv_param_map = recv_data_port_info.param_map();
     auto it = recv_param_map.find("data_port");
-    if (it != recv_param_map.end()) {
-        peer_data_port = it->second.value_int32();
-        VLOG(5) << "peer_data_port: " << peer_data_port;
+    if (it == recv_param_map.end()) {
+        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, "data_port info does not find");
     }
+    peer_data_port = it->second.value_int32();
+    VLOG(5) << "peer_data_port: " << peer_data_port;
     return retcode::SUCCESS;
 }
 

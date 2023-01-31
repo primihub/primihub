@@ -37,7 +37,8 @@ KeywordPIRClientTask::KeywordPIRClientTask(
     : TaskBase(task_param, dataset_service) {
 }
 
-int KeywordPIRClientTask::_LoadParams(Task &task) {
+retcode KeywordPIRClientTask::_LoadParams(Task &task) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     const auto& param_map = task.params().param_map();
     try {
         auto client_data_it = param_map.find("clientData");
@@ -51,7 +52,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
             VLOG(5) << "dataset_path_: " << dataset_path_;
         } else {
             LOG(ERROR) << "no keyword: clientData match found";
-            return -1;
+            return retcode::FAIL;
         }
         auto result_file_path_it = param_map.find("outputFullFilename");
         if (result_file_path_it != param_map.end()) {
@@ -59,19 +60,19 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
             VLOG(5) << "result_file_path_: " << result_file_path_;
         } else  {
             LOG(ERROR) << "no keyword: outputFullFilename match found";
-            return -1;
+            return retcode::FAIL;
         }
         auto server_address_it = param_map.find("serverAddress");
         if (server_address_it != param_map.end()) {
             server_address_ = server_address_it->second.value_string();
             VLOG(5) << "server_address_: " << server_address_;
         } else {
-            LOG(ERROR) << "no keyword: serverAddress match found";
-            return -1;
+            LOG(ERROR) << "no keyword: serverAddress found";
+            return retcode::FAIL;
         }
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
-        return -1;
+        return retcode::FAIL;
     }
     const auto& node_map = task.node_map();
     for (const auto& [_node_id, pb_node] : node_map) {
@@ -81,7 +82,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
         peer_node_ = Node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
         VLOG(5) << "peer_node: " << peer_node_.to_string();
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
 std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
@@ -135,18 +136,15 @@ KeywordPIRClientTask::_LoadDataset(void) {
     }
 }
 
-int KeywordPIRClientTask::_GetIntsection() {
-    return 0;
-}
-
-int KeywordPIRClientTask::saveResult(
+retcode KeywordPIRClientTask::saveResult(
         const std::vector<std::string>& orig_items,
         const std::vector<Item>& items,
         const std::vector<MatchRecord>& intersection) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     if (orig_items.size() != items.size()) {
         LOG(ERROR) << "Keyword PIR orig_items must have the same size as items, detail: "
             << "orig_items size: " << orig_items.size() << " items size: " << items.size();
-        return -1;
+        return retcode::FAIL;
     }
 
     std::stringstream csv_output;
@@ -171,16 +169,18 @@ int KeywordPIRClientTask::saveResult(
     VLOG(5) << "result_file_path_: " << result_file_path_;
     if (ValidateDir(result_file_path_)) {
         LOG(ERROR) << "can't access file path: " << result_file_path_;
-        return -1;
+        return retcode::FAIL;
     }
     if (!result_file_path_.empty()) {
         std::ofstream ofs(result_file_path_);
         ofs << csv_output.str();
     }
 
-    return 0;
+    return retcode::SUCCESS;
 }
+
 retcode KeywordPIRClientTask::requestPSIParams() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     RequestType type = RequestType::PsiParam;
     std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
     VLOG(5) << "send_data length: " << request.length();
@@ -223,6 +223,7 @@ static std::string to_hexstring(const Item &item)
 retcode KeywordPIRClientTask::requestOprf(const std::vector<Item>& items,
         std::vector<apsi::HashedItem>* res_items_ptr,
         std::vector<apsi::LabelKey>* res_label_keys_ptr) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     RequestType type = RequestType::Oprf;
     std::string oprf_response;
     auto oprf_receiver = this->receiver_->CreateOPRFReceiver(items);
@@ -256,13 +257,13 @@ retcode KeywordPIRClientTask::requestQuery() {
 
 int KeywordPIRClientTask::execute() {
     auto ret = _LoadParams(task_param_);
-    if (ret) {
+    if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "Pir client load task params failed.";
-        return ret;
+        return -1;
     }
     VLOG(5) << "begin to request psi params";
-    auto ret_code = requestPSIParams();
-    if (ret_code != retcode::SUCCESS) {
+    ret = requestPSIParams();
+    if (ret != retcode::SUCCESS) {
       return -1;
     }
     auto [query_data, orig_items] = _LoadDataset();
@@ -276,10 +277,11 @@ int KeywordPIRClientTask::execute() {
     std::vector<HashedItem> oprf_items;
     std::vector<LabelKey> label_keys;
     VLOG(5) << "begin to Receiver::RequestOPRF";
-    ret_code = requestOprf(items_vec, &oprf_items, &label_keys);
-    if (ret_code != retcode::SUCCESS) {
-      return -1;
+    ret = requestOprf(items_vec, &oprf_items, &label_keys);
+    if (ret != retcode::SUCCESS) {
+        return -1;
     }
+
 
     if (VLOG_IS_ON(5)) {
         for (int i = 0; i < items_vec.size(); i++) {
@@ -301,15 +303,24 @@ int KeywordPIRClientTask::execute() {
         std::string query_data_str = string_ss.str();
         auto itt = move(query.second);
         VLOG(5) << "query_data_str size: " << query_data_str.size();
-        this->send(this->key, peer_node_, query_data_str);
+        ret = this->send(this->key, peer_node_, query_data_str);
+        if (ret != retcode::SUCCESS) {
+            return -1;
+        }
         // receive package count
         uint32_t package_count = 0;
-        this->recv("package_count", reinterpret_cast<char*>(&package_count), sizeof(package_count));
+        ret = this->recv("package_count", reinterpret_cast<char*>(&package_count), sizeof(package_count));
+        if (ret != retcode::SUCCESS) {
+            return -1;
+        }
         VLOG(5) << "received package count: " << package_count;
         std::vector<apsi::ResultPart> result_packages;
         for (size_t i = 0; i < package_count; i++) {
             std::string recv_data;
-            this->recv(this->key, &recv_data);
+            ret = this->recv(this->key, &recv_data);
+            if (ret != retcode::SUCCESS) {
+                return -1;
+            }
             VLOG(5) << "client received data length: " << recv_data.size();
             std::istringstream stream_in(recv_data);
             apsi::ResultPart result_part = std::make_unique<apsi::network::ResultPackage>();
@@ -324,22 +335,8 @@ int KeywordPIRClientTask::execute() {
         return -1;
     }
     VLOG(5) << "receiver.request_query end";
-    this->saveResult(orig_items, items, query_result);
-    return 0;
-}
-
-int KeywordPIRClientTask::waitForServerPortInfo() {
-    std::string recv_data_port_info_str;
-    this->recv(this->key, &recv_data_port_info_str);
-    rpc::Params recv_data_port_info;
-    recv_data_port_info.ParseFromString(recv_data_port_info_str);
-    const auto& recv_param_map = recv_data_port_info.param_map();
-    auto it = recv_param_map.find("data_port");
-    if (it != recv_param_map.end()) {
-        server_data_port = it->second.value_int32();
-        VLOG(5) << "server_data_port: " << server_data_port;
-    }
-    return 0;
+    ret = this->saveResult(orig_items, items, query_result);
+    return ret != retcode::SUCCESS ? -1 : 0;
 }
 
 } // namespace primihub::task

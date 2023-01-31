@@ -60,7 +60,20 @@ message ForwardTaskRequest {
   TaskRequest task_request = 2;
 }
 
+message KillTaskRequest {
+    enum executorType {
+        CLIENT = 0;     // executed by client
+        SCHEDULER = 1;  // executed by scheduler
+    }
+    string job_id = 1;
+    string task_id = 2;
+    executorType executor = 3;
+}
 
+message KillTaskResponse {
+    retcode ret_code = 1;
+    string msg_info = 2;
+}
 
 service VMNode {
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
@@ -70,5 +83,6 @@ service VMNode {
   rpc SendRecv(stream TaskRequest) returns (stream TaskResponse);
   rpc ForwardSend(stream ForwardTaskRequest) returns (TaskResponse); // forward data as proxy
   rpc ForwardRecv(TaskRequest) returns (stream TaskRequest);  // forward data as proxy
+  rpc KillTask(KillTaskRequest) returns (KillTaskResponse);
 }
 

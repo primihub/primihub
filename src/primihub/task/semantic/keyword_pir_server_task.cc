@@ -50,12 +50,12 @@ KeywordPIRServerTask::create_sender_db(
         OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress) {
+    CHECK_TASK_STOPPED(nullptr);
     SCopedTimer timer;
     if (!psi_params) {
         LOG(ERROR) << "No Keyword pir parameters were given";
         return nullptr;
     }
-
     std::shared_ptr<SenderDB> sender_db;
     if (holds_alternative<CSVReader::LabeledData>(db_data)) {
         VLOG(5) << "CSVReader::LabeledData";
@@ -112,7 +112,7 @@ KeywordPIRServerTask::KeywordPIRServerTask(
     VLOG(0) << "begin to exit KeywordPIRServerTask ctr";
 }
 
-int KeywordPIRServerTask::_LoadParams(Task &task) {
+retcode KeywordPIRServerTask::_LoadParams(Task &task) {
     const auto& node_map = task.node_map();
     for (const auto& node_info : node_map) {
         auto& _node_id = node_info.first;
@@ -135,17 +135,18 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
             dataset_id_ = it->second.value_string();
         } else {
             LOG(ERROR) << "Failed to load params serverData, no match key find";
-            return -1;
+            return retcode::FAIL;
         }
         // dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
-        return -1;
+        return retcode::FAIL;
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
 std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
+    CHECK_TASK_STOPPED(nullptr);
     CSVReader::DBData db_data;
     auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
     if (driver == nullptr) {
@@ -174,6 +175,7 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
 }
 
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
+    CHECK_TASK_STOPPED(nullptr);
     std::string params_json;
     std::string pir_server_config_path{"config/pir_server_config.json"};
     VLOG(5) << "pir_server_config_path: " << pir_server_config_path;
@@ -225,22 +227,28 @@ static std::string to_hexstring(const Item &item)
 }
 
 int KeywordPIRServerTask::execute() {
-    int ret = _LoadParams(task_param_);
-    if (ret) {
+    auto rt_code = _LoadParams(task_param_);
+    if (rt_code != retcode::SUCCESS) {
         LOG(ERROR) << "Pir client load task params failed.";
-        return ret;
+        return -1;
     }
     ThreadPoolMgr::SetThreadCount(1);
 
     std::unique_ptr<PSIParams> params = _SetPsiParams();
-    auto rt_code = processPSIParams();
+    rt_code = processPSIParams();
     if (rt_code != retcode::SUCCESS) {
         return -1;
     }
     std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
+    if (db_data == nullptr) {
+        return -1;
+    }
     // OPRFKey oprf_key;
     std::shared_ptr<SenderDB> sender_db
         = create_sender_db(*db_data, move(params), *(this->oprf_key_), 16, false);
+    if (sender_db == nullptr) {
+        return -1;
+    }
     uint32_t max_bin_bundles_per_bundle_idx = 0;
     for (uint32_t bundle_idx = 0; bundle_idx < sender_db->get_params().bundle_idx_count();
          bundle_idx++) {
@@ -252,15 +260,18 @@ int KeywordPIRServerTask::execute() {
     if (rt_code != retcode::SUCCESS) {
         return -1;
     }
+
     rt_code = processQuery(sender_db);
     if (rt_code != retcode::SUCCESS) {
         return -1;
     }
+
     VLOG(5) << "end of execute task";
     return 0;
 }
 
 retcode KeywordPIRServerTask::broadcastPortInfo() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string data_port_info_str;
     rpc::Params data_port_params;
     auto param_map = data_port_params.mutable_param_map();
@@ -285,6 +296,7 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
 }
 
 retcode KeywordPIRServerTask::processPSIParams() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string request_type_str;
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     recv_queue.wait_and_pop(request_type_str);
@@ -303,6 +315,7 @@ retcode KeywordPIRServerTask::processPSIParams() {
 }
 
 retcode KeywordPIRServerTask::processOprf() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     VLOG(5) << "begin to process oprf";
     std::string oprf_request_str;
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
@@ -322,6 +335,7 @@ retcode KeywordPIRServerTask::processOprf() {
 }
 
 retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderDB> sender_db) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     CryptoContext crypto_context(sender_db->get_crypto_context());
     auto seal_context = sender_db->get_seal_context();
     auto query_request = std::make_unique<SenderOperationQuery>();
@@ -379,7 +393,8 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
     uint32_t package_count = safe_cast<uint32_t>(sender_db->get_bin_bundle_count());
     // tell client how many package count need to receive
     std::string_view send_data{reinterpret_cast<char*>(&package_count), sizeof(package_count)};
-    this->send("package_count", client_node_, send_data);
+    auto ret = this->send("package_count", client_node_, send_data);
+    CHECK_RETCODE(ret);
     VLOG(5) << "package_countpackage_countpackage_count: " << package_count;
     // For each bundle index i, we need a vector of powers of the query Qᵢ. We need powers
     // all the way up to Qᵢ^max_items_per_bin. We don't store the zeroth power. If

@@ -43,10 +43,9 @@ class KeywordPIRClientTask : public TaskBase {
 
    ~KeywordPIRClientTask() = default;
    int execute() override;
-   int saveResult(const std::vector<std::string>& orig_items,
+   retcode saveResult(const std::vector<std::string>& orig_items,
                   const std::vector<apsi::Item>& items,
                   const std::vector<apsi::receiver::MatchRecord>& intersection);
-   int waitForServerPortInfo();
 
  protected:
    /**
@@ -68,13 +67,12 @@ class KeywordPIRClientTask : public TaskBase {
    retcode requestQuery();
 
  private:
-    int _LoadParams(Task &task);
+    retcode _LoadParams(Task &task);
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataset();
     // load dataset according by url
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataFromDataset();
     // load data from request directly
     std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>> _LoadDataFromRecvData();
-    int _GetIntsection();
 
  private:
     std::string dataset_path_;

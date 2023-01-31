@@ -329,6 +329,32 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     return grpc::Status::OK;
 }
 
+Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
+        const ::primihub::rpc::KillTaskRequest* request,
+        ::primihub::rpc::KillTaskResponse* response) {
+    std::string job_id = request->job_id();
+    std::string task_id = request->task_id();
+    auto executor_type = request->executor();
+    VLOG(0) << "receive request for kill task for: "
+        << " job_id: " << job_id << " "
+        << "task id: " << task_id << " "
+        << "from " << (executor_type == rpc::KillTaskRequest::CLIENT ? "CLIENT" : "SCHEDULER");
+    std::string worker_id = this->getWorkerId(job_id, task_id);
+    std::shared_ptr<Worker> worker{nullptr};
+    if (executor_type == rpc::KillTaskRequest::CLIENT) {
+        worker = this->getSchedulerWorker(job_id, task_id);
+    } else {
+        worker = this->getWorker(job_id, task_id);
+    }
+    if (worker != nullptr) {
+        worker->kill_task();
+    } else {
+        LOG(WARNING) << "worker does not find for worker id: " << worker_id;
+    }
+    response->set_ret_code(rpc::SUCCESS);
+    return grpc::Status::OK;
+}
+
 std::unique_ptr<VMNode::Stub> VMNodeImpl::get_stub(const std::string& dest_address, bool use_tls) {
     grpc::ClientContext context;
     grpc::ChannelArguments channel_args;
