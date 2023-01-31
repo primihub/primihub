@@ -9,6 +9,8 @@ from phe import paillier
 import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
+from primihub.FL.model.logistic_regression.homo_lr_dpsgd import Client_DPSGD, compute_epsilon
+
 #from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 import numpy as np
 
@@ -568,8 +570,12 @@ def run_homo_lr_client(config,
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
     x, y = read_data(data_key, config['feature_names'])
+    
+    if config['mode'] == 'DPSGD':
+        client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
+    else:
+        client = Client(x, y, proxy_server, proxy_client_arbiter, config)
 
-    client = Client(x, y, proxy_server, proxy_client_arbiter, config)
     proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
     
@@ -610,6 +616,11 @@ def run_homo_lr_client(config,
             if proxy_server.Get('convergence') == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
+    
+    if config['mode'] == 'DPSGD':
+        num_train_examples = x.shape[0]
+        eps = compute_epsilon(i+1, num_train_examples, config)
+        log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
 
     log_handler.info("{} training process done.".format(client_name))
     model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
