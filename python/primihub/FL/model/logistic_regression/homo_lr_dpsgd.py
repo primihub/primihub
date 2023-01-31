@@ -26,7 +26,6 @@ config = {
                      task_type="lr-train")
 def run_arbiter_party():
     run_party('arbiter', config,
-              run_homo_lr_client,
               check_convergence=False)
 
 
@@ -37,7 +36,6 @@ def run_arbiter_party():
                      task_type="lr-train")
 def run_host_party():
     run_party('host', config,
-              run_homo_lr_client,
               check_convergence=False)
 
 
@@ -48,5 +46,4 @@ def run_host_party():
                      task_type="lr-train")
 def run_guest_party():
     run_party('guest', config,
-              run_homo_lr_client,
               check_convergence=False)

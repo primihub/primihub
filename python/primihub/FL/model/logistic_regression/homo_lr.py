@@ -531,8 +531,11 @@ def run_homo_lr_client(config,
 
     x, y = read_data(data_key, config['feature_names'])
     
-    if config['mode'] == 'DPSGD':
-        client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
+    if 'mode' in config:
+        if config['mode'] == 'DPSGD':
+            client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
+        else:
+            log_handler.info('mode not supported yet')
     else:
         client = Client(x, y, proxy_server, proxy_client_arbiter, config)
 
@@ -577,7 +580,7 @@ def run_homo_lr_client(config,
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
     
-    if config['mode'] == 'DPSGD':
+    if 'mode' in config and config['mode'] == 'DPSGD':
         num_train_examples = x.shape[0]
         eps = compute_epsilon(i+1, num_train_examples, config)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
@@ -641,7 +644,6 @@ def load_info():
 
 
 def run_party(party_name, config,
-              run_homo_lr_client,
               check_convergence=True):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
@@ -689,8 +691,7 @@ def run_party(party_name, config,
                      port='9010',
                      task_type="lr-train")
 def run_arbiter_party():
-    run_party('arbiter', config,
-              run_homo_lr_client)
+    run_party('arbiter', config)
 
 
 @ph.context.function(role='host',
@@ -699,8 +700,7 @@ def run_arbiter_party():
                      port='9020',
                      task_type="lr-train")
 def run_host_party():
-    run_party('host', config,
-              run_homo_lr_client)
+    run_party('host', config)
 
 
 @ph.context.function(role='guest',
@@ -709,5 +709,4 @@ def run_host_party():
                      port='9030',
                      task_type="lr-train")
 def run_guest_party():
-    run_party('guest', config,
-              run_homo_lr_client)
+    run_party('guest', config)
