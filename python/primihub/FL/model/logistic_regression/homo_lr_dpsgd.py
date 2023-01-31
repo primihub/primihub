@@ -1,5 +1,5 @@
 import primihub as ph
-from primihub.FL.model.logistic_regression.homo_lr import run_party
+from primihub.FL.model.logistic_regression.homo_lr_dev import run_party
 
 
 config = {
