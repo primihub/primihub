@@ -814,6 +814,35 @@ class ServerChannelProxy:
         return None
 
 
+class GrpcServer:
+
+    def __init__(self, remote_ip, local_ip, remote_port, local_port,
+                 context) -> None:
+        # self.remote_ip = remote_ip
+        # self.local_ip = local_ip
+        # self.remote_port = int(remote_port)
+        # self.local_port = int(local_port)
+        # self.connector = context.get_link_conext()
+        send_session = context.Node(remote_ip, int(remote_port), False)
+        recv_session = context.Node(local_ip, int(local_port), False)
+
+        self.send_channel = context.get_link_conext().getChannel(send_session)
+        self.recv_channel = context.get_link_conext().getChannel(recv_session)
+
+    def sender(self, key, val):
+        # connector = self.connector.get_link_conext()
+        # node = self.connector.Node(self.remote_ip, self.remote_port, False)
+        # channel = connector.getChannel(node)
+        self.send_channel.send(key, pickle.dumps(val))
+
+    def recv(self, key):
+        # connector = self.connector.get_link_conext()
+        # node = self.connector.Node(self.local_ip, self.local_port, False)
+        # channle = connector.getChannel(node)
+        recv_val = self.recv_channel.recv(key)
+        return pickle.loads(recv_val)
+
+
 def evaluate_ks_and_roc_auc(y_real, y_proba):
     # Unite both visions to be able to filter
     df = pd.DataFrame()
@@ -1095,8 +1124,11 @@ class XGB_GUEST_EN:
         else:
             encrypte_gh_sums = self.sums_of_encrypted_ghs(
                 X_guest, encrypted_ghs)
-        self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
-        best_cut = self.proxy_server.Get('best_cut')
+        # self.proxy_client_host.Remote(encrypte_gh_sums, 'encrypte_gh_sums')
+        self.channel.sender('encrypte_gh_sums', encrypte_gh_sums)
+
+        # best_cut = self.proxy_server.Get('best_cut')
+        best_cut = self.channel.recv('best_cut')
 
         # logging.info("current best cut: {}".format(best_cut))
         fl_console_log.info("current best cut: {}".format(best_cut))
@@ -1139,13 +1171,21 @@ class XGB_GUEST_EN:
                 w_right = -guest_best['G_right'] / (guest_best['H_right'] +
                                                     self.reg_lambda)
 
-                self.proxy_client_host.Remote(
-                    {
+                # self.proxy_client_host.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right,
+                #         'w_left': w_left,
+                #         'w_right': w_right
+                #     }, 'ids_w')
+
+                self.channel.sender(
+                    'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    })
                 # updata guest lookup table
                 self.lookup_table[self.guest_record] = [best_var, best_cut]
                 fl_console_log.info("guest look_up table is {}".format(
@@ -1156,7 +1196,8 @@ class XGB_GUEST_EN:
                 self.guest_record += 1
 
             else:
-                ids_w = self.proxy_server.Get('ids_w')
+                # ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.channel.recv('ids_w')
                 role = 'host'
                 record = self.host_record
                 id_left = ids_w['id_left']
@@ -1195,13 +1236,16 @@ class XGB_GUEST_EN:
     def fit(self, X_guest, lookup_table_sum):
         for t in range(self.n_estimators):
             self.record = 0
-            sample_ids = self.proxy_server.Get('sample_ids')
+            # sample_ids = self.proxy_server.Get('sample_ids')
+            sample_ids = self.channel.recv('sample_ids')
             if sample_ids is None:
                 current_x = X_guest.copy()
             else:
                 current_x = X_guest.iloc[sample_ids].copy()
             # gh_host = xgb_guest.channel.recv()
-            gh_en = self.proxy_server.Get('gh_en')
+            # gh_en = self.proxy_server.Get('gh_en')
+            gh_en = self.channel.recv('gh_en')
+
             # print("gh_en: ", gh_en)
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 current_x, gh_en, 0)
@@ -1230,15 +1274,21 @@ class XGB_GUEST_EN:
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
                 id_right = guest_test_right.index
-                self.proxy_client_host.Remote(
-                    {
+                # self.proxy_client_host.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right
+                #     },
+                #     str(record_id) + '_ids')
+                self.channel.sender(
+                    str(record_id) + '_ids', {
                         'id_left': id_left,
                         'id_right': id_right
-                    },
-                    str(record_id) + '_ids')
+                    })
 
             else:
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
 
                 guest_test_left = guest_test.loc[id_left]
@@ -1577,9 +1627,10 @@ class XGB_HOST_EN:
 
         plain_gh_sums = plain_gh.sum(axis=0)
 
-        guest_gh_sums = self.proxy_server.Get(
-            'encrypte_gh_sums'
-        )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        # guest_gh_sums = self.proxy_server.Get(
+        #     'encrypte_gh_sums'
+        # )  # the item contains {'G_left', 'G_right', 'H_left', 'H_right', 'var', 'cut'}
+        guest_gh_sums = self.channel.recv('encrypte_gh_sums')
 
         # decrypted the 'guest_gh_sums' with paillier
         if config['ray_group']:
@@ -1593,11 +1644,16 @@ class XGB_HOST_EN:
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
         # guest_best_gain = guest_best['gain']
 
-        self.proxy_client_guest.Remote(
-            {
-                'host_best': host_best,
-                'guest_best': guest_best
-            }, 'best_cut')
+        # self.proxy_client_guest.Remote(
+        #     {
+        #         'host_best': host_best,
+        #         'guest_best': guest_best
+        #     }, 'best_cut')
+
+        self.channel.sender('best_cut', {
+            'host_best': host_best,
+            'guest_best': guest_best
+        })
 
         fl_console_log.info(
             "current depth: {}, host best var: {} and guest best var: {}".
@@ -1633,7 +1689,8 @@ class XGB_HOST_EN:
 
                 role = "guest"
                 record = self.guest_record
-                ids_w = self.proxy_server.Get('ids_w')
+                # ids_w = self.proxy_server.Get('ids_w')
+                ids_w = self.channel.recv('ids_w')
 
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
@@ -1657,13 +1714,20 @@ class XGB_HOST_EN:
 
                 w_left = host_best['w_left']
                 w_right = host_best['w_right']
-                self.proxy_client_guest.Remote(
-                    {
+                # self.proxy_client_guest.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right,
+                #         'w_left': w_left,
+                #         'w_right': w_right
+                #     }, 'ids_w')
+                self.channel.sender(
+                    'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
                         'w_left': w_left,
                         'w_right': w_right
-                    }, 'ids_w')
+                    })
 
                 self.lookup_table[self.host_record] = [
                     host_best['best_var'], host_best['best_cut']
@@ -1709,7 +1773,8 @@ class XGB_HOST_EN:
             # self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 id_right = ids['id_right']
                 host_test_left = host_test.loc[id_left]
@@ -1728,12 +1793,17 @@ class XGB_HOST_EN:
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
                 # id_right = host_test_right.index
-                self.proxy_client_guest.Remote(
-                    {
+                # self.proxy_client_guest.Remote(
+                #     {
+                #         'id_left': host_test_left.index,
+                #         'id_right': host_test_right.index
+                #     },
+                #     str(record_id) + '_ids')
+                self.channel.sender(
+                    str(record_id) + '_ids', {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
-                    },
-                    str(record_id) + '_ids')
+                    })
                 # print("==predict host===", host_test.index, id_left, id_right)
 
             for kk in tree[k].keys():
@@ -1792,7 +1862,8 @@ class XGB_HOST_EN:
             else:
                 sample_ids = None
 
-            self.proxy_client_guest.Remote(sample_ids, "sample_ids")
+            # self.proxy_client_guest.Remote(sample_ids, "sample_ids")
+            self.channel.sender("sample_ids", sample_ids)
             if sample_ids is not None:
                 # select from 'X_host', Y and ghs
                 # print("sample_ids: ", sample_ids)
@@ -1870,7 +1941,8 @@ class XGB_HOST_EN:
                     enc_gh_df.set_index('id', inplace=True)
 
                 # send all encrypted gradients and hessians to 'guest'
-                self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                # self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                self.channel.sender("gh_en", enc_gh_df)
 
                 end_send_gh = time.time()
                 fl_console_log.info(
@@ -1882,7 +1954,8 @@ class XGB_HOST_EN:
                 # print("Encrypt finish.")
 
             else:
-                self.proxy_client_guest.Remote(current_ghs, "gh_en")
+                # self.proxy_client_guest.Remote(current_ghs, "gh_en")
+                self.channel.sender("gh_en", current_ghs)
 
             # self.tree_structure[t + 1] = self.host_tree_construct(
             #     X_host.copy(), f_t, 0, gh)
@@ -1955,10 +2028,11 @@ ph.context.Context.func_params_map = {
 config = {
     'num_tree': 5,
     'max_depth': 5,
+    "reg_lambda": 1,
+    'min_child_weight': 5,
     'is_encrypted': True,
     'merge_gh': True,
     'ray_group': True,
-    'min_child_weight': 5,
     'sample_type': "random",
     'feature_sample': True,
     'host_columns': None,
@@ -2062,6 +2136,7 @@ def xgb_host_logic(cry_pri="paillier"):
 
     host_nodes = role_node_map["host"]
     host_port = node_addr_map[host_nodes[0]].split(":")[1]
+    host_ip = node_addr_map[host_nodes[0]].split(":")[0]
 
     guest_nodes = role_node_map["guest"]
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
@@ -2070,6 +2145,16 @@ def xgb_host_logic(cry_pri="paillier"):
     proxy_server.StartRecvLoop()
 
     proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
+
+    # grpc server initialization
+    host_channel = GrpcServer(remote_ip=guest_ip,
+                              local_ip=host_ip,
+                              remote_port=50052,
+                              local_port=50051,
+                              context=ph.context.Context)
+    # link_context = ph.context.Context.get_link_conext()
+    # send_node = ph.context.Context.Node(guest_ip, int("50052"), False)
+    # send_channel = link_context.getChannel(send_node)
 
     if 'id' in data.columns:
         data.pop('id')
@@ -2082,17 +2167,20 @@ def xgb_host_logic(cry_pri="paillier"):
     # if is_encrypted:
     xgb_host = XGB_HOST_EN(n_estimators=config['num_tree'],
                            max_depth=config['max_depth'],
-                           reg_lambda=1,
+                           reg_lambda=config['reg_lambda'],
                            sid=0,
                            min_child_weight=config['min_child_weight'],
                            objective='logistic',
                            proxy_server=proxy_server,
                            proxy_client_guest=proxy_client_guest,
                            encrypted=config['is_encrypted'])
+    xgb_host.channel = host_channel
     xgb_host.merge_gh = config['merge_gh']
     xgb_host.fl_console_log = fl_console_log
 
-    proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    # proxy_client_guest.Remote(xgb_host.pub, "xgb_pub")
+    host_channel.sender(key="xgb_pub", val=xgb_host.pub)
+    # send_channel.send("xgb_pub", pickle.dumps(xgb_host.pub))
     xgb_host.sample_type = config['sample_type']
 
     paillier_encryptor = ActorPool(
@@ -2248,6 +2336,7 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
+    guest_ip = node_addr_map[guest_nodes[0]].split(":")[0]
     proxy_server = ServerChannelProxy(guest_port)
     proxy_server.StartRecvLoop()
     fl_console_log.debug(
@@ -2257,6 +2346,15 @@ def xgb_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
+    guest_channel = GrpcServer(remote_ip=host_ip,
+                               remote_port=50051,
+                               local_ip=guest_ip,
+                               local_port=50052,
+                               context=ph.context.Context)
+    link_context = ph.context.Context.get_link_conext()
+    recv_node = ph.context.Context.Node(guest_ip, int("50052"), False)
+    guest_channle = link_context.getChannel(recv_node)
+
     data = ph.dataset.read(dataset_key=data_key).df_data
 
     guest_cols = config['guest_columns']
@@ -2294,8 +2392,11 @@ def xgb_guest_logic(cry_pri="paillier"):
                                        sample_ratio=xgb_guest.feature_ratio)
         X_guest = X_guest[selected_features]
 
-    pub = proxy_server.Get('xgb_pub')
+    # pub = proxy_server.Get('xgb_pub')
+    pub = guest_channel.recv('xgb_pub')
+    # pub = pickle.loads(guest_channle.recv('xgb_pub'))
     xgb_guest.pub = pub
+    xgb_guest.channel = guest_channel
     xgb_guest.merge_gh = config['merge_gh']
     xgb_guest.batch_size = 10
 
