@@ -25,12 +25,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v,
                char delimiter = ':');
+void str_split(const std::string& str, std::vector<std::string>* v,
+                const std::string& delimiter);
 void peer_to_list(const std::vector<std::string>& peer,
                   std::vector<primihub::rpc::Node>* list);
 
