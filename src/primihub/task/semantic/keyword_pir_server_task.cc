@@ -286,8 +286,11 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
 
 retcode KeywordPIRServerTask::processPSIParams() {
     std::string request_type_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    recv_queue.wait_and_pop(request_type_str);
+    auto ret = this->recv(this->key, &request_type_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "receive request psi params from [" << client_node_.to_string() << "] failed";
+        return retcode::FAIL;
+    }
     auto recv_type = reinterpret_cast<RequestType*>(const_cast<char*>(request_type_str.c_str()));
     VLOG(5) << "recv_data type: " << static_cast<int>(*recv_type);
 
@@ -298,27 +301,26 @@ retcode KeywordPIRServerTask::processPSIParams() {
         }
         VLOG(5) << "send data size: " << psi_params_str_.size();
     }
-    this->pushDataToSendQueue(this->key, std::move(psi_params_str_));
-    return retcode::SUCCESS;
+    ret = this->send(this->key, client_node_, psi_params_str_);
+    return ret;
 }
 
 retcode KeywordPIRServerTask::processOprf() {
     VLOG(5) << "begin to process oprf";
     std::string oprf_request_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    recv_queue.wait_and_pop(oprf_request_str);
+    auto ret = this->recv(this->key, &oprf_request_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "receive request oprf from " << client_node_.to_string() << " failed";
+        return retcode::FAIL;
+    }
     VLOG(5) << "received oprf request: " << oprf_request_str.size();
 
-    // // OPRFKey key_oprf;
+    // OPRFKey key_oprf;
     auto oprf_response = OPRFSender::ProcessQueries(oprf_request_str, *(this->oprf_key_));
-
-    std::string oprf_response_str{
-        reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_response.data())),
-        oprf_response.size()};
-    // VLOG(5) << "send data size: " << oprf_response_str.size() << " "
-    //         << "data content: " << oprf_response_str;
-    this->pushDataToSendQueue(this->key, std::move(oprf_response_str));
-    return retcode::SUCCESS;
+    auto oprf_response_sv =
+        std::string_view(reinterpret_cast<const char*>(oprf_response.data()), oprf_response.size());
+    ret = this->send(this->key, client_node_, oprf_response_sv);
+    return ret;
 }
 
 retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderDB> sender_db) {

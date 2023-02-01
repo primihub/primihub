@@ -51,14 +51,13 @@ ABSL_FLAG(int, service_port, 50050, "node service port");
 namespace primihub {
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
-    VLOG(5) << "VMNodeImpl::Send: received: ";
+    VLOG(5) << "enter VMNodeImpl::Send";
     bool recv_meta_info{false};
     std::string job_id;
     std::string task_id;
     std::string role;
     std::vector<std::string> recv_data;
     std::shared_ptr<Worker> worker_ptr{nullptr};
-    VLOG(5) << "VMNodeImpl::Send: received xxx: ";
     TaskRequest request;
     std::string received_data;
     // received_data.reserve(10*1024*1024);

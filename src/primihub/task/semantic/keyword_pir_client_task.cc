@@ -185,19 +185,17 @@ retcode KeywordPIRClientTask::requestPSIParams() {
     std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
     VLOG(5) << "send_data length: " << request.length();
     std::string response_str;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
-    auto ret = channel->sendRecv(this->key, request, &response_str);
+    auto ret = this->send(this->key, peer_node_, request);
     if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "send requestPSIParams to peer: [" << peer_node_.to_string()
-            << "] failed";
-        return ret;
+        LOG(ERROR) << "send requestPSIParams to [" << peer_node_.to_string() << "] failed";
+        return retcode::FAIL;
     }
-    std::string tmp_str;
-    for (const auto& chr : response_str) {
-        tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
+    ret = this->recv(this->key, &response_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "receive requestPSIParams from [" << peer_node_.to_string() << "] failed";
+        return retcode::FAIL;
     }
-    VLOG(5) << "recv_data size: " << response_str.size() << " "
-            << "data content: " << tmp_str;
+    VLOG(5) << "recv psi params data length: " << response_str.size();
     // create psi params
     // static std::pair<PSIParams, std::size_t> Load(std::istream &in);
     std::istringstream stream_in(response_str);
@@ -234,13 +232,15 @@ retcode KeywordPIRClientTask::requestOprf(const std::vector<Item>& items,
     VLOG(5) << "oprf_request data length: " << oprf_request.size();
     std::string_view oprf_request_sv{
         reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_request.data())), oprf_request.size()};
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
-
-    auto ret = channel->sendRecv(this->key, oprf_request_sv, &oprf_response);
+    auto ret = this->send(this->key, peer_node_, oprf_request_sv);
     if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "requestOprf to peer: [" << peer_node_.to_string()
-            << "] failed";
-        return ret;
+        LOG(ERROR) << "send request Oprf to peer: [" << peer_node_.to_string() << "] failed";
+        return retcode::FAIL;
+    }
+    ret = this->recv(this->key, &oprf_response);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "recv request Oprf from peer: [" << peer_node_.to_string() << "] failed";
+        return retcode::FAIL;
     }
     VLOG(5) << "received oprf response length: " << oprf_response.length() << " ";
     oprf_receiver.process_responses(oprf_response, res_items, res_label_keys);
