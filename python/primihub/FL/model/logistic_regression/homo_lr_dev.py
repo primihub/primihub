@@ -466,6 +466,7 @@ def run_homo_lr_arbiter(config,
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
     trainMetrics = {
+        "train_loss": loss,
         "train_acc": acc,
         "train_auc": auc,
         "train_ks": ks,
