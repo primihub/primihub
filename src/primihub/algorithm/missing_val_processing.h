@@ -74,6 +74,7 @@ private:
   std::vector<std::string> local_col_names;
 
   std::string data_file_path_;
+  std::string replace_type_;
   std::string conn_info_;
   std::shared_ptr<arrow::Table> table;
   std::map<std::string, std::vector<int>> db_both_index;
@@ -87,6 +88,53 @@ private:
   std::string platform_type_ = "";
   std::string job_id_ = "";
   std::string task_id_ = "";
+
+  template <class T>
+  void replaceValue(map<std::string, uint32_t>::iterator &iter,
+                    std::shared_ptr<arrow::Table> &table, int &col_index,
+                    T &col_value,
+                    std::vector<std::vector<unsigned int>> &abnormal_index,
+                    bool &use_db, bool need_double) {
+    std::shared_ptr<arrow::Array> new_array;
+
+    if (use_db) {
+      _buildNewColumn(table, col_index, std::to_string(col_value),
+                      db_both_index[iter->first], need_double, new_array);
+    } else {
+      _buildNewColumn(table, col_index, std::to_string(col_value),
+                      abnormal_index, need_double, new_array);
+    }
+    std::shared_ptr<arrow::ChunkedArray> chunk_array =
+        std::make_shared<arrow::ChunkedArray>(new_array);
+
+    bool isDouble = std::is_same<T, double>::value;
+    std::shared_ptr<arrow::Field> field;
+    if (!isDouble) {
+      field = std::make_shared<arrow::Field>(iter->first, arrow::int64());
+    } else {
+      field = std::make_shared<arrow::Field>(iter->first, arrow::float64());
+    }
+
+    LOG(INFO) << "Replace column " << iter->first
+              << " with new array in table.";
+
+    LOG(INFO) << "col_index:" << col_index;
+    LOG(INFO) << "name:" << field->name();
+    LOG(INFO) << "type:" << field->type();
+    LOG(INFO) << "table->type:" << table->field(col_index)->type();
+
+    auto result = table->SetColumn(col_index, field, chunk_array);
+    if (!result.ok()) {
+      std::stringstream ss;
+      ss << "Replace content of column " << iter->first << " failed, "
+         << result.status();
+      LOG(ERROR) << ss.str();
+      throw std::runtime_error(ss.str());
+    }
+
+    table = result.ValueOrDie();
+    LOG(INFO) << "Finish.";
+  }
 };
 
 } // namespace primihub

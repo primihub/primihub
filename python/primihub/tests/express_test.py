@@ -23,22 +23,22 @@ def run_mpc_party(party_id, expr, col_owner, col_dtype,
 
 def mpc_run_without_grpc():
     reveal_party = [0, 1, 2]
-    expr = "A+B*C+D"
+    expr = "A*B"
     # expr = "B*C"
 
     col_owner = {"A": 0, "B": 1, "C": 2, "D": 2}
     # col_dtype = {"A": 0, "B": 0, "C": 0, "D": 0}
     col_dtype = {"A": 1, "B": 1, "C": 1, "D": 1}
 
-    col_A = [random.uniform(1, 10000) for i in range(10000)]
-    col_B = [random.uniform(1, 10000) for i in range(10000)]
-    col_C = [random.uniform(1, 10000) for i in range(10000)]
-    col_D = [random.uniform(1, 10000) for i in range(10000)]
+    # col_A = [random.uniform(1, 10000) for i in range(10000000)]
+    # col_B = [random.uniform(1, 10000) for i in range(10000000)]
+    # col_C = [random.uniform(1, 10000) for i in range(10000)]
+    # col_D = [random.uniform(1, 10000) for i in range(10000)]
 
-    # col_A = [random.randint(1, 10000) for i in range(1000)]
-    # col_B = [random.randint(1, 10000) for i in range(1000)]
-    # col_C = [random.randint(1, 10000) for i in range(1000)]
-    # col_D = [random.randint(1, 10000) for i in range(1000)]
+    col_A = [random.randint(1, 10000) for i in range(10000000)]
+    col_B = [random.randint(1, 10000) for i in range(10000000)]
+    col_C = [random.randint(1, 10000) for i in range(1000)]
+    col_D = [random.randint(1, 10000) for i in range(1000)]
     # col_A = [i+1.0  for i in range(10)]
     # col_B = [i+1.0  for i in range(10)]
     # col_C = [i+1.0  for i in range(10)]

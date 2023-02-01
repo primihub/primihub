@@ -357,10 +357,11 @@ Sh3Task Sh3Encryptor::reveal(Sh3Task dep, const si64Matrix& x,
 
 Sh3Task Sh3Encryptor::revealAll(Sh3Task dep, const si64Matrix& x,
                                 i64Matrix& dest) {
-  reveal(dep, (mPartyIdx + 2) % 3, x);
-  return reveal(dep, x, dest);
+  reveal(dep, (mPartyIdx + 2) % 3, x);//365
+  return reveal(dep, x, dest);//347
 }
 
+//partyIdx=(mPartyIdx + 2) % 3
 Sh3Task Sh3Encryptor::reveal(Sh3Task dep, u64 partyIdx, const si64Matrix& x) {
   // TODO("decide if we can move the if outside the call to then(...)");
   bool send = ((mPartyIdx + 2) % 3) == partyIdx;

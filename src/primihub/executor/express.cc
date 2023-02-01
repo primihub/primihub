@@ -1,5 +1,6 @@
 #include <glog/logging.h>
 #include <sstream>
+#include <time.h>
 
 #include "src/primihub/executor/express.h"
 
@@ -879,8 +880,8 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
   i64 constInt;
-  uint32_t val_count = feed_dict_->getColumnValuesCount();
 
+  uint32_t val_count = feed_dict_->getColumnValuesCount();
   if (val1.type == 1 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
@@ -902,6 +903,7 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   }
 
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
+
   if (val1.type != 3 && val2.type != 3) {
     std::vector<si64Matrix> sh_val_vec;
     sh_val_vec.emplace_back(*p_sh_val1);
@@ -913,6 +915,7 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
     else
       *sh_res = mpc_op_->MPC_Add_Const(constInt, *p_sh_val1);
   }
+
   createTokenValue(sh_res, res);
 }
 
@@ -1058,6 +1061,7 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
+
   if (val1.type == 1 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
@@ -1078,7 +1082,10 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
+
+
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
+
   if (val1.type != 3 && val2.type != 3) {
     *sh_res = mpc_op_->MPC_Dot_Mul(*p_sh_val1, *p_sh_val2);
   } else {
@@ -1087,6 +1094,7 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     else
       *sh_res = mpc_op_->MPC_Mul_Const(constInt, *p_sh_val1);
   }
+
 
   createTokenValue(sh_res, res);
 }
