@@ -38,12 +38,16 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/defines.h"
 #include <glog/logging.h>
+#include <yaml-cpp/yaml.h>
 
 namespace primihub {
 // ====== Data Store Driver ======
 struct DataSetAccessInfo {
   DataSetAccessInfo() = default;
   virtual ~DataSetAccessInfo() = default;
+  virtual std::string toString() = 0;
+  virtual retcode fromJsonString(const std::string& access_info) = 0;
+  virtual retcode fromYamlConfig(const YAML::Node& meta_info) = 0;
 };
 
 class Dataset;

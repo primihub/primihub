@@ -32,6 +32,9 @@ struct SQLiteAccessInfo : public DataSetAccessInfo {
   SQLiteAccessInfo(const std::string& db_path, const std::string& tab_name,
       const std::vector<std::string>& query_colums)
       : db_path_(db_path), table_name_(tab_name), query_colums_(query_colums) {}
+  std::string toString() override;
+  retcode fromJsonString(const std::string& json_str) override;
+  retcode fromYamlConfig(const YAML::Node& meta_info) override;
 
   std::string db_path_;
   std::string table_name_;

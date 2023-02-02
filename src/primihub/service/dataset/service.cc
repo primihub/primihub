@@ -58,19 +58,21 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
      *
      * @param driver [input]: Data driver
      * @param name [input]: Dataset name
-     * @param description [input]: Dataset description
+     * @param dataset_id [input]: Dataset description
+     * @param dataset_access_info [input]: dataset access_info
      * @param meta [output]: Dataset meta
      * @return std::shared_ptr<primihub::Dataset>
      */
     std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
                                 std::shared_ptr<primihub::DataDriver> driver,
-                                const std::string& description, // TODO put description in meta
+                                const std::string& dataset_id, // TODO put description in meta
+                                const std::string& dataset_access_info,
                                 DatasetMeta& meta) {
         // Read data using driver for get dataset & datameta
         // TODO just get meta info from dataset
         auto dataset = driver->getCursor()->read();
-        DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
-        meta = _meta;
+        // DatasetMeta _meta(dataset, dataset_id, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
+        meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
         // Save datameta in local storage.& Publish dataset meta on libp2p network.
         metaService_->putMeta(meta);
         return dataset;
@@ -80,15 +82,17 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
      * @brief write dataset to local storage
      * @param dataset [input]: Dataset to be written with own driver
      * @param description [input]: Dataset description
+     * @param dataset_access_info [input]: Dataset access info
      * @param meta [output]: Dataset metadata
      */
     void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset,
                  const std::string &description,
+                 const std::string& dataset_access_info,
                  DatasetMeta &meta /*output*/) {
         // dataset.write();
         dataset->getDataDriver()->getCursor()->write(dataset);
-        DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
-        meta = _meta;
+        // DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
+        meta = DatasetMeta(dataset, description, DatasetVisbility::PUBLIC, dataset_access_info);
         metaService_->putMeta(meta);
     }
 
@@ -168,11 +172,16 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
                 auto dataset_type = dataset["model"].as<std::string>();
                 auto dataset_uid = dataset["description"].as<std::string>();
                 auto access_info = createAccessInfo(dataset_type, dataset);
+                if (access_info == nullptr) {
+                    LOG(WARNING) << "create access info for " << dataset_uid << " failed, to skip";
+                    continue;
+                }
+                std::string access_info_str = access_info->toString();
                 auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr, std::move(access_info));
                 this->registerDriver(dataset_uid, driver);
                 driver->read();
                 DatasetMeta meta;
-                newDataset(driver, dataset_uid, meta);
+                newDataset(driver, dataset_uid, access_info_str, meta);
             }
         }
     }
@@ -188,12 +197,21 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
             int node_port;
             std::string data_url = meta.getDataURL();
             if (!DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path)) {
-                LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
+                LOG(ERROR) << "Restore dataset from local storage failed: " << data_url;
                 continue;
             }
-
+            auto access_info_str = meta.getAccessInfo();
+            std::string driver_type = meta.getDriverType();
+            std::string fid = meta.getDescription();
+            auto access_info = this->createAccessInfo(driver_type, access_info_str);
+            if (access_info == nullptr) {
+                std::string err_msg = "create access info failed";
+                continue;
+            }
+            auto driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
+            this->registerDriver(fid, driver);
             meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
-            // Publish dataset meta on libp2p network.
+            // Publish dataset meta on public network.
             metaService_->putMeta(meta);
         }
     }
@@ -246,336 +264,201 @@ primihub::retcode DatasetService::unRegisterDriver(const std::string& dataset_id
 
 DataSetAccessInfoPtr DatasetService::createAccessInfo(
         const std::string driver_type, const YAML::Node& meta_info) {
-    auto driver_type_ = strToUpper(driver_type);
-    VLOG(5) << "driver_type_: " << driver_type_;
-    auto dataset_type = datasetType(driver_type_);
-    switch (dataset_type) {
-    case dataset_type_t::CSV: {
-        auto file_path = meta_info["source"].as<std::string>();
-        return DataDirverFactory::createCSVAccessInfo(file_path);
-    }
-    case dataset_type_t::SQLITE: {
-        return parseAndCreateSQLiteAccessInfo(meta_info);
-    }
-    case dataset_type_t::MYSQL:
-        return parseAndCreateMySQLAccessInfo(meta_info);
-    default:
-        LOG(ERROR) << "unknow Driver Type: " << driver_type;
-        return nullptr;
-    }
+    return DataDirverFactory::createAccessInfo(driver_type, meta_info);
 }
 
 DataSetAccessInfoPtr DatasetService::createAccessInfo(
         const std::string driver_type, const std::string& meta_info) {
-    std::string driver_type_ = strToUpper(driver_type);
-    auto dataset_type = datasetType(driver_type_);
-    switch (dataset_type) {
-    case dataset_type_t::CSV:
-        return DataDirverFactory::createCSVAccessInfo(meta_info);
-    case dataset_type_t::SQLITE:
-        return parseAndCreateSQLiteAccessInfo(meta_info);
-    case dataset_type_t::MYSQL:
-        return parseAndCreateMySQLAccessInfo(meta_info);
-    default:
-        LOG(ERROR) << "unknow Driver Type: " << driver_type;
-        return nullptr;
-    }
+    return DataDirverFactory::createAccessInfo(driver_type, meta_info);
 }
 
-DataSetAccessInfoPtr DatasetService::parseAndCreateMySQLAccessInfo(const std::string& meta_info) {
-    nlohmann::json js = nlohmann::json::parse(meta_info);
-    // ip
-    if (!js.contains("host")) {
-        LOG(ERROR) << "key: host is not found";
-        return nullptr;
-    }
-    std::string ip = js["host"];
-    // port
-    if (!js.contains("port")) {
-        LOG(ERROR) << "key: port is not found";
-        return nullptr;
-    }
-    uint32_t port = js["port"];
-    // username
-    if (!js.contains("username")) {
-        LOG(ERROR) << "key: username is not found";
-        return nullptr;
-    }
-    std::string username = js["username"];
-    // password
-    if (!js.contains("password")) {
-        LOG(ERROR) << "key: password is not found";
-        return nullptr;
-    }
-    std::string password = js["password"];
-    // database
-    if (!js.contains("database")) {
-        LOG(ERROR) << "key: database is not found";
-        return nullptr;
-    }
-    std::string database = js["database"];
-    // dbName
-    if (!js.contains("dbName")) {
-        LOG(ERROR) << "key: dbName is not found";
-        return nullptr;
-    }
-    std::string db_name = js["dbName"];
-    // tableName
-    if (!js.contains("tableName")) {
-        LOG(ERROR) << "key: tableName is not found";
-        return nullptr;
-    }
-    std::string table_name = js["tableName"];
-    std::vector<std::string> query_cols;
-    if (js.contains("query_index")) {
-        std::string query_index = js["query_index"];
-        str_split(query_index, &query_cols, ',');
-    }
-    return DataDirverFactory::createMySQLAccessInfo(
-            ip, port, username, password, database, db_name, table_name, query_cols);
+// ======================== DatasetMetaService ====================================
+DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
+                                std::shared_ptr<StorageBackend> localKv) {
+    p2pStub_ = p2pStub;
+    localKv_ = localKv;
 }
 
-DataSetAccessInfoPtr DatasetService::parseAndCreateMySQLAccessInfo(const YAML::Node& meta_info) {
-    try {
-        auto ip = meta_info["ip"].as<std::string>();
-        auto port = meta_info["port"].as<uint32_t>();
-        auto user_name = meta_info["user_name"].as<std::string>();
-        auto password = meta_info["password"].as<std::string>();
-        std::string database;
-        if (meta_info["database"]) {
-            database = meta_info["database"].as<std::string>();
-        }
-        auto db_name = meta_info["db_name"].as<std::string>();
-        auto table_name = meta_info["table_name"].as<std::string>();
-        std::vector<std::string> query_cols;
-        if (meta_info["query_index"]) {
-            std::string query_index = meta_info["query_index"].as<std::string>();
-            str_split(query_index, &query_cols, ',');
-        }
-        return DataDirverFactory::createMySQLAccessInfo(
-                ip, port, user_name, password, database, db_name, table_name, query_cols);
-    } catch (std::exception& e) {
-        LOG(ERROR) << e.what();
-        return nullptr;
+// Get all local metas
+outcome::result<void> DatasetMetaService::getAllLocalMetas(std::vector<DatasetMeta> & metas) {
+    // Get all k, v from local storage
+    auto r = localKv_->getAll();
+    auto rl = r.value();
+    for (auto kv_pair : rl) {
+        // Construct meta from k, v
+        auto meta = DatasetMeta(kv_pair.second);
+        metas.push_back(meta);
     }
+    return outcome::success();
 }
 
-DataSetAccessInfoPtr DatasetService::parseAndCreateSQLiteAccessInfo(const YAML::Node& meta_info) {
-    auto db_path = meta_info["source"].as<std::string>();
-    auto table_name = meta_info["table_name"].as<std::string>();
-    std::vector<std::string> query_cols;
-    if (meta_info["query_index"]) {
-        std::string query_index = meta_info["query_index"].as<std::string>();
-        str_split(query_index, &query_cols, ',');
+std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
+    auto res = localKv_->getValue(id);
+    if (res.has_value()) {
+        return std::make_shared<DatasetMeta>(res.value());
     }
-    return DataDirverFactory::createSQLiteAccessInfo(db_path, table_name, query_cols);
+    return nullptr;
 }
 
-DataSetAccessInfoPtr DatasetService::parseAndCreateSQLiteAccessInfo(const std::string& meta_info) {
-    nlohmann::json js = nlohmann::json::parse(meta_info);
-    // driver_type#db_path#table_name#column
-    if (!js.contains("db_path")) {
-        LOG(ERROR) << "key: db_path is not found";
-        return nullptr;
-    }
-    std::string db_path = js["db_path"];
-    if (!js.contains("tableName")) {
-        LOG(ERROR) << "key: tableName is not found";
-        return nullptr;
-    }
-    std::string tab_name = js["tableName"];
-    std::vector<std::string> query_cols;
-    if (js.contains("query_index")) {
-        std::string query_index_info = js["query_index"];
-        str_split(query_index_info, &query_cols, ',');
-    }
-    return DataDirverFactory::createSQLiteAccessInfo(db_path, tab_name, query_cols);
+void DatasetMetaService::putMeta(DatasetMeta& meta) {
+    std::string meta_str = meta.toJSON();
+    LOG(INFO) << "<< Put meta: "<< meta_str;
+    // Save datameta in local storage.
+    localKv_->putValue(meta.id,  meta_str);
+    auto public_meta = meta.saveAsPublic();
+    std::string public_meta_str = public_meta.toJSON();
+    // Publish dataset meta on libp2p network.
+    p2pStub_->putDHTValue(meta.id, public_meta_str);
 }
 
-    // ======================== DatasetMetaService ====================================
-    DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
-                                   std::shared_ptr<StorageBackend> localKv) {
-        p2pStub_ = p2pStub;
-        localKv_ = localKv;
-    }
 
-    // Get all local metas
-    outcome::result<void> DatasetMetaService::getAllLocalMetas(std::vector<DatasetMeta> & metas) {
-        // Get all k, v from local storage
-        auto r = localKv_->getAll();
-        auto rl = r.value();
-        for (auto kv_pair : rl) {
-            // Construct meta from k, v
-            auto meta = DatasetMeta(kv_pair.second);
-            metas.push_back(meta);
-        }
+outcome::result<void> DatasetMetaService::getMeta(const DatasetId& id,
+                                FoundMetaHandler handler) {
+    // Try get meta from local storage or p2p network
+    auto res = localKv_->getValue(id);
+    if (res.has_value()) {
+            // construct dataset meta from json meta.
+        auto meta = std::make_shared<DatasetMeta>(res.value());
+        handler(meta);
         return outcome::success();
     }
 
-    std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& id) {
-        auto res = localKv_->getValue(id);
-        if (res.has_value()) {
-            return std::make_shared<DatasetMeta>(res.value());
+    // Try get dataset from p2p network
+    p2pStub_->getDHTValue(id,
+    [&](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
+        if (result.has_value()) {
+            try {
+                auto r = result.value();
+                std::stringstream rs;
+                std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
+                std::cout<<rs.str()<<std::endl;
+                auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
+                handler(_meta);
+            } catch (std::exception& e) {
+                LOG(ERROR) << "<< Get meta failed: " << e.what();
+            }
         }
-        return nullptr;
-    }
-
-    void DatasetMetaService::putMeta(DatasetMeta& meta) {
-        std::string meta_str = meta.toJSON();
-        LOG(INFO) << "<< Put meta: "<< meta_str;
-         // Save datameta in local storage.
-        localKv_->putValue(meta.id,  meta_str);
-
-        // Publish dataset meta on libp2p network.
-        p2pStub_->putDHTValue(meta.id, meta_str);
-    }
+    });
+    return outcome::success();
+}
 
 
-    outcome::result<void> DatasetMetaService::getMeta(const DatasetId& id,
-                                    FoundMetaHandler handler) {
-        // Try get meta from local storage or p2p network
-        auto res = localKv_->getValue(id);
-        if (res.has_value()) {
-             // construct dataset meta from json meta.
-            auto meta = std::make_shared<DatasetMeta>(res.value());
-            handler(meta);
-            return outcome::success();
+outcome::result<void> DatasetMetaService::findPeerListFromDatasets(
+        const std::vector<DatasetWithParamTag>& datasets_with_tag,
+        FoundMetaListHandler handler) {
+    std::vector<DatasetMetaWithParamTag> meta_list;
+    std::map<std::string, DatasetMetaWithParamTag> meta_map; // key: dataset_id
+    meta_map.clear();
+    std::mutex meta_map_mtx;
+    std::condition_variable meta_cond;
+    std::atomic get_value{false};
+    auto t_start = std::chrono::high_resolution_clock::now();
+    bool is_timeout = false;
+    for (;;) {
+        // TODO timeout guard
+        auto t_now = std::chrono::high_resolution_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(t_now - t_start).count() > this->meta_search_timeout_) {
+            LOG(ERROR) << " 🔍 ⏱️  Timeout while searching meta list.";
+            is_timeout = true;
+            break;
         }
 
-        // Try get dataset from p2p network
-        p2pStub_->getDHTValue(id,
-        [&](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
-            if (result.has_value()) {
-                try {
-                    auto r = result.value();
-                    std::stringstream rs;
-                    std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
-                    std::cout<<rs.str()<<std::endl;
-                    auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
-                    handler(_meta);
-                } catch (std::exception& e) {
-                    LOG(ERROR) << "<< Get meta failed: " << e.what();
-                }
-            }
-        });
-        return outcome::success();
-    }
+        for (auto dataset_item : datasets_with_tag) {
+            auto dataset_name = std::get<0>(dataset_item);
+            auto dataset_tag = std::get<1>(dataset_item);
+            DatasetId id(dataset_name);
+            // Try get meta from local storage or p2p network
+            auto res = localKv_->getValue(id);
+            if (res.has_value()) {
+                // construct dataset meta from json meta.
+                auto _meta = std::make_shared<DatasetMeta>(res.value());
+                // meta_list.push_back(std::move(_meta));
+                LOG(INFO) << "Found local meta: " << res.value();
+                auto k = _meta->getDescription();
+                meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
 
-
-      outcome::result<void> DatasetMetaService::findPeerListFromDatasets(
-                                                        const std::vector<DatasetWithParamTag>& datasets_with_tag,
-                                                        FoundMetaListHandler handler) {
-        std::vector<DatasetMetaWithParamTag> meta_list;
-        std::map<std::string, DatasetMetaWithParamTag> meta_map; // key: dataset_id
-        meta_map.clear();
-        std::mutex meta_map_mtx;
-        std::condition_variable meta_cond;
-        std::atomic get_value{false};
-        auto t_start = std::chrono::high_resolution_clock::now();
-        bool is_timeout = false;
-        for (;;) {
-            // TODO timeout guard
-            auto t_now = std::chrono::high_resolution_clock::now();
-            if (std::chrono::duration_cast<std::chrono::seconds>(t_now - t_start).count() > this->meta_search_timeout_) {
-                LOG(ERROR) << " 🔍 ⏱️  Timeout while searching meta list.";
-                is_timeout = true;
-                break;
-            }
-
-            for (auto dataset_item : datasets_with_tag) {
-                auto dataset_name = std::get<0>(dataset_item);
-                auto dataset_tag = std::get<1>(dataset_item);
-                DatasetId id(dataset_name);
-                // Try get meta from local storage or p2p network
-                auto res = localKv_->getValue(id);
-                if (res.has_value()) {
-                    // construct dataset meta from json meta.
-                    auto _meta = std::make_shared<DatasetMeta>(res.value());
-                    // meta_list.push_back(std::move(_meta));
-                    LOG(INFO) << "Found local meta: " << res.value();
-                    auto k = _meta->getDescription();
-                    meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
-
-                } else {
-                    // Find in DHT
-                    p2pStub_->getDHTValue(id,
-                        [&, dataset_tag](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
-                            if (result.has_value()) {
-                                try {
-                                    std::vector<std::shared_ptr<DatasetMeta>> meta_list;
-                                    auto r = result.value();
-                                    std::stringstream rs;
-                                    std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
-                                    LOG(INFO) << "Fount remote meta: " << rs.str();
-                                    auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
-                                    auto k = _meta->getDescription();
-                                    VLOG(5) << "Fount remote meta key: " << k;
-                                    meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
-                                } catch (std::exception& e) {
-                                    LOG(ERROR) << "<< Get meta failed: " << e.what();
-                                }
-
-                            }
-                            get_value.store(true);
-                            meta_cond.notify_all();
-                        });
-                    std::unique_lock<std::mutex> lck(meta_map_mtx);
-                    while (!get_value.load()) {
-                        meta_cond.wait(lck);
-                    }
-                    get_value.store(false);
-                }
-            }
-            if (meta_map.size() < datasets_with_tag.size()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             } else {
-                break;
+                // Find in DHT
+                p2pStub_->getDHTValue(id,
+                    [&, dataset_tag](libp2p::outcome::result<libp2p::protocol::kademlia::Value> result) {
+                        if (result.has_value()) {
+                            try {
+                                std::vector<std::shared_ptr<DatasetMeta>> meta_list;
+                                auto r = result.value();
+                                std::stringstream rs;
+                                std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
+                                LOG(INFO) << "Fount remote meta: " << rs.str();
+                                auto _meta = std::make_shared<DatasetMeta>(std::move(rs.str()));
+                                auto k = _meta->getDescription();
+                                VLOG(5) << "Fount remote meta key: " << k;
+                                meta_map.insert({k, std::make_pair(_meta, dataset_tag)});
+                            } catch (std::exception& e) {
+                                LOG(ERROR) << "<< Get meta failed: " << e.what();
+                            }
+
+                        }
+                        get_value.store(true);
+                        meta_cond.notify_all();
+                    });
+                std::unique_lock<std::mutex> lck(meta_map_mtx);
+                while (!get_value.load()) {
+                    meta_cond.wait(lck);
+                }
+                get_value.store(false);
             }
         }
-        if (is_timeout) {
-            return outcome::success();
+        if (meta_map.size() < datasets_with_tag.size()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        } else {
+            break;
         }
-        for (auto& meta : meta_map) {
-            meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));
-        }
-        handler(meta_list);
+    }
+    if (is_timeout) {
         return outcome::success();
-     }
+    }
+    for (auto& meta : meta_map) {
+        meta_list.push_back(std::make_pair(meta.second.first, meta.second.second));
+    }
+    handler(meta_list);
+    return outcome::success();
+}
 
 RedisDatasetMetaService::RedisDatasetMetaService(
-    std::string &redis_addr, std::string &redis_passwd,
-    std::shared_ptr<primihub::service::StorageBackend> local_db,
-    std::shared_ptr<primihub::p2p::NodeStub> dummy)
-    : DatasetMetaService(dummy, local_db) {
-  this->redis_addr_ = redis_addr;
-  this->local_db_ = local_db;
-  this->redis_passwd_ = redis_passwd;
+        const std::string &redis_addr, const std::string &redis_passwd,
+        std::shared_ptr<primihub::service::StorageBackend> local_db,
+        std::shared_ptr<primihub::p2p::NodeStub> dummy)
+        : DatasetMetaService(dummy, local_db) {
+    this->redis_addr_ = redis_addr;
+    this->local_db_ = local_db;
+    this->redis_passwd_ = redis_passwd;
 }
 
 void RedisDatasetMetaService::putMeta(DatasetMeta &meta) {
-  RedisStringKVHelper helper;
-  if (helper.connect(this->redis_addr_, this->redis_passwd_)) {
-    LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << " failed.";
+    // first put meta to localdb
+    std::string meta_str = meta.toJSON();
+    local_db_->putValue(meta.id, meta_str);
+    LOG(INFO) << "<< Put meta to redis dataset meta service, meta " << meta_str;
+    // public meta to remote storage
+    auto public_meta = meta.saveAsPublic();
+    std::string public_meta_str = public_meta.toJSON();
+
+    RedisStringKVHelper helper;
+    if (helper.connect(this->redis_addr_, this->redis_passwd_)) {
+        LOG(ERROR) << "Connect to redis server " << this->redis_addr_ << " failed.";
+        return;
+    }
+    auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
+        libp2p::multi::ContentIdentifierCodec::decode(public_meta.id.data).value());
+
+    if (helper.setString(dataset_id.value(), public_meta_str)) {
+        LOG(ERROR) << "Save dataset " << public_meta.getDescription()
+                << " and it's meta to redis failed, dataset id is "
+                << dataset_id.value() << ".";
+        return;
+    }
+    LOG(INFO) << "Save dataset " << public_meta.getDescription()
+                << "'s meta to redis finish.";
     return;
-  }
-
-  std::string meta_str = meta.toJSON();
-  LOG(INFO) << "<< Put meta to redis dataset meta service, meta " << meta_str;
-
-  auto dataset_id = libp2p::multi::ContentIdentifierCodec::toString(
-      libp2p::multi::ContentIdentifierCodec::decode(meta.id.data).value());
-
-  if (helper.setString(dataset_id.value(), meta_str)) {
-    LOG(ERROR) << "Save dataset " << meta.getDescription()
-               << " and it's meta to redis failed, dataset id is "
-               << dataset_id.value() << ".";
-    return;
-  }
-
-  local_db_->putValue(meta.id, meta_str);
-  LOG(INFO) << "Save dataset " << meta.getDescription()
-            << "'s meta to redis finish.";
-  return;
 }
 
 outcome::result<void>

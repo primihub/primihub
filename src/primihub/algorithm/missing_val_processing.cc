@@ -788,7 +788,7 @@ int MissingProcess::saveModel(void) {
   }
 
   service::DatasetMeta meta(dataset, new_dataset_id_,
-                            service::DatasetVisbility::PUBLIC);
+                            service::DatasetVisbility::PUBLIC, new_path);
   dataset_service_->regDataset(meta);
 
   return 0;

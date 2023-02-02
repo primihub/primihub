@@ -574,7 +574,7 @@ int LogisticRegressionExecutor::saveModel(void) {
   LOG(INFO) << "Save model to " << model_file_name_ << ".";
 
   service::DatasetMeta meta(dataset, model_name_,
-                            service::DatasetVisbility::PUBLIC);
+                            service::DatasetVisbility::PUBLIC, model_file_name_);
   dataset_service_->regDataset(meta);
   LOG(INFO) << "Register new dataset finish.";
   return 0;

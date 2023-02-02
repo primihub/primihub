@@ -30,6 +30,24 @@
 #include <iostream>
 
 namespace primihub {
+// CSVAccessInfo
+std::string CSVAccessInfo::toString() {
+    return this->file_path_;
+}
+
+retcode CSVAccessInfo::fromJsonString(const std::string& json_str) {
+    if (json_str.empty()) {
+        LOG(ERROR) << "access info is empty";
+        return retcode::FAIL;
+    }
+    this->file_path_ = json_str;
+    return retcode::SUCCESS;
+}
+
+retcode CSVAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
+    this->file_path_ = meta_info["source"].as<std::string>();
+    return retcode::SUCCESS;
+}
 
 // csv cursor implementation
 CSVCursor::CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver) {

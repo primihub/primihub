@@ -51,6 +51,9 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
          }
       }
    }
+  std::string toString() override;
+  retcode fromJsonString(const std::string& json_str) override;
+  retcode fromYamlConfig(const YAML::Node& meta_info) override;
 
   std::string ip_;
   uint32_t port_{0};

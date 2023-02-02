@@ -28,8 +28,63 @@
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace primihub {
+// SQLiteAccessInfo implementation
+std::string SQLiteAccessInfo::toString() {
+    std::stringstream ss;
+    nlohmann::json js;
+    js["db_path"] = this->db_path_;
+    js["tableName"] = this->table_name_;
+    if (!query_colums_.empty()) {
+        std::string quey_col_info;
+        for (const auto& col : query_colums_) {
+            quey_col_info.append(col).append(",");
+        }
+        js["query_index"] = std::move(quey_col_info);
+    }
+    ss << std::setw(4) << js;
+    return ss.str();
+}
+
+retcode SQLiteAccessInfo::fromJsonString(const std::string& access_info) {
+    if (access_info.empty()) {
+        LOG(ERROR) << "access info is empty";
+        return retcode::FAIL;
+    }
+    nlohmann::json js = nlohmann::json::parse(access_info);
+    try {
+        this->db_path_ = js["db_path"].get<std::string>();
+        this->table_name_ = js["tableName"].get<std::string>();
+        this->query_colums_.clear();
+        if (js.contains("query_index")) {
+        std::string query_index_info = js["query_index"];
+        str_split(query_index_info, &query_colums_, ',');
+    }
+    } catch (std::exception& e) {
+        LOG(ERROR) << "parse sqlite access info failed, " << e.what()
+            << " origin access info: [" << access_info << "]";
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+retcode SQLiteAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
+    try {
+        this->db_path_ = meta_info["source"].as<std::string>();
+        this->table_name_ = meta_info["table_name"].as<std::string>();
+        this->query_colums_.clear();
+        if (meta_info["query_index"]) {
+            std::string query_index = meta_info["query_index"].as<std::string>();
+            str_split(query_index, &query_colums_, ',');
+        }
+    } catch (std::exception& e) {
+        LOG(ERROR) << "parse sqlite access info encountes error, " << e.what();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
 
 // sqlite cursor implementation
 SQLiteCursor::SQLiteCursor(const std::string &sql,
