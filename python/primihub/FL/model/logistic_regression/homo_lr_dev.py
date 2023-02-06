@@ -32,19 +32,16 @@ class LRModel:
             if z < -18.0:
                 return -y
             return -y / (np.exp(z) + 1.0)
-
-        typw = np.sqrt(1.0 / np.sqrt(alpha))
-        # computing eta0, the initial learning rate
-        initial_eta0 = typw / max(1.0, dloss(-typw, 1.0))
-        # initialize t such that eta at first sample equals eta0
-        self.optimal_init = 1.0 / (initial_eta0 * alpha)
-
-        # if encrypted == True:
-        #     self.theta = self.utils.encrypt_vector(public_key, self.theta)
+        
+        if self.learning_rate == 'optimal':
+            typw = np.sqrt(1.0 / np.sqrt(alpha))
+            # computing eta0, the initial learning rate
+            initial_eta0 = typw / max(1.0, dloss(-typw, 1.0))
+            # initialize t such that eta at first sample equals eta0
+            self.optimal_init = 1.0 / (initial_eta0 * alpha)
 
     def sigmoid(self, x):
-        y = 1.0 / (1.0 + np.exp(-x))
-        return y
+        return 1.0 / (1.0 + np.exp(-x))
 
     def get_theta(self):
         return self.theta
@@ -78,11 +75,14 @@ class LRModel:
         """
         grad = self.compute_grad(x, y)
         learning_rate = 1.0 / (self.alpha * (self.optimal_init + self.t))
-        self.t += 1
+        self.t += 1 
         self.theta -= learning_rate * grad
     
     def fit(self, x, y):
-        self.gradient_descent_olr(x, y)
+        if self.learning_rate == 'optimal':
+            self.gradient_descent_olr(x, y)
+        else:
+            self.gradient_descent(x, y)
 
     def predict_prob(self, x):
         return self.sigmoid(x.dot(self.theta[1:]) + self.theta[0])
@@ -117,18 +117,54 @@ import logging
 from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 import dp_accounting
 
+
+'''
+# Plaintext
 config = {
-    'learning_rate': 2.0,
+    'mode': 'Plaintext', 
+    'learning_rate': 'optimal',
     'alpha': 0.0001,
     'batch_size': 100,
     'max_iter': 200,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
-    'need_one_vs_rest': False,
-    'need_encrypt': 'False',
     'category': 2,
     'feature_names': None,
 }
+'''
+
+'''
+# DPSGD
+config = {
+    'mode': 'DPSGD',
+    'delta': 1e-3,
+    'noise_multiplier': 2.0,
+    'l2_norm_clip': 1.0,
+    'secure_mode': True,
+    'learning_rate': 'optimal',
+    'alpha': 0.0001,
+    'batch_size': 50,
+    'max_iter': 100,
+    'category': 2,
+    'feature_names': None,
+}
+'''
+
+#'''
+# Paillier
+config = {
+    'mode': 'Paillier',
+    'n_length': 1024,
+    'learning_rate': 'optimal',
+    'alpha': 0.0001,
+    'batch_size': 100,
+    'max_iter': 100,
+    'n_iter_no_change': 5,
+    'compare_threshold': 1e-6,
+    'category': 2,
+    'feature_names': None,
+}
+#'''
 
 
 def feature_selection(x, feature_names):
@@ -183,7 +219,7 @@ class LRModel_DPSGD(LRModel):
     def set_l2_norm_clip(self, l2_norm_clip):
         self.l2_norm_clip = l2_norm_clip
     
-    def compute_grad(self, x, y):
+    def compute_grad(self, x, y): 
         batch_size = x.shape[0]
         
         temp = self.predict_prob(x) - y
@@ -205,9 +241,39 @@ class LRModel_DPSGD(LRModel):
             noise = np.random.normal(0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
 
         grad += noise
-
         return grad / x.shape[0]
-        
+
+
+class LRModel_Paillier(LRModel):
+
+    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, n_length=1024):
+        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
+        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length)
+
+    def decrypt_scalar(self, cipher_scalar):
+        return self.private_key.decrypt(cipher_scalar)
+
+    def decrypt_vector(self, cipher_vector):
+        return [self.private_key.decrypt(i) for i in cipher_vector]
+
+    def decrypt_matrix(self, cipher_matrix):
+        return [[self.private_key.decrypt(i) for i in cv] for cv in cipher_matrix]
+    
+    def encrypt_scalar(self, plain_scalar):
+        return self.public_key.encrypt(plain_scalar)
+
+    def encrypt_vector(self, plain_vector):
+        return [self.public_key.encrypt(i) for i in plain_vector]
+
+    def encrypt_matrix(self, plain_matrix):
+        return [[self.private_key.encrypt(i) for i in pv] for pv in plain_matrix]
+    
+    def compute_grad(self, x, y):
+        # Taylor first order expansion: h(x) = 0.5 + 0.25 * (x.dot(w) + b)
+        temp = 0.5 + 0.25 * (x.dot(self.theta[1:]) + self.theta[0]) - y
+        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
+                + self.alpha * self.theta) / x.shape[0]
+
 
 class Arbiter(LRModel):
     """
@@ -215,128 +281,61 @@ class Arbiter(LRModel):
     """
 
     def __init__(self, proxy_server, proxy_client_host, proxy_client_guest, config):
-        self.need_one_vs_rest = None
-        self.public_key = None
-        self.private_key = None
-        self.need_encrypt = None
         self.theta = None
-        self.alpha = config['alpha']
+        self.alpha = config['alpha'] # used for compute the loss value
         self.proxy_server = proxy_server
         self.proxy_client_host = proxy_client_host
         self.proxy_client_guest = proxy_client_guest
 
-    def generate_key(self, length=1024):
-        public_key, private_key = paillier.generate_paillier_keypair(
-            n_length=length)
-        self.public_key = public_key
-        self.private_key = private_key
-
-    def broadcast_key(self):
-        try:
-            self.generate_key()
-            # logger.info("start send pub")
-            self.proxy_client_host.Remote(self.public_key, "pub")
-            # logger.info("send pub to host OK")
-        except Exception as e:
-            print("Arbiter broadcast key pair error : %s" % e)
-            # logger.info("Arbiter broadcast key pair error : %s" % e)
-
-    def predict_prob(self, x):
-        if self.need_encrypt:
-            global_theta = self.decrypt_vector(self.theta)
-            prob = self.sigmoid(x.dot(global_theta[1:]) + global_theta[0])
-            return prob
-        else:
-            return super().predict_prob(x)
-
-    def predict_one_vs_rest(self, data):
-        data = np.hstack([np.ones((len(data), 1)), data])
-        if self.need_encrypt == 'YES':
-            global_theta = self.decrypt_matrix(self.theta)
-            global_theta = np.array(global_theta)
-        else:
-            global_theta = np.array(self.theta)
-        pre = self.sigmoid(data.dot(global_theta.T))
-        y_argmax = np.argmax(pre, axis=1)
-        return y_argmax
-
-    def predict(self, data, category):
-        if category == 2:
-            return super().predict(data)
-        else:
-            return self.predict_one_vs_rest(data)
-
-    def model_aggregate(self, host_parm, guest_param, host_data_weight,
-                        guest_data_weight):
+    def model_aggregate(self, host_param, guest_param,
+                        host_data_weight, guest_data_weight):
         param = []
         weight = []
-        if self.need_encrypt == 'YES':
-            if self.need_one_vs_rest == False:
-                param.append(self.decrypt_vector(host_parm))
-                param.append(self.decrypt_vector(guest_parm))
-            else:
-                param.append(self.decrypt_matrix(host_parm))
-                param.append(self.decrypt_matrix(guest_parm))
-            weight.append(self.decrypt_vector(host_data_weight)[0])
-            weight.append(self.decrypt_vector(guest_data_weight)[0])
-        else:
-            param.append(host_parm)
-            param.append(guest_param)
-            weight.append(host_data_weight)
-            weight.append(guest_data_weight)
-
+        
+        param.append(host_param)
+        param.append(guest_param)
+        weight.append(host_data_weight)
+        weight.append(guest_data_weight)
+        
         param = np.array(param)
         weight = np.array(weight)
 
-        if self.need_one_vs_rest == True:
-            agg_param = np.zeros_like(np.array(param))
-            for id_c, p in enumerate(param):
-                w = weight[id_c] / np.sum(weight, axis=0)
-                for id_d, d in enumerate(p):
-                    d = np.array(d)
-                    agg_param[id_c, id_d] += d * w
-            self.theta = np.sum(agg_param, axis=0)
-        else:
-            self.set_theta(np.average(param, weights=weight/weight.sum(), axis=0))
+        self.set_theta(np.average(param, weights=weight/weight.sum(), axis=0))
 
-    def broadcast_global_model_param(self, host_param, guest_param,
-                                     host_data_weight, guest_data_weight):
-        self.model_aggregate(host_param, guest_param,
-                             host_data_weight, guest_data_weight)
-        if self.need_encrypt == 'YES':
-            if self.need_one_vs_rest == False:
-                self.theta = self.encrypt_vector(self.theta)
-            else:
-                self.theta = self.encrypt_matrix(self.theta)
-        
+    def broadcast_global_model_param(self):
         global_theta = list(self.theta)
-        self.proxy_client_host.Remote(global_theta, "global_host_model_param")
-        self.proxy_client_guest.Remote(global_theta, "global_guest_model_param")
+        self.proxy_client_host.Remote(global_theta, "global_model_param")
+        self.proxy_client_guest.Remote(global_theta, "global_model_param")
 
-    def decrypt_vector(self, x):
-        return [self.private_key.decrypt(i) for i in x]
 
-    def decrypt_matrix(self, x):
-        ret = []
-        for r in x:
-            ret.append(self.decrypt_vector(r))
-        return ret
+class Arbiter_Paillier(Arbiter, LRModel_Paillier):
+    
+    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest, config):
+        Arbiter.__init__(self, proxy_server, proxy_client_host, proxy_client_guest, config)
+        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
 
-    def encrypt_vector(self, x):
-        return [self.public_key.encrypt(i) for i in x]
+    def broadcast_public_key(self):
+        self.proxy_client_host.Remote(self.public_key, "public_key")
+        self.proxy_client_guest.Remote(self.public_key, "public_key")
 
-    def encrypt_matrix(self, x):
-        ret = []
-        for r in x:
-            ret.append(self.encrypt_vector(r))
-        return ret
+    def model_aggregate(self, host_param, guest_param,
+                        host_data_weight, guest_data_weight):
+        host_param = self.decrypt_vector(host_param)
+        guest_param = self.decrypt_vector(guest_param)
+                
+        Arbiter.model_aggregate(self, host_param, guest_param,
+                                host_data_weight, guest_data_weight)
+
+    def broadcast_global_model_param(self):
+        global_theta = self.encrypt_vector(self.theta)
+        self.proxy_client_host.Remote(global_theta, "global_model_param")
+        self.proxy_client_guest.Remote(global_theta, "global_model_param")
 
 
 def run_homo_lr_arbiter(config,
                         role_node_map,
                         node_addr_map,
                         data_key,
-                        check_convergence,
                         task_params={},
                         log_handler=None):
     host_nodes = role_node_map["host"]
@@ -388,17 +387,28 @@ def run_homo_lr_arbiter(config,
         
     x, y = read_data(data_key, config['feature_names'])
 
-    client_arbiter = Arbiter(proxy_server, proxy_client_host,
-                             proxy_client_guest, config)
-    client_arbiter.need_one_vs_rest = config['need_one_vs_rest']
-    need_encrypt = proxy_server.Get("need_encrypt")
-
-    if need_encrypt == 'YES':
-        client_arbiter.need_encrypt = 'YES'
-        client_arbiter.broadcast_key()
+    if config['mode'] == 'Plaintext':
+        check_convergence = True
+        arbiter = Arbiter(proxy_server, proxy_client_host,
+                          proxy_client_guest, config)
+    elif config['mode'] == 'DPSGD':
+        # Due to added noise, don't check convergence in DPSGD mode
+        check_convergence = False
+        arbiter = Arbiter(proxy_server, proxy_client_host,
+                          proxy_client_guest, config)
+    elif config['mode'] == 'Paillier':
+        check_convergence = True
+        arbiter = Arbiter_Paillier(proxy_server, proxy_client_host,
+                                   proxy_client_guest, config)
+        arbiter.broadcast_public_key()
+    else:
+        log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
     host_data_weight = proxy_server.Get("host_data_weight")
     guest_data_weight = proxy_server.Get("guest_data_weight")
+    if config['mode'] == 'Paillier':
+        host_data_weight = arbiter.decrypt_scalar(host_data_weight) 
+        guest_data_weight = arbiter.decrypt_scalar(guest_data_weight) 
 
     # data preprocessing
     # minmaxscaler
@@ -417,8 +427,8 @@ def run_homo_lr_arbiter(config,
     proxy_client_host.Remote(data_max, "data_max")
     proxy_client_guest.Remote(data_max, "data_max")
     proxy_client_host.Remote(data_min, "data_min")
-    proxy_client_guest.Remote(data_min, "data_min")
-    
+    proxy_client_guest.Remote(data_min, "data_min") 
+
     if check_convergence:
         n_iter_no_change = config['n_iter_no_change']
         compare_threshold = config['compare_threshold']
@@ -431,12 +441,12 @@ def run_homo_lr_arbiter(config,
         
         host_param = proxy_server.Get("host_param")
         guest_param = proxy_server.Get("guest_param")
-        client_arbiter.broadcast_global_model_param(host_param, guest_param,
-                                                    host_data_weight,
-                                                    guest_data_weight)
+        arbiter.model_aggregate(host_param, guest_param,
+                                host_data_weight, guest_data_weight)
+        arbiter.broadcast_global_model_param()
         
-        loss = client_arbiter.loss(x, y)
-        y_hat = client_arbiter.predict_prob(x)
+        loss = arbiter.loss(x, y)
+        y_hat = arbiter.predict_prob(x)
         acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
         auc = evaluator.getAUC(y, y_hat)
         fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
@@ -488,57 +498,12 @@ class Client(LRModel):
         super().__init__(X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'])
-        self.public_key = None
-        self.need_encrypt = config['need_encrypt']
-        self.need_one_vs_rest = None
-        self.flag = True
         self.proxy_server = proxy_server
-        self.proxy_client_arbiter = proxy_client_arbiter
+        self.proxy_client_arbiter = proxy_client_arbiter 
     
     def get_theta(self):
         return list(super().get_theta())
-
-    def fit_binary(self, batch_x, batch_y):
-        if self.need_one_vs_rest == False:
-            theta = self.theta
-        else:
-            theta = list(self.theta)
-        if self.need_encrypt == 'YES':
-            if self.flag == True:
-                # Only need to encrypt once
-                theta = self.encrypt_vector(theta)
-                self.flag = False
-            # Convert subtraction to addition
-            neg_one = self.public_key.encrypt(-1)
-            batch_x = np.concatenate((np.ones((batch_x.shape[0], 1)), batch_x),
-                                     axis=1)
-            # use taylor approximation
-            batch_encrypted_grad = batch_x.transpose() * (
-                0.25 * batch_x.dot(theta) + 0.5 * batch_y.transpose() * neg_one)
-            encrypted_grad = batch_encrypted_grad.sum(axis=1) / batch_y.shape[0]
-            for j in range(len(theta)):
-                theta[j] -= self.lr * encrypted_grad[j]
-            return theta
-
-        else:  # Plaintext
-            super().fit(batch_x, batch_y)
             
-    def one_vs_rest(self, X, y, k):
-        all_theta = []
-        for i in range(0, k):
-            y_i = np.array([1 if label == i else 0 for label in y])
-            theta = self.fit_binary(X, y_i, self.one_vs_rest_theta[i])
-            all_theta.append(theta)
-        return all_theta
-
-    def fit(self, X, y):
-        if not self.multi_class:
-            self.need_one_vs_rest = False
-            self.fit_binary(X, y)
-        else:
-            self.need_one_vs_rest = True
-            self.one_vs_rest(X, y, category)
-
     def batch_generator(self, all_data, batch_size, shuffle=True):
         """
         :param all_data : incluing features and label
@@ -566,9 +531,6 @@ class Client(LRModel):
             batch_count += 1
             yield [d[start:end] for d in all_data]
 
-    def encrypt_vector(self, x):
-        return [self.public_key.encrypt(i) for i in x]
-
 
 class Client_DPSGD(Client, LRModel_DPSGD):
 
@@ -579,22 +541,29 @@ class Client_DPSGD(Client, LRModel_DPSGD):
                                noise_multiplier=config['noise_multiplier'],
                                l2_norm_clip=config['l2_norm_clip'],
                                secure_mode=config['secure_mode'])
-        self.public_key = None
-        self.need_encrypt = config['need_encrypt']
-        self.need_one_vs_rest = None
-        self.flag = True
         self.proxy_server = proxy_server
         self.proxy_client_arbiter = proxy_client_arbiter
     
-    def fit(self, X, y):
-        LRModel_DPSGD.fit(self, X, y)
+    def fit(self, x, y):
+        LRModel_DPSGD.fit(self, x, y)
         
+
+class Client_Paillier(Client, LRModel_Paillier):
+    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
+        LRModel_Paillier.__init__(self, X, y, category=config['category'],
+                                  learning_rate=config['learning_rate'],
+                                  alpha=config['alpha'],
+                                  n_length=config['n_length'])
+        self.proxy_server = proxy_server
+        self.proxy_client_arbiter = proxy_client_arbiter
+    
+    def fit(self, x, y):
+        LRModel_Paillier.fit(self, x, y)
 
 def run_homo_lr_client(config,
                        role_node_map,
                        node_addr_map,
                        data_key,
-                       check_convergence,
                        client_name,
                        task_params={},
                        log_handler=None):
@@ -627,22 +596,23 @@ def run_homo_lr_client(config,
                       " ip {}, port {}.".format(arbiter_ip, arbiter_port))
 
     x, y = read_data(data_key, config['feature_names'])
-    
-    if 'mode' in config:
-        if config['mode'] == 'DPSGD':
-            client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
-        else:
-            log_handler.info('mode not supported yet')
-    else:
-        client = Client(x, y, proxy_server, proxy_client_arbiter, config)
-
-    proxy_client_arbiter.Remote(client.need_encrypt, "need_encrypt")
     data_weight = config['batch_size']
-    
-    if client.need_encrypt == 'YES':
-        # if task_params['encrypted']:
-        client.public_key = proxy_server.Get("pub")
-        data_weight = client.encrypt_vector([data_weight])
+
+    if config['mode'] == 'Plaintext':
+        check_convergence = True
+        client = Client(x, y, proxy_server, proxy_client_arbiter, config)
+    elif config['mode'] == 'DPSGD':
+        # Due to added noise, don't check convergence in DPSGD mode
+        check_convergence = False
+        client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
+    elif config['mode'] == 'Paillier':
+        check_convergence = True
+        client = Client_Paillier(x, y, proxy_server, proxy_client_arbiter, config)
+        client.public_key = proxy_server.Get("public_key")
+        client.set_theta(client.encrypt_vector(client.theta))
+        data_weight = client.encrypt_scalar(data_weight)
+    else:
+        log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
     proxy_client_arbiter.Remote(data_weight, client_name+"_data_weight")
   
@@ -669,15 +639,14 @@ def run_homo_lr_client(config,
         client.fit(batch_x, batch_y)
 
         proxy_client_arbiter.Remote(client.get_theta(), client_name+"_param")
-        client.set_theta(proxy_server.Get(
-                        "global_"+client_name+"_model_param"))
+        client.set_theta(proxy_server.Get("global_model_param"))
 
         if check_convergence:
             if proxy_server.Get('convergence') == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
     
-    if 'mode' in config and config['mode'] == 'DPSGD':
+    if config['mode'] == 'DPSGD':
         num_train_examples = x.shape[0]
         eps = compute_epsilon(i+1, num_train_examples, config)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
@@ -740,8 +709,7 @@ def load_info():
 # logger = get_logger("Homo-LR")
 
 
-def run_party(party_name, config,
-              check_convergence=True):
+def run_party(party_name, config):
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -768,14 +736,12 @@ def run_party(party_name, config,
                             role_node_map,
                             node_addr_map,
                             data_key,
-                            check_convergence,
                             log_handler=fl_console_log)
     else:
         run_homo_lr_client(config,
                            role_node_map,
                            node_addr_map,
                            data_key,
-                           check_convergence,
                            client_name=party_name,
                            log_handler=fl_console_log)
 
