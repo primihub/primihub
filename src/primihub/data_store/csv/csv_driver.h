@@ -25,6 +25,10 @@ class CSVDriver;
 struct CSVAccessInfo : public DataSetAccessInfo {
   CSVAccessInfo() = default;
   CSVAccessInfo(const std::string& file_path) : file_path_(file_path) {}
+  std::string toString() override;
+  retcode fromJsonString(const std::string& json_str) override;
+  retcode fromYamlConfig(const YAML::Node& meta_info) override;
+
   std::string file_path_;
 };
 

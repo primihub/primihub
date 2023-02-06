@@ -974,6 +974,7 @@ cc_library(
         ":util_lib",
         "@nlohmann_json",
         "@com_github_sqlite_wrapper//:sqlite_wrapper",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],

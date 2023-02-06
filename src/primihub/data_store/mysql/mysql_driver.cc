@@ -24,16 +24,89 @@
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace primihub {
+// MySQLAccessInfo
+std::string MySQLAccessInfo::toString() {
+    std::stringstream ss;
+    nlohmann::json js;
+    js["host"] = this->ip_;
+    js["port"] = this->port_;
+    js["username"] = this->user_name_;
+    js["password"] = this->password_;
+    js["database"] = this->database_;
+    js["dbName"] = this->db_name_;
+    js["tableName"] = this->table_name_;
+    if (!query_colums_.empty()) {
+        std::string quey_col_info;
+        for (const auto& col : query_colums_) {
+            quey_col_info.append(col).append(",");
+        }
+        js["query_index"] = std::move(quey_col_info);
+    }
+    ss << std::setw(4) << js;
+    return ss.str();
+}
 
+retcode MySQLAccessInfo::fromJsonString(const std::string& json_str) {
+    if (json_str.empty()) {
+        LOG(ERROR) << "access info is empty";
+        return retcode::FAIL;
+    }
+    nlohmann::json js = nlohmann::json::parse(json_str);
+    try {
+        this->ip_ = js["host"].get<std::string>();
+        this->port_ = js["port"].get<uint32_t>();
+        this->user_name_ = js["username"].get<std::string>();
+        this->password_ = js["password"].get<std::string>();
+        if (js.contains("database")) {
+            this->database_ = js["database"].get<std::string>();
+        }
+        this->db_name_ = js["dbName"].get<std::string>();
+        this->table_name_ = js["tableName"].get<std::string>();
+        this->query_colums_.clear();
+        if (js.contains("query_index")) {
+            std::string query_index = js["query_index"];
+            str_split(query_index, &query_colums_, ',');
+        }
+    } catch (std::exception& e) {
+        LOG(ERROR) << "parse access info encountes error, " << e.what();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+retcode MySQLAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
+    try {
+        this->ip_ = meta_info["host"].as<std::string>();
+        this->port_ = meta_info["port"].as<uint32_t>();
+        this->user_name_ = meta_info["username"].as<std::string>();
+        this->password_ = meta_info["password"].as<std::string>();
+        if (meta_info["database"]) {
+            this->database_ = meta_info["database"].as<std::string>();
+        }
+        this->db_name_ = meta_info["dbName"].as<std::string>();
+        this->table_name_ = meta_info["tableName"].as<std::string>();
+        this->query_colums_.clear();
+        if (meta_info["query_index"]) {
+            std::string query_index = meta_info["query_index"].as<std::string>();
+            str_split(query_index, &query_colums_, ',');
+        }
+    } catch (std::exception& e) {
+        LOG(ERROR) << e.what();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+// mysql cursor implementation
 auto sql_result_deleter = [](MYSQL_RES* result) {
     if (result) {
         mysql_free_result(result);
     }
 };
 
-// mysql cursor implementation
 MySQLCursor::MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> driver) {
     this->sql_ = sql;
     this->driver_ = driver;

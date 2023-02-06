@@ -52,7 +52,7 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const New
     }
 
     DatasetMeta mate;
-    auto dataset = dataset_service_->newDataset(driver, fid, mate);
+    auto dataset = dataset_service_->newDataset(driver, fid, meta_info, mate);
 
     response->set_ret_code(0);
     response->set_dataset_url(mate.getDataURL());
