@@ -20,7 +20,7 @@ def batch_yield(x, y, batch_size):
 def trucate_geometric_thres(x, clip_thres, variation, times=2):
     if isinstance(x, Iterable):
         norm_x = np.sqrt(sum(x * x))
-        n = len(norm_x)
+        n = len(x)
     else:
         norm_x = abs(x)
         n = 1
