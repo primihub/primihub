@@ -54,7 +54,11 @@ class HeterLrHost(HeteroLrBase):
     def gradient(self, x, y):
         h = self.sigmoid(self.predict_raw(x))
         error = h - y
-        self.channel.sender('error', error)
+        # self.channel.sender('error', error)
+        self.channel.sender(
+            'error',
+            trucate_geometric_thres(error, self.clip_thres,
+                                    self.noise_variation))
         if self.penalty == "l2":
             grad = (np.dot(x.T, error) / x.shape[0] + self.alpha * self.theta
                    )  #/ x.shape[0]
