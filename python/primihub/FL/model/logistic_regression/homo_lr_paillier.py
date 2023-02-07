@@ -3,11 +3,12 @@ from primihub.FL.model.logistic_regression.homo_lr_dev import run_party
 
 
 config = {
-    'mode': 'Plaintext', 
+    'mode': 'Paillier',
+    'n_length': 1024,
     'learning_rate': 'optimal',
     'alpha': 0.0001,
     'batch_size': 100,
-    'max_iter': 200,
+    'max_iter': 100,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
     'category': 2,
