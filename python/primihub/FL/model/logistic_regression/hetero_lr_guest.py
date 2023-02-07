@@ -38,7 +38,7 @@ class HeterLrGuest(HeteroLrBase):
 
     def batch_gd(self, x):
         for batch_x, _ in batch_yield(x, x, self.batch_size):
-            self.predict(x)
+            self.predict(batch_x)
             grad = self.gradient(batch_x)
             self.theta -= self.learning_rate * grad
 

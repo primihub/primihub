@@ -92,5 +92,5 @@ class HeterLrHost(HeteroLrBase):
             else:
                 self.batch_gd(x, y)
 
-            y_hat = self.predict_raw(x)
-            cur_loss = self.loss(y_hat, y)
+            # y_hat = self.predict_raw(x)
+            # cur_loss = self.loss(y_hat, y)
