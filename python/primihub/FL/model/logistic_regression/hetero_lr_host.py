@@ -1,5 +1,5 @@
 import numpy as np
-from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss
+from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
 
 class HeterLrHost(HeteroLrBase):
