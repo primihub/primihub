@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "src/primihub/util/network/link_context.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
 
 namespace primihub::network {

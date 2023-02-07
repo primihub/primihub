@@ -43,11 +43,6 @@ using primihub::rpc::TaskType;
 using primihub::task::LanguageParserFactory;
 using primihub::task::ProtocolSemanticParser;
 
-ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
-ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
-ABSL_FLAG(bool, singleton, false, "singleton mode"); // TODO: remove this flag
-ABSL_FLAG(int, service_port, 50050, "node service port");
-
 namespace primihub {
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
@@ -724,81 +719,4 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     return worker;
 }
 
-/**
- * @brief
- *  Start Apache arrow flight server with NodeService and DatasetService.
- */
-void RunServer(primihub::VMNodeImpl *node_service,
-        primihub::DataServiceImpl *dataset_service, int service_port) {
-
-    // Initialize server
-    arrow::flight::Location location;
-
-    // Listen to all interfaces
-    ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTcp("0.0.0.0", service_port,
-                                                       &location));
-    arrow::flight::FlightServerOptions options(location);
-    auto server = std::unique_ptr<arrow::flight::FlightServerBase>(
-        new primihub::service::FlightIntegrationServer(
-            node_service->getNodelet()->getDataService()));
-
-    // Use builder_hook to register grpc service
-    options.builder_hook = [&](void *raw_builder) {
-        auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
-        builder->RegisterService(node_service);
-        builder->RegisterService(dataset_service);
-
-        // set the max message size to 128M
-        builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
-    };
-
-    // Start the server
-    ARROW_CHECK_OK(server->Init(options));
-    // Exit with a clean error code (0) on SIGTERM
-    ARROW_CHECK_OK(server->SetShutdownOnSignals({SIGTERM}));
-
-    LOG(INFO) << " 💻 Node listening on port: " << service_port;
-
-    ARROW_CHECK_OK(server->Serve());
-}
-
-} // namespace primihub
-
-
-int main(int argc, char **argv) {
-
-    // std::atomic<bool> quit(false);    // signal flag for server to quit
-    // Register SIGINT signal and signal handler
-
-    signal(SIGINT, [](int sig) {
-        LOG(INFO) << " 👋 Node received SIGINT signal, shutting down...";
-        exit(0);
-    });
-
-    py::scoped_interpreter python;
-    py::gil_scoped_release release;
-
-    google::InitGoogleLogging(argv[0]);
-    FLAGS_colorlogtostderr = true;
-    FLAGS_alsologtostderr = true;
-    FLAGS_log_dir = "./log";
-    FLAGS_max_log_size = 10;
-    FLAGS_stop_logging_if_full_disk = true;
-
-    absl::ParseCommandLine(argc, argv);
-    const std::string node_id = absl::GetFlag(FLAGS_node_id);
-    bool singleton = absl::GetFlag(FLAGS_singleton);
-
-    int service_port = absl::GetFlag(FLAGS_service_port);
-    std::string config_file = absl::GetFlag(FLAGS_config);
-
-    std::string node_ip = "0.0.0.0";
-    auto node_service = std::make_unique<primihub::VMNodeImpl>(
-            node_id, node_ip, service_port, singleton, config_file);
-    auto data_service = std::make_unique<primihub::DataServiceImpl>(
-        node_service->getNodelet()->getDataService(),
-        node_service->getNodelet()->getNodeletAddr());
-    primihub::RunServer(node_service.get(), data_service.get(), service_port);
-
-    return EXIT_SUCCESS;
-}
+}  // namespace primihub

@@ -29,7 +29,35 @@ from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
 
 def register_dataset(service_addr, driver, path, name):
     logger.info("Dataset service is {}.".format(service_addr))
-    channel = grpc.insecure_channel(service_addr)
+    # ip:port:use_tls:role
+    server_info = service_addr.split(":")
+    if len(server_info) < 3:
+        err_msg = "Register dataset read ca failed. {}".foramt(str(e))
+        logger.error(err_msg)
+        raise RuntimeError(err_msg)
+    host_port = f"{server_info[0]}:{server_info[1]}"
+    use_tls = server_info[2]
+    if use_tls == '1':
+        try:
+            root_ca_path = Context.get_root_ca_path()
+            with open(root_ca_path, 'rb') as f:
+                root_ca = f.read()
+            key_path = Context.get_key_path()
+            with open(key_path, 'rb') as f:
+                private_key = f.read()
+            cert_path = Context.get_cert_path()
+            with open(cert_path, 'rb') as f:
+                cert = f.read()
+        except Exception as e:
+            err_msg = "Register dataset read ca failed. {}".foramt(str(e))
+            logger.error(err_msg)
+            raise RuntimeError(err_msg)
+
+        creds = grpc.ssl_channel_credentials(root_ca, private_key, cert)
+        channel = grpc.secure_channel(host_port, creds)
+    else:
+        channel = grpc.insecure_channel(host_port)
+
     stub = service_pb2_grpc.DataServiceStub(channel)
     request = service_pb2.NewDatasetRequest()
     request.fid = name

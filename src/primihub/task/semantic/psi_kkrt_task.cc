@@ -144,9 +144,7 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
             continue;
         }
         const auto& node = it.second;
-        peer_node.ip_ = node.ip();
-        peer_node.port_ = node.port();
-        peer_node.use_tls_ = node.use_tls();
+        primihub::pbNode2Node(node, &peer_node);
     }
     VLOG(5) << "peer_address_: " << peer_node.to_string();
     return retcode::SUCCESS;

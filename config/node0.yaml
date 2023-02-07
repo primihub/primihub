@@ -16,18 +16,23 @@
 version: 1.0
 
 node: "node0"
+#location: "www.primihub.server.com"
+#use_tls: true
 location: "127.0.0.1"
+use_tls: false
+
 grpc_port: 50050
+
+#certificate:
+#  root_ca: "data/cert/ca.crt"
+#  key: "data/cert/node0.key"
+#  cert: "data/cert/node0.crt"
 
 # Use redis by default, set `use_redis: False` to use libp2p
 redis_meta_service:
   redis_addr: "127.0.0.1:6379"
   use_redis: True
   redis_password: "primihub"
-
-# node_keypair:
-#     public_key:
-#     private_key:
 
 # load datasets
 datasets:
@@ -58,10 +63,20 @@ datasets:
     model: "csv"
     source: "data/FL/homo_lr/train_breast_cancer.csv"
 
+  # PSI test case datasets for sqlite database
+  - description: "psi_client_data_db"
+    model: "sqlite"
+    table_name: "psi_client_data"
+    source: "data/client_e.db3"
+
     # Dataset authorization
     # authorization:
     #   - node:
     #     task:
+  # PSI test caset datasets
+  - description: "psi_client_data"
+    model: "csv"
+    source: "data/client_e.csv"
 
 localkv:
   model: "leveldb"

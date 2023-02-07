@@ -245,18 +245,15 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             }
             //TODO (fixbug), maybe query dataset has some bug, temperary, filter the same destionation
             auto& pb_node = pair.second;
-            auto& ip = pb_node.ip();
-            auto port = pb_node.port();
-            auto use_tls = pb_node.use_tls();
-            auto& role = pb_node.role();
-            std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            std::string dest_node_address(absl::StrCat(pb_node.ip(), ":", pb_node.port()));
             if (duplicate_filter.find(dest_node_address) != duplicate_filter.end()) {
                 VLOG(5) << "duplicate request for same destination, avoid";
                 continue;
             }
-            Node dest_node(ip, port, use_tls, role);
+            Node dest_node;
+            pbNode2Node(pb_node, &dest_node);
             duplicate_filter.emplace(dest_node_address);
-            VLOG(5) << "dest_node_address: " << dest_node_address;
+            VLOG(5) << "dest_node_address: " << dest_node.to_string();
             scheduled_nodes[dest_node_address] = std::move(dest_node);
             thrds.emplace_back(
                 std::thread(

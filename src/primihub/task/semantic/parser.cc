@@ -28,6 +28,7 @@
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
+#include "src/primihub/util/util.h"
 
 using primihub::service::DataURLToDetail;
 using primihub::rpc::TaskType;
@@ -181,23 +182,12 @@ void ProtocolSemanticParser::schedulePirTask(
         datasets_with_tag,
         [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
             LOG(INFO) << " 🔍 Found meta list from datasets: "
-                      << metas_with_param_tag.size();
+                      << metas_with_param_tag.size() << " "
+                      << "nodelet_attr: " << nodelet_attr;
             metasToPeerList(metas_with_param_tag, peer_list_);
-
-            std::vector<std::string> addr_info;
-            str_split(nodelet_attr, &addr_info, ':');
-            if (addr_info.size() < 3) {
-                return;
-            }
-            std::string node_id = addr_info[0];
-            std::string node_ip = addr_info[1];
-            int node_port = stoi(addr_info[2]);
             rpc::Node client_node;
-            client_node.set_node_id(node_id);
-            client_node.set_ip(node_ip);
-            client_node.set_port(node_port);
-            peer_list_.push_back(client_node);
-
+            parseTopbNode(nodelet_attr, &client_node);
+            peer_list_.push_back(std::move(client_node));
             metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
             std::shared_ptr<VMScheduler> scheduler =
                 std::make_shared<PIRScheduler>(node_id_,
@@ -243,18 +233,19 @@ void ProtocolSemanticParser::schedulePsiTask(
 void ProtocolSemanticParser::metasToDatasetAndOwner(
     const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
     std::map<std::string, std::string> &dataset_owner) {
-  for (auto &pair: metas_with_tag) {
-      auto meta = pair.first;
-      std::string node_id, node_ip, dataset_path;
-      int node_port;
+    for (auto &pair: metas_with_tag) {
+        auto meta = pair.first;
+        //   std::string node_id, node_ip, dataset_path;
+        //   int node_port;
+        std::string dataset_path;
+        std::string data_url = meta->getDataURL();
+        Node node_info;
+        DataURLToDetail(data_url, node_info, dataset_path);
+        dataset_owner.insert(std::make_pair(meta->getDescription(), node_info.id()));
 
-      std::string data_url = meta->getDataURL();
-      DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-      dataset_owner.insert(std::make_pair(meta->getDescription(), node_id));
-
-      LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
-                << node_id << ".";
-  }
+        LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
+                << node_info.id() << ".";
+    }
 }
 
 
@@ -297,18 +288,16 @@ void ProtocolSemanticParser::metasToPeerList(
 
   for (auto &meta_with_tag : metas_with_tag) {
     auto _meta = meta_with_tag.first;
-    std::string node_id, node_ip, dataset_path;
-    int node_port;
-    std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    Node node_info;
+    std::string server_info = _meta->getServerInfo();
+    LOG(ERROR) << "server_infoserver_info: " << server_info;
+    node_info.fromString(server_info);
 
     rpc::Node node;
-    node.set_node_id(node_id);
-    node.set_ip(node_ip);
-    node.set_port(node_port);
+    primihub::node2PbNode(node_info, &node);
     bool is_new_peer = true;
     for (auto &peer : peers) {
-      if (peer.node_id() == node_id) {
+      if (peer.node_id() == node_info.id()) {
         is_new_peer = false;
         break;
       }
@@ -328,18 +317,17 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
     auto _param_tag = meta.second;
     DLOG(INFO) << "metasToPeerDatasetMap: " << _meta->getDataURL() << " "
                << _param_tag;
-    std::string node_id, node_ip, dataset_path;
-    int node_port;
-    std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    Node node_info;
+    auto server_info = _meta->getServerInfo();
+    node_info.fromString(server_info);
     std::string dataset_id = _meta->getDescription();
     // find node_id in peer_dataset_map
-    auto it = peer_dataset_map.find(node_id);
+    auto it = peer_dataset_map.find(node_info.id());
     if (it == peer_dataset_map.end()) {
       // create new peer
       std::vector<DatasetWithParamTag> datasets_with_tag;
       datasets_with_tag.push_back(std::make_pair(dataset_id, _param_tag));
-      peer_dataset_map[node_id] = datasets_with_tag;
+      peer_dataset_map[node_info.id()] = datasets_with_tag;
     } else {
       // add dataset to peer
       it->second.push_back(std::make_pair(dataset_id, _param_tag));
@@ -355,11 +343,9 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
   for (auto &meta_with_tag : metas_with_tag) {
     auto meta = meta_with_tag.first;
     auto tag = meta_with_tag.second;
-    std::string node_id, node_ip, dataset_path;
-    int node_port;
-    std::string data_url = meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
-
+    Node node_info;
+    std::string server_info = meta->getServerInfo();
+    node_info.fromString(server_info);
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
@@ -372,18 +358,10 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     }
 
     rpc::Node node;
-    node.set_node_id(node_id);
-    node.set_ip(node_ip);
-
-    // This port is tcp port used by FL algorithm.
-    node.set_data_port(std::atoi(iter->second.c_str()));
-
-    // This port is tcp port used by gRPC.
-    node.set_port(node_port);
-
+    node2PbNode(node_info, &node);
     bool is_new_peer = true;
     for (auto &peer : peers_with_tag) {
-      if (peer.first.node_id() == node_id) {
+      if (peer.first.node_id() == node_info.id()) {
         is_new_peer = false;
         break;
       }
@@ -403,7 +381,7 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
 
     for (auto &peer_with_tag : peers_with_tag) {
       auto &node = peer_with_tag.first;
-      count ++;
+      count++;
       LOG(INFO) << "Node content: node_id " << node.node_id() << ", role "
                 << peer_with_tag.second << ", ip " << node.ip() << ", port "
                 << node.port() << ", data port " << node.data_port() << ".";
@@ -424,18 +402,16 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
   for (auto &meta_with_tag : metas_with_tag) {
     auto _meta = meta_with_tag.first;
     auto _tag = meta_with_tag.second;
-    std::string node_id, node_ip, dataset_path;
-    int node_port;
+    std::string dataset_path;
+    Node node_info;
     std::string data_url = _meta->getDataURL();
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    DataURLToDetail(data_url, node_info, dataset_path);
 
     rpc::Node node;
-    node.set_node_id(node_id);
-    node.set_ip(node_ip);
-    node.set_port(node_port);
+    node2PbNode(node_info, &node);
     bool is_new_peer = true;
     for (auto &peer : peers_with_tag) {
-      if (peer.first.node_id() == node_id) {
+      if (peer.first.node_id() == node_info.id()) {
         is_new_peer = false;
         break;
       }
