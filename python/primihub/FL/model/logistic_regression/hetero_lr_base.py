@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn import metrics
+from collections import Iterable
 
 
 def dloss(p, y):
@@ -16,6 +17,34 @@ def batch_yield(x, y, batch_size):
         yield (x[i:i + batch_size], y[i:i + batch_size])
 
 
+def trucate_geometric_thres(x, clip_thres, variation, times=2):
+    if isinstance(x, Iterable):
+        norm_x = np.sqrt(sum(x * x))
+        n = len(norm_x)
+    else:
+        norm_x = abs(x)
+        n = 1
+
+    clip_thres = np.max(1, norm_x / clip_thres)
+    clip_x = x / clip_thres
+
+    dp_noise = None
+
+    for _ in range(2 * times):
+        cur_noise = np.random.normal(0, clip_thres * variation, n)
+
+        if dp_noise is None:
+            dp_noise = cur_noise
+        else:
+            dp_noise += cur_noise
+
+    dp_noise /= np.sqrt(2 * times)
+
+    dp_x = clip_x + dp_noise
+
+    return dp_x
+
+
 class HeteroLrBase:
 
     def __init__(self,
@@ -27,7 +56,9 @@ class HeteroLrBase:
                  optimal_method=None,
                  update_type=None,
                  loss_type='log',
-                 random_state=2023):
+                 random_state=2023,
+                 clip_thres=1.0,
+                 noise_variation=1.0):
         self.learning_rate = learning_rate
         self.alpha = alpha
         self.epochs = epochs
@@ -37,6 +68,8 @@ class HeteroLrBase:
         self.random_state = random_state
         self.update_type = update_type
         self.loss_type = loss_type
+        self.clip_thres = clip_thres
+        self.noise_variation = noise_variation
         self.theta = 0
 
     def fit(self):

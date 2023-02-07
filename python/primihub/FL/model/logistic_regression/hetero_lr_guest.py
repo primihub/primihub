@@ -1,5 +1,5 @@
 import numpy as np
-from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield
+from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, trucate_geometric_thres
 
 
 class HeterLrGuest(HeteroLrBase):
@@ -14,13 +14,18 @@ class HeterLrGuest(HeteroLrBase):
                  update_type=None,
                  loss_type='log',
                  random_state=2023,
-                 guest_channel=None):
+                 guest_channel=None,
+                 add_noise=True):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = guest_channel
+        self.add_noise = add_noise
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
+        if self.add_noise:
+            guest_part = trucate_geometric_thres(guest_part, self.clip_thres,
+                                                 self.noise_variation)
         self.channel.sender("guest_part", guest_part)
 
     def gradient(self, x):
