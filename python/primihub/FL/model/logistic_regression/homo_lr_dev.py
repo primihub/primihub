@@ -269,7 +269,7 @@ class LRModel_Paillier(LRModel):
         return [[self.private_key.encrypt(i) for i in pv] for pv in plain_matrix]
     
     def compute_grad(self, x, y):
-        # Taylor first order expansion: h(x) = 0.5 + 0.25 * (x.dot(w) + b)
+        # Taylor first order expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
         temp = 0.5 + 0.25 * (x.dot(self.theta[1:]) + self.theta[0]) - y
         return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
                 + self.alpha * self.theta) / x.shape[0]
