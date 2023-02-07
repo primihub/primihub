@@ -25,7 +25,7 @@ def trucate_geometric_thres(x, clip_thres, variation, times=2):
         norm_x = abs(x)
         n = 1
 
-    clip_thres = np.max(1, norm_x / clip_thres)
+    clip_thres = np.max([1, norm_x / clip_thres])
     clip_x = x / clip_thres
 
     dp_noise = None
