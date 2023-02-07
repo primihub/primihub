@@ -58,10 +58,11 @@ class HeterLrHost(HeteroLrBase):
         error = h - y
         # self.channel.sender('error', error)
         if self.add_noise:
-            nois_error = trucate_geometric_thres(error,
-                                                 clip_thres=self.clip_thres,
-                                                 variation=self.noise_variation)
+            # nois_error = trucate_geometric_thres(error,
+            #                                      clip_thres=self.clip_thres,
+            #                                      variation=self.noise_variation)
 
+            # add adaptive-noise for error
             error_std = np.std(error)
             noise = np.random.normal(0, error_std, error.shape)
             nois_error = error + noise
