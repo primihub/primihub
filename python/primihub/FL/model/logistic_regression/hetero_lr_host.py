@@ -58,7 +58,10 @@ class HeterLrHost(HeteroLrBase):
         error = h - y
         # self.channel.sender('error', error)
         if self.add_noise:
-            error += np.random.normal()
+            error = trucate_geometric_thres(error,
+                                            clip_thres=self.clip_thres,
+                                            variation=self.noise_variation)
+            self.channel.sender('error', error)
 
         if self.penalty == "l2":
             grad = (np.dot(x.T, error) / x.shape[0] + self.alpha * self.theta
