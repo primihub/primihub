@@ -45,6 +45,18 @@ class HeteroLrBase:
     def predict(self):
         pass
 
+    def loss(self, y_hat, y_true):
+        if self.loss_type == 'log':
+            y_prob = self.sigmoid(y_hat)
+
+            return metrics.log_loss(y_true, y_prob)
+
+        elif self.loss == "squarederror":
+            return metrics.mean_squared_error(
+                y_true, y_hat)  # mse don't activate inputs
+        else:
+            raise KeyError('The type is not implemented!')
+
 
 class PlainLR:
 
