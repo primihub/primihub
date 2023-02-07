@@ -14,10 +14,12 @@ class HeterLrHost(HeteroLrBase):
                  update_type=None,
                  loss_type='log',
                  random_state=2023,
-                 host_channel=None):
+                 host_channel=None,
+                 add_noise=True):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
+        self.add_noise = add_noise
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -55,10 +57,9 @@ class HeterLrHost(HeteroLrBase):
         h = self.sigmoid(self.predict_raw(x))
         error = h - y
         # self.channel.sender('error', error)
-        self.channel.sender(
-            'error',
-            trucate_geometric_thres(error, self.clip_thres,
-                                    self.noise_variation))
+        if self.add_noise:
+            error += np.random.normal()
+
         if self.penalty == "l2":
             grad = (np.dot(x.T, error) / x.shape[0] + self.alpha * self.theta
                    )  #/ x.shape[0]
