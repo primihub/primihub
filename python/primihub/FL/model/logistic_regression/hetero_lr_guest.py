@@ -60,3 +60,5 @@ class HeterLrGuest(HeteroLrBase):
 
             else:
                 self.batch_gd(x)
+
+            self.predict(x)
