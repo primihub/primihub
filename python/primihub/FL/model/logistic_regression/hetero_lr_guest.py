@@ -23,9 +23,9 @@ class HeterLrGuest(HeteroLrBase):
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
-        if self.add_noise:
-            guest_part = trucate_geometric_thres(guest_part, self.clip_thres,
-                                                 self.noise_variation)
+        # if self.add_noise:
+        #     guest_part = trucate_geometric_thres(guest_part, self.clip_thres,
+        #                                          self.noise_variation)
         self.channel.sender("guest_part", guest_part)
 
     def gradient(self, x):
