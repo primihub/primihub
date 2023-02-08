@@ -78,7 +78,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
         if (_node_id == this->node_id()) {
             continue;
         }
-        peer_node_ = Node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+        primihub::pbNode2Node(pb_node, &peer_node_);
         VLOG(5) << "peer_node: " << peer_node_.to_string();
     }
     return 0;

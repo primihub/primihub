@@ -65,15 +65,15 @@ void nodeContext2TaskParam(const NodeContext& node_context,
         ParamValue pv_dataset;
         pv_dataset.set_var_type(VarType::STRING);
         // Get data path from data URL
-        std::string node_id, node_ip, dataset_path;
-        int node_port;
+        std::string dataset_path;
+        Node node_info;
         std::string data_url = dataset_meta->getDataURL();
-        DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+        DataURLToDetail(data_url, node_info, dataset_path);
         // Only set dataset path
         pv_dataset.set_value_string(dataset_path);
         (*params_map)[dataset_meta->getDescription()] = std::move(pv_dataset);
 
-        node_dataset_map[node_id] = dataset_meta->getDescription();
+        node_dataset_map[node_info.id()] = dataset_meta->getDescription();
     }
 
     // Save every node's dataset name.
@@ -154,12 +154,12 @@ void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     std::map<std::string, Node> scheduled_nodes;
     for (size_t i = 0; i < peers_with_tag_.size(); i++) {
         NodeWithRoleTag peer_with_tag = peers_with_tag_[i];
-
-        std::string dest_node_address(
-                absl::StrCat(peer_with_tag.first.ip(), ":", peer_with_tag.first.port()));
-        LOG(INFO) << "dest_node_address: " << dest_node_address;
         auto& pb_node = peer_with_tag.first;
-        Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+        std::string dest_node_address{absl::StrCat(pb_node.ip(), ":", pb_node.port())};
+        LOG(INFO) << "dest_node_address: " << dest_node_address;
+
+        Node dest_node;
+        pbNode2Node(pb_node, &dest_node);
         scheduled_nodes[dest_node_address] = std::move(dest_node);
         // TODO 获取当Role的data meta list
         std::vector<std::shared_ptr<DatasetMeta>> data_meta_list;

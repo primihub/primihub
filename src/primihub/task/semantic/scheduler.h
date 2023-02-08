@@ -30,6 +30,7 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/network/link_factory.h"
+#include "src/primihub/node/server_config.h"
 
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;
@@ -44,6 +45,7 @@ class VMScheduler {
   VMScheduler(const std::string &node_id, bool singleton)
       : node_id_(node_id), singleton_(singleton) {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+    initCertificate();
   }
 
   std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {
@@ -73,6 +75,16 @@ class VMScheduler {
   std::vector<Node>& notifyServer() {
     return notify_server_info;
   }
+
+ protected:
+    void initCertificate() {
+        auto& server_config = primihub::ServerConfig::getInstance();
+        auto& host_cfg = server_config.getServiceConfig();
+        if (host_cfg.use_tls()) {
+            link_ctx_->initCertificate(server_config.getCertificateConfig());
+        }
+    }
+
  protected:
   const std::string node_id_;
   bool singleton_;

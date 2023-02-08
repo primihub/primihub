@@ -20,6 +20,7 @@
 #include "src/primihub/common/defines.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/util/util.h"
 
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
@@ -121,9 +122,7 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
         }
         auto& node = node_info.second;
         this->client_address = node.ip() + ":" + std::to_string(node.port());
-        client_node_.ip_ = node.ip();
-        client_node_.port_ = node.port();
-        client_node_.use_tls_ = node.use_tls();
+        primihub::pbNode2Node(node, &client_node_);
         VLOG(5) << "client_address: " << this->client_node_.to_string();
     }
 

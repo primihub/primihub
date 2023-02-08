@@ -58,6 +58,7 @@ class TaskContext:
         self.role_nodeid_map["guest"] = []
         self.params_map = {}
         self.link_context = None
+        self.use_tls = False
 
 
     def get_protocol(self):
@@ -191,10 +192,29 @@ class TaskContext:
     def job_id(self):
         return self.params_map["jobid"]
 
+    def config_file(self):
+        return self.params_map["config_file_path"]
+
     def init_link_context(self):
+        import yaml
+        config_file = self.config_file()
+        with open(config_file, 'r', encoding='utf-8') as fd:
+            config_node = yaml.safe_load(fd)
+        self.use_tls = config_node.get("use_tls", False)
         import linkcontext
         self.link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
         self.link_context.setTaskInfo(self.job_id(), self.task_id())
+        if self.use_tls:
+            # load certificate
+            cert_confg = config_node.get("certificate", {})
+            if cert_confg:
+                ca_file = cert_confg["root_ca"]
+                key_file = cert_confg["key"]
+                cert_file = cert_confg["cert"]
+                logger.debug(ca_file)
+                logger.debug(key_file)
+                logger.debug(cert_file)
+                self.link_context.initCertificate(ca_file, key_file, cert_file)
 
     def get_link_conext(self):
         if not self.link_context:
