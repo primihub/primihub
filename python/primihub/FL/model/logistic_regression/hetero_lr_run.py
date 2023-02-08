@@ -1,4 +1,4 @@
-from primihub.examples.hetero_xgb import ph, GrpcServer
+from primihub.examples.hetero_xgb import ph, GrpcServer, pd
 from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
 from primihub.FL.model.logistic_regression.hetero_lr_guest import HeterLrGuest
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -12,7 +12,8 @@ config = {
     "random_state": 2023,
     "host_columns": None,
     "guest_columns": None,
-    "scale_type": 'z-score'
+    "scale_type": None,
+    "batch_size": 512
 }
 
 
@@ -38,7 +39,8 @@ def lr_host_logic():
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
 
     host_cols = config['host_columns']
 
@@ -62,12 +64,23 @@ def lr_host_logic():
                           epochs=config['epochs'],
                           optimal_method=config['optimal_method'],
                           random_state=config['random_state'],
-                          host_channel=host_channel)
+                          host_channel=host_channel,
+                          add_noise=False,
+                          batch_size=config['batch_size'])
     scale_type = config['scale_type']
-    if scale_type == "z-score":
-        std = StandardScaler()
+
+    scale_type = config['scale_type']
+
+    if scale_type is not None:
+        if scale_type == "z-score":
+            std = StandardScaler()
+        else:
+            std = MinMaxScaler()
+
+        scale_x = std.fit_transform(X_host)
+
     else:
-        std = MinMaxScaler()
+        scale_x = X_host.copy()
 
     scale_x = std.fit_transform(X_host)
 
@@ -97,7 +110,8 @@ def lr_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    data = ph.dataset.read(dataset_key=data_key).df_data
+    # data = ph.dataset.read(dataset_key=data_key).df_data
+    data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
@@ -118,14 +132,20 @@ def lr_guest_logic(cry_pri="paillier"):
                             epochs=config['epochs'],
                             optimal_method=config['optimal_method'],
                             random_state=config['random_state'],
-                            guest_channel=guest_channel)
+                            guest_channel=guest_channel,
+                            batch_size=config['batch_size'])
 
     scale_type = config['scale_type']
-    if scale_type == "z-score":
-        std = StandardScaler()
-    else:
-        std = MinMaxScaler()
 
-    scale_x = std.fit_transform(X_guest)
+    if scale_type is not None:
+        if scale_type == "z-score":
+            std = StandardScaler()
+        else:
+            std = MinMaxScaler()
+
+        scale_x = std.fit_transform(X_guest)
+
+    else:
+        scale_x = X_guest.copy()
 
     lr_guest.fit(scale_x)
