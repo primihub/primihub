@@ -76,13 +76,10 @@ def lr_host_logic():
             std = StandardScaler()
         else:
             std = MinMaxScaler()
-
         scale_x = std.fit_transform(X_host)
 
     else:
         scale_x = X_host.copy()
-
-    scale_x = std.fit_transform(X_host)
 
     lr_host.fit(scale_x, Y)
 
