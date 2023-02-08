@@ -152,7 +152,7 @@ config = {
     'mode': 'DPSGD',
     'delta': 1e-3,
     'noise_multiplier': 2.0,
-    'l2_norm_clip': 2.5,
+    'l2_norm_clip': 1.0,
     'secure_mode': True,
     'learning_rate': 'optimal',
     'alpha': 0.0001,
@@ -169,9 +169,9 @@ config = {
     'mode': 'Paillier',
     'n_length': 1024,
     'learning_rate': 'optimal',
-    'alpha': 0.0001,
+    'alpha': 0.01,
     'batch_size': 100,
-    'max_iter': 100,
+    'max_iter': 50,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
     'category': 2,
@@ -220,7 +220,7 @@ class LRModel_DPSGD(LRModel):
 
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, 
                     noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
-        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
+        super().__init__(X, y, category, learning_rate, alpha)
         self.noise_multiplier = noise_multiplier
         self.l2_norm_clip = l2_norm_clip
         self.secure_mode = secure_mode
@@ -256,8 +256,9 @@ class LRModel_DPSGD(LRModel):
 class LRModel_Paillier(LRModel):
 
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, n_length=1024):
-        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
-        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length)
+        super().__init__(X, y, category, learning_rate, alpha)
+        self.public_key = None
+        self.private_key = None
 
     def decrypt_scalar(self, cipher_scalar):
         return self.private_key.decrypt(cipher_scalar)
@@ -312,6 +313,7 @@ class Arbiter_Paillier(Arbiter, LRModel_Paillier):
     def __init__(self, host_channel, guest_channel, config):
         Arbiter.__init__(self, host_channel, guest_channel, config)
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
+        self.broadcast_public_key()
 
     def broadcast_public_key(self):
         self.host_channel.send("public_key", self.public_key)
@@ -397,7 +399,6 @@ def run_homo_lr_arbiter(config,
     elif config['mode'] == 'Paillier':
         check_convergence = True
         arbiter = Arbiter_Paillier(host_channel, guest_channel, config)
-        arbiter.broadcast_public_key()
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
@@ -545,6 +546,8 @@ class Client_Paillier(Client, LRModel_Paillier):
                                   alpha=config['alpha'],
                                   n_length=config['n_length'])
         self.arbiter_channel = arbiter_channel
+        self.public_key = arbiter_channel.recv("public_key")
+        self.set_theta(self.encrypt_vector(self.theta))
 
     def fit(self, x, y):
         LRModel_Paillier.fit(self, x, y)
@@ -599,8 +602,6 @@ def run_homo_lr_client(config,
     elif config['mode'] == 'Paillier':
         check_convergence = True
         client = Client_Paillier(x, y, arbiter_channel, config)
-        client.public_key = arbiter_channel.recv("public_key")
-        client.set_theta(client.encrypt_vector(client.theta))
         data_weight = client.encrypt_scalar(data_weight)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
