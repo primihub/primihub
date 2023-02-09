@@ -67,3 +67,8 @@ class HeterLrGuest(HeteroLrBase):
                 self.batch_gd(x)
 
             self.predict(x)
+
+            is_converged = self.channel.recv('is_converged')
+
+            if is_converged:
+                break

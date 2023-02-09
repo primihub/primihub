@@ -15,11 +15,13 @@ class HeterLrHost(HeteroLrBase):
                  loss_type='log',
                  random_state=2023,
                  host_channel=None,
-                 add_noise=True):
+                 add_noise=True,
+                 tol=0.001):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
         self.add_noise = add_noise
+        self.tol = tol
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -97,6 +99,7 @@ class HeterLrHost(HeteroLrBase):
 
         self.theta = np.zeros(x.shape[1])
         pre_loss = None
+        is_converged = False
         for i in range(self.epochs):
             self.update_lr(i, type=self.update_type)
             self.channel.sender("learning_rate", self.learning_rate)
@@ -109,4 +112,23 @@ class HeterLrHost(HeteroLrBase):
 
             y_hat = self.predict_raw(x)
             cur_loss = self.loss(y_hat, y)
-            print("current loss: ", i, cur_loss)
+
+            if pre_loss is None:
+                pre_loss = cur_loss
+
+            else:
+                loss_diff = abs(pre_loss - cur_loss)
+                pre_loss = cur_loss
+
+                if loss_diff < self.tol:
+                    is_converged = True
+
+            self.channel.sender('is_converged', is_converged)
+
+            if is_converged:
+                break
+
+        pred_prob = self.sigmoid(y_hat)
+        preds = (pred_prob > 0.5).astype('int')
+        acc = sum((preds == y).astype('int')) / len(y)
+        print("acc: ", acc)
