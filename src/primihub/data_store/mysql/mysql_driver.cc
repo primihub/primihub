@@ -154,21 +154,34 @@ MySQLCursor::makeArrowField(sql_type_t sql_type, const std::string& col_name) {
 MySQLCursor::sql_type_t MySQLCursor::getSQLType(const std::string& col_type) {
     if (col_type == "bigint" ) {
         return sql_type_t::INT64;
-    } else if (col_type == "tinyint") {
+    } else if (col_type == "tinyint" ||
+            col_type == "int" ||
+            col_type == "smallint" ||
+            col_type == "mediumint" ) {
         return sql_type_t::INT;
+    } else if (col_type == "float") {
+        return sql_type_t::FLOAT;
+    } else if (col_type == "double") {
+        return sql_type_t::DOUBLE;
     } else if (col_type == "varchar" ||
             col_type == "char" ||
+            col_type == "enum" ||
+            col_type == "set" ||
             col_type == "text") {
         return sql_type_t::STRING;
     } else if (col_type == "binary" ||
+            col_type == "varbinary" ||
             col_type == "blob" ){
         return sql_type_t::BINARY;
     } else if (col_type == "datetime" ||
+            col_type == "date" ||
+            col_type == "time" ||
+            col_type == "year" ||
             col_type == "timestamp") {
         return sql_type_t::STRING;
     } else {
         LOG(ERROR) << "unknown sql type:" << col_type;
-        return sql_type_t::UNKNOWN;
+        return sql_type_t::STRING;
     }
 }
 
