@@ -44,6 +44,7 @@
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/protos/service.grpc.pb.h"
+#include "src/primihub/util/network/link_context.h"
 
 using primihub::rpc::VMNode;
 using primihub::rpc::PushTaskRequest;
@@ -58,14 +59,14 @@ namespace primihub {
 
 class SDKClient {
  public:
-  explicit SDKClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(VMNode::NewStub(channel)) {
+  explicit SDKClient(std::shared_ptr<primihub::network::IChannel> channel)
+    : channel_(channel) {
   }
 
   int SubmitTask();
 
  private:
-  std::unique_ptr<VMNode::Stub> stub_;
+  std::shared_ptr<primihub::network::IChannel> channel_;
 };
 
 }  // namespace primihub

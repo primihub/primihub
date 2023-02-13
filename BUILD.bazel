@@ -61,15 +61,15 @@ DEFAULT_LINK_OPTS = [
 ]
 
 DEFINES = [
-  "ENABLE_FULL_GSL",
-  "ENABLE_BOOST",
-  "ENABLE_RELIC",
-  "ENABLE_CIRCUITS",
-  "ENABLE_NASM",
-  "OC_ENABLE_PORTABLE_AES",
-  "USE_JSON",
-  "NDEBUG",
-  "TEST_LIBP2P",
+    "ENABLE_FULL_GSL",
+    "ENABLE_BOOST",
+    "ENABLE_RELIC",
+    "ENABLE_CIRCUITS",
+    "ENABLE_NASM",
+    "OC_ENABLE_PORTABLE_AES",
+    "USE_JSON",
+    "NDEBUG",
+    "TEST_LIBP2P",
 ]
 
 LINK_OPTS = select({
@@ -112,7 +112,6 @@ alias(
     actual = "@soralog//:soralog",
 )
 
-
 # proto
 grpc_proto_library(
     name = "route_guide",
@@ -123,10 +122,10 @@ grpc_proto_library(
     name = "worker_proto",
     srcs = ["src/primihub/protos/worker.proto"],
     deps = [
-            ":common_proto",
-            ":grpc_psi_proto",
-	        ":grpc_pir_proto",
-           ],
+        ":common_proto",
+        ":grpc_psi_proto",
+        ":grpc_pir_proto",
+    ],
 )
 
 grpc_proto_library(
@@ -151,48 +150,145 @@ grpc_proto_library(
 )
 
 cc_library(
-    name = "common_lib",
-    srcs = glob([
-            "src/primihub/common/defines.cc",
-            "src/primihub/common/clp.cc",
-            "src/primihub/common/config/config.cc",
-            "src/primihub/common/type/type.cc",
-            "src/primihub/common/type/fixed_point.cc",
-    ]),
-    hdrs = glob([
-            "src/primihub/common/defines.h",
-            "src/primihub/common/finally.h",
-            "src/primihub/common/clp.h",
-            "src/primihub/common/config/config.h",
-            "src/primihub/common/type/type.h",
-            "src/primihub/common/type/fixed_point.h",
-            "src/primihub/common/type/matrix.h",
-            "src/primihub/common/type/matrix_view.h",
-            "src/primihub/common/eventbus/eventbus.hpp",
-            "src/primihub/common/eventbus/function_traits.hpp",
-
-    ]),
-    textual_hdrs = [
-              "src/primihub/common/gsl/span",
-              "src/primihub/common/gsl/gsl_assert",
-              "src/primihub/common/gsl/gsl_util",
-              "src/primihub/common/gsl/gsl_byte",
-              "src/primihub/common/gsl/gsl_algorithm",
-              "src/primihub/common/gsl/gsl",
-              "src/primihub/common/gsl/multi_span",
-              "src/primihub/common/gsl/string_span",
-              "src/primihub/common/gsl/gls-lite.hpp",
+    name = "server_config",
+    hdrs = [
+        "src/primihub/node/server_config.h",
     ],
+    srcs = [
+        "src/primihub/node/server_config.cc",
+    ],
+    deps = [
+        ":config_lib",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+    ],
+)
+
+cc_library(
+    name = "microsoft_gsl",
+    textual_hdrs = [
+        "src/primihub/common/gsl/span",
+        "src/primihub/common/gsl/gsl_assert",
+        "src/primihub/common/gsl/gsl_util",
+        "src/primihub/common/gsl/gsl_byte",
+        "src/primihub/common/gsl/gsl_algorithm",
+        "src/primihub/common/gsl/gsl",
+        "src/primihub/common/gsl/multi_span",
+        "src/primihub/common/gsl/string_span",
+        "src/primihub/common/gsl/gls-lite.hpp",
+    ],
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
+    linkopts = LINK_OPTS,
+)
+
+cc_library(
+    name = "common_defination",
+    hdrs = [
+        "src/primihub/common/common.h",
+    ],
+)
+
+cc_library(
+    name = "config_lib",
+    hdrs = [
+        "src/primihub/common/config/config.h",
+    ],
+    srcs = [
+        "src/primihub/common/config/config.cc",
+    ],
+    deps = [
+        ":common_defination",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@com_github_glog_glog//:glog",
+    ]
+)
+
+cc_library(
+    name = "clp_lib",
+    hdrs = [
+        "src/primihub/common/clp.h",
+    ],
+    srcs = [
+        "src/primihub/common/clp.cc",
+    ],
+    deps = [
+        ":common_defination",
+        ":microsoft_gsl",
+    ],
+)
+
+cc_library(
+    name = "eventbus_lib",
+    hdrs = [
+        "src/primihub/common/eventbus/eventbus.hpp",
+        "src/primihub/common/eventbus/function_traits.hpp",
+    ],
+)
+cc_library(
+    name = "data_type_defination",
+    hdrs = [
+        "src/primihub/common/type/type.h",
+        "src/primihub/common/type/fixed_point.h",
+        "src/primihub/common/type/matrix.h",
+        "src/primihub/common/type/matrix_view.h",
+    ],
+    srcs = [
+        "src/primihub/common/type/type.cc",
+        "src/primihub/common/type/fixed_point.cc",
+    ],
+    copts = C_OPT + [
+        "--std=c++17",
+    ],
+    linkstatic = False,
+    deps = [
+        ":eigen",
+        "@boost//:multiprecision",
+        ":microsoft_gsl",
+        ":common_util",
+    ],
+)
+
+cc_library(
+    name = "common_util",
+    hdrs = [
+        "src/primihub/common/defines.h",
+    ],
+    srcs = [
+        "src/primihub/common/defines.cc",
+    ],
+    linkopts = LINK_OPTS,
+    linkstatic = False,
+    deps = [
+        ":microsoft_gsl",
+        ":common_defination",
+    ],
+)
+cc_library (
+    name = "finally_tool",
+    hdrs = [
+        "src/primihub/common/finally.h",
+    ],
+)
+
+cc_library(
+    name = "common_lib",
     copts = C_OPT + [
         "--std=c++17",
     ],
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-                ":eigen",
-                "@boost//:multiprecision",
-                "@com_github_jbeder_yaml_cpp//:yaml-cpp",
-        ],
+        ":common_defination",
+        ":config_lib",
+        ":common_util",
+        ":clp_lib",
+        ":eventbus_lib",
+        ":finally_tool",
+        ":data_type_defination",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@com_github_glog_glog//:glog",
+    ],
 )
 
 cc_library(
@@ -250,7 +346,7 @@ cc_library(
     deps = [
         "@com_github_glog_glog//:glog",
         "@com_github_grpc_grpc//:grpc++",
-        ":common_lib",
+        ":config_lib",
         ":worker_proto",
     ],
 )
@@ -767,35 +863,34 @@ cc_library(
     deps = TASK_LIB_DEPS + [
         ":communication_lib",
         ":endian_util",
+        ":server_config",
     ],
 )
 
 cc_library(
     name = "node_lib",
     srcs = glob([
-            "src/primihub/node/worker/worker.cc",
-
-            "src/primihub/algorithm/dataload.cpp",
+        "src/primihub/node/worker/worker.cc",
+        "src/primihub/algorithm/dataload.cpp",
     ]),
     hdrs = glob([
-            "src/primihub/node/worker/worker.h",
-
+        "src/primihub/node/worker/worker.h",
     ]),
     copts = C_OPT,
     linkopts = LINK_OPTS,
     linkstatic = False,
     deps = [
-            "@com_github_grpc_grpc//:grpc++",
-            "@com_google_absl//absl/base",
-            "@com_google_absl//absl/flags:flag",
-            "@com_google_absl//absl/flags:parse",
-            "@com_google_absl//absl/memory",
-            "@com_github_glog_glog//:glog",
-            ":worker_proto",
-            ":algorithm_lib",
-            ":task_lib",
-            ":network_lib",
-            ":nodelet",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        ":worker_proto",
+        ":algorithm_lib",
+        ":task_lib",
+        ":network_lib",
+        ":nodelet",
     ],
 )
 
@@ -991,7 +1086,6 @@ cc_library(
             "src/primihub/data_store/factory.h",
             "src/primihub/data_store/dataset.h",
             "src/primihub/data_store/driver.h",
-
             "src/primihub/data_store/csv/csv_driver.h",
             "src/primihub/data_store/hdfs/hdfs_driver.h",
 
@@ -1004,8 +1098,6 @@ cc_library(
     linkstatic = True,
     visibility = ["//visibility:public"],
 )
-
-
 
 cc_library(
     name = "p2p_lib",
@@ -1084,7 +1176,8 @@ cc_library(
         ":p2p_lib",
         ":data_store_lib",
         ":util_lib",
-        "service_base",
+        ":service_base",
+        ":server_config",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
@@ -1119,14 +1212,13 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-
 cc_library(
     name = "nodelet",
     srcs = [
-            "src/primihub/node/nodelet.cc",
+        "src/primihub/node/nodelet.cc",
     ],
     hdrs = [
-            "src/primihub/node/nodelet.h",
+        "src/primihub/node/nodelet.h",
     ],
     copts = C_OPT,
     linkstatic = False,
@@ -1144,7 +1236,7 @@ load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 pybind_extension(
     name = "primihub_channel",
     srcs = [
-            "src/primihub/pybind_warpper/channel_warpper.cc",
+        "src/primihub/pybind_warpper/channel_warpper.cc",
     ],
 
     deps = [
@@ -1251,14 +1343,14 @@ py_library(
 cc_binary(
     name = "node",
     srcs = glob([
-                  "src/primihub/node/node.cc",
-                  "src/primihub/node/node.h",
-                  "src/primihub/node/ds.cc",
-                  "src/primihub/node/ds.h",
-            ]),
+        "src/primihub/node/node.cc",
+        "src/primihub/node/node.h",
+        "src/primihub/node/ds.cc",
+        "src/primihub/node/ds.h",
+        "src/primihub/node/main.cc",
+    ]),
     copts = C_OPT,
-    includes = [
-    ],
+    includes = [],
     linkstatic = True,
     linkopts = LINK_OPTS ,
     deps = [
@@ -1277,7 +1369,7 @@ cc_binary(
         ":nodelet",
         ":algorithm_lib",
         ":util_lib",
-
+        ":server_config",
     ],
 )
 
@@ -1306,6 +1398,7 @@ cc_binary(
         ":util_lib",
         "@openssl",
         "@com_github_stduuid//:stduuid_lib",
+        ":communication_lib",
     ],
 )
 

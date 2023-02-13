@@ -50,13 +50,8 @@ void peer_to_list(const std::vector<std::string>& peer,
   list->clear();
   for (auto iter : peer) {
     DLOG(INFO) << "split param list:" << iter;
-    std::vector<std::string> v;
-    str_split(iter, &v);
     primihub::rpc::Node node;
-    node.set_node_id(v[0]);
-    node.set_ip(v[1]);
-    node.set_port(std::stoi(v[2]));
-    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ?
+    parseTopbNode(iter, &node);
     list->push_back(node);
   }
 }
@@ -76,6 +71,52 @@ void sort_peers(std::vector<std::string>* peers) {
                 return false;
             }
         });
+}
+
+retcode pbNode2Node(const rpc::Node& pb_node, Node* node) {
+    node->id_ = pb_node.node_id();
+    node->ip_ = pb_node.ip();
+    node->port_ = pb_node.port();
+    node->role_ = pb_node.role();
+    node->use_tls_ = pb_node.use_tls();
+    return retcode::SUCCESS;
+}
+
+retcode node2PbNode(const Node& node, primihub::rpc::Node* pb_node) {
+    pb_node->set_node_id(node.id());
+    pb_node->set_ip(node.ip());
+    pb_node->set_port(node.port());
+    pb_node->set_role(node.role());
+    pb_node->set_use_tls(node.use_tls());
+    return retcode::SUCCESS;
+}
+
+retcode parseToNode(const std::string& node_info, Node* node) {
+    std::vector<std::string> addr_info;
+    str_split(node_info, &addr_info, ':');
+    LOG(ERROR) << "nodelet_attr: " << node_info;
+    if (addr_info.size() < 4) {
+        return retcode::FAIL;
+    }
+    node->id_ = addr_info[0];
+    node->ip_ = addr_info[1];
+    node->port_ = std::stoi(addr_info[2]);
+    node->use_tls_ = (addr_info[3] == "1") ? true : false;
+    return retcode::SUCCESS;
+}
+
+retcode parseTopbNode(const std::string& node_info, rpc::Node* node) {
+    std::vector<std::string> addr_info;
+    str_split(node_info, &addr_info, ':');
+    LOG(ERROR) << "nodelet_attr: " << node_info;
+    if (addr_info.size() < 4) {
+        return retcode::FAIL;
+    }
+    node->set_node_id(addr_info[0]);
+    node->set_ip(addr_info[1]);
+    node->set_port(std::stoi(addr_info[2]));
+    node->set_use_tls((addr_info[3] == "1") ? true : false);
+    return retcode::SUCCESS;
 }
 
 // void sort_peers(std::vector<std::string>* peers) {

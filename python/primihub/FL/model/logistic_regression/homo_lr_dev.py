@@ -9,8 +9,28 @@ from phe import paillier
 import pickle
 from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
 
+
+class GrpcServer:
+
+    def __init__(self, local_ip, local_port, remote_ip, remote_port,
+                 context) -> None:
+        send_session = context.Node(remote_ip, int(remote_port), False)
+        recv_session = context.Node(local_ip, int(local_port), False)
+
+        self.send_channel = context.get_link_conext().getChannel(send_session)
+        self.recv_channel = context.get_link_conext().getChannel(recv_session)
+
+    def send(self, key, val):
+        self.send_channel.send(key, pickle.dumps(val))
+
+    def recv(self, key):
+        recv_val = self.recv_channel.recv(key)
+        return pickle.loads(recv_val)
+
+
 #from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 class LRModel:
+
     # l2 regularization by default, alpha is the penalty parameter
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001):
         self.learning_rate = learning_rate
@@ -18,7 +38,7 @@ class LRModel:
         self.t = 0 # iteration number, used for learning rate decay
 
         if category == 2:
-            self.theta = np.random.uniform(-0.5, 0.5, (X.shape[1] + 1,))
+            self.theta = np.zeros(X.shape[1] + 1)
             self.multi_class = False
         else:
             self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, X.shape[1] + 1))
@@ -70,9 +90,7 @@ class LRModel:
         self.theta -= self.learning_rate * grad
         
     def gradient_descent_olr(self, x, y):
-        """
-        optimal learning rate
-        """
+        # 'optimal' learning rate: 1.0 / (alpha * (t0 + t))
         grad = self.compute_grad(x, y)
         learning_rate = 1.0 / (self.alpha * (self.optimal_init + self.t))
         self.t += 1 
@@ -109,11 +127,6 @@ class LRModel:
 
 import numpy as np
 import pandas as pd
-import copy
-from primihub.FL.proxy.proxy import ServerChannelProxy
-from primihub.FL.proxy.proxy import ClientChannelProxy
-from os import path
-import logging
 from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 import dp_accounting
 
@@ -156,9 +169,9 @@ config = {
     'mode': 'Paillier',
     'n_length': 1024,
     'learning_rate': 'optimal',
-    'alpha': 0.0001,
+    'alpha': 0.01,
     'batch_size': 100,
-    'max_iter': 100,
+    'max_iter': 50,
     'n_iter_no_change': 5,
     'compare_threshold': 1e-6,
     'category': 2,
@@ -170,8 +183,7 @@ config = {
 def feature_selection(x, feature_names):
     if feature_names != None:
         return x[feature_names]
-    else:
-        return x
+    return x
 
 
 def read_data(dataset_key, feature_names):
@@ -208,7 +220,7 @@ class LRModel_DPSGD(LRModel):
 
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, 
                     noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
-        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
+        super().__init__(X, y, category, learning_rate, alpha)
         self.noise_multiplier = noise_multiplier
         self.l2_norm_clip = l2_norm_clip
         self.secure_mode = secure_mode
@@ -220,11 +232,8 @@ class LRModel_DPSGD(LRModel):
         self.l2_norm_clip = l2_norm_clip
     
     def compute_grad(self, x, y): 
-        batch_size = x.shape[0]
-        
-        temp = self.predict_prob(x) - y
-        batch_grad = np.hstack([np.expand_dims(temp, axis=1),
-                                x * np.expand_dims(temp, axis=1)])
+        temp = np.expand_dims(self.predict_prob(x) - y, axis=1)
+        batch_grad = np.hstack([temp, x * temp])
 
         batch_grad_l2_norm = np.sqrt((batch_grad ** 2).sum(axis=1))
         clip = np.maximum(1., batch_grad_l2_norm / self.l2_norm_clip)
@@ -247,8 +256,9 @@ class LRModel_DPSGD(LRModel):
 class LRModel_Paillier(LRModel):
 
     def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, n_length=1024):
-        super().__init__(X, y, category, learning_rate=0.2, alpha=0.0001)
-        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length)
+        super().__init__(X, y, category, learning_rate, alpha)
+        self.public_key = None
+        self.private_key = None
 
     def decrypt_scalar(self, cipher_scalar):
         return self.private_key.decrypt(cipher_scalar)
@@ -280,44 +290,35 @@ class Arbiter(LRModel):
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest, config):
+    def __init__(self, host_channel, guest_channel, config):
         self.theta = None
         self.alpha = config['alpha'] # used for compute the loss value
-        self.proxy_server = proxy_server
-        self.proxy_client_host = proxy_client_host
-        self.proxy_client_guest = proxy_client_guest
+        self.host_channel = host_channel
+        self.guest_channel = guest_channel
 
     def model_aggregate(self, host_param, guest_param,
                         host_data_weight, guest_data_weight):
-        param = []
-        weight = []
-        
-        param.append(host_param)
-        param.append(guest_param)
-        weight.append(host_data_weight)
-        weight.append(guest_data_weight)
-        
-        param = np.array(param)
-        weight = np.array(weight)
+        param = np.vstack([host_param, guest_param])
+        weight = np.array([host_data_weight, guest_data_weight])
 
         self.set_theta(np.average(param, weights=weight/weight.sum(), axis=0))
 
     def broadcast_global_model_param(self):
-        global_theta = list(self.theta)
-        self.proxy_client_host.Remote(global_theta, "global_model_param")
-        self.proxy_client_guest.Remote(global_theta, "global_model_param")
+        self.host_channel.send("global_model_param", self.theta)
+        self.guest_channel.send("global_model_param", self.theta)
 
 
 class Arbiter_Paillier(Arbiter, LRModel_Paillier):
     
-    def __init__(self, proxy_server, proxy_client_host, proxy_client_guest, config):
-        Arbiter.__init__(self, proxy_server, proxy_client_host, proxy_client_guest, config)
+    def __init__(self, host_channel, guest_channel, config):
+        Arbiter.__init__(self, host_channel, guest_channel, config)
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
+        self.broadcast_public_key()
 
     def broadcast_public_key(self):
-        self.proxy_client_host.Remote(self.public_key, "public_key")
-        self.proxy_client_guest.Remote(self.public_key, "public_key")
-
+        self.host_channel.send("public_key", self.public_key)
+        self.guest_channel.send("public_key", self.public_key)
+        
     def model_aggregate(self, host_param, guest_param,
                         host_data_weight, guest_data_weight):
         host_param = self.decrypt_vector(host_param)
@@ -328,9 +329,9 @@ class Arbiter_Paillier(Arbiter, LRModel_Paillier):
 
     def broadcast_global_model_param(self):
         global_theta = self.encrypt_vector(self.theta)
-        self.proxy_client_host.Remote(global_theta, "global_model_param")
-        self.proxy_client_guest.Remote(global_theta, "global_model_param")
-
+        self.host_channel.send("global_model_param", global_theta)
+        self.guest_channel.send("global_model_param", global_theta)
+        
 
 def run_homo_lr_arbiter(config,
                         role_node_map,
@@ -358,76 +359,68 @@ def run_homo_lr_arbiter(config,
             "Hetero LR only support one arbiter party, but current "
             "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
-
-    # host_info = host_info[0]
-    # guest_info = guest_info[0]
-    # arbiter_info = arbiter_info[0]
-    # arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
-    # arbiter_port = arbiter_info['port']
-    arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")[1]
-    proxy_server = ServerChannelProxy(arbiter_port)
-    proxy_server.StartRecvLoop()
-    log_handler.debug(
-        "Create server proxy for arbiter, port {}.".format(arbiter_port))
-
-    # host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    # host_ip, host_port = host_info['ip'], host_info['port']
+    
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
-    log_handler.debug("Create client proxy to host,"
-                      " ip {}, port {}.".format(host_ip, host_port))
-
-    # guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
-    # guest_ip, guest_port = guest_info['ip'], guest_info['port']
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
-    log_handler.debug("Create client proxy to guest,"
-                      " ip {}, port {}.".format(guest_ip, guest_port))   
+    host_channel = GrpcServer(local_ip=arbiter_ip,
+                              local_port=arbiter_port,
+                              remote_ip=host_ip,
+                              remote_port=host_port,
+                              context=ph.context.Context)
+
+    guest_channel = GrpcServer(local_ip=arbiter_ip,
+                               local_port=arbiter_port,
+                               remote_ip=guest_ip,
+                               remote_port=guest_port,
+                               context=ph.context.Context)
+
+    log_handler.info("Create channel between arbiter and host, "+
+                     "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
+                     "remote ip {}, remote port {}.".format(host_ip, host_port)) 
+
+    log_handler.info("Create channel between arbiter and guest, "+
+                     "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
+                     "remote ip {}, remote port {}.".format(guest_ip, guest_port)) 
         
     x, y = read_data(data_key, config['feature_names'])
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        arbiter = Arbiter(proxy_server, proxy_client_host,
-                          proxy_client_guest, config)
+        arbiter = Arbiter(host_channel, guest_channel, config)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        arbiter = Arbiter(proxy_server, proxy_client_host,
-                          proxy_client_guest, config)
+        arbiter = Arbiter(host_channel, guest_channel, config)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(proxy_server, proxy_client_host,
-                                   proxy_client_guest, config)
-        arbiter.broadcast_public_key()
+        arbiter = Arbiter_Paillier(host_channel, guest_channel, config)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    host_data_weight = proxy_server.Get("host_data_weight")
-    guest_data_weight = proxy_server.Get("guest_data_weight")
+    host_data_weight = host_channel.recv("host_data_weight")
+    guest_data_weight = guest_channel.recv("guest_data_weight")
     if config['mode'] == 'Paillier':
         host_data_weight = arbiter.decrypt_scalar(host_data_weight) 
         guest_data_weight = arbiter.decrypt_scalar(guest_data_weight) 
 
     # data preprocessing
     # minmaxscaler
-    host_data_max = np.array(proxy_server.Get("host_data_max"))
-    guest_data_max = np.array(proxy_server.Get("guest_data_max"))
-    host_data_min = np.array(proxy_server.Get("host_data_min"))
-    guest_data_min = np.array(proxy_server.Get("guest_data_min"))
+    host_data_max = host_channel.recv("host_data_max")
+    guest_data_max = guest_channel.recv("guest_data_max")
+    host_data_min = host_channel.recv("host_data_min")
+    guest_data_min = guest_channel.recv("guest_data_min")
 
     data_max = np.maximum(host_data_max, guest_data_max)
     data_min = np.minimum(host_data_min, guest_data_min)
  
     x = (x - data_min) / (data_max - data_min)
 
-    data_max = list(data_max) 
-    data_min = list(data_min)
-    proxy_client_host.Remote(data_max, "data_max")
-    proxy_client_guest.Remote(data_max, "data_max")
-    proxy_client_host.Remote(data_min, "data_min")
-    proxy_client_guest.Remote(data_min, "data_min") 
+    host_channel.send("data_max", data_max)
+    guest_channel.send("data_max", data_max)
+    host_channel.send("data_min", data_min)
+    guest_channel.send("data_min", data_min)
 
     if check_convergence:
         n_iter_no_change = config['n_iter_no_change']
@@ -439,8 +432,8 @@ def run_homo_lr_arbiter(config,
     for i in range(config['max_iter']):
         log_handler.info("-------- start iteration {} --------".format(i+1))    
         
-        host_param = proxy_server.Get("host_param")
-        guest_param = proxy_server.Get("guest_param")
+        host_param = host_channel.recv("host_param")
+        guest_param = guest_channel.recv("guest_param")
         arbiter.model_aggregate(host_param, guest_param,
                                 host_data_weight, guest_data_weight)
         arbiter.broadcast_global_model_param()
@@ -466,8 +459,8 @@ def run_homo_lr_arbiter(config,
             if count_iter_no_change > n_iter_no_change:
                 convergence = 'YES'
             
-            proxy_client_host.Remote(convergence, "convergence")
-            proxy_client_guest.Remote(convergence, "convergence")
+            host_channel.send("convergence", convergence)
+            guest_channel.send("convergence", convergence)
 
             if convergence == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
@@ -489,21 +482,16 @@ def run_homo_lr_arbiter(config,
 
     log_handler.info("####### start predict ######")
     log_handler.info("All process done.")
-    proxy_server.StopRecvLoop()
 
 
 class Client(LRModel):
 
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
+    def __init__(self, X, y, arbiter_channel, config):
         super().__init__(X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'])
-        self.proxy_server = proxy_server
-        self.proxy_client_arbiter = proxy_client_arbiter 
+        self.arbiter_channel = arbiter_channel
     
-    def get_theta(self):
-        return list(super().get_theta())
-            
     def batch_generator(self, all_data, batch_size, shuffle=True):
         """
         :param all_data : incluing features and label
@@ -534,31 +522,33 @@ class Client(LRModel):
 
 class Client_DPSGD(Client, LRModel_DPSGD):
 
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
+    def __init__(self, X, y, arbiter_channel, config):
         LRModel_DPSGD.__init__(self, X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'],
                                noise_multiplier=config['noise_multiplier'],
                                l2_norm_clip=config['l2_norm_clip'],
                                secure_mode=config['secure_mode'])
-        self.proxy_server = proxy_server
-        self.proxy_client_arbiter = proxy_client_arbiter
+        self.arbiter_channel = arbiter_channel
     
     def fit(self, x, y):
         LRModel_DPSGD.fit(self, x, y)
         
 
 class Client_Paillier(Client, LRModel_Paillier):
-    def __init__(self, X, y, proxy_server, proxy_client_arbiter, config):
+
+    def __init__(self, X, y, arbiter_channel, config):
         LRModel_Paillier.__init__(self, X, y, category=config['category'],
                                   learning_rate=config['learning_rate'],
                                   alpha=config['alpha'],
                                   n_length=config['n_length'])
-        self.proxy_server = proxy_server
-        self.proxy_client_arbiter = proxy_client_arbiter
-    
+        self.arbiter_channel = arbiter_channel
+        self.public_key = arbiter_channel.recv("public_key")
+        self.set_theta(self.encrypt_vector(self.theta))
+
     def fit(self, x, y):
         LRModel_Paillier.fit(self, x, y)
+
 
 def run_homo_lr_client(config,
                        role_node_map,
@@ -581,51 +571,48 @@ def run_homo_lr_client(config,
                               len(arbiter_nodes)))
         return
 
-    client_port = node_addr_map[client_nodes[0]].split(":")[1]
-
+    client_ip, client_port = node_addr_map[client_nodes[0]].split(":")
     arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
 
-    proxy_server = ServerChannelProxy(client_port)
-    proxy_server.StartRecvLoop()
-    log_handler.debug(
-        "Create server proxy for {}, port {}.".format(client_name, client_port))
+    arbiter_channel = GrpcServer(local_ip=client_ip,
+                                 local_port=client_port,
+                                 remote_ip=arbiter_ip,
+                                 remote_port=arbiter_port,
+                                 context=ph.context.Context)
 
-    proxy_client_arbiter = ClientChannelProxy(arbiter_ip, arbiter_port,
-                                              "arbiter")
-    log_handler.debug("Create client proxy to arbiter,"
-                      " ip {}, port {}.".format(arbiter_ip, arbiter_port))
-
+    log_handler.info("Create channel between {} and arbiter, ".format(client_name)+
+                      "locoal ip {}, local port {}, ".format(client_ip, client_port)+
+                      "remote ip {}, remote port {}.".format(arbiter_ip, arbiter_port)) 
+    
     x, y = read_data(data_key, config['feature_names'])
     data_weight = config['batch_size']
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        client = Client(x, y, proxy_server, proxy_client_arbiter, config)
+        client = Client(x, y, arbiter_channel, config)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        client = Client_DPSGD(x, y, proxy_server, proxy_client_arbiter, config)
+        client = Client_DPSGD(x, y, arbiter_channel, config)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        client = Client_Paillier(x, y, proxy_server, proxy_client_arbiter, config)
-        client.public_key = proxy_server.Get("public_key")
-        client.set_theta(client.encrypt_vector(client.theta))
+        client = Client_Paillier(x, y, arbiter_channel, config)
         data_weight = client.encrypt_scalar(data_weight)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    proxy_client_arbiter.Remote(data_weight, client_name+"_data_weight")
+    arbiter_channel.send(client_name+"_data_weight", data_weight)
   
     # data preprocessing
     # minmaxscaler
     data_max = x.max(axis=0)
     data_min = x.min(axis=0)
 
-    proxy_client_arbiter.Remote(list(data_max), client_name+"_data_max")
-    proxy_client_arbiter.Remote(list(data_min), client_name+"_data_min")
+    arbiter_channel.send(client_name+"_data_max", data_max)
+    arbiter_channel.send(client_name+"_data_min", data_min)
 
-    data_max = np.array(proxy_server.Get("data_max"))
-    data_min = np.array(proxy_server.Get("data_min"))
+    data_max = arbiter_channel.recv("data_max")
+    data_min = arbiter_channel.recv("data_min")
 
     x = (x - data_min) / (data_max - data_min)
     
@@ -638,11 +625,11 @@ def run_homo_lr_client(config,
         batch_x, batch_y = next(batch_gen)
         client.fit(batch_x, batch_y)
 
-        proxy_client_arbiter.Remote(client.get_theta(), client_name+"_param")
-        client.set_theta(proxy_server.Get("global_model_param"))
+        arbiter_channel.send(client_name+"_param", client.get_theta())
+        client.set_theta(arbiter_channel.recv("global_model_param"))
 
         if check_convergence:
-            if proxy_server.Get('convergence') == 'YES':
+            if arbiter_channel.recv('convergence') == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
     
@@ -663,8 +650,6 @@ def run_homo_lr_client(config,
     }
     with open(model_file_path, 'wb') as fm:
         pickle.dump(model, fm)
-
-    proxy_server.StopRecvLoop()
 
 
 def load_info():

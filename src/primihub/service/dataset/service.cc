@@ -25,6 +25,7 @@
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/util/redis_helper.h"
+#include "src/primihub/node/server_config.h"
 
 using namespace std::chrono_literals;
 using DataSetAccessInfoPtr = std::unique_ptr<primihub::DataSetAccessInfo>;
@@ -162,11 +163,9 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
     void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
         LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
         YAML::Node config = YAML::LoadFile(config_file_path);
-        // strcat nodelet address
-        // format: node_name:ip:port
-        std::string nodelet_addr = config["node"].as<std::string>() + ":"
-            + config["location"].as<std::string>() + ":"
-            + std::to_string(config["grpc_port"].as<uint64_t>());
+        auto& server_cfg = ServerConfig::getInstance();
+        auto& nodelet_cfg = server_cfg.getServiceConfig();
+        std::string nodelet_addr = nodelet_cfg.to_string();
         if (config["datasets"]) {
             for (const auto& dataset : config["datasets"]) {
                 auto dataset_type = dataset["model"].as<std::string>();
@@ -193,11 +192,12 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
         metaService_->getAllLocalMetas(metas);
         for (auto meta : metas) {
             // Update node let address.
-            std::string node_id, node_ip, dataset_path;
-            int node_port;
             std::string data_url = meta.getDataURL();
-            if (!DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path)) {
-                LOG(ERROR) << "Restore dataset from local storage failed: " << data_url;
+            std::string dataset_path;
+            Node node_info;
+            auto ret = DataURLToDetail(data_url, node_info, dataset_path);
+            if (ret != retcode::SUCCESS) {
+                LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
                 continue;
             }
             auto access_info_str = meta.getAccessInfo();
@@ -550,7 +550,8 @@ arrow::Status FlightIntegrationServer::DoGet(const arrow::flight::ServerCallCont
     int node_port;
     std::string data_url = meta->getDataURL();
     LOG(INFO) << "DoGet dataset url:" << data_url;
-    DataURLToDetail(data_url, node_id, node_ip, node_port, dataset_path);
+    Node node_info;
+    DataURLToDetail(data_url, node_info, dataset_path);
     LOG(INFO) << "DoGet dataset path:" << dataset_path;
     auto cursor = driver->read(dataset_path);  // TODO only support Local file path now.
     auto dataset = cursor->read();

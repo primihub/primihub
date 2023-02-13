@@ -86,7 +86,7 @@ class DataDriver {
     }
 
  protected:
-    void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }
+    void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }  // NOLINT
     std::shared_ptr<Cursor> cursor{nullptr};
     std::string driver_type;
     std::string nodelet_address;
@@ -94,6 +94,6 @@ class DataDriver {
 };
 
 
-} // namespace primihub
+}  // namespace primihub
 
 #endif  // SRC_PRIMIHUB_DATASTORE_DRIVER_H_

@@ -83,9 +83,7 @@ int PSIEcdhTask::LoadParams(Task &task) {
             continue;
         }
         const auto& node_info = it.second;
-        peer_node.ip_ = node_info.ip();
-        peer_node.port_ = node_info.port();
-        peer_node.use_tls_ = node_info.use_tls();
+        primihub::pbNode2Node(node_info, &peer_node);
         VLOG(5) << "peer_node: " << peer_node.to_string();
         break;
     }

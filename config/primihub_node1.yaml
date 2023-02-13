@@ -2,7 +2,14 @@ version: 1.0
 
 node: "node1"
 location: "172.28.1.11"
+use_tls: false
+
 grpc_port: 50051
+
+#certificate:
+#  root_ca: "data/cert/ca.crt"
+#  key: "data/cert/node0.key"
+#  cert: "data/cert/node0.crt"
 
 # Use redis by default, set `use_redis: False` to use libp2p
 redis_meta_service:

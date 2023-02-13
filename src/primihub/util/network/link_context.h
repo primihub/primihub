@@ -1,7 +1,8 @@
 // Copyright [2022] <primihub.com>
 #ifndef SRC_PRIMIHUB_UTIL_NETWORK_LINK_CONTEXT_H_
 #define SRC_PRIMIHUB_UTIL_NETWORK_LINK_CONTEXT_H_
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
+#include "src/primihub/common/config/config.h"
 #include "src/primihub/protos/worker.pb.h"
 #include <string_view>
 #include <string>
@@ -39,6 +40,18 @@ class LinkContext {
   void setSendTimeout(int32_t send_timeout_ms) {send_timeout_ms_ = send_timeout_ms;}
   int32_t sendTimeout() const {return send_timeout_ms_;}
   int32_t recvTimeout() const {return recv_timeout_ms_;}
+  primihub::common::CertificateConfig& getCertificateConfig() {return *cert_config_;}
+  void initCertificate(const std::string& root_ca_path,
+        const std::string& key_path, const std::string& cert_path) {
+    cert_config_ = std::make_unique<primihub::common::CertificateConfig>(
+            root_ca_path, key_path, cert_path);
+  }
+  retcode initCertificate(const primihub::common::CertificateConfig& cert_cfg) {
+    cert_config_ = std::make_unique<primihub::common::CertificateConfig>(
+        cert_cfg.rootCAPath(), cert_cfg.keyPath(), cert_cfg.certPath());
+    return retcode::SUCCESS;
+  }
+
  protected:
   int32_t recv_timeout_ms_{-1};
   int32_t send_timeout_ms_{-1};
@@ -46,6 +59,8 @@ class LinkContext {
   std::unordered_map<std::string, std::shared_ptr<IChannel>> connection_mgr;
   std::string job_id_;
   std::string task_id_;
+  std::unique_ptr<primihub::common::CertificateConfig> cert_config_{nullptr};
+
 };
 
 class IChannel {

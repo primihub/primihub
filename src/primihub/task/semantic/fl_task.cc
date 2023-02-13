@@ -130,8 +130,8 @@ FLTask::FLTask(const std::string& node_id,
     std::string node_key = node_id + "_dataset";
     auto iter = param_map.find(node_key);
     if (iter == param_map.end()) {
-      LOG(ERROR) << "Can't find dataset name of node " << node_id << ".";
-      return;
+        LOG(ERROR) << "Can't find dataset name of node " << node_id << ".";
+        return;
     }
 
     this->params_map_["local_dataset"] = iter->second.value_string();
@@ -145,6 +145,7 @@ FLTask::~FLTask() {
 }
 
 int FLTask::execute() {
+    auto& server_config = ServerConfig::getInstance();
     py::gil_scoped_acquire acquire;
     try {
         ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
@@ -191,8 +192,9 @@ int FLTask::execute() {
           // Setup task id and job id.
           set_task_context_params_map("jobid", jobid_);
           set_task_context_params_map("taskid", taskid_);
+          set_task_context_params_map("config_file_path", server_config.getConfigFile());
         }
-  
+
         set_task_context_params_map.release();
 
         // Run set_task_context_node_addr_map.

@@ -95,9 +95,9 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
       return;
     }
     auto& pb_node = iter->second;
-    std::string node_addr =
-        absl::StrCat(iter->second.ip(), ":", iter->second.port());
-    Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+    std::string node_addr = absl::StrCat(pb_node.ip(), ":", pb_node.port());
+    Node dest_node;
+    pbNode2Node(pb_node, &dest_node);
     scheduled_nodes[node_addr] = std::move(dest_node);
     threads.emplace_back(
       std::thread(

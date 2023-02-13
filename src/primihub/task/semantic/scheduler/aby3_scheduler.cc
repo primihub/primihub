@@ -152,11 +152,11 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
             if (party_name != pair.first) {
                 continue;
             }
-            std::string dest_node_address(
-                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-            DLOG(INFO) << "dest_node_address: " << dest_node_address;
             auto& pb_node = pair.second;
-            Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+            std::string dest_node_address(absl::StrCat(pb_node.ip(), ":", pb_node.port()));
+            DLOG(INFO) << "dest_node_address: " << dest_node_address;
+            Node dest_node;
+            pbNode2Node(pb_node, &dest_node);
             scheduled_nodes[dest_node_address] = std::move(dest_node);
             thrds.emplace_back(
                 std::thread(
