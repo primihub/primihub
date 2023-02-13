@@ -198,7 +198,7 @@ void FLScheduler::add_vm(rpc::Node *node, int i, int role_num,
         EndPoint *ep_next = vm->mutable_next();
         ep_next->set_ip(node_with_tag.first.ip());
         ep_next->set_link_type(LinkType::SERVER);
-        ep_next->set_port(node_with_tag.first.data_port());
+        ep_next->set_port(node_with_tag.first.port());
 
         std::string ep_name =
             node_with_tag.first.node_id() + "_" + node_with_tag.second;

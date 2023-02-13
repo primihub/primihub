@@ -360,12 +360,9 @@ def run_homo_lr_arbiter(config,
             "task have {} arbiter party.".format(len(arbiter_nodes)))
         return
     
-    arbiter_ip = node_addr_map[arbiter_nodes[0]].split(":")[0]
-    arbiter_port = 50050
-    host_ip = node_addr_map[host_nodes[0]].split(":")[0]
-    host_port = 50051
-    guest_ip = node_addr_map[guest_nodes[0]].split(":")[0]
-    guest_port = 50052
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
+    host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
+    guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
     host_channel = GrpcServer(local_ip=arbiter_ip,
                               local_port=arbiter_port,
@@ -574,10 +571,8 @@ def run_homo_lr_client(config,
                               len(arbiter_nodes)))
         return
 
-    client_ip = node_addr_map[client_nodes[0]].split(":")[0]
-    client_port = 50051 if client_name == 'host' else 50052
-    arbiter_ip = node_addr_map[arbiter_nodes[0]].split(":")[0]
-    arbiter_port = 50050
+    client_ip, client_port = node_addr_map[client_nodes[0]].split(":")
+    arbiter_ip, arbiter_port = node_addr_map[arbiter_nodes[0]].split(":")
 
     arbiter_channel = GrpcServer(local_ip=client_ip,
                                  local_port=client_port,
