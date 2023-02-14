@@ -2149,8 +2149,8 @@ def xgb_host_logic(cry_pri="paillier"):
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
                               local_ip=host_ip,
-                              remote_port=50052,
-                              local_port=50051,
+                              remote_port=guest_port,
+                              local_port=host_port,
                               context=ph.context.Context)
     # link_context = ph.context.Context.get_link_conext()
     # send_node = ph.context.Context.Node(guest_ip, int("50052"), False)
@@ -2347,9 +2347,9 @@ def xgb_guest_logic(cry_pri="paillier"):
 
     proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     guest_channel = GrpcServer(remote_ip=host_ip,
-                               remote_port=50051,
+                               remote_port=host_port,
                                local_ip=guest_ip,
-                               local_port=50052,
+                               local_port=guest_port,
                                context=ph.context.Context)
     link_context = ph.context.Context.get_link_conext()
     recv_node = ph.context.Context.Node(guest_ip, int("50052"), False)

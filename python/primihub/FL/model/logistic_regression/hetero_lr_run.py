@@ -57,8 +57,8 @@ def lr_host_logic():
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
                               local_ip=host_ip,
-                              remote_port=50052,
-                              local_port=50051,
+                              remote_port=guest_port,
+                              local_port=host_port,
                               context=ph.context.Context)
 
     lr_host = HeterLrHost(learning_rate=config['learning_rate'],
@@ -121,8 +121,8 @@ def lr_guest_logic(cry_pri="paillier"):
 
     X_guest = data
     guest_channel = GrpcServer(remote_ip=host_ip,
-                               remote_port=50051,
-                               local_ip=guest_ip,
+                               remote_port=host_port,
+                               local_ip=guest_port,
                                local_port=50052,
                                context=ph.context.Context)
 
