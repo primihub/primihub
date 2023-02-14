@@ -1,5 +1,6 @@
 import primihub as ph
 import pandas as pd
+from primihub import dataset, context
 from primihub.utils.net_worker import GrpcServer
 from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
 from primihub.FL.model.logistic_regression.hetero_lr_guest import HeterLrGuest
@@ -14,7 +15,7 @@ config = {
     "random_state": 2023,
     "host_columns": None,
     "guest_columns": None,
-    "scale_type": None,
+    "scale_type": 'z-score',
     "batch_size": 512
 }
 
@@ -41,8 +42,9 @@ def lr_host_logic():
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
+    data = ph.dataset.read(dataset_key=data_key).df_data
+    print("ports: ", guest_port, host_port)
+    #data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
 
     host_cols = config['host_columns']
 
@@ -109,8 +111,9 @@ def lr_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    # data = ph.dataset.read(dataset_key=data_key).df_data
-    data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
+    data = ph.dataset.read(dataset_key=data_key).df_data
+    print("ports: ", host_port, guest_port)
+    # data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
@@ -122,8 +125,8 @@ def lr_guest_logic(cry_pri="paillier"):
     X_guest = data
     guest_channel = GrpcServer(remote_ip=host_ip,
                                remote_port=host_port,
-                               local_ip=guest_port,
-                               local_port=50052,
+                               local_ip=guest_ip,
+                               local_port=guest_port,
                                context=ph.context.Context)
 
     lr_guest = HeterLrGuest(learning_rate=config['learning_rate'],
