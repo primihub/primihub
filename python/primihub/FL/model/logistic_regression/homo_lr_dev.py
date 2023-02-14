@@ -383,8 +383,9 @@ def run_homo_lr_arbiter(config,
     log_handler.info("Create channel between arbiter and guest, "+
                      "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
                      "remote ip {}, remote port {}.".format(guest_ip, guest_port)) 
-        
-    x, y = read_data(data_key, config['feature_names'])
+    
+    if config['mode'] == 'Paillier':
+        x, y = read_data(data_key, config['feature_names'])
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
@@ -401,9 +402,10 @@ def run_homo_lr_arbiter(config,
 
     host_data_weight = host_channel.recv("host_data_weight")
     guest_data_weight = guest_channel.recv("guest_data_weight")
-    if config['mode'] == 'Paillier':
-        host_data_weight = arbiter.decrypt_scalar(host_data_weight) 
-        guest_data_weight = arbiter.decrypt_scalar(guest_data_weight) 
+
+    host_num_train_examples = host_channel.recv("host_num_train_examples")
+    guest_num_train_examples = guest_channel.recv("guest_num_train_examples")
+    num_train_examples_weight = [host_num_train_examples, guest_num_train_examples]
 
     # data preprocessing
     # minmaxscaler
@@ -414,9 +416,10 @@ def run_homo_lr_arbiter(config,
 
     data_max = np.maximum(host_data_max, guest_data_max)
     data_min = np.minimum(host_data_min, guest_data_min)
- 
-    x = (x - data_min) / (data_max - data_min)
 
+    if config['mode'] == 'Paillier':
+        x = (x - data_min) / (data_max - data_min)
+ 
     host_channel.send("data_max", data_max)
     guest_channel.send("data_max", data_max)
     host_channel.send("data_min", data_min)
@@ -438,15 +441,24 @@ def run_homo_lr_arbiter(config,
                                 host_data_weight, guest_data_weight)
         arbiter.broadcast_global_model_param()
         
-        loss = arbiter.loss(x, y)
-        y_hat = arbiter.predict_prob(x)
-        acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
-        auc = evaluator.getAUC(y, y_hat)
-        fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
+        if config['mode'] != 'Paillier':
+            host_loss = host_channel.recv("host_loss")
+            guest_loss = guest_channel.recv("guest_loss")
+            loss = np.average([host_loss, guest_loss], weights=num_train_examples_weight)
 
-        # only print loss, acc, auc, ks
-        # fpr and tpr can be finded in the json file
-        log_handler.info("loss={}, acc={}, auc={}, ks={}".format(loss, acc, auc, ks))
+            host_acc = host_channel.recv("host_acc")
+            guest_acc = guest_channel.recv("guest_acc")
+            acc = np.average([host_acc, guest_acc], weights=num_train_examples_weight)
+
+            log_handler.info("loss={}, acc={}".format(loss, acc))
+        else:
+            loss = arbiter.loss(x, y)
+            y_hat = arbiter.predict_prob(x)
+            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
+            auc = evaluator.getAUC(y, y_hat)
+            fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
+
+            log_handler.info("loss={}, acc={}, auc={}, ks={}".format(loss, acc, auc, ks))
         
         if check_convergence:
             # convergence is checked using acc
@@ -466,15 +478,17 @@ def run_homo_lr_arbiter(config,
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
                 break
 
+    if config['mode'] == 'DPSGD':
+        host_eps = host_channel.recv('host_eps')
+        guest_eps = guest_channel.recv('guest_eps')
+        eps = max(host_eps, guest_eps)
+        log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
+
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
     trainMetrics = {
         "train_loss": loss,
         "train_acc": acc,
-        "train_auc": auc,
-        "train_ks": ks,
-        "train_fpr": fpr.tolist(),
-        "train_tpr": tpr.tolist()
     }
     trainMetricsBuff = json.dumps(trainMetrics)
     with open(indicator_file_path, 'w') as filePath:
@@ -586,6 +600,7 @@ def run_homo_lr_client(config,
     
     x, y = read_data(data_key, config['feature_names'])
     data_weight = config['batch_size']
+    num_train_examples = x.shape[0]
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
@@ -597,11 +612,11 @@ def run_homo_lr_client(config,
     elif config['mode'] == 'Paillier':
         check_convergence = True
         client = Client_Paillier(x, y, arbiter_channel, config)
-        data_weight = client.encrypt_scalar(data_weight)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
     arbiter_channel.send(client_name+"_data_weight", data_weight)
+    arbiter_channel.send(client_name+"_num_train_examples", num_train_examples) 
   
     # data preprocessing
     # minmaxscaler
@@ -627,6 +642,15 @@ def run_homo_lr_client(config,
 
         arbiter_channel.send(client_name+"_param", client.get_theta())
         client.set_theta(arbiter_channel.recv("global_model_param"))
+        
+        if config['mode'] != 'Paillier':
+            loss = client.loss(x, y)
+            y_hat = client.predict_prob(x)
+            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
+            log_handler.info("loss={}, acc={}".format(loss, acc))
+
+            arbiter_channel.send(client_name+"_loss", loss)
+            arbiter_channel.send(client_name+"_acc", acc)
 
         if check_convergence:
             if arbiter_channel.recv('convergence') == 'YES':
@@ -634,8 +658,8 @@ def run_homo_lr_client(config,
                 break
     
     if config['mode'] == 'DPSGD':
-        num_train_examples = x.shape[0]
         eps = compute_epsilon(i+1, num_train_examples, config)
+        arbiter_channel.send(client_name+"_eps", eps)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
 
     log_handler.info("{} training process done.".format(client_name))
