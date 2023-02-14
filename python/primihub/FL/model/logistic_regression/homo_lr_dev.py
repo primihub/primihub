@@ -284,34 +284,37 @@ class LRModel_Paillier(LRModel):
         return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
                 + self.alpha * self.theta) / x.shape[0]
 
+    def loss(self, x, y):
+        # Taylor first order expansion: L(x) = ln2 + (0.5 - y) * (x.dot(w) + b)
+        return (np.log(2) + (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0]))) / x.shape[0]
+
 
 class Arbiter(LRModel):
     """
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self, host_channel, guest_channel, config):
+    def __init__(self, host_channel, guest_channel):
         self.theta = None
-        self.alpha = config['alpha'] # used for compute the loss value
         self.host_channel = host_channel
         self.guest_channel = guest_channel
 
-    def model_aggregate(self, host_param, guest_param,
-                        host_data_weight, guest_data_weight):
+    def model_aggregate(self, host_param, guest_param, param_weights):
         param = np.vstack([host_param, guest_param])
-        weight = np.array([host_data_weight, guest_data_weight])
-
-        self.set_theta(np.average(param, weights=weight/weight.sum(), axis=0))
+        self.set_theta(np.average(param, weights=param_weights, axis=0))
 
     def broadcast_global_model_param(self):
-        self.host_channel.send("global_model_param", self.theta)
-        self.guest_channel.send("global_model_param", self.theta)
+        self.host_channel.send("global_param", self.theta)
+        self.guest_channel.send("global_param", self.theta)
+
+    def loss_and_acc(self, losses, accs, weights):
+        return np.average(losses, weights=weights), np.average(accs, weights=weights)
 
 
 class Arbiter_Paillier(Arbiter, LRModel_Paillier):
     
-    def __init__(self, host_channel, guest_channel, config):
-        Arbiter.__init__(self, host_channel, guest_channel, config)
+    def __init__(self, host_channel, guest_channel):
+        super().__init__(host_channel, guest_channel)
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
         self.broadcast_public_key()
 
@@ -319,24 +322,25 @@ class Arbiter_Paillier(Arbiter, LRModel_Paillier):
         self.host_channel.send("public_key", self.public_key)
         self.guest_channel.send("public_key", self.public_key)
         
-    def model_aggregate(self, host_param, guest_param,
-                        host_data_weight, guest_data_weight):
+    def model_aggregate(self, host_param, guest_param, param_weights):
         host_param = self.decrypt_vector(host_param)
         guest_param = self.decrypt_vector(guest_param)
                 
-        Arbiter.model_aggregate(self, host_param, guest_param,
-                                host_data_weight, guest_data_weight)
+        Arbiter.model_aggregate(self, host_param, guest_param, param_weights)
 
     def broadcast_global_model_param(self):
         global_theta = self.encrypt_vector(self.theta)
-        self.host_channel.send("global_model_param", global_theta)
-        self.guest_channel.send("global_model_param", global_theta)
-        
+        self.host_channel.send("global_param", global_theta)
+        self.guest_channel.send("global_param", global_theta)
+
+    def loss(self, enc_losses, weights):
+        losses = self.decrypt_vector(enc_losses)
+        return np.average(losses, weights=weights)
+
 
 def run_homo_lr_arbiter(config,
                         role_node_map,
                         node_addr_map,
-                        data_key,
                         task_params={},
                         log_handler=None):
     host_nodes = role_node_map["host"]
@@ -384,28 +388,26 @@ def run_homo_lr_arbiter(config,
                      "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
                      "remote ip {}, remote port {}.".format(guest_ip, guest_port)) 
     
-    if config['mode'] == 'Paillier':
-        x, y = read_data(data_key, config['feature_names'])
-
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        arbiter = Arbiter(host_channel, guest_channel, config)
+        arbiter = Arbiter(host_channel, guest_channel)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        arbiter = Arbiter(host_channel, guest_channel, config)
+        arbiter = Arbiter(host_channel, guest_channel)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(host_channel, guest_channel, config)
+        arbiter = Arbiter_Paillier(host_channel, guest_channel)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    host_data_weight = host_channel.recv("host_data_weight")
-    guest_data_weight = guest_channel.recv("guest_data_weight")
+    host_param_weight = host_channel.recv("host_param_weight")
+    guest_param_weight = guest_channel.recv("guest_param_weight")
+    param_weights = [host_param_weight, guest_param_weight]
 
     host_num_train_examples = host_channel.recv("host_num_train_examples")
     guest_num_train_examples = guest_channel.recv("guest_num_train_examples")
-    num_train_examples_weight = [host_num_train_examples, guest_num_train_examples]
+    num_train_examples_weights = [host_num_train_examples, guest_num_train_examples]
 
     # data preprocessing
     # minmaxscaler
@@ -417,9 +419,6 @@ def run_homo_lr_arbiter(config,
     data_max = np.maximum(host_data_max, guest_data_max)
     data_min = np.minimum(host_data_min, guest_data_min)
 
-    if config['mode'] == 'Paillier':
-        x = (x - data_min) / (data_max - data_min)
- 
     host_channel.send("data_max", data_max)
     guest_channel.send("data_max", data_max)
     host_channel.send("data_min", data_min)
@@ -430,43 +429,40 @@ def run_homo_lr_arbiter(config,
         compare_threshold = config['compare_threshold']
         count_iter_no_change = 0
         convergence = 'NO'
-        last_acc = 0
+        last_loss = 0
 
     for i in range(config['max_iter']):
         log_handler.info("-------- start iteration {} --------".format(i+1))    
         
+        # model training
         host_param = host_channel.recv("host_param")
         guest_param = guest_channel.recv("guest_param")
-        arbiter.model_aggregate(host_param, guest_param,
-                                host_data_weight, guest_data_weight)
+        arbiter.model_aggregate(host_param, guest_param, param_weights)
         arbiter.broadcast_global_model_param()
         
-        if config['mode'] != 'Paillier':
-            host_loss = host_channel.recv("host_loss")
-            guest_loss = guest_channel.recv("guest_loss")
-            loss = np.average([host_loss, guest_loss], weights=num_train_examples_weight)
-
+        # compute metrics
+        host_loss = host_channel.recv("host_loss")
+        guest_loss = guest_channel.recv("guest_loss")
+        losses = [host_loss, guest_loss]
+        
+        if config['mode'] == 'Paillier': 
+            loss = arbiter.loss(losses, num_train_examples_weights)
+            log_handler.info("loss={}".format(loss))
+        else:
             host_acc = host_channel.recv("host_acc")
             guest_acc = guest_channel.recv("guest_acc")
-            acc = np.average([host_acc, guest_acc], weights=num_train_examples_weight)
-
+            accs = [host_acc, guest_acc]
+            loss, acc = arbiter.loss_and_acc(losses, accs, num_train_examples_weights)
             log_handler.info("loss={}, acc={}".format(loss, acc))
-        else:
-            loss = arbiter.loss(x, y)
-            y_hat = arbiter.predict_prob(x)
-            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
-            auc = evaluator.getAUC(y, y_hat)
-            fpr, tpr, thresholds, ks = evaluator.getKS(y, y_hat)
-
-            log_handler.info("loss={}, acc={}, auc={}, ks={}".format(loss, acc, auc, ks))
         
+        # check convergence 
         if check_convergence:
-            # convergence is checked using acc
-            if abs(last_acc - acc) < compare_threshold:
+            # convergence is checked using loss
+            if abs(last_loss - loss) < compare_threshold:
                 count_iter_no_change += 1
             else:
                 count_iter_no_change = 0
-            last_acc = acc
+            last_loss = loss
     
             if count_iter_no_change > n_iter_no_change:
                 convergence = 'YES'
@@ -486,16 +482,44 @@ def run_homo_lr_arbiter(config,
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
-    trainMetrics = {
-        "train_loss": loss,
-        "train_acc": acc,
-    }
+
+    if config['mode'] == 'Paillier':
+        trainMetrics = {
+            "train_loss": loss,
+        }
+    else:
+        trainMetrics = {
+            "train_loss": loss,
+            "train_acc": acc,
+        }
+
     trainMetricsBuff = json.dumps(trainMetrics)
     with open(indicator_file_path, 'w') as filePath:
         filePath.write(trainMetricsBuff)
 
     log_handler.info("####### start predict ######")
     log_handler.info("All process done.")
+
+
+def batch_generator(all_data, batch_size, shuffle=True):
+    all_data = [np.array(d) for d in all_data]
+    data_size = all_data[0].shape[0]
+        
+    if shuffle:
+        p = np.random.permutation(data_size)
+        all_data = [d[p] for d in all_data]
+    batch_count = 0
+    while True:
+        # The epoch completes, disrupting the order once
+        if batch_count * batch_size + batch_size > data_size:
+            batch_count = 0
+            if shuffle:
+                p = np.random.permutation(data_size)
+                all_data = [d[p] for d in all_data]
+        start = batch_count * batch_size
+        end = start + batch_size
+        batch_count += 1
+        yield [d[start:end] for d in all_data]
 
 
 class Client(LRModel):
@@ -505,39 +529,12 @@ class Client(LRModel):
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'])
         self.arbiter_channel = arbiter_channel
-    
-    def batch_generator(self, all_data, batch_size, shuffle=True):
-        """
-        :param all_data : incluing features and label
-        :param batch_size: number of samples in one batch
-        :param shuffle: Whether to disrupt the order
-        :return:iterator to generate every batch of features and labels
-        """
-        # Each element is a numpy array
-        all_data = [np.array(d) for d in all_data]
-        data_size = all_data[0].shape[0]
-        # logger.info("data_size: {}".format(data_size))
-        if shuffle:
-            p = np.random.permutation(data_size)
-            all_data = [d[p] for d in all_data]
-        batch_count = 0
-        while True:
-            # The epoch completes, disrupting the order once
-            if batch_count * batch_size + batch_size > data_size:
-                batch_count = 0
-                if shuffle:
-                    p = np.random.permutation(data_size)
-                    all_data = [d[p] for d in all_data]
-            start = batch_count * batch_size
-            end = start + batch_size
-            batch_count += 1
-            yield [d[start:end] for d in all_data]
 
 
-class Client_DPSGD(Client, LRModel_DPSGD):
+class Client_DPSGD(LRModel_DPSGD):
 
     def __init__(self, X, y, arbiter_channel, config):
-        LRModel_DPSGD.__init__(self, X, y, category=config['category'],
+        super().__init__(X, y, category=config['category'],
                                learning_rate=config['learning_rate'],
                                alpha=config['alpha'],
                                noise_multiplier=config['noise_multiplier'],
@@ -545,23 +542,17 @@ class Client_DPSGD(Client, LRModel_DPSGD):
                                secure_mode=config['secure_mode'])
         self.arbiter_channel = arbiter_channel
     
-    def fit(self, x, y):
-        LRModel_DPSGD.fit(self, x, y)
-        
 
-class Client_Paillier(Client, LRModel_Paillier):
+class Client_Paillier(LRModel_Paillier):
 
     def __init__(self, X, y, arbiter_channel, config):
-        LRModel_Paillier.__init__(self, X, y, category=config['category'],
-                                  learning_rate=config['learning_rate'],
-                                  alpha=config['alpha'],
-                                  n_length=config['n_length'])
+        super().__init__(X, y, category=config['category'],
+                               learning_rate=config['learning_rate'],
+                               alpha=config['alpha'],
+                               n_length=config['n_length'])
         self.arbiter_channel = arbiter_channel
         self.public_key = arbiter_channel.recv("public_key")
         self.set_theta(self.encrypt_vector(self.theta))
-
-    def fit(self, x, y):
-        LRModel_Paillier.fit(self, x, y)
 
 
 def run_homo_lr_client(config,
@@ -599,7 +590,7 @@ def run_homo_lr_client(config,
                       "remote ip {}, remote port {}.".format(arbiter_ip, arbiter_port)) 
     
     x, y = read_data(data_key, config['feature_names'])
-    data_weight = config['batch_size']
+    param_weight = config['batch_size']
     num_train_examples = x.shape[0]
 
     if config['mode'] == 'Plaintext':
@@ -615,7 +606,7 @@ def run_homo_lr_client(config,
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    arbiter_channel.send(client_name+"_data_weight", data_weight)
+    arbiter_channel.send(client_name+"_param_weight", param_weight)
     arbiter_channel.send(client_name+"_num_train_examples", num_train_examples) 
   
     # data preprocessing
@@ -630,28 +621,30 @@ def run_homo_lr_client(config,
     data_min = arbiter_channel.recv("data_min")
 
     x = (x - data_min) / (data_max - data_min)
-    
-    batch_gen = client.batch_generator([x, y],
-                                            config['batch_size'], False)
+
+    batch_gen = batch_generator([x, y], config['batch_size'], False)
 
     for i in range(config['max_iter']):
         log_handler.info("-------- start iteration {} --------".format(i+1))
         
+        # model training
         batch_x, batch_y = next(batch_gen)
         client.fit(batch_x, batch_y)
 
         arbiter_channel.send(client_name+"_param", client.get_theta())
-        client.set_theta(arbiter_channel.recv("global_model_param"))
+        client.set_theta(arbiter_channel.recv("global_param"))
         
+        # compute metrics
+        loss = client.loss(x, y)
+        arbiter_channel.send(client_name+"_loss", loss)
+
         if config['mode'] != 'Paillier':
-            loss = client.loss(x, y)
             y_hat = client.predict_prob(x)
             acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
-            log_handler.info("loss={}, acc={}".format(loss, acc))
-
-            arbiter_channel.send(client_name+"_loss", loss)
             arbiter_channel.send(client_name+"_acc", acc)
-
+            log_handler.info("loss={}, acc={}".format(loss, acc))
+        
+        # check convergence
         if check_convergence:
             if arbiter_channel.recv('convergence') == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
@@ -744,7 +737,6 @@ def run_party(party_name, config):
         run_homo_lr_arbiter(config,
                             role_node_map,
                             node_addr_map,
-                            data_key,
                             log_handler=fl_console_log)
     else:
         run_homo_lr_client(config,
