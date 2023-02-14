@@ -2141,11 +2141,6 @@ def xgb_host_logic(cry_pri="paillier"):
     guest_nodes = role_node_map["guest"]
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
-    proxy_server = ServerChannelProxy(host_port)
-    proxy_server.StartRecvLoop()
-
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
-
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
                               local_ip=host_ip,
@@ -2171,8 +2166,6 @@ def xgb_host_logic(cry_pri="paillier"):
                            sid=0,
                            min_child_weight=config['min_child_weight'],
                            objective='logistic',
-                           proxy_server=proxy_server,
-                           proxy_client_guest=proxy_client_guest,
                            encrypted=config['is_encrypted'])
     xgb_host.channel = host_channel
     xgb_host.merge_gh = config['merge_gh']
@@ -2261,8 +2254,6 @@ def xgb_host_logic(cry_pri="paillier"):
         filePath.write(trainMetricsBuff)
 
         # pickle.dump(trainMetrics, filePath)
-
-    proxy_server.StopRecvLoop()
     # host_log.close()
 
 
@@ -2337,23 +2328,20 @@ def xgb_guest_logic(cry_pri="paillier"):
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
     guest_ip = node_addr_map[guest_nodes[0]].split(":")[0]
-    proxy_server = ServerChannelProxy(guest_port)
-    proxy_server.StartRecvLoop()
     fl_console_log.debug(
         "Create server proxy for guest, port {}.".format(guest_port))
 
     host_nodes = role_node_map["host"]
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
-    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
     guest_channel = GrpcServer(remote_ip=host_ip,
                                remote_port=host_port,
                                local_ip=guest_ip,
                                local_port=guest_port,
                                context=ph.context.Context)
-    link_context = ph.context.Context.get_link_conext()
-    recv_node = ph.context.Context.Node(guest_ip, int("50052"), False)
-    guest_channle = link_context.getChannel(recv_node)
+    # link_context = ph.context.Context.get_link_conext()
+    # recv_node = ph.context.Context.Node(guest_ip, int("50052"), False)
+    # guest_channle = link_context.getChannel(recv_node)
 
     data = ph.dataset.read(dataset_key=data_key).df_data
 
@@ -2381,8 +2369,6 @@ def xgb_guest_logic(cry_pri="paillier"):
                              min_child_weight=config['min_child_weight'],
                              objective='logistic',
                              sid=1,
-                             proxy_server=proxy_server,
-                             proxy_client_host=proxy_client_host,
                              is_encrypted=config['is_encrypted'],
                              sample_ratio=0.3)  # noqa
 
@@ -2451,5 +2437,4 @@ def xgb_guest_logic(cry_pri="paillier"):
     xgb_guest.predict(X_guest.copy(), lookup_table_sum)
 
     # xgb_guest.predict(X_guest)
-    proxy_server.StopRecvLoop()
     # guest_log.close()
