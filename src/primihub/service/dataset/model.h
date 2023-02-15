@@ -143,6 +143,7 @@ class DatasetMeta {
     std::string getAccessInfo() {return this->access_meta_; }
     std::string getServerInfo() {return this->server_meta_;}
     void setDataURL(const std::string &data_url) { this->data_url = data_url; }
+    void setServerInfo(const std::string &server_info) { this->server_meta_ = server_info; }
     std::shared_ptr<DatasetSchema> getSchema() { return schema; }
     uint64_t getTotalRecords() { return total_records; }
     DatasetId id;
