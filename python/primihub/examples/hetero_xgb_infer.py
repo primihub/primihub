@@ -20,6 +20,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from primihub.channel.zmq_channel import IOService, Session
+from primihub.utils.net_worker import GrpcServer
 import functools
 import ray
 from ray.util import ActorPool
@@ -29,119 +30,6 @@ LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger = logging.getLogger("proxy")
-
-
-class ClientChannelProxy:
-
-    def __init__(self, host, port, dest_role="NotSetYet"):
-        self.ios_ = IOService()
-        self.sess_ = Session(self.ios_, host, port, "client")
-        self.chann_ = self.sess_.addChannel()
-        self.executor_ = ThreadPoolExecutor()
-        self.host = host
-        self.port = port
-        self.dest_role = dest_role
-
-    # Send val and it's tag to server side, server
-    # has cached val when the method return.
-    def Remote(self, val, tag):
-        msg = {"v": pickle.dumps(val), "tag": tag}
-        self.chann_.send(msg)
-        _ = self.chann_.recv()
-        logger.debug("Send value with tag '{}' to {} finish".format(
-            tag, self.dest_role))
-
-    # Send val and it's tag to server side, client begin the send action
-    # in a thread when the the method reutrn but not ensure that server
-    # has cached this val. Use 'fut.result()' to wait for server to cache it,
-    # this makes send value and other action running in the same time.
-    def RemoteAsync(self, val, tag):
-
-        def send_fn(channel, msg):
-            channel.send(msg)
-            _ = channel.recv()
-
-        msg = {"v": val, "tag": tag}
-        fut = self.executor_.submit(send_fn, self.chann_, msg)
-
-        return fut
-
-
-class ServerChannelProxy:
-
-    def __init__(self, port):
-        self.ios_ = IOService()
-        self.sess_ = Session(self.ios_, "*", port, "server")
-        self.chann_ = self.sess_.addChannel()
-        self.executor_ = ThreadPoolExecutor()
-        self.recv_cache_ = {}
-        self.stop_signal_ = False
-        self.recv_loop_fut_ = None
-
-    # Start a recv thread to receive value and cache it.
-    def StartRecvLoop(self):
-
-        def recv_loop():
-            logger.info("Start recv loop.")
-            while (not self.stop_signal_):
-                try:
-                    msg = self.chann_.recv(block=False)
-                except Exception as e:
-                    logger.error(e)
-                    break
-
-                if msg is None:
-                    continue
-
-                key = msg["tag"]
-                value = msg["v"]
-                if self.recv_cache_.get(key, None) is not None:
-                    logger.warn(
-                        "Hash entry for tag '{}' is not empty, replace old value"
-                        .format(key))
-                    del self.recv_cache_[key]
-
-                logger.debug("Recv msg with tag '{}'.".format(key))
-                self.recv_cache_[key] = value
-                self.chann_.send("ok")
-            logger.info("Recv loop stops.")
-
-        self.recv_loop_fut_ = self.executor_.submit(recv_loop)
-
-    # Stop recv thread.
-    def StopRecvLoop(self):
-        self.stop_signal_ = True
-        self.recv_loop_fut_.result()
-        logger.info("Recv loop already exit, clean cached value.")
-        key_list = list(self.recv_cache_.keys())
-        for key in key_list:
-            del self.recv_cache_[key]
-            logger.warn(
-                "Remove value with tag '{}', not used until now.".format(key))
-        # del self.recv_cache_
-        logger.info("Release system resource!")
-        self.chann_.socket.close()
-
-    # Get value from cache, and the check will repeat at most 'retries' times,
-    # and sleep 0.3s after each check to avoid check all the time.
-    def Get(self, tag, max_time=1000, interval=0.1):
-        start = time.time()
-        while True:
-            val = self.recv_cache_.get(tag, None)
-            end = time.time()
-            if val is not None:
-                del self.recv_cache_[tag]
-                logger.debug("Get val with tag '{}' finish.".format(tag))
-                return pickle.loads(val)
-
-            if (end - start) > max_time:
-                logger.warn(
-                    "Can't get value for tag '{}', timeout.".format(tag))
-                break
-
-            time.sleep(interval)
-
-        return None
 
 
 def evaluate_ks_and_roc_auc(y_real, y_proba):
@@ -183,7 +71,8 @@ class XGBHostInfer:
             # self.proxy_client_guest.Remote(record_id, 'record_id')
 
             if role == 'guest':
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 id_right = ids['id_right']
                 host_test_left = host_test.loc[id_left]
@@ -202,12 +91,18 @@ class XGBHostInfer:
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
                 # id_right = host_test_right.index
-                self.proxy_client_guest.Remote(
-                    {
+                # self.proxy_client_guest.Remote(
+                #     {
+                #         'id_left': host_test_left.index,
+                #         'id_right': host_test_right.index
+                #     },
+                #     str(record_id) + '_ids')
+
+                self.channel.sender(
+                    str(record_id) + '_ids', {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
-                    },
-                    str(record_id) + '_ids')
+                    })
                 # print("==predict host===", host_test.index, id_left, id_right)
 
             for kk in tree[k].keys():
@@ -270,15 +165,21 @@ class XGBGuestInfer:
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
                 id_right = guest_test_right.index
-                self.proxy_client_host.Remote(
-                    {
+                # self.proxy_client_host.Remote(
+                #     {
+                #         'id_left': id_left,
+                #         'id_right': id_right
+                #     },
+                #     str(record_id) + '_ids')
+                self.channel.sender(
+                    str(record_id) + '_ids', {
                         'id_left': id_left,
                         'id_right': id_right
-                    },
-                    str(record_id) + '_ids')
+                    })
 
             else:
-                ids = self.proxy_server.Get(str(record_id) + '_ids')
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
 
                 guest_test_left = guest_test.loc[id_left]
@@ -325,17 +226,13 @@ def xgb_host_infer():
 
     host_nodes = role_node_map["host"]
     host_port = node_addr_map[host_nodes[0]].split(":")[1]
+    host_ip = node_addr_map[host_nodes[0]].split(":")[0]
 
     guest_nodes = role_node_map["guest"]
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
-    proxy_server = ServerChannelProxy(host_port)
-    proxy_server.StartRecvLoop()
-
     host_model_path = ph.context.Context.get_model_file_path() + ".host"
     host_lookup_path = ph.context.Context.get_host_lookup_file_path() + ".host"
-
-    proxy_client_guest = ClientChannelProxy(guest_ip, guest_port, "guest")
 
     with open(host_model_path, 'rb') as hostModel:
         host_model = pickle.load(hostModel)
@@ -343,12 +240,16 @@ def xgb_host_infer():
     with open(host_lookup_path, 'rb') as hostTable:
         host_table = pickle.load(hostTable)
 
+    host_channel = GrpcServer(remote_ip=guest_ip,
+                              local_ip=host_ip,
+                              remote_port=guest_port,
+                              local_port=host_port,
+                              context=ph.context.Context)
+
     xgb_host = XGBHostInfer(host_model['tree_struct'],
                             host_table,
-                            proxy_server,
-                            proxy_client_guest,
                             lr=host_model['lr'])
-
+    xgb_host.channel = host_channel
     test_host = ph.dataset.read(dataset_key=data_key).df_data
 
     if 'id' in test_host.columns:
@@ -418,19 +319,21 @@ def xgb_guest_infer():
 
     guest_nodes = role_node_map["guest"]
     guest_port = node_addr_map[guest_nodes[0]].split(":")[1]
-    proxy_server = ServerChannelProxy(guest_port)
-    proxy_server.StartRecvLoop()
+    guest_ip = node_addr_map[guest_nodes[0]].split(":")[0]
 
     host_nodes = role_node_map["host"]
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
-
-    proxy_client_host = ClientChannelProxy(host_ip, host_port, "host")
 
     lookup_file_path = ph.context.Context.get_guest_lookup_file_path(
     ) + ".guest"
     guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
 
     print("guest_model_path: ", guest_model_path)
+    guest_channel = GrpcServer(remote_ip=host_ip,
+                               remote_port=host_port,
+                               local_ip=guest_ip,
+                               local_port=guest_port,
+                               context=ph.context.Context)
 
     with open(guest_model_path, 'rb') as guestModel:
         guest_model = pickle.load(guestModel)
@@ -438,8 +341,8 @@ def xgb_guest_infer():
     with open(lookup_file_path, 'rb') as guestTable:
         guest_table = pickle.load(guestTable)
 
-    xgb_guest = XGBGuestInfer(guest_model['tree_struct'], guest_table,
-                              proxy_server, proxy_client_host)
+    xgb_guest = XGBGuestInfer(guest_model['tree_struct'], guest_table)
+    xgb_guest.channel = guest_channel
 
     test_guest = ph.dataset.read(dataset_key=data_key).df_data
 
