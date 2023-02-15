@@ -53,8 +53,12 @@ def evaluate_ks_and_roc_auc(y_real, y_proba):
 
 class XGBHostInfer:
 
-    def __init__(self, host_tree, host_lookup_table, proxy_server,
-                 proxy_client_guest, lr) -> None:
+    def __init__(self,
+                 host_tree,
+                 host_lookup_table,
+                 proxy_server=None,
+                 proxy_client_guest=None,
+                 lr=None) -> None:
         self.tree = host_tree
         self.lookup = host_lookup_table
         self.proxy_server = proxy_server
@@ -144,8 +148,11 @@ class XGBHostInfer:
 
 class XGBGuestInfer:
 
-    def __init__(self, guest_tree, guest_lookup_table, proxy_server,
-                 proxy_client_host) -> None:
+    def __init__(self,
+                 guest_tree,
+                 guest_lookup_table,
+                 proxy_server=None,
+                 proxy_client_host=None) -> None:
         self.tree = guest_tree
         self.lookup_table = guest_lookup_table
         self.proxy_server = proxy_server
