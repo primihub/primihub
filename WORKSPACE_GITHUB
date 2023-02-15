@@ -605,3 +605,9 @@ http_archive(
     "https://github.com/mariusbancila/stduuid/archive/refs/tags/v1.2.2.tar.gz",
   ]
 )
+
+git_repository(
+  name = "com_github_base64_cpp",
+  commit = "294208257517a97dd42911cac9f1d4da2a57d316",
+  remote = "https://github.com/primihub/cpp-base64.git",
+)
