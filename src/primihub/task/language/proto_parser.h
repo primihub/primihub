@@ -21,19 +21,19 @@
 
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/service/dataset/service.h"
+#include "src/primihub/common/common.h"
 
 using primihub::service::DatasetWithParamTag;
 
 namespace primihub::task {
 
 class ProtoParser : public LanguageParser {
-    public:
-        ProtoParser(const PushTaskRequest &pushTaskRequest);
-        ~ProtoParser() {}
-        void parseTask() override {} // TODO
-        void  parseDatasets() override;
-        void parseNodes() override {} // TODO
-    
+ public:
+    ProtoParser(const PushTaskRequest &pushTaskRequest);
+    ~ProtoParser() {}
+    retcode parseTask() override {return retcode::SUCCESS;} // TODO
+    retcode parseDatasets() override;
+    retcode parseNodes() override {return retcode::SUCCESS;} // TODO
 };
 
 } // namespace primihub::task
