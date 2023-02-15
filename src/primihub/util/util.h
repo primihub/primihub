@@ -214,6 +214,8 @@ class SCopedTimer {
 int getAvailablePort(uint32_t* port);
 std::string strToUpper(const std::string& str);
 std::string strToLower(const std::string& str);
+std::string getCurrentProcessPath();
+std::string getCurrentProcessDir();
 }  // namespace primihub
 
 #endif  // SRC_primihub_UTIL_UTIL_H_
