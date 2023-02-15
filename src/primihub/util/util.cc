@@ -17,17 +17,32 @@
 
 #include "src/primihub/util/util.h"
 #include <glog/logging.h>
+#include <algorithm>
+#include <string>
+#include <cctype>
 namespace primihub {
 
-void str_split(const std::string& str, std::vector<std::string>* v,
-               char delimiter) {
-  std::stringstream ss(str);
+void str_split(const std::string& str, std::vector<std::string>* v, char delimiter) {
+    std::stringstream ss(str);
+    while (ss.good()) {
+        std::string substr;
+        getline(ss, substr, delimiter);
+        v->push_back(substr);
+    }
+}
 
-  while (ss.good()) {
-      std::string substr;
-      getline(ss, substr, delimiter);
-      v->push_back(substr);
-  }
+void str_split(const std::string& str, std::vector<std::string>* v, const std::string& pattern) {
+    std::string::size_type pos1, pos2;
+    pos2 = str.find(pattern);
+    pos1 = 0;
+    while (std::string::npos != pos2) {
+        v->push_back(str.substr(pos1, pos2 - pos1));
+        pos1 = pos2 + pattern.size();
+        pos2 = str.find(pattern, pos1);
+    }
+    if (pos1 != str.length()) {
+        v->push_back(str.substr(pos1));
+    }
 }
 
 void peer_to_list(const std::vector<std::string>& peer,
@@ -35,32 +50,88 @@ void peer_to_list(const std::vector<std::string>& peer,
   list->clear();
   for (auto iter : peer) {
     DLOG(INFO) << "split param list:" << iter;
-    std::vector<std::string> v;
-    str_split(iter, &v);
     primihub::rpc::Node node;
-    node.set_node_id(v[0]);
-    node.set_ip(v[1]);
-    node.set_port(std::stoi(v[2]));
-    // node.set_data_port(std::stoi(v[3])); // FIXME (chenhongbo):? why comment ?
+    parseTopbNode(iter, &node);
     list->push_back(node);
   }
 }
 
-
-
 void sort_peers(std::vector<std::string>* peers) {
-  std::string str_temp;
-
-  for (size_t i = 0; i < peers->size(); i++) {
-    for (size_t j = i + 1; j < peers->size(); j++) {
-      if ((*peers)[i].compare((*peers)[j]) > 0) {
-        str_temp = (*peers)[i];
-        (*peers)[i] = (*peers)[j];
-        (*peers)[j] = str_temp;
-      }
+    if (peers->empty() || peers->size() == 1) {
+        return;
     }
-  }
+    auto& peers_ref = *peers;
+    std::stable_sort(
+        std::begin(peers_ref),
+        std::end(peers_ref),
+        [](const std::string& first, const std::string& second) -> bool {
+            if (first.compare(second) < 0) {
+                return true;
+            } else {
+                return false;
+            }
+        });
 }
+
+retcode pbNode2Node(const rpc::Node& pb_node, Node* node) {
+    node->id_ = pb_node.node_id();
+    node->ip_ = pb_node.ip();
+    node->port_ = pb_node.port();
+    node->role_ = pb_node.role();
+    node->use_tls_ = pb_node.use_tls();
+    return retcode::SUCCESS;
+}
+
+retcode node2PbNode(const Node& node, primihub::rpc::Node* pb_node) {
+    pb_node->set_node_id(node.id());
+    pb_node->set_ip(node.ip());
+    pb_node->set_port(node.port());
+    pb_node->set_role(node.role());
+    pb_node->set_use_tls(node.use_tls());
+    return retcode::SUCCESS;
+}
+
+retcode parseToNode(const std::string& node_info, Node* node) {
+    std::vector<std::string> addr_info;
+    str_split(node_info, &addr_info, ':');
+    LOG(ERROR) << "nodelet_attr: " << node_info;
+    if (addr_info.size() < 4) {
+        return retcode::FAIL;
+    }
+    node->id_ = addr_info[0];
+    node->ip_ = addr_info[1];
+    node->port_ = std::stoi(addr_info[2]);
+    node->use_tls_ = (addr_info[3] == "1") ? true : false;
+    return retcode::SUCCESS;
+}
+
+retcode parseTopbNode(const std::string& node_info, rpc::Node* node) {
+    std::vector<std::string> addr_info;
+    str_split(node_info, &addr_info, ':');
+    LOG(ERROR) << "nodelet_attr: " << node_info;
+    if (addr_info.size() < 4) {
+        return retcode::FAIL;
+    }
+    node->set_node_id(addr_info[0]);
+    node->set_ip(addr_info[1]);
+    node->set_port(std::stoi(addr_info[2]));
+    node->set_use_tls((addr_info[3] == "1") ? true : false);
+    return retcode::SUCCESS;
+}
+
+// void sort_peers(std::vector<std::string>* peers) {
+//   std::string str_temp;
+
+//   for (size_t i = 0; i < peers->size(); i++) {
+//     for (size_t j = i + 1; j < peers->size(); j++) {
+//       if ((*peers)[i].compare((*peers)[j]) > 0) {
+//         str_temp = (*peers)[i];
+//         (*peers)[i] = (*peers)[j];
+//         (*peers)[j] = str_temp;
+//       }
+//     }
+//   }
+// }
 
 int getAvailablePort(uint32_t* port) {
     uint32_t tmp_port = 0;
@@ -89,6 +160,20 @@ int getAvailablePort(uint32_t* port) {
     close(sock);
     VLOG(5) << "get available port: " << *port;
     return 0;
+}
+
+std::string strToUpper(const std::string& str) {
+    std::string upper_str = str;
+    // to upper
+    std::transform(upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
+    return upper_str;
+}
+
+std::string strToLower(const std::string& str) {
+    std::string lower_str = str;
+    // to lower
+    std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::tolower);
+    return lower_str;
 }
 
 }  // namespace primihub

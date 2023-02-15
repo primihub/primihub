@@ -231,19 +231,19 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     // google::protobuf::Map<std::string, Node>
     const auto& node_map = nodePushTaskRequest.task().node_map();
     for (const auto& pair : node_map) {
-        VLOG(5) << "pair.first_pair.first_pair.first: " << pair.first << " peer_list_: " << peer_list_.size();
+        VLOG(5) << "pair.first_: " << pair.first << " peer_list_: " << peer_list_.size();
         if (pirType == PirType::ID_PIR) {
             bool is_client = pair.first == node_id_ ? true : false;
-
+            const auto& pb_node = pair.second;
             std::string dest_node_address(
-                absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+                absl::StrCat(pb_node.ip(), ":", pb_node.port()));
             DLOG(INFO) << "dest_node_address: " << dest_node_address;
 
             if (duplicate_server.find(dest_node_address) != duplicate_server.end()) {
                 continue;
             }
-            const auto& pb_node = pair.second;
-            Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+            Node dest_node;
+            pbNode2Node(pb_node, &dest_node);
             scheduled_nodes[dest_node_address] = std::move(dest_node);
             duplicate_server.emplace(dest_node_address);
             thrds.emplace_back(
@@ -278,13 +278,15 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
             //     is_client = true;
             //     LOG(ERROR) << "node_id: " << node_id << " is as role of client";
             // }
-            std::string dest_node_address(absl::StrCat(pair.second.ip(), ":", pair.second.port()));
+            const auto& pb_node = pair.second;
+            std::string dest_node_address(absl::StrCat(pb_node.ip(), ":", pb_node.port()));
             VLOG(5) << "dest_node_address: " << dest_node_address;
             if (duplicate_server.find(dest_node_address) != duplicate_server.end()) {
                 continue;
             }
-            const auto& pb_node = pair.second;
-            Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+
+            Node dest_node;
+            pbNode2Node(pb_node, &dest_node);
             scheduled_nodes[dest_node_address] = std::move(dest_node);
             duplicate_server.emplace(dest_node_address);
             thrds.emplace_back(

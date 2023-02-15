@@ -30,6 +30,24 @@
 #include <iostream>
 
 namespace primihub {
+// CSVAccessInfo
+std::string CSVAccessInfo::toString() {
+    return this->file_path_;
+}
+
+retcode CSVAccessInfo::fromJsonString(const std::string& json_str) {
+    if (json_str.empty()) {
+        LOG(ERROR) << "access info is empty";
+        return retcode::FAIL;
+    }
+    this->file_path_ = json_str;
+    return retcode::SUCCESS;
+}
+
+retcode CSVAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
+    this->file_path_ = meta_info["source"].as<std::string>();
+    return retcode::SUCCESS;
+}
 
 // csv cursor implementation
 CSVCursor::CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver) {
@@ -110,7 +128,26 @@ int CSVCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
 
 CSVDriver::CSVDriver(const std::string &nodelet_addr)
     : DataDriver(nodelet_addr) {
+  setDriverType();
+}
+
+CSVDriver::CSVDriver(const std::string &nodelet_addr,
+    std::unique_ptr<DataSetAccessInfo> access_info)
+    : DataDriver(nodelet_addr, std::move(access_info)) {
+  setDriverType();
+}
+
+void CSVDriver::setDriverType() {
   driver_type = "CSV";
+}
+
+std::shared_ptr<Cursor>& CSVDriver::read() {
+  auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
+  if (csv_access_info == nullptr) {
+    LOG(ERROR) << "file access info is unavailable";
+    return getCursor();
+  }
+  return this->initCursor(csv_access_info->file_path_);
 }
 
 std::shared_ptr<Cursor> &CSVDriver::read(const std::string &filePath) {

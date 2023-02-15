@@ -15,13 +15,12 @@ std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_add
   grpc::ChannelArguments channel_args;
   // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
   if (use_tls) {
-    std::string root_ca{""};
-    std::string key{""};
-    std::string cert{""};
+    auto link_context = this->getLinkContext();
+    auto& cert_config = link_context->getCertificateConfig();
     grpc::SslCredentialsOptions ssl_opts;
-    ssl_opts.pem_root_certs = root_ca;
-    ssl_opts.pem_private_key = key;
-    ssl_opts.pem_cert_chain = cert;
+    ssl_opts.pem_root_certs = cert_config.rootCAContent();
+    ssl_opts.pem_private_key = cert_config.keyContent();
+    ssl_opts.pem_cert_chain = cert_config.certContent();
     creds = grpc::SslCredentials(ssl_opts);
   } else {
     creds = grpc::InsecureChannelCredentials();

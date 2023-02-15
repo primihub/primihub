@@ -1,7 +1,7 @@
 #！/bin/bash
 
 bash pre_build.sh
-bazel build --config=linux :libpsi_test
+bazel build --config=linux_x86_64 :libpsi_test
 
 cd ./bazel-bin
 

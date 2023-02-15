@@ -47,6 +47,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
                 recv_query_data_direct = true;   // read query data from clientData key directly
             }
             dataset_path_ = client_data.value_string();
+            dataset_id_ = client_data.value_string();
             VLOG(5) << "dataset_path_: " << dataset_path_;
         } else {
             LOG(ERROR) << "no keyword: clientData match found";
@@ -77,7 +78,7 @@ int KeywordPIRClientTask::_LoadParams(Task &task) {
         if (_node_id == this->node_id()) {
             continue;
         }
-        peer_node_ = Node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+        primihub::pbNode2Node(pb_node, &peer_node_);
         VLOG(5) << "peer_node: " << peer_node_.to_string();
     }
     return 0;
@@ -87,6 +88,17 @@ std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::strin
 KeywordPIRClientTask::_LoadDataFromDataset() {
     apsi::util::CSVReader::DBData db_data;
     std::vector<std::string> orig_items;
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+        return std::make_pair(nullptr, std::vector<std::string>());
+    }
+    auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
+    if (access_info == nullptr) {
+        LOG(ERROR) << "get data accessinfo for dataset: " << this->dataset_id_ << " failed";
+        return std::make_pair(nullptr, std::vector<std::string>());
+    }
+    dataset_path_ = access_info->file_path_;
     try {
         apsi::util::CSVReader reader(dataset_path_);
         std::tie(db_data, orig_items) = reader.read();
@@ -143,11 +155,18 @@ int KeywordPIRClientTask::saveResult(
             VLOG(5) << "no match result found for query: [" << orig_items[i] << "]";
             continue;
         }
-        csv_output << orig_items[i];    // original query
         if (intersection[i].label) {
-            csv_output << "," << intersection[i].label.to_string();     // matched result
+            std::string label_info = intersection[i].label.to_string();
+            std::vector<std::string> labels;
+            std::string sep = "#####";
+            str_split(label_info, &labels, sep);
+            for (const auto& lable_ : labels) {
+                csv_output << orig_items[i] << "," << lable_ << endl;
+            }
+        } else {
+            csv_output << orig_items[i] << endl;
         }
-        csv_output << endl;
+
     }
     VLOG(5) << "result_file_path_: " << result_file_path_;
     if (ValidateDir(result_file_path_)) {

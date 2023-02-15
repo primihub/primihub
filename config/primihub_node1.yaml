@@ -2,7 +2,14 @@ version: 1.0
 
 node: "node1"
 location: "172.28.1.11"
+use_tls: false
+
 grpc_port: 50051
+
+#certificate:
+#  root_ca: "data/cert/ca.crt"
+#  key: "data/cert/node0.key"
+#  cert: "data/cert/node0.crt"
 
 # Use redis by default, set `use_redis: False` to use libp2p
 redis_meta_service:
@@ -63,6 +70,14 @@ datasets:
   - description: "test_hetero_xgb_host"
     model: "csv"
     source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_host.csv"
+
+  # FL homo lr test case datasets
+  - description: "train_homo_lr_host"
+    model: "csv"
+    source: "/tmp/FL/homo_lr/train/train_breast_cancer_host.csv"
+  - description: "test_homo_lr"
+    model: "csv"
+    source: "/tmp/FL/homo_lr/test_breast_cancer.csv"
 
 localkv:
   model: "leveldb"

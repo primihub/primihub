@@ -17,38 +17,42 @@
 #include "src/primihub/node/ds.h"
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <nlohmann/json.hpp>
 #include "src/primihub/service/dataset/model.h"
-#include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/util.h"
 
 using primihub::service::DatasetMeta;
 
 namespace primihub {
-grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
-                            NewDatasetResponse *response) {
+grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
+        const NewDatasetRequest *request, NewDatasetResponse *response) {
     std::string driver_type = request->driver();
-    std::string path = request->path();
-    std::string fid = request->fid();
-    VLOG(5) << "driver_type: " << driver_type << " fid: " << fid
-        << " paht: " << path;
-    LOG(INFO) << "start to create dataset."<<" path: "<< path
-            <<" fid: "<< fid <<" driver_type: "<< driver_type;
+    const auto& meta_info = request->path();
+    const auto& fid = request->fid();
+    LOG(INFO) << "start to create dataset. meta info: " << meta_info << " "
+            << "fid: " << fid << " driver_type: " << driver_type;
     std::shared_ptr<DataDriver> driver{nullptr};
     try {
-        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_);
-        processMetaData(driver_type, &path);   // if modify needed, inplace
-        [[maybe_unused]] auto cursor = driver->read(path);
+        auto access_info = this->dataset_service_->createAccessInfo(driver_type, meta_info);
+        if (access_info == nullptr) {
+            std::string err_msg = "create access info failed";
+            throw std::invalid_argument(err_msg);
+        }
+        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
+        this->dataset_service_->registerDriver(fid, driver);
+        driver->read();  // just init cursor
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load dataset from path: "<< path <<" "
-                << "driver_type: "<< driver_type << " "
-                << "fid: "<< fid << " "
-                << "exception:" << e.what();
+        LOG(ERROR) << "Failed to load dataset from path: " << meta_info << " "
+                << "driver_type: " << driver_type << " "
+                << "fid: " << fid << " "
+                << "exception: " << e.what();
         response->set_ret_code(2);
         return grpc::Status::OK;
     }
 
     DatasetMeta mate;
-    auto dataset = dataset_service_->newDataset(driver, fid, mate);
+    auto dataset = dataset_service_->newDataset(driver, fid, meta_info, mate);
 
     response->set_ret_code(0);
     response->set_dataset_url(mate.getDataURL());
@@ -57,34 +61,4 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context, const New
     return grpc::Status::OK;
 }
 
-int DataServiceImpl::processMetaData(const std::string& driver_type, std::string* meta_data) {
-    std::string driver_type_ = driver_type;
-    // to upper
-    std::transform(driver_type_.begin(), driver_type_.end(), driver_type_.begin(), ::toupper);
-    if (driver_type_ == "SQLITE") {
-        nlohmann::json js = nlohmann::json::parse(*meta_data);
-        // driver_type#db_path#table_name#column
-        auto& meta = *meta_data;
-        meta = driver_type;
-        VLOG(5) << meta;
-        if (!js.contains("db_path")) {
-            LOG(ERROR) << "key: db_path is not found";
-            return -1;
-        }
-        meta.append("#").append(js["db_path"]);
-        if (!js.contains("tableName")) {
-            LOG(ERROR) << "key: tableName is not found";
-            return -1;
-        }
-        meta.append("#").append(js["tableName"]);
-        if (js.contains("query_index")) {
-            meta.append("#").append(js["query_index"]);
-        } else {
-            meta.append("#");
-        }
-        VLOG(5) << "sqlite info: " << meta;
-    }
-    return 0;
-}
-
-} // namespace primihub
+}  // namespace primihub

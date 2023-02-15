@@ -43,6 +43,8 @@ int PSIEcdhTask::LoadParams(Task &task) {
         } else {
             dataset_path_ = param_map["serverData"].value_string();
         }
+        dataset_id_ = dataset_path_;
+        VLOG(5) << "dataset_id_: " << dataset_id_;
         it = param_map.find(server_address_);
         if (it != param_map.end()) {
             server_dataset_ = it->second.value_string();
@@ -81,9 +83,7 @@ int PSIEcdhTask::LoadParams(Task &task) {
             continue;
         }
         const auto& node_info = it.second;
-        peer_node.ip_ = node_info.ip();
-        peer_node.port_ = node_info.port();
-        peer_node.use_tls_ = node_info.use_tls();
+        primihub::pbNode2Node(node_info, &peer_node);
         VLOG(5) << "peer_node: " << peer_node.to_string();
         break;
     }
@@ -91,22 +91,12 @@ int PSIEcdhTask::LoadParams(Task &task) {
 }
 
 retcode PSIEcdhTask::LoadDataset() {
-    // TODO fixme trick method, search sqlite as keyword and if find then laod data from sqlite
-    std::string match_word{"sqlite"};
-    std::string driver_type;
-    if (dataset_path_.size() > match_word.size()) {
-        driver_type = dataset_path_.substr(0, match_word.size());
-    } else {
-        driver_type = dataset_path_;
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+        return retcode::FAIL;
     }
-    // currently, we supportes only two kind of storage type [csv, sqlite] as dataset
-    retcode ret{retcode::SUCCESS};
-    if (match_word == driver_type) {
-        ret = LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
-    } else {
-        ret = LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    }
-    // load datasets encountes error or file empty
+    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "Load dataset for psi client failed";
         return retcode::FAIL;

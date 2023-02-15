@@ -19,6 +19,8 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/common/defines.h"
 #include "src/primihub/util/threadsafe_queue.h"
+#include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/util/util.h"
 
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
@@ -106,7 +108,9 @@ KeywordPIRServerTask::create_sender_db(
 KeywordPIRServerTask::KeywordPIRServerTask(
     const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
+    VLOG(0) << "enter KeywordPIRServerTask ctr";
     oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
+    VLOG(0) << "begin to exit KeywordPIRServerTask ctr";
 }
 
 int KeywordPIRServerTask::_LoadParams(Task &task) {
@@ -118,9 +122,7 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
         }
         auto& node = node_info.second;
         this->client_address = node.ip() + ":" + std::to_string(node.port());
-        client_node_.ip_ = node.ip();
-        client_node_.port_ = node.port();
-        client_node_.use_tls_ = node.use_tls();
+        primihub::pbNode2Node(node, &client_node_);
         VLOG(5) << "client_address: " << this->client_node_.to_string();
     }
 
@@ -129,6 +131,7 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
         auto it = param_map.find("serverData");
         if (it != param_map.end()) {
             dataset_path_ = it->second.value_string();
+            dataset_id_ = it->second.value_string();
         } else {
             LOG(ERROR) << "Failed to load params serverData, no match key find";
             return -1;
@@ -143,9 +146,20 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
 
 std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
     CSVReader::DBData db_data;
-
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+        return nullptr;
+    }
+    auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
+    if (access_info == nullptr) {
+        LOG(ERROR) << "get data accessinfo for dataset: " << this->dataset_id_ << " failed";
+        return nullptr;
+    }
+    dataset_path_ = access_info->file_path_;
     try {
-        VLOG(5) << "begin to read data, dataset path: " << dataset_path_;
+        VLOG(5) << "begin to read data, dataset path: " << dataset_path_
+                << " data set id: " << this->dataset_id_;
         CSVReader reader(dataset_path_);
         tie(db_data, ignore) = reader.read();
     } catch (const exception &ex) {

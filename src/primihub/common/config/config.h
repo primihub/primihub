@@ -16,11 +16,11 @@
 
 #ifndef SRC_PRIMIHUB_COMMON_CONFIG_CONFIG_H_
 #define SRC_PRIMIHUB_COMMON_CONFIG_CONFIG_H_
-
+#include <yaml-cpp/yaml.h>
+#include <glog/logging.h>
 #include <vector>
 #include <string>
-
-#include <yaml-cpp/yaml.h>
+#include "src/primihub/common/common.h"
 
 namespace primihub::common {
 
@@ -29,40 +29,144 @@ struct DBInfo {
     std::string table_name;
 };
 
-typedef struct Dataset {
+struct Dataset {
     std::string description;
     std::string model;
     std::string source;
     DBInfo db_info;
-} Dataset;
+};
 
-typedef struct LocalKV {
+struct LocalKV {
     std::string model;
     std::string path;
-} LocalKV;
+};
 
-typedef struct P2P {
+struct P2P {
     std::vector<std::string> bootstrap_nodes;
     std::string multi_addr;
+    uint32_t dht_get_value_timeout{20};
 };
-typedef struct NodeConfig {
-    std::string node;
-    std::string location;
-    uint64_t grpc_port;
+
+struct RedisConfig {
+    bool use_redis{false};
+    std::string redis_addr;
+    std::string redis_password;
+};
+
+class CertificateConfig {
+ public:
+    CertificateConfig() = default;
+    CertificateConfig(const std::string& root_ca_path,
+        const std::string& key_path, const std::string& cert_path)
+        :root_ca_path_(root_ca_path), key_path_(key_path), cert_path_(cert_path) {
+        auto ret = initCertificateConfig();
+        if (ret != retcode::SUCCESS) {
+            LOG(ERROR) << "initCertificationConfig failed, " << " "
+                << "root_ca_path: " << root_ca_path_ << " "
+                << "key_path: " << key_path_ << " "
+                << "cert_path: " << cert_path_;
+        }
+    }
+
+    retcode init(const std::string& root_ca_path,
+            const std::string& key_path, const std::string& cert_path) {
+        setRootCAPath(root_ca_path);
+        setKeyPath(key_path);
+        setCertPath(cert_path);
+        return initCertificateConfig();
+    }
+
+    retcode init() {
+        return initCertificateConfig();
+    }
+
+    inline std::string& rootCAContent() {return root_ca_content_;}
+    inline std::string& keyContent() { return key_content_;}
+    inline std::string& certContent() {return cert_content_;}
+    inline std::string rootCAPath() const {return root_ca_path_;}
+    inline std::string keyPath() const { return key_path_;}
+    inline std::string certPath() const {return cert_path_;}
+    inline std::string setRootCAPath(const std::string& file_path) {
+        return root_ca_path_ = file_path;
+    }
+    inline std::string setKeyPath(const std::string& file_path) {
+        return key_path_ = file_path;
+    }
+    inline std::string setCertPath(const std::string& file_path) {
+        return cert_path_ = file_path;
+    }
+
+ protected:
+    retcode initCertificateConfig();
+
+ private:
+    std::string root_ca_content_;
+    std::string key_content_;
+    std::string cert_content_;
+    std::string root_ca_path_;
+    std::string key_path_;
+    std::string cert_path_;
+};
+
+struct NodeConfig {
+    Node server_config;
+    CertificateConfig cert_config;
     std::vector<Dataset> datasets;
+    RedisConfig redis_cfg;
     P2P p2p;
     LocalKV localkv;
     std::string notify_server;
-} NodeConfig;
-} // namespace primihub::common
+};
+
+}  // namespace primihub::common
 
 namespace YAML {
-
 using primihub::common::Dataset;
 using primihub::common::LocalKV;
 using primihub::common::P2P;
 using primihub::common::NodeConfig;
 using primihub::common::DBInfo;
+using ServerConfig = primihub::Node;
+using primihub::common::CertificateConfig;
+using primihub::common::RedisConfig;
+
+template <> struct convert<RedisConfig> {
+    static Node encode(const RedisConfig &redis_cfg) {
+        Node node;
+        node["redis_addr"] = redis_cfg.redis_addr;
+        node["use_redis"] = redis_cfg.use_redis;
+        node["redis_password"] = redis_cfg.redis_password;
+        return node;
+    }
+
+    static bool decode(const Node &node, RedisConfig &redis_cfg) {   // NOLINT
+        redis_cfg.redis_addr = node["redis_addr"].as<std::string>();
+        redis_cfg.redis_password = node["redis_password"].as<std::string>();
+        redis_cfg.use_redis = node["use_redis"].as<bool>();
+        return true;
+    }
+};
+
+template <> struct convert<CertificateConfig> {
+    static Node encode(const CertificateConfig &cert_cfg) {
+        Node node;
+        node["root_ca"] = cert_cfg.rootCAPath();
+        node["key"] = cert_cfg.keyPath();
+        node["cert"] = cert_cfg.certPath();
+        return node;
+    }
+
+    static bool decode(const Node &node, CertificateConfig &cert_cfg) {   // NOLINT
+        cert_cfg.setRootCAPath(node["root_ca"].as<std::string>());
+        cert_cfg.setKeyPath(node["key"].as<std::string>());
+        cert_cfg.setCertPath(node["cert"].as<std::string>());
+        auto ret = cert_cfg.init();
+        if (ret != primihub::retcode::SUCCESS) {
+            return false;
+        }
+        return true;
+    }
+};
 
 template <> struct convert<DBInfo> {
     static Node encode(const DBInfo &db_info) {
@@ -72,7 +176,7 @@ template <> struct convert<DBInfo> {
         return node;
     }
 
-    static bool decode(const Node &node, DBInfo &ds) {
+    static bool decode(const Node &node, DBInfo &ds) {   // NOLINT
         ds.db_name  = node["db_name"].as<std::string>();
         ds.table_name = node["table_name"].as<std::string>();
         return true;
@@ -91,7 +195,7 @@ template <> struct convert<Dataset> {
         return node;
     }
 
-    static bool decode(const Node &node, Dataset &ds) {
+    static bool decode(const Node &node, Dataset &ds) {     // NOLINT
         ds.description  = node["description"].as<std::string>();
         ds.model = node["model"].as<std::string>();
         ds.source = node["source"].as<std::string>();
@@ -111,7 +215,7 @@ template <> struct convert<LocalKV> {
         return node;
     }
 
-    static bool decode(const Node &node, LocalKV &lkv) {
+    static bool decode(const Node &node, LocalKV &lkv) {    // NOLINT
         lkv.model = node["model"].as<std::string>();
         lkv.path = node["path"].as<std::string>();
         return true;
@@ -127,7 +231,7 @@ template <> struct convert<P2P> {
         return node;
     }
 
-    static bool decode(const Node &node, P2P &p2p) {
+    static bool decode(const Node &node, P2P &p2p) {            // NOLINT
         for (auto &bootstrap_node : node["bootstrap_nodes"]) {
             p2p.bootstrap_nodes.push_back(bootstrap_node.as<std::string>());
         }
@@ -139,26 +243,37 @@ template <> struct convert<P2P> {
 template <> struct convert<NodeConfig> {
     static Node encode(const NodeConfig &nc) {
         Node node;
-        node["node"] = nc.node;
-        node["location"] = nc.location;
-        node["grpc_port"] = nc.grpc_port;
-        node["datasets"] = nc.datasets;
+        node["node"] = nc.server_config.id();
+        node["location"] = nc.server_config.ip();
+        node["grpc_port"] = nc.server_config.port();
+        node["use_tls"] = nc.server_config.use_tls();
+        node["redis_meta_service"] = nc.redis_cfg;
+        // node["datasets"] = nc.datasets;
         node["localkv"] = nc.localkv;
         node["p2p"] = nc.p2p;
         node["notify_server"] = nc.notify_server;
-
         return node;
     }
 
-    static bool decode(const Node &node, NodeConfig &nc) {
-        nc.node = node["node"].as<std::string>();
-        nc.location = node["location"].as<std::string>();
-        nc.grpc_port = node["grpc_port"].as<uint64_t>();
-        auto datasets = node["datasets"].as<YAML::Node>();
-        for (int i = 0; i < datasets.size(); i++) {
-            auto dataset = datasets[i].as<Dataset>();
-            nc.datasets.push_back(dataset);
+    static bool decode(const Node &node, NodeConfig &nc) {      // NOLINT
+        nc.server_config.id_ = node["node"].as<std::string>();
+        nc.server_config.ip_ = node["location"].as<std::string>();
+        nc.server_config.port_ = node["grpc_port"].as<uint32_t>();
+        if (node["use_tls"]) {
+            nc.server_config.use_tls_ = node["use_tls"].as<bool>();
         }
+        if (node["certificate"]) {
+            nc.cert_config = node["certificate"].as<CertificateConfig>();
+        }
+        if (node["redis_meta_service"]) {
+            nc.redis_cfg = node["redis_meta_service"].as<RedisConfig>();
+        }
+        // datasets may be too much, so do not parse from here
+        // auto datasets = node["datasets"].as<YAML::Node>();
+        // for (size_t i = 0; i < datasets.size(); i++) {
+        //     auto dataset = datasets[i].as<Dataset>();
+        //     nc.datasets.push_back(dataset);
+        // }
         nc.localkv = node["localkv"].as<LocalKV>();
         nc.p2p = node["p2p"].as<P2P>();
         nc.notify_server = node["notify_server"].as<std::string>();
@@ -166,6 +281,6 @@ template <> struct convert<NodeConfig> {
         return true;
     }
 };
-} // namespace YAML
+}  // namespace YAML
 
-#endif // SRC_PRIMIHUB_COMMON_CONFIG_CONFIG_H_
+#endif  // SRC_PRIMIHUB_COMMON_CONFIG_CONFIG_H_

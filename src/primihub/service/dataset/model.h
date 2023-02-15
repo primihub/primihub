@@ -39,8 +39,9 @@ enum class DatasetType {
 
 using SchemaConstructorParamType =
     std::variant<std::string, nlohmann::json, std::shared_ptr<arrow::Schema>>;
+
 class DatasetSchema {
-  public:
+ public:
     virtual ~DatasetSchema() {}
     virtual std::string toJSON() = 0;
     virtual void fromJSON(std::string json) = 0;
@@ -49,7 +50,7 @@ class DatasetSchema {
 
 // Two-Dimensional table Schema
 class TableSchema : public DatasetSchema {
-  public:
+ public:
     explicit TableSchema(std::shared_ptr<arrow::Schema> schema)
         : schema(schema) {}
     explicit TableSchema(std::string &json) {
@@ -64,7 +65,7 @@ class TableSchema : public DatasetSchema {
     void fromJSON(const nlohmann::json &json) override;
     void fromJSON(std::vector<std::string> &fieldNames);
 
-  private:
+ private:
     void init(const std::vector<std::string> &fields);
     std::vector<std::string> extractFields(const std::string &json);
     std::vector<std::string> extractFields(const nlohmann::json &oJson);
@@ -83,9 +84,8 @@ NewDatasetSchema(DatasetType type, SchemaConstructorParamType param) {
             case 0:
                 break; // TODO string json
             case 1:
-                return std::dynamic_pointer_cast<DatasetSchema>(
-                    std::make_shared<TableSchema>(
-                        std::get<nlohmann::json>(param)));
+                return std::make_shared<TableSchema>(
+                    std::get<nlohmann::json>(param));
             case 2:
                 return std::make_shared<TableSchema>(
                     std::get<std::shared_ptr<arrow::Schema>>(param));
@@ -113,7 +113,8 @@ class DatasetMeta {
     // Constructor from dataset object.
     DatasetMeta(const std::shared_ptr<primihub::Dataset> &dataset,
                 const std::string &description,
-                const DatasetVisbility &visibility);
+                const DatasetVisbility &visibility,
+                const std::string& dataset_access_info);
     // Constructor from json string.
     explicit DatasetMeta(const std::string &json);
 
@@ -126,6 +127,8 @@ class DatasetMeta {
         this->data_url = meta.data_url;
         this->driver_type = meta.driver_type;
         this->data_type = meta.data_type;
+        this->access_meta_ = meta.access_meta_;
+        this->server_meta_ = meta.server_meta_;
         return *this;
     }
 
@@ -135,16 +138,32 @@ class DatasetMeta {
     void fromJSON(const std::string &json);
 
     std::string getDriverType() const { return driver_type; }
-    std::string &getDataURL() { return data_url; }
+    std::string& getDataURL() { return data_url; }
     std::string getDescription()  { return description; }
+    std::string getAccessInfo() {return this->access_meta_; }
+    std::string getServerInfo() {return this->server_meta_;}
     void setDataURL(const std::string &data_url) { this->data_url = data_url; }
+    void setServerInfo(const std::string &server_info) { this->server_meta_ = server_info; }
     std::shared_ptr<DatasetSchema> getSchema() { return schema; }
     uint64_t getTotalRecords() { return total_records; }
     DatasetId id;
+    DatasetMeta saveAsPublic();
+
+  protected:
+    /**
+     * some meta data like data access info must treat as private,
+     * such as: database access info or csv file stored path
+     * such infomation must be keep inside instead of releasing to meta server,
+     * so before release, first erase this infomation
+    */
+    void removePrivateMeta();
+    void clearAccessMeta();
 
   private:
     // NOTE data_url format [nodeid:ip:port:/path/to/data]
-    std::string data_url; 
+    std::string data_url;
+    std::string server_meta_;              // location_id:ip:port:use_tls           public
+    std::string access_meta_;              // data access info must store in local  private
     std::string description;
     DatasetVisbility visibility;
     std::string driver_type;

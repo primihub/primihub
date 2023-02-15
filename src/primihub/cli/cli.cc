@@ -16,6 +16,8 @@
 
 #include "src/primihub/cli/cli.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/config/config.h"
+#include "src/primihub/util/network/link_factory.h"
 #include <fstream>  // std::ifstream
 #include <string>
 #include <chrono>
@@ -45,8 +47,8 @@ ABSL_FLAG(std::vector<std::string>,
                "guestLookupTable:STRING:0:./guestlookuptable.csv",
                "predictFileName:STRING:0:./prediction.csv",
                "indicatorFileName:STRING:0:./indicator.csv"}),
-
           "task params, format is <name, type, is array, value>");
+
 ABSL_FLAG(std::vector<std::string>,
           input_datasets,
           std::vector<std::string>({"Data_File", "TestData"}),
@@ -54,11 +56,26 @@ ABSL_FLAG(std::vector<std::string>,
 
 ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
 ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
-
 ABSL_FLAG(std::string, task_lang, "proto", "task language, proto or python");
 ABSL_FLAG(std::string, task_code, "logistic_regression", "task code");
+ABSL_FLAG(bool, use_tls, false, "true/false");
+ABSL_FLAG(std::vector<std::string>, cert_config,
+            std::vector<std::string>({
+                "data/cert/ca.crt",
+                "data/cert/client.key",
+                "data/cert/client.crt"}),
+            "cert config");
 
 namespace primihub {
+namespace client {
+int getFileContents(const std::string& fpath, std::string* contents) {
+    std::ifstream f_in_stream(fpath);
+    std::string contents_((std::istreambuf_iterator<char>(f_in_stream)),
+                        std::istreambuf_iterator<char>());
+    *contents = std::move(contents_);
+    return 0;
+}
+}
 
 void fill_param(const std::vector<std::string>& params,
                 google::protobuf::Map<std::string, ParamValue>* param_map) {
@@ -220,20 +237,8 @@ int SDKClient::SubmitTask() {
 
     LOG(INFO) << " SubmitTask...";
 
-    grpc::Status status =
-        stub_->SubmitTask(&context, pushTaskRequest, &pushTaskReply);
-    if (status.ok()) {
-        LOG(INFO) << "SubmitTask rpc succeeded.";
-        if (pushTaskReply.ret_code() == 0) {
-            LOG(INFO) << "job_id: " << pushTaskReply.job_id() << " success";
-        } else if (pushTaskReply.ret_code() == 1) {
-            LOG(INFO) << "job_id: " << pushTaskReply.job_id() << " doing";
-        } else {
-            LOG(INFO) << "job_id: " << pushTaskReply.job_id() << " error";
-        }
-    } else {
-        LOG(INFO) << "ERROR: " << status.error_message();
-        LOG(INFO) << "SubmitTask rpc failed.";
+    auto ret = channel_->submitTask(pushTaskRequest, &pushTaskReply);
+    if (ret != retcode::SUCCESS) {
         return -1;
     }
     std::vector<std::future<int>> wait_result_futs;
@@ -250,6 +255,18 @@ int SDKClient::SubmitTask() {
         fut.get();
     }
     return 0;
+}
+
+Node getNode(const std::string& server_info, bool use_tls) {
+    std::stringstream ss(server_info);
+    std::vector<std::string> result;
+    while (ss.good()) {
+        std::string substr;
+        getline(ss, substr, ':');
+        result.push_back(substr);
+    }
+    Node server_node(result[0], std::stoi(result[1]), use_tls);
+    return server_node;
 }
 
 }  // namespace primihub
@@ -271,11 +288,27 @@ int main(int argc, char** argv) {
 
     std::vector<std::string> peers;
     peers.push_back(absl::GetFlag(FLAGS_server));
-
+    auto cert_config_path = absl::GetFlag(FLAGS_cert_config);
+    auto use_tls = absl::GetFlag(FLAGS_use_tls);
+    LOG(INFO) << "use tls: " << use_tls;
+    auto link_ctx = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+    if (use_tls) {
+        auto& ca_path = cert_config_path[0];
+        auto& key_path = cert_config_path[1];
+        auto& cert_path = cert_config_path[2];
+        primihub::common::CertificateConfig cert_cfg(ca_path, key_path, cert_path);
+        link_ctx->initCertificate(cert_cfg);
+    }
     for (auto peer : peers) {
         LOG(INFO) << "SDK SubmitTask to: " << peer;
-        primihub::SDKClient client(
-            grpc::CreateChannel(peer, grpc::InsecureChannelCredentials()));
+        // auto channel = primihub::buildChannel(peer, use_tls, cert_config);
+        auto peer_node = primihub::getNode(peer, use_tls);
+        auto channel = link_ctx->getChannel(peer_node);
+        if (channel == nullptr) {
+            LOG(ERROR) << "link_ctx->getChannel(peer_node); failed";
+            return -1;
+        }
+        primihub::SDKClient client(channel);
         auto _start = std::chrono::high_resolution_clock::now();
         auto ret = client.SubmitTask();
         auto _end = std::chrono::high_resolution_clock::now();
@@ -284,7 +317,6 @@ int main(int argc, char** argv) {
         if (!ret) {
             break;
         }
-
     }
 
     return 0;

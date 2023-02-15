@@ -9,7 +9,9 @@ fi
 
 bash pre_build.sh
 
-bazel build --config=linux --define cpu=amd64 --define microsoft-apsi=true :node :cli :opt_paillier_c2py :linkcontext
+ARCH=`arch`
+
+bazel build --config=linux_$ARCH :node :cli :opt_paillier_c2py :linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
@@ -41,4 +43,4 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local 
+docker build -t $IMAGE_NAME:$tag . -f Dockerfile.local

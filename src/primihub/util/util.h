@@ -25,18 +25,22 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "src/primihub/protos/worker.grpc.pb.h"
-
+#include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/common/common.h"
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v,
                char delimiter = ':');
+void str_split(const std::string& str, std::vector<std::string>* v,
+                const std::string& delimiter);
 void peer_to_list(const std::vector<std::string>& peer,
                   std::vector<primihub::rpc::Node>* list);
 
 void sort_peers(std::vector<std::string>* peers);
-
-
+retcode pbNode2Node(const primihub::rpc::Node& pb_node, Node* node);
+retcode node2PbNode(const Node& node, rpc::Node* pb_node);
+retcode parseToNode(const std::string& node_info, Node* node);
+retcode parseTopbNode(const std::string& node_info, rpc::Node* node);
 class IOService;
 
 class Work {
@@ -208,7 +212,8 @@ class SCopedTimer {
 };
 
 int getAvailablePort(uint32_t* port);
-
+std::string strToUpper(const std::string& str);
+std::string strToLower(const std::string& str);
 }  // namespace primihub
 
 #endif  // SRC_primihub_UTIL_UTIL_H_

@@ -22,6 +22,15 @@
 
 namespace primihub {
 class CSVDriver;
+struct CSVAccessInfo : public DataSetAccessInfo {
+  CSVAccessInfo() = default;
+  CSVAccessInfo(const std::string& file_path) : file_path_(file_path) {}
+  std::string toString() override;
+  retcode fromJsonString(const std::string& json_str) override;
+  retcode fromYamlConfig(const YAML::Node& meta_info) override;
+
+  std::string file_path_;
+};
 
 class CSVCursor : public Cursor {
 public:
@@ -42,14 +51,17 @@ class CSVDriver : public DataDriver,
                   public std::enable_shared_from_this<CSVDriver> {
 public:
   explicit CSVDriver(const std::string &nodelet_addr);
+  CSVDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
   ~CSVDriver() {}
-
+  std::shared_ptr<Cursor>& read() override;
   std::shared_ptr<Cursor> &read(const std::string &filePath) override;
   std::shared_ptr<Cursor> &initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
   // FIXME to be deleted
-  int write(std::shared_ptr<arrow::Table> table,
-                    const std::string &filePath);
+  int write(std::shared_ptr<arrow::Table> table, const std::string &filePath);
+
+protected:
+  void setDriverType();
 
 private:
   std::string filePath_;

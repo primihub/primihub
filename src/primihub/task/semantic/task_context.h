@@ -20,6 +20,7 @@
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/common/defines.h"
+#include "src/primihub/node/server_config.h"
 #include <unordered_map>
 #include <queue>
 #include <mutex>
@@ -38,10 +39,12 @@ class TaskContext {
  public:
   TaskContext() {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+    initCertificate();
   }
 
   TaskContext(primihub::network::LinkMode mode) {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(mode);
+    initCertificate();
   }
 
   void setTaskInfo(const std::string& job_id, const std::string& task_id) {
@@ -79,6 +82,15 @@ class TaskContext {
   std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {
     return link_ctx_;
   }
+
+ protected:
+    void initCertificate() {
+        auto& server_config = primihub::ServerConfig::getInstance();
+        auto& host_cfg = server_config.getServiceConfig();
+        if (host_cfg.use_tls()) {
+            link_ctx_->initCertificate(server_config.getCertificateConfig());
+        }
+    }
 
  private:
   std::mutex in_queue_mtx;

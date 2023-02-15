@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Endpoint.h"
 #include "cryptoTools/Network/SocketAdapter.h"
@@ -34,7 +34,7 @@
 #include <glog/logging.h>
 #include <chrono>
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 #include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
 
 #include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
@@ -45,7 +45,7 @@
 #include <numeric>
 
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 using namespace osuCrypto;
 #endif
 using arrow::Table;
@@ -61,7 +61,7 @@ PSIKkrtTask::PSIKkrtTask(const TaskParam *task_param,
                          std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {}
 
-int PSIKkrtTask::_LoadParams(Task &task) {
+retcode PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");
 
@@ -82,7 +82,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             }
             // data_index_ = param_map["clientIndex"].value_int32();
 	        psi_type_ = param_map["psiType"].value_int32();
-            dataset_path_ = param_map["clientData"].value_string();
+            dataset_id_ = param_map["clientData"].value_string();
             result_file_path_ = param_map["outputFullFilename"].value_string();
             host_address_ = param_map["serverAddress"].value_string();
             VLOG(5) << "serverAddress: " << host_address_;
@@ -100,7 +100,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             }
         } catch (std::exception &e) {
             LOG(ERROR) << "Failed to load params: " << e.what();
-            return -1;
+            return retcode::FAIL;
         }
     } else {
         //role_tag_ = EpMode::Server;
@@ -119,7 +119,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
                     data_index_.push_back(client_index.value_int32());
                 }
             }
-            dataset_path_ = param_map["serverData"].value_string();
+            dataset_id_ = param_map["serverData"].value_string();
             host_address_ = param_map["clientAddress"].value_string();
             VLOG(5) << "clientAddress: " << host_address_;
             auto it = param_map.find("sync_result_to_server");
@@ -134,7 +134,7 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             }
         } catch (std::exception &e) {
             LOG(ERROR) << "Failed to load params: " << e.what();
-            return -1;
+            return retcode::FAIL;
         }
     }
     const auto& node_map = task.node_map();
@@ -144,38 +144,27 @@ int PSIKkrtTask::_LoadParams(Task &task) {
             continue;
         }
         const auto& node = it.second;
-        peer_node.ip_ = node.ip();
-        peer_node.port_ = node.port();
-        peer_node.use_tls_ = node.use_tls();
+        primihub::pbNode2Node(node, &peer_node);
     }
     VLOG(5) << "peer_address_: " << peer_node.to_string();
-    return 0;
+    return retcode::SUCCESS;
 }
 
-int PSIKkrtTask::_LoadDataset(void) {
-    std::string match_word{"sqlite"};
-    std::string driver_type;
-    if (dataset_path_.size() > match_word.size()) {
-        driver_type = dataset_path_.substr(0, match_word.size());
-    } else {
-        driver_type = dataset_path_;
+retcode PSIKkrtTask::_LoadDataset(void) {
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
+        return retcode::FAIL;
     }
-    // current we supportes [csv, sqlite] as dataset
-    retcode ret{retcode::SUCCESS};
-    if (match_word == driver_type) {
-        ret = LoadDatasetFromSQLite(dataset_path_, data_index_, elements_);
-    } else {
-        ret = LoadDatasetFromCSV(dataset_path_, data_index_, elements_);
-    }
-     // file reading error or file empty
+    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "Load dataset for psi server failed.";
-        return -1;
+        return retcode::FAIL;
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
 void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     u8 dummy[1];
     PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
@@ -298,7 +287,7 @@ int PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
 
 retcode PSIKkrtTask::broadcastResultToServer() {
     retcode ret{retcode::SUCCESS};
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
     VLOG(5) << "broadcast_result_to_server";
     std::string result_str;
     size_t total_size{0};
@@ -319,42 +308,43 @@ retcode PSIKkrtTask::broadcastResultToServer() {
     return ret;
 }
 
-int PSIKkrtTask::saveResult(void) {
+retcode PSIKkrtTask::saveResult() {
     std::string col_title =
         psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
-    saveDataToCSVFile(result_, result_file_path_, col_title);
+    auto ret = saveDataToCSVFile(result_, result_file_path_, col_title);
+    if (ret != retcode::SUCCESS) { return ret;}
     if (this->sync_result_to_server) {
-        broadcastResultToServer();
+        ret = broadcastResultToServer();
     }
-    return 0;
+    return ret;
 }
-
 
 int PSIKkrtTask::execute() {
     SCopedTimer timer;
-    int ret = _LoadParams(task_param_);
-    if (ret) {
+    auto ret = _LoadParams(task_param_);
+    if (ret != retcode::SUCCESS) {
         if (role_tag_ == 0) {
             LOG(ERROR) << "Kkrt psi client load task params failed.";
         } else {
             LOG(ERROR) << "Kkrt psi server load task params failed.";
         }
-        return ret;
+        return -1;
     }
     auto load_params_ts = timer.timeElapse();
     VLOG(5) << "load_params time cost(ms): " << load_params_ts;
     ret = _LoadDataset();
-    if (ret) {
+    if (ret != retcode::SUCCESS) {
         if (role_tag_ == 0) {
             LOG(ERROR) << "Psi client load dataset failed.";
         } else {
             LOG(ERROR) << "Psi server load dataset failed.";
         }
+        return -1;
     }
     auto load_dataset_ts = timer.timeElapse();
     auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
     VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
-#ifndef __APPLE__
+#if defined(__linux__) && defined(__x86_64__)
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
     getAvailablePort(&data_port);
@@ -411,7 +401,7 @@ int PSIKkrtTask::execute() {
     if (mode == EpMode::Client) {
         auto _start = timer.timeElapse();
         ret = saveResult();
-        if (ret) {
+        if (ret != retcode::SUCCESS) {
             LOG(ERROR) << "Save psi result failed.";
             return -1;
         }

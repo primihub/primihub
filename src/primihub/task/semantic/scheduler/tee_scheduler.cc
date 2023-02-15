@@ -69,9 +69,9 @@ void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
             // do nothing to executor node
             continue;
         }
-        std::string dest_node_address(
-            absl::StrCat(pair.second.ip(), ":", pair.second.port()));
-        Node dest_node(pb_node.ip(), pb_node.port(), pb_node.use_tls(), pb_node.role());
+        std::string dest_node_address(absl::StrCat(pb_node.ip(), ":", pb_node.port()));
+        Node dest_node;
+        pbNode2Node(pb_node, &dest_node);
         LOG(INFO) << " 📧  Dispatching task to: " << dest_node_address;
         scheduled_nodes[dest_node_address] = std::move(dest_node);
         this->push_task_to_node(pair.first,
