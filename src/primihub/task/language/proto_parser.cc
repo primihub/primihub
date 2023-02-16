@@ -31,7 +31,7 @@ namespace primihub::task {
 ProtoParser::ProtoParser(const PushTaskRequest &pushTaskRequest)
     : LanguageParser(pushTaskRequest) {}
 
-void ProtoParser::parseDatasets() {
+retcode ProtoParser::parseDatasets() {
 
     // get datasets params first
     auto dataset_names = this->pushTaskRequest_.task().input_datasets();
@@ -52,7 +52,9 @@ void ProtoParser::parseDatasets() {
         }
     } catch (const std::exception &e) {
         LOG(ERROR) << "parse dataset error: " << e.what();
+        return retcode::FAIL;
     }
+    return retcode::SUCCESS;
 }
 
 } // namespace primihub::task

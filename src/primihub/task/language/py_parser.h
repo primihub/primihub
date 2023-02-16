@@ -38,28 +38,28 @@ typedef struct NodeContext {
 } NodeContext;
 
 class PyParser : public LanguageParser {
-  public:
+ public:
     PyParser(const PushTaskRequest &pushTaskRequest)
         : LanguageParser(pushTaskRequest) {
         py_code_ = pushTaskRequest_.task().code();
     }
     ~PyParser();
 
-    void parseTask() override;
-    void parseDatasets();
-    void parseNodes() override;
-    
+    retcode parseTask() override;
+    retcode parseDatasets();
+    retcode parseNodes() override;
+
     std::map<std::string, NodeContext> getNodeContextMap() const {
         return nodes_context_map_;
     }
-    
-  private:
+
+ private:
     std::string py_code_;
     std::string procotol_;
     std::vector<std::string> roles_;
     std::vector<std::string> func_params_;
     std::map<std::string, NodeContext> nodes_context_map_;
-    
+
     py::object  ph_context_, ph_exec_m_;
 };
 

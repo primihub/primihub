@@ -581,3 +581,8 @@ http_archive(
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/stduuid-1.2.2.tar.gz",
   ]
 )
+
+local_repository(
+    name = "com_github_base64_cpp",
+    path = "/home/cuibo/cpp-base64",
+)
