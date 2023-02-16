@@ -25,6 +25,7 @@ class HeterLrGuest(HeteroLrBase):
         self.add_noise = add_noise
         self.n_iter_no_change = n_iter_no_change
         self.momentum = momentum
+        self.prev_grad = 0
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
