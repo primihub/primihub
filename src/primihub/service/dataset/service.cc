@@ -211,6 +211,7 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
             auto driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
             this->registerDriver(fid, driver);
             meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
+            meta.setServerInfo(nodelet_addr_);
             // Publish dataset meta on public network.
             metaService_->putMeta(meta);
         }
