@@ -167,7 +167,8 @@ retcode PSIKkrtTask::_LoadDataset(void) {
 #if defined(__linux__) && defined(__x86_64__)
 void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     u8 dummy[1];
-    PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    srand(time(nullptr));
+    PRNG prng(_mm_set_epi32(rand(), rand(), rand(), rand()));
 
     u64 sendSize;
     //u64 recvSize = 10;
@@ -215,7 +216,8 @@ void PSIKkrtTask::_kkrtRecv(Channel& chl) {
 
 void PSIKkrtTask::_kkrtSend(Channel& chl) {
     u8 dummy[1];
-    PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    srand(time(nullptr));
+    PRNG prng(_mm_set_epi32(rand(), rand(), rand(), rand()));
 
     u64 sendSize = elements_.size();
     u64 recvSize;
