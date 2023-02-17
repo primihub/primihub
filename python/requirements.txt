@@ -25,5 +25,6 @@ transformers
 requests
 line_profiler
 matplotlib
-
+tensorflow==2.11.0
+tensorflow-federated==0.49.0
 dp-accounting==0.3.0
