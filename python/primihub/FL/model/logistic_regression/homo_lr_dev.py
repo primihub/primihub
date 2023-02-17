@@ -75,15 +75,15 @@ class LRModel:
         temp = x.dot(self.theta[1:]) + self.theta[0]
         try:
             return (np.maximum(temp, 0.).sum() - y.dot(temp) +
-                    np.log(1 + np.exp(-np.abs(temp))).sum() +
-                    0.5 * self.alpha * self.theta.dot(self.theta)) / x.shape[0]
+                    np.log(1 + np.exp(-np.abs(temp))).sum()) / x.shape[0] \
+                    + 0.5 * self.alpha * self.theta.dot(self.theta)
         except:
             return float('inf')
 
     def compute_grad(self, x, y):
         temp = self.predict_prob(x) - y
-        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
-                + self.alpha * self.theta) / x.shape[0]
+        return np.concatenate((temp.sum(keepdims=True), x.T.dot(temp))) \
+               / x.shape[0] + self.alpha * self.theta 
 
     def gradient_descent(self, x, y):
         grad = self.compute_grad(x, y)
@@ -236,7 +236,7 @@ class LRModel_DPSGD(LRModel):
             noise = np.random.normal(0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
 
         grad += noise
-        return grad / x.shape[0]
+        return grad / x.shape[0] + self.alpha * self.theta
 
 
 class LRModel_Paillier(LRModel):
@@ -268,11 +268,12 @@ class LRModel_Paillier(LRModel):
     def compute_grad(self, x, y):
         # Taylor first order expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
         temp = 0.5 + 0.25 * (x.dot(self.theta[1:]) + self.theta[0]) - y
-        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
-                + self.alpha * self.theta) / x.shape[0]
+        return np.concatenate((temp.sum(keepdims=True), x.T.dot(temp))) \
+               / x.shape[0] + self.alpha * self.theta 
 
     def loss(self, x, y):
         # Taylor first order expansion: L(x) = ln2 + (0.5 - y) * (x.dot(w) + b)
+        # Ignore regularization term due to paillier doesn't support ciphertext multiplication
         return (np.log(2) + (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0]))) / x.shape[0]
 
 
@@ -281,8 +282,9 @@ class Arbiter(LRModel):
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self, host_channel, guest_channel, log_handler):
+    def __init__(self, alpha, host_channel, guest_channel, log_handler):
         self.theta = None
+        self.alpha = alpha
         self.host_channel = host_channel
         self.guest_channel = guest_channel
         self.log_handler = log_handler
@@ -301,13 +303,17 @@ class Arbiter(LRModel):
         return np.average(losses, weights=weights), np.average(accs, weights=weights)
 
     def metrics_log(self, weights):
-        host_loss = self.host_channel.recv("host_loss")
-        guest_loss = self.guest_channel.recv("guest_loss")
+        penalty_loss = 0.5 * self.alpha * self.theta.dot(self.theta)
+        host_loss = self.host_channel.recv("host_loss") - penalty_loss
+        guest_loss = self.guest_channel.recv("guest_loss") - penalty_loss
         losses = [host_loss, guest_loss]
+
         host_acc = self.host_channel.recv("host_acc")
         guest_acc = self.guest_channel.recv("guest_acc")
         accs = [host_acc, guest_acc]
+
         loss, acc = self.loss_and_acc(losses, accs, weights)
+        loss += penalty_loss
         self.log_handler.info("loss={}, acc={}".format(loss, acc))
 
         self.loss_value = loss
@@ -325,8 +331,8 @@ class Arbiter(LRModel):
 
 class Arbiter_Paillier(LRModel_Paillier, Arbiter):
     
-    def __init__(self, host_channel, guest_channel, log_handler):
-        Arbiter.__init__(self, host_channel, guest_channel, log_handler)
+    def __init__(self, alpha, host_channel, guest_channel, log_handler):
+        Arbiter.__init__(self, alpha, host_channel, guest_channel, log_handler)
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
         self.broadcast_public_key()
 
@@ -406,18 +412,18 @@ def run_homo_lr_arbiter(config,
 
     log_handler.info("Create channel between arbiter and guest, "+
                      "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
-                     "remote ip {}, remote port {}.".format(guest_ip, guest_port)) 
-    
+                     "remote ip {}, remote port {}.".format(guest_ip, guest_port))
+
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        arbiter = Arbiter(host_channel, guest_channel, log_handler)
+        arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        arbiter = Arbiter(host_channel, guest_channel, log_handler)
+        arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(host_channel, guest_channel, log_handler)
+        arbiter = Arbiter_Paillier(config['alpha'], host_channel, guest_channel, log_handler)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
@@ -770,28 +776,30 @@ def run_party(party_name, config):
     fl_console_log.info("Finish homo-LR {} logic.".format(party_name))
 
 
-#@ph.context.function(role='arbiter',
-#                     protocol='lr',
-#                     datasets=['train_homo_lr'],
-#                     port='9010',
-#                     task_type="lr-train")
-#def run_arbiter_party():
-#    run_party('arbiter', config)
-#
-#
-#@ph.context.function(role='host',
-#                     protocol='lr',
-#                     datasets=['train_homo_lr_host'],
-#                     port='9020',
-#                     task_type="lr-train")
-#def run_host_party():
-#    run_party('host', config)
-#
-#
-#@ph.context.function(role='guest',
-#                     protocol='lr',
-#                     datasets=['train_homo_lr_guest'],
-#                     port='9030',
-#                     task_type="lr-train")
-#def run_guest_party():
-#    run_party('guest', config)
+'''
+@ph.context.function(role='arbiter',
+                     protocol='lr',
+                     datasets=['train_homo_lr'],
+                     port='9010',
+                     task_type="lr-train")
+def run_arbiter_party():
+    run_party('arbiter', config)
+
+
+@ph.context.function(role='host',
+                     protocol='lr',
+                     datasets=['train_homo_lr_host'],
+                     port='9020',
+                     task_type="lr-train")
+def run_host_party():
+    run_party('host', config)
+
+
+@ph.context.function(role='guest',
+                     protocol='lr',
+                     datasets=['train_homo_lr_guest'],
+                     port='9030',
+                     task_type="lr-train")
+def run_guest_party():
+    run_party('guest', config)
+'''
