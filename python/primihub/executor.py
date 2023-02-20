@@ -60,47 +60,53 @@ class Executor:
         if not func_params:
             try:
                 logger.debug("start execute")
+                func()
+                logger.debug("end start execute")
                 # func()
-                process = _run_in_process(target=func)
-                Context.clean_content()
+                # process = _run_in_process(target=func)
+                # # Context.clean_content()
 
-                while process.exitcode is None:
-                    process.join(timeout=5)
-                    logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.info("end execute with exit code: {}".format(process.exitcode))
-                # process.exitcode 0 success, -exit_code failed
-                if (process.exitcode != 0):
-                    err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                    logger.error(err_msg)
-                    raise Exception(err_msg)
+                # while process.exitcode is None:
+                #     process.join(timeout=5)
+                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
+                # logger.info("end execute with exit code: {}".format(process.exitcode))
+                # # process.exitcode 0 success, -exit_code failed
+                # if (process.exitcode != 0):
+                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
+                #     logger.error(err_msg)
+                #     raise Exception(err_msg)
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
                 raise e
             finally:
-                Context.clean_content()
+                # Context.clean_content()
+                pass
         else:
             try:
                 logger.debug("start execute with params")
-                # func(*func_params)
-                process = _run_in_process(target=func, args=func_params)
-                Context.clean_content()
+                func(*func_params)
+                logger.debug("end start execute with params")
+                # # func(*func_params)
+                # process = _run_in_process(target=func, args=func_params)
+                # # Context.clean_content()
 
-                while process.exitcode is None:
-                    process.join(timeout=5)
-                    logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                logger.info("end execute with exit code: {}".format(process.exitcode))
-                # process.exitcode 0 success, -exit_code failed
-                if (process.exitcode != 0):
-                    err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                    logger.error(err_msg)
-                    raise Exception(err_msg)
+                # while process.exitcode is None:
+                #     process.join(timeout=5)
+                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
+                # logger.info("end execute with exit code: {}".format(process.exitcode))
+                # # process.exitcode 0 success, -exit_code failed
+                # if (process.exitcode != 0):
+                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
+                #     logger.error(err_msg)
+                #     raise Exception(err_msg)
             except Exception as e:
                 logger.error("Exception: ", str(e))
                 traceback.print_exc()
                 raise e
             finally:
-                Context.clean_content()
+                # Context.clean_content()
+                pass
 
     @staticmethod
     def execute_test():

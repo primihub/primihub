@@ -62,6 +62,9 @@ class TaskBase {
   inline std::string node_id() {
     return node_id_;
   }
+  inline std::string submit_client_id() {
+    return submit_client_id_;
+  }
   inline task_context_t& getTaskContext() {
     return task_context_;
   }

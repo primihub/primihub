@@ -32,33 +32,17 @@ namespace primihub::task {
  *  TODO Run python use pybind11.
  */
 class FLTask : public TaskBase {
-  public:
+ public:
     FLTask(const std::string &node_id, const TaskParam *task_param,
            const PushTaskRequest &task_request,
            std::shared_ptr<DatasetService> dataset_service);
 
-    ~FLTask();
-
+    ~FLTask() = default;
     int execute() override;
 
-  private:
-    std::string jobid_;
-    std::string taskid_;
-
-    PushTaskRequest task_request_;
-    std::string py_code_;
-    NodeContext node_context_;
-    py::object ph_exec_m_, ph_context_m_;
-    std::map<std::string, std::string> dataset_meta_map_;
-
-    // Key is the combine of node's nodeid and role,
-    // and value is 'ip:port'.
-    std::map<std::string, std::string> node_addr_map_;
-
-    // Save all params.
-    std::map<std::string, std::string> params_map_;
+ private:
+    const PushTaskRequest* task_request_{nullptr};
 };
-
 } // namespace primihub::task
 
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_FL_TASK_H_

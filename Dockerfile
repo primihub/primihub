@@ -33,7 +33,7 @@ ADD . /src
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
   && ARCH=`arch` \
-  && bazel build --config=linux_$ARCH :node :cli :opt_paillier_c2py :linkcontext
+  && bazel build --config=linux_$ARCH :node :py_main :cli :opt_paillier_c2py :linkcontext
 
 FROM ubuntu:20.04 as runner
 

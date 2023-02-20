@@ -27,25 +27,25 @@ using primihub::service::DatasetWithParamTag;
 using primihub::rpc::PushTaskRequest;
 
 namespace primihub::task {
-    // Primihub language layer
-    class LanguageParser {
-        public:
-            LanguageParser(const PushTaskRequest &pushTaskRequest) {
-                pushTaskRequest_.CopyFrom(pushTaskRequest);
-            }
-            ~LanguageParser() {}
+// Primihub language layer
+class LanguageParser {
+ public:
+    LanguageParser(const PushTaskRequest &pushTaskRequest) {
+        pushTaskRequest_.CopyFrom(pushTaskRequest);
+    }
+    ~LanguageParser() {}
 
-            virtual void parseTask() = 0;
-            virtual void parseDatasets() = 0;
-            virtual void parseNodes()  = 0;
+    virtual retcode parseTask() = 0;
+    virtual retcode parseDatasets() = 0;
+    virtual retcode parseNodes()  = 0;
 
-            PushTaskRequest getPushTaskRequest() { return pushTaskRequest_; }
-            std::vector<DatasetWithParamTag> getDatasets() { return input_datasets_with_tag_; }
-        
-        protected:
-            PushTaskRequest pushTaskRequest_;
-            std::vector<DatasetWithParamTag> input_datasets_with_tag_;
-    };
+    PushTaskRequest getPushTaskRequest() { return pushTaskRequest_; }
+    std::vector<DatasetWithParamTag> getDatasets() { return input_datasets_with_tag_; }
+
+ protected:
+    PushTaskRequest pushTaskRequest_;
+    std::vector<DatasetWithParamTag> input_datasets_with_tag_;
+};
 
 } // namespace primihub::task
 
