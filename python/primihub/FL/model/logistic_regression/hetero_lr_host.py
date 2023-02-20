@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from primihub.utils.sampling import random_sample
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
 
@@ -19,7 +20,9 @@ class HeterLrHost(HeteroLrBase):
                  add_noise=True,
                  tol=0.001,
                  momentum=0.7,
-                 n_iter_no_change=5):
+                 n_iter_no_change=5,
+                 sample_method="random",
+                 sample_ratio=0.3):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -31,6 +34,8 @@ class HeterLrHost(HeteroLrBase):
         initial_eta0 = typw / max(1.0, dloss(-typw, 1.0))
         self.optimal_init = 1.0 / (initial_eta0 * self.alpha)
         self.n_iter_no_change = n_iter_no_change
+        self.sample_method = sample_method
+        self.sample_ratio = sample_ratio
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -116,11 +121,24 @@ class HeterLrHost(HeteroLrBase):
 
             self.prev_grad = grad
 
-        pass
-
     def fit(self, x, y):
-        if isinstance(x, pd.DataFrame):
-            x = x.values
+        if self.sample_method == "random":
+            sample_ids = random_sample(data=x, rate=self.sample_ratio)
+            self.channel.sender('sample_ids', sample_ids)
+
+            if isinstance(x, np.ndarray):
+                x = x[sample_ids]
+
+            else:
+                x = x.iloc[sample_ids]
+                x = x.values
+
+            if isinstance(y, np.ndarray):
+                y = y[sample_ids]
+            else:
+                y = y.iloc[sample_ids]
+
+
         x = self.add_intercept(x)
         if self.batch_size < 0:
             self.batch_size = x.shape[0]
@@ -171,7 +189,7 @@ class HeterLrHost(HeteroLrBase):
                     "best_iter_changed": best_iter_changed,
                     'is_converged': is_converged
                 })
-            
+
             if is_converged:
                 break
 

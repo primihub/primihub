@@ -1,5 +1,7 @@
 import primihub as ph
 import pandas as pd
+import ray
+import modin.pandas as md
 from primihub import dataset, context
 from primihub.utils.net_worker import GrpcServer
 from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
@@ -16,7 +18,8 @@ config = {
     "host_columns": None,
     "guest_columns": None,
     "scale_type": 'z-score',
-    "batch_size": 512
+    "batch_size": 512,
+    "sample_method": None
 }
 
 
@@ -28,6 +31,7 @@ config = {
     port='8000',
     task_type="classification")
 def lr_host_logic():
+    ray.init()
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -45,6 +49,7 @@ def lr_host_logic():
     data = ph.dataset.read(dataset_key=data_key).df_data
     print("ports: ", guest_port, host_port)
     #data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
+    # data = md.read_csv("/home/xusong/data/merged_large_host.csv")
 
     host_cols = config['host_columns']
 
@@ -70,6 +75,7 @@ def lr_host_logic():
                           random_state=config['random_state'],
                           host_channel=host_channel,
                           add_noise=False,
+                          sample_method=config['sample_method'],
                           batch_size=config['batch_size'])
     scale_type = config['scale_type']
 
@@ -97,6 +103,7 @@ def lr_host_logic():
     port='9000',
     task_type="classification")
 def lr_guest_logic(cry_pri="paillier"):
+    ray.init()
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -114,6 +121,7 @@ def lr_guest_logic(cry_pri="paillier"):
     data = ph.dataset.read(dataset_key=data_key).df_data
     print("ports: ", host_port, guest_port)
     # data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
+    # data = md.read_csv("/home/xusong/data/merged_large_guest.csv")
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
@@ -135,6 +143,7 @@ def lr_guest_logic(cry_pri="paillier"):
                             optimal_method=config['optimal_method'],
                             random_state=config['random_state'],
                             guest_channel=guest_channel,
+                            sample_method=config['sample_method'],
                             batch_size=config['batch_size'])
 
     scale_type = config['scale_type']

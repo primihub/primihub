@@ -4,10 +4,10 @@ import pandas as pd
 
 
 def random_sample(data, rate: float):
-    if isinstance(data, pd.DataFrame):
-        all_ids = data.index.tolist()
-    elif isinstance(data, np.array):
+    if isinstance(data, np.ndarray):
         all_ids = np.arange(len(data.shape[0]))
+    else:
+        all_ids = data.index.tolist()
 
     assert rate > 0 and rate <= 1.0
 

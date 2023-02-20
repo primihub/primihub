@@ -18,7 +18,8 @@ class HeterLrGuest(HeteroLrBase):
                  guest_channel=None,
                  add_noise=True,
                  n_iter_no_change=5,
-                 momentum=0.7):
+                 momentum=0.7,
+                 sample_method="random"):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = guest_channel
@@ -26,6 +27,7 @@ class HeterLrGuest(HeteroLrBase):
         self.n_iter_no_change = n_iter_no_change
         self.momentum = momentum
         self.prev_grad = 0
+        self.sample_method = sample_method
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
@@ -75,8 +77,16 @@ class HeterLrGuest(HeteroLrBase):
         self.theta -= self.learning_rate * grad
 
     def fit(self, x):
-        if isinstance(x, pd.DataFrame):
-            x = x.values
+        if self.sample_method == "random":
+            sample_ids = self.channel.recv('sample_ids')
+
+            if isinstance(x, np.ndarray):
+                x = x[sample_ids]
+
+            else:
+                x = x.iloc[sample_ids]
+                x = x.values
+
         if self.batch_size < 0:
             self.batch_size = x.shape[0]
 
