@@ -1,5 +1,3 @@
--extra-index-url https://download.pytorch.org/whl/cpu
-
 pyarrow==6.0.1
 pandas
 pytest
@@ -31,6 +29,6 @@ matplotlib
 #tensorflow-federated==0.49.0
 dp-accounting==0.3.0
 
-torch==1.13.1+cpu
-torchvision==0.14.1+cpu
-torchaudio==0.13.1+cpu
+torch==1.13.1
+torchvision==0.14.1
+torchaudio==0.13.1
