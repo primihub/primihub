@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 import pandas as pd
 from primihub.utils.sampling import random_sample
@@ -122,14 +123,17 @@ class HeterLrHost(HeteroLrBase):
             self.prev_grad = grad
 
     def fit(self, x, y):
+
         if self.sample_method == "random":
             sample_ids = random_sample(data=x, rate=self.sample_ratio)
             self.channel.sender('sample_ids', sample_ids)
 
             if isinstance(x, np.ndarray):
                 x = x[sample_ids]
+                col_names = []
 
             else:
+                col_names = x.columns
                 x = x.iloc[sample_ids]
                 x = x.values
 
@@ -137,7 +141,6 @@ class HeterLrHost(HeteroLrBase):
                 y = y[sample_ids]
             else:
                 y = y.iloc[sample_ids]
-
 
         x = self.add_intercept(x)
         if self.batch_size < 0:
@@ -200,3 +203,13 @@ class HeterLrHost(HeteroLrBase):
 
         print("converged status: ", converged_iter, converged_acc,
               converged_loss)
+
+        model_path = "hetero_lr_host.ml"
+        host_model = {
+            "weights": self.theta[1:],
+            "bias": self.theta[0],
+            "columns": col_names
+        }
+
+        with open(model_path, 'wb') as lr_host:
+            pickle.dump(host_model, lr_host)

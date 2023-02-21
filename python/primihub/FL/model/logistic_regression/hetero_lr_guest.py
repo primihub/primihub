@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 import pandas as pd
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, trucate_geometric_thres
@@ -81,9 +82,10 @@ class HeterLrGuest(HeteroLrBase):
             sample_ids = self.channel.recv('sample_ids')
 
             if isinstance(x, np.ndarray):
+                col_names = []
                 x = x[sample_ids]
-
             else:
+                col_names = x.columns
                 x = x.iloc[sample_ids]
                 x = x.values
 
@@ -122,3 +124,9 @@ class HeterLrGuest(HeteroLrBase):
 
         self.theta = best_theta
         print("best theta: ", best_theta)
+
+        model_path = "hetero_lr_guest.ml"
+        host_model = {"weights": self.theta, "bias": 0, "columns": col_names}
+
+        with open(model_path, 'wb') as lr_guest:
+            pickle.dump(host_model, lr_guest)
