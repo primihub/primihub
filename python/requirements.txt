@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 pyarrow==6.0.1
 pandas
 pytest
