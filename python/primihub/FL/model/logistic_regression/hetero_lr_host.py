@@ -23,7 +23,7 @@ class HeterLrHost(HeteroLrBase):
                  momentum=0.7,
                  n_iter_no_change=5,
                  sample_method="random",
-                 sample_ratio=0.3):
+                 sample_ratio=0.5):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -124,7 +124,7 @@ class HeterLrHost(HeteroLrBase):
 
     def fit(self, x, y):
 
-        if self.sample_method == "random":
+        if self.sample_method == "random" and x.shape[0] > 50000:
             sample_ids = random_sample(data=x, rate=self.sample_ratio)
             self.channel.sender('sample_ids', sample_ids)
 
