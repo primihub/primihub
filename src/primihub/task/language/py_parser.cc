@@ -15,15 +15,19 @@
  */
 #include <glog/logging.h>
 #include <iostream>
+#include <mutex>
 
 #include "src/primihub/task/language/py_parser.h"
 
+std::mutex global_mtx;
 namespace primihub::task {
 /**
  * @brief Parse datasets from python code.
  * @return Dataset names.
  */
-void PyParser::parseDatasets() {}
+retcode PyParser::parseDatasets() {
+  return retcode::SUCCESS;
+}
 
 PyParser::~PyParser() {
   ph_context_.release();
@@ -39,26 +43,22 @@ PyParser::~PyParser() {
  *            4. What python code and params to execute in each role.
  *         from python code.
  */
-void PyParser::parseTask() {
-
+retcode PyParser::parseTask() {
   try {
+    std::lock_guard<std::mutex> lck(global_mtx);
     py::gil_scoped_acquire acquire;
     ph_context_ = py::module::import("primihub.context").attr("Context");
     ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
     ph_exec_m_.attr("execute")(this->py_code_);
-
     // get protocol
     procotol_ = ph_context_.attr("get_protocol")().cast<std::string>();
-
     // get roles
     auto roles = ph_context_.attr("get_roles")().cast<py::list>();
-
     // get func params map
     auto func_params_ =
         ph_context_.attr("get_func_params_map")().cast<py::tuple>();
 
     for (auto &role : roles) {
-      std::cout << role.cast<std::string>() << std::endl;
       this->roles_.push_back(role.cast<std::string>());
     }
 
@@ -77,10 +77,9 @@ void PyParser::parseTask() {
       _node_context.dumps_func =
           node_context_obj.attr("dumps_func").cast<std::string>();
       _node_context.task_type = task_type;
-
       auto datasets = node_context_obj.attr("datasets").cast<py::list>();
       for (auto &dataset : datasets) {
-        LOG(INFO) << "Python assign dataset: " << dataset.cast<std::string>();
+        VLOG(3) << "Python assign dataset: " << dataset.cast<std::string>();
         _node_context.datasets.push_back(dataset.cast<std::string>());
         // Datasets with role tag.
         this->input_datasets_with_tag_.push_back(
@@ -94,18 +93,20 @@ void PyParser::parseTask() {
         std::string port = ds_port.second.cast<std::string>();
         _node_context.dataset_port_map[dataset] = port;
       }
-
       this->nodes_context_map_[_node_context.role] = _node_context;
     }
-
+    // clean code parse result
+    ph_context_.attr("clean_content")();
   } catch (std::exception &e) {
     LOG(ERROR) << "Failed to parse python: " << e.what();
-    return;
+    return retcode::FAIL;
   }
+  return retcode::SUCCESS;
 }
 
-void PyParser::parseNodes() {
+retcode PyParser::parseNodes() {
   // TODO
+  return retcode::SUCCESS;
 }
 
 } // namespace primihub::task

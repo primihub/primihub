@@ -78,6 +78,7 @@ LINK_OPTS = select({
     "//conditions:default": DEFAULT_LINK_OPTS,
 })
 
+LINK_PYTHON_OPTS = PLACEHOLDER-PYTHON3.X-CONFIG
 
 C_OPT = [
     "-O0",
@@ -548,8 +549,9 @@ cc_library(
     }),
     linkstatic = False,
     deps = [
-	    ":eigen",
-	    "@openssl",
+      ":eigen",
+      "@openssl",
+      ":common_util",
     ]
 )
 
@@ -858,12 +860,14 @@ cc_library(
     }),
     # pre_build.sh use it to help locate line content of which need replace,
     # don't remove it.
-    linkopts = LINK_OPTS + PLACEHOLDER-PYTHON3.X-CONFIG,
+    linkopts = LINK_OPTS + LINK_PYTHON_OPTS,
     linkstatic = False,
     deps = TASK_LIB_DEPS + [
         ":communication_lib",
         ":endian_util",
         ":server_config",
+        "@boost//:process",
+        "@com_github_base64_cpp//:base64_lib",
     ],
 )
 
@@ -1341,6 +1345,26 @@ py_library(
 ########### pybind11 warppers end ########
 
 cc_binary(
+    name = "py_main",
+    srcs = glob([
+        "src/primihub/executor/py_executor.h",
+        "src/primihub/executor/py_executor.cc",
+    ]),
+    linkopts = LINK_OPTS + LINK_PYTHON_OPTS,
+    deps = [
+        ":common_defination",
+        ":worker_proto",
+        "@pybind11",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/memory",
+        "@com_github_glog_glog//:glog",
+        "@com_github_base64_cpp//:base64_lib",
+    ],
+)
+
+cc_binary(
     name = "node",
     srcs = glob([
         "src/primihub/node/node.cc",
@@ -1371,6 +1395,9 @@ cc_binary(
         ":util_lib",
         ":server_config",
     ],
+    data = [
+        ":py_main",
+    ],
 )
 
 cc_binary(
@@ -1399,6 +1426,7 @@ cc_binary(
         "@openssl",
         "@com_github_stduuid//:stduuid_lib",
         ":communication_lib",
+        "@nlohmann_json",
     ],
 )
 

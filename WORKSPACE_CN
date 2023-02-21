@@ -538,7 +538,8 @@ http_archive(
 # APSI
 git_repository(
    name = "mircrosoft_apsi",
-   branch = "bazel_version",
+   #branch = "bazel_version",
+   commit = "44243c1a85435c04ca858279757ca5524dd3c9aa",
    remote = "https://gitee.com/primihub/APSI.git",
 )
 
@@ -579,4 +580,10 @@ http_archive(
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/stduuid-1.2.2.tar.gz",
   ]
+)
+
+git_repository(
+    name = "com_github_base64_cpp",
+    commit = "294208257517a97dd42911cac9f1d4da2a57d316",
+    remote = "https://github.com/primihub/cpp-base64.git",
 )
