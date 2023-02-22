@@ -356,9 +356,9 @@ class Arbiter(LRModel):
 
 class Arbiter_Paillier(LRModel_Paillier, Arbiter):
     
-    def __init__(self, alpha, host_channel, guest_channel, log_handler):
+    def __init__(self, alpha, n_length, host_channel, guest_channel, log_handler):
         Arbiter.__init__(self, alpha, host_channel, guest_channel, log_handler)
-        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
+        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length) 
         self.broadcast_public_key()
 
     def broadcast_public_key(self):
@@ -449,7 +449,7 @@ def run_homo_lr_arbiter(config,
         arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(config['alpha'], host_channel, guest_channel, log_handler)
+        arbiter = Arbiter_Paillier(config['alpha'], config['n_length'], host_channel, guest_channel, log_handler)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
