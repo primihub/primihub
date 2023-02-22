@@ -294,9 +294,7 @@ void ProtocolSemanticParser::metasToPeerList(
     auto _meta = meta_with_tag.first;
     Node node_info;
     std::string server_info = _meta->getServerInfo();
-    LOG(ERROR) << "server_infoserver_info: " << server_info;
     node_info.fromString(server_info);
-
     rpc::Node node;
     primihub::node2PbNode(node_info, &node);
     bool is_new_peer = true;

@@ -21,51 +21,7 @@
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/task_context.h"
-
-#define CHECK_RETCODE_WITH_RETVALUE(ret_code, retvalue)  \
-    do {                                                \
-        if (ret_code != retcode::SUCCESS) {             \
-            return retvalue;                            \
-        }                                               \
-    } while(0);
-
-#define CHECK_RETCODE(ret_code)                 \
-    do {                                        \
-        if (ret_code != retcode::SUCCESS) {     \
-            return retcode::FAIL;               \
-        }                                       \
-    } while(0);
-
-#define CHECK_RETCODE_WITH_ERROR_MSG(ret_code, error_msg)   \
-    do {                                                    \
-        if (ret_code != retcode::SUCCESS) {                 \
-            LOG(ERROR) << error_msg;                        \
-            return retcode::FAIL;                           \
-        }                                                   \
-    } while(0);
-
-#define CHECK_NULLPOINTER(ptr, ret_code)          \
-    do {                                          \
-        if (ptr == nullptr) {                     \
-            return ret_code;                      \
-        }                                         \
-    } while(0);
-
-#define CHECK_NULLPOINTER_WITH_ERROR_MSG(ptr, error_msg)    \
-    do {                                                    \
-        if (ret_code == nullptr) {                          \
-            LOG(ERROR) << error_msg;                        \
-            return retcode::FAIL;                           \
-        }                                                   \
-    } while(0);
-
-#define CHECK_TASK_STOPPED(ret_data)                        \
-    do {                                                    \
-        if (this->has_stopped()) {                          \
-            LOG(ERROR) << "task has been set stopped";      \
-            return ret_data;                                \
-        }                                                   \
-    } while(0);
+#include "src/primihub/common/value_check_util.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;

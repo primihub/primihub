@@ -187,6 +187,7 @@ cc_library(
     name = "common_defination",
     hdrs = [
         "src/primihub/common/common.h",
+        "src/primihub/common/value_check_util.h",
     ],
 )
 

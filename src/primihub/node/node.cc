@@ -424,7 +424,6 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
         return grpc::Status::OK;
     }
     // fetch data from task recv queue
-    LOG(ERROR) << "begin to receive data from remote";
     auto& recv_queue = worker->getTask()->getTaskContext().getRecvQueue(role);
     std::string forward_recv_data;
     recv_queue.wait_and_pop(forward_recv_data);

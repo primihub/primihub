@@ -122,7 +122,7 @@ retcode PsiCommonOperator::LoadDatasetInternal(
         const std::vector<int>& data_cols,
         std::vector<std::string>& col_array) {
 //
-    auto& cursor = driver->read();
+    auto cursor = driver->read();
     auto ds = cursor->read();
     if (ds == nullptr) {
         LOG(ERROR) << "get data failed";
@@ -145,8 +145,8 @@ retcode PsiCommonOperator::LoadDatasetInternal(
     std::string nodeaddr("test address"); // TODO
     std::shared_ptr<DataDriver> driver =
         DataDirverFactory::getDriver(driver_name, nodeaddr);
-    std::shared_ptr<Cursor> &cursor = driver->read(conn_str);
-    std::shared_ptr<Dataset> ds = cursor->read();
+    auto cursor = driver->read(conn_str);
+    auto ds = cursor->read();
     if (ds == nullptr) {
         return retcode::FAIL;
     }

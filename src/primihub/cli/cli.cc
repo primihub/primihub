@@ -320,8 +320,6 @@ int SDKClient::SubmitTask() {
                             has_error = true;
                             break;
                         }
-                    } else {
-                        LOG(ERROR) << "unready";
                     }
                 }
             }

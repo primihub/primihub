@@ -104,7 +104,7 @@ retcode node2PbNode(const Node& node, primihub::rpc::Node* pb_node) {
 retcode parseToNode(const std::string& node_info, Node* node) {
     std::vector<std::string> addr_info;
     str_split(node_info, &addr_info, ':');
-    LOG(ERROR) << "nodelet_attr: " << node_info;
+    VLOG(5) << "nodelet_attr: " << node_info;
     if (addr_info.size() < 4) {
         return retcode::FAIL;
     }
@@ -118,7 +118,7 @@ retcode parseToNode(const std::string& node_info, Node* node) {
 retcode parseTopbNode(const std::string& node_info, rpc::Node* node) {
     std::vector<std::string> addr_info;
     str_split(node_info, &addr_info, ':');
-    LOG(ERROR) << "nodelet_attr: " << node_info;
+    VLOG(5) << "nodelet_attr: " << node_info;
     if (addr_info.size() < 4) {
         return retcode::FAIL;
     }
