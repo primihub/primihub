@@ -1,6 +1,7 @@
 import numpy as np
 
 
+# merge fpr and tpr from two clients
 def fpr_tpr_merge2(fpr1, tpr1, thresholds1,
                    fpr2, tpr2, thresholds2,
                    num_positive_examples_weights,
@@ -12,6 +13,7 @@ def fpr_tpr_merge2(fpr1, tpr1, thresholds1,
     idx1, idx2 = 0, 0
     fpr1_prev, tpr1_prev, fpr2_prev, tpr2_prev = 0, 0, 0, 0
 
+    # merge two descending thresholds arrays
     while idx1 < len(thresholds1) or idx2 < len(thresholds2):
         if idx1 == len(thresholds1):
             fpr2_prev = fpr2[idx2]
@@ -24,6 +26,7 @@ def fpr_tpr_merge2(fpr1, tpr1, thresholds1,
             thresholds_merge.append(thresholds1[idx1])
             idx1 += 1
         else:
+            # handle equally scored instances (thresholds)
             score = max(thresholds1[idx1], thresholds2[idx2])
             if score <= thresholds1[idx1]:
                 fpr1_prev = fpr1[idx1]
@@ -36,6 +39,7 @@ def fpr_tpr_merge2(fpr1, tpr1, thresholds1,
                 thresholds_merge.append(thresholds2[idx2])
                 idx2 += 1
 
+        # compute weighted averaged metrics
         fpr = np.average([fpr1_prev, fpr2_prev],
                          weights=num_negtive_examples_weights)
         tpr = np.average([tpr1_prev, tpr2_prev],
