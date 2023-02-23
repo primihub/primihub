@@ -135,7 +135,11 @@ void GRPCNotifyServer::run() {
         uint64_t session_id;  // uniquely identifies a request.
         bool ok;
         // rpc event "read done / write done / close(already connected)" call-back by this completion queue
-        while (completion_queue_call_->Next(reinterpret_cast<void **>(&session_id), &ok)) {
+        while (running_.load(std::memory_order::memory_order_relaxed)) {
+            bool success_flag = completion_queue_call_->Next(reinterpret_cast<void **>(&session_id), &ok);
+            if (!success_flag) {
+                continue;
+            }
             auto event = static_cast<GrpcNotifyEvent>(session_id & GRPC_NOTIFY_EVENT_MASK);
             session_id = session_id >> GRPC_NOTIFY_EVENT_BIT_LENGTH;
             LOG(INFO) << "session_id_: " << session_id << ", completion queue(call), event: " << event;
@@ -165,7 +169,11 @@ void GRPCNotifyServer::run() {
         uint64_t session_id;  // uniquely identifies a request.
         bool ok;
         // rpc event "new connection / close(waiting for connect)" call-back by this completion queue
-        while (completion_queue_notification_->Next(reinterpret_cast<void **>(&session_id), &ok)) {
+        while (running_.load(std::memory_order::memory_order_relaxed)) {
+            bool success_flag = completion_queue_notification_->Next(reinterpret_cast<void **>(&session_id), &ok);
+            if (!success_flag) {
+                continue;
+            }
             auto event = static_cast<GrpcNotifyEvent>(session_id & GRPC_NOTIFY_EVENT_MASK);
             session_id = session_id >> GRPC_NOTIFY_EVENT_BIT_LENGTH;
             LOG(INFO) << "session_id_: " << session_id
