@@ -7,7 +7,9 @@ import json
 import os
 from phe import paillier
 import pickle
-from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
+
+from sklearn import metrics
+from primihub.FL.model.metrics.metrics import fpr_tpr_merge2, ks_from_fpr_tpr, auc_from_fpr_tpr
 
 
 class GrpcServer:
@@ -148,7 +150,7 @@ config = {
 }
 '''
 
-#'''
+'''
 # Paillier
 config = {
     'mode': 'Paillier',
@@ -162,7 +164,7 @@ config = {
     'category': 2,
     'feature_names': None,
 }
-#'''
+'''
 
 
 def feature_selection(x, feature_names):
@@ -299,27 +301,50 @@ class Arbiter(LRModel):
         self.host_channel.send("global_param", self.theta)
         self.guest_channel.send("global_param", self.theta)
 
-    def loss_and_acc(self, losses, accs, weights):
-        return np.average(losses, weights=weights), np.average(accs, weights=weights)
-
-    def metrics_log(self, weights):
+    def metrics_log(self, num_examples_weights,
+                          num_positive_examples_weights,
+                          num_negtive_examples_weights):
+        # loss
         penalty_loss = 0.5 * self.alpha * self.theta.dot(self.theta)
         host_loss = self.host_channel.recv("host_loss") - penalty_loss
         guest_loss = self.guest_channel.recv("guest_loss") - penalty_loss
         losses = [host_loss, guest_loss]
-
+        loss = np.average(losses, weights=num_examples_weights) + penalty_loss
+        self.loss_value = loss # used for check convergence
+        
+        # acc
         host_acc = self.host_channel.recv("host_acc")
         guest_acc = self.guest_channel.recv("guest_acc")
         accs = [host_acc, guest_acc]
+        acc = np.average(accs, weights=num_examples_weights)
 
-        loss, acc = self.loss_and_acc(losses, accs, weights)
-        loss += penalty_loss
-        self.log_handler.info("loss={}, acc={}".format(loss, acc))
+        # fpr, tpr
+        host_fpr = self.host_channel.recv("host_fpr")
+        guest_fpr = self.guest_channel.recv("guest_fpr")
+        host_tpr = self.host_channel.recv("host_tpr")
+        guest_tpr = self.guest_channel.recv("guest_tpr")
+        host_thresholds = self.host_channel.recv("host_thresholds")
+        guest_thresholds = self.guest_channel.recv("guest_thresholds")
+        fpr, tpr, thresholds = fpr_tpr_merge2(host_fpr, host_tpr, host_thresholds,
+                                              guest_fpr, guest_tpr, guest_thresholds,
+                                              num_positive_examples_weights,
+                                              num_negtive_examples_weights)
 
-        self.loss_value = loss
+        # ks
+        ks = ks_from_fpr_tpr(fpr, tpr)
+
+        # auc
+        auc = auc_from_fpr_tpr(fpr, tpr)
+
+        self.log_handler.info("loss={}, acc={}, ks={}, auc={}".format(loss, acc, ks, auc))
+
         self.metrics = {
             "train_loss": loss,
             "train_acc": acc,
+            "train_fpr": fpr,
+            "train_tpr": tpr,
+            "train_ks": ks,
+            "train_auc": auc,
         }
 
     def get_metrics(self):
@@ -331,9 +356,9 @@ class Arbiter(LRModel):
 
 class Arbiter_Paillier(LRModel_Paillier, Arbiter):
     
-    def __init__(self, alpha, host_channel, guest_channel, log_handler):
+    def __init__(self, alpha, n_length, host_channel, guest_channel, log_handler):
         Arbiter.__init__(self, alpha, host_channel, guest_channel, log_handler)
-        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
+        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length) 
         self.broadcast_public_key()
 
     def broadcast_public_key(self):
@@ -359,9 +384,10 @@ class Arbiter_Paillier(LRModel_Paillier, Arbiter):
         guest_loss = self.guest_channel.recv("guest_loss")
         losses = self.decrypt_vector([host_loss, guest_loss])
         loss = np.average(losses, weights=weights)
+        self.loss_value = loss # used for check convergence
+
         self.log_handler.info("loss={}".format(loss))
 
-        self.loss_value = loss
 
 
 def run_homo_lr_arbiter(config,
@@ -423,7 +449,7 @@ def run_homo_lr_arbiter(config,
         arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(config['alpha'], host_channel, guest_channel, log_handler)
+        arbiter = Arbiter_Paillier(config['alpha'], config['n_length'], host_channel, guest_channel, log_handler)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
@@ -431,9 +457,17 @@ def run_homo_lr_arbiter(config,
     guest_param_weight = guest_channel.recv("guest_param_weight")
     param_weights = [host_param_weight, guest_param_weight]
 
-    host_num_train_examples = host_channel.recv("host_num_train_examples")
-    guest_num_train_examples = guest_channel.recv("guest_num_train_examples")
-    num_train_examples_weights = [host_num_train_examples, guest_num_train_examples]
+    host_num_examples = host_channel.recv("host_num_examples")
+    guest_num_examples = guest_channel.recv("guest_num_examples")
+    num_examples_weights = [host_num_examples, guest_num_examples]
+
+    host_num_positive_examples = host_channel.recv("host_num_positive_examples")
+    guest_num_positive_examples = guest_channel.recv("guest_num_positive_examples")
+    num_positive_examples_weights = [host_num_positive_examples, guest_num_positive_examples]
+
+    host_num_negtive_examples = host_num_examples - host_num_positive_examples
+    guest_num_negtive_examples = guest_num_examples - guest_num_positive_examples
+    num_negtive_examples_weights = [host_num_negtive_examples, guest_num_negtive_examples]
 
     # data preprocessing
     # minmaxscaler
@@ -468,10 +502,12 @@ def run_homo_lr_arbiter(config,
         
         # metrics log
         if config['mode'] == 'Paillier': 
-            arbiter.loss_log(num_train_examples_weights)
+            arbiter.loss_log(num_examples_weights)
         else:
-            arbiter.metrics_log(num_train_examples_weights)
-                    
+            arbiter.metrics_log(num_examples_weights,
+                                num_positive_examples_weights,
+                                num_negtive_examples_weights)
+
         # check convergence 
         if check_convergence:
             # convergence is checked using loss
@@ -499,7 +535,9 @@ def run_homo_lr_arbiter(config,
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
     elif config['mode'] == 'Paillier':
         arbiter.broadcast_plaintext_global_model_param()
-        arbiter.metrics_log(num_train_examples_weights)
+        arbiter.metrics_log(num_examples_weights,
+                            num_positive_examples_weights,
+                            num_negtive_examples_weights)
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
@@ -543,13 +581,30 @@ class Client(LRModel):
         self.client_name = client_name
         self.log_handler = log_handler
     
-    def metrics_log(self, x, y):
+    def send_metrics(self, x, y):
+        # loss
         loss = self.loss(x, y)
         self.arbiter_channel.send(self.client_name+"_loss", loss)
+
+        # acc
         y_hat = self.predict_prob(x)
-        acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
+        acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
         self.arbiter_channel.send(self.client_name+"_acc", acc)
-        self.log_handler.info("loss={}, acc={}".format(loss, acc))
+
+        # fpr, tpr
+        fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
+                                                 drop_intermediate=False)
+        self.arbiter_channel.send(self.client_name+"_fpr", fpr)
+        self.arbiter_channel.send(self.client_name+"_tpr", tpr)
+        self.arbiter_channel.send(self.client_name+"_thresholds", thresholds)
+
+        # ks
+        ks = ks_from_fpr_tpr(fpr, tpr)
+
+        # auc
+        auc = metrics.roc_auc_score(y, y_hat)
+
+        self.log_handler.info("loss={}, acc={}, ks={}, auc={}".format(loss, acc, ks, auc))
 
 
 class Client_DPSGD(LRModel_DPSGD, Client):
@@ -614,7 +669,8 @@ def run_homo_lr_client(config,
     
     x, y = read_data(data_key, config['feature_names'])
     param_weight = config['batch_size']
-    num_train_examples = x.shape[0]
+    num_examples = x.shape[0]
+    num_positive_examples = y.sum()
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
@@ -635,7 +691,8 @@ def run_homo_lr_client(config,
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
     arbiter_channel.send(client_name+"_param_weight", param_weight)
-    arbiter_channel.send(client_name+"_num_train_examples", num_train_examples) 
+    arbiter_channel.send(client_name+"_num_examples", num_examples)
+    arbiter_channel.send(client_name+"_num_positive_examples", num_positive_examples)
   
     # data preprocessing
     # minmaxscaler
@@ -666,7 +723,7 @@ def run_homo_lr_client(config,
         if config['mode'] == 'Paillier':
             client.send_loss(x, y)
         else:
-            client.metrics_log(x, y)
+            client.send_metrics(x, y)
         
         # check convergence
         if check_convergence:
@@ -675,12 +732,12 @@ def run_homo_lr_client(config,
                 break
     
     if config['mode'] == 'DPSGD':
-        eps = compute_epsilon(i+1, num_train_examples, config)
+        eps = compute_epsilon(i+1, num_examples, config)
         arbiter_channel.send(client_name+"_eps", eps)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
     elif config['mode'] == 'Paillier':
         client.set_theta(arbiter_channel.recv("global_param"))
-        client.metrics_log(x, y)
+        client.send_metrics(x, y)
 
     log_handler.info("{} training process done.".format(client_name))
     model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
