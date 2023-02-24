@@ -1,0 +1,3 @@
+[submodule "pailliercryptolib_python"]
+	path = pailliercryptolib_python
+	url = git@github.com:intel/pailliercryptolib_python.git
