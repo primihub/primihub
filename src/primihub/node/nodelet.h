@@ -24,9 +24,9 @@
 
 #include "src/primihub/p2p/node_stub.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/service/dataset/storage_backend.h"
+#include "src/primihub/service/dataset/localkv/storage_backend.h"
 #include "src/primihub/service/notify/service.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 
 namespace primihub {
 

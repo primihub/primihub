@@ -45,17 +45,17 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
-
+    py_so_root_path = "../bazel-bin/src/primihub/pybind_warpper"
     module_list = ["opt_paillier_c2py.so", "linkcontext.so"]
     for module_name in module_list:
         module_installed = False
-        if os.path.isfile("../bazel-bin/{}".format(module_name)):
-            shutil.copyfile("../bazel-bin/{}".format(module_name),
+        if os.path.isfile("{}/{}".format(py_so_root_path, module_name)):
+            shutil.copyfile("{}/{}".format(py_so_root_path, module_name),
                     paths + "/{}".format(module_name))
-            print("Install {} finish, file found in '../bazel-bin'.".format(module_name))
+            print("Install {} finish, file found in {}.".format(module_name, py_so_root_path))
             module_installed = True
         else:
-            print("Can't not find file ../bazel-bin/{}, try to find ./{}.".format(module_name, module_name))
+            print("Can't not find file {}/{}, try to find ./{}.".format(py_so_root_path, module_name, module_name))
         if module_installed:
             continue
         if os.path.isfile("./{}".format(module_name)):

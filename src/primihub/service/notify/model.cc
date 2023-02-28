@@ -24,7 +24,7 @@ using primihub::rpc::NodeEventType;
 
 
 
-//////////////////////////////EventBusNotifyDelegate/////////////////////////////////////////////////
+///////////////////EventBusNotifyDelegate////////////////////////////////////
 
 // TODO job id is not used yet.
 void EventBusNotifyDelegate::notifyStatus(const std::string& job_id,
@@ -42,7 +42,7 @@ void EventBusNotifyDelegate::notifyResult(const std::string& job_id,
 
 }
 
-/////////////////////////////////////EventBusNotifyServerSubscriber//////////////////////////////////////////
+/////////////////////////////EventBusNotifyServerSubscriber//////////////////////////////
 
 EventBusNotifyServerSubscriber::EventBusNotifyServerSubscriber(NotifyServer& notify_server,
                                                             primihub::common::event_bus *event_bus_ptr)
@@ -59,7 +59,7 @@ EventBusNotifyServerSubscriber::~EventBusNotifyServerSubscriber() {
     event_bus_ptr_->remove_handler(task_result_reg_);
 }
 
-//////////////////////////////////////////GRPCNotifyServer////////////////////////////////////////////////////
+////////////////////////////////GRPCNotifyServer////////////////////////////////
 
  // Event handlers
 void GRPCNotifyServer::onTaskStatusEvent(const TaskStatusEvent &e) {
@@ -390,7 +390,7 @@ void GRPCClientSession::putMessage(const std::shared_ptr<primihub::rpc::NodeEven
         reinterpret_cast<void*>(session_id_ << GRPC_NOTIFY_EVENT_BIT_LENGTH | GRPC_NOTIFY_EVENT_WRITE_DONE));
 }
 
-/////////////////////////stream methods////////////////////////////////////////////////////////
+/////////////////////////stream methods/////////////////////////////
 
 std::ostream& operator<<(std::ostream& os, GrpcNotifyEvent event) {
     // omit default case to trigger compiler warning for missing cases
@@ -403,6 +403,8 @@ std::ostream& operator<<(std::ostream& os, GrpcNotifyEvent event) {
             return os << "GRPC_NOTIFY_EVENT_WRITE_DONE";
         case GrpcNotifyEvent::GRPC_NOTIFY_EVENT_FINISHED:
             return os << "GRPC_NOTIFY_EVENT_FINISHED";
+        default:
+            return os << "UNKNOWN";
     }
 }
 
@@ -417,8 +419,9 @@ std::ostream& operator<<(std::ostream& os, GrpcClientSessionStatus sessionStatus
             return os << "WAIT_WRITE_DONE";
         case GrpcClientSessionStatus::FINISHED:
             return os << "FINISHED";
+        default:
+            return os << "UNKNOWN";
     }
 }
-
 
 } // namespace primihub::service

@@ -114,7 +114,7 @@ retcode PyExecutor::parseParams() {
         VLOG(1)
             << "Dump node id with role and it's address used by FL algorithm.";
 
-        for (iter; iter != node_addr_map_.end(); iter++) {
+        for (; iter != node_addr_map_.end(); iter++) {
             VLOG(1) << "Node " << iter->first << ": [" << iter->second << "].";
             count++;
         }

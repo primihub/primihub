@@ -20,7 +20,7 @@ std::vector<std::string> GetFiles(const std::string& path) {
   if (open_dir == NULL) {
     return {};
   }
-  dirent* p = nullptr;
+  // dirent* p = nullptr;
   closedir(open_dir);
   return res;
 }

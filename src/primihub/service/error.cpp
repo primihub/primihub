@@ -1,7 +1,7 @@
-
+// Copyright [2022] <primihub>
 #include "src/primihub/service/error.hpp"
 
-OUTCOME_CPP_DEFINE_CATEGORY(primihub::service, Error, e) {
+OUTCOME_CPP_DEFINE_CATEGORY_PRIMIHUB(primihub::service, Error, e) {
   using E = primihub::service::Error;
   switch (e) {
     case E::NO_PEERS:
@@ -36,6 +36,8 @@ OUTCOME_CPP_DEFINE_CATEGORY(primihub::service, Error, e) {
       return "session was closed";
     case E::VALUE_MISMATCH:
       return "value mismatch error";
+    default:
+      break;
   }
   return "unknown error (primihub::service::Error)";
 }

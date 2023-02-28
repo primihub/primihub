@@ -19,19 +19,19 @@
 
 #include <glog/logging.h>
 #include <string>
-#include <glog/logging.h>
 
 #include <libp2p/multi/content_identifier_codec.hpp>
 #include "src/primihub/common/common.h"
 #include "src/primihub/util/util.h"
-#include "src/primihub/service/dataset/storage_backend.h"
 
+namespace kade = libp2p::protocol::kademlia;
 namespace primihub::service {
-
+using Key = kade::ContentId;
+using Value = std::string;
 using primihub::str_split;
 
 [[deprecated("delete in future")]]
-static retcode DataURLToDetail(const std::string &data_url,
+[[maybe_unused]] static retcode DataURLToDetail(const std::string &data_url,
                               std::string &node_id,
                               std::string &node_ip,
                               int &node_port,
@@ -53,6 +53,7 @@ static retcode DataURLToDetail(const std::string &data_url,
      return retcode::SUCCESS;
 }
 
+[[maybe_unused]]
 static retcode DataURLToDetail(const std::string &data_url,
                            Node& node_info,
                            std::string& dataset_path) {

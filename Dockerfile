@@ -33,7 +33,11 @@ ADD . /src
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
   && mv -f WORKSPACE_GITHUB WORKSPACE \
-  && bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext \
+  && bazel build --config=linux_`arch` //:node \
+    //:py_main \
+    //:cli \
+    //src/primihub/pybind_warpper:opt_paillier_c2py \
+    //src/primihub/pybind_warpper::linkcontext \
   && tar zcf /opt/bazel-bin.tar.gz --exclude=*_objs ./bazel-bin/*
 
 FROM ubuntu:20.04 as runner

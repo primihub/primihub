@@ -32,7 +32,7 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/task/semantic/psi_task.h"
 
 #if defined(__linux__) && defined(__x86_64__)

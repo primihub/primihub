@@ -16,14 +16,14 @@
 
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/util/network/socket/session.h"
 #include "src/primihub/algorithm/arithmetic.h"
 #include "src/primihub/algorithm/missing_val_processing.h"
 
 #if defined(__linux__) && defined(__x86_64__)
 #include "src/primihub/algorithm/falcon_lenet.h"
-#include "src/primihub/algorithm/cryptflow2_maxpool.h"
+// #include "src/primihub/algorithm/cryptflow2_maxpool.h"
 #endif
+#include "src/primihub/util/network/socket/session.h"
 
 namespace primihub::task
 {
@@ -46,18 +46,18 @@ namespace primihub::task
     else if (function_name == "maxpool")
     {
 #if defined(__linux__) && defined(__x86_64__)
-      PartyConfig config(node_id, task_param_);
-      try
-      {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(
-		    config, dataset_service));
-      }
-      catch (const std::runtime_error &error)
-      {
-        LOG(ERROR) << error.what();
-        algorithm_ = nullptr;
-      }
+      // PartyConfig config(node_id, task_param_);
+      // try
+      // {
+      //   algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+      //       std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(
+		  //   config, dataset_service));
+      // }
+      // catch (const std::runtime_error &error)
+      // {
+      //   LOG(ERROR) << error.what();
+      //   algorithm_ = nullptr;
+      // }
 #else
       LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support for apple and aarch64 platform.";
 #endif

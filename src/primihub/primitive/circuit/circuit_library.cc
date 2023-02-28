@@ -38,9 +38,9 @@ BetaCircuit *CircuitLibrary::int_Sh3Piecewise_helper(u64 size,
 }
 
 void CircuitLibrary::int_Sh3Piecewise_build_do(BetaCircuit &cd,
-                                               span<const BetaBundle> aa,
+                                               span<BetaBundle> aa,
                                                const BetaBundle &b,
-                                               span<const BetaBundle> cc) {
+                                               span<BetaBundle> cc) {
   std::vector<BetaBundle> temps(aa.size()), thresholds(aa.size());
 
   for (u64 t = 0; t < thresholds.size(); ++t) {
