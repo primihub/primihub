@@ -612,3 +612,10 @@ git_repository(
   commit = "294208257517a97dd42911cac9f1d4da2a57d316",
   remote = "https://github.com/primihub/cpp-base64.git",
 )
+
+new_git_repository(
+    name = "com_github_microsoft_gsl_v2_0_0",
+    build_file = "//bazel:BUILD.gsl_v_2_0_0",
+    tag = "v2.0.0",
+    remote = "https://github.com/microsoft/GSL.git",
+)

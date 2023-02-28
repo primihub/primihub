@@ -20,7 +20,6 @@
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/util.hpp"
-#include "src/primihub/service/notify/model.h"
 
 using grpc::Channel;
 using grpc::ClientReader;
@@ -37,7 +36,6 @@ using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
 
 using primihub::service::DataURLToDetail;
-using primihub::service::EventBusNotifyDelegate;
 
 namespace primihub::task {
 

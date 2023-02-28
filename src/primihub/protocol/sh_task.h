@@ -26,13 +26,13 @@ class ShTask {
         using RoundFunc = fu2::unique_function<void(CommPkgBase* commPtr, ShTask& self)>;
         using ContinuationFunc = fu2::unique_function<void(ShTask& self)>;
         enum Type { Evaluation, Closure };
-        
+
         // returns the associated runtime.
         Runtime& getRuntime() const { return *mRuntime; }
 
         // return the task id
         i64 getIdx() const { return mIdx; }
-    
+
         // schedules a task that can be executed in the following round.
         ShTask then(RoundFunc task);
 
@@ -65,8 +65,8 @@ class ShTask {
         }
 
         bool operator!=(const ShTask& t) const { return !(*this == t); }
-        
-       
+
+
         ShTaskBase* basePtr();
         Runtime* mRuntime = nullptr;
         i64 mIdx = -1;

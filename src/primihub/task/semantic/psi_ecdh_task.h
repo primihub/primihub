@@ -24,7 +24,6 @@
 
 #include "private_set_intersection/cpp/psi_client.h"
 #include "src/primihub/task/semantic/task.h"
-#include "src/primihub/common/defines.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/psi.pb.h"
 #include "src/primihub/protos/worker.pb.h"

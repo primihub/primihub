@@ -1,6 +1,6 @@
-#include "../include/paillier.h"
-#include "../include/utils.h"
-#include "../include/crt_datapack.h"
+#include "src/primihub/primitive/opt_paillier/include/paillier.h"
+#include "src/primihub/primitive/opt_paillier/include/utils.h"
+#include "src/primihub/primitive/opt_paillier/include/crt_datapack.h"
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -39,7 +39,7 @@ int main() {
   char** nums2;
   char** test;
   char** adds;
-  
+
   for (int d = 0; d <= max_dimension; ++d) {
 
     double encrypt_cost = 0.0, decrypt_cost = 0.0;

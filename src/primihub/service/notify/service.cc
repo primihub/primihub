@@ -33,8 +33,8 @@ NotifyService::~NotifyService() {
 void NotifyService::init(const std::string &addr) {
     // Composite GRPCNotifyServer & EventBusNotifyServerSubscriber
     try {
-        auto subscriber = std::make_shared<EventBusNotifyServerSubscriber>(GRPCNotifyServer::getInstance(),
-                                                                        EventBusNotifyDelegate::getInstance().getEventBusPtr());
+        auto subscriber = std::make_shared<EventBusNotifyServerSubscriber>(
+              GRPCNotifyServer::getInstance(), EventBusNotifyDelegate::getInstance().getEventBusPtr());
         auto subscriber_cast = std::dynamic_pointer_cast<NotifyServerSubscriber>(subscriber);
 
         // FIXME test parameters

@@ -1,11 +1,15 @@
 // Copyright [2021] <primihub.com>
-#ifndef SRC_primihub_UTIL_UTIL_H_
-#define SRC_primihub_UTIL_UTIL_H_
+#ifndef SRC_PRIMIHUB_UTIL_UTIL_H_
+#define SRC_PRIMIHUB_UTIL_UTIL_H_
 
 #include <glog/logging.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <utility>
 #include <cmath>
 #include <sstream>
 #include <algorithm>
@@ -18,12 +22,7 @@
 #include <unordered_map>
 #include <boost/asio.hpp>
 #include <boost/circular_buffer.hpp>
-#include <netdb.h>
-#include <errno.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <unistd.h>
+
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/common/common.h"
@@ -61,7 +60,7 @@ template<typename T, int StorageSize = 248>
 class SBO_ptr {
  public:
   struct SBOInterface {
-    virtual ~SBOInterface() {};
+    virtual ~SBOInterface() {}
 
     // assumes dest is uninitialized and calls the
     // placement new move constructor with this as
@@ -79,7 +78,7 @@ class SBO_ptr {
     Impl(Args&& ... args):mU(std::forward<Args>(args)...) {}
 
     void moveTo(SBO_ptr<T, StorageSize>& dest) override {
-      Expects(dest.get() == nullptr);
+      // Expects(dest.get() == nullptr);
       dest.New<U>(std::move(mU));
     }
 
@@ -192,8 +191,8 @@ typename  std::enable_if<
 }
 
 enum  SessionMode  {
-   Client,
-   Server
+  Client,
+  Server
 };
 
 class SCopedTimer {
@@ -218,4 +217,4 @@ std::string getCurrentProcessPath();
 std::string getCurrentProcessDir();
 }  // namespace primihub
 
-#endif  // SRC_primihub_UTIL_UTIL_H_
+#endif  // SRC_PRIMIHUB_UTIL_UTIL_H_

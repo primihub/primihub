@@ -1,13 +1,14 @@
 
-#ifndef SRC_PRIMIHUB_SERVICE_ERROR_H_
-#define SRC_PRIMIHUB_SERVICE_ERROR_H_
+// Copyright [2022] <primihub>
+#ifndef SRC_PRIMIHUB_SERVICE_ERROR_HPP_
+#define SRC_PRIMIHUB_SERVICE_ERROR_HPP_
 
 #include "src/primihub/service/outcome_reg.hpp"
 
 namespace primihub::service {
-  enum class Error {
+enum class Error {
     NO_ERROR = 0,
-    NO_PEERS, 
+    NO_PEERS,
     MESSAGE_PARSE_ERROR,
     MESSAGE_DESERIALIZE_ERROR,
     MESSAGE_SERIALIZE_ERROR,
@@ -23,10 +24,10 @@ namespace primihub::service {
     INTERNAL_ERROR,
     SESSION_CLOSED,
     VALUE_MISMATCH
-  };
+};
 
-} // namespace primihub::service
+}  // namespace primihub::service
 
 OUTCOME_HPP_DECLARE_ERROR(primihub::service, Error);
 
-#endif // SRC_PRIMIHUB_SERVICE_ERROR_H_
+#endif  // SRC_PRIMIHUB_SERVICE_ERROR_HPP_

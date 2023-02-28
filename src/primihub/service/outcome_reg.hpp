@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PRIMIHUB_OUTCOME_REGISTER_HPP
-#define PRIMIHUB_OUTCOME_REGISTER_HPP
-
-#include <boost/config.hpp>  // for BOOST_SYMBOL_EXPORT
-#include <string>
+#ifndef SRC_PRIMIHUB_SERVICE_OUTCOME_REG_HPP_
+#define SRC_PRIMIHUB_SERVICE_OUTCOME_REG_HPP_
 #include <system_error>  // bring in std::error_code et al
+#include <string>
+#include <boost/config.hpp>  // for BOOST_SYMBOL_EXPORT
 
 #ifndef PRIMIHUB_EXPORT
 #if defined(BOOST_SYMBOL_EXPORT)
@@ -57,7 +56,7 @@ namespace __primihub {
 
 }  // namespace __primihub
 
-#define __OUTCOME_DEFINE_MAKE_ERROR_CODE(Enum)                     \
+#define __OUTCOME_DEFINE_MAKE_ERROR_CODE_PRIMIHUB(Enum)                     \
   extern std::error_code make_error_code(Enum e) {                 \
     return {static_cast<int>(e), __primihub::Category<Enum>::get()}; \
   }
@@ -87,9 +86,9 @@ namespace __primihub {
 // ns - fully qualified enum namespace. Example: primihub::common
 // Enum - enum name. Example: EncodeError
 // Name - variable name. Example: e
-#define OUTCOME_CPP_DEFINE_CATEGORY_3(ns, Enum, Name) \
+#define OUTCOME_CPP_DEFINE_CATEGORY_3_PRIMIHUB(ns, Enum, Name) \
   namespace ns {                                      \
-    __OUTCOME_DEFINE_MAKE_ERROR_CODE(Enum)            \
+    __OUTCOME_DEFINE_MAKE_ERROR_CODE_PRIMIHUB(Enum)            \
   };                                                  \
   template <>                                         \
   std::string __primihub::Category<ns::Enum>::toString(ns::Enum Name)
@@ -97,8 +96,8 @@ namespace __primihub {
 /// MUST BE EXECUTED AT FILE LEVEL(global namespace) IN CPP
 // Enum - enum name. Example: EncodeError
 // Name - variable name. Example: e
-#define OUTCOME_CPP_DEFINE_CATEGORY_2(Enum, Name) \
-  __OUTCOME_DEFINE_MAKE_ERROR_CODE(Enum)          \
+#define OUTCOME_CPP_DEFINE_CATEGORY_2_PRIMIHUB(Enum, Name) \
+  __OUTCOME_DEFINE_MAKE_ERROR_CODE_PRIMIHUB(Enum)          \
   template <>                                     \
   std::string __primihub::Category<Enum>::toString(Enum Name)
 
@@ -106,18 +105,19 @@ namespace __primihub {
 #define __GET_MACRO_3(_1, _2, _3, NAME, ...) NAME
 #define __GET_MACRO_2(_1, _2, NAME, ...) NAME
 
-/// with 3 args: OUTCOME_CPP_DEFINE_CATEGORY_3
-/// with 2 args: OUTCOME_CPP_DEFINE_CATEGORY_2
-#define OUTCOME_CPP_DEFINE_CATEGORY(...)                    \
-  __GET_MACRO_3(__VA_ARGS__, OUTCOME_CPP_DEFINE_CATEGORY_3, \
-                OUTCOME_CPP_DEFINE_CATEGORY_2)              \
+/// with 3 args: OUTCOME_CPP_DEFINE_CATEGORY_3_PRIMIHUB
+/// with 2 args: OUTCOME_CPP_DEFINE_CATEGORY_2_PRIMIHUB
+#define OUTCOME_CPP_DEFINE_CATEGORY_PRIMIHUB(...)                    \
+  __GET_MACRO_3(__VA_ARGS__, OUTCOME_CPP_DEFINE_CATEGORY_3_PRIMIHUB, \
+                OUTCOME_CPP_DEFINE_CATEGORY_2_PRIMIHUB)              \
   (__VA_ARGS__)
 
-/// with 2 args: OUTCOME_CPP_DEFINE_CATEGORY_2
+/// with 2 args: OUTCOME_CPP_DEFINE_CATEGORY_2_PRIMIHUB
 /// with 1 arg : OUTCOME_CPP_DEFINE_CATEGORY_1
 #define OUTCOME_HPP_DECLARE_ERROR(...)                    \
   __GET_MACRO_2(__VA_ARGS__, OUTCOME_HPP_DECLARE_ERROR_2, \
                 OUTCOME_HPP_DECLARE_ERROR_1)              \
   (__VA_ARGS__)
 
-#endif  // PRIMIHUB_OUTCOME_REGISTER_HPP
+
+#endif  // SRC_PRIMIHUB_SERVICE_OUTCOME_REG_HPP_

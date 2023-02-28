@@ -22,20 +22,11 @@
 #include <pybind11/embed.h>
 
 #include "src/primihub/task/language/parser.h"
+#include "src/primihub/task/common.h"
 
 namespace py = pybind11;
 
 namespace primihub::task {
-
-typedef struct NodeContext {
-    std::string role;
-    std::string protocol;
-    std::string next_peer;
-    std::string task_type;
-    std::vector<std::string> datasets;
-    std::string dumps_func;
-    std::map<std::string, std::string> dataset_port_map;
-} NodeContext;
 
 class PyParser : public LanguageParser {
  public:

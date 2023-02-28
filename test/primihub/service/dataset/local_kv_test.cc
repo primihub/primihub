@@ -2,11 +2,12 @@
 
 #include "gtest/gtest.h"
 #include "src/primihub/service/dataset/localkv/storage_leveldb.h"
-#include "src/primihub/service/error.hpp" 
+#include "src/primihub/service/error.hpp"
 
 namespace primihub::service {
 TEST(LocalKVLeTest, LevelDB_PutGetErase) {
-    StorageBackendLevelDB storage;
+    std::string db_path = "localdb/node0";
+    StorageBackendLevelDB storage(db_path);
     Key key("testkey");
     Value value = "testvalue";
     ASSERT_EQ(storage.putValue(key, value), outcome::success());

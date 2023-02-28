@@ -20,10 +20,8 @@
 namespace primihub::service {
 class DatasetAuthFilterInterface {
     // TODO
-    virtual bool isWriteAuth(const std::string &datasetId,
-                             std::string thisNodeId) = 0;
-    virtual bool isReadAuth(const std::string &datasetId,
-                            std::string thisNodeId) = 0;
+    virtual bool isWriteAuth(const std::string& datasetId, const std::string& owner) = 0;
+    virtual bool isReadAuth(const std::string &datasetId, const std::string& owner) = 0;
 };
 
 } // namespace primihub::service

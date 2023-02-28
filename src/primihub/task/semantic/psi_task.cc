@@ -82,7 +82,7 @@ retcode PsiCommonOperator::LoadDatasetFromTable(
             for (int i = 0; i < chunk_size; i++) {
                 auto array = std::static_pointer_cast<
                         arrow::NumericArray<arrow::Int64Type>>(col_ptr->chunk(i));
-                for (size_t j = 0; j < array->length(); j++) {
+                for (int64_t j = 0; j < array->length(); j++) {
                     std::string value = std::to_string(array->Value(j));
                     col_array[index].append(value);
                     index++;
@@ -91,7 +91,7 @@ retcode PsiCommonOperator::LoadDatasetFromTable(
         } else if (is_string) {
             for (int i = 0; i < chunk_size; i++) {
                 auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(i));
-                for (size_t j = 0; j < array->length(); j++) {
+                for (int64_t j = 0; j < array->length(); j++) {
                     col_array[index].append(array->GetString(j));
                     index++;
                 }

@@ -215,7 +215,7 @@ int SDKClient::SubmitTask() {
     // Setup input datasets
     if (task_lang == "proto" && absl::GetFlag(FLAGS_task_type) != 6) {
         auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
-        for (int i = 0; i < input_datasets.size(); i++) {
+        for (size_t i = 0; i < input_datasets.size(); i++) {
             pushTaskRequest.mutable_task()->add_input_datasets(
                 input_datasets[i]);
         }

@@ -188,7 +188,7 @@ std::string strToLower(const std::string& str) {
 std::string getCurrentProcessPath() {
     char path[PATH_MAX];
     memset(path, 0, PATH_MAX);
-    uint32_t size = PATH_MAX;
+    [[maybe_unused]] uint32_t size = PATH_MAX;
 #if __linux__
     int n = readlink("/proc/self/exe", path, PATH_MAX);
     if (n >= PATH_MAX) {
