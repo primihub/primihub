@@ -35,14 +35,9 @@
 #include <vector>
 #include <future>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/node/nodelet.h"
-
 #include "src/primihub/node/worker/worker.h"
 #include "src/primihub/protos/psi.grpc.pb.h"
 #include "src/primihub/protos/worker.grpc.pb.h"

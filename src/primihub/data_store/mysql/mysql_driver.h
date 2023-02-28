@@ -43,7 +43,7 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
       const std::string& db_name, const std::string& table_name,
       const std::vector<std::string>& query_colums)
       : ip_(ip), port_(port), password_(password),
-      database_(database), user_name_(user_name),
+      user_name_(user_name), database_(database),
       db_name_(db_name), table_name_(table_name) {
       if (!query_colums.empty()) {
          for (const auto& col : query_colums) {
@@ -57,8 +57,8 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
 
   std::string ip_;
   uint32_t port_{0};
-  std::string user_name_;
   std::string password_;
+  std::string user_name_;
   std::string database_;
   std::string db_name_;
   std::string table_name_;
@@ -114,7 +114,7 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     std::vector<std::string>& tableColums() {
         return table_cols_;
     }
-    MYSQL* getDBConnector() { return db_connector_.get(); }
+    MYSQL* getDBConnector() {return db_connector_.get(); }
 
  protected:
     retcode initMySqlLib();
@@ -131,7 +131,7 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
  private:
     std::string conn_info_;
     std::atomic_bool connected{false};
-    std::unique_ptr<MYSQL, decltype(conn_dctor)> db_connector_{nullptr, conn_dctor};
+    std::unique_ptr<::MYSQL, decltype(conn_dctor)> db_connector_{nullptr, conn_dctor};
     std::vector<std::string> table_cols_;
     std::map<std::string, std::string> table_schema_;   // mysql schema
     int32_t connect_timeout_ms{3000};

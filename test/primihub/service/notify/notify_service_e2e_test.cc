@@ -48,14 +48,16 @@ void stdin_func() {
             // simulate send task status
             std::cout << "simulate send task status" << std::endl;
              // FIXME test code
-            GRPCNotifyServer::getInstance().addTaskSession("1", GRPCNotifyServer::getInstance().getSession(0));
+            GRPCNotifyServer::getInstance().addSession();
 
-            EventBusNotifyDelegate::getInstance().notifyStatus("1", "1", "task test status");
+            EventBusNotifyDelegate::getInstance().notifyStatus(
+                  "1", "1","client_id", "SUCCESS", "task test status");
 
         } else if (line == "r") {
             // simulate send task status
             std::cout << "simulate send task result" << std::endl;
-            EventBusNotifyDelegate::getInstance().notifyResult("1", "1", "task test result");
+            EventBusNotifyDelegate::getInstance().notifyResult(
+                "1", "1","client_id", "task test result");
         } else {
             std::cout << "input: " << line << std::endl;
         }
@@ -63,7 +65,7 @@ void stdin_func() {
 }
 
 void server_func() {
-    notify_service_ptr = new NotifyService();
+    notify_service_ptr = new NotifyService("127.0.0.1:7667");
     notify_service_ptr->run();
 }
 

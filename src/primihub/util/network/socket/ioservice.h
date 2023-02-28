@@ -27,7 +27,7 @@
 # endif // defined(_WINSOCKAPI_) && !defined(_WINSOCK2API_)
 
 #ifndef _MSC_VER
-#pragma GCC diagnostic push 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
@@ -37,9 +37,9 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include <thread> 
+#include <thread>
 #include <mutex>
-#include <list> 
+#include <list>
 #include <future>
 #include <string>
 #include <unordered_map>

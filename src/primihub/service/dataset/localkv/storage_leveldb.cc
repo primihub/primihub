@@ -50,7 +50,7 @@ outcome::result<void> StorageBackendLevelDB::putValue(Key key, Value value) {
         std::cout << "StorageBackendLevelDB::putValue() exception: " << e.what() << std::endl;
         return Error::INTERNAL_ERROR;
     }
-    
+
     return outcome::success();
 }
 

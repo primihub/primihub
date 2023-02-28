@@ -6,6 +6,7 @@
 #endif
 #include <string>
 #include <sstream>
+#include <vector>
 namespace primihub {
 // MACRO or CONSTANT defination
 #ifdef __linux__
@@ -93,8 +94,8 @@ struct Node {
     std::string id_{"defalut"};
     std::string ip_;
     uint32_t port_;
-    std::string role_{"default"};
     bool use_tls_{false};
+    std::string role_{"default"};
 };
 
 }  // namespace primihub

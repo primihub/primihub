@@ -1,6 +1,6 @@
+// Copyright [2022] <primihub>
 #include <glog/logging.h>
 #include <string>
-
 #include "hiredis/hiredis.h"
 #include "src/primihub/util/redis_helper.h"
 
@@ -27,8 +27,8 @@ int RedisHelper::connect(std::string redis_addr, const std::string &redis_passwd
     return -2;
   }
 
-  redisReply *reply = (redisReply*)redisCommand(context_, "AUTH %s", 
-		  				redis_passwd.c_str());
+  auto reply = reinterpret_cast<redisReply*>(
+          redisCommand(context_, "AUTH %s", redis_passwd.c_str()));
   if (reply->type == REDIS_REPLY_ERROR) {
     LOG(ERROR) << "Authorization failed: " << reply->str << ".";
     freeReplyObject(reply);
@@ -53,9 +53,8 @@ redisContext *RedisHelper::getContext(void) { return context_; }
 int RedisStringKVHelper::setString(const std::string &key,
                                    const std::string &value) {
   redisContext *context = getContext();
-  redisReply *reply = (redisReply *)redisCommand(context, "SET %s %s",
-                                                 key.c_str(), value.c_str());
-
+  auto reply = reinterpret_cast<redisReply*>(
+          redisCommand(context, "SET %s %s", key.c_str(), value.c_str()));
   if (reply == nullptr) {
     LOG(ERROR) << "Get null redis reply.";
     return -1;
@@ -73,8 +72,8 @@ int RedisStringKVHelper::setString(const std::string &key,
 
 int RedisStringKVHelper::getString(const std::string &key, std::string &value) {
   redisContext *context = getContext();
-  redisReply *reply =
-      (redisReply *)redisCommand(context, "GET %s", key.c_str());
+  auto reply = reinterpret_cast<redisReply*>(
+          redisCommand(context, "GET %s", key.c_str()));
 
   if (reply->type == REDIS_REPLY_ERROR) {
     LOG(ERROR) << "Redis server returns an error: " << reply->str << ".";
@@ -97,4 +96,4 @@ int RedisStringKVHelper::getString(const std::string &key, std::string &value) {
 
   return 0;
 }
-} // namespace primihub
+}  // namespace primihub

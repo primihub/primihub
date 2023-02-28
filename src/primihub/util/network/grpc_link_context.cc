@@ -182,7 +182,7 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
             << " task_id: " << this->getLinkContext()->task_id()
             << " role: " << role
             << " nodeinfo: " << this->dest_node_.to_string();
-    using reader_t = grpc::ClientReader<rpc::TaskRequest>;
+    // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
     auto client_reader = this->stub_->ForwardRecv(&context, send_request);
 
     // waiting for response
