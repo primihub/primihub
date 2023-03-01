@@ -25,7 +25,8 @@ class HeterLrHost(HeteroLrBase):
                  n_iter_no_change=5,
                  sample_method="random",
                  sample_ratio=0.5,
-                 scale_type=None):
+                 scale_type=None,
+                 model_path=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -40,6 +41,7 @@ class HeterLrHost(HeteroLrBase):
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
         self.scale_type = scale_type
+        self.model_path = model_path
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -217,7 +219,8 @@ class HeterLrHost(HeteroLrBase):
         print("converged status: ", converged_iter, converged_acc,
               converged_loss)
 
-        model_path = "hetero_lr_host.ml"
+        # model_path = "hetero_lr_host.ml"
+        model_path = self.model_path
         host_model = {
             "weights": self.theta[1:],
             "bias": self.theta[0],

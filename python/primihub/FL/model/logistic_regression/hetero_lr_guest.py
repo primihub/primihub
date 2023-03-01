@@ -22,7 +22,8 @@ class HeterLrGuest(HeteroLrBase):
                  n_iter_no_change=5,
                  momentum=0.7,
                  sample_method="random",
-                 scale_type=None):
+                 scale_type=None,
+                 model_path=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = guest_channel
@@ -32,6 +33,7 @@ class HeterLrGuest(HeteroLrBase):
         self.prev_grad = 0
         self.sample_method = sample_method
         self.scale_type = scale_type
+        self.model_path = model_path
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
@@ -139,7 +141,8 @@ class HeterLrGuest(HeteroLrBase):
         self.theta = best_theta
         print("best theta: ", best_theta)
 
-        model_path = "hetero_lr_guest.ml"
+        # model_path = "hetero_lr_guest.ml"
+        model_path = self.model_path
         host_model = {
             "weights": self.theta,
             "bias": 0,

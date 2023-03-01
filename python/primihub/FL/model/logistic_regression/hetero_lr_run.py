@@ -48,9 +48,9 @@ def lr_host_logic():
     data_key = list(dataset_map.keys())[0]
     data = ph.dataset.read(dataset_key=data_key).df_data
     print("ports: ", guest_port, host_port)
+    model_file_path = ph.context.Context.get_model_file_path() + ".host"
     #data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
     # data = md.read_csv("/home/primihub/xusong/data/merged_large_host.csv")
-
     host_cols = config['host_columns']
 
     if host_cols is not None:
@@ -78,7 +78,8 @@ def lr_host_logic():
                           sample_method=config['sample_method'],
                           sample_ratio=config['sample_ratio'],
                           batch_size=config['batch_size'],
-                          scale_type=config['scale_type'])
+                          scale_type=config['scale_type'],
+                          model_path=model_file_path)
 
     lr_host.fit(X_host, Y)
 
@@ -111,6 +112,7 @@ def lr_guest_logic(cry_pri="paillier"):
     print("ports: ", host_port, guest_port)
     # data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
     # data = md.read_csv("/home/primihub/xusong/data/merged_large_guest.csv")
+    guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
@@ -134,6 +136,7 @@ def lr_guest_logic(cry_pri="paillier"):
                             guest_channel=guest_channel,
                             sample_method=config['sample_method'],
                             batch_size=config['batch_size'],
-                            scale_type=config['scale_type'])
+                            scale_type=config['scale_type'],
+                            model_path=guest_model_path)
 
     lr_guest.fit(X_guest)
