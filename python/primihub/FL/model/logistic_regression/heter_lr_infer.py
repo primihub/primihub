@@ -43,6 +43,7 @@ class HeteroLrHostInfer(HeterLrHost):
         self.weights = self.model['weights']
         self.bias = self.model['bias']
         self.col_names = self.model['columns']
+        self.std = self.model['std']
 
     def preprocess(self):
         if 'y' in self.data.columns:
@@ -51,8 +52,8 @@ class HeteroLrHostInfer(HeterLrHost):
         if len(self.col_names) > 0:
             self.data = self.data[self.col_names].values
 
-        if self.scaler is not None:
-            pass
+        if self.std is not None:
+            self.data = self.std.transform(self.data)
 
     def predict_raw(self, x):
         host_part = np.dot(x, self.weights) + self.bias
@@ -103,14 +104,17 @@ class HeteroLrGuestInfer(HeterLrGuest):
         self.weights = self.model['weights']
         self.bias = self.model['bias']
         self.col_names = self.model['columns']
+        self.std = self.model['std']
 
     def preprocess(self):
+        if 'y' in self.data.columns:
+            self.label = self.data.pop('y')
 
         if len(self.col_names) > 0:
             self.data = self.data[self.col_names].values
 
-        if self.scaler is not None:
-            pass
+        if self.std is not None:
+            self.data = self.std.transform(self.data)
 
     def predict_raw(self, x):
         guest_part = np.dot(x, self.weights) + self.bias

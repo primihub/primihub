@@ -6,7 +6,6 @@ from primihub import dataset, context
 from primihub.utils.net_worker import GrpcServer
 from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
 from primihub.FL.model.logistic_regression.hetero_lr_guest import HeterLrGuest
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 config = {
     "learning_rate": 0.01,
@@ -17,7 +16,7 @@ config = {
     "random_state": 2023,
     "host_columns": None,
     "guest_columns": None,
-    "scale_type": None,
+    "scale_type": 'z-score',
     "batch_size": 512,
     "sample_method": 'random',
     "sample_ratio": 0.5
@@ -47,10 +46,10 @@ def lr_host_logic():
     guest_ip, guest_port = node_addr_map[guest_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    #data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     print("ports: ", guest_port, host_port)
     #data = pd.read_csv("/home/xusong/data/epsilon_normalized.host", header=0)
-    data = md.read_csv("/home/primihub/xusong/data/merged_large_host.csv")
+    # data = md.read_csv("/home/primihub/xusong/data/merged_large_host.csv")
 
     host_cols = config['host_columns']
 
@@ -78,22 +77,10 @@ def lr_host_logic():
                           add_noise=True,
                           sample_method=config['sample_method'],
                           sample_ratio=config['sample_ratio'],
-                          batch_size=config['batch_size'])
-    scale_type = config['scale_type']
+                          batch_size=config['batch_size'],
+                          scale_type=config['scale_type'])
 
-    scale_type = config['scale_type']
-
-    if scale_type is not None:
-        if scale_type == "z-score":
-            std = StandardScaler()
-        else:
-            std = MinMaxScaler()
-        scale_x = std.fit_transform(X_host)
-
-    else:
-        scale_x = X_host.copy()
-
-    lr_host.fit(scale_x, Y)
+    lr_host.fit(X_host, Y)
 
 
 @ph.context.function(
@@ -120,10 +107,10 @@ def lr_guest_logic(cry_pri="paillier"):
     host_ip, host_port = node_addr_map[host_nodes[0]].split(":")
 
     data_key = list(dataset_map.keys())[0]
-    #data = ph.dataset.read(dataset_key=data_key).df_data
+    data = ph.dataset.read(dataset_key=data_key).df_data
     print("ports: ", host_port, guest_port)
     # data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
-    data = md.read_csv("/home/primihub/xusong/data/merged_large_guest.csv")
+    # data = md.read_csv("/home/primihub/xusong/data/merged_large_guest.csv")
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
@@ -146,19 +133,7 @@ def lr_guest_logic(cry_pri="paillier"):
                             random_state=config['random_state'],
                             guest_channel=guest_channel,
                             sample_method=config['sample_method'],
-                            batch_size=config['batch_size'])
+                            batch_size=config['batch_size'],
+                            scale_type=config['scale_type'])
 
-    scale_type = config['scale_type']
-
-    if scale_type is not None:
-        if scale_type == "z-score":
-            std = StandardScaler()
-        else:
-            std = MinMaxScaler()
-
-        scale_x = std.fit_transform(X_guest)
-
-    else:
-        scale_x = X_guest.copy()
-
-    lr_guest.fit(scale_x)
+    lr_guest.fit(X_guest)

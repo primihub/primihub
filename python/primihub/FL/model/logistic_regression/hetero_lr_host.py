@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from primihub.utils.sampling import random_sample
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
 
@@ -23,7 +24,8 @@ class HeterLrHost(HeteroLrBase):
                  momentum=0.7,
                  n_iter_no_change=5,
                  sample_method="random",
-                 sample_ratio=0.5):
+                 sample_ratio=0.5,
+                 scale_type=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -37,6 +39,7 @@ class HeterLrHost(HeteroLrBase):
         self.n_iter_no_change = n_iter_no_change
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
+        self.scale_type = scale_type
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -123,7 +126,7 @@ class HeterLrHost(HeteroLrBase):
             self.prev_grad = grad
 
     def fit(self, x, y):
-
+        col_names = []
         if self.sample_method == "random" and x.shape[0] > 50000:
             sample_ids = random_sample(data=x, rate=self.sample_ratio)
             self.channel.sender('sample_ids', sample_ids)
@@ -141,6 +144,16 @@ class HeterLrHost(HeteroLrBase):
                 y = y[sample_ids]
             else:
                 y = y.iloc[sample_ids]
+
+        if self.scale_type is not None:
+            if self.scale_type == "z-score":
+                std = StandardScaler()
+            else:
+                std = MinMaxScaler()
+
+            x = std.fit_transform(x)
+        else:
+            std = None
 
         x = self.add_intercept(x)
         if self.batch_size < 0:
@@ -208,7 +221,8 @@ class HeterLrHost(HeteroLrBase):
         host_model = {
             "weights": self.theta[1:],
             "bias": self.theta[0],
-            "columns": col_names
+            "columns": col_names,
+            "std": std
         }
 
         with open(model_path, 'wb') as lr_host:
