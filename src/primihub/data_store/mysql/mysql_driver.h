@@ -102,9 +102,9 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     explicit MySQLDriver(const std::string& nodelet_addr);
     MySQLDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
     ~MySQLDriver();
-    std::shared_ptr<Cursor>& read() override;
-    std::shared_ptr<Cursor>& read(const std::string& conn_str) override;
-    std::shared_ptr<Cursor>& initCursor(const std::string& conn_str) override;
+    std::unique_ptr<Cursor> read() override;
+    std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+    std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
     std::string getDataURL() const override;
     // write data to specifiy db table
     int write(std::shared_ptr<arrow::Table> table, const std::string& table_name);

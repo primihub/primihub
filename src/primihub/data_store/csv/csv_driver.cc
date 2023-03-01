@@ -141,23 +141,22 @@ void CSVDriver::setDriverType() {
   driver_type = "CSV";
 }
 
-std::shared_ptr<Cursor>& CSVDriver::read() {
+std::unique_ptr<Cursor> CSVDriver::read() {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
     LOG(ERROR) << "file access info is unavailable";
-    return getCursor();
+    return nullptr;
   }
   return this->initCursor(csv_access_info->file_path_);
 }
 
-std::shared_ptr<Cursor> &CSVDriver::read(const std::string &filePath) {
+std::unique_ptr<Cursor> CSVDriver::read(const std::string &filePath) {
    return this->initCursor(filePath);
 }
 
-std::shared_ptr<Cursor> &CSVDriver::initCursor(const std::string &filePath) {
+std::unique_ptr<Cursor> CSVDriver::initCursor(const std::string &filePath) {
   filePath_ = filePath;
-  this->cursor = std::make_shared<CSVCursor>(filePath, shared_from_this());
-  return getCursor();
+  return std::make_unique<CSVCursor>(filePath, shared_from_this());
 }
 
 // FIXME to be deleted write file in driver directly.

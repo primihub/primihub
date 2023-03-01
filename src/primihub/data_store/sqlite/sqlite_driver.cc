@@ -487,24 +487,23 @@ void SQLiteDriver::setDriverType() {
   driver_type = "SQLITE";
 }
 
-std::shared_ptr<Cursor>& SQLiteDriver::read() {
+std::unique_ptr<Cursor> SQLiteDriver::read() {
   auto access_info_ptr = dynamic_cast<SQLiteAccessInfo*>(this->access_info_.get());
   if (access_info_ptr == nullptr) {
     LOG(ERROR) << "sqlite access info is not unavailable";
-    return getCursor();
+    return nullptr;
   }
   try {
     this->db_connector = std::make_unique<SQLite::Database>(access_info_ptr->db_path_);
   } catch (std::exception &e) {
     LOG(ERROR) << "create cursor failed: " << e.what();
-    return getCursor(); // nullptr
+    return nullptr; // nullptr
   }
   std::string query_sql = buildQuerySQL(access_info_ptr);
-  this->cursor = std::make_shared<SQLiteCursor>(query_sql, shared_from_this());
-  return getCursor();
+  return std::make_unique<SQLiteCursor>(query_sql, shared_from_this());
 }
 
-std::shared_ptr<Cursor> &SQLiteDriver::read(const std::string &conn_str) {
+std::unique_ptr<Cursor> SQLiteDriver::read(const std::string &conn_str) {
   return this->initCursor(conn_str);
 }
 
@@ -545,7 +544,7 @@ std::string SQLiteDriver::buildQuerySQL(const std::string& table_name,
   return sql_str;
 }
 
-std::shared_ptr<Cursor> &SQLiteDriver::initCursor(const std::string &conn_str) {
+std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
   // parse conn_str
   VLOG(5) << "conn_strconn_strconn_strconn_str: " << conn_str;
   conn_info_ = conn_str;
@@ -562,13 +561,12 @@ std::shared_ptr<Cursor> &SQLiteDriver::initCursor(const std::string &conn_str) {
     this->db_connector = std::make_unique<SQLite::Database>(db_path);
   } catch (std::exception& e) {
     LOG(ERROR) << "create cursor failed: " << e.what();
-    return getCursor(); // nullptr
+    return nullptr; // nullptr
   }
 
   std::string &query_condition = conn_info[CONN_FIELDS::QUERY_CONDITION];
   auto sql_str = buildQuerySQL(table_name, query_condition);
-  this->cursor = std::make_shared<SQLiteCursor>(sql_str, shared_from_this());
-  return getCursor();
+  return  std::make_unique<SQLiteCursor>(sql_str, shared_from_this());
 }
 
 // write data to specifiy table

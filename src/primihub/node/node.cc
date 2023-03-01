@@ -44,6 +44,79 @@ using primihub::task::LanguageParserFactory;
 using primihub::task::ProtocolSemanticParser;
 
 namespace primihub {
+VMNodeImpl::VMNodeImpl(const std::string &node_id_,
+                    const std::string &node_ip_, int service_port_,
+                    bool singleton_, const std::string &config_file_path_)
+    : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
+      singleton(singleton_), config_file_path(config_file_path_) {
+    running_set.clear();
+    task_executor_map.clear();
+    nodelet = std::make_shared<Nodelet>(config_file_path);
+    // clean finished task
+    finished_worker_fut = std::async(
+        std::launch::async,
+        [&]() {
+            SET_THREAD_NAME("cleanFinihsedTask");
+            while(true) {
+                std::string finished_worker_id;
+                fininished_workers.wait_and_pop(finished_worker_id);
+                if (stop_.load(std::memory_order::memory_order_relaxed)) {
+                  break;
+                }
+                {
+                    std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+                    auto it = task_executor_map.find(finished_worker_id);
+                    if (it != task_executor_map.end()) {
+                        VLOG(5) << "worker id : " << finished_worker_id << " "
+                                << "has finished, begin to erase";
+                        task_executor_map.erase(finished_worker_id);
+                        VLOG(5) << "erase worker id : " << finished_worker_id << " success";
+                    }
+                }
+            }
+        });
+    // clean cached timeout stask status
+    clean_cached_task_status_fut_ = std::async(
+        std::launch::async,
+        [&]() {
+            SET_THREAD_NAME("cleanCachedTaskStatus");
+            while(true) {
+                if (stop_.load(std::memory_order::memory_order_relaxed)) {
+                    LOG(WARNING) << "service begin to exit";
+                    break;
+                }
+                std::set<std::string> timeout_worker_id;
+                {
+                    time_t now_ = ::time(nullptr);
+                    std::shared_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
+                    for (const auto& task_status : finished_task_status_) {
+                        auto& timestamp = std::get<2>(task_status.second);
+                        if (now_ - timestamp > this->cached_task_status_timeout_) {
+                            timeout_worker_id.emplace(task_status.first);
+                        }
+                    }
+                }
+                if (!timeout_worker_id.empty()) {
+                    VLOG(2) << "number of timeout task status need to earse: " << timeout_worker_id.size();
+                    std::unique_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
+                    for (const auto& worker_id : timeout_worker_id) {
+                        finished_task_status_.erase(worker_id);
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(this->cached_task_status_timeout_/2));
+            }
+        }
+    );
+}
+
+VMNodeImpl::~VMNodeImpl() {
+    stop_.store(true);
+    fininished_workers.shutdown();
+    finished_worker_fut.get();
+    clean_cached_task_status_fut_.get();
+    this->nodelet.reset();
+}
+
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
     VLOG(5) << "VMNodeImpl::Send: received: ";
@@ -72,6 +145,15 @@ Status VMNodeImpl::Send(ServerContext* context,
                     << "task_id: " << task_id << " "
                     << "role: " << role;
             std::string worker_id = this->getWorkerId(job_id, task_id);
+            auto finished_task = this->isFinishedTask(worker_id);
+            if (std::get<0>(finished_task)) {
+                std::string err_msg = "worker for job id: ";
+                err_msg.append(job_id).append(" task id: ").append(task_id)
+                    .append(" has finished");
+                response->set_ret_code(rpc::retcode::FAIL);
+                response->set_msg_info(std::move(err_msg));
+                return Status::OK;
+            }
             waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
@@ -119,6 +201,16 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
                     << "task_id: " << task_id << " "
                     << "role: " << role;
             std::string worker_id = this->getWorkerId(job_id, task_id);
+            auto finished_task = this->isFinishedTask(worker_id);
+            if (std::get<0>(finished_task)) {
+                std::string err_msg = "worker for job id: ";
+                err_msg.append(job_id).append(" task id: ").append(task_id)
+                    .append(" has finished");
+                LOG(WARNING) << err_msg;
+                response.set_ret_code(rpc::retcode::FAIL);
+                response.set_msg_info(std::move(err_msg));
+                return Status::OK;
+            }
             waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
             worker_ptr = this->getWorker(job_id, task_id);
             if (worker_ptr == nullptr) {
@@ -162,6 +254,17 @@ Status VMNodeImpl::Recv(::grpc::ServerContext* context,
     std::string task_id = request->task_id();
     std::string role = request->role();
     std::string worker_id = this->getWorkerId(job_id, task_id);
+    auto finished_task = this->isFinishedTask(worker_id);
+    if (std::get<0>(finished_task)) {
+        TaskResponse response;
+        std::string err_msg = "worker for job id: ";
+        err_msg.append(job_id).append(" task id: ").append(task_id)
+            .append(" has finished");
+        response.set_ret_code(rpc::retcode::FAIL);
+        response.set_msg_info(std::move(err_msg));
+        writer->Write(response);
+        return grpc::Status::OK;
+    }
     waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
     auto worker_ptr = this->getWorker(job_id, task_id);
     if (worker_ptr == nullptr) {
@@ -307,6 +410,14 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     VLOG(5) << "enter ForwardRecv: job_id: " << job_id << " "
         << "task id: " << task_id << " role: " << role;
     std::string worker_id = this->getWorkerId(job_id, task_id);
+    auto finished_task = this->isFinishedTask(worker_id);
+    if (std::get<0>(finished_task)) {
+        std::string err_msg = "worker for job id: ";
+        err_msg.append(job_id).append(" task id: ").append(task_id)
+            .append(" has finished");
+        LOG(WARNING) << err_msg;
+        return Status::OK;
+    }
     waitUntilWorkerReady(worker_id, context, this->wait_worker_ready_timeout_ms);
     auto worker = this->getWorker(job_id, task_id);
     if (worker == nullptr) {
@@ -321,6 +432,48 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
     for (const auto& data_ : forward_recv_datas) {
         writer->Write(data_);
     }
+    return grpc::Status::OK;
+}
+
+Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
+        const ::primihub::rpc::KillTaskRequest* request,
+        ::primihub::rpc::KillTaskResponse* response) {
+    std::string job_id = request->job_id();
+    std::string task_id = request->task_id();
+    auto executor = request->executor();
+    VLOG(0) << "receive request for kill task for: "
+        << " job_id: " << job_id << " "
+        << "task id: " << task_id << " "
+        << "from " << (executor == rpc::KillTaskRequest::CLIENT ? "CLIENT" : "SCHEDULER");
+    std::string worker_id = this->getWorkerId(job_id, task_id);
+    auto finished_task = this->isFinishedTask(worker_id);
+    if (std::get<0>(finished_task)) {
+        std::string err_msg = "worker for job id: ";
+        err_msg.append(job_id).append(" task id: ").append(task_id)
+            .append(" has finished");
+        LOG(WARNING) << err_msg;
+        using EventBusNotifyDelegate = primihub::service::EventBusNotifyDelegate;
+        auto& notify_proxy = EventBusNotifyDelegate::getInstance();
+        std::string submit_client_id = std::get<1>(finished_task);
+        std::string status = std::get<2>(finished_task);
+        notify_proxy.notifyStatus(job_id, task_id, submit_client_id, status, err_msg);
+        response->set_ret_code(rpc::SUCCESS);
+        response->set_msg_info(std::move(err_msg));
+        return Status::OK;
+    }
+    std::shared_ptr<Worker> worker{nullptr};
+    if (executor == rpc::KillTaskRequest::CLIENT) {
+        worker = this->getSchedulerWorker(job_id, task_id);
+    } else {
+        worker = this->getWorker(job_id, task_id);
+    }
+    if (worker != nullptr) {
+        worker->kill_task();
+    } else {
+        LOG(WARNING) << "worker does not find for worker id: " << worker_id;
+    }
+    response->set_ret_code(rpc::SUCCESS);
+    LOG(ERROR) << "end of VMNodeImpl::KillTask";
     return grpc::Status::OK;
 }
 
@@ -424,6 +577,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             notify_proxy.notifyStatus(job_id, task_id, submit_client_id, status, status_info);
 
             VLOG(5) << "execute task end, begin to clean task";
+            this->cacheLastTaskStatus(worker->worker_id(), submit_client_id, status);
             finished_worker_queue->push(worker->worker_id());
             auto time_cost = timer.timeElapse();
             VLOG(5) << "execute task end, clean task finished, "
@@ -457,6 +611,13 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
         notify_server->set_ip(notify_server_info.ip_);
         notify_server->set_port(notify_server_info.port_);
         notify_server->set_use_tls(notify_server_info.use_tls_);
+        // service node info
+        auto& server_cfg = ServerConfig::getInstance();
+        auto& service_node_info = server_cfg.getServiceConfig();
+        auto task_server = pushTaskReply->add_task_server();
+        task_server->set_ip(service_node_info.ip_);
+        task_server->set_port(service_node_info.port_);
+        task_server->set_use_tls(service_node_info.use_tls_);
         return Status::OK;
     }
     return Status::OK;
@@ -542,6 +703,24 @@ int VMNodeImpl::process_pir_response(const ExecuteTaskResponse& response,
     return 0;
 }
 
+void VMNodeImpl::cacheLastTaskStatus(const std::string& worker_id,
+        const std::string& submit_client_id, const std::string& status) {
+    time_t now_ = std::time(nullptr);
+    std::unique_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
+    finished_task_status_[worker_id] = std::make_tuple(submit_client_id, status, now_);
+}
+
+std::tuple<bool, std::string, std::string>
+VMNodeImpl::isFinishedTask(const std::string& worker_id) {
+    std::shared_lock<std::shared_mutex> lck(finished_task_status_mtx_);
+    auto it = finished_task_status_.find(worker_id);
+    if (it != finished_task_status_.end()) {
+        // LOG(ERROR) << "found worker id: " << worker_id;
+        return std::make_tuple(true, std::get<0>(it->second), std::get<1>(it->second));
+    } else {
+        return std::make_tuple(false, "", "UNKNOWN");
+    }
+}
 retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
         grpc::ServerContext* context, int timeout_ms) {
     if (context->IsCancelled()) {

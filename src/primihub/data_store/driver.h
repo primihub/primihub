@@ -71,13 +71,13 @@ class DataDriver {
     virtual ~DataDriver() = default;
     virtual std::string getDataURL() const = 0;
     [[deprecated("use read instead")]]
-    virtual std::shared_ptr<Cursor>& read(const std::string &dataURL) = 0;
+    virtual std::unique_ptr<Cursor> read(const std::string &dataURL) = 0;
     /**
      * data access info read from internal access_info_
     */
-    virtual std::shared_ptr<Cursor>& read() = 0;
-    virtual std::shared_ptr<Cursor>& initCursor(const std::string &dataURL) = 0;
-    std::shared_ptr<Cursor>& getCursor();
+    virtual std::unique_ptr<Cursor> read() = 0;
+    virtual std::unique_ptr<Cursor> initCursor(const std::string &dataURL) = 0;
+    // std::unique_ptr<Cursor> getCursor();
     std::string getDriverType() const;
     std::string getNodeletAddress() const;
 
@@ -86,8 +86,10 @@ class DataDriver {
     }
 
  protected:
-    void setCursor(std::shared_ptr<Cursor> &cursor) { this->cursor = cursor; }  // NOLINT
-    std::shared_ptr<Cursor> cursor{nullptr};
+    void setCursor(std::unique_ptr<Cursor> cursor) {
+        this->cursor = std::move(cursor);
+    }
+    std::unique_ptr<Cursor> cursor{nullptr};
     std::string driver_type;
     std::string nodelet_address;
     std::unique_ptr<DataSetAccessInfo> access_info_{nullptr};

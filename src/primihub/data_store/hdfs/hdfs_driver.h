@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-  
-  
+
+
 #ifndef SRC_PRIMIHUB_DATA_STORE_HDFS_HDFS_DRIVER_H_
 #define SRC_PRIMIHUB_DATA_STORE_HDFS_HDFS_DRIVER_H_
 

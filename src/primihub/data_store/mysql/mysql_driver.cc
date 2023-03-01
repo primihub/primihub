@@ -482,34 +482,32 @@ retcode MySQLDriver::getTableSchema(const std::string& db_name, const std::strin
     return retcode::SUCCESS;
 }
 
-std::shared_ptr<Cursor>& MySQLDriver::read() {
+std::unique_ptr<Cursor> MySQLDriver::read() {
     // first connect to db
     auto access_info_ptr = dynamic_cast<MySQLAccessInfo*>(this->access_info_.get());
     if (access_info_ptr == nullptr) {
         LOG(ERROR) << "mysqlite access info is not available";
-        return getCursor();
+        return nullptr;
     }
     auto ret = this->connect(access_info_ptr);
     if (ret != retcode::SUCCESS) {
-        return getCursor();
+        return nullptr;
     }
     std::string sql_change_db{"USE "};
     sql_change_db.append(access_info_ptr->db_name_);
     this->executeQuery(sql_change_db);
     this->getTableSchema(access_info_ptr->db_name_, access_info_ptr->table_name_);
     std::string query_sql = buildQuerySQL(access_info_ptr);
-    this->cursor = std::make_shared<MySQLCursor>(query_sql, shared_from_this());
-    return getCursor();
+    return std::make_unique<MySQLCursor>(query_sql, shared_from_this());
 }
 
-std::shared_ptr<Cursor>& MySQLDriver::read(const std::string &conn_str) {
+std::unique_ptr<Cursor> MySQLDriver::read(const std::string &conn_str) {
     return this->initCursor(conn_str);
 }
 
-std::shared_ptr<Cursor>& MySQLDriver::initCursor(const std::string &conn_str) {
+std::unique_ptr<Cursor> MySQLDriver::initCursor(const std::string &conn_str) {
     std::string sql_str;
-    this->cursor = std::make_shared<MySQLCursor>(sql_str, shared_from_this());
-    return getCursor();
+    return std::make_unique<MySQLCursor>(sql_str, shared_from_this());
 }
 
 // write data to specifiy table

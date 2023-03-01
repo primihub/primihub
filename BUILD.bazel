@@ -187,6 +187,7 @@ cc_library(
     name = "common_defination",
     hdrs = [
         "src/primihub/common/common.h",
+        "src/primihub/common/value_check_util.h",
     ],
 )
 
@@ -720,6 +721,7 @@ DEFAULT_TASK_LIB_DEPS = [
     "@openssl",
     "@org_openmined_psi//private_set_intersection/cpp:psi_client",
     "@org_openmined_psi//private_set_intersection/cpp:psi_server",
+    "@fmt//:fmt",
     #"@osu_libpsi//:libpsi",
 ]
 

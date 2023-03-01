@@ -46,7 +46,7 @@ namespace rpc = primihub::rpc;
 namespace primihub::task {
 
 class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
-public:
+ public:
     explicit PSIKkrtTask(const TaskParam *task_param,
                         std::shared_ptr<DatasetService> dataset_service);
 
@@ -54,17 +54,19 @@ public:
     int execute() override;
     retcode saveResult();
     retcode broadcastResultToServer();
-    int recvIntersectionData();
-private:
+    retcode recvIntersectionData();
+
+ private:
     retcode exchangeDataPort();
     retcode _LoadParams(Task &task);
     retcode _LoadDataset();
 #if defined(__linux__) && defined(__x86_64__)
     void _kkrtRecv(Channel& chl);
     void _kkrtSend(Channel& chl);
-    int _GetIntsection(KkrtPsiReceiver &receiver);
+    retcode _GetIntsection(KkrtPsiReceiver &receiver);
 #endif
 
+ private:
     std::vector<int> data_index_;
     int psi_type_;
     int role_tag_;

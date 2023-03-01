@@ -51,12 +51,12 @@ KeywordPIRServerTask::create_sender_db(
         OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress) {
+    CHECK_TASK_STOPPED(nullptr);
     SCopedTimer timer;
-    if (!psi_params) {
+    if (psi_params == nullptr) {
         LOG(ERROR) << "No Keyword pir parameters were given";
         return nullptr;
     }
-
     std::shared_ptr<SenderDB> sender_db;
     if (holds_alternative<CSVReader::LabeledData>(db_data)) {
         VLOG(5) << "CSVReader::LabeledData";
@@ -110,10 +110,10 @@ KeywordPIRServerTask::KeywordPIRServerTask(
     : TaskBase(task_param, dataset_service) {
     VLOG(0) << "enter KeywordPIRServerTask ctr";
     oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
-    VLOG(0) << "begin to exit KeywordPIRServerTask ctr";
+    VLOG(0) << "exit KeywordPIRServerTask ctr";
 }
 
-int KeywordPIRServerTask::_LoadParams(Task &task) {
+retcode KeywordPIRServerTask::_LoadParams(Task &task) {
     const auto& node_map = task.node_map();
     for (const auto& node_info : node_map) {
         auto& _node_id = node_info.first;
@@ -134,17 +134,18 @@ int KeywordPIRServerTask::_LoadParams(Task &task) {
             dataset_id_ = it->second.value_string();
         } else {
             LOG(ERROR) << "Failed to load params serverData, no match key find";
-            return -1;
+            return retcode::FAIL;
         }
         // dataset_path_ = param_map["serverData"].value_string();
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
-        return -1;
+        return retcode::FAIL;
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
 std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
+    CHECK_TASK_STOPPED(nullptr);
     CSVReader::DBData db_data;
     auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
     if (driver == nullptr) {
@@ -173,6 +174,7 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
 }
 
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
+    CHECK_TASK_STOPPED(nullptr);
     std::string params_json;
     std::string pir_server_config_path{"config/pir_server_config.json"};
     VLOG(5) << "pir_server_config_path: " << pir_server_config_path;
@@ -224,22 +226,26 @@ static std::string to_hexstring(const Item &item)
 }
 
 int KeywordPIRServerTask::execute() {
-    int ret = _LoadParams(task_param_);
-    if (ret) {
+    auto rt_code = _LoadParams(task_param_);
+    if (rt_code != retcode::SUCCESS) {
         LOG(ERROR) << "Pir client load task params failed.";
-        return ret;
+        return -1;
     }
     ThreadPoolMgr::SetThreadCount(1);
 
-    std::unique_ptr<PSIParams> params = _SetPsiParams();
-    auto rt_code = processPSIParams();
-    if (rt_code != retcode::SUCCESS) {
-        return -1;
-    }
+    auto params = _SetPsiParams();
+    CHECK_NULLPOINTER(params, -1);
+
+    rt_code = processPSIParams();
+    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+
     std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
+    CHECK_NULLPOINTER(db_data, -1);
+
     // OPRFKey oprf_key;
     std::shared_ptr<SenderDB> sender_db
         = create_sender_db(*db_data, move(params), *(this->oprf_key_), 16, false);
+    CHECK_NULLPOINTER(sender_db, -1);
     uint32_t max_bin_bundles_per_bundle_idx = 0;
     for (uint32_t bundle_idx = 0; bundle_idx < sender_db->get_params().bundle_idx_count();
          bundle_idx++) {
@@ -248,18 +254,17 @@ int KeywordPIRServerTask::execute() {
                 static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
     }
     rt_code = processOprf();
-    if (rt_code != retcode::SUCCESS) {
-        return -1;
-    }
+    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+
     rt_code = processQuery(sender_db);
-    if (rt_code != retcode::SUCCESS) {
-        return -1;
-    }
+    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+
     VLOG(5) << "end of execute task";
     return 0;
 }
 
 retcode KeywordPIRServerTask::broadcastPortInfo() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string data_port_info_str;
     rpc::Params data_port_params;
     auto param_map = data_port_params.mutable_param_map();
@@ -284,6 +289,7 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
 }
 
 retcode KeywordPIRServerTask::processPSIParams() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string request_type_str;
     auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     recv_queue.wait_and_pop(request_type_str);
@@ -302,10 +308,16 @@ retcode KeywordPIRServerTask::processPSIParams() {
 }
 
 retcode KeywordPIRServerTask::processOprf() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     VLOG(5) << "begin to process oprf";
     std::string oprf_request_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    recv_queue.wait_and_pop(oprf_request_str);
+    auto ret = this->recv(this->key, &oprf_request_str);
+    if (ret != retcode::SUCCESS || oprf_request_str.empty()) {
+        LOG(ERROR) << "received oprf request from client failed ";
+        return ret;
+    }
+    // auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    // recv_queue.wait_and_pop(oprf_request_str);
     VLOG(5) << "received oprf request: " << oprf_request_str.size();
 
     // // OPRFKey key_oprf;
@@ -316,24 +328,35 @@ retcode KeywordPIRServerTask::processOprf() {
         oprf_response.size()};
     // VLOG(5) << "send data size: " << oprf_response_str.size() << " "
     //         << "data content: " << oprf_response_str;
-    this->pushDataToSendQueue(this->key, std::move(oprf_response_str));
-    return retcode::SUCCESS;
+    // this->pushDataToSendQueue(this->key, std::move(oprf_response_str));
+    return this->send(this->key, this->client_node_, oprf_response_str);
 }
 
 retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderDB> sender_db) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     CryptoContext crypto_context(sender_db->get_crypto_context());
     auto seal_context = sender_db->get_seal_context();
     auto query_request = std::make_unique<SenderOperationQuery>();
 
     std::string response_str;
-    this->recv(this->key, &response_str);
+    auto ret = this->recv(this->key, &response_str);
+    if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "received response failed";
+        return retcode::FAIL;
+    }
     VLOG(5) << "received data lenght: " << response_str.size();
     if (response_str.empty()) {
         LOG(ERROR) << "received data can not be empty";
         return retcode::FAIL;
     }
     std::istringstream stream_in(response_str);
-    query_request->load(stream_in, seal_context);
+    try {
+        query_request->load(stream_in, seal_context);
+    } catch (std::exception& e) {
+        LOG(ERROR) << "load response failed, " << e.what();
+        return retcode::FAIL;
+    }
+
     auto compr_mode = query_request->compr_mode;
     std::unordered_map<std::uint32_t, std::vector<seal::Ciphertext>> data_;
     for (auto &q : query_request->data) {
@@ -378,7 +401,8 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
     uint32_t package_count = safe_cast<uint32_t>(sender_db->get_bin_bundle_count());
     // tell client how many package count need to receive
     std::string_view send_data{reinterpret_cast<char*>(&package_count), sizeof(package_count)};
-    this->send("package_count", client_node_, send_data);
+    ret = this->send("package_count", client_node_, send_data);
+    CHECK_RETCODE(ret);
     VLOG(5) << "package_countpackage_countpackage_count: " << package_count;
     // For each bundle index i, we need a vector of powers of the query Qᵢ. We need powers
     // all the way up to Qᵢ^max_items_per_bin. We don't store the zeroth power. If
@@ -426,7 +450,7 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
             futures.push_back(
                 std::async(
                     std::launch::async,
-                    [&, bundle_idx, cache, this]() {
+                    [&, bundle_idx, cache, this]() -> void {
                         auto result_package = ProcessBinBundleCache(
                                 sender_db,
                                 crypto_context,
@@ -435,6 +459,9 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
                                 static_cast<uint32_t>(bundle_idx),
                                 compr_mode,
                                 pool);
+                        if (result_package == nullptr) {
+                            return;
+                        }
                         // serialize and push into result package queue
                         std::ostringstream string_ss;
                         result_package->save(string_ss);
@@ -454,7 +481,12 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
                 for (size_t i = 0; i < package_count; i++) {
                     std::string send_data;
                     result_package_queue.wait_and_pop(send_data);
-                    this->send(this->key, client_node_, send_data);
+                    auto ret = this->send(this->key, client_node_, send_data);
+                    if (ret != retcode::SUCCESS) {
+                        LOG(ERROR) << "send result to client, index: " << i
+                            << " data length: " << send_data.size() << " failed";
+                        return;
+                    }
                     VLOG(5) << "send result to client, index: " << i
                             << " data length: " << send_data.size();
                 }
@@ -477,6 +509,7 @@ retcode KeywordPIRServerTask::ComputePowers(
         uint32_t bundle_idx,
         seal::MemoryPoolHandle &pool) {
     //
+    CHECK_TASK_STOPPED(retcode::FAIL);
     STOPWATCH(sender_stopwatch, "Sender::ComputePowers");
     auto bundle_caches = sender_db->get_cache_at(bundle_idx);
     if (!bundle_caches.size()) {
@@ -572,6 +605,7 @@ KeywordPIRServerTask::ProcessBinBundleCache(
         uint32_t bundle_idx,
         compr_mode_type compr_mode,
         seal::MemoryPoolHandle &pool) {
+    CHECK_TASK_STOPPED(nullptr);
     // Package for the result data
     auto rp = std::make_unique<apsi::network::ResultPackage>();
     rp->compr_mode = compr_mode;
