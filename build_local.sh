@@ -11,7 +11,12 @@ bash pre_build.sh
 
 ARCH=`arch`
 
-bazel build --config=linux_$ARCH :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+bazel build --config=linux_$ARCH //:node \
+    //:py_main \
+    //:cli \
+    //src/primihub/pybind_warpper:opt_paillier_c2py \
+    //src/primihub/pybind_warpper::linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
