@@ -71,8 +71,8 @@ COPY --from=builder /src/python ./python
 COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
 
 # Copy opt_paillier_c2py.so linkcontext.so to /app/python, this enable setup.py find it.
-RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/ \
-  && cp $TARGET_PATH/linkcontext.so /app/python/
+RUN cp $TARGET_PATH/src/primihub/pybind_warpper/opt_paillier_c2py.so /app/python/ \
+  && cp $TARGET_PATH/src/primihub/pybind_warpper/linkcontext.so /app/python/
 
 # The setup.py will copy opt_paillier_c2py.so to python library path.
 WORKDIR /app/python
