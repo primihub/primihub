@@ -75,8 +75,9 @@ class KeywordPIRServerTask : public TaskBase {
         uint32_t bundle_idx,
         compr_mode_type compr_mode,
         seal::MemoryPoolHandle &pool);
+
  private:
-    int _LoadParams(Task &task);
+    retcode _LoadParams(Task &task);
     std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
     std::unique_ptr<apsi::PSIParams> _SetPsiParams();
     std::shared_ptr<apsi::sender::SenderDB> create_sender_db(

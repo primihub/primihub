@@ -17,10 +17,11 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TASK_H_
 #include <glog/logging.h>
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/task_context.h"
+#include "src/primihub/common/value_check_util.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
@@ -42,9 +43,14 @@ class TaskBase {
 
   virtual ~TaskBase() = default;
   virtual int execute() = 0;
-  virtual int kill_task() {
-    LOG(INFO) << "UNIMPLEMENT";
+  virtual void kill_task() {
+    LOG(WARNING) << "task receives kill task request and stop stauts";
+    stop_.store(true);
+    task_context_.clean();
   };
+  bool has_stopped() {
+    return stop_.load(std::memory_order_relaxed);
+  }
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
       const std::string& task_id, const std::string& submit_client_id) {
     job_id_ = job_id;
@@ -89,6 +95,7 @@ class TaskBase {
    * the server just prepare data and push into send queue
   */
   retcode pushDataToSendQueue(const std::string& key, std::string&& send_data);
+
  protected:
    std::atomic<bool> stop_{false};
    TaskParam task_param_;

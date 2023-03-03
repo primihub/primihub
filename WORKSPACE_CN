@@ -15,9 +15,9 @@ filegroup(
 
 http_archive(
     name = "rules_foreign_cc",
-    sha256 = "6041f1374ff32ba711564374ad8e007aef77f71561a7ce784123b9b4b88614fc",
+    sha256 = "484fc0e14856b9f7434072bc2662488b3fe84d7798a5b7c92a1feb1a0fa8d088",
     strip_prefix = "rules_foreign_cc-0.8.0",
-    url = "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_foreign_cc-0.8.0.tar.gz",
+    url = "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_foreign_cc_cn-0.8.0.tar.gz",
 )
 
 
@@ -77,7 +77,8 @@ new_git_repository(
 git_repository(
     name = "com_github_grpc_grpc",
     remote = "https://gitee.com/primihub/grpc.git",
-    commit = "8838117b07a4faac3a6baaf645a490987b2a12b1",
+    # branch = "v1.42.x-openssl",
+    commit = "8b65292afb00fb62c46e25f590bff2c644c0a03c",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -584,6 +585,7 @@ http_archive(
 
 git_repository(
     name = "com_github_base64_cpp",
+    # branch = "bazel_version",
     commit = "294208257517a97dd42911cac9f1d4da2a57d316",
-    remote = "https://github.com/primihub/cpp-base64.git",
+    remote = "https://gitee.com/primihub/cpp-base64.git",
 )

@@ -121,6 +121,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
         LOG(ERROR) << "no scheduler created to dispatch task";
     } else {
         parseNofifyServer(scheduler->notifyServer());
+        parseTaskServer(scheduler->taskServer());
     }
 }
 
@@ -162,6 +163,7 @@ void ProtocolSemanticParser::schedulePythonTask(
         LOG(ERROR) << "no scheduler created to dispatch task";
     } else {
         parseNofifyServer(scheduler->notifyServer());
+        parseTaskServer(scheduler->taskServer());
     }
 }
 
@@ -197,6 +199,7 @@ void ProtocolSemanticParser::schedulePirTask(
             auto pushTaskRequest = _proto_parser->getPushTaskRequest();
             scheduler->dispatch(&pushTaskRequest);
             parseNofifyServer(scheduler->notifyServer());
+            parseTaskServer(scheduler->taskServer());
     });
 }
 
@@ -227,6 +230,7 @@ void ProtocolSemanticParser::schedulePsiTask(
             auto pushTaskRequest = _proto_parser->getPushTaskRequest();
             scheduler->dispatch(&pushTaskRequest);
             parseNofifyServer(scheduler->notifyServer());
+            parseTaskServer(scheduler->taskServer());
     });
 }
 
@@ -290,9 +294,7 @@ void ProtocolSemanticParser::metasToPeerList(
     auto _meta = meta_with_tag.first;
     Node node_info;
     std::string server_info = _meta->getServerInfo();
-    LOG(ERROR) << "server_infoserver_info: " << server_info;
     node_info.fromString(server_info);
-
     rpc::Node node;
     primihub::node2PbNode(node_info, &node);
     bool is_new_peer = true;
@@ -422,13 +424,20 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
   }
 }
 void ProtocolSemanticParser::prepareReply(primihub::rpc::PushTaskReply* reply) {
-  for (const auto& node : this->notify_server) {
-    auto server = reply->add_notify_server();
-    server->set_ip(node.ip_);
-    server->set_port(node.port_);
-    server->set_use_tls(node.use_tls_);
-    server->set_role(node.role_);
-  }
+    for (const auto& node : this->notify_server_) {
+        auto server = reply->add_notify_server();
+        server->set_ip(node.ip_);
+        server->set_port(node.port_);
+        server->set_use_tls(node.use_tls_);
+        server->set_role(node.role_);
+    }
+    for (const auto& node : this->task_server_) {
+        auto server = reply->add_task_server();
+        server->set_ip(node.ip_);
+        server->set_port(node.port_);
+        server->set_use_tls(node.use_tls_);
+        server->set_role(node.role_);
+    }
 }
 
 } // namespace primihub::task

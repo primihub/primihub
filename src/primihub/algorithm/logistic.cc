@@ -181,7 +181,7 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
   auto driver = this->datasetService()->getDriver(dataset_id);
-  auto& cursor = driver->read();
+  auto cursor = driver->read();
   std::shared_ptr<Dataset> ds = cursor->read();
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 

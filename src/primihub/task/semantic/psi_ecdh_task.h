@@ -17,10 +17,6 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_ECDH_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_ECDH_TASK_H_
 
-// #include <grpc/grpc.h>
-// #include <grpcpp/channel.h>
-// #include <grpcpp/create_channel.h>
-
 #include <unordered_map>
 #include <memory>
 #include <string>
@@ -49,9 +45,9 @@ class PSIEcdhTask : public TaskBase, public PsiCommonOperator {
     return run_as_client_;
   }
   // client method
-  int executeAsClient();
-  int saveResult();
-  int sendRequetToServer(psi_proto::Request&& psi_request);
+  retcode executeAsClient();
+  retcode saveResult();
+  retcode sendRequetToServer(psi_proto::Request&& psi_request);
   retcode broadcastResultToServer();
   retcode buildInitParam(std::string* init_param);
   retcode sendInitParam(const std::string& init_param);
@@ -59,20 +55,21 @@ class PSIEcdhTask : public TaskBase, public PsiCommonOperator {
   retcode sendPSIRequestAndWaitResponse(psi_proto::Request&& request, rpc::PsiResponse* response);
   retcode parsePsiResponseFromeString(const std::string& res_str, rpc::PsiResponse* response);
   // server method
-  int executeAsServer();
-  int initRequest(psi_proto::Request* psi_request);
+  retcode executeAsServer();
+  retcode initRequest(psi_proto::Request* psi_request);
   retcode preparePSIResponse(psi_proto::Response&& psi_response, psi_proto::ServerSetup&& setup);
-  int recvPSIResult();
-  int recvInitParam(size_t* client_dataset_size, bool* reveal_intersection);
+  retcode recvPSIResult();
+  retcode recvInitParam(size_t* client_dataset_size, bool* reveal_intersection);
   void set_fpr(double fpr) {
     fpr_ = fpr;
   }
 
  private:
-  int LoadParams(Task& task);
+  retcode LoadParams(Task& task);
   retcode LoadDataset();
-  int GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
+  retcode GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
                     rpc::PsiResponse& taskResponse);
+ private:
   std::vector<int> data_index_;
   int psi_type_;
   std::string dataset_path_;

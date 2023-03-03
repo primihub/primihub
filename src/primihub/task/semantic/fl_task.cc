@@ -64,7 +64,24 @@ int FLTask::execute() {
               bp::std_err > stdout,
               ios);
     ios.run(); //this will actually block until the py_main is finished
-    c.wait();
+    uint64_t count{0};
+    do {
+        if (count < 1000) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        } else {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        if (has_stopped()) {
+            LOG(ERROR) << "begin to terminate py_main";
+            if (c.running()) {
+                ios.stop();
+                c.terminate();
+            }
+            break;
+        }
+        count++;
+    } while (c.running());
+
     int result = c.exit_code();
     LOG(INFO) << "py_main executes result code: " << result;
     if (result != 0) {
@@ -77,6 +94,7 @@ int FLTask::execute() {
         // }
         return -1;
     }
+    // fut.get();
     return 0;
 }
 
