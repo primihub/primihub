@@ -57,7 +57,8 @@ cc_library(
         "@lz4",
         "@snappy",
         "@zlib",
-        "@zstd",
+        #"@zstd",
+        "@com_github_facebook_zstd//:zstd",
     ],
 )
 

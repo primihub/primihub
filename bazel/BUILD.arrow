@@ -114,7 +114,7 @@ cc_library(
             "cpp/src/parquet/**/*.cc",
             "cpp/src/generated/*.h",
             "cpp/src/generated/*.cpp",
-            
+
         ],
         exclude = [
             "cpp/src/**/*_benchmark.cc",
@@ -180,7 +180,8 @@ cc_library(
         "@thrift",
         "@xsimd",
         "@zlib",
-        "@zstd",
+        #"@zstd",
+        "@com_github_facebook_zstd//:zstd",
         "@io_opentelemetry_cpp//api",
         "@io_opentelemetry_cpp//exporters/ostream:ostream_span_exporter",
         # "@io_opentelemetry_cpp//exporters/otlp:otlp_http_exporter",
