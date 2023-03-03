@@ -37,7 +37,7 @@ RUN bash pre_build.sh \
     //:py_main \
     //:cli \
     //src/primihub/pybind_warpper:opt_paillier_c2py \
-    //src/primihub/pybind_warpper::linkcontext
+    //src/primihub/pybind_warpper:linkcontext
 
 FROM ubuntu:20.04 as runner
 
