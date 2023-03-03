@@ -278,15 +278,28 @@ http_archive(
     ],
 )
 
+# http_archive(
+#     name = "zstd",
+#     build_file = "//bazel:zstd.BUILD",
+#     sha256 = "a364f5162c7d1a455cc915e8e3cf5f4bd8b75d09bc0f53965b0c9ca1383c52c8",
+#     strip_prefix = "zstd-1.4.4",
+#     urls = [
+#         "https://primihub.oss-cn-beijing.aliyuncs.com/zstd-1.4.4.tar.gz"
+#     ],
+# )
+
 http_archive(
-    name = "zstd",
-    build_file = "//bazel:zstd.BUILD",
-    sha256 = "a364f5162c7d1a455cc915e8e3cf5f4bd8b75d09bc0f53965b0c9ca1383c52c8",
-    strip_prefix = "zstd-1.4.4",
+    name = "com_github_facebook_zstd",
+    build_file = "@com_github_nelhage_rules_boost//:BUILD.zstd",
+    sha256 = "e28b2f2ed5710ea0d3a1ecac3f6a947a016b972b9dd30242369010e5f53d7002",
+    strip_prefix = "zstd-1.5.1",
     urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/zstd-1.4.4.tar.gz"
+        #"https://github.com/facebook/zstd/releases/download/v1.5.1/zstd-1.5.1.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/zstd-1.5.1.tar.gz",
     ],
 )
+
+
 
 http_archive(
     name = "xz",
