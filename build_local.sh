@@ -22,7 +22,7 @@ bazel build --config=linux_$ARCH //:node \
     //:py_main \
     //:cli \
     //src/primihub/pybind_warpper:opt_paillier_c2py \
-    //src/primihub/pybind_warpper::linkcontext
+    //src/primihub/pybind_warpper:linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"

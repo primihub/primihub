@@ -99,14 +99,13 @@ cc_library(
         "//src/primihub/util/network:network_lib",
         "//src/primihub/algorithm:algorithm_lib",
 
-    ],
-    # + select({
-    #     ":x86_64": [
-    #         "//src/primihub/algorithm:cryptflow2_algorithm_lib",
-    #     ],
-    #     ":aarch64": [],
-    #     "//conditions:default": [],
-    # }),
+    ] + select({
+        ":x86_64": [
+            "//src/primihub/algorithm:cryptflow2_algorithm_lib",
+        ],
+        ":aarch64": [],
+        "//conditions:default": [],
+    }),
 
 )
 

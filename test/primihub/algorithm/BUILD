@@ -16,19 +16,19 @@ cc_test(
     ],
 )
 
-# TODO (fix in future, deps seal 3.5)
-# cc_test(
-#     name = "maxpool_test",
-#     srcs = [
-#         "maxpool_test.cc"
-#     ],
-#     copts = C_OPT,
-#     linkopts = LINK_OPTS,
-#     linkstatic = False,
-#     deps = DEFAULT_ALGORITHM_LINK_DEPS + [
-#         "cryptflow2_algorithm_lib",
-#     ]
-# )
+
+cc_test(
+    name = "maxpool_test",
+    srcs = [
+        "maxpool_test.cc"
+    ],
+    copts = [
+      "-maes",
+    ],
+    deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+        "//src/primihub/algorithm:cryptflow2_algorithm_lib",
+    ]
+)
 
 cc_test(
     name = "falcon_lenet_test",
