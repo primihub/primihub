@@ -63,12 +63,17 @@ jobs:
     - name: bazel test
       run: |
         ./pre_build.sh
-        bazel build --config=linux_x86_64 logistic_test maxpool_test falcon_lenet_test common_test network_test
-        ./bazel-bin/logistic_test
-        ./bazel-bin/maxpool_test
-        ./bazel-bin/falcon_lenet_test
-        ./bazel-bin/common_test
-        ./bazel-bin/network_test
+        bazel build --config=linux_x86_64 //test/primihub/algorithm:logistic_test \
+            //test/primihub/algorithm:maxpool_test \
+            //test/primihub/algorithm:falcon_lenet_test \
+            //test/primihub/common/type:common_test \
+            //test/primihub/util:network_test
+
+        ./bazel-bin/test/primihub/algorithm/logistic_test
+        ./bazel-bin/test/primihub/algorithm/maxpool_test
+        ./bazel-bin/test/primihub/algorithm/falcon_lenet_test
+        ./bazel-bin/test/primihub/common/type/common_test
+        ./bazel-bin/test/primihub/util/network_test
 
         # bazel test --test_output=all --config=linux test_opt_paillier_c2py
         # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py
@@ -95,10 +100,13 @@ jobs:
     - name: bazel build
       run: |
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
-        ./bazel-bin/logistic_test
-        ./bazel-bin/common_test
-        ./bazel-bin/network_test
+        bazel build --config=darwin_x86_64 --config=macos //test/primihub/common/type:common_test \
+            //test/primihub/util:network_test \
+            //test/primihub/algorithm:logistic_test
+
+        ./bazel-bin/test/primihub/algorithm/logistic_test
+        ./bazel-bin/test/primihub/common/type/common_test
+        ./bazel-bin/test/primihub/util/network_test
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
@@ -143,7 +151,11 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux_x86_64 :node :py_main :cli :opt_paillier_c2py :linkcontext
+        bazel build --config=linux_x86_64 //:node \
+            //:py_main \
+            //:cli \
+            //src/primihub/pybind_warpper:linkcontext \
+            //src/primihub/pybind_warpper:opt_paillier_c2py
 
 
   build-on-mac_x86_64:
@@ -162,7 +174,12 @@ jobs:
       run: |
         # cc_binary
         ./pre_build.sh
-        bazel build --config=darwin_x86_64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
+        bazel build --config=darwin_x86_64 --config=macos //:node \
+            //:py_main \
+            //:cli \
+            //src/primihub/pybind_warpper:opt_paillier_c2py \
+            //src/primihub/pybind_warpper:linkcontext
+
         cp ./bazel-bin/node ./bazel-bin/primihub-node
         cp ./bazel-bin/cli ./bazel-bin/primihub-cli
         chmod u+x ./bazel-bin/primihub-node

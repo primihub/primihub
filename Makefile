@@ -1,15 +1,9 @@
-#TARGET := //:node \
-#         //:cli \
-#         //:linkcontext \
-#         //:opt_paillier_c2py \
-#         //:linkcontext \
-#         //:py_main
 
 TARGET := //:node \
          //:cli \
          //src/primihub/pybind_warpper:linkcontext \
+         //src/primihub/pybind_warpper:opt_paillier_c2py \
          //:py_main
-
 
 linux_x86_64:
 	bazel build --config=linux_x86_64 ${TARGET}
