@@ -94,8 +94,8 @@ grpc_extra_deps()
 http_archive(
     name = "com_github_glog_glog",
     # sha256 = "cbba86b5a63063999e0fc86de620a3ad22d6fd2aa5948bff4995dcd851074a0b",
-    strip_prefix = "glog-c8f8135a5720aee7de8328b42e4c43f8aa2e60aa",
-    urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/tools/glog-c8f8135a5720aee7de8328b42e4c43f8aa2e60aa.zip"],
+    strip_prefix = "glog-0.6.0",
+    urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/tools/glog-0.6.0.zip"],
 )
 
 http_archive(

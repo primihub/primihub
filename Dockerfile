@@ -19,7 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN  apt update \
-  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake libmysqlclient-dev\
+  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake libmysqlclient-dev \
   && apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm \
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
   && rm -rf /var/lib/apt/lists/*
@@ -32,8 +32,10 @@ ADD . /src
 
 # Bazel build primihub-node & primihub-cli & paillier shared library
 RUN bash pre_build.sh \
-  && ARCH=`arch` \
-  && bazel build --config=linux_$ARCH :node :py_main :cli :opt_paillier_c2py :linkcontext
+  && mv -f WORKSPACE_GITHUB WORKSPACE \
+  && bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext \
+  && cd bazel-bin \
+  && tar zcf /opt/bazel-bin.tar.gz --exclude=*_objs ./*
 
 FROM ubuntu:20.04 as runner
 
@@ -41,47 +43,34 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
 RUN apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata libmysqlclient-dev \
   && rm -rf /var/lib/apt/lists/*
 
-ARG TARGET_PATH=/root/.cache/bazel/_bazel_root/f8087e59fd95af1ae29e8fcb7ff1a3dc/execroot/primihub/bazel-out/k8-fastbuild/bin
-WORKDIR $TARGET_PATH
-
-# Copy binaries to TARGET_PATH
-COPY --from=builder $TARGET_PATH ./
+COPY --from=builder /opt/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
 # Copy test data files to /tmp/
 COPY --from=builder /src/data/ /tmp/
+# Copy all test config files to /app/config
+COPY --from=builder /src/config /app/config
+# Copy primihub python sources to /app and setup to system python3
+COPY --from=builder /src/python /app/python
 
-# Change WorkDir to /app
 WORKDIR /app
 
-# Make symlink to primihub-node & primihub-cli
-RUN ln -s $TARGET_PATH/node /app/primihub-node && ln -s $TARGET_PATH/cli /app/primihub-cli
+RUN tar zxf /opt/bazel-bin.tar.gz \
+  && mkdir log \
+  && mv opt_paillier_c2py.so linkcontext.so python \
+  && ln -s node primihub-node && ln -s cli primihub-cli
 
-# Copy all test config files to /app/config
-COPY --from=builder /src/config ./config
+COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
 
-# Copy primihub python sources to /app and setup to system python3
-RUN mkdir -p src/primihub/protos data log
-COPY --from=builder /src/python ./python
-COPY --from=builder /src/src/primihub/protos/ ./src/primihub/protos/
-
-# Copy opt_paillier_c2py.so linkcontext.so to /app/python, this enable setup.py find it.
-RUN cp $TARGET_PATH/opt_paillier_c2py.so /app/python/ \
-  && cp $TARGET_PATH/linkcontext.so /app/python/
-
-# The setup.py will copy opt_paillier_c2py.so to python library path.
 WORKDIR /app/python
+
 RUN python3 -m pip install --upgrade pip \
   && python3 -m pip install -r requirements.txt \
-  && python3 setup.py install
+  && python3 setup.py install \
+  && rm -rf /root/.cache/pip/
 
-RUN rm -rf /app/python/opt_paillier_c2py.so \
-  && rm -rf /app/python/linkcontext.so
 WORKDIR /app
 
 # gRPC server port
 EXPOSE 50050
-# Cryptool port
-EXPOSE 12120
-EXPOSE 12121
