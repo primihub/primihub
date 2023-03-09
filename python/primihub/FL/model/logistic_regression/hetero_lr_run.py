@@ -62,6 +62,9 @@ def lr_host_logic():
     X_host = data.copy()
     del data
 
+    indicator_file_path = ph.context.Context.get_indicator_file_path()
+    output_file = ph.context.Context.get_predict_file_path()
+
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
                               local_ip=host_ip,
@@ -80,7 +83,9 @@ def lr_host_logic():
                           sample_ratio=config['sample_ratio'],
                           batch_size=config['batch_size'],
                           scale_type=config['scale_type'],
-                          model_path=model_file_path)
+                          model_path=model_file_path,
+                          indicator_file=indicator_file_path,
+                          output_file=output_file)
 
     lr_host.fit(X_host, Y)
 

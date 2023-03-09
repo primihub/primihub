@@ -1,7 +1,10 @@
 import pickle
+import json
 import numpy as np
 import pandas as pd
+from sklearn import metrics
 from primihub.utils.sampling import random_sample
+from primihub.utils.evaluation import evaluate_ks_and_roc_auc
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
@@ -26,7 +29,9 @@ class HeterLrHost(HeteroLrBase):
                  sample_method="random",
                  sample_ratio=0.5,
                  scale_type=None,
-                 model_path=None):
+                 model_path=None,
+                 indicator_file=None,
+                 output_file=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -42,6 +47,8 @@ class HeterLrHost(HeteroLrBase):
         self.sample_ratio = sample_ratio
         self.scale_type = scale_type
         self.model_path = model_path
+        self.indicator_file = indicator_file
+        self.output_file = output_file
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -143,7 +150,7 @@ class HeterLrHost(HeteroLrBase):
             if isinstance(y, np.ndarray):
                 y = y[sample_ids]
             else:
-                y = y.iloc[sample_ids]
+                y = y.iloc[sample_ids].values
 
         if self.scale_type is not None:
             if self.scale_type == "z-score":
@@ -228,3 +235,26 @@ class HeterLrHost(HeteroLrBase):
 
         with open(model_path, 'wb') as lr_host:
             pickle.dump(host_model, lr_host)
+
+        if self.indicator_file is not None:
+            ks, auc = evaluate_ks_and_roc_auc(y, self.sigmoid(best_y))
+            fpr, tpr, threshold = metrics.roc_curve(y, self.sigmoid(best_y))
+
+            evals = {
+                "train_acc": best_acc,
+                "train_ks": ks,
+                "train_auc": auc,
+                "train_fpr": fpr.tolist(),
+                "train_tpr": tpr.tolist()
+            }
+            resut_buf = json.dumps(evals)
+
+            with open(self.indicator_file, 'w') as indicts:
+                indicts.write(resut_buf)
+
+        if self.output_file is not None:
+            pred_df = pd.DataFrame({
+                'prediction': best_y,
+                'probability': self.sigmoid(best_y)
+            })
+            pred_df.to_csv(self.output_file, index=False, sep='\t')
