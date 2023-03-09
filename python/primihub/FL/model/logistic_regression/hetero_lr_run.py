@@ -60,6 +60,7 @@ def lr_host_logic():
         data.pop('id')
     Y = data.pop('y').values
     X_host = data.copy()
+    del data
 
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
@@ -121,7 +122,8 @@ def lr_guest_logic(cry_pri="paillier"):
     if 'id' in data.columns:
         data.pop('id')
 
-    X_guest = data
+    X_guest = data.copy()
+    del data
     guest_channel = GrpcServer(remote_ip=host_ip,
                                remote_port=host_port,
                                local_ip=guest_ip,

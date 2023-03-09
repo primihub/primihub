@@ -19,7 +19,7 @@ class HeterLrHost(HeteroLrBase):
                  loss_type='log',
                  random_state=2023,
                  host_channel=None,
-                 add_noise=True,
+                 add_noise="regular",
                  tol=0.001,
                  momentum=0.7,
                  n_iter_no_change=5,
@@ -75,17 +75,15 @@ class HeterLrHost(HeteroLrBase):
         h = self.sigmoid(self.predict_raw(x))
         error = h - y
         # self.channel.sender('error', error)
-        if self.add_noise:
-            # nois_error = trucate_geometric_thres(error,
-            #                                      clip_thres=self.clip_thres,
-            #                                      variation=self.noise_variation)
-
-            # add adaptive-noise for error
+        if self.add_noise == 'regular':
+            noise = np.random.normal(0, 1, error.shape)
+        elif self.add_noise == 'adaptive':
             error_std = np.std(error)
             noise = np.random.normal(0, error_std, error.shape)
-            nois_error = error + noise
         else:
-            nois_error = error
+            noise = 0
+
+        nois_error = error + noise
         self.channel.sender('error', nois_error)
 
         if self.penalty == "l2":
