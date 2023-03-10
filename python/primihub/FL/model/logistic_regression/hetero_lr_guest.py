@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, trucate_geometric_thres
 
 
@@ -20,7 +21,9 @@ class HeterLrGuest(HeteroLrBase):
                  add_noise=True,
                  n_iter_no_change=5,
                  momentum=0.7,
-                 sample_method="random"):
+                 sample_method="random",
+                 scale_type=None,
+                 model_path=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = guest_channel
@@ -29,6 +32,8 @@ class HeterLrGuest(HeteroLrBase):
         self.momentum = momentum
         self.prev_grad = 0
         self.sample_method = sample_method
+        self.scale_type = scale_type
+        self.model_path = model_path
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
@@ -78,7 +83,8 @@ class HeterLrGuest(HeteroLrBase):
         self.theta -= self.learning_rate * grad
 
     def fit(self, x):
-        if self.sample_method == "random":
+        col_names = []
+        if self.sample_method == "random" and x.shape[0] > 50000:
             sample_ids = self.channel.recv('sample_ids')
 
             if isinstance(x, np.ndarray):
@@ -88,6 +94,16 @@ class HeterLrGuest(HeteroLrBase):
                 col_names = x.columns
                 x = x.iloc[sample_ids]
                 x = x.values
+
+        if self.scale_type is not None:
+            if self.scale_type == "z-score":
+                std = StandardScaler()
+            else:
+                std = MinMaxScaler()
+
+            x = std.fit_transform(x)
+        else:
+            std = None
 
         if self.batch_size < 0:
             self.batch_size = x.shape[0]
@@ -125,8 +141,14 @@ class HeterLrGuest(HeteroLrBase):
         self.theta = best_theta
         print("best theta: ", best_theta)
 
-        model_path = "hetero_lr_guest.ml"
-        host_model = {"weights": self.theta, "bias": 0, "columns": col_names}
+        # model_path = "hetero_lr_guest.ml"
+        model_path = self.model_path
+        host_model = {
+            "weights": self.theta,
+            "bias": 0,
+            "columns": col_names,
+            "std": std
+        }
 
         with open(model_path, 'wb') as lr_guest:
             pickle.dump(host_model, lr_guest)
