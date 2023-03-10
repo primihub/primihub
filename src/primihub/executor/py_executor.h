@@ -51,6 +51,7 @@ class PyExecutor {
     std::map<std::string, std::string> params_map_;
     std::string taskid_;
     std::string jobid_;
+    std::string request_id_;
 };
 
 }  // namespace primihub::task::python

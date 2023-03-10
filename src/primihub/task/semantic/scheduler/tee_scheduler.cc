@@ -88,9 +88,8 @@ void TEEScheduler::add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
     VirtualMachine *dpv_vm = executor->add_vm();
     dpv_vm->set_party_id(party_id);
     EndPoint *ed_next = dpv_vm->mutable_next();
-
-    std::string name_prefix = pushTaskRequest->task().job_id() + "_" +
-                              pushTaskRequest->task().task_id() + "_";
+    const auto& task_info = pushTaskRequest->task().task_info();
+    std::string name_prefix = task_info.job_id() + "_" + task_info.task_id() + "_";
 
     int session_basePort = 12120;
 
@@ -133,6 +132,14 @@ void TEEScheduler::push_task_to_node(const std::string &node_id,
         DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
         pv.set_value_string(dataset_param.first);
         (*param_map)[dataset_param.second] = pv;
+    }
+    {
+        // fill scheduler info
+        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto& local_node = getLocalNodeCfg();
+        rpc::Node scheduler_node;
+        node2PbNode(local_node, &scheduler_node);
+        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);

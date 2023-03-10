@@ -79,4 +79,3 @@ cc_binary(
         "//src/primihub/cli:cli_impl",
     ],
 )
-

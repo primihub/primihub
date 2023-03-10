@@ -52,12 +52,13 @@ class TaskBase {
     return stop_.load(std::memory_order_relaxed);
   }
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
-      const std::string& task_id, const std::string& submit_client_id) {
+      const std::string& task_id, const std::string& request_id, const std::string& submit_client_id) {
     job_id_ = job_id;
     task_id_ = task_id;
+    request_id_ = request_id;
     node_id_ = node_id;
     submit_client_id_ = submit_client_id;
-    task_context_.setTaskInfo(job_id, task_id);
+    task_context_.setTaskInfo(job_id, task_id, request_id);
   }
   inline std::string job_id() {
     return job_id_;
@@ -68,6 +69,9 @@ class TaskBase {
   inline std::string node_id() {
     return node_id_;
   }
+  inline std::string request_id() {
+    return request_id_;
+  }
   inline std::string submit_client_id() {
     return submit_client_id_;
   }
@@ -76,6 +80,19 @@ class TaskBase {
   }
   inline task_context_t* getMutableTaskContext() {
     return &task_context_;
+  }
+  bool isParty(const std::string& node_id) {
+    if (isLocal(node_id) || isScheduler(node_id)) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  inline bool isScheduler(const std::string& node_id) {
+    return (node_id == SCHEDULER_NODE);
+  }
+  inline bool isLocal(const std::string& node_id) {
+    return (node_id == node_id_);
   }
   void setTaskParam(const TaskParam *task_param);
   TaskParam* getTaskParam();
@@ -105,6 +122,7 @@ class TaskBase {
    std::string task_id_;
    std::string node_id_;
    std::string submit_client_id_;
+   std::string request_id_;
 };
 
 } // namespace primihub::task

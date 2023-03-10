@@ -64,7 +64,14 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
         (*param_map)[pair.first] = std::move(pv);
         DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
-
+    {
+        // fill scheduler info
+        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto& local_node = getLocalNodeCfg();
+        rpc::Node scheduler_node;
+        node2PbNode(local_node, &scheduler_node);
+        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+    }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);
     auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
@@ -86,8 +93,8 @@ void ABY3Scheduler::add_vm(rpc::Node *node, int i,
     auto next = (i + 1) % 3;
     auto prev = (i + 2) % 3;
 
-    std::string name_prefix = pushTaskRequest->task().job_id() + "_" +
-                              pushTaskRequest->task().task_id() + "_";
+    auto task_info = pushTaskRequest->task().task_info();
+    std::string name_prefix = task_info.job_id() + "_" + task_info.task_id() + "_";
 
     int session_basePort = 12120;  // TODO move to configfile
     ed_next->set_ip(peer_list_[next].ip());

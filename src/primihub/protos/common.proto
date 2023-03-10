@@ -130,6 +130,12 @@ message Node {
   repeated VirtualMachine vm = 7;
 }
 
+message TaskContext {
+  string task_id = 1;
+  string job_id = 2;
+  string request_id = 3;
+}
+
 message Task {
   TaskType type = 1;
   string name = 2;
@@ -138,7 +144,11 @@ message Task {
   bytes code = 5;
   map<string, Node> node_map = 6; // key: node_id
   repeated string input_datasets = 7;
-  bytes job_id = 8;
-  bytes task_id = 9;
+  TaskContext task_info = 8;
+  bytes party = 11;               // participate role
+}
+
+message Empty {
+
 }
 

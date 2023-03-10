@@ -147,8 +147,9 @@ retcode PyExecutor::parseParams() {
     }
 
     this->params_map_["local_dataset"] = iter->second.value_string();
-    jobid_ = pb_task.job_id();
-    taskid_ = pb_task.task_id();
+    jobid_ = pb_task.task_info().job_id();
+    taskid_ = pb_task.task_info().task_id();
+    request_id_ = pb_task.task_info().request_id();
     VLOG(1) << "end of parseParams, params_map_ size: " << this->params_map_.size();
     return retcode::SUCCESS;
 }
@@ -209,6 +210,7 @@ retcode PyExecutor::run_task_code() {
             // Setup task id and job id.
             set_task_context_params_map("jobid", jobid_);
             set_task_context_params_map("taskid", taskid_);
+            set_task_context_params_map("request_id", request_id_);
             set_task_context_params_map("config_file_path", server_config_file_);
         }
 
@@ -226,8 +228,8 @@ retcode PyExecutor::run_task_code() {
         return retcode::FAIL;
     }
 
-    auto taskId = this->task_request_->task().task_id();
-    auto job_id = this->task_request_->task().task_id();
+    auto taskId = this->task_request_->task().task_info().task_id();
+    auto job_id = this->task_request_->task().task_info().task_id();
     try {
         VLOG(1) << "<<<<<<<<< Start executing Python code <<<<<<<<<" << std::endl;
         // Execute python code.
