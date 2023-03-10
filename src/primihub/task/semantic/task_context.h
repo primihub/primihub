@@ -47,8 +47,8 @@ class TaskContext {
     initCertificate();
   }
 
-  void setTaskInfo(const std::string& job_id, const std::string& task_id) {
-    link_ctx_->setTaskInfo(job_id, task_id);
+  void setTaskInfo(const std::string& job_id, const std::string& task_id, const std::string& request_id) {
+    link_ctx_->setTaskInfo(job_id, task_id, request_id);
   }
 
   primihub::ThreadSafeQueue<T>& getRecvQueue(const std::string& role = "default") {

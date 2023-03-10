@@ -163,7 +163,6 @@ void PSIScheduler::node_push_psi_task(const std::string& node_id,
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
-
     const auto& params = nodePushTaskRequest.task().params().param_map();
     int psiTag = PsiTag::ECDH;
     auto param_it = params.find("psiTag");
@@ -178,7 +177,14 @@ void PSIScheduler::node_push_psi_task(const std::string& node_id,
         LOG(ERROR) << "Unknown psiTag: " << psiTag;
         return ;
     }
-
+    {
+        // fill scheduler info
+        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto& local_node = getLocalNodeCfg();
+        rpc::Node scheduler_node;
+        node2PbNode(local_node, &scheduler_node);
+        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+    }
     // send request
     std::string dest_node_address = dest_node.to_string();
     LOG(INFO) << "dest node " << dest_node_address;
@@ -233,7 +239,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     for (auto &pair : node_map) {
         auto peer_dataset_map_it = this->peer_dataset_map_.find(pair.first);
         if (peer_dataset_map_it == this->peer_dataset_map_.end()) {
-            LOG(ERROR) << "dispatchTask: peer_dataset_map not found";
+            LOG(ERROR) << "dispatchTask: peer_dataset_map not found:  " << pair.first;
             return;
         }
         // std::vector<DatasetWithParamTag>

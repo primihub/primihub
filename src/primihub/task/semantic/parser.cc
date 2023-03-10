@@ -317,7 +317,7 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
   for (auto &meta : metas_with_param_tag) {
     auto _meta = meta.first;
     auto _param_tag = meta.second;
-    DLOG(INFO) << "metasToPeerDatasetMap: " << _meta->getDataURL() << " "
+    VLOG(5) << "metasToPeerDatasetMap: " << _meta->getDataURL() << " "
                << _param_tag;
     Node node_info;
     auto server_info = _meta->getServerInfo();

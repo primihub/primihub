@@ -57,6 +57,9 @@ class ProtocolSemanticParser {
                             PushTaskRequest &taskRequest);
     void prepareReply(primihub::rpc::PushTaskReply* reply);
 
+    std::vector<Node>& notifyServer() {return notify_server_;}
+    std::vector<Node>& taskServer() {return task_server_;}
+
   private:
     void parseNofifyServer(const std::vector<Node>& notify_servers) {
         for (const auto& node : notify_servers) {

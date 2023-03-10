@@ -20,7 +20,6 @@
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/util.hpp"
-#include "src/primihub/service/notify/model.h"
 
 using grpc::Channel;
 using grpc::ClientReader;
@@ -37,7 +36,7 @@ using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
 
 using primihub::service::DataURLToDetail;
-using primihub::service::EventBusNotifyDelegate;
+// using primihub::service::EventBusNotifyDelegate;
 
 namespace primihub::task {
 
@@ -103,6 +102,14 @@ void FLScheduler::push_node_py_task(const std::string& node_id,
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
+    {
+        // fill scheduler info
+        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto& local_node = getLocalNodeCfg();
+        rpc::Node scheduler_node;
+        node2PbNode(local_node, &scheduler_node);
+        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+    }
     const NodeContext& peer_context = peer_context_map.find(role)->second;
     nodeContext2TaskParam(peer_context, dataset_meta_list, &_1NodePushTaskRequest);
     auto channel = this->getLinkContext()->getChannel(dest_node);

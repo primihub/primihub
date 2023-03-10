@@ -13,15 +13,14 @@ message PushTaskRequest {
   bytes submit_client_id = 5;
 }
 
-
 message PushTaskReply {
   int32 ret_code = 1;  // 0: success  1: doing  2: error
   bytes node_id = 2;
-  bytes job_id = 3;
-  bytes task_id = 4;
-  bytes msg_info = 5;
-  repeated Node notify_server = 6;
-  repeated Node task_server = 7;
+  TaskContext task_info = 3;
+  bytes msg_info = 6;
+  int32 party_count = 7;     // number of participate parties
+  repeated Node notify_server = 8;
+  repeated Node task_server = 9;
 }
 
 message ExecuteTaskRequest {
@@ -42,10 +41,9 @@ message ExecuteTaskResponse {
 }
 
 message TaskRequest {
-  string job_id = 1;
-  string task_id = 2;
-  string role = 3;
-  uint64 data_len = 4;
+  TaskContext task_info = 1;
+  string role = 2;
+  uint64 data_len = 3;
   bytes data = 22;
 }
 
@@ -62,28 +60,49 @@ message ForwardTaskRequest {
 }
 
 message KillTaskRequest {
-    enum executorType {
-        CLIENT = 0;     // executed by client
-        SCHEDULER = 1;  // executed by scheduler
-    }
-    string job_id = 1;
-    string task_id = 2;
-    executorType executor = 3;
+  enum ExecutorType {
+    CLIENT = 0;     // executed by client
+    SCHEDULER = 1;  // executed by scheduler
+  }
+  TaskContext task_info = 1;
+  ExecutorType executor = 2;
 }
 
 message KillTaskResponse {
-    retcode ret_code = 1;
-    string msg_info = 2;
+  retcode ret_code = 1;
+  string msg_info = 2;
+}
+
+message TaskStatus {
+  enum StatusCode {
+    RUNNING = 0;
+    SUCCESS = 1;
+    FAIL = 2;
+  }
+  TaskContext task_info = 1;
+  string party = 2;
+  StatusCode status = 3;
+  string message = 4;
+}
+
+message TaskStatusReply {
+  repeated TaskStatus task_status = 1;
 }
 
 service VMNode {
+  // task operation
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
+  rpc KillTask(KillTaskRequest) returns (KillTaskResponse);
   rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
+  // task status operation
+  rpc FetchTaskStatus(TaskContext) returns (TaskStatusReply);
+  rpc UpdateTaskStatus(TaskStatus) returns (Empty);
+
+  // data exchange operation
   rpc Send(stream TaskRequest) returns (TaskResponse);
   rpc Recv(TaskRequest) returns (stream TaskResponse);
   rpc SendRecv(stream TaskRequest) returns (stream TaskResponse);
   rpc ForwardSend(stream ForwardTaskRequest) returns (TaskResponse); // forward data as proxy
   rpc ForwardRecv(TaskRequest) returns (stream TaskRequest);  // forward data as proxy
-  rpc KillTask(KillTaskRequest) returns (KillTaskResponse);
 }
 

@@ -21,15 +21,19 @@ class LinkContext {
  public:
   LinkContext() = default;
   virtual ~LinkContext() = default;
-  inline void setTaskInfo(const std::string& job_id, const std::string& task_id) {
+  inline void setTaskInfo(const std::string& job_id, const std::string& task_id, const std::string& request_id) {
     job_id_ = job_id;
     task_id_ = task_id;
+    request_id_ = request_id;
   }
-  inline std::string job_id() {
+  inline std::string job_id() const {
     return job_id_;
   }
-  inline std::string task_id() {
+  inline std::string task_id() const {
     return task_id_;
+  }
+  inline std::string request_id() const {
+    return request_id_;
   }
   /**
    * return channel for specified node
@@ -59,6 +63,7 @@ class LinkContext {
   std::unordered_map<std::string, std::shared_ptr<IChannel>> connection_mgr;
   std::string job_id_;
   std::string task_id_;
+  std::string request_id_;
   std::unique_ptr<primihub::common::CertificateConfig> cert_config_{nullptr};
 
 };
@@ -76,6 +81,8 @@ class IChannel {
   virtual retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) = 0;
   virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
   virtual retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) = 0;
+  virtual retcode updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) = 0;
+  virtual retcode fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) = 0;
   virtual std::string forwardRecv(const std::string& role) = 0;
   // virtual retcode send(const std::vector<std::string>& datas) = 0;
   // virtual retcode send(const std::vector<std::string_view> sv_datas) = 0;
