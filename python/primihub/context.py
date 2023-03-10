@@ -4,7 +4,6 @@ from typing import Callable
 from cloudpickle import dumps
 from primihub.utils.logger_util import logger
 
-
 class NodeContext:
 
     def __init__(self, role, protocol, dataset_port_map, func=None):
@@ -44,8 +43,8 @@ class TaskContext:
     # dataset meta information
     dataset_map = dict()
     node_addr_map = dict()
-    predict_file_path = "result/lr_prediction.csv"
-    indicator_file_path = "result/lr_indicator.json"
+    predict_file_path = "result/xgb_prediction.csv"
+    indicator_file_path = "result/xgb_indicator.json"
     model_file_path = "result/host/model"
     host_lookup_file_path = "result/host/lookuptable"
     guest_lookup_file_path = "result/guest/lookuptable"
@@ -60,6 +59,7 @@ class TaskContext:
         self.params_map = {}
         self.link_context = None
         self.use_tls = False
+
 
     def get_protocol(self):
         """Get current task support protocol.
@@ -202,8 +202,7 @@ class TaskContext:
             config_node = yaml.safe_load(fd)
         self.use_tls = config_node.get("use_tls", False)
         import linkcontext
-        self.link_context = linkcontext.LinkFactory.createLinkContext(
-            linkcontext.LinkMode.GRPC)
+        self.link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
         self.link_context.setTaskInfo(self.job_id(), self.task_id())
         if self.use_tls:
             # load certificate
@@ -222,7 +221,7 @@ class TaskContext:
             self.init_link_context()
         return self.link_context
 
-    def Node(self, ip, port, use_tls, nodename="default"):
+    def Node(self, ip, port, use_tls, nodename = "default"):
         import linkcontext
         return linkcontext.Node(ip, port, use_tls, nodename)
 
@@ -305,3 +304,4 @@ def function(protocol, role, datasets, port, task_type="default"):
         return wapper
 
     return function_decorator
+
