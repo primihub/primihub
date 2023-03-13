@@ -32,4 +32,5 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
+        mv -f WORKSPACE_GITHUB WORKSPACE
         bazel build --config=linux_aarch64 :node :py_main :cli :opt_paillier_c2py :linkcontext
