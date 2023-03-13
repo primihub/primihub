@@ -1,0 +1,35 @@
+name: primihub arm build actions
+
+on:
+  push:
+    branches:
+    #  - master
+    #  - develop
+     - workflow # for test
+    tags: [ '*.*.*' ]
+  pull_request:
+    branches: [ "master", "develop" ]
+
+jobs:
+  build-on-ubuntu-arm64:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        arch: [arm64]
+    steps:
+    - name: Install Dependencies
+      run: |
+         sudo apt update \
+         && sudo apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake libmysqlclient-dev \
+         && sudo apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build \
+         && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=linux_aarch64 :node :py_main :cli :opt_paillier_c2py :linkcontext
