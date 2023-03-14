@@ -1,13 +1,11 @@
 name: primihub CI/CD actions
 
 on:
-  # schedule:
-  #   - cron: '19 3 * * *'
   push:
     branches:
     #  - master
     #  - develop
-    #  - workflow # for test
+     - workflow # for test
     # Publish semver tags as releases.
     tags: [ '*.*.*' ]
   pull_request:
@@ -15,47 +13,13 @@ on:
 
 jobs:
 
-  unit-test-on-ubuntu:
-    # runs-on: ubuntu-latest
+  build-on-ubuntu-amd64:
     runs-on: self-hosted
     steps:
-    # - name: Setup cmake
-    #   uses: jwlawson/actions-setup-cmake@v1.12
-    #   with:
-    #     cmake-version: '3.20.2'
-    # - uses: actions/setup-python@v4
-    #   with:
-    #     python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-    #     architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    # - run: sudo apt update
-    # - name: Install gcc-8
-    #   run: |
-    #      sudo apt install -y gcc-8  g++-8 \
-    #       && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-    # - name: Install python-devel
-    #   run: sudo apt install python-dev
-    # - name: Install pytest
-    #   run: sudo apt-get install python3-pip -y && pip3 install pytest
     - uses: actions/checkout@v3
-    # - name: Setup bazelisk
-    #   uses: bazelbuild/setup-bazelisk@v2
-    # - name: Mount bazel cache  # Optional
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: "~/.cache/bazel"
-    #     key: bazel
-
-    # - name: pytest
-    #   run: |
-    #     cd python/primihub/tests/
-    #     export PYTHONPATH=../..
-    #     pytest -v feature_test/test_onehot.py
-    #     pytest -v feature_test/test_minmax_standard.py
-    #     pytest -v test_disxgb_en.py
-
     - name: bazel test
       run: |
-        ./pre_build.sh
+        bash pre_build.sh
         bazel build --config=linux_x86_64 logistic_test maxpool_test falcon_lenet_test common_test network_test
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
@@ -70,24 +34,33 @@ jobs:
         # bazel test --config=linux primitive_test
         # bazel test --config=linux protocol_aby3_test
         # bazel test --config=linux prng_test
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=linux_x86_64 :node :py_main :cli :opt_paillier_c2py :linkcontext
 
+  build-on-ubuntu-arm64:
+    runs-on: [self-hosted, ARM64]
+    steps:
+    - uses: actions/checkout@v3
+    - name: bazel build
+      run: |
+        # cc_binary
+        bash pre_build.sh
+        bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
 
-
-  unit-test-on-macos_x86_64:
+  build-on-mac_x86_64:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
     - name: Setup bazelisk
       uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
-    - uses: actions/checkout@v3
-    - name: bazel build
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+    - name: bazel test
       run: |
-        ./pre_build.sh
+        mv -f WORKSPACE_GITHUB WORKSPACE
         bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
         ./bazel-bin/logistic_test
         ./bazel-bin/common_test
@@ -96,65 +69,9 @@ jobs:
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
         # bazel test --config=darwin_x86_64 --config=macos share_test
-      shell: bash
-
-
-  build-on-ubuntu:
-    needs: unit-test-on-ubuntu
-    # runs-on: ubuntu-latest
-    runs-on: self-hosted
-    steps:
-    # - name: Setup cmake
-    #   uses: jwlawson/actions-setup-cmake@v1.12
-    #   with:
-    #     cmake-version: '3.20.2'
-    # - uses: actions/setup-python@v4
-    #   with:
-    #     python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-    #     architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    # - run: sudo apt update
-    # - name: Install gcc-8
-    #   run: |
-    #      sudo apt install -y gcc-8  g++-8 \
-    #       && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-    # - name: Install python-devel
-    #   run: sudo apt install python-dev
-    - uses: actions/checkout@v3
-    # - name: Setup bazelisk
-    #   uses: bazelbuild/setup-bazelisk@v2
-    # - name: Mount bazel cache  # Optional
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: "~/.cache/bazel"
-    #     key: bazel
-    # - name: rm cache
-    #   run: |
-    #     sudo rm -fr /home/runner/.cache/
-    - name: set PYTHON LINK_OPTS
-      run: ./pre_build.sh
-      shell: bash
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux_x86_64 :node :py_main :cli :opt_paillier_c2py :linkcontext
-
-
-  build-on-mac_x86_64:
-    needs: unit-test-on-macos_x86_64
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: Mount bazel cache  # Optional
-      uses: actions/cache@v3
-      with:
-        path: "~/.cache/bazel"
-        key: bazel
-    - name: bazel build
-      run: |
-        # cc_binary
-        ./pre_build.sh
         bazel build --config=darwin_x86_64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
         cp ./bazel-bin/node ./bazel-bin/primihub-node
         cp ./bazel-bin/cli ./bazel-bin/primihub-cli
