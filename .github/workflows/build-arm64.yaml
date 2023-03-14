@@ -12,16 +12,16 @@ on:
 
 jobs:
   build-on-ubuntu-arm64:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        arch: [arm64]
+        os: [ ubuntu-latest ]
+        arch: [ arm64 ]
     steps:
     - name: Install Dependencies
       run: |
          sudo apt update \
-         && sudo apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake libmysqlclient-dev \
-         && sudo apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build \
+         && sudo apt install -y gcc-8 g++-8 python-dev cmake ninja-build libmysqlclient-dev \
          && sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
     - uses: actions/checkout@v3
     - name: Setup bazelisk
@@ -33,4 +33,4 @@ jobs:
       run: |
         # cc_binary
         mv -f WORKSPACE_GITHUB WORKSPACE
-        bazel build --config=linux_aarch64 :node :py_main :cli :opt_paillier_c2py :linkcontext
+        bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
