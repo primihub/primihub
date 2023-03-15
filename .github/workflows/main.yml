@@ -1,15 +1,16 @@
 name: primihub CI/CD actions
 
 on:
-  push:
-    branches:
-    #  - master
-    #  - develop
-     - workflow # for test
-    # Publish semver tags as releases.
-    tags: [ '*.*.*' ]
+  # push:
+  #   branches:
+  #    - master
+  #    - develop
+  #    - workflow # for test
+  #   # Publish semver tags as releases.
+  #   tags: [ '*' ]
   pull_request:
-    branches: [ "master", "develop" ]
+    branches:
+      - develop
 
 jobs:
 
@@ -20,7 +21,7 @@ jobs:
     - name: bazel test
       run: |
         bash pre_build.sh
-        bazel build --config=linux_x86_64 logistic_test maxpool_test falcon_lenet_test common_test network_test
+        bazel build --config=linux_`arch` logistic_test maxpool_test falcon_lenet_test common_test network_test
         ./bazel-bin/logistic_test
         ./bazel-bin/maxpool_test
         ./bazel-bin/falcon_lenet_test
@@ -37,7 +38,8 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux_x86_64 :node :py_main :cli :opt_paillier_c2py :linkcontext
+        bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
+
 
   build-on-ubuntu-arm64:
     runs-on: [self-hosted, ARM64]
@@ -49,7 +51,8 @@ jobs:
         bash pre_build.sh
         bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
 
-  build-on-mac_x86_64:
+
+  build-on-mac-amd64:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
@@ -73,20 +76,15 @@ jobs:
       run: |
         # cc_binary
         bazel build --config=darwin_x86_64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
-        cp ./bazel-bin/node ./bazel-bin/primihub-node
-        cp ./bazel-bin/cli ./bazel-bin/primihub-cli
-        chmod u+x ./bazel-bin/primihub-node
-        chmod u+x ./bazel-bin/primihub-cli
-        chmod u+x ./bazel-bin/py_main
 
-        tar czvf primihub-cli-darwin-amd64.tar.gz -C bazel-bin primihub-cli
-        tar czvf primihub-node-darwin-amd64.tar.gz -C bazel-bin primihub-node py_main
-      shell: bash
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-          files: |
-            ./primihub-cli-darwin-amd64.tar.gz
-            ./primihub-node-darwin-amd64.tar.gz
+
+  # build-on-mac-arm64:
+  #   runs-on: [self-hosted, ARM64, macOS]
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: bazel build
+  #     run: |
+  #       # cc_binary
+  #       bash pre_build.sh
+  #       bazel build --config=darwin_arm64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
 

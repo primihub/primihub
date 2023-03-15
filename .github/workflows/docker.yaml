@@ -2,12 +2,10 @@ name: primihub docker build actions
 
 on:
   push:
-    branches:
-      # - workflow # for test
-    tags: [ '*.*.*' ]
-  # pull_request:
-  #   branches:
-  #     - develop
+    # branches:
+    #   - workflow # for test
+    tags: [ '*' ]
+
 
 env:
   REGISTRY: docker.io

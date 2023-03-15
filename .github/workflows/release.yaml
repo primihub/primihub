@@ -1,0 +1,118 @@
+name: primihub release actions
+
+on:
+  push:
+    tags: [ '*' ]
+
+jobs:
+
+  build-on-ubuntu-amd64:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - name: bazel test
+      run: |
+        bash pre_build.sh
+        bazel build --config=linux_`arch` logistic_test maxpool_test falcon_lenet_test common_test network_test
+        ./bazel-bin/logistic_test
+        ./bazel-bin/maxpool_test
+        ./bazel-bin/falcon_lenet_test
+        ./bazel-bin/common_test
+        ./bazel-bin/network_test
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+        tar zcf primihub-linux-amd64.tar.gz bazel-bin/cli \
+                                            bazel-bin/node \
+                                            bazel-bin/py_main \
+                                            bazel-bin/opt_paillier_c2py.so \
+                                            bazel-bin/linkcontext.so
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: |
+            ./primihub-linux-amd64.tar.gz
+
+  build-on-ubuntu-arm64:
+    runs-on: [self-hosted, ARM64]
+    steps:
+    - uses: actions/checkout@v3
+    - name: bazel build
+      run: |
+        # cc_binary
+        bash pre_build.sh
+        bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+        tar zcf primihub-linux-arm64.tar.gz bazel-bin/cli \
+                                            bazel-bin/node \
+                                            bazel-bin/py_main \
+                                            bazel-bin/opt_paillier_c2py.so \
+                                            bazel-bin/linkcontext.so
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: |
+            ./primihub-linux-arm64.tar.gz
+
+  build-on-mac-amd64:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup bazelisk
+      uses: bazelbuild/setup-bazelisk@v2
+    - name: set PYTHON LINK_OPTS
+      run: ./pre_build.sh
+      shell: bash
+    - name: bazel test
+      run: |
+        mv -f WORKSPACE_GITHUB WORKSPACE
+        bazel build --config=darwin_x86_64 --config=macos common_test network_test logistic_test
+        ./bazel-bin/logistic_test
+        ./bazel-bin/common_test
+        ./bazel-bin/network_test
+    - name: bazel build
+      run: |
+        # cc_binary
+        bazel build --config=darwin_x86_64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+        tar zcf primihub-darwin-amd64.tar.gz bazel-bin/cli \
+                                             bazel-bin/node \
+                                             bazel-bin/py_main \
+                                             bazel-bin/opt_paillier_c2py.so \
+                                             bazel-bin/linkcontext.so
+      shell: bash
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: |
+            ./primihub-darwin-amd64.tar.gz
+
+  build-on-mac-arm64:
+    runs-on: [self-hosted, ARM64, macOS]
+    steps:
+    - uses: actions/checkout@v3
+    - name: bazel build
+      run: |
+        # cc_binary
+        bash pre_build.sh
+        bazel build --config=darwin_arm64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+        tar zcf primihub-darwin-arm64.tar.gz bazel-bin/cli \
+                                             bazel-bin/node \
+                                             bazel-bin/py_main \
+                                             bazel-bin/opt_paillier_c2py.so \
+                                             bazel-bin/linkcontext.so
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: |
+            ./primihub-darwin-arm64.tar.gz
