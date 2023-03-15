@@ -35,7 +35,8 @@ RUN cp $TARGET_PATH/opt_paillier_c2py.so $TARGET_PATH/linkcontext.so /app/python
 WORKDIR /app/python
 RUN python3 -m pip install --upgrade pip \
   && python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/ \
-  && python3 setup.py develop
+  && python3 setup.py develop \
+  && rm -rf /root/.cache/pip/
 
 WORKDIR /app
 # ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
