@@ -35,8 +35,8 @@ using primihub::rpc::TaskType;
 
 ABSL_FLAG(std::string, server, "127.0.0.1:50050", "server address");
 
-ABSL_FLAG(std::string, task_type, "ACTOR_TASK",
-          "task type, [ACTOR_TASK, PSI_TASK, PIR_TASK, TEE_TASK]");
+ABSL_FLAG(int, task_type, 0,
+          "task type, [0-ACTOR_TASK, 3-PSI_TASK, 2-PIR_TASK, 6-TEE_TASK]");
 
 ABSL_FLAG(std::vector<std::string>,
           params,
@@ -191,12 +191,8 @@ int get_task_execute_status(const primihub::rpc::Node& notify_server,
 
 retcode buildRequestWithFlag(PushTaskRequest* request) {
     auto task_ptr = request->mutable_task();
-    std::string task_type_str = absl::GetFlag(FLAGS_task_type);
-    TaskType task_type;
-    auto ret = getTaskType(task_type_str, &task_type);
-    if (ret != retcode::SUCCESS) {
-        return retcode::FAIL;
-    }
+    int task_type_flag = absl::GetFlag(FLAGS_task_type);
+    auto task_type = static_cast<TaskType>(task_type_flag);
     task_ptr->set_type(task_type);
 
     // Setup task params
@@ -360,13 +356,12 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           (*map)[key] = std::move(pv);
       }
       // code
-      std::string task_code = js["task_code"].get<std::string>();
-      if (task_code.find('/') != std::string::npos ||
-          task_code.find('\\') != std::string::npos) {
+      std::string code_file_path = js["task_code"]["code_file_path"].get<std::string>();
+      if (!code_file_path.empty()) {
           // read file
-          std::ifstream ifs(task_code);
+          std::ifstream ifs(code_file_path);
           if (!ifs.is_open()) {
-              std::cerr << "open file failed: " << task_code << std::endl;
+              std::cerr << "open file failed: " << code_file_path << std::endl;
               return retcode::FAIL;
           }
           std::stringstream buffer;
@@ -375,6 +370,7 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           task_ptr->set_code(buffer.str());
       } else {
           // read code from command line
+          std::string task_code = js["task_code"]["code"].get<std::string>();
           task_ptr->set_code(std::move(task_code));
       }
       // dataset
