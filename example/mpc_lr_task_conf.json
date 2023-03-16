@@ -1,0 +1,45 @@
+{
+  "task_type": "ACTOR_TASK",
+  "task_name": "mpc_lr_task",
+  "task_lang": "proto",
+  "task_code": "logistic_regression",
+  "params": {
+    "BatchSize": {
+      "type": "INT32",
+      "value": 128
+    },
+    "NumIters": {
+      "type": "INT32",
+      "value": 100
+    },
+    "Data_File": {
+      "type": "STRING",
+      "value": "train_party_0;train_party_1;train_party_2"
+    },
+    "TestData": {
+      "type": "STRING",
+      "value": "test_party_0;test_party_1;test_party_2"
+    },
+    "modelFileName": {
+      "type": "STRING",
+      "value": "./model"
+    },
+    "hostLookupTable": {
+      "type": "STRING",
+      "value": "./hostlookuptable.csv"
+    },
+    "guestLookupTable": {
+      "type": "STRING",
+      "value": "./guestlookuptable.csv"
+    },
+    "predictFileName": {
+      "type": "STRING",
+      "value": "./prediction.csv"
+    },
+    "indicatorFileName": {
+      "type": "STRING",
+      "value": "./indicator.csv"
+    }
+  },
+  "input_datasets": ["Data_File", "TestData"]
+}
