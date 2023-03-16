@@ -1,0 +1,36 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install python3 and GCC openmp (Depends with cryptFlow2 library)
+RUN apt-get update \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip tzdata libmysqlclient-dev \
+  && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY primihub-linux-amd64.tar.gz primihub-linux-arm64.tar.gz /opt/
+
+COPY data/ /tmp/
+COPY config/ ./config
+COPY python/ ./python
+COPY src/primihub/protos/ src/primihub/protos/
+
+RUN ARCH=`arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/` \
+  && tar zxf /opt/primihub-linux-${ARCH}.tar.gz \
+  && mkdir log \
+  && mv bazel-bin/opt_paillier_c2py.so bazel-bin/linkcontext.so python/ \
+  && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
+
+WORKDIR /app/python
+
+RUN python3 -m pip install --upgrade pip \
+  && python3 -m pip install -r requirements.txt \
+  && python3 setup.py install \
+  && rm -rf /root/.cache/pip/
+
+WORKDIR /app
+
+# gRPC server port
+EXPOSE 50050

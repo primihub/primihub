@@ -34,8 +34,7 @@ ADD . /src
 RUN bash pre_build.sh \
   && mv -f WORKSPACE_GITHUB WORKSPACE \
   && bazel build --config=linux_`arch` :node :py_main :cli :opt_paillier_c2py :linkcontext \
-  && cd bazel-bin \
-  && tar zcf /opt/bazel-bin.tar.gz --exclude=*_objs ./*
+  && tar zcf /opt/bazel-bin.tar.gz --exclude=*_objs ./bazel-bin/*
 
 FROM ubuntu:20.04 as runner
 
@@ -53,15 +52,14 @@ COPY --from=builder /src/data/ /tmp/
 COPY --from=builder /src/config /app/config
 # Copy primihub python sources to /app and setup to system python3
 COPY --from=builder /src/python /app/python
+COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
 
 WORKDIR /app
 
 RUN tar zxf /opt/bazel-bin.tar.gz \
   && mkdir log \
-  && mv opt_paillier_c2py.so linkcontext.so python \
-  && ln -s node primihub-node && ln -s cli primihub-cli
-
-COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
+  && mv bazel-bin/opt_paillier_c2py.so bazel-bin/linkcontext.so python/ \
+  && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
 
 WORKDIR /app/python
 
