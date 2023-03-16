@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 from primihub.utils.sampling import random_sample
-from primihub.utils.evaluation import evaluate_ks_and_roc_auc
+from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
@@ -49,6 +49,7 @@ class HeterLrHost(HeteroLrBase):
         self.model_path = model_path
         self.indicator_file = indicator_file
         self.output_file = output_file
+        self.prob = None
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -64,8 +65,17 @@ class HeterLrHost(HeteroLrBase):
 
         return h
 
+    def predict_prob(self, x):
+        prob = self.sigmoid(self.predict_raw(x))
+        self.prob = prob
+
+        return prob
+
     def predict(self, x):
-        preds = self.sigmoid(self.predict_raw(x))
+        if self.prob is not None:
+            preds = self.prob
+        else:
+            preds = self.sigmoid(self.predict_raw(x))
         preds[preds <= 0.5] = 0
         preds[preds > 0.5] = 1
 
@@ -237,15 +247,27 @@ class HeterLrHost(HeteroLrBase):
             pickle.dump(host_model, lr_host)
 
         if self.indicator_file is not None:
-            ks, auc = evaluate_ks_and_roc_auc(y, self.sigmoid(best_y))
-            fpr, tpr, threshold = metrics.roc_curve(y, self.sigmoid(best_y))
+            # set current predict prob
+            self.prob = self.sigmoid(best_y)
+            preds = self.predict(x)
+
+            ks, auc = evaluate_ks_and_roc_auc(y, self.prob)
+            fpr, tpr, threshold = metrics.roc_curve(y, self.prob)
+
+            recall = eval_acc(y, preds)['recall']
+            lifts, gains = plot_lift_and_gain(y, self.prob)
 
             evals = {
                 "train_acc": best_acc,
                 "train_ks": ks,
                 "train_auc": auc,
                 "train_fpr": fpr.tolist(),
-                "train_tpr": tpr.tolist()
+                "train_tpr": tpr.tolist(),
+                "lift_x": lifts['axis_x'].tolist(),
+                "lift_y": lifts['axis_y'],
+                "gain_x": gains['axis_x'].tolist(),
+                "gain_y": gains['axis_y'],
+                "recall": recall
             }
             resut_buf = json.dumps(evals)
 

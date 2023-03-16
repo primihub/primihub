@@ -7,6 +7,8 @@ from primihub.utils.net_worker import GrpcServer
 from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
 from primihub.FL.model.logistic_regression.hetero_lr_guest import HeterLrGuest
 
+
+
 config = {
     "learning_rate": 0.01,
     'alpha': 0.0001,
