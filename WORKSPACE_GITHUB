@@ -94,8 +94,8 @@ grpc_extra_deps()
 http_archive(
     name = "com_github_glog_glog",
     # sha256 = "cbba86b5a63063999e0fc86de620a3ad22d6fd2aa5948bff4995dcd851074a0b",
-    strip_prefix = "glog-c8f8135a5720aee7de8328b42e4c43f8aa2e60aa",
-    urls = ["https://github.com/google/glog/archive/c8f8135a5720aee7de8328b42e4c43f8aa2e60aa.zip"],
+    strip_prefix = "glog-0.6.0",
+    url = "https://github.com/google/glog/archive/v0.6.0.zip",
 )
 
 http_archive(
@@ -191,9 +191,7 @@ http_archive(
     sha256 = "4c61bfb0faca87219ea587326c467b95acb25555b53d1a421ffa3c8a9296ee2c",
     strip_prefix = "brotli-1.0.7",
     urls = [
-        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/brotli/archive/v1.0.7.tar.gz",
-        "https://github.com/google/brotli/archive/refs/tags/v1.0.7.tar.gz",
-        "https://primihub.oss-cn-beijing.aliyuncs.com/brotli-1.0.7.tar.gz"
+        "https://github.com/google/brotli/archive/v1.0.7.tar.gz",
     ],
 )
 
@@ -216,7 +214,6 @@ http_archive(
     sha256 = "a63ecb93182134ba4293fd5f22d6e08ca417caafa244afaa751cbfddf6415b13",
     strip_prefix = "double-conversion-3.1.5",
     urls = [
-        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://github.com/google/double-conversion/archive/v3.1.5.tar.gz",
         "https://primihub.oss-cn-beijing.aliyuncs.com/double-conversion-3.1.5.tar.gz",
 
@@ -232,7 +229,6 @@ http_archive(
     sha256 = "658ba6191fa44c92280d4aa2c271b0f4fbc0e34d249578dd05e50e76d0e5efcc",
     strip_prefix = "lz4-1.9.2",
     urls = [
-        # "https://storage.googleapis.com/mirror.tensorflow.org/github.com/lz4/lz4/archive/v1.9.2.tar.gz",
         "https://github.com/lz4/lz4/archive/v1.9.2.tar.gz",
         "https://primihub.oss-cn-beijing.aliyuncs.com/lz4-1.9.2.tar.gz"
     ],
@@ -604,4 +600,11 @@ http_archive(
   urls = [
     "https://github.com/mariusbancila/stduuid/archive/refs/tags/v1.2.2.tar.gz",
   ]
+)
+
+git_repository(
+  name = "com_github_base64_cpp",
+  # branch = "bazel_version",
+  commit = "294208257517a97dd42911cac9f1d4da2a57d316",
+  remote = "https://github.com/primihub/cpp-base64.git",
 )

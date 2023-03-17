@@ -15,221 +15,86 @@
 
 #include "src/primihub/task/semantic/fl_task.h"
 #include <glog/logging.h>
-#include <pybind11/embed.h>
+#include <boost/process.hpp>
+#include <boost/asio.hpp>
+#include <boost/process/search_path.hpp>
+#include <iostream>
+#include <chrono>
+#include <thread>
 #include <memory>
-#include <pybind11/stl.h>
-#include "Python.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/service/notify/model.h"
-// namespace py = pybind11;
+#include "base64.h"
 
 using primihub::service::EventBusNotifyDelegate;
-
-
-PYBIND11_EMBEDDED_MODULE(embeded, module) {
-  py::class_<DatasetService, std::shared_ptr<DatasetService>> dataset_service(module, "DatasetService");
-}
-
+namespace bp = boost::process;
 
 namespace primihub::task {
 FLTask::FLTask(const std::string& node_id,
                const TaskParam* task_param,
                const PushTaskRequest& task_request,
                std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service), task_request_(task_request) {
-
-    // Convert TaskParam to NodeContext
-    auto param_map = task_param->params().param_map();
-
-    auto& node_map_ref = task_param->node_map();
-    std::string server_ip_str;
-    for (auto iter = node_map_ref.begin(); iter != node_map_ref.end(); iter++) {
-        if (!server_ip_str.empty()) {
-            break;
-        }
-        auto& vm_list = iter->second.vm();
-        for (auto& vm : vm_list) {
-            if (vm.next().link_type() == primihub::rpc::LinkType::SERVER) {
-                server_ip_str = iter->second.ip();
-                break;
-            }
-            LOG(INFO) << "link type: " << vm.next().link_type();
-        }
-        LOG(INFO) << " --- iter first node ip: " << iter->second.ip()
-                  << ", port: " << iter->second.port();
-    }
-
-    try {
-        this->node_context_.role = param_map["role"].value_string();
-        this->node_context_.protocol = param_map["protocol"].value_string();
-    } catch (std::exception& e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
-        return;
-    }
-
-    this->node_context_.dumps_func = task_param->code();
-    auto input_datasets = task_param->input_datasets();
-    for (auto& input_dataset : input_datasets) {
-        this->node_context_.datasets.push_back(input_dataset);
-    }
-
-    // get next peer address
-    auto node_it = task_param->node_map().find(node_id);
-    if (node_it == task_param->node_map().end()) {
-        LOG(ERROR) << "Failed to find node: " << node_id;
-        return;
-    }
-
-    auto vm_list = node_it->second.vm();
-    if (vm_list.empty()) {
-        LOG(ERROR) << "Failed to find vm list for node: " << node_id;
-        return;
-    }
-
-    for (auto& vm : vm_list) {
-        std::string full_addr =
-            vm.next().ip() + ":" + std::to_string(vm.next().port());
-
-        // Key is the combine of node's nodeid and role,
-        // and value is 'ip:port'.
-        node_addr_map_[vm.next().name()] = full_addr;
-    }
-
-    {
-        uint32_t count = 0;
-        auto iter = node_addr_map_.begin();
-
-        LOG(INFO)
-            << "Dump node id with role and it's address used by FL algorithm.";
-
-        for (iter; iter != node_addr_map_.end(); iter++) {
-            LOG(INFO) << "Node " << iter->first << ": [" << iter->second << "].";
-            count++;
-        }
-
-        LOG(INFO) << "Dump finish, dump count " << count << ".";
-    }
-
-    // Set datasets meta list in context
-    for (auto& input_dataset : input_datasets) {
-        // Get dataset path from task params map
-        auto data_meta = param_map.find(input_dataset);
-        if (data_meta == param_map.end()) {
-            LOG(ERROR) << "Failed to find dataset: " << input_dataset;
-            return;
-        }
-        std::string data_path = data_meta->second.value_string();
-        this->dataset_meta_map_.insert(
-            std::make_pair(input_dataset, data_path));
-    }
-
-
-    for (auto &pair : param_map)
-        this->params_map_[pair.first] = pair.second.value_string();
-
-    std::string node_key = node_id + "_dataset";
-    auto iter = param_map.find(node_key);
-    if (iter == param_map.end()) {
-        LOG(ERROR) << "Can't find dataset name of node " << node_id << ".";
-        return;
-    }
-
-    this->params_map_["local_dataset"] = iter->second.value_string();
-    jobid_ = task_request.task().job_id();
-    taskid_ = task_request.task().task_id();
-}
-
-FLTask::~FLTask() {
-    ph_context_m_.release();
-    ph_exec_m_.release();
+    : TaskBase(task_param, dataset_service), task_request_(&task_request) {
 }
 
 int FLTask::execute() {
     auto& server_config = ServerConfig::getInstance();
-    py::gil_scoped_acquire acquire;
-    try {
-        ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
-        ph_context_m_ = py::module::import("primihub.context");
-
-        // Run set_node_context method.
-        py::object set_node_context;
-        set_node_context = ph_context_m_.attr("set_node_context");
-
-        set_node_context(node_context_.role, node_context_.protocol,
-                          py::cast(node_context_.datasets));
-
-        set_node_context.release();
-
-        // Run set_task_context_dataset_map method.
-        py::object set_task_context_dataset_map;
-        set_task_context_dataset_map =
-            ph_context_m_.attr("set_task_context_dataset_map");
-
-        for (auto& dataset_meta : this->dataset_meta_map_) {
-            LOG(INFO) << "Insert DATASET : " << dataset_meta.first
-                      << ", " << dataset_meta.second;
-            set_task_context_dataset_map(dataset_meta.first,
-                                         dataset_meta.second);
-        }
-
-        set_task_context_dataset_map.release();
-
-        // Run set_task_context_params_map.
-        py::object set_task_context_params_map;
-        set_task_context_params_map =
-            ph_context_m_.attr("set_task_context_params_map");
-
-        for (auto &pair : this->params_map_)
-            set_task_context_params_map(pair.first, pair.second);
-
-        {
-          std::string nodelet_addr =
-            this->dataset_service_->getNodeletAddr();
-          auto pos = nodelet_addr.find(":");
-          set_task_context_params_map("DatasetServiceAddr",
-              nodelet_addr.substr(pos + 1, nodelet_addr.length()));
-
-          // Setup task id and job id.
-          set_task_context_params_map("jobid", jobid_);
-          set_task_context_params_map("taskid", taskid_);
-          set_task_context_params_map("config_file_path", server_config.getConfigFile());
-        }
-
-        set_task_context_params_map.release();
-
-        // Run set_task_context_node_addr_map.
-        py::object set_node_addr_map;
-        set_node_addr_map = ph_context_m_.attr("set_task_context_node_addr_map");
-
-        for (auto &pair : this->node_addr_map_)
-            set_node_addr_map(pair.first, pair.second);
-
-        set_node_addr_map.release();
-    } catch (std::exception& e) {
-        LOG(ERROR) << "Failed: " << e.what();
-        py::gil_scoped_release release;
+    auto node_id_ = node_id();
+    std::string task_config_str;
+    bool status = this->task_request_->SerializeToString(&task_config_str);
+    if (!status) {
+        LOG(ERROR) << "serialize task config failed";
         return -1;
     }
+    std::string request_base64_str = base64_encode(task_config_str);
+    boost::asio::io_service ios;
+    // std::future<std::string> data;
+    std::string current_process_dir = getCurrentProcessDir();
+    VLOG(5) << "current_process_dir: " << current_process_dir;
+    std::string execute_app = current_process_dir + "/py_main";
+    std::string execute_cmd;
+    execute_cmd.append(execute_app).append(" ")
+        .append("--node_id=").append(node_id_).append(" ")
+        .append("--config_file=").append(server_config.getConfigFile()).append(" ")
+        .append("--request=").append(request_base64_str);
+    // LOG(INFO) << "execute_cmd: " << execute_cmd;
+    bp::child c(execute_cmd, //set the input
+              bp::std_in.close(),
+              bp::std_out > stdout, //so it can be written without anything
+              bp::std_err > stdout,
+              ios);
+    ios.run(); //this will actually block until the py_main is finished
+    uint64_t count{0};
+    do {
+        if (count < 1000) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        } else {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        if (has_stopped()) {
+            LOG(ERROR) << "begin to terminate py_main";
+            if (c.running()) {
+                ios.stop();
+                c.terminate();
+            }
+            break;
+        }
+        count++;
+    } while (c.running());
 
-    auto taskId = task_param_.task_id();
-    auto job_id = task_param_.job_id();
-    auto submitClientId = task_request_.submit_client_id();
-    auto& event_notify_delegeate = EventBusNotifyDelegate::getInstance();
-    try {
-        LOG(INFO) << "<<<<<<<<< 🐍 Start executing Python code <<<<<<<<<" << std::endl;
-        // Execute python code.
-        ph_exec_m_.attr("execute_py")(py::bytes(node_context_.dumps_func));
-        LOG(INFO) << "<<<<<<<<< 🐍 Execute Python Code End <<<<<<<<<" << std::endl;
-
-    } catch (std::exception &e) {
-        py::gil_scoped_release release;
-        LOG(ERROR) << "Failed to execute python: " << e.what();
-        event_notify_delegeate.notifyStatus(
-            job_id, taskId, submitClientId, "FAIL", e.what());
+    int result = c.exit_code();
+    LOG(INFO) << "py_main executes result code: " << result;
+    if (result != 0) {
+        // auto err =  data.get();
+        // if (!err.empty()) {
+        //     LOG(INFO) << err;
+        //     auto& event_notify_delegeate = EventBusNotifyDelegate::getInstance();
+        //     event_notify_delegeate.notifyStatus(
+        //         job_id(), task_id(), submit_client_id(), "FAIL", err);
+        // }
         return -1;
     }
-
-    py::gil_scoped_release release;
+    // fut.get();
     return 0;
 }
 

@@ -24,6 +24,7 @@
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
 #include <pybind11/embed.h>
+#include <ctime>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -83,39 +84,8 @@ class VMNodeImpl final: public VMNode::Service {
   public:
     explicit VMNodeImpl(const std::string &node_id_,
                         const std::string &node_ip_, int service_port_,
-                        bool singleton_, const std::string &config_file_path_)
-        : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
-          singleton(singleton_), config_file_path(config_file_path_) {
-        running_set.clear();
-        task_executor_map.clear();
-        nodelet = std::make_shared<Nodelet>(config_file_path);
-        finished_worker_fut = std::async(std::launch::async,
-          [&]() {
-            SET_THREAD_NAME("cleanFinihsedTask");
-            while(true) {
-              std::string finished_worker_id;
-              fininished_workers.wait_and_pop(finished_worker_id);
-              if (stop_.load(std::memory_order::memory_order_relaxed)) {
-                break;
-              }
-              {
-                std::lock_guard<std::mutex> lck(this->task_executor_mtx);
-                auto it = task_executor_map.find(finished_worker_id);
-                if (it != task_executor_map.end()) {
-                  VLOG(5) << "worker id : " << finished_worker_id << " has finished, begin to erase";
-                  task_executor_map.erase(finished_worker_id);
-                  VLOG(5) << "erase worker id : " << finished_worker_id << " success";
-                }
-              }
-            }
-          });
-    }
-    ~VMNodeImpl() override {
-      stop_.store(true);
-      fininished_workers.shutdown();
-      finished_worker_fut.get();
-      this->nodelet.reset();
-    }
+                        bool singleton_, const std::string &config_file_path_);
+    ~VMNodeImpl();
 
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
@@ -141,6 +111,10 @@ class VMNodeImpl final: public VMNode::Service {
     Status ForwardRecv(::grpc::ServerContext* context,
         const ::primihub::rpc::TaskRequest* request,
         ::grpc::ServerWriter< ::primihub::rpc::TaskRequest>* writer) override;
+
+    Status KillTask(::grpc::ServerContext* context,
+        const ::primihub::rpc::KillTaskRequest* request,
+        ::primihub::rpc::KillTaskResponse* response) override;
 
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
@@ -174,13 +148,31 @@ class VMNodeImpl final: public VMNode::Service {
       LOG(ERROR) << "no worker found for worker id: " << worker_id;
       return nullptr;
     }
+    std::shared_ptr<Worker> getSchedulerWorker(const std::string& job_id, const std::string& task_id) {
+        std::string worker_id = getWorkerId(job_id, task_id);
+        // UNIMPLEMENT
+        return nullptr;
+    }
 
     inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
       return job_id + "_" + task_id;
     }
     retcode waitUntilWorkerReady(const std::string& worker_id, grpc::ServerContext* context, int timeout = -1);
+    /**
+     * task status may not received by client
+    */
+    void cacheLastTaskStatus(const std::string& worker_id,
+        const std::string& submited_client_id, const std::string& status);
+    /**
+     * input: worker_id
+     * output tuple<bool, std::string>
+     * bool: worker_id related task finished or not
+     * std::string: who submited this task
+     * std::string: task status
+    */
+    std::tuple<bool, std::string, std::string> isFinishedTask(const std::string& worker_id);
 
-  private:
+ private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
 
@@ -205,7 +197,13 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
     std::unique_ptr<VMNode::Stub> stub_;
-    int wait_worker_ready_timeout_ms{60*1000};    // 60s
+    int wait_worker_ready_timeout_ms{5*1000};    // 60s
+    std::shared_mutex finished_task_status_mtx_;
+    // key: worker id
+    // value: submited_client_id, task_status, lastupdate timestamp
+    std::map<std::string, std::tuple<std::string, std::string, time_t>> finished_task_status_;
+    std::future<void> clean_cached_task_status_fut_;
+    uint32_t cached_task_status_timeout_{5};
 };
 
 } // namespace primihub

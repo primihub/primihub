@@ -16,10 +16,20 @@
 
 
 #include "src/primihub/util/util.h"
+#include <limits.h>
+#include <libgen.h>
+#if __linux__
+#include <unistd.h>
+#elif __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <string>
 #include <cctype>
+
+
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v, char delimiter) {
@@ -94,7 +104,7 @@ retcode node2PbNode(const Node& node, primihub::rpc::Node* pb_node) {
 retcode parseToNode(const std::string& node_info, Node* node) {
     std::vector<std::string> addr_info;
     str_split(node_info, &addr_info, ':');
-    LOG(ERROR) << "nodelet_attr: " << node_info;
+    VLOG(5) << "nodelet_attr: " << node_info;
     if (addr_info.size() < 4) {
         return retcode::FAIL;
     }
@@ -108,7 +118,7 @@ retcode parseToNode(const std::string& node_info, Node* node) {
 retcode parseTopbNode(const std::string& node_info, rpc::Node* node) {
     std::vector<std::string> addr_info;
     str_split(node_info, &addr_info, ':');
-    LOG(ERROR) << "nodelet_attr: " << node_info;
+    VLOG(5) << "nodelet_attr: " << node_info;
     if (addr_info.size() < 4) {
         return retcode::FAIL;
     }
@@ -174,6 +184,28 @@ std::string strToLower(const std::string& str) {
     // to lower
     std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::tolower);
     return lower_str;
+}
+std::string getCurrentProcessPath() {
+    char path[PATH_MAX];
+    memset(path, 0, PATH_MAX);
+    uint32_t size = PATH_MAX;
+#if __linux__
+    int n = readlink("/proc/self/exe", path, PATH_MAX);
+    if (n >= PATH_MAX) {
+        n = PATH_MAX - 1;
+    }
+    path[n] = '\0';
+#elif __APPLE__
+    _NSGetExecutablePath(path, &size);
+    path[size-1] = '\0';
+#endif
+    return path;
+}
+
+std::string getCurrentProcessDir() {
+    std::string path = getCurrentProcessPath();
+    char* dir_path = dirname(const_cast<char*>(path.c_str()));
+    return std::string(dir_path);
 }
 
 }  // namespace primihub

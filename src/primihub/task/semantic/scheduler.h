@@ -55,25 +55,43 @@ class VMScheduler {
   virtual void dispatch(const PushTaskRequest *pushTaskRequest) = 0;
   virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
   std::string get_node_id() const {
-    return node_id_;
+      return node_id_;
   }
   void parseNotifyServer(const PushTaskReply& reply) {
-    for (const auto& node : reply.notify_server()) {
-        Node notify_server_info(node.ip(), node.port(), node.use_tls(), node.role());
-        VLOG(5) << "notify_server_info: " << notify_server_info.to_string();
-        this->addNotifyServer(std::move(notify_server_info));
-    }
+      for (const auto& node : reply.notify_server()) {
+          Node notify_server_info(node.ip(), node.port(), node.use_tls(), node.role());
+          VLOG(5) << "notify_server_info: " << notify_server_info.to_string();
+          this->addNotifyServer(std::move(notify_server_info));
+      }
+      for (const auto& node : reply.task_server()) {
+          Node task_server_info(node.ip(), node.port(), node.use_tls(), node.role());
+          VLOG(5) << "task_server_info: " << task_server_info.to_string();
+          this->addTaskServer(std::move(task_server_info));
+      }
   }
+
   void addNotifyServer(Node&& node_info) {
-    std::lock_guard<std::mutex> lck(notify_server_mtx);
-    notify_server_info.push_back(std::move(node_info));
+      std::lock_guard<std::mutex> lck(notify_server_mtx);
+      notify_server_info.push_back(std::move(node_info));
   }
   void addNotifyServer(const Node& node_info) {
-    std::lock_guard<std::mutex> lck(notify_server_mtx);
-    notify_server_info.push_back(node_info);
+      std::lock_guard<std::mutex> lck(notify_server_mtx);
+      notify_server_info.push_back(node_info);
   }
   std::vector<Node>& notifyServer() {
-    return notify_server_info;
+      return notify_server_info;
+  }
+
+  void addTaskServer(Node&& node_info) {
+      std::lock_guard<std::mutex> lck(task_server_mtx);
+      task_server_info.push_back(std::move(node_info));
+  }
+  void addTaskServer(const Node& node_info) {
+      std::lock_guard<std::mutex> lck(task_server_mtx);
+      task_server_info.push_back(node_info);
+  }
+  std::vector<Node>& taskServer() {
+      return task_server_info;
   }
 
  protected:
@@ -91,6 +109,8 @@ class VMScheduler {
   std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
   std::mutex notify_server_mtx;
   std::vector<Node> notify_server_info;
+  std::mutex task_server_mtx;
+  std::vector<Node> task_server_info;
 };
 } // namespace primihub::task
 

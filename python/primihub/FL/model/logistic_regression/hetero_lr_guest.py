@@ -1,4 +1,6 @@
+import pickle
 import numpy as np
+import pandas as pd
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, trucate_geometric_thres
 
 
@@ -15,11 +17,18 @@ class HeterLrGuest(HeteroLrBase):
                  loss_type='log',
                  random_state=2023,
                  guest_channel=None,
-                 add_noise=True):
+                 add_noise=True,
+                 n_iter_no_change=5,
+                 momentum=0.7,
+                 sample_method="random"):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = guest_channel
         self.add_noise = add_noise
+        self.n_iter_no_change = n_iter_no_change
+        self.momentum = momentum
+        self.prev_grad = 0
+        self.sample_method = sample_method
 
     def predict(self, x):
         guest_part = np.dot(x, self.theta)
@@ -42,10 +51,26 @@ class HeterLrGuest(HeteroLrBase):
         return grad
 
     def batch_gd(self, x):
-        for batch_x, _ in batch_yield(x, x, self.batch_size):
+        ids = self.channel.recv('ids')
+        shuff_x = x[ids]
+        for batch_x, _ in batch_yield(shuff_x, shuff_x, self.batch_size):
             self.predict(batch_x)
             grad = self.gradient(batch_x)
             self.theta -= self.learning_rate * grad
+
+    def momentum_grad(self, x):
+        ids = self.channel.recv('ids')
+        shuff_x = x[ids]
+        for batch_x, _ in batch_yield(shuff_x, shuff_x, self.batch_size):
+            self.predict(batch_x)
+            grad = self.gradient(batch_x)
+
+            update = self.momentum * self.prev_grad - self.learning_rate * grad * (
+                1 - self.momentum)
+
+            self.theta += update
+
+            self.prev_grad = grad
 
     def simple_gd(self, x):
         self.predict(x)
@@ -53,22 +78,55 @@ class HeterLrGuest(HeteroLrBase):
         self.theta -= self.learning_rate * grad
 
     def fit(self, x):
+        if self.sample_method == "random":
+            sample_ids = self.channel.recv('sample_ids')
+
+            if isinstance(x, np.ndarray):
+                col_names = []
+                x = x[sample_ids]
+            else:
+                col_names = x.columns
+                x = x.iloc[sample_ids]
+                x = x.values
+
         if self.batch_size < 0:
             self.batch_size = x.shape[0]
 
         self.theta = np.zeros(x.shape[1])
+
         for i in range(self.epochs):
             self.learning_rate = self.channel.recv("learning_rate")
 
             if self.optimal_method == "simple":
                 self.simple_gd(x)
 
+            elif self.optimal_method == "momentum":
+                self.momentum_grad(x)
+
             else:
                 self.batch_gd(x)
 
             self.predict(x)
+            print("current params: ", i, self.theta)
 
-            is_converged = self.channel.recv('is_converged')
+            current_stats = self.channel.recv('current_stats')
+
+            best_iter_changed = current_stats['best_iter_changed']
+            is_converged = current_stats['is_converged']
+
+            if best_iter_changed:
+                # best_theta = self.theta
+                # care about numpy.copy
+                best_theta = np.copy(self.theta)
 
             if is_converged:
                 break
+
+        self.theta = best_theta
+        print("best theta: ", best_theta)
+
+        model_path = "hetero_lr_guest.ml"
+        host_model = {"weights": self.theta, "bias": 0, "columns": col_names}
+
+        with open(model_path, 'wb') as lr_guest:
+            pickle.dump(host_model, lr_guest)

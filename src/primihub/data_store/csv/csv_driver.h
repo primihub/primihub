@@ -53,9 +53,9 @@ public:
   explicit CSVDriver(const std::string &nodelet_addr);
   CSVDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
   ~CSVDriver() {}
-  std::shared_ptr<Cursor>& read() override;
-  std::shared_ptr<Cursor> &read(const std::string &filePath) override;
-  std::shared_ptr<Cursor> &initCursor(const std::string &filePath) override;
+  std::unique_ptr<Cursor> read() override;
+  std::unique_ptr<Cursor> read(const std::string &filePath) override;
+  std::unique_ptr<Cursor> initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
   // FIXME to be deleted
   int write(std::shared_ptr<arrow::Table> table, const std::string &filePath);

@@ -71,7 +71,8 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
                                 DatasetMeta& meta) {
         // Read data using driver for get dataset & datameta
         // TODO just get meta info from dataset
-        auto dataset = driver->getCursor()->read();
+        auto cursor = driver->read();
+        auto dataset = cursor->read();
         // DatasetMeta _meta(dataset, dataset_id, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
         meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
         // Save datameta in local storage.& Publish dataset meta on libp2p network.
@@ -91,7 +92,7 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
                  const std::string& dataset_access_info,
                  DatasetMeta &meta /*output*/) {
         // dataset.write();
-        dataset->getDataDriver()->getCursor()->write(dataset);
+        // dataset->getDataDriver()->getCursor()->write(dataset);
         // DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
         meta = DatasetMeta(dataset, description, DatasetVisbility::PUBLIC, dataset_access_info);
         metaService_->putMeta(meta);
@@ -178,7 +179,6 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
                 std::string access_info_str = access_info->toString();
                 auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr, std::move(access_info));
                 this->registerDriver(dataset_uid, driver);
-                driver->read();
                 DatasetMeta meta;
                 newDataset(driver, dataset_uid, access_info_str, meta);
             }

@@ -148,6 +148,7 @@ int Worker::execute(const ExecuteTaskRequest *taskRequest,
 void Worker::kill_task() {
     if (task_ptr) {
         task_ptr->kill_task();
+        return;
     }
     if (task_server_ptr) {
         task_server_ptr->kill_task();

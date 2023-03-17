@@ -101,9 +101,9 @@ public:
   explicit SQLiteDriver(const std::string &nodelet_addr);
   SQLiteDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
   ~SQLiteDriver() = default;
-  std::shared_ptr<Cursor>& read() override;
-  std::shared_ptr<Cursor>& read(const std::string& conn_str) override;
-  std::shared_ptr<Cursor>& initCursor(const std::string& conn_str) override;
+  std::unique_ptr<Cursor> read() override;
+  std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+  std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
   std::string getDataURL() const override;
   std::unique_ptr<SQLite::Database>& getDBConnector() { return db_connector; }
   // write data to specifiy db table

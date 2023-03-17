@@ -901,8 +901,10 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
 
   // auto cursor = driver->initCursor(new_path);
   auto cursor = driver->read(source);
-  std::shared_ptr<SQLiteCursor> sql_cursor =
-      std::dynamic_pointer_cast<SQLiteCursor>(cursor);
+  auto sql_cursor = dynamic_cast<SQLiteCursor*>(cursor.get());
+  if (sql_cursor == nullptr) {
+    return -1;
+  }
   table = sql_cursor->read_from_abnormal(col_and_dtype_, db_both_index);
   if (table == NULL) {
     return -1;

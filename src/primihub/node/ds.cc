@@ -41,7 +41,6 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
         }
         driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
         this->dataset_service_->registerDriver(fid, driver);
-        driver->read();  // just init cursor
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load dataset from path: " << meta_info << " "
                 << "driver_type: " << driver_type << " "

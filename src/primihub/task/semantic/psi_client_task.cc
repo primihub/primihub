@@ -90,7 +90,7 @@ int PSIClientTask::_LoadDatasetFromSQLite(std::string &conn_str, int data_col, s
     std::string nodeaddr{"localhost"};
     // std::shared_ptr<DataDriver>
     auto driver = DataDirverFactory::getDriver("SQLITE", nodeaddr);
-    auto& cursor = driver->read(conn_str);
+    auto cursor = driver->read(conn_str);
     auto ds = cursor->read();
     auto table = std::get<std::shared_ptr<Table>>(ds->data);
     int col_count = table->num_columns();
@@ -114,7 +114,7 @@ int PSIClientTask::_LoadDatasetFromCSV(std::string &filename,
     std::string nodeaddr("test address"); // TODO
     std::shared_ptr<DataDriver> driver =
         DataDirverFactory::getDriver("CSV", nodeaddr);
-    std::shared_ptr<Cursor> &cursor = driver->read(filename);
+    std::shared_ptr<Cursor> cursor = driver->read(filename);
     std::shared_ptr<Dataset> ds = cursor->read();
     std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 

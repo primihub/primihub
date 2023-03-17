@@ -70,11 +70,12 @@ class IChannel {
   virtual ~IChannel() = default;
   virtual retcode send(const std::string& role, const std::string& data) = 0;
   virtual retcode send(const std::string& role, std::string_view sv_data) = 0;
-  virtual int send_wrapper(const std::string& role, const std::string& data) = 0;
-  virtual int send_wrapper(const std::string& role, std::string_view sv_data) = 0;
+  virtual bool send_wrapper(const std::string& role, const std::string& data) = 0;
+  virtual bool send_wrapper(const std::string& role, std::string_view sv_data) = 0;
   virtual retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) = 0;
   virtual retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) = 0;
   virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
+  virtual retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) = 0;
   virtual std::string forwardRecv(const std::string& role) = 0;
   // virtual retcode send(const std::vector<std::string>& datas) = 0;
   // virtual retcode send(const std::vector<std::string_view> sv_datas) = 0;

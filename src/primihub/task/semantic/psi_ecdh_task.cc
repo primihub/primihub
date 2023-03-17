@@ -6,6 +6,7 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/endian_util.h"
 #include <set>
+#include "fmt/format.h"
 
 using arrow::Table;
 using arrow::StringArray;
@@ -13,14 +14,17 @@ using arrow::DoubleArray;
 //using arrow::Int64Builder;
 using arrow::StringBuilder;
 
+
+
 namespace primihub::task {
+
 PSIEcdhTask::PSIEcdhTask(const TaskParam *task_param,
     std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {}
 
-int PSIEcdhTask::LoadParams(Task &task) {
+retcode PSIEcdhTask::LoadParams(Task &task) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     auto param_map = task.params().param_map();
-
     reveal_intersection_ = true;
     try {
         psi_type_ = param_map["psiType"].value_int32();
@@ -73,8 +77,8 @@ int PSIEcdhTask::LoadParams(Task &task) {
             VLOG(5) << "i: " << i;
         }
     } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
-        return -1;
+        std::string err_msg = fmt::format("Failed to load params: {}", e.what());
+        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, err_msg);
     }
     const auto& node_map = task.node_map();
     for (const auto& it : node_map) {
@@ -87,25 +91,24 @@ int PSIEcdhTask::LoadParams(Task &task) {
         VLOG(5) << "peer_node: " << peer_node.to_string();
         break;
     }
-    return 0;
-}
-
-retcode PSIEcdhTask::LoadDataset() {
-    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
-    if (driver == nullptr) {
-        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
-        return retcode::FAIL;
-    }
-    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
-    if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "Load dataset for psi client failed";
-        return retcode::FAIL;
-    }
     return retcode::SUCCESS;
 }
 
-int PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
+retcode PSIEcdhTask::LoadDataset() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
+    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+    if (driver == nullptr) {
+        std::string err_msg = fmt::format("get driver for dataset: {} failed", this->dataset_id_);
+        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, err_msg);
+    }
+    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "Load dataset for psi client failed");
+    return retcode::SUCCESS;
+}
+
+retcode PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>& client,
                               rpc::PsiResponse& response) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     SCopedTimer timer;
     psi_proto::Response entrpy_response;
     size_t num_response_elements = response.encrypted_elements().size();
@@ -128,7 +131,7 @@ int PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>&
         );
     } else {
         LOG(ERROR) << "Node psi client get intersection error!";
-        return -1;
+        return retcode::FAIL;
     }
     auto build_response_time_cost = timer.timeElapse();
     VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
@@ -143,6 +146,7 @@ int PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>&
     if (psi_type_ == rpc::PsiType::DIFFERENCE) {
         std::unordered_map<int64_t, int> inter_map(num_intersection);
         size_t num_elements = elements_.size();
+        result_.reserve(num_elements);
         for (size_t i = 0; i < num_intersection; i++) {
             inter_map[intersection[i]] = 1;
         }
@@ -156,34 +160,33 @@ int PSIEcdhTask::GetIntsection(const std::unique_ptr<openminded_psi::PsiClient>&
             result_.push_back(elements_[intersection[i]]);
         }
     }
-    return 0;
+    return retcode::SUCCESS;
 }
 
 int PSIEcdhTask::execute() {
     SCopedTimer timer;
-    int ret = LoadParams(task_param_);
-    if (ret) {
+    auto ret = LoadParams(task_param_);
+    if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "Psi client load task params failed.";
-        return ret;
+        return -1;
     }
     auto load_param_time_cost = timer.timeElapse();
     VLOG(5) << "load params time cost(ms): " << load_param_time_cost;
+    ret = LoadDataset();
+    CHECK_RETCODE_WITH_RETVALUE(ret, -1);
 
-    auto rt_code = LoadDataset();
-    if (rt_code != retcode::SUCCESS) {
-        LOG(ERROR) << "Psi client load dataset failed.";
-        return -1;
-    }
     if (runAsClient()) {
-        executeAsClient();
+        ret = executeAsClient();
     } else {
-        executeAsServer();
+        ret = executeAsServer();
     }
+    CHECK_RETCODE_WITH_RETVALUE(ret, -1);
     return 0;
 }
 
 retcode PSIEcdhTask::broadcastResultToServer() {
-    VLOG(5) << "send_result_to_server";
+    CHECK_TASK_STOPPED(retcode::FAIL);
+    VLOG(5) << "sync intersection result to server";
     std::string result_str;
     size_t total_size{0};
     for (const auto& item : this->result_) {
@@ -197,12 +200,11 @@ retcode PSIEcdhTask::broadcastResultToServer() {
         result_str.append(reinterpret_cast<char*>(&be_item_len), sizeof(be_item_len));
         result_str.append(item);
     }
-    auto ret = this->send(this->key, peer_node, result_str);
-    VLOG(5) << "send result to server success";
-    return ret;
+    return this->send(this->key, peer_node, result_str);
 }
 
 retcode PSIEcdhTask::buildInitParam(std::string* init_params_str) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     rpc::Params init_params;
     auto param_map = init_params.mutable_param_map();
     // dataset size
@@ -227,20 +229,21 @@ retcode PSIEcdhTask::buildInitParam(std::string* init_params_str) {
 }
 
 retcode PSIEcdhTask::sendInitParam(const std::string& init_param) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    channel->send(this->key, init_param);
-    return retcode::SUCCESS;
+    return channel->send(this->key, init_param);
 }
 
-int PSIEcdhTask::saveResult() {
+retcode PSIEcdhTask::saveResult() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string col_title =
         psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
-    saveDataToCSVFile(result_, result_file_path_, col_title);
-    return 0;
+    return saveDataToCSVFile(result_, result_file_path_, col_title);
 }
 
 retcode PSIEcdhTask::parsePsiResponseFromeString(
         const std::string& response_str, rpc::PsiResponse* response) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     psi_proto::Response psi_response;
     psi_proto::ServerSetup setup_info;
     char* recv_buf = const_cast<char*>(response_str.c_str());
@@ -280,8 +283,10 @@ retcode PSIEcdhTask::parsePsiResponseFromeString(
     }
     return retcode::SUCCESS;
 }
+
 retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
         psi_proto::Request&& request, rpc::PsiResponse* response) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     SCopedTimer timer;
     // send process
     {
@@ -309,8 +314,10 @@ retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
     VLOG(5) << "end of merge task response";
     return ret;
 }
+
 retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
         const psi_proto::Request& client_request, rpc::PsiResponse* response) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     SCopedTimer timer;
     std::string psi_req_str;
     client_request.SerializeToString(&psi_req_str);
@@ -334,7 +341,8 @@ retcode PSIEcdhTask::sendPSIRequestAndWaitResponse(
     return ret;
 }
 
-int PSIEcdhTask::executeAsClient() {
+retcode PSIEcdhTask::executeAsClient() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     SCopedTimer timer;
     rpc::TaskRequest request;
     std::string init_param_str;
@@ -345,7 +353,8 @@ int PSIEcdhTask::executeAsClient() {
     auto init_param_time_cost = init_param_ts;
     VLOG(5) << "buildInitParam time cost(ms): " << init_param_time_cost << " "
             << "content length: " << init_param_str.size();
-    sendInitParam(init_param_str);
+    auto ret = sendInitParam(init_param_str);
+    CHECK_RETCODE(ret);
     VLOG(5) << "client begin to prepare psi request";
     // prepare psi data
     auto client = openminded_psi::PsiClient::CreateWithNewKey(reveal_intersection_).value();
@@ -356,31 +365,30 @@ int PSIEcdhTask::executeAsClient() {
     VLOG(5) << "client build request time cost(ms): " << build_request_time_cost;
     // send psi data to server
     rpc::PsiResponse task_response;
-    sendPSIRequestAndWaitResponse(std::move(client_request), &task_response);
+    ret = sendPSIRequestAndWaitResponse(std::move(client_request), &task_response);
+    CHECK_RETCODE(ret);
     auto _start = timer.timeElapse();
-    int ret = this->GetIntsection(client, task_response);
-    if (ret) {
-        LOG(ERROR) << "Node psi client get insection failed.";
-        return -1;
-    }
+    ret = this->GetIntsection(client, task_response);
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "Node psi client get insection failed.");
     auto _end =  timer.timeElapse();
     auto get_intersection_time_cost = _end - _start;
     VLOG(5) << "get intersection time cost(ms): " << get_intersection_time_cost;
     ret = saveResult();
-    if (ret) {
-        LOG(ERROR) << "Save psi result failed.";
-        return -1;
-    }
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "Save psi result failed.");
     if (this->reveal_intersection_ && this->sync_result_to_server) {
-        broadcastResultToServer();
+        ret = broadcastResultToServer();
+        CHECK_RETCODE_WITH_ERROR_MSG(ret, "broadcastResultToServer failed");
     }
+    return retcode::SUCCESS;
 }
 
-int PSIEcdhTask::executeAsServer() {
+retcode PSIEcdhTask::executeAsServer() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     SCopedTimer timer;
     size_t num_client_elements{0};
     bool reveal_intersection_flag{false};
-    recvInitParam(&num_client_elements, &reveal_intersection_flag);
+    auto ret = recvInitParam(&num_client_elements, &reveal_intersection_flag);
+    CHECK_RETCODE(ret);
     // prepare for local compuation
     VLOG(5) << "sever begin to SetupMessage";
     std::unique_ptr<openminded_psi::PsiServer> server =
@@ -393,7 +401,8 @@ int PSIEcdhTask::executeAsServer() {
     // recv request from clinet
     VLOG(5) << "server begin to init reauest according to recv data from client";
     psi_proto::Request psi_request;
-    initRequest(&psi_request);
+    ret = initRequest(&psi_request);
+    CHECK_RETCODE(ret);
     auto init_req_ts = timer.timeElapse();
     auto init_req_time_cost = init_req_ts;
     VLOG(5) << "init_req_time_cost(ms): " << init_req_time_cost;
@@ -402,37 +411,42 @@ int PSIEcdhTask::executeAsServer() {
     preparePSIResponse(std::move(server_response), std::move(server_setup));
     VLOG(5) << "server end of build psi response";
     if (this->reveal_intersection_ && this->sync_result_to_server) {
-        recvPSIResult();
+        ret = recvPSIResult();
+        CHECK_RETCODE_WITH_ERROR_MSG(ret, "recv psi result failed");
     }
+    return retcode::SUCCESS;
 }
 
-int PSIEcdhTask::recvInitParam(size_t* client_dataset_size, bool* reveal_intersection) {
+retcode PSIEcdhTask::recvInitParam(size_t* client_dataset_size, bool* reveal_intersection) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     VLOG(5) << "begin to recvInitParam ";
     std::string init_param_str;
-    this->recv(this->key, &init_param_str);
-
+    auto ret = this->recv(this->key, &init_param_str);
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive init param from client failed");
     auto& client_dataset_size_ = *client_dataset_size;
     auto& reveal_flag = *reveal_intersection;
     rpc::Params init_params;
     init_params.ParseFromString(init_param_str);
     const auto& parm_map = init_params.param_map();
     auto it = parm_map.find("dataset_size");
-    if (it != parm_map.end()) {
-        client_dataset_size_ = it->second.value_int64();
-        VLOG(5) << "client_dataset_size_: " << client_dataset_size_;
+    if (it == parm_map.end()) {
+        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, "parse dataset_size is empty");
     }
+    client_dataset_size_ = it->second.value_int64();
+    VLOG(5) << "client_dataset_size_: " << client_dataset_size_;
     it = parm_map.find("reveal_intersection");
-    if (it != parm_map.end()) {
-        reveal_flag = it->second.value_int32() > 0;
-        VLOG(5) << "reveal_intersection_: " << reveal_flag;
+    if (it == parm_map.end()) {
+        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, "parse reveal_intersection is empty");
     }
+    reveal_flag = it->second.value_int32() > 0;
+    VLOG(5) << "reveal_intersection_: " << reveal_flag;
     VLOG(5) << "end of recvInitParam ";
-    return 0;
+    return retcode::SUCCESS;
 }
 
 retcode PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
                                     psi_proto::ServerSetup&& setup_info) {
-    SCopedTimer timer;
+    CHECK_TASK_STOPPED(retcode::FAIL);
     VLOG(5) << "preparePSIResponse";
     // prepare response to server
     auto server_response = std::move(psi_response);
@@ -460,26 +474,27 @@ retcode PSIEcdhTask::preparePSIResponse(psi_proto::Response&& psi_response,
         return retcode::FAIL;
     }
     VLOG(5) << "successfully send psi response to cleint";
-    auto build_response_ts = timer.timeElapse();
-    auto build_response_time_cost = build_response_ts;
-    VLOG(5) << "build_response_time_cost(ms): " << build_response_time_cost;
     return retcode::SUCCESS;
 }
 
-int PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
+retcode PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     std::string request_str;
-    this->recv(this->key, &request_str);
+    auto ret = this->recv(this->key, &request_str);
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive request from client failed");
     psi_proto::Request recv_psi_req;
     recv_psi_req.ParseFromString(request_str);
     *psi_request = std::move(recv_psi_req);
-    return 0;
+    return retcode::SUCCESS;
 }
 
-int PSIEcdhTask::recvPSIResult() {
+retcode PSIEcdhTask::recvPSIResult() {
+    CHECK_TASK_STOPPED(retcode::FAIL);
     VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
     std::string recv_data_str;
-    this->recv(this->key, &recv_data_str);
+    auto ret = this->recv(this->key, &recv_data_str);
+    CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive psi result from client failed");
     uint64_t offset = 0;
     uint64_t data_len = recv_data_str.length();
     VLOG(5) << "data_len_data_len: " << data_len;
@@ -493,11 +508,9 @@ int PSIEcdhTask::recvPSIResult() {
         psi_result.push_back(std::string(data_ptr+offset, len));
         offset += len;
     }
-
     VLOG(5) << "psi_result size: " << psi_result.size();
     std::string col_title{"intersection_row"};
-    saveDataToCSVFile(psi_result, server_result_path, col_title);
-    return 0;
+    return saveDataToCSVFile(psi_result, server_result_path, col_title);
 }
 
 }   // namespace primihub::task

@@ -7,7 +7,9 @@ import json
 import os
 from phe import paillier
 import pickle
-from primihub.FL.model.logistic_regression.vfl.evaluation_lr import evaluator
+
+from sklearn import metrics
+from primihub.FL.model.metrics.metrics import fpr_tpr_merge2, ks_from_fpr_tpr, auc_from_fpr_tpr
 
 
 class GrpcServer:
@@ -32,16 +34,16 @@ class GrpcServer:
 class LRModel:
 
     # l2 regularization by default, alpha is the penalty parameter
-    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001):
+    def __init__(self, x, y, category, learning_rate=0.2, alpha=0.0001):
         self.learning_rate = learning_rate
         self.alpha = alpha # regularization parameter
         self.t = 0 # iteration number, used for learning rate decay
 
         if category == 2:
-            self.theta = np.zeros(X.shape[1] + 1)
+            self.theta = np.zeros(x.shape[1] + 1)
             self.multi_class = False
         else:
-            self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, X.shape[1] + 1))
+            self.one_vs_rest_theta = np.random.uniform(-0.5, 0.5, (category, x.shape[1] + 1))
             self.multi_class = True
         
         # 'optimal' learning rate refer to sklearn SGDClassifier
@@ -75,15 +77,15 @@ class LRModel:
         temp = x.dot(self.theta[1:]) + self.theta[0]
         try:
             return (np.maximum(temp, 0.).sum() - y.dot(temp) +
-                    np.log(1 + np.exp(-np.abs(temp))).sum() +
-                    0.5 * self.alpha * self.theta.dot(self.theta)) / x.shape[0]
+                    np.log(1 + np.exp(-np.abs(temp))).sum()) / x.shape[0] \
+                    + 0.5 * self.alpha * self.theta.dot(self.theta)
         except:
             return float('inf')
 
     def compute_grad(self, x, y):
         temp = self.predict_prob(x) - y
-        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
-                + self.alpha * self.theta) / x.shape[0]
+        return np.concatenate((temp.sum(keepdims=True), x.T.dot(temp))) \
+               / x.shape[0] + self.alpha * self.theta 
 
     def gradient_descent(self, x, y):
         grad = self.compute_grad(x, y)
@@ -108,21 +110,6 @@ class LRModel:
     def predict(self, x):
         prob = self.predict_prob(x)
         return np.array(prob > 0.5, dtype='int')
-
-    def one_vs_rest(self, X, y, k):
-        all_theta = np.zeros((k, X.shape[1]))  # K个分类器的最终权重
-        for i in range(1, k + 1):  # 因为y的取值为1，，，，10
-            # 将y的值划分为二分类：0和1
-            y_i = np.array([1 if label == i else 0 for label in y])
-            theta = self.fit(X, y_i)
-            # Whether to print the result rather than returning it
-            all_theta[i - 1, :] = theta
-        return all_theta
-
-    def predict_all(self, X_predict, all_theta):
-        y_pre = self.sigmoid(X_predict.dot(all_theta))
-        y_argmax = np.argmax(y_pre, axis=1)
-        return y_argmax
 
 
 import numpy as np
@@ -163,7 +150,7 @@ config = {
 }
 '''
 
-#'''
+'''
 # Paillier
 config = {
     'mode': 'Paillier',
@@ -177,7 +164,7 @@ config = {
     'category': 2,
     'feature_names': None,
 }
-#'''
+'''
 
 
 def feature_selection(x, feature_names):
@@ -218,9 +205,10 @@ def compute_epsilon(steps, num_train_examples, config):
 
 class LRModel_DPSGD(LRModel):
 
-    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, 
-                    noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
-        super().__init__(X, y, category, learning_rate, alpha)
+    def __init__(self, x, y, category, learning_rate=0.2, alpha=0.0001,
+                 noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True,
+                 *args):
+        super().__init__(x, y, category, learning_rate, alpha, *args)
         self.noise_multiplier = noise_multiplier
         self.l2_norm_clip = l2_norm_clip
         self.secure_mode = secure_mode
@@ -250,13 +238,14 @@ class LRModel_DPSGD(LRModel):
             noise = np.random.normal(0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
 
         grad += noise
-        return grad / x.shape[0]
+        return grad / x.shape[0] + self.alpha * self.theta
 
 
 class LRModel_Paillier(LRModel):
 
-    def __init__(self, X, y, category, learning_rate=0.2, alpha=0.0001, n_length=1024):
-        super().__init__(X, y, category, learning_rate, alpha)
+    def __init__(self, x, y, category, learning_rate=0.2, alpha=0.0001,
+                 n_length=1024, *args):
+        super().__init__(x, y, category, learning_rate, alpha, *args)
         self.public_key = None
         self.private_key = None
 
@@ -281,11 +270,12 @@ class LRModel_Paillier(LRModel):
     def compute_grad(self, x, y):
         # Taylor first order expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
         temp = 0.5 + 0.25 * (x.dot(self.theta[1:]) + self.theta[0]) - y
-        return (np.concatenate((temp.sum(keepdims=True), x.T.dot(temp)))
-                + self.alpha * self.theta) / x.shape[0]
+        return np.concatenate((temp.sum(keepdims=True), x.T.dot(temp))) \
+               / x.shape[0] + self.alpha * self.theta 
 
     def loss(self, x, y):
         # Taylor first order expansion: L(x) = ln2 + (0.5 - y) * (x.dot(w) + b)
+        # Ignore regularization term due to paillier doesn't support ciphertext multiplication
         return (np.log(2) + (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0]))) / x.shape[0]
 
 
@@ -294,10 +284,14 @@ class Arbiter(LRModel):
     Tips: Arbiter is a trusted third party !!!
     """
 
-    def __init__(self, host_channel, guest_channel):
+    def __init__(self, alpha, host_channel, guest_channel, log_handler):
         self.theta = None
+        self.alpha = alpha
         self.host_channel = host_channel
         self.guest_channel = guest_channel
+        self.log_handler = log_handler
+        self.metrics = {}
+        self.loss_value = None
 
     def model_aggregate(self, host_param, guest_param, param_weights):
         param = np.vstack([host_param, guest_param])
@@ -307,15 +301,64 @@ class Arbiter(LRModel):
         self.host_channel.send("global_param", self.theta)
         self.guest_channel.send("global_param", self.theta)
 
-    def loss_and_acc(self, losses, accs, weights):
-        return np.average(losses, weights=weights), np.average(accs, weights=weights)
+    def metrics_log(self, num_examples_weights,
+                          num_positive_examples_weights,
+                          num_negtive_examples_weights):
+        # loss
+        penalty_loss = 0.5 * self.alpha * self.theta.dot(self.theta)
+        host_loss = self.host_channel.recv("host_loss") - penalty_loss
+        guest_loss = self.guest_channel.recv("guest_loss") - penalty_loss
+        losses = [host_loss, guest_loss]
+        loss = np.average(losses, weights=num_examples_weights) + penalty_loss
+        self.loss_value = loss # used for check convergence
+        
+        # acc
+        host_acc = self.host_channel.recv("host_acc")
+        guest_acc = self.guest_channel.recv("guest_acc")
+        accs = [host_acc, guest_acc]
+        acc = np.average(accs, weights=num_examples_weights)
+
+        # fpr, tpr
+        host_fpr = self.host_channel.recv("host_fpr")
+        guest_fpr = self.guest_channel.recv("guest_fpr")
+        host_tpr = self.host_channel.recv("host_tpr")
+        guest_tpr = self.guest_channel.recv("guest_tpr")
+        host_thresholds = self.host_channel.recv("host_thresholds")
+        guest_thresholds = self.guest_channel.recv("guest_thresholds")
+        fpr, tpr, thresholds = fpr_tpr_merge2(host_fpr, host_tpr, host_thresholds,
+                                              guest_fpr, guest_tpr, guest_thresholds,
+                                              num_positive_examples_weights,
+                                              num_negtive_examples_weights)
+
+        # ks
+        ks = ks_from_fpr_tpr(fpr, tpr)
+
+        # auc
+        auc = auc_from_fpr_tpr(fpr, tpr)
+
+        self.log_handler.info("loss={}, acc={}, ks={}, auc={}".format(loss, acc, ks, auc))
+
+        self.metrics = {
+            "train_loss": loss,
+            "train_acc": acc,
+            "train_fpr": fpr,
+            "train_tpr": tpr,
+            "train_ks": ks,
+            "train_auc": auc,
+        }
+
+    def get_metrics(self):
+        return self.metrics
+
+    def get_loss(self):
+        return self.loss_value
 
 
-class Arbiter_Paillier(Arbiter, LRModel_Paillier):
+class Arbiter_Paillier(LRModel_Paillier, Arbiter):
     
-    def __init__(self, host_channel, guest_channel):
-        super().__init__(host_channel, guest_channel)
-        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=config['n_length']) 
+    def __init__(self, alpha, n_length, host_channel, guest_channel, log_handler):
+        Arbiter.__init__(self, alpha, host_channel, guest_channel, log_handler)
+        self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=n_length) 
         self.broadcast_public_key()
 
     def broadcast_public_key(self):
@@ -333,9 +376,18 @@ class Arbiter_Paillier(Arbiter, LRModel_Paillier):
         self.host_channel.send("global_param", global_theta)
         self.guest_channel.send("global_param", global_theta)
 
-    def loss(self, enc_losses, weights):
-        losses = self.decrypt_vector(enc_losses)
-        return np.average(losses, weights=weights)
+    def broadcast_plaintext_global_model_param(self):
+        Arbiter.broadcast_global_model_param(self)
+
+    def loss_log(self, weights):
+        host_loss = self.host_channel.recv("host_loss")
+        guest_loss = self.guest_channel.recv("guest_loss")
+        losses = self.decrypt_vector([host_loss, guest_loss])
+        loss = np.average(losses, weights=weights)
+        self.loss_value = loss # used for check convergence
+
+        self.log_handler.info("loss={}".format(loss))
+
 
 
 def run_homo_lr_arbiter(config,
@@ -386,18 +438,18 @@ def run_homo_lr_arbiter(config,
 
     log_handler.info("Create channel between arbiter and guest, "+
                      "locoal ip {}, local port {}, ".format(arbiter_ip, arbiter_port)+
-                     "remote ip {}, remote port {}.".format(guest_ip, guest_port)) 
-    
+                     "remote ip {}, remote port {}.".format(guest_ip, guest_port))
+
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        arbiter = Arbiter(host_channel, guest_channel)
+        arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        arbiter = Arbiter(host_channel, guest_channel)
+        arbiter = Arbiter(config['alpha'], host_channel, guest_channel, log_handler)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        arbiter = Arbiter_Paillier(host_channel, guest_channel)
+        arbiter = Arbiter_Paillier(config['alpha'], config['n_length'], host_channel, guest_channel, log_handler)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
@@ -405,9 +457,17 @@ def run_homo_lr_arbiter(config,
     guest_param_weight = guest_channel.recv("guest_param_weight")
     param_weights = [host_param_weight, guest_param_weight]
 
-    host_num_train_examples = host_channel.recv("host_num_train_examples")
-    guest_num_train_examples = guest_channel.recv("guest_num_train_examples")
-    num_train_examples_weights = [host_num_train_examples, guest_num_train_examples]
+    host_num_examples = host_channel.recv("host_num_examples")
+    guest_num_examples = guest_channel.recv("guest_num_examples")
+    num_examples_weights = [host_num_examples, guest_num_examples]
+
+    host_num_positive_examples = host_channel.recv("host_num_positive_examples")
+    guest_num_positive_examples = guest_channel.recv("guest_num_positive_examples")
+    num_positive_examples_weights = [host_num_positive_examples, guest_num_positive_examples]
+
+    host_num_negtive_examples = host_num_examples - host_num_positive_examples
+    guest_num_negtive_examples = guest_num_examples - guest_num_positive_examples
+    num_negtive_examples_weights = [host_num_negtive_examples, guest_num_negtive_examples]
 
     # data preprocessing
     # minmaxscaler
@@ -440,24 +500,18 @@ def run_homo_lr_arbiter(config,
         arbiter.model_aggregate(host_param, guest_param, param_weights)
         arbiter.broadcast_global_model_param()
         
-        # compute metrics
-        host_loss = host_channel.recv("host_loss")
-        guest_loss = guest_channel.recv("guest_loss")
-        losses = [host_loss, guest_loss]
-        
+        # metrics log
         if config['mode'] == 'Paillier': 
-            loss = arbiter.loss(losses, num_train_examples_weights)
-            log_handler.info("loss={}".format(loss))
+            arbiter.loss_log(num_examples_weights)
         else:
-            host_acc = host_channel.recv("host_acc")
-            guest_acc = guest_channel.recv("guest_acc")
-            accs = [host_acc, guest_acc]
-            loss, acc = arbiter.loss_and_acc(losses, accs, num_train_examples_weights)
-            log_handler.info("loss={}, acc={}".format(loss, acc))
-        
+            arbiter.metrics_log(num_examples_weights,
+                                num_positive_examples_weights,
+                                num_negtive_examples_weights)
+
         # check convergence 
         if check_convergence:
             # convergence is checked using loss
+            loss = arbiter.get_loss()
             if abs(last_loss - loss) < compare_threshold:
                 count_iter_no_change += 1
             else:
@@ -479,20 +533,16 @@ def run_homo_lr_arbiter(config,
         guest_eps = guest_channel.recv('guest_eps')
         eps = max(host_eps, guest_eps)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
+    elif config['mode'] == 'Paillier':
+        arbiter.broadcast_plaintext_global_model_param()
+        arbiter.metrics_log(num_examples_weights,
+                            num_positive_examples_weights,
+                            num_negtive_examples_weights)
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     log_handler.info("Current metrics file path is: {}".format(indicator_file_path))
 
-    if config['mode'] == 'Paillier':
-        trainMetrics = {
-            "train_loss": loss,
-        }
-    else:
-        trainMetrics = {
-            "train_loss": loss,
-            "train_acc": acc,
-        }
-
+    trainMetrics = arbiter.get_metrics()
     trainMetricsBuff = json.dumps(trainMetrics)
     with open(indicator_file_path, 'w') as filePath:
         filePath.write(trainMetricsBuff)
@@ -524,35 +574,63 @@ def batch_generator(all_data, batch_size, shuffle=True):
 
 class Client(LRModel):
 
-    def __init__(self, X, y, arbiter_channel, config):
-        super().__init__(X, y, category=config['category'],
-                               learning_rate=config['learning_rate'],
-                               alpha=config['alpha'])
+    def __init__(self, x, y, category, learning_rate, alpha,
+                 arbiter_channel, client_name, log_handler):
+        super().__init__(x, y, category, learning_rate, alpha)
         self.arbiter_channel = arbiter_channel
+        self.client_name = client_name
+        self.log_handler = log_handler
+    
+    def send_metrics(self, x, y):
+        # loss
+        loss = self.loss(x, y)
+        self.arbiter_channel.send(self.client_name+"_loss", loss)
+
+        # acc
+        y_hat = self.predict_prob(x)
+        acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
+        self.arbiter_channel.send(self.client_name+"_acc", acc)
+
+        # fpr, tpr
+        fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
+                                                 drop_intermediate=False)
+        self.arbiter_channel.send(self.client_name+"_fpr", fpr)
+        self.arbiter_channel.send(self.client_name+"_tpr", tpr)
+        self.arbiter_channel.send(self.client_name+"_thresholds", thresholds)
+
+        # ks
+        ks = ks_from_fpr_tpr(fpr, tpr)
+
+        # auc
+        auc = metrics.roc_auc_score(y, y_hat)
+
+        self.log_handler.info("loss={}, acc={}, ks={}, auc={}".format(loss, acc, ks, auc))
 
 
-class Client_DPSGD(LRModel_DPSGD):
+class Client_DPSGD(LRModel_DPSGD, Client):
 
-    def __init__(self, X, y, arbiter_channel, config):
-        super().__init__(X, y, category=config['category'],
-                               learning_rate=config['learning_rate'],
-                               alpha=config['alpha'],
-                               noise_multiplier=config['noise_multiplier'],
-                               l2_norm_clip=config['l2_norm_clip'],
-                               secure_mode=config['secure_mode'])
-        self.arbiter_channel = arbiter_channel
+    def __init__(self, x, y, category, learning_rate, alpha,
+                 noise_multiplier, l2_norm_clip, secure_mode,
+                 arbiter_channel, client_name, log_handler):
+        super().__init__(x, y, category, learning_rate, alpha,
+                         noise_multiplier, l2_norm_clip, secure_mode,
+                         arbiter_channel, client_name, log_handler)
     
 
-class Client_Paillier(LRModel_Paillier):
+class Client_Paillier(LRModel_Paillier, Client):
 
-    def __init__(self, X, y, arbiter_channel, config):
-        super().__init__(X, y, category=config['category'],
-                               learning_rate=config['learning_rate'],
-                               alpha=config['alpha'],
-                               n_length=config['n_length'])
-        self.arbiter_channel = arbiter_channel
+    def __init__(self, x, y, category, learning_rate, alpha,
+                 n_length,
+                 arbiter_channel, client_name, log_handler):
+        super().__init__(x, y, category, learning_rate, alpha,
+                         n_length,
+                         arbiter_channel, client_name, log_handler)
         self.public_key = arbiter_channel.recv("public_key")
         self.set_theta(self.encrypt_vector(self.theta))
+
+    def send_loss(self, x, y):
+        loss = self.loss(x, y)
+        self.arbiter_channel.send(self.client_name+"_loss", loss)
 
 
 def run_homo_lr_client(config,
@@ -591,23 +669,30 @@ def run_homo_lr_client(config,
     
     x, y = read_data(data_key, config['feature_names'])
     param_weight = config['batch_size']
-    num_train_examples = x.shape[0]
+    num_examples = x.shape[0]
+    num_positive_examples = y.sum()
 
     if config['mode'] == 'Plaintext':
         check_convergence = True
-        client = Client(x, y, arbiter_channel, config)
+        client = Client(x, y, config['category'], config['learning_rate'], config['alpha'],
+                        arbiter_channel, client_name, log_handler)
     elif config['mode'] == 'DPSGD':
         # Due to added noise, don't check convergence in DPSGD mode
         check_convergence = False
-        client = Client_DPSGD(x, y, arbiter_channel, config)
+        client = Client_DPSGD(x, y, config['category'], config['learning_rate'], config['alpha'],
+                              config['noise_multiplier'], config['l2_norm_clip'], config['secure_mode'],
+                              arbiter_channel, client_name, log_handler)
     elif config['mode'] == 'Paillier':
         check_convergence = True
-        client = Client_Paillier(x, y, arbiter_channel, config)
+        client = Client_Paillier(x, y, config['category'], config['learning_rate'], config['alpha'],
+                                 config['n_length'],
+                                 arbiter_channel, client_name, log_handler)
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
     arbiter_channel.send(client_name+"_param_weight", param_weight)
-    arbiter_channel.send(client_name+"_num_train_examples", num_train_examples) 
+    arbiter_channel.send(client_name+"_num_examples", num_examples)
+    arbiter_channel.send(client_name+"_num_positive_examples", num_positive_examples)
   
     # data preprocessing
     # minmaxscaler
@@ -634,15 +719,11 @@ def run_homo_lr_client(config,
         arbiter_channel.send(client_name+"_param", client.get_theta())
         client.set_theta(arbiter_channel.recv("global_param"))
         
-        # compute metrics
-        loss = client.loss(x, y)
-        arbiter_channel.send(client_name+"_loss", loss)
-
-        if config['mode'] != 'Paillier':
-            y_hat = client.predict_prob(x)
-            acc = evaluator.getAccuracy(y, (y_hat >= 0.5).astype('int'))
-            arbiter_channel.send(client_name+"_acc", acc)
-            log_handler.info("loss={}, acc={}".format(loss, acc))
+        # metrics log
+        if config['mode'] == 'Paillier':
+            client.send_loss(x, y)
+        else:
+            client.send_metrics(x, y)
         
         # check convergence
         if check_convergence:
@@ -651,9 +732,12 @@ def run_homo_lr_client(config,
                 break
     
     if config['mode'] == 'DPSGD':
-        eps = compute_epsilon(i+1, num_train_examples, config)
+        eps = compute_epsilon(i+1, num_examples, config)
         arbiter_channel.send(client_name+"_eps", eps)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
+    elif config['mode'] == 'Paillier':
+        client.set_theta(arbiter_channel.recv("global_param"))
+        client.send_metrics(x, y)
 
     log_handler.info("{} training process done.".format(client_name))
     model_file_path = ph.context.Context.get_model_file_path() + "." + client_name
@@ -749,6 +833,7 @@ def run_party(party_name, config):
     fl_console_log.info("Finish homo-LR {} logic.".format(party_name))
 
 
+'''
 @ph.context.function(role='arbiter',
                      protocol='lr',
                      datasets=['train_homo_lr'],
@@ -774,3 +859,4 @@ def run_host_party():
                      task_type="lr-train")
 def run_guest_party():
     run_party('guest', config)
+'''

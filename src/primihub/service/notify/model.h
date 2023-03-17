@@ -218,10 +218,13 @@ class GRPCNotifyServer : public NotifyServer {
         // better choice for production environment: boost::shared_mutex or std::shared_mutex(since C++17)
         mutable std::shared_mutex mutex_sessions_{};
         std::unordered_map<uint64_t /*session id*/, std::shared_ptr<GRPCClientSession>> sessions_{};
+        ~GRPCNotifyServer() {
+            stop();
+        };
 
     private:
         GRPCNotifyServer() {};
-        ~GRPCNotifyServer() {};
+
         std::shared_ptr<NotifyServerSubscriber> notify_server_subscriber_;
         // TODO task context -> grpc client map
         // std::map<std::string /*task id*/, Task> tasks_; //TODO new/delte task
