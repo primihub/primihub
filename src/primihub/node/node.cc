@@ -667,7 +667,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             std::unique_lock<std::shared_mutex> lck(task_scheduler_mtx_);
             task_scheduler_map_.insert(
                 {worker_id, std::make_tuple(worker_ptr, std::future<void>())});
-            LOG(ERROR) << "insert worker id: " << worker_id << " into task_scheduler_map_";
+            VLOG(2) << "insert worker id: " << worker_id << " into task_scheduler_map_";
         }
         // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
@@ -743,7 +743,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             std::unique_lock<std::shared_mutex> lck(task_scheduler_mtx_);
             task_scheduler_map_.insert(
                 {worker_id, std::make_tuple(worker_ptr, std::future<void>())});
-            LOG(ERROR) << "insert worker id: " << worker_id << " into task_scheduler_map_";
+            VLOG(2) << "insert worker id: " << worker_id << " into task_scheduler_map_";
             VLOG(5) << "timer insert worker id " << worker_id  << " time cost(ms): " << timer.timeElapse();
         }
 
