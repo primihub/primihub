@@ -32,9 +32,12 @@ COPY ./python ./python
 COPY ./src/primihub/protos/ ./src/primihub/protos/
 RUN cp $TARGET_PATH/opt_paillier_c2py.so $TARGET_PATH/linkcontext.so /app/python/
 
+ARG PY_PIP_UPGRADE_CMD="python3 -m pip install --upgrade pip"
+ARG PY_INSTALL_REQUIREMENTS_CMD="python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/"
+
 WORKDIR /app/python
-RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/ \
+RUN ${PY_PIP_UPGRADE_CMD} \
+  && ${PY_INSTALL_REQUIREMENTS_CMD} \
   && python3 setup.py develop \
   && rm -rf /root/.cache/pip/
 

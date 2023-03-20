@@ -13,6 +13,20 @@ else
     IMAGE_NAME=$2
 fi
 
+# python upgrade cmd
+if [ ! -n "$3" ]; then
+    PY_PIP_UPGRADE_CMD=$3
+else
+    PY_PIP_UPGRADE_CMD="python3 -m pip install --upgrade pip"
+fi
+
+# python install requirement cmd
+if [ ! -n "$4" ]; then
+  PY_INSTALL_REQUIREMENTS_CMD=$4
+else
+  PY_INSTALL_REQUIREMENTS_CMD="python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/"
+fi
+
 bash pre_build.sh
 
 ARCH=`arch`
@@ -49,4 +63,7 @@ cp -r ./src $BASE_DIR/
 cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
-docker build -t $IMAGE_NAME:$TAG . -f Dockerfile.local
+docker build \
+    --build-arg PY_PIP_UPGRADE_CMD=${PY_PIP_UPGRADE_CMD} \
+    --build-arg PY_INSTALL_REQUIREMENTS_CMD=${PY_INSTALL_REQUIREMENTS_CMD} \
+    -t $IMAGE_NAME:$TAG . -f Dockerfile.local
