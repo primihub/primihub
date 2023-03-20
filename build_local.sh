@@ -7,7 +7,7 @@ else
     TAG=$1
 fi
 
-if [ ! -n "$2"] ; then
+if [ ! -n "$2" ] ; then
     IMAGE_NAME="primihub/primihub-node"
 else
     IMAGE_NAME=$2
