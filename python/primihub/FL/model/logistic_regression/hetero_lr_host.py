@@ -1,7 +1,11 @@
 import pickle
+import json
 import numpy as np
 import pandas as pd
+from sklearn import metrics
 from primihub.utils.sampling import random_sample
+from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.model.logistic_regression.hetero_lr_base import HeteroLrBase, batch_yield, dloss, trucate_geometric_thres
 
 
@@ -18,12 +22,16 @@ class HeterLrHost(HeteroLrBase):
                  loss_type='log',
                  random_state=2023,
                  host_channel=None,
-                 add_noise=True,
+                 add_noise="regular",
                  tol=0.001,
                  momentum=0.7,
                  n_iter_no_change=5,
                  sample_method="random",
-                 sample_ratio=0.5):
+                 sample_ratio=0.5,
+                 scale_type=None,
+                 model_path=None,
+                 indicator_file=None,
+                 output_file=None):
         super().__init__(learning_rate, alpha, epochs, penalty, batch_size,
                          optimal_method, update_type, loss_type, random_state)
         self.channel = host_channel
@@ -37,6 +45,11 @@ class HeterLrHost(HeteroLrBase):
         self.n_iter_no_change = n_iter_no_change
         self.sample_method = sample_method
         self.sample_ratio = sample_ratio
+        self.scale_type = scale_type
+        self.model_path = model_path
+        self.indicator_file = indicator_file
+        self.output_file = output_file
+        self.prob = None
 
     def add_intercept(self, x):
         intercept = np.ones((x.shape[0], 1))
@@ -52,8 +65,17 @@ class HeterLrHost(HeteroLrBase):
 
         return h
 
+    def predict_prob(self, x):
+        prob = self.sigmoid(self.predict_raw(x))
+        self.prob = prob
+
+        return prob
+
     def predict(self, x):
-        preds = self.sigmoid(self.predict_raw(x))
+        if self.prob is not None:
+            preds = self.prob
+        else:
+            preds = self.sigmoid(self.predict_raw(x))
         preds[preds <= 0.5] = 0
         preds[preds > 0.5] = 1
 
@@ -70,17 +92,15 @@ class HeterLrHost(HeteroLrBase):
         h = self.sigmoid(self.predict_raw(x))
         error = h - y
         # self.channel.sender('error', error)
-        if self.add_noise:
-            # nois_error = trucate_geometric_thres(error,
-            #                                      clip_thres=self.clip_thres,
-            #                                      variation=self.noise_variation)
-
-            # add adaptive-noise for error
+        if self.add_noise == 'regular':
+            noise = np.random.normal(0, 1, error.shape)
+        elif self.add_noise == 'adaptive':
             error_std = np.std(error)
             noise = np.random.normal(0, error_std, error.shape)
-            nois_error = error + noise
         else:
-            nois_error = error
+            noise = 0
+
+        nois_error = error + noise
         self.channel.sender('error', nois_error)
 
         if self.penalty == "l2":
@@ -123,7 +143,7 @@ class HeterLrHost(HeteroLrBase):
             self.prev_grad = grad
 
     def fit(self, x, y):
-
+        col_names = []
         if self.sample_method == "random" and x.shape[0] > 50000:
             sample_ids = random_sample(data=x, rate=self.sample_ratio)
             self.channel.sender('sample_ids', sample_ids)
@@ -140,7 +160,17 @@ class HeterLrHost(HeteroLrBase):
             if isinstance(y, np.ndarray):
                 y = y[sample_ids]
             else:
-                y = y.iloc[sample_ids]
+                y = y.iloc[sample_ids].values
+
+        if self.scale_type is not None:
+            if self.scale_type == "z-score":
+                std = StandardScaler()
+            else:
+                std = MinMaxScaler()
+
+            x = std.fit_transform(x)
+        else:
+            std = None
 
         x = self.add_intercept(x)
         if self.batch_size < 0:
@@ -204,12 +234,49 @@ class HeterLrHost(HeteroLrBase):
         print("converged status: ", converged_iter, converged_acc,
               converged_loss)
 
-        model_path = "hetero_lr_host.ml"
+        # model_path = "hetero_lr_host.ml"
+        model_path = self.model_path
         host_model = {
             "weights": self.theta[1:],
             "bias": self.theta[0],
-            "columns": col_names
+            "columns": col_names,
+            "std": std
         }
 
         with open(model_path, 'wb') as lr_host:
             pickle.dump(host_model, lr_host)
+
+        if self.indicator_file is not None:
+            # set current predict prob
+            self.prob = self.sigmoid(best_y)
+            preds = self.predict(x)
+
+            ks, auc = evaluate_ks_and_roc_auc(y, self.prob)
+            fpr, tpr, threshold = metrics.roc_curve(y, self.prob)
+
+            recall = eval_acc(y, preds)['recall']
+            lifts, gains = plot_lift_and_gain(y, self.prob)
+
+            evals = {
+                "train_acc": best_acc,
+                "train_ks": ks,
+                "train_auc": auc,
+                "train_fpr": fpr.tolist(),
+                "train_tpr": tpr.tolist(),
+                "lift_x": lifts['axis_x'].tolist(),
+                "lift_y": lifts['axis_y'],
+                "gain_x": gains['axis_x'].tolist(),
+                "gain_y": gains['axis_y'],
+                "recall": recall
+            }
+            resut_buf = json.dumps(evals)
+
+            with open(self.indicator_file, 'w') as indicts:
+                indicts.write(resut_buf)
+
+        if self.output_file is not None:
+            pred_df = pd.DataFrame({
+                'prediction': best_y,
+                'probability': self.sigmoid(best_y)
+            })
+            pred_df.to_csv(self.output_file, index=False, sep='\t')
