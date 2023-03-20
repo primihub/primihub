@@ -1,6 +1,6 @@
 #/bin/bash
 # When using this script, please make sure that the python version of the local machine is 3.8
-
+set -x
 if [ ! -n "$1" ] ; then
     TAG=`date +%F-%H-%M-%S`
 else
@@ -14,14 +14,14 @@ else
 fi
 
 # python upgrade cmd
-if [ ! -n "$3" ]; then
+if [ -n "$3" ]; then
     PY_PIP_UPGRADE_CMD=$3
 else
     PY_PIP_UPGRADE_CMD="python3 -m pip install --upgrade pip"
 fi
 
 # python install requirement cmd
-if [ ! -n "$4" ]; then
+if [ -n "$4" ]; then
   PY_INSTALL_REQUIREMENTS_CMD=$4
 else
   PY_INSTALL_REQUIREMENTS_CMD="python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/"
@@ -64,6 +64,6 @@ cd $BASE_DIR
 find ./ -name "_objs" > .dockerignore
 
 docker build \
-    --build-arg PY_PIP_UPGRADE_CMD=${PY_PIP_UPGRADE_CMD} \
-    --build-arg PY_INSTALL_REQUIREMENTS_CMD=${PY_INSTALL_REQUIREMENTS_CMD} \
+    --build-arg PY_PIP_UPGRADE_CMD="${PY_PIP_UPGRADE_CMD}" \
+    --build-arg PY_INSTALL_REQUIREMENTS_CMD="${PY_INSTALL_REQUIREMENTS_CMD}" \
     -t $IMAGE_NAME:$TAG . -f Dockerfile.local
