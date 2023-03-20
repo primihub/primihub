@@ -60,7 +60,7 @@ new_git_repository(
 )
 
 
-new_git_repository(
+http_archive(
     name = "arrow",
     build_file = "//bazel:BUILD.arrow",
     patch_cmds = [
@@ -68,18 +68,22 @@ new_git_repository(
         """sed -i.bak 's/type_traits/std::max<int16_t>(sizeof(int16_t), type_traits/g' cpp/src/parquet/column_reader.cc""",
         """sed -i.bak 's/value_byte_size/value_byte_size)/g' cpp/src/parquet/column_reader.cc""",
     ],
-    branch = "release-4.0.0",
-    remote = "https://gitee.com/primihub/arrow.git",
+    strip_prefix = "arrow-4.0.0",
+    urls=[
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/arrow_v4.0.0.tar.gz",
+    ],
+    sha256 = "749e3f5972e9de4319eb5ff6fcf40679702a2b3e9114536aba13e35ebe6e161b",
 )
 
-
-# grpc with openssl
-git_repository(
-    name = "com_github_grpc_grpc",
-    remote = "https://gitee.com/primihub/grpc.git",
-    # branch = "v1.42.x-openssl",
-    commit = "8b65292afb00fb62c46e25f590bff2c644c0a03c",
+http_archive(
+  name="com_github_grpc_grpc",
+  strip_prefix = "grpc-1.42.x.openssl",
+  urls=[
+      "https://primihub.oss-cn-beijing.aliyuncs.com/tools/v1.42.x.openssl.tar.gz",
+  ],
+  sha256 = "50d5b0ab8abafb20a43cefe34fb74f0852298cb013260bf8a100ada27c507557",
 )
+
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
@@ -94,8 +98,8 @@ grpc_extra_deps()
 http_archive(
     name = "com_github_glog_glog",
     # sha256 = "cbba86b5a63063999e0fc86de620a3ad22d6fd2aa5948bff4995dcd851074a0b",
-    strip_prefix = "glog-c8f8135a5720aee7de8328b42e4c43f8aa2e60aa",
-    urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/tools/glog-c8f8135a5720aee7de8328b42e4c43f8aa2e60aa.zip"],
+    strip_prefix = "glog-0.6.0",
+    urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/tools/glog-0.6.0.zip"],
 )
 
 http_archive(
@@ -152,10 +156,10 @@ versions.check(minimum_bazel_version = "5.0.0")
 # json
 http_archive(
     name = "nlohmann_json",
+    build_file = "//bazel:BUILD.nlohmann_json",
     strip_prefix = "json-3.9.1",
     urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/tools/json-3.9.1.tar.gz"],
     sha256 = "4cf0df69731494668bdd6460ed8cb269b68de9c19ad8c27abc24cd72605b2d5b",
-    build_file = "//bazel:BUILD.nlohmann_json",
 )
 
 
@@ -165,7 +169,9 @@ http_archive(
 http_archive(
   name = "pybind11_bazel",
   strip_prefix = "pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672",
-  urls = ["https://primihub.oss-cn-beijing.aliyuncs.com/pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672.zip"],
+  urls = [
+      "https://primihub.oss-cn-beijing.aliyuncs.com/pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672.zip",
+  ],
 )
 
 # We still require the pybind library.
@@ -487,7 +493,6 @@ git_repository(
    name = "org_openmined_psi",
    remote = "https://gitee.com/primihub/PSI.git",
    branch = "master",
-   init_submodules = True,
 )
 
 load("@org_openmined_psi//private_set_intersection:preload.bzl", "psi_preload")
@@ -506,7 +511,6 @@ git_repository(
    name = "org_openmined_pir",
    remote = "https://gitee.com/primihub/PIR.git",
    branch = "master",
-   init_submodules = True,
 )
 
 load("@org_openmined_pir//pir:preload.bzl", "pir_preload")

@@ -193,9 +193,19 @@ retcode PyExecutor::run_task_code() {
             // std::string nodelet_addr =
             // this->dataset_service_->getNodeletAddr();
             // auto pos = nodelet_addr.find(":");
+
             // set_task_context_params_map("DatasetServiceAddr",
             //     nodelet_addr.substr(pos + 1, nodelet_addr.length()));
-
+            const auto& node_map = task_request_->task().node_map();
+            for (const auto& node_info : node_map) {
+              if (node_info.first == this->node_id_) {
+                  auto& node_access = node_info.second;
+                  std::string node_access_info = node_access.ip();
+                  node_access_info.append(":").append(std::to_string(node_access.port()))
+                  .append(":").append(node_access.use_tls() ? "1" : "0");
+                  set_task_context_params_map("DatasetServiceAddr", node_access_info);
+              }
+            }
             // Setup task id and job id.
             set_task_context_params_map("jobid", jobid_);
             set_task_context_params_map("taskid", taskid_);

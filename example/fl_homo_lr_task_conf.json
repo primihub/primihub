@@ -1,0 +1,24 @@
+{
+  "task_type": "ACTOR_TASK",
+  "task_name": "homo_lr_task",
+  "task_lang": "python",
+  "task_code": {
+    "code_file_path": "./python/primihub/FL/model/logistic_regression/homo_lr.py",
+    "code": ""
+  },
+  "params": {
+    "predictFileName": {
+      "type": "STRING",
+      "value": "data/result/lr_train_predict.csv"
+    },
+    "indicatorFileName": {
+      "type": "STRING",
+      "value": "data/result/lr_train_indicator.json"
+    },
+    "modelFileName": {
+      "type": "STRING",
+      "value": "data/result/lr_model.pl"
+    }
+  },
+  "input_datasets": []
+}

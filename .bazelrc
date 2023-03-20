@@ -56,19 +56,28 @@ build --apple_generate_dsym
 # MacOS configs.
 build:darwin_x86_64 --apple_platform_type=macos
 build:darwin_x86_64 --macos_minimum_os=10.16
-build:darwin_x86_64 --cpu=darwin_x86_64
+build:darwin_x86_64 --define cpu=amd64
 build:darwin_x86_64 --copt=-DENABLE_SSE
 build:darwin_x86_64 --define macos-build=true
 build:darwin_x86_64 --define cpu_arch=darwin_x86_64
 build:darwin_x86_64 --define enable_mysql_driver=false
+build:darwin_x86_64 --cxxopt=-std=c++17
+build:darwin_x86_64 --copt=-w
+build:darwin_x86_64 --copt=-force_flat_namespace
+build:darwin_x86_64 --define macos-build=true
 
 # MacOS Big Sur with Apple Silicon M1
 build:darwin_arm64 --apple_platform_type=macos
 build:darwin_arm64 --macos_minimum_os=10.16
-build:darwin_arm64 --cpu=darwin_arm64
+build:darwin_arm64 --define cpu=arm64
 build:darwin_arm64 --define macos-build=true
 build:darwin_arm64 --define cpu_arch=darwin_arm64
 build:darwin_arm64 --define enable_mysql_driver=false
+build:darwin_arm64 --cxxopt=-std=c++17
+build:darwin_arm64 --copt=-w
+build:darwin_arm64 --copt=-force_flat_namespace
+build:darwin_arm64 --define macos-build=true
+build:darwin_arm64 --define microsoft-apsi=true
 
 # MacOS Monterey with Apple M1
 build:darwin --apple_platform_type=macos
