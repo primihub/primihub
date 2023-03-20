@@ -45,6 +45,7 @@ from ray.data._internal.null_aggregate import (_null_wrap_init,
                                                _null_wrap_finalize)
 
 from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
+from primihub.utils.evaluation import plot_lift_and_gain, evaluate_ks_and_roc_auc, eval_acc
 
 # import matplotlib.pyplot as plt
 T = TypeVar("T", contravariant=True)
@@ -841,25 +842,6 @@ class GrpcServer:
         # channle = connector.getChannel(node)
         recv_val = self.recv_channel.recv(key)
         return pickle.loads(recv_val)
-
-
-def evaluate_ks_and_roc_auc(y_real, y_proba):
-    # Unite both visions to be able to filter
-    df = pd.DataFrame()
-    df['real'] = y_real
-    # df['proba'] = y_proba[:, 1]
-    df['proba'] = y_proba
-
-    # Recover each class
-    class0 = df[df['real'] == 0]
-    class1 = df[df['real'] == 1]
-
-    ks = ks_2samp(class0['proba'], class1['proba'])
-    roc_auc = roc_auc_score(df['real'], df['proba'])
-
-    print(f"KS: {ks.statistic:.4f} (p-value: {ks.pvalue:.3e})")
-    print(f"ROC AUC: {roc_auc:.4f}")
-    return ks.statistic, roc_auc
 
 
 def sum_job(tmp_group, encrypted, pub, paillier_add_actors):
@@ -2210,6 +2192,9 @@ def xgb_host_logic(cry_pri="paillier"):
     xgb_host.fpr = fpr.tolist()
     xgb_host.tpr = tpr.tolist()
 
+    recall = eval_acc(Y, (y_hat >= 0.5).astype('int'))
+    lifts, gains = plot_lift_and_gain(Y, y_hat)
+
     model_file_path = ph.context.Context.get_model_file_path()
     lookup_file_path = ph.context.Context.get_host_lookup_file_path()
 
@@ -2235,7 +2220,12 @@ def xgb_host_logic(cry_pri="paillier"):
         "train_auc": xgb_host.auc,
         "train_ks": xgb_host.ks,
         "train_fpr": xgb_host.fpr,
-        "train_tpr": xgb_host.tpr
+        "train_tpr": xgb_host.tpr,
+        "lift_x": lifts['axis_x'].tolist(),
+        "lift_y": lifts['axis_y'],
+        "gain_x": gains['axis_x'].tolist(),
+        "gain_y": gains['axis_y'],
+        "recall": recall
     }
 
     # save results to png
