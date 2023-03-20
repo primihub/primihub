@@ -12,10 +12,7 @@ linux_aarch64:
 	bazel build --config=linux_aarch64 ${TARGET}
 
 macos_arm64:
-	bazel build --config=darwin_arm64 ${TARGET}
-
-macos_x86_64:
-	bazel build --config=darwin_x86_64 ${TARGET}
+	bazel build --config=macos --define cpu=arm64 --define microsoft-apsi=true ${TARGET}
 
 .PHONY: clean
 
