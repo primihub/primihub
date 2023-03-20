@@ -78,6 +78,8 @@ message TaskStatus {
     RUNNING = 0;
     SUCCESS = 1;
     FAIL = 2;
+    NONEXIST = 3;
+    FINISHED = 4;
   }
   TaskContext task_info = 1;
   string party = 2;

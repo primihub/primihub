@@ -30,15 +30,6 @@ cc_test(
       ],
 )
 
-cc_binary(
-    name = "notify_service_test",
-    srcs = [
-        "notify/notify_service_e2e_test.cc",
-    ],
-    deps = SERVICE_DEFAULT_DEPS + [
-        "//src/primihub/service:notify_serivce",
-    ],
-)
 
 cc_binary(
     name = "notify_test_client",

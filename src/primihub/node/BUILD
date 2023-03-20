@@ -16,7 +16,6 @@ cc_library(
         "//src/primihub/util:util_lib",
         "//src/primihub/task/language:language_parser_factory",
         "//src/primihub/task/semantic:task_semantic_parser",
-        "//src/primihub/service:notify_serivce",
         "@com_github_glog_glog//:glog",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/flags:flag",
@@ -54,6 +53,5 @@ cc_library(
         "//src/primihub/common:common_defination",
         "//src/primihub/p2p:p2p_lib",
         "//src/primihub/service:dataset_service",
-        "//src/primihub/service:notify_serivce",
     ],
 )

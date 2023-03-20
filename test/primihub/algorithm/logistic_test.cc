@@ -84,8 +84,10 @@ TEST(logistic, logistic_3pc_test) {
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task1.set_task_id("mpc_lr");
-  task1.set_job_id("lr_job");
+  auto task1_info = task1.mutable_task_info();
+  task1_info->set_task_id("mpc_lr");
+  task1_info->set_job_id("lr_job");
+  task1_info->set_request_id("lr_task");
 
   rpc::ParamValue pv_train_input;
   pv_train_input.set_var_type(rpc::VarType::STRING);
@@ -116,8 +118,10 @@ TEST(logistic, logistic_3pc_test) {
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task2.set_task_id("mpc_lr");
-  task2.set_job_id("lr_job");
+  auto task2_info = task2.mutable_task_info();
+  task2_info->set_task_id("mpc_lr");
+  task2_info->set_job_id("lr_job");
+  task2_info->set_request_id("lr_task");
 
   // pv_train_input.set_value_string("data/train_party_1.csv");
   pv_train_input.set_value_string("train_party_1");
@@ -134,8 +138,10 @@ TEST(logistic, logistic_3pc_test) {
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task3.set_task_id("mpc_lr");
-  task3.set_job_id("lr_job");
+  auto task3_info = task3.mutable_task_info();
+  task3_info->set_task_id("mpc_lr");
+  task3_info->set_job_id("lr_job");
+  task3_info->set_request_id("lr_task");
 
   // pv_train_input.set_value_string("data/train_party_2.csv");
   pv_train_input.set_value_string("train_party_2");

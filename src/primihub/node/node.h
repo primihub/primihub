@@ -216,7 +216,7 @@ class VMNodeImpl final: public VMNode::Service {
     // value: submited_client_id, task_status, lastupdate timestamp
     std::map<std::string, std::tuple<std::string, std::string, time_t>> finished_task_status_;
     std::future<void> clean_cached_task_status_fut_;
-    uint32_t cached_task_status_timeout_{CACHED_TASK_STATUS_TIMEOUT_S};
+    int cached_task_status_timeout_{CACHED_TASK_STATUS_TIMEOUT_S};
 
     std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
 

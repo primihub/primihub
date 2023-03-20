@@ -543,13 +543,15 @@ Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
 Status VMNodeImpl::FetchTaskStatus(::grpc::ServerContext* context,
                                   const ::primihub::rpc::TaskContext* request,
                                   ::primihub::rpc::TaskStatusReply* response) {
-//
     // LOG(ERROR) << "VMNodeImpl::FetchTaskStatus";
     const auto& request_id = request->request_id();
     const auto& task_id = request->task_id();
     const auto& job_id = request->job_id();
     auto worker_ptr = getSchedulerWorker(task_id, job_id, request_id);
     if (worker_ptr == nullptr) {
+        auto task_status = response->add_task_status();
+        task_status->set_status(rpc::TaskStatus::NONEXIST);
+        task_status->set_message("No shecudler found for task");
         return grpc::Status::OK;
     }
     do {
@@ -667,7 +669,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             std::unique_lock<std::shared_mutex> lck(task_scheduler_mtx_);
             task_scheduler_map_.insert(
                 {worker_id, std::make_tuple(worker_ptr, std::future<void>())});
-            LOG(ERROR) << "insert worker id: " << worker_id << " into task_scheduler_map_";
+            VLOG(2) << "insert worker id: " << worker_id << " into task_scheduler_map_";
         }
         // absl::MutexLock lock(&parser_mutex_);
         // Construct language parser
@@ -743,7 +745,7 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
             std::unique_lock<std::shared_mutex> lck(task_scheduler_mtx_);
             task_scheduler_map_.insert(
                 {worker_id, std::make_tuple(worker_ptr, std::future<void>())});
-            LOG(ERROR) << "insert worker id: " << worker_id << " into task_scheduler_map_";
+            VLOG(2) << "insert worker id: " << worker_id << " into task_scheduler_map_";
             VLOG(5) << "timer insert worker id " << worker_id  << " time cost(ms): " << timer.timeElapse();
         }
 

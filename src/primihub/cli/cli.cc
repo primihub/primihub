@@ -144,51 +144,6 @@ void fill_param(const std::vector<std::string>& params,
     }
 }
 
-int get_task_execute_status(const primihub::rpc::Node& notify_server, const PushTaskRequest& request_info) {
-    // LOG(INFO) << "get_task_execute_status for "
-    //     << notify_server.ip() << " port: " << notify_server.port()
-    //     <<  " use_tls: " << notify_server.use_tls();
-    // std::string node_info = notify_server.ip() + ":" + std::to_string(notify_server.port());
-    // auto channel = grpc::CreateChannel(node_info, grpc::InsecureChannelCredentials());
-    // auto stub = primihub::rpc::NodeService::NewStub(channel);
-    // using ClientContext = primihub::rpc::ClientContext;
-    // using NodeEventReply = primihub::rpc::NodeEventReply;
-    // bool has_error{false};
-    // do {
-    //     bool is_finished{false};
-    //     grpc::ClientContext context;
-    //     ClientContext request;
-    //     request.set_client_id(request_info.submit_client_id());
-    //     request.set_client_ip("127.0.0.1");
-    //     request.set_client_port(12345);
-    //     std::unique_ptr<grpc::ClientReader<NodeEventReply>> reader(
-    //         stub->SubscribeNodeEvent(&context, request));
-    //     NodeEventReply reply;
-    //     std::string server_node = notify_server.ip();
-    //     while (reader->Read(&reply)) {
-    //         const auto& task_status = reply.task_status();
-    //         std::string status = task_status.status();
-    //         LOG(INFO) << "get reply from " << server_node << " with status: "
-    //                 << status;
-    //         if (status == std::string("SUCCESS") || status == std::string("FAIL")) {
-    //             is_finished = true;
-    //             if (status == std::string("FAIL")) {
-    //                 has_error = true;
-    //             }
-    //             break;
-    //         }
-    //     }
-    //     if (is_finished) {
-    //         break;
-    //     }
-    // } while (true);
-    // if (has_error) {
-    //     return -1;
-    // }
-
-    return 0;
-}
-
 retcode buildRequestWithFlag(PushTaskRequest* request) {
     auto task_ptr = request->mutable_task();
     int task_type_flag = absl::GetFlag(FLAGS_task_type);
@@ -538,6 +493,5 @@ int main(int argc, char** argv) {
             break;
         }
     }
-
     return 0;
 }
