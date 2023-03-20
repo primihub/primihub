@@ -79,7 +79,7 @@ jobs:
       - name: bazel build
         run: |
           # cc_binary
-          bazel build --config=darwin_x86_64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
+          bazel build --config=darwin_x86_64 :node :py_main :cli :opt_paillier_c2py :linkcontext
 
           tar zcf primihub-darwin-amd64.tar.gz bazel-bin/cli \
                                               bazel-bin/node \
@@ -102,7 +102,7 @@ jobs:
         run: |
           # cc_binary
           bash pre_build.sh
-          bazel build --config=darwin_arm64 --config=macos :node :py_main :cli :opt_paillier_c2py :linkcontext
+          bazel build --config=darwin_arm64 :node :py_main :cli :opt_paillier_c2py :linkcontext
 
           tar zcf primihub-darwin-arm64.tar.gz bazel-bin/cli \
                                               bazel-bin/node \
