@@ -1,0 +1,30 @@
+{
+  "task_type": "PIR_TASK",
+  "task_name": "keyword_pir_task",
+  "task_lang": "proto",
+  "task_code": {
+    "code_file_path": "",
+    "code": ""
+  },
+  "params": {
+    "clientData": {
+      "type": "STRING",
+      "value": [
+        "UpsUmxCsovVczGEnriJshwVKclwyxGWZIXXHWmBFVzTllFcPfdsDfbQFOJhJssvT"
+      ]
+    },
+    "serverData": {
+      "type": "STRING",
+      "value": "keyword_pir_server_data"
+    },
+    "pirType": {
+      "type": "INT32",
+      "value": 1
+    },
+    "outputFullFilename": {
+      "type": "STRING",
+      "value": "/opt/data/result/pir_result.csv"
+    }
+  },
+  "input_datasets": ["serverData"]
+}
