@@ -68,7 +68,7 @@ ABSL_FLAG(std::vector<std::string>, cert_config,
                 "data/cert/client.crt"}),
             "cert config");
 
-ABSL_FLAG(std::string, task_config_file, "example/psi_ecdh_task_conf.json", "path of task config file");
+ABSL_FLAG(std::string, task_config_file, "", "path of task config file");
 
 std::map<std::string, TaskType> task_type_map {
   {"ACTOR_TASK", TaskType::ACTOR_TASK},
