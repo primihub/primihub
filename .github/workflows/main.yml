@@ -48,7 +48,7 @@ jobs:
             //:py_main \
             //:cli \
             //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper::linkcontext
+            //src/primihub/pybind_warpper:linkcontext
 
   build-on-ubuntu-arm64:
     runs-on: [self-hosted, Linux, ARM64]
@@ -77,10 +77,14 @@ jobs:
     - name: bazel test
       run: |
         mv -f WORKSPACE_GITHUB WORKSPACE
-        bazel build --config=darwin_x86_64 common_test network_test logistic_test
-        ./bazel-bin/logistic_test
-        ./bazel-bin/common_test
-        ./bazel-bin/network_test
+        bazel build --config=darwin_x86_64 \
+            //test/primihub/algorithm:logistic_test \
+            //test/primihub/common/type:common_test \
+            //test/primihub/util:network_test
+
+        ./bazel-bin/test/primihub/algorithm/logistic_test
+        ./bazel-bin/test/primihub/common/type/common_test
+        ./bazel-bin/test/primihub/util/network_test
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
@@ -88,7 +92,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 --config=macos //:node \
+        bazel build --config=darwin_x86_64 //:node \
             //:py_main \
             //:cli \
             //src/primihub/pybind_warpper:opt_paillier_c2py \
