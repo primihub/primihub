@@ -23,9 +23,9 @@
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/task/semantic/fl_task.h"
-#include "src/primihub/task/semantic/private_server_base.h"
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
 #include "src/primihub/task/semantic/psi_ecdh_task.h"
+#include "src/primihub/task/semantic/private_server_base.h"
 
 #ifndef USE_MICROSOFT_APSI
 #include "src/primihub/task/semantic/pir_client_task.h"

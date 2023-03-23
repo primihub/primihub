@@ -34,20 +34,22 @@ void generate_new_keys(int party, NetIO *io, int slot_count,
                        GaloisKeys *&gal_keys_, Ciphertext *&zero_,
                        bool verbose)
 {
-  EncryptionParameters parms(scheme_type::BFV);
+  EncryptionParameters parms(scheme_type::bfv);
   parms.set_poly_modulus_degree(slot_count);
   parms.set_coeff_modulus(CoeffModulus::Create(slot_count, {60, 60, 60, 38}));
   parms.set_plain_modulus(prime_mod);
   // auto context = SEALContext::Create(parms, true, sec_level_type::none);
-  context_ = SEALContext::Create(parms, true, sec_level_type::none);
-  encoder_ = new BatchEncoder(context_);
-  evaluator_ = new Evaluator(context_);
+  context_ = std::make_shared<SEALContext>(parms, true, sec_level_type::none);
+  encoder_ = new BatchEncoder(*context_);
+  evaluator_ = new Evaluator(*context_);
   if (party == BOB)
   {
-    KeyGenerator keygen(context_);
-    auto pub_key = keygen.public_key();
+    KeyGenerator keygen(*context_);
+    PublicKey pub_key;
+    keygen.create_public_key(pub_key);
     auto sec_key = keygen.secret_key();
-    auto gal_keys_ = keygen.galois_keys();
+    GaloisKeys gal_keys_;
+    keygen.create_galois_keys(gal_keys_);
 
     stringstream os;
     pub_key.save(os);
@@ -68,8 +70,8 @@ void generate_new_keys(int party, NetIO *io, int slot_count,
     io->send_data(&sk_size, sizeof(uint64_t));
     io->send_data(keys_ser_sk.c_str(), sk_size);
 #endif
-    encryptor_ = new Encryptor(context_, pub_key);
-    decryptor_ = new Decryptor(context_, sec_key);
+    encryptor_ = new Encryptor(*context_, pub_key);
+    decryptor_ = new Decryptor(*context_, sec_key);
   }
   else // party == ALICE
   {
@@ -82,10 +84,10 @@ void generate_new_keys(int party, NetIO *io, int slot_count,
     stringstream is;
     PublicKey pub_key;
     is.write(key_share, pk_size);
-    pub_key.load(context_, is);
+    pub_key.load(*context_, is);
     gal_keys_ = new GaloisKeys();
     is.write(key_share + pk_size, gk_size);
-    gal_keys_->load(context_, is);
+    gal_keys_->load(*context_, is);
     delete[] key_share;
 
 #ifdef HE_DEBUG
@@ -100,7 +102,7 @@ void generate_new_keys(int party, NetIO *io, int slot_count,
     delete[] key_share_sk;
     decryptor_ = new Decryptor(context_, sec_key);
 #endif
-    encryptor_ = new Encryptor(context_, pub_key);
+    encryptor_ = new Encryptor(*context_, pub_key);
     vector<uint64_t> pod_matrix(slot_count, 0ULL);
     Plaintext tmp;
     encoder_->encode(pod_matrix, tmp);
@@ -159,7 +161,7 @@ void recv_encrypted_vector(NetIO *io, std::shared_ptr<SEALContext> context, vect
   for (size_t ct = 0; ct < ct_vec.size(); ct++)
   {
     is.write(c_enc_result + ct_size * ct, ct_size);
-    ct_vec[ct].unsafe_load(context, is);
+    ct_vec[ct].unsafe_load(*context, is);
   }
   delete[] c_enc_result;
 }
@@ -183,7 +185,7 @@ void recv_ciphertext(NetIO *io, std::shared_ptr<SEALContext> context, Ciphertext
   char *c_enc_result = new char[ct_size];
   io->recv_data(c_enc_result, ct_size);
   is.write(c_enc_result, ct_size);
-  ct.unsafe_load(context, is);
+  ct.unsafe_load(*context, is);
   delete[] c_enc_result;
 }
 

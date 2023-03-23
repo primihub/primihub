@@ -1,15 +1,14 @@
-  
-  
-  #ifndef SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_
-  #define SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_
-  
-  #include <unordered_map>
-  #include "src/primihub/service/dataset/storage_backend.h"
+//Copyright 2022 Primihub
+#ifndef SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_
+#define SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_
 
-  namespace primihub::service {
-  
-  class StorageBackendDefault : public StorageBackend {
-   public:
+#include <unordered_map>
+#include "src/primihub/service/dataset/localkv/storage_backend.h"
+
+namespace primihub::service {
+
+class StorageBackendDefault : public StorageBackend {
+ public:
     StorageBackendDefault() = default;
     ~StorageBackendDefault() override = default;
 
@@ -21,12 +20,11 @@
 
     outcome::result<std::vector<std::pair<Key, Value>>> getAll() const override;
 
-   private:
+ private:
     std::unordered_map<Key, Value> values_;
-    
-  };
 
+};
 
-  } // namespace primihub::service
+} // namespace primihub::service
 
-  #endif  // SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_
+#endif  // SRC_PRIMIHUB_DATA_STORE_LOCALKV_STORGE_DEFAULT_H_

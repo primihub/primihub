@@ -4,8 +4,8 @@
   \copyright Copyright (C) 2022 Jiang Zhengliang
  */
 
-#include "paillier.h"
-#include "utils.h"
+#include "src/primihub/primitive/opt_paillier/include/paillier.h"
+#include "src/primihub/primitive/opt_paillier/include/utils.h"
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -116,7 +116,7 @@ bool check_cons_mul_res(mpz_t decrypt_mul_test, std::string op1, std::string op2
     mpz_mul(plain_op1, plain_op1, plain_op2);
     mpz_mod(plain_op1, plain_op1, pub->n);
     opt_paillier_get_plaintext(str_plaintext, plain_op1, pub);
-    
+
     if (strcmp(str_test, str_plaintext)) {
       std::cout << op1 << " " << op2 << std::endl;
       std::cout << str_test << " " << str_plaintext << std::endl;
@@ -188,7 +188,7 @@ int main() {
   std::cout << "The avg decrypt_cost cost is " << decrypt_cost / 1000.0 << " ms." << std::endl;
 
   std::cout << "========================================================" << std::endl;
-  
+
   opt_paillier_freepubkey(pub);
   opt_paillier_freeprvkey(prv);
   return 0;

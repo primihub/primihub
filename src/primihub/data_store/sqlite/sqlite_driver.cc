@@ -98,7 +98,7 @@ SQLiteCursor::~SQLiteCursor() { this->close(); }
 void SQLiteCursor::close() {}
 
 // read all data from csv file
-std::shared_ptr<primihub::Dataset> SQLiteCursor::read() {
+std::shared_ptr<Dataset> SQLiteCursor::read() {
   VLOG(5) << "sql_sql_sql_sql_: " << sql_;
   std::shared_ptr<arrow::Table> table{nullptr};
   auto &db_connector = this->driver_->getDBConnector();
@@ -108,7 +108,7 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::read() {
   bool col_meta_collected{false};
   std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
   while (sql_query.executeStep()) {
-    for (size_t i = 0; i < sql_query.getColumnCount(); i++) {
+    for (int i = 0; i < sql_query.getColumnCount(); i++) {
       std::string col_type = sql_query.getColumnDeclaredType(i);
       auto col_name = sql_query.getColumnOriginName(i);
       if (!col_meta_collected) {
@@ -180,7 +180,8 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::read() {
       builder.Finish(&array);
       array_data.push_back(std::move(array));
     } break;
-    case sql_type_t::INT: {
+    case sql_type_t::INT:
+    case sql_type_t::INT64: {
       arrow::NumericBuilder<arrow::Int64Type> builder;
       auto &int_values = query_result[col_name]->int_values;
       std::shared_ptr<arrow::Array> array;
@@ -188,7 +189,8 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::read() {
       builder.Finish(&array);
       array_data.push_back(std::move(array));
     } break;
-    case sql_type_t::DOUBLE: {
+    case sql_type_t::DOUBLE:
+    case sql_type_t::FLOAT: {
       arrow::NumericBuilder<arrow::DoubleType> builder;
       auto &double_values = query_result[col_name]->double_values;
       std::shared_ptr<arrow::Array> array;
@@ -196,16 +198,23 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::read() {
       builder.Finish(&array);
       array_data.push_back(std::move(array));
     } break;
+    default:
+      LOG(WARNING) << "col type is unknown, using string as default";
+       arrow::StringBuilder builder;
+      auto &string_values = query_result[col_name]->string_values;
+      std::shared_ptr<arrow::Array> array;
+      builder.AppendValues(string_values);
+      builder.Finish(&array);
+      array_data.push_back(std::move(array));
     }
   }
   auto schema = std::make_shared<arrow::Schema>(result_schema_filed);
   table = arrow::Table::Make(schema, array_data);
-  auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
+  auto dataset = std::make_shared<Dataset>(table, this->driver_);
   return dataset;
 }
 
-std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset,
-                                                      int64_t limit) {
+std::shared_ptr<Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
@@ -248,7 +257,7 @@ std::shared_ptr<arrow::Table> SQLiteCursor::read_from_abnormal(
   }
   int row = 0;
   while (sql_query.executeStep()) {
-    for (size_t i = 0; i < sql_query.getColumnCount(); i++) {
+    for (int i = 0; i < sql_query.getColumnCount(); i++) {
       std::vector<int> vec_index;
       auto col_name = sql_query.getColumnOriginName(i);
       // process data
@@ -468,7 +477,7 @@ std::shared_ptr<arrow::Table> SQLiteCursor::read_from_abnormal(
   return table;
 }
 
-int SQLiteCursor::write(std::shared_ptr<primihub::Dataset> dataset) {}
+int SQLiteCursor::write(std::shared_ptr<primihub::Dataset> dataset) {return 0;}
 
 // ======== SQLite Driver implementation ========
 
@@ -514,7 +523,7 @@ std::string SQLiteDriver::buildQuerySQL(SQLiteAccessInfo* access_info) {
   if (query_cols.empty()) {
     sql_str.append("*");
   } else {
-    for (int i = 0; i < query_cols.size(); ++i) {
+    for (size_t i = 0; i < query_cols.size(); ++i) {
       auto& col_name = query_cols[i];
       if (col_name.empty()) {
         continue;

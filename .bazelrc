@@ -65,6 +65,7 @@ build:darwin_x86_64 --cxxopt=-std=c++17
 build:darwin_x86_64 --copt=-w
 build:darwin_x86_64 --copt=-force_flat_namespace
 build:darwin_x86_64 --define macos-build=true
+build:darwin_x86_64 --copt=-DZSTD_DISABLE_ASM
 
 # MacOS Big Sur with Apple Silicon M1
 build:darwin_arm64 --apple_platform_type=macos

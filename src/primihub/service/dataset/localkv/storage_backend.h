@@ -22,21 +22,16 @@
 
 #include <string>
 #include <libp2p/protocol/kademlia/content_id.hpp>
-
 #include "src/primihub/service/outcome.hpp"
+#include "src/primihub/service/dataset/util.hpp"
 
-namespace kade = libp2p::protocol::kademlia;
 namespace primihub::service {
-  
-  using Key = kade::ContentId;
-  using Value = std::string;
 
-  /**
-   * Backend of key-value storage
-   */
-
-  class StorageBackend {
-   public:
+/**
+ * Backend of key-value storage
+ */
+class StorageBackend {
+ public:
     virtual ~StorageBackend() = default;
 
     /// Adds @param value corresponding to given @param key.
@@ -51,7 +46,7 @@ namespace primihub::service {
     // Get all key and value pairs from the storage.
     virtual outcome::result<std::vector<std::pair<Key, Value>>> getAll() const = 0;
 
-  };  // class StorageBackend
+};  // class StorageBackend
 
 
 }  // namespace primihub::service

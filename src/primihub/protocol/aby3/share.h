@@ -17,11 +17,13 @@ namespace primihub {
 // temporary virtual party, it has role.
 class Party {
  public:
-  Party(const int role, block curr_seed, Channel& prev, Channel& next) : _role(role), _currSeed(curr_seed), _prev(prev), _next(next) {
+  Party(const int role, block curr_seed, Channel& prev, Channel& next)
+      : _role(role), _currSeed(curr_seed), _prev(prev), _next(next) {
     next.asyncSendCopy(_currSeed);
     prev.recv(_prevSeed);
     aby3Rand.init(_prevSeed, _currSeed);
-    LOG(INFO) << "role : " << _role << " current seed :" << _currSeed << ", prev seed :" << _prevSeed << std::endl;
+    LOG(INFO) << "role : " << _role
+        << " current seed :" << _currSeed << ", prev seed :" << _prevSeed << std::endl;
   }
   inline Channel& getPrev() { return _prev; }
   inline Channel& getNext() { return _next; }
@@ -123,8 +125,9 @@ class ABY3Share : public Share {
   ABY3Share(Party& party, const T curr) : _party(party) {
     i64 random = party.getShare();
     i64 sum_value = curr + random;
-    LOG(INFO) << "party role : " << party.getRole() << " generate random : " << random << ", sum_value : " << sum_value << std::endl;
-    
+    LOG(INFO) << "party role : " << party.getRole()
+        << " generate random : " << random << ", sum_value : " << sum_value << std::endl;
+
     _prev = RefData<T>(0, RefType::IN);
     _curr = RefData<T>(curr, RefType::OUT);
     LOG(INFO) << "ABY3Share, _curr :" << _curr._data << std::endl;
@@ -132,7 +135,7 @@ class ABY3Share : public Share {
     block curr_block = toBlock(_curr._data);
     _party._next.send(curr_block);
 
-    block prev_block = toBlock(0ull);
+    block prev_block = toBlock(static_cast<uint64_t>(0));
     _party._prev.recv(prev_block);
 
     _prev._data = prev_block.as<T>()[0];
@@ -207,9 +210,10 @@ T ABY3Share<T>::reveal() {
   block curr_block = toBlock(_curr._data);
   _party._prev.send(curr_block);
 
-  block next_block = toBlock(0ull);
+  block next_block = toBlock(static_cast<uint64_t>(0));
   _party._next.recv(next_block);
-  LOG(INFO) << "reveal curr_block : " << curr_block << ", prev_block : " << prev_block << ", next_block: " << next_block << std::endl;
+  LOG(INFO) << "reveal curr_block : " << curr_block << ", prev_block : "
+      << prev_block << ", next_block: " << next_block << std::endl;
   result = curr_block + next_block + prev_block;
   return result.as<T>()[0];
 }
@@ -235,7 +239,7 @@ class SInt {
   SInt& operator=(const SInt& r);
 
   i64 reveal() {
-    return _share.reveal(); 
+    return _share.reveal();
   }
 
   ABY3Share<i64>& _share;
@@ -274,10 +278,10 @@ class SYS_Node {
   inline const std::string& getId() const { return _node_id; }
   Channel& getChannel(const std::string& node_id) {
     auto it = _channel.find(node_id);
-   
+
     if ( it == _channel.end() ) {
       std::cout << "on node : " << _node_id << ", can't find node_id : " << node_id << std::endl;
-    } 
+    }
     else {
         return it->second;
     }
@@ -292,7 +296,10 @@ class SYS_Node {
     Session session_c(ios, node.getIP() + ":" + std::to_string(node.getPort()), SessionMode::Client, name);
     _sessions.emplace(name, session_c);
     _channel.emplace(name, session_c.addChannel(name, name));
-    LOG(INFO) << "client node :" << _node_id << " build connect to " << node.getId() << " on ip:" << node.getIP() << " and port: " << node.getPort() << " with name : " << name << std::endl;
+    LOG(INFO) << "client node :" << _node_id
+        << " build connect to " << node.getId()
+        << " on ip:" << node.getIP() << " and port: "
+        << node.getPort() << " with name : " << name << std::endl;
 
     node.build_server(name);
   }
@@ -302,7 +309,8 @@ class SYS_Node {
     _sessions.emplace(name, session_s);
 
     _channel.emplace(name, session_s.addChannel(name, name));
-    LOG(INFO) << "node :" << _node_id << " initialize server on ip:" << _port << " and port: " << _port << " with name : " << name << std::endl;
+    LOG(INFO) << "node :" << _node_id << " initialize server on ip:"
+        << _port << " and port: " << _port << " with name : " << name << std::endl;
   }
 
   std::unordered_map<std::string, Session&> _sessions;
@@ -363,49 +371,52 @@ class DistributedOracle {
       auto routine0 = [&](int role) {
         Party p0(0, toBlock(10), n0.getChannel("20"), n0.getChannel("01"));
         n0.add_party("0", p0);
-        
+
         sleep(1);
         ABY3Share<i64> sharea(p0, 10);
         SInt a(sharea);
         LOG(INFO) << "party :" << 0 << " reveal a :" << a.reveal() << std::endl;
-        
+
         ABY3Share<i64> shareb(p0, 20);
         SInt b(shareb);
         SInt c = a + b;
         // LOG(INFO) << "party :" << 0 << " reveal a :" << a.reveal() << std::endl;
-        LOG(INFO) << "party :" << 0 << " reveal c :" << c.reveal() << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
+        LOG(INFO) << "party :" << 0 << " reveal c :" << c.reveal()
+            << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
       };
 
       auto routine1 = [&](int role) {
         Party p1(1, toBlock(11), n1.getChannel("01"), n1.getChannel("12"));
         n1.add_party("1", p1);
-        
+
         sleep(1);
         ABY3Share<i64> sharea(p1, 0);
         SInt a(sharea);
         LOG(INFO) << "party :" << 1 << " reveal a :" << a.reveal() << std::endl;
-        
+
         ABY3Share<i64> shareb(p1, 0);
         SInt b(shareb);
         SInt c = a + b;
         // LOG(INFO) << "party :" << 1 << " reveal a :" << a.reveal() << std::endl;
-        LOG(INFO) << "party :" << 1 << " reveal c :" << c.reveal() << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
+        LOG(INFO) << "party :" << 1 << " reveal c :" << c.reveal()
+            << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
       };
 
       auto routine2 = [&](int role) {
         Party p2(2, toBlock(12), n2.getChannel("12"), n2.getChannel("20"));
         n2.add_party("2", p2);
-        
+
         sleep(1);
         ABY3Share<i64> sharea(p2, 0);
         SInt a(sharea);
         LOG(INFO) << "party :" << 2 << " reveal a :" << a.reveal() << std::endl;
-        
+
         ABY3Share<i64> shareb(p2, 0);
         SInt b(shareb);
         SInt c = a + b;
         // LOG(INFO) << "party :" << 2 << " reveal a :" << a.reveal() << std::endl;
-        LOG(INFO) << "party :" << 2 << " reveal c :" << c.reveal() << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
+        LOG(INFO) << "party :" << 2 << " reveal c :" << c.reveal()
+            << " reveal a :" << a.reveal() << " reveal b :" << b.reveal() << std::endl;
       };
 
       auto t0 = std::thread(routine0, 0);

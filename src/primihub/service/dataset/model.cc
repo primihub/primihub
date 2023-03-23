@@ -95,9 +95,9 @@ DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
     // TODO Maybe description is duplicated with other dataset?
     this->id = DatasetId(description);
     this->description = description;
-    this->driver_type =  dataset->getDataDriver()->getDriverType();
+    this->driver_type = dataset->getDataDriver()->getDriverType();
     auto nodelet_addr = dataset->getDataDriver()->getNodeletAddress();
-    this->data_url =  nodelet_addr + ":" + dataset->getDataDriver()->getDataURL(); // TODO string connect node address
+    this->data_url = nodelet_addr + ":" + dataset->getDataDriver()->getDataURL(); // TODO string connect node address
     this->server_meta_ = nodelet_addr;
     this->access_meta_ = dataset_access_info;
     VLOG(5) << "data_url: " << this->data_url;

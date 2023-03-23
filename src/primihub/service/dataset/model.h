@@ -16,11 +16,11 @@
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_MODEL_H_
 #define SRC_PRIMIHUB_SERVICE_DATASET_MODEL_H_
 
-#include <string>
-
 #include <arrow/api.h>
 #include <libp2p/protocol/kademlia/content_id.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
+#include <iostream>
 
 #include "src/primihub/data_store/dataset.h"
 

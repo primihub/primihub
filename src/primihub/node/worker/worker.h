@@ -22,10 +22,9 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <glog/logging.h>
-#include <grpc/grpc.h>
 #include <google/protobuf/text_format.h>
-#include <cmath>
 
+#include <cmath>
 #include <unordered_map>
 #include <algorithm>
 #include <chrono>
@@ -37,24 +36,11 @@
 #include <vector>
 #include <list>
 
-#include "Eigen/Dense"
-
 #include "src/primihub/node/nodelet.h"
-#include "src/primihub/common/clp.h"
-#include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/algorithm/regression.h"
-#include "src/primihub/algorithm/linear_model_gen.h"
-#include "src/primihub/algorithm/aby3ML.h"
-#include "src/primihub/algorithm/plainML.h"
-#include "src/primihub/protocol/aby3/sh3_gen.h"
-#include "src/primihub/util/network/socket/ioservice.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/semantic/private_server_base.h"
-#include "src/primihub/common/defines.h"
-
-using namespace std;
-using namespace Eigen;
+#include "src/primihub/common/common.h"
 
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::ExecuteTaskRequest;
@@ -68,7 +54,7 @@ class Worker {
         : node_id(node_id_), nodelet(nodelet_) {}
     Worker(const std::string& node_id_, const std::string& worker_id,
             std::shared_ptr<Nodelet> nodelet_)
-        : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {}
+        : node_id(node_id_), nodelet(nodelet_), worker_id_(worker_id) {}
     retcode execute(const PushTaskRequest* pushTaskRequest);
 
     int execute(const ExecuteTaskRequest *taskRequest,

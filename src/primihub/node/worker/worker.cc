@@ -16,12 +16,8 @@
 
 
 #include "src/primihub/node/worker/worker.h"
-#include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/service/error.hpp"
-#include "src/primihub/util/network/socket/session.h"
 #include "src/primihub/task/semantic/factory.h"
 #include "src/primihub/task/semantic/task.h"
-
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;

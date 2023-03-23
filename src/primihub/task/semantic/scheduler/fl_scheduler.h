@@ -18,10 +18,10 @@
 #define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
 
 #include "src/primihub/task/semantic/scheduler.h"
-#include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/common/defines.h"
+#include "src/primihub/task/common.h"
 
 using primihub::service::DatasetMetaWithParamTag;
 using primihub::service::DatasetMeta;

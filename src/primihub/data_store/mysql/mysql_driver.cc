@@ -187,7 +187,7 @@ MySQLCursor::sql_type_t MySQLCursor::getSQLType(const std::string& col_type) {
 
 std::shared_ptr<arrow::Schema> MySQLCursor::makeArrowSchema() {
     std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
-    auto access_info = dynamic_cast<MySQLAccessInfo*>(this->driver_->dataSetAccessInfo().get());
+    // auto access_info = dynamic_cast<MySQLAccessInfo*>(this->driver_->dataSetAccessInfo().get());
     auto& table_schema = this->driver_->tableSchema();
     for (const auto& col_name : this->query_cols) {
         auto it = table_schema.find(col_name);
@@ -249,7 +249,8 @@ MySQLCursor::makeArrowArray(sql_type_t sql_type, const std::vector<std::string>&
         builder.Finish(&array);
         break;
     }
-    case sql_type_t::STRING: {
+    case sql_type_t::STRING:
+    case sql_type_t::BINARY: {
         arrow::StringBuilder builder;
         builder.AppendValues(arr);
         builder.Finish(&array);
@@ -329,7 +330,9 @@ MySQLCursor::read(int64_t offset, int64_t limit) {
     return nullptr;
 }
 
-int MySQLCursor::write(std::shared_ptr<primihub::Dataset> dataset) {}
+int MySQLCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
+    return 0;
+}
 
 // ======== MySQL Driver implementation ========
 MySQLDriver::MySQLDriver(const std::string& nodelet_addr)

@@ -1,8 +1,8 @@
+
 TARGET := //:node \
          //:cli \
-         //:linkcontext \
-         //:opt_paillier_c2py \
-         //:linkcontext \
+         //src/primihub/pybind_warpper:linkcontext \
+         //src/primihub/pybind_warpper:opt_paillier_c2py \
          //:py_main
 
 linux_x86_64:

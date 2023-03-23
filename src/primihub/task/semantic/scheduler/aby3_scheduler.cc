@@ -15,8 +15,6 @@
  */
 
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
