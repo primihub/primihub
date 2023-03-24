@@ -77,11 +77,10 @@ http_archive(
   name="com_github_grpc_grpc",
   strip_prefix = "grpc-1.42.x.openssl",
   urls=[
-    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/v1.42.x.openssl.tar.gz",
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/v1.42.x.openssl_0.tar.gz",
   ],
-  sha256 = "50d5b0ab8abafb20a43cefe34fb74f0852298cb013260bf8a100ada27c507557",
+  sha256 = "ebe6bbdefd349bac46ca1ee5586daddd35b811b4e9000aeeaa236674d33ad902",
 )
-
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 # Includes boringssl, and other dependencies.
@@ -90,6 +89,10 @@ grpc_deps()
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 # Loads transitive dependencies of GRPC.
 grpc_extra_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_python_deps.bzl", "grpc_python_deps")
+grpc_python_deps()
+
 
 http_archive(
   name = "com_github_glog_glog",

@@ -85,14 +85,15 @@ git_repository(
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
 # Includes boringssl, and other dependencies.
 grpc_deps()
 
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
-
 # Loads transitive dependencies of GRPC.
 grpc_extra_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_python_deps.bzl", "grpc_python_deps")
+grpc_python_deps()
 
 http_archive(
     name = "com_github_glog_glog",
