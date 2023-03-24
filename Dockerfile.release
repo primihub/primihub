@@ -20,7 +20,8 @@ COPY src/primihub/protos/ src/primihub/protos/
 RUN ARCH=`arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/` \
   && tar zxf /opt/primihub-linux-${ARCH}.tar.gz \
   && mkdir log \
-  && mv bazel-bin/opt_paillier_c2py.so bazel-bin/linkcontext.so python/ \
+  && mv bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python/ \
+  && mv bazel-bin/src/primihub/pybind_warpper/linkcontext.so python/ \
   && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
 
 WORKDIR /app/python

@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
     const std::string node_id = absl::GetFlag(FLAGS_node_id);
     bool singleton = absl::GetFlag(FLAGS_singleton);
 
-    int service_port = absl::GetFlag(FLAGS_service_port);
+    // int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
     auto& server_config = primihub::ServerConfig::getInstance();
     auto ret = server_config.initServerConfig(config_file);
@@ -119,6 +119,8 @@ int main(int argc, char **argv) {
         LOG(ERROR) << "init server config failed";
         return -1;
     }
+    auto& host_config = server_config.getServiceConfig();
+    int service_port = host_config.port();
     auto& cert_config = server_config.getCertificateConfig();
     std::string node_ip = "0.0.0.0";
     auto node_service = std::make_unique<primihub::VMNodeImpl>(
