@@ -29,9 +29,8 @@ two options you have to choose, Download the latest release version (released bi
 change to redis dir
 ./run_redis.sh
 change dir which parallel with bazel-bin
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml &> log_node0 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml &> log_node1 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml &> log_node2 &
+waring !!!!!! if server is build by bazel build, before run script start_server.sh, comment the definition of PYTHONPATH
+./start_server.sh
 ```
 the server log will be record into log_node0, log_node1, log_node2 seperately<br/>
 if all server run success, using cmd ps -ef |grep bin/node, you will see the following process<br/>
@@ -46,6 +45,7 @@ choose one of server which is used to submit task
 run the follwing cmd
 ```shell
 ./bazel-bin/cli --server="${SERVER_IP}:${SERVER_PORT}" --task_config_file="example/mpc_lr_task_conf.json"
+or ./client_run.sh will execute all case
 ```
 
 ## Run Server with docker
