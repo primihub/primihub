@@ -8,7 +8,7 @@ if [ ! -d "${py_primihub_path}" ]; then
   exit -1
 fi
 export PYTHONPATH=${PYTHONPATH}:${py_primihub_path}
-if [ -d localdb ]; then
+if [ ! -d localdb ]; then
   mkdir localdb
 fi 
 log_level=7

@@ -74,7 +74,7 @@ std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
     // TODO just get meta info from dataset
     // auto dataset = driver->getCursor()->read();
     auto cursor = driver->read();
-    auto dataset = cursor->read();
+    auto dataset = cursor->readMeta();
     meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
     // Save datameta in local storage.& Publish dataset meta on libp2p network.
     metaService_->putMeta(meta);
