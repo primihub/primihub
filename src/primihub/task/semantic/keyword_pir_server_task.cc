@@ -117,7 +117,7 @@ retcode KeywordPIRServerTask::_LoadParams(Task &task) {
     const auto& node_map = task.node_map();
     for (const auto& node_info : node_map) {
         auto& _node_id = node_info.first;
-        if (_node_id == this->node_id_) {
+        if (!isParty(_node_id)) {
             continue;
         }
         auto& node = node_info.second;

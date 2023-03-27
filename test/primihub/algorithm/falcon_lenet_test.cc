@@ -124,8 +124,10 @@ TEST(falcon, falcon_lenet_test)
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task1.set_task_id("mpc_lenet"); //
-  task1.set_job_id("lenet_job");  //
+  auto task1_info = task1.mutable_task_info();
+  task1_info->set_task_id("mpc_lenet");
+  task1_info->set_job_id("lenet_job");
+  task1_info->set_request_id("lenet_task");
 
   rpc::ParamValue pv_train_data_filepath_self_,pv_train_data_filepath_next_;
   rpc::ParamValue pv_train_label_filepath_self_, pv_train_label_filepath_next_;
@@ -162,8 +164,10 @@ TEST(falcon, falcon_lenet_test)
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task2.set_task_id("mpc_lenet");
-  task2.set_job_id("lenet_job");
+  auto task2_info = task2.mutable_task_info();
+  task2_info->set_task_id("mpc_lenet");
+  task2_info->set_job_id("lenet_job");
+  task2_info->set_request_id("lenet_task");
 
   pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_B" );
   pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_B");
@@ -184,8 +188,10 @@ TEST(falcon, falcon_lenet_test)
   (*node_map)["node_1"] = node_1;
   (*node_map)["node_2"] = node_2;
   (*node_map)["node_3"] = node_3;
-  task3.set_task_id("mpc_lenet");
-  task3.set_job_id("lenet_job");
+  auto task3_info = task3.mutable_task_info();
+  task3_info->set_task_id("mpc_lenet");
+  task3_info->set_job_id("lenet_job");
+  task3_info->set_request_id("lenet_task");
 
   pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_C" );
   pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_C" );
@@ -213,7 +219,7 @@ TEST(falcon, falcon_lenet_test)
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11050");
 
-    std::shared_ptr<service::DatasetMetaService> meta_service = 
+    std::shared_ptr<service::DatasetMetaService> meta_service =
 	    std::make_shared<service::DatasetMetaService>(
 			    stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -233,7 +239,7 @@ TEST(falcon, falcon_lenet_test)
     auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
     stub->start("/ip4/127.0.0.1/tcp/11060");
 
-    std::shared_ptr<service::DatasetMetaService> meta_service = 
+    std::shared_ptr<service::DatasetMetaService> meta_service =
 	    std::make_shared<service::DatasetMetaService>(
 			    stub, std::make_shared<service::StorageBackendDefault>());
 
@@ -250,7 +256,7 @@ TEST(falcon, falcon_lenet_test)
   auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
   stub->start("/ip4/127.0.0.1/tcp/11070");
 
-  std::shared_ptr<service::DatasetMetaService> meta_service = 
+  std::shared_ptr<service::DatasetMetaService> meta_service =
 	  std::make_shared<service::DatasetMetaService>(
 			  stub, std::make_shared<service::StorageBackendDefault>());
 

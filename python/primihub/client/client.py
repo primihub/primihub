@@ -107,7 +107,7 @@ class PrimihubClient(object):
 
         # grpc clients: Command/Notify/Dataset
         self.grpc_client = GrpcClient(node, cert)
-        self.notify_grpc_client = NodeServiceClient(notify_node, cert)
+        self.notify_grpc_client = None   #NodeServiceClient(notify_node, cert)
         # NOTE create when recevie NodeContext in NodeService
         self.dataset_client = DatasetClientFactory.create("flight", node, cert)
 

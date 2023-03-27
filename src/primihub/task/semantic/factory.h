@@ -55,13 +55,15 @@ class TaskFactory {
                                         std::shared_ptr<DatasetService> dataset_service) {
         auto task_language = request.task().language();
         auto task_type = request.task().type();
-        std::string job_id = request.task().job_id();
-        std::string task_id = request.task().task_id();
+        const auto& task_info = request.task().task_info();
+        std::string job_id = task_info.job_id();
+        std::string task_id = task_info.task_id();
+        std::string request_id = task_info.request_id();
         std::string submit_client_id = request.submit_client_id();
         if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
-            auto task_param = request.task();
+            const auto& task_param = request.task();
             auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
-            fl_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+            fl_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
             return fl_task;
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_TASK) {
             auto _function_name = request.task().code();
@@ -69,7 +71,7 @@ class TaskFactory {
             auto mpc_task = std::make_shared<MPCTask>(node_id,
                                                     _function_name, &task_param,
                                                     dataset_service);
-            mpc_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+            mpc_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
             return mpc_task;
         } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PSI_TASK) {
             const auto& task_param = request.task();
@@ -81,12 +83,12 @@ class TaskFactory {
             }
             if (psi_tag == PsiTag::ECDH) {
                 auto psi_task = std::make_shared<PSIEcdhTask>(&task_param, dataset_service);
-                psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                psi_task->setTaskInfo(node_id, job_id, task_id, request_id,  submit_client_id);
                 return psi_task;
             } else if (psi_tag == PsiTag::KKRT) {
                 auto psi_task =
                     std::make_shared<PSIKkrtTask>(&task_param, dataset_service);
-                psi_task->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                psi_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
                 return psi_task;
             } else {
                 LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
@@ -100,8 +102,8 @@ class TaskFactory {
             if (param_it != param_map.end()) {
                 pir_type = param_it->second.value_int32();
             }
-            const auto& job_id = request.task().job_id();
-            const auto& task_id = request.task().task_id();
+            const auto& job_id = request.task().task_info().job_id();
+            const auto& task_id = request.task().task_info().task_id();
 #ifndef USE_MICROSOFT_APSI
             if (pir_type == PirType::ID_PIR) {
 
@@ -118,12 +120,12 @@ class TaskFactory {
                 if (param_map_it == param_map.end()) {
                     auto task_ptr =
                         std::make_shared<KeywordPIRServerTask>(&task_param, dataset_service);
-                    task_ptr->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                    task_ptr->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
                     return task_ptr;
                 } else {
                     auto task_ptr =
                         std::make_shared<KeywordPIRClientTask>(&task_param, dataset_service);
-                    task_ptr->setTaskInfo(node_id, job_id, task_id, submit_client_id);
+                    task_ptr->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
                     return task_ptr;
 
                 }

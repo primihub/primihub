@@ -62,7 +62,7 @@ class Task(object):
     def get_node_event(self, node, cert):
         # # get node event from other nodes
         logger.debug("get node event from: {}".format(node))
-        worker_node_grpc_client = NodeServiceClient(node, cert)
+        worker_node_grpc_client = None # NodeServiceClient(node, cert)
         self.node_grpc_connections.append(worker_node_grpc_client)
         logger.debug(
             "!!!!!!! ------ node_grpc_connections ------node: {}".format(worker_node_grpc_client.node))

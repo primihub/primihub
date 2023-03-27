@@ -74,8 +74,10 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
     auto node_map = task1.mutable_node_map();
     (*node_map)["node_1"] = node_1;
     (*node_map)["node_2"] = node_2;
-    task1.set_task_id("mpc_maxpool");
-    task1.set_job_id("maxpool_job");
+    auto task1_info = task1.mutable_task_info();
+    task1_info->set_task_id("mpc_maxpool");
+    task1_info->set_job_id("maxpool_job");
+    task1_info->set_request_id("maxpool_task");
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);
@@ -92,8 +94,10 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
     auto node_map = task2.mutable_node_map();
     (*node_map)["node_1"] = node_1;
     (*node_map)["node_2"] = node_2;
-    task2.set_task_id("mpc_maxpool");
-    task2.set_job_id("maxpool_job");
+    auto task2_info = task2.mutable_task_info();
+    task2_info->set_task_id("mpc_maxpool");
+    task2_info->set_job_id("maxpool_job");
+    task2_info->set_request_id("maxpool_task");
 
     rpc::ParamValue pv_train_data;
     pv_train_data.set_var_type(rpc::VarType::STRING);

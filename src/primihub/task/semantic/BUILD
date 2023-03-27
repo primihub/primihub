@@ -76,7 +76,6 @@ cc_library(
     deps = [
         ":task_interface",
         "//src/primihub/util:util_lib",
-        "//src/primihub/service:notify_serivce",
         "@com_github_base64_cpp//:base64_lib",
         "@boost//:process",
     ],

@@ -28,6 +28,16 @@ using primihub::task::TaskFactory;
 using primihub::rpc::PsiTag;
 
 namespace primihub {
+retcode Worker::waitForTaskReady() {
+    bool ready = task_ready_future_.get();
+    if (!ready) {
+        LOG(ERROR) << "Initialize task failed, worker id " << worker_id_ << ".";
+        return retcode::FAIL;
+    }
+    VLOG(7) << "task_ready_future_ task is ready for worker id: " << worker_id_;
+    return retcode::SUCCESS;
+}
+
 retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
     auto type = pushTaskRequest->task().type();
     VLOG(2) << "Worker::execute task type: " << type;
@@ -37,8 +47,10 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create task failed.";
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
+        task_ready_promise_.set_value(true);
         LOG(INFO) << " 🚀 Worker start execute task ";
         int ret = task_ptr->execute();
         if (ret != 0) {
@@ -48,6 +60,7 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
         if (pushTaskRequest->task().node_map().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
         const auto& param_map = pushTaskRequest->task().params().param_map();
@@ -55,8 +68,10 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create psi task failed.";
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
+        task_ready_promise_.set_value(true);
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute psi task.";
@@ -67,6 +82,7 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
         if (party_node_count < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task. "
                        << "current_node_size: " << party_node_count;
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
         const auto& param_map = pushTaskRequest->task().params().param_map();
@@ -81,6 +97,7 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
             auto param_map_it = param_map.find("serverAddress");
             if (param_map_it == param_map.end()) {
                 LOG(ERROR) << "config for serverAddress is not found in param map";
+                task_ready_promise_.set_value(false);
                 return retcode::FAIL;
             }
         }
@@ -89,15 +106,19 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {
             LOG(ERROR) << "Woker create pir task failed.";
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
+        task_ready_promise_.set_value(true);
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute pir task.";
+            task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
     } else {
         LOG(WARNING) << "unsupported Requested task type: " << type;
+        task_ready_promise_.set_value(false);
     }
     task_ptr.reset();
     return retcode::SUCCESS;
@@ -149,6 +170,44 @@ void Worker::kill_task() {
     if (task_server_ptr) {
         task_server_ptr->kill_task();
     }
+}
+
+retcode Worker::fetchTaskStatus(rpc::TaskStatus* task_status) {
+    bool has_new_status = task_status_.try_pop(*task_status);
+    if (has_new_status) {
+        return retcode::SUCCESS;
+    }
+    return retcode::FAIL;
+}
+
+retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
+    const auto& status = task_status.status();
+    const auto& party = task_status.party();
+    if (status == rpc::TaskStatus::SUCCESS || status == rpc::TaskStatus::FAIL) {
+        std::unique_lock<std::shared_mutex> lck(final_status_mtx_);
+        final_status_[party] = status;
+        if (status == rpc::TaskStatus::FAIL) {
+            if (!scheduler_finished.load(std::memory_order::memory_order_relaxed)) {
+                task_finish_promise_.set_value(retcode::FAIL);
+                scheduler_finished.store(true);
+            }
+        }
+        if (final_status_.size() == party_count_) {
+            if (!scheduler_finished.load(std::memory_order::memory_order_relaxed)) {
+                task_finish_promise_.set_value(retcode::SUCCESS);
+                scheduler_finished.store(true);
+            }
+        }
+        VLOG(5) << "collected finished party count: " << final_status_.size();
+    }
+    task_status_.push(task_status);
+    return retcode::SUCCESS;
+}
+
+retcode Worker::waitUntilTaskFinish() {
+    auto ret = task_finish_future_.get();
+    VLOG(5) << "waitUntilTaskFinish finished: status: " << static_cast<int>(ret);
+    return ret;
 }
 
 } // namespace primihub

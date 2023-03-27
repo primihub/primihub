@@ -30,9 +30,8 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 进入 redis 目录
 执行 ./run_redis.sh 启动redis
 切换到与bazel-bin平行的目录
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml &> log_node0 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml &> log_node1 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml &> log_node2 &
+注意！！！！！！ 如果目标程序是通过源码编译获取的，请手动将start_server.sh中定义的PYTHONPATH环境变量注释
+./start_server.sh
 ```
 
 服务的日志分别存储在log_node0, log_node1, log_node2文件中，便于以后查看<br/>

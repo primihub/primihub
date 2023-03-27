@@ -143,51 +143,6 @@ void fill_param(const std::vector<std::string>& params,
         (*param_map)[v[0]] = pv;
     }
 }
-int get_task_execute_status(const primihub::rpc::Node& notify_server,
-        const PushTaskRequest& request_info) {
-    LOG(INFO) << "get_task_execute_status for "
-        << notify_server.ip() << " port: " << notify_server.port()
-        <<  " use_tls: " << notify_server.use_tls();
-    std::string node_info = notify_server.ip() + ":" + std::to_string(notify_server.port());
-    auto channel = grpc::CreateChannel(node_info, grpc::InsecureChannelCredentials());
-    auto stub = primihub::rpc::NodeService::NewStub(channel);
-    using ClientContext = primihub::rpc::ClientContext;
-    using NodeEventReply = primihub::rpc::NodeEventReply;
-    bool has_error{false};
-    do {
-        bool is_finished{false};
-        grpc::ClientContext context;
-        ClientContext request;
-        request.set_client_id(request_info.submit_client_id());
-        request.set_client_ip("127.0.0.1");
-        request.set_client_port(12345);
-        std::unique_ptr<grpc::ClientReader<NodeEventReply>> reader(
-            stub->SubscribeNodeEvent(&context, request));
-        NodeEventReply reply;
-        std::string server_node = notify_server.ip();
-        while (reader->Read(&reply)) {
-            const auto& task_status = reply.task_status();
-            std::string status = task_status.status();
-            LOG(INFO) << "get reply from " << server_node << " with status: "
-                    << status;
-            if (status == std::string("SUCCESS") || status == std::string("FAIL")) {
-                is_finished = true;
-                if (status == std::string("FAIL")) {
-                    has_error = true;
-                }
-                break;
-            }
-        }
-        if (is_finished) {
-            break;
-        }
-    } while (true);
-    if (has_error) {
-        return -1;
-    }
-
-    return 0;
-}
 
 retcode buildRequestWithFlag(PushTaskRequest* request) {
     auto task_ptr = request->mutable_task();
@@ -414,10 +369,13 @@ int SDKClient::SubmitTask() {
     std::mt19937 generator(seq);
     uuids::uuid_random_generator gen{generator};
     const uuids::uuid id = gen();
-    std::string task_id = uuids::to_string(id);
+    std::string task_id = absl::GetFlag(FLAGS_task_id);
     std::string job_id = absl::GetFlag(FLAGS_job_id);
-    pushTaskRequest.mutable_task()->set_job_id(job_id);
-    pushTaskRequest.mutable_task()->set_task_id(task_id);
+    std::string request_id = uuids::to_string(id);
+    auto task_info = pushTaskRequest.mutable_task()->mutable_task_info();
+    task_info->set_job_id(job_id);
+    task_info->set_task_id(task_id);
+    task_info->set_request_id(request_id);
     pushTaskRequest.set_sequence_number(11);
     pushTaskRequest.set_client_processed_up_to(22);
     pushTaskRequest.set_submit_client_id(job_id + "_" + task_id);
@@ -427,91 +385,50 @@ int SDKClient::SubmitTask() {
     if (ret != retcode::SUCCESS) {
         return -1;
     }
-    std::vector<std::future<int>> wait_result_futs;
-    std::vector<bool> result_fetched;
-    for (const auto& server_info : pushTaskReply.notify_server()) {
-        wait_result_futs.push_back(
-            std::async(
-                std::launch::async,
-                get_task_execute_status,
-                std::ref(server_info),
-                std::ref(pushTaskRequest)
-            ));
-        result_fetched.push_back(false);
-    }
-
-    bool has_error{false};
+    size_t party_count = pushTaskReply.party_count();
+    VLOG(0) << "party count: " << party_count;
+    std::map<std::string, std::string> task_status;
+    // fecth task status
+    size_t fetch_count = 0;
     do {
-        for (int i = 0; i < wait_result_futs.size(); i++) {
-            if (result_fetched[i]) {
-                continue;
-            } else {
-                auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
-                if (st == std::future_status::ready) {
-                    auto result = wait_result_futs[i].get();
-                    result_fetched[i] = true;
-                    if (result != 0) {
-                        has_error = true;
-                        break;
-                    }
-                }
+        rpc::TaskContext request;
+        request.set_task_id(task_id);
+        request.set_job_id(job_id);
+        request.set_request_id(request_id);
+        rpc::TaskStatusReply status_reply;
+        auto ret = channel_->fetchTaskStatus(request, &status_reply);
+        // parse task status
+        if (ret != retcode::SUCCESS) {
+            LOG(ERROR) << "fetch task status from server failed";
+            return -1;
+        }
+        bool is_finished{false};
+        for (const auto& status_info : status_reply.task_status()) {
+            auto party = status_info.party();
+            auto status_code = status_info.status();
+            auto message = status_info.message();
+            VLOG(5) << "task_status party: " << party << " "
+                << "status: " << static_cast<int>(status_code) << " "
+                << "message: " << message;
+            if (status_info.status() == primihub::rpc::TaskStatus::SUCCESS ||
+              status_info.status() == primihub::rpc::TaskStatus::FAIL) {
+                task_status[party] = message;
             }
-        }
-        bool is_all_fininshed{true};
-        for (auto fetched : result_fetched) {
-            if (!fetched) {
-                is_all_fininshed = false;
-            }
-        }
-        if (is_all_fininshed) {
-            break;
-        }
-        if (has_error) {
-            break;
-        }
-    } while (true);
-
-    if (has_error) {
-        LOG(INFO) << "begin to send kill task";
-        for (const auto& server_info: pushTaskReply.task_server()) {
-            VLOG(0) << "node: " << server_info.ip() << " port: " << server_info.port();
-            Node remote_node(server_info.ip(), server_info.port(), server_info.use_tls());
-            auto channel = link_ctx_ref_->getChannel(remote_node);
-            rpc::KillTaskRequest request;
-            request.set_job_id(job_id);
-            request.set_task_id(task_id);
-            request.set_executor(rpc::KillTaskRequest::SCHEDULER);
-            rpc::KillTaskResponse reponse;
-            channel->killTask(request, &reponse);
-        }
-        LOG(INFO) << "end of send kill task to all node";
-        do {
-            for (int i = 0; i < wait_result_futs.size(); i++) {
-                if (result_fetched[i]) {
-                    continue;
-                } else {
-                    auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
-                    if (st == std::future_status::ready) {
-                        auto result = wait_result_futs[i].get();
-                        result_fetched[i] = true;
-                        if (result != 0) {
-                            has_error = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            bool all_fetched = true;
-            for (size_t i = 0; i < result_fetched.size(); i++) {
-                if (!result_fetched[i]) {
-                    all_fetched = false;
-                }
-            }
-            if (all_fetched) {
+            if (task_status.size() == party_count) {
+                VLOG(0) << "all node has finished";
+                is_finished = true;
                 break;
             }
-        } while (true);
-    }
+        }
+        if (is_finished) {
+            break;
+        }
+        if (fetch_count < 1000) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(fetch_count*100));
+        } else {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } while (true);
     return 0;
 }
 
@@ -576,6 +493,5 @@ int main(int argc, char** argv) {
             break;
         }
     }
-
     return 0;
 }
