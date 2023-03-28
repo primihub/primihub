@@ -61,6 +61,10 @@ void CSVCursor::close() {
   // TODO
 }
 
+std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
+  return read();
+}
+
 // read all data from csv file
 std::shared_ptr<Dataset> CSVCursor::read() {
   arrow::io::IOContext io_context = arrow::io::default_io_context();
@@ -69,7 +73,7 @@ std::shared_ptr<Dataset> CSVCursor::read() {
   auto result_ifstream = local_fs.OpenInputStream(filePath);
   if (!result_ifstream.ok()) {
     std::cout << "Failed to open file: " << filePath << std::endl;
-    return nullptr; // TODO throw exception
+    return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
 

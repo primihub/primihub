@@ -97,12 +97,28 @@ SQLiteCursor::~SQLiteCursor() { this->close(); }
 
 void SQLiteCursor::close() {}
 
+std::shared_ptr<primihub::Dataset> SQLiteCursor::readMeta() {
+  std::string query_meta_sql = sql_;
+  query_meta_sql.append(" limit 100");
+  VLOG(5) << "meta query sql: " << sql_;
+  return readInternal(query_meta_sql);
+}
+
 // read all data from csv file
 std::shared_ptr<Dataset> SQLiteCursor::read() {
   VLOG(5) << "sql_sql_sql_sql_: " << sql_;
+  return readInternal(sql_);
+}
+
+std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset,
+                                                      int64_t limit) {
+  return nullptr;
+}
+
+std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string& query_sql) {
   std::shared_ptr<arrow::Table> table{nullptr};
   auto &db_connector = this->driver_->getDBConnector();
-  SQLite::Statement sql_query(*db_connector, sql_);
+  SQLite::Statement sql_query(*db_connector, query_sql);
   std::map<std::string, std::unique_ptr<TypeContainer>> query_result;
   std::vector<std::tuple<std::string, sql_type_t>> col_metas;
   bool col_meta_collected{false};
@@ -212,10 +228,6 @@ std::shared_ptr<Dataset> SQLiteCursor::read() {
   table = arrow::Table::Make(schema, array_data);
   auto dataset = std::make_shared<Dataset>(table, this->driver_);
   return dataset;
-}
-
-std::shared_ptr<Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
-  return nullptr;
 }
 
 std::shared_ptr<arrow::Table> SQLiteCursor::read_from_abnormal(

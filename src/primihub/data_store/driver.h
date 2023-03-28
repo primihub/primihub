@@ -48,6 +48,9 @@ struct DataSetAccessInfo {
 
 class Cursor {
  public:
+    Cursor() = default;
+    virtual ~Cursor() = default;
+    virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
     virtual std::shared_ptr<Dataset> read() = 0;
     virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
     virtual int write(std::shared_ptr<Dataset> dataset) = 0;
