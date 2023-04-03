@@ -1,4 +1,4 @@
-from .dev_example_submit_task import Dev_example
+from dev_example_submit_task import Dev_example
 
 node_config = {
     'guest': [
