@@ -166,7 +166,19 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
-    train_input_filepath_ = param_map["Data_File"].value_string();
+    std::string role = task.role();
+    const auto& party_datasets = task.party_datasets();
+    auto it = party_datasets.find(role);
+    if (it == party_datasets.end()) {
+      LOG(ERROR) << "no dataset find for role: " << role;
+      return -1;
+    }
+    auto& datasets = it->second;
+    train_input_filepath_ = datasets.item(0);
+    if (datasets.item().size() > 1) {
+      test_input_filepath_ = datasets.item(1);
+    }
+    // train_input_filepath_ = param_map["Data_File"].value_string();
     // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();

@@ -39,6 +39,7 @@ KeywordPIRClientTask::KeywordPIRClientTask(
 
 retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     CHECK_TASK_STOPPED(retcode::FAIL);
+    std::string role = task.role();
     const auto& param_map = task.params().param_map();
     try {
         auto client_data_it = param_map.find("clientData");
@@ -49,39 +50,40 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
             }
             dataset_path_ = client_data.value_string();
             dataset_id_ = client_data.value_string();
-            VLOG(5) << "dataset_path_: " << dataset_path_;
         } else {
-            LOG(ERROR) << "no keyword: clientData match found";
-            return retcode::FAIL;
+            // check client has dataset
+            const auto& party_datasets = task.party_datasets();
+            auto it = party_datasets.find(role);
+            if (it == party_datasets.end()) {
+              LOG(ERROR) << "no query data found for client, role: " << role;
+              return retcode::FAIL;
+            }
+            auto& datasets = it->second;
+            dataset_id_ = datasets.item(0);
         }
+        VLOG(5) << "dataset_id: " << dataset_id_;
         auto result_file_path_it = param_map.find("outputFullFilename");
         if (result_file_path_it != param_map.end()) {
             result_file_path_ = result_file_path_it->second.value_string();
             VLOG(5) << "result_file_path_: " << result_file_path_;
         } else  {
-            LOG(ERROR) << "no keyword: outputFullFilename match found";
-            return retcode::FAIL;
-        }
-        auto server_address_it = param_map.find("serverAddress");
-        if (server_address_it != param_map.end()) {
-            server_address_ = server_address_it->second.value_string();
-            VLOG(5) << "server_address_: " << server_address_;
-        } else {
-            LOG(ERROR) << "no keyword: serverAddress found";
+            LOG(ERROR) << "no keyword outputFullFilename match";
             return retcode::FAIL;
         }
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return retcode::FAIL;
     }
-    const auto& node_map = task.node_map();
-    for (const auto& [_node_id, pb_node] : node_map) {
-        if (!isParty(_node_id)) {
-            continue;
-        }
-        primihub::pbNode2Node(pb_node, &peer_node_);
-        VLOG(5) << "peer_node: " << peer_node_.to_string();
+    const auto& party_info = task.party_access_info();
+    auto it = party_info.find(ROLE_SERVER);
+    if (it == party_info.end()) {
+      LOG(ERROR) << "client can not found access info to server";
+      return retcode::FAIL;
     }
+    auto& node_list = it->second;
+    auto& pb_node = node_list.node(0);
+    pbNode2Node(pb_node, &peer_node_);
+    VLOG(5) << "peer_node: " << peer_node_.to_string();
     return retcode::SUCCESS;
 }
 

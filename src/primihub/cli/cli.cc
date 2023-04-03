@@ -192,7 +192,6 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
         for (int i = 0; i < input_datasets.size(); i++) {
             task_ptr->add_input_datasets(input_datasets[i]);
         }
-
     }
 
     // TEE task
@@ -328,8 +327,35 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           std::string task_code = js["task_code"]["code"].get<std::string>();
           task_ptr->set_code(std::move(task_code));
       }
+      // party_datasets
+      auto party_datasets = task_ptr->mutable_party_datasets();
+      if (!js["party_datasets"].empty()) {
+        for (auto& [key, value]: js["party_datasets"].items()) {
+          auto& dataset_index = (*party_datasets)[key];
+          if (value.is_array()) {
+            for (const auto& dataset_name : value) {
+              dataset_index.add_item(dataset_name);
+            }
+          } else {
+            dataset_index.add_item(value);
+          }
+        }
+      }
+      // party access info
+      auto party_access_info = task_ptr->mutable_party_access_info();
+      if (!js["party_access_info"].empty()) {
+        for (auto& [key, value]: js["party_access_info"].items()) {
+          auto& party_node = (*party_access_info)[key];
+          std::string ip = value["ip"].get<std::string>();
+          int32_t port = value["port"].get<int32_t>();
+          bool use_tls = value["use_tls"].get<bool>();
+          auto item = party_node.add_node();
+          item->set_ip(ip);
+          item->set_port(port);
+          item->set_use_tls(use_tls);
+        }
+      }
       // dataset
-      // Setup input datasets
       if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
           auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
           for (auto& item : js["input_datasets"]) {

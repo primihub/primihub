@@ -51,14 +51,14 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
             return retcode::FAIL;
         }
         task_ready_promise_.set_value(true);
-        LOG(INFO) << " 🚀 Worker start execute task ";
+        LOG(INFO) << "Worker start execute task ";
         int ret = task_ptr->execute();
         if (ret != 0) {
             LOG(ERROR) << "Error occurs during execute task.";
             return retcode::FAIL;
         }
     } else if (type == rpc::TaskType::NODE_PSI_TASK) {
-        if (pushTaskRequest->task().node_map().size() < 2) {
+        if (pushTaskRequest->task().party_access_info().size() < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
             task_ready_promise_.set_value(false);
             return retcode::FAIL;
@@ -78,30 +78,13 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
             return retcode::FAIL;
         }
     } else if (type == rpc::TaskType::NODE_PIR_TASK) {
-        size_t party_node_count = pushTaskRequest->task().node_map().size();
+        size_t party_node_count = pushTaskRequest->task().party_access_info().size();
         if (party_node_count < 2) {
             LOG(ERROR) << "At least 2 nodes srunning with 2PC task. "
                        << "current_node_size: " << party_node_count;
             task_ready_promise_.set_value(false);
             return retcode::FAIL;
         }
-        const auto& param_map = pushTaskRequest->task().params().param_map();
-        int pirType = PirType::ID_PIR;
-        auto param_it = param_map.find("pirType");
-        if (param_it != param_map.end()) {
-            pirType = param_it->second.value_int32();
-            VLOG(5) << "get pirType: " << pirType;
-        }
-
-        if (pirType == PirType::ID_PIR) {
-            auto param_map_it = param_map.find("serverAddress");
-            if (param_map_it == param_map.end()) {
-                LOG(ERROR) << "config for serverAddress is not found in param map";
-                task_ready_promise_.set_value(false);
-                return retcode::FAIL;
-            }
-        }
-
         auto& dataset_service = nodelet->getDataService();
         task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
         if (task_ptr == nullptr) {

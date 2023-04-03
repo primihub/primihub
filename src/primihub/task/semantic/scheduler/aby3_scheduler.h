@@ -66,6 +66,10 @@ public:
                     const PushTaskRequest& nodePushTaskRequest,
                     const std::map<std::string, std::string>& dataset_owner,
                     const Node& dest_node);
+  retcode ScheduleTask(const std::string& role,
+                      const int32_t rank,
+                      const Node dest_node,
+                      const PushTaskRequest& request);
 
 private:
   const std::vector<rpc::Node> peer_list_;

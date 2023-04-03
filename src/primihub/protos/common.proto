@@ -128,6 +128,7 @@ message Node {
   bool use_tls = 5;
   bytes role = 6;
   repeated VirtualMachine vm = 7;
+  int32 rank = 8;     // to identify if node has same role
 }
 
 message TaskContext {
@@ -136,16 +137,27 @@ message TaskContext {
   string request_id = 3;
 }
 
+message StringArray {
+  repeated bytes item = 1;
+}
+
+message NodeList {
+  repeated Node node = 1;
+}
+
 message Task {
   TaskType type = 1;
   string name = 2;
   Language language = 3;
   Params params = 4;
   bytes code = 5;
-  map<string, Node> node_map = 6; // key: node_id
-  repeated string input_datasets = 7;
+  map<string, Node> node_map = 6;                   // key: node_id deprecated remove in future
+  repeated string input_datasets = 7;               // deprecated, remove in future
   TaskContext task_info = 8;
-  bytes party = 11;               // participate role
+  string role = 11;                                 // participate role
+  int32  rank = 12;                                 // if party has same role, role + rank to uniq the party
+  map<string, StringArray> party_datasets = 13;     // key: party, value: party related datasets
+  map<string, NodeList> party_access_info = 14;     // key: party, value: Party Access info
 }
 
 message Empty {

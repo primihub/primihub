@@ -623,10 +623,12 @@ retcode VMNodeImpl::notifyTaskStatus(const PushTaskRequest& request,
 }
 
 retcode VMNodeImpl::getSchedulerNodeCfg(const PushTaskRequest& request, Node* scheduler_node) {
-    const auto& node_map = request.task().node_map();
-    auto it = node_map.find(SCHEDULER_NODE);
-    if (it != node_map.end()) {
-        pbNode2Node(it->second, scheduler_node);
+    const auto& party_access_info = request.task().party_access_info();
+    auto it = party_access_info.find(SCHEDULER_NODE);
+    if (it != party_access_info.end()) {
+        auto& node_list = it->second;
+        auto& pb_schedule_node = node_list.node(0);
+        pbNode2Node(pb_schedule_node, scheduler_node);
     } else {
         LOG(ERROR) << "no config found for: " << SCHEDULER_NODE;
         return retcode::FAIL;
