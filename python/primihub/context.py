@@ -11,11 +11,11 @@ class ContextAll:
     '''
     All the parameter is included in this context.
     '''
-    def __init__(self, message) -> None:
+    def __init__(self) -> None:
         '''
         Set the message from protobuf
         '''
-        self.message = message
+        self.message = None
 
 Context = ContextAll()
 
