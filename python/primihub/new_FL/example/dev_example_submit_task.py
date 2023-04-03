@@ -1,5 +1,7 @@
 from dev_example_guest import Dev_example_guest
 from dev_example_host import Dev_example_host
+import os,sys
+sys.path.append("..")
 from client import Client
 from copy import deepcopy
 class Dev_example:
