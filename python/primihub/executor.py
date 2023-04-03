@@ -15,7 +15,7 @@
  """
 import traceback
 from cloudpickle import loads
-from primihub.new_context import Context
+from primihub.context import Context
 from primihub.utils.logger_util import logger
 
 class Executor:
@@ -28,6 +28,4 @@ class Executor:
 
     @staticmethod
     def execute_py():
-        print(Context.params)
-        print(Context.func)
-        print(Context.role)
+        print(Context.message)
