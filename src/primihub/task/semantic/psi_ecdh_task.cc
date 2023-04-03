@@ -27,6 +27,9 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     reveal_intersection_ = true;
     try {
+        std::string role = task.role();
+        int32_t rank = task.rank();
+        LOG(ERROR) << "role: " << task.role() << " rank: " << task.rank();
         psi_type_ = param_map["psiType"].value_int32();
         result_file_path_ = param_map["outputFullFilename"].value_string();
         auto it = param_map.find("sync_result_to_server");
@@ -39,26 +42,36 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
             server_result_path = it->second.value_string();
             VLOG(5) << "server_outputFullFilname: " << server_result_path;
         }
-        it = param_map.find("serverAddress");
-        if (it != param_map.end()) {
-            server_address_ = it->second.value_string();
-            run_as_client_ = true;
-            dataset_path_ = param_map["clientData"].value_string();
-        } else {
-            dataset_path_ = param_map["serverData"].value_string();
+        const auto& party_dataset = task.party_datasets();
+        auto dataset_iter = party_dataset.find(role);
+        if (dataset_iter == party_dataset.end()) {
+          LOG(ERROR) << "no dataset found for role: " << role;
+          return retcode::FAIL;
         }
-        dataset_id_ = dataset_path_;
+        auto& dataset_list = dataset_iter->second;
+        dataset_id_ = dataset_list.item(0);
         VLOG(5) << "dataset_id_: " << dataset_id_;
-        it = param_map.find(server_address_);
-        if (it != param_map.end()) {
-            server_dataset_ = it->second.value_string();
-        }
-        // parse psi index
+        const auto& party_access_info = task.party_access_info();
         std::string PsiIndexName;
-        if (run_as_client_) {
-            PsiIndexName = "clientIndex";
+        if (role == ROLE_CLIENT) {
+          run_as_client_ = true;
+          auto node_iter = party_access_info.find(ROLE_SERVER);
+          if (node_iter == party_access_info.end()) {
+            LOG(ERROR) << "server node access info is not found";
+            return retcode::FAIL;
+          }
+          const auto& node_info = node_iter->second.node(0);
+          pbNode2Node(node_info, &peer_node);
+          PsiIndexName = "clientIndex";
         } else {
-            PsiIndexName = "serverIndex";
+          auto node_iter = party_access_info.find(ROLE_CLIENT);
+          if (node_iter == party_access_info.end()) {
+            LOG(ERROR) << "client node access info is not found";
+            return retcode::FAIL;
+          }
+          const auto& node_info = node_iter->second.node(0);
+          pbNode2Node(node_info, &peer_node);
+          PsiIndexName = "serverIndex";
         }
         auto index_it = param_map.find(PsiIndexName);
         if (index_it != param_map.end()) {
@@ -79,17 +92,6 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     } catch (std::exception &e) {
         std::string err_msg = fmt::format("Failed to load params: {}", e.what());
         CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, err_msg);
-    }
-    const auto& node_map = task.node_map();
-    for (const auto& it : node_map) {
-        std::string node_id = it.first;
-        if (!isParty(node_id)) {
-            continue;
-        }
-        const auto& node_info = it.second;
-        primihub::pbNode2Node(node_info, &peer_node);
-        VLOG(5) << "peer_node: " << peer_node.to_string();
-        break;
     }
     return retcode::SUCCESS;
 }

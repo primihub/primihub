@@ -17,6 +17,7 @@
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
+#include <google/protobuf/text_format.h>
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
@@ -26,6 +27,39 @@ using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
 
 namespace primihub::task {
+retcode ABY3Scheduler::ScheduleTask(const std::string& role,
+    const int32_t rank, const Node dest_node, const PushTaskRequest& request) {
+  SET_THREAD_NAME("ABY3Scheduler");
+  PushTaskReply reply;
+  PushTaskRequest send_request;
+  send_request.CopyFrom(request);
+  auto task_ptr = send_request.mutable_task();
+  task_ptr->set_role(role);
+  task_ptr->set_rank(rank);
+  // fill scheduler info
+  {
+    auto party_access_info_ptr = task_ptr->mutable_party_access_info();
+    auto& local_node = getLocalNodeCfg();
+    rpc::Node scheduler_node;
+    node2PbNode(local_node, &scheduler_node);
+    auto& schduler_node_list = (*party_access_info_ptr)[SCHEDULER_NODE];
+    auto node_item = schduler_node_list.add_node();
+    *node_item = std::move(scheduler_node);
+  }
+  // send request
+  std::string dest_node_address = dest_node.to_string();
+  LOG(INFO) << "dest node " << dest_node_address;
+  auto channel = this->getLinkContext()->getChannel(dest_node);
+  auto ret = channel->submitTask(send_request, &reply);
+  if (ret == retcode::SUCCESS) {
+    VLOG(5) << "submit task to : " << dest_node_address << " reply success";
+  } else {
+    LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
+    return retcode::FAIL;
+  }
+  parseNotifyServer(reply);
+  return retcode::SUCCESS;
+}
 
 void ABY3Scheduler::node_push_task(const std::string& node_id,
                     const PeerDatasetMap& peer_dataset_map,
@@ -33,7 +67,6 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
                     const std::map<std::string, std::string>& dataset_owner,
                     const Node& dest_node) {
     SET_THREAD_NAME("ABY3Scheduler");
-    grpc::ClientContext context;
     PushTaskReply pushTaskReply;
     PushTaskRequest _1NodePushTaskRequest;
     _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
@@ -66,11 +99,13 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
     }
     {
         // fill scheduler info
-        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto party_access_info = _1NodePushTaskRequest.mutable_task()->mutable_party_access_info();
         auto& local_node = getLocalNodeCfg();
         rpc::Node scheduler_node;
         node2PbNode(local_node, &scheduler_node);
-        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+        auto& node_list = (*party_access_info)[SCHEDULER_NODE];
+        auto node = node_list.add_node();
+        *node = std::move(scheduler_node);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);
@@ -118,67 +153,58 @@ void ABY3Scheduler::add_vm(rpc::Node *node, int i,
  *
  */
 void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
-    PushTaskRequest nodePushTaskRequest;
-    nodePushTaskRequest.CopyFrom(*actorPushTaskRequest);
-
-
-    if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
-        auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
-        nodePushTaskRequest.mutable_task()->set_type(TaskType::NODE_TASK);
-
-        for (size_t i = 0; i < peer_list_.size(); i++) {
-            rpc::Node single_node;
-            single_node.CopyFrom(peer_list_[i]);
-            std::string node_id = peer_list_[i].node_id();
-            if (singleton_) {
-                for (size_t j = 0; j < peer_list_.size(); j++) {
-                    add_vm(&single_node, j, &nodePushTaskRequest);
-                }
-                (*mutable_node_map)[node_id] = single_node;
-                break;
-            } else {
-                add_vm(&single_node, i, &nodePushTaskRequest);
-            }
-            (*mutable_node_map)[node_id] = single_node;
-        }
+  PushTaskRequest send_request;
+  send_request.CopyFrom(*actorPushTaskRequest);
+  if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
+    // auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
+    auto party_access_info = send_request.mutable_task()->mutable_party_access_info();
+    send_request.mutable_task()->set_type(TaskType::NODE_TASK);
+    const auto& party_info = send_request.task().party_access_info();
+    std::set<std::string> party_name;
+    for (const auto& [role, node_list] : party_info) {
+      party_name.insert(role);
     }
-
-
-    LOG(INFO) << " 📧  Dispatch SubmitTask to "
-        << nodePushTaskRequest.mutable_task()->mutable_node_map()->size() << " node";
-    // schedule
-    std::vector<std::thread> thrds;
-    const auto& node_map = nodePushTaskRequest.task().node_map();
-    //  3 nodes request paramaeter are differents.
-    std::map<std::string, Node> scheduled_nodes;
-    for (int i = 0; i < 3; i++) {
-        for (auto &pair : node_map) {
-            std::string party_name = "node" + std::to_string(i);
-            if (party_name != pair.first) {
-                continue;
-            }
-            auto& pb_node = pair.second;
-            std::string dest_node_address(absl::StrCat(pb_node.ip(), ":", pb_node.port()));
-            DLOG(INFO) << "dest_node_address: " << dest_node_address;
-            Node dest_node;
-            pbNode2Node(pb_node, &dest_node);
-            scheduled_nodes[dest_node_address] = std::move(dest_node);
-            thrds.emplace_back(
-                std::thread(
-                    &ABY3Scheduler::node_push_task,
-                    this,
-                    pair.first,              // node_id
-                    std::ref(this->peer_dataset_map_),  // peer_dataset_map
-                    std::ref(nodePushTaskRequest),  // nodePushTaskRequest
-                    this->dataset_owner_,
-                    std::ref(scheduled_nodes[dest_node_address])));
-        }
+    if (party_name.size() != 3) {
+      LOG(ERROR) << "ABY3 need 3 party, but get " << party_name.size();
+      return;
     }
-
-    for (auto &t : thrds) {
-        t.join();
+    int party_id = {0};
+    for (const auto& name_ : party_name) {
+      auto node = (*party_access_info)[name_].mutable_node(0);
+      add_vm(node, party_id, &send_request);
+      party_id++;
     }
+  }
 
+  std::string str;
+  google::protobuf::TextFormat::PrintToString(send_request, &str);
+  LOG(INFO) << "ABY3Scheduler::dispatch: " << str;
+
+  LOG(INFO) << "Dispatch SubmitTask to "
+      << send_request.task().party_access_info().size() << " node";
+  // schedule
+  std::vector<std::thread> thrds;
+  const auto& party_access_info = send_request.task().party_access_info();
+  for (const auto& [role, node_list] : party_access_info) {
+    for (const auto& pb_node : node_list.node()) {
+      Node dest_node;
+      pbNode2Node(pb_node, &dest_node);
+      int32_t rank = pb_node.rank();
+      LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
+          << "role: " << role << " rank: " << rank;
+      thrds.emplace_back(
+        std::thread(
+          &ABY3Scheduler::ScheduleTask,
+          this,
+          role,
+          rank,
+          dest_node,
+          std::ref(send_request)));
+    }
+  }
+  for (auto&& t : thrds) {
+    t.join();
+  }
 }
 
 } // namespace primihub::task
