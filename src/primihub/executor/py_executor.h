@@ -30,7 +30,7 @@ class PyExecutor {
 
  protected:
     retcode parseParams();
-    retcode run_task_code();
+    retcode ExecuteTaskCode();
     std::string node_id() const {
         return this->node_id_;
     }
@@ -52,6 +52,7 @@ class PyExecutor {
     std::string taskid_;
     std::string jobid_;
     std::string request_id_;
+    std::string pb_task_request_;
 };
 
 }  // namespace primihub::task::python

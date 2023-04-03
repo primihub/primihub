@@ -15,14 +15,6 @@
       "type": "INT32",
       "value": 100
     },
-    "Data_File": {
-      "type": "STRING",
-      "value": "train_party_0;train_party_1;train_party_2"
-    },
-    "TestData": {
-      "type": "STRING",
-      "value": "test_party_0;test_party_1;test_party_2"
-    },
     "modelFileName": {
       "type": "STRING",
       "value": "./model"
@@ -44,5 +36,10 @@
       "value": "./indicator.csv"
     }
   },
-  "input_datasets": ["Data_File", "TestData"]
+  "party_datasets": {
+    "PARTY0": ["train_party_0", "test_party_0"],
+    "PARTY1": ["train_party_1", "test_party_1"],
+    "PARTY2": ["train_party_2", "test_party_2"]
+  },
+  "input_datasets": []
 }

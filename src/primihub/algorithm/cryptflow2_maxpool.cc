@@ -103,22 +103,26 @@ MaxPoolExecutor::MaxPoolExecutor(
 }
 
 int MaxPoolExecutor::loadParams(primihub::rpc::Task &task) {
-  auto iter = task.node_map().find(node_id);
-  if (iter == task.node_map().end()) {
-    LOG(ERROR) << "Can't find node config with node id " << node_id;
+  std::string role = task.role();
+  const auto& party_access_info = task.party_access_info();
+  auto it = party_access_info.find(role);
+  if (it == party_access_info.end()) {
+    LOG(ERROR) << "Can't find config with role " << role;
     return -1;
   }
-
-  const rpc::Node node = iter->second;
+  const auto& node_list = it->second;
+  const auto& node = node_list.node(0);
+  // const rpc::Node node = iter->second;
   const rpc::VirtualMachine &vm = node.vm(0);
   auto param_map = task.params().param_map();
 
-  try {
-    input_filepath_ = param_map["TrainData"].value_string();
-  } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load params: " << e.what();
+  const auto& party_datasets = task.party_datasets();
+  auto dataset_iter = party_datasets.find(role);
+  if (dataset_iter == party_datasets.end()) {
+    LOG(ERROR) << "node datasets set for role: " << role;
     return -1;
   }
+  input_filepath_ = dataset_iter->second.item(0);
   __party = vm.party_id() + 1;
 
   rpc::EndPoint ep = vm.next();

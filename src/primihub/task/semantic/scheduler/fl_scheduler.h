@@ -43,12 +43,16 @@ class FLScheduler : public VMScheduler {
 
      void dispatch(const PushTaskRequest *pushTaskRequest) override;
  protected:
-     void push_node_py_task(const std::string& node_id,
-                        const std::string& role,
-                        const Node& dest_node,
-                        const PushTaskRequest& nodePushTaskRequest,
-                        const PeerContextMap& peer_context_map,
-                        const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list);
+    void push_node_py_task(const std::string& node_id,
+                      const std::string& role,
+                      const Node& dest_node,
+                      const PushTaskRequest& nodePushTaskRequest,
+                      const PeerContextMap& peer_context_map,
+                      const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list);
+    retcode ScheduleTask(const std::string& role,
+                      const int32_t rank,
+                      const Node dest_node,
+                      const PushTaskRequest& request);
 
  private:
      void add_vm(rpc::Node *node, int i, int role_num,

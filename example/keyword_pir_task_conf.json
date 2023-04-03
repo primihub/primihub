@@ -13,10 +13,6 @@
         "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT"
       ]
     },
-    "serverData": {
-      "type": "STRING",
-      "value": "keyword_pir_server_data"
-    },
     "pirType": {
       "type": "INT32",
       "value": 1
@@ -26,5 +22,20 @@
       "value": "data/result/pir_result.csv"
     }
   },
-  "input_datasets": ["serverData"]
+  "party_access_info": {
+    "CLIENT": {
+      "ip": "127.0.0.1",
+      "port": 60050,
+      "use_tls": false
+    },
+    "SERVER": {
+      "ip": "127.0.0.1",
+      "port": 60051,
+      "use_tls": false
+    }
+  },
+  "party_datasets": {
+    "SERVER": "keyword_pir_server_data"
+  },
+  "input_datasets": []
 }
