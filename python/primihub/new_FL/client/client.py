@@ -31,7 +31,7 @@ class Client:
 
             #set params
             params_value = common_pb2.ParamValue()
-            params_value.oneof_value = dumps(parameter)
+            params_value.value_string = dumps(parameter)
             cp_param.append({parameter['role']: params_value})
 
         cp_task_info = common_pb2.TaskContext()
