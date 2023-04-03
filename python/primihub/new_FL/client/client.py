@@ -21,17 +21,19 @@ class Client:
             tasks_list = [tasks_list]
 
         func_map = dict()
-        params = dict()
+        cp_param =  common_pb2.Params()
         party_datasets = dict()
         for func, parameter in tasks_list:
             func_map[parameter['role']] = dumps(func) 
-            params[parameter['role']] = dumps(parameter)
             party_datasets[parameter['role']] = parameter['data']
             process = parameter['process'] #only one time is enough
 
 
-        cp_param =  common_pb2.Params()
-        cp_param.param_map = params
+            #set params
+            params_value = common_pb2.ParamValue()
+            params_value.oneof_value = dumps(parameter)
+            cp_param.append({parameter['role']: params_value})
+
         cp_task_info = common_pb2.TaskContext()
         common_pb2.TaskContext.task_id = task_id
         

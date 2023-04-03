@@ -8,7 +8,7 @@ class Dev_example:
     def __init__(self, node_config, num_iter = 10):
         
         #choose the task_manager to submit the task. 
-        self.client = Client.init(node_config['task_manager'], None, node_config)
+        self.client = Client(node_config['task_manager'], None, node_config)
         self.node_config = node_config #maybe not used at this moment
         self.param = dict()
         self.param['num_iter'] = num_iter
@@ -34,7 +34,7 @@ class Dev_example:
         task_list.append([Dev_example_host.run, tmp_parameter])
 
         #submit the task and get the task ID
-        task_ids = self.client.submit(task_list, 'Dev_example')
+        task_ids = self.client.submit(task_list)
 
         #query the status of the task if needed
         #status = self.client.get_status(task_ids[0])
