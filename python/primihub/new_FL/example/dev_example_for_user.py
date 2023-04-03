@@ -3,18 +3,18 @@ from .dev_example_submit_task import Dev_example
 node_config = {
     'guest': [
         {
-            ip: 127.0.0.1
-            port: 50050
-            use_tls: false
+            'ip': 127.0.0.1,
+            'port': 50050,
+            'use_tls': false,
         }
-    ]
+    ],
     'host': [
         {
-            ip: 127.0.0.1
-            port: 50051
-            use_tls: false
+            'ip': 127.0.0.1,
+            'port': 50051,
+            'use_tls': false,
         }
-    ]
+    ],
     'task_manager': '127.0.0.1:50050'
 }
 
