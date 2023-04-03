@@ -1,15 +1,9 @@
-import data_helper as dh
+import pandas as pd
 class Dev_example_host:
+    @staticmethod
     def run(self, context):
-        process = context.task_parameter['process']
-        X = context.task_parameter['data']['guest']['X']
-        X = dh.read(X)
-        if process == 'train':
-            y = context.task_parameter['data']['guest']['y']
-            y = dh.read(y)
-            self.train(X,y)
-        if process == 'predict':
-            self.predict(X)
+        df = pd.DataFrame([1,2,3])
+        df.to_csv("/home/primihub/czl/res.csv")
     
 
     def train(self, X, y):
