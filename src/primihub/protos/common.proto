@@ -150,7 +150,7 @@ message Task {
   string name = 2;
   Language language = 3;
   Params params = 4;
-  bytes code = 5;
+  map<string, bytes> code = 5;
   map<string, Node> node_map = 6;                   // key: node_id deprecated remove in future
   repeated string input_datasets = 7;               // deprecated, remove in future
   TaskContext task_info = 8;

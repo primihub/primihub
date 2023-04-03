@@ -85,7 +85,7 @@ void nodeContext2TaskParam(const NodeContext& node_context,
         task_ptr->add_input_datasets(node_context.datasets[i]);
     }
     // dumps code
-    task_ptr->set_code(node_context.dumps_func);
+    // task_ptr->set_code(node_context.dumps_func);
 }
 
 retcode FLScheduler::ScheduleTask(const std::string& role,

@@ -68,7 +68,12 @@ class TaskFactory {
             return fl_task;
         } else if (task_language == Language::PROTO &&
           task_type == rpc::TaskType::NODE_TASK) {
-            auto _function_name = request.task().code();
+            std::string _function_name;
+            const auto& code_map = request.task().code();
+            auto it = code_map.find("DEFAULT");
+            if (it != code_map.end()) {
+              _function_name = it->second;
+            }
             auto task_param = request.task();
             auto mpc_task = std::make_shared<MPCTask>(node_id,
                                                     _function_name, &task_param,

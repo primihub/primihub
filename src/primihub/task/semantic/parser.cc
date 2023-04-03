@@ -92,11 +92,18 @@ void ProtocolSemanticParser::scheduleProtoTask(
                 _proto_parser->MergePartyAccessInfo(party_access_info);
                 //  Generate MPC algorthim scheduler
                 auto& pushTaskRequest = _proto_parser->getPushTaskRequest();
-                if (pushTaskRequest.task().code() == "maxpool") {
+
+                std::string algorithm_type;
+                const auto& code_map = pushTaskRequest.task().code();
+                auto it = code_map.find("DEFAULT");
+                if (it != code_map.end()) {
+                  algorithm_type = it->second;
+                }
+                if (algorithm_type == "maxpool") {
                     scheduler = std::make_shared<CRYPTFLOW2Scheduler>(
                         node_id_, peer_list_, peer_dataset_map, singleton_);
                     scheduler->dispatch(&pushTaskRequest);
-                } else if (pushTaskRequest.task().code() == "lenet") {
+                } else if (algorithm_type == "lenet") {
                     scheduler = std::make_shared<FalconScheduler>(
                         node_id_, peer_list, peer_dataset_map, singleton_);
                     scheduler->dispatch(&pushTaskRequest);

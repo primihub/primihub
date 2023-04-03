@@ -32,7 +32,7 @@ class PyParser : public LanguageParser {
  public:
     PyParser(const PushTaskRequest &pushTaskRequest)
         : LanguageParser(pushTaskRequest) {
-        py_code_ = pushTaskRequest_.task().code();
+        // py_code_ = pushTaskRequest_.task().code();
     }
     ~PyParser();
 
