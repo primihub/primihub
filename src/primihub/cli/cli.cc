@@ -169,6 +169,8 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
     fill_param(params, map);
     // if given task code file, read it and set task code
     auto task_code = absl::GetFlag(FLAGS_task_code);
+    auto code_ptr = task_ptr->mutable_code();
+    std::string defalut_key = "default";
     if (task_code.find('/') != std::string::npos ||
         task_code.find('\\') != std::string::npos) {
         // read file
@@ -180,10 +182,12 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
         std::stringstream buffer;
         buffer << ifs.rdbuf();
         std::cout << buffer.str() << std::endl;
-        task_ptr->set_code(buffer.str());
+        auto& role_code = (*code_ptr)[defalut_key];
+        role_code = buffer.str();
     } else {
         // read code from command line
-        task_ptr->set_code(task_code);
+        auto& role_code = (*code_ptr)[defalut_key];
+        role_code = task_code;
     }
 
     // Setup input datasets
@@ -311,6 +315,7 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
       }
       // code
       std::string code_file_path = js["task_code"]["code_file_path"].get<std::string>();
+      auto code_ptr = task_ptr->mutable_code();
       if (!code_file_path.empty()) {
           // read file
           std::ifstream ifs(code_file_path);
@@ -321,11 +326,13 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           std::stringstream buffer;
           buffer << ifs.rdbuf();
           std::cout << buffer.str() << std::endl;
-          task_ptr->set_code(buffer.str());
+          auto& code = (*code_ptr)["DEFAULT"];
+          code = buffer.str();
       } else {
           // read code from command line
           std::string task_code = js["task_code"]["code"].get<std::string>();
-          task_ptr->set_code(std::move(task_code));
+          auto& code = (*code_ptr)["DEFAULT"];
+          code = std::move(task_code);
       }
       // party_datasets
       auto party_datasets = task_ptr->mutable_party_datasets();
