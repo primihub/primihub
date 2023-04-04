@@ -26,6 +26,7 @@ class Dev_example:
         
 
         tmp_party_list = []
+        task_parameter['party2role'] = dict()
         #set the party and the role
         for role, party_list in self.roles.items():
             for party in party_list:

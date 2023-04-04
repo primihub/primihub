@@ -17,7 +17,7 @@ class Client:
         task_id = uuid.uuid1().hex
         print(f'The task_id is {task_id}')
 
-        for role, func in func_map:
+        for role, func in func_map.items():
             func_map[role] = dumps(func)
 
         #updata the params
@@ -36,19 +36,23 @@ class Client:
         common_pb2.TaskContext.task_id = task_id
 
         #update the datasets
-        party_datasets = common_pb2.party_datasets()
+        party_datasets = {}
         for party, dataset in para_map[example_party]['data'].items():
+            Dataset = common_pb2.Dataset()
             for k, val in dataset.items():
-                party_datasets[party][k] = val
+                Dataset.data[k] = val
+            party_datasets[party] = Dataset
 
         #update the party_access_info
-        party_access_info = common_pb2.party_access_info()
+        party_access_info = {}
         for party, config in self.node_config.items():
-            party_access_info[party].ip = config['ip']
-            party_access_info[party].port = config['port']
-            party_access_info[party].use_tls = config['use_tls']
-
-
+            if isinstance(config, str):
+                continue
+            Node = common_pb2.Node()
+            Node.ip = config['ip'].encode()
+            Node.port = int(config['port'])
+            Node.use_tls = config['use_tls']
+            party_access_info[party] = Node
         task = self.client.set_task_map(common_pb2.TaskType.ACTOR_TASK, # Task type.
                            process,                    # Name. example: {'Xgb_train'}
                            common_pb2.Language.PYTHON,     # Language.
@@ -61,7 +65,6 @@ class Client:
                            None,
                            party_datasets,
                            party_access_info)                           # Channel map.
-
 
 
 
