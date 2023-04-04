@@ -23,13 +23,13 @@ class Client:
         #updata the params
         cp_param =  common_pb2.Params()
         example_party = "" #
-        for party, task_parameter in para_map:
+        for party, task_parameter in para_map.items():
             process = task_parameter['process'] #only one time is enough
             example_party = party #only one time is enough
             #set params
             cp_param.param_map[party].var_type = 2
             cp_param.param_map[party].is_array = False
-            cp_param.param_map[party].value_string = json.dumps(task_parameter)
+            cp_param.param_map[party].value_string = json.dumps(task_parameter).encode()
             
 
         cp_task_info = common_pb2.TaskContext()
@@ -37,16 +37,16 @@ class Client:
 
         #update the datasets
         party_datasets = common_pb2.party_datasets()
-        for party, dataset in para_map[example_party]['data']:
-            for k, val in dataset:
+        for party, dataset in para_map[example_party]['data'].items():
+            for k, val in dataset.items():
                 party_datasets[party][k] = val
 
         #update the party_access_info
         party_access_info = common_pb2.party_access_info()
-        for party, config in self.node_config:
-            party_access_info[k].ip = self.node_config[k]['ip']
-            party_access_info[k].port = self.node_config[k]['port']
-            party_access_info[k].use_tls = self.node_config[k]['use_tls']
+        for party, config in self.node_config.items():
+            party_access_info[party].ip = config['ip']
+            party_access_info[party].port = config['port']
+            party_access_info[party].use_tls = config['use_tls']
 
 
         task = self.client.set_task_map(common_pb2.TaskType.ACTOR_TASK, # Task type.
