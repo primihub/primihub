@@ -110,25 +110,32 @@ KeywordPIRServerTask::KeywordPIRServerTask(
 }
 
 retcode KeywordPIRServerTask::_LoadParams(Task &task) {
-    std::string role = task.role();
+    std::string party_name = task.party_name();
     const auto& party_info = task.party_access_info();
-    auto it = party_info.find(ROLE_CLIENT);
+    auto it = party_info.find(PARTY_CLIENT);
     if (it == party_info.end()) {
-      LOG(ERROR) << "server does not find client access info, role: " << role;
+      LOG(ERROR) << "server does not find client access info, party_name: " << party_name;
       return retcode::FAIL;
     }
-    auto& node_list = it->second;
-    auto& pb_node = node_list.node(0);
+    auto& pb_node = it->second;
     pbNode2Node(pb_node, &client_node_);
     VLOG(5) << "client_address: " << this->client_node_.to_string();
     const auto& party_datasets = task.party_datasets();
-    auto dataset_it = party_datasets.find(role);
+    auto dataset_it = party_datasets.find(party_name);
     if (dataset_it == party_datasets.end()) {
       LOG(ERROR) << "no datasets is set for server";
       return retcode::FAIL;
     }
-    auto& datasets = dataset_it->second;
-    dataset_id_ = datasets.item(0);
+    const auto& datasets_map = dataset_it->second.data();
+    {
+      auto it = datasets_map.find(party_name);
+      if (it == datasets_map.end()) {
+        LOG(ERROR) << "no datasets is set for server";
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
+    }
+
     return retcode::SUCCESS;
 }
 

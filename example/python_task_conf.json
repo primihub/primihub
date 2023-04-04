@@ -13,8 +13,12 @@
     }
   },
   "party_datasets": {
-    "host": "psi_client_data",
-    "guest": "psi_server_data"
+    "host": {
+      "X": "psi_client_data"
+    },
+    "guest": {
+      "Y": "psi_server_data"
+    }
   },
   "input_datasets": []
 }

@@ -9,13 +9,12 @@ PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
   std::map<std::string, rpc::Node> node_map;
   {
     const auto& info = task.party_access_info();
-    for (const auto& [role, node_list] : info) {
-      auto& pb_node = node_list.node(0);
-      node_map[role] = pb_node;
+    for (const auto& [party_name, node] : info) {
+      node_map[party_name] = node;
     }
   }
 
-  this->node_id = task.role();
+  this->node_id = task.party_name();
   this->task_id = task.task_info().task_id();
   this->job_id = task.task_info().job_id();
   this->node_map = std::move(node_map);

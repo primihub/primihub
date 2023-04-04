@@ -28,11 +28,17 @@
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace primihub {
 // CSVAccessInfo
 std::string CSVAccessInfo::toString() {
-    return this->file_path_;
+  std::stringstream ss;
+  nlohmann::json js;
+  js["type"] = "csv";
+  js["data_path"] = this->file_path_;
+  ss << js;
+  return ss.str();
 }
 
 retcode CSVAccessInfo::fromJsonString(const std::string& json_str) {
@@ -40,7 +46,13 @@ retcode CSVAccessInfo::fromJsonString(const std::string& json_str) {
         LOG(ERROR) << "access info is empty";
         return retcode::FAIL;
     }
-    this->file_path_ = json_str;
+    try {
+      nlohmann::json js = nlohmann::json::parse(json_str);
+      this->file_path_ = js["data_path"].get<std::string>();
+    } catch (std::exception& e) {  // compatible with no json format
+      LOG(WARNING) << "consider the full str as data path";
+      this->file_path_ = json_str;
+    }
     return retcode::SUCCESS;
 }
 

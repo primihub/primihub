@@ -24,6 +24,7 @@
 #include <memory>
 #include "src/primihub/util/util.h"
 #include "base64.h"
+#include <google/protobuf/text_format.h>
 
 // using primihub::service::EventBusNotifyDelegate;
 namespace bp = boost::process;
@@ -39,6 +40,34 @@ FLTask::FLTask(const std::string& node_id,
 int FLTask::execute() {
     auto& server_config = ServerConfig::getInstance();
     auto node_id_ = node_id();
+    PushTaskRequest send_request;
+    send_request.CopyFrom(*task_request_);
+    // change datasetid to datset access info
+    auto& dataset_service = this->getDatasetService();
+    auto party_datasets = send_request.mutable_task()->mutable_party_datasets();
+    std::vector<std::string> dataset_ids;
+    std::string party_name = send_request.task().party_name();
+    auto it = party_datasets->find(party_name);
+    if (it != party_datasets->end()) {   // current party has datasets
+      for (auto& [_, dataset_id] : (*it->second.mutable_data())) {
+        auto driver = dataset_service->getDriver(dataset_id);
+        if (driver == nullptr) {
+          LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+          continue;
+        }
+        auto& access_info = driver->dataSetAccessInfo();
+        if (access_info == nullptr) {
+          LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+          continue;
+        }
+        dataset_id = access_info->toString();
+      }
+    }
+    std::string str;
+    google::protobuf::TextFormat::PrintToString(send_request, &str);
+    LOG(INFO) << "FLTask::execute: " << str;
+
+
     std::string task_config_str;
     bool status = this->task_request_->SerializeToString(&task_config_str);
     if (!status) {

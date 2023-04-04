@@ -143,19 +143,16 @@ void set_keyword_pir_request_param(const std::string &node_id,
     }
 }
 
-retcode PIRScheduler::ScheduleTask(const std::string& role,
-                      const int32_t rank,
-                      const Node dest_node,
-                      const PushTaskRequest& request) {
-//
+retcode PIRScheduler::ScheduleTask(const std::string& party_name,
+                                  const Node dest_node,
+                                  const PushTaskRequest& request) {
   SET_THREAD_NAME("PIRScheduler");
   PushTaskReply reply;
   PushTaskRequest send_request;
   send_request.CopyFrom(request);
   auto task_ptr = send_request.mutable_task();
-  task_ptr->set_role(role);
-  task_ptr->set_rank(rank);
-  if (role == ROLE_SERVER) {
+  task_ptr->set_party_name(party_name);
+  if (party_name == PARTY_SERVER) {
     // remove client data when send data to server
     auto param_map_ptr = task_ptr->mutable_params()->mutable_param_map();
     auto it = param_map_ptr->find("clientData");
@@ -169,9 +166,8 @@ retcode PIRScheduler::ScheduleTask(const std::string& role,
     auto& local_node = getLocalNodeCfg();
     rpc::Node scheduler_node;
     node2PbNode(local_node, &scheduler_node);
-    auto& schduler_node_list = (*party_access_info_ptr)[SCHEDULER_NODE];
-    auto node_item = schduler_node_list.add_node();
-    *node_item = std::move(scheduler_node);
+    auto& schduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
+    schduler_node = std::move(scheduler_node);
   }
   // send request
   std::string dest_node_address = dest_node.to_string();
@@ -260,25 +256,21 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   LOG(INFO) << "Dispatch SubmitTask to PIR client node " << this->get_node_id();
   const auto& participate_node = push_request.task().party_access_info();
   std::vector<std::thread> thrds;
-  for (const auto& [role, node_list] : participate_node) {
-    for (const auto& pb_node : node_list.node()) {
-      Node dest_node;
-      pbNode2Node(pb_node, &dest_node);
-      int32_t rank = pb_node.rank();
-      LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
-          << "role: " << role << " rank: " << rank;
-      thrds.emplace_back(
-        std::thread(
-          &PIRScheduler::ScheduleTask,
-          this,
-          role,
-          rank,
-          dest_node,
-          std::ref(push_request)));
-    }
+  for (const auto& [party_name, node] : participate_node) {
+    Node dest_node;
+    pbNode2Node(node, &dest_node);
+    LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
+        << "party_name: " << party_name;
+    thrds.emplace_back(
+      std::thread(
+        &PIRScheduler::ScheduleTask,
+        this,
+        party_name,
+        dest_node,
+        std::ref(push_request)));
   }
   for (auto &t : thrds) {
-      t.join();
+    t.join();
   }
 }
 

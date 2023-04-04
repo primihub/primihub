@@ -35,7 +35,9 @@
     }
   },
   "party_datasets": {
-    "SERVER": "keyword_pir_server_data"
+    "SERVER": {
+      "SERVER": "keyword_pir_server_data"
+    }
   },
   "input_datasets": []
 }

@@ -626,8 +626,7 @@ retcode VMNodeImpl::getSchedulerNodeCfg(const PushTaskRequest& request, Node* sc
     const auto& party_access_info = request.task().party_access_info();
     auto it = party_access_info.find(SCHEDULER_NODE);
     if (it != party_access_info.end()) {
-        auto& node_list = it->second;
-        auto& pb_schedule_node = node_list.node(0);
+        auto& pb_schedule_node = it->second;
         pbNode2Node(pb_schedule_node, scheduler_node);
     } else {
         LOG(ERROR) << "no config found for: " << SCHEDULER_NODE;

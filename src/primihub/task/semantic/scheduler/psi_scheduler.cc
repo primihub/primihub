@@ -25,27 +25,24 @@ using primihub::rpc::VarType;
 using primihub::rpc::PsiTag;
 
 namespace primihub::task {
-retcode PSIScheduler::ScheduleTask(const std::string& role,
-                                  const int32_t rank,
+retcode PSIScheduler::ScheduleTask(const std::string& party_name,
                                   const Node dest_node,
                                   const PushTaskRequest& request) {
-  VLOG(5) << "begin schedule task to party: " << role;
+  VLOG(5) << "begin schedule task to party: " << party_name;
   SET_THREAD_NAME("PSIScheduler");
   PushTaskReply reply;
   PushTaskRequest send_request;
   send_request.CopyFrom(request);
   auto task_ptr = send_request.mutable_task();
-  task_ptr->set_role(role);
-  task_ptr->set_rank(rank);
+  task_ptr->set_party_name(party_name);
   // fill scheduler info
   {
     auto party_access_info_ptr = task_ptr->mutable_party_access_info();
     auto& local_node = getLocalNodeCfg();
     rpc::Node scheduler_node;
     node2PbNode(local_node, &scheduler_node);
-    auto& schduler_node_list = (*party_access_info_ptr)[SCHEDULER_NODE];
-    auto node_item = schduler_node_list.add_node();
-    *node_item = std::move(scheduler_node);
+    auto& schduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
+    schduler_node = std::move(scheduler_node);
   }
   // send request
   std::string dest_node_address = dest_node.to_string();
@@ -78,25 +75,21 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   LOG(INFO) << "Dispatch SubmitTask to PSI client node";
   const auto& participate_node = push_request.task().party_access_info();
   std::vector<std::thread> thrds;
-  for (const auto& [role, node_list] : participate_node) {
-    for (const auto& pb_node : node_list.node()) {
-      Node dest_node;
-      pbNode2Node(pb_node, &dest_node);
-      int32_t rank = pb_node.rank();
-      LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
-          << "role: " << role << " rank: " << rank;
-      thrds.emplace_back(
-        std::thread(
-          &PSIScheduler::ScheduleTask,
-          this,
-          role,
-          rank,
-          dest_node,
-          std::ref(push_request)));
-    }
+  for (const auto& [party_name, node] : participate_node) {
+    Node dest_node;
+    pbNode2Node(node, &dest_node);
+    LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
+        << "party_name: " << party_name;
+    thrds.emplace_back(
+      std::thread(
+        &PSIScheduler::ScheduleTask,
+        this,
+        party_name,
+        dest_node,
+        std::ref(push_request)));
   }
-  for (auto &t : thrds) {
-      t.join();
+  for (auto&& t : thrds) {
+    t.join();
   }
 }
 

@@ -31,6 +31,7 @@ namespace primihub {
 std::string MySQLAccessInfo::toString() {
     std::stringstream ss;
     nlohmann::json js;
+    js["type"] = "mysql";
     js["host"] = this->ip_;
     js["port"] = this->port_;
     js["username"] = this->user_name_;
@@ -54,8 +55,8 @@ retcode MySQLAccessInfo::fromJsonString(const std::string& json_str) {
         LOG(ERROR) << "access info is empty";
         return retcode::FAIL;
     }
-    nlohmann::json js = nlohmann::json::parse(json_str);
     try {
+        nlohmann::json js = nlohmann::json::parse(json_str);
         this->ip_ = js["host"].get<std::string>();
         this->port_ = js["port"].get<uint32_t>();
         this->user_name_ = js["username"].get<std::string>();

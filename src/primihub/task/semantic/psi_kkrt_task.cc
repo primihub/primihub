@@ -64,17 +64,23 @@ PSIKkrtTask::PSIKkrtTask(const TaskParam *task_param,
 retcode PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");
-    std::string role = task.role();
-    int32_t rank = task.rank();
+    std::string party_name = task.party_name();
     const auto& party_datasets = task.party_datasets();
-    auto it = party_datasets.find(role);
+    auto it = party_datasets.find(party_name);
     if (it == party_datasets.end()) {
-      LOG(ERROR) << "no dataset is found for role: " << role;
+      LOG(ERROR) << "no dataset is found for party_name: " << party_name;
       return retcode::FAIL;
     }
-    auto datasets = it->second;
-    dataset_id_ = datasets.item(0);
-    if (role == ROLE_CLIENT) {
+    auto& dataset_map = it->second.data();
+    {
+      auto it = dataset_map.find(party_name);
+      if (it == dataset_map.end()) {
+        LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
+    }
+    if (party_name == PARTY_CLIENT) {
         //role_tag_ = EpMode::Client;
         role_tag_ = 0;
         try {
@@ -140,14 +146,13 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
         }
     }
     const auto& party_info = task.party_access_info();
-    std::string peer_role = role == ROLE_CLIENT ? ROLE_SERVER : ROLE_CLIENT;
-    auto party_it = party_info.find(peer_role);
+    std::string peer_party_name = party_name == PARTY_CLIENT ? PARTY_SERVER : PARTY_CLIENT;
+    auto party_it = party_info.find(peer_party_name);
     if (party_it == party_info.end()) {
-      LOG(ERROR) << "get peer node access info failed for role: " << role;
+      LOG(ERROR) << "get peer node access info failed for party: " << party_name;
       return retcode::FAIL;
     }
-    auto& peer_node_list = party_it->second;
-    auto& pb_peer_node = peer_node_list.node(0);
+    auto& pb_peer_node = party_it->second;
     pbNode2Node(pb_peer_node, &peer_node);
     VLOG(5) << "peer_address_: " << peer_node.to_string();
     return retcode::SUCCESS;

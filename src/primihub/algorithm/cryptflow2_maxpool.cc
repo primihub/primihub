@@ -103,26 +103,33 @@ MaxPoolExecutor::MaxPoolExecutor(
 }
 
 int MaxPoolExecutor::loadParams(primihub::rpc::Task &task) {
-  std::string role = task.role();
+  std::string party_name = task.party_name();
   const auto& party_access_info = task.party_access_info();
-  auto it = party_access_info.find(role);
+  auto it = party_access_info.find(party_name);
   if (it == party_access_info.end()) {
-    LOG(ERROR) << "Can't find config with role " << role;
+    LOG(ERROR) << "Can't find config with party_name: " << party_name;
     return -1;
   }
-  const auto& node_list = it->second;
-  const auto& node = node_list.node(0);
+  const auto& node = it->second;
   // const rpc::Node node = iter->second;
   const rpc::VirtualMachine &vm = node.vm(0);
   auto param_map = task.params().param_map();
 
   const auto& party_datasets = task.party_datasets();
-  auto dataset_iter = party_datasets.find(role);
+  auto dataset_iter = party_datasets.find(party_name);
   if (dataset_iter == party_datasets.end()) {
-    LOG(ERROR) << "node datasets set for role: " << role;
+    LOG(ERROR) << "node datasets set for party_name: " << party_name;
     return -1;
   }
-  input_filepath_ = dataset_iter->second.item(0);
+  {
+    const auto& dataset_map = dataset_iter->second.data();
+    auto it = dataset_map.find(party_name);
+    if (it == dataset_map.end()) {
+      LOG(ERROR) << "node datasets set for party_name: " << party_name;
+      return -1;
+    }
+    input_filepath_ = it->second;
+  }
   __party = vm.party_id() + 1;
 
   rpc::EndPoint ep = vm.next();

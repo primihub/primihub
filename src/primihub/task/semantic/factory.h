@@ -123,8 +123,8 @@ class TaskFactory {
             }
 #else
             if (pir_type == PirType::KEY_PIR) {
-                std::string role = task_param.role();
-                if (role == ROLE_SERVER) {
+                std::string party_name = task_param.party_name();
+                if (party_name == PARTY_SERVER) {
                     auto task_ptr =
                         std::make_shared<KeywordPIRServerTask>(&task_param, dataset_service);
                     task_ptr->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);

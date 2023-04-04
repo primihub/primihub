@@ -49,8 +49,7 @@ class FLScheduler : public VMScheduler {
                       const PushTaskRequest& nodePushTaskRequest,
                       const PeerContextMap& peer_context_map,
                       const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list);
-    retcode ScheduleTask(const std::string& role,
-                      const int32_t rank,
+    retcode ScheduleTask(const std::string& party_name,
                       const Node dest_node,
                       const PushTaskRequest& request);
 

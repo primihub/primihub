@@ -337,16 +337,16 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
       // party_datasets
       auto party_datasets = task_ptr->mutable_party_datasets();
       if (!js["party_datasets"].empty()) {
-        for (auto& [key, value]: js["party_datasets"].items()) {
-          auto& dataset_index = (*party_datasets)[key];
-          if (value.is_array()) {
-            for (const auto& dataset_name : value) {
-              dataset_index.add_item(dataset_name);
-            }
-          } else {
-            dataset_index.add_item(value);
+        for (auto& [party_name, dataset_list]: js["party_datasets"].items()) {
+          auto& datasets = (*party_datasets)[party_name];
+          auto dataset_info = datasets.mutable_data();
+          for (auto& [dataset_index, dataset_id] : dataset_list.items()) {
+            auto& dataset_value = (*dataset_info)[dataset_index];
+            dataset_value = dataset_id;
           }
         }
+      } else {
+        LOG(WARNING) << "no dataset is setting";
       }
       // party access info
       auto party_access_info = task_ptr->mutable_party_access_info();
@@ -356,10 +356,9 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           std::string ip = value["ip"].get<std::string>();
           int32_t port = value["port"].get<int32_t>();
           bool use_tls = value["use_tls"].get<bool>();
-          auto item = party_node.add_node();
-          item->set_ip(ip);
-          item->set_port(port);
-          item->set_use_tls(use_tls);
+          party_node.set_ip(ip);
+          party_node.set_port(port);
+          party_node.set_use_tls(use_tls);
         }
       }
       // dataset

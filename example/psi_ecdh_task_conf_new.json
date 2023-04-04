@@ -51,8 +51,12 @@
     }
  },
   "party_datasets": {
-    "CLIENT": "psi_client_data",
-    "SERVER": "psi_server_data"
+    "CLIENT": {
+      "CLIENT": "psi_client_data"
+    },
+    "SERVER": {
+      "SERVER": "psi_server_data"
+    }
   },
   "input_datasets": []
 }

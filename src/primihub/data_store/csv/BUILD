@@ -6,5 +6,6 @@ cc_library(
     deps = [
         "//src/primihub/data_store:base_driver",
         "@arrow",
+        "@nlohmann_json",
     ],
 )

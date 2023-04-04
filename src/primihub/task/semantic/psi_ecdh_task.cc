@@ -27,9 +27,8 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     reveal_intersection_ = true;
     try {
-        std::string role = task.role();
-        int32_t rank = task.rank();
-        LOG(ERROR) << "role: " << task.role() << " rank: " << task.rank();
+        std::string party_name = task.party_name();
+        LOG(ERROR) << "party_name: " << task.party_name();
         psi_type_ = param_map["psiType"].value_int32();
         result_file_path_ = param_map["outputFullFilename"].value_string();
         auto it = param_map.find("sync_result_to_server");
@@ -43,33 +42,40 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
             VLOG(5) << "server_outputFullFilname: " << server_result_path;
         }
         const auto& party_dataset = task.party_datasets();
-        auto dataset_iter = party_dataset.find(role);
+        auto dataset_iter = party_dataset.find(party_name);
         if (dataset_iter == party_dataset.end()) {
-          LOG(ERROR) << "no dataset found for role: " << role;
+          LOG(ERROR) << "no dataset found for party_name: " << party_name;
           return retcode::FAIL;
+        } else {
+          auto& dataset_map = dataset_iter->second.data();
+          auto it = dataset_map.find(party_name);
+          if (it == dataset_map.end()) {
+            LOG(ERROR) << "no dataset found for party: " << party_name;
+            return retcode::FAIL;
+          }
+          dataset_id_ = it->second;
+          VLOG(5) << "dataset_id_: " << dataset_id_;
         }
-        auto& dataset_list = dataset_iter->second;
-        dataset_id_ = dataset_list.item(0);
-        VLOG(5) << "dataset_id_: " << dataset_id_;
+
         const auto& party_access_info = task.party_access_info();
         std::string PsiIndexName;
-        if (role == ROLE_CLIENT) {
+        if (party_name == PARTY_CLIENT) {
           run_as_client_ = true;
-          auto node_iter = party_access_info.find(ROLE_SERVER);
+          auto node_iter = party_access_info.find(PARTY_SERVER);
           if (node_iter == party_access_info.end()) {
             LOG(ERROR) << "server node access info is not found";
             return retcode::FAIL;
           }
-          const auto& node_info = node_iter->second.node(0);
+          const auto& node_info = node_iter->second;
           pbNode2Node(node_info, &peer_node);
           PsiIndexName = "clientIndex";
         } else {
-          auto node_iter = party_access_info.find(ROLE_CLIENT);
+          auto node_iter = party_access_info.find(PARTY_CLIENT);
           if (node_iter == party_access_info.end()) {
             LOG(ERROR) << "client node access info is not found";
             return retcode::FAIL;
           }
-          const auto& node_info = node_iter->second.node(0);
+          const auto& node_info = node_iter->second;
           pbNode2Node(node_info, &peer_node);
           PsiIndexName = "serverIndex";
         }
