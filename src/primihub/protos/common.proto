@@ -141,9 +141,10 @@ message StringArray {
   repeated bytes item = 1;
 }
 
-message NodeList {
-  repeated Node node = 1;
+massage Dataset{
+  map<string, string> data = 1;
 }
+
 
 message Task {
   TaskType type = 1;
@@ -156,8 +157,8 @@ message Task {
   TaskContext task_info = 8;
   string role = 11;                                 // participate role
   int32  rank = 12;                                 // if party has same role, role + rank to uniq the party
-  map<string, StringArray> party_datasets = 13;     // key: party, value: party related datasets
-  map<string, NodeList> party_access_info = 14;     // key: party, value: Party Access info
+  map<string, Dataset> party_datasets = 13;     // key: party, value: party related datasets
+  map<string, Node> party_access_info = 14;     // key: party, value: Party Access info
 }
 
 message Empty {
