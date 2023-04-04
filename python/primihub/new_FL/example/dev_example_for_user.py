@@ -6,16 +6,27 @@ node_config = {
             'ip': '127.0.0.1',
             'port': '50050',
             'use_tls': False,
+            'role' : "active"
         }
     ],
-    'host': [
+    'host1': [
         {
             'ip': '127.0.0.1',
             'port': '50051',
             'use_tls': False,
+            'role' : "passive"
         }
     ],
-    'task_manager': '127.0.0.1:50050'
+    'host2': [
+        {
+            'ip': '127.0.0.1',
+            'port': '50051',
+            'use_tls': False,
+            'role' : "passive"
+        }
+    ],
+
+    'task_manager': '127.0.0.1:50050',
 }
 
 
@@ -24,7 +35,8 @@ data_path = {
     'X':'guest_X',
     'y':'guest_y',
     },
-    'host':{'X': 'host1_X'},
+    'host1':{'X': 'host1_X'},
+    'host2':{'X': 'host2_X'}
 }
 
 
