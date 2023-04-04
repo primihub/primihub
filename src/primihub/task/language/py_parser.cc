@@ -30,10 +30,10 @@ retcode PyParser::parseDatasets() {
   const auto& task_config = push_task.task();
   const auto& party_datasets = task_config.party_datasets();
   LOG(ERROR) << "party_datasets: " << party_datasets.size();
-  for (const auto& [key,  dataset_ids] : party_datasets) {
-    for (const auto& dataset_id : dataset_ids.item()) {
-      LOG(ERROR) << "role: " << key << " dataset_id: " << dataset_id;
-      auto dataset_with_tag = std::make_pair(dataset_id, key);
+  for (const auto& [party_name,  dataset_map] : party_datasets) {
+    for (const auto& [dataset_index, dataset_id] : dataset_map.data()) {
+      LOG(ERROR) << "party_name: " << party_name << " dataset_id: " << dataset_id;
+      auto dataset_with_tag = std::make_pair(dataset_id, party_name);
       this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
     }
   }
@@ -85,9 +85,9 @@ retcode PyParser::parseTask() {
       // _node_context.task_type = task_type;
       auto& push_request = this->getPushTaskRequest();
       const auto& party_datasets = push_request.task().party_datasets();
-      for (const auto& [role, datasets] : party_datasets) {
-        for (const auto& dataset : datasets.item()) {
-          this->input_datasets_with_tag_.push_back(std::make_pair(dataset, role));
+      for (const auto& [party_name, datasets_map] : party_datasets) {
+        for (const auto& [dataset_index, dataset_id] : datasets_map.data()) {
+          this->input_datasets_with_tag_.push_back(std::make_pair(dataset_id, party_name));
         }
       }
       // for (auto& dataset : datasets) {

@@ -66,8 +66,7 @@ class PIRScheduler : public VMScheduler {
         const PeerDatasetMap& peer_dataset_map,
         const PushTaskRequest& nodePushTaskRequest,
         const Node& dest_node, bool is_client);
-    retcode ScheduleTask(const std::string& role,
-                      const int32_t rank,
+    retcode ScheduleTask(const std::string& party_name,
                       const Node dest_node,
                       const PushTaskRequest& request);
 

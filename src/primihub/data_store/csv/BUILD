@@ -7,5 +7,6 @@ cc_library(
         "//src/primihub/data_store:base_driver",
         "//src/primihub/util:util_lib",
         "@arrow",
+        "@nlohmann_json",
     ],
 )

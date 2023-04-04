@@ -88,26 +88,23 @@ void nodeContext2TaskParam(const NodeContext& node_context,
     // task_ptr->set_code(node_context.dumps_func);
 }
 
-retcode FLScheduler::ScheduleTask(const std::string& role,
-                      const int32_t rank,
-                      const Node dest_node,
-                      const PushTaskRequest& request) {
+retcode FLScheduler::ScheduleTask(const std::string& party_name,
+                                  const Node dest_node,
+                                  const PushTaskRequest& request) {
   SET_THREAD_NAME("FLScheduler");
   PushTaskReply reply;
   PushTaskRequest send_request;
   send_request.CopyFrom(request);
   auto task_ptr = send_request.mutable_task();
-  task_ptr->set_role(role);
-  task_ptr->set_rank(rank);
+  task_ptr->set_party_name(party_name);
   // fill scheduler info
   {
     auto party_access_info_ptr = task_ptr->mutable_party_access_info();
     auto& local_node = getLocalNodeCfg();
-    rpc::Node scheduler_node;
-    node2PbNode(local_node, &scheduler_node);
-    auto& schduler_node_list = (*party_access_info_ptr)[SCHEDULER_NODE];
-    auto node_item = schduler_node_list.add_node();
-    *node_item = std::move(scheduler_node);
+    rpc::Node node;
+    node2PbNode(local_node, &node);
+    auto& schduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
+    schduler_node = std::move(node);
   }
   // send request
   std::string dest_node_address = dest_node.to_string();
@@ -169,22 +166,18 @@ void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   // schedule
   std::vector<std::thread> thrds;
   const auto& party_access_info = send_request.task().party_access_info();
-  for (const auto& [role, node_list] : party_access_info) {
-    for (const auto& pb_node : node_list.node()) {
-      Node dest_node;
-      pbNode2Node(pb_node, &dest_node);
-      int32_t rank = pb_node.rank();
-      LOG(INFO) << "Dispatch SubmitTask to: " << dest_node.to_string() << " "
-          << "role: " << role << " rank: " << rank;
-      thrds.emplace_back(
-        std::thread(
-          &FLScheduler::ScheduleTask,
-          this,
-          role,
-          rank,
-          dest_node,
-          std::ref(send_request)));
-    }
+  for (const auto& [party_name, node] : party_access_info) {
+    Node dest_node;
+    pbNode2Node(node, &dest_node);
+    LOG(INFO) << "Dispatch SubmitTask to: " << dest_node.to_string() << " "
+        << "party_name: " << party_name;
+    thrds.emplace_back(
+      std::thread(
+        &FLScheduler::ScheduleTask,
+        this,
+        party_name,
+        dest_node,
+        std::ref(send_request)));
   }
   for (auto&& t : thrds) {
     t.join();

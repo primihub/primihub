@@ -87,7 +87,7 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
                 std::map<std::string, std::string> dataset_owner;
                 metasToDatasetAndOwner(metas_with_param_tag, dataset_owner);
-                std::map<std::string, std::vector<Node>> party_access_info;
+                std::map<std::string, Node> party_access_info;
                 metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
                 _proto_parser->MergePartyAccessInfo(party_access_info);
                 //  Generate MPC algorthim scheduler
@@ -157,7 +157,7 @@ void ProtocolSemanticParser::schedulePythonTask(
                 // metasToPeerWithTagAndPort(metas_with_param_tag,
                 //                           _peer_context_map,
                 //                           _peers_with_role_tag);
-                std::map<std::string, std::vector<Node>> party_access_info;
+                std::map<std::string, Node> party_access_info;
                 metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
                 scheduler = std::make_shared<FLScheduler>(
                         node_id_, singleton_, _peers_with_role_tag,
@@ -202,7 +202,7 @@ void ProtocolSemanticParser::schedulePirTask(
             parseTopbNode(nodelet_attr, &client_node);
             peer_list_.push_back(std::move(client_node));
             metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::map<std::string, std::vector<Node>> party_access_info;
+            std::map<std::string, Node> party_access_info;
             metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
             auto scheduler = std::make_shared<PIRScheduler>(node_id_,
                                                             peer_list_,
@@ -239,7 +239,7 @@ void ProtocolSemanticParser::schedulePsiTask(
             }
             metasToPeerList(metas_with_param_tag, peer_list_);
             metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::map<std::string, std::vector<Node>> party_access_info;
+            std::map<std::string, Node> party_access_info;
             metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
             // std::shared_ptr<VMScheduler> scheduler =
             auto scheduler = std::make_shared<PSIScheduler>(node_id_,
@@ -331,7 +331,7 @@ void ProtocolSemanticParser::metasToPeerList(
 }
 void ProtocolSemanticParser::metasToPartyAccessInfo(
     const std::vector<DatasetMetaWithParamTag>& metas_with_tag,
-    std::map<std::string, std::vector<Node>>* party_access_info) {
+    std::map<std::string, Node>* party_access_info) {
   party_access_info->clear();
   std::map<std::string, std::set<std::string>> duplicate_filter;
   for (const auto& meta_with_tag : metas_with_tag) {
@@ -341,16 +341,12 @@ void ProtocolSemanticParser::metasToPartyAccessInfo(
     LOG(ERROR) << server_info << " party_name: " << party_name;
     Node access_info;
     access_info.fromString(server_info);
+
     auto it = party_access_info->find(party_name);
-    if (it == party_access_info->end()) {
-      (*party_access_info)[party_name];
+    if (it != party_access_info->end()) {
+      LOG(WARNING) << "access info for party_name: " << party_name << " begin to update";
     }
-    it = party_access_info->find(party_name);
-    auto& peer_list = it->second;
-    auto iter = std::find(peer_list.begin(), peer_list.end(), access_info);
-    if (iter == peer_list.end()) {
-      peer_list.emplace_back(std::move(access_info));
-    }
+    (*party_access_info)[party_name] = access_info;
   }
 }
 // output  key: node_id, value: <dataset_path, dataset_name>

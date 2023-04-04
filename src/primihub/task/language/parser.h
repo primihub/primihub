@@ -38,42 +38,30 @@ class LanguageParser {
     virtual retcode parseTask() = 0;
     virtual retcode parseDatasets() = 0;
     virtual retcode parseNodes()  = 0;
-    retcode MergePartyAccessInfo(const std::map<std::string, std::vector<Node>>& party_access_info) {
-      std::map<std::string, std::vector<Node>> filtered_party;
+    retcode MergePartyAccessInfo(const std::map<std::string, Node>& party_access_info) {
+      std::map<std::string, Node> filtered_party;
       auto party_access_info_ptr = pushTaskRequest_.mutable_task()->mutable_party_access_info();
       // fetch all party from mutable_party_access_info
-      for (const auto& [party_name, node_list] : *party_access_info_ptr) {
-        for (const auto& pb_node : node_list.node()) {
-          Node node;
-          pbNode2Node(pb_node, &node);
-          auto& party_list = filtered_party[party_name];
-          auto iter = std::find(party_list.begin(), party_list.end(), node);
-          if (iter == party_list.end()) {
-            party_list.emplace_back(node);
-          }
+      for (const auto& [party_name, pb_node] : *party_access_info_ptr) {
+        Node node;
+        pbNode2Node(pb_node, &node);
+        auto iter = filtered_party.find(party_name);
+        if (iter == filtered_party.end()) {
+          filtered_party[party_name] = std::move(node);
         }
       }
       // need_merged
-      for (const auto& [party_name, node_list] : party_access_info) {
-        for (const auto& node : node_list) {
-          auto& party_list = filtered_party[party_name];
-          auto iter = std::find(party_list.begin(), party_list.end(), node);
-          if (iter == party_list.end()) {
-            party_list.emplace_back(node);
-          }
+      for (const auto& [party_name, node] : party_access_info) {
+        auto iter = filtered_party.find(party_name);
+        if (iter == filtered_party.end()) {
+          filtered_party[party_name] = node;
         }
       }
       // refill all
       party_access_info_ptr->clear();
-      for (auto& [party_name, node_list] : filtered_party) {
-        int32_t rank = 0;
-        auto& party_node_list = (*party_access_info_ptr)[party_name];
-        for (auto& node : node_list) {
-          auto pb_node = party_node_list.add_node();
-          node2PbNode(node, pb_node);
-          pb_node->set_rank(rank);
-          rank++;
-        }
+      for (auto& [party_name, node] : filtered_party) {
+        auto& party_node = (*party_access_info_ptr)[party_name];
+        node2PbNode(node, &party_node);
       }
     }
 

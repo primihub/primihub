@@ -20,6 +20,7 @@
 #include <fstream>
 #include <variant>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
@@ -28,7 +29,12 @@
 namespace primihub {
 // CSVAccessInfo
 std::string CSVAccessInfo::toString() {
-  return this->file_path_;
+  std::stringstream ss;
+  nlohmann::json js;
+  js["type"] = "csv";
+  js["data_path"] = this->file_path_;
+  ss << js;
+  return ss.str();
 }
 
 retcode CSVAccessInfo::fromJsonString(const std::string& access_info) {

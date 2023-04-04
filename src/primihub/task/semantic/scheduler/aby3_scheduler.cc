@@ -27,24 +27,22 @@ using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
 
 namespace primihub::task {
-retcode ABY3Scheduler::ScheduleTask(const std::string& role,
-    const int32_t rank, const Node dest_node, const PushTaskRequest& request) {
+retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
+    const Node dest_node, const PushTaskRequest& request) {
   SET_THREAD_NAME("ABY3Scheduler");
   PushTaskReply reply;
   PushTaskRequest send_request;
   send_request.CopyFrom(request);
   auto task_ptr = send_request.mutable_task();
-  task_ptr->set_role(role);
-  task_ptr->set_rank(rank);
+  task_ptr->set_party_name(party_name);
   // fill scheduler info
   {
     auto party_access_info_ptr = task_ptr->mutable_party_access_info();
     auto& local_node = getLocalNodeCfg();
-    rpc::Node scheduler_node;
-    node2PbNode(local_node, &scheduler_node);
-    auto& schduler_node_list = (*party_access_info_ptr)[SCHEDULER_NODE];
-    auto node_item = schduler_node_list.add_node();
-    *node_item = std::move(scheduler_node);
+    rpc::Node node;
+    node2PbNode(local_node, &node);
+    auto& scheduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
+    scheduler_node = std::move(node);
   }
   // send request
   std::string dest_node_address = dest_node.to_string();
@@ -101,11 +99,10 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
         // fill scheduler info
         auto party_access_info = _1NodePushTaskRequest.mutable_task()->mutable_party_access_info();
         auto& local_node = getLocalNodeCfg();
-        rpc::Node scheduler_node;
-        node2PbNode(local_node, &scheduler_node);
-        auto& node_list = (*party_access_info)[SCHEDULER_NODE];
-        auto node = node_list.add_node();
-        *node = std::move(scheduler_node);
+        rpc::Node node;
+        node2PbNode(local_node, &node);
+        auto& scheduler_node = (*party_access_info)[SCHEDULER_NODE];
+        scheduler_node = std::move(scheduler_node);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);
@@ -170,8 +167,8 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     }
     int party_id = {0};
     for (const auto& name_ : party_name) {
-      auto node = (*party_access_info)[name_].mutable_node(0);
-      add_vm(node, party_id, &send_request);
+      auto& node = (*party_access_info)[name_];
+      add_vm(&node, party_id, &send_request);
       party_id++;
     }
   }
@@ -185,22 +182,18 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
   // schedule
   std::vector<std::thread> thrds;
   const auto& party_access_info = send_request.task().party_access_info();
-  for (const auto& [role, node_list] : party_access_info) {
-    for (const auto& pb_node : node_list.node()) {
-      Node dest_node;
-      pbNode2Node(pb_node, &dest_node);
-      int32_t rank = pb_node.rank();
-      LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
-          << "role: " << role << " rank: " << rank;
-      thrds.emplace_back(
-        std::thread(
-          &ABY3Scheduler::ScheduleTask,
-          this,
-          role,
-          rank,
-          dest_node,
-          std::ref(send_request)));
-    }
+  for (const auto& [party_name, node] : party_access_info) {
+    Node dest_node;
+    pbNode2Node(node, &dest_node);
+    LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
+        << "party_name: " << party_name;
+    thrds.emplace_back(
+      std::thread(
+        &ABY3Scheduler::ScheduleTask,
+        this,
+        party_name,
+        dest_node,
+        std::ref(send_request)));
   }
   for (auto&& t : thrds) {
     t.join();

@@ -49,8 +49,7 @@ class PSIScheduler : public VMScheduler {
   void dispatch(const PushTaskRequest *pushTaskRequest) override;
   void add_vm(rpc::Node *single_node, int i, const PushTaskRequest *pushTaskRequest);
  protected:
-  retcode ScheduleTask(const std::string& role,
-                      const int32_t rank,
+  retcode ScheduleTask(const std::string& party_name,
                       const Node dest_node,
                       const PushTaskRequest& request);
 private:

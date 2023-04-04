@@ -32,6 +32,7 @@ namespace primihub {
 std::string MySQLAccessInfo::toString() {
     std::stringstream ss;
     nlohmann::json js;
+    js["type"] = "mysql";
     js["host"] = this->ip_;
     js["port"] = this->port_;
     js["username"] = this->user_name_;

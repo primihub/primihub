@@ -17,8 +17,8 @@ namespace primihub {
 
 // macro defination
 static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
-static const char* ROLE_CLIENT = "CLIENT";
-static const char* ROLE_SERVER = "SERVER";
+static const char* PARTY_CLIENT = "CLIENT";
+static const char* PARTY_SERVER = "SERVER";
 
 static int WAIT_TASK_WORKER_READY_TIMEOUT_MS = 5*1000;
 static int CACHED_TASK_STATUS_TIMEOUT_S = 5;

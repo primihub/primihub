@@ -55,11 +55,9 @@ retcode ProtoParser::parseDatasets() {
     }
     const auto& party_datasets = task_config.party_datasets();
     LOG(ERROR) << "party_datasets: " << party_datasets.size();
-    for (const auto& [key,  dataset_ids] : party_datasets) {
-      for (const auto& dataset_id : dataset_ids.item()) {
-        LOG(ERROR) << "role: " << key << " dataset_id: " << dataset_id;
-        auto dataset_with_tag = std::make_pair(dataset_id, key);
-        this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
+    for (const auto& [party_name,  dataset_map] : party_datasets) {
+      for (const auto& [dataset_index, datasetid] : dataset_map.data()) {
+        this->input_datasets_with_tag_.emplace_back(std::make_pair(datasetid, party_name));
       }
     }
     return retcode::SUCCESS;

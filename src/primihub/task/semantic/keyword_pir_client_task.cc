@@ -39,7 +39,7 @@ KeywordPIRClientTask::KeywordPIRClientTask(
 
 retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     CHECK_TASK_STOPPED(retcode::FAIL);
-    std::string role = task.role();
+    std::string party_name = task.party_name();
     const auto& param_map = task.params().param_map();
     try {
         auto client_data_it = param_map.find("clientData");
@@ -53,15 +53,20 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
         } else {
             // check client has dataset
             const auto& party_datasets = task.party_datasets();
-            auto it = party_datasets.find(role);
+            auto it = party_datasets.find(party_name);
             if (it == party_datasets.end()) {
-              LOG(ERROR) << "no query data found for client, role: " << role;
+              LOG(ERROR) << "no query data found for client, party_name: " << party_name;
               return retcode::FAIL;
             }
-            auto& datasets = it->second;
-            dataset_id_ = datasets.item(0);
+            const auto& datasets_map = it->second.data();
+            auto iter = datasets_map.find(party_name);
+            if (iter == datasets_map.end()) {
+              LOG(ERROR) << "no query data found for client, party_name: " << party_name;
+              return retcode::FAIL;
+            }
+            dataset_id_ = iter->second;
         }
-        VLOG(5) << "dataset_id: " << dataset_id_;
+        VLOG(7) << "dataset_id: " << dataset_id_;
         auto result_file_path_it = param_map.find("outputFullFilename");
         if (result_file_path_it != param_map.end()) {
             result_file_path_ = result_file_path_it->second.value_string();
@@ -75,13 +80,12 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
         return retcode::FAIL;
     }
     const auto& party_info = task.party_access_info();
-    auto it = party_info.find(ROLE_SERVER);
+    auto it = party_info.find(PARTY_SERVER);
     if (it == party_info.end()) {
       LOG(ERROR) << "client can not found access info to server";
       return retcode::FAIL;
     }
-    auto& node_list = it->second;
-    auto& pb_node = node_list.node(0);
+    auto& pb_node = it->second;
     pbNode2Node(pb_node, &peer_node_);
     VLOG(5) << "peer_node: " << peer_node_.to_string();
     return retcode::SUCCESS;
