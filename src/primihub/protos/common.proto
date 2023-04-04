@@ -141,7 +141,7 @@ message StringArray {
   repeated bytes item = 1;
 }
 
-massage Dataset{
+massage Dataset {
   map<string, string> data = 1;
 }
 
