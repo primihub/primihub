@@ -27,7 +27,7 @@ class Dev_example:
 
         tmp_party_list = []
         #set the party and the role
-        for role, party_list in self.roles:
+        for role, party_list in self.roles.items():
             for party in party_list:
                 task_parameter['party2role'][party] = role
                 tmp_party_list.append(party)
