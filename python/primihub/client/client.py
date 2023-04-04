@@ -25,7 +25,7 @@ from primihub.client.ph_grpc.grpc_client import GrpcClient
 from primihub.client.ph_grpc.service import NodeServiceClient
 from primihub.client.visitor import Visitor
 from primihub.utils.async_util import fire_coroutine_threadsafe
-from primihub.dataset.dataset_cli import DatasetClientFactory
+#from primihub.dataset.dataset_cli import DatasetClientFactory
 from primihub.utils.logger_util import logger
 
 import primihub as ph
