@@ -11,36 +11,44 @@ class Client:
         self.node_config = node_config
     
     
-    def submit(self, tasks_list):
+    def submit(self, func_map, para_map):
         #submit the task from the task_list
 
         task_id = uuid.uuid1().hex
         print(f'The task_id is {task_id}')
 
-        if not isinstance(tasks_list[0], list):
-            tasks_list = [tasks_list]
+        for role, func in func_map:
+            func_map[role] = dumps(func)
 
-        func_map = dict()
+        #updata the params
         cp_param =  common_pb2.Params()
-        party_datasets = dict()
-        for func, parameter in tasks_list:
-            func_map[parameter['role']] = dumps(func) 
-            party_datasets[parameter['role']] = parameter['data']
-            process = parameter['process'] #only one time is enough
-
-
+        example_party = "" #
+        for party, task_parameter in para_map:
+            process = task_parameter['process'] #only one time is enough
+            example_party = party #only one time is enough
             #set params
-            cp_param.param_map['role'].var_type = 2
-            cp_param.param_map['role'].is_array = False
-            cp_param.param_map['role'].value_string = json.dumps(parameter)
-
+            cp_param.param_map[party].var_type = 2
+            cp_param.param_map[party].is_array = False
+            cp_param.param_map[party].value_string = json.dumps(task_parameter)
+            
 
         cp_task_info = common_pb2.TaskContext()
         common_pb2.TaskContext.task_id = task_id
-        
 
-        party_access_info = deepcopy(self.node_config)
-        del[party_access_info['task_manager']]
+        #update the datasets
+        party_datasets = common_pb2.party_datasets()
+        for party, dataset in para_map[example_party]['data']:
+            for k, val in dataset:
+                party_datasets[party][k] = val
+
+        #update the party_access_info
+        party_access_info = common_pb2.party_access_info()
+        for party, config in self.node_config:
+            party_access_info[k].ip = self.node_config[k]['ip']
+            party_access_info[k].port = self.node_config[k]['port']
+            party_access_info[k].use_tls = self.node_config[k]['use_tls']
+
+
         task = self.client.set_task_map(common_pb2.TaskType.ACTOR_TASK, # Task type.
                            process,                    # Name. example: {'Xgb_train'}
                            common_pb2.Language.PYTHON,     # Language.
