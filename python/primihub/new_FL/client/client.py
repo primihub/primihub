@@ -34,7 +34,7 @@ class Client:
             
             #set data set
             Dataset = common_pb2.Dataset()
-            for k, val in task_parameter[party]:
+            for k, val in task_parameter[party].items():
                 Dataset.data[k] = val
             party_datasets[party] = Dataset
 
@@ -44,15 +44,6 @@ class Client:
         cp_task_info.job_id = task_id
         cp_task_info.request_id = task_id
 
-
-
-        #update the datasets
-        party_datasets = {}
-        for party, dataset in para_map[example_party]['data'].items():
-            Dataset = common_pb2.Dataset()
-            for k, val in dataset.items():
-                Dataset.data[k] = val
-            party_datasets[party] = Dataset
 
         #update the party_access_info
         party_access_info = {}
