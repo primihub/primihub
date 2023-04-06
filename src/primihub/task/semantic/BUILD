@@ -53,21 +53,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "scheduler_interface",
-    hdrs = [
-        "scheduler.h",
-    ],
-    deps = [
-        "//src/primihub/node:server_config",
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/util/network:communication_lib",
-        "//src/primihub/common:common_util",
-        "//src/primihub/service:dataset_service",
-        "@com_github_glog_glog//:glog",
-    ],
-)
-
 #fl task
 cc_library(
     name = "fl_task",
@@ -235,7 +220,7 @@ cc_library(
     deps = [
         ":task_factory",
         "//src/primihub/task/language:language_parser_factory",
-        "//src/primihub/task/semantic/scheduler:scheduler_lib",
+        "//src/primihub/task/semantic/scheduler:scheduler_factory",
         "//src/primihub/task:task_common",
         "//src/primihub/service:dataset_service",
     ]

@@ -41,67 +41,19 @@ retcode Worker::waitForTaskReady() {
 retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
     auto type = pushTaskRequest->task().type();
     VLOG(2) << "Worker::execute task type: " << type;
-    if (type == rpc::TaskType::NODE_TASK ||
-        type == rpc::TaskType::TEE_DATAPROVIDER_TASK) {
-        auto dataset_service = nodelet->getDataService();
-        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (task_ptr == nullptr) {
-            LOG(ERROR) << "Woker create task failed.";
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-        task_ready_promise_.set_value(true);
-        LOG(INFO) << "Worker start execute task ";
-        int ret = task_ptr->execute();
-        if (ret != 0) {
-            LOG(ERROR) << "Error occurs during execute task.";
-            return retcode::FAIL;
-        }
-    } else if (type == rpc::TaskType::NODE_PSI_TASK) {
-        if (pushTaskRequest->task().party_access_info().size() < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task now.";
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-        const auto& param_map = pushTaskRequest->task().params().param_map();
-        auto dataset_service = nodelet->getDataService();
-        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (task_ptr == nullptr) {
-            LOG(ERROR) << "Woker create psi task failed.";
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-        task_ready_promise_.set_value(true);
-        int ret = task_ptr->execute();
-        if (ret != 0) {
-            LOG(ERROR) << "Error occurs during execute psi task.";
-            return retcode::FAIL;
-        }
-    } else if (type == rpc::TaskType::NODE_PIR_TASK) {
-        size_t party_node_count = pushTaskRequest->task().party_access_info().size();
-        if (party_node_count < 2) {
-            LOG(ERROR) << "At least 2 nodes srunning with 2PC task. "
-                       << "current_node_size: " << party_node_count;
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-        auto& dataset_service = nodelet->getDataService();
-        task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
-        if (task_ptr == nullptr) {
-            LOG(ERROR) << "Woker create pir task failed.";
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-        task_ready_promise_.set_value(true);
-        int ret = task_ptr->execute();
-        if (ret != 0) {
-            LOG(ERROR) << "Error occurs during execute pir task.";
-            task_ready_promise_.set_value(false);
-            return retcode::FAIL;
-        }
-    } else {
-        LOG(WARNING) << "unsupported Requested task type: " << type;
+    auto dataset_service = nodelet->getDataService();
+    task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest, dataset_service);
+    if (task_ptr == nullptr) {
+        LOG(ERROR) << "Woker create task failed.";
         task_ready_promise_.set_value(false);
+        return retcode::FAIL;
+    }
+    task_ready_promise_.set_value(true);
+    LOG(INFO) << "Worker start execute task ";
+    int ret = task_ptr->execute();
+    if (ret != 0) {
+        LOG(ERROR) << "Error occurs during execute task.";
+        return retcode::FAIL;
     }
     task_ptr.reset();
     return retcode::SUCCESS;

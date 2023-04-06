@@ -36,13 +36,13 @@ using primihub::rpc::Language;
 class LanguageParserFactory {
   public:
     static std::shared_ptr<LanguageParser>
-    Create(const PushTaskRequest &pushTaskRequest) {
-        auto language = pushTaskRequest.task().language();
+    Create(const PushTaskRequest &task_request) {
+        auto language = task_request.task().language();
         if (language == Language::PROTO) {
-            auto parser = std::make_shared<ProtoParser>(pushTaskRequest);
+            auto parser = std::make_shared<ProtoParser>(task_request);
             return std::dynamic_pointer_cast<LanguageParser>(parser);
         } else if (language == Language::PYTHON) {
-            auto parser = std::make_shared<PyParser>(pushTaskRequest);
+            auto parser = std::make_shared<PyParser>(task_request);
             return std::dynamic_pointer_cast<LanguageParser>(parser);
         } else if (language == Language::CPP) {
             // TODO

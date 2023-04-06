@@ -80,6 +80,7 @@ class IChannel {
   virtual retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) = 0;
   virtual retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) = 0;
   virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
+  virtual retcode executeTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
   virtual retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) = 0;
   virtual retcode updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) = 0;
   virtual retcode fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) = 0;

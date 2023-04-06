@@ -19,7 +19,7 @@
 
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/language/py_parser.h"
@@ -39,18 +39,16 @@ class ProtocolSemanticParser {
                            dataset_service_(dataset_service) {}
 
     ~ProtocolSemanticParser() {}
-    void parseTaskSyntaxTree(std::shared_ptr<LanguageParser> lan_parser);
-    void schedulePirTask(std::shared_ptr<LanguageParser> lan_parser,
-                         std::string nodelet_attr);
-    void schedulePsiTask(std::shared_ptr<LanguageParser> lan_parser);
-    int transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
-                            PushTaskRequest &taskRequest);
+    retcode parseTaskSyntaxTree(std::shared_ptr<LanguageParser> lan_parser);
     void prepareReply(primihub::rpc::PushTaskReply* reply);
 
     std::vector<Node>& notifyServer() {return notify_server_;}
     std::vector<Node>& taskServer() {return task_server_;}
 
   private:
+    bool DataSetMetaSerivceEnabled() {
+      return true;
+    }
     void parseNofifyServer(const std::vector<Node>& notify_servers) {
         for (const auto& node : notify_servers) {
             notify_server_.push_back(node);
@@ -61,8 +59,8 @@ class ProtocolSemanticParser {
             task_server_.push_back(node);
         }
     }
-    void scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);
-    void schedulePythonTask( std::shared_ptr<LanguageParser> python_parser);
+    retcode scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);
+    retcode schedulePythonTask(std::shared_ptr<LanguageParser> python_parser);
     void metasToPeerList(
         const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
         std::vector<rpc::Node> &peers);

@@ -29,10 +29,8 @@ retcode PyParser::parseDatasets() {
   auto& push_task = getPushTaskRequest();
   const auto& task_config = push_task.task();
   const auto& party_datasets = task_config.party_datasets();
-  LOG(ERROR) << "party_datasets: " << party_datasets.size();
   for (const auto& [key,  dataset_ids] : party_datasets) {
     for (const auto& dataset_id : dataset_ids.item()) {
-      LOG(ERROR) << "role: " << key << " dataset_id: " << dataset_id;
       auto dataset_with_tag = std::make_pair(dataset_id, key);
       this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
     }

@@ -61,13 +61,13 @@ class TaskFactory {
         std::string request_id = task_info.request_id();
         std::string submit_client_id = request.submit_client_id();
         if (task_language == Language::PYTHON &&
-          task_type == rpc::TaskType::NODE_TASK) {
+          task_type == rpc::TaskType::ACTOR_TASK) {
             const auto& task_param = request.task();
             auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
             fl_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
             return fl_task;
         } else if (task_language == Language::PROTO &&
-          task_type == rpc::TaskType::NODE_TASK) {
+          task_type == rpc::TaskType::ACTOR_TASK) {
             auto _function_name = request.task().code();
             auto task_param = request.task();
             auto mpc_task = std::make_shared<MPCTask>(node_id,
@@ -75,7 +75,8 @@ class TaskFactory {
                                                     dataset_service);
             mpc_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
             return mpc_task;
-        } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PSI_TASK) {
+        } else if (task_language == Language::PROTO &&
+                task_type == rpc::TaskType::PSI_TASK) {
             const auto& task_param = request.task();
             const auto& param_map = task_param.params().param_map();
             int psi_tag = PsiTag::ECDH;
@@ -96,7 +97,8 @@ class TaskFactory {
                 LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
                 return nullptr;
             }
-        } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_PIR_TASK) {
+        } else if (task_language == Language::PROTO &&
+                task_type == rpc::TaskType::PIR_TASK) {
             const auto& task_param = request.task();
             const auto& param_map = task_param.params().param_map();
             int pir_type = PirType::ID_PIR;

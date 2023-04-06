@@ -28,7 +28,7 @@ using primihub::rpc::VarType;
 using primihub::rpc::VirtualMachine;
 
 namespace primihub::task {
-void TEEScheduler::dispatch(const PushTaskRequest *push_request) {
+retcode TEEScheduler::dispatch(const PushTaskRequest *push_request) {
     PushTaskRequest request;
     rpc::Node executor_node;
     request.CopyFrom(*push_request);

@@ -113,7 +113,7 @@ retcode FLScheduler::ScheduleTask(const std::string& role,
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;
   auto channel = this->getLinkContext()->getChannel(dest_node);
-  auto ret = channel->submitTask(send_request, &reply);
+  auto ret = channel->executeTask(send_request, &reply);
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
@@ -158,11 +158,10 @@ void FLScheduler::push_node_py_task(const std::string& node_id,
  * @brief Dispatch FL task to different role. eg: xgboost host & guest.
  *
  */
-void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
+retcode FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   PushTaskRequest send_request;
   send_request.CopyFrom(*pushTaskRequest);
   std::string str;
-  send_request.mutable_task()->set_type(TaskType::NODE_TASK);
   google::protobuf::TextFormat::PrintToString(send_request, &str);
   LOG(INFO) << "FLScheduler::dispatch: " << str;
 

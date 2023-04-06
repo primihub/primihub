@@ -27,6 +27,7 @@ using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
 
 namespace primihub::task {
+
 retcode ABY3Scheduler::ScheduleTask(const std::string& role,
     const int32_t rank, const Node dest_node, const PushTaskRequest& request) {
   SET_THREAD_NAME("ABY3Scheduler");
@@ -50,7 +51,7 @@ retcode ABY3Scheduler::ScheduleTask(const std::string& role,
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;
   auto channel = this->getLinkContext()->getChannel(dest_node);
-  auto ret = channel->submitTask(send_request, &reply);
+  auto ret = channel->executeTask(send_request, &reply);
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
@@ -118,33 +119,35 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
     parseNotifyServer(pushTaskReply);
 }
 
-void ABY3Scheduler::add_vm(rpc::Node *node, int i,
-                         const PushTaskRequest *pushTaskRequest) {
+void ABY3Scheduler::add_vm(int party_id,
+                         const PushTaskRequest& task_request,
+                         const std::vector<rpc::Node>& party_nodes,
+                         rpc::Node *node) {
     VirtualMachine *vm = node->add_vm();
-    vm->set_party_id(i);
+    vm->set_party_id(party_id);
     EndPoint *ed_next = vm->mutable_next();
     EndPoint *ed_prev = vm->mutable_prev();
 
-    auto next = (i + 1) % 3;
-    auto prev = (i + 2) % 3;
+    auto next = (party_id + 1) % 3;
+    auto prev = (party_id + 2) % 3;
 
-    auto task_info = pushTaskRequest->task().task_info();
+    auto& task_info = task_request.task().task_info();
     std::string name_prefix = task_info.job_id() + "_" + task_info.task_id() + "_";
 
     int session_basePort = 12120;  // TODO move to configfile
-    ed_next->set_ip(peer_list_[next].ip());
+    ed_next->set_ip(party_nodes[next].ip());
     // ed_next->set_port(peer_list[std::min(i, next)].data_port());
-    ed_next->set_port(std::min(i, next) + session_basePort);
+    ed_next->set_port(std::min(party_id, next) + session_basePort);
     ed_next->set_name(name_prefix +
-                      absl::StrCat(std::min(i, next), std::max(i, next)));
-    ed_next->set_link_type(i < next ? LinkType::SERVER : LinkType::CLIENT);
+                      absl::StrCat(std::min(party_id, next), std::max(party_id, next)));
+    ed_next->set_link_type(party_id < next ? LinkType::SERVER : LinkType::CLIENT);
 
-    ed_prev->set_ip(peer_list_[prev].ip());
+    ed_prev->set_ip(party_nodes[prev].ip());
     // ed_prev->set_port(peer_list[std::min(i, prev)].data_port());
-    ed_prev->set_port(std::min(i, prev) + session_basePort);
+    ed_prev->set_port(std::min(party_id, prev) + session_basePort);
     ed_prev->set_name(name_prefix +
-                      absl::StrCat(std::min(i, prev), std::max(i, prev)));
-    ed_prev->set_link_type(i < prev ? LinkType::SERVER : LinkType::CLIENT);
+                      absl::StrCat(std::min(party_id, prev), std::max(party_id, prev)));
+    ed_prev->set_link_type(party_id < prev ? LinkType::SERVER : LinkType::CLIENT);
 }
 
 
@@ -152,48 +155,54 @@ void ABY3Scheduler::add_vm(rpc::Node *node, int i,
  * @brief  Dispatch ABY3  MPC task
  *
  */
-void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
+retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
   PushTaskRequest send_request;
   send_request.CopyFrom(*actorPushTaskRequest);
   if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
     // auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
     auto party_access_info = send_request.mutable_task()->mutable_party_access_info();
-    send_request.mutable_task()->set_type(TaskType::NODE_TASK);
     const auto& party_info = send_request.task().party_access_info();
     std::set<std::string> party_name;
+    std::vector<rpc::Node> party_nodes;
     for (const auto& [role, node_list] : party_info) {
       party_name.insert(role);
+      const auto& node = node_list.node(0);
+      party_nodes.emplace_back(node);
     }
     if (party_name.size() != 3) {
       LOG(ERROR) << "ABY3 need 3 party, but get " << party_name.size();
-      return;
+      return retcode::FAIL;
     }
     int party_id = {0};
     for (const auto& name_ : party_name) {
       auto node = (*party_access_info)[name_].mutable_node(0);
-      add_vm(node, party_id, &send_request);
+      add_vm(party_id, send_request, party_nodes, node);
       party_id++;
     }
   }
 
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(send_request, &str);
-  LOG(INFO) << "ABY3Scheduler::dispatch: " << str;
+  if (VLOG_IS_ON(5)) {
+    std::string str;
+    google::protobuf::TextFormat::PrintToString(send_request, &str);
+    VLOG(5) << "ABY3Scheduler::dispatch: " << str;
+  }
 
   LOG(INFO) << "Dispatch SubmitTask to "
       << send_request.task().party_access_info().size() << " node";
   // schedule
   std::vector<std::thread> thrds;
+  std::vector<std::future<retcode>> result_fut;
   const auto& party_access_info = send_request.task().party_access_info();
   for (const auto& [role, node_list] : party_access_info) {
     for (const auto& pb_node : node_list.node()) {
       Node dest_node;
       pbNode2Node(pb_node, &dest_node);
       int32_t rank = pb_node.rank();
-      LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
+      LOG(INFO) << "Dispatch Task to party node: " << dest_node.to_string() << " "
           << "role: " << role << " rank: " << rank;
-      thrds.emplace_back(
-        std::thread(
+      result_fut.emplace_back(
+        std::async(
+          std::launch::async,
           &ABY3Scheduler::ScheduleTask,
           this,
           role,
@@ -202,9 +211,14 @@ void ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
           std::ref(send_request)));
     }
   }
-  for (auto&& t : thrds) {
-    t.join();
+  bool has_error{false};
+  for (auto&& fut : result_fut) {
+    auto ret = fut.get();
+    if (ret != retcode::SUCCESS) {
+      has_error = true;
+    }
   }
+  return has_error ? retcode::FAIL : retcode::SUCCESS;
 }
 
 } // namespace primihub::task

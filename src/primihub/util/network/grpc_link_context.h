@@ -26,6 +26,7 @@ class GrpcChannel : public IChannel {
   retcode sendRecv(const std::string& role, const std::string& send_data, std::string* recv_data) override;
   retcode sendRecv(const std::string& role, std::string_view send_data, std::string* recv_data) override;
   retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) override;
+  retcode executeTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) override;
   retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) override;
   retcode updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) override;
   retcode fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) override;

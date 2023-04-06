@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
 
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/common/defines.h"
@@ -41,7 +41,7 @@ class FLScheduler : public VMScheduler {
                metas_with_role_tag_(metas_with_role_tag) {}
      ~FLScheduler() {}
 
-     void dispatch(const PushTaskRequest *pushTaskRequest) override;
+     retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
  protected:
     void push_node_py_task(const std::string& node_id,
                       const std::string& role,

@@ -29,7 +29,6 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     try {
         std::string role = task.role();
         int32_t rank = task.rank();
-        LOG(ERROR) << "role: " << task.role() << " rank: " << task.rank();
         psi_type_ = param_map["psiType"].value_int32();
         result_file_path_ = param_map["outputFullFilename"].value_string();
         auto it = param_map.find("sync_result_to_server");
