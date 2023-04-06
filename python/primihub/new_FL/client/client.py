@@ -34,7 +34,7 @@ class Client:
             
             #set data set
             Dataset = common_pb2.Dataset()
-            for k, val in task_parameter[party].items():
+            for k, val in task_parameter['data'].items():
                 Dataset.data[k] = val
             party_datasets[party] = Dataset
 
