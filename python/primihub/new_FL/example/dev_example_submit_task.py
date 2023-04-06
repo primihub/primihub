@@ -4,6 +4,25 @@ import sys
 sys.path.append("..")
 from client import Client
 from copy import deepcopy
+
+def generate_para_map(task_parameter, data, roles):
+    party2role = dict()
+    tmp_party_list = []
+    for role, party_list in roles.items():
+            for party in party_list:
+                party2role[party] = role
+                tmp_party_list.append(party)
+    
+    #set the paramap
+    para_map = {}
+    for party in tmp_party_list:
+        tmp_param = deepcopy(task_parameter)
+        tmp_param['role'] = party2role[party]
+        tmp_param['data'] = data[party]
+        para_map[party] = tmp_param
+    
+    return para_map
+
 class Dev_example:
     def __init__(self, node_config, roles, num_iter = 10):
         
@@ -21,29 +40,15 @@ class Dev_example:
         #set commom paramerter
         task_parameter = dict()
         task_parameter['param'] = self.param
-        task_parameter['data'] = data
         task_parameter['process'] = 'train'
-        
-
-        tmp_party_list = []
-        task_parameter['party2role'] = dict()
-        #set the party and the role
-        for role, party_list in self.roles.items():
-            for party in party_list:
-                task_parameter['party2role'][party] = role
-                tmp_party_list.append(party)
-
-
+        #generate the task map
+        para_map = generate_para_map(task_parameter, data, self.roles)
         #set the func map
         func_map = {'guests': Dev_example_guest.run,
                     'host': Dev_example_host.run}
-        
-        #set the paramap
-        para_map = {}
-        for party in tmp_party_list:
-            para_map[party] = task_parameter
-        
 
+        
+        
         #submit the task and get the task ID
         task_ids = self.client.submit(func_map,para_map)
 

@@ -34,10 +34,20 @@ class Executor:
         task = PushTaskRequest.task
 
 
+        print("Below are the code run on the server")
+        #get the name first
+        task_name = task.name
+        party_name = task.party_name
+        print(f"party_name is : {party_name}")
+        #process the parameters
+        task_params = task.params.param_map[party_name].value_string
+        task_parameter = json.loads(task_params.decode())
+        print(f"task_parameter: {task_parameter}")
+        party_name = task.party_name
+        
 
-        name = task.name
-        params = task.params
-        print(f"params: {params}")
+
+
         code = task.code
         for role in code:
             code[role] = loads(code[role])
