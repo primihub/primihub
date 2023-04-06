@@ -1,7 +1,7 @@
 import pandas as pd
 class Dev_example_guest:
     @staticmethod
-    def run(self, context):
+    def run(context):
         df = pd.DataFrame([1,2,3])
         df.to_csv("/home/primihub/czl/res.csv")
     
