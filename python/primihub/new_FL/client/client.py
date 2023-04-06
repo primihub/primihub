@@ -23,6 +23,7 @@ class Client:
         #updata the params
         cp_param =  common_pb2.Params()
         example_party = "" #
+        party_datasets = {}
         for party, task_parameter in para_map.items():
             process = task_parameter['process'] #only one time is enough
             example_party = party #only one time is enough
@@ -31,6 +32,12 @@ class Client:
             cp_param.param_map[party].is_array = False
             cp_param.param_map[party].value_string = json.dumps(task_parameter).encode()
             
+            #set data set
+            Dataset = common_pb2.Dataset()
+            for k, val in task_parameter[party]:
+                Dataset.data[k] = val
+            party_datasets[party] = Dataset
+
 
         cp_task_info = common_pb2.TaskContext()
         cp_task_info.task_id = task_id
