@@ -33,9 +33,9 @@ class Client:
             
 
         cp_task_info = common_pb2.TaskContext()
-        common_pb2.TaskContext.task_id = task_id
-        common_pb2.TaskContext.job_id = task_id
-        common_pb2.TaskContext.request_id = task_id
+        cp_task_infotask_id = task_id
+        cp_task_info.job_id = task_id
+        cp_task_info.request_id = task_id
 
 
 
