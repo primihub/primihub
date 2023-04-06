@@ -1,6 +1,6 @@
 from dev_example_submit_task import Dev_example
 
-node_config = {
+party_access_info = {
     'Alice':
         {
             'ip': '127.0.0.1',
