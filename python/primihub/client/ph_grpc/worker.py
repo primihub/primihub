@@ -43,8 +43,7 @@ class WorkerClient(GRPCConnect):
                      node_map: dict = None,
                      input_datasets: str = None,
                      task_info: common_pb2.TaskContext = None,
-                     role: str = None,  # TODO
-                     rank: int = None,
+                     party_name: str = None,  # TODO
                      party_datasets: dict = None,
                      party_access_info: dict = None
                      ):
@@ -60,8 +59,7 @@ class WorkerClient(GRPCConnect):
             "node_map" :node_map,
             "input_datasets" : input_datasets, 
             "task_info" : task_info,
-            "role" : role,
-            "rank": rank,
+            "party_name" : party_name,
             "party_datasets" : party_datasets,
             "party_access_info" : party_access_info
         }
