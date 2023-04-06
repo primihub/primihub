@@ -28,11 +28,11 @@ roles = {'guest':['Alice'],
 
 data_path = {
     'Alice':{
-    'X':'Alice_X',
-    'y':'Alice_y',
+    'X':'"train_party_0',
+    'y':'train_party_0',
     },
-    'Bob':{'X': 'Bob_X'},
-    'Charlie':{'X': 'Charlie_X'}
+    'Bob':{'X': 'train_party_1'},
+    'Charlie':{'X': 'train_party_2'}
 }
 
 
