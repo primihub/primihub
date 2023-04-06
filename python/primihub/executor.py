@@ -46,8 +46,8 @@ class Executor:
         print(f"task_parameter: {task_parameter}")
         
         role_name = task_parameter['role']
-        code = task.code
-        loads(code[role_name]).run(123)
+        my_code = task.code[role_name]
+        loads(my_code)(123)
         task_info = task.task_info
         party_datasets = task.party_datasets
         print(f"party_datasets: {party_datasets}")
