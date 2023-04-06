@@ -28,7 +28,4 @@ class Executor:
 
     @staticmethod
     def execute_py():
-        import pandas as pd
-        df = pd.DataFrame([1,2,3])
-        df.to_csv("/home/primihub/czl/res1.csv")
-        print("abc")
+        print(Context.message)
