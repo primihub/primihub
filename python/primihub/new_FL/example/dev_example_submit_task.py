@@ -44,10 +44,9 @@ class Dev_example:
         #generate the task map
         para_map = generate_para_map(task_parameter, data, self.roles)
         #set the func map
-        func_map = {'guests': Dev_example_guest,
-                    'host': Dev_example_host}
+        func_map = {'guests': Dev_example_guest.run,
+                    'host': Dev_example_host.run}
 
-        
         
         #submit the task and get the task ID
         task_ids = self.client.submit(func_map,para_map)

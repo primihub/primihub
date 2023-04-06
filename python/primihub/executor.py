@@ -39,19 +39,15 @@ class Executor:
         task_name = task.name
         party_name = task.party_name
         print(f"party_name is : {party_name}")
+        
         #process the parameters
         task_params = task.params.param_map[party_name].value_string
         task_parameter = json.loads(task_params.decode())
         print(f"task_parameter: {task_parameter}")
-        party_name = task.party_name
         
-
-
-
+        role_name = task_parameter['role']
         code = task.code
-        for role in code:
-            code[role] = loads(code[role])
-        print(f"code : {code}")
+        loads(code[role_name]).run(123)
         task_info = task.task_info
         party_datasets = task.party_datasets
         print(f"party_datasets: {party_datasets}")
