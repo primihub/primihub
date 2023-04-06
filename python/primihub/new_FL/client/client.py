@@ -61,7 +61,6 @@ class Client:
                            None,                           # Node map. not used at the moment
                            None,                           # Input dataset.
                            cp_task_info,
-                           None,  
                            None,
                            party_datasets,
                            party_access_info)                           # Channel map.
