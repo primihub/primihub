@@ -16,7 +16,7 @@ node_config = {
     'Charlie':
         {
             'ip': '127.0.0.1',
-            'port': '50051',
+            'port': '50052',
             'use_tls': False,
         },
     'task_manager': '127.0.0.1:50050',
