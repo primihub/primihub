@@ -65,7 +65,8 @@ class Client:
                            None,
                            party_datasets,
                            party_access_info)                           # Channel map.
-
+        
+        print(f"================data_seb_pb is : {party_datasets}")
 
 
         request = self.client.push_task_request(b'1',  # Intended_worker_id.
