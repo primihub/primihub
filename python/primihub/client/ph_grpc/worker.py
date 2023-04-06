@@ -84,7 +84,7 @@ class WorkerClient(GRPCConnect):
             "submit_client_id": submit_client_id
         }
         request = worker_pb2.PushTaskRequest(**request_data)
-        print(request)
+        print(f"########################The request is {request}")
         return request
 
     def submit_task(self, request: worker_pb2.PushTaskRequest) -> worker_pb2.PushTaskReply:
