@@ -95,6 +95,6 @@ class WorkerClient(GRPCConnect):
         # print(type(request_data), request_data)
         with self.channel:
             reply = self.stub.SubmitTask(request)
-            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))  # noqa
+            print("return code: %s, job id: %s" % (reply.ret_code, reply.task_info.job_id))  # noqa
             return reply
 
