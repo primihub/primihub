@@ -45,14 +45,16 @@ class Executor:
         task_parameter = json.loads(task_params.decode())
         print(f"task_parameter: {task_parameter}")
         
-        role_name = task_parameter['role']
-        my_code = task.code[role_name]
-        loads(my_code)(123)
         task_info = task.task_info
+        print(f"task_info is : {task_info}")
         party_datasets = task.party_datasets
         print(f"party_datasets: {party_datasets}")
         party_access_info = task.party_access_info
         print(f"party_access_info : {party_access_info}s")
 
+        #execute the function
+        role_name = task_parameter['role']
+        my_code = task.code[role_name]
+        loads(my_code)(task_parameter, party_access_info)
 
         
