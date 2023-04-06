@@ -1,5 +1,5 @@
-from dev_example_guest import Dev_example_guest
-from dev_example_host import Dev_example_host
+from primihub.new_FL.example.dev_example_guest import Dev_example_guest
+from primihub.new_FL.example.dev_example_host import Dev_example_host
 import sys
 sys.path.append("..")
 from client import Client
@@ -44,8 +44,8 @@ class Dev_example:
         #generate the task map
         para_map = generate_para_map(task_parameter, data, self.roles)
         #set the func map
-        func_map = {'guests': Dev_example_guest.run,
-                    'host': Dev_example_host.run}
+        func_map = {'guests': Dev_example_guest,
+                    'host': Dev_example_host}
 
         
         
