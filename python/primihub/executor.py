@@ -56,5 +56,3 @@ class Executor:
         role_name = task_parameter['role']
         my_code = task.code[role_name]
         loads(my_code)(task_parameter, party_access_info)
-
-        
