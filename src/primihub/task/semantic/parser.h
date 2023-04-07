@@ -23,19 +23,9 @@
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/language/py_parser.h"
+#include "src/primihub/task/common.h"
 
-using primihub::rpc::Task;
-using primihub::rpc::Language;
-using primihub::service::DatasetService;
-using primihub::service::DatasetWithParamTag;
-using primihub::service::DatasetWithParamTag;
-using primihub::service::DatasetMetaWithParamTag;
 namespace primihub::task {
-
-using PeerDatasetMap = std::map<std::string, std::vector<DatasetWithParamTag>>;
-using NodeWithRoleTag = std::pair<rpc::Node, std::string>;
-using PeerContextMap = std::map<std::string, NodeContext>; // key: role name
-
 // Primihub semantic layer.
 // This class is responsible for parsing the task and generating Scheduler
 // object.
@@ -56,6 +46,9 @@ class ProtocolSemanticParser {
     int transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
                             PushTaskRequest &taskRequest);
     void prepareReply(primihub::rpc::PushTaskReply* reply);
+
+    std::vector<Node>& notifyServer() {return notify_server_;}
+    std::vector<Node>& taskServer() {return task_server_;}
 
   private:
     void parseNofifyServer(const std::vector<Node>& notify_servers) {

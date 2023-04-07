@@ -8,19 +8,20 @@
 
 namespace primihub::network {
 enum class LinkMode {
-  GRPC = 0,
-  RAW_SOCKET,
+    GRPC = 0,
+    RAW_SOCKET,
 };
 
 class LinkFactory {
  public:
-  static std::unique_ptr<LinkContext> createLinkContext(LinkMode mode = LinkMode::GRPC) {
-    if (mode == LinkMode::GRPC) {
-      return std::make_unique<GrpcLinkContext>();
-    } else {
-      LOG(ERROR) << "Unimplement Mode: " << static_cast<int>(mode);
+    static std::unique_ptr<LinkContext> createLinkContext(LinkMode mode = LinkMode::GRPC) {
+        if (mode == LinkMode::GRPC) {
+            return std::make_unique<GrpcLinkContext>();
+        } else {
+            LOG(ERROR) << "Unimplement Mode: " << static_cast<int>(mode);
+        }
+        return nullptr;
     }
-  }
 };
 
 }

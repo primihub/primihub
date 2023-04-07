@@ -16,18 +16,17 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_FL_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_FL_TASK_H_
 
-#include "src/primihub/protos/worker.pb.h"
-#include "src/primihub/task/language/py_parser.h"
-#include "src/primihub/task/semantic/task.h"
-#include <pybind11/embed.h>
 #include <string>
 #include <vector>
 #include <boost/process.hpp>
 
+#include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/task/semantic/task.h"
+
 using primihub::rpc::PushTaskRequest;
 
-namespace py = pybind11;
 namespace bp = boost::process;
+
 namespace primihub::task {
 /* *
  * @brief Federated Learning task, only support python code.

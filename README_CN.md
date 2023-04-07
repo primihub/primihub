@@ -24,15 +24,14 @@ PrimiHub是一个支持多方计算、联邦学习、隐私求交(PSI)、隐私�
 2) 下载预配置redis<br/>
   [x86_64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_x86_64.tar.gz)<br/>
   [aarch64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_aarch64.tar.gz)<br/>
-3) 通过源码编译[编译步骤](https://docs.primihub.com/docs/developer-docs/build)<br/>
+3) 通过源码编译[编译步骤](https://docs.primihub.com/docs/advance-usage/start/build)<br/>
 运行服务
 ```bash
 进入 redis 目录
 执行 ./run_redis.sh 启动redis
 切换到与bazel-bin平行的目录
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml &> log_node0 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml &> log_node1 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml &> log_node2 &
+注意！！！！！！ 如果目标程序是通过源码编译获取的，请手动将start_server.sh中定义的PYTHONPATH环境变量注释
+./start_server.sh
 ```
 
 服务的日志分别存储在log_node0, log_node1, log_node2文件中，便于以后查看<br/>
@@ -97,20 +96,20 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 >  2. 使用哪些共享数据集
 >  3. 做什么样的隐私计算任务
 
-在这个例子中primihub-cli会使用默认参数向 ***node 0*** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见 ***[创建任务]([http://docs.primihub.com/docs/advance-usage/create-tasks](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1))***。
+在这个例子中primihub-cli会使用默认参数向 ***node 0*** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见 ***[创建任务](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***。
 
 ## 进阶使用
-想了解如何从原生应用启动以及关于如何利用PrimiHub的特性，实现更多应用，见 [进阶使用](https://docs.primihub.com/docs/core-concept/model)。
+想了解如何从原生应用启动以及关于如何利用PrimiHub的特性，实现更多应用，见 [进阶使用](https://docs.primihub.com/docs/developer-docs/core-concept/model)。
 
 ## 开发者
-* 关于如何编译，请见[编译](http://docs.primihub.com/docs/developer-docs/build)
-* 关于如何贡献代码，请见 [PrimiHub开源社区治理](http://docs.primihub.com/docs/primihub-community)
+* 关于如何编译，请见[编译](https://docs.primihub.com/docs/advance-usage/start/build)
+* 关于如何贡献代码，请见 [PrimiHub开源社区治理](https://docs.primihub.com/docs/developer-docs/primihub-community)
 
-## [路线图](https://docs.primihub.com/docs/roadmap/)
+## [路线图](https://docs.primihub.com/docs/developer-docs/roadmap)
 
 ## 如何贡献
 如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面随意开启一个新的话题，比如文档、创意、Bug等。<br/>
-同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](http://docs.primihub.com/docs/primihub-community)<br/>
+同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](https://docs.primihub.com/docs/developer-docs/primihub-community)<br/>
 我们是一个开放共建的开源项目，欢迎参与到我们的项目中。<br/>
 ## 贡献者
 <a href="https://github.com/primihub/primihub/graphs/contributors">

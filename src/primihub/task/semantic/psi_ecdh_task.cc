@@ -83,7 +83,7 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     const auto& node_map = task.node_map();
     for (const auto& it : node_map) {
         std::string node_id = it.first;
-        if (node_id == this->node_id_) {
+        if (!isParty(node_id)) {
             continue;
         }
         const auto& node_info = it.second;

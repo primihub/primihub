@@ -61,15 +61,19 @@ void CSVCursor::close() {
   // TODO
 }
 
+std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
+  return read();
+}
+
 // read all data from csv file
-std::shared_ptr<primihub::Dataset> CSVCursor::read() {
+std::shared_ptr<Dataset> CSVCursor::read() {
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(
       arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(filePath);
   if (!result_ifstream.ok()) {
     std::cout << "Failed to open file: " << filePath << std::endl;
-    return nullptr; // TODO throw exception
+    return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
 
@@ -92,17 +96,16 @@ std::shared_ptr<primihub::Dataset> CSVCursor::read() {
     // (for example a CSV syntax error or failed type conversion)
   }
   std::shared_ptr<arrow::Table> table = *maybe_table;
-  auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
+  auto dataset = std::make_shared<Dataset>(table, this->driver_);
   return dataset;
 }
 
-std::shared_ptr<primihub::Dataset> CSVCursor::read(int64_t offset,
-                                                   int64_t limit) {
+std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
   // TODO
   return nullptr;
 }
 
-int CSVCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
+int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
   // write Dataset to csv file
   auto result = arrow::io::FileOutputStream::Open(this->filePath);
   if (!result.ok()) {

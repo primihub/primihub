@@ -108,6 +108,9 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+    if (iter->first == SCHEDULER_NODE) {
+      continue;
+    }
     rpc::Node &node = iter->second;
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     party_id_node_map[party_id] = node;

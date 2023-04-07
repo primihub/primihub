@@ -67,6 +67,7 @@ class DataDirverFactory {
             std::string err_msg = "[DataDirverFactory]Invalid dirver name [" + dirverName + "]";
             throw std::invalid_argument(err_msg);
         }
+        return nullptr;
     }
     // internal
     static DataSetAccessInfoPtr createAccessInfoInternal(const std::string& driver_type) {

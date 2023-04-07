@@ -33,7 +33,9 @@ cmake-*/
 
 bazel-bin
 bazel-out
-bazel-primihub
+bazel-testlogs
+bazel-primihub*
+bazel-primihub-enterprise
 bazel-primihub_github
 bazel-testlogs
 

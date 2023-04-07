@@ -35,14 +35,9 @@
 #include <vector>
 #include <future>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/node/nodelet.h"
-
 #include "src/primihub/node/worker/worker.h"
 #include "src/primihub/protos/psi.grpc.pb.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
@@ -91,30 +86,38 @@ class VMNodeImpl final: public VMNode::Service {
                       const PushTaskRequest *pushTaskRequest,
                       PushTaskReply *pushTaskReply) override;
     Status ExecuteTask(ServerContext* context,
-        grpc::ServerReaderWriter<ExecuteTaskResponse, ExecuteTaskRequest>* stream) override;
+                      grpc::ServerReaderWriter<ExecuteTaskResponse,
+                      ExecuteTaskRequest>* stream) override;
+    Status KillTask(::grpc::ServerContext* context,
+                    const ::primihub::rpc::KillTaskRequest* request,
+                    ::primihub::rpc::KillTaskResponse* response) override;
+    // task status operation
+    Status FetchTaskStatus(::grpc::ServerContext* context,
+                          const ::primihub::rpc::TaskContext* request,
+                          ::primihub::rpc::TaskStatusReply* response) override;
+    Status UpdateTaskStatus(::grpc::ServerContext* context,
+                            const ::primihub::rpc::TaskStatus* request,
+                            ::primihub::rpc::Empty* response);
 
     Status Send(ServerContext* context,
-        ServerReader<TaskRequest>* reader, TaskResponse* response) override;
-
+                ServerReader<TaskRequest>* reader,
+                TaskResponse* response) override;
     Status Recv(::grpc::ServerContext* context,
-        const TaskRequest* request,
-        grpc::ServerWriter< ::primihub::rpc::TaskResponse>* writer) override;
+                const TaskRequest* request,
+                grpc::ServerWriter<::primihub::rpc::TaskResponse>* writer) override;
     Status SendRecv(::grpc::ServerContext* context,
-        grpc::ServerReaderWriter< ::primihub::rpc::TaskResponse, ::primihub::rpc::TaskRequest>* stream) override;
+                    grpc::ServerReaderWriter<::primihub::rpc::TaskResponse,
+                    ::primihub::rpc::TaskRequest>* stream) override;
 
     // for communication between different process
     Status ForwardSend(::grpc::ServerContext* context,
-        ::grpc::ServerReader< ::primihub::rpc::ForwardTaskRequest>* reader,
-        ::primihub::rpc::TaskResponse* response) override;
+                      ::grpc::ServerReader<::primihub::rpc::ForwardTaskRequest>* reader,
+                      ::primihub::rpc::TaskResponse* response) override;
 
     // for communication between different process
     Status ForwardRecv(::grpc::ServerContext* context,
-        const ::primihub::rpc::TaskRequest* request,
-        ::grpc::ServerWriter< ::primihub::rpc::TaskRequest>* writer) override;
-
-    Status KillTask(::grpc::ServerContext* context,
-        const ::primihub::rpc::KillTaskRequest* request,
-        ::primihub::rpc::KillTaskResponse* response) override;
+                      const ::primihub::rpc::TaskRequest* request,
+                      ::grpc::ServerWriter<::primihub::rpc::TaskRequest>* writer) override;
 
     std::shared_ptr<Worker> CreateWorker();
     std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
@@ -126,9 +129,19 @@ class VMNodeImpl final: public VMNode::Service {
     std::string get_node_id() { return this->node_id; }
 
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet;}
+
  protected:
+    retcode getSchedulerNodeCfg(const PushTaskRequest& request, Node* scheduler_node);
+    retcode notifyTaskStatus(const PushTaskRequest& request,
+        const rpc::TaskStatus::StatusCode& status, const std::string& message);
+    retcode notifyTaskStatus(const Node& scheduler_node,
+        const std::string& task_id, const std::string& job_id,
+        const std::string& request_id, const std::string& role,
+        const rpc::TaskStatus::StatusCode& status, const std::string& message);
+    retcode updateTaskStatusInternal(const rpc::TaskStatus& task_status);
     void buildTaskResponse(const std::string& data, std::vector<rpc::TaskResponse>* response);
-    void buildTaskRequest(const std::string& job_id, const std::string& task_id, const std::string& role,
+    void buildTaskRequest(const std::string& job_id, const std::string& task_id,
+        const std::string& request_id, const std::string& role,
         const std::string& data, std::vector<rpc::TaskRequest>* requests);
     std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
     int process_task_reseponse(bool is_psi_response,
@@ -138,37 +151,37 @@ class VMNodeImpl final: public VMNode::Service {
           std::vector<ExecuteTaskResponse>* splited_responses);
     int process_pir_response(const ExecuteTaskResponse& response,
           std::vector<ExecuteTaskResponse>* splited_responses);
-    std::shared_ptr<Worker> getWorker(const std::string& job_id, const std::string& task_id) {
-      std::string worker_id = getWorkerId(job_id, task_id);
-      std::lock_guard<std::mutex> lck(task_executor_mtx);
-      auto it = task_executor_map.find(worker_id);
-      if (it != task_executor_map.end()) {
-        return std::get<0>(it->second);
-      }
-      LOG(ERROR) << "no worker found for worker id: " << worker_id;
-      return nullptr;
-    }
-    std::shared_ptr<Worker> getSchedulerWorker(const std::string& job_id, const std::string& task_id) {
-        std::string worker_id = getWorkerId(job_id, task_id);
-        // UNIMPLEMENT
-        return nullptr;
+    std::shared_ptr<Worker> getWorker(const std::string& job_id,
+                                      const std::string& task_id,
+                                      const std::string& request_id);
+
+    std::shared_ptr<Worker> getSchedulerWorker(const std::string& job_id,
+                                              const std::string& task_id,
+                                              const std::string& request_id);
+
+    inline std::string getWorkerId(const std::string& job_id,
+                                  const std::string& task_id,
+                                  const std::string& request_id) {
+      // return job_id + "_" + task_id;
+      return request_id;
     }
 
-    inline std::string getWorkerId(const std::string& job_id, const std::string& task_id) {
-      return job_id + "_" + task_id;
+    inline std::string getWorkerId(const std::string& request_id) {
+      return request_id;
     }
+
     retcode waitUntilWorkerReady(const std::string& worker_id, grpc::ServerContext* context, int timeout = -1);
     /**
      * task status may not received by client
     */
     void cacheLastTaskStatus(const std::string& worker_id,
-        const std::string& submited_client_id, const std::string& status);
+        const std::string& submited_client_id, const rpc::TaskStatus::StatusCode& status);
     /**
      * input: worker_id
      * output tuple<bool, std::string>
      * bool: worker_id related task finished or not
      * std::string: who submited this task
-     * std::string: task status
+     * rpc::TaskStatus::StatusCode: task status
     */
     std::tuple<bool, std::string, std::string> isFinishedTask(const std::string& worker_id);
 
@@ -197,13 +210,21 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> nodelet;
     std::string config_file_path;
     std::unique_ptr<VMNode::Stub> stub_;
-    int wait_worker_ready_timeout_ms{5*1000};    // 60s
+    int wait_worker_ready_timeout_ms{WAIT_TASK_WORKER_READY_TIMEOUT_MS};
     std::shared_mutex finished_task_status_mtx_;
     // key: worker id
     // value: submited_client_id, task_status, lastupdate timestamp
     std::map<std::string, std::tuple<std::string, std::string, time_t>> finished_task_status_;
     std::future<void> clean_cached_task_status_fut_;
-    uint32_t cached_task_status_timeout_{5};
+    int cached_task_status_timeout_{CACHED_TASK_STATUS_TIMEOUT_S};
+
+    std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
+
+    std::shared_mutex task_scheduler_mtx_;
+    std::map<std::string, task_executor_t> task_scheduler_map_;
+    ThreadSafeQueue<std::string> fininished_scheduler_workers_;
+    std::future<void> finished_scheduler_worker_fut;
+    int scheduler_worker_timeout_s{SCHEDULE_WORKER_TIMEOUT_S};
 };
 
 } // namespace primihub

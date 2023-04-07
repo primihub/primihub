@@ -36,9 +36,10 @@ class CSVCursor : public Cursor {
 public:
   CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver);
   ~CSVCursor();
-  std::shared_ptr<primihub::Dataset> read() override;
-  std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
-  int write(std::shared_ptr<primihub::Dataset> dataset) override;
+  std::shared_ptr<primihub::Dataset> readMeta() override;
+  std::shared_ptr<Dataset> read() override;
+  std::shared_ptr<Dataset> read(int64_t offset, int64_t limit);
+  int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
 
 private:

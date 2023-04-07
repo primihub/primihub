@@ -2,16 +2,22 @@
 
 #include "src/primihub/util/model_util.h"
 
-using namespace std;
-using namespace Eigen;
+#include <iostream>
+#include "src/primihub/util/eigen_util.h"
 
 namespace primihub {
 
-void Linear_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<double>& mModel, double mNoise = 1,
-    double mSd = 1) {
-  if (X.rows() != Y.rows()) throw std::runtime_error(LOCATION);
-  if (1 != Y.cols()) throw std::runtime_error(LOCATION);
-  if (X.cols() != mModel.rows()) throw std::runtime_error(LOCATION);
+void Linear_sample(eMatrix<double>& X, eMatrix<double>& Y,
+                   eMatrix<double>& mModel, double mNoise = 1, double mSd = 1) {
+  if (X.rows() != Y.rows()) {
+      throw std::runtime_error(LOCATION);
+  }
+  if (1 != Y.cols()) {
+      throw std::runtime_error(LOCATION);
+  }
+  if (X.cols() != mModel.rows()) {
+      throw std::runtime_error(LOCATION);
+  }
 
   std::default_random_engine generator;
   std::normal_distribution<double> distribution(mNoise, mSd);
@@ -19,29 +25,36 @@ void Linear_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<double>& mMod
   eMatrix<double> noise(X.rows(), 1);
 
   for (int i = 0; i < X.rows(); ++i) {
-    for (int j = 0; j < X.cols(); ++j) {
-      X(i, j) = distribution(generator);
-    }
+      for (int j = 0; j < X.cols(); ++j) {
+          X(i, j) = distribution(generator);
+      }
 
-    noise(i, 0) = distribution(generator);
+      noise(i, 0) = distribution(generator);
   }
 
   Y = X * mModel + noise;
 }
 
-void Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<double>& mModel, double mNoise = 1,
-    double mSd = 1, bool print = false) {
-  if (X.rows() != Y.rows()) throw std::runtime_error(LOCATION);
-  if (1 != Y.cols()) throw std::runtime_error(LOCATION);
-  if (X.cols() != mModel.rows()) throw std::runtime_error(LOCATION);
+void Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y,
+                     eMatrix<double>& mModel, double mNoise = 1,
+                     double mSd = 1, bool print = false) {
+  if (X.rows() != Y.rows()) {
+      throw std::runtime_error(LOCATION);
+  }
+  if (1 != Y.cols()) {
+      throw std::runtime_error(LOCATION);
+  }
+  if (X.cols() != mModel.rows()) {
+      throw std::runtime_error(LOCATION);
+  }
   std::default_random_engine generator(time(NULL));
   std::normal_distribution<double> distribution(mNoise, mSd);
 
   eMatrix<double> noise(X.rows(), 1);
   for (int i = 0; i < X.rows(); ++i) {
-    for (int j = 0; j < X.cols(); ++j) {
-      X(i, j) = distribution(generator);
-    }
+      for (int j = 0; j < X.cols(); ++j) {
+          X(i, j) = distribution(generator);
+      }
 
     noise(i, 0) = distribution(generator);
   }
@@ -49,11 +62,11 @@ void Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<double>& mM
   Y = X * mModel + noise;
 
   for (int i = 0; i < Y.size(); ++i) {
-    if (print) {
-      std::cout << X.row(i).format(HeavyFmt);
-      std::cout << " -> " << (Y(i) > 0) << Y.row(i).format(HeavyFmt) << std::endl;
-    }
-    Y(i) = Y(i) > 0;
+      if (print) {
+          std::cout << X.row(i).format(HeavyFmt);
+          std::cout << " -> " << (Y(i) > 0) << Y.row(i).format(HeavyFmt) << std::endl;
+      }
+      Y(i) = Y(i) > 0;
   }
 }
 

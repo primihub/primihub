@@ -54,16 +54,16 @@ Nodelet::Nodelet(const std::string& config_file_path) {
         notify_server_info_.port_ = std::stoi(server_info[1]);
         notify_server_info_.ip_ = service_cfg.ip();
     }
-    notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr_);
-    // std::thread notify_service_thread([this]() {
-    //     notify_service_->run();
-    // });
-    // notify_service_thread.detach();
-    notify_service_fut = std::async(std::launch::async,
-        [this]() {
-            SET_THREAD_NAME("notifyServer");
-            notify_service_->run();
-        });
+    // notify_service_ = std::make_shared<primihub::service::NotifyService>(notify_server_addr_);
+    // // std::thread notify_service_thread([this]() {
+    // //     notify_service_->run();
+    // // });
+    // // notify_service_thread.detach();
+    // notify_service_fut = std::async(std::launch::async,
+    //     [this]() {
+    //         SET_THREAD_NAME("notifyServer");
+    //         notify_service_->run();
+    //     });
     // Wait for p2p node to start
     sleep(3);
 

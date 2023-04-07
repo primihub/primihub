@@ -22,16 +22,15 @@ two options you have to choose, Download the latest release version (released bi
 2) download redis<br/>
   [x86_64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_x86_64.tar.gz)<br/>
   [aarch64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_aarch64.tar.gz)<br/>
-3) build with source code [build](https://docs.primihub.com/docs/developer-docs/build)<br/>
+3) build with source code [build](https://docs.primihub.com/docs/advance-usage/start/build)<br/>
 
 ### Start Server
 ```bash
 change to redis dir
 ./run_redis.sh
 change dir which parallel with bazel-bin
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml &> log_node0 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml &> log_node1 &
-GLOG_logtostderr=1 GLOG_v=7 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml &> log_node2 &
+waring !!!!!! if server is build by bazel build, before run script start_server.sh, comment the definition of PYTHONPATH
+./start_server.sh
 ```
 the server log will be record into log_node0, log_node1, log_node2 seperately<br/>
 if all server run success, using cmd ps -ef |grep bin/node, you will see the following process<br/>
@@ -46,6 +45,7 @@ choose one of server which is used to submit task
 run the follwing cmd
 ```shell
 ./bazel-bin/cli --server="${SERVER_IP}:${SERVER_PORT}" --task_config_file="example/mpc_lr_task_conf.json"
+or ./client_run.sh will execute all case
 ```
 
 ## Run Server with docker
@@ -104,17 +104,17 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 In this example, primihub-cli will use the default parameters to request an ABY3 tripartite logistic regression test task from ***node 0***. For the parameters that can be specified by cli, please refer to ***[Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***
 
 ## Advanced use
-To learn how to start from native applications and how to use PrimiHub features to implement more applications, see [Advanced Usage](https://docs.primihub.com/docs/core-concept/model)
+To learn how to start from native applications and how to use PrimiHub features to implement more applications, see [Advanced Usage](https://docs.primihub.com/docs/developer-docs/core-concept/model/)
 
 ## Developer
-* For how to build, see [Build](http://docs.primihub.com/docs/developer-docs/build)
+* For how to build, see [Build](https://docs.primihub.com/docs/advance-usage/start/build)
 
-## [Roadmap](https://docs.primihub.com/en/docs/roadmap)
+## [Roadmap](https://docs.primihub.com/docs/developer-docs/roadmap/)
 
 
 ## How to contribute
 If you want to contribute to this project, feel free to create an issue at our [Issue](https://github.com/primihub/primihub/issues) page (e.g., documentation, new idea and proposal).<br/>
-Also, you can learn about our community [PrimiHub Open Source Community Governance](http://docs.primihub.com/docs/primihub-community)<br/>
+Also, you can learn about our community [PrimiHub Open Source Community Governance](https://docs.primihub.com/docs/developer-docs/primihub-community)<br/>
 This is an active open source project for everyone, and we are always open to everyone who want to use this system or contribute to it.<br/>
 ## Contributors
 <a href="https://github.com/primihub/primihub/graphs/contributors">

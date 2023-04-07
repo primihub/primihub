@@ -21,9 +21,9 @@ class CircuitLibrary : public BetaLibrary {
 
   static void int_Sh3Piecewise_build_do(
     BetaCircuit& cd,
-    span<const BetaBundle> aa,
+    span<BetaBundle> aa,
     const BetaBundle & b,
-    span<const BetaBundle> c);
+    span<BetaBundle> c);
 
   static void Preproc_build(BetaCircuit& cd, u64 dec);
   static void argMax_build(BetaCircuit& cd, u64 dec, u64 numArgs);

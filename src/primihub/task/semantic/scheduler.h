@@ -103,6 +103,11 @@ class VMScheduler {
         }
     }
 
+    Node& getLocalNodeCfg() const {
+        auto& server_config = primihub::ServerConfig::getInstance();
+        return server_config.getServiceConfig();
+    }
+
  protected:
   const std::string node_id_;
   bool singleton_;

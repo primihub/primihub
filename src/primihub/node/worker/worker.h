@@ -22,10 +22,9 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <glog/logging.h>
-#include <grpc/grpc.h>
 #include <google/protobuf/text_format.h>
-#include <cmath>
 
+#include <cmath>
 #include <unordered_map>
 #include <algorithm>
 #include <chrono>
@@ -37,24 +36,11 @@
 #include <vector>
 #include <list>
 
-#include "Eigen/Dense"
-
 #include "src/primihub/node/nodelet.h"
-#include "src/primihub/common/clp.h"
-#include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/algorithm/regression.h"
-#include "src/primihub/algorithm/linear_model_gen.h"
-#include "src/primihub/algorithm/aby3ML.h"
-#include "src/primihub/algorithm/plainML.h"
-#include "src/primihub/protocol/aby3/sh3_gen.h"
-#include "src/primihub/util/network/socket/ioservice.h"
-#include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/semantic/private_server_base.h"
-#include "src/primihub/common/defines.h"
-
-using namespace std;
-using namespace Eigen;
+#include "src/primihub/common/common.h"
 
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::ExecuteTaskRequest;
@@ -64,23 +50,41 @@ namespace primihub {
 class Worker {
  public:
     explicit Worker(const std::string& node_id_,
-                     std::shared_ptr<Nodelet> nodelet_)
-        : node_id(node_id_), nodelet(nodelet_) {}
+            std::shared_ptr<Nodelet> nodelet_)
+            : node_id(node_id_), nodelet(nodelet_) {
+        task_ready_future_ = task_ready_promise_.get_future();
+        task_finish_future_ = task_finish_promise_.get_future();
+    }
+
     Worker(const std::string& node_id_, const std::string& worker_id,
             std::shared_ptr<Nodelet> nodelet_)
-        : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {}
+            : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {
+        task_ready_future_ = task_ready_promise_.get_future();
+        task_finish_future_ = task_finish_promise_.get_future();
+    }
+
     retcode execute(const PushTaskRequest* pushTaskRequest);
 
     int execute(const ExecuteTaskRequest *taskRequest,
                  ExecuteTaskResponse *taskResponse);
     inline std::string worker_id() {return worker_id_;}
+
     void kill_task();
+
     std::shared_ptr<primihub::task::TaskBase> getTask() {
         return task_ptr;
     }
     std::shared_ptr<primihub::task::ServerTaskBase> getServerTask() {
         return task_server_ptr;
     }
+    retcode waitForTaskReady();
+
+    // scheduler method
+    retcode fetchTaskStatus(rpc::TaskStatus* task_status);
+    retcode updateTaskStatus(const rpc::TaskStatus& task_status);
+    retcode waitUntilTaskFinish();
+    void setPartyCount(size_t party_count) {party_count_ = party_count;}
+    std::string workerId() const {return worker_id_;}
 
  private:
     std::unordered_map<std::string, std::shared_ptr<Worker>> workers_
@@ -92,8 +96,18 @@ class Worker {
     const std::string& node_id;
     std::shared_ptr<Nodelet> nodelet;
     std::string worker_id_;
-};
+    std::promise<bool> task_ready_promise_;
+    std::future<bool> task_ready_future_;
 
+    // scheduler data
+    ThreadSafeQueue<rpc::TaskStatus> task_status_;
+    std::shared_mutex final_status_mtx_;
+    std::map<std::string, std::string> final_status_;
+    std::promise<retcode> task_finish_promise_;
+    std::future<retcode> task_finish_future_;
+    size_t party_count_{0};
+    std::atomic<bool> scheduler_finished{false};
+};
 }  // namespace primihub
 
 #endif  // SRC_PRIMIHUB_NODE_WORKER_WORKER_H_

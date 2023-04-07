@@ -242,7 +242,7 @@ namespace primihub
 		{
 			static char const alphabet[] = "0123456789abcdef";
 			string output;
-			for (int i = 0; i < s.length(); i++)
+			for (size_t i = 0; i < s.length(); i++)
 			{
 				// cout << (int) s[i] << endl;
 				// cout << ((int)s[i] & 0x80) << " " << ((int)s[i] & 0x40) << " " << ((int)s[i] & 0x20) << " " << ((int)s[i] & 0x10) << " " << ((int)s[i] & 0x08) << " " << ((int)s[i] & 0x04) << " " << ((int)s[i] & 0x02) << " " << ((int)s[i] & 0x01) << endl;
@@ -364,6 +364,7 @@ namespace primihub
 				return "VGG16";
 			else
 				error("network not recognised in which_network");
+        return "network not recognised in which_network";
 		}
 
 		void print_myType(myType var, string message, string type)
@@ -480,12 +481,12 @@ namespace primihub
 				}
 			}
 
-			for (int i = 0; i < rows; ++i)
+			for (size_t i = 0; i < rows; ++i)
 			{
-				for (int j = 0; j < columns; ++j)
+				for (size_t j = 0; j < columns; ++j)
 				{
 					temp3[i * columns + j] = 0;
-					for (int k = 0; k < common_dim; ++k)
+					for (size_t k = 0; k < common_dim; ++k)
 					{
 						temp3[i * columns + j] += triple_a[i * common_dim + k].first * triple_b[k * columns + j].first +
 												  triple_a[i * common_dim + k].first * triple_b[k * columns + j].second +
@@ -557,11 +558,11 @@ namespace primihub
 			assert((divisor != 0) && "Cannot divide by 0");
 
 			if (BIT_SIZE == 32)
-				for (int i = 0; i < vec.size(); ++i)
+				for (size_t i = 0; i < vec.size(); ++i)
 					vec[i] = (myType)((double)((int32_t)vec[i]) / (double)((int32_t)divisor));
 
 			if (BIT_SIZE == 64)
-				for (int i = 0; i < vec.size(); ++i)
+				for (size_t i = 0; i < vec.size(); ++i)
 					vec[i] = (myType)((double)((int64_t)vec[i]) / (double)((int64_t)divisor));
 		}
 
@@ -620,7 +621,7 @@ namespace primihub
 		void multiplyByScalar(const RSSVectorMyType &a, size_t scalar, RSSVectorMyType &b)
 		{
 			size_t size = a.size();
-			for (int i = 0; i < size; ++i)
+			for (size_t i = 0; i < size; ++i)
 			{
 				b[i].first = a[i].first * scalar;
 				b[i].second = a[i].second * scalar;

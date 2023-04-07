@@ -16,7 +16,6 @@
 
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/util/network/socket/session.h"
 #include "src/primihub/algorithm/arithmetic.h"
 #include "src/primihub/algorithm/missing_val_processing.h"
 
@@ -24,6 +23,7 @@
 #include "src/primihub/algorithm/falcon_lenet.h"
 #include "src/primihub/algorithm/cryptflow2_maxpool.h"
 #endif
+#include "src/primihub/util/network/socket/session.h"
 
 namespace primihub::task
 {

@@ -22,7 +22,7 @@
 #include <atomic>
 #include <glog/logging.h>
 
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/task.h"
 
