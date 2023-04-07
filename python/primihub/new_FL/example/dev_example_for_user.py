@@ -36,7 +36,7 @@ data_path = {
 }
 
 
-model = Dev_example(node_config = node_config, roles= roles, num_iter=10)
+model = Dev_example(node_config = party_access_info, roles= roles, num_iter=10)
 
 
 model.train(data = data_path)
