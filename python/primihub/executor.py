@@ -50,9 +50,10 @@ class Executor:
         party_datasets = task.party_datasets
         print(f"party_datasets: {party_datasets}")
         party_access_info = task.party_access_info
-        print(f"party_access_info : {party_access_info}s")
+        print(f"party_access_info : {party_access_info}")
 
         #execute the function
         role_name = task_parameter['role']
         my_code = task.code[role_name]
+        task_parameter['data'] = task.party_datasets[party_name].data
         loads(my_code)(task_parameter, party_access_info)
