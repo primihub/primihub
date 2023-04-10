@@ -69,7 +69,7 @@ int FLTask::execute() {
 
 
     std::string task_config_str;
-    bool status = this->task_request_->SerializeToString(&task_config_str);
+    bool status = send_request.SerializeToString(&task_config_str);
     if (!status) {
         LOG(ERROR) << "serialize task config failed";
         return -1;
