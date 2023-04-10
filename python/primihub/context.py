@@ -7,6 +7,7 @@ Generally, to run a task there are several important parts for a task.
 Note, the dataset is also included in this parameter.
 '''
 
+import functools
 class ContextAll:
     '''
     All the parameter is included in this context.
@@ -16,6 +17,7 @@ class ContextAll:
         Set the message from protobuf
         '''
         self.message = None
+        self.datasets = []
 
 Context = ContextAll()
 
@@ -23,7 +25,15 @@ def set_message(message):
     Context.message = message
 
 
+def reg_dataset(func):
 
+    @functools.wraps(func)
+    def reg_dataset_decorator(dataset):
+        print("Register dataset:", dataset)
+        Context.datasets.append(dataset)
+        return func(dataset)
+
+    return reg_dataset_decorator
 
 
 
