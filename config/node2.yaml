@@ -88,6 +88,9 @@ datasets:
     model: "csv"
     source: "data/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
 
+  - description: "iv_filter"
+    model: "csv"
+    source: "data/FL/hetero_iv/iv_guest.csv"
 
 localkv:
   model: "leveldb"
