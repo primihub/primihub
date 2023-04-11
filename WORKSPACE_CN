@@ -524,12 +524,26 @@ pir_deps()
 http_archive(
   name = "com_github_google_leveldb",
   build_file = "//bazel:BUILD.leveldb",
-  sha256 = "a6fa7eebd11de709c46bf1501600ed98bf95439d6967963606cc964931ce906f",
-  strip_prefix = "leveldb-1.23",
+  strip_prefix = "leveldb",
   urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb-1.23.zip"
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb_centos.tar.gz"
   ],
 )
+#new_local_repository(
+#  name = "com_github_google_leveldb",
+#  build_file = "//bazel:BUILD.leveldb",
+#  path = "/root/workspace/leveldb",
+#)
+
+#http_archive(
+#  name = "com_github_google_leveldb",
+#  build_file = "//bazel:BUILD.leveldb",
+#  sha256 = "a6fa7eebd11de709c46bf1501600ed98bf95439d6967963606cc964931ce906f",
+#  strip_prefix = "leveldb-1.23",
+#  urls = [
+#    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb-1.23.zip"
+#  ],
+#)
 
 # APSI
 git_repository(
