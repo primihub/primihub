@@ -71,7 +71,6 @@ cc_binary(
     name = "node",
     copts = INCLUDES_PYTHON_COPTS, 
     linkopts = LINK_PYTHON_OPTS,
-    linkopts = LINK_PYTHON_OPTS,
     deps = [
         "//src/primihub/node:node_impl",
     ],
