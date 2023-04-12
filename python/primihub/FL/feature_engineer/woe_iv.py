@@ -2,7 +2,7 @@ import functools
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from primihub.python.primihub.utils.net_worker import GrpcServer
+from primihub.utils.net_worker import GrpcServer
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_add, opt_paillier_keygen, opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
 
 
@@ -12,10 +12,10 @@ class IVBase:
                  df: pd.DataFrame,
                  category_feature: list,
                  continuous_feature: list,
-                 target_name: list,
+                 target_name: str,
                  continuous_feature_max: dict,
                  continuous_feature_min: dict,
-                 bin_dict: dict,
+                 bin_dict=dict(),
                  return_woe=True,
                  threshold=0.15,
                  bin_num=10,
@@ -37,24 +37,28 @@ class IVBase:
         self.bucket_col = []
 
         for cur_feature in self.continuous_feature:
-            cur_feature_bins = self.bin_dict.get(cur_feature, None)
-            if cur_feature_bins is not None:
+            if cur_feature in self.data.columns:
+                cur_feature_bins = self.bin_dict.get(cur_feature, None)
+                if cur_feature_bins is not None:
 
-                # bucket-binning according to pre-set bins
-                bin_bucket = pd.cut(self.data[cur_feature],
-                                    bins=cur_feature_bins,
-                                    labels=np.arange(len(cur_feature_bins) - 1))
+                    # bucket-binning according to pre-set bins
+                    bin_bucket = pd.cut(
+                        self.data[cur_feature],
+                        bins=cur_feature_bins,
+                        labels=np.arange(len(cur_feature_bins) - 1))
 
-                self.data[cur_feature + "_cate"] = bin_bucket
+                    self.data[cur_feature + "_cate"] = bin_bucket
 
+                else:
+                    # bucket-binning according to cutting numbers
+                    bin_bucket = pd.cut(self.data[cur_feature],
+                                        bins=self.bin_num,
+                                        labels=np.arange(self.bin_num))
+                    self.data[cur_feature + "_cate"] = bin_bucket
+
+                self.bucket_col.append(cur_feature + "_cate")
             else:
-                # bucket-binning according to cutting numbers
-                bin_bucket = pd.cut(self.data[cur_feature],
-                                    bins=self.bin_num,
-                                    labels=np.arange(self.bin_num))
-                self.data[cur_feature + "_cate"] = bin_bucket
-
-            self.bucket_col.append(cur_feature + "_cate")
+                continue
 
     def iv(self):
         self.binning()
@@ -73,23 +77,23 @@ class IVBase:
 
         iv_dict = dict()
         for dim in all_cates:
-            woe_iv_df = self.data.groupby(dim).agg({
-                'label_0': 'sum',
+            woe_iv_df_0 = self.data.groupby(dim).agg({
+                'label_0': 'sum'
+            }).reset_index()
+            woe_iv_df_1 = self.data.groupby(dim).agg({
                 'label_1': 'sum'
             }).reset_index()
 
-            # replace 0s with 1 in buckets
-            woe_iv_df['label_0'] = woe_iv_df['label_0'].replace(0,
-                                                                1,
-                                                                inplace=True)
-            woe_iv_df['label_1'] = woe_iv_df['label_1'].replace(0,
-                                                                1,
-                                                                inplace=True)
+            woe_iv_df = pd.merge(woe_iv_df_0, woe_iv_df_1, how="left", on=dim)
+
+            woe_iv_df['label_0'] += 1
+            woe_iv_df['label_1'] += 1
 
             woe_iv_df[
                 'ratio_0'] = woe_iv_df['label_0'] / woe_iv_df['label_0'].sum()
             woe_iv_df[
                 'ratio_1'] = woe_iv_df['label_1'] / woe_iv_df['label_1'].sum()
+            print("=====", woe_iv_df)
 
             woe_iv_df['woe'] = np.log(woe_iv_df['ratio_0'] /
                                       woe_iv_df['ratio_1'])
@@ -104,6 +108,7 @@ class IVBase:
     def filter_features(self):
         # filter features with higher ivs
         iv_dict = self.iv()
+        print("=====iv_dict=====", iv_dict)
         filtered_features = []
         for key, val in iv_dict.items():
             if val < self.thres:
@@ -168,7 +173,7 @@ class Iv_with_label(IVBase):
             df: pd.DataFrame,
             category_feature: list,
             continuous_feature: list,
-            target_name: list,
+            target_name: str,
             continuous_feature_max: dict,
             continuous_feature_min: dict,
             bin_dict: dict,
@@ -236,7 +241,10 @@ class Iv_with_label(IVBase):
             table_count[key] = table_names
             table_count["label_0"] = label_0
             table_count['label_1'] = label_1
-            table_count['cnt'] = table_count["label_0"] + table_count["label_1"]
+            table_count["label_0"] += 1
+            table_count["label_1"] += 1
+
+            # table_count['cnt'] = table_count["label_0"] + table_count["label_1"]
 
             table_count['ratio_0'] = table_count["label_0"] / table_count[
                 "label_0"].sum()
@@ -246,9 +254,9 @@ class Iv_with_label(IVBase):
             table_count['woe'] = np.log(table_count['ratio_0'] /
                                         table_count['ratio_1'])
             table_count['iv'] = (table_count['ratio_0'] -
-                                 table_count['ratio_1']) / table_count['woe']
+                                 table_count['ratio_1']) * table_count['woe']
 
-            iv = table_count['iv'].sum()
+            iv = round(table_count['iv'].sum(), 4)
             guest_ivs[key] = iv
 
         self.channel.sender("guest_ivs", guest_ivs)
@@ -286,6 +294,7 @@ class Iv_no_label(IVBase):
             raise ValueError(f"The {encrypted_label} should not be None!")
         else:
             for dim in all_cates:
+                print("=======guest current dim=====", dim)
                 cur_col = self.data[dim]
                 items = np.unique(cur_col)
                 tmp_item_counter = {}
@@ -302,6 +311,7 @@ class Iv_no_label(IVBase):
                         "positive_count"] = tmp_positive_count  # encrypted number
 
                 iv_dict_counter[dim] = tmp_item_counter
+                print("guest tmp_item_counter", tmp_item_counter)
 
         return iv_dict_counter
 
@@ -324,6 +334,7 @@ class Iv_no_label(IVBase):
         self.channel.sender('iv_dict_counter', iv_dict_counter)
 
         guest_ivs = self.channel.recv("guest_ivs")
+        print("guest_ivs ===", guest_ivs)
 
         filtered_features = self.filter_features(guest_ivs)
 
