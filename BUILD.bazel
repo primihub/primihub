@@ -57,20 +57,29 @@ config_setting(
 
 LINK_PYTHON_OPTS = PLACEHOLDER-PYTHON3.X-CONFIG
 
-cc_binary(
-    name = "py_main",
-    linkopts = LINK_PYTHON_OPTS,
-    deps = [
-        "//src/primihub/executor:py_executor",
-    ]
+cc_library(
+  name = "python3_lib",
+  copts = ["-Iexternal/python3"],
+  linkopts = LINK_PYTHON_OPTS,
+  deps = [
+    "@python3//:headers",
+  ],
 )
 
 cc_binary(
-    name = "node",
-    linkopts = LINK_PYTHON_OPTS,
-    deps = [
-        "//src/primihub/node:node_impl",
-    ],
+  name = "py_main",
+  deps = [
+    ":python3_lib",
+    "//src/primihub/executor:py_executor",
+  ]
+)
+
+cc_binary(
+  name = "node",
+  deps = [
+    ":python3_lib",
+    "//src/primihub/node:node_impl",
+  ],
 )
 
 cc_binary(

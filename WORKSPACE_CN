@@ -521,6 +521,16 @@ load("@org_openmined_pir//pir:deps.bzl", "pir_deps")
 pir_deps()
 
 
+#http_archive(
+#  name = "com_github_google_leveldb",
+#  build_file = "//bazel:BUILD.leveldb",
+#  strip_prefix = "leveldb",
+#  urls = [
+#    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb_centos_arm.tar.gz",
+#    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb_centos.tar.gz"
+#  ],
+#)
+
 http_archive(
   name = "com_github_google_leveldb",
   build_file = "//bazel:BUILD.leveldb",
@@ -592,4 +602,20 @@ new_git_repository(
   build_file = "//bazel:BUILD.gsl_v_2_0_0",
   tag = "v2.0.0",
   remote = "https://gitee.com/mirrors_microsoft/GSL.git",
+)
+
+#python include
+new_local_repository(
+  name = "python3",
+  path = "python_include_path",
+  build_file_content = """
+package(default_visibility = ["//visibility:public"])
+cc_library(
+  name = "headers",
+  hdrs = glob([
+    "**/*.h",
+    "*.h",
+  ])
+)
+"""
 )

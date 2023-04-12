@@ -10,11 +10,8 @@ filegroup(
 
 cmake(
    name = "kuku",
-   env={
-        "HTTPS_PROXY": "http://127.0.0.1:1080",
-        "HTTP_PROXY": "http://127.0.0.1:1080",
-        "https_proxy": "http://127.0.0.1:1080",
-        "http_proxy": "http://127.0.0.1:1080",
+   cache_entries = {
+      "CMAKE_INSTALL_LIBDIR": "lib",
    },
    lib_source = ":src",
    out_include_dir = "include/Kuku-2.1",

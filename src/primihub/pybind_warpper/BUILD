@@ -8,6 +8,7 @@ pybind_extension(
         "network/link_context_wrapper.cc",
     ],
     deps = [
+        "//:python3_lib",
         "//src/primihub/util:util_lib",
         "//src/primihub/util/network:communication_lib",
     ],
@@ -26,6 +27,7 @@ pybind_extension(
         "primitive/opt_paillier_c2py.hpp",
     ],
     deps = [
+        "//:python3_lib",
         "//src/primihub/primitive:lib_opt_paillier",
     ],
 )

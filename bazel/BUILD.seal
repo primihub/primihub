@@ -21,6 +21,7 @@ cmake(
     ],
     cache_entries = {
         "SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT": "OFF",
+	"CMAKE_INSTALL_LIBDIR": "lib",
     },
     defines = [
         "SEAL_USE_CXX17=ON",
