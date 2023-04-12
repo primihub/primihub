@@ -103,7 +103,7 @@ datasets:
     model: "csv"
     source: "data/FL/hetero_xgb/test/test_breast_cancer_host.csv"
 
-  - description: "iv_filter"
+  - description: "iv_filter_host"
     model: "csv"
     source: "data/FL/hetero_iv/iv_host.csv"
 
