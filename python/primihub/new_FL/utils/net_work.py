@@ -17,10 +17,10 @@ class GrpcServer:
         print(local_ip, int(local_port))
         recv_session = Node(local_ip, int(local_port), False, local_party)
 
+        link_context = self.init_link_context(party_access_info[remote_party], task_info)
 
-
-        self.send_channel = self.init_link_context(party_access_info[remote_party], task_info).getChannel(send_session)
-        self.recv_channel = self.init_link_context(party_access_info[local_party],task_info).getChannel(recv_session)
+        self.send_channel = link_context.getChannel(send_session)
+        self.recv_channel = link_context.getChannel(recv_session)
 
     def sender(self, key, val):
         print("Start to send")
@@ -38,6 +38,7 @@ class GrpcServer:
         link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
         print(task_info['task_id'], task_info['job_id'], task_info['request_id'])
         link_context.setTaskInfo(task_info['task_id'], task_info['job_id'], task_info['request_id'])
+
         return link_context
         #not used at this moment
         '''
@@ -52,4 +53,4 @@ class GrpcServer:
                 logger.debug(key_file)
                 logger.debug(cert_file)
                 self.link_context.initCertificate(ca_file, key_file, cert_file)
-    '''
+        '''
