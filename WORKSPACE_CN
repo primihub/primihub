@@ -607,7 +607,7 @@ new_git_repository(
 #python include
 new_local_repository(
   name = "python3",
-  path = "python_include_path",
+  path = "third_party/python_headers",
   build_file_content = """
 package(default_visibility = ["//visibility:public"])
 cc_library(

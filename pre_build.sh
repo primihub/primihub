@@ -1,5 +1,6 @@
 #!/bin/bash
 set -x
+set -e
 PYTHON_BIN=python3
 if ! command -v python3 >/dev/null 2>&1; then
   if ! command -v python >/dev/null 2>&1; then
@@ -34,8 +35,10 @@ if [ ! -d "${PYTHON_INC_CONFIG}" ]; then
 fi
 
 # link python include path into workspace
-rm -f python_include_path
-ln -s ${PYTHON_INC_CONFIG} python_include_path
+pushd third_party
+rm -f python_headers
+ln -s ${PYTHON_INC_CONFIG} python_headers
+popd
 
 #get python link option
 CONFIG=`${PYTHON_CONFIG_CMD} --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
