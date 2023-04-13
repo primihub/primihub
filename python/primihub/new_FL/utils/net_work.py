@@ -17,10 +17,10 @@ class GrpcServer:
         print(local_ip, int(local_port))
         recv_session = Node(local_ip, int(local_port), False, local_party)
 
-        link_context = self.init_link_context(party_access_info[remote_party], task_info)
+        self.init_link_context(party_access_info[remote_party], task_info)
 
-        self.send_channel = link_context.getChannel(send_session)
-        self.recv_channel = link_context.getChannel(recv_session)
+        self.send_channel = self.link_context.getChannel(send_session)
+        self.recv_channel = self.link_context.getChannel(recv_session)
 
     def sender(self, key, val):
         print("Start to send")
@@ -35,11 +35,10 @@ class GrpcServer:
     
     def init_link_context(self,local_party_access_info, task_info):
         use_tls = local_party_access_info.use_tls
-        link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
+        self.link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
         print(task_info['task_id'], task_info['job_id'], task_info['request_id'])
-        link_context.setTaskInfo(task_info['task_id'], task_info['job_id'], task_info['request_id'])
+        self.link_context.setTaskInfo(task_info['task_id'], task_info['job_id'], task_info['request_id'])
 
-        return link_context
         #not used at this moment
         '''
         if use_tls:
