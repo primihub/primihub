@@ -7,9 +7,12 @@ class FL_helper:
         return self.task_parameter['all_roles'].keys()
     
     def get_parties(self):
-        return [v for k,v in self.task_parameter['all_roles'].items()]
+        res = []
+        for k,v in self.task_parameter['all_roles'].items():
+            res.extend(v)
+        return res
     
-    def party2role(party):
+    def party2role(self, party):
         for k,v in self.task_parameter['all_roles'].items():
             if v == party:
                 return k

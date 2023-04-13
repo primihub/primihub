@@ -14,7 +14,7 @@ class Dev_example_host:
         print(helper.get_roles())
         print(helper.get_parties())
         print(helper.role2party('guest'))
-        print(helper.party2role())
+        print(helper.party2role('Alice'))
 
 
     def train(self, X, y):
