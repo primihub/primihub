@@ -32,8 +32,7 @@ class Dev_example:
         self.param = dict()
         self.param['num_iter'] = num_iter
         self.roles = roles
-        self.param['protocol'] = 'FL'
-        self.param['all_roles'] = roles
+        
     def train(self, data):
         #init the task_list
         task_list = []
@@ -42,6 +41,8 @@ class Dev_example:
         task_parameter = dict()
         task_parameter['param'] = self.param
         task_parameter['process'] = 'train'
+        task_parameter['protocol'] = 'FL'
+        task_parameter['all_roles'] = self.roles
         #generate the task map
         para_map = generate_para_map(task_parameter, data, self.roles)
         #set the func map
