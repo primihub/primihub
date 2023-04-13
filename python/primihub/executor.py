@@ -47,6 +47,11 @@ class Executor:
         
         task_info = task.task_info
         print(f"task_info is : {task_info}")
+        #change the task_info into dict
+        task_info_dict = {}
+        task_info_dict['task_id'] = task_info.task_id
+        task_info_dict['job_id'] = task_info.job_id
+        task_info_dict['request_id'] = task_info.request_id
         party_datasets = task.party_datasets
         print(f"party_datasets: {party_datasets}")
         party_access_info = task.party_access_info
@@ -56,4 +61,6 @@ class Executor:
         role_name = task_parameter['role']
         my_code = task.code[role_name]
         task_parameter['data'] = task.party_datasets[party_name].data
+        task_parameter['party_name'] = party_name
+        task_parameter['task_info'] = task_info_dict
         loads(my_code)(task_parameter, party_access_info)
