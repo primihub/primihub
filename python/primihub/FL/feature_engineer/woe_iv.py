@@ -93,7 +93,6 @@ class IVBase:
                 'ratio_0'] = woe_iv_df['label_0'] / woe_iv_df['label_0'].sum()
             woe_iv_df[
                 'ratio_1'] = woe_iv_df['label_1'] / woe_iv_df['label_1'].sum()
-            print("=====", woe_iv_df)
 
             woe_iv_df['woe'] = np.log(woe_iv_df['ratio_0'] /
                                       woe_iv_df['ratio_1'])
@@ -294,7 +293,6 @@ class Iv_no_label(IVBase):
             raise ValueError(f"The {encrypted_label} should not be None!")
         else:
             for dim in all_cates:
-                print("=======guest current dim=====", dim)
                 cur_col = self.data[dim]
                 items = np.unique(cur_col)
                 tmp_item_counter = {}

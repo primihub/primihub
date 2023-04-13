@@ -6,7 +6,7 @@ import pandas as pd
 
 config = {
     "id": None,
-    "thres": 0.2,
+    "thres": 0.02,
     "bin_num": 5,
     "label": "Exited",
     "host_columns": None,
