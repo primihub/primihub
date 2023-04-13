@@ -7,7 +7,8 @@ class Dev_example_guest:
         print(party_access_info)
 
         server = GrpcServer('Alice','Bob', party_access_info, task_parameter['task_info'])
-        server.recv('abc')
+        res = server.recv('abc')
+        print(res)
     
 
     def train(self, X, y):
