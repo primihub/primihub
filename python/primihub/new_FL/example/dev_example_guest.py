@@ -7,7 +7,7 @@ class Dev_example_guest:
         print(party_access_info)
 
         server = GrpcServer('Alice','Bob', party_access_info, task_parameter['task_info'])
-        res = server.recv('abc')
+        res = server.recv('abc1')
         print(res)
     
 

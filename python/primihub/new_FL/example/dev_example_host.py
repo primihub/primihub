@@ -8,7 +8,7 @@ class Dev_example_host:
         print(pd.read_csv(X['data_path']))
         if task_parameter['party_name'] == 'Bob':
             server = GrpcServer('Bob','Alice', party_access_info, task_parameter['task_info'])
-            server.sender('abc', 'efg')    
+            server.sender('abc1', 'efg')    
 
     def train(self, X, y):
         pass
