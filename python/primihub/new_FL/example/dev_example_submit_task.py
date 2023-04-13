@@ -32,7 +32,8 @@ class Dev_example:
         self.param = dict()
         self.param['num_iter'] = num_iter
         self.roles = roles
-
+        self.param['protocol'] = 'FL'
+        self.param['all_roles'] = roles
     def train(self, data):
         #init the task_list
         task_list = []
