@@ -15,7 +15,7 @@ class FL_helper:
     def party2role(self, party):
         for k,v in self.task_parameter['all_roles'].items():
             for p in v:
-                if v == party:
+                if p == party:
                     return k
         
     def role2party(self,role):
