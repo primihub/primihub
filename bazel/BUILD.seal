@@ -10,18 +10,12 @@ filegroup(
 
 cmake(
    name = "seal",
-   #env={
-   #     "HTTPS_PROXY": "http://127.0.0.1:1080",
-   #     "HTTP_PROXY": "http://127.0.0.1:1080",
-   #    "https_proxy": "http://127.0.0.1:1080",
-   #    "http_proxy": "http://127.0.0.1:1080",
-   #},
     build_args = [
         "-j`nproc`",
     ],
     cache_entries = {
         "SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT": "OFF",
-	"CMAKE_INSTALL_LIBDIR": "lib",
+       "CMAKE_INSTALL_LIBDIR": "lib",
     },
     defines = [
         "SEAL_USE_CXX17=ON",
