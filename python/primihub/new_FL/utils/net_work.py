@@ -32,8 +32,9 @@ class GrpcServer:
         local_ip = party_access_info[local_party].ip
         remote_port = party_access_info[remote_party].port
         local_port = party_access_info[local_party].port
-
+        print(remote_ip, int(remote_port))
         send_session = Node(remote_ip, int(remote_port), False, remote_party)
+        print(local_ip, int(local_port))
         recv_session = Node(local_ip, int(local_port), False, local_party)
 
         self.send_channel = init_link_context(party_access_info[remote_party], task_info).getChannel(send_session)
