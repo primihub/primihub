@@ -18,7 +18,22 @@ cmake(
         # 'http_archive'.
         "LEVELDB_BUILD_TESTS": "OFF",
         "LEVELDB_BUILD_BENCHMARKS": "OFF",
+        "CMAKE_INSTALL_LIBDIR": "lib",
     },
     lib_source = ":all",
     out_static_libs = ["libleveldb.a"],
 )
+
+#cc_library(
+#  name = "leveldb",
+#  hdrs = glob([
+#    "include",
+#    "include/leveldb",
+#    "include/leveldb/*",
+#  ]),
+#  srcs = [
+#    "lib64/libleveldb.a",
+#  ],
+#  includes = ["include"],
+#  visibility = ["//visibility:public"],
+#)

@@ -619,3 +619,20 @@ new_git_repository(
     tag = "v2.0.0",
     remote = "https://github.com/microsoft/GSL.git",
 )
+
+#python include
+new_local_repository(
+  name = "python3",
+  path = "third_party/python_headers",
+  build_file_content = """
+package(default_visibility = ["//visibility:public"])
+cc_library(
+  name = "headers",
+  hdrs = glob([
+    "**/*.h",
+    "*.h",
+  ])
+)
+"""
+)
+

@@ -78,6 +78,18 @@ datasets:
     model: "csv"
     source: "data/client_e.csv"
 
+  # use mysql table as dataset
+  #- description: "psi_client"
+  #  model: "mysql"
+  #  host: "172.21.1.62"
+  #  port: 3306
+  #  username: "root"
+  #  password: "primihub"
+  #  database: "default"
+  #  dbName: "psi"
+  #  tableName: "psi_client"
+  #  query_index: "ID"  ## [[optional]]
+
 localkv:
   model: "leveldb"
   path: "./localdb/node0"
