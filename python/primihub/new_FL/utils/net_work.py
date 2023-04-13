@@ -8,7 +8,9 @@ def init_link_context(local_party_access_info, task_info):
 
     use_tls = local_party_access_info.use_tls
     link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
-    link_context.setTaskInfo(task_info['task_id'], task_info['job_id'], task_info['request_id'])
+    #link_context.setTaskInfo(task_info['task_id'].encode(), task_info['job_id'].encode(), task_info['request_id'].encode())
+    link_context.setTaskInfo("abc","abc","abc")
+    return link_context
     #not used at this moment
     '''
     if use_tls:
@@ -29,13 +31,13 @@ class GrpcServer:
         remote_ip = party_access_info[remote_party].ip
         local_ip = party_access_info[local_party].ip
         remote_port = party_access_info[remote_party].port
-        local_port = party_access_info[local_port].port
+        local_port = party_access_info[local_party].port
 
         send_session = Node(remote_ip, int(remote_port), False, remote_party)
         recv_session = Node(local_ip, int(local_port), False, local_party)
 
-        self.send_channel = self.init_link_context(party_access_info[remote_party], task_info).getChannel(send_session)
-        self.recv_channel = self.init_link_context(party_access_info[local_party],task_info).getChannel(recv_session)
+        self.send_channel = init_link_context(party_access_info[remote_party], task_info).getChannel(send_session)
+        self.recv_channel = init_link_context(party_access_info[local_party],task_info).getChannel(recv_session)
 
     def sender(self, key, val):
         self.send_channel.send(key, pickle.dumps(val))
@@ -43,7 +45,3 @@ class GrpcServer:
     def recv(self, key):
         recv_val = self.recv_channel.recv(key)
         return pickle.loads(recv_val)
-    
-
-
- 
