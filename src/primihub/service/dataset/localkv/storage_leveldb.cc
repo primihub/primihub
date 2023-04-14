@@ -39,6 +39,7 @@ StorageBackendLevelDB::~StorageBackendLevelDB()  {
 outcome::result<void> StorageBackendLevelDB::putValue(Key key, Value value) {
     // Kade::ContentId to leveldb::Slice
     auto key_str = Key2Str(key);
+    LOG(INFO) << "key_str: " << key_str;
     leveldb::Slice key_slice = key_str;
     try {
         // leveldb::Status to outcome::result<void>

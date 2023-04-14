@@ -521,6 +521,7 @@ outcome::result<void> RedisDatasetMetaService::findPeerListFromDatasets(
     meta_list.emplace_back(meta, dataset_tag);
 
     LOG(INFO) << "Get meta for dataset " << dataset_name
+              << " for datasetid: " << dataset_id.value()
               << " from redis finish.";
   }
 
