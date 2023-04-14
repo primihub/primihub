@@ -18,7 +18,7 @@ class Client:
         print(f'The task_id is {task_id}')
 
         for role, func in func_map.items():
-            func_map[role] = dumps(func)
+            func_map[role] = func.encode()
 
         #updata the params
         cp_param =  common_pb2.Params()
