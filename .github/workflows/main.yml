@@ -71,6 +71,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Setup bazelisk
       uses: bazelbuild/setup-bazelisk@v2
+    - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
