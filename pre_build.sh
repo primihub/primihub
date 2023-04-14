@@ -1,5 +1,6 @@
 #!/bin/bash
 set -x
+set -e
 PYTHON_BIN=python3
 if ! command -v python3 >/dev/null 2>&1; then
   if ! command -v python >/dev/null 2>&1; then
@@ -19,11 +20,29 @@ if ! [ "${U_V1}" = 3 ] && [ "${U_V2}" > 6 ]; then
   exit
 fi
 
-if ! command -v python$U_V1.$U_V2-config >/dev/null 2>&1; then
+PYTHON_CONFIG_CMD="python$U_V1.$U_V2-config"
+
+if ! command -v ${PYTHON_CONFIG_CMD} >/dev/null 2>&1; then
   echo "please install python$U_V1.$U_V2-dev"
   exit
 fi
-CONFIG=`python$U_V1.$U_V2-config --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+
+#get python include path
+PYTHON_INC_CONFIG=`${PYTHON_CONFIG_CMD} --includes | awk '{print $1}' |awk -F'-I' '{print $2}'`
+if [ ! -d "${PYTHON_INC_CONFIG}" ]; then
+  echo "${PYTHON_CONFIG_CMD} get python include path failed"
+  exit -1
+fi
+
+# link python include path into workspace
+pushd third_party
+rm -f python_headers
+ln -s ${PYTHON_INC_CONFIG} python_headers
+popd
+
+#get python link option
+CONFIG=`${PYTHON_CONFIG_CMD} --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+
 # Compatible with MacOS
 sed -e "s|PLACEHOLDER-PYTHON3.X-CONFIG|${NEWLINE}|g" BUILD.bazel > BUILD.bazel.tmp && mv BUILD.bazel.tmp BUILD.bazel
 echo "done"

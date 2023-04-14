@@ -35,7 +35,7 @@
     },
     "outputFullFilename": {
       "type": "STRING",
-      "value": "/opt/data/result/psi_result.csv"
+      "value": "data/result/psi_result.csv"
     },
     "sync_result_to_server": {
       "type": "INT32",
@@ -43,7 +43,7 @@
     },
     "server_outputFullFilname": {
       "type": "STRING",
-      "value": "/opt/data/result/server/psi_result.csv"
+      "value": "data/result/server/psi_result.csv"
     }
   },
   "input_datasets": ["clientData", "serverData"]

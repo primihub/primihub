@@ -10,7 +10,7 @@
     "clientData": {
       "type": "STRING",
       "value": [
-        "UpsUmxCsovVczGEnriJshwVKclwyxGWZIXXHWmBFVzTllFcPfdsDfbQFOJhJssvT"
+        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT"
       ]
     },
     "serverData": {
@@ -23,7 +23,7 @@
     },
     "outputFullFilename": {
       "type": "STRING",
-      "value": "/opt/data/result/pir_result.csv"
+      "value": "data/result/pir_result.csv"
     }
   },
   "input_datasets": ["serverData"]

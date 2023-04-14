@@ -4,6 +4,7 @@ cc_library(
     hdrs = ["mysql_driver.h"],
     srcs = ["mysql_driver.cc"],
     linkopts = [
+        "-L/usr/lib64/mysql",
         "-lmysqlclient",
     ],
     deps = [

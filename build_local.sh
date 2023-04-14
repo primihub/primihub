@@ -18,7 +18,7 @@ bash pre_build.sh
 ARCH=`arch`
 
 
-bazel build --config=linux_$ARCH //:node \
+bazel build --config=linux_$ARCH --define enable_mysql_driver=true //:node \
     //:py_main \
     //:cli \
     //src/primihub/pybind_warpper:opt_paillier_c2py \

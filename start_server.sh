@@ -10,8 +10,10 @@ fi
 export PYTHONPATH=${PYTHONPATH}:${py_primihub_path}
 if [ ! -d localdb ]; then
   mkdir localdb
-fi 
+fi
+# log_level 1->7,the larger the value the more detailed the log
 log_level=7
-GLOG_logtostderr=1 GLOG_v=${log_level} ./bazel-bin/node --node_id=node0 --config=./config/node0.yaml &> log_node0 &
-GLOG_logtostderr=1 GLOG_v=${log_level} ./bazel-bin/node --node_id=node1 --config=./config/node1.yaml &> log_node1 &
-GLOG_logtostderr=1 GLOG_v=${log_level} ./bazel-bin/node --node_id=node2 --config=./config/node2.yaml &> log_node2 &
+export GLOG_logtostderr=1 GLOG_v=${log_level} 
+nohup ./bazel-bin/node --node_id=node0 --config=./config/node0.yaml >> log_node0 2>&1 &
+nohup ./bazel-bin/node --node_id=node1 --config=./config/node1.yaml >> log_node1 2>&1 &
+nohup ./bazel-bin/node --node_id=node2 --config=./config/node2.yaml >> log_node2 2>&1 &
