@@ -31,7 +31,6 @@
 #include "src/primihub/protos/service.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/data_store/factory.h"
-#include "src/primihub/common/defines.h"
 
 using grpc::ServerContext;
 using primihub::rpc::DataService;
@@ -43,7 +42,7 @@ namespace primihub {
 class DataServiceImpl final: public DataService::Service {
  public:
     explicit DataServiceImpl(std::shared_ptr<primihub::service::DatasetService> dataset_service,
-                                std::string nodelet_addr)
+                             const std::string& nodelet_addr)
         : dataset_service_(dataset_service), nodelet_addr_(nodelet_addr) {}
 
     grpc::Status NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,

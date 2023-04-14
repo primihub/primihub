@@ -21,7 +21,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -31,31 +30,30 @@
 #include <exception>
 #include <memory>
 
-
-
-// #include "src/primihub/common/clp.h"
-// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include <glog/logging.h>
 #include <yaml-cpp/yaml.h>
 
 namespace primihub {
+class Dataset;
 // ====== Data Store Driver ======
 struct DataSetAccessInfo {
-  DataSetAccessInfo() = default;
-  virtual ~DataSetAccessInfo() = default;
-  virtual std::string toString() = 0;
-  virtual retcode fromJsonString(const std::string& access_info) = 0;
-  virtual retcode fromYamlConfig(const YAML::Node& meta_info) = 0;
+    DataSetAccessInfo() = default;
+    virtual ~DataSetAccessInfo() = default;
+    virtual std::string toString() = 0;
+    virtual retcode fromJsonString(const std::string& access_info) = 0;
+    virtual retcode fromYamlConfig(const YAML::Node& meta_info) = 0;
 };
 
-class Dataset;
 class Cursor {
-  public:
-    virtual std::shared_ptr<primihub::Dataset> read() = 0;
-    virtual std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit) = 0;
-    virtual int write(std::shared_ptr<primihub::Dataset> dataset) = 0;
+ public:
+    Cursor() = default;
+    virtual ~Cursor() = default;
+    virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
+    virtual std::shared_ptr<Dataset> read() = 0;
+    virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
+    virtual int write(std::shared_ptr<Dataset> dataset) = 0;
     virtual void close() = 0;
 };
 
@@ -82,7 +80,7 @@ class DataDriver {
     std::string getNodeletAddress() const;
 
     std::unique_ptr<DataSetAccessInfo>& dataSetAccessInfo() {
-      return access_info_;
+        return access_info_;
     }
 
  protected:
@@ -94,7 +92,6 @@ class DataDriver {
     std::string nodelet_address;
     std::unique_ptr<DataSetAccessInfo> access_info_{nullptr};
 };
-
 
 }  // namespace primihub
 

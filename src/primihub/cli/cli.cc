@@ -15,9 +15,6 @@
  */
 
 #include "src/primihub/cli/cli.h"
-#include "src/primihub/util/util.h"
-#include "src/primihub/common/config/config.h"
-#include "src/primihub/util/network/link_factory.h"
 #include <fstream>  // std::ifstream
 #include <string>
 #include <chrono>
@@ -25,16 +22,21 @@
 #include <vector>
 #include <future>
 #include <thread>
+#include <nlohmann/json.hpp>
+#include "src/primihub/util/util.h"
+#include "src/primihub/common/config/config.h"
+#include "src/primihub/util/network/link_factory.h"
+#include "src/primihub/common/common.h"
 #include "uuid.h"
+
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
 using primihub::rpc::TaskType;
 
 ABSL_FLAG(std::string, server, "127.0.0.1:50050", "server address");
 
-ABSL_FLAG(int, task_type, TaskType::ACTOR_TASK,
-          "task type, 0-ACTOR_TASK, 1-PSI_TASK, 2-PIR_TASK  6-TEE_TASK");
-
+ABSL_FLAG(int, task_type, 0,
+          "task type, [0-ACTOR_TASK, 3-PSI_TASK, 2-PIR_TASK, 6-TEE_TASK]");
 
 ABSL_FLAG(std::vector<std::string>,
           params,
@@ -54,8 +56,8 @@ ABSL_FLAG(std::vector<std::string>,
           std::vector<std::string>({"Data_File", "TestData"}),
           "input datasets name list");
 
-ABSL_FLAG(std::string, job_id, "100", "job id");    // TODO: auto generate
-ABSL_FLAG(std::string, task_id, "200", "task id");  // TODO: auto generate
+ABSL_FLAG(std::string, job_id, "100", "job id");
+ABSL_FLAG(std::string, task_id, "200", "task id");
 ABSL_FLAG(std::string, task_lang, "proto", "task language, proto or python");
 ABSL_FLAG(std::string, task_code, "logistic_regression", "task code");
 ABSL_FLAG(bool, use_tls, false, "true/false");
@@ -66,6 +68,25 @@ ABSL_FLAG(std::vector<std::string>, cert_config,
                 "data/cert/client.crt"}),
             "cert config");
 
+ABSL_FLAG(std::string, task_config_file, "", "path of task config file");
+
+std::map<std::string, TaskType> task_type_map {
+  {"ACTOR_TASK", TaskType::ACTOR_TASK},
+  {"PIR_TASK", TaskType::PIR_TASK},
+  {"PSI_TASK", TaskType::PSI_TASK},
+  {"TEE_TASK", TaskType::TEE_TASK},
+};
+
+primihub::retcode getTaskType(const std::string& task_type_str, TaskType* task_type) {
+  auto it = task_type_map.find(task_type_str);
+  if (it != task_type_map.end()) {
+    *task_type = it->second;
+    return primihub::retcode::SUCCESS;
+  } else {
+    LOG(ERROR) << "unknown task type: " << task_type_str;
+    return primihub::retcode::FAIL;
+  }
+}
 namespace primihub {
 namespace client {
 int getFileContents(const std::string& fpath, std::string* contents) {
@@ -122,75 +143,28 @@ void fill_param(const std::vector<std::string>& params,
         (*param_map)[v[0]] = pv;
     }
 }
-int get_task_execute_status(const primihub::rpc::Node& notify_server, const PushTaskRequest& request_info) {
-    LOG(INFO) << "get_task_execute_status for "
-        << notify_server.ip() << " port: " << notify_server.port()
-        <<  " use_tls: " << notify_server.use_tls();
-    std::string node_info = notify_server.ip() + ":" + std::to_string(notify_server.port());
-    auto channel = grpc::CreateChannel(node_info, grpc::InsecureChannelCredentials());
-    auto stub = primihub::rpc::NodeService::NewStub(channel);
-    using ClientContext = primihub::rpc::ClientContext;
-    using NodeEventReply = primihub::rpc::NodeEventReply;
-    bool has_error{false};
-    do {
-        bool is_finished{false};
-        grpc::ClientContext context;
-        ClientContext request;
-        request.set_client_id(request_info.submit_client_id());
-        request.set_client_ip("127.0.0.1");
-        request.set_client_port(12345);
-        std::unique_ptr<grpc::ClientReader<NodeEventReply>> reader(
-            stub->SubscribeNodeEvent(&context, request));
-        NodeEventReply reply;
-        std::string server_node = notify_server.ip();
-        while (reader->Read(&reply)) {
-            const auto& task_status = reply.task_status();
-            std::string status = task_status.status();
-            LOG(INFO) << "get reply from " << server_node << " with status: "
-                    << status;
-            if (status == std::string("SUCCESS") || status == std::string("FAIL")) {
-                is_finished = true;
-                if (status == std::string("FAIL")) {
-                    has_error = true;
-                }
-                break;
-            }
-        }
-        if (is_finished) {
-            break;
-        }
-    } while (true);
-    if (has_error) {
-        return -1;
-    }
 
-    return 0;
-}
-
-int SDKClient::SubmitTask() {
-    PushTaskRequest pushTaskRequest;
-    PushTaskReply pushTaskReply;
-    grpc::ClientContext context;
-    // pushTaskRequest.set_submit_client_id("client_id_test");
-    pushTaskRequest.set_intended_worker_id("1");
-    pushTaskRequest.mutable_task()->set_type(
-        (enum TaskType)absl::GetFlag(FLAGS_task_type));
+retcode buildRequestWithFlag(PushTaskRequest* request) {
+    auto task_ptr = request->mutable_task();
+    int task_type_flag = absl::GetFlag(FLAGS_task_type);
+    auto task_type = static_cast<TaskType>(task_type_flag);
+    task_ptr->set_type(task_type);
 
     // Setup task params
-    pushTaskRequest.mutable_task()->set_name("demoTask");
+    task_ptr->set_name("demoTask");
 
     auto task_lang = absl::GetFlag(FLAGS_task_lang);
     if (task_lang == "proto") {
-        pushTaskRequest.mutable_task()->set_language(Language::PROTO);
+        task_ptr->set_language(Language::PROTO);
     } else if (task_lang == "python") {
-        pushTaskRequest.mutable_task()->set_language(Language::PYTHON);
+        task_ptr->set_language(Language::PYTHON);
     } else {
         std::cerr << "task language not supported" << std::endl;
-        return -1;
+        return retcode::FAIL;
     }
 
-    google::protobuf::Map<std::string, ParamValue>* map =
-        pushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
+    // google::protobuf::Map<std::string, ParamValue>* map =
+    auto map = task_ptr->mutable_params()->mutable_param_map();
     const std::vector<std::string> params = absl::GetFlag(FLAGS_params);
     fill_param(params, map);
     // if given task code file, read it and set task code
@@ -201,32 +175,191 @@ int SDKClient::SubmitTask() {
         std::ifstream ifs(task_code);
         if (!ifs.is_open()) {
             std::cerr << "open file failed: " << task_code << std::endl;
-            return -1;
+            return retcode::FAIL;
         }
         std::stringstream buffer;
         buffer << ifs.rdbuf();
         std::cout << buffer.str() << std::endl;
-        pushTaskRequest.mutable_task()->set_code(buffer.str());
+        task_ptr->set_code(buffer.str());
     } else {
         // read code from command line
-        pushTaskRequest.mutable_task()->set_code(task_code);
+        task_ptr->set_code(task_code);
     }
 
     // Setup input datasets
-    if (task_lang == "proto" && absl::GetFlag(FLAGS_task_type) != 6) {
+    if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
         auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
         for (int i = 0; i < input_datasets.size(); i++) {
-            pushTaskRequest.mutable_task()->add_input_datasets(
-                input_datasets[i]);
+            task_ptr->add_input_datasets(input_datasets[i]);
         }
 
     }
 
     // TEE task
-    if ( absl::GetFlag(FLAGS_task_type) == 6 ) {
-       pushTaskRequest.mutable_task()->add_input_datasets("datasets");
-
+    if (task_type == TaskType::TEE_TASK) {
+        task_ptr->add_input_datasets("datasets");
     }
+    return retcode::SUCCESS;
+}
+
+void fillParamByArray(const std::string& value_type,
+        const nlohmann::json& obj, ParamValue* pv) {
+    pv->set_is_array(true);
+    if (value_type == "STRING") {
+      for (const auto& item : obj) {
+        // TODO (fix in future)
+        auto val = item.get<std::string>();
+        pv->set_value_string(std::move(val));
+      }
+    } else if (value_type == "INT32") {
+      auto int32_ptr = pv->mutable_value_int32_array();
+      for (const auto& item : obj) {
+        auto val = item.get<int32_t>();
+        int32_ptr->add_value_int32_array(std::move(val));
+      }
+    } else if (value_type == "INT64") {
+      auto int64_ptr = pv->mutable_value_int64_array();
+      for (const auto& item : obj) {
+        auto val = item.get<int64_t>();
+        int64_ptr->add_value_int64_array(std::move(val));
+      }
+    } else if (value_type == "BOOL") {
+      auto bool_ptr = pv->mutable_value_bool_array();
+      for (const auto& item : obj) {
+        auto val = item.get<bool>();
+        bool_ptr->add_value_bool_array(std::move(val));
+      }
+    } else if (value_type == "FLOAT") {
+      auto float_ptr = pv->mutable_value_float_array();
+      for (const auto& item : obj) {
+        auto val = item.get<float>();
+        float_ptr->add_value_float_array(std::move(val));
+      }
+    } else if (value_type == "DOUBLE") {
+      auto double_ptr = pv->mutable_value_double_array();
+      for (const auto& item : obj) {
+        auto val = item.get<double>();
+        double_ptr->add_value_double_array(std::move(val));
+      }
+    }
+}
+
+void fillParamByScalar(const std::string& value_type,
+        const nlohmann::json& obj, ParamValue* pv) {
+    pv->set_is_array(false);
+    if (value_type == "STRING") {
+      std::string val = obj.get<std::string>();
+      pv->set_value_string(val);
+    } else if (value_type == "INT32") {
+      auto val = obj.get<int32_t>();
+      pv->set_value_int32(val);
+    } else if (value_type == "INT64") {
+      auto val = obj.get<int64_t>();
+      pv->set_value_int64(val);
+    } else if (value_type == "BOOL") {
+      auto val = obj.get<bool>();
+      pv->set_value_bool(val);
+    } else if (value_type == "FLOAT") {
+      auto val = obj.get<float>();
+      pv->set_value_float(val);
+    } else if (value_type == "DOUBLE") {
+      auto val = obj.get<double>();
+      pv->set_value_double(val);
+    }
+}
+
+retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskRequest* request) {
+    try {
+      std::string task_config_content;
+      primihub::client::getFileContents(file_path, &task_config_content);
+      auto js = nlohmann::json::parse(task_config_content);
+      auto task_ptr = request->mutable_task();
+      std::string task_type_str = js["task_type"].get<std::string>();
+      TaskType task_type;
+      auto ret = getTaskType(task_type_str, &task_type);
+      if (ret != retcode::SUCCESS) {
+          return retcode::FAIL;
+      }
+      task_ptr->set_type(task_type);
+      // Setup task params
+      if (js.contains("task_name")) {
+          std::string task_name = js["task_name"].get<std::string>();
+          task_ptr->set_name(task_name);
+      } else {
+          task_ptr->set_name("demoTask");
+      }
+      // task language
+      auto task_lang = js["task_lang"].get<std::string>();
+      if (task_lang == "proto") {
+          task_ptr->set_language(Language::PROTO);
+      } else if (task_lang == "python") {
+          task_ptr->set_language(Language::PYTHON);
+      } else {
+          std::cerr << "task language not supported" << std::endl;
+          return retcode::FAIL;
+      }
+      // param
+      auto map = task_ptr->mutable_params()->mutable_param_map();
+      for (auto& [key, value_info]: js["params"].items()) {
+          auto value_type = value_info["type"].get<std::string>();
+          ParamValue pv;
+          if (value_info["value"].is_array()) {
+              fillParamByArray(value_type, value_info["value"], &pv);
+          } else {
+              fillParamByScalar(value_type, value_info["value"], &pv);
+          }
+          (*map)[key] = std::move(pv);
+      }
+      // code
+      std::string code_file_path = js["task_code"]["code_file_path"].get<std::string>();
+      if (!code_file_path.empty()) {
+          // read file
+          std::ifstream ifs(code_file_path);
+          if (!ifs.is_open()) {
+              std::cerr << "open file failed: " << code_file_path << std::endl;
+              return retcode::FAIL;
+          }
+          std::stringstream buffer;
+          buffer << ifs.rdbuf();
+          std::cout << buffer.str() << std::endl;
+          task_ptr->set_code(buffer.str());
+      } else {
+          // read code from command line
+          std::string task_code = js["task_code"]["code"].get<std::string>();
+          task_ptr->set_code(std::move(task_code));
+      }
+      // dataset
+      // Setup input datasets
+      if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
+          auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
+          for (auto& item : js["input_datasets"]) {
+              std::string dataset = item.get<std::string>();
+              task_ptr->add_input_datasets(std::move(dataset));
+          }
+      }
+      // TEE task
+      if (task_type == TaskType::TEE_TASK) {
+          task_ptr->add_input_datasets("datasets");
+      }
+    } catch(std::exception& e) {
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+int SDKClient::SubmitTask() {
+    PushTaskRequest pushTaskRequest;
+    PushTaskReply pushTaskReply;
+    grpc::ClientContext context;
+
+    std::string task_config_file = absl::GetFlag(FLAGS_task_config_file);
+    if (task_config_file.empty()) {
+        buildRequestWithFlag(&pushTaskRequest);
+    } else {
+        buildRequestWithTaskConfigFile(task_config_file, &pushTaskRequest);
+    }
+    // pushTaskRequest.set_submit_client_id("client_id_test");
+    pushTaskRequest.set_intended_worker_id("1");
 
     // TODO Generate job id and task id
     std::random_device rd;
@@ -236,10 +369,13 @@ int SDKClient::SubmitTask() {
     std::mt19937 generator(seq);
     uuids::uuid_random_generator gen{generator};
     const uuids::uuid id = gen();
-    std::string task_id = uuids::to_string(id);
+    std::string task_id = absl::GetFlag(FLAGS_task_id);
     std::string job_id = absl::GetFlag(FLAGS_job_id);
-    pushTaskRequest.mutable_task()->set_job_id(job_id);
-    pushTaskRequest.mutable_task()->set_task_id(task_id);
+    std::string request_id = uuids::to_string(id);
+    auto task_info = pushTaskRequest.mutable_task()->mutable_task_info();
+    task_info->set_job_id(job_id);
+    task_info->set_task_id(task_id);
+    task_info->set_request_id(request_id);
     pushTaskRequest.set_sequence_number(11);
     pushTaskRequest.set_client_processed_up_to(22);
     pushTaskRequest.set_submit_client_id(job_id + "_" + task_id);
@@ -249,91 +385,50 @@ int SDKClient::SubmitTask() {
     if (ret != retcode::SUCCESS) {
         return -1;
     }
-    std::vector<std::future<int>> wait_result_futs;
-    std::vector<bool> result_fetched;
-    for (const auto& server_info : pushTaskReply.notify_server()) {
-        wait_result_futs.push_back(
-            std::async(
-                std::launch::async,
-                get_task_execute_status,
-                std::ref(server_info),
-                std::ref(pushTaskRequest)
-            ));
-        result_fetched.push_back(false);
-    }
-
-    bool has_error{false};
+    size_t party_count = pushTaskReply.party_count();
+    VLOG(0) << "party count: " << party_count;
+    std::map<std::string, std::string> task_status;
+    // fecth task status
+    size_t fetch_count = 0;
     do {
-        for (int i = 0; i < wait_result_futs.size(); i++) {
-            if (result_fetched[i]) {
-                continue;
-            } else {
-                auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
-                if (st == std::future_status::ready) {
-                    auto result = wait_result_futs[i].get();
-                    result_fetched[i] = true;
-                    if (result != 0) {
-                        has_error = true;
-                        break;
-                    }
-                }
+        rpc::TaskContext request;
+        request.set_task_id(task_id);
+        request.set_job_id(job_id);
+        request.set_request_id(request_id);
+        rpc::TaskStatusReply status_reply;
+        auto ret = channel_->fetchTaskStatus(request, &status_reply);
+        // parse task status
+        if (ret != retcode::SUCCESS) {
+            LOG(ERROR) << "fetch task status from server failed";
+            return -1;
+        }
+        bool is_finished{false};
+        for (const auto& status_info : status_reply.task_status()) {
+            auto party = status_info.party();
+            auto status_code = status_info.status();
+            auto message = status_info.message();
+            VLOG(5) << "task_status party: " << party << " "
+                << "status: " << static_cast<int>(status_code) << " "
+                << "message: " << message;
+            if (status_info.status() == primihub::rpc::TaskStatus::SUCCESS ||
+              status_info.status() == primihub::rpc::TaskStatus::FAIL) {
+                task_status[party] = message;
             }
-        }
-        bool is_all_fininshed{true};
-        for (auto fetched : result_fetched) {
-            if (!fetched) {
-                is_all_fininshed = false;
-            }
-        }
-        if (is_all_fininshed) {
-            break;
-        }
-        if (has_error) {
-            break;
-        }
-    } while (true);
-
-    if (has_error) {
-        LOG(INFO) << "begin to send kill task";
-        for (const auto& server_info: pushTaskReply.task_server()) {
-            VLOG(0) << "node: " << server_info.ip() << " port: " << server_info.port();
-            Node remote_node(server_info.ip(), server_info.port(), server_info.use_tls());
-            auto channel = link_ctx_ref_->getChannel(remote_node);
-            rpc::KillTaskRequest request;
-            request.set_job_id(job_id);
-            request.set_task_id(task_id);
-            request.set_executor(rpc::KillTaskRequest::SCHEDULER);
-            rpc::KillTaskResponse reponse;
-            channel->killTask(request, &reponse);
-        }
-        LOG(INFO) << "end of send kill task to all node";
-        do {
-            for (int i = 0; i < wait_result_futs.size(); i++) {
-                if (result_fetched[i]) {
-                    continue;
-                } else {
-                    auto st = wait_result_futs[i].wait_for(std::chrono::seconds(1));
-                    if (st == std::future_status::ready) {
-                        auto result = wait_result_futs[i].get();
-                        result_fetched[i] = true;
-                        if (result != 0) {
-                            has_error = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            bool all_fetched = true;
-            for (size_t i = 0; i < result_fetched.size(); i++) {
-                if (!result_fetched[i]) {
-                    all_fetched = false;
-                }
-            }
-            if (all_fetched) {
+            if (task_status.size() == party_count) {
+                VLOG(0) << "all node has finished";
+                is_finished = true;
                 break;
             }
-        } while (true);
-    }
+        }
+        if (is_finished) {
+            break;
+        }
+        if (fetch_count < 1000) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(fetch_count*100));
+        } else {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } while (true);
     return 0;
 }
 
@@ -398,6 +493,5 @@ int main(int argc, char** argv) {
             break;
         }
     }
-
     return 0;
 }

@@ -51,6 +51,14 @@ void MPCScheduler::push_task(const std::string &node_id,
     pv.set_value_string(dataset_param.first);
     (*param_map)[dataset_param.second] = std::move(pv);
   }
+  {
+      // fill scheduler info
+      auto node_map = push_request.mutable_task()->mutable_node_map();
+      auto& local_node = getLocalNodeCfg();
+      rpc::Node scheduler_node;
+      node2PbNode(local_node, &scheduler_node);
+      (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+  }
   std::string dest_node_address = dest_node.to_string();
   auto channel = this->getLinkContext()->getChannel(dest_node);
   auto ret = channel->submitTask(push_request, &pushTaskReply);

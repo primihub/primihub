@@ -23,10 +23,9 @@
 #include <thread>
 #include <memory>
 #include "src/primihub/util/util.h"
-#include "src/primihub/service/notify/model.h"
 #include "base64.h"
 
-using primihub::service::EventBusNotifyDelegate;
+// using primihub::service::EventBusNotifyDelegate;
 namespace bp = boost::process;
 
 namespace primihub::task {

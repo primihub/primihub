@@ -140,14 +140,18 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
   char* send_buf = const_cast<char*>(data_sv.data());
   std::string job_id = this->getLinkContext()->job_id();
   std::string task_id = this->getLinkContext()->task_id();
+  std::string request_id = this->getLinkContext()->request_id();
   VLOG(5) << "job_id: " << job_id << " "
       << "task_id: " << task_id << " "
+      << "request id: " << request_id << " "
       << "role: " << role << " "
       << "send data length: " << total_length;
   do {
     rpc::TaskRequest task_request;
-    task_request.set_job_id(job_id);
-    task_request.set_task_id(task_id);
+    auto task_info = task_request.mutable_task_info();
+    task_info->set_job_id(job_id);
+    task_info->set_task_id(task_id);
+    task_info->set_request_id(request_id);
     task_request.set_role(role);
     task_request.set_data_len(total_length);
     auto data_ptr = task_request.mutable_data();
@@ -175,14 +179,17 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
       context.set_deadline(deadline);
     }
     rpc::TaskRequest send_request;
-    send_request.set_task_id(this->getLinkContext()->task_id());
-    send_request.set_job_id(this->getLinkContext()->job_id());
+    auto task_info = send_request.mutable_task_info();
+    task_info->set_task_id(this->getLinkContext()->task_id());
+    task_info->set_job_id(this->getLinkContext()->job_id());
+    task_info->set_request_id(this->getLinkContext()->request_id());
     send_request.set_role(role);
     VLOG(5) << "send request info: job_id: " << this->getLinkContext()->job_id()
             << " task_id: " << this->getLinkContext()->task_id()
+            << " request id: " << this->getLinkContext()->request_id()
             << " role: " << role
             << " nodeinfo: " << this->dest_node_.to_string();
-    using reader_t = grpc::ClientReader<rpc::TaskRequest>;
+    // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
     auto client_reader = this->stub_->ForwardRecv(&context, send_request);
 
     // waiting for response
@@ -196,12 +203,11 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
           tmp_buff.reserve(data_len);
           init_flag = true;
         }
-        VLOG(5) << "data: " << data;
+        VLOG(5) << "data length: " << data.size();
         tmp_buff.append(data);
     }
 
     grpc::Status status = client_reader->Finish();
-    VLOG(5) << "received data: " << tmp_buff;
     if (!status.ok()) {
         LOG(ERROR) << "recv data encountes error, detail: "
             << status.error_code() << ": " << status.error_message();
@@ -229,13 +235,43 @@ retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTa
 
 retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) {
     grpc::ClientContext context;
-    grpc::Status status =
-        stub_->KillTask(&context, request, reply);
+    grpc::Status status = stub_->KillTask(&context, request, reply);
     if (status.ok()) {
         VLOG(5) << "killTask to node: ["
                 <<  dest_node_.to_string() << "] rpc succeeded.";
     } else {
         LOG(ERROR) << "killTask to Node ["
+                  <<  dest_node_.to_string() << "] rpc failed. "
+                  << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) {
+    grpc::ClientContext context;
+    grpc::Status status = stub_->UpdateTaskStatus(&context, request, reply);
+    if (status.ok()) {
+        VLOG(5) << "UpdateTaskStatus to node: ["
+                <<  dest_node_.to_string() << "] rpc succeeded.";
+        return retcode::SUCCESS;
+    } else {
+        LOG(ERROR) << "UpdateTaskStatus to Node ["
+                  <<  dest_node_.to_string() << "] rpc failed. "
+                  << status.error_code() << ": " << status.error_message()
+                  << " retry....";
+        return retcode::FAIL;
+    }
+}
+
+retcode GrpcChannel::fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) {
+    grpc::ClientContext context;
+    grpc::Status status = stub_->FetchTaskStatus(&context, request, reply);
+    if (status.ok()) {
+        VLOG(5) << "FetchTaskStatus from node: ["
+                <<  dest_node_.to_string() << "] rpc succeeded.";
+    } else {
+        LOG(ERROR) << "FetchTaskStatus from Node ["
                   <<  dest_node_.to_string() << "] rpc failed. "
                   << status.error_code() << ": " << status.error_message();
         return retcode::FAIL;

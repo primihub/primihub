@@ -31,8 +31,8 @@ TEEDataProviderTask::TEEDataProviderTask(
     } catch (std::exception& e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return;
-    }    
-    
+    }
+
 }
 
 TEEDataProviderTask::~TEEDataProviderTask() {

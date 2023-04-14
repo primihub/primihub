@@ -32,8 +32,15 @@ auto conn_dctor = [](MYSQL* conn) {
     VLOG(5) << "begin to close conn";
     mysql_close(conn);
     mysql_library_end();
-    delete conn;
   }
+};
+
+auto conn_threadsafe_dctor = [](MYSQL* conn) {
+  if (conn != nullptr) {
+    VLOG(5) << "begin to close conn";
+    mysql_close(conn);
+  }
+  mysql_thread_end();
 };
 
 struct MySQLAccessInfo : public DataSetAccessInfo {
@@ -69,6 +76,7 @@ class MySQLCursor : public Cursor {
  public:
     MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> driver);
     ~MySQLCursor();
+    std::shared_ptr<primihub::Dataset> readMeta() override;
     std::shared_ptr<primihub::Dataset> read() override;
     std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
     int write(std::shared_ptr<primihub::Dataset> dataset) override;
@@ -84,7 +92,10 @@ class MySQLCursor : public Cursor {
     };
 
  protected:
-    retcode fetchData(std::vector<std::shared_ptr<arrow::Array>>* data_arr);
+    std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>
+    getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info);
+
+    retcode fetchData(const std::string& query_sql, std::vector<std::shared_ptr<arrow::Array>>* data_arr);
     sql_type_t getSQLType(const std::string& col_type);
     std::shared_ptr<arrow::Array> makeArrowArray(sql_type_t sql_type, const std::vector<std::string>& arr);
     std::shared_ptr<arrow::Field> makeArrowField(sql_type_t sql_type, const std::string& col_name);

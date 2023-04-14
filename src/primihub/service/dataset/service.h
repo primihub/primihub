@@ -31,13 +31,12 @@
 #include <arrow/record_batch.h>
 #include <arrow/table.h>
 
-#include "src/primihub/common/defines.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/p2p/node_stub.h"
 #include "src/primihub/service/dataset/model.h"
-#include "src/primihub/service/dataset/storage_backend.h"
+#include "src/primihub/service/dataset/localkv/storage_backend.h"
 #include "src/primihub/service/outcome.hpp"
 
 namespace primihub::service {

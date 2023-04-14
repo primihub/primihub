@@ -12,7 +12,7 @@ level_dict = {
     'FATAL': logging.FATAL
 }
 
-FORMAT = "%(asctime)s\tplatform=%(task_type)s\t%(levelname)s\t%(job_id)s\ttaskid=%(task_id)s\t%(name)s\t%(filename)s:%(lineno)s:%(funcName)s\t%(message)s"
+FORMAT = "%(asctime)s platform=%(task_type)s %(levelname)s %(job_id)s taskid=%(task_id)s %(name)s %(filename)s:%(lineno)s:%(funcName)s %(message)s"
 
 
 class JobFilter(logging.Filter):

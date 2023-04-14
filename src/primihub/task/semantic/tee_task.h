@@ -15,7 +15,7 @@
  */
 
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_ 
+#define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 
 #include <pybind11/embed.h>
 #include "src/primihub/task/semantic/task.h"
@@ -30,7 +30,7 @@ namespace primihub::task {
 //  */
 // class TEEExecutorTask : public TaskBase {
 //     public:
-//         TEEExecutorTask(const TaskParam *task_param, 
+//         TEEExecutorTask(const TaskParam *task_param,
 //                         std::shared_ptr<DatasetService> dataset_service);
 //         ~TEEExecutorTask() {}
 
@@ -40,13 +40,13 @@ namespace primihub::task {
 
 /**
  * @brief TEE DataProvider role task
- * 
+ *
  */
 class TEEDataProviderTask: public TaskBase {
     public:
         TEEDataProviderTask(
             const std::string& node_id,
-            const TaskParam *task_param, 
+            const TaskParam *task_param,
             std::shared_ptr<DatasetService> dataset_service);
         ~TEEDataProviderTask();
         int execute();

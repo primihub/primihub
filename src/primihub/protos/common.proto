@@ -67,16 +67,34 @@ message string_array {
   repeated bytes value_string_array = 1;
 }
 
+message float_array {
+  repeated float value_float_array = 1;
+}
+
+message double_array {
+  repeated double value_double_array = 1;
+}
+
+message bool_array {
+  repeated bool value_bool_array = 1;
+}
+
 message ParamValue {
   VarType var_type = 1;
   bool is_array = 2;
   oneof oneof_value {
     int32 value_int32 = 3;
-    string value_string = 4;
+    bytes value_string = 4;
     int32_array value_int32_array = 5;
     string_array value_string_array = 6;
     int64 value_int64 = 7;
     int64_array value_int64_array = 8;
+    float value_float = 9;
+    float_array value_float_array = 10;
+    double value_double = 11;
+    double_array value_double_array = 12;
+    bool value_bool = 13;
+    bool_array value_bool_array = 14;
   }
 }
 
@@ -112,6 +130,12 @@ message Node {
   repeated VirtualMachine vm = 7;
 }
 
+message TaskContext {
+  string task_id = 1;
+  string job_id = 2;
+  string request_id = 3;
+}
+
 message Task {
   TaskType type = 1;
   string name = 2;
@@ -120,7 +144,11 @@ message Task {
   bytes code = 5;
   map<string, Node> node_map = 6; // key: node_id
   repeated string input_datasets = 7;
-  bytes job_id = 8;
-  bytes task_id = 9;
+  TaskContext task_info = 8;
+  bytes party = 11;               // participate role
+}
+
+message Empty {
+
 }
 

@@ -22,10 +22,11 @@ Eigen::MatrixXd openData(std::string fileToOpen) {
     while(getline(matrixRowStringStream, matrixEntry,',')){
         matrixEntries.push_back(stod(matrixEntry));
     }
-    matrixRowNumber++;  
+    matrixRowNumber++;
   }
 
-  return Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> (matrixEntries.data(), matrixRowNumber, matrixEntries.size()/matrixRowNumber);
+  return Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> (
+        matrixEntries.data(), matrixRowNumber, matrixEntries.size()/matrixRowNumber);
 }
 
 }

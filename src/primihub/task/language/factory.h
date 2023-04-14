@@ -50,6 +50,7 @@ class LanguageParserFactory {
             LOG(ERROR) << "Unsupported language: " << language;
             return nullptr;
         }
+        return nullptr;
     }
 }; // class LanguageParserFactory
 } // namespace primihub::task

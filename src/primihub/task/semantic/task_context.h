@@ -16,15 +16,16 @@
 
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TASK_CONTEXT_H_
-#include "src/primihub/util/network/link_factory.h"
-#include "src/primihub/util/network/link_context.h"
-#include "src/primihub/util/threadsafe_queue.h"
-#include "src/primihub/common/defines.h"
-#include "src/primihub/node/server_config.h"
 #include <unordered_map>
 #include <queue>
 #include <mutex>
 #include <string>
+#include <memory>
+
+#include "src/primihub/util/network/link_factory.h"
+#include "src/primihub/util/network/link_context.h"
+#include "src/primihub/util/threadsafe_queue.h"
+#include "src/primihub/node/server_config.h"
 
 namespace primihub::task {
 // temp data storage
@@ -42,13 +43,13 @@ class TaskContext {
     initCertificate();
   }
 
-  TaskContext(primihub::network::LinkMode mode) {
+  explicit TaskContext(primihub::network::LinkMode mode) {
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(mode);
     initCertificate();
   }
 
-  void setTaskInfo(const std::string& job_id, const std::string& task_id) {
-    link_ctx_->setTaskInfo(job_id, task_id);
+  void setTaskInfo(const std::string& job_id, const std::string& task_id, const std::string& request_id) {
+    link_ctx_->setTaskInfo(job_id, task_id, request_id);
   }
 
   primihub::ThreadSafeQueue<T>& getRecvQueue(const std::string& role = "default") {

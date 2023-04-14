@@ -6,6 +6,7 @@
 #endif
 #include <string>
 #include <sstream>
+#include <vector>
 namespace primihub {
 // MACRO or CONSTANT defination
 #ifdef __linux__
@@ -14,6 +15,11 @@ namespace primihub {
 #define SET_THREAD_NAME(name)
 #endif
 
+// macro defination
+static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
+static int WAIT_TASK_WORKER_READY_TIMEOUT_MS = 5*1000;
+static int CACHED_TASK_STATUS_TIMEOUT_S = 5;
+static int SCHEDULE_WORKER_TIMEOUT_S = 20;
 // common type defination
 using u64 = uint64_t;
 using i64 = int64_t;
@@ -93,8 +99,8 @@ struct Node {
     std::string id_{"defalut"};
     std::string ip_;
     uint32_t port_;
-    std::string role_{"default"};
     bool use_tls_{false};
+    std::string role_{"default"};
 };
 
 }  // namespace primihub

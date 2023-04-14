@@ -7,7 +7,7 @@ else
     TAG=$1
 fi
 
-if [ ! -n "$2"] ; then
+if [ ! -n "$2" ] ; then
     IMAGE_NAME="primihub/primihub-node"
 else
     IMAGE_NAME=$2
@@ -17,7 +17,12 @@ bash pre_build.sh
 
 ARCH=`arch`
 
-bazel build --config=linux_$ARCH :node :py_main :cli :opt_paillier_c2py :linkcontext
+
+bazel build --config=linux_$ARCH --define enable_mysql_driver=true //:node \
+    //:py_main \
+    //:cli \
+    //src/primihub/pybind_warpper:opt_paillier_c2py \
+    //src/primihub/pybind_warpper:linkcontext
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
@@ -35,11 +40,12 @@ key_word="ARG TARGET_PATH="
 row_num=$(sed -n "/${key_word}/=" Dockerfile.local)
 sed -i "${row_num}s#.*#ARG TARGET_PATH="${BASE_DIR}"#" Dockerfile.local
 
-rm -rf $BASE_DIR/python $BASE_DIR/config
+rm -rf $BASE_DIR/python $BASE_DIR/config $BASE_DIR/example
 rm -f $BASE_DIR/Dockerfile.local
 rm -f $BASE_DIR/.dockerignore
 rm -rf $BASE_DIR/data
 
+cp -r ./example $BASE_DIR/
 cp -r ./data $BASE_DIR/
 cp -r ./python $BASE_DIR/
 cp -r ./config $BASE_DIR/

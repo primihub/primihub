@@ -51,181 +51,183 @@ DatasetService::DatasetService(std::shared_ptr<DatasetMetaService> metaService,
   // std::make_shared<FlightIntegrationServer>(shared_from_this());
   //
 }
-    /**
-     * @brief Construct a new Dataset object
-     * 1. Read data using driver for get dataset & datameta
-     * 2. Save datameta in local storage.
-     * 3. Publish dataset meta on libp2p network.
-     *
-     * @param driver [input]: Data driver
-     * @param name [input]: Dataset name
-     * @param dataset_id [input]: Dataset description
-     * @param dataset_access_info [input]: dataset access_info
-     * @param meta [output]: Dataset meta
-     * @return std::shared_ptr<primihub::Dataset>
-     */
-    std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
-                                std::shared_ptr<primihub::DataDriver> driver,
-                                const std::string& dataset_id, // TODO put description in meta
-                                const std::string& dataset_access_info,
-                                DatasetMeta& meta) {
-        // Read data using driver for get dataset & datameta
-        // TODO just get meta info from dataset
-        auto cursor = driver->read();
-        auto dataset = cursor->read();
-        // DatasetMeta _meta(dataset, dataset_id, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
-        meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
-        // Save datameta in local storage.& Publish dataset meta on libp2p network.
-        metaService_->putMeta(meta);
-        return dataset;
-    }
 
-    /**
-     * @brief write dataset to local storage
-     * @param dataset [input]: Dataset to be written with own driver
-     * @param description [input]: Dataset description
-     * @param dataset_access_info [input]: Dataset access info
-     * @param meta [output]: Dataset metadata
-     */
-    void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset,
-                 const std::string &description,
-                 const std::string& dataset_access_info,
-                 DatasetMeta &meta /*output*/) {
-        // dataset.write();
-        // dataset->getDataDriver()->getCursor()->write(dataset);
-        // DatasetMeta _meta(dataset, description, DatasetVisbility::PUBLIC);  // TODO(chenhongbo) visibility public for test now.
-        meta = DatasetMeta(dataset, description, DatasetVisbility::PUBLIC, dataset_access_info);
-        metaService_->putMeta(meta);
-    }
+/**
+ * @brief Construct a new Dataset object
+ * 1. Read data using driver for get dataset & datameta
+ * 2. Save datameta in local storage.
+ * 3. Publish dataset meta on libp2p network.
+ *
+ * @param driver [input]: Data driver
+ * @param name [input]: Dataset name
+ * @param dataset_id [input]: Dataset description
+ * @param dataset_access_info [input]: dataset access_info
+ * @param meta [output]: Dataset meta
+ * @return std::shared_ptr<primihub::Dataset>
+ */
+std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
+                            std::shared_ptr<primihub::DataDriver> driver,
+                            const std::string& dataset_id, // TODO put description in meta
+                            const std::string& dataset_access_info,
+                            DatasetMeta& meta) {
+    // Read data using driver for get dataset & datameta
+    // TODO just get meta info from dataset
+    // auto dataset = driver->getCursor()->read();
+    auto cursor = driver->read();
+    auto dataset = cursor->readMeta();
+    meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
+    // Save datameta in local storage.& Publish dataset meta on libp2p network.
+    metaService_->putMeta(meta);
+    return dataset;
+}
 
-
-    /**
-     * @brief Register dataset use meta
-     *
-     * @param meta [input]: Dataset meta
-     */
-    void DatasetService::regDataset(DatasetMeta& meta) {
-        metaService_->putMeta(meta);
-    }
-
-    /**
-     * @brief Read dataset by dataset uri
-     * TODO(chenhongbo) Only support local dataset now. !!!
-     * @param id [input]: Dataset id
-     * @param handler [input]: Read dataset handler
-     * @return outcome::result<void>
-     *  TODO async style or callback style ?
-     */
-    outcome::result<void> DatasetService::readDataset(const DatasetId& id,
-                                                      ReadDatasetHandler handler) {
-        metaService_->getMeta(id, [&](std::shared_ptr<DatasetMeta> meta) {
-            if (meta) {
-                // Construct dataset from meta
-                auto driver = DataDirverFactory::getDriver(meta->getDriverType(), nodelet_addr_);
-                auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
-                auto dataset = cursor->read();
-                handler(dataset);
-                return outcome::success();
-            }
-
-        });
-        return outcome::success();
-    }
-
-    /**
-     * @brief Find dataset by dataset uri
-     *
-     */
-    outcome::result<void> DatasetService::findDataset(const DatasetId& id,
-                                        FoundMetaHandler handler) {
-        metaService_->getMeta(id, handler);
-        return outcome::success();
-    }
+/**
+ * @brief write dataset to local storage
+ * @param dataset [input]: Dataset to be written with own driver
+ * @param description [input]: Dataset description
+ * @param dataset_access_info [input]: Dataset access info
+ * @param meta [output]: Dataset metadata
+ */
+void DatasetService::writeDataset(const std::shared_ptr<primihub::Dataset> &dataset,
+              const std::string &description,
+              const std::string& dataset_access_info,
+              DatasetMeta &meta /*output*/) {
+    // dataset.write();
+    // dataset->getDataDriver()->getCursor()->write(dataset);     // TODO(fix in future)
+    meta = DatasetMeta(dataset, description, DatasetVisbility::PUBLIC, dataset_access_info);
+    metaService_->putMeta(meta);
+}
 
 
-    /**
-     * @brief TODO Delete dataset
-     * 1. Delete dataset meta from local storage.
-     * 2. Delete dataset from libp2p network.
-     *
-     * @param id [input]: Dataset id
-     * @return int
-     */
-    int DatasetService::deleteDataset(const DatasetId& id) {
+/**
+ * @brief Register dataset use meta
+ *
+ * @param meta [input]: Dataset meta
+ */
+void DatasetService::regDataset(DatasetMeta& meta) {
+    metaService_->putMeta(meta);
+}
 
-        return 0;
-    }
-
-    /**
-     * @brief Consture datasets from yaml datasets configurtion.
-     * @param config_file_path [input]: Datasets configuration file path
-     *
-     */
-    void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
-        LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
-        YAML::Node config = YAML::LoadFile(config_file_path);
-        auto& server_cfg = ServerConfig::getInstance();
-        auto& nodelet_cfg = server_cfg.getServiceConfig();
-        std::string nodelet_addr = nodelet_cfg.to_string();
-        if (config["datasets"]) {
-            for (const auto& dataset : config["datasets"]) {
-                auto dataset_type = dataset["model"].as<std::string>();
-                auto dataset_uid = dataset["description"].as<std::string>();
-                auto access_info = createAccessInfo(dataset_type, dataset);
-                if (access_info == nullptr) {
-                    LOG(WARNING) << "create access info for " << dataset_uid << " failed, to skip";
-                    continue;
-                }
-                std::string access_info_str = access_info->toString();
-                auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr, std::move(access_info));
-                this->registerDriver(dataset_uid, driver);
-                DatasetMeta meta;
-                newDataset(driver, dataset_uid, access_info_str, meta);
-            }
+/**
+ * @brief Read dataset by dataset uri
+ * TODO(chenhongbo) Only support local dataset now. !!!
+ * @param id [input]: Dataset id
+ * @param handler [input]: Read dataset handler
+ * @return outcome::result<void>
+ *  TODO async style or callback style ?
+ */
+outcome::result<void> DatasetService::readDataset(const DatasetId& id,
+                                                  ReadDatasetHandler handler) {
+    metaService_->getMeta(id, [&](std::shared_ptr<DatasetMeta> meta) {
+        if (meta) {
+            // Construct dataset from meta
+            auto driver = DataDirverFactory::getDriver(meta->getDriverType(), nodelet_addr_);
+            auto cursor = driver->read(meta->getDataURL());  // TODO only support Local file path now.
+            auto dataset = cursor->read();
+            handler(dataset);
+            return outcome::success();
         }
-    }
+        return outcome::success();
+    });
+    return outcome::success();
+}
 
-    // Load dataset from local meta storage.
-    void DatasetService::restoreDatasetFromLocalStorage(void) {
-        LOG(INFO) << "💾 Restore dataset from local storage...";
-        std::vector<DatasetMeta> metas;
-        metaService_->getAllLocalMetas(metas);
-        for (auto meta : metas) {
-            // Update node let address.
-            std::string data_url = meta.getDataURL();
-            std::string dataset_path;
-            Node node_info;
-            auto ret = DataURLToDetail(data_url, node_info, dataset_path);
-            if (ret != retcode::SUCCESS) {
-                LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
-                continue;
-            }
-            auto access_info_str = meta.getAccessInfo();
-            std::string driver_type = meta.getDriverType();
-            std::string fid = meta.getDescription();
-            auto access_info = this->createAccessInfo(driver_type, access_info_str);
-            if (access_info == nullptr) {
-                std::string err_msg = "create access info failed";
-                continue;
-            }
-            auto driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
-            this->registerDriver(fid, driver);
-            meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
-            meta.setServerInfo(nodelet_addr_);
-            // Publish dataset meta on public network.
-            metaService_->putMeta(meta);
+/**
+ * @brief Find dataset by dataset uri
+ *
+ */
+outcome::result<void> DatasetService::findDataset(const DatasetId& id,
+                                    FoundMetaHandler handler) {
+    metaService_->getMeta(id, handler);
+    return outcome::success();
+}
+
+
+/**
+ * @brief TODO Delete dataset
+ * 1. Delete dataset meta from local storage.
+ * 2. Delete dataset from libp2p network.
+ *
+ * @param id [input]: Dataset id
+ * @return int
+ */
+int DatasetService::deleteDataset(const DatasetId& id) {
+    return 0;
+}
+
+/**
+ * @brief Consture datasets from yaml datasets configurtion.
+ * @param config_file_path [input]: Datasets configuration file path
+ *
+ */
+void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
+    LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
+    YAML::Node config = YAML::LoadFile(config_file_path);
+    auto& server_cfg = ServerConfig::getInstance();
+    auto& nodelet_cfg = server_cfg.getServiceConfig();
+    std::string nodelet_addr = nodelet_cfg.to_string();
+    if (!config["datasets"]) {
+        LOG(WARNING) << "no datsets found in config file, ignore....";
+        return;
+    }
+    for (const auto& dataset : config["datasets"]) {
+        auto dataset_type = dataset["model"].as<std::string>();
+        auto dataset_uid = dataset["description"].as<std::string>();
+        auto access_info = createAccessInfo(dataset_type, dataset);
+        if (access_info == nullptr) {
+            LOG(WARNING) << "create access info for " << dataset_uid << " failed, to skip";
+            continue;
         }
+        std::string access_info_str = access_info->toString();
+        auto driver = DataDirverFactory::getDriver(dataset_type, nodelet_addr, std::move(access_info));
+        this->registerDriver(dataset_uid, driver);
+        driver->read();
+        DatasetMeta meta;
+        newDataset(driver, dataset_uid, access_info_str, meta);
     }
+}
 
-    void DatasetService::setMetaSearchTimeout(unsigned int timeout) {
-       if (metaService_) {
-          metaService_->setMetaSearchTimeout(timeout);
-       }
+// Load dataset from local meta storage.
+void DatasetService::restoreDatasetFromLocalStorage(void) {
+    LOG(INFO) << "💾 Restore dataset from local storage...";
+    std::vector<DatasetMeta> metas;
+    metaService_->getAllLocalMetas(metas);
+    for (auto meta : metas) {
+        // Update node let address.
+        std::string data_url = meta.getDataURL();
+        std::string dataset_path;
+        Node node_info;
+        auto ret = DataURLToDetail(data_url, node_info, dataset_path);
+        if (ret != retcode::SUCCESS) {
+            LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
+            continue;
+        }
+        auto access_info_str = meta.getAccessInfo();
+        std::string driver_type = meta.getDriverType();
+        std::string fid = meta.getDescription();
+        auto access_info = this->createAccessInfo(driver_type, access_info_str);
+        if (access_info == nullptr) {
+            std::string err_msg = "create access info failed";
+            continue;
+        }
+        auto driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
+        this->registerDriver(fid, driver);
+        meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
+        meta.setServerInfo(nodelet_addr_);
+        // Publish dataset meta on public network.
+        metaService_->putMeta(meta);
     }
+}
 
-    std::string DatasetService::getNodeletAddr(void) {
-        return nodelet_addr_;
+void DatasetService::setMetaSearchTimeout(unsigned int timeout) {
+    if (metaService_) {
+      metaService_->setMetaSearchTimeout(timeout);
     }
+}
+
+std::string DatasetService::getNodeletAddr(void) {
+    return nodelet_addr_;
+}
 
 primihub::retcode DatasetService::registerDriver(
         const std::string& dataset_id, std::shared_ptr<primihub::DataDriver> driver) {

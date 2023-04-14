@@ -14,8 +14,6 @@
  limitations under the License.
  */
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
@@ -170,7 +168,14 @@ void PIRScheduler::node_push_pir_task(const std::string& node_id,
         LOG(ERROR) << "Unknown pirType: " << pirType;
         return;
     }
-
+    {
+        // fill scheduler info
+        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
+        auto& local_node = getLocalNodeCfg();
+        rpc::Node scheduler_node;
+        node2PbNode(local_node, &scheduler_node);
+        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+    }
     // send request
     std::string dest_node_address = dest_node.to_string();
     VLOG(5) << "begin to submit task to: " << dest_node_address;

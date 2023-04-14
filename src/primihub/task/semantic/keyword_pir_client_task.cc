@@ -76,7 +76,7 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     }
     const auto& node_map = task.node_map();
     for (const auto& [_node_id, pb_node] : node_map) {
-        if (_node_id == this->node_id()) {
+        if (!isParty(_node_id)) {
             continue;
         }
         primihub::pbNode2Node(pb_node, &peer_node_);

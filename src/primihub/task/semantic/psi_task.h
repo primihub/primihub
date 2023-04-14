@@ -16,7 +16,7 @@
 
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_H_
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "arrow/api.h"
 #include "src/primihub/data_store/factory.h"
 namespace primihub::task {

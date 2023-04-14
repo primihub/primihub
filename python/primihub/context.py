@@ -192,6 +192,9 @@ class TaskContext:
     def job_id(self):
         return self.params_map["jobid"]
 
+    def request_id(self):
+        return self.params_map["request_id"]
+
     def config_file(self):
         return self.params_map["config_file_path"]
 
@@ -203,7 +206,7 @@ class TaskContext:
         self.use_tls = config_node.get("use_tls", False)
         import linkcontext
         self.link_context = linkcontext.LinkFactory.createLinkContext(linkcontext.LinkMode.GRPC)
-        self.link_context.setTaskInfo(self.job_id(), self.task_id())
+        self.link_context.setTaskInfo(self.job_id(), self.task_id(), self.request_id())
         if self.use_tls:
             # load certificate
             cert_confg = config_node.get("certificate", {})

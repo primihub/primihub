@@ -1,8 +1,8 @@
+
 TARGET := //:node \
          //:cli \
-         //:linkcontext \
-         //:opt_paillier_c2py \
-         //:linkcontext \
+         //src/primihub/pybind_warpper:linkcontext \
+         //src/primihub/pybind_warpper:opt_paillier_c2py \
          //:py_main
 
 linux_x86_64:
@@ -12,7 +12,10 @@ linux_aarch64:
 	bazel build --config=linux_aarch64 ${TARGET}
 
 macos_arm64:
-	bazel build --config=macos --define cpu=arm64 --define microsoft-apsi=true ${TARGET}
+	bazel build --config=darwin_arm64 ${TARGET}
+
+macos_x86_64:
+	bazel build --config=darwin_x86_64 ${TARGET}
 
 .PHONY: clean
 
