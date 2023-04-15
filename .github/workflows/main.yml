@@ -92,11 +92,9 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 //:py_main
-
-        #bazel build --config=darwin_x86_64 //:node \
-        #    //:py_main \
-        #    //:cli \
-        #    //src/primihub/pybind_warpper:opt_paillier_c2py \
-        #    //src/primihub/pybind_warpper:linkcontext
+        bazel build --config=darwin_x86_64 //:node \
+            //:py_main \
+            //:cli \
+            //src/primihub/pybind_warpper:opt_paillier_c2py \
+            //src/primihub/pybind_warpper:linkcontext
 
