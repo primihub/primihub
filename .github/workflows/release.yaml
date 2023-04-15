@@ -120,14 +120,14 @@ jobs:
             //:py_main \
             //:cli \
             //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext \
-            //src/primihub/protos:worker_py_pb2_grpc \
-            //src/primihub/protos:service_py_pb2_grpc
+            //src/primihub/pybind_warpper:linkcontext
+            #//src/primihub/protos:worker_py_pb2_grpc \
+            #//src/primihub/protos:service_py_pb2_grpc
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
-          cp -f bazel-bin/src/primihub/protos/*.py \
-              python/primihub/client/ph_grpc/src/primihub/protos
+          #cp -f bazel-bin/src/primihub/protos/*.py \
+          #    python/primihub/client/ph_grpc/src/primihub/protos
 
           tar zcf primihub-darwin-amd64.tar.gz bazel-bin/cli \
             bazel-bin/node \
