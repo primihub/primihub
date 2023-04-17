@@ -192,6 +192,7 @@ setup(
     url=primihub.__homepage__,
     packages=find_packages(),
     install_requires=install_requires,
+    package_data = {'primihub.new_FL': ['*.json']},
     # package_data={
     #     '': [
     #         '*.yaml',

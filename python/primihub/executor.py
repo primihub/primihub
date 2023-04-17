@@ -19,6 +19,9 @@ import json
 from primihub.context import Context
 from primihub.utils.logger_util import logger
 from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
+import primihub
+path = primihub.__file__
+path = path[:-12]
 class Executor:
     '''
     Excute the py file. Note the Context is passed
@@ -63,11 +66,11 @@ class Executor:
         task_parameter['data'] = task.party_datasets[party_name].data
         task_parameter['party_name'] = party_name
         task_parameter['task_info'] = task_info_dict
-
-        with open('new_FL/model_map.json','r') as f:
+        model = task_parameter['model']
+        with open(path+'/new_FL/model_map.json','r') as f:
             func_map = json.load(f)
-        my_code = func_map[task.code.decode][role_name]
-        import_cmd = "from primihub.algorithm" + my_code + "import Model"
+        my_code = func_map[model][role_name]
+        import_cmd = "from primihub.algorithm." + my_code + "import Model"
         exec(import_cmd)
         model = Model(task_parameter, party_access_info)
         model.run()
