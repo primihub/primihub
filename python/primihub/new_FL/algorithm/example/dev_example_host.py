@@ -26,6 +26,9 @@ class Model(BaseModel):
         print(self.get_parties())
         print(self.role2party('guest'))
         print(self.party2role('Alice'))
+
+        #get iters
+        print(f"iters is { self.task_parameter['num_iter']}")
     
     def predict(self):
         pass
