@@ -113,6 +113,7 @@ class IVBase:
             if val < self.thres:
                 continue
             else:
+                key = key.replace("_cate", "")
                 filtered_features.append(key)
 
         return filtered_features
@@ -180,13 +181,14 @@ class Iv_with_label(IVBase):
             threshold=0.15,
             bin_num=10,
             channel=None,
-            security_length=112  # encryted item length
-    ) -> None:
+            security_length=112,  # encryted item length
+            output_file=None) -> None:
         super().__init__(df, category_feature, continuous_feature, target_name,
                          continuous_feature_max, continuous_feature_min,
                          bin_dict, return_woe, threshold, bin_num, channel)
         self.public_key = None
         self.private_key = None
+        self.output_file = output_file
 
         if security_length:
             self.public_key, self.private_key = opt_paillier_keygen(
@@ -260,6 +262,10 @@ class Iv_with_label(IVBase):
 
         self.channel.sender("guest_ivs", guest_ivs)
 
+        if self.output_file is not None:
+            filtered_data = self.data[filter_features + [self.target_name]]
+            filtered_data.to_csv(self.output_file, index=False, sep='\t')
+
         return filter_features
 
 
@@ -276,10 +282,12 @@ class Iv_no_label(IVBase):
                  return_woe=True,
                  threshold=0.15,
                  bin_num=10,
-                 channel=None) -> None:
+                 channel=None,
+                 output_file=None) -> None:
         super().__init__(df, category_feature, continuous_feature, target_name,
                          continuous_feature_max, continuous_feature_min,
                          bin_dict, return_woe, threshold, bin_num, channel)
+        self.output_file = output_file
 
     def binning(self):
         return super().binning()
@@ -320,6 +328,7 @@ class Iv_no_label(IVBase):
             if val < self.thres:
                 continue
             else:
+                key = key.replace("_cate", "")
                 filtered_features.append(key)
 
         return filtered_features
@@ -335,5 +344,9 @@ class Iv_no_label(IVBase):
         print("guest_ivs ===", guest_ivs)
 
         filtered_features = self.filter_features(guest_ivs)
+
+        if self.output_file is not None:
+            filtered_data = self.data[filtered_features]
+            filtered_data.to_csv(self.output_file, index=False, sep='\t')
 
         return filtered_features
