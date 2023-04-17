@@ -9,14 +9,11 @@ class Client:
         self.node_config = node_config
     
     
-    def submit(self, func_map, para_map):
+    def submit(self, para_map):
         #submit the task from the task_list
 
         task_id = uuid.uuid1().hex
         print(f'The task_id is {task_id}')
-
-        for role, func in func_map.items():
-            func_map[role] = func.encode()
 
         #updata the params
         cp_param =  common_pb2.Params()
@@ -57,7 +54,7 @@ class Client:
                            process,                    # Name. example: {'Xgb_train'}
                            common_pb2.Language.PYTHON,     # Language.
                            cp_param,                         # Params. example {'guest': {'iter':10},'host': {'iter':10} }
-                           func_map,                    # Code. example code {'guest': "c = 1; print c ",'host': "a = 1; print a"}
+                           None,                    # Code. example code {'guest': "c = 1; print c ",'host': "a = 1; print a"}
                            None,                           # Node map. not used at the moment
                            None,                           # Input dataset.
                            cp_task_info,

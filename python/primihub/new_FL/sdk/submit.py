@@ -34,21 +34,18 @@ if __name__ == '__main__':
 
         #set commom paramerter
         data = task["data_path"]
-        model = task["model"]
         process = task['process']
         task_parameter = task["parameters"]
+        task_parameter['model'] = task["model"]
         task_parameter['process'] = process
         task_parameter['protocol'] = 'FL'
         task_parameter['all_roles'] = roles
         #generate the task map
         para_map = generate_para_map(task_parameter, data, roles)
-        #set the func map
-        func_map = {'guest': model,
-                    'host': model}
 
-        
+
         #submit the task and get the task ID
-        task_ids = client.submit(func_map,para_map)
+        task_ids = client.submit(para_map)
 
 
 
