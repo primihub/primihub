@@ -64,7 +64,7 @@ class Executor:
         task_parameter['party_name'] = party_name
         task_parameter['task_info'] = task_info_dict
 
-        with open('new_fl/model_map.json','r') as f:
+        with open('new_FL/model_map.json','r') as f:
             func_map = json.load(f)
         my_code = func_map[task.code.decode][role_name]
         import_cmd = "from primihub.algorithm" + my_code + "import Model"
