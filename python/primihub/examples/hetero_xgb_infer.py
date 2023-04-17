@@ -266,7 +266,7 @@ def xgb_host_infer():
     try:
         test_y = test_host.pop('y')
     except:
-        test_y = None
+        test_y = 1
 
     pred_prob = xgb_host.host_predict_prob(test_host)
     acc = accuracy_score((pred_prob >= 0.5).astype('int'), test_y)
@@ -291,7 +291,10 @@ def xgb_host_infer():
 
     # save preds to file
     predict_file_path = ph.context.Context.get_predict_file_path()
-    pred_df = pd.DataFrame({'pred_y': pred_prob})
+    pred_df = pd.DataFrame({
+        'pred_prob': pred_prob,
+        "pred_y": (pred_prob >= 0.5).astype('int')
+    })
     pred_df.to_csv(predict_file_path, index=False, sep='\t')
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
