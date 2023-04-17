@@ -1,8 +1,9 @@
 import pandas as pd
-from primihub.new_FL.algorithm.net_work import GrpcServer
-from primihub.new_FL.algorithm.FL_helper import FL_helper
-class Model:
+from primihub.new_FL.algorithm.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.utils.base import BaseModel
+class Model(BaseModel):
     def __init__(self, task_parameter, party_access_info):
+        super().__init__(task_parameter, party_access_info)
         self.task_parameter = task_parameter
         self.party_access_info = party_access_info
         
@@ -16,11 +17,10 @@ class Model:
             server = GrpcServer('Bob','Alice', party_access_info, task_parameter['task_info'])
             server.sender('abc1', 'efg')    
 
-        helper = FL_helper(task_parameter,party_access_info)
-        print(helper.get_roles())
-        print(helper.get_parties())
-        print(helper.role2party('guest'))
-        print(helper.party2role('Alice'))
+        print(self.get_roles())
+        print(self.get_parties())
+        print(self.role2party('guest'))
+        print(self.party2role('Alice'))
 
 
     def train(self, X, y):

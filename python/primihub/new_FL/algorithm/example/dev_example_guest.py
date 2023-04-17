@@ -1,7 +1,9 @@
 import pandas as pd
-from primihub.new_FL.algorithm.net_work import GrpcServer
-class Model:
+from primihub.new_FL.algorithm.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.utils.base import BaseModel
+class Model(BaseModel):
     def __init__(self, task_parameter, party_access_info):
+        super().__init__(task_parameter, party_access_info)
         self.task_parameter = task_parameter
         self.party_access_info = party_access_info
     
