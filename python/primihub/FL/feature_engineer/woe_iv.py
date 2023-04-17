@@ -46,17 +46,16 @@ class IVBase:
                     # bucket-binning according to pre-set bins
 
                     if self.bin_type == "equal_size":
-                        bin_bucket = pd.qcut(
-                            self.data[cur_feature],
-                            cur_feature_bins,
-                            labels=np.arange(len(cur_feature_bins) - 1),
-                            duplicates='drop')
+                        bin_bucket = pd.qcut(self.data[cur_feature],
+                                             cur_feature_bins,
+                                             labels=False,
+                                             duplicates='drop')
 
                     else:
-                        bin_bucket = pd.cut(
-                            self.data[cur_feature],
-                            bins=cur_feature_bins,
-                            labels=np.arange(len(cur_feature_bins) - 1))
+                        bin_bucket = pd.cut(self.data[cur_feature],
+                                            bins=cur_feature_bins,
+                                            labels=np.arange(
+                                                len(cur_feature_bins)))
 
                     self.data[cur_feature + "_cate"] = bin_bucket
 
@@ -66,7 +65,7 @@ class IVBase:
                     if self.bin_type == "equal_size":
                         bin_bucket = pd.qcut(self.data[cur_feature],
                                              self.bin_num,
-                                             labels=np.arange(self.bin_num - 1),
+                                             labels=False,
                                              duplicates='drop')
                     else:
                         bin_bucket = pd.cut(self.data[cur_feature],
