@@ -47,9 +47,10 @@ class IVBase:
 
                     if self.bin_type == "equal_size":
                         bin_bucket = pd.qcut(self.data[cur_feature],
-                                             bins=cur_feature_bins,
+                                             cur_feature_bins,
                                              labels=np.arange(
-                                                 len(cur_feature_bins)))
+                                                 len(cur_feature_bins)),
+                                             duplicates='drop')
 
                     else:
                         bin_bucket = pd.cut(self.data[cur_feature],
@@ -64,8 +65,9 @@ class IVBase:
 
                     if self.bin_type == "equal_size":
                         bin_bucket = pd.qcut(self.data[cur_feature],
-                                             bins=self.bin_num,
-                                             labels=np.arange(self.bin_num))
+                                             self.bin_num,
+                                             labels=np.arange(self.bin_num),
+                                             duplicates='drop')
                     else:
                         bin_bucket = pd.cut(self.data[cur_feature],
                                             bins=self.bin_num,
