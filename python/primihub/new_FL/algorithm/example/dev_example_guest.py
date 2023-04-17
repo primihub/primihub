@@ -8,6 +8,11 @@ class Model(BaseModel):
         self.party_access_info = party_access_info
     
     def run(self):
+        if self.task_parameter['process'] == 'train':
+            self.train()
+    
+
+    def train(self):
         task_parameter = self.task_parameter
         party_access_info = self.party_access_info
         print(task_parameter)
@@ -17,9 +22,5 @@ class Model(BaseModel):
         res = server.recv('abc1')
         print(res)
     
-
-    def train(self, X, y):
-        pass
-    
-    def predict(self, X):
+    def predict(self):
         pass
