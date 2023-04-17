@@ -32,7 +32,7 @@
             "Bob":{"X": "train_party_1"},
             "Charlie":{"X": "train_party_2"}
         },
-        "model": "Xgboost",
+        "model": "Dev_example",
         "process": "train",
         "parameters": {
             "num_iter" : 10
