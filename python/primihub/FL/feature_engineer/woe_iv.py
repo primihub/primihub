@@ -113,6 +113,7 @@ class IVBase:
             if val < self.thres:
                 continue
             else:
+                key.replace("_cate", "")
                 filtered_features.append(key)
 
         return filtered_features
@@ -327,6 +328,7 @@ class Iv_no_label(IVBase):
             if val < self.thres:
                 continue
             else:
+                key.replace("_cate", "")
                 filtered_features.append(key)
 
         return filtered_features

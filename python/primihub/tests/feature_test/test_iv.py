@@ -56,7 +56,8 @@ def iv_filter_host():
         if removed_col in all_columns:
             all_columns.remove(removed_col)
 
-    output_file = ph.context.Context.get_predict_file_path()
+    output_file = ph.context.Context.get_predict_file_path(
+    ) + "_" + ph.context.Context.params_map['role']
 
     # grpc server initialization
     host_channel = GrpcServer(remote_ip=guest_ip,
@@ -104,7 +105,8 @@ def iv_filter_guest():
     # data = pd.read_csv("/home/xusong/data/epsilon_normalized.guest", header=0)
     # data = md.read_csv("/home/primihub/xusong/data/merged_large_guest.csv")
     guest_model_path = ph.context.Context.get_model_file_path() + ".guest"
-    output_file = ph.context.Context.get_predict_file_path()
+    output_file = ph.context.Context.get_predict_file_path(
+    ) + "_" + ph.context.Context.params_map['role']
 
     guest_cols = config['guest_columns']
     if guest_cols is not None:
