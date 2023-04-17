@@ -2,7 +2,7 @@
 from client import Client
 from copy import deepcopy
 import sys
-
+import json
 def generate_para_map(task_parameter, data, roles):
     party2role = dict()
     tmp_party_list = []
@@ -23,7 +23,9 @@ def generate_para_map(task_parameter, data, roles):
 
 json_file = sys.argv[1]
 if __name__ == '__main__':
-    print(json_file)
+    print(f"json_file is {json_file}")
+    with open('json_file','r') as f:
+        json_file = json.load(json_file)
     party_access_info = json_file["json_file"]
     roles = json_file["roles"]
 
