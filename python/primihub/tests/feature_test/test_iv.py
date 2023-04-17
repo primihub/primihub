@@ -136,6 +136,7 @@ def iv_filter_guest():
                            continuous_feature_max=dict(),
                            continuous_feature_min=dict(),
                            bin_dict=dict(),
-                           output_file=output_file, bin_type=config['bin_type'])
+                           output_file=output_file,
+                           bin_type=config['bin_type'])
 
     iv_guest.run()
