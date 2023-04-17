@@ -24,9 +24,9 @@ def generate_para_map(task_parameter, data, roles):
 json_file = sys.argv[1]
 if __name__ == '__main__':
     print(f"json_file is {json_file}")
-    with open('json_file','r') as f:
-        json_file = json.load(json_file)
-    party_access_info = json_file["json_file"]
+    with open(json_file,'r') as f:
+        json_file = json.load(f)
+    party_access_info = json_file["party_access_info"]
     roles = json_file["roles"]
 
     client = Client(party_access_info['task_manager'], None, party_access_info)
