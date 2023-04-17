@@ -1,8 +1,8 @@
 import pandas as pd
-from primihub.new_FL.utils.net_work import GrpcServer
-from primihub.new_FL.utils.FL_helper import FL_helper
+from primihub.new_FL.algorithm.net_work import GrpcServer
+from primihub.new_FL.algorithm.FL_helper import FL_helper
 class Model:
-    def __init__(self, task_parameter, party_access_info)
+    def __init__(self, task_parameter, party_access_info):
         self.task_parameter = task_parameter
         self.party_access_info = party_access_info
         

@@ -1,5 +1,5 @@
 import pandas as pd
-from primihub.new_FL.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.net_work import GrpcServer
 class Model:
     def __init__(self, task_parameter, party_access_info):
         self.task_parameter = task_parameter

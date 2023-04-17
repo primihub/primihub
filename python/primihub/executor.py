@@ -70,7 +70,7 @@ class Executor:
         with open(path+'/new_FL/model_map.json','r') as f:
             func_map = json.load(f)
         my_code = func_map[model][role_name]
-        import_cmd = "from primihub.algorithm." + my_code + "import Model"
+        import_cmd = "from primihub.new_FL.algorithm." + my_code + " import Model"
         exec(import_cmd)
         model = Model(task_parameter, party_access_info)
         model.run()
