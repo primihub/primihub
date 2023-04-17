@@ -36,3 +36,14 @@ def goss_sample(df_g, top_rate=0.2, other_rate=0.2):
     low_ids = random.sample(other_ids, other_num)
 
     return top_ids, low_ids
+
+
+def col_sample(feature_list, sample_ratio=0.3, threshold=30):
+    if len(feature_list) < threshold:
+        return feature_list
+
+    sample_num = int(len(feature_list) * sample_ratio)
+
+    sample_features = random.sample(feature_list, sample_num)
+
+    return sample_features

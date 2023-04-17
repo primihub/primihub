@@ -1,37 +1,28 @@
-import primihub as ph
-import pandas as pd
-import ray
-import modin.pandas as md
+from primihub.FL.feature_engineer.woe_iv import Iv_no_label, Iv_with_label
 from primihub import dataset, context
 from primihub.utils.net_worker import GrpcServer
-from primihub.FL.model.logistic_regression.hetero_lr_host import HeterLrHost
-from primihub.FL.model.logistic_regression.hetero_lr_guest import HeterLrGuest
+import primihub as ph
+import pandas as pd
 
 config = {
-    "learning_rate": 0.01,
-    'alpha': 0.0001,
-    "epochs": 50,
-    "penalty": "l2",
-    "optimal_method": "momentum",
-    "random_state": 2023,
+    "id": None,
+    "thres": 0.02,
+    "bin_num": 5,
+    "label": "Exited",
     "host_columns": None,
     "guest_columns": None,
-    "scale_type": 'z-score',
-    "batch_size": 512,
-    "sample_method": 'random',
-    "sample_ratio": 0.5
+    "continuous_variables": [
+        "CreditScore", "Age", "Balance", "EstimatedSalary"
+    ]
 }
 
 
-@ph.context.function(
-    role='host',
-    protocol='hetero_lr',
-    datasets=['train_hetero_xgb_host'
-             ],  # ['train_hetero_xgb_host'],  #, 'test_hetero_xgb_host'],
-    port='8000',
-    task_type="classification")
-def lr_host_logic():
-    ray.init()
+@ph.context.function(role='host',
+                     protocol='iv_filter',
+                     datasets=['iv_filter_host'],
+                     port='8000',
+                     task_type="classification")
+def iv_filter_host():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -56,11 +47,14 @@ def lr_host_logic():
     if host_cols is not None:
         data = data[host_cols]
 
-    if 'id' in data.columns:
-        data.pop('id')
-    Y = data.pop('y').values
-    X_host = data.copy()
-    del data
+    if config['id'] is not None:
+        data.pop(config['id'])
+
+    all_columns = data.columns.tolist()
+
+    for removed_col in config['continuous_variables'] + [config['label']]:
+        if removed_col in all_columns:
+            all_columns.remove(removed_col)
 
     indicator_file_path = ph.context.Context.get_indicator_file_path()
     output_file = ph.context.Context.get_predict_file_path()
@@ -72,34 +66,25 @@ def lr_host_logic():
                               local_port=host_port,
                               context=ph.context.Context)
 
-    lr_host = HeterLrHost(learning_rate=config['learning_rate'],
-                          alpha=config['alpha'],
-                          epochs=config['epochs'],
-                          optimal_method=config['optimal_method'],
-                          random_state=config['random_state'],
-                          host_channel=host_channel,
-                          add_noise=True,
-                          sample_method=config['sample_method'],
-                          sample_ratio=config['sample_ratio'],
-                          batch_size=config['batch_size'],
-                          scale_type=config['scale_type'],
-                          model_path=model_file_path,
-                          indicator_file=indicator_file_path,
-                          output_file=output_file)
-
-    lr_host.fit(X_host, Y)
+    iv_host = Iv_with_label(df=data,
+                            category_feature=all_columns,
+                            continuous_feature=config['continuous_variables'],
+                            threshold=config['thres'],
+                            bin_num=config['bin_num'],
+                            channel=host_channel,
+                            target_name=config['label'],
+                            bin_dict=dict(),
+                            continuous_feature_max=dict(),
+                            continuous_feature_min=dict())
+    iv_host.run()
 
 
-@ph.context.function(
-    role='guest',
-    protocol='heter_lr',
-    datasets=[
-        'train_hetero_xgb_guest'  #'five_thous_guest'
-    ],  #['train_hetero_xgb_guest'],  #, 'test_hetero_xgb_guest'],
-    port='9000',
-    task_type="classification")
-def lr_guest_logic(cry_pri="paillier"):
-    ray.init()
+@ph.context.function(role='guest',
+                     protocol='iv_filter',
+                     datasets=['iv_filter_guest'],
+                     port='9000',
+                     task_type="classification")
+def iv_filter_guest():
     role_node_map = ph.context.Context.get_role_node_map()
     node_addr_map = ph.context.Context.get_node_addr_map()
     dataset_map = ph.context.Context.dataset_map
@@ -124,26 +109,27 @@ def lr_guest_logic(cry_pri="paillier"):
     if guest_cols is not None:
         data = data[guest_cols]
 
-    if 'id' in data.columns:
-        data.pop('id')
+    all_columns = data.columns.tolist()
 
-    X_guest = data.copy()
-    del data
+    for removed_col in config['continuous_variables']:
+        if removed_col in all_columns:
+            all_columns.remove(removed_col)
+
     guest_channel = GrpcServer(remote_ip=host_ip,
                                remote_port=host_port,
                                local_ip=guest_ip,
                                local_port=guest_port,
                                context=ph.context.Context)
 
-    lr_guest = HeterLrGuest(learning_rate=config['learning_rate'],
-                            alpha=config['alpha'],
-                            epochs=config['epochs'],
-                            optimal_method=config['optimal_method'],
-                            random_state=config['random_state'],
-                            guest_channel=guest_channel,
-                            sample_method=config['sample_method'],
-                            batch_size=config['batch_size'],
-                            scale_type=config['scale_type'],
-                            model_path=guest_model_path)
+    iv_guest = Iv_no_label(df=data,
+                           category_feature=all_columns,
+                           threshold=config['thres'],
+                           bin_num=config['bin_num'],
+                           channel=guest_channel,
+                           continuous_feature=config['continuous_variables'],
+                           target_name=None,
+                           continuous_feature_max=dict(),
+                           continuous_feature_min=dict(),
+                           bin_dict=dict())
 
-    lr_guest.fit(X_guest)
+    iv_guest.run()
