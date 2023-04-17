@@ -1,3 +1,4 @@
+import pandas as pd
 class BaseModel:
     def __init__(self,task_parameter,party_access_info):
         self.task_parameter = task_parameter
@@ -20,3 +21,7 @@ class BaseModel:
         
     def role2party(self,role):
         return self.task_parameter['all_roles'][role]
+    
+    def read(self, key):
+        key = eval(self.task_parameter['data'][key])
+        print(pd.read_csv(key['data_path']))
