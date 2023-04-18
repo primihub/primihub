@@ -1,4 +1,3 @@
-import pandas as pd
 from primihub.new_FL.algorithm.utils.net_work import GrpcServer
 from primihub.new_FL.algorithm.utils.base import BaseModel
 class Model(BaseModel):
