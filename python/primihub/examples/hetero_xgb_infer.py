@@ -266,7 +266,7 @@ def xgb_host_infer():
     try:
         test_y = test_host.pop('y')
     except:
-        test_y = 1
+        test_y = (np.random.random(test_host.shape[0]) > 0.5).astype('int')
 
     pred_prob = xgb_host.host_predict_prob(test_host)
     acc = accuracy_score((pred_prob >= 0.5).astype('int'), test_y)
