@@ -56,6 +56,9 @@ class HeteroLrHostInfer(HeterLrHost):
     def preprocess(self):
         if 'y' in self.data.columns:
             self.label = self.data.pop('y').values
+        else:
+            self.label = (np.random.random(self.data.shape[0]) >
+                          0.5).astype('int')
 
         if len(self.col_names) > 0:
             self.data = self.data[self.col_names].values
