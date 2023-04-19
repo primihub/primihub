@@ -3,7 +3,7 @@ from primihub.new_FL.algorithm.utils.base import BaseModel
 
 import numpy as np
 
-class Model(BaseModel):
+class HflServer(BaseModel):
     def __init__(self, task_parameter, party_access_info):
         super().__init__(task_parameter, party_access_info)
         self.task_parameter = task_parameter

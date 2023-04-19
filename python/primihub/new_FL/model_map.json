@@ -1,10 +1,14 @@
 {
     "Dev_example": {
-        "guest": "example.dev_example_guest.Model",
-        "host": "example.dev_example_host.Model"
+        "guest": "example.dev_example_guest.ModelGuest",
+        "host": "example.dev_example_host.ModelHost"
     },
     "HFL": {
-        "client": "example.hfl_client.Model",
-        "server": "example.hfl_server.Model"
+        "client": "linear.hfl_client.HflClient",
+        "server": "linear.hfl_server.HflServer"
+    },
+    "Chat_glm":{
+        "guest": "example.ChatGlm_guest.ChatGlmGuest",
+        "host": "example.ChatGlm_host.ChatGlmHost"
     }
 }
