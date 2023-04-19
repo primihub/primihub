@@ -20,13 +20,17 @@ from primihub.context import Context
 from primihub.utils.logger_util import logger
 from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
 import primihub
+
 path = primihub.__file__
 path = path[:-12]
+
+
 class Executor:
     '''
     Excute the py file. Note the Context is passed
     from c++ level. 
     '''
+
     def __init__(self):
         pass
 
@@ -36,18 +40,17 @@ class Executor:
         PushTaskRequest.ParseFromString(Context.message)
         task = PushTaskRequest.task
 
-
         print("Below are the code run on the server")
         #get the name first
         task_name = task.name
         party_name = task.party_name
         print(f"party_name is : {party_name}")
-        
+
         #process the parameters
         task_params = task.params.param_map[party_name].value_string
         task_parameter = json.loads(task_params.decode())
         print(f"task_parameter: {task_parameter}")
-        
+
         task_info = task.task_info
         print(f"task_info is : {task_info}")
         #change the task_info into dict
@@ -62,16 +65,24 @@ class Executor:
 
         #execute the function
         role_name = task_parameter['role']
-        
+
         task_parameter['data'] = task.party_datasets[party_name].data
         task_parameter['party_name'] = party_name
         task_parameter['task_info'] = task_info_dict
         model = task_parameter['model']
-        with open(path+'/new_FL/model_map.json','r') as f:
+        with open(path + '/new_FL/model_map.json', 'r') as f:
             func_map = json.load(f)
         my_code = func_map[model][role_name]
         import importlib
-        module = importlib.import_module("primihub.new_FL.algorithm." + my_code)
-        Model = getattr(module, "Model")
+        func_name = my_code.split('.')[-1]
+        module_name = '.'.join(my_code.split('.')[:-1])
+        module = importlib.import_module("primihub.new_FL.algorithm." +
+                                         module_name)
+        func_name = my_code.split('.')[-1]
+        print("============", func_name, module_name)
+        Model = getattr(module, func_name)
+        #Model = getattr(module, "Model")
+        # Model = getattr(module, "Model")
+
         model = Model(task_parameter, party_access_info)
         model.run()
