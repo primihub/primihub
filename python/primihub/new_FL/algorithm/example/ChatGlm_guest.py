@@ -16,7 +16,7 @@ class ChatGlmGuest(BaseModel):
         path = "/home/primihub/czl/ChatGLM-6B"
         cmd = path+ "/ptuning/train.sh"
         print(f"cmd is {cmd}")
-        os.cmd(cmd)
+        os.system(cmd)
 
 
 

@@ -18,7 +18,7 @@ class ChatGlmHost(BaseModel):
         print(f"cmd is {cmd}")
         import time
         time.sleep(100)
-        os.cmd(cmd)
+        os.system(cmd)
     
     def predict(self):
         pass
