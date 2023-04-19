@@ -24,4 +24,5 @@ class BaseModel:
     
     def read(self, key):
         key = eval(self.task_parameter['data'][key])
-        print(pd.read_csv(key['data_path']))
+        res = pd.read_csv(key['data_path'])
+        return res
