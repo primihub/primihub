@@ -19,7 +19,6 @@ class IVBase:
                  return_woe=True,
                  threshold=0.15,
                  bin_num=10,
-                 bin_type="equal_size",
                  channel=None) -> None:
         self.data = df
         self.category_feature = category_feature
@@ -32,7 +31,6 @@ class IVBase:
         self.return_woe = return_woe
         self.bin_num = bin_num
         self.channel = channel
-        self.bin_type = bin_type
 
     def binning(self):
         # map continuous features into discrete buckets
@@ -44,33 +42,18 @@ class IVBase:
                 if cur_feature_bins is not None:
 
                     # bucket-binning according to pre-set bins
-
-                    if self.bin_type == "equal_size":
-                        bin_bucket = pd.qcut(self.data[cur_feature],
-                                             cur_feature_bins,
-                                             labels=False,
-                                             duplicates='drop')
-
-                    else:
-                        bin_bucket = pd.cut(self.data[cur_feature],
-                                            bins=cur_feature_bins,
-                                            labels=np.arange(
-                                                len(cur_feature_bins)))
+                    bin_bucket = pd.cut(
+                        self.data[cur_feature],
+                        bins=cur_feature_bins,
+                        labels=np.arange(len(cur_feature_bins) - 1))
 
                     self.data[cur_feature + "_cate"] = bin_bucket
 
                 else:
                     # bucket-binning according to cutting numbers
-
-                    if self.bin_type == "equal_size":
-                        bin_bucket = pd.qcut(self.data[cur_feature],
-                                             self.bin_num,
-                                             labels=False,
-                                             duplicates='drop')
-                    else:
-                        bin_bucket = pd.cut(self.data[cur_feature],
-                                            bins=self.bin_num,
-                                            labels=np.arange(self.bin_num))
+                    bin_bucket = pd.cut(self.data[cur_feature],
+                                        bins=self.bin_num,
+                                        labels=np.arange(self.bin_num))
                     self.data[cur_feature + "_cate"] = bin_bucket
 
                 self.bucket_col.append(cur_feature + "_cate")
@@ -149,12 +132,10 @@ class IVClient(IVBase):
                  return_woe=True,
                  threshold=0.15,
                  bin_num=10,
-                 bin_type="equal_size",
                  channel=None) -> None:
         super().__init__(df, category_feature, continuous_feature, target_name,
                          continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
+                         bin_dict, return_woe, threshold, bin_num, channel)
 
     def transfer_range(self,):
         # set global bucket points
@@ -199,14 +180,12 @@ class Iv_with_label(IVBase):
             return_woe=True,
             threshold=0.15,
             bin_num=10,
-            bin_type="equal_size",
             channel=None,
             security_length=112,  # encryted item length
             output_file=None) -> None:
         super().__init__(df, category_feature, continuous_feature, target_name,
                          continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
+                         bin_dict, return_woe, threshold, bin_num, channel)
         self.public_key = None
         self.private_key = None
         self.output_file = output_file
@@ -303,13 +282,11 @@ class Iv_no_label(IVBase):
                  return_woe=True,
                  threshold=0.15,
                  bin_num=10,
-                 bin_type="equal_size",
                  channel=None,
                  output_file=None) -> None:
         super().__init__(df, category_feature, continuous_feature, target_name,
                          continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
+                         bin_dict, return_woe, threshold, bin_num, channel)
         self.output_file = output_file
 
     def binning(self):

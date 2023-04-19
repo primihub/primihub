@@ -8,7 +8,6 @@ config = {
     "id": None,
     "thres": 0.02,
     "bin_num": 5,
-    "bin_type": "equal_size",
     "label": "Exited",
     "host_columns": None,
     "guest_columns": None,
@@ -77,8 +76,7 @@ def iv_filter_host():
                             bin_dict=dict(),
                             continuous_feature_max=dict(),
                             continuous_feature_min=dict(),
-                            output_file=output_file,
-                            bin_type=config['bin_type'])
+                            output_file=output_file)
     iv_host.run()
 
 
@@ -136,7 +134,6 @@ def iv_filter_guest():
                            continuous_feature_max=dict(),
                            continuous_feature_min=dict(),
                            bin_dict=dict(),
-                           output_file=output_file,
-                           bin_type=config['bin_type'])
+                           output_file=output_file)
 
     iv_guest.run()
