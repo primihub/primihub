@@ -17,6 +17,7 @@ from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
 
 def register_dataset(ip, port, use_tls, driver, path, name):
     logger.info(f"Dataset service is ip: {ip}, port: {port}, use_tls: {use_tls}")
+    host_port = f"{ip}:{port}"
     use_tls = '0' #No implementation error
     if use_tls == '1': #No implementation error
         try:
