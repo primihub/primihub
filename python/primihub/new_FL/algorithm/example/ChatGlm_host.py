@@ -13,7 +13,7 @@ class ChatGlmHost(BaseModel):
 
     def train(self):
         task_parameter = self.task_parameter
-        path = "/home/primihub/czl/ChatGLM-6B-Med"
+        path = "bash /home/primihub/czl/ChatGLM-6B-Med"
         cmd = path+ "/ptuning/train.sh"
         print(f"cmd is {cmd}")
         import time

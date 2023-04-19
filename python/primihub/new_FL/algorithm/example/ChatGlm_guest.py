@@ -13,7 +13,7 @@ class ChatGlmGuest(BaseModel):
 
     def train(self):
         task_parameter = self.task_parameter
-        path = "/home/primihub/czl/ChatGLM-6B"
+        path = "bash /home/primihub/czl/ChatGLM-6B"
         cmd = path+ "/ptuning/train.sh"
         print(f"cmd is {cmd}")
         os.system(cmd)
