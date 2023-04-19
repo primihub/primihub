@@ -1,7 +1,10 @@
 {
-    "Dev_example": {"guest": "example.dev_example_guest",
-                    "host":"example.dev_example_host"},
-
-    "HFL": {"client": "example.hfl_client",
-            "server": "example.hfl_server"}
+    "Dev_example": {
+        "guest": "example.dev_example_guest.Model",
+        "host": "example.dev_example_host.Model"
+    },
+    "HFL": {
+        "client": "example.hfl_client.Model",
+        "server": "example.hfl_server.Model"
+    }
 }
