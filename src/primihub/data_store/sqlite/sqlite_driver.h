@@ -93,7 +93,6 @@ public:
     {"INTEGER", sql_type_t::INT64},
     {"INT", sql_type_t::INT},
     {"DOUBLE", sql_type_t::DOUBLE},
-
   };
 };
 
@@ -105,6 +104,8 @@ public:
   ~SQLiteDriver() = default;
   std::unique_ptr<Cursor> read() override;
   std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+  std::unique_ptr<Cursor> GetCursor() override;
+  std::unique_ptr<Cursor> GetCursor(std::vector<int> col_index) override;
   std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
   std::string getDataURL() const override;
   std::unique_ptr<SQLite::Database>& getDBConnector() { return db_connector; }
@@ -119,11 +120,19 @@ public:
     QUERY_CONDITION,
   };
   std::string buildQuerySQL(SQLiteAccessInfo* access_info);
-  std::string buildQuerySQL(const std::string& table_name, const std::string& query_index);
+  std::string buildQuerySQL(const std::string& table_name,
+                            const std::string& query_index);
+  retcode GetDBTableSchema();
+  std::string BuildQuerySQL(const SQLiteAccessInfo& access_info,
+                            const std::vector<int>& col_index,
+                            std::vector<std::string>* colum_names);
+
  private:
   std::string conn_info_;
   std::string db_path_;
   std::unique_ptr<SQLite::Database> db_connector{nullptr};
+  std::map<std::string, std::string> table_schema_;   // dbtable schema
+  std::vector<std::string> table_cols_;               // db table column name
 };
 
 } // namespace primihub

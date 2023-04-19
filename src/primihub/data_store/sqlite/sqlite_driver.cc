@@ -110,8 +110,7 @@ std::shared_ptr<Dataset> SQLiteCursor::read() {
   return readInternal(sql_);
 }
 
-std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset,
-                                                      int64_t limit) {
+std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
@@ -520,6 +519,7 @@ std::unique_ptr<Cursor> SQLiteDriver::read() {
     LOG(ERROR) << "create cursor failed: " << e.what();
     return nullptr; // nullptr
   }
+  GetDBTableSchema();
   std::string query_sql = buildQuerySQL(access_info_ptr);
   return std::make_unique<SQLiteCursor>(query_sql, shared_from_this());
 }
@@ -564,6 +564,25 @@ std::string SQLiteDriver::buildQuerySQL(const std::string& table_name,
   VLOG(5) << "query sql: " << sql_str;
   return sql_str;
 }
+std::unique_ptr<Cursor> SQLiteDriver::GetCursor() {
+  return nullptr;
+}
+
+std::unique_ptr<Cursor> SQLiteDriver::GetCursor(std::vector<int> col_index) {
+  auto& access_info = this->dataSetAccessInfo();
+  auto sqlite_access_info = dynamic_cast<SQLiteAccessInfo*>(access_info.get());
+  if (sqlite_access_info == nullptr) {
+    LOG(ERROR) << "get CSV access info failed";
+    return nullptr;
+  }
+  std::vector<std::string> column_names;
+  std::string query_sql = BuildQuerySQL(*sqlite_access_info, col_index, &column_names);
+  if (query_sql.empty()) {
+    LOG(ERROR) << "get query sql failed";
+    return nullptr;
+  }
+  return std::make_unique<SQLiteCursor>(query_sql, shared_from_this());
+}
 
 std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
   // parse conn_str
@@ -587,9 +606,8 @@ std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
 
   std::string &query_condition = conn_info[CONN_FIELDS::QUERY_CONDITION];
   auto sql_str = buildQuerySQL(table_name, query_condition);
-  return  std::make_unique<SQLiteCursor>(sql_str, shared_from_this());
+  return std::make_unique<SQLiteCursor>(sql_str, shared_from_this());
 }
-
 // write data to specifiy table
 int SQLiteDriver::write(std::shared_ptr<arrow::Table> table,
                         const std::string &table_name) {
@@ -597,5 +615,48 @@ int SQLiteDriver::write(std::shared_ptr<arrow::Table> table,
 }
 
 std::string SQLiteDriver::getDataURL() const { return conn_info_; };
+
+retcode SQLiteDriver::GetDBTableSchema() {
+  auto& access_info = this->dataSetAccessInfo();
+  auto sqlite_access_info = dynamic_cast<SQLiteAccessInfo*>(access_info.get());
+  if (sqlite_access_info == nullptr) {
+    LOG(ERROR) << "get sqlite access info failed";
+    return retcode::FAIL;
+  }
+  std::string schema_query_sql{
+      "PRAGMA table_info(" + sqlite_access_info->table_name_ + ")"};
+  SQLite::Statement sql_query(*db_connector, schema_query_sql);
+  while (sql_query.executeStep()) {
+    int32_t cid = sql_query.getColumn(0).getInt();
+    std::string column_name = sql_query.getColumn(1).getString();
+    std::string column_type = sql_query.getColumn(2).getString();
+    table_schema_[column_name] = column_type;
+    table_cols_.push_back(column_name);
+    VLOG(5) << "cid: " << cid << " "
+        << "column name: " << column_name << " "
+        << "column type: " << column_type;
+  }
+  return retcode::SUCCESS;
+}
+
+std::string SQLiteDriver::BuildQuerySQL(const SQLiteAccessInfo& access_info,
+    const std::vector<int>& col_index,
+    std::vector<std::string>* colum_names) {
+  std::string table_name = access_info.table_name_;
+  std::string sql_str = "SELECT ";
+  for (const auto index : col_index) {
+    if (index < table_cols_.size()) {
+      sql_str.append("`").append(table_cols_[index]).append("`,");
+    } else {
+      LOG(ERROR) << "query index is out of range, "
+          << "index: " << index << " total columns: " << table_cols_.size();
+      return std::string("");
+    }
+  }
+  sql_str[sql_str.size()-1] = ' ';
+  sql_str.append(" FROM ").append(table_name);
+  VLOG(5) << "query sql: " << sql_str;
+  return sql_str;
+}
 
 } // namespace primihub

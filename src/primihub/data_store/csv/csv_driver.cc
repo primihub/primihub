@@ -19,6 +19,7 @@
 
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/util.h"
 
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
@@ -55,10 +56,59 @@ CSVCursor::CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver) {
   this->driver_ = driver;
 }
 
+CSVCursor::CSVCursor(std::string filePath,
+                    const std::vector<int>& colnum_index,
+                    std::shared_ptr<CSVDriver> driver) {
+  this->filePath = filePath;
+  this->driver_ = driver;
+  if (!colnum_index.empty()) {
+    colum_index_.resize(colnum_index.size());
+    for (size_t i = 0; i < colnum_index.size(); ++i) {
+      colum_index_[i] = colnum_index[i];
+    }
+  }
+}
+
 CSVCursor::~CSVCursor() { this->close(); }
 
 void CSVCursor::close() {
   // TODO
+}
+
+retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
+    const std::vector<int>& column_index,
+    const char delimiter,
+    std::vector<std::string>* column_name) {
+  if (column_index.empty()) {
+    LOG(ERROR) << "no column index need to convert";
+    return retcode::FAIL;
+  }
+  auto& include_columns = *column_name;
+  include_columns.clear();
+  std::ifstream csv_data(file_path, std::ios::in);
+  if (!csv_data.is_open()) {
+    LOG(ERROR) << "open csv file: " << file_path << " failed";
+    return retcode::FAIL;
+  }
+  std::vector<std::string> colum_names;
+  std::string tile_row;
+  std::getline(csv_data, tile_row);
+  str_split(tile_row, &colum_names, delimiter);
+  for (const auto index : column_index) {
+    if (index > colum_names.size()) {
+      LOG(ERROR) << "selected column index is outof range, "
+          << "column index: " << index
+          << " total column size: " << colum_names.size();
+      return retcode::FAIL;
+    }
+    include_columns.push_back(colum_names[index]);
+  }
+  if (VLOG_IS_ON(5)) {
+    for (const auto& name : include_columns) {
+      VLOG(5) << "column name: " << name;
+    }
+  }
+  return retcode::SUCCESS;
 }
 
 std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
@@ -81,11 +131,24 @@ std::shared_ptr<Dataset> CSVCursor::read() {
   auto parse_options = arrow::csv::ParseOptions::Defaults();
   auto convert_options = arrow::csv::ConvertOptions::Defaults();
 
+  auto convert_options_ptr = std::make_unique<arrow::csv::ConvertOptions>();
+  if (!this->colum_index_.empty()) {
+    // specify the colum needed to read
+    auto& include_columns = convert_options_ptr->include_columns;
+    auto ret = ColumnIndexToColumnName(filePath,
+        this->colum_index_, parse_options.delimiter, &include_columns);
+    if (ret != retcode::SUCCESS) {
+      return nullptr;
+    }
+  }
+
   // Instantiate TableReader from input stream and options
   auto maybe_reader = arrow::csv::TableReader::Make(
-      io_context, input, read_options, parse_options, convert_options);
+      io_context, input, read_options, parse_options, *convert_options_ptr);
   if (!maybe_reader.ok()) {
     // TODO Handle TableReader instantiation error...
+    LOG(ERROR) << "read data failed";
+    return nullptr;
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
 
@@ -94,6 +157,8 @@ std::shared_ptr<Dataset> CSVCursor::read() {
   if (!maybe_table.ok()) {
     // TODO Handle CSV read error
     // (for example a CSV syntax error or failed type conversion)
+    LOG(ERROR) << "read data failed";
+    return nullptr;
   }
   std::shared_ptr<arrow::Table> table = *maybe_table;
   auto dataset = std::make_shared<Dataset>(table, this->driver_);
@@ -155,6 +220,20 @@ std::unique_ptr<Cursor> CSVDriver::read() {
 
 std::unique_ptr<Cursor> CSVDriver::read(const std::string &filePath) {
    return this->initCursor(filePath);
+}
+
+std::unique_ptr<Cursor> CSVDriver::GetCursor() {
+  return read();
+}
+
+std::unique_ptr<Cursor> CSVDriver::GetCursor(std::vector<int> col_index) {
+  auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
+  if (csv_access_info == nullptr) {
+    LOG(ERROR) << "file access info is unavailable";
+    return nullptr;
+  }
+  filePath_ = csv_access_info->file_path_;
+  return std::make_unique<CSVCursor>(filePath_, col_index, shared_from_this());
 }
 
 std::unique_ptr<Cursor> CSVDriver::initCursor(const std::string &filePath) {
