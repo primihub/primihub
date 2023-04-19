@@ -1,4 +1,7 @@
 {
     "Dev_example": {"guest": "example.dev_example_guest",
-                    "host":"example.dev_example_host"}
+                    "host":"example.dev_example_host"},
+
+    "HFL": {"client": "example.hfl_client",
+            "server": "example.hfl_server"}
 }
