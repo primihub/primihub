@@ -12,17 +12,11 @@
                 "port": "50051",
                 "use_tls": false
             },
-        "Charlie":
-            {
-                "ip": "127.0.0.1",
-                "port": "50052",
-                "use_tls": false
-            },
         "task_manager": "127.0.0.1:50050"
     },
     "roles":
         {"guest":["Alice"],
-        "host": ["Bob", "Charlie"]},
+        "host": ["Bob"]},
     "tasks":[
         {
         "model": "Chat_glm",
