@@ -29,9 +29,13 @@ class Client:
             
             #set data set
             Dataset = common_pb2.Dataset()
-            for k, val in task_parameter['data'].items():
-                Dataset.data[k] = val
-            party_datasets[party] = Dataset
+            if task_parameter['data']:
+                for k, val in task_parameter['data'].items():
+                    Dataset.data[k] = val
+                party_datasets[party] = Dataset
+            else:
+                party_datasets[party] = None
+
 
 
         cp_task_info = common_pb2.TaskContext()

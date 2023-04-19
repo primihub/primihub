@@ -16,7 +16,7 @@ def generate_para_map(task_parameter, data, roles):
     for party in tmp_party_list:
         tmp_param = deepcopy(task_parameter)
         tmp_param['role'] = party2role[party]
-        tmp_param['data'] = data[party]
+        tmp_param['data'] = data[party] if party in data else None
         para_map[party] = tmp_param
     
     return para_map
