@@ -34,7 +34,7 @@ class Client:
                     Dataset.data[k] = val
                 party_datasets[party] = Dataset
             else:
-                party_datasets[party] = None
+                party_datasets[party] = Dataset
 
 
 
