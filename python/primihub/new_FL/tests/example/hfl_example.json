@@ -25,7 +25,6 @@
          "client": ["Bob", "Charlie"]},
     "tasks":[
         {"data_path": {
-            "Alice": {"X": "train_homo_lr"},
             "Bob": {"X": "train_homo_lr_host"},
             "Charlie": {"X": "train_homo_lr_guest"}
         },
