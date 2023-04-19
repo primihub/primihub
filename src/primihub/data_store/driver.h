@@ -74,6 +74,8 @@ class DataDriver {
      * data access info read from internal access_info_
     */
     virtual std::unique_ptr<Cursor> read() = 0;
+    virtual std::unique_ptr<Cursor> GetCursor() = 0;
+    virtual std::unique_ptr<Cursor> GetCursor(std::vector<int> col_index) = 0;
     virtual std::unique_ptr<Cursor> initCursor(const std::string &dataURL) = 0;
     // std::unique_ptr<Cursor> getCursor();
     std::string getDriverType() const;

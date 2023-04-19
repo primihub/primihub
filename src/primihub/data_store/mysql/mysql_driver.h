@@ -75,6 +75,9 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
 class MySQLCursor : public Cursor {
  public:
     MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> driver);
+    MySQLCursor(const std::string& sql,
+                const std::vector<std::string>& colum_names,
+                std::shared_ptr<MySQLDriver> driver);
     ~MySQLCursor();
     std::shared_ptr<primihub::Dataset> readMeta() override;
     std::shared_ptr<primihub::Dataset> read() override;
@@ -92,13 +95,16 @@ class MySQLCursor : public Cursor {
     };
 
  protected:
-    std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>
-    getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info);
+    auto getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info) ->
+        std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>;
 
-    retcode fetchData(const std::string& query_sql, std::vector<std::shared_ptr<arrow::Array>>* data_arr);
+    retcode fetchData(const std::string& query_sql,
+                      std::vector<std::shared_ptr<arrow::Array>>* data_arr);
     sql_type_t getSQLType(const std::string& col_type);
-    std::shared_ptr<arrow::Array> makeArrowArray(sql_type_t sql_type, const std::vector<std::string>& arr);
-    std::shared_ptr<arrow::Field> makeArrowField(sql_type_t sql_type, const std::string& col_name);
+    std::shared_ptr<arrow::Array> makeArrowArray(sql_type_t sql_type,
+                                                const std::vector<std::string>& arr);
+    std::shared_ptr<arrow::Field> makeArrowField(sql_type_t sql_type,
+                                                const std::string& col_name);
     std::shared_ptr<arrow::Schema> makeArrowSchema();
 
  private:
@@ -115,6 +121,8 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     ~MySQLDriver();
     std::unique_ptr<Cursor> read() override;
     std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+    std::unique_ptr<Cursor> GetCursor() override;
+    std::unique_ptr<Cursor> GetCursor(std::vector<int> col_index) override;
     std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
     std::string getDataURL() const override;
     // write data to specifiy db table
@@ -138,6 +146,10 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     retcode getTableSchema(const std::string& db_name, const std::string& table_name);
     std::string buildQuerySQL(MySQLAccessInfo* access_info);
     void setDriverType();
+    std::unique_ptr<Cursor> MakeCursor(std::vector<int> col_index);
+    std::string BuildQuerySQL(const MySQLAccessInfo& access_info,
+                              const std::vector<int>& col_index,
+                              std::vector<std::string>* colum_names);
 
  private:
     std::string conn_info_;

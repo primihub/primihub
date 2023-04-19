@@ -33,8 +33,11 @@ struct CSVAccessInfo : public DataSetAccessInfo {
 };
 
 class CSVCursor : public Cursor {
-public:
+ public:
   CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver);
+  CSVCursor(std::string filePath,
+            const std::vector<int>& colnum_index,
+            std::shared_ptr<CSVDriver> driver);
   ~CSVCursor();
   std::shared_ptr<primihub::Dataset> readMeta() override;
   std::shared_ptr<Dataset> read() override;
@@ -42,10 +45,16 @@ public:
   int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
 
-private:
+ protected:
+  retcode ColumnIndexToColumnName(const std::string& file_path,
+                                  const std::vector<int>& column_index,
+                                  const char delimiter,
+                                  std::vector<std::string>* column_name);
+ private:
   std::string filePath;
   unsigned long long offset = 0;
   std::shared_ptr<CSVDriver> driver_;
+  std::vector<int> colum_index_;
 };
 
 class CSVDriver : public DataDriver,
@@ -56,6 +65,8 @@ public:
   ~CSVDriver() {}
   std::unique_ptr<Cursor> read() override;
   std::unique_ptr<Cursor> read(const std::string &filePath) override;
+  std::unique_ptr<Cursor> GetCursor() override;
+  std::unique_ptr<Cursor> GetCursor(std::vector<int> col_index) override;
   std::unique_ptr<Cursor> initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
   // FIXME to be deleted
