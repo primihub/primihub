@@ -19,14 +19,14 @@ class ChatGlmClient(BaseModel):
             print(f"cmd is {cmd}")
             os.system(cmd)
 
-        if self.task_parameter['role'] == "Alice":
+        if self.task_parameter['party_name'] == "Alice":
             #stage 1
             path = "/home/primihub/czl/ChatGLM-6B/ptuning"
             start_train(path)
             time.sleep(50)
             start_train(path)
 
-        if self.task_parameter['role'] == "Bob":
+        if self.task_parameter['party_name'] == "Bob":
             path = "/home/primihub/czl/ChatGLM-6B-Med/ptuning"
             start_train(path)
             time.sleep(122)
