@@ -1,6 +1,7 @@
 from primihub.new_FL.algorithm.utils.base import BaseModel
 import os
-class ChatGlmHost(BaseModel):
+import time
+class ChatGlmServer(BaseModel):
     def __init__(self, task_parameter, party_access_info):
         super().__init__(task_parameter, party_access_info)
         self.task_parameter = task_parameter
@@ -12,13 +13,14 @@ class ChatGlmHost(BaseModel):
     
 
     def train(self):
-        task_parameter = self.task_parameter
-        path = "bash /home/primihub/czl/ChatGLM-6B-Med"
-        cmd = path+ "/ptuning/train.sh"
-        print(f"cmd is {cmd}")
-        import time
         time.sleep(100)
+        path = "/home/primihub/czl"
+        os.chdir(path)
+        cmd = "python3 save_model.py"
+        print(f"cmd is {cmd}")
         os.system(cmd)
+
+        
     
     def predict(self):
         pass
