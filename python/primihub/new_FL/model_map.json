@@ -8,7 +8,7 @@
         "server": "linear.hfl_server.HflServer"
     },
     "Chat_glm":{
-        "client": "example.ChatGlmc_client.ChatGlmClient",
+        "client": "example.ChatGlm_client.ChatGlmClient",
         "server": "example.ChatGlm_server.ChatGlmServer"
     }
 }
