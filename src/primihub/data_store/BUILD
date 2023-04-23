@@ -35,6 +35,7 @@ cc_library(
     ],
     deps = [
         "//src/primihub/common:common_defination",
+        "//src/primihub/util:arrow_wrapper_util",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_github_glog_glog//:glog",
         "@arrow",
