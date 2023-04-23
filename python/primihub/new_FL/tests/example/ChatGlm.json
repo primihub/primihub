@@ -21,8 +21,8 @@
         "task_manager": "127.0.0.1:50050"
     },
     "roles":
-        {"guest":["Alice"],
-        "host": ["Bob", "Charlie"]},
+        {"client":["Alice", "Bob"],
+        "server": ["Charlie"]},
     "tasks":[
         {
         "model": "Chat_glm",
