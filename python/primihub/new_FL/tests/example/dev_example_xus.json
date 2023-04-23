@@ -1,5 +1,5 @@
 {
-    "party_access_info": {
+    "party_info": {
         "Alice": {
             "ip": "127.0.0.1",
             "port": "50050",

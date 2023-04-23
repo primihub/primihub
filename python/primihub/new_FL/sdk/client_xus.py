@@ -65,7 +65,7 @@ class Client:
 
     def submit(self):
         self.prepare_for_worker()
-        reply = self.current_worker.submit_task()
+        reply = self.current_worker.submit_task(request=None)
 
     def get_status(self, task_id):
         self.client.get_status(task_id)
