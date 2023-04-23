@@ -70,9 +70,9 @@ class ChatGlmClient(BaseModel):
                         --pre_seq_len $PRE_SEQ_LEN \
                         --quantization_bit 4 "
             if history_column != None:
-                cmd += f"\ --history_column {history_column}"
+                cmd += f"  --history_column {history_column}"
             if i!=0:
-                cmd += f"\ --ptuning_checkpoint {ptuning_checkpoint}"
+                cmd += f"  --ptuning_checkpoint {ptuning_checkpoint}"
             print(f"cmd is {cmd}")
             os.system(cmd)
             prefix_state_dict = torch.load(os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
