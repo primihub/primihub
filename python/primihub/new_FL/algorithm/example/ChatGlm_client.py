@@ -79,7 +79,7 @@ class ChatGlmClient(BaseModel):
         
             server_channel.sender(f'client_res_{i}', prefix_state_dict)
             res = server_channel.recv(f'server_res_{i}')
-            torch.save(res, os.path.join(path+ptuning_checkpoint, "pytorch_model.bin"))
+            torch.save(res, os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
 
 
 
