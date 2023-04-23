@@ -33,7 +33,7 @@ if __name__ == '__main__':
     for task in json_file['tasks']:
 
         #set commom paramerter
-        data = task["data_path"]
+        data = task["data_path"] if "data_path" in task else {}
         process = task['process']
         task_parameter = task["parameters"]
         task_parameter['model'] = task["model"]

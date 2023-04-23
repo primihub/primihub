@@ -1,6 +1,7 @@
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
 from primihub.new_FL.algorithm.utils.base import BaseModel
-class ModelGuest(BaseModel):
+import os
+import time
+class ChatGlmServer(BaseModel):
     def __init__(self, task_parameter, party_access_info):
         super().__init__(task_parameter, party_access_info)
         self.task_parameter = task_parameter
@@ -12,14 +13,14 @@ class ModelGuest(BaseModel):
     
 
     def train(self):
-        task_parameter = self.task_parameter
-        party_access_info = self.party_access_info
-        print(task_parameter)
-        print(party_access_info)
+        time.sleep(100)
+        path = "/home/primihub/czl"
+        os.chdir(path)
+        cmd = "python3 save_model.py"
+        print(f"cmd is {cmd}")
+        os.system(cmd)
 
-        server = GrpcServer('Alice','Bob', party_access_info, task_parameter['task_info'])
-        res = server.recv('abc1')
-        print(res)
+        
     
     def predict(self):
         pass
