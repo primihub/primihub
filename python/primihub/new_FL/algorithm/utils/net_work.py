@@ -21,12 +21,12 @@ class GrpcServer:
         self.recv_channel = self.link_context.getChannel(recv_session)
 
     def sender(self, key, val):
-        print("Start to send")
+        print(f"Start to send key: {key}")
         self.send_channel.send(key, pickle.dumps(val))
         print("End send")
 
     def recv(self, key):
-        print("Start to receive")
+        print(f"Start to receive key: {key}")
         recv_val = self.recv_channel.recv(key)
         print("End receive")
         return pickle.loads(recv_val)

@@ -39,7 +39,7 @@ class ChatGlmServer(BaseModel):
             #receive all
             for j in range(len(Client_Channels)):
                 client_channel = Client_Channels[j]
-                prefix_state_dict = client_channel.recv(f'server_res_{i}')
+                prefix_state_dict = client_channel.recv(f'client_res_{i}')
                 for k, v in prefix_state_dict.items():
                     if k.startswith("transformer.prefix_encoder."):
                         new_prefix_state_dict[k] = v*weights[j]
