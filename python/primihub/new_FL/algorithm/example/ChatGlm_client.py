@@ -33,9 +33,9 @@ class ChatGlmClient(BaseModel):
 
         path = my_parameter['path']
         os.chdir(path)
-        os.environ["PRE_SEQ_LEN"] = 128
-        os.environ["LR"] = 2e-2
-        os.environ["CUDA_VISIBLE_DEVICES"] = 0
+        os.environ["PRE_SEQ_LEN"] = "128"
+        os.environ["LR"] = "2e-2"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
         train_iter = self.task_parameter['train_iter']
         train_file = my_parameter['train_file']
         validation_file = my_parameter['validation_file']
