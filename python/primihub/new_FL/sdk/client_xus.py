@@ -22,6 +22,7 @@ class Client:
         # consturct 'cp_param'
         cp_param = common_pb2.Params()
         for tmp_party, tmp_param in self.role_params.items():
+
             cp_param.param_map[tmp_party].var_type = self.var_type
             cp_param.param_map[tmp_party].is_array = self.is_array
             # cp_param.param_map[tmp_party].value_string = json.dumps(
@@ -46,15 +47,16 @@ class Client:
         party_access_info = {}
         for tmp_party, tmp_info in self.party_info.items():
             tmp_node = common_pb2.Node()
-            tmp_node.ip = tmp_info['ip'].encode()
-            tmp_node.port = int(tmp_info['port'])
-            tmp_node.use_tls = tmp_info['use_tls']
-            party_access_info[tmp_party] = tmp_node
+            if isinstance(tmp_node, dict):
+                tmp_node.ip = tmp_info['ip'].encode()
+                tmp_node.port = int(tmp_info['port'])
+                tmp_node.use_tls = tmp_info['use_tls']
+                party_access_info[tmp_party] = tmp_node
 
         self.current_worker = WorkerClient(
-            self.party_info['task_manager'],
+            node=self.party_info['task_manager'],
             cert=None,
-            name=self.component_params['common_params']['task_name'],  # TODO
+            task_name=self.component_params['common_params']['task_name'],
             language=0,
             params=cp_param,
             task_info=cp_task_info,

@@ -28,9 +28,9 @@ class WorkerClient(GRPCConnect):
 
     def __init__(self,
                  node,
-                 cert,
+                 cert=None,
                  task_type: common_pb2.TaskType = 0,
-                 name: str = "",
+                 task_name: str = "",
                  language: common_pb2.Language = 0,
                  params: common_pb2.Params = None,
                  code: dict = None,
@@ -42,12 +42,13 @@ class WorkerClient(GRPCConnect):
                  party_access_info: dict = None) -> None:
         """Constructor
         """
-        super(WorkerClient, self).__init__(node, cert)
-        self.channel = grpc.insecure_channel(self.node)
+
+        super().__init__(node=node, cert=cert)
+        self.channel = grpc.insecure_channel(node)
         self.request_data = None
         self.stub = worker_pb2_grpc.VMNodeStub(self.channel)
         self.task_type = task_type
-        self.name = name
+        self.name = task_name
         self.language = language
         self.params = params
         self.code = code

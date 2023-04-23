@@ -28,7 +28,7 @@ if __name__ == '__main__':
     with open(json_file, 'r') as f:
         json_file = json.load(f)
 
-    client = Client(task_params=json_file)
+    client = Client(json_file=json_file)
     client.submit()
     # party_access_info = json_file["party_access_info"]
     # roles = json_file["roles"]
