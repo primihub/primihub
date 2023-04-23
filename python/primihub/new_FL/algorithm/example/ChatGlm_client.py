@@ -83,9 +83,9 @@ class ChatGlmClient(BaseModel):
             server_channel.sender(f'client_res_{i}', prefix_state_dict)
             res = server_channel.recv(f'server_res_{i}')
             import random
-	    import time
-	    time.sleep(random.randint(1,10))
-	    import torch
+	        import time
+	        time.sleep(random.randint(1,10))
+	        import torch
             torch.save(res, os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
             del torch
 
