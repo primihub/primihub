@@ -31,7 +31,7 @@
             "aggration_iter": 2,
             "train_iter": 3,
             "Alice" : 
-                    {"path": "/home/primihub/czl/ChatGLM-6B/ptuning",
+                    {"path": "/home/primihub/czl/ChatGLM-6B-Medptuning",
                     "train_file": "Meddata/train.json",
                     "validation_file": "Meddata/train.json",
                     "prompt_column": "prompt",
