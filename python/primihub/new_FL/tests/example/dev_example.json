@@ -2,19 +2,19 @@
     "party_access_info": {
         "Alice":
             {
-                "ip": "127.0.0.1",
+                "ip": "172.21.1.58",
                 "port": "50050",
                 "use_tls": false
             },
         "Bob":
             {
-                "ip": "127.0.0.1",
+                "ip": "172.21.1.63",
                 "port": "50051",
                 "use_tls": false
             },
         "Charlie":
             {
-                "ip": "127.0.0.1",
+                "ip": "172.21.1.58",
                 "port": "50052",
                 "use_tls": false
             },
