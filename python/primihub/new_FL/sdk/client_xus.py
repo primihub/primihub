@@ -1,5 +1,5 @@
 from primihub.client.ph_grpc.src.primihub.protos import common_pb2
-from primihub.client.ph_grpc.worker_xus import WorkerClient
+from primihub.client.ph_grpc.worker1 import WorkerClient
 import json
 import uuid
 
