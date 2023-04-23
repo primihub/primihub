@@ -69,7 +69,7 @@ class ChatGlmClient(BaseModel):
                         --learning_rate $LR \
                         --pre_seq_len $PRE_SEQ_LEN \
                         --quantization_bit 4 "
-            if history_column == None:
+            if history_column != None:
                 cmd += f" --history_column {history_column}"
             if i!=0:
                 cmd += f" --ptuning_checkpoint {ptuning_checkpoint}"
