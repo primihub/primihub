@@ -31,7 +31,7 @@
             "aggration_iter": 2,
             "train_iter": 3,
             "Alice" : 
-                    {"path": "~/czl/ChatGLM-6B-Med/ptuning",
+                    {"path": "/home/primihub/czl/ChatGLM-6B/ptuning",
                     "train_file": "Meddata/train.json",
                     "validation_file": "Meddata/train.json",
                     "prompt_column": "prompt",
@@ -40,7 +40,7 @@
                     "model_name_or_path": "/home/primihub/czl/chatglm-6b-int4",
                     "output_dir": "output/Alice_result",
                     "num_examples": 10},
-            "Bob":{"path": "~/czl/ChatGLM-6B/ptuning",
+            "Bob":{"path": "/home/primihub/czl/ChatGLM-6B/ptuning",
                     "train_file": "AdvertiseGen/train.json",
                     "validation_file": "AdvertiseGen/dev.json",
                     "prompt_column": "content",
