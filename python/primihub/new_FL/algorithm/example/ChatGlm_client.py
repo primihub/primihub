@@ -3,7 +3,7 @@ from primihub.new_FL.algorithm.utils.net_work import GrpcServer
 
 import os
 import time
-import torch
+
 class ChatGlmClient(BaseModel):
     def __init__(self, task_parameter, party_access_info):
         super().__init__(task_parameter, party_access_info)
@@ -76,11 +76,18 @@ class ChatGlmClient(BaseModel):
             print(f"cmd is {cmd}")
             os.system(cmd)
             time.sleep(5) #for save
+            import torch
             prefix_state_dict = torch.load(os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
-        
+            del torch
+            
             server_channel.sender(f'client_res_{i}', prefix_state_dict)
             res = server_channel.recv(f'server_res_{i}')
+            import random
+	    import time
+	    time.sleep(random.randint(1,10))
+	    import torch
             torch.save(res, os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
+            del torch
 
 
 
