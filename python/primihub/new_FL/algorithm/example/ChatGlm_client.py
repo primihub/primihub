@@ -75,7 +75,7 @@ class ChatGlmClient(BaseModel):
                 cmd += f" --ptuning_checkpoint {ptuning_checkpoint}"
             print(f"cmd is {cmd}")
             os.system(cmd)
-            prefix_state_dict = torch.load(os.path.join(path+ptuning_checkpoint, "pytorch_model.bin"))
+            prefix_state_dict = torch.load(os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
         
             server_channel.sender(f'client_res_{i}', prefix_state_dict)
             res = server_channel.recv(f'server_res_{i}')
