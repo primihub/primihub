@@ -1,33 +1,120 @@
 syntax = "proto3";
 package primihub.rpc;
 
+message DataTypeInfo {
+  enum PlainDataType {
+    /// A NULL type having no physical storage
+    NA = 0;
+    /// Boolean as 1 bit, LSB bit-packed ordering
+    BOOL = 1;
+
+    /// Unsigned 8-bit little-endian integer
+    UINT8 = 2;
+
+    /// Signed 8-bit little-endian integer
+    INT8 = 3;
+
+    /// Unsigned 16-bit little-endian integer
+    UINT16 = 4;
+
+    /// Signed 16-bit little-endian integer
+    INT16 = 5;
+
+    /// Unsigned 32-bit little-endian integer
+    UINT32 = 6;
+
+    /// Signed 32-bit little-endian integer
+    INT32 = 7;
+
+    /// Unsigned 64-bit little-endian integer
+    UINT64 = 8;
+
+    /// Signed 64-bit little-endian integer
+    INT64 = 9;
+
+    /// 2-byte floating point value
+    HALF_FLOAT = 10;
+
+    /// 4-byte floating point value
+    FLOAT = 11;
+
+    /// 8-byte floating point value
+    DOUBLE = 12;
+
+    /// UTF8 variable-length string as List<Char>
+    STRING = 13;
+
+    /// Variable-length bytes (no guarantee of UTF8-ness)
+    BINARY = 14;
+
+    /// Fixed-size binary. Each value occupies the same number of bytes
+    FIXED_SIZE_BINARY = 15;
+
+    /// int32_t days since the UNIX epoch
+    DATE32 = 16;
+
+    /// int64_t milliseconds since the UNIX epoch
+    DATE64 = 17;
+
+    /// Exact timestamp encoded with int64 since UNIX epoch
+    /// Default unit millisecond
+    TIMESTAMP = 18;
+
+    /// Time as signed 32-bit integer, representing either seconds or
+    /// milliseconds since midnight
+    TIME32 = 19;
+
+    /// Time as signed 64-bit integer, representing either microseconds or
+    /// nanoseconds since midnight
+    TIME64 = 20;
+
+    /// YEAR_MONTH interval in SQL style
+    INTERVAL_MONTHS = 21;
+
+    /// DAY_TIME interval in SQL style
+    INTERVAL_DAY_TIME = 22;
+
+    /// Precision- and scale-based decimal type with 128 bits.
+    DECIMAL128 = 23;
+
+    /// Defined for backward-compatibility. DECIMAL == DECIMAL128
+    DECIMAL = 24;
+
+    /// Precision- and scale-based decimal type with 256 bits.
+    DECIMAL256 = 25;
+  }
+
+  string name = 1;
+  PlainDataType type = 2;
+}
 
 service DataService {
-    rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+  rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
 }
 
 message NewDatasetRequest {
-    string driver = 1;
-    string path = 2;
-    string fid = 3;
+  string driver = 1;
+  string path = 2;
+  string fid = 3;
+  repeated DataTypeInfo data_type = 4;  // data type for each column
 }
 
 message NewDatasetResponse {
-    int32 ret_code = 1;  // 0: success  1: doing  2: error
-    string dataset_url = 2;
+  int32 ret_code = 1;  // 0: success  1: doing  2: error
+  string dataset_url = 2;
 }
 
 // # task status service
 // service NodeService {
 //     rpc SubscribeNodeEvent(ClientContext) returns (stream NodeEventReply);
 // }
-// 
+//
 // enum NodeEventType {
 //     NODE_EVENT_TYPE_NODE_CONTEXT = 0;
 //     NODE_EVENT_TYPE_TASK_STATUS = 1;
 //     NODE_EVENT_TYPE_TASK_RESULT = 2;
 // }
-// 
+//
 // message NodeEventReply {
 //     NodeEventType event_type = 1;
 //     oneof node_event {
@@ -36,50 +123,50 @@ message NewDatasetResponse {
 //         TaskResult task_result = 4;
 //     }
 // }
-// 
+//
 // message ClientContext {
 //     string client_id = 1;
 //     string client_ip = 2;
 //     int32 client_port = 3; // TODO no need or from grpc server
 // }
-// 
+//
 // // Notify channnel usage: task running status and result.
 // message NotifyChannel {
 //     string key = 1;
 //     string connect_str = 2;
 // }
-// 
+//
 // message TaskContext {
 //     string node_id = 1;
 //     string task_id = 2;
 //     string job_id = 3;
 // }
-// 
+//
 // message TaskStatus{
 //     TaskContext task_context = 1;
 //     string status = 2;  // TODO enum
 //     string message = 3;
 // }
-// 
+//
 // message TaskResult {
 //     TaskContext task_context = 1;
 //     string result_dataset_url = 2; // TODO many
 // }
-// 
+//
 // // enum DatasetRetriveType {
 // //     ARROW_FLIGHT = 0;
 // //     HDFS_FILE = 1;
 // // }
-// 
+//
 // message DatasetRetriveChannel {
 //     int32 retrive_type = 1;
 // }
-// 
+//
 // // Node public certificate.
 // message NodeCertficate {
 //     bytes cert = 1;
 // }
-// 
+//
 // // Node context: notify channel, dataset retrive channel, Node certificate.
 // message NodeContext {
 //     int64 session_id = 1;

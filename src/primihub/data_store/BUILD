@@ -38,6 +38,7 @@ cc_library(
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_github_glog_glog//:glog",
         "@arrow",
+        "@nlohmann_json",
     ],
 )
 cc_library(

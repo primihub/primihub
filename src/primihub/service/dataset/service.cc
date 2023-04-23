@@ -202,10 +202,10 @@ void DatasetService::restoreDatasetFromLocalStorage(void) {
             LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
             continue;
         }
-        auto access_info_str = meta.getAccessInfo();
+        auto meta_info = meta.toJSON();
         std::string driver_type = meta.getDriverType();
         std::string fid = meta.getDescription();
-        auto access_info = this->createAccessInfo(driver_type, access_info_str);
+        auto access_info = this->createAccessInfo(driver_type, meta_info);
         if (access_info == nullptr) {
             std::string err_msg = "create access info failed";
             continue;
@@ -305,6 +305,7 @@ std::shared_ptr<DatasetMeta> DatasetMetaService::getLocalMeta(const DatasetId& i
 
 void DatasetMetaService::putMeta(DatasetMeta& meta) {
     std::string meta_str = meta.toJSON();
+    std::string datasetid = Key2Str(meta.id);
     LOG(INFO) << "<< Put meta: "<< meta_str;
     // Save datameta in local storage.
     localKv_->putValue(meta.id,  meta_str);
