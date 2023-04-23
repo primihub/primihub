@@ -30,59 +30,7 @@ namespace primihub {
     class DataDriver;
 }
 namespace primihub::service {
-    // ======== DatasetSchema ========
-// key: filed name, value: data type
-// TODO(xxxxx) move to common operation
-std::shared_ptr<arrow::DataType> TableSchema::MakeArrowDataType(int type) {
-  switch (type) {
-  case arrow::Type::type::BOOL:
-    return arrow::boolean();
-  case arrow::Type::type::UINT8:
-    return arrow::uint8();
-  case arrow::Type::type::INT8:
-    return arrow::int8();
-  case arrow::Type::type::UINT16:
-    return arrow::uint16();
-  case arrow::Type::type::INT16:
-    return arrow::int16();
-  case arrow::Type::type::UINT32:
-    return arrow::uint32();
-  case arrow::Type::type::INT32:
-    return arrow::int32();
-  case arrow::Type::type::UINT64:
-    return arrow::uint64();
-  case arrow::Type::type::INT64:
-    return arrow::int64();
-  case arrow::Type::type::HALF_FLOAT:
-    return arrow::float16();
-  case arrow::Type::type::FLOAT:
-    return arrow::float32();
-  case arrow::Type::type::DOUBLE:
-    return arrow::float64();
-  case arrow::Type::type::STRING:
-    return arrow::utf8();
-  case arrow::Type::type::BINARY:
-    return arrow::binary();
-  case arrow::Type::type::DATE32:
-    return arrow::date32();
-  case arrow::Type::type::DATE64:
-    return arrow::date64();
-  case arrow::Type::type::TIMESTAMP:
-    return arrow::timestamp(arrow::TimeUnit::type::MILLI);
-  case arrow::Type::type::TIME32:
-    return arrow::time32(arrow::TimeUnit::type::MILLI);
-  case arrow::Type::type::TIME64:
-    return arrow::time64(arrow::TimeUnit::type::MICRO);
-  // case arrow::Type::type::DECIMAL128:
-  case arrow::Type::type::DECIMAL:
-    return arrow::decimal(10, 0);
-  case arrow::Type::type::DECIMAL256:
-    return arrow::decimal(10, 0);
-  default:
-    return arrow::utf8();
-  }
-  return arrow::utf8();
-}
+// ======== DatasetSchema ========
 std::vector<FieldType> TableSchema::extractFields(const std::string &json) {
   try {
     nlohmann::json oJson = nlohmann::json::parse(json);
@@ -135,7 +83,7 @@ void TableSchema::fromJSON(std::vector<FieldType>& field_info) {
   for (const auto& it : field_info) {
     auto name = std::get<0>(it);
     int type = std::get<1>(it);
-    auto data_type = MakeArrowDataType(type);
+    auto data_type = arrow_wrapper::util::MakeArrowDataType(type);
     // std::shared_ptr<arrow::Field>
     auto arrow_filed = arrow::field(name, std::move(data_type));
     arrowFields.push_back(std::move(arrow_filed));

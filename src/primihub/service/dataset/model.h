@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include "src/primihub/data_store/dataset.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 
 namespace primihub {
 using FieldType = std::tuple<std::string, int>;
@@ -53,7 +54,7 @@ class DatasetSchema {
 class TableSchema : public DatasetSchema {
  public:
     explicit TableSchema(std::shared_ptr<arrow::Schema> schema)
-        : schema(schema) {}
+        : schema(std::move(schema)) {}
 
     explicit TableSchema(std::string &json) {
       try {
@@ -72,9 +73,6 @@ class TableSchema : public DatasetSchema {
     void fromJSON(const std::string& json) override;
     void fromJSON(const nlohmann::json &json) override;
     void fromJSON(std::vector<FieldType> &fieldNames);
-
- protected:
-  std::shared_ptr<arrow::DataType> MakeArrowDataType(int type);
 
  private:
     void init(const std::vector<std::string> &fields);

@@ -227,7 +227,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
     if (i < schema_fields) {
       auto& field_ptr = table_schema->field(i);
       int field_type = field_ptr->type()->id();
-      auto array = makeArrowArray(field_type, result_data[i]);
+      auto array = arrow_wrapper::util::MakeArrowArray(field_type, result_data[i]);
       data_arr->push_back(std::move(array));
     } else {
       LOG(ERROR) << "index out of range, current index: " << i << " "
@@ -439,7 +439,7 @@ retcode MySQLDriver::getTableSchema(const std::string& db_name,
       VLOG(5) << "column_name: " << column_name << " "
               << "data_type: " << data_type;
       int arrow_type;
-      SqlType2ArrowType(data_type, &arrow_type);
+      arrow_wrapper::util::SqlType2ArrowType(data_type, &arrow_type);
       nlohmann::json item;
       item[column_name] = arrow_type;
       js_schema.emplace_back(item);

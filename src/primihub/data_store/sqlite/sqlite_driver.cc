@@ -16,6 +16,7 @@
 
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 #include "src/primihub/util/util.h"
 #include <glog/logging.h>
 #include <variant>
@@ -140,7 +141,7 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string&
       auto& field_ptr = table_schema->field(index);
       result_schema_filed.push_back(field_ptr);
       int field_type = field_ptr->type()->id();
-      auto array = makeArrowArray(field_type, query_result[i]);
+      auto array = arrow_wrapper::util::MakeArrowArray(field_type, query_result[i]);
       array_data.push_back(std::move(array));
     } else {
       LOG(ERROR) << "index out of range, current index: " << i << " "
@@ -571,7 +572,7 @@ retcode SQLiteDriver::GetDBTableSchema() {
     table_schema_[column_name] = column_type;
     table_cols_.push_back(column_name);
     int arrow_type;
-    SqlType2ArrowType(column_type, &arrow_type);
+    arrow_wrapper::util::SqlType2ArrowType(column_type, &arrow_type);
     nlohmann::json item;
     item[column_name] = arrow_type;
     js_schema.emplace_back(item);

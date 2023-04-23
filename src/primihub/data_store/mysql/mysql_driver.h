@@ -19,7 +19,7 @@
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
-#include "src/primihub/data_store/common/sql_driver_util.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 #include <iomanip>
 #include <map>
 #include <glog/logging.h>
@@ -74,7 +74,7 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
   std::vector<std::string> query_colums_;
 };
 
-class MySQLCursor : public Cursor, public SqlCommonOperation {
+class MySQLCursor : public Cursor {
  public:
     MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> driver);
     MySQLCursor(const std::string& sql,

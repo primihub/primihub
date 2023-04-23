@@ -19,7 +19,6 @@
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
-#include "src/primihub/data_store/common/sql_driver_util.h"
 #include "SQLiteCpp/SQLiteCpp.h"
 #include "SQLiteCpp/Column.h"
 #include <iomanip>
@@ -43,7 +42,7 @@ struct SQLiteAccessInfo : public DataSetAccessInfo {
   // std::vector<std::string> query_colums_;
 };
 
-class SQLiteCursor : public Cursor, public SqlCommonOperation {
+class SQLiteCursor : public Cursor {
 public:
   SQLiteCursor(const std::string& sql, std::shared_ptr<SQLiteDriver> driver);
   /**
