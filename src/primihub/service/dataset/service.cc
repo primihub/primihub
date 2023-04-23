@@ -203,6 +203,7 @@ void DatasetService::restoreDatasetFromLocalStorage(void) {
             continue;
         }
         auto meta_info = meta.toJSON();
+        VLOG(5) << "meta_info: " << meta_info;
         std::string driver_type = meta.getDriverType();
         std::string fid = meta.getDescription();
         auto access_info = this->createAccessInfo(driver_type, meta_info);
