@@ -60,9 +60,9 @@ class TableSchema : public DatasetSchema {
         nlohmann::json j = nlohmann::json::parse(json);
         fromJSON(j);
       } catch (std::exception& e) {
+        this->schema = arrow::schema({});
         LOG(ERROR) << "load dataset schema failed: " << e.what();
       }
-
     }
 
     explicit TableSchema(nlohmann::json &oJson) { fromJSON(oJson); }

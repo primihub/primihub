@@ -95,10 +95,14 @@ std::vector<FieldType> TableSchema::extractFields(const std::string &json) {
 
 std::vector<FieldType> TableSchema::extractFields(const nlohmann::json& oJson) {
   std::vector<FieldType> fields;
-  for (const auto& it : oJson) {
-    for (const auto&[name, type] : it.items()) {
-      fields.push_back(std::make_tuple(name, type));
+  if (oJson.is_array()) {
+    for (const auto& it : oJson) {
+      for (const auto&[name, type] : it.items()) {
+        fields.push_back(std::make_tuple(name, type));
+      }
     }
+  } else {
+    LOG(ERROR) << "no need to parser";
   }
   return fields;
 }
@@ -136,8 +140,12 @@ void TableSchema::fromJSON(std::vector<FieldType>& field_info) {
     auto arrow_filed = arrow::field(name, std::move(data_type));
     arrowFields.push_back(std::move(arrow_filed));
   }
-  // this->schema = arrow::schema({});
-  this->schema = arrow::schema(arrowFields);
+  if (arrowFields.empty()) {
+    LOG(WARNING) << "arrowFields is empty";
+    this->schema = arrow::schema({});
+  } else {
+    this->schema = arrow::schema(arrowFields);
+  }
 }
 
 
