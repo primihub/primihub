@@ -53,8 +53,16 @@ def run(task_params):
     # set commom parmas, role params and node_info
     common_params = component_params_dict['common_params']
     all_role_params = component_params_dict['role_params']
+    roles = component_params_dict['roles']
 
     current_role_params = all_role_params[party_name]
+
+    # set role for current party
+    for key, val in roles.items():
+        if party_name in val:
+            current_role_params['role'] = key
+            break
+
     node_info = task_params.party_access_info
 
     execute_function(common_params, current_role_params, node_info, task_params)

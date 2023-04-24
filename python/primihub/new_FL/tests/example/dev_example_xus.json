@@ -18,6 +18,14 @@
         "task_manager": "127.0.0.1:50050"
     },
     "component_params": {
+        "roles": {
+            "guest": [
+                "Bob"
+            ],
+            "host": [
+                "Charlie"
+            ]
+        },
         "common_params": {
             "model": "Example",
             "task_name": "demo",
@@ -25,12 +33,10 @@
         },
         "role_params": {
             "Bob": {
-                "data_set": "iv_filter_host",
-                "role": "guest"
+                "data_set": "iv_filter_host"
             },
             "Charlie": {
-                "data_set": "iv_filter_guest",
-                "role": "host"
+                "data_set": "iv_filter_guest"
             }
         }
     }
