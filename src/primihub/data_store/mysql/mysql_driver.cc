@@ -220,7 +220,10 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
     unsigned long* lengths;
     lengths = mysql_fetch_lengths(result.get());
     for (uint32_t i = 0; i < num_fields; i++) {
-      std::string item = row[i] ? std::string(row[i], lengths[i]) : std::string("NULL");
+      std::string item{"NULL"};
+      if (lengths[i] > 0) {
+        item = std::string(row[i], lengths[i]);
+      }
       VLOG(5) << "fetch item: " << item << " length: " << lengths[i];
       result_data[i].push_back(item);
     }
