@@ -16,6 +16,7 @@
 
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 #include "src/primihub/util/util.h"
 #include <glog/logging.h>
 #include <variant>
@@ -37,60 +38,62 @@ std::string SQLiteAccessInfo::toString() {
     nlohmann::json js;
     js["db_path"] = this->db_path_;
     js["tableName"] = this->table_name_;
-    if (!query_colums_.empty()) {
-        std::string quey_col_info;
-        for (const auto& col : query_colums_) {
-            quey_col_info.append(col).append(",");
-        }
-        js["query_index"] = std::move(quey_col_info);
-    }
     ss << std::setw(4) << js;
     return ss.str();
 }
 
-retcode SQLiteAccessInfo::fromJsonString(const std::string& access_info) {
-    if (access_info.empty()) {
-        LOG(ERROR) << "access info is empty";
-        return retcode::FAIL;
-    }
-    nlohmann::json js = nlohmann::json::parse(access_info);
-    try {
-        this->db_path_ = js["db_path"].get<std::string>();
-        this->table_name_ = js["tableName"].get<std::string>();
-        this->query_colums_.clear();
-        if (js.contains("query_index")) {
-        std::string query_index_info = js["query_index"];
-        str_split(query_index_info, &query_colums_, ',');
-    }
-    } catch (std::exception& e) {
-        LOG(ERROR) << "parse sqlite access info failed, " << e.what()
-            << " origin access info: [" << access_info << "]";
-        return retcode::FAIL;
-    }
-    return retcode::SUCCESS;
+retcode SQLiteAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
+  const auto& js = access_info;
+  try {
+    this->db_path_ = js["db_path"].get<std::string>();
+    this->table_name_ = js["tableName"].get<std::string>();
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse sqlite access info failed, " << e.what()
+        << " origin access info: [" << access_info << "]";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
-retcode SQLiteAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
-    try {
-        this->db_path_ = meta_info["source"].as<std::string>();
-        this->table_name_ = meta_info["table_name"].as<std::string>();
-        this->query_colums_.clear();
-        if (meta_info["query_index"]) {
-            std::string query_index = meta_info["query_index"].as<std::string>();
-            str_split(query_index, &query_colums_, ',');
-        }
-    } catch (std::exception& e) {
-        LOG(ERROR) << "parse sqlite access info encountes error, " << e.what();
-        return retcode::FAIL;
-    }
-    return retcode::SUCCESS;
+retcode SQLiteAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
+  try {
+    this->db_path_ = meta_info["source"].as<std::string>();
+    this->table_name_ = meta_info["table_name"].as<std::string>();
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse sqlite access info encountes error, " << e.what();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode SQLiteAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  auto ret{retcode::SUCCESS};
+  try {
+    nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
+    ret = ParseFromJsonImpl(access_info);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse access info failed";
+    ret = retcode::FAIL;
+  }
+  return ret;
 }
 
 // sqlite cursor implementation
 SQLiteCursor::SQLiteCursor(const std::string &sql,
                            std::shared_ptr<SQLiteDriver> driver) {
   this->sql_ = sql;
-  this->driver_ = driver;
+  this->driver_ = std::move(driver);
+  auto& schema = this->driver_->dataSetAccessInfo()->Schema();
+  for (int i = 0; i < schema.size(); i++) {
+    selected_column_index_.push_back(i);
+  }
+}
+
+SQLiteCursor::SQLiteCursor(const std::string& sql,
+    const std::vector<int>& col_index,
+    std::shared_ptr<SQLiteDriver> driver) : Cursor(col_index) {
+  this->sql_ = sql;
+  this->driver_ = std::move(driver);
 }
 
 SQLiteCursor::~SQLiteCursor() { this->close(); }
@@ -116,113 +119,50 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset, int64_t li
 
 std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string& query_sql) {
   std::shared_ptr<arrow::Table> table{nullptr};
-  auto &db_connector = this->driver_->getDBConnector();
+  auto& db_connector = this->driver_->getDBConnector();
+  if (db_connector == nullptr) {
+    LOG(ERROR) << "db connector for sqlite is invalid";
+    return nullptr;
+  }
   SQLite::Statement sql_query(*db_connector, query_sql);
-  std::map<std::string, std::unique_ptr<TypeContainer>> query_result;
-  std::vector<std::tuple<std::string, sql_type_t>> col_metas;
-  bool col_meta_collected{false};
-  std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
+
+  std::vector<std::vector<std::string>> query_result;
+  query_result.resize(SelectedColumnIndex().size());
   while (sql_query.executeStep()) {
     for (int i = 0; i < sql_query.getColumnCount(); i++) {
-      std::string col_type = sql_query.getColumnDeclaredType(i);
-      auto col_name = sql_query.getColumnOriginName(i);
-      if (!col_meta_collected) {
-        sql_type_t sql_col_type = this->get_sql_type_by_type_name(col_type);
-        switch (sql_col_type) {
-        case sql_type_t::STRING:
-          col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
-          result_schema_filed.push_back(
-              arrow::field(col_name, arrow::binary()));
-          break;
-        case sql_type_t::INT:
-          col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
-          result_schema_filed.push_back(arrow::field(col_name, arrow::int64()));
-          break;
-        case sql_type_t::DOUBLE:
-          col_metas.emplace_back(std::make_tuple(col_name, sql_col_type));
-          result_schema_filed.push_back(
-              arrow::field(col_name, arrow::float64()));
-          break;
-        default:
-          break;
-        }
-      }
-      // process data
-      switch (std::get<1>(col_metas[i])) {
-      case sql_type_t::STRING: {
-        std::string col_value = sql_query.getColumn(i);
-        if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] =
-              std::make_unique<TypeContainer>(sql_type_t::STRING);
-        }
-        query_result[col_name]->string_values.emplace_back(
-            std::move(col_value));
-      } break;
-      case sql_type_t::INT: {
-        int64_t col_value = sql_query.getColumn(i);
-        if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] =
-              std::make_unique<TypeContainer>(sql_type_t::INT);
-        }
-        query_result[col_name]->int_values.emplace_back(col_value);
-      } break;
-      case sql_type_t::DOUBLE: {
-        double col_value = sql_query.getColumn(i);
-        if (query_result.find(col_name) == query_result.end()) {
-          query_result[col_name] =
-              std::make_unique<TypeContainer>(sql_type_t::DOUBLE);
-        }
-        query_result[col_name]->double_values.emplace_back(col_value);
-      } break;
-      default:
-        LOG(ERROR) << "unknown sql type: ";
-        break;
-      }
+      std::string result = sql_query.getColumn(i).getString();
+      query_result[i].push_back(std::move(result));
     }
-    col_meta_collected = true;
   }
-  // convert data to arrow array
+  // convert data to arrow format
+  auto table_schema = this->driver_->dataSetAccessInfo()->ArrowSchema();
+  if (VLOG_IS_ON(5)) {
+    for (const auto& name :  table_schema->field_names()) {
+      VLOG(5) << "name: " << name << " "
+              << "size: " << table_schema->field_names().size();
+    }
+  }
   std::vector<std::shared_ptr<arrow::Array>> array_data;
-  for (size_t i = 0; i < col_metas.size(); i++) {
-    auto &col_name = std::get<0>(col_metas[i]);
-    auto &col_type = std::get<1>(col_metas[i]);
-    switch (col_type) {
-    case sql_type_t::STRING: {
-      arrow::StringBuilder builder;
-      auto &string_values = query_result[col_name]->string_values;
-      std::shared_ptr<arrow::Array> array;
-      builder.AppendValues(string_values);
-      builder.Finish(&array);
+  std::vector<std::shared_ptr<arrow::Field>> result_schema_filed;
+  int schema_fields = table_schema->num_fields();
+  auto& selected_fields = this->SelectedColumnIndex();
+  size_t number_selected_fields = selected_fields.size();
+  size_t i = 0;
+  for (const auto index : selected_fields) {
+    if (index < schema_fields) {
+      auto& field_ptr = table_schema->field(index);
+      result_schema_filed.push_back(field_ptr);
+      int field_type = field_ptr->type()->id();
+      auto array = arrow_wrapper::util::MakeArrowArray(field_type, query_result[i]);
       array_data.push_back(std::move(array));
-    } break;
-    case sql_type_t::INT:
-    case sql_type_t::INT64: {
-      arrow::NumericBuilder<arrow::Int64Type> builder;
-      auto &int_values = query_result[col_name]->int_values;
-      std::shared_ptr<arrow::Array> array;
-      builder.AppendValues(int_values);
-      builder.Finish(&array);
-      array_data.push_back(std::move(array));
-    } break;
-    case sql_type_t::DOUBLE:
-    case sql_type_t::FLOAT: {
-      arrow::NumericBuilder<arrow::DoubleType> builder;
-      auto &double_values = query_result[col_name]->double_values;
-      std::shared_ptr<arrow::Array> array;
-      builder.AppendValues(double_values);
-      builder.Finish(&array);
-      array_data.push_back(std::move(array));
-    } break;
-    default:
-      LOG(WARNING) << "col type is unknown, using string as default";
-       arrow::StringBuilder builder;
-      auto &string_values = query_result[col_name]->string_values;
-      std::shared_ptr<arrow::Array> array;
-      builder.AppendValues(string_values);
-      builder.Finish(&array);
-      array_data.push_back(std::move(array));
+    } else {
+      LOG(ERROR) << "index out of range, current index: " << i << " "
+          << "total colnum fields: " << schema_fields;
+      return nullptr;
     }
+    i++;
   }
+  VLOG(5) << "end of fetch data: " << array_data.size();
   auto schema = std::make_shared<arrow::Schema>(result_schema_filed);
   table = arrow::Table::Make(schema, array_data);
   auto dataset = std::make_shared<Dataset>(table, this->driver_);
@@ -513,66 +453,76 @@ std::unique_ptr<Cursor> SQLiteDriver::read() {
     LOG(ERROR) << "sqlite access info is not unavailable";
     return nullptr;
   }
-  try {
-    this->db_connector = std::make_unique<SQLite::Database>(access_info_ptr->db_path_);
-  } catch (std::exception &e) {
-    LOG(ERROR) << "create cursor failed: " << e.what();
-    return nullptr; // nullptr
+  if (this->db_connector == nullptr) {
+    try {
+      this->db_connector = std::make_unique<SQLite::Database>(access_info_ptr->db_path_);
+    } catch (std::exception& e) {
+      LOG(ERROR) << "create cursor failed: " << e.what();
+      return nullptr; // nullptr
+    }
   }
-  GetDBTableSchema();
+  if (access_info_ptr->Schema().empty()) {
+    auto ret = GetDBTableSchema();
+    if (ret != retcode::SUCCESS) {
+      LOG(ERROR) << "get table schema failed";
+      return nullptr;
+    }
+  }
   std::string query_sql = buildQuerySQL(access_info_ptr);
+  if (query_sql.empty()) {
+    LOG(ERROR) << "get query sql failed";
+    return nullptr;
+  }
   return std::make_unique<SQLiteCursor>(query_sql, shared_from_this());
 }
 
 std::unique_ptr<Cursor> SQLiteDriver::read(const std::string &conn_str) {
-  return this->initCursor(conn_str);
+  // return this->initCursor(conn_str);
+  return nullptr;
 }
 
 std::string SQLiteDriver::buildQuerySQL(SQLiteAccessInfo* access_info) {
-  const auto& table_name = access_info->table_name_;
-  const auto& query_cols = access_info->query_colums_;
-  std::string sql_str = "SELECT ";
-  if (query_cols.empty()) {
-    sql_str.append("*");
-  } else {
-    for (size_t i = 0; i < query_cols.size(); ++i) {
-      auto& col_name = query_cols[i];
-      if (col_name.empty()) {
-        continue;
-      }
-      if (i == query_cols.size()-1) {
-        sql_str.append(col_name).append(" ");
-      } else {
-        sql_str.append(col_name).append(",");
-      }
-    }
+  auto& schema = access_info->Schema();
+  if (schema.empty()) {
+    LOG(ERROR) << "dataset schema is empty";
+    return std::string("");
   }
-  sql_str.append(" FROM ").append(table_name);
+  auto& table_name = access_info->table_name_;
+  std::string sql_str = "SELECT ";
+  for (const auto& field : schema) {
+    auto& field_name = std::get<0>(field);
+    sql_str.append("`").append(field_name).append("`,");
+  }
+  sql_str[sql_str.size()-1] = ' ';
+  sql_str.append("FROM ").append(table_name);
   VLOG(5) << "query sql: " << sql_str;
   return sql_str;
 }
 
 std::string SQLiteDriver::buildQuerySQL(const std::string& table_name,
     const std::string& query_condition) {
-  std::string sql_str = "SELECT ";
-  if (query_condition.empty()) {
-    sql_str.append("*");
-  } else {
-    sql_str.append(query_condition);
-  }
-  sql_str.append(" FROM ").append(table_name);
-  VLOG(5) << "query sql: " << sql_str;
-  return sql_str;
+  // std::string sql_str = "SELECT ";
+  // if (query_condition.empty()) {
+  //   sql_str.append("*");
+  // } else {
+  //   sql_str.append(query_condition);
+  // }
+  // sql_str.append(" FROM ").append(table_name);
+  // VLOG(5) << "query sql: " << sql_str;
+  // return sql_str;
+  LOG(ERROR) << "depracated method";
+  return std::string("");
 }
+
 std::unique_ptr<Cursor> SQLiteDriver::GetCursor() {
   return nullptr;
 }
 
-std::unique_ptr<Cursor> SQLiteDriver::GetCursor(std::vector<int> col_index) {
+std::unique_ptr<Cursor> SQLiteDriver::GetCursor(const std::vector<int>& col_index) {
   auto& access_info = this->dataSetAccessInfo();
   auto sqlite_access_info = dynamic_cast<SQLiteAccessInfo*>(access_info.get());
   if (sqlite_access_info == nullptr) {
-    LOG(ERROR) << "get CSV access info failed";
+    LOG(ERROR) << "get SQLite access info failed";
     return nullptr;
   }
   std::vector<std::string> column_names;
@@ -581,7 +531,7 @@ std::unique_ptr<Cursor> SQLiteDriver::GetCursor(std::vector<int> col_index) {
     LOG(ERROR) << "get query sql failed";
     return nullptr;
   }
-  return std::make_unique<SQLiteCursor>(query_sql, shared_from_this());
+  return std::make_unique<SQLiteCursor>(query_sql, col_index, shared_from_this());
 }
 
 std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
@@ -626,27 +576,38 @@ retcode SQLiteDriver::GetDBTableSchema() {
   std::string schema_query_sql{
       "PRAGMA table_info(" + sqlite_access_info->table_name_ + ")"};
   SQLite::Statement sql_query(*db_connector, schema_query_sql);
+  nlohmann::json js_schema = nlohmann::json::array();
   while (sql_query.executeStep()) {
     int32_t cid = sql_query.getColumn(0).getInt();
     std::string column_name = sql_query.getColumn(1).getString();
     std::string column_type = sql_query.getColumn(2).getString();
     table_schema_[column_name] = column_type;
     table_cols_.push_back(column_name);
+    int arrow_type;
+    arrow_wrapper::util::SqlType2ArrowType(column_type, &arrow_type);
+    nlohmann::json item;
+    item[column_name] = arrow_type;
+    js_schema.emplace_back(item);
     VLOG(5) << "cid: " << cid << " "
         << "column name: " << column_name << " "
         << "column type: " << column_type;
   }
+  // fill access info
+  this->dataSetAccessInfo()->ParseSchema(js_schema);
   return retcode::SUCCESS;
 }
 
 std::string SQLiteDriver::BuildQuerySQL(const SQLiteAccessInfo& access_info,
     const std::vector<int>& col_index,
     std::vector<std::string>* colum_names) {
-  std::string table_name = access_info.table_name_;
+  auto& table_name = access_info.table_name_;
+  auto& schema = access_info.Schema();
+  size_t number_fields = schema.size();
   std::string sql_str = "SELECT ";
   for (const auto index : col_index) {
-    if (index < table_cols_.size()) {
-      sql_str.append("`").append(table_cols_[index]).append("`,");
+    if (index < number_fields) {
+      std::string col_name = std::get<0>(schema[index]);
+      sql_str.append("`").append(col_name).append("`,");
     } else {
       LOG(ERROR) << "query index is out of range, "
           << "index: " << index << " total columns: " << table_cols_.size();

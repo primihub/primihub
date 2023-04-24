@@ -9,6 +9,7 @@ cc_library(
     ],
     deps = [
         "//src/primihub/data_store:base_driver",
+        "//src/primihub/util:arrow_wrapper_util",
         "//src/primihub/util:util_lib",
         "@arrow",
         "@nlohmann_json",

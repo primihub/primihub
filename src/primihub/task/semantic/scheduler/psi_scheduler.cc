@@ -270,7 +270,9 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
                     is_client));
         }
     }
-
+    if (thrds.size() != 2) {
+      LOG(ERROR) << "PSI needes two party participate, but get: " << thrds.size();
+    }
     for (auto &t : thrds) {
         t.join();
     }

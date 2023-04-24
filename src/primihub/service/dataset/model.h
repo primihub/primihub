@@ -23,8 +23,10 @@
 #include <iostream>
 
 #include "src/primihub/data_store/dataset.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 
 namespace primihub {
+using FieldType = std::tuple<std::string, int>;
 namespace service {
 enum class DatasetVisbility {
     PRIVATE = 0,
@@ -44,7 +46,7 @@ class DatasetSchema {
  public:
     virtual ~DatasetSchema() {}
     virtual std::string toJSON() = 0;
-    virtual void fromJSON(std::string json) = 0;
+    virtual void fromJSON(const std::string& json) = 0;
     virtual void fromJSON(const nlohmann::json &json) = 0;
 };
 
@@ -52,23 +54,30 @@ class DatasetSchema {
 class TableSchema : public DatasetSchema {
  public:
     explicit TableSchema(std::shared_ptr<arrow::Schema> schema)
-        : schema(schema) {}
+        : schema(std::move(schema)) {}
+
     explicit TableSchema(std::string &json) {
+      try {
         nlohmann::json j = nlohmann::json::parse(json);
         fromJSON(j);
+      } catch (std::exception& e) {
+        this->schema = arrow::schema({});
+        LOG(ERROR) << "load dataset schema failed: " << e.what();
+      }
     }
+
     explicit TableSchema(nlohmann::json &oJson) { fromJSON(oJson); }
     ~TableSchema() {}
 
     std::string toJSON() override;
-    void fromJSON(std::string json) override;
+    void fromJSON(const std::string& json) override;
     void fromJSON(const nlohmann::json &json) override;
-    void fromJSON(std::vector<std::string> &fieldNames);
+    void fromJSON(std::vector<FieldType> &fieldNames);
 
  private:
     void init(const std::vector<std::string> &fields);
-    std::vector<std::string> extractFields(const std::string &json);
-    std::vector<std::string> extractFields(const nlohmann::json &oJson);
+    std::vector<FieldType> extractFields(const std::string &json);
+    std::vector<FieldType> extractFields(const nlohmann::json &oJson);
 
     std::shared_ptr<arrow::Schema> schema;
 };
@@ -77,32 +86,38 @@ class TableSchema : public DatasetSchema {
 
 static std::shared_ptr<DatasetSchema>
 NewDatasetSchema(DatasetType type, SchemaConstructorParamType param) {
-    try {
-        switch (type) {
-        case DatasetType::TABLE: {
-            switch (param.index()) {
-            case 0:
-                break; // TODO string json
-            case 1:
-                return std::make_shared<TableSchema>(
-                    std::get<nlohmann::json>(param));
-            case 2:
-                return std::make_shared<TableSchema>(
-                    std::get<std::shared_ptr<arrow::Schema>>(param));
-            }
-            break;
-        }
-        case DatasetType::ARRAY:
-            break;
-        case DatasetType::TENSOR:
-            break;
-        default:
-            break;
-        }
-    } catch (std::bad_variant_access &e) {
-        std::cerr << "bad_variant_access: " << e.what() << std::endl;
+  try {
+    switch (type) {
+    case DatasetType::TABLE: {
+      switch (param.index()) {
+      case 0: {  // string
+        auto& string_param = std::get<std::string>(param);
+        return std::make_shared<TableSchema>(string_param);
+      }
+      case 1: {  // json
+        auto& json_param = std::get<nlohmann::json>(param);
+        return std::make_shared<TableSchema>(json_param);
+      }
+      case 2: {  // arrow schema
+        auto& arrow_param = std::get<std::shared_ptr<arrow::Schema>>(param);
+        return std::make_shared<TableSchema>(arrow_param);
+      }
+      default:
+        break;
+      }
+      break;
     }
-    return nullptr;
+    case DatasetType::ARRAY:
+      break;
+    case DatasetType::TENSOR:
+      break;
+    default:
+      break;
+    }
+  } catch (std::bad_variant_access &e) {
+    std::cerr << "bad_variant_access: " << e.what() << std::endl;
+  }
+  return nullptr;
 }
 
 using DatasetId = libp2p::protocol::kademlia::ContentId;

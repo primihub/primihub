@@ -173,6 +173,8 @@ class DatasetService  {
     // NewDataset rpc interface json format
     std::unique_ptr<DataSetAccessInfo>
     createAccessInfo(const std::string driver_type, const std::string& meta_info);
+    std::unique_ptr<DataSetAccessInfo>
+    createAccessInfo(const std::string driver_type, const DatasetMetaInfo& meta_info);
 
  private:
     //  private:

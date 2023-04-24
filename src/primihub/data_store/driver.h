@@ -29,32 +29,64 @@
 #include <algorithm>
 #include <exception>
 #include <memory>
+#include <unordered_map>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/common.h"
 #include <glog/logging.h>
 #include <yaml-cpp/yaml.h>
+#include <nlohmann/json.hpp>
 
 namespace primihub {
+
+
 class Dataset;
 // ====== Data Store Driver ======
+using FieldType = std::tuple<std::string, int>;
 struct DataSetAccessInfo {
-    DataSetAccessInfo() = default;
-    virtual ~DataSetAccessInfo() = default;
-    virtual std::string toString() = 0;
-    virtual retcode fromJsonString(const std::string& access_info) = 0;
-    virtual retcode fromYamlConfig(const YAML::Node& meta_info) = 0;
+  DataSetAccessInfo() = default;
+  virtual ~DataSetAccessInfo() = default;
+  virtual std::string toString() = 0;
+  virtual retcode fromJsonString(const std::string& access_info);
+  virtual retcode fromYamlConfig(const YAML::Node& meta_info);
+  virtual retcode FromMetaInfo(const DatasetMetaInfo& meta_info);
+  virtual retcode ParseFromJsonImpl(const nlohmann::json& access_info) = 0;
+  virtual retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) = 0;
+  virtual retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) = 0;
+  retcode ParseSchema(const nlohmann::json& json_schema);
+  retcode ParseSchema(const YAML::Node& yaml_schema);
+  retcode SetDatasetSchema(const std::vector<FieldType>& schema);
+  retcode SetDatasetSchema(std::vector<FieldType>&& schema);
+  std::shared_ptr<arrow::Schema> ArrowSchema() {return arrow_schema;}
+  const std::vector<FieldType>& Schema() const {return schema;}
+
+ protected:
+  std::shared_ptr<arrow::DataType> MakeArrowDataType(int type);
+  retcode MakeArrowSchema();
+
+ public:
+  std::vector<FieldType> schema;
+  std::shared_ptr<arrow::Schema> arrow_schema{nullptr};
 };
 
 class Cursor {
  public:
-    Cursor() = default;
-    virtual ~Cursor() = default;
-    virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
-    virtual std::shared_ptr<Dataset> read() = 0;
-    virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
-    virtual int write(std::shared_ptr<Dataset> dataset) = 0;
-    virtual void close() = 0;
+  Cursor() = default;
+  Cursor(const std::vector<int>& selected_column) {
+    for (const auto& col : selected_column) {
+      selected_column_index_.push_back(col);
+    }
+  }
+  virtual ~Cursor() = default;
+  virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
+  virtual std::shared_ptr<Dataset> read() = 0;
+  virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
+  virtual int write(std::shared_ptr<Dataset> dataset) = 0;
+  virtual void close() = 0;
+  std::vector<int>& SelectedColumnIndex() {return selected_column_index_;}
+
+ public:
+  std::vector<int> selected_column_index_;
 };
 
 class DataDriver {
@@ -75,7 +107,8 @@ class DataDriver {
     */
     virtual std::unique_ptr<Cursor> read() = 0;
     virtual std::unique_ptr<Cursor> GetCursor() = 0;
-    virtual std::unique_ptr<Cursor> GetCursor(std::vector<int> col_index) = 0;
+    virtual std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) = 0;
+    [[deprecated("use GetCursor instead")]]
     virtual std::unique_ptr<Cursor> initCursor(const std::string &dataURL) = 0;
     // std::unique_ptr<Cursor> getCursor();
     std::string getDriverType() const;

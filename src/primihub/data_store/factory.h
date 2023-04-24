@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <boost/algorithm/string.hpp>
+#include <nlohmann/json.hpp>
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
@@ -96,7 +97,6 @@ class DataDirverFactory {
         if (access_info_ptr == nullptr) {
             return nullptr;
         }
-        // init
         auto ret = access_info_ptr->fromJsonString(meta_info);
         if (ret == retcode::FAIL) {
             LOG(ERROR) << "create dataset access info failed";
@@ -118,6 +118,21 @@ class DataDirverFactory {
             return nullptr;
         }
         return access_info_ptr;
+    }
+
+    static DataSetAccessInfoPtr createAccessInfo(
+        const std::string& driver_type, const DatasetMetaInfo& meta_info) {
+      auto access_info_ptr = createAccessInfoInternal(driver_type);
+      if (access_info_ptr == nullptr) {
+        return nullptr;
+      }
+      // init
+      auto ret = access_info_ptr->FromMetaInfo(meta_info);
+      if (ret == retcode::FAIL) {
+        LOG(ERROR) << "create dataset access info failed";
+        return nullptr;
+      }
+      return access_info_ptr;
     }
 };
 

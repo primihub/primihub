@@ -14,40 +14,59 @@
  limitations under the License.
  */
 
-#include <variant>
 #include <sys/stat.h>
+#include <glog/logging.h>
+
+#include <fstream>
+#include <variant>
+#include <iostream>
 
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/util/util.h"
 
-#include <arrow/api.h>
-#include <arrow/csv/api.h>
-#include <arrow/csv/writer.h>
-#include <arrow/filesystem/localfs.h>
-#include <arrow/io/api.h>
-#include <fstream>
-#include <glog/logging.h>
-#include <iostream>
-
 namespace primihub {
 // CSVAccessInfo
 std::string CSVAccessInfo::toString() {
-    return this->file_path_;
+  return this->file_path_;
 }
 
-retcode CSVAccessInfo::fromJsonString(const std::string& json_str) {
-    if (json_str.empty()) {
-        LOG(ERROR) << "access info is empty";
-        return retcode::FAIL;
+retcode CSVAccessInfo::fromJsonString(const std::string& access_info) {
+  retcode ret{retcode::SUCCESS};
+  try {
+    nlohmann::json js_access_info = nlohmann::json::parse(access_info);
+    if (js_access_info.contains("schema")) {
+      auto schema_json = nlohmann::json::parse(js_access_info["schema"].get<std::string>());
+      ret = ParseSchema(schema_json);
     }
-    this->file_path_ = json_str;
-    return retcode::SUCCESS;
+    ret = ParseFromJsonImpl(js_access_info);
+  } catch (std::exception& e) {
+    LOG(WARNING) << "parse access info from json string failed, reason ["
+        << e.what() << "] "
+        << "item: " << access_info;
+    this->file_path_ = access_info;
+  }
+  return ret;
 }
 
-retcode CSVAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
-    this->file_path_ = meta_info["source"].as<std::string>();
-    return retcode::SUCCESS;
+retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
+  try {
+    this->file_path_ = access_info["access_meta"];
+  } catch (std::exception& e) {
+    LOG(ERROR) << "get dataset path failed, " << e.what();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode CSVAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
+  this->file_path_ = meta_info["source"].as<std::string>();
+  return retcode::SUCCESS;
+}
+
+retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  this->file_path_ = meta_info.access_info;
+  return retcode::SUCCESS;
 }
 
 // csv cursor implementation
@@ -58,15 +77,9 @@ CSVCursor::CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver) {
 
 CSVCursor::CSVCursor(std::string filePath,
                     const std::vector<int>& colnum_index,
-                    std::shared_ptr<CSVDriver> driver) {
+                    std::shared_ptr<CSVDriver> driver) : Cursor(colnum_index) {
   this->filePath = filePath;
   this->driver_ = driver;
-  if (!colnum_index.empty()) {
-    colum_index_.resize(colnum_index.size());
-    for (size_t i = 0; i < colnum_index.size(); ++i) {
-      colum_index_[i] = colnum_index[i];
-    }
-  }
 }
 
 CSVCursor::~CSVCursor() { this->close(); }
@@ -111,6 +124,48 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
   return retcode::SUCCESS;
 }
 
+retcode CSVCursor::BuildConvertOptions(char delimiter,
+    arrow::csv::ConvertOptions* convert_options_ptr) {
+  if (!this->SelectedColumnIndex().empty()) {
+    // specify the colum needed to read
+    auto& include_columns = convert_options_ptr->include_columns;
+    auto ret = ColumnIndexToColumnName(filePath,
+        this->SelectedColumnIndex(), delimiter, &include_columns);
+    if (ret != retcode::SUCCESS) {
+      return retcode::FAIL;
+    }
+    auto& column_types = convert_options_ptr->column_types;
+    if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
+      auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+      for (const auto& name : include_columns) {
+        auto field = arrow_schema->GetFieldByName(name);
+        if (field == nullptr) {
+          LOG(ERROR) << "column name: " << name << " is not found";
+          return retcode::FAIL;
+        }
+        auto& field_type = field->type();
+        column_types[name] = field_type;
+        VLOG(7) << "name: " << name << " type: " << field_type->id();
+      }
+    }
+  } else {
+    auto& include_columns = convert_options_ptr->include_columns;
+    auto& column_types = convert_options_ptr->column_types;
+    if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
+      auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+      auto& all_fields = arrow_schema->fields();
+      for (const auto& field : all_fields) {
+        auto& col_name = field->name();
+        auto& field_type = field->type();
+        include_columns.push_back(col_name);
+        column_types[col_name] = field_type;
+        VLOG(7) << "name: " << col_name << " type: " << field_type->id();
+      }
+    }
+  }
+  return retcode::SUCCESS;
+}
+
 std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
   return read();
 }
@@ -122,24 +177,18 @@ std::shared_ptr<Dataset> CSVCursor::read() {
       arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(filePath);
   if (!result_ifstream.ok()) {
-    std::cout << "Failed to open file: " << filePath << std::endl;
+    LOG(ERROR) << "Failed to open file: " << filePath;
     return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
 
   auto read_options = arrow::csv::ReadOptions::Defaults();
   auto parse_options = arrow::csv::ParseOptions::Defaults();
-  auto convert_options = arrow::csv::ConvertOptions::Defaults();
 
   auto convert_options_ptr = std::make_unique<arrow::csv::ConvertOptions>();
-  if (!this->colum_index_.empty()) {
-    // specify the colum needed to read
-    auto& include_columns = convert_options_ptr->include_columns;
-    auto ret = ColumnIndexToColumnName(filePath,
-        this->colum_index_, parse_options.delimiter, &include_columns);
-    if (ret != retcode::SUCCESS) {
-      return nullptr;
-    }
+  auto ret = BuildConvertOptions(parse_options.delimiter, convert_options_ptr.get());
+  if (ret != retcode::SUCCESS) {
+    return nullptr;
   }
 
   // Instantiate TableReader from input stream and options
@@ -219,14 +268,14 @@ std::unique_ptr<Cursor> CSVDriver::read() {
 }
 
 std::unique_ptr<Cursor> CSVDriver::read(const std::string &filePath) {
-   return this->initCursor(filePath);
+  return this->initCursor(filePath);
 }
 
 std::unique_ptr<Cursor> CSVDriver::GetCursor() {
   return read();
 }
 
-std::unique_ptr<Cursor> CSVDriver::GetCursor(std::vector<int> col_index) {
+std::unique_ptr<Cursor> CSVDriver::GetCursor(const std::vector<int>& col_index) {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
     LOG(ERROR) << "file access info is unavailable";
@@ -266,6 +315,8 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
   return 0;
 }
 
-std::string CSVDriver::getDataURL() const { return filePath_; };
+std::string CSVDriver::getDataURL() const {
+  return filePath_;
+};
 
 } // namespace primihub

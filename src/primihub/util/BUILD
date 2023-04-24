@@ -103,3 +103,14 @@ cc_library(
         "@com_github_glog_glog//:glog",
     ],
 )
+
+cc_library(
+  name = "arrow_wrapper_util",
+  hdrs = ["arrow_wrapper_util.h"],
+  srcs = ["arrow_wrapper_util.cc"],
+  deps = [
+    "//src/primihub/common:common_defination",
+    "@com_github_glog_glog//:glog",
+    "@arrow",
+  ],
+)

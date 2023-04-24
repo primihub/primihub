@@ -18,6 +18,7 @@ cc_library(
         "//src/primihub/p2p:p2p_lib",
         "//src/primihub/util:redis_helper",
         "//src/primihub/node:server_config",
+        "//src/primihub/util:arrow_wrapper_util",
         "@arrow",
         "@nlohmann_json",
     ],
