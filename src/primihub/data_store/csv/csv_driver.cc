@@ -64,6 +64,11 @@ retcode CSVAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
   return retcode::SUCCESS;
 }
 
+retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  this->file_path_ = meta_info.access_info;
+  return retcode::SUCCESS;
+}
+
 // csv cursor implementation
 CSVCursor::CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver) {
   this->filePath = filePath;

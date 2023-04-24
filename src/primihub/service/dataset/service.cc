@@ -276,6 +276,12 @@ DataSetAccessInfoPtr DatasetService::createAccessInfo(
     return DataDirverFactory::createAccessInfo(driver_type, meta_info);
 }
 
+std::unique_ptr<DataSetAccessInfo> DatasetService::createAccessInfo(
+    const std::string driver_type,
+    const DatasetMetaInfo& meta_info) {
+  return DataDirverFactory::createAccessInfo(driver_type, meta_info);
+}
+
 // ======================== DatasetMetaService ====================================
 DatasetMetaService::DatasetMetaService(std::shared_ptr<primihub::p2p::NodeStub> p2pStub,
                                 std::shared_ptr<StorageBackend> localKv) {

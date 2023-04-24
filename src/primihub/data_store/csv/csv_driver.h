@@ -34,6 +34,7 @@ struct CSVAccessInfo : public DataSetAccessInfo {
   retcode fromJsonString(const std::string& access_info) override;
   retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
   retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) override;
+  retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) override;
 
  public:
   std::string file_path_;

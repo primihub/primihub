@@ -21,26 +21,29 @@
 #include <nlohmann/json.hpp>
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/common.h"
 
 using primihub::service::DatasetMeta;
 
 namespace primihub {
 grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
         const NewDatasetRequest *request, NewDatasetResponse *response) {
-  std::string driver_type = request->driver();
-  const auto& meta_info = request->path();
+  DatasetMetaInfo meta_info;
+  meta_info.driver_type = request->driver();
+  meta_info.access_info = request->path();
+  meta_info.id = request->fid();
+  auto& schema = meta_info.schema;
   const auto& data_field_type = request->data_type();
-  const auto& fid = request->fid();
-
-  std::vector<std::tuple<std::string, int>> dataset_schema;
   for (const auto& field : data_field_type) {
     auto& name = field.name();
     int type = field.type();
-    dataset_schema.push_back(std::make_tuple(name, type));
+    schema.push_back(std::make_tuple(name, type));
   }
-
-  LOG(INFO) << "start to create dataset. meta info: " << meta_info << " "
-          << "fid: " << fid << " driver_type: " << driver_type;
+  auto& driver_type = meta_info.driver_type;
+  LOG(INFO) << "start to create dataset."
+      << "meta info: " << meta_info.access_info << " "
+      << "fid: " << meta_info.id << " "
+      << "driver_type: " << meta_info.driver_type;
   std::shared_ptr<DataDriver> driver{nullptr};
   try {
     auto access_info = this->dataset_service_->createAccessInfo(driver_type, meta_info);
@@ -48,20 +51,20 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
       std::string err_msg = "create access info failed";
       throw std::invalid_argument(err_msg);
     }
-    access_info->SetDatasetSchema(std::move(dataset_schema));
     driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
-    this->dataset_service_->registerDriver(fid, driver);
+    this->dataset_service_->registerDriver(meta_info.id, driver);
   } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to load dataset from path: " << meta_info << " "
+    LOG(ERROR) << "Failed to load dataset from: " << meta_info.access_info << " "
             << "driver_type: " << driver_type << " "
-            << "fid: " << fid << " "
+            << "fid: " << meta_info.id << " "
             << "exception: " << e.what();
     response->set_ret_code(2);
     return grpc::Status::OK;
   }
 
   DatasetMeta mate;
-  auto dataset = dataset_service_->newDataset(driver, fid, meta_info, mate);
+  auto dataset = dataset_service_->newDataset(
+      driver, meta_info.id, meta_info.access_info, mate);
 
   response->set_ret_code(0);
   response->set_dataset_url(mate.getDataURL());

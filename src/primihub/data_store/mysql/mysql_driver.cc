@@ -73,6 +73,18 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
   return retcode::SUCCESS;
 }
 
+retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  auto ret{retcode::SUCCESS};
+  try {
+    nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
+    ret = ParseFromJsonImpl(access_info);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse access info failed";
+    ret = retcode::FAIL;
+  }
+  return ret;
+}
+
 retcode MySQLAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
   try {
     this->ip_ = meta_info["host"].as<std::string>();

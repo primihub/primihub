@@ -103,5 +103,12 @@ struct Node {
     std::string role_{"default"};
 };
 
+struct DatasetMetaInfo {
+  std::string id;
+  std::string driver_type;
+  std::string access_info;
+  std::vector<std::tuple<std::string, int>> schema;
+};
+
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_COMMON_COMMON_H_

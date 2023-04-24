@@ -66,6 +66,18 @@ retcode SQLiteAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
   return retcode::SUCCESS;
 }
 
+retcode SQLiteAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  auto ret{retcode::SUCCESS};
+  try {
+    nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
+    ret = ParseFromJsonImpl(access_info);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse access info failed";
+    ret = retcode::FAIL;
+  }
+  return ret;
+}
+
 // sqlite cursor implementation
 SQLiteCursor::SQLiteCursor(const std::string &sql,
                            std::shared_ptr<SQLiteDriver> driver) {

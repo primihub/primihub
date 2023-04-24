@@ -65,6 +65,25 @@ retcode DataSetAccessInfo::fromYamlConfig(const YAML::Node& meta_info) {
   return ret;
 }
 
+retcode DataSetAccessInfo::FromMetaInfo(const DatasetMetaInfo& meta_info) {
+  retcode ret{retcode::SUCCESS};
+  try {
+    if (!meta_info.schema.empty()) {
+      for (const auto& field : meta_info.schema) {
+        std::string name = std::get<0>(field);
+        int type = std::get<1>(field);
+        schema.push_back(std::make_tuple(name, type));
+        MakeArrowSchema();
+      }
+    }
+    ret = ParseFromMetaInfoImpl(meta_info);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "parse access info from yaml config string failed, " << e.what();
+    return retcode::FAIL;
+  }
+  return ret;
+}
+
 retcode DataSetAccessInfo::ParseSchema(const nlohmann::json& json_schema) {
   try {
     const auto& filed_list = json_schema;

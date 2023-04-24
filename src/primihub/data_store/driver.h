@@ -49,8 +49,10 @@ struct DataSetAccessInfo {
   virtual std::string toString() = 0;
   virtual retcode fromJsonString(const std::string& access_info);
   virtual retcode fromYamlConfig(const YAML::Node& meta_info);
+  virtual retcode FromMetaInfo(const DatasetMetaInfo& meta_info);
   virtual retcode ParseFromJsonImpl(const nlohmann::json& access_info) = 0;
   virtual retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) = 0;
+  virtual retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) = 0;
   retcode ParseSchema(const nlohmann::json& json_schema);
   retcode ParseSchema(const YAML::Node& yaml_schema);
   retcode SetDatasetSchema(const std::vector<FieldType>& schema);

@@ -62,6 +62,7 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
   std::string toString() override;
   retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
   retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) override;
+  retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) override;
 
  public:
   std::string ip_;

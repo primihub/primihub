@@ -119,6 +119,21 @@ class DataDirverFactory {
         }
         return access_info_ptr;
     }
+
+    static DataSetAccessInfoPtr createAccessInfo(
+        const std::string& driver_type, const DatasetMetaInfo& meta_info) {
+      auto access_info_ptr = createAccessInfoInternal(driver_type);
+      if (access_info_ptr == nullptr) {
+        return nullptr;
+      }
+      // init
+      auto ret = access_info_ptr->FromMetaInfo(meta_info);
+      if (ret == retcode::FAIL) {
+        LOG(ERROR) << "create dataset access info failed";
+        return nullptr;
+      }
+      return access_info_ptr;
+    }
 };
 
 } // namespace primihub
