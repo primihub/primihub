@@ -65,7 +65,7 @@ Nodelet::Nodelet(const std::string& config_file_path) {
     //         notify_service_->run();
     //     });
     // Wait for p2p node to start
-    sleep(3);
+    // sleep(3);
 
     // Create local kv storage defined in config file
     auto& localkv = cfg.localkv;
