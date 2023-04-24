@@ -17,28 +17,26 @@
         },
         "task_manager": "127.0.0.1:50050"
     },
-    "roles": {
-        "guest": [
-            "Alice"
-        ],
-        "host": [
-            "Bob",
-            "Charlie"
-        ]
-    },
     "component_params": {
+        "roles": {
+            "guest": [
+                "Bob"
+            ],
+            "host": [
+                "Charlie"
+            ]
+        },
         "common_params": {
+            "model": "Example",
             "task_name": "demo",
             "n_iter": 10
         },
         "role_params": {
             "Bob": {
-                "data_set": "iv_filter_host",
-                "function": "ExampleHost"
+                "data_set": "iv_filter_host"
             },
             "Charlie": {
-                "data_set": "iv_filter_guest",
-                "function": "ExampleGuest"
+                "data_set": "iv_filter_guest"
             }
         }
     }

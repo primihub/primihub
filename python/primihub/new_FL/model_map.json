@@ -11,6 +11,14 @@
         "client": "example.ChatGlm_client.ChatGlmClient",
         "server": "example.ChatGlm_server.ChatGlmServer"
     },
-    "ExampleGuest": "primihub.new_FL.algorithm.example.dev_example_guest_xus",
-    "ExampleHost": "primihub.new_FL.algorithm.example.dev_example_host_xus"
+    "Example": {
+        "guest": {
+            "func": "ExampleGuest",
+            "module": "primihub.new_FL.algorithm.example.dev_example_guest_xus"
+        },
+        "host": {
+            "func": "ExampleHost",
+            "module": "primihub.new_FL.algorithm.example.dev_example_host_xus"
+        }
+    }
 }
