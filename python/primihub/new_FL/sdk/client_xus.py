@@ -10,7 +10,7 @@ class Client:
         # json_file contains three components:
         self.party_info = json_file['party_info']
         self.component_params = json_file['component_params']
-        self.role_params = self.component_params['role_params']
+        self.role_params = json_file['role_params']
         self.var_type = var_type
         self.is_array = is_array
         self.task_id = uuid.uuid1().hex

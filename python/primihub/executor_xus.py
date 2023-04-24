@@ -32,8 +32,11 @@ with open(path + '/new_FL/model_map.json', 'r') as f:
 
 
 def execute_function(common_params, role_params, node_info, task_params):
-    func_name = role_params['function']
-    func_module = FUNC_MAP[func_name]
+    model = common_params['model']
+    role = role_params['role']
+
+    func_name = FUNC_MAP[model][role]['func']
+    func_module = FUNC_MAP[model][role]['module']
 
     module_name = import_module(func_module)
     get_model_attr = getattr(module_name, func_name)
@@ -50,6 +53,7 @@ def run(task_params):
     # set commom parmas, role params and node_info
     common_params = component_params_dict['common_params']
     all_role_params = component_params_dict['role_params']
+
     current_role_params = all_role_params[party_name]
     node_info = task_params.party_access_info
 
