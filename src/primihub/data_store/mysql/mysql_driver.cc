@@ -220,9 +220,9 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
     unsigned long* lengths;
     lengths = mysql_fetch_lengths(result.get());
     for (uint32_t i = 0; i < num_fields; i++) {
-      result_data[i].push_back(row[i] ?
-                                std::string(row[i], lengths[i]) :
-                                std::string("NULL"));
+      std::string item = row[i] ? std::string(row[i], lengths[i]) : std::string("NULL");
+      VLOG(5) << "fetch item: " << item << " length: " << lengths[i];
+      result_data[i].push_back(item);
     }
   }
   // convert data to arrow format
