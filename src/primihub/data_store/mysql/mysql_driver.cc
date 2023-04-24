@@ -73,7 +73,7 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
   return retcode::SUCCESS;
 }
 
-retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+retcode MySQLAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
   auto ret{retcode::SUCCESS};
   try {
     nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
