@@ -73,8 +73,8 @@ retcode DataSetAccessInfo::FromMetaInfo(const DatasetMetaInfo& meta_info) {
         std::string name = std::get<0>(field);
         int type = std::get<1>(field);
         schema.push_back(std::make_tuple(name, type));
-        MakeArrowSchema();
       }
+      MakeArrowSchema();
     }
     ret = ParseFromMetaInfoImpl(meta_info);
   } catch (std::exception& e) {
