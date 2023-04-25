@@ -65,10 +65,14 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
   DatasetMeta mate;
   auto dataset = dataset_service_->newDataset(
       driver, meta_info.id, meta_info.access_info, mate);
-
-  response->set_ret_code(0);
-  response->set_dataset_url(mate.getDataURL());
-  LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
+  if (dataset == nullptr) {
+    response->set_ret_code(2);
+    LOG(INFO) << "register dataset " << meta_info.id << " failed";
+  } else {
+    response->set_ret_code(0);
+    response->set_dataset_url(mate.getDataURL());
+    LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
+  }
   return grpc::Status::OK;
 }
 
