@@ -107,6 +107,10 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
   std::string tile_row;
   std::getline(csv_data, tile_row);
   str_split(tile_row, &colum_names, delimiter);
+  if (!colum_names.empty()) {
+    auto& last_item = colum_names[colum_names.size() -1];
+    last_item.pop_back();
+  }
   for (const auto index : column_index) {
     if (index > colum_names.size()) {
       LOG(ERROR) << "selected column index is outof range, "
