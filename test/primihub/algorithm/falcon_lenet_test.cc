@@ -25,18 +25,15 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
     std::vector<std::string>& dataset_list, rpc::Task* task_config) {
 //
   auto& task = *task_config;
-  task.set_role(role);
+  task.set_party_name(role);
   // party access info
   auto party_access_info = task.mutable_party_access_info();
   auto& party0 = (*party_access_info)["PARTY0"];
-  auto node = party0.add_node();
-  node->CopyFrom(node_list[0]);
+  party0.CopyFrom(node_list[0]);
   auto& party1 = (*party_access_info)["PARTY1"];
-  node = party1.add_node();
-  node->CopyFrom(node_list[1]);
+  party1.CopyFrom(node_list[1]);
   auto& party2 = (*party_access_info)["PARTY2"];
-  node = party2.add_node();
-  node->CopyFrom(node_list[2]);
+  party2.CopyFrom(node_list[2]);
   // task info
   auto task_info = task.mutable_task_info();
   task_info->set_task_id("mpc_lenet");

@@ -35,21 +35,18 @@ void registerDataSet(const std::vector<meta_type_t>& meta_infos,
 }
 
 void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node_list,
-    std::vector<std::string>& dataset_list, rpc::Task* task_config) {
+    std::map<std::string, std::string>& dataset_list, rpc::Task* task_config) {
 //
   auto& task = *task_config;
-  task.set_role(role);
+  task.set_party_name(role);
   // party access info
   auto party_access_info = task.mutable_party_access_info();
   auto& party0 = (*party_access_info)["PARTY0"];
-  auto node = party0.add_node();
-  node->CopyFrom(node_list[0]);
+  party0.CopyFrom(node_list[0]);
   auto& party1 = (*party_access_info)["PARTY1"];
-  node = party1.add_node();
-  node->CopyFrom(node_list[1]);
+  party1.CopyFrom(node_list[1]);
   auto& party2 = (*party_access_info)["PARTY2"];
-  node = party2.add_node();
-  node->CopyFrom(node_list[2]);
+  party2.CopyFrom(node_list[2]);
   // task info
   auto task_info = task.mutable_task_info();
   task_info->set_task_id("mpc_lr");
@@ -57,9 +54,9 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   task_info->set_request_id("lr_task");
   // datsets
   auto party_datasets = task.mutable_party_datasets();
-  auto& datasets = (*party_datasets)[role];
-  for (const auto& dataset : dataset_list) {
-    datasets.add_item(dataset);
+  auto datasets = (*party_datasets)[role].mutable_data();
+  for (const auto& [key, dataset_id] : dataset_list) {
+    (*datasets)[key] = dataset_id;
   }
   // param
   rpc::ParamValue pv_batch_size;
@@ -125,17 +122,23 @@ TEST(logistic, logistic_3pc_test) {
   node_list.emplace_back(std::move(node_3));
   // Construct task for party 0.
   rpc::Task task1;
-  std::vector<std::string> party0_datasets{"train_party_0", "test_party_0"};
+  std::map<std::string, std::string> party0_datasets{
+    {"Data_File", "train_party_0"},
+    {"TestData", "test_party_0"}};
   BuildTaskConfig("PARTY0", node_list, party0_datasets, &task1);
 
   // Construct task for party 1.
   rpc::Task task2;
-  std::vector<std::string> party1_datasets{"train_party_1", "test_party_1"};
+  std::map<std::string, std::string> party1_datasets{
+    {"Data_File", "train_party_1"},
+    {"TestData", "test_party_1"}};
   BuildTaskConfig("PARTY1", node_list, party1_datasets, &task2);
 
   // Construct task for party 2.
   rpc::Task task3;
-  std::vector<std::string> party2_datasets{"train_party_2", "test_party_2"};
+  std::map<std::string, std::string> party2_datasets{
+    {"Data_File", "train_party_2"},
+    {"TestData", "test_party_2"}};
   BuildTaskConfig("PARTY2", node_list, party2_datasets, &task3);
 
   std::vector<std::string> bootstrap_ids;
