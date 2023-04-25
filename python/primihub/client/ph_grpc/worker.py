@@ -39,58 +39,31 @@ class WorkerClient(GRPCConnect):
                      name: str = "",
                      language: common_pb2.Language = 0,
                      params: common_pb2.Params = None,
-                     code: bytes = None,
-                     node_map: common_pb2.Task.NodeMapEntry = None,
+                     code: dict = None,
+                     node_map: dict = None,
                      input_datasets: str = None,
-                     job_id: bytes = None,
-                     task_id: bytes = None,
-                     channel_map: str = None,  # TODO
+                     task_info: common_pb2.TaskContext = None,
+                     party_name: str = None,  # TODO
+                     party_datasets: dict = None,
+                     party_access_info: dict = None
                      ):
         """set task map
-
-        :param task_type: {}
-        :param name: str
-        :param language: {}
-        :param params: `dict`
-        :param code: bytes
-        :param node_map: `dict`
-        :param input_datasets:
-        :param job_id: bytes
-        :param task_id: bytes
-
-        :return: `dict`
         """
 
         task_map = {
             "type": task_type,
             "name": name,
             "language": language,
-            "code": code
+            "params": params,
+            "code": code,
+            "node_map" :node_map,
+            "input_datasets" : input_datasets, 
+            "task_info" : task_info,
+            "party_name" : party_name,
+            "party_datasets" : party_datasets,
+            "party_access_info" : party_access_info
         }
-        if name:
-            task_map["name"] = name
-
-        if params:
-            task_map["params"] = params
-
-        if node_map:
-            task_map["node_map"] = node_map
-
-        if input_datasets:
-            task_map["input_datasets"] = input_datasets
-
-        print(type(job_id), job_id)
-        if job_id:
-            task_map["job_id"] = job_id
-        else:
-            job_id = uuid.uuid1().hex
-            task_map["job_id"] = bytes(str(job_id), "utf-8")
-
-        if task_id:
-            task_map["task_id"] = task_id
-        else:
-            task_id = uuid.uuid1().hex
-            task_map["task_id"] = bytes(str(task_id), "utf-8")
+        
 
         return task_map
 
@@ -108,8 +81,9 @@ class WorkerClient(GRPCConnect):
             "client_processed_up_to": client_processed_up_to,
             "submit_client_id": submit_client_id
         }
+        print(f"########################The request_data is {request_data}##################")
         request = worker_pb2.PushTaskRequest(**request_data)
-        print(request)
+        
         return request
 
     def submit_task(self, request: worker_pb2.PushTaskRequest) -> worker_pb2.PushTaskReply:
@@ -121,17 +95,6 @@ class WorkerClient(GRPCConnect):
         # print(type(request_data), request_data)
         with self.channel:
             reply = self.stub.SubmitTask(request)
-            print("return code: %s, job id: %s" % (reply.ret_code, reply.job_id))  # noqa
+            print("return code: %s, job id: %s" % (reply.ret_code, reply.task_info.job_id))  # noqa
             return reply
 
-    # def execute(self, request) -> None:
-    #     pass
-
-    # def remote_execute(self, *args):
-    #     """Send local functions and parameters to the remote side
-
-    #     :param args: `list` [`tuple`] (`function`, `args`)
-    #     """
-    #     for arg in args:
-    #         # TODO
-    #         print(arg)

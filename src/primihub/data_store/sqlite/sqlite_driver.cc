@@ -36,6 +36,7 @@ namespace primihub {
 std::string SQLiteAccessInfo::toString() {
     std::stringstream ss;
     nlohmann::json js;
+    js["type"] = "sqlite";
     js["db_path"] = this->db_path_;
     js["tableName"] = this->table_name_;
     ss << std::setw(4) << js;

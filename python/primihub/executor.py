@@ -13,101 +13,76 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-import multiprocessing
 import traceback
 from cloudpickle import loads
+import json
 from primihub.context import Context
-
 from primihub.utils.logger_util import logger
+from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
+import primihub
 
-shared_globals = dict()
-shared_globals['context'] = Context
-
-
-def _run_in_process(target, args=(), kwargs={}):
-    """Runs target in process and returns its exitcode after 10s (None if still alive)."""
-    process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
-    process.daemon = True
-    process.start()
-    return process
+path = primihub.__file__
+path = path[:-12]
 
 
 class Executor:
+    '''
+    Excute the py file. Note the Context is passed
+    from c++ level. 
+    '''
+
     def __init__(self):
         pass
 
     @staticmethod
-    def execute(py_code: str):
-        exec(py_code, shared_globals)
+    def execute_py():
+        PushTaskRequest = worker_pb2.PushTaskRequest()
+        PushTaskRequest.ParseFromString(Context.message)
+        task = PushTaskRequest.task
 
-    @staticmethod
-    def execute_role(role: str):
-        try:
-            loads(Context.nodes_context[role].dumps_func)()
-        except Exception as e:
-            logger.error(str(e))
-            raise e
+        print("Below are the code run on the server")
+        #get the name first
+        task_name = task.name
+        party_name = task.party_name
+        print(f"party_name is : {party_name}")
 
-    @staticmethod
-    def execute_py(dumps_func):
-        logger.info("execute py code.")
-        func_name = loads(dumps_func).__name__
-        logger.debug("func name: {}".format(func_name))
-        func_params = Context.get_func_params_map().get(func_name, None)
-        func = loads(dumps_func)
-        logger.debug("func params: {}".format(func_params))
-        logger.debug("params_map: {}".format(Context.params_map))
-        if not func_params:
-            try:
-                logger.debug("start execute")
-                func()
-                logger.debug("end start execute")
-                # func()
-                # process = _run_in_process(target=func)
-                # # Context.clean_content()
+        #process the parameters
+        task_params = task.params.param_map[party_name].value_string
+        task_parameter = json.loads(task_params.decode())
+        print(f"task_parameter: {task_parameter}")
 
-                # while process.exitcode is None:
-                #     process.join(timeout=5)
-                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                # logger.info("end execute with exit code: {}".format(process.exitcode))
-                # # process.exitcode 0 success, -exit_code failed
-                # if (process.exitcode != 0):
-                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                #     logger.error(err_msg)
-                #     raise Exception(err_msg)
-            except Exception as e:
-                logger.error("Exception: ", str(e))
-                traceback.print_exc()
-                raise e
-            finally:
-                # Context.clean_content()
-                pass
-        else:
-            try:
-                logger.debug("start execute with params")
-                func(*func_params)
-                logger.debug("end start execute with params")
-                # # func(*func_params)
-                # process = _run_in_process(target=func, args=func_params)
-                # # Context.clean_content()
+        task_info = task.task_info
+        print(f"task_info is : {task_info}")
+        #change the task_info into dict
+        task_info_dict = {}
+        task_info_dict['task_id'] = task_info.task_id
+        task_info_dict['job_id'] = task_info.job_id
+        task_info_dict['request_id'] = task_info.request_id
+        party_datasets = task.party_datasets
+        print(f"party_datasets: {party_datasets}")
+        party_access_info = task.party_access_info
+        print(f"party_access_info : {party_access_info}")
 
-                # while process.exitcode is None:
-                #     process.join(timeout=5)
-                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                # logger.info("end execute with exit code: {}".format(process.exitcode))
-                # # process.exitcode 0 success, -exit_code failed
-                # if (process.exitcode != 0):
-                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                #     logger.error(err_msg)
-                #     raise Exception(err_msg)
-            except Exception as e:
-                logger.error("Exception: ", str(e))
-                traceback.print_exc()
-                raise e
-            finally:
-                # Context.clean_content()
-                pass
+        #execute the function
+        role_name = task_parameter['role']
 
-    @staticmethod
-    def execute_test():
-        print("This is a tset function.")
+        task_parameter['data'] = task.party_datasets[party_name].data
+        task_parameter['party_name'] = party_name
+        task_parameter['task_info'] = task_info_dict
+        model = task_parameter['model']
+        with open(path + '/new_FL/model_map.json', 'r') as f:
+            func_map = json.load(f)
+        my_code = func_map[model][role_name]
+        import importlib
+        func_name = my_code.split('.')[-1]
+        module_name = '.'.join(my_code.split('.')[:-1])
+        module = importlib.import_module("primihub.new_FL.algorithm." +
+                                         module_name)
+        func_name = my_code.split('.')[-1]
+        print("============", func_name, module_name)
+        Model = getattr(module, func_name)
+        #Model = getattr(module, "Model")
+        # Model = getattr(module, "Model")
+
+        model = Model(task_parameter, party_access_info)
+        model.run()

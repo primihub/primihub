@@ -1,0 +1,43 @@
+{
+    "party_info": {
+        "Alice": {
+            "ip": "127.0.0.1",
+            "port": "50050",
+            "use_tls": false
+        },
+        "Bob": {
+            "ip": "127.0.0.1",
+            "port": "50051",
+            "use_tls": false
+        },
+        "Charlie": {
+            "ip": "127.0.0.1",
+            "port": "50052",
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "guest": [
+                "Bob"
+            ],
+            "host": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "Example",
+            "task_name": "demo",
+            "n_iter": 10
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "iv_filter_host"
+            },
+            "Charlie": {
+                "data_set": "iv_filter_guest"
+            }
+        }
+    }
+}

@@ -64,8 +64,23 @@ PSIKkrtTask::PSIKkrtTask(const TaskParam *task_param,
 retcode PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");
-
-    if (param_map_it != param_map.end()) {
+    std::string party_name = task.party_name();
+    const auto& party_datasets = task.party_datasets();
+    auto it = party_datasets.find(party_name);
+    if (it == party_datasets.end()) {
+      LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+      return retcode::FAIL;
+    }
+    auto& dataset_map = it->second.data();
+    {
+      auto it = dataset_map.find(party_name);
+      if (it == dataset_map.end()) {
+        LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
+    }
+    if (party_name == PARTY_CLIENT) {
         //role_tag_ = EpMode::Client;
         role_tag_ = 0;
         try {
@@ -80,12 +95,8 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
                 server_result_path = it->second.value_string();
                 VLOG(5) << "server_outputFullFilname: " << server_result_path;
             }
-            // data_index_ = param_map["clientIndex"].value_int32();
-	        psi_type_ = param_map["psiType"].value_int32();
-            dataset_id_ = param_map["clientData"].value_string();
+	          psi_type_ = param_map["psiType"].value_int32();
             result_file_path_ = param_map["outputFullFilename"].value_string();
-            host_address_ = param_map["serverAddress"].value_string();
-            VLOG(5) << "serverAddress: " << host_address_;
             auto index_it = param_map.find("clientIndex");
             if (index_it != param_map.end()) {
                 const auto& client_index = index_it->second;
@@ -119,9 +130,6 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
                     data_index_.push_back(client_index.value_int32());
                 }
             }
-            dataset_id_ = param_map["serverData"].value_string();
-            host_address_ = param_map["clientAddress"].value_string();
-            VLOG(5) << "clientAddress: " << host_address_;
             auto it = param_map.find("sync_result_to_server");
             if (it != param_map.end()) {
                 sync_result_to_server = it->second.value_int32() > 0;
@@ -137,15 +145,15 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
             return retcode::FAIL;
         }
     }
-    const auto& node_map = task.node_map();
-    for (const auto& it : node_map) {
-        std::string node_id = it.first;
-        if (!isParty(node_id)) {
-            continue;
-        }
-        const auto& node = it.second;
-        primihub::pbNode2Node(node, &peer_node);
+    const auto& party_info = task.party_access_info();
+    std::string peer_party_name = party_name == PARTY_CLIENT ? PARTY_SERVER : PARTY_CLIENT;
+    auto party_it = party_info.find(peer_party_name);
+    if (party_it == party_info.end()) {
+      LOG(ERROR) << "get peer node access info failed for party: " << party_name;
+      return retcode::FAIL;
     }
+    auto& pb_peer_node = party_it->second;
+    pbNode2Node(pb_peer_node, &peer_node);
     VLOG(5) << "peer_address_: " << peer_node.to_string();
     return retcode::SUCCESS;
 }

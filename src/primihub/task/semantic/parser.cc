@@ -87,14 +87,23 @@ void ProtocolSemanticParser::scheduleProtoTask(
 
                 std::map<std::string, std::string> dataset_owner;
                 metasToDatasetAndOwner(metas_with_param_tag, dataset_owner);
-
+                std::map<std::string, Node> party_access_info;
+                metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
+                _proto_parser->MergePartyAccessInfo(party_access_info);
                 //  Generate MPC algorthim scheduler
-                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-                if (pushTaskRequest.task().code() == "maxpool") {
+                auto& pushTaskRequest = _proto_parser->getPushTaskRequest();
+
+                std::string algorithm_type;
+                const auto& code_map = pushTaskRequest.task().code();
+                auto it = code_map.find("DEFAULT");
+                if (it != code_map.end()) {
+                  algorithm_type = it->second;
+                }
+                if (algorithm_type == "maxpool") {
                     scheduler = std::make_shared<CRYPTFLOW2Scheduler>(
                         node_id_, peer_list_, peer_dataset_map, singleton_);
                     scheduler->dispatch(&pushTaskRequest);
-                } else if (pushTaskRequest.task().code() == "lenet") {
+                } else if (algorithm_type == "lenet") {
                     scheduler = std::make_shared<FalconScheduler>(
                         node_id_, peer_list, peer_dataset_map, singleton_);
                     scheduler->dispatch(&pushTaskRequest);
@@ -132,8 +141,7 @@ void ProtocolSemanticParser::schedulePythonTask(
     PeerContextMap _peer_context_map;
 
     auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
-    auto datasets_with_tag =
-        _python_parser->getDatasets(); // dataset with role tag
+    auto datasets_with_tag = _python_parser->getDatasets(); // dataset with role tag
     _peer_context_map = _python_parser->getNodeContextMap();
 
     // Start find peer node by dataset list
@@ -146,15 +154,18 @@ void ProtocolSemanticParser::schedulePythonTask(
                 LOG(INFO) << " 🔍 Python task found meta list from datasets: "
                           << metas_with_param_tag.size();
 
-                metasToPeerWithTagAndPort(metas_with_param_tag,
-                                          _peer_context_map,
-                                          _peers_with_role_tag);
+                // metasToPeerWithTagAndPort(metas_with_param_tag,
+                //                           _peer_context_map,
+                //                           _peers_with_role_tag);
+                std::map<std::string, Node> party_access_info;
+                metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
                 scheduler = std::make_shared<FLScheduler>(
                         node_id_, singleton_, _peers_with_role_tag,
                         _peer_context_map, metas_with_param_tag);
 
                 // Dispatch task to worker nodes
-                auto pushTaskRequest = _python_parser->getPushTaskRequest();
+                _python_parser->MergePartyAccessInfo(party_access_info);
+                auto& pushTaskRequest = _python_parser->getPushTaskRequest();
                 scheduler->dispatch(&pushTaskRequest);
             });
     });
@@ -191,12 +202,14 @@ void ProtocolSemanticParser::schedulePirTask(
             parseTopbNode(nodelet_attr, &client_node);
             peer_list_.push_back(std::move(client_node));
             metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::shared_ptr<VMScheduler> scheduler =
-                std::make_shared<PIRScheduler>(node_id_,
-                                                peer_list_,
-                                                peer_dataset_map_,
-                                                singleton_);
-            auto pushTaskRequest = _proto_parser->getPushTaskRequest();
+            std::map<std::string, Node> party_access_info;
+            metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
+            auto scheduler = std::make_shared<PIRScheduler>(node_id_,
+                                                            peer_list_,
+                                                            peer_dataset_map_,
+                                                            singleton_);
+            _proto_parser->MergePartyAccessInfo(party_access_info);
+            auto& pushTaskRequest = _proto_parser->getPushTaskRequest();
             scheduler->dispatch(&pushTaskRequest);
             parseNofifyServer(scheduler->notifyServer());
             parseTaskServer(scheduler->taskServer());
@@ -207,7 +220,8 @@ void ProtocolSemanticParser::schedulePsiTask(
         std::shared_ptr<LanguageParser> lan_parser) {
     if (lan_parser == nullptr)
         return;
-    auto task_language = lan_parser->getPushTaskRequest().task().language();
+    const auto& task_config = lan_parser->getPushTaskRequest().task();
+    auto task_language = task_config.language();
     if (task_language != Language::PROTO) {
         return;
     }
@@ -220,15 +234,21 @@ void ProtocolSemanticParser::schedulePsiTask(
         [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
             LOG(INFO) << " 🔍 PSItask found meta list from datasets: "
                             << metas_with_param_tag.size();
+            for (const auto& it : metas_with_param_tag) {
+              LOG(ERROR) << "it_it: " << it.second;
+            }
             metasToPeerList(metas_with_param_tag, peer_list_);
             metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::shared_ptr<VMScheduler> scheduler =
-                std::make_shared<PSIScheduler>(node_id_,
+            std::map<std::string, Node> party_access_info;
+            metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
+            // std::shared_ptr<VMScheduler> scheduler =
+            auto scheduler = std::make_shared<PSIScheduler>(node_id_,
                                                 peer_list_,
                                                 peer_dataset_map_,
                                                 singleton_);
-            auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-            scheduler->dispatch(&pushTaskRequest);
+            auto& task_request = _proto_parser->getPushTaskRequest();
+            _proto_parser->MergePartyAccessInfo(party_access_info);
+            scheduler->dispatch(&task_request);
             parseNofifyServer(scheduler->notifyServer());
             parseTaskServer(scheduler->taskServer());
     });
@@ -309,7 +329,26 @@ void ProtocolSemanticParser::metasToPeerList(
     }
   }
 }
+void ProtocolSemanticParser::metasToPartyAccessInfo(
+    const std::vector<DatasetMetaWithParamTag>& metas_with_tag,
+    std::map<std::string, Node>* party_access_info) {
+  party_access_info->clear();
+  std::map<std::string, std::set<std::string>> duplicate_filter;
+  for (const auto& meta_with_tag : metas_with_tag) {
+    const auto& meta_info = meta_with_tag.first;
+    const auto& party_name = meta_with_tag.second;
+    std::string server_info = meta_info->getServerInfo();
+    LOG(ERROR) << server_info << " party_name: " << party_name;
+    Node access_info;
+    access_info.fromString(server_info);
 
+    auto it = party_access_info->find(party_name);
+    if (it != party_access_info->end()) {
+      LOG(WARNING) << "access info for party_name: " << party_name << " begin to update";
+    }
+    (*party_access_info)[party_name] = access_info;
+  }
+}
 // output  key: node_id, value: <dataset_path, dataset_name>
 void ProtocolSemanticParser::metasToPeerDatasetMap(
     const std::vector<DatasetMetaWithParamTag> &metas_with_param_tag,
@@ -345,13 +384,14 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
   for (auto &meta_with_tag : metas_with_tag) {
     auto meta = meta_with_tag.first;
     auto tag = meta_with_tag.second;
+
     Node node_info;
     std::string server_info = meta->getServerInfo();
     node_info.fromString(server_info);
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
-    auto &ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
+    auto& ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
     auto iter = ds_port_map.find(ds_name);
     if (iter == ds_port_map.end()) {
       LOG(ERROR) << "Can't find data port for dataset " << ds_name << ".";

@@ -60,13 +60,20 @@ class TaskFactory {
         std::string task_id = task_info.task_id();
         std::string request_id = task_info.request_id();
         std::string submit_client_id = request.submit_client_id();
-        if (task_language == Language::PYTHON && task_type == rpc::TaskType::NODE_TASK) {
+        if (task_language == Language::PYTHON &&
+          task_type == rpc::TaskType::NODE_TASK) {
             const auto& task_param = request.task();
             auto fl_task = std::make_shared<FLTask>(node_id, &task_param, request, dataset_service);
             fl_task->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);
             return fl_task;
-        } else if (task_language == Language::PROTO && task_type == rpc::TaskType::NODE_TASK) {
-            auto _function_name = request.task().code();
+        } else if (task_language == Language::PROTO &&
+          task_type == rpc::TaskType::NODE_TASK) {
+            std::string _function_name;
+            const auto& code_map = request.task().code();
+            auto it = code_map.find("DEFAULT");
+            if (it != code_map.end()) {
+              _function_name = it->second;
+            }
             auto task_param = request.task();
             auto mpc_task = std::make_shared<MPCTask>(node_id,
                                                     _function_name, &task_param,
@@ -116,8 +123,8 @@ class TaskFactory {
             }
 #else
             if (pir_type == PirType::KEY_PIR) {
-                auto param_map_it = param_map.find("serverAddress");
-                if (param_map_it == param_map.end()) {
+                std::string party_name = task_param.party_name();
+                if (party_name == PARTY_SERVER) {
                     auto task_ptr =
                         std::make_shared<KeywordPIRServerTask>(&task_param, dataset_service);
                     task_ptr->setTaskInfo(node_id, job_id, task_id, request_id, submit_client_id);

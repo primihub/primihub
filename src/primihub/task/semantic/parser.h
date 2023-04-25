@@ -66,6 +66,10 @@ class ProtocolSemanticParser {
     void metasToPeerList(
         const std::vector<DatasetMetaWithParamTag> &metas_with_tag,
         std::vector<rpc::Node> &peers);
+    void metasToPartyAccessInfo(
+        const std::vector<DatasetMetaWithParamTag>& metas_with_tag,
+        std::map<std::string, Node>* peers);
+
     void metasToPeerDatasetMap(
           const std::vector<DatasetMetaWithParamTag> &metas_with_param_tag,
           PeerDatasetMap &peer_dataset_map);

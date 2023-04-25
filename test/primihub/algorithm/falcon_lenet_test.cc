@@ -21,6 +21,56 @@ static void RunFalconlenet(std::string node_id, rpc::Task &task,
   exec.finishPartyComm();
 }
 
+void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node_list,
+    std::vector<std::string>& dataset_list, rpc::Task* task_config) {
+//
+  auto& task = *task_config;
+  task.set_party_name(role);
+  // party access info
+  auto party_access_info = task.mutable_party_access_info();
+  auto& party0 = (*party_access_info)["PARTY0"];
+  party0.CopyFrom(node_list[0]);
+  auto& party1 = (*party_access_info)["PARTY1"];
+  party1.CopyFrom(node_list[1]);
+  auto& party2 = (*party_access_info)["PARTY2"];
+  party2.CopyFrom(node_list[2]);
+  // task info
+  auto task_info = task.mutable_task_info();
+  task_info->set_task_id("mpc_lenet");
+  task_info->set_job_id("lenet_job");
+  task_info->set_request_id("lenet_task");
+
+  // param
+  rpc::ParamValue pv_batch_size;
+  pv_batch_size.set_var_type(rpc::VarType::INT32);
+  pv_batch_size.set_value_int32(128);
+
+  rpc::ParamValue pv_num_iter;
+  pv_num_iter.set_var_type(rpc::VarType::INT32);
+  pv_num_iter.set_value_int32(1);
+  rpc::ParamValue pv_train_data_filepath_self_,pv_train_data_filepath_next_;
+  rpc::ParamValue pv_train_label_filepath_self_, pv_train_label_filepath_next_;
+
+  pv_train_data_filepath_self_.set_var_type(rpc::VarType::STRING);
+  pv_train_data_filepath_next_.set_var_type(rpc::VarType::STRING);
+  pv_train_label_filepath_self_.set_var_type(rpc::VarType::STRING);
+  pv_train_label_filepath_next_.set_var_type(rpc::VarType::STRING);
+  // self train, self label, remote train, remote label
+  pv_train_data_filepath_self_.set_value_string(dataset_list[0]);
+  pv_train_label_filepath_self_.set_value_string(dataset_list[1]);
+  pv_train_data_filepath_next_.set_value_string(dataset_list[2]);
+  pv_train_label_filepath_next_.set_value_string(dataset_list[3]);
+
+  auto param_map = task.mutable_params()->mutable_param_map();
+  (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
+  (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
+  (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
+  (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
+  (*param_map)["NumIters"] = pv_num_iter;
+  (*param_map)["BatchSize"] = pv_batch_size;
+}
+
+
 TEST(falcon, falcon_lenet_test)
 {
   rpc::Node node_1;
@@ -118,93 +168,39 @@ TEST(falcon, falcon_lenet_test)
   ep_prev->set_link_type(rpc::LinkType::CLIENT);
   ep_prev->set_name("Falcon_client_4");
 
+  std::vector<rpc::Node> node_list;
+  node_list.emplace_back(std::move(node_1));
+  node_list.emplace_back(std::move(node_2));
+  node_list.emplace_back(std::move(node_3));
   // Construct task for party 0.
   rpc::Task task1;
-  auto node_map = task1.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task1_info = task1.mutable_task_info();
-  task1_info->set_task_id("mpc_lenet");
-  task1_info->set_job_id("lenet_job");
-  task1_info->set_request_id("lenet_task");
-
-  rpc::ParamValue pv_train_data_filepath_self_,pv_train_data_filepath_next_;
-  rpc::ParamValue pv_train_label_filepath_self_, pv_train_label_filepath_next_;
-
-  pv_train_data_filepath_self_.set_var_type(rpc::VarType::STRING);
-  pv_train_data_filepath_next_.set_var_type(rpc::VarType::STRING);
-  pv_train_label_filepath_self_.set_var_type(rpc::VarType::STRING);
-  pv_train_label_filepath_next_.set_var_type(rpc::VarType::STRING);
-
-  pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_A");
-  pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_A");
-  pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_B");
-  pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_B");
-
-  rpc::ParamValue pv_batch_size;
-  pv_batch_size.set_var_type(rpc::VarType::INT32);
-  pv_batch_size.set_value_int32(128);
-
-  rpc::ParamValue pv_num_iter;
-  pv_num_iter.set_var_type(rpc::VarType::INT32);
-  pv_num_iter.set_value_int32(1);
-
-  auto param_map = task1.mutable_params()->mutable_param_map();
-  (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
-  (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
-  (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
-  (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::vector<std::string> party1_data {
+    "data/falcon/dataset/MNIST/train_data_A",
+    "data/falcon/dataset/MNIST/train_labels_A",
+    "data/falcon/dataset/MNIST/train_data_B",
+    "data/falcon/dataset/MNIST/train_labels_B",
+  };
+  BuildTaskConfig("PARTY0", node_list, party1_data, &task1);
 
   // Construct task for party 1.
   rpc::Task task2;
-  node_map = task2.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task2_info = task2.mutable_task_info();
-  task2_info->set_task_id("mpc_lenet");
-  task2_info->set_job_id("lenet_job");
-  task2_info->set_request_id("lenet_task");
-
-  pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_B" );
-  pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_B");
-  pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_C");
-  pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_C");
-
-  param_map = task2.mutable_params()->mutable_param_map();
-  (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
-  (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
-  (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
-  (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::vector<std::string> party2_data {
+    "data/falcon/dataset/MNIST/train_data_B",
+    "data/falcon/dataset/MNIST/train_labels_B",
+    "data/falcon/dataset/MNIST/train_data_C",
+    "data/falcon/dataset/MNIST/train_labels_C",
+  };
+  BuildTaskConfig("PARTY1", node_list, party2_data, &task2);
 
   // Construct task for party 2.
   rpc::Task task3;
-  node_map = task3.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task3_info = task3.mutable_task_info();
-  task3_info->set_task_id("mpc_lenet");
-  task3_info->set_job_id("lenet_job");
-  task3_info->set_request_id("lenet_task");
-
-  pv_train_data_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_data_C" );
-  pv_train_label_filepath_self_.set_value_string("data/falcon/dataset/MNIST/train_labels_C" );
-  pv_train_data_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_data_A");
-  pv_train_label_filepath_next_.set_value_string("data/falcon/dataset/MNIST/train_labels_A");
-
-  param_map = task3.mutable_params()->mutable_param_map();
-  (*param_map)["Train_Data_Self"] = pv_train_data_filepath_self_;
-  (*param_map)["Train_Lable_Self"] = pv_train_label_filepath_self_;
-  (*param_map)["Train_Data_Next"] = pv_train_data_filepath_next_;
-  (*param_map)["Train_Lable_Next"] = pv_train_label_filepath_next_;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::vector<std::string> party3_data {
+    "data/falcon/dataset/MNIST/train_data_C",
+    "data/falcon/dataset/MNIST/train_labels_C",
+    "data/falcon/dataset/MNIST/train_data_A",
+    "data/falcon/dataset/MNIST/train_labels_A",
+  };
+  BuildTaskConfig("PARTY2", node_list, party3_data, &task3);
 
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"

@@ -169,6 +169,8 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
     fill_param(params, map);
     // if given task code file, read it and set task code
     auto task_code = absl::GetFlag(FLAGS_task_code);
+    auto code_ptr = task_ptr->mutable_code();
+    std::string defalut_key = "default";
     if (task_code.find('/') != std::string::npos ||
         task_code.find('\\') != std::string::npos) {
         // read file
@@ -180,10 +182,12 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
         std::stringstream buffer;
         buffer << ifs.rdbuf();
         std::cout << buffer.str() << std::endl;
-        task_ptr->set_code(buffer.str());
+        auto& role_code = (*code_ptr)[defalut_key];
+        role_code = buffer.str();
     } else {
         // read code from command line
-        task_ptr->set_code(task_code);
+        auto& role_code = (*code_ptr)[defalut_key];
+        role_code = task_code;
     }
 
     // Setup input datasets
@@ -192,7 +196,6 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
         for (int i = 0; i < input_datasets.size(); i++) {
             task_ptr->add_input_datasets(input_datasets[i]);
         }
-
     }
 
     // TEE task
@@ -312,6 +315,7 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
       }
       // code
       std::string code_file_path = js["task_code"]["code_file_path"].get<std::string>();
+      auto code_ptr = task_ptr->mutable_code();
       if (!code_file_path.empty()) {
           // read file
           std::ifstream ifs(code_file_path);
@@ -322,14 +326,42 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
           std::stringstream buffer;
           buffer << ifs.rdbuf();
           std::cout << buffer.str() << std::endl;
-          task_ptr->set_code(buffer.str());
+          auto& code = (*code_ptr)["DEFAULT"];
+          code = buffer.str();
       } else {
           // read code from command line
           std::string task_code = js["task_code"]["code"].get<std::string>();
-          task_ptr->set_code(std::move(task_code));
+          auto& code = (*code_ptr)["DEFAULT"];
+          code = std::move(task_code);
+      }
+      // party_datasets
+      auto party_datasets = task_ptr->mutable_party_datasets();
+      if (!js["party_datasets"].empty()) {
+        for (auto& [party_name, dataset_list]: js["party_datasets"].items()) {
+          auto& datasets = (*party_datasets)[party_name];
+          auto dataset_info = datasets.mutable_data();
+          for (auto& [dataset_index, dataset_id] : dataset_list.items()) {
+            auto& dataset_value = (*dataset_info)[dataset_index];
+            dataset_value = dataset_id;
+          }
+        }
+      } else {
+        LOG(WARNING) << "no dataset is setting";
+      }
+      // party access info
+      auto party_access_info = task_ptr->mutable_party_access_info();
+      if (!js["party_access_info"].empty()) {
+        for (auto& [key, value]: js["party_access_info"].items()) {
+          auto& party_node = (*party_access_info)[key];
+          std::string ip = value["ip"].get<std::string>();
+          int32_t port = value["port"].get<int32_t>();
+          bool use_tls = value["use_tls"].get<bool>();
+          party_node.set_ip(ip);
+          party_node.set_port(port);
+          party_node.set_use_tls(use_tls);
+        }
       }
       // dataset
-      // Setup input datasets
       if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
           auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
           for (auto& item : js["input_datasets"]) {

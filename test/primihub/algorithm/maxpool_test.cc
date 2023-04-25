@@ -37,6 +37,30 @@ void registerDataSet(const std::vector<meta_type_t>& meta_infos,
   }
 }
 
+void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node_list,
+    std::map<std::string, std::string>& dataset_list, rpc::Task* task_config) {
+//
+  auto& task = *task_config;
+  task.set_party_name(role);
+  // party access info
+  auto party_access_info = task.mutable_party_access_info();
+  auto& party0 = (*party_access_info)["PARTY0"];
+  party0.CopyFrom(node_list[0]);
+  auto& party1 = (*party_access_info)["PARTY1"];
+  party1.CopyFrom(node_list[1]);
+  // task info
+  auto task_info = task.mutable_task_info();
+  task_info->set_task_id("mpc_maxpool");
+  task_info->set_job_id("maxpool_job");
+  task_info->set_request_id("maxpool_task");
+  // datsets
+  auto party_datasets = task.mutable_party_datasets();
+  auto datasets = (*party_datasets)[role].mutable_data();
+  for (const auto& [key, dataset_id] : dataset_list) {
+    (*datasets)[key] = dataset_id;
+  }
+}
+
 TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   uint32_t base_port = 8000;
   // Node 1.
@@ -68,45 +92,22 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   next->set_name("CRYPTFLOW2_client");
   next->set_link_type(rpc::LinkType::CLIENT);
 
+  std::vector<rpc::Node> node_list;
+  node_list.emplace_back(std::move(node_1));
+  node_list.emplace_back(std::move(node_2));
   // Construct task for party 0.
   rpc::Task task1;
-  {
-    auto node_map = task1.mutable_node_map();
-    (*node_map)["node_1"] = node_1;
-    (*node_map)["node_2"] = node_2;
-    auto task1_info = task1.mutable_task_info();
-    task1_info->set_task_id("mpc_maxpool");
-    task1_info->set_job_id("maxpool_job");
-    task1_info->set_request_id("maxpool_task");
-
-    rpc::ParamValue pv_train_data;
-    pv_train_data.set_var_type(rpc::VarType::STRING);
-    // pv_train_data.set_value_string("data/train_party_0.csv");
-    pv_train_data.set_value_string("train_party_0");
-
-    auto param_map = task1.mutable_params()->mutable_param_map();
-    (*param_map)["TrainData"] = pv_train_data;
-  }
+  std::map<std::string, std::string> party0_datasets{
+    {"PARTY0", "train_party_0"},
+    {"TestData", "test_party_0"}};
+  BuildTaskConfig("PARTY0", node_list, party0_datasets, &task1);
 
   // Construct task for party 1.
   rpc::Task task2;
-  {
-    auto node_map = task2.mutable_node_map();
-    (*node_map)["node_1"] = node_1;
-    (*node_map)["node_2"] = node_2;
-    auto task2_info = task2.mutable_task_info();
-    task2_info->set_task_id("mpc_maxpool");
-    task2_info->set_job_id("maxpool_job");
-    task2_info->set_request_id("maxpool_task");
-
-    rpc::ParamValue pv_train_data;
-    pv_train_data.set_var_type(rpc::VarType::STRING);
-    // pv_train_data.set_value_string("data/train_party_1.csv");
-    pv_train_data.set_value_string("train_party_1");
-
-    auto param_map = task2.mutable_params()->mutable_param_map();
-    (*param_map)["TrainData"] = pv_train_data;
-  }
+  std::map<std::string, std::string> party1_datasets{
+    {"PARTY1", "train_party_1"},
+    {"TestData", "test_party_0"}};
+  BuildTaskConfig("PARTY1", node_list, party1_datasets, &task2);
 
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
