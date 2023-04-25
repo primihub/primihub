@@ -14,6 +14,7 @@
       ]
     },
     "pirType": {
+      "description": "ID_PIR = 0 [TODO]; KEY_PIR = 1;",
       "type": "INT32",
       "value": 1
     },
