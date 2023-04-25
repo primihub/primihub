@@ -3,9 +3,9 @@
         "guest": "example.dev_example_guest.ModelGuest",
         "host": "example.dev_example_host.ModelHost"
     },
-    "HFL": {
-        "client": "linear.hfl_client.HflClient",
-        "server": "linear.hfl_server.HflServer"
+    "HFL_logistic_regression": {
+        "client": "linear.logistic_regression.hfl_client.Client",
+        "server": "linear.logistic_regression.hfl_server.Server"
     },
     "Chat_glm": {
         "client": "example.ChatGlm_client.ChatGlmClient",
