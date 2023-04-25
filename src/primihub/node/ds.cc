@@ -68,8 +68,7 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
 
   response->set_ret_code(0);
   response->set_dataset_url(mate.getDataURL());
-  LOG(INFO) << "dataurl: " << mate.getDataURL();
-
+  LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
   return grpc::Status::OK;
 }
 
