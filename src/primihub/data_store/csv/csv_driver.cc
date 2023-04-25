@@ -153,19 +153,19 @@ retcode CSVCursor::BuildConvertOptions(char delimiter,
       }
     }
   } else {
-    auto& include_columns = convert_options_ptr->include_columns;
-    auto& column_types = convert_options_ptr->column_types;
-    if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
-      auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
-      auto& all_fields = arrow_schema->fields();
-      for (const auto& field : all_fields) {
-        auto& col_name = field->name();
-        auto& field_type = field->type();
-        include_columns.push_back(col_name);
-        column_types[col_name] = field_type;
-        VLOG(7) << "name: " << col_name << " type: " << field_type->id();
-      }
-    }
+    // auto& include_columns = convert_options_ptr->include_columns;
+    // auto& column_types = convert_options_ptr->column_types;
+    // if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
+    //   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+    //   auto& all_fields = arrow_schema->fields();
+    //   for (const auto& field : all_fields) {
+    //     auto& col_name = field->name();
+    //     auto& field_type = field->type();
+    //     include_columns.push_back(col_name);
+    //     column_types[col_name] = field_type;
+    //     VLOG(7) << "name: " << col_name << " type: " << field_type->id();
+    //   }
+    // }
   }
   return retcode::SUCCESS;
 }
