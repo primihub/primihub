@@ -281,7 +281,7 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
     VLOG(5) << title_name;
   }
   if (!colum_names.empty()) {
-    auto& last_item = colum_names[colum_names.size() -1];
+    auto& last_item = colum_names[colum_names.size() - 1];
     auto it = std::find(last_item.begin(), last_item.end(), '\n');
     if (it != last_item.end()) {
       last_item.erase(it);
