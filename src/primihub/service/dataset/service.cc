@@ -78,6 +78,10 @@ std::shared_ptr<primihub::Dataset> DatasetService::newDataset(
       return nullptr;
     }
     auto dataset = cursor->readMeta();
+    if (dataset == nullptr) {
+      LOG(ERROR) << "get meta info failed";
+      return nullptr;
+    }
     meta = DatasetMeta(dataset, dataset_id, DatasetVisbility::PUBLIC, dataset_access_info);
     // Save datameta in local storage.& Publish dataset meta on libp2p network.
     metaService_->putMeta(meta);
