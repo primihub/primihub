@@ -46,7 +46,8 @@ class Client(BaseModel):
             model = LogisticRegression_Client(x, y,
                                               self.task_parameter['learning_rate'],
                                               self.task_parameter['alpha'],
-                                              server_channel)
+                                              server_channel,
+                                              client)
         elif train_method == 'DPSGD':
             model = LogisticRegression_DPSGD_Client(x, y,
                                                     self.task_parameter['learning_rate'],
@@ -54,12 +55,14 @@ class Client(BaseModel):
                                                     self.task_parameter['noise_multiplier'],
                                                     self.task_parameter['l2_norm_clip'],
                                                     self.task_parameter['secure_mode'],
-                                                    server_channel)
+                                                    server_channel,
+                                                    client)
         elif train_method == 'Paillier':
             model = LogisticRegression_Paillier_Client(x, y,
                                                        self.task_parameter['learning_rate'],
                                                        self.task_parameter['alpha'],
-                                                       server_channel)
+                                                       server_channel,
+                                                       client)
         else:
             logging.error(f"Not supported train method: {train_method}")
 
@@ -68,8 +71,8 @@ class Client(BaseModel):
         data_max = x.max(axis=0)
         data_min = x.min(axis=0)
 
-        server_channel.sender('data_max', data_max)
-        server_channel.sender('data_min', data_min)
+        server_channel.sender(client + '_data_max', data_max)
+        server_channel.sender(client + '_data_min', data_min)
 
         data_max = server_channel.recv('data_max')
         data_min = server_channel.recv('data_min')
@@ -100,7 +103,7 @@ class Client(BaseModel):
                 self.task_parameter['batch_size'],
                 self.task_parameter['delta']
             )
-            server_channel.sender("eps", eps)
+            server_channel.sender(client + "_eps", eps)
             print(f"""For delta={self.task_parameter['delta']},
                     the current epsilon is {eps}""")
         # receive plaintext model when using Paillier
@@ -137,9 +140,10 @@ def batch_generator(all_data, batch_size, shuffle=True):
 
 class LogisticRegression_Client(LogisticRegression):
 
-    def __init__(self, x, y, learning_rate, alpha, server_channel, *args):
+    def __init__(self, x, y, learning_rate, alpha, server_channel, client, *args):
         super().__init__(x, y, learning_rate, alpha, *args)
         self.server_channel = server_channel
+        self.client = client
 
         self.num_examples = x.shape[0]
         self.num_positive_examples = y.sum()
@@ -150,22 +154,24 @@ class LogisticRegression_Client(LogisticRegression):
 
     def train(self, x, y):
         self.fit(x, y)
-        self.server_channel.sender("client_model", self.theta)
+        self.server_channel.sender(self.client + "_model", self.theta)
         self.set_theta(self.recv_server_model())
 
     def send_params(self, x, y):
-        self.server_channel.sender('num_examples', self.num_examples)
-        self.server_channel.sender('num_positive_examples', self.num_positive_examples)
+        self.server_channel.sender(self.client + '_num_examples',
+                                   self.num_examples)
+        self.server_channel.sender(self.client + '_num_positive_examples',
+                                   self.num_positive_examples)
 
     def send_loss(self, x, y):
         loss = self.loss(x, y)
-        self.server_channel.sender("client_loss", loss)
+        self.server_channel.sender(self.client + "_loss", loss)
         return loss
 
     def send_acc(self, x, y):
         y_hat = self.predict_prob(x)
         acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
-        self.server_channel.sender("client_acc", acc)
+        self.server_channel.sender(self.client + "_acc", acc)
         return y_hat, acc
 
     def send_metrics(self, x, y):
@@ -176,9 +182,9 @@ class LogisticRegression_Client(LogisticRegression):
         # fpr, tpr
         fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
                                                  drop_intermediate=False)
-        self.server_channel.sender("client_fpr", fpr)
-        self.server_channel.sender("client_tpr", tpr)
-        self.server_channel.sender("client_thresholds", thresholds)
+        self.server_channel.sender(self.client + "_fpr", fpr)
+        self.server_channel.sender(self.client + "_tpr", tpr)
+        self.server_channel.sender(self.client + "_thresholds", thresholds)
 
         # ks
         ks = ks_from_fpr_tpr(fpr, tpr)
@@ -200,10 +206,10 @@ class LogisticRegression_DPSGD_Client(LogisticRegression_DPSGD,
 
     def __init__(self, x, y, learning_rate, alpha,
                  noise_multiplier, l2_norm_clip, secure_mode,
-                 server_channel):
+                 server_channel, client):
         super().__init__(x, y, learning_rate, alpha,
                          noise_multiplier, l2_norm_clip, secure_mode,
-                         server_channel)
+                         server_channel, client)
 
     def compute_epsilon(self, steps, batch_size, delta):
         """Computes epsilon value for given hyperparameters."""
@@ -229,9 +235,9 @@ class LogisticRegression_Paillier_Client(LogisticRegression_Paillier,
                                          LogisticRegression_Client):
 
     def __init__(self, x, y, learning_rate, alpha,
-                 server_channel):
+                 server_channel, client):
         super().__init__(x, y, learning_rate, alpha,
-                         server_channel)
+                         server_channel, client)
         self.public_key = server_channel.recv("public_key")
         self.set_theta(self.encrypt_vector(self.theta))
 
@@ -239,5 +245,5 @@ class LogisticRegression_Paillier_Client(LogisticRegression_Paillier,
         # print loss
         # pallier only support compute approximate loss
         loss = self.loss(x, y)
-        self.server_channel.sender("client_loss", loss)
+        self.server_channel.sender(self.client + "_loss", loss)
         print('no printed metrics during training when using paillier')

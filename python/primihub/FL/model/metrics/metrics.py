@@ -66,3 +66,75 @@ def auc_from_fpr_tpr(fpr, tpr):
         if fpr[i] != fpr[i + 1]:
             area += trapezoid_area(fpr[i], fpr[i + 1], tpr[i], tpr[i + 1])
     return area
+
+
+# Tom Fawcett. An introduction to ROC analysis.
+# Pattern Recognition Letters, 2006.
+# https://doi.org/10.1016/j.patrec.2005.10.010
+
+
+def roc_vertical_avg(samples, FPR, TPR):
+    nrocs = len(FPR)
+    tpravg = []
+    fpr = [i / samples for i in range(samples + 1)]
+
+    for fpr_sample in fpr:
+        tprsum = 0
+
+        for i in range(nrocs):
+            tprsum += tpr_for_fpr(fpr_sample, FPR[i], TPR[i])
+
+        tpravg.append(tprsum / nrocs)
+
+    return fpr, tpravg
+
+
+def tpr_for_fpr(fpr_sample, fpr, tpr):
+    i = 0
+    while i < len(fpr) - 1 and fpr[i + 1] <= fpr_sample:
+        i += 1
+
+    if fpr[i] == fpr_sample:
+        return tpr[i]
+    else:
+        return interpolate(fpr[i], tpr[i], fpr[i + 1], tpr[i + 1], fpr_sample)
+
+
+def interpolate(fprp1, tprp1, fprp2, tprp2, x):
+    slope = (tprp2 - tprp1) / (fprp2 - fprp1)
+    return tprp1 + slope * (x - fprp1)
+
+
+def roc_threshold_avg(samples, FPR, TPR, THRESHOLDS):
+    nrocs = len(FPR)
+    T = []
+    fpravg = []
+    tpravg = []
+
+    for thresholds in THRESHOLDS:
+        for t in thresholds:
+            T.append(t)
+    T.sort(reverse=True)
+
+    for tidx in range(0, len(T), int(len(T) / samples)):
+        fprsum = 0
+        tprsum = 0
+
+        for i in range(nrocs):
+            fprp, tprp = roc_point_at_threshold(FPR[i], TPR[i], THRESHOLDS[i],
+                                                T[tidx])
+            fprsum += fprp
+            tprsum += tprp
+
+        fpravg.append(fprsum / nrocs)
+        tpravg.append(tprsum / nrocs)
+
+    return fpravg, tpravg
+
+
+def roc_point_at_threshold(fpr, tpr, thresholds, thresh):
+    i = 0
+    while i < len(fpr) - 1 and thresholds[i] > thresh:
+        i += 1
+    return fpr[i], tpr[i]
+    
