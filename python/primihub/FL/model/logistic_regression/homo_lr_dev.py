@@ -10,27 +10,9 @@ import pickle
 
 from sklearn import metrics
 from primihub.FL.model.metrics.metrics import fpr_tpr_merge2, ks_from_fpr_tpr, auc_from_fpr_tpr
+from primihub.utils.net_worker import GrpcServer
 
 
-class GrpcServer:
-
-    def __init__(self, local_ip, local_port, remote_ip, remote_port,
-                 context) -> None:
-        send_session = context.Node(remote_ip, int(remote_port), False)
-        recv_session = context.Node(local_ip, int(local_port), False)
-
-        self.send_channel = context.get_link_conext().getChannel(send_session)
-        self.recv_channel = context.get_link_conext().getChannel(recv_session)
-
-    def send(self, key, val):
-        self.send_channel.send(key, pickle.dumps(val))
-
-    def recv(self, key):
-        recv_val = self.recv_channel.recv(key)
-        return pickle.loads(recv_val)
-
-
-#from primihub.FL.model.logistic_regression.homo_lr_base import LRModel
 class LRModel:
 
     # l2 regularization by default, alpha is the penalty parameter
@@ -118,55 +100,6 @@ from primihub.utils.logger_util import FLFileHandler, FLConsoleHandler, FORMAT
 import dp_accounting
 
 
-'''
-# Plaintext
-config = {
-    'mode': 'Plaintext', 
-    'learning_rate': 'optimal',
-    'alpha': 0.0001,
-    'batch_size': 100,
-    'max_iter': 200,
-    'n_iter_no_change': 5,
-    'compare_threshold': 1e-6,
-    'category': 2,
-    'feature_names': None,
-}
-'''
-
-'''
-# DPSGD
-config = {
-    'mode': 'DPSGD',
-    'delta': 1e-3,
-    'noise_multiplier': 2.0,
-    'l2_norm_clip': 1.0,
-    'secure_mode': True,
-    'learning_rate': 'optimal',
-    'alpha': 0.0001,
-    'batch_size': 50,
-    'max_iter': 100,
-    'category': 2,
-    'feature_names': None,
-}
-'''
-
-'''
-# Paillier
-config = {
-    'mode': 'Paillier',
-    'n_length': 1024,
-    'learning_rate': 'optimal',
-    'alpha': 0.01,
-    'batch_size': 100,
-    'max_iter': 50,
-    'n_iter_no_change': 5,
-    'compare_threshold': 1e-6,
-    'category': 2,
-    'feature_names': None,
-}
-'''
-
-
 def feature_selection(x, feature_names):
     if feature_names != None:
         return x[feature_names]
@@ -184,7 +117,7 @@ def read_data(dataset_key, feature_names):
     return x, y
 
 
-def compute_epsilon(steps, num_train_examples, config):
+def compute_epsilon(steps, num_train_examples, config, log_handler):
     """Computes epsilon value for given hyperparameters."""
     if config['noise_multiplier'] == 0.0:
         return float('inf')
@@ -199,7 +132,8 @@ def compute_epsilon(steps, num_train_examples, config):
 
     accountant.compose(event)
     
-    assert config['delta'] < 1. / num_train_examples
+    if config['delta'] >= 1. / num_train_examples:
+        log_handler.error(f"delta {config['delta']} should be set less than 1 / {num_train_examples}")
     return accountant.get_epsilon(target_delta=config['delta'])
 
 
@@ -298,8 +232,8 @@ class Arbiter(LRModel):
         self.set_theta(np.average(param, weights=param_weights, axis=0))
 
     def broadcast_global_model_param(self):
-        self.host_channel.send("global_param", self.theta)
-        self.guest_channel.send("global_param", self.theta)
+        self.host_channel.sender("global_param", self.theta)
+        self.guest_channel.sender("global_param", self.theta)
 
     def metrics_log(self, num_examples_weights,
                           num_positive_examples_weights,
@@ -362,8 +296,8 @@ class Arbiter_Paillier(LRModel_Paillier, Arbiter):
         self.broadcast_public_key()
 
     def broadcast_public_key(self):
-        self.host_channel.send("public_key", self.public_key)
-        self.guest_channel.send("public_key", self.public_key)
+        self.host_channel.sender("public_key", self.public_key)
+        self.guest_channel.sender("public_key", self.public_key)
         
     def model_aggregate(self, host_param, guest_param, param_weights):
         host_param = self.decrypt_vector(host_param)
@@ -373,8 +307,8 @@ class Arbiter_Paillier(LRModel_Paillier, Arbiter):
 
     def broadcast_global_model_param(self):
         global_theta = self.encrypt_vector(self.theta)
-        self.host_channel.send("global_param", global_theta)
-        self.guest_channel.send("global_param", global_theta)
+        self.host_channel.sender("global_param", global_theta)
+        self.guest_channel.sender("global_param", global_theta)
 
     def broadcast_plaintext_global_model_param(self):
         Arbiter.broadcast_global_model_param(self)
@@ -453,10 +387,6 @@ def run_homo_lr_arbiter(config,
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    host_param_weight = host_channel.recv("host_param_weight")
-    guest_param_weight = guest_channel.recv("guest_param_weight")
-    param_weights = [host_param_weight, guest_param_weight]
-
     host_num_examples = host_channel.recv("host_num_examples")
     guest_num_examples = guest_channel.recv("guest_num_examples")
     num_examples_weights = [host_num_examples, guest_num_examples]
@@ -479,10 +409,10 @@ def run_homo_lr_arbiter(config,
     data_max = np.maximum(host_data_max, guest_data_max)
     data_min = np.minimum(host_data_min, guest_data_min)
 
-    host_channel.send("data_max", data_max)
-    guest_channel.send("data_max", data_max)
-    host_channel.send("data_min", data_min)
-    guest_channel.send("data_min", data_min)
+    host_channel.sender("data_max", data_max)
+    guest_channel.sender("data_max", data_max)
+    host_channel.sender("data_min", data_min)
+    guest_channel.sender("data_min", data_min)
 
     if check_convergence:
         n_iter_no_change = config['n_iter_no_change']
@@ -497,7 +427,7 @@ def run_homo_lr_arbiter(config,
         # model training
         host_param = host_channel.recv("host_param")
         guest_param = guest_channel.recv("guest_param")
-        arbiter.model_aggregate(host_param, guest_param, param_weights)
+        arbiter.model_aggregate(host_param, guest_param, num_examples_weights)
         arbiter.broadcast_global_model_param()
         
         # metrics log
@@ -521,8 +451,8 @@ def run_homo_lr_arbiter(config,
             if count_iter_no_change > n_iter_no_change:
                 convergence = 'YES'
             
-            host_channel.send("convergence", convergence)
-            guest_channel.send("convergence", convergence)
+            host_channel.sender("convergence", convergence)
+            guest_channel.sender("convergence", convergence)
 
             if convergence == 'YES':
                 log_handler.info("-------- end at iteration {} --------".format(i+1))
@@ -584,19 +514,19 @@ class Client(LRModel):
     def send_metrics(self, x, y):
         # loss
         loss = self.loss(x, y)
-        self.arbiter_channel.send(self.client_name+"_loss", loss)
+        self.arbiter_channel.sender(self.client_name+"_loss", loss)
 
         # acc
         y_hat = self.predict_prob(x)
         acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
-        self.arbiter_channel.send(self.client_name+"_acc", acc)
+        self.arbiter_channel.sender(self.client_name+"_acc", acc)
 
         # fpr, tpr
         fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
                                                  drop_intermediate=False)
-        self.arbiter_channel.send(self.client_name+"_fpr", fpr)
-        self.arbiter_channel.send(self.client_name+"_tpr", tpr)
-        self.arbiter_channel.send(self.client_name+"_thresholds", thresholds)
+        self.arbiter_channel.sender(self.client_name+"_fpr", fpr)
+        self.arbiter_channel.sender(self.client_name+"_tpr", tpr)
+        self.arbiter_channel.sender(self.client_name+"_thresholds", thresholds)
 
         # ks
         ks = ks_from_fpr_tpr(fpr, tpr)
@@ -630,7 +560,7 @@ class Client_Paillier(LRModel_Paillier, Client):
 
     def send_loss(self, x, y):
         loss = self.loss(x, y)
-        self.arbiter_channel.send(self.client_name+"_loss", loss)
+        self.arbiter_channel.sender(self.client_name+"_loss", loss)
 
 
 def run_homo_lr_client(config,
@@ -668,7 +598,6 @@ def run_homo_lr_client(config,
                       "remote ip {}, remote port {}.".format(arbiter_ip, arbiter_port)) 
     
     x, y = read_data(data_key, config['feature_names'])
-    param_weight = config['batch_size']
     num_examples = x.shape[0]
     num_positive_examples = y.sum()
 
@@ -690,17 +619,16 @@ def run_homo_lr_client(config,
     else:
         log_handler.info('Mode {} is not supported yet'.format(config['mode']))
 
-    arbiter_channel.send(client_name+"_param_weight", param_weight)
-    arbiter_channel.send(client_name+"_num_examples", num_examples)
-    arbiter_channel.send(client_name+"_num_positive_examples", num_positive_examples)
+    arbiter_channel.sender(client_name+"_num_examples", num_examples)
+    arbiter_channel.sender(client_name+"_num_positive_examples", num_positive_examples)
   
     # data preprocessing
     # minmaxscaler
     data_max = x.max(axis=0)
     data_min = x.min(axis=0)
 
-    arbiter_channel.send(client_name+"_data_max", data_max)
-    arbiter_channel.send(client_name+"_data_min", data_min)
+    arbiter_channel.sender(client_name+"_data_max", data_max)
+    arbiter_channel.sender(client_name+"_data_min", data_min)
 
     data_max = arbiter_channel.recv("data_max")
     data_min = arbiter_channel.recv("data_min")
@@ -716,7 +644,7 @@ def run_homo_lr_client(config,
         batch_x, batch_y = next(batch_gen)
         client.fit(batch_x, batch_y)
 
-        arbiter_channel.send(client_name+"_param", client.get_theta())
+        arbiter_channel.sender(client_name+"_param", client.get_theta())
         client.set_theta(arbiter_channel.recv("global_param"))
         
         # metrics log
@@ -732,8 +660,8 @@ def run_homo_lr_client(config,
                 break
     
     if config['mode'] == 'DPSGD':
-        eps = compute_epsilon(i+1, num_examples, config)
-        arbiter_channel.send(client_name+"_eps", eps)
+        eps = compute_epsilon(i+1, num_examples, config, log_handler)
+        arbiter_channel.sender(client_name+"_eps", eps)
         log_handler.info('For delta={}, the current epsilon is: {:.2f}'.format(config['delta'], eps))
     elif config['mode'] == 'Paillier':
         client.set_theta(arbiter_channel.recv("global_param"))
@@ -751,48 +679,6 @@ def run_homo_lr_client(config,
     }
     with open(model_file_path, 'wb') as fm:
         pickle.dump(model, fm)
-
-
-def load_info():
-    # basedir = os.path.abspath(os.path.dirname(__file__))
-    # config_f = open(os.path.join(basedir, 'homo_lr_config.json'), 'r')
-    config_f = open(
-        './python/primihub/FL/model/logistic_regression/homo_lr_config.json',
-        'r')
-    lr_config = json.load(config_f)
-    print(lr_config)
-    task_type = lr_config['task_type']
-    task_params = lr_config['task_params']
-    node_info = lr_config['node_info']
-    arbiter_info = {}
-    guest_info = {}
-    host_info = {}
-    for tmp_node, tmp_val in node_info.items():
-
-        if tmp_node == 'Arbiter':
-            arbiter_info = tmp_val
-
-        elif tmp_node == 'Guest':
-            guest_info = tmp_val
-
-        elif tmp_node == 'Host':
-            host_info = tmp_val
-
-    return arbiter_info, guest_info, host_info, task_type, task_params
-
-
-# def get_logger(name):
-#     LOG_FORMAT = "[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s"
-#     DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-#     logging.basicConfig(level=logging.DEBUG,
-#                         format=LOG_FORMAT,
-#                         datefmt=DATE_FORMAT)
-#     logger = logging.getLogger(name)
-#     return logger
-
-# # arbiter_info, guest_info, host_info, task_type, task_params = load_info()
-# task_params = {}
-# logger = get_logger("Homo-LR")
 
 
 def run_party(party_name, config):
@@ -832,31 +718,3 @@ def run_party(party_name, config):
 
     fl_console_log.info("Finish homo-LR {} logic.".format(party_name))
 
-
-'''
-@ph.context.function(role='arbiter',
-                     protocol='lr',
-                     datasets=['train_homo_lr'],
-                     port='9010',
-                     task_type="lr-train")
-def run_arbiter_party():
-    run_party('arbiter', config)
-
-
-@ph.context.function(role='host',
-                     protocol='lr',
-                     datasets=['train_homo_lr_host'],
-                     port='9020',
-                     task_type="lr-train")
-def run_host_party():
-    run_party('host', config)
-
-
-@ph.context.function(role='guest',
-                     protocol='lr',
-                     datasets=['train_homo_lr_guest'],
-                     port='9030',
-                     task_type="lr-train")
-def run_guest_party():
-    run_party('guest', config)
-'''

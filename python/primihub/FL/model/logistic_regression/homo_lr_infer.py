@@ -10,11 +10,12 @@ def read_data(dataset_key, feature_names):
     x = ph.dataset.read(dataset_key).df_data
     if 'id' in x.columns:
         x.pop('id')
-    y = x.pop('y').values
+    if 'y' in x.columns:
+        x.pop('y')
     if feature_names != None:
         x = x[feature_names]
     x = x.to_numpy()
-    return x, y
+    return x
 
 
 def sigmoid(x):
@@ -30,7 +31,7 @@ class ModelInfer:
     def __init__(self, model_path, input_file, output_path, model_type="Homo-LR") -> None:
         with open(model_path, 'rb') as model_f:
             self.model = pickle.load(model_f)
-        x, y = read_data(input_file, self.model['feature_names'])
+        x = read_data(input_file, self.model['feature_names'])
 
         # data preprocessing
         # minmaxscaler
