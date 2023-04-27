@@ -40,8 +40,10 @@ def execute_function(common_params, role_params, node_info, task_params):
 
     module_name = import_module(func_module)
     get_model_attr = getattr(module_name, func_name)
-    initial_model = get_model_attr(common_params, role_params, node_info,
-                                   task_params)
+    initial_model = get_model_attr(common_params=common_params,
+                                   role_params=role_params,
+                                   node_info=node_info,
+                                   other_params=task_params)
     initial_model.run()
 
 
@@ -61,7 +63,8 @@ def run(task_params):
     for key, val in roles.items():
         if party_name in val:
             current_role_params['role'] = key
-            break
+        else:
+            current_role_params['neighbors'] = val
 
     node_info = task_params.party_access_info
 
