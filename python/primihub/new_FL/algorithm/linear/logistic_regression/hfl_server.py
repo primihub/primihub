@@ -27,9 +27,10 @@ class Server(BaseModel):
         
         Client_Channels = []
         for client in Clients:
-            Client_Channels.append(GrpcServer(server, client,
-                                              self.party_access_info,
-                                              self.task_parameter['task_info']))
+            Client_Channels.append((client,
+                                    GrpcServer(server, client,
+                                               self.party_access_info,
+                                               self.task_parameter['task_info'])))
         
         # model init
         train_method = self.task_parameter['mode']
@@ -49,15 +50,17 @@ class Server(BaseModel):
         data_min = []
 
         for client_channel in Client_Channels:
-            data_max.append(client_channel.recv('data_max'))
-            data_min.append(client_channel.recv('data_min'))
+            client, channel = client_channel
+            data_max.append(channel.recv(client + '_data_max'))
+            data_min.append(channel.recv(client + '_data_min'))
         
         data_max = np.array(data_max).max(axis=0)
         data_min = np.array(data_min).min(axis=0)
 
         for client_channel in Client_Channels:
-            client_channel.sender('data_max', data_max)
-            client_channel.sender('data_min', data_min)
+            _, channel = client_channel
+            channel.sender('data_max', data_max)
+            channel.sender('data_min', data_min)
 
         # model training
         print("-------- start training --------")
@@ -74,8 +77,9 @@ class Server(BaseModel):
         if train_method == 'DPSGD':
             eps = []
             for client_channel in Client_Channels:
+                client, channel = client_channel
                 eps.append(
-                    client_channel.recv("eps")
+                    channel.recv(client + "_eps")
                 )
             print(f"""For delta={self.task_parameter['delta']},
                     the current epsilon is {max(eps)}""")
@@ -105,8 +109,9 @@ class LogisticRegression_Server:
 
     def recv_params(self):
         for client_channel in self.Client_Channels:
-            num_examples = client_channel.recv('num_examples')
-            num_positive_examples = client_channel.recv('num_positive_examples')
+            client, channel = client_channel
+            num_examples = channel.recv(client + '_num_examples')
+            num_positive_examples = channel.recv(client + '_num_positive_examples')
             num_negtive_examples = num_examples - num_positive_examples
 
             self.num_examples_weights.append(num_examples)
@@ -116,8 +121,9 @@ class LogisticRegression_Server:
     def recv_client_model(self):
         client_models = []
         for client_channel in self.Client_Channels:
+            client, channel = client_channel
             client_models.append(
-                client_channel.recv("client_model")
+                channel.recv(client + "_model")
             )
         return client_models
 
@@ -130,7 +136,8 @@ class LogisticRegression_Server:
 
     def server_model_broadcast(self):
         for client_channel in self.Client_Channels:
-            client_channel.sender("server_model", self.theta)
+            _, channel = client_channel
+            channel.sender("server_model", self.theta)
 
     def train(self):
         self.client_model_aggregate()
@@ -141,8 +148,9 @@ class LogisticRegression_Server:
 
         client_loss = []
         for client_channel in self.Client_Channels:
+            client, channel = client_channel
             client_loss.append(
-                client_channel.recv("client_loss")
+                channel.recv(client + "_loss")
             )
         loss = np.average(client_loss,
                           weights=self.num_examples_weights) \
@@ -152,8 +160,9 @@ class LogisticRegression_Server:
     def get_acc(self):
         client_acc = []
         for client_channel in self.Client_Channels:
+            client, channel = client_channel
             client_acc.append(
-                client_channel.recv("client_acc")
+                channel.recv(client + "_acc")
             )
         acc = np.average(client_acc,
                          weights=self.num_examples_weights)
@@ -165,14 +174,15 @@ class LogisticRegression_Server:
         client_thresholds = []
 
         for client_channel in self.Client_Channels:
+            client, channel = client_channel
             client_fpr.append(
-                client_channel.recv("client_fpr")
+                channel.recv(client + "_fpr")
             )
             client_tpr.append(
-                client_channel.recv("client_tpr")
+                channel.recv(client + "_tpr")
             )
             client_thresholds.append(
-                client_channel.recv("client_thresholds")
+                channel.recv(client + "_thresholds")
             )
 
         # fpr & tpr
@@ -230,7 +240,8 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
 
     def public_key_broadcast(self):
         for client_channel in self.Client_Channels:
-            client_channel.sender("public_key", self.public_key)
+            _, channel = client_channel
+            channel.sender("public_key", self.public_key)
 
     def client_model_aggregate(self):
         client_models = self.recv_client_model()
@@ -246,8 +257,9 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
         # pallier only support compute approximate loss
         client_loss = []
         for client_channel in self.Client_Channels:
+            client, channel = client_channel
             client_loss.append(
-                client_channel.recv("client_loss")
+                channel.recv(client + "_loss")
             )
         # client loss is a ciphertext
         client_loss = self.decrypt_vector(client_loss)
