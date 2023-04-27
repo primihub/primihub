@@ -95,6 +95,32 @@ datasets:
     model: "csv"
     source: "data/FL/homo_lr/test_breast_cancer.csv"
 
+  # FL homo nn multiclass test case datasets
+  - description: "train_homo_nn_multiclass_host"
+    model: "csv"
+    source: "data/FL/homo_nn/train/train_mobile_price_host.csv"
+  - description: "test_homo_nn_multiclass_host"
+    model: "csv"
+    source: "data/FL/homo_nn/test/test_mobile_price_host.csv"
+
+  # FL homo regression test case datasets
+  - description: "train_homo_regression_host"
+    model: "csv"
+    source: "data/FL/homo_regression/train/train_boston_house_host.csv"
+  - description: "test_homo_regression_host"
+    model: "csv"
+    source: "data/FL/homo_regression/test/test_boston_house_host.csv"
+
+  # FL image test case datasets
+  - description: "train_mnist_host"
+    model: "image"
+    image_dir: "data/FL/mnist/train/train_mnist_host.zip"
+    annotations_file: "data/FL/mnist/train/train_mnist_host_annotations.csv"
+  - description: "test_mnist_host"
+    model: "image"
+    image_dir: "data/FL/mnist/test/test_mnist_host.zip"
+    annotations_file: "data/FL/mnist/test/test_mnist_host_annotations.csv"
+
   - description: "train_hetero_xgb_host"
     model: "csv"
     source: "data/FL/hetero_xgb/train/train_breast_cancer_host.csv"
