@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 
 #include "src/primihub/algorithm/cryptflow2_maxpool.h"
-#include "src/primihub/service/dataset/localkv/storage_default.h"
+#include "src/primihub/service/dataset/meta_service/factory.h"
 
 using namespace primihub;
 using namespace primihub::cryptflow2;
@@ -25,15 +25,17 @@ static void RunMaxpool(std::string node_id, rpc::Task &task,
   }
 }
 using meta_type_t = std::tuple<std::string, std::string, std::string>;
-void registerDataSet(const std::vector<meta_type_t>& meta_infos,
+void registerDataSet(const std::vector<DatasetMetaInfo>& meta_infos,
     std::shared_ptr<DatasetService> service) {
   for (auto& meta : meta_infos) {
-    auto& dataset_id = std::get<0>(meta);
-    auto& dataset_type = std::get<1>(meta);
-    auto& dataset_path = std::get<2>(meta);
-    auto access_info = service->createAccessInfo(dataset_type, dataset_path);
+    auto& dataset_id = meta.id;
+    auto& dataset_type = meta.driver_type;
+    auto access_info = service->createAccessInfo(dataset_type, meta);
+    std::string access_meta = access_info->toString();
     auto driver = DataDirverFactory::getDriver(dataset_type, "test addr", std::move(access_info));
     service->registerDriver(dataset_id, driver);
+    service::DatasetMeta meta_;
+    service->newDataset(driver, dataset_id, access_meta, &meta_);
   }
 }
 
@@ -119,17 +121,12 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   if (pid != 0) {
     // Child process.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/65533");
-
-    std::shared_ptr<service::DatasetMetaService> meta_service =
-	    std::make_shared<service::DatasetMetaService>(
-			    stub, std::make_shared<service::StorageBackendDefault>());
-
-    std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
-    using meta_type_t = std::tuple<std::string, std::string, std::string>;
-    std::vector<meta_type_t> meta_infos {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<DatasetService>(std::move(meta_service));
+    std::vector<DatasetMetaInfo> meta_infos {
       {"train_party_1", "csv", "data/train_party_0.csv"},
     };
     registerDataSet(meta_infos, service);
@@ -138,17 +135,12 @@ TEST(cryptflow2_maxpool, maxpool_2pc_test) {
   }
 
   // Parent process.
-  auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/65534");
-
-  std::shared_ptr<service::DatasetMetaService> meta_service =
-	  std::make_shared<service::DatasetMetaService>(
-			  stub, std::make_shared<service::StorageBackendDefault>());
-
-  std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
-  using meta_type_t = std::tuple<std::string, std::string, std::string>;
-  std::vector<meta_type_t> meta_infos {
+  primihub::Node node;
+  auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+  auto service = std::make_shared<DatasetService>(std::move(meta_service));
+  std::vector<DatasetMetaInfo> meta_infos {
     {"train_party_0", "csv", "data/train_party_0.csv"},
   };
   registerDataSet(meta_infos, service);

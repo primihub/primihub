@@ -111,11 +111,22 @@ struct Node {
     bool use_tls_{false};
     std::string role_;
 };
+/**
+ * vibility for dataset
+ * public: vibiliable for all party
+ * private: vibiable only for the party who public
+*/
+enum class Visibility {
+  PUBLIC = 0,
+  PRIVATE = 1,
+};
 
 struct DatasetMetaInfo {
   std::string id;
   std::string driver_type;
   std::string access_info;
+  Node location;
+  Visibility visibility;
   std::vector<std::tuple<std::string, int>> schema;
 };
 

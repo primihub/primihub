@@ -38,7 +38,9 @@ class DataDirverFactory {
  public:
     using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
     static std::shared_ptr<DataDriver>
-    getDriver(const std::string &dirverName, const std::string& nodeletAddr, DataSetAccessInfoPtr access_info = nullptr) {
+    getDriver(const std::string &dirverName,
+            const std::string& nodeletAddr,
+            DataSetAccessInfoPtr access_info = nullptr) {
         if (boost::to_upper_copy(dirverName) == CSV_DRIVER_NAME) {
             if (access_info == nullptr) {
                 return std::make_shared<CSVDriver>(nodeletAddr);

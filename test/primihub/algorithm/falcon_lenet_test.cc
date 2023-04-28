@@ -3,13 +3,12 @@
 #include "gtest/gtest.h"
 
 #include "src/primihub/algorithm/falcon_lenet.h"
-#include "src/primihub/service/dataset/localkv/storage_default.h"
+#include "src/primihub/service/dataset/meta_service/factory.h"
 
 using namespace primihub;
 
 static void RunFalconlenet(std::string node_id, rpc::Task &task,
-                           std::shared_ptr<DatasetService> data_service)
-{
+                           std::shared_ptr<DatasetService> data_service) {
   PartyConfig config(node_id, task);
 
   falcon::FalconLenetExecutor exec(config, data_service);
@@ -202,45 +201,27 @@ TEST(falcon, falcon_lenet_test)
   };
   BuildTaskConfig("PARTY2", node_list, party3_data, &task3);
 
-  std::vector<std::string> bootstrap_ids;
-  bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
-                             "QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd");
-  bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
-                             "QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA");
-
   pid_t pid = fork();
-  if (pid != 0)
-  {
-    // Child process as party 0.
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/11050");
-
-    std::shared_ptr<service::DatasetMetaService> meta_service =
-	    std::make_shared<service::DatasetMetaService>(
-			    stub, std::make_shared<service::StorageBackendDefault>());
-
-    std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
-
+  if (pid != 0) {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<service::DatasetService>(std::move(meta_service));
     google::InitGoogleLogging("LENET-Party0");
     RunFalconlenet("node_1", task1, service);
     return;
   }
 
   pid = fork();
-  if (pid != 0)
-  {
+  if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/11060");
-
-    std::shared_ptr<service::DatasetMetaService> meta_service =
-	    std::make_shared<service::DatasetMetaService>(
-			    stub, std::make_shared<service::StorageBackendDefault>());
-
-    std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<service::DatasetService>(std::move(meta_service));
 
     google::InitGoogleLogging("LENET-party1");
     RunFalconlenet("node_2", task2, service);
@@ -249,15 +230,11 @@ TEST(falcon, falcon_lenet_test)
 
   // Parent process as party 2.
   sleep(3);
-  auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/11070");
-
-  std::shared_ptr<service::DatasetMetaService> meta_service =
-	  std::make_shared<service::DatasetMetaService>(
-			  stub, std::make_shared<service::StorageBackendDefault>());
-
-  std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      meta_service, "test addr");
+  primihub::Node node;
+  auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+  auto service = std::make_shared<service::DatasetService>(std::move(meta_service));
 
 
   google::InitGoogleLogging("LENET-party2");

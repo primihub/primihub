@@ -198,8 +198,20 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
   auto driver = this->datasetService()->getDriver(dataset_id);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get dataset read driver for dataset id: " << dataset_id << " failed";
+    return -1;
+  }
   auto cursor = driver->read();
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get read cursor for dataset id: " << dataset_id << " failed";
+    return -1;
+  }
   std::shared_ptr<Dataset> ds = cursor->read();
+  if (ds == nullptr) {
+    LOG(ERROR) << "get data for dataset failed";
+    return -1;
+  }
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.

@@ -2,7 +2,6 @@
 #pragma once
 #include "gtest/gtest.h"
 // #include "src/primihub/algorithm/logistic.h"
-// #include "src/primihub/service/dataset/localkv/storage_default.h"
 #include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/operator/aby3_operator.h"

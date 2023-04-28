@@ -27,9 +27,9 @@ Run a Multi-Party Computing application in 5 minutes
 two options you can choose, Download the latest release version (released binary or source code)<br/>
 
 1) download binary (skip build step)[latest release](https://github.com/primihub/primihub/releases)<br/>
-2) download redis<br/>
-  [x86_64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_x86_64.tar.gz)<br/>
-  [aarch64](https://primihub.oss-cn-beijing.aliyuncs.com/tools/redis_aarch64.tar.gz)<br/>
+2) download meta service<br/>
+  [meta service](https://primihub.oss-cn-beijing.aliyuncs.com/tools/meta_service.tar.gz)<br/>
+
 3) build with source code [build](https://docs.primihub.com/docs/advance-usage/start/build)<br/>
 
 Attention: the release binary is compiled on os ubuntu20.04
@@ -37,10 +37,24 @@ Attention: the release binary is compiled on os ubuntu20.04
 ### Start Server
 
 ```bash
-change to redis dir
-./run_redis.sh
+extract metaservice
+tar -zxvf meta_service.tar.gz
+change directory to meta service
+execute scripte ./run.sh as start meta service（it depends on JRE8 env）, three meta service is started on default，it represents meta service for each party
+check meta_log1/2/3 log whether the service is started success or not
+or use command ps -ef |grep fusion-simple.jar
+root     298757       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7877 --grpc.server.port=7977 --db.path=/home/cuibo/meta_service/storage/node0 --collaborate=http://127.0.0.1:7878/,http://127.0.0.1:7879/
+root     298758       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7878 --grpc.server.port=7978 --db.path=/home/cuibo/meta_service/storage/node1 --collaborate=http://127.0.0.1:7877/,http://127.0.0.1:7879/
+root     298759       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7879 --grpc.server.port=7979 --db.path=/home/cuibo/meta_service/storage/node2 --collaborate=http://127.0.0.1:7878/,http://127.0.0.1:7877/
+
 change dir which parallel with bazel-bin
-warning !!!!!! if the server is built by bazel build, comment the definition of PYTHONPATH before running script start_server.sh
+waring !!!!!! if server is build by bazel build, before run script start_server.sh, comment the definition of PYTHONPATH
+check the meta service config is correct, it is configured in config/nodeX.yaml or config/primihub_nodeX.yaml
+meta_service:
+  mode: "grpc"
+  ip: "127.0.0.1"
+  port: 7977
+  use_tls: false
 ./start_server.sh
 ```
 
@@ -48,7 +62,6 @@ the server log will be recorded in log_node0, log_node1, log_node2 seperately<br
 if all servers run successfully, using cmd ``ps -ef | grep bin/node``, you will see the following process<br/>
 
 ```shell
-root       4915       1  0 3月13 ?        00:08:49 ./redis-server 127.0.0.1:7379
 root    4172627       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml
 root    4172628       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml
 root    4172629       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml
@@ -100,8 +113,6 @@ NAME                    COMMAND                  SERVICE                 STATUS 
 primihub-node0          "/bin/bash -c './pri…"   node0                   running             0.0.0.0:6666->6666/tcp, 0.0.0.0:8050->50050/tcp
 primihub-node1          "/bin/bash -c './pri…"   node1                   running             0.0.0.0:6667->6667/tcp, 0.0.0.0:8051->50051/tcp
 primihub-node2          "/bin/bash -c './pri…"   node2                   running             0.0.0.0:6668->6668/tcp, 0.0.0.0:8052->50052/tcp
-redis                   "docker-entrypoint.s…"   redis                   running             0.0.0.0:6379->6379/tcp
-simple_bootstrap_node   "/app/simple-bootstr…"   simple_bootstrap_node   running             0.0.0.0:4001->4001/tcp
 ```
 
 ### Create an MPC task

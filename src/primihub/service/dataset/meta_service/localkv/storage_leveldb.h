@@ -19,21 +19,20 @@
 
 #include <string>
 #include <leveldb/db.h>
-#include "src/primihub/service/dataset/localkv/storage_backend.h"
+#include "src/primihub/service/dataset/meta_service/localkv/storage_backend.h"
 
 namespace primihub::service {
 class StorageBackendLevelDB : public StorageBackend {
  public:
-    StorageBackendLevelDB(std::string path);
-    ~StorageBackendLevelDB();
+  StorageBackendLevelDB(const std::string& path);
+  ~StorageBackendLevelDB();
 
-    outcome::result<void> putValue(Key key, Value value) override;
-
-    outcome::result<Value> getValue(const Key &key) const override;
-
-    outcome::result<void> erase(const Key &key) override;
-
-    outcome::result<std::vector<std::pair<Key, Value>>> getAll() const override;
+  retcode PutValue(const Key& key, const Value& value) override;
+  retcode GetValue(const Key& key, Value* result) override;
+  retcode GetValue(const std::vector<Key>& keys,
+                    std::map<Key, Value>* result) override;
+  retcode Erase(const Key& key) override;
+  retcode GetAll(std::map<Key, Value>* results) override;
 
  private:
     std::string path_;
