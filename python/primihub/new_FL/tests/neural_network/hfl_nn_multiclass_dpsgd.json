@@ -1,0 +1,57 @@
+{
+    "party_access_info": {
+        "Alice": {
+            "ip": "127.0.0.1",
+            "port": "50050",
+            "use_tls": false
+        },
+        "Bob": {
+            "ip": "127.0.0.1",
+            "port": "50051",
+            "use_tls": false
+        },
+        "Charlie": {
+            "ip": "127.0.0.1",
+            "port": "50052",
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "roles": {
+        "server": [
+            "Alice"
+        ],
+        "client": [
+            "Bob",
+            "Charlie"
+        ]
+    },
+    "tasks": [
+        {
+            "data_path": {
+                "Bob": {
+                    "X": "train_homo_nn_multiclass_host"
+                },
+                "Charlie": {
+                    "X": "train_homo_nn_multiclass_guest"
+                }
+            },
+            "model": "HFL_neural_network",
+            "process": "train",
+            "parameters": {
+                "mode": "DPSGD",
+                "delta": 1e-3,
+                "max_grad_norm": 1.0,
+                "noise_multiplier": 2.0,
+                "task": "classification",
+                "learning_rate": 1e-2,
+                "alpha": 1e-4,
+                "optimizer": "adam",
+                "batch_size": 100,
+                "epoch": 100,
+                "feature_names": [],
+                "print_metrics": true
+            }
+        }
+    ]
+}
