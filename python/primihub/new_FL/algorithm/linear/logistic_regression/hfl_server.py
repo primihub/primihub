@@ -107,25 +107,30 @@ class LogisticRegression_Server:
 
         self.recv_params()
 
-    def recv_params(self):
+    def recv_from_all_clients(self, key):
+        vals_list = []
         for client_channel in self.Client_Channels:
             client, channel = client_channel
-            num_examples = channel.recv(client + '_num_examples')
-            num_positive_examples = channel.recv(client + '_num_positive_examples')
-            num_negtive_examples = num_examples - num_positive_examples
+            vals_list.append(channel.recv(client + '_' + key))
+        return vals_list
+    
+    def send_to_all_clients(self, key, val):
+        for client_channel in self.Client_Channels:
+            _, channel = client_channel
+            channel.sender(key, val)
 
-            self.num_examples_weights.append(num_examples)
-            self.num_positive_examples_weights.append(num_positive_examples)
-            self.num_negtive_examples_weights.append(num_negtive_examples)
+    def recv_params(self):
+        self.num_examples_weights = self.recv_from_all_clients('num_examples')
+        
+        self.num_positive_examples_weights = \
+            self.recv_from_all_clients('num_positive_examples')
+        
+        self.num_negtive_examples_weights = \
+                (np.array(self.num_examples_weights) - \
+                np.array(self.num_positive_examples_weights)).tolist()
 
     def recv_client_model(self):
-        client_models = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            client_models.append(
-                channel.recv(client + "_model")
-            )
-        return client_models
+        return self.recv_from_all_clients("model")
 
     def client_model_aggregate(self):
         client_models = self.recv_client_model()
@@ -135,9 +140,7 @@ class LogisticRegression_Server:
                                 axis=0)
 
     def server_model_broadcast(self):
-        for client_channel in self.Client_Channels:
-            _, channel = client_channel
-            channel.sender("server_model", self.theta)
+        self.send_to_all_clients("server_model", self.theta)
 
     def train(self):
         self.client_model_aggregate()
@@ -146,48 +149,26 @@ class LogisticRegression_Server:
     def get_loss(self):
         penalty_loss = 0.5 * self.alpha * self.theta.dot(self.theta)
 
-        client_loss = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            client_loss.append(
-                channel.recv(client + "_loss")
-            )
+        client_loss = self.recv_from_all_clients('loss')
         loss = np.average(client_loss,
                           weights=self.num_examples_weights) \
                           + penalty_loss
         return loss
 
     def get_acc(self):
-        client_acc = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            client_acc.append(
-                channel.recv(client + "_acc")
-            )
+        client_acc = self.recv_from_all_clients('acc')
         acc = np.average(client_acc,
                          weights=self.num_examples_weights)
         return acc
     
     def get_fpr_tpr(self):
-        client_fpr = []
-        client_tpr = []
-        client_thresholds = []
-
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            client_fpr.append(
-                channel.recv(client + "_fpr")
-            )
-            client_tpr.append(
-                channel.recv(client + "_tpr")
-            )
-            client_thresholds.append(
-                channel.recv(client + "_thresholds")
-            )
+        client_fpr = self.recv_from_all_clients('fpr')
+        client_tpr = self.recv_from_all_clients('tpr')
+        client_thresholds = self.recv_from_all_clients('thresholds')
 
         # fpr & tpr
-        # Note: currently only support two clients
-        # Todo: merge from multiple clients
+        # Note: fpr_tpr_merge2 only support two clients
+        #       use ROC averaging when for multiple clients
         fpr,\
         tpr,\
         thresholds = fpr_tpr_merge2(client_fpr[0],
@@ -239,9 +220,7 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
         self.public_key_broadcast()
 
     def public_key_broadcast(self):
-        for client_channel in self.Client_Channels:
-            _, channel = client_channel
-            channel.sender("public_key", self.public_key)
+        self.send_to_all_clients("public_key", self.public_key)
 
     def client_model_aggregate(self):
         client_models = self.recv_client_model()
@@ -255,12 +234,7 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
     def print_metrics(self):
         # print loss
         # pallier only support compute approximate loss
-        client_loss = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            client_loss.append(
-                channel.recv(client + "_loss")
-            )
+        client_loss = self.recv_from_all_clients('loss')
         # client loss is a ciphertext
         client_loss = self.decrypt_vector(client_loss)
         loss = np.average(client_loss,

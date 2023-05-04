@@ -7,6 +7,10 @@
         "client": "linear.logistic_regression.hfl_client.Client",
         "server": "linear.logistic_regression.hfl_server.Server"
     },
+    "HFL_neural_network": {
+        "client": "neural_network.hfl_client.Client",
+        "server": "neural_network.hfl_server.Server"
+    },
     "Chat_glm": {
         "client": "example.ChatGlm_client.ChatGlmClient",
         "server": "example.ChatGlm_server.ChatGlmServer"
