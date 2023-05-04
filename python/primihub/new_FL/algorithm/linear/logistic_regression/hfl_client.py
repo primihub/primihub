@@ -146,8 +146,11 @@ class LogisticRegression_Client(LogisticRegression):
         self.server_channel = server_channel
         self.client = client
 
+        self.send_output_dim(y)
+
         self.num_examples = x.shape[0]
-        self.num_positive_examples = y.sum()
+        if not self.multiclass:
+            self.num_positive_examples = y.sum()
         self.send_params()
 
     def send_to_server(self, key, val):
@@ -164,10 +167,31 @@ class LogisticRegression_Client(LogisticRegression):
         self.send_to_server("model", self.theta)
         self.set_theta(self.recv_server_model())
 
+    def send_output_dim(self, y):
+        # assume labels start from 0
+        output_dim = y.max() + 1
+
+        if output_dim == 2:
+            # binary classification
+            output_dim = 1
+
+        self.send_to_server('output_dim', output_dim)
+        output_dim = self.recv_from_server('output_dim')
+        
+        # init theta
+        if self.multiclass:
+            if output_dim != self.theta.shape[1]:
+                self.theta = np.zeros((self.theta.shape[0], output_dim))
+        else:
+            if output_dim > 1:
+                self.theta = np.zeros((self.theta.shape[0], output_dim))
+                self.multiclass = True
+
     def send_params(self):
         self.send_to_server('num_examples', self.num_examples)
-        self.send_to_server('num_positive_examples',
-                            self.num_positive_examples)
+        if not self.multiclass:
+            self.send_to_server('num_positive_examples',
+                                self.num_positive_examples)
 
     def send_loss(self, x, y):
         loss = self.loss(x, y)
@@ -176,35 +200,57 @@ class LogisticRegression_Client(LogisticRegression):
 
     def send_acc(self, x, y):
         y_hat = self.predict_prob(x)
-        acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
+        if self.multiclass:
+            y_pred = np.argmax(y_hat, axis=1)
+        else:
+            y_pred = np.array(y_hat > 0.5, dtype='int')
+        
+        acc = metrics.accuracy_score(y, y_pred)
         self.send_to_server("acc", acc)
         return y_hat, acc
+    
+    def get_auc(self, y_hat, y):
+        if self.multiclass:
+            # one-vs-rest
+            auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr') 
+        else:
+            auc = metrics.roc_auc_score(y, y_hat)
+        return auc
 
     def send_metrics(self, x, y):
         loss = self.send_loss(x, y)
 
         y_hat, acc = self.send_acc(x, y)
 
-        # fpr, tpr
-        fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
-                                                 drop_intermediate=False)
-        self.send_to_server("fpr", fpr)
-        self.send_to_server("tpr", tpr)
-        self.send_to_server("thresholds", thresholds)
+        if self.multiclass:
+            auc = self.get_auc(y_hat, y)
+            self.send_to_server("auc", auc)
 
-        # ks
-        ks = ks_from_fpr_tpr(fpr, tpr)
+            print(f"loss={loss}, acc={acc}, auc={auc}")
+        else:
+            # fpr, tpr
+            fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
+                                                     drop_intermediate=False)
+            self.send_to_server("fpr", fpr)
+            self.send_to_server("tpr", tpr)
+            self.send_to_server("thresholds", thresholds)
 
-        # auc
-        auc = auc_from_fpr_tpr(fpr, tpr)
+            # ks
+            ks = ks_from_fpr_tpr(fpr, tpr)
 
-        print(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+            # auc
+            auc = auc_from_fpr_tpr(fpr, tpr)
+
+            print(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
 
     def print_metrics(self, x, y):
-        # print loss & acc
+        # print loss & acc & auc
         loss = self.send_loss(x, y)
-        _, acc = self.send_acc(x, y)
-        print(f"loss={loss}, acc={acc}")
+        y_hat, acc = self.send_acc(x, y)
+        auc = self.get_auc(y_hat, y)
+        if self.multiclass:
+            self.send_to_server("auc", auc)
+        print(f"loss={loss}, acc={acc}, auc={auc}")
 
 
 class LogisticRegression_DPSGD_Client(LogisticRegression_DPSGD,
