@@ -113,6 +113,24 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
   std::string tile_row;
   std::getline(csv_data, tile_row);
   str_split(tile_row, &colum_names, delimiter);
+  if (VLOG_IS_ON(5)) {
+    std::string title_name;
+    for (const auto& name : colum_names) {
+      title_name.append("[").append(name).append("] ");
+    }
+    VLOG(5) << title_name;
+  }
+  if (!colum_names.empty()) {
+    auto& last_item = colum_names[colum_names.size() -1];
+    auto it = std::find(last_item.begin(), last_item.end(), '\n');
+    if (it != last_item.end()) {
+      last_item.erase(it);
+    }
+    it = std::find(last_item.begin(), last_item.end(), '\r');
+    if (it != last_item.end()) {
+      last_item.erase(it);
+    }
+  }
   for (const auto index : column_index) {
     if (index > colum_names.size()) {
       LOG(ERROR) << "selected column index is outof range, "
@@ -155,19 +173,19 @@ retcode CSVCursor::BuildConvertOptions(char delimiter,
       }
     }
   } else {
-    auto& include_columns = convert_options_ptr->include_columns;
-    auto& column_types = convert_options_ptr->column_types;
-    if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
-      auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
-      auto& all_fields = arrow_schema->fields();
-      for (const auto& field : all_fields) {
-        auto& col_name = field->name();
-        auto& field_type = field->type();
-        include_columns.push_back(col_name);
-        column_types[col_name] = field_type;
-        VLOG(7) << "name: " << col_name << " type: " << field_type->id();
-      }
-    }
+    // auto& include_columns = convert_options_ptr->include_columns;
+    // auto& column_types = convert_options_ptr->column_types;
+    // if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
+    //   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+    //   auto& all_fields = arrow_schema->fields();
+    //   for (const auto& field : all_fields) {
+    //     auto& col_name = field->name();
+    //     auto& field_type = field->type();
+    //     include_columns.push_back(col_name);
+    //     column_types[col_name] = field_type;
+    //     VLOG(7) << "name: " << col_name << " type: " << field_type->id();
+    //   }
+    // }
   }
   return retcode::SUCCESS;
 }

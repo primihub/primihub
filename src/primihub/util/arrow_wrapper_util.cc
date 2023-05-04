@@ -131,7 +131,13 @@ std::shared_ptr<arrow::Array> Int32ArrowArrayBuilder(
   std::vector<int32_t> tmp_arr;
   tmp_arr.reserve(arr.size());
   for (const auto& item : arr) {
-    tmp_arr.push_back(stoi(item));
+    int32_t value{0};
+    try {
+      value = stoi(item);
+    } catch(...) {
+
+    }
+    tmp_arr.push_back(value);
   }
   arrow::Int32Builder builder;
   builder.AppendValues(tmp_arr);
@@ -145,7 +151,13 @@ std::shared_ptr<arrow::Array> Int64ArrowArrayBuilder(
   std::vector<int64_t> tmp_arr;
   tmp_arr.reserve(arr.size());
   for (const auto& item : arr) {
-    tmp_arr.push_back(stoi(item));
+    int64_t value{0};
+    try {
+      value = stoi(item);
+    } catch(...) {
+
+    }
+    tmp_arr.push_back(value);
   }
   arrow::Int64Builder builder;
   builder.AppendValues(tmp_arr);
@@ -159,7 +171,13 @@ std::shared_ptr<arrow::Array> FloatArrowArrayBuilder(
   std::vector<float> tmp_arr;
   tmp_arr.reserve(arr.size());
   for (const auto& item : arr) {
-    tmp_arr.push_back(std::stof(item));
+    float value = 0.0f;
+    try {
+      value = std::stof(item);
+    } catch (...) {
+
+    }
+    tmp_arr.push_back(value);
   }
   arrow::FloatBuilder builder;
   builder.AppendValues(tmp_arr);
@@ -173,7 +191,13 @@ std::shared_ptr<arrow::Array> DoubleArrowArrayBuilder(
   std::vector<double> tmp_arr;
   tmp_arr.reserve(arr.size());
   for (const auto& item : arr) {
-    tmp_arr.push_back(std::stof(item));
+    double value = 0.0f;
+    try {
+      value = std::stof(item);
+    } catch (...) {
+
+    }
+    tmp_arr.push_back(value);
   }
   arrow::DoubleBuilder builder;
   builder.AppendValues(tmp_arr);
