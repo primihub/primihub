@@ -1602,6 +1602,8 @@ class VGBTGuest(VGBTBase):
         with open(self.lookup_table_path, 'wb') as guestTable:
             pickle.dump(self.lookup_table_sum, guestTable)
 
+        self.predict(self.data, self.lookup_table_sum)
+
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):
         if tree is not None:
             k = list(tree.keys())[0]
