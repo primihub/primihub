@@ -846,7 +846,7 @@ class VGBTHost(VGBTBase):
         y_pred = self.predict(y_prob)
 
         ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_prob)
-        acc = metrics.accuracy_score(y_pred, y_true)
+        acc = metrics.accuracy_score(y_true, y_pred)
         fpr, tpr, threshold = metrics.roc_curve(y_true, y_prob)
         recall = eval_acc(y_true, y_pred)
         lifts, gains = plot_lift_and_gain(y_true, y_prob)
@@ -1083,6 +1083,10 @@ class VGBTHost(VGBTBase):
             logging.info("current role: {}, current record: {}".format(
                 role, record))
 
+            print(
+                "current role: {}, current record: {}, host_best_gain: {}, guest_best_gain: {}"
+                .format(role, record, host_best_gain, guest_best_gain))
+
             X_host_left = X_host.loc[id_left]
             plain_gh_left = gh.loc[id_left]
 
@@ -1176,7 +1180,7 @@ class VGBTHost(VGBTBase):
             self.channel.sender("sample_ids", sample_inds)
 
             sample_data = self.data.iloc[sample_inds].copy()
-            sample_y_hat = y_hat[sample_inds]
+            sample_y_hat = y_hat[sample_inds].copy()
             sample_f_t = f_t.iloc[sample_inds].copy()
 
             # choose the encoding type
@@ -1230,6 +1234,7 @@ class VGBTHost(VGBTBase):
 
             current_loss = self.log_loss(self.y, self.predict_prob(y_hat))
             losses.append(current_loss)
+            print("current loss", current_loss)
             logging.info("Finish to trian tree {}.".format(iter + 1))
 
         # saving train metrics
