@@ -165,17 +165,14 @@ class LogisticRegression_Server:
         self.server_model_broadcast()
 
     def get_loss(self):
-        penalty_loss = 0.5 * self.alpha * (self.theta ** 2).sum()
-
-        client_loss = self.recv_from_all_clients('loss')
-        loss = np.average(client_loss,
-                          weights=self.num_examples_weights) \
-                          + penalty_loss
+        loss =  self.get_scalar_metrics('loss')
+        if self.alpha > 0:
+            loss += 0.5 * self.alpha * (self.theta ** 2).sum()
         return loss
     
     def get_scalar_metrics(self, metrics_name):
         metrics_name = metrics_name.lower()
-        supported_metrics = ['acc', 'auc']
+        supported_metrics = ['loss', 'acc', 'auc']
         if metrics_name not in supported_metrics:
             logging.error(f"""Not supported metrics {metrics_name},
                           use {supported_metrics} instead""")
@@ -265,6 +262,9 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
     def plaintext_server_model_broadcast(self):
         self.theta = np.array(self.decrypt_vector(self.theta))
         self.server_model_broadcast()
+
+    def get_loss(self):
+        return self.get_scalar_metrics('loss')
 
     def print_metrics(self):
         # print loss

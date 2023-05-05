@@ -195,6 +195,8 @@ class LogisticRegression_Client(LogisticRegression):
 
     def send_loss(self, x, y):
         loss = self.loss(x, y)
+        if self.alpha > 0:
+            loss -= 0.5 * self.alpha * (self.theta ** 2).sum()
         self.send_to_server("loss", loss)
         return loss
 
@@ -293,9 +295,13 @@ class LogisticRegression_Paillier_Client(LogisticRegression_Paillier,
         self.public_key = server_channel.recv("public_key")
         self.set_theta(self.encrypt_vector(self.theta))
 
-    def print_metrics(self, x, y):
-        # print loss
-        # pallier only support compute approximate loss
+    def send_loss(self, x, y):
+        # pallier only support compute approximate loss without penalty
         loss = self.loss(x, y)
         self.send_to_server("loss", loss)
+        return loss
+
+    def print_metrics(self, x, y):
+        # print loss
+        self.send_loss(x, y)
         print('no printed metrics during training when using paillier')
