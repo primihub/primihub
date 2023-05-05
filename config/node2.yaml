@@ -69,6 +69,32 @@ datasets:
     model: "csv"
     source: "data/FL/homo_lr/train/train_breast_cancer_guest.csv"
 
+  # FL homo nn multiclass test case datasets
+  - description: "train_homo_nn_multiclass_guest"
+    model: "csv"
+    source: "data/FL/homo_nn/train/train_mobile_price_guest.csv"
+  - description: "test_homo_nn_multiclass_guest"
+    model: "csv"
+    source: "data/FL/homo_nn/test/test_mobile_price_guest.csv"
+
+  # FL homo regression test case datasets
+  - description: "train_homo_regression_guest"
+    model: "csv"
+    source: "data/FL/homo_regression/train/train_boston_house_guest.csv"
+  - description: "test_homo_regression_guest"
+    model: "csv"
+    source: "data/FL/homo_regression/test/test_boston_house_guest.csv"
+
+  # FL image test case datasets
+  - description: "train_mnist_guest"
+    model: "image"
+    image_dir: "data/FL/mnist/train/train_mnist_guest.zip"
+    annotations_file: "data/FL/mnist/train/train_mnist_guest_annotations.csv"
+  - description: "test_mnist_guest"
+    model: "image"
+    image_dir: "data/FL/mnist/test/test_mnist_guest.zip"
+    annotations_file: "data/FL/mnist/test/test_mnist_guest_annotations.csv"
+
   ## PSI test caset datasets
   #- description: "psi_client_data"
   #  model: "csv"

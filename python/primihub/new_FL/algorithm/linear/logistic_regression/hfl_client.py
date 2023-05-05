@@ -39,6 +39,7 @@ class Client(BaseModel):
         if 'id' in x.columns:
             x.pop('id')
         y = x.pop('y').values
+        x = x.values
         
         # model init
         train_method = self.task_parameter['mode']
@@ -147,31 +148,36 @@ class LogisticRegression_Client(LogisticRegression):
 
         self.num_examples = x.shape[0]
         self.num_positive_examples = y.sum()
-        self.send_params(x, y)
+        self.send_params()
+
+    def send_to_server(self, key, val):
+        self.server_channel.sender(self.client + '_' + key, val)
+    
+    def recv_from_server(self, key):
+        return self.server_channel.recv(key)
     
     def recv_server_model(self):
-        return self.server_channel.recv("server_model")
+        return self.recv_from_server("server_model")
 
     def train(self, x, y):
         self.fit(x, y)
-        self.server_channel.sender(self.client + "_model", self.theta)
+        self.send_to_server("model", self.theta)
         self.set_theta(self.recv_server_model())
 
-    def send_params(self, x, y):
-        self.server_channel.sender(self.client + '_num_examples',
-                                   self.num_examples)
-        self.server_channel.sender(self.client + '_num_positive_examples',
-                                   self.num_positive_examples)
+    def send_params(self):
+        self.send_to_server('num_examples', self.num_examples)
+        self.send_to_server('num_positive_examples',
+                            self.num_positive_examples)
 
     def send_loss(self, x, y):
         loss = self.loss(x, y)
-        self.server_channel.sender(self.client + "_loss", loss)
+        self.send_to_server("loss", loss)
         return loss
 
     def send_acc(self, x, y):
         y_hat = self.predict_prob(x)
         acc = metrics.accuracy_score(y, (y_hat >= 0.5).astype('int'))
-        self.server_channel.sender(self.client + "_acc", acc)
+        self.send_to_server("acc", acc)
         return y_hat, acc
 
     def send_metrics(self, x, y):
@@ -182,9 +188,9 @@ class LogisticRegression_Client(LogisticRegression):
         # fpr, tpr
         fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
                                                  drop_intermediate=False)
-        self.server_channel.sender(self.client + "_fpr", fpr)
-        self.server_channel.sender(self.client + "_tpr", tpr)
-        self.server_channel.sender(self.client + "_thresholds", thresholds)
+        self.send_to_server("fpr", fpr)
+        self.send_to_server("tpr", tpr)
+        self.send_to_server("thresholds", thresholds)
 
         # ks
         ks = ks_from_fpr_tpr(fpr, tpr)
@@ -245,5 +251,5 @@ class LogisticRegression_Paillier_Client(LogisticRegression_Paillier,
         # print loss
         # pallier only support compute approximate loss
         loss = self.loss(x, y)
-        self.server_channel.sender(self.client + "_loss", loss)
+        self.send_to_server("loss", loss)
         print('no printed metrics during training when using paillier')

@@ -149,11 +149,13 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string&
   auto& selected_fields = this->SelectedColumnIndex();
   size_t number_selected_fields = selected_fields.size();
   size_t i = 0;
+  VLOG(5) << "selected_fields: " << number_selected_fields;
   for (const auto index : selected_fields) {
     if (index < schema_fields) {
       auto& field_ptr = table_schema->field(index);
       result_schema_filed.push_back(field_ptr);
       int field_type = field_ptr->type()->id();
+      VLOG(7) << "name: " << field_ptr->name() << " type: " << field_type;
       auto array = arrow_wrapper::util::MakeArrowArray(field_type, query_result[i]);
       array_data.push_back(std::move(array));
     } else {

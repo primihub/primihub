@@ -1,4 +1,4 @@
-# --extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 pyarrow==6.0.1
 pandas
@@ -34,6 +34,7 @@ attrs~=21.4.0
 scipy~=1.7.1
 modin
 
-# torch==1.13.1+cpu
-# torchvision==0.14.1+cpu
-# torchaudio==0.13.1+cpu
+opacus==1.4.0
+torch==1.13.1+cpu
+torchvision==0.14.1+cpu
+torchaudio==0.13.1+cpu
