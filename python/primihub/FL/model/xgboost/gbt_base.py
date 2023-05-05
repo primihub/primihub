@@ -790,7 +790,7 @@ class VGBTHost(VGBTBase):
 
         # just decrypt 'G_left' and 'H_left'
         decrypted_items = ['G_left', 'H_left']
-        if self.encrypted:
+        if self.encrypted_proto is not None:
             decrypted_gh_sums = gh_sums[decrypted_items]
             m, n = decrypted_gh_sums.shape
             gh_sums_flat = decrypted_gh_sums.values.flatten()
@@ -807,7 +807,7 @@ class VGBTHost(VGBTBase):
             dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
 
             dec_gh_sums_df = pd.DataFrame(
-                dec_gh_sums, columns=decrypted_items) / self.amplify_ratio
+                dec_gh_sums, columns=decrypted_items) / 10**self.amplify_ratio
 
         else:
             dec_gh_sums_df = gh_sums[decrypted_items]
@@ -1175,20 +1175,20 @@ class VGBTHost(VGBTBase):
 
             self.channel.sender("sample_ids", sample_inds)
 
-            sample_data = self.data.iloc[sample_inds]
+            sample_data = self.data.iloc[sample_inds].copy()
             sample_y_hat = y_hat[sample_inds]
-            sample_f_t = f_t.iloc[sample_inds]
+            sample_f_t = f_t.iloc[sample_inds].copy()
 
             # choose the encoding type
             # if self.encrypted_proto == "paillier":
             if self.encrypted_proto is not None:
                 # whether to merge grads and hess before encrypting
                 if self.merge_gh:
-                    sample_gh['g'] = sample_gh['g'] + self.const
-                    sample_gh = np.round(sample_gh, 4)
-                    sample_gh_int = (sample_gh * 10**4).astype('int')
-                    merged_gh = sample_gh_int[
-                        'g'] * 10**self.amplify_ratio + sample_gh_int['h']
+                    cp_gh = sample_gh.copy()
+                    cp_gh['g'] = cp_gh['g'] + self.const
+                    cp_gh = np.round(cp_gh, 4)
+                    cp_gh = (cp_gh * 10**4).astype('int')
+                    merged_gh = cp_gh['g'] * 10**self.amplify_ratio + cp_gh['h']
 
                     encode_merged_gh = list(
                         self.encrypt_pool.map(lambda a, v: a.pai_enc.remote(v),
@@ -1202,9 +1202,9 @@ class VGBTHost(VGBTBase):
                     enc_gh_df.set_index('id', inplace=True)
 
                 else:
-                    sample_gh *= 10**self.amplify_ratio
-                    sample_gh_flat = sample_gh.values.flatten()
-                    sample_gh_flat_int = sample_gh_flat.astype('int')
+                    flat_gh = sample_gh.values.flatten()
+                    flat_gh *= 10**self.amplify_ratio
+                    sample_gh_flat_int = flat_gh.astype('int')
 
                     encode_sample_gh_flat = list(
                         self.encrypt_pool.map(lambda a, v: a.pai_enc.remote(v),
