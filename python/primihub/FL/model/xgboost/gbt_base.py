@@ -35,6 +35,8 @@ Block = Union[List[T], "pyarrow.Table", "pandas.DataFrame", bytes]
 
 _pandas = None
 
+ray.init(ignore_reinit_error=True)
+
 
 def lazy_import_pandas():
     global _pandas
@@ -563,6 +565,7 @@ class VGBTBase(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.set_inputs()
 
     def loss(self, y_hat, y_true):
         if self.loss_type == 'log':
@@ -677,6 +680,7 @@ class VGBTHost(VGBTBase):
         self.lookup_table_path = self.role_params['lookup_table']
         self.secure_bits = self.role_params['secure_bits']
         self.amplify_ratio = self.role_params['amplify_ratio']
+        self.const = 2
         self.pub, self.prv = opt_paillier_keygen(self.secure_bits)
 
         self.channel.sender("pub", self.pub)
@@ -981,10 +985,10 @@ class VGBTHost(VGBTBase):
 
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
 
-        self.channel.ender('best_cut', {
+        self.channel.sender('best_cut', {
             'host_best': host_best,
             'guest_best': guest_best
-        })[self.role_params['neighbors'][0]]
+        })
 
         logging.info(
             "current depth: {}, host best var: {} and guest best var: {}".
@@ -1164,7 +1168,7 @@ class VGBTHost(VGBTBase):
             if self.encrypted_proto is not None:
                 # whether to merge grads and hess before encrypting
                 if self.merge_gh:
-                    sample_gh['g'] = sample_gh['g'] + 2
+                    sample_gh['g'] = sample_gh['g'] + self.const
                     sample_gh = np.round(sample_gh, 4)
                     sample_gh_int = (sample_gh * 10**4).astype('int')
                     merged_gh = sample_gh_int[
@@ -1225,6 +1229,7 @@ class VGBTGuest(VGBTBase):
         self.selected_column = self.role_params['selected_column']
         self.label = self.role_params['label']
         self.lookup_table_path = self.role_params['lookup_table']
+        self.batch_size = self.role_params['batch_size']
         self.pub = self.channel.recv("pub")[self.role_params['neighbors'][0]]
         self.add_pool = ActorPool(
             [ActorAdd.remote(self.pub) for _ in range(self.actors)])
@@ -1302,7 +1307,6 @@ class VGBTGuest(VGBTBase):
         total_left_ghs = {}
 
         groups = []
-        batch_size = 5
         internal_groups = []
         for tmp_col in cols:
             # print("=====tmp_col======", tmp_col)
@@ -1324,7 +1328,7 @@ class VGBTGuest(VGBTBase):
 
         print("==============", cols, groups, len(groups))
 
-        if self.encrypted:
+        if self.encrypted_proto is not None:
             internal_res = list(
                 self.grouppools.map(lambda a, v: a.groupby.remote(v), groups))
 

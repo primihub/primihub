@@ -69,7 +69,8 @@
                 "model_path": "guest_model.pkl",
                 "selected_column": null,
                 "lookup_table": "guest_lookup.pkl",
-                "label": null
+                "label": null,
+                "batch_size": 5
             }
         }
     }
