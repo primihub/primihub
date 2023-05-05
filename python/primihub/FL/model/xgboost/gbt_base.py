@@ -1259,7 +1259,7 @@ class VGBTHost(VGBTBase):
 
         # saving train metrics
         y_hat = self.predict_prob(self.data, lookup=self.lookup_table_sum)
-        train_metrics = self.train_metrics(y_true=self.y, score=y_hat)
+        train_metrics = self.train_metrics(y_true=self.y, y_hat=y_hat)
         train_metrics_buff = json.dumps(train_metrics)
         with open(self.metric_path, 'w') as filePath:
             filePath.write(train_metrics_buff)
