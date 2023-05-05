@@ -867,7 +867,7 @@ class VGBTHost(VGBTBase):
         # Y = pd.Series([self.base_score] * X.shape[0])
         Y = np.array([self.base_score] * len(X))
 
-        for t in range(self.n_estimators):
+        for t in range(self.estimators):
             tree = self.tree_structure[t + 1]
             lookup_table = lookup[t + 1]
             # y_t = pd.Series([0] * X.shape[0])
