@@ -1,6 +1,7 @@
 # basic packages
 import pyarrow
 import random
+import pickle
 import pandas
 import functools
 import logging
@@ -845,9 +846,24 @@ class VGBTHost(VGBTBase):
         y_pred = self.predict(y_prob)
 
         ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_prob)
+        acc = metrics.accuracy_score(y_pred, y_true)
         fpr, tpr, threshold = metrics.roc_curve(y_true, y_prob)
         recall = eval_acc(y_true, y_pred)
         lifts, gains = plot_lift_and_gain(y_true, y_prob)
+        trainMetrics = {
+            "acc": acc,
+            "auc": auc,
+            "ks": ks,
+            "fpr": fpr.tolist(),
+            "tpr": tpr.tolist(),
+            "lift_x": lifts['axis_x'].tolist(),
+            "lift_y": lifts['axis_y'],
+            "gain_x": gains['axis_x'].tolist(),
+            "gain_y": gains['axis_y'],
+            "recall": recall
+        }
+        print("ks, auc and acc", ks, auc, acc)
+        return trainMetrics
 
     def predict_prob(self, score):
         return 1 / (1 + np.exp(-score))
@@ -1216,6 +1232,22 @@ class VGBTHost(VGBTBase):
             losses.append(current_loss)
             logging.info("Finish to trian tree {}.".format(iter + 1))
 
+        # saving train metrics
+        train_metrics = self.train_metrics(y_true=self.y, score=y_hat)
+        train_metrics_buff = json.dumps(train_metrics)
+        with open(self.metric_path, 'w') as filePath:
+            filePath.write(train_metrics_buff)
+
+        with open(self.lookup_table_path, 'wb') as hostTable:
+            pickle.dump(self.lookup_table_sum, hostTable)
+
+        with open(self.model_path, 'wb') as hostModel:
+            pickle.dump(
+                {
+                    'tree_struct': self.tree_structure,
+                    'lr': self.learning_rate
+                }, hostModel)
+
 
 class VGBTGuest(VGBTBase):
 
@@ -1228,6 +1260,7 @@ class VGBTGuest(VGBTBase):
         self.id = self.role_params['id']
         self.selected_column = self.role_params['selected_column']
         self.label = self.role_params['label']
+        self.model_path = self.role_params['model_path']
         self.lookup_table_path = self.role_params['lookup_table']
         self.batch_size = self.role_params['batch_size']
         self.pub = self.channel.recv("pub")[self.role_params['neighbors'][0]]
@@ -1530,6 +1563,18 @@ class VGBTGuest(VGBTBase):
                 sample_guest, gh_en, 0)
 
             self.lookup_table_sum[t + 1] = self.lookup_table
+
+        # save guest part model
+        with open(self.model_path, 'wb') as guestModel:
+            pickle.dump(
+                {
+                    'tree_struct': self.tree_structure,
+                    'lr': self.learning_rate
+                }, guestModel)
+
+        # save guest part table
+        with open(self.lookup_table_path, 'wb') as guestTable:
+            pickle.dump(self.lookup_table_sum, guestTable)
 
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):
         if tree is not None:
