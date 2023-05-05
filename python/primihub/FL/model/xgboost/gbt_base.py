@@ -841,15 +841,12 @@ class VGBTHost(VGBTBase):
         self.preprocess()
         self.fit()
 
-    def train_metrics(self, y_true, score):
-        y_prob = score
-        y_pred = self.predict(y_prob)
-
-        ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_prob)
-        acc = metrics.accuracy_score(y_true, y_pred)
-        fpr, tpr, threshold = metrics.roc_curve(y_true, y_prob)
-        recall = eval_acc(y_true, y_pred)
-        lifts, gains = plot_lift_and_gain(y_true, y_prob)
+    def train_metrics(self, y_true, y_hat):
+        ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_hat)
+        acc = metrics.accuracy_score(y_true, (y_hat >= 0.5).astype('int'))
+        fpr, tpr, threshold = metrics.roc_curve(y_true, y_hat)
+        recall = eval_acc(y_true, (y_hat >= 0.5).astype('int'))
+        lifts, gains = plot_lift_and_gain(y_true, y_hat)
         trainMetrics = {
             "acc": acc,
             "auc": auc,
@@ -1255,7 +1252,7 @@ class VGBTHost(VGBTBase):
             y_hat[sample_inds] = y_hat[
                 sample_inds] + self.learning_rate * sample_f_t
 
-            current_loss = self.log_loss(self.y, self.predict_prob(y_hat))
+            current_loss = self.log_loss(self.y, 1 / (1 + np.exp(-y_hat)))
             losses.append(current_loss)
             print("current loss", current_loss)
             logging.info("Finish to trian tree {}.".format(iter + 1))
