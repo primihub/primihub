@@ -24,5 +24,25 @@
             "func": "ExampleHost",
             "module": "primihub.new_FL.algorithm.example.dev_example_host_xus"
         }
+    },
+    "HeteroXGB": {
+        "guest": {
+            "func": "VGBTGuest",
+            "module": "primihub.FL.model.xgboost.gbt_base"
+        },
+        "host": {
+            "func": "VGBTHost",
+            "module": "primihub.FL.model.xgboost.gbt_base"
+        }
+    },
+    "HeteroLR": {
+        "guest": {
+            "func": "HeteroLrGuest",
+            "module": "primihub.FL.model.logistic_regression.hetero_lr_base"
+        },
+        "host": {
+            "func": "HeteroLrHost",
+            "module": "primihub.FL.model.logistic_regression.hetero_lr_base"
+        }
     }
 }
