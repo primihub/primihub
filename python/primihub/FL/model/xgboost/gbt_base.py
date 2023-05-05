@@ -1,4 +1,5 @@
 # basic packages
+import time
 import pyarrow
 import random
 import pickle
@@ -682,6 +683,7 @@ class VGBTHost(VGBTBase):
         self.secure_bits = self.role_params['secure_bits']
         self.amplify_ratio = self.role_params['amplify_ratio']
         self.const = 2
+        self.ratio = 10**8
         self.pub, self.prv = opt_paillier_keygen(self.secure_bits)
 
         self.channel.sender("pub", self.pub)
@@ -710,8 +712,8 @@ class VGBTHost(VGBTBase):
                         for item in val[col]
                     ]
                     val = val.sort_values(by=key, ascending=True)
-                    val['g'] = val['sum(g)'] // 10**self.amplify_ratio
-                    val['h'] = val['sum(g)'] - val['g'] * 10**self.amplify_ratio
+                    val['g'] = val['sum(g)'] // self.ratio
+                    val['h'] = val['sum(g)'] - val['g'] * self.ratio
                     val['g'] = val['g'] / 10**4 - self.const * val['count()']
                     val['h'] = val['h'] / 10**4
 
@@ -734,7 +736,7 @@ class VGBTHost(VGBTBase):
                         ]
                     val = val.sort_values(by=key, ascending=True)
 
-                    cumsum_val = val.cumsum() / 10**self.amplify_ratio
+                    cumsum_val = val.cumsum() / self.ratio
                     tmp_g_lefts = cumsum_val['sum(g)']
                     tmp_h_lefts = cumsum_val['sum(h)']
 
@@ -806,8 +808,8 @@ class VGBTHost(VGBTBase):
 
             dec_gh_sums = np.array(dec_gh_sums_flat).reshape((m, n))
 
-            dec_gh_sums_df = pd.DataFrame(
-                dec_gh_sums, columns=decrypted_items) / 10**self.amplify_ratio
+            dec_gh_sums_df = pd.DataFrame(dec_gh_sums,
+                                          columns=decrypted_items) / self.ratio
 
         else:
             dec_gh_sums_df = gh_sums[decrypted_items]
@@ -839,7 +841,10 @@ class VGBTHost(VGBTBase):
 
     def run(self):
         self.preprocess()
-        self.fit()
+        self.my_fit(X_host=self.data,
+                    Y=self.y,
+                    paillier_encryptor=self.encrypt_pool,
+                    lookup_table_sum=self.lookup_table_sum)
 
     def train_metrics(self, y_true, y_hat):
         ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_hat)
@@ -1180,6 +1185,210 @@ class VGBTHost(VGBTBase):
             self.host_get_tree_node_weight(host_test_right, tree_right,
                                            current_lookup, w)
 
+    def my_fit(self, X_host, Y, paillier_encryptor, lookup_table_sum):
+        y_hat = np.array([self.base_score] * len(Y))
+        train_losses = []
+
+        start = time.time()
+        for t in range(self.n_estimators):
+            # fl_console_log.info("Begin to trian tree {}".format(t + 1))
+            # print("Begin to trian tree: ", t + 1)
+            f_t = pd.Series([0] * Y.shape[0])
+
+            # host cal gradients and hessians with its own label
+            gh = pd.DataFrame({
+                'g': self._grad(y_hat, Y.flatten()),
+                'h': self._hess(y_hat, Y.flatten())
+            })
+            if self.sample_type == 'goss' and len(X_host) > self.limit_size:
+                top_ids, low_ids = goss_sample(
+                    gh,
+                    top_rate=self.large_grads_ratio,
+                    other_rate=self.small_grads_ratio)
+
+                amply_rate = (1 -
+                              self.large_grads_ratio) / self.small_grads_ratio
+
+                # amplify the selected smaller gradients
+                gh['g'][low_ids] *= amply_rate
+
+                sample_ids = top_ids + low_ids
+
+            elif self.sample_type == 'random' and len(
+                    X_host) > self.samples_clip_size:
+                sample_ids = random_sample(gh,
+                                           top_rate=self.large_grads_ratio,
+                                           other_rate=self.small_grads_ratio)
+
+                # TODO: Amplify the sample gradients
+                # X_host = X_host.iloc[sample_ids].copy()
+                # Y = Y[sample_ids]
+                # ghs = ghs.iloc[sample_ids].copy()
+
+            else:
+                sample_ids = None
+
+            # self.proxy_client_guest.Remote(sample_ids, "sample_ids")
+            self.channel.sender("sample_ids", sample_ids)
+            if sample_ids is not None:
+                # select from 'X_host', Y and ghs
+                # print("sample_ids: ", sample_ids)
+                current_x = X_host.iloc[sample_ids].copy()
+                # current_y = Y[sample_ids]
+                current_ghs = gh.iloc[sample_ids].copy()
+                current_y_hat = y_hat[sample_ids]
+                current_f_t = f_t.iloc[sample_ids].copy()
+            else:
+                current_x = X_host.copy()
+                # current_y = Y.copy()
+                current_ghs = gh.copy()
+                current_y_hat = y_hat.copy()
+                current_f_t = f_t.copy()
+
+            # else:
+            #     sample_ids
+            #     raise ValueError("The {self.sample_type} was not defined!")
+
+            # convert gradients and hessians to ints and encrypted with paillier
+            # ratio = 10**3
+            # gh_large = (gh * ratio).astype('int')
+            if self.encrypted_proto is not None:
+                if self.merge_gh:
+                    # cp_gh = gh.copy()
+                    cp_gh = current_ghs.copy()
+                    cp_gh['g'] = cp_gh['g'] + self.const
+                    cp_gh = np.round(cp_gh, 4)
+                    cp_gh = (cp_gh * 10**4).astype('int')
+                    # cp_gh = cp_gh * self.ratio
+                    # make 'g' positive
+                    # gh['g'] = gh['g'] + self.const
+                    # gh *= self.ratio
+                    # cp_gh_int = (cp_gh * self.ratio).astype('int')
+
+                    merge_gh = (cp_gh['g'] * self.ratio + cp_gh['h'])
+                    # print("merge_gh: ", merge_gh.values)
+                    start_enc = time.time()
+                    enc_merge_gh = list(
+                        paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                               merge_gh.values.tolist()))
+
+                    enc_gh_df = pd.DataFrame({
+                        'g': enc_merge_gh,
+                        'id': cp_gh.index.tolist()
+                    })
+                    # cp_gh['g'] = enc_merge_gh
+                    # enc_gh_df = cp_gh['g']
+                    enc_gh_df.set_index('id', inplace=True)
+                    # print("enc_gh_df: ", enc_gh_df)
+                    end_enc = time.time()
+
+                    # merge_gh = (gh['g'] * self.g_ratio +
+                    #             gh['h']).values.atype('int')
+                    # enc_gh_df = pd.DataFrame({'merge_gh': merge_gh})
+
+                else:
+                    # flat_gh = gh.values.flatten()
+                    flat_gh = current_ghs.values.flatten()
+                    flat_gh *= self.ratio
+
+                    flat_gh = flat_gh.astype('int')
+
+                    start_enc = time.time()
+                    enc_flat_gh = list(
+                        paillier_encryptor.map(lambda a, v: a.pai_enc.remote(v),
+                                               flat_gh.tolist()))
+
+                    end_enc = time.time()
+
+                    enc_gh = np.array(enc_flat_gh).reshape((-1, 2))
+                    # enc_gh_df = pd.DataFrame(enc_gh, )
+                    enc_gh_df = pd.DataFrame(enc_gh, columns=['g', 'h'])
+                    enc_gh_df['id'] = current_ghs.index.tolist()
+                    enc_gh_df.set_index('id', inplace=True)
+
+                # send all encrypted gradients and hessians to 'guest'
+                # self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
+                self.channel.sender("gh_en", enc_gh_df)
+
+                end_send_gh = time.time()
+                # fl_console_log.info(
+                #     "The encrypted time is {} and the transfer time is {}".
+                #     format((end_enc - start_enc), (end_send_gh - end_enc)))
+                # print("Time for encryption and transfer: ",
+                #       (end_enc - start_enc), (end_send_gh - end_enc))
+                # fl_console_log.info("Encrypt finish.")
+                # print("Encrypt finish.")
+
+            else:
+                # self.proxy_client_guest.Remote(current_ghs, "gh_en")
+                self.channel.sender("gh_en", current_ghs)
+
+            # self.tree_structure[t + 1] = self.host_tree_construct(
+            #     X_host.copy(), f_t, 0, gh)
+            self.tree_structure[t + 1] = self.host_tree_construct(
+                current_x.copy(), current_f_t, 0, current_ghs)
+            # y_hat = y_hat + xgb_host.learning_rate * f_t
+
+            end_build_tree = time.time()
+
+            lookup_table_sum[t + 1] = self.lookup_table
+            # y_hat = y_hat + self.learning_rate * f_t
+            if sample_ids is None:
+                y_hat = y_hat + self.learning_rate * current_f_t
+
+            else:
+                y_hat[sample_ids] = y_hat[
+                    sample_ids] + self.learning_rate * current_f_t
+
+            # current_y_hat = current_y_hat + self.learning_rate * current_f_t
+            # fl_console_log.info("Finish to trian tree {}.".format(t + 1))
+
+            # logger.info("Finish to trian tree {}.".format(t + 1))
+
+            current_loss = self.log_loss(Y, 1 / (1 + np.exp(-y_hat)))
+            # current_loss = self.log_loss(current_y,
+            #                              1 / (1 + np.exp(-current_y_hat)))
+            train_losses.append(current_loss)
+
+        y_hat = self.predict_prob(X_host, lookup=lookup_table_sum)
+
+        ks, auc = evaluate_ks_and_roc_auc(y_real=Y, y_proba=y_hat)
+
+        train_acc = metrics.accuracy_score((y_hat >= 0.5).astype('int'), Y)
+        # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
+
+        fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
+
+        recall = eval_acc(Y, (y_hat >= 0.5).astype('int'))
+        lifts, gains = plot_lift_and_gain(Y, y_hat)
+
+        trainMetrics = {
+            "train_acc": train_acc,
+            "train_auc": auc,
+            "train_ks": ks,
+            "train_fpr": fpr.tolist(),
+            "train_tpr": tpr.tolist(),
+            "lift_x": lifts['axis_x'].tolist(),
+            "lift_y": lifts['axis_y'],
+            "gain_x": gains['axis_x'].tolist(),
+            "gain_y": gains['axis_y'],
+            "recall": recall
+        }
+
+        train_metrics_buff = json.dumps(trainMetrics)
+        with open(self.metric_path, 'w') as filePath:
+            filePath.write(train_metrics_buff)
+
+        with open(self.lookup_table_path, 'wb') as hostTable:
+            pickle.dump(self.lookup_table_sum, hostTable)
+
+        with open(self.model_path, 'wb') as hostModel:
+            pickle.dump(
+                {
+                    'tree_struct': self.tree_structure,
+                    'lr': self.learning_rate
+                }, hostModel)
+
     def fit(self):
         y_hat = np.array([self.base_score] * len(self.y))
         losses = []
@@ -1212,7 +1421,7 @@ class VGBTHost(VGBTBase):
                     cp_gh['g'] = cp_gh['g'] + self.const
                     cp_gh = np.round(cp_gh, 4)
                     cp_gh = (cp_gh * 10**4).astype('int')
-                    merged_gh = cp_gh['g'] * 10**self.amplify_ratio + cp_gh['h']
+                    merged_gh = cp_gh['g'] * self.ratio + cp_gh['h']
 
                     encode_merged_gh = list(
                         self.encrypt_pool.map(lambda a, v: a.pai_enc.remote(v),
@@ -1227,7 +1436,7 @@ class VGBTHost(VGBTBase):
 
                 else:
                     flat_gh = sample_gh.values.flatten()
-                    flat_gh *= 10**self.amplify_ratio
+                    flat_gh *= self.ratio
                     sample_gh_flat_int = flat_gh.astype('int')
 
                     encode_sample_gh_flat = list(
