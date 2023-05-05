@@ -842,7 +842,7 @@ class VGBTHost(VGBTBase):
         self.fit()
 
     def train_metrics(self, y_true, score):
-        y_prob = self.predict_prob(score)
+        y_prob = score
         y_pred = self.predict(y_prob)
 
         ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_prob)
@@ -865,11 +865,34 @@ class VGBTHost(VGBTBase):
         print("ks, auc and acc", ks, auc, acc)
         return trainMetrics
 
-    def predict_prob(self, score):
-        return 1 / (1 + np.exp(-score))
+    def predict_raw(self, X: pd.DataFrame, lookup):
+        X = X.reset_index(drop='True')
+        # Y = pd.Series([self.base_score] * X.shape[0])
+        Y = np.array([self.base_score] * len(X))
 
-    def predict(self, prob):
-        return (prob >= 0.5).astype("int")
+        for t in range(self.n_estimators):
+            tree = self.tree_structure[t + 1]
+            lookup_table = lookup[t + 1]
+            # y_t = pd.Series([0] * X.shape[0])
+            y_t = np.zeros(len(X))
+            #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
+            self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
+            Y = Y + self.learning_rate * y_t
+
+        return Y
+
+    def predict_prob(self, X: pd.DataFrame, lookup):
+
+        Y = self.predict_raw(X, lookup)
+
+        Y = 1 / (1 + np.exp(-Y))
+
+        return Y
+
+    def predict(self, X: pd.DataFrame, lookup):
+        preds = self.predict_prob(X, lookup)
+
+        return (preds >= 0.5).astype('int')
 
     def log_loss(self, actual, predict_prob):
         return metrics.log_loss(actual, predict_prob)
@@ -1238,6 +1261,7 @@ class VGBTHost(VGBTBase):
             logging.info("Finish to trian tree {}.".format(iter + 1))
 
         # saving train metrics
+        y_hat = self.predict_prob(self.data, lookup=self.lookup_table_sum)
         train_metrics = self.train_metrics(y_true=self.y, score=y_hat)
         train_metrics_buff = json.dumps(train_metrics)
         with open(self.metric_path, 'w') as filePath:
