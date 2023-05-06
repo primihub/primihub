@@ -1814,7 +1814,11 @@ class VGBTGuest(VGBTBase):
         for t in range(self.estimators):
             sample_ids = self.channel.recv('sample_ids')[
                 self.role_params['neighbors'][0]]
-            sample_guest = self.data.iloc[sample_ids]
+
+            if sample_ids is None:
+                sample_guest = self.data.copy()
+            else:
+                sample_guest = self.data.iloc[sample_ids].copy()
             gh_en = self.channel.recv('gh_en')[self.role_params['neighbors'][0]]
 
             self.tree_structure[t + 1] = self.guest_tree_construct(
