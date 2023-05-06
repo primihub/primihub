@@ -42,7 +42,7 @@
                 "mode": "Paillier",
                 "n_length": 2048,
                 "learning_rate": "optimal",
-                "alpha": 0.001,
+                "alpha": 0.01,
                 "batch_size": 100,
                 "max_iter": 100,
                 "feature_names": [],

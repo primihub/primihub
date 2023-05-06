@@ -209,10 +209,9 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
                     / x.shape[0] + self.alpha * self.theta
 
     def BCELoss(self, x, y):
-        # Approximate loss
-        # First order of taylor expansion: L(x) = ln2 + (0.5 - y) * (x.dot(w) + b)
+        # Approximate loss: L(x) = (1. - 2 * y) * (x.dot(w) + b)
         # Ignore regularization term due to paillier doesn't support ciphertext multiplication
-        return (np.log(2) + (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0]))) / x.shape[0]
+        return (1. - 2 * y).dot(x.dot(self.theta[1:] + self.theta[0])) / x.shape[0]
 
     def CELoss(self, x, y, eps=1e-20):
         logging.error("Paillier method doesn't support multiclass classification")
