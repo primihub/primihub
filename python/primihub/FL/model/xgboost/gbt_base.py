@@ -867,6 +867,26 @@ class VGBTHost(VGBTBase):
         print("ks, auc and acc", ks, auc, acc)
         return trainMetrics
 
+    def _grad(self, y_hat, Y):
+
+        if self.objective == 'logistic':
+            y_hat = 1.0 / (1.0 + np.exp(-y_hat))
+            return y_hat - Y
+        elif self.objective == 'linear':
+            return (y_hat - Y)
+        else:
+            raise KeyError('objective must be linear or logistic!')
+
+    def _hess(self, y_hat, Y):
+
+        if self.objective == 'logistic':
+            y_hat = 1.0 / (1.0 + np.exp(-y_hat))
+            return y_hat * (1.0 - y_hat)
+        elif self.objective == 'linear':
+            return np.array([1] * Y.shape[0])
+        else:
+            raise KeyError('objective must be linear or logistic!')
+
     def predict_raw(self, X: pd.DataFrame, lookup):
         X = X.reset_index(drop='True')
         # Y = pd.Series([self.base_score] * X.shape[0])
@@ -1190,7 +1210,7 @@ class VGBTHost(VGBTBase):
         train_losses = []
 
         start = time.time()
-        for t in range(self.n_estimators):
+        for t in range(self.estimators):
             # fl_console_log.info("Begin to trian tree {}".format(t + 1))
             # print("Begin to trian tree: ", t + 1)
             f_t = pd.Series([0] * Y.shape[0])
