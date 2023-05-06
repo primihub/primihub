@@ -792,6 +792,7 @@ class VGBTHost(VGBTBase):
 
         # just decrypt 'G_left' and 'H_left'
         decrypted_items = ['G_left', 'H_left']
+
         if self.encrypted_proto is not None:
             decrypted_gh_sums = gh_sums[decrypted_items]
             m, n = decrypted_gh_sums.shape
@@ -1127,7 +1128,6 @@ class VGBTHost(VGBTBase):
             tree_structure = {(role, record): {}}
             logging.info("current role: {}, current record: {}".format(
                 role, record))
-
             print(
                 "current role: {}, current record: {}, host_best_gain: {}, guest_best_gain: {}"
                 .format(role, record, host_best_gain, guest_best_gain))
@@ -1440,6 +1440,7 @@ class VGBTHost(VGBTBase):
             if self.encrypted_proto is not None:
                 # whether to merge grads and hess before encrypting
                 if self.merge_gh:
+
                     cp_gh = sample_gh.copy()
                     cp_gh['g'] = cp_gh['g'] + self.const
                     cp_gh = np.round(cp_gh, 4)
@@ -1506,7 +1507,6 @@ class VGBTHost(VGBTBase):
                     'lr': self.learning_rate
                 }, hostModel)
 
-
 class VGBTGuest(VGBTBase):
 
     def __init__(self, **kwargs):
@@ -1519,6 +1519,7 @@ class VGBTGuest(VGBTBase):
         self.selected_column = self.role_params['selected_column']
         self.label = self.role_params['label']
         self.model_path = self.role_params['model_path']
+
         self.lookup_table_path = self.role_params['lookup_table']
         self.batch_size = self.role_params['batch_size']
         self.pub = self.channel.recv("pub")[self.role_params['neighbors'][0]]
