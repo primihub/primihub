@@ -1207,8 +1207,11 @@ class VGBTHost(VGBTBase):
 
     def my_fit(self, X_host, Y, paillier_encryptor, lookup_table_sum):
         y_hat = np.array([self.base_score] * len(Y))
+        if isinstance(Y, pd.Series):
+            Y = Y.values
         train_losses = []
 
+        self.channel.sender("xgb_pub", self.pub)
         start = time.time()
         for t in range(self.estimators):
             # fl_console_log.info("Begin to trian tree {}".format(t + 1))
