@@ -233,7 +233,24 @@ retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTa
     return retcode::SUCCESS;
 }
 
-retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) {
+retcode GrpcChannel::executeTask(const rpc::PushTaskRequest& request,
+                                rpc::PushTaskReply* reply) {
+  grpc::ClientContext context;
+  grpc::Status status = stub_->ExecuteTask(&context, request, reply);
+  if (status.ok()) {
+    VLOG(5) << "ExecuteTask to node: ["
+            <<  dest_node_.to_string() << "] rpc succeeded.";
+  } else {
+    LOG(ERROR) << "ExecuteTask to Node ["
+              <<  dest_node_.to_string() << "] rpc failed. "
+              << status.error_code() << ": " << status.error_message();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request,
+                              rpc::KillTaskResponse* reply) {
     grpc::ClientContext context;
     grpc::Status status = stub_->KillTask(&context, request, reply);
     if (status.ok()) {

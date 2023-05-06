@@ -34,7 +34,7 @@
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/common/defines.h"
 
 using primihub::rpc::PushTaskReply;
@@ -54,7 +54,7 @@ class PIRScheduler : public VMScheduler {
           peer_list_(peer_list),
           peer_dataset_map_(peer_dataset_map) {}
 
-    void dispatch(const PushTaskRequest *pushTaskRequest) override;
+    retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
 
     void add_vm(rpc::Node *single_node, int i,
                 const PushTaskRequest *pushTaskRequest);

@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "src/primihub/protos/worker.pb.h"
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/common/defines.h"
 
 using primihub::rpc::PushTaskRequest;
@@ -28,6 +28,7 @@ using primihub::rpc::PushTaskRequest;
 namespace primihub::task {
 class MPCScheduler : public VMScheduler {
 public:
+  MPCScheduler() = default;
   MPCScheduler(const std::string &node_id, const std::vector<rpc::Node> &peer_list,
                const PeerDatasetMap &peer_dataset_map, uint8_t party_num,
                bool singleton)
@@ -37,7 +38,7 @@ public:
     peer_dataset_map_ = peer_dataset_map;
   }
 
-  void dispatch(const PushTaskRequest *pus_request) override;
+  retcode dispatch(const PushTaskRequest *pus_request) override;
  protected:
   void push_task(const std::string &node_id,
                   const PeerDatasetMap &peer_dataset_map,
@@ -56,6 +57,7 @@ public:
 
 class CRYPTFLOW2Scheduler : public MPCScheduler {
 public:
+  CRYPTFLOW2Scheduler() = default;
   CRYPTFLOW2Scheduler(const std::string &node_id,
                       const std::vector<rpc::Node> &peer_list,
                       const PeerDatasetMap &peer_dataset_map, bool singleton)
@@ -67,6 +69,7 @@ private:
 
 class FalconScheduler : public MPCScheduler {
 public:
+  FalconScheduler() = default;
   FalconScheduler(const std::string &node_id,
                   const std::vector<rpc::Node> &peer_list,
                   const PeerDatasetMap &peer_dataset_map, bool singleton)

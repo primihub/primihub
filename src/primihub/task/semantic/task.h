@@ -33,12 +33,11 @@ using TaskParam = primihub::rpc::Task;
  * @brief Basic task class
  *
  */
-
 class TaskBase {
  public:
   // using task_context_t = TaskContext<primihub::rpc::TaskRequest, primihub::rpc::TaskResponse>;
   using task_context_t = TaskContext<std::string, std::string>;
-  TaskBase(const TaskParam *task_param,
+  TaskBase(const TaskParam* task_param,
           std::shared_ptr<DatasetService> dataset_service);
 
   virtual ~TaskBase() = default;
@@ -81,20 +80,7 @@ class TaskBase {
   inline task_context_t* getMutableTaskContext() {
     return &task_context_;
   }
-  bool isParty(const std::string& node_id) {
-    if (isLocal(node_id) || isScheduler(node_id)) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-  inline bool isScheduler(const std::string& node_id) {
-    return (node_id == SCHEDULER_NODE);
-  }
-  inline bool isLocal(const std::string& node_id) {
-    return (node_id == node_id_);
-  }
-  void setTaskParam(const TaskParam *task_param);
+  void setTaskParam(const TaskParam& task_param);
   TaskParam* getTaskParam();
   std::shared_ptr<DatasetService>& getDatasetService() {
     return dataset_service_;

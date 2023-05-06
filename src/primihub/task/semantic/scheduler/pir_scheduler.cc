@@ -238,7 +238,7 @@ void PIRScheduler::add_vm(rpc::Node *node, int i,
     vm->set_party_id(i);
 }
 
-void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
+retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   PushTaskRequest push_request;
   push_request.CopyFrom(*pushTaskRequest);
   const auto& params = push_request.task().params().param_map();
@@ -272,6 +272,7 @@ void PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   for (auto &t : thrds) {
     t.join();
   }
+  retcode::SUCCESS;
 }
 
 

@@ -14,11 +14,14 @@ cc_library(
 cc_library(
     name = "parser_interface",
     hdrs = [
-        "parser.h",
+      "parser.h",
+    ],
+    srcs = [
+      "parser.cc",
     ],
     deps = [
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/service:dataset_service",
+      "//src/primihub/protos:worker_proto",
+      "//src/primihub/service:dataset_service",
     ],
 )
 
