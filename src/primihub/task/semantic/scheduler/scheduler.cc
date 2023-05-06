@@ -14,9 +14,11 @@ VMScheduler::VMScheduler(const std::string &node_id, bool singleton)
 retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
   PushTaskRequest task_request;
   task_request.CopyFrom(*task_request_ptr);
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(task_request, &str);
-  VLOG(5) << "VMScheduler::dispatch: " << str;
+  if (VLOG_IS_ON(5)) {
+    std::string str;
+    google::protobuf::TextFormat::PrintToString(task_request, &str);
+    VLOG(5) << "VMScheduler::dispatch: " << str;
+  }
   const auto& participate_node = task_request.task().party_access_info();
   std::vector<std::thread> thrds;
   std::vector<std::future<retcode>> result_fut;
@@ -43,8 +45,10 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
   }
   if (has_error) {
     LOG(ERROR) << "dispatch task has error";
+    return retcode::FAIL;
   } else {
     LOG(ERROR) << "dispatch task success";
+    return retcode::SUCCESS;
   }
 }
 
@@ -80,7 +84,8 @@ Node& VMScheduler::getLocalNodeCfg() const {
 }
 
 void VMScheduler::InitLinkContext() {
-  link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+  auto link_mode = primihub::network::LinkMode::GRPC;
+  link_ctx_ = primihub::network::LinkFactory::createLinkContext(link_mode);
   initCertificate();
 }
 

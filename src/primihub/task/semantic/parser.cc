@@ -55,6 +55,7 @@ retcode ProtocolSemanticParser::parseTaskSyntaxTree(
   default:
     LOG(WARNING) << "unsupported language type: " << task_language;
     ret_code = retcode::FAIL;
+    break;
   }
   return ret_code;
 }
@@ -129,44 +130,6 @@ retcode ProtocolSemanticParser::schedulePythonTask(
   auto ret = scheduler_ptr->dispatch(&task_request);
   parseTaskServer(scheduler_ptr->taskServer());
   return retcode::SUCCESS;
-  // std::vector<NodeWithRoleTag> _peers_with_role_tag;
-  // PeerContextMap _peer_context_map;
-
-  // auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
-  // auto datasets_with_tag = _python_parser->getDatasets();
-  // _peer_context_map = _python_parser->getNodeContextMap();
-
-  // // Start find peer node by dataset list
-  // std::shared_ptr<VMScheduler> scheduler{nullptr};
-  // std::thread t([&]() {
-  //     LOG(INFO) << " 🔍 Python task finding meta list from datasets...";
-  //     dataset_service_->metaService()->findPeerListFromDatasets(
-  //         datasets_with_tag,
-  //         [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-  //             LOG(INFO) << " 🔍 Python task found meta list from datasets: "
-  //                       << metas_with_param_tag.size();
-
-  //             // metasToPeerWithTagAndPort(metas_with_param_tag,
-  //             //                           _peer_context_map,
-  //             //                           _peers_with_role_tag);
-  //             std::map<std::string, Node> party_access_info;
-  //             metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
-  //             scheduler = std::make_shared<FLScheduler>(
-  //                     node_id_, singleton_, _peers_with_role_tag,
-  //                     _peer_context_map, metas_with_param_tag);
-
-  //             // Dispatch task to worker nodes
-  //             _python_parser->MergePartyAccessInfo(party_access_info);
-  //             auto& pushTaskRequest = _python_parser->getPushTaskRequest();
-  //             scheduler->dispatch(&pushTaskRequest);
-  //         });
-  // });
-  // t.join();
-  // if (scheduler == nullptr) {
-  //     LOG(ERROR) << "no scheduler created to dispatch task";
-  // } else {
-  //     parseTaskServer(scheduler->taskServer());
-  // }
 }
 
 void ProtocolSemanticParser::metasToDatasetAndOwner(

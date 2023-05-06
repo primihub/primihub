@@ -34,6 +34,7 @@ cc_library(
     ":aby3_scheduler",
     ":fl_scheduler",
     ":tee_scheduler",
+    ":pir_scheduler",
   ],
 )
 

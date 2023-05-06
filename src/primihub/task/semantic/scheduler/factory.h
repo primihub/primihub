@@ -7,6 +7,7 @@
 #include "src/primihub/task/semantic/scheduler/fl_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
+#include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include <glog/logging.h>
 namespace primihub::task {
@@ -17,9 +18,11 @@ class SchedulerFactory {
     auto language = task_config.language();
     switch (language) {
     case rpc::Language::PYTHON:
-      return SchedulerFactory::CreatePythonScheduler(task_config);
+      scheduler = SchedulerFactory::CreatePythonScheduler(task_config);
+      break;
     case rpc::Language::PROTO:
-      return SchedulerFactory::CreateProtoScheduler(task_config);
+      scheduler = SchedulerFactory::CreateProtoScheduler(task_config);
+      break;
     default:
       LOG(ERROR) << "unsupported language type: " << language;
       break;
@@ -39,8 +42,10 @@ class SchedulerFactory {
       scheduler = SchedulerFactory::CreateMPCScheduler(task_config);
       break;
     case rpc::TaskType::PSI_TASK:
-    case rpc::TaskType::PIR_TASK:
       scheduler = std::make_unique<VMScheduler>();
+      break;
+    case rpc::TaskType::PIR_TASK:
+      scheduler = std::make_unique<PIRScheduler>();
       break;
     case rpc::TaskType::TEE_TASK:
       scheduler = std::make_unique<TEEScheduler>();

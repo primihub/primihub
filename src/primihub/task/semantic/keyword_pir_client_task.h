@@ -85,6 +85,7 @@ class KeywordPIRClientTask : public TaskBase {
     std::string key{"default"};
     std::unique_ptr<apsi::PSIParams> psi_params_{nullptr};
     std::unique_ptr<apsi::receiver::Receiver> receiver_{nullptr};
+    std::vector<std::string> recv_data_;
 };
 }  // namespace primihub::task
 #endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_CLIENT_TASK_H_

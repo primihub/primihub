@@ -77,6 +77,7 @@ class TaskFactory {
         LOG(ERROR) << "unsupported task type: " << task_type;
         break;
       }
+      break;
     }
     default:
       LOG(ERROR) << "unsupported language: " << task_language;
@@ -121,8 +122,10 @@ class TaskFactory {
     switch (psi_tag) {
     case PsiTag::ECDH:
       task_ptr = std::make_shared<PSIEcdhTask>(&task_config, dataset_service);
+      break;
     case PsiTag::KKRT:
       task_ptr = std::make_shared<PSIKkrtTask>(&task_config, dataset_service);
+      break;
     default:
       LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
       break;
