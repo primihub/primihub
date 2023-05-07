@@ -155,10 +155,13 @@ cc_library(
 # pir task
 cc_library(
     name = "pir_task",
-    deps = select({
-        "microsoft-apsi" : [":keyword_pir_task"],
-        "//conditions:default": [":id_pir_task"],
-    }),
+    deps = [
+      ":keyword_pir_task",
+    ],
+    # deps = select({
+    #     "microsoft-apsi" : [":keyword_pir_task"],
+    #     "//conditions:default": [":id_pir_task"],
+    # }),
 )
 
 cc_library(
