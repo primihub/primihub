@@ -1,3 +1,6 @@
+
+#include <set>
+
 #include "src/primihub/task/semantic/psi_ecdh_task.h"
 #include "private_set_intersection/cpp/psi_client.h"
 #include "private_set_intersection/cpp/psi_server.h"
@@ -5,16 +8,13 @@
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/endian_util.h"
-#include <set>
 #include "fmt/format.h"
 
 using arrow::Table;
 using arrow::StringArray;
 using arrow::DoubleArray;
-//using arrow::Int64Builder;
+// using arrow::Int64Builder;
 using arrow::StringBuilder;
-
-
 
 namespace primihub::task {
 

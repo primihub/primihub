@@ -1,21 +1,46 @@
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+  name = "scheduler_factory",
+  srcs = ["factory.h"],
+  deps = [
+    ":scheduler_lib",
+  ],
+)
 
 cc_library(
-    name = "scheduler_lib",
-    deps = [
-        ":mpc_scheduler",
-        ":aby3_scheduler",
-        ":fl_scheduler",
-        ":pir_scheduler",
-        ":psi_scheduler",
-        ":tee_scheduler",
-    ],
+  name = "scheduler_interface",
+  hdrs = [
+    "scheduler.h",
+  ],
+  srcs = [
+    "scheduler.cc"
+  ],
+  deps = [
+    "//src/primihub/node:server_config",
+    "//src/primihub/protos:worker_proto",
+    "//src/primihub/util/network:communication_lib",
+    "//src/primihub/common:common_util",
+    "//src/primihub/service:dataset_service",
+    "@com_github_glog_glog//:glog",
+  ],
+)
+
+cc_library(
+  name = "scheduler_lib",
+  deps = [
+    ":scheduler_interface",
+    ":mpc_scheduler",
+    ":aby3_scheduler",
+    ":fl_scheduler",
+    ":tee_scheduler",
+    ":pir_scheduler",
+  ],
 )
 
 SCHEDULER_DEPS = [
-    "//src/primihub/task/semantic:scheduler_interface",
-    "//src/primihub/protos:common_proto",
+  ":scheduler_interface",
+  "//src/primihub/protos:common_proto",
 ]
 
 cc_library(

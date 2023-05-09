@@ -65,7 +65,7 @@ void PSIScheduler::add_vm(rpc::Node *node, int i,
   vm->set_party_id(i);
 }
 
-void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
+retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   PushTaskRequest push_request;
   push_request.CopyFrom(*pushTaskRequest);
   push_request.mutable_task()->set_type(TaskType::NODE_PSI_TASK);
@@ -91,6 +91,7 @@ void PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   for (auto&& t : thrds) {
     t.join();
   }
+  return retcode::SUCCESS;
 }
 
 }

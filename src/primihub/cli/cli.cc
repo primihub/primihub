@@ -209,10 +209,10 @@ void fillParamByArray(const std::string& value_type,
         const nlohmann::json& obj, ParamValue* pv) {
     pv->set_is_array(true);
     if (value_type == "STRING") {
+      auto array_ptr = pv->mutable_value_string_array();
       for (const auto& item : obj) {
-        // TODO (fix in future)
         auto val = item.get<std::string>();
-        pv->set_value_string(std::move(val));
+        array_ptr->add_value_string_array(std::move(val));
       }
     } else if (value_type == "INT32") {
       auto int32_ptr = pv->mutable_value_int32_array();
@@ -418,6 +418,10 @@ int SDKClient::SubmitTask() {
         return -1;
     }
     size_t party_count = pushTaskReply.party_count();
+    if (party_count < 1) {
+      LOG(ERROR) << "party count from reply is: " << party_count;
+      return -1;
+    }
     VLOG(0) << "party count: " << party_count;
     std::map<std::string, std::string> task_status;
     // fecth task status

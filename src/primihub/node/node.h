@@ -85,9 +85,10 @@ class VMNodeImpl final: public VMNode::Service {
     Status SubmitTask(ServerContext *context,
                       const PushTaskRequest *pushTaskRequest,
                       PushTaskReply *pushTaskReply) override;
-    Status ExecuteTask(ServerContext* context,
-                      grpc::ServerReaderWriter<ExecuteTaskResponse,
-                      ExecuteTaskRequest>* stream) override;
+    Status ExecuteTask(::grpc::ServerContext* context,
+                      const rpc::PushTaskRequest* request,
+                      rpc::PushTaskReply* response) override;
+
     Status KillTask(::grpc::ServerContext* context,
                     const ::primihub::rpc::KillTaskRequest* request,
                     ::primihub::rpc::KillTaskResponse* response) override;
@@ -131,6 +132,8 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet;}
 
  protected:
+    retcode DispatchTask(const PushTaskRequest& task_request, PushTaskReply* reply);
+    retcode ExecuteTask(const PushTaskRequest& task_request, PushTaskReply* reply);
     retcode getSchedulerNodeCfg(const PushTaskRequest& request, Node* scheduler_node);
     retcode notifyTaskStatus(const PushTaskRequest& request,
         const rpc::TaskStatus::StatusCode& status, const std::string& message);

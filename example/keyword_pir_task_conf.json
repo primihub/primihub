@@ -10,29 +10,19 @@
     "clientData": {
       "type": "STRING",
       "value": [
-        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT"
+        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT",
+        "IGvEVefbEuKPEIEoRxBUhGaiJlbaQqoGtXhzLFdrKMdBpqAkJJOqNvomqPBvBKmL",
+        "nLmrRIMTaYRaeMRoGHcTGumAJsgsGjNKvJkEYgEEspLHDUIaxUtqEdowjDWOjsJn"
       ]
     },
     "pirType": {
-      "description": "ID_PIR = 0 [TODO]; KEY_PIR = 1;",
+      "description": "ID_PIR = 0 [Unimplement]; KEY_PIR = 1;",
       "type": "INT32",
       "value": 1
     },
     "outputFullFilename": {
       "type": "STRING",
       "value": "data/result/pir_result.csv"
-    }
-  },
-  "party_access_info": {
-    "CLIENT": {
-      "ip": "127.0.0.1",
-      "port": 60050,
-      "use_tls": false
-    },
-    "SERVER": {
-      "ip": "127.0.0.1",
-      "port": 60051,
-      "use_tls": false
     }
   },
   "party_datasets": {

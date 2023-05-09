@@ -44,27 +44,32 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     try {
         auto client_data_it = param_map.find("clientData");
         if (client_data_it != param_map.end()) {
-            auto& client_data = client_data_it->second;
-            if (client_data.is_array()) {
-                recv_query_data_direct = true;   // read query data from clientData key directly
+          auto& client_data = client_data_it->second;
+          if (client_data.is_array()) {
+            recv_query_data_direct = true;   // read query data from clientData key directly
+            const auto& items = client_data.value_string_array().value_string_array();
+            for (const auto& item : items) {
+              recv_data_.push_back(item);
             }
+          } else {
             dataset_path_ = client_data.value_string();
             dataset_id_ = client_data.value_string();
+          }
         } else {
-            // check client has dataset
-            const auto& party_datasets = task.party_datasets();
-            auto it = party_datasets.find(party_name);
-            if (it == party_datasets.end()) {
-              LOG(ERROR) << "no query data found for client, party_name: " << party_name;
-              return retcode::FAIL;
-            }
-            const auto& datasets_map = it->second.data();
-            auto iter = datasets_map.find(party_name);
-            if (iter == datasets_map.end()) {
-              LOG(ERROR) << "no query data found for client, party_name: " << party_name;
-              return retcode::FAIL;
-            }
-            dataset_id_ = iter->second;
+          // check client has dataset
+          const auto& party_datasets = task.party_datasets();
+          auto it = party_datasets.find(party_name);
+          if (it == party_datasets.end()) {
+            LOG(ERROR) << "no query data found for client, party_name: " << party_name;
+            return retcode::FAIL;
+          }
+          const auto& datasets_map = it->second.data();
+          auto iter = datasets_map.find(party_name);
+          if (iter == datasets_map.end()) {
+            LOG(ERROR) << "no query data found for client, party_name: " << party_name;
+            return retcode::FAIL;
+          }
+          dataset_id_ = iter->second;
         }
         VLOG(7) << "dataset_id: " << dataset_id_;
         auto result_file_path_it = param_map.find("outputFullFilename");
@@ -120,17 +125,19 @@ KeywordPIRClientTask::_LoadDataFromDataset() {
 
 std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
 KeywordPIRClientTask::_LoadDataFromRecvData() {
-    std::vector<std::string> orig_items;
-    str_split(this->dataset_path_, &orig_items, ';');
-    // build db_data;
-    // std::unqiue_ptr<apsi::util::CSVReader::DBData>
-    apsi::util::CSVReader::DBData db_data = apsi::util::CSVReader::UnlabeledData();
-    for(const auto& item_str : orig_items) {
-        apsi::Item db_item = item_str;
-        std::get<apsi::util::CSVReader::UnlabeledData>(db_data).push_back(std::move(db_item));
-    }
-    return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), std::move(orig_items)};
-    // return std::make_pair(std::move(db_data), std::move(orig_items));
+  if (recv_data_.empty()) {
+    LOG(ERROR) << "query data is empty";
+    return std::make_pair(nullptr, std::vector<std::string>());
+  }
+  // build db_data;
+  // std::unqiue_ptr<apsi::util::CSVReader::DBData>
+  apsi::util::CSVReader::DBData db_data = apsi::util::CSVReader::UnlabeledData();
+  for(const auto& item_str : recv_data_) {
+    apsi::Item db_item = item_str;
+    std::get<apsi::util::CSVReader::UnlabeledData>(db_data).push_back(std::move(db_item));
+  }
+  return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), recv_data_};
+  // return std::make_pair(std::move(db_data), std::move(orig_items));
 }
 
 std::pair<unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>

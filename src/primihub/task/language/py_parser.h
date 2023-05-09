@@ -17,9 +17,9 @@
 #ifndef SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_
 #define SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_
 
+#include <pybind11/embed.h>
 #include <string>
 #include <vector>
-#include <pybind11/embed.h>
 
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/common.h"
@@ -30,12 +30,10 @@ namespace primihub::task {
 
 class PyParser : public LanguageParser {
  public:
-    PyParser(const PushTaskRequest &pushTaskRequest)
+    PyParser(const rpc::PushTaskRequest &pushTaskRequest)
         : LanguageParser(pushTaskRequest) {
-        // py_code_ = pushTaskRequest_.task().code();
     }
     ~PyParser();
-
     retcode parseTask() override;
     retcode parseDatasets();
     retcode parseNodes() override;
@@ -54,6 +52,6 @@ class PyParser : public LanguageParser {
     py::object  ph_context_, ph_exec_m_;
 };
 
-} // namespace primihub::task
+}  // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_
+#endif  // SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_

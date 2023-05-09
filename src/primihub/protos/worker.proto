@@ -95,7 +95,7 @@ service VMNode {
   // task operation
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
   rpc KillTask(KillTaskRequest) returns (KillTaskResponse);
-  rpc ExecuteTask(stream ExecuteTaskRequest) returns (stream ExecuteTaskResponse);
+  rpc ExecuteTask(PushTaskRequest) returns (PushTaskReply);
   // task status operation
   rpc FetchTaskStatus(TaskContext) returns (TaskStatusReply);
   rpc UpdateTaskStatus(TaskStatus) returns (Empty);

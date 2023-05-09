@@ -15,7 +15,9 @@
  */
 
 #include "src/primihub/task/semantic/scheduler/fl_scheduler.h"
+
 #include <memory>
+
 #include "absl/strings/str_cat.h"
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/protos/common.pb.h"
@@ -110,7 +112,7 @@ retcode FLScheduler::ScheduleTask(const std::string& party_name,
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;
   auto channel = this->getLinkContext()->getChannel(dest_node);
-  auto ret = channel->submitTask(send_request, &reply);
+  auto ret = channel->executeTask(send_request, &reply);
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
@@ -121,45 +123,14 @@ retcode FLScheduler::ScheduleTask(const std::string& party_name,
   return retcode::SUCCESS;
 }
 
-void FLScheduler::push_node_py_task(const std::string& node_id,
-                        const std::string& role,
-                        const Node& dest_node,
-                        const PushTaskRequest& nodePushTaskRequest,
-                        const PeerContextMap& peer_context_map,
-                        const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list) {
-    SET_THREAD_NAME("FLScheduler");
-    PushTaskReply pushTaskReply;
-    PushTaskRequest _1NodePushTaskRequest;
-    _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
-    {
-        // fill scheduler info
-        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
-        auto& local_node = getLocalNodeCfg();
-        rpc::Node scheduler_node;
-        node2PbNode(local_node, &scheduler_node);
-        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
-    }
-    const NodeContext& peer_context = peer_context_map.find(role)->second;
-    nodeContext2TaskParam(peer_context, dataset_meta_list, &_1NodePushTaskRequest);
-    auto channel = this->getLinkContext()->getChannel(dest_node);
-    auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
-    if (ret == retcode::SUCCESS) {
-        //
-    } else {
-        LOG(ERROR) << "Node push task node " << dest_node.to_string() << " rpc failed.";
-    }
-    parseNotifyServer(pushTaskReply);
-}
-
 /**
  * @brief Dispatch FL task to different role. eg: xgboost host & guest.
  *
  */
-void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
+retcode FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   PushTaskRequest send_request;
   send_request.CopyFrom(*pushTaskRequest);
   std::string str;
-  send_request.mutable_task()->set_type(TaskType::NODE_TASK);
   google::protobuf::TextFormat::PrintToString(send_request, &str);
   LOG(INFO) << "FLScheduler::dispatch: " << str;
 
@@ -182,63 +153,7 @@ void FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   for (auto&& t : thrds) {
     t.join();
   }
-    // // Construct node map
-    // if (pushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
-    //     auto task_ptr = nodePushTaskRequest.mutable_task();
-    //     auto mutable_node_map = task_ptr->mutable_node_map();
-    //     task_ptr->set_type(TaskType::NODE_TASK);
-
-    //     // role: host -> party 0   role: guest -> party 1
-    //     for (size_t i = 0; i < this->peers_with_tag_.size(); i++) {
-    //         rpc::Node single_node;
-
-    //         single_node.CopyFrom(this->peers_with_tag_[i].first);
-    //         std::string node_id = this->peers_with_tag_[i].first.node_id();
-    //         std::string role = this->peers_with_tag_[i].second;
-
-    //         int party_id = 0;
-    //         if (role == "host") {
-    //             party_id = 0;
-    //         } else if (role == "guest") {
-    //             party_id = 1;
-    //         }
-    //         (*mutable_node_map)[node_id] = single_node;
-    //         add_vm(&single_node, party_id, 2, &nodePushTaskRequest);
-    //         //Update single_node with vm info
-    //         (*mutable_node_map)[node_id] = single_node;
-    //     }
-    // }
-
-    // // schedule
-    // std::vector<std::thread> thrds;
-    // std::map<std::string, Node> scheduled_nodes;
-    // for (size_t i = 0; i < peers_with_tag_.size(); i++) {
-    //     NodeWithRoleTag peer_with_tag = peers_with_tag_[i];
-    //     auto& pb_node = peer_with_tag.first;
-    //     std::string dest_node_address{absl::StrCat(pb_node.ip(), ":", pb_node.port())};
-    //     LOG(INFO) << "dest_node_address: " << dest_node_address;
-
-    //     Node dest_node;
-    //     pbNode2Node(pb_node, &dest_node);
-    //     scheduled_nodes[dest_node_address] = std::move(dest_node);
-    //     // TODO 获取当Role的data meta list
-    //     std::vector<std::shared_ptr<DatasetMeta>> data_meta_list;
-    //     getDataMetaListByRole(peer_with_tag.second, &data_meta_list);
-    //     thrds.emplace_back(
-    //         std::thread(
-    //             &FLScheduler::push_node_py_task,
-    //             this,
-    //             peer_with_tag.first.node_id(),    // node_id
-    //             peer_with_tag.second,             // role
-    //             std::ref(scheduled_nodes[dest_node_address]),  // dest_node
-    //             std::ref(nodePushTaskRequest), // nodePushTaskRequest
-    //             this->peer_context_map_,
-    //             data_meta_list));
-    // }
-
-    // for (auto &t : thrds) {
-    //     t.join();
-    // }
+  return retcode::SUCCESS;
 }
 
 void FLScheduler::getDataMetaListByRole(const std::string &role,
