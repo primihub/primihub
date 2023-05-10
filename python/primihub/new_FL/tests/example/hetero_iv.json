@@ -38,7 +38,7 @@
             "Bob": {
                 "data_set": "iv_filter_host",
                 "id": null,
-                "label": "y",
+                "label": "Exited",
                 "bin_dict": {},
                 "continuous_variables": [
                     "CreditScore",
