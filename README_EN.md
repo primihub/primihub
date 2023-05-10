@@ -126,7 +126,6 @@ This is an active open source project for everyone, and we are always open to ev
 [contrib.rocks](https://contrib.rocks)
 
 ## Community
-* Slack: [primihub.slack.com](https://join.slack.com/t/primihub/shared_invite/zt-1iftyi7x0-n_HqllTgPfoEcgqw5UzoYw)
 * Wechat Official Account:
 
 ![wechat_helper](./doc/wechat.jpeg)
