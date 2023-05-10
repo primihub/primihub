@@ -11,6 +11,7 @@ class IVBase(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.set_inputs()
 
     def get_summary(self):
         """
@@ -19,7 +20,7 @@ class IVBase(BaseModel):
 
     def set_inputs(self):
         # set common parameters
-        self.model = self.kwargs['common_params']['HeteroIV']
+        self.model = self.kwargs['common_params']['model']
         self.task_name = self.kwargs['common_params']['task_name']
         self.threshold = self.kwargs['common_params']['threshold']
         self.bin_num = self.kwargs['common_params']['bin_num']
