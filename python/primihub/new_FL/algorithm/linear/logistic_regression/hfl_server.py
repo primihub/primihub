@@ -258,6 +258,7 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
         client_models = self.recv_client_model()
 
         self.theta = np.mean(client_models, axis=0)
+        self.theta = np.array(self.encrypt_vector(self.decrypt_vector(self.theta)))
 
     def plaintext_server_model_broadcast(self):
         self.theta = np.array(self.decrypt_vector(self.theta))
