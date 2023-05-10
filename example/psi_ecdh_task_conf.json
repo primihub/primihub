@@ -38,18 +38,6 @@
       "value": "data/result/server/psi_result.csv"
     }
   },
-  "party_access_info": {
-    "CLIENT": {
-      "ip": "127.0.0.1",
-      "port": 60050,
-      "use_tls": false
-    },
-    "SERVER": {
-      "ip": "127.0.0.1",
-      "port": 60051,
-      "use_tls": false
-    }
- },
   "party_datasets": {
     "CLIENT": {
       "CLIENT": "psi_client_data"

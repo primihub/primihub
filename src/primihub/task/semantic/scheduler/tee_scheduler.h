@@ -19,7 +19,7 @@
 
 #include <string>
 #include <vector>
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/common/defines.h"
@@ -39,6 +39,7 @@ namespace primihub::task {
  */
 class TEEScheduler : public VMScheduler {
   public:
+    TEEScheduler() = default;
     TEEScheduler(const std::string &node_id,
                  std::vector<rpc::Node> &peer_list,
                  const PeerDatasetMap &peer_dataset_map,
@@ -67,7 +68,7 @@ class TEEScheduler : public VMScheduler {
 
     ~TEEScheduler() {}
 
-    void dispatch(const PushTaskRequest *pushTaskRequest) override;
+    retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
 
   private:
     void add_vm(rpc::Node *executor, rpc::Node *dpv, int party_id,
