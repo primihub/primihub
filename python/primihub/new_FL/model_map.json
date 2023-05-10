@@ -44,5 +44,15 @@
             "func": "HeteroLrHost",
             "module": "primihub.FL.model.logistic_regression.hetero_lr_base"
         }
+    },
+    "HeteroIV": {
+        "guest": {
+            "func": "IVGuest",
+            "module": "primihub.FL.feature_engineer.woe_iv"
+        },
+        "host": {
+            "func": "IVHost",
+            "module": "primihub.FL.feature_engineer.woe_iv"
+        }
     }
 }

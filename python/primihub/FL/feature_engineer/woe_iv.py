@@ -2,43 +2,92 @@ import functools
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from primihub.utils.net_worker import GrpcServer
+from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_add, opt_paillier_keygen, opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
+from primihub.new_FL.algorithm.utils.base_xus import BaseModel
 
 
-class IVBase:
+class IVBase(BaseModel):
 
-    def __init__(self,
-                 df: pd.DataFrame,
-                 category_feature: list,
-                 continuous_feature: list,
-                 target_name: str,
-                 continuous_feature_max: dict,
-                 continuous_feature_min: dict,
-                 bin_dict=dict(),
-                 return_woe=True,
-                 threshold=0.15,
-                 bin_num=10,
-                 bin_type="equal_size",
-                 channel=None) -> None:
-        self.data = df
-        self.category_feature = category_feature
-        self.continuous_feature = continuous_feature
-        self.target_name = target_name
-        self.thres = threshold
-        self.max_dict = continuous_feature_max
-        self.min_dict = continuous_feature_min
-        self.bin_dict = bin_dict
-        self.return_woe = return_woe
-        self.bin_num = bin_num
-        self.channel = channel
-        self.bin_type = bin_type
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_inputs()
+
+    def get_summary(self):
+        """
+        """
+        return {}
+
+    def set_inputs(self):
+        # set common parameters
+        self.model = self.kwargs['common_params']['model']
+        self.task_name = self.kwargs['common_params']['task_name']
+        self.threshold = self.kwargs['common_params']['threshold']
+        self.bin_num = self.kwargs['common_params']['bin_num']
+        self.bin_type = self.kwargs['common_params']['bin_type']
+        self.security_length = self.kwargs['common_params']['security_length']
+
+        # set role special parameters
+        self.role_params = self.kwargs['role_params']
+        self.data_set = self.role_params['data_set']
+        self.id = self.role_params['id']
+        self.label = self.role_params['label']
+        self.continuous_variables = self.role_params['continuous_variables']
+        self.bin_dict = self.role_params['bin_dict']
+
+        # set party node information
+        self.node_info = self.kwargs['node_info']
+
+        # set other parameters
+        self.other_params = self.kwargs['other_params']
+
+        # read from data path
+        value = eval(self.other_params.party_datasets[
+            self.other_params.party_name].data['data_set'])
+
+        data_path = value['data_path']
+        self.data = pd.read_csv(data_path)
+
+        # set current channel
+        self.channel = GrpcServers(local_role=self.other_params.party_name,
+                                   remote_roles=self.role_params['neighbors'],
+                                   party_info=self.node_info,
+                                   task_info=self.other_params.task_info)
+
+    def run(self):
+        pass
+
+    def get_outputs(self):
+        return dict()
+
+    def get_status(self):
+        return {}
+
+    def preprocess(self):
+        if self.id is not None:
+            self.data.pop(self.id)
+
+        if self.label is not None:
+            self.y = self.data.pop(self.label)
+            enc = LabelEncoder()
+            self.y = enc.fit_transform(self.y)
+
+            self.data['label_0'] = (self.y == 0).astype('int')
+            self.data['label_1'] = (self.y == 1).astype('int')
+
+        # set category columns
+        all_columns = self.data.columns
+        self.category_feature = []
+        for tmp_col in all_columns:
+            if tmp_col in self.continuous_variables + ["label_0", "label_1"]:
+                continue
+            else:
+                self.category_feature.append(tmp_col)
 
     def binning(self):
-        # map continuous features into discrete buckets
         self.bucket_col = []
 
-        for cur_feature in self.continuous_feature:
+        for cur_feature in self.continuous_variables:
             if cur_feature in self.data.columns:
                 cur_feature_bins = self.bin_dict.get(cur_feature, None)
                 if cur_feature_bins is not None:
@@ -77,22 +126,37 @@ class IVBase:
             else:
                 continue
 
-    def iv(self):
+    def filter_features(self, iv_dict=None):
+        filtered_features = []
+
+        if iv_dict is not None:
+            for key, val in iv_dict.items():
+                if val < self.threshold:
+                    continue
+                else:
+                    key = key.replace("_cate", "")
+                    filtered_features.append(key)
+        return filtered_features
+
+
+class IVHost(IVBase):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.out_file = self.role_params['out_file']
         self.binning()
-        assert len(np.unique(self.data[self.target_name])) == 2
+        self.preprocess()
+        # map continuous features into discrete buckets
+        self.public_key, self.private_key = opt_paillier_keygen(
+            self.security_length)
 
-        enc = LabelEncoder()
-        self.data[self.target_name] = enc.fit_transform(
-            self.data[self.target_name])
+        self.channel.sender("pub_key", self.public_key)
 
-        self.data['label_0'] = self.data[self.target_name].map(lambda x: 1
-                                                               if x == 0 else 0)
-        self.data['label_1'] = self.data[self.target_name].map(lambda x: 1
-                                                               if x == 1 else 0)
-
+    def cal_iv(self):
         all_cates = self.category_feature + self.bucket_col
 
         iv_dict = dict()
+
         for dim in all_cates:
             woe_iv_df_0 = self.data.groupby(dim).agg({
                 'label_0': 'sum'
@@ -121,112 +185,15 @@ class IVBase:
 
         return iv_dict
 
-    def filter_features(self):
-        # filter features with higher ivs
-        iv_dict = self.iv()
-        print("=====iv_dict=====", iv_dict)
-        filtered_features = []
-        for key, val in iv_dict.items():
-            if val < self.thres:
-                continue
-            else:
-                key = key.replace("_cate", "")
-                filtered_features.append(key)
-
-        return filtered_features
-
-
-class IVClient(IVBase):
-
-    def __init__(self,
-                 df: pd.DataFrame,
-                 category_feature: list,
-                 continuous_feature: list,
-                 target_name: list,
-                 continuous_feature_max: dict,
-                 continuous_feature_min: dict,
-                 bin_dict: dict,
-                 return_woe=True,
-                 threshold=0.15,
-                 bin_num=10,
-                 bin_type="equal_size",
-                 channel=None) -> None:
-        super().__init__(df, category_feature, continuous_feature, target_name,
-                         continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
-
-    def transfer_range(self,):
-        # set global bucket points
-        continuous_df = self.data[self.continuous_feature]
-        max_0 = continuous_df.max(axis=0)
-        min_0 = continuous_df.min(axis=0)
-        self.channel.sender({'max_0': max_0, 'min_0': min_0}, 'max_min')
-        Max_0 = self.channel.recv('max_min')["Max_0"]
-        Min_0 = self.channel.recv('max_min')["Min_0"]
-
-        cut_points = []
-        cut_width = (Max_0 - Min_0) / self.bin_num
-        cut_points.append(Min_0)
-
-        for _ in range(self.bin_num):
-            cur_point = Min_0 + cut_width
-            Min_0 = cur_point
-            cut_points.append(cur_point)
-
-        for key, val in enumerate(self.continuous_feature):
-            self.bin_dict[val] = cut_points[key]
-
-    def client_binning(self):
-        self.transfer_range()
-        self.binning()
-
-    def client_iv(self):
-        pass
-
-
-class Iv_with_label(IVBase):
-
-    def __init__(
-            self,
-            df: pd.DataFrame,
-            category_feature: list,
-            continuous_feature: list,
-            target_name: str,
-            continuous_feature_max: dict,
-            continuous_feature_min: dict,
-            bin_dict: dict,
-            return_woe=True,
-            threshold=0.15,
-            bin_num=10,
-            bin_type="equal_size",
-            channel=None,
-            security_length=112,  # encryted item length
-            output_file=None) -> None:
-        super().__init__(df, category_feature, continuous_feature, target_name,
-                         continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
-        self.public_key = None
-        self.private_key = None
-        self.output_file = output_file
-
-        if security_length:
-            self.public_key, self.private_key = opt_paillier_keygen(
-                security_length)
-
-    def binning(self):
-        return super().binning()
-
-    def filter_features(self):
-        return super().filter_features()
-
     def run(self):
+        iv_dict = self.cal_iv()
+        print("host iv_dict: ", iv_dict)
+        filter_features = self.filter_features(iv_dict)
 
-        # filtered features from host
-        filter_features = self.filter_features()
-
-        # filtered features from guest
+        if self.out_file is not None:
+            filtered_data = self.data[filter_features]
+            filtered_data[self.label] = self.y
+            filtered_data.to_csv(self.out_file, index=False, sep='\t')
 
         enc_label_0 = opt_paillier_encrypt_crt(self.public_key,
                                                self.private_key, 0)
@@ -235,12 +202,13 @@ class Iv_with_label(IVBase):
 
         enc_label_dict = {0: enc_label_0, 1: enc_label_1}
 
-        enc_label = self.data[self.target_name].apply(
+        enc_label = filtered_data[self.label].apply(
             lambda x: enc_label_dict[int(x)])
-
-        self.channel.sender("pub_key", self.public_key)
         self.channel.sender("enc_label", enc_label)
-        iv_dict_counter = self.channel.recv("iv_dict_counter")
+
+        # receiving guest 'iv_dict'
+        iv_dict_counter = self.channel.recv("iv_dict_counter")[
+            self.role_params['neighbors'][0]]
 
         guest_ivs = {}
 
@@ -283,42 +251,24 @@ class Iv_with_label(IVBase):
 
         self.channel.sender("guest_ivs", guest_ivs)
 
-        if self.output_file is not None:
-            filtered_data = self.data[filter_features + [self.target_name]]
-            filtered_data.to_csv(self.output_file, index=False, sep='\t')
 
-        return filter_features
+class IVGuest(IVBase):
 
-
-class Iv_no_label(IVBase):
-
-    def __init__(self,
-                 df: pd.DataFrame,
-                 category_feature: list,
-                 continuous_feature: list,
-                 target_name: list,
-                 continuous_feature_max: dict,
-                 continuous_feature_min: dict,
-                 bin_dict: dict,
-                 return_woe=True,
-                 threshold=0.15,
-                 bin_num=10,
-                 bin_type="equal_size",
-                 channel=None,
-                 output_file=None) -> None:
-        super().__init__(df, category_feature, continuous_feature, target_name,
-                         continuous_feature_max, continuous_feature_min,
-                         bin_dict, return_woe, threshold, bin_num, bin_type,
-                         channel)
-        self.output_file = output_file
-
-    def binning(self):
-        return super().binning()
-
-    def iv(self, encrypted_label: pd.Series, public_key):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.out_file = self.role_params['out_file']
         self.binning()
+
+        self.preprocess()
+        # map continuous features into discrete buckets
+        self.pub_key = self.channel.recv("pub_key")[
+            self.role_params['neighbors'][0]]
+
+    def cal_iv(self):
         all_cates = self.category_feature + self.bucket_col
         iv_dict_counter = dict()
+        encrypted_label = self.channel.recv("enc_label")[
+            self.role_params['neighbors'][0]]
 
         if encrypted_label is None:
             raise ValueError(f"The {encrypted_label} should not be None!")
@@ -332,7 +282,7 @@ class Iv_no_label(IVBase):
                     tmp_label = encrypted_label[cur_col == tmp_item]
                     tmp_total_count = len(tmp_label)
                     tmp_positive_count = functools.reduce(
-                        lambda x, y: opt_paillier_add(public_key, x, y),
+                        lambda x, y: opt_paillier_add(self.pub_key, x, y),
                         tmp_label)
                     tmp_item_counter[tmp_item] = {}
                     tmp_item_counter[tmp_item]["total_count"] = tmp_total_count
@@ -344,32 +294,15 @@ class Iv_no_label(IVBase):
 
         return iv_dict_counter
 
-    def filter_features(self, guest_ivs):
-        # filter features with ivs
-        filtered_features = []
-        for key, val in guest_ivs.items():
-            if val < self.thres:
-                continue
-            else:
-                key = key.replace("_cate", "")
-                filtered_features.append(key)
-
-        return filtered_features
-
     def run(self):
-        # filter features from guest
-        pub_key = self.channel.recv("pub_key")
-        enc_label = self.channel.recv("enc_label")
-        iv_dict_counter = self.iv(encrypted_label=enc_label, public_key=pub_key)
-        self.channel.sender('iv_dict_counter', iv_dict_counter)
+        iv_dict_counter = self.cal_iv()
+        self.channel.sender("iv_dict_counter", iv_dict_counter)
 
-        guest_ivs = self.channel.recv("guest_ivs")
-        print("guest_ivs ===", guest_ivs)
-
+        guest_ivs = self.channel.recv("guest_ivs")[self.role_params['neighbors']
+                                                   [0]]
+        print("guest_ivs: ", guest_ivs)
         filtered_features = self.filter_features(guest_ivs)
 
-        if self.output_file is not None:
+        if self.out_file is not None:
             filtered_data = self.data[filtered_features]
-            filtered_data.to_csv(self.output_file, index=False, sep='\t')
-
-        return filtered_features
+            filtered_data.to_csv(self.out_file, index=False, sep='\t')

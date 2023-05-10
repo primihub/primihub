@@ -198,6 +198,11 @@ def lr_host_infer():
                                  eval_path=indicator_file_path,
                                  output_file=output_file)
     heter_lr.run()
+    res = pd.read_csv(output_file)
+
+    concat_res = pd.concat([data, res], axis=1)
+    concat_res.to_csv(output_file, index=False, sep='\t')
+
 
 
 @ph.context.function(role='guest',
