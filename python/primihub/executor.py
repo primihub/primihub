@@ -16,6 +16,7 @@
 import traceback
 from cloudpickle import loads
 import json
+from importlib import import_module
 from primihub.context import Context
 from primihub.utils.logger_util import logger
 from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
@@ -23,6 +24,51 @@ import primihub
 
 path = primihub.__file__
 path = path[:-12]
+
+global FUNC_MAP
+
+with open(path + '/new_FL/model_map.json', 'r') as f:
+    FUNC_MAP = json.load(f)
+
+
+def execute_function(common_params, role_params, node_info, task_params):
+    model = common_params['model']
+    role = role_params['role']
+
+    func_name = FUNC_MAP[model][role]['func']
+    func_module = FUNC_MAP[model][role]['module']
+
+    module_name = import_module(func_module)
+    get_model_attr = getattr(module_name, func_name)
+    initial_model = get_model_attr(common_params=common_params,
+                                   role_params=role_params,
+                                   node_info=node_info,
+                                   other_params=task_params)
+    initial_model.run()
+
+
+def run(task_params):
+    party_name = task_params.party_name
+    component_params_str = task_params.params.param_map[party_name].value_string
+    component_params_dict = json.loads(component_params_str.decode())
+
+    # set commom parmas, role params and node_info
+    common_params = component_params_dict['common_params']
+    all_role_params = component_params_dict['role_params']
+    roles = component_params_dict['roles']
+
+    current_role_params = all_role_params[party_name]
+
+    # set role for current party
+    for key, val in roles.items():
+        if party_name in val:
+            current_role_params['role'] = key
+        else:
+            current_role_params['neighbors'] = val
+
+    node_info = task_params.party_access_info
+
+    execute_function(common_params, current_role_params, node_info, task_params)
 
 
 class Executor:
@@ -40,49 +86,4 @@ class Executor:
         PushTaskRequest.ParseFromString(Context.message)
         task = PushTaskRequest.task
 
-        print("Below are the code run on the server")
-        #get the name first
-        task_name = task.name
-        party_name = task.party_name
-        print(f"party_name is : {party_name}")
-
-        #process the parameters
-        task_params = task.params.param_map[party_name].value_string
-        task_parameter = json.loads(task_params.decode())
-        print(f"task_parameter: {task_parameter}")
-
-        task_info = task.task_info
-        print(f"task_info is : {task_info}")
-        #change the task_info into dict
-        task_info_dict = {}
-        task_info_dict['task_id'] = task_info.task_id
-        task_info_dict['job_id'] = task_info.job_id
-        task_info_dict['request_id'] = task_info.request_id
-        party_datasets = task.party_datasets
-        print(f"party_datasets: {party_datasets}")
-        party_access_info = task.party_access_info
-        print(f"party_access_info : {party_access_info}")
-
-        #execute the function
-        role_name = task_parameter['role']
-
-        task_parameter['data'] = task.party_datasets[party_name].data
-        task_parameter['party_name'] = party_name
-        task_parameter['task_info'] = task_info_dict
-        model = task_parameter['model']
-        with open(path + '/new_FL/model_map.json', 'r') as f:
-            func_map = json.load(f)
-        my_code = func_map[model][role_name]
-        import importlib
-        func_name = my_code.split('.')[-1]
-        module_name = '.'.join(my_code.split('.')[:-1])
-        module = importlib.import_module("primihub.new_FL.algorithm." +
-                                         module_name)
-        func_name = my_code.split('.')[-1]
-        print("============", func_name, module_name)
-        Model = getattr(module, func_name)
-        #Model = getattr(module, "Model")
-        # Model = getattr(module, "Model")
-
-        model = Model(task_parameter, party_access_info)
-        model.run()
+        run(task)
