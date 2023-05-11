@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_add, opt_paillier_keygen, opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
-from primihub.new_FL.algorithm.utils.base_xus import BaseModel
+from primihub.new_FL.algorithm.utils.base import BaseModel
 
 
 class IVBase(BaseModel):

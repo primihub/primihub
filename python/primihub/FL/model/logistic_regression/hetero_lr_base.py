@@ -8,7 +8,7 @@ from primihub.utils.sampling import random_sample
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
-from primihub.new_FL.algorithm.utils.base_xus import BaseModel
+from primihub.new_FL.algorithm.utils.base import BaseModel
 
 
 def dloss(p, y):
@@ -395,6 +395,9 @@ class HeteroLrHost(HeteroLrBase):
             })
             pred_df.to_csv(self.model_pred, index=False, sep='\t')
 
+    def score(self, x, y):
+        pass
+
 
 class HeteroLrGuest(HeteroLrBase):
 
@@ -536,3 +539,6 @@ class HeteroLrGuest(HeteroLrBase):
 
         with open(model_path, 'wb') as lr_guest:
             pickle.dump(host_model, lr_guest)
+
+    def score(self, x, y=None):
+        pass

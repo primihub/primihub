@@ -1,28 +1,34 @@
-import pandas as pd
-class BaseModel:
-    def __init__(self,task_parameter,party_access_info):
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
-    
-    def get_roles(self):
-        return self.task_parameter['all_roles'].keys()
-    
-    def get_parties(self):
-        res = []
-        for k,v in self.task_parameter['all_roles'].items():
-            res.extend(v)
-        return res
-    
-    def party2role(self, party):
-        for k,v in self.task_parameter['all_roles'].items():
-            for p in v:
-                if p == party:
-                    return k
-        
-    def role2party(self,role):
-        return self.task_parameter['all_roles'][role]
-    
-    def read(self, key):
-        key = eval(self.task_parameter['data'][key])
-        res = pd.read_csv(key['data_path'])
-        return res
+from abc import abstractmethod, ABCMeta
+from typing import Dict
+
+
+class BaseModel(metaclass=ABCMeta):
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    @abstractmethod
+    def get_summary(self) -> Dict:
+        """Get summary information about the task, such as
+        process type, `request_json` etc.
+        """
+
+    @abstractmethod
+    def set_inputs(self) -> None:
+        """Set input parameters of the task.
+        """
+
+    @abstractmethod
+    def run(self) -> None:
+        """The process of action.
+        """
+
+    @abstractmethod
+    def get_outputs(self) -> Dict:
+        """Get the outputs of task.
+        """
+
+    @abstractmethod
+    def get_status(self) -> Dict:
+        """Get the status of the task.
+        """
