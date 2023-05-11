@@ -21,7 +21,7 @@ from sklearn import metrics
 import logging
 import ray
 from ray.util import ActorPool
-from primihub.new_FL.algorithm.utils.base_xus import BaseModel
+from primihub.new_FL.algorithm.utils.base import BaseModel
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
