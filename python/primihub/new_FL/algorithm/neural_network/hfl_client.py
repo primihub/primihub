@@ -288,15 +288,15 @@ class NeuralNetwork_Client:
             if self.output_dim == 1:
                 y_score = torch.sigmoid(y_score)
                 auc = metrics.roc_auc_score(y_true, y_score)
+                client_metrics['y_true'] = y_true
+                client_metrics['y_score'] = y_score
             else:
                 y_score = torch.softmax(y_score, dim=1)
                 # one-vs-rest
                 auc = metrics.roc_auc_score(y_true, y_score, multi_class='ovr')
                 client_metrics['train_auc'] = auc
                 self.send_to_server("auc", auc)
-
-            client_metrics['y_true'] = y_true
-            client_metrics['y_score'] = y_score
+            
             print(f"loss={loss}, acc={acc}, auc={auc}")
 
         elif self.task == 'regression':

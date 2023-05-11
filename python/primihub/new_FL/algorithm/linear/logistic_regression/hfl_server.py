@@ -101,10 +101,13 @@ class LogisticRegression_Server:
         self.Client_Channels = Client_Channels
 
         self.theta = None
-        self.num_examples_weights = []
-        self.num_positive_examples_weights = []
-        self.num_negtive_examples_weights = []
+        self.multiclass = None
+        self.recv_output_dims()
 
+        self.num_examples_weights = None
+        if not self.multiclass:
+            self.num_positive_examples_weights = None
+            self.num_negtive_examples_weights = None
         self.recv_params()
 
     def recv_from_all_clients(self, key):
@@ -119,15 +122,30 @@ class LogisticRegression_Server:
             _, channel = client_channel
             channel.sender(key, val)
 
+    def recv_output_dims(self):
+        # recv output dims for all clients
+        Output_Dims = self.recv_from_all_clients('output_dim')
+
+        # set final output dim
+        output_dim = max(Output_Dims)
+        if output_dim == 1:
+            self.multiclass = False
+        else:
+            self.multiclass = True
+
+        # send output dim to all clients
+        self.send_to_all_clients("output_dim", output_dim)
+
     def recv_params(self):
         self.num_examples_weights = self.recv_from_all_clients('num_examples')
         
-        self.num_positive_examples_weights = \
-            self.recv_from_all_clients('num_positive_examples')
-        
-        self.num_negtive_examples_weights = \
-                (np.array(self.num_examples_weights) - \
-                np.array(self.num_positive_examples_weights)).tolist()
+        if not self.multiclass:
+            self.num_positive_examples_weights = \
+                self.recv_from_all_clients('num_positive_examples')
+            
+            self.num_negtive_examples_weights = \
+                    (np.array(self.num_examples_weights) - \
+                    np.array(self.num_positive_examples_weights)).tolist()
 
     def recv_client_model(self):
         return self.recv_from_all_clients("model")
@@ -147,19 +165,22 @@ class LogisticRegression_Server:
         self.server_model_broadcast()
 
     def get_loss(self):
-        penalty_loss = 0.5 * self.alpha * self.theta.dot(self.theta)
-
-        client_loss = self.recv_from_all_clients('loss')
-        loss = np.average(client_loss,
-                          weights=self.num_examples_weights) \
-                          + penalty_loss
+        loss =  self.get_scalar_metrics('loss')
+        if self.alpha > 0:
+            loss += 0.5 * self.alpha * (self.theta ** 2).sum()
         return loss
+    
+    def get_scalar_metrics(self, metrics_name):
+        metrics_name = metrics_name.lower()
+        supported_metrics = ['loss', 'acc', 'auc']
+        if metrics_name not in supported_metrics:
+            logging.error(f"""Not supported metrics {metrics_name},
+                          use {supported_metrics} instead""")
 
-    def get_acc(self):
-        client_acc = self.recv_from_all_clients('acc')
-        acc = np.average(client_acc,
-                         weights=self.num_examples_weights)
-        return acc
+        client_metrics = self.recv_from_all_clients(metrics_name)
+            
+        return np.average(client_metrics,
+                          weights=self.num_examples_weights)
     
     def get_fpr_tpr(self):
         client_fpr = self.recv_from_all_clients('fpr')
@@ -182,32 +203,43 @@ class LogisticRegression_Server:
         return fpr, tpr
 
     def get_metrics(self):
+        server_metrics = {}
+
         loss = self.get_loss()
+        server_metrics["train_loss"] = loss
 
-        acc = self.get_acc()
+        acc = self.get_scalar_metrics('acc')
+        server_metrics["train_acc"] = acc
         
-        fpr, tpr = self.get_fpr_tpr()
+        if self.multiclass:
+            auc = self.get_scalar_metrics('auc')
+            server_metrics["train_auc"] = auc
 
-        ks = ks_from_fpr_tpr(fpr, tpr)
+            print(f"loss={loss}, acc={acc}, auc={auc}")
+        else:
+            fpr, tpr = self.get_fpr_tpr()
+            server_metrics["train_fpr"] = fpr
+            server_metrics["train_tpr"] = tpr
 
-        auc = auc_from_fpr_tpr(fpr, tpr)
+            ks = ks_from_fpr_tpr(fpr, tpr)
+            server_metrics["train_ks"] = ks
 
-        print(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+            auc = auc_from_fpr_tpr(fpr, tpr)
+            server_metrics["train_auc"] = auc
 
-        return {
-            "train_loss": loss,
-            "train_acc": acc,
-            "train_fpr": fpr,
-            "train_tpr": tpr,
-            "train_ks": ks,
-            "train_auc": auc,
-        }
+            print(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+
+        return server_metrics
     
     def print_metrics(self):
         # print loss & acc
         loss = self.get_loss()
-        acc = self.get_acc()
-        print(f"loss={loss}, acc={acc}")
+        acc = self.get_scalar_metrics('acc')
+        if self.multiclass:
+            auc = self.get_scalar_metrics('auc')
+            print(f"loss={loss}, acc={acc}, auc={auc}")
+        else:
+            print(f"loss={loss}, acc={acc}")
 
 
 class LogisticRegression_Paillier_Server(LogisticRegression_Server,
@@ -226,10 +258,14 @@ class LogisticRegression_Paillier_Server(LogisticRegression_Server,
         client_models = self.recv_client_model()
 
         self.theta = np.mean(client_models, axis=0)
+        self.theta = np.array(self.encrypt_vector(self.decrypt_vector(self.theta)))
 
     def plaintext_server_model_broadcast(self):
         self.theta = np.array(self.decrypt_vector(self.theta))
         self.server_model_broadcast()
+
+    def get_loss(self):
+        return self.get_scalar_metrics('loss')
 
     def print_metrics(self):
         # print loss

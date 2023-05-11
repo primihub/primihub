@@ -125,7 +125,6 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 [contrib.rocks](https://contrib.rocks)
 
 ## 社区
-* Slack: [primihub.slack.com](https://join.slack.com/t/primihub/shared_invite/zt-1iftyi7x0-n_HqllTgPfoEcgqw5UzoYw)
 * 微信助手:
 
 ![wechat_helper](./doc/wechat.jpeg)
