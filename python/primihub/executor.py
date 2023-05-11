@@ -35,7 +35,7 @@ def execute_function(common_params, role_params, node_info, task_params):
     model = common_params['model']
     role = role_params['role']
 
-    func_path = FUNC_MAP[model][role]['module']
+    func_path = FUNC_MAP[model][role]
     cls_module, cls_name = func_path.rsplit(".", maxsplit=1)
 
     module_name = import_module(cls_module)
