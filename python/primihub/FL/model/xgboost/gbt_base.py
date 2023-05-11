@@ -1507,6 +1507,7 @@ class VGBTHost(VGBTBase):
                     'lr': self.learning_rate
                 }, hostModel)
 
+
 class VGBTGuest(VGBTBase):
 
     def __init__(self, **kwargs):
@@ -1591,10 +1592,6 @@ class VGBTGuest(VGBTBase):
 
         buckets_x_guest = ray_x_guest.map_batches(hist_bin_transform,
                                                   batch_format="pandas")
-
-        # print("current x-guset and buckets_x_guest", X_guest,
-        #       buckets_x_guest.to_pandas(), encrypted_ghs,
-        #       buckets_x_guest.to_pandas().shape, encrypted_ghs.shape)
 
         total_left_ghs = {}
 
@@ -1845,13 +1842,7 @@ class VGBTGuest(VGBTBase):
         if tree is not None:
             k = list(tree.keys())[0]
             role, record_id = k[0], k[1]
-            # role = self.proxy_server.Get('role')
-            # record_id = self.proxy_server.Get('record_id')
-            # print("record_id, role, current_lookup", role, record_id,
-            #       current_lookup)
 
-            # if record_id is None:
-            #     break
             if role == "guest":
                 # if record_id is None:
                 #     return
@@ -1861,12 +1852,7 @@ class VGBTGuest(VGBTBase):
                 id_left = guest_test_left.index
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
                 id_right = guest_test_right.index
-                # self.proxy_client_host.Remote(
-                #     {
-                #         'id_left': id_left,
-                #         'id_right': id_right
-                #     },
-                #     str(record_id) + '_ids')
+
                 self.channel.sender(
                     str(record_id) + '_ids', {
                         'id_left': id_left,
