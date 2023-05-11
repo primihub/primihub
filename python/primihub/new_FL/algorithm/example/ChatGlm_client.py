@@ -1,52 +1,56 @@
 from primihub.new_FL.algorithm.utils.base import BaseModel
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.utils.net_work import GrpcServers
 
 import os
 import time
 
 class ChatGlmClient(BaseModel):
-    def __init__(self, task_parameter, party_access_info):
-        super().__init__(task_parameter, party_access_info)
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.role_params = self.kwargs['role_params']
+        self.other_params = self.kwargs['other_params']
+        self.node_info = self.kwargs['node_info']
+        self.common_params = self.kwargs['common_params']
+
     
     def run(self):
-        if self.task_parameter['process'] == 'train':
+        if self.common_params['process'] == 'train':
             self.train()
     
 
     def train(self):
+        role_params = self.role_params
 
-        party_name = self.task_parameter['party_name']
-        my_parameter = self.task_parameter[party_name]
-        num_examples = my_parameter['num_examples']
+        num_examples = self.role_params['num_examples']
 
         #send num_sampes        
-        server = self.role2party('server')[0]
-        client = self.task_parameter['party_name']
 
-        server_channel = GrpcServer(client, server,
-                                    self.party_access_info,
-                                    self.task_parameter['task_info'])
-        server_channel.sender('num_examples', num_examples)
+        self.channel = GrpcServers(local_role=self.other_params.party_name,
+                                   remote_roles=self.role_params['neighbors'],
+                                   party_info=self.node_info,
+                                   task_info=self.other_params.task_info)
+
+
+    
+        self.channel.sender('num_examples', num_examples)
         
 
-        path = my_parameter['path']
+        path = role_params['path']
         os.chdir(path)
         os.environ["PRE_SEQ_LEN"] = "128"
         os.environ["LR"] = "2e-2"
         os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-        train_iter = self.task_parameter['train_iter']
-        train_file = my_parameter['train_file']
-        validation_file = my_parameter['validation_file']
-        prompt_column = my_parameter['prompt_column']
-        response_column = my_parameter["response_column"]
-        history_column = my_parameter['history_column'] if 'history_column' in my_parameter else None
-        model_name_or_path = my_parameter['model_name_or_path']
-        output_dir = my_parameter['output_dir']
+        train_iter = self.common_params['train_iter']
+        train_file = role_params['train_file']
+        validation_file = role_params['validation_file']
+        prompt_column = role_params['prompt_column']
+        response_column = role_params["response_column"]
+        history_column = role_params['history_column'] if 'history_column' in role_params else None
+        model_name_or_path = role_params['model_name_or_path']
+        output_dir = role_params['output_dir']
         ptuning_checkpoint = f"{output_dir}/checkpoint-{train_iter}"
 
-        for i in range(self.task_parameter['aggration_iter']):
+        for i in range(self.common_params['aggration_iter']):
             cmd = f"python3 main.py \
                         --do_train \
                         --train_file {train_file} \
@@ -80,8 +84,8 @@ class ChatGlmClient(BaseModel):
             prefix_state_dict = torch.load(os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
             del torch
             
-            server_channel.sender(f'client_res_{i}', prefix_state_dict)
-            res = server_channel.recv(f'server_res_{i}')
+            self.channel.sender(f'client_res_{i}', prefix_state_dict)
+            res = self.channel.recv(f'server_res_{i}')
             import torch
             torch.save(res, os.path.join(path+"/"+ptuning_checkpoint, "pytorch_model.bin"))
             del torch
