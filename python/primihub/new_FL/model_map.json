@@ -36,5 +36,9 @@
     "HeteroIV": {
         "guest": "primihub.FL.feature_engineer.woe_iv.IVGuest",
         "host": "primihub.FL.feature_engineer.woe_iv.IVHost"
+    },
+    "HeteroLRInfer": {
+        "guest": "primihub.FL.model.logistic_regression.hetero_lr_infer.HeteroLrGuestInfer",
+        "host": "primihub.FL.model.logistic_regression.hetero_lr_infer.HeteroLrHostInfer"
     }
 }
