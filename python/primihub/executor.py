@@ -35,11 +35,11 @@ def execute_function(common_params, role_params, node_info, task_params):
     model = common_params['model']
     role = role_params['role']
 
-    func_name = FUNC_MAP[model][role]['func']
-    func_module = FUNC_MAP[model][role]['module']
+    func_path = FUNC_MAP[model][role]['module']
+    cls_module, cls_name = func_path.rsplit(".", maxsplit=1)
 
-    module_name = import_module(func_module)
-    get_model_attr = getattr(module_name, func_name)
+    module_name = import_module(cls_module)
+    get_model_attr = getattr(module_name, cls_name)
     initial_model = get_model_attr(common_params=common_params,
                                    role_params=role_params,
                                    node_info=node_info,

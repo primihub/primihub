@@ -27,32 +27,26 @@
     },
     "HeteroXGB": {
         "guest": {
-            "func": "VGBTGuest",
-            "module": "primihub.FL.model.xgboost.gbt_base"
+            "module": "primihub.FL.model.xgboost.gbt_base.VGBTGuest"
         },
         "host": {
-            "func": "VGBTHost",
-            "module": "primihub.FL.model.xgboost.gbt_base"
+            "module": "primihub.FL.model.xgboost.gbt_base.VGBTHost"
         }
     },
     "HeteroLR": {
         "guest": {
-            "func": "HeteroLrGuest",
-            "module": "primihub.FL.model.logistic_regression.hetero_lr_base"
+            "module": "primihub.FL.model.logistic_regression.hetero_lr_base.HeteroLrGuest"
         },
         "host": {
-            "func": "HeteroLrHost",
-            "module": "primihub.FL.model.logistic_regression.hetero_lr_base"
+            "module": "primihub.FL.model.logistic_regression.hetero_lr_base.HeteroLrHost"
         }
     },
     "HeteroIV": {
         "guest": {
-            "func": "IVGuest",
-            "module": "primihub.FL.feature_engineer.woe_iv"
+            "module": "primihub.FL.feature_engineer.woe_iv.IVGuest"
         },
         "host": {
-            "func": "IVHost",
-            "module": "primihub.FL.feature_engineer.woe_iv"
+            "module": "primihub.FL.feature_engineer.woe_iv.IVHost"
         }
     }
 }
