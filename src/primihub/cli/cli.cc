@@ -273,6 +273,9 @@ void fillParamByScalar(const std::string& value_type,
 }
 
 retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* task_ptr) {
+  if (!js_task_config.contains("component_params")) {
+    return retcode::SUCCESS;
+  }
   std::set<std::string> all_parties;
   // get all party from component_params.roles
   // component_params
