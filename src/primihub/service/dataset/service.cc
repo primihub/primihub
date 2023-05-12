@@ -193,7 +193,6 @@ void DatasetService::restoreDatasetFromLocalStorage() {
   LOG(INFO) << "💾 Restore dataset from local storage...";
   std::vector<DatasetMeta> metas;
   MetaService()->GetAllMetas(&metas);
-  return;
   for (auto& meta : metas) {
     // Update node let address.
     std::string data_url = meta.getDataURL();
