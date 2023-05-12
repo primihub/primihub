@@ -148,7 +148,8 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
     auto& meta_info = dataset.meta_info();
     if (dataset.available() == rpc::DatasetData::Available) {
       VLOG(5) << "data id: " << meta_info.id() << " "
-        << "access_info: " << meta_info.access_info();
+        << "access_info: " << meta_info.access_info() << " "
+        << "address: " << meta_info.address();
       auto meta = std::make_shared<DatasetMeta>();
       PbMetaInfoToMeta(meta_info, meta.get());
       auto it = id2tag.find(meta_info.id());
