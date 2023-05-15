@@ -2132,6 +2132,7 @@ class VGBGuestInfer(BaseModel):
             self.guest_get_tree_ids(X, tree, current_lookup)
 
     def run(self):
+        self.load_model()
         self.guest_predict(self.data)
 
     def get_summary(self):
