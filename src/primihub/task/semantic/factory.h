@@ -97,12 +97,7 @@ class TaskFactory {
   static std::shared_ptr<TaskBase> CreateMPCTask(const std::string& node_id,
       const PushTaskRequest& request,
       std::shared_ptr<DatasetService> dataset_service) {
-    const auto& code_map = request.task().code();
-    std::string _function_name;
-    auto it = code_map.find(DEFAULT);
-    if (it != code_map.end()) {
-      _function_name = it->second;
-    }
+    const auto& _function_name = request.task().code();
     const auto& task_param = request.task();
     return std::make_shared<MPCTask>(node_id, _function_name,
                                     &task_param, dataset_service);

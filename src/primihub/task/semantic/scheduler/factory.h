@@ -59,12 +59,7 @@ class SchedulerFactory {
 
   static std::unique_ptr<VMScheduler> CreateMPCScheduler(const rpc::Task& task_config) {
     std::unique_ptr<VMScheduler> scheduler{nullptr};
-    std::string algorithm_type;
-    auto& code_map = task_config.code();
-    auto it = code_map.find(DEFAULT);
-    if (it != code_map.end()) {
-      algorithm_type = it->second;
-    }
+    auto& algorithm_type = task_config.code();
     if (algorithm_type == "maxpool") {
       scheduler = std::make_unique<CRYPTFLOW2Scheduler>();
     } else if (algorithm_type == "lenet") {

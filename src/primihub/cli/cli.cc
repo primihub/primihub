@@ -171,7 +171,6 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
     // if given task code file, read it and set task code
     auto task_code = absl::GetFlag(FLAGS_task_code);
     auto code_ptr = task_ptr->mutable_code();
-    std::string defalut_key = "default";
     if (task_code.find('/') != std::string::npos ||
         task_code.find('\\') != std::string::npos) {
         // read file
@@ -183,12 +182,10 @@ retcode buildRequestWithFlag(PushTaskRequest* request) {
         std::stringstream buffer;
         buffer << ifs.rdbuf();
         std::cout << buffer.str() << std::endl;
-        auto& role_code = (*code_ptr)[defalut_key];
-        role_code = buffer.str();
+        *code_ptr = buffer.str();
     } else {
         // read code from command line
-        auto& role_code = (*code_ptr)[defalut_key];
-        role_code = task_code;
+        *code_ptr = task_code;
     }
 
     // Setup input datasets
@@ -397,13 +394,11 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
         std::stringstream buffer;
         buffer << ifs.rdbuf();
         std::cout << buffer.str() << std::endl;
-        auto& code = (*code_ptr)["DEFAULT"];
-        code = buffer.str();
+        (*code_ptr) = buffer.str();
       } else {
         // read code from command line
         std::string task_code = js["task_code"]["code"].get<std::string>();
-        auto& code = (*code_ptr)["DEFAULT"];
-        code = std::move(task_code);
+        (*code_ptr) = std::move(task_code);
       }
     }
 
