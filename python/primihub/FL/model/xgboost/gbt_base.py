@@ -25,7 +25,6 @@ from primihub.new_FL.algorithm.utils.base import BaseModel
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
-
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_crt, opt_paillier_encrypt_crt, opt_paillier_add, opt_paillier_keygen
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
@@ -1504,7 +1503,8 @@ class VGBTHost(VGBTBase):
             pickle.dump(
                 {
                     'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
+                    'lr': self.learning_rate,
+                    "base_score": self.base_score
                 }, hostModel)
 
 
@@ -1884,3 +1884,262 @@ class VGBTGuest(VGBTBase):
             tree = self.tree_structure[t + 1]
             current_lookup = lookup_sum[t + 1]
             self.guest_get_tree_ids(X, tree, current_lookup)
+
+
+class VGBTHostInfer(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_inputs()
+        self.channel = GrpcServers(local_role=self.other_params.party_name,
+                                   remote_roles=self.role_params['neighbors'],
+                                   party_info=self.node_info,
+                                   task_info=self.other_params.task_info)
+
+    def set_inputs(self):
+        # set common params
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+        self.metric_path = self.common_params['metric_path']
+        self.model_pred = self.common_params['model_pred']
+
+        # set role params
+        self.data_set = self.role_params['data_set']
+        self.id = self.role_params['id']
+        self.selected_column = self.role_params['selected_column']
+        self.label = self.role_params['label']
+        self.model_path = self.role_params['model_path']
+        self.lookup_table_path = self.role_params['lookup_table']
+        # read from data path
+        value = eval(self.other_params.party_datasets[
+            self.other_params.party_name].data['data_set'])
+
+        data_path = value['data_path']
+        self.data = pd.read_csv(data_path)
+
+    def load_model(self):
+        # interpret the xgb model
+        with open(self.model_path, "rb") as current_model:
+            model_dict = pickle.load(current_model)
+
+        self.tree_struct = model_dict['tree_struct']
+        self.learing_rate = model_dict['lr']
+        self.base_score = model_dict['base_score']
+
+        # interpret the lookup table
+        with open(self.lookup_table_path, "rb") as hostTable:
+            lookup_table_sum = pickle.load(hostTable)
+
+        self.lookup_table_sum = lookup_table_sum
+
+    def preprocess(self):
+        if self.label is not None:
+            self.y = self.data.pop(self.label).values
+
+    def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+
+            if role == 'guest':
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
+                id_left = ids['id_left']
+                id_right = ids['id_right']
+                host_test_left = host_test.loc[id_left]
+                host_test_right = host_test.loc[id_right]
+                id_left = id_left.tolist()
+                id_right = id_right.tolist()
+
+            else:
+                tmp_lookup = current_lookup
+                # var, cut = tmp_lookup['feature_id'], tmp_lookup['threshold_value']
+                var, cut = tmp_lookup[record_id][0], tmp_lookup[record_id][1]
+
+                host_test_left = host_test.loc[host_test[var] < cut]
+                id_left = host_test_left.index.tolist()
+                # id_left = host_test_left.index
+                host_test_right = host_test.loc[host_test[var] >= cut]
+                id_right = host_test_right.index.tolist()
+
+                self.channel.sender(
+                    str(record_id) + '_ids', {
+                        'id_left': host_test_left.index,
+                        'id_right': host_test_right.index
+                    })
+
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                    w[id_left] = kk[1]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+                    w[id_right] = kk[1]
+            # print("current w: ", w)
+            self.host_get_tree_node_weight(host_test_left, tree_left,
+                                           current_lookup, w)
+            self.host_get_tree_node_weight(host_test_right, tree_right,
+                                           current_lookup, w)
+
+    def host_predict_prob(self, X):
+        pred_y = np.array([self.base_score] * len(X))
+
+        for t in range(len(self.lookup_table_sum)):
+            tree = self.tree_struct[t + 1]
+            lookup_table = self.lookup_table_sum[t + 1]
+            # y_t = pd.Series([0] * X.shape[0])
+            y_t = np.zeros(len(X))
+            #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
+            self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
+            pred_y = pred_y + self.learing_rate * y_t
+
+        return 1 / (1 + np.exp(-pred_y))
+
+    def host_predict(self, X):
+        preds = self.host_predict_prob(X)
+
+        return (preds >= 0.5).astype('int')
+
+    def run(self):
+        self.load_model()
+        self.preprocess()
+        pred_prob = self.host_predict_prob(self.data)
+        pred_df = pd.DataFrame({
+            'pred_prob': pred_prob,
+            "pred_y": (pred_prob >= 0.5).astype('int')
+        })
+
+        pred_df.to_csv(self.model_pred, index=False, sep='\t')
+
+        if self.label is not None:
+            acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
+                                         self.y)
+
+            ks, auc = evaluate_ks_and_roc_auc(y_real=self.y, y_proba=pred_prob)
+            fpr, tpr, threshold = metrics.roc_curve(self.y, pred_prob)
+            test_metrics = {
+                "test_acc": acc,
+                "test_ks": ks,
+                "test_auc": auc,
+                "test_fpr": fpr.tolist(),
+                "test_tpr": tpr.tolist()
+            }
+            test_metrics_buff = json.dumps(test_metrics)
+
+            with open(self.metric_path, 'w') as filePath:
+                filePath.write(test_metrics_buff)
+
+    def get_summary(self):
+        return {}
+
+    def get_outputs(self):
+        return {}
+
+    def get_status(self):
+        return {}
+
+
+class VGBGuestInfer(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_inputs()
+        self.channel = GrpcServers(local_role=self.other_params.party_name,
+                                   remote_roles=self.role_params['neighbors'],
+                                   party_info=self.node_info,
+                                   task_info=self.other_params.task_info)
+
+    def set_inputs(self):
+        # set common params
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+
+        # set role params
+        self.data_set = self.role_params['data_set']
+        self.id = self.role_params['id']
+        self.selected_column = self.role_params['selected_column']
+        self.label = self.role_params['label']
+        self.model_path = self.role_params['model_path']
+        self.lookup_table_path = self.role_params['lookup_table']
+        # read from data path
+        value = eval(self.other_params.party_datasets[
+            self.other_params.party_name].data['data_set'])
+
+        data_path = value['data_path']
+        self.data = pd.read_csv(data_path)
+
+    def load_model(self):
+        # interpret the xgb model
+        with open(self.model_path, "rb") as current_model:
+            model_dict = pickle.load(current_model)
+
+        self.tree_struct = model_dict['tree_struct']
+        self.learing_rate = model_dict['lr']
+        self.base_score = model_dict['base_score']
+
+        # interpret the lookup table
+        with open(self.lookup_table_path, "rb") as hostTable:
+            lookup_table_sum = pickle.load(hostTable)
+
+        self.lookup_table_sum = lookup_table_sum
+
+    def preprocess(self):
+        if self.label is not None:
+            self.y = self.data.pop(self.label).values
+
+    def guest_get_tree_ids(self, guest_test, tree, current_lookup):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+
+            if role == "guest":
+
+                tmp_lookup = current_lookup[record_id]
+                var, cut = tmp_lookup[0], tmp_lookup[1]
+                guest_test_left = guest_test.loc[guest_test[var] < cut]
+                id_left = guest_test_left.index
+                guest_test_right = guest_test.loc[guest_test[var] >= cut]
+                id_right = guest_test_right.index
+
+                self.channel.sender(
+                    str(record_id) + '_ids', {
+                        'id_left': id_left,
+                        'id_right': id_right
+                    })
+
+            else:
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
+                id_left = ids['id_left']
+
+                guest_test_left = guest_test.loc[id_left]
+                id_right = ids['id_right']
+                guest_test_right = guest_test.loc[id_right]
+
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+
+            self.guest_get_tree_ids(guest_test_left, tree_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, tree_right,
+                                    current_lookup)
+
+    def guest_predict(self, X):
+        for t in range(len(self.lookup_table_sum)):
+            tree = self.tree_struct[t + 1]
+            current_lookup = self.lookup_table_sum[t + 1]
+            self.guest_get_tree_ids(X, tree, current_lookup)
+
+    def run(self):
+        self.guest_predict(self.data)
+
+    def get_summary(self):
+        return {}
+
+    def get_outputs(self):
+        return {}
+
+    def get_status(self):
+        return {}
