@@ -2,19 +2,6 @@ import pickle
 import linkcontext
 
 
-class Test:
-
-    def __init__(self, t=1, a=2):
-        self.t = t
-        self.a = a
-        Test.add_one(self)
-
-    @staticmethod
-    def add_one(self):
-        self.t = self.t + 1
-        self.a = self.a + 1
-
-
 def Node(ip, port, use_tls, nodename="default"):
     return linkcontext.Node(ip, port, use_tls, nodename)
 

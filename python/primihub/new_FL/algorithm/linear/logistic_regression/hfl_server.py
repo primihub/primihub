@@ -1,4 +1,4 @@
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.utils.net_work import GrpcServers
 from primihub.new_FL.algorithm.utils.base import BaseModel
 
 import logging
@@ -10,78 +10,79 @@ from primihub.FL.model.metrics.metrics import fpr_tpr_merge2,\
 from primihub.new_FL.algorithm.linear.logistic_regression.base import PaillierFunc
 
 
-class Server(BaseModel):
-    def __init__(self, task_parameter, party_access_info):
-        super().__init__(task_parameter, party_access_info)
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
+class LogisticRegressionServer(BaseModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        print(20*'*')
+        print('common')
+        print(self.common_params)
+        print('role')
+        print(self.role_params)
+        print('node')
+        print(self.node_info)
+        print('other')
+        print(self.other_params)
+
+    def get_outputs(self):
+        pass
+
+    def get_summary(self):
+        pass
+
+    def set_inputs(self):
+        pass
     
+    def get_status(self):
+        pass
+        
     def run(self):
-        if self.task_parameter['process'] == 'train':
-            self.train()
+        self.train()
     
     def train(self):
         # setup communication channels
-        Clients = self.role2party('client')
-        server = self.task_parameter['party_name']
-        
-        Client_Channels = []
-        for client in Clients:
-            Client_Channels.append((client,
-                                    GrpcServer(server, client,
-                                               self.party_access_info,
-                                               self.task_parameter['task_info'])))
-        
+        client_channel = GrpcServers(local_role=self.other_params.party_name,
+                                     remote_roles=self.role_params['neighbors'],
+                                     party_info=self.node_info,
+                                     task_info=self.other_params.task_info)
+
         # model init
-        train_method = self.task_parameter['mode']
+        train_method = self.common_params['mode']
         if train_method == 'Plaintext' or train_method == 'DPSGD':
-            model = LogisticRegression_Server(self.task_parameter['alpha'],
-                                              Client_Channels)
+            model = Plaintext_DPSGD_Server(self.common_params['alpha'],
+                                           client_channel)
         elif train_method == 'Paillier':
-            model = LogisticRegression_Paillier_Server(self.task_parameter['alpha'],
-                                                       self.task_parameter['n_length'],
-                                                       Client_Channels)
+            model = Paillier_Server(self.common_params['alpha'],
+                                    self.common_params['n_length'],
+                                    client_channel)
         else:
             logging.error(f"Not supported train method: {train_method}")
 
         # data preprocessing
         # minmaxscaler
-        data_max = []
-        data_min = []
-
-        for client_channel in Client_Channels:
-            client, channel = client_channel
-            data_max.append(channel.recv(client + '_data_max'))
-            data_min.append(channel.recv(client + '_data_min'))
+        data_max = client_channel.recv('data_max')
+        data_min = client_channel.recv('data_min')
         
         data_max = np.array(data_max).max(axis=0)
         data_min = np.array(data_min).min(axis=0)
 
-        for client_channel in Client_Channels:
-            _, channel = client_channel
-            channel.sender('data_max', data_max)
-            channel.sender('data_min', data_min)
+        client_channel.sender('data_max', data_max)
+        client_channel.sender('data_min', data_min)
 
         # model training
         print("-------- start training --------")
-        for i in range(self.task_parameter['max_iter']):
+        for i in range(self.common_params['max_iter']):
             print(f"-------- iteration {i+1} --------")
             model.train()
         
             # print metrics
-            if self.task_parameter['print_metrics']:
+            if self.common_params['print_metrics']:
                 model.print_metrics()
         print("-------- finish training --------")
 
         # receive final epsilons when using DPSGD
         if train_method == 'DPSGD':
-            eps = []
-            for client_channel in Client_Channels:
-                client, channel = client_channel
-                eps.append(
-                    channel.recv(client + "_eps")
-                )
-            print(f"""For delta={self.task_parameter['delta']},
+            eps = client_channel.recv("eps")
+            print(f"""For delta={self.common_params['delta']},
                     the current epsilon is {max(eps)}""")
         # send plaintext model when using Paillier
         elif train_method == 'Paillier':
@@ -94,11 +95,11 @@ class Server(BaseModel):
         pass
 
 
-class LogisticRegression_Server:
+class Plaintext_DPSGD_Server:
 
-    def __init__(self, alpha, Client_Channels):
+    def __init__(self, alpha, client_channel):
         self.alpha = alpha
-        self.Client_Channels = Client_Channels
+        self.client_channel = client_channel
 
         self.theta = None
         self.multiclass = None
@@ -111,20 +112,15 @@ class LogisticRegression_Server:
         self.recv_params()
 
     def recv_from_all_clients(self, key):
-        vals_list = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            vals_list.append(channel.recv(client + '_' + key))
-        return vals_list
+        return self.client_channel.recv(key)
     
     def send_to_all_clients(self, key, val):
-        for client_channel in self.Client_Channels:
-            _, channel = client_channel
-            channel.sender(key, val)
+        self.client_channel.sender(key, val)
 
     def recv_output_dims(self):
         # recv output dims for all clients
         Output_Dims = self.recv_from_all_clients('output_dim')
+        print(Output_Dims)
 
         # set final output dim
         output_dim = max(Output_Dims)
@@ -242,11 +238,11 @@ class LogisticRegression_Server:
             print(f"loss={loss}, acc={acc}")
 
 
-class LogisticRegression_Paillier_Server(LogisticRegression_Server,
-                                         PaillierFunc):
+class Paillier_Server(Plaintext_DPSGD_Server,
+                      PaillierFunc):
     
-    def __init__(self, alpha, n_length, Client_Channels):
-        LogisticRegression_Server.__init__(self, alpha, Client_Channels)
+    def __init__(self, alpha, n_length, client_channel):
+        Plaintext_DPSGD_Server.__init__(self, alpha, client_channel)
         self.public_key,\
         self.private_key = paillier.generate_paillier_keypair(n_length=n_length) 
         self.public_key_broadcast()

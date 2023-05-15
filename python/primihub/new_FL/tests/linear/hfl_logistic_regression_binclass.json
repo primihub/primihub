@@ -1,5 +1,5 @@
 {
-    "party_access_info": {
+    "party_info": {
         "Alice": {
             "ip": "127.0.0.1",
             "port": "50050",
@@ -17,36 +17,38 @@
         },
         "task_manager": "127.0.0.1:50050"
     },
-    "roles": {
-        "server": [
-            "Alice"
-        ],
-        "client": [
-            "Bob",
-            "Charlie"
-        ]
-    },
-    "tasks": [
-        {
-            "data_path": {
-                "Bob": {
-                    "X": "train_homo_lr_host"
-                },
-                "Charlie": {
-                    "X": "train_homo_lr_guest"
-                }
-            },
+    "component_params": {
+        "roles": {
+            "server": [
+                "Alice"
+            ],
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
             "model": "HFL_logistic_regression",
-            "process": "train",
-            "parameters": {
-                "mode": "Plaintext",
-                "learning_rate": "optimal",
-                "alpha": 0.0001,
-                "batch_size": 100,
-                "max_iter": 100,
-                "feature_names": [],
-                "print_metrics": true
+            "task_name": "train",
+            "mode": "Plaintext",
+            "learning_rate": "optimal",
+            "alpha": 0.0001,
+            "batch_size": 100,
+            "max_iter": 100,
+            "selected_column": null,
+            "label": "y",
+            "print_metrics": true,
+            "metric_path": "metrics.json"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "train_homo_lr_host",
+                "model_path": "bob_model.pkl"
+            },
+            "Charlie": {
+                "data_set": "train_homo_lr_guest",
+                "model_path": "Charlie_model.pkl"
             }
         }
-    ]
+    }
 }
