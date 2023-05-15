@@ -33,6 +33,7 @@ class GrpcDatasetMetaService : public DatasetMetaService {
   std::unique_ptr<rpc::DataSetService::Stub> stub_{nullptr};
   std::shared_ptr<grpc::Channel> grpc_channel_{nullptr};
   Node meta_service_;
+  int retry_max_times_{GRPC_RETRY_MAX_TIMES};
 };
 }  // namespace primihub::service
 
