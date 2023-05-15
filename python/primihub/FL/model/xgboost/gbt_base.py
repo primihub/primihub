@@ -1408,7 +1408,8 @@ class VGBTHost(VGBTBase):
             pickle.dump(
                 {
                     'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
+                    'lr': self.learning_rate,
+                    "base_score": self.base_score
                 }, hostModel)
 
     def fit(self):
@@ -1826,11 +1827,9 @@ class VGBTGuest(VGBTBase):
 
         # save guest part model
         with open(self.model_path, 'wb') as guestModel:
-            pickle.dump(
-                {
-                    'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
-                }, guestModel)
+            pickle.dump({
+                'tree_struct': self.tree_structure,
+            }, guestModel)
 
         # save guest part table
         with open(self.lookup_table_path, 'wb') as guestTable:

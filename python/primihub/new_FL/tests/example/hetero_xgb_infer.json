@@ -42,7 +42,7 @@
                 "model_path": "host_model.pkl"
             },
             "Charlie": {
-                "data_set": "train_hetero_xgb_guest",
+                "data_set": "test_hetero_xgb_guest",
                 "id": null,
                 "model_path": "guest_model.pkl",
                 "selected_column": null,
