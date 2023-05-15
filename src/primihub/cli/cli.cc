@@ -28,6 +28,7 @@
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/common/common.h"
 #include "uuid.h"
+// #include <google/protobuf/text_format.h>
 
 using primihub::rpc::ParamValue;
 using primihub::rpc::string_array;
@@ -271,112 +272,179 @@ void fillParamByScalar(const std::string& value_type,
     }
 }
 
+retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* task_ptr) {
+  if (!js_task_config.contains("component_params")) {
+    return retcode::SUCCESS;
+  }
+  std::set<std::string> all_parties;
+  // get all party from component_params.roles
+  // component_params
+  auto& component_params = js_task_config["component_params"];
+  for (const auto& [role, party_members] : component_params["roles"].items()) {
+    for (const auto& party_name : party_members) {
+      all_parties.emplace(party_name);
+    }
+  }
+  // parse party info
+  if (js_task_config.contains("party_info")) {
+    auto access_info_ptr = task_ptr->mutable_party_access_info();
+    for (auto& [party_name, host] : js_task_config["party_info"].items()) {
+      if (all_parties.find(party_name) == all_parties.end()) {
+        LOG(WARNING) << party_name << " is not one of party in this task, ignore....";
+        continue;
+      }
+      auto& access_info = (*access_info_ptr)[party_name];
+      access_info.set_ip(host["ip"].get<std::string>());
+      access_info.set_port(host["port"].get<uint32_t>());
+      access_info.set_use_tls(host["use_tls"].get<bool>());
+      all_parties.emplace(party_name);
+    }
+  }
+
+  std::string component_params_str = component_params.dump();
+  auto param_map_ptr = task_ptr->mutable_params()->mutable_param_map();
+  for (const auto& party_name : all_parties) {
+    auto& pv_config = (*param_map_ptr)[party_name];
+    pv_config.set_is_array(false);
+    pv_config.set_var_type(rpc::VarType::STRING);
+    pv_config.set_value_string(component_params_str);
+  }
+  // dataset for parties
+  auto party_dataset_ptr = task_ptr->mutable_party_datasets();
+  auto& role_params = component_params["role_params"];
+  for (const auto& party_name : all_parties) {
+    if (!role_params.contains(party_name)) {
+      continue;
+    }
+    auto& role_param = role_params[party_name];
+    if (!role_param.contains("data_set")) {
+      continue;
+    }
+    auto dataset_ptr = (*party_dataset_ptr)[party_name].mutable_data();
+    (*dataset_ptr)["data_set"] = role_param["data_set"].get<std::string>();
+  }
+  return retcode::SUCCESS;
+}
+
 retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskRequest* request) {
-    try {
-      std::string task_config_content;
-      primihub::client::getFileContents(file_path, &task_config_content);
-      auto js = nlohmann::json::parse(task_config_content);
-      auto task_ptr = request->mutable_task();
+  try {
+    std::string task_config_content;
+    primihub::client::getFileContents(file_path, &task_config_content);
+    auto js = nlohmann::json::parse(task_config_content);
+    auto task_ptr = request->mutable_task();
+    TaskType task_type;
+    if (js.contains("task_type")) {
       std::string task_type_str = js["task_type"].get<std::string>();
-      TaskType task_type;
       auto ret = getTaskType(task_type_str, &task_type);
       if (ret != retcode::SUCCESS) {
-          return retcode::FAIL;
+        LOG(ERROR) << "getTaskType failed";
+        return retcode::FAIL;
       }
       task_ptr->set_type(task_type);
-      // Setup task params
-      if (js.contains("task_name")) {
-          std::string task_name = js["task_name"].get<std::string>();
-          task_ptr->set_name(task_name);
-      } else {
-          task_ptr->set_name("demoTask");
-      }
-      // task language
-      auto task_lang = js["task_lang"].get<std::string>();
+    }
+
+    // Setup task params
+    if (js.contains("task_name")) {
+      std::string task_name = js["task_name"].get<std::string>();
+      task_ptr->set_name(task_name);
+    } else {
+      task_ptr->set_name("demoTask");
+    }
+    // task language
+    std::string task_lang;
+    if (js.contains("task_lang")) {
+      task_lang = js["task_lang"].get<std::string>();
       if (task_lang == "proto") {
-          task_ptr->set_language(Language::PROTO);
+        task_ptr->set_language(Language::PROTO);
       } else if (task_lang == "python") {
-          task_ptr->set_language(Language::PYTHON);
+        task_ptr->set_language(Language::PYTHON);
       } else {
-          std::cerr << "task language not supported" << std::endl;
-          return retcode::FAIL;
+        LOG(ERROR) << "task language not supported" << std::endl;
+        return retcode::FAIL;
       }
-      // param
-      auto map = task_ptr->mutable_params()->mutable_param_map();
-      for (auto& [key, value_info]: js["params"].items()) {
-          auto value_type = value_info["type"].get<std::string>();
-          ParamValue pv;
-          if (value_info["value"].is_array()) {
-              fillParamByArray(value_type, value_info["value"], &pv);
-          } else {
-              fillParamByScalar(value_type, value_info["value"], &pv);
-          }
-          (*map)[key] = std::move(pv);
-      }
-      // code
+    }
+
+    // param
+    auto map = task_ptr->mutable_params()->mutable_param_map();
+    for (auto& [key, value_info]: js["params"].items()) {
+        auto value_type = value_info["type"].get<std::string>();
+        ParamValue pv;
+        if (value_info["value"].is_array()) {
+            fillParamByArray(value_type, value_info["value"], &pv);
+        } else {
+            fillParamByScalar(value_type, value_info["value"], &pv);
+        }
+        (*map)[key] = std::move(pv);
+    }
+    // code
+    if (js.contains("task_code")) {
       std::string code_file_path = js["task_code"]["code_file_path"].get<std::string>();
       auto code_ptr = task_ptr->mutable_code();
       if (!code_file_path.empty()) {
-          // read file
-          std::ifstream ifs(code_file_path);
-          if (!ifs.is_open()) {
-              std::cerr << "open file failed: " << code_file_path << std::endl;
-              return retcode::FAIL;
-          }
-          std::stringstream buffer;
-          buffer << ifs.rdbuf();
-          std::cout << buffer.str() << std::endl;
-          auto& code = (*code_ptr)["DEFAULT"];
-          code = buffer.str();
-      } else {
-          // read code from command line
-          std::string task_code = js["task_code"]["code"].get<std::string>();
-          auto& code = (*code_ptr)["DEFAULT"];
-          code = std::move(task_code);
-      }
-      // party_datasets
-      auto party_datasets = task_ptr->mutable_party_datasets();
-      if (!js["party_datasets"].empty()) {
-        for (auto& [party_name, dataset_list]: js["party_datasets"].items()) {
-          auto& datasets = (*party_datasets)[party_name];
-          auto dataset_info = datasets.mutable_data();
-          for (auto& [dataset_index, dataset_id] : dataset_list.items()) {
-            auto& dataset_value = (*dataset_info)[dataset_index];
-            dataset_value = dataset_id;
-          }
+        // read file
+        std::ifstream ifs(code_file_path);
+        if (!ifs.is_open()) {
+          std::cerr << "open file failed: " << code_file_path << std::endl;
+          return retcode::FAIL;
         }
+        std::stringstream buffer;
+        buffer << ifs.rdbuf();
+        std::cout << buffer.str() << std::endl;
+        auto& code = (*code_ptr)["DEFAULT"];
+        code = buffer.str();
       } else {
-        LOG(WARNING) << "no dataset is setting";
+        // read code from command line
+        std::string task_code = js["task_code"]["code"].get<std::string>();
+        auto& code = (*code_ptr)["DEFAULT"];
+        code = std::move(task_code);
       }
-      // party access info
-      auto party_access_info = task_ptr->mutable_party_access_info();
-      if (!js["party_access_info"].empty()) {
-        for (auto& [key, value]: js["party_access_info"].items()) {
-          auto& party_node = (*party_access_info)[key];
-          std::string ip = value["ip"].get<std::string>();
-          int32_t port = value["port"].get<int32_t>();
-          bool use_tls = value["use_tls"].get<bool>();
-          party_node.set_ip(ip);
-          party_node.set_port(port);
-          party_node.set_use_tls(use_tls);
-        }
-      }
-      // dataset
-      if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
-          auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
-          for (auto& item : js["input_datasets"]) {
-              std::string dataset = item.get<std::string>();
-              task_ptr->add_input_datasets(std::move(dataset));
-          }
-      }
-      // TEE task
-      if (task_type == TaskType::TEE_TASK) {
-          task_ptr->add_input_datasets("datasets");
-      }
-    } catch(std::exception& e) {
-        return retcode::FAIL;
     }
-    return retcode::SUCCESS;
+
+    // party_datasets
+    auto party_datasets = task_ptr->mutable_party_datasets();
+    if (js.contains("party_datasets")) {
+      for (auto& [party_name, dataset_list]: js["party_datasets"].items()) {
+        auto& datasets = (*party_datasets)[party_name];
+        auto dataset_info = datasets.mutable_data();
+        for (auto& [dataset_index, dataset_id] : dataset_list.items()) {
+          auto& dataset_value = (*dataset_info)[dataset_index];
+          dataset_value = dataset_id;
+        }
+      }
+    }
+    // party access info
+    auto party_access_info = task_ptr->mutable_party_access_info();
+    if (js.contains("party_access_info")) {
+      for (auto& [key, value]: js["party_access_info"].items()) {
+        auto& party_node = (*party_access_info)[key];
+        std::string ip = value["ip"].get<std::string>();
+        int32_t port = value["port"].get<int32_t>();
+        bool use_tls = value["use_tls"].get<bool>();
+        party_node.set_ip(ip);
+        party_node.set_port(port);
+        party_node.set_use_tls(use_tls);
+      }
+    }
+    // dataset
+    if (task_lang == "proto" && task_type != TaskType::TEE_TASK) {
+      auto input_datasets = absl::GetFlag(FLAGS_input_datasets);
+      for (auto& item : js["input_datasets"]) {
+        std::string dataset = item.get<std::string>();
+        task_ptr->add_input_datasets(std::move(dataset));
+      }
+    }
+    // TEE task
+    if (task_type == TaskType::TEE_TASK) {
+      task_ptr->add_input_datasets("datasets");
+    }
+    BuildFederatedRequest(js, task_ptr);
+    // std::string str;
+    // google::protobuf::TextFormat::PrintToString(*request, &str);
+    // LOG(INFO) << "BuildedRequest: " << str;
+  } catch(std::exception& e) {
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 int SDKClient::SubmitTask() {
@@ -502,7 +570,8 @@ int main(int argc, char** argv) {
     auto cert_config_path = absl::GetFlag(FLAGS_cert_config);
     auto use_tls = absl::GetFlag(FLAGS_use_tls);
     LOG(INFO) << "use tls: " << use_tls;
-    auto link_ctx = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
+    auto link_mode = primihub::network::LinkMode::GRPC;
+    auto link_ctx = primihub::network::LinkFactory::createLinkContext(link_mode);
     if (use_tls) {
         auto& ca_path = cert_config_path[0];
         auto& key_path = cert_config_path[1];
