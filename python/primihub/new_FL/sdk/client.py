@@ -34,7 +34,10 @@ class Client:
         party_datasets = {}
         for tmp_party, tmp_param in self.role_params.items():
             tmp_data = common_pb2.Dataset()
-            tmp_data.data['data_set'] = tmp_param['data_set']
+            if 'data_set' is tmp_param:
+                tmp_data.data['data_set'] = tmp_param['data_set']
+            else:
+                tmp_data.data['data_set'] = ""
             party_datasets[tmp_party] = tmp_data
 
         # construct 'cp_task_info'
