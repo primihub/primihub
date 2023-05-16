@@ -239,9 +239,11 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
   }
 
   int schema_fields = table_schema->num_fields();
+  auto& all_select_index = this->SelectedColumnIndex();
   for (size_t i = 0; i < selected_fields; i++) {
-    if (i < schema_fields) {
-      auto& field_ptr = table_schema->field(i);
+    int index = all_select_index[i];
+    if (index < schema_fields) {
+      auto& field_ptr = table_schema->field(index);
       int field_type = field_ptr->type()->id();
       VLOG(5) << "field_name: " << field_ptr->name() << " type: " << field_type;
       auto array = arrow_wrapper::util::MakeArrowArray(field_type, result_data[i]);
