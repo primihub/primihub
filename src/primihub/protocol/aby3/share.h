@@ -331,6 +331,9 @@ class Network {
   void add_node(std::string node_id, SYS_Node& node) {
     node_map.emplace(node_id, node);
     for(auto it = node_map.begin(); it != node_map.end(); ++it) {
+      if (iter->first == SCHEDULER_NODE) {
+        continue;
+      }
       if(node_id != it->first) {
         SYS_Node& node_iter = it->second;
         node.build_connect(node_iter);
