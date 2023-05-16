@@ -44,5 +44,8 @@
     "HeteroXGBInfer": {
         "guest": "primihub.FL.model.xgboost.gbt_base.VGBGuestInfer",
         "host": "primihub.FL.model.xgboost.gbt_base.VGBTHostInfer"
+    },
+    "DataAlign": {
+      "executor": "primihub.plain_data_util.data_align.DataAlign"
     }
 }
