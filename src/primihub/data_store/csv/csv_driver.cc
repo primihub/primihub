@@ -83,6 +83,7 @@ retcode CSVAccessInfo::fromJsonString(const std::string& access_info) {
         << e.what() << "] "
         << "item: " << access_info;
     this->file_path_ = access_info;
+
   }
   return ret;
 }
@@ -94,8 +95,14 @@ retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& meta_info) {
     nlohmann::json js_access_info = nlohmann::json::parse(access_info);
     this->file_path_ = js_access_info["data_path"].get<std::string>();
   } catch (std::exception& e) {
-    LOG(ERROR) << "get dataset path failed, " << e.what();
-    return retcode::FAIL;
+    // LOG(ERROR) << "get dataset path failed, " << e.what() << " "
+    //   << "detail: " << meta_info;
+    this->file_path_ = meta_info["access_meta"];
+    if (this->file_path_.empty()) {
+      LOG(ERROR) << "get dataset path failed, " << e.what() << " "
+          << "detail: " << meta_info;
+      return retcode::FAIL;
+    }
   }
   return retcode::SUCCESS;
 }

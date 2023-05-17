@@ -307,12 +307,12 @@ retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* t
 
   std::string component_params_str = component_params.dump();
   auto param_map_ptr = task_ptr->mutable_params()->mutable_param_map();
-  for (const auto& party_name : all_parties) {
-    auto& pv_config = (*param_map_ptr)[party_name];
-    pv_config.set_is_array(false);
-    pv_config.set_var_type(rpc::VarType::STRING);
-    pv_config.set_value_string(component_params_str);
-  }
+  // for (const auto& party_name : all_parties) {
+  auto& pv_config = (*param_map_ptr)["component_params"];
+  pv_config.set_is_array(false);
+  pv_config.set_var_type(rpc::VarType::STRING);
+  pv_config.set_value_string(component_params_str);
+  // }
   // dataset for parties
   auto party_dataset_ptr = task_ptr->mutable_party_datasets();
   auto& role_params = component_params["role_params"];

@@ -194,15 +194,6 @@ void DatasetService::restoreDatasetFromLocalStorage() {
   std::vector<DatasetMeta> metas;
   MetaService()->GetAllMetas(&metas);
   for (auto& meta : metas) {
-    // Update node let address.
-    std::string data_url = meta.getDataURL();
-    std::string dataset_path;
-    Node node_info;
-    auto ret = DataURLToDetail(data_url, node_info, dataset_path);
-    if (ret != retcode::SUCCESS) {
-      LOG(ERROR) << "💾 Restore dataset from local storage failed: " << data_url;
-      continue;
-    }
     auto meta_info = meta.toJSON();
     VLOG(5) << "meta_info: " << meta_info;
     std::string driver_type = meta.getDriverType();
@@ -216,7 +207,7 @@ void DatasetService::restoreDatasetFromLocalStorage() {
                                               nodelet_addr_,
                                               std::move(access_info));
     this->registerDriver(fid, driver);
-    meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
+    // meta.setDataURL(nodelet_addr_ + ":" + dataset_path);
     meta.setServerInfo(nodelet_addr_);
     // Publish dataset meta on public network.
     MetaService()->PutMeta(meta);
