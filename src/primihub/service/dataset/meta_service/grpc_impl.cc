@@ -53,6 +53,7 @@ retcode GrpcDatasetMetaService::PutMeta(const DatasetMeta& meta) {
                 <<  meta_service_.to_string() << "] rpc failed. "
                 << status.error_code() << ": " << status.error_message();
       if (retry_time < retry_max_times_) {
+        retry_time++;
         continue;
       } else {
         LOG(WARNING) << "PutMeta to Node ["
@@ -60,11 +61,9 @@ retcode GrpcDatasetMetaService::PutMeta(const DatasetMeta& meta) {
             << this->retry_max_times_ << " abort this operation";
         return retcode::FAIL;
       }
-      retry_time++;
     }
     break;
   } while (true);
-
   return retcode::SUCCESS;
 }
 
@@ -92,6 +91,7 @@ retcode GrpcDatasetMetaService::GetMeta(const DatasetId& dataset_id,
                 <<  meta_service_.to_string() << "] rpc failed. "
                 << status.error_code() << ": " << status.error_message();
       if (retry_time < retry_max_times_) {
+        retry_time++;
         continue;
       } else {
         LOG(ERROR) << "GetDataset from: ["
@@ -99,7 +99,6 @@ retcode GrpcDatasetMetaService::GetMeta(const DatasetId& dataset_id,
                   << retry_max_times_ << ", abort this operation";
         return retcode::FAIL;
       }
-      retry_time++;
     }
     auto dataset_list = reply.data_set();
     VLOG(5) << "dataset_list: " << dataset_list.size();
@@ -167,6 +166,7 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
                 <<  meta_service_.to_string() << "] rpc failed. "
                 << status.error_code() << ": " << status.error_message();
       if (retry_time < retry_max_times_) {
+        retry_time++;
         continue;
       } else {
         LOG(ERROR) << "GetDataset from: ["
@@ -174,7 +174,6 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
                   << retry_max_times_ << ", abort this operation";
         return retcode::FAIL;
       }
-      retry_time++;
     }
     auto dataset_list = reply.data_set();
     VLOG(5) << "dataset_list: " << dataset_list.size();
@@ -232,6 +231,7 @@ retcode GrpcDatasetMetaService::GetAllMetas(std::vector<DatasetMeta>* metas_ptr)
                 << status.error_code() << ": " << status.error_message()
                 << "  rerty...";
       if (retry_time < retry_max_times_) {
+        retry_time++;
         continue;
       } else {
         LOG(ERROR) << "GetDataset from: ["
@@ -239,7 +239,6 @@ retcode GrpcDatasetMetaService::GetAllMetas(std::vector<DatasetMeta>* metas_ptr)
                   << retry_max_times_ << ", abort this operation";
         return retcode::FAIL;
       }
-      retry_time++;
     }
     auto& metas = *metas_ptr;
     metas.clear();
