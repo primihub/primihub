@@ -65,7 +65,7 @@ RUN tar zxf /opt/bazel-bin.tar.gz \
 
 # Copy opt_paillier_c2py.so linkcontext.so to /app/python, this enable setup.py find it.
 RUN mv $TARGET_PATH/src/primihub/pybind_warpper/opt_paillier_c2py.so /app/python/ \
-  && mv $TARGET_PATH/src/primihub/pybind_warpper/linkcontext.so /app/python/
+  && mv $TARGET_PATH/src/primihub/pybind_warpper/linkcontext.so /app/python/ \
   && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
 
 WORKDIR /app/python
