@@ -286,7 +286,9 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
 retcode KeywordPIRServerTask::processPSIParams() {
     CHECK_TASK_STOPPED(retcode::FAIL);
     std::string request_type_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto& recv_queue = link_ctx->GetRecvQueue(this->key);
     recv_queue.wait_and_pop(request_type_str);
     auto recv_type = reinterpret_cast<RequestType*>(const_cast<char*>(request_type_str.c_str()));
     VLOG(5) << "recv_data type: " << static_cast<int>(*recv_type);

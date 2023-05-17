@@ -35,8 +35,7 @@ using TaskParam = primihub::rpc::Task;
  */
 class TaskBase {
  public:
-  // using task_context_t = TaskContext<primihub::rpc::TaskRequest, primihub::rpc::TaskResponse>;
-  using task_context_t = TaskContext<std::string, std::string>;
+  using task_context_t = TaskContext;
   TaskBase(const TaskParam* task_param,
           std::shared_ptr<DatasetService> dataset_service);
 
@@ -74,6 +73,9 @@ class TaskBase {
   inline std::string submit_client_id() {
     return submit_client_id_;
   }
+  inline std::string party_name() {
+    return party_name_;
+  }
   inline task_context_t& getTaskContext() {
     return task_context_;
   }
@@ -109,6 +111,7 @@ class TaskBase {
    std::string node_id_;
    std::string submit_client_id_;
    std::string request_id_;
+   std::string party_name_;
 };
 
 } // namespace primihub::task
