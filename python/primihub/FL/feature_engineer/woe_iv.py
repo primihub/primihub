@@ -2,9 +2,11 @@ import functools
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
+from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_add, opt_paillier_keygen, opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.utils.logger_util import logger
 
 
 class IVBase(BaseModel):
@@ -20,39 +22,30 @@ class IVBase(BaseModel):
 
     def set_inputs(self):
         # set common parameters
-        self.model = self.kwargs['common_params']['model']
-        self.task_name = self.kwargs['common_params']['task_name']
-        self.threshold = self.kwargs['common_params']['threshold']
-        self.bin_num = self.kwargs['common_params']['bin_num']
-        self.bin_type = self.kwargs['common_params']['bin_type']
-        self.security_length = self.kwargs['common_params']['security_length']
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+        self.threshold = self.common_params['threshold']
+        self.bin_num = self.common_params['bin_num']
+        self.bin_type = self.common_params['bin_type']
+        self.security_length = self.common_params['security_length']
 
         # set role special parameters
-        self.role_params = self.kwargs['role_params']
         self.data_set = self.role_params['data_set']
         self.id = self.role_params['id']
         self.label = self.role_params['label']
         self.continuous_variables = self.role_params['continuous_variables']
         self.bin_dict = self.role_params['bin_dict']
 
-        # set party node information
-        self.node_info = self.kwargs['node_info']
-
-        # set other parameters
-        self.other_params = self.kwargs['other_params']
-
         # read from data path
-        value = eval(self.other_params.party_datasets[
-            self.other_params.party_name].data['data_set'])
-
-        data_path = value['data_path']
-        self.data = pd.read_csv(data_path)
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
 
         # set current channel
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
 
     def run(self):
         pass
@@ -150,7 +143,7 @@ class IVHost(IVBase):
         self.public_key, self.private_key = opt_paillier_keygen(
             self.security_length)
 
-        self.channel.sender("pub_key", self.public_key)
+        self.channel.send("pub_key", self.public_key)
 
     def cal_iv(self):
         all_cates = self.category_feature + self.bucket_col
@@ -204,11 +197,10 @@ class IVHost(IVBase):
 
         enc_label = filtered_data[self.label].apply(
             lambda x: enc_label_dict[int(x)])
-        self.channel.sender("enc_label", enc_label)
+        self.channel.send("enc_label", enc_label)
 
         # receiving guest 'iv_dict'
-        iv_dict_counter = self.channel.recv("iv_dict_counter")[
-            self.role_params['neighbors'][0]]
+        iv_dict_counter = self.channel.recv("iv_dict_counter")
 
         guest_ivs = {}
 
@@ -249,7 +241,7 @@ class IVHost(IVBase):
             iv = round(table_count['iv'].sum(), 4)
             guest_ivs[key] = iv
 
-        self.channel.sender("guest_ivs", guest_ivs)
+        self.channel.send("guest_ivs", guest_ivs)
 
 
 class IVGuest(IVBase):
@@ -261,14 +253,12 @@ class IVGuest(IVBase):
 
         self.preprocess()
         # map continuous features into discrete buckets
-        self.pub_key = self.channel.recv("pub_key")[
-            self.role_params['neighbors'][0]]
+        self.pub_key = self.channel.recv("pub_key")
 
     def cal_iv(self):
         all_cates = self.category_feature + self.bucket_col
         iv_dict_counter = dict()
-        encrypted_label = self.channel.recv("enc_label")[
-            self.role_params['neighbors'][0]]
+        encrypted_label = self.channel.recv("enc_label")
 
         if encrypted_label is None:
             raise ValueError(f"The {encrypted_label} should not be None!")
@@ -296,10 +286,9 @@ class IVGuest(IVBase):
 
     def run(self):
         iv_dict_counter = self.cal_iv()
-        self.channel.sender("iv_dict_counter", iv_dict_counter)
+        self.channel.send("iv_dict_counter", iv_dict_counter)
 
-        guest_ivs = self.channel.recv("guest_ivs")[self.role_params['neighbors']
-                                                   [0]]
+        guest_ivs = self.channel.recv("guest_ivs")
         print("guest_ivs: ", guest_ivs)
         filtered_features = self.filter_features(guest_ivs)
 
