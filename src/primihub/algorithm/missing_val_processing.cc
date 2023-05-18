@@ -311,7 +311,22 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
 
   // File path.
-  data_file_path_ = param_map["Data_File"].value_string();
+  const auto& party_name = task.party_name();
+  const auto& party_dataset = task.party_datasets();
+  {
+    auto it = party_dataset.find(party_name);
+    if (it == party_dataset.end()) {
+      LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+      return -1;
+    }
+    const auto& datasets = it->second.data();
+    auto data_it = datasets.find("Data_File");
+    if (data_it == datasets.end()) {
+      LOG(ERROR) << "no dataset named Data_File is found for party_name: " << party_name;
+      return -1;
+    }
+    data_file_path_ = data_it->second;
+  }
   //
   use_db = false;
   if (data_file_path_.find("sqlite") == 0) {
@@ -322,6 +337,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     data_file_path_ = conn_info[1];
     table_name = conn_info[2];
   }
+
   // Column dtype.
   std::string json_str = param_map["ColumnInfo"].value_string();
 
@@ -332,9 +348,9 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   std::string local_dataset;
   for (Value::ConstMemberIterator iter = doc.MemberBegin();
        iter != doc.MemberEnd(); iter++) {
-    std::string ds_name = iter->name.GetString();
-    std::string ds_node = param_map[ds_name].value_string();
-    if (ds_node == this->node_id_) {
+    std::string dataset_id = iter->name.GetString();
+    // std::string ds_node = param_map[ds_name].value_string();
+    if (dataset_id == data_file_path_) {
       local_dataset = iter->name.GetString();
       found = true;
     }

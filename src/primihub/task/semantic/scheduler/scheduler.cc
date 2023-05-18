@@ -47,7 +47,7 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
     LOG(ERROR) << "dispatch task has error";
     return retcode::FAIL;
   } else {
-    LOG(ERROR) << "dispatch task success";
+    VLOG(2) << "dispatch task success";
     return retcode::SUCCESS;
   }
 }

@@ -27,7 +27,7 @@
             ]
         },
         "common_params": {
-            "model": "HeteroLRInfer",
+            "model": "HeteroXGBInfer",
             "task_name": "predict",
             "metric_path": "metrics.json",
             "model_pred": "pred.csv"
@@ -38,6 +38,7 @@
                 "id": null,
                 "selected_column": null,
                 "label": "y",
+                "lookup_table": "host_lookup.pkl",
                 "model_path": "host_model.pkl"
             },
             "Charlie": {
@@ -45,6 +46,7 @@
                 "id": null,
                 "model_path": "guest_model.pkl",
                 "selected_column": null,
+                "lookup_table": "guest_lookup.pkl",
                 "label": null
             }
         }

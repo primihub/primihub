@@ -222,7 +222,16 @@ Status VMNodeImpl::Send(ServerContext* context,
         }
         received_data.append(request.data());
     }
-    auto& recv_queue = worker_ptr->getTask()->getTaskContext().getRecvQueue(role);
+    auto& link_ctx = worker_ptr->getTask()->getTaskContext().getLinkContext();
+    if (link_ctx == nullptr) {
+      std::string err_msg = "LinkContext is empty for job id: ";
+      err_msg.append(job_id).append(" task id: ").append(task_id)
+          .append(" request id: ").append(request_id);
+      response->set_ret_code(rpc::retcode::FAIL);
+      response->set_msg_info(std::move(err_msg));
+      return Status::OK;
+    }
+    auto& recv_queue = link_ctx->GetRecvQueue(role);
     recv_queue.push(std::move(received_data));
     VLOG(5) << "end of VMNodeImpl::Send";
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
@@ -282,12 +291,20 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
         recv_data.append(request.data());
     }
     VLOG(5) << "received data length: " << recv_data.size();
-    auto& task_context = worker_ptr->getTask()->getTaskContext();
-    auto& recv_queue = task_context.getRecvQueue(role);
+    auto& link_ctx = worker_ptr->getTask()->getTaskContext().getLinkContext();
+    if (link_ctx == nullptr) {
+      std::string err_msg = "LinkContext is empty for job id: ";
+      err_msg.append(job_id).append(" task id: ").append(task_id)
+          .append(" request id: ").append(request_id);
+      response.set_ret_code(rpc::retcode::FAIL);
+      response.set_msg_info(std::move(err_msg));
+      return Status::OK;
+    }
+    auto& recv_queue = link_ctx->GetRecvQueue(role);
     recv_queue.push(std::move(recv_data));
     VLOG(5) << "end of read data for server";
     // waiting for response data send to client
-    auto& send_queue = task_context.getSendQueue(role);
+    auto& send_queue = link_ctx->GetSendQueue(role);
     std::string send_data;
     send_queue.wait_and_pop(send_data);
     VLOG(5) << "send data length: " << send_data.length();
@@ -296,7 +313,7 @@ Status VMNodeImpl::SendRecv(grpc::ServerContext* context,
     for (const auto& res : response_data) {
         stream->Write(res);
     }
-    auto& complete_queue = task_context.getCompleteQueue(role);
+    auto& complete_queue = link_ctx->GetCompleteQueue(role);
     // VLOG(5) << "get complete_queue success";
     complete_queue.push(retcode::SUCCESS);
     // VLOG(5) << "push success flag to complete queue success";
@@ -335,10 +352,21 @@ Status VMNodeImpl::Recv(::grpc::ServerContext* context,
         writer->Write(response);
         return grpc::Status::OK;
     }
-    auto& send_queue = worker_ptr->getTask()->getTaskContext().getSendQueue(role);
+    auto& link_ctx = worker_ptr->getTask()->getTaskContext().getLinkContext();
+    if (link_ctx == nullptr) {
+        std::string err_msg  = "LinkContext is empty for job id: ";
+        err_msg.append(job_id).append(" task id: ").append(task_id);
+        LOG(ERROR) << err_msg;
+        TaskResponse response;
+        response.set_ret_code(rpc::retcode::FAIL);
+        response.set_msg_info(std::move(err_msg));
+        writer->Write(response);
+        return grpc::Status::OK;
+    }
+    auto& send_queue = link_ctx->GetSendQueue(role);
     std::string send_data;
     send_queue.wait_and_pop(send_data);
-    auto& complete_queue = worker_ptr->getTask()->getTaskContext().getCompleteQueue(role);
+    auto& complete_queue = link_ctx->GetCompleteQueue(role);
     complete_queue.push(retcode::SUCCESS);
     std::vector<rpc::TaskResponse> response_data;
     buildTaskResponse(send_data, &response_data);
@@ -485,7 +513,15 @@ Status VMNodeImpl::ForwardRecv(::grpc::ServerContext* context,
         return grpc::Status::OK;
     }
     // fetch data from task recv queue
-    auto& recv_queue = worker->getTask()->getTaskContext().getRecvQueue(role);
+    auto& link_ctx = worker->getTask()->getTaskContext().getLinkContext();
+    if (link_ctx == nullptr) {
+      std::string err_msg = "LinkContext is empty for job id: ";
+      err_msg.append(job_id).append(" task id: ").append(task_id)
+          .append(" request id: ").append(request_id);
+      LOG(WARNING) << err_msg;
+      return Status::OK;
+    }
+    auto& recv_queue = link_ctx->GetRecvQueue(role);
     std::string forward_recv_data;
     recv_queue.wait_and_pop(forward_recv_data);
     std::vector<rpc::TaskRequest> forward_recv_datas;

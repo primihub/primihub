@@ -30,5 +30,12 @@
     "HeteroLRInfer": {
         "guest": "primihub.FL.model.logistic_regression.heter_lr_infer.HeteroLrGuestInfer",
         "host": "primihub.FL.model.logistic_regression.heter_lr_infer.HeteroLrHostInfer"
+    },
+    "HeteroXGBInfer": {
+        "guest": "primihub.FL.model.xgboost.gbt_base.VGBGuestInfer",
+        "host": "primihub.FL.model.xgboost.gbt_base.VGBTHostInfer"
+    },
+    "DataAlign": {
+      "executor": "primihub.plain_data_util.data_align.DataAlign"
     }
 }

@@ -10,6 +10,9 @@ PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
   {
     const auto& info = task.party_access_info();
     for (const auto& [party_name, node] : info) {
+      if (party_name == SCHEDULER_NODE) {
+        continue;
+      }
       node_map[party_name] = node;
     }
   }

@@ -245,6 +245,11 @@ void fillParamByArray(const std::string& value_type,
         auto val = item.get<double>();
         double_ptr->add_value_double_array(std::move(val));
       }
+    } else if (value_type == "OBJECT") {
+      auto array_ptr = pv->mutable_value_string_array();
+      for (const auto& item : obj) {
+        array_ptr->add_value_string_array(item.dump());
+      }
     }
 }
 
@@ -269,6 +274,8 @@ void fillParamByScalar(const std::string& value_type,
     } else if (value_type == "DOUBLE") {
       auto val = obj.get<double>();
       pv->set_value_double(val);
+    } else if (value_type == "OBJECT") {
+      pv->set_value_string(obj.dump());
     }
 }
 

@@ -16,6 +16,7 @@ cc_library(
     deps = [
         "//src/primihub/data_store/csv:csv_driver",
         "//src/primihub/data_store/sqlite:sqlite_driver",
+        "//src/primihub/data_store/image:image_driver",
     ] + select({
         "enable_mysql_driver": [
             "//src/primihub/data_store/mysql:mysql_driver",
