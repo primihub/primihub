@@ -118,12 +118,6 @@ To learn how to start from native applications and how to use PrimiHub features 
 If you want to contribute to this project, feel free to create an issue at our [Issue](https://github.com/primihub/primihub/issues) page (e.g., documentation, new idea and proposal).<br/>
 Also, you can learn about our community [PrimiHub Open Source Community Governance](https://docs.primihub.com/docs/developer-docs/primihub-community)<br/>
 This is an active open source project for everyone, and we are always open to everyone who want to use this system or contribute to it.<br/>
-## Contributors
-<a href="https://github.com/primihub/primihub/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=primihub/primihub" />
-</a>
-
-[contrib.rocks](https://contrib.rocks)
 
 ## Community
 * Wechat Official Account:

@@ -65,10 +65,6 @@ cd primihub
 ```bash
 docker-compose up -d
 ```
-或者，您也可以通过环境变量指定镜像服务地址以及版本号，例如：<br/>
-```shell
-echo -e "REGISTRY=registry.cn-beijing.aliyuncs.com\nTAG=1.5.0" >> .env && docker-compose up -d
-```
 查看运行起来的 docker 容器：<br/>
 ```shell
 docker-compose ps
@@ -109,20 +105,8 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 
 ## 开发者
 * 关于如何编译，请见[编译](https://docs.primihub.com/docs/advance-usage/start/build)
-* 关于如何贡献代码，请见 [PrimiHub开源社区治理](https://docs.primihub.com/docs/developer-docs/primihub-community)
-
-## [路线图](https://docs.primihub.com/docs/developer-docs/roadmap)
-
-## 如何贡献
-如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面随意开启一个新的话题，比如文档、创意、Bug等。<br/>
-同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](https://docs.primihub.com/docs/developer-docs/primihub-community)<br/>
-我们是一个开放共建的开源项目，欢迎参与到我们的项目中。<br/>
-## 贡献者
-<a href="https://github.com/primihub/primihub/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=primihub/primihub" />
-</a>
-
-[contrib.rocks](https://contrib.rocks)
+* 如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面开启一个新的话题，比如文档、创意、Bug等。
+同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](https://docs.primihub.com/docs/developer-docs/primihub-community)，我们是一个开放共建的开源项目，欢迎参与到我们的项目中。
 
 ## 社区
 * 微信助手:

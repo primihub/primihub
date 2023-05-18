@@ -224,14 +224,14 @@ class PallierSum(_AggregateOnKeyBase):
 @ray.remote
 class PallierAdd(object):
 
-    def __init__(self, pub, nums, add_actors, encrypted):
+    def __init__(self, pub, nums, add_actors, encrypted_proto):
         self.pub = pub
         self.nums = nums
         self.add_actors = add_actors
-        self.encrypted = encrypted
+        self.encrypted_proto = encrypted_proto
 
     def pai_add(self, items, min_num=3):
-        if self.encrypted:
+        if self.encrypted_proto is not None:
             nums = self.nums * min_num
             if len(items) < nums:
                 return functools.reduce(
@@ -1659,7 +1659,7 @@ class VGBTGuest(VGBTBase):
         # generate actor pool for mapping
         map_pool = ActorPool([
             PallierAdd.remote(self.pub, map_pools, paillier_add_actors,
-                              self.encrypted)
+                              self.encrypted_proto)
         ])
 
         sum_maps = [
