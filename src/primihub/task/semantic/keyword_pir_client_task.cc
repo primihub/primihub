@@ -201,7 +201,9 @@ retcode KeywordPIRClientTask::requestPSIParams() {
     std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
     VLOG(5) << "send_data length: " << request.length();
     std::string response_str;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(peer_node_);
     auto ret = channel->sendRecv(this->key, request, &response_str);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send requestPSIParams to peer: [" << peer_node_.to_string()
@@ -254,7 +256,9 @@ retcode KeywordPIRClientTask::requestOprf(const std::vector<Item>& items,
     VLOG(5) << "oprf_request data length: " << oprf_request.size();
     std::string_view oprf_request_sv{
         reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_request.data())), oprf_request.size()};
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(peer_node_);
 
     // auto ret = channel->sendRecv(this->key, oprf_request_sv, &oprf_response);
     auto ret = this->send(this->key, peer_node_, oprf_request_sv);
