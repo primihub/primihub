@@ -19,9 +19,7 @@
     },
     "component_params": {
         "roles": {
-            "server": [
-                "Alice"
-            ],
+            "server": "Alice",
             "client": [
                 "Bob",
                 "Charlie"
@@ -29,24 +27,31 @@
         },
         "common_params": {
             "model": "HFL_logistic_regression",
-            "task_name": "train",
-            "mode": "Plaintext",
+            "method": "DPSGD",
+            "process": "train",
+            "task_name": "HFL_logistic_regression_multiclass_dpsgd_train",
+            "delta": 1e-3,
+            "noise_multiplier": 2.0,
+            "l2_norm_clip": 1.0,
+            "secure_mode": true,
             "learning_rate": "optimal",
-            "alpha": 0.0001,
+            "alpha": 0.0005,
             "batch_size": 100,
-            "max_iter": 100,
+            "global_epoch": 100,
+            "local_epoch": 1,
             "selected_column": null,
+            "id": "id",
             "label": "y",
             "print_metrics": true,
             "metric_path": "metrics.json"
         },
         "role_params": {
             "Bob": {
-                "data_set": "train_homo_lr_host",
-                "model_path": "bob_model.pkl"
+                "data_set": "train_homo_nn_multiclass_host",
+                "model_path": "Bob_model.pkl"
             },
             "Charlie": {
-                "data_set": "train_homo_lr_guest",
+                "data_set": "train_homo_nn_multiclass_guest",
                 "model_path": "Charlie_model.pkl"
             }
         }
