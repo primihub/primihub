@@ -1,25 +1,20 @@
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
 from primihub.new_FL.algorithm.utils.base import BaseModel
-class ModelGuest(BaseModel):
-    def __init__(self, task_parameter, party_access_info):
-        super().__init__(task_parameter, party_access_info)
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
-    
+
+
+class ExampleGuest(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def run(self):
-        if self.task_parameter['process'] == 'train':
-            self.train()
-    
+        print("roles:", self.roles)
+        print("common_params: ", self.common_params)
+        print("role_params: ", self.role_params)
+        print("node_info: ", self.node_info)
+        print("task_info: ", self.task_info)
 
     def train(self):
-        task_parameter = self.task_parameter
-        party_access_info = self.party_access_info
-        print(task_parameter)
-        print(party_access_info)
+        pass
 
-        server = GrpcServer('Alice','Bob', party_access_info, task_parameter['task_info'])
-        res = server.recv('abc1')
-        print(res)
-    
     def predict(self):
         pass

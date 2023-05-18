@@ -1,19 +1,19 @@
 {
     "Dev_example": {
-        "guest": "example.dev_example_guest.ModelGuest",
-        "host": "example.dev_example_host.ModelHost"
+        "guest": "primihub.new_FL.algorithm.example.dev_example_guest.ExampleGuest",
+        "host": "primihub.new_FL.algorithm.example.dev_example_host.ExampleHost"
     },
     "HFL_logistic_regression": {
         "client": "primihub.new_FL.algorithm.linear.logistic_regression.hfl_client.LogisticRegressionClient",
         "server": "primihub.new_FL.algorithm.linear.logistic_regression.hfl_server.LogisticRegressionServer"
     },
     "HFL_neural_network": {
-        "client": "neural_network.hfl_client.Client",
-        "server": "neural_network.hfl_server.Server"
+        "client": "primihub.new_FL.algorithm.neural_network.hfl_client.NeuralNetworkClient",
+        "server": "primihub.new_FL.algorithm.neural_network.hfl_server.NeuralNetworkServer"
     },
     "Chat_glm": {
-        "client": "example.ChatGlm_client.ChatGlmClient",
-        "server": "example.ChatGlm_server.ChatGlmServer"
+        "client": "primihub.new_FL.algorithm.example.ChatGlm_client.ChatGlmClient",
+        "server": "primihub.new_FL.algorithm.example.ChatGlm_server.ChatGlmServer"
     },
     "HeteroXGB": {
         "guest": "primihub.FL.model.xgboost.gbt_base.VGBTGuest",
