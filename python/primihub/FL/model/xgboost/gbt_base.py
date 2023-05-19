@@ -29,6 +29,7 @@ from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_cr
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
 from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 
 T = TypeVar("T", contravariant=True)
 U = TypeVar("U", covariant=True)
@@ -1388,12 +1389,16 @@ class VGBTHost(VGBTBase):
         }
 
         train_metrics_buff = json.dumps(trainMetrics)
+
+        check_directory_exist(self.metric_path)
         with open(self.metric_path, 'w') as filePath:
             filePath.write(train_metrics_buff)
 
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as hostTable:
             pickle.dump(self.lookup_table_sum, hostTable)
 
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as hostModel:
             pickle.dump(
                 {
@@ -1484,12 +1489,16 @@ class VGBTHost(VGBTBase):
         y_hat = self.predict_prob(self.data, lookup=self.lookup_table_sum)
         train_metrics = self.train_metrics(y_true=self.y, y_hat=y_hat)
         train_metrics_buff = json.dumps(train_metrics)
+
+        check_directory_exist(self.metric_path)
         with open(self.metric_path, 'w') as filePath:
             filePath.write(train_metrics_buff)
 
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as hostTable:
             pickle.dump(self.lookup_table_sum, hostTable)
 
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as hostModel:
             pickle.dump(
                 {
@@ -1813,12 +1822,14 @@ class VGBTGuest(VGBTBase):
             self.lookup_table_sum[t + 1] = self.lookup_table
 
         # save guest part model
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as guestModel:
             pickle.dump({
                 'tree_struct': self.tree_structure,
             }, guestModel)
 
         # save guest part table
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as guestTable:
             pickle.dump(self.lookup_table_sum, guestTable)
 
@@ -1993,7 +2004,8 @@ class VGBTHostInfer(BaseModel):
             "pred_y": (pred_prob >= 0.5).astype('int')
         })
 
-        pred_df.to_csv(self.model_pred, index=False, sep='\t')
+        check_directory_exist(self.model_pred)
+        pred_df.to_csv(self.model_pred, index=False)
 
         if self.label is not None:
             acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
@@ -2010,6 +2022,7 @@ class VGBTHostInfer(BaseModel):
             }
             test_metrics_buff = json.dumps(test_metrics)
 
+            check_directory_exist(self.metric_path)
             with open(self.metric_path, 'w') as filePath:
                 filePath.write(test_metrics_buff)
 

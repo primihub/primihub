@@ -1,7 +1,9 @@
 from primihub.new_FL.algorithm.utils.net_work import MultiGrpcClients
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
 
+import json
 import numpy as np
 import torch
 from primihub.FL.model.metrics.metrics import fpr_tpr_merge2,\
@@ -76,6 +78,11 @@ class NeuralNetworkServer(BaseModel):
 
         # receive final metrics
         trainMetrics = model.get_metrics()
+        metric_path = self.common_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
 
 class Plaintext_Server:
