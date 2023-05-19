@@ -18,9 +18,9 @@ class Client:
     def prepare_for_worker(self):
         # consturct 'params'
         params = common_pb2.Params()
-        params.param_map['params'].var_type = self.var_type
-        params.param_map['params'].is_array = self.is_array
-        params.param_map['params'].value_string = \
+        params.param_map["component_params"].var_type = self.var_type
+        params.param_map["component_params"].is_array = self.is_array
+        params.param_map["component_params"].value_string = \
             json.dumps(self.component_params).encode()
 
         # consturct 'party_datasets'

@@ -25,7 +25,7 @@ path = path[:-12]
 
 def run(task_params):
     party_name = task_params.party_name
-    params_str = task_params.params.param_map['params'].value_string
+    params_str = task_params.params.param_map["component_params"].value_string
     params_dict = json.loads(params_str.decode())
 
     # load commom_parmas, roles, node_info, task_info
