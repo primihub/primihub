@@ -52,7 +52,11 @@ retcode PSIScheduler::ScheduleTask(const std::string& party_name,
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
-    LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
+    std::string error_msg = "submit task to : "
+      error_msg.append(dest_node_address).append(" reply failed");
+    LOG(ERROR) << error_msg;
+    this->error_.store(true);
+    this->error_msg_[party_name] = error_msg;
     return retcode::FAIL;
   }
   parseNotifyServer(reply);
@@ -75,6 +79,10 @@ retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   LOG(INFO) << "Dispatch SubmitTask to PSI client node";
   const auto& participate_node = push_request.task().party_access_info();
   std::vector<std::thread> thrds;
+  // allocate space for error msg
+  for (const auto& [party_name, node] : participate_node) {
+    this->error_msg_.insert({party_name, ""});
+  }
   for (const auto& [party_name, node] : participate_node) {
     Node dest_node;
     pbNode2Node(node, &dest_node);
@@ -90,6 +98,9 @@ retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   }
   for (auto&& t : thrds) {
     t.join();
+  }
+  if (has_error()) {
+    return retcode::FAIL;
   }
   return retcode::SUCCESS;
 }

@@ -90,6 +90,9 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
 
   LOG(INFO) << "begin to Dispatch SubmitTask to PIR task party node ...";
   const auto& participate_node = push_request.task().party_access_info();
+  for (const auto& [party_name, node] : participate_node) {
+    this->error_msg_.insert({party_name, ""});
+  }
   std::vector<std::thread> thrds;
   for (const auto& [party_name, node] : participate_node) {
     Node dest_node;
@@ -107,6 +110,9 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   }
   for (auto &t : thrds) {
     t.join();
+  }
+  if (has_error()) {
+    return retcode::FAIL;
   }
   retcode::SUCCESS;
 }
