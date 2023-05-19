@@ -1,17 +1,17 @@
 import torch
-import logging
+from primihub.utils.logger_util import logger
 from opacus.validators import ModuleValidator
-from primihub.FL.model.neural_network.mlp import NeuralNetwork
+from .mlp import NeuralNetwork
 
 
-def create_model(train_method, output_dim, device):
-    model =  NeuralNetwork(output_dim)
-    if train_method == 'DPSGD':
+def create_model(method, output_dim, device):
+    model = NeuralNetwork(output_dim)
+    if method == 'DPSGD':
         errors = ModuleValidator.validate(model, strict=False)
         if len(errors) != 0:
-            logging.error(errors)
+            logger.error(errors)
             model = ModuleValidator.fix(model)
-    print(model)
+    logger.info(model)
     return model.to(device)
 
 
@@ -24,7 +24,7 @@ def choose_loss_fn(output_dim, task):
     if task == 'regression':
         return torch.nn.MSELoss()
     else:
-        logging.error(f"Not supported task: {task}")
+        logger.error(f"Not supported task: {task}")
 
 
 def choose_optimizer(model, optimizer, learning_rate, alpha):
@@ -69,4 +69,4 @@ def choose_optimizer(model, optimizer, learning_rate, alpha):
                                lr=learning_rate,
                                weight_decay=alpha)
     else:
-        logging.error(f"Not supported optimizer: {optimizer}")
+        logger.error(f"Not supported optimizer: {optimizer}")

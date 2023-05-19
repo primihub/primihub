@@ -6,9 +6,11 @@ from sklearn import metrics
 from collections import Iterable
 from primihub.utils.sampling import random_sample
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
+from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.utils.logger_util import logger
 
 
 def dloss(p, y):
@@ -78,40 +80,30 @@ class HeteroLrBase(BaseModel):
 
     def set_inputs(self):
         # set common parameters
-        self.model = self.kwargs['common_params']['model']
-        self.task_name = self.kwargs['common_params']['task_name']
-        self.learning_rate = self.kwargs['common_params']['learning_rate']
-        self.alpha = self.kwargs['common_params']['alpha']
-        self.epochs = self.kwargs['common_params']['epochs']
-        self.penalty = self.kwargs['common_params']['penalty']
-        self.optimal_method = self.kwargs['common_params']['optimal_method']
-        self.momentum = self.kwargs['common_params']['momentum']
-        self.random_state = self.kwargs['common_params']['random_state']
-        self.scale_type = self.kwargs['common_params']['scale_type']
-        self.batch_size = self.kwargs['common_params']['batch_size']
-        self.sample_method = self.kwargs['common_params']['sample_method']
-        self.sample_ratio = self.kwargs['common_params']['sample_ratio']
-        self.loss_type = self.kwargs['common_params']['loss_type']
-        self.prev_grad = self.kwargs['common_params']['prev_grad']
-        self.metric_path = self.kwargs['common_params']['metric_path']
-        self.model_pred = self.kwargs['common_params']['model_pred']
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+        self.learning_rate = self.common_params['learning_rate']
+        self.alpha = self.common_params['alpha']
+        self.epochs = self.common_params['epochs']
+        self.penalty = self.common_params['penalty']
+        self.optimal_method = self.common_params['optimal_method']
+        self.momentum = self.common_params['momentum']
+        self.random_state = self.common_params['random_state']
+        self.scale_type = self.common_params['scale_type']
+        self.batch_size = self.common_params['batch_size']
+        self.sample_method = self.common_params['sample_method']
+        self.sample_ratio = self.common_params['sample_ratio']
+        self.loss_type = self.common_params['loss_type']
+        self.prev_grad = self.common_params['prev_grad']
+        self.metric_path = self.common_params['metric_path']
+        self.model_pred = self.common_params['model_pred']
 
         # set role special parameters
-        self.role_params = self.kwargs['role_params']
         self.data_set = self.role_params['data_set']
 
-        # set party node information
-        self.node_info = self.kwargs['node_info']
-
-        # set other parameters
-        self.other_params = self.kwargs['other_params']
-
         # read from data path
-        value = eval(self.other_params.party_datasets[
-            self.other_params.party_name].data['data_set'])
-
-        data_path = value['data_path']
-        self.data = pd.read_csv(data_path)
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
 
     def run(self):
         pass
@@ -141,10 +133,11 @@ class HeteroLrHost(HeteroLrBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
         self.add_noise = self.role_params['add_noise']
         self.tol = self.role_params['tol']
         self.selected_column = self.role_params['selected_column']
@@ -173,8 +166,7 @@ class HeteroLrHost(HeteroLrBase):
 
     def predict_raw(self, x):
         host_part = np.dot(x, self.theta)
-        guest_part = self.channel.recv("guest_part")[
-            self.role_params['neighbors'][0]]
+        guest_part = self.channel.recv("guest_part")
         h = host_part + guest_part
 
         return h
@@ -215,7 +207,7 @@ class HeteroLrHost(HeteroLrBase):
             noise = 0
 
         nois_error = error + noise
-        self.channel.sender('error', nois_error)
+        self.channel.send('error', nois_error)
 
         if self.penalty == "l2":
             grad = (np.dot(x.T, error) / x.shape[0] + self.alpha * self.theta
@@ -230,7 +222,7 @@ class HeteroLrHost(HeteroLrBase):
 
     def batch_gd(self, x, y):
         ids = np.random.permutation(np.arange(len(y)))
-        self.channel.sender('ids', ids)
+        self.channel.send('ids', ids)
         shuff_x = x[ids]
         shuff_y = y[ids]
         for batch_x, bathc_y in batch_yield(shuff_x, shuff_y, self.batch_size):
@@ -243,7 +235,7 @@ class HeteroLrHost(HeteroLrBase):
 
     def momentum_grad(self, x, y):
         ids = np.random.permutation(np.arange(len(y)))
-        self.channel.sender('ids', ids)
+        self.channel.send('ids', ids)
         shuff_x = x[ids]
         shuff_y = y[ids]
         for batch_x, bathc_y in batch_yield(shuff_x, shuff_y, self.batch_size):
@@ -260,7 +252,7 @@ class HeteroLrHost(HeteroLrBase):
         col_names = []
         if self.sample_method == "random" and x.shape[0] > 50000:
             sample_ids = random_sample(data=x, rate=self.sample_ratio)
-            self.channel.sender('sample_ids', sample_ids)
+            self.channel.send('sample_ids', sample_ids)
 
             if isinstance(x, np.ndarray):
                 x = x[sample_ids]
@@ -298,7 +290,7 @@ class HeteroLrHost(HeteroLrBase):
         best_iter_changed = False
         for i in range(self.epochs):
             self.update_lr(i, type=self.update_type)
-            self.channel.sender("learning_rate", self.learning_rate)
+            self.channel.send("learning_rate", self.learning_rate)
 
             if self.optimal_method == "simple":
                 self.simple_gd(x, y)
@@ -312,7 +304,7 @@ class HeteroLrHost(HeteroLrBase):
             y_hat = self.predict_raw(x)
             cur_loss = self.loss(y_hat, y)
             total_loss.append(cur_loss)
-            print("cur_loss :", i, cur_loss)
+            logger.info(f"cur_loss: {i}, {cur_loss}")
 
             if best_loss is None or best_loss > cur_loss:
                 best_iter_changed = True
@@ -331,7 +323,7 @@ class HeteroLrHost(HeteroLrBase):
             if n_iter_nochange > self.n_iter_no_change:
                 is_converged = True
 
-            self.channel.sender(
+            self.channel.send(
                 'current_stats', {
                     "best_iter_changed": best_iter_changed,
                     'is_converged': is_converged
@@ -345,8 +337,7 @@ class HeteroLrHost(HeteroLrBase):
         converged_iter = best_iter
         self.theta = best_params
 
-        print("converged status: ", converged_iter, converged_acc,
-              converged_loss)
+        logger.info(f"converged status: {converged_iter}, {converged_acc}, {converged_loss}")
 
         # model_path = "hetero_lr_host.ml"
         model_path = self.model_path
@@ -403,11 +394,11 @@ class HeteroLrGuest(HeteroLrBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
 
         self.data_set = self.role_params['data_set']
         self.selected_column = self.role_params['selected_column']
@@ -424,10 +415,10 @@ class HeteroLrGuest(HeteroLrBase):
         # if self.add_noise:
         #     guest_part = trucate_geometric_thres(guest_part, self.clip_thres,
         #                                          self.noise_variation)
-        self.channel.sender("guest_part", guest_part)
+        self.channel.send("guest_part", guest_part)
 
     def gradient(self, x):
-        error = self.channel.recv('error')[self.role_params['neighbors'][0]]
+        error = self.channel.recv('error')
         if self.penalty == "l2":
             grad = (np.dot(x.T, error) / x.shape[0] + self.alpha * self.theta
                    )  #/ x.shape[0]
@@ -440,7 +431,7 @@ class HeteroLrGuest(HeteroLrBase):
         return grad
 
     def batch_gd(self, x):
-        ids = self.channel.recv('ids')[self.role_params['neighbors'][0]]
+        ids = self.channel.recv('ids')
         shuff_x = x[ids]
         for batch_x, _ in batch_yield(shuff_x, shuff_x, self.batch_size):
             self.predict(batch_x)
@@ -448,7 +439,7 @@ class HeteroLrGuest(HeteroLrBase):
             self.theta -= self.learning_rate * grad
 
     def momentum_grad(self, x):
-        ids = self.channel.recv('ids')[self.role_params['neighbors'][0]]
+        ids = self.channel.recv('ids')
         shuff_x = x[ids]
         for batch_x, _ in batch_yield(shuff_x, shuff_x, self.batch_size):
             self.predict(batch_x)
@@ -469,8 +460,7 @@ class HeteroLrGuest(HeteroLrBase):
     def fit(self, x):
         col_names = []
         if self.sample_method == "random" and x.shape[0] > 50000:
-            sample_ids = self.channel.recv('sample_ids')[
-                self.role_params['neighbors'][0]]
+            sample_ids = self.channel.recv('sample_ids')
 
             if isinstance(x, np.ndarray):
                 col_names = []
@@ -496,8 +486,7 @@ class HeteroLrGuest(HeteroLrBase):
         self.theta = np.zeros(x.shape[1])
 
         for i in range(self.epochs):
-            self.learning_rate = self.channel.recv("learning_rate")[
-                self.role_params['neighbors'][0]]
+            self.learning_rate = self.channel.recv("learning_rate")
 
             if self.optimal_method == "simple":
                 self.simple_gd(x)
@@ -509,10 +498,9 @@ class HeteroLrGuest(HeteroLrBase):
                 self.batch_gd(x)
 
             self.predict(x)
-            print("current params: ", i, self.theta)
+            logger.info(f"current params: {i}, {self.theta}")
 
-            current_stats = self.channel.recv('current_stats')[
-                self.role_params['neighbors'][0]]
+            current_stats = self.channel.recv('current_stats')
 
             best_iter_changed = current_stats['best_iter_changed']
             is_converged = current_stats['is_converged']
@@ -526,7 +514,7 @@ class HeteroLrGuest(HeteroLrBase):
                 break
 
         self.theta = best_theta
-        print("best theta: ", best_theta)
+        logger.info(f"best theta: {best_theta}")
 
         # model_path = "hetero_lr_guest.ml"
         model_path = self.model_path

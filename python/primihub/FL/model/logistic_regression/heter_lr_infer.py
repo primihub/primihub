@@ -3,9 +3,10 @@ import json
 import pandas as pd
 import numpy as np
 from sklearn import metrics
-from primihub.new_FL.algorithm.utils.net_work import GrpcServers
+from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.dataset import read_csv
 
 
 class HeteroLrHostInfer(BaseModel):
@@ -13,10 +14,11 @@ class HeteroLrHostInfer(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_inputs()
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
 
     def set_inputs(self):
         # set common params
@@ -33,11 +35,8 @@ class HeteroLrHostInfer(BaseModel):
         self.model_path = self.role_params['model_path']
 
         # read from data path
-        value = eval(self.other_params.party_datasets[
-            self.other_params.party_name].data['data_set'])
-
-        data_path = value['data_path']
-        self.data = pd.read_csv(data_path)
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
 
     def load_dict(self):
         with open(self.model_path, "rb") as current_model:
@@ -60,8 +59,7 @@ class HeteroLrHostInfer(BaseModel):
 
     def predict_raw(self, x):
         host_part = np.dot(x, self.weights) + self.bias
-        guest_part = self.channel.recv("guest_part")[
-            self.role_params['neighbors'][0]]
+        guest_part = self.channel.recv("guest_part")
         h = host_part + guest_part
 
         return h
@@ -111,10 +109,11 @@ class HeteroLrGuestInfer(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_inputs()
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
 
     def set_inputs(self):
         self.model = self.common_params['model']
@@ -128,11 +127,8 @@ class HeteroLrGuestInfer(BaseModel):
         self.model_path = self.role_params['model_path']
 
         # read from data path
-        value = eval(self.other_params.party_datasets[
-            self.other_params.party_name].data['data_set'])
-
-        data_path = value['data_path']
-        self.data = pd.read_csv(data_path)
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
 
     def load_dict(self):
         with open(self.model_path, "rb") as current_model:
@@ -155,7 +151,7 @@ class HeteroLrGuestInfer(BaseModel):
 
     def predict_raw(self, x):
         guest_part = np.dot(x, self.weights) + self.bias
-        self.channel.sender("guest_part", guest_part)
+        self.channel.send("guest_part", guest_part)
 
     def run(self):
         self.load_dict()

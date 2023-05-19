@@ -1,34 +1,20 @@
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
 from primihub.new_FL.algorithm.utils.base import BaseModel
-class ModelHost(BaseModel):
-    def __init__(self, task_parameter, party_access_info):
-        super().__init__(task_parameter, party_access_info)
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
-        
+
+
+class ExampleHost(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def run(self):
-        if self.task_parameter['process'] == 'train':
-            self.train()
-    
+        print("roles:", self.roles)
+        print("common_params: ", self.common_params)
+        print("role_params: ", self.role_params)
+        print("node_info: ", self.node_info)
+        print("task_info: ", self.task_info)
+
     def train(self):
-        task_parameter = self.task_parameter
-        party_access_info = self.party_access_info
-        #read data
-        print(self.read('X'))
-        #send data
-        if task_parameter['party_name'] == 'Bob':
-            server = GrpcServer('Bob','Alice', party_access_info, task_parameter['task_info'])
-            server.sender('abc1', 'efg')    
+        pass
 
-        #get role
-        print(self.get_roles())
-        print(self.get_parties())
-        print(self.role2party('guest'))
-        print(self.party2role('Alice'))
-
-        #get iters
-        print(f"iters is { self.task_parameter['num_iter']}")
-    
     def predict(self):
         pass
