@@ -97,8 +97,8 @@ int main(int argc, char **argv) {
         exit(0);
     });
 
-    py::scoped_interpreter python;
-    py::gil_scoped_release release;
+    // py::scoped_interpreter python;
+    // py::gil_scoped_release release;
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
