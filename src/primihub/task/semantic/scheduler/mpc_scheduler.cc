@@ -120,6 +120,9 @@ retcode MPCScheduler::dispatch(const PushTaskRequest *push_request) {
   for (auto &t : threads) {
     t.join();
   }
+  if (has_error()) {
+    return retcode::FAIL;
+  }
   return retcode::SUCCESS;
 }
 

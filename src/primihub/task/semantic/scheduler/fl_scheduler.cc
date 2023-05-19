@@ -138,6 +138,9 @@ retcode FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   std::vector<std::thread> thrds;
   const auto& party_access_info = send_request.task().party_access_info();
   for (const auto& [party_name, node] : party_access_info) {
+    this->error_msg_.insert({party_name, ""});
+  }
+  for (const auto& [party_name, node] : party_access_info) {
     Node dest_node;
     pbNode2Node(node, &dest_node);
     LOG(INFO) << "Dispatch SubmitTask to: " << dest_node.to_string() << " "
@@ -152,6 +155,9 @@ retcode FLScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   }
   for (auto&& t : thrds) {
     t.join();
+  }
+  if (has_error()) {
+    return retcode::FAIL;
   }
   return retcode::SUCCESS;
 }

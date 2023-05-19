@@ -68,13 +68,16 @@ class VMScheduler {
   retcode ScheduleTask(const std::string& party_name,
                     const Node dest_node,
                     const PushTaskRequest& request);
-
+  void set_error() {error_.store(true);}
+  bool has_error() {return error_.load(std::memory_order::memory_order_relaxed);}
  protected:
   const std::string node_id_;
   bool singleton_;
   std::unique_ptr<primihub::network::LinkContext> link_ctx_{nullptr};
   std::mutex task_server_mtx;
   std::vector<Node> task_server_info;
+  std::atomic<bool> error_{false};        //
+  std::map<std::string, std::string> error_msg_;
 };
 } // namespace primihub::task
 

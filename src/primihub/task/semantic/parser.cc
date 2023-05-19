@@ -108,7 +108,7 @@ retcode ProtocolSemanticParser::scheduleProtoTask(
   }
   auto ret = scheduler_ptr->dispatch(&task_request);
   parseTaskServer(scheduler_ptr->taskServer());
-  return retcode::SUCCESS;
+  return ret;
 }
 
 retcode ProtocolSemanticParser::schedulePythonTask(
@@ -129,7 +129,7 @@ retcode ProtocolSemanticParser::schedulePythonTask(
   }
   auto ret = scheduler_ptr->dispatch(&task_request);
   parseTaskServer(scheduler_ptr->taskServer());
-  return retcode::SUCCESS;
+  return ret;
 }
 
 void ProtocolSemanticParser::metasToDatasetAndOwner(
