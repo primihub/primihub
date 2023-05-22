@@ -1,6 +1,8 @@
 from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.new_FL.algorithm.utils.base import BaseModel
-from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.new_FL.algorithm.utils.dataset import read_csv,\
+                                                    DataLoader,\
+                                                    DPDataLoader
 from primihub.utils.logger_util import logger
 
 import numpy as np
@@ -79,9 +81,14 @@ class LogisticRegressionClient(BaseModel):
         # model training
         num_examples = model.num_examples
         batch_size = min(num_examples, self.common_params['batch_size'])
-        batch_gen = batch_generator([x, y],
-                                    batch_size,
-                                    shuffle=True)
+        if method == 'DPSGD':
+            # DP data loader: Poisson sampling
+            train_dataloader = DPDataLoader(x, y,
+                                            batch_size)
+        else:    
+            train_dataloader = DataLoader(x, y,
+                                          batch_size,
+                                          shuffle=True)
 
         logger.info("-------- start training --------")
         global_epoch = self.common_params['global_epoch']
@@ -91,8 +98,8 @@ class LogisticRegressionClient(BaseModel):
             local_epoch = self.common_params['local_epoch']
             for j in range(local_epoch):
                 logger.info(f"-------- local epoch {j+1} / {local_epoch} --------")
-                batch_x, batch_y = next(batch_gen)
-                model.fit(batch_x, batch_y)
+                for batch_x, batch_y in train_dataloader:
+                    model.fit(batch_x, batch_y)
 
             model.train()
 
@@ -117,27 +124,6 @@ class LogisticRegressionClient(BaseModel):
 
     def predict(self):
         pass
-
-
-def batch_generator(all_data, batch_size, shuffle=True):
-    all_data = [np.array(d) for d in all_data]
-    data_size = all_data[0].shape[0]
-        
-    if shuffle:
-        p = np.random.permutation(data_size)
-        all_data = [d[p] for d in all_data]
-    batch_count = 0
-    while True:
-        # The epoch completes, disrupting the order once
-        if batch_count * batch_size + batch_size > data_size:
-            batch_count = 0
-            if shuffle:
-                p = np.random.permutation(data_size)
-                all_data = [d[p] for d in all_data]
-        start = batch_count * batch_size
-        end = start + batch_size
-        batch_count += 1
-        yield [d[start:end] for d in all_data]
 
 
 class Plaintext_Client(LogisticRegression):
