@@ -1,8 +1,11 @@
 from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 from primihub.new_FL.algorithm.utils.dataset import read_csv
 from primihub.utils.logger_util import logger
 
+import pickle
+import pandas as pd
 import numpy as np
 import dp_accounting
 from sklearn import metrics
@@ -40,26 +43,26 @@ class LogisticRegressionClient(BaseModel):
         y = x.pop(label).values
         x = x.values
 
-        # model init
+        # client init
         method = self.common_params['method']
         if method == 'Plaintext':
-            model = Plaintext_Client(x, y,
+            client = Plaintext_Client(x, y,
+                                      self.common_params['learning_rate'],
+                                      self.common_params['alpha'],
+                                      server_channel)
+        elif method == 'DPSGD':
+            client = DPSGD_Client(x, y,
+                                  self.common_params['learning_rate'],
+                                  self.common_params['alpha'],
+                                  self.common_params['noise_multiplier'],
+                                  self.common_params['l2_norm_clip'],
+                                  self.common_params['secure_mode'],
+                                  server_channel)
+        elif method == 'Paillier':
+            client = Paillier_Client(x, y,
                                      self.common_params['learning_rate'],
                                      self.common_params['alpha'],
                                      server_channel)
-        elif method == 'DPSGD':
-            model = DPSGD_Client(x, y,
-                                 self.common_params['learning_rate'],
-                                 self.common_params['alpha'],
-                                 self.common_params['noise_multiplier'],
-                                 self.common_params['l2_norm_clip'],
-                                 self.common_params['secure_mode'],
-                                 server_channel)
-        elif method == 'Paillier':
-            model = Paillier_Client(x, y,
-                                    self.common_params['learning_rate'],
-                                    self.common_params['alpha'],
-                                    server_channel)
         else:
             logger.error(f"Not supported method: {method}")
 
@@ -76,8 +79,8 @@ class LogisticRegressionClient(BaseModel):
 
         x = (x - data_min) / (data_max - data_min)
 
-        # model training
-        num_examples = model.num_examples
+        # client training
+        num_examples = client.num_examples
         batch_size = min(num_examples, self.common_params['batch_size'])
         batch_gen = batch_generator([x, y],
                                     batch_size,
@@ -92,31 +95,93 @@ class LogisticRegressionClient(BaseModel):
             for j in range(local_epoch):
                 logger.info(f"-------- local epoch {j+1} / {local_epoch} --------")
                 batch_x, batch_y = next(batch_gen)
-                model.fit(batch_x, batch_y)
+                client.model.fit(batch_x, batch_y)
 
-            model.train()
+            client.train()
 
             # print metrics
             if self.common_params['print_metrics']:
-                model.print_metrics(x, y)
+                client.print_metrics(x, y)
         logger.info("-------- finish training --------")
 
         # send final epsilon when using DPSGD
         if method == 'DPSGD':
             delta = self.common_params['delta']
             steps = global_epoch * local_epoch * num_examples // batch_size
-            eps = model.compute_epsilon(steps, batch_size, delta)
+            eps = client.compute_epsilon(steps, batch_size, delta)
             server_channel.send("eps", eps)
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         # receive plaintext model when using Paillier
         elif method == 'Paillier':
-            model.set_theta(server_channel.recv("server_model"))
+            client.model.set_theta(server_channel.recv("server_model"))
         
         # send final metrics
-        model.send_metrics(x, y)
+        client.send_metrics(x, y)
+
+        # save model for prediction
+        modelFile = {
+            "selected_column": selected_column,
+            "id": id,
+            "label": label,
+            "data_max": data_max,
+            "data_min": data_min,
+            "model": client.model
+        }
+        model_path = self.role_params['model_path']
+        check_directory_exist(model_path)
+        logger.info(f"model path: {model_path}")
+        with open(model_path, 'wb') as file_path:
+            pickle.dump(modelFile, file_path)
 
     def predict(self):
-        pass
+        # load model for prediction
+        model_path = self.role_params['model_path']
+        logger.info(f"model path: {model_path}")
+        with open(model_path, 'rb') as file_path:
+            modelFile = pickle.load(file_path)
+
+        # load dataset
+        data_path = self.role_params['data']['data_path']
+        origin_data = read_csv(data_path, selected_column=None, id=None)
+
+        x = origin_data.copy()
+        selected_column = modelFile['selected_column']
+        if selected_column:
+            x = x[selected_column]
+        id = modelFile['id']
+        if id in x.columns:
+            x.pop(id)
+        label = modelFile['label']
+        if label in x.columns:
+            y = x.pop(label).values
+        x = x.values
+
+        # data preprocessing
+        # minmaxscaler
+        data_max = modelFile['data_max']
+        data_min = modelFile['data_min']
+        x = (x - data_min) / (data_max - data_min)
+
+        # test data prediction
+        model = modelFile['model']
+        pred_prob = model.predict_prob(x)
+
+        if model.multiclass:
+            pred_y = np.argmax(pred_prob, axis=1)
+            pred_prob = pred_prob.tolist()
+        else:
+            pred_y = np.array(pred_prob > 0.5, dtype='int')
+
+        result = pd.DataFrame({
+            'pred_prob': pred_prob,
+            'pred_y': pred_y
+        })
+        
+        data_result = pd.concat([origin_data, result], axis=1)
+        predict_path = self.role_params['predict_path']
+        check_directory_exist(predict_path)
+        logger.info(f"predict path: {predict_path}")
+        data_result.to_csv(predict_path, index=False)
 
 
 def batch_generator(all_data, batch_size, shuffle=True):
@@ -140,22 +205,25 @@ def batch_generator(all_data, batch_size, shuffle=True):
         yield [d[start:end] for d in all_data]
 
 
-class Plaintext_Client(LogisticRegression):
+class Plaintext_Client:
 
     def __init__(self, x, y, learning_rate, alpha, server_channel, *args):
-        super().__init__(x, y, learning_rate, alpha, *args)
+        self.model = LogisticRegression(x, y, learning_rate, alpha)
+        self.param_init(x, y, server_channel)
+
+    def param_init(self, x, y, server_channel):
         self.server_channel = server_channel
 
         self.send_output_dim(y)
 
         self.num_examples = x.shape[0]
-        if not self.multiclass:
+        if not self.model.multiclass:
             self.num_positive_examples = y.sum()
         self.send_params()
 
     def train(self):
-        self.server_channel.send("client_model", self.theta)
-        self.set_theta(self.server_channel.recv("server_model"))
+        self.server_channel.send("client_model", self.model.theta)
+        self.model.set_theta(self.server_channel.recv("server_model"))
 
     def send_output_dim(self, y):
         # assume labels start from 0
@@ -169,30 +237,30 @@ class Plaintext_Client(LogisticRegression):
         output_dim = self.server_channel.recv('output_dim')
         
         # init theta
-        if self.multiclass:
-            if output_dim != self.theta.shape[1]:
-                self.theta = np.zeros((self.theta.shape[0], output_dim))
+        if self.model.multiclass:
+            if output_dim != self.model.theta.shape[1]:
+                self.model.theta = np.zeros((self.model.theta.shape[0], output_dim))
         else:
             if output_dim > 1:
-                self.theta = np.zeros((self.theta.shape[0], output_dim))
-                self.multiclass = True
+                self.model.theta = np.zeros((self.model.theta.shape[0], output_dim))
+                self.model.multiclass = True
 
     def send_params(self):
         self.server_channel.send('num_examples', self.num_examples)
-        if not self.multiclass:
+        if not self.model.multiclass:
             self.server_channel.send('num_positive_examples',
                                      self.num_positive_examples)
 
     def send_loss(self, x, y):
-        loss = self.loss(x, y)
-        if self.alpha > 0:
-            loss -= 0.5 * self.alpha * (self.theta ** 2).sum()
+        loss = self.model.loss(x, y)
+        if self.model.alpha > 0:
+            loss -= 0.5 * self.model.alpha * (self.model.theta ** 2).sum()
         self.server_channel.send("loss", loss)
         return loss
 
     def send_acc(self, x, y):
-        y_hat = self.predict_prob(x)
-        if self.multiclass:
+        y_hat = self.model.predict_prob(x)
+        if self.model.multiclass:
             y_pred = np.argmax(y_hat, axis=1)
         else:
             y_pred = np.array(y_hat > 0.5, dtype='int')
@@ -202,7 +270,7 @@ class Plaintext_Client(LogisticRegression):
         return y_hat, acc
     
     def get_auc(self, y_hat, y):
-        if self.multiclass:
+        if self.model.multiclass:
             # one-vs-rest
             auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr') 
         else:
@@ -214,7 +282,7 @@ class Plaintext_Client(LogisticRegression):
 
         y_hat, acc = self.send_acc(x, y)
 
-        if self.multiclass:
+        if self.model.multiclass:
             auc = self.get_auc(y_hat, y)
             self.server_channel.send("auc", auc)
 
@@ -240,23 +308,22 @@ class Plaintext_Client(LogisticRegression):
         loss = self.send_loss(x, y)
         y_hat, acc = self.send_acc(x, y)
         auc = self.get_auc(y_hat, y)
-        if self.multiclass:
+        if self.model.multiclass:
             self.server_channel.send("auc", auc)
         logger.info(f"loss={loss}, acc={acc}, auc={auc}")
 
 
-class DPSGD_Client(LogisticRegression_DPSGD,
-                   Plaintext_Client):
+class DPSGD_Client(Plaintext_Client):
 
     def __init__(self, x, y, learning_rate, alpha,
                  noise_multiplier, l2_norm_clip, secure_mode,
                  server_channel):
-        super().__init__(x, y, learning_rate, alpha,
-                         noise_multiplier, l2_norm_clip, secure_mode,
-                         server_channel)
+        self.model = LogisticRegression_DPSGD(x, y, learning_rate, alpha,
+                                              noise_multiplier, l2_norm_clip, secure_mode)
+        self.param_init(x, y, server_channel)
 
     def compute_epsilon(self, steps, batch_size, delta):
-        if self.noise_multiplier == 0.0:
+        if self.model.noise_multiplier == 0.0:
             return float('inf')
         orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
         accountant = dp_accounting.rdp.RdpAccountant(orders)
@@ -265,7 +332,7 @@ class DPSGD_Client(LogisticRegression_DPSGD,
         event = dp_accounting.SelfComposedDpEvent(
             dp_accounting.PoissonSampledDpEvent(
                 sampling_probability,
-                dp_accounting.GaussianDpEvent(self.noise_multiplier)), steps)
+                dp_accounting.GaussianDpEvent(self.model.noise_multiplier)), steps)
 
         accountant.compose(event)
         
@@ -274,19 +341,19 @@ class DPSGD_Client(LogisticRegression_DPSGD,
         return accountant.get_epsilon(target_delta=delta)
     
 
-class Paillier_Client(LogisticRegression_Paillier,
-                      Plaintext_Client):
+class Paillier_Client(Plaintext_Client):
 
     def __init__(self, x, y, learning_rate, alpha,
                  server_channel):
-        super().__init__(x, y, learning_rate, alpha,
-                         server_channel)
-        self.public_key = server_channel.recv("public_key")
-        self.set_theta(self.encrypt_vector(self.theta))
+        self.model = LogisticRegression_Paillier(x, y, learning_rate, alpha)
+        self.param_init(x, y, server_channel)
+
+        self.model.public_key = server_channel.recv("public_key")
+        self.model.set_theta(self.model.encrypt_vector(self.model.theta))
 
     def send_loss(self, x, y):
         # pallier only support compute approximate loss without penalty
-        loss = self.loss(x, y)
+        loss = self.model.loss(x, y)
         self.server_channel.send("loss", loss)
         return loss
 

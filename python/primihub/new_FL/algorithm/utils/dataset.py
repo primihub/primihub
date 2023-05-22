@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def read_csv(data_path, selected_column, id='id'):
+def read_csv(data_path, selected_column=None, id=None):
     data = pd.read_csv(data_path)
     if selected_column:
         data = data[selected_column]

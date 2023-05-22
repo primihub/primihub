@@ -28,22 +28,22 @@ class NeuralNetworkServer(BaseModel):
                                           node_info=self.node_info,
                                           task_info=self.task_info)
         
-        # model init
+        # server init
         # Get cpu or gpu device for training.
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using {device} device")
 
         method = self.common_params['method']
         if method == 'Plaintext':
-            model = Plaintext_Server(method,
-                                     self.common_params['task'],
-                                     device,
-                                     client_channel)
+            server = Plaintext_Server(method,
+                                      self.common_params['task'],
+                                      device,
+                                      client_channel)
         elif method == 'DPSGD':
-            model = DPSGD_Server(method,
-                                 self.common_params['task'],
-                                 device,
-                                 client_channel)
+            server = DPSGD_Server(method,
+                                  self.common_params['task'],
+                                  device,
+                                  client_channel)
         else:
             logger.error(f"Not supported method: {method}")
 
@@ -63,11 +63,11 @@ class NeuralNetworkServer(BaseModel):
         global_epoch = self.common_params['global_epoch']
         for i in range(global_epoch):
             logger.info(f"-------- global epoch {i+1} / {global_epoch} --------")
-            model.train()
+            server.train()
         
             # print metrics
             if self.common_params['print_metrics']:
-                model.print_metrics()
+                server.print_metrics()
         logger.info("-------- finish training --------")
 
         # receive final epsilons when using DPSGD
@@ -77,7 +77,7 @@ class NeuralNetworkServer(BaseModel):
             logger.info(f"For delta={delta}, the current epsilon is {max(eps)}")
 
         # receive final metrics
-        trainMetrics = model.get_metrics()
+        trainMetrics = server.get_metrics()
         metric_path = self.common_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")

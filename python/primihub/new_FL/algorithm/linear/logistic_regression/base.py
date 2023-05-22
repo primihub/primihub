@@ -115,9 +115,8 @@ class LogisticRegression:
 class LogisticRegression_DPSGD(LogisticRegression):
 
     def __init__(self, x, y, learning_rate=0.2, alpha=0.0001,
-                 noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True,
-                 *args):
-        super().__init__(x, y, learning_rate, alpha, *args)
+                 noise_multiplier=1.0, l2_norm_clip=1.0, secure_mode=True):
+        super().__init__(x, y, learning_rate, alpha)
         self.noise_multiplier = noise_multiplier
         self.l2_norm_clip = l2_norm_clip
         self.secure_mode = secure_mode
@@ -194,8 +193,7 @@ class PaillierFunc:
 
 class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
 
-    def __init__(self, x, y, learning_rate=0.2, alpha=0.0001,
-                 *args):
+    def __init__(self, x, y, learning_rate=0.2, alpha=0.0001, *args):
         super().__init__(x, y, learning_rate, alpha, *args)
 
     def compute_grad(self, x, y):
