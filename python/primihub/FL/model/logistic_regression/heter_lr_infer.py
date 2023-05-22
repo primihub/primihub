@@ -7,6 +7,7 @@ from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from primihub.new_FL.algorithm.utils.base import BaseModel
 from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 
 
 class HeteroLrHostInfer(BaseModel):
@@ -74,7 +75,8 @@ class HeteroLrHostInfer(BaseModel):
         pred_y = (self.sigmoid(y_hat) > 0.5).astype('int')
 
         pred_df = pd.DataFrame({'preds': pred_y, 'probs': self.sigmoid(y_hat)})
-        pred_df.to_csv(self.model_pred, index=False, sep='\t')
+        check_directory_exist(self.model_pred)
+        pred_df.to_csv(self.model_pred, index=False)
         if self.label is not None:
             acc = sum((pred_y == self.y).astype('int')) / self.data.shape[0]
             ks, auc = evaluate_ks_and_roc_auc(self.y, self.sigmoid(y_hat))
@@ -90,6 +92,7 @@ class HeteroLrHostInfer(BaseModel):
 
             metrics_buff = json.dumps(evals)
 
+            check_directory_exist(self.metric_path)
             with open(self.metric_path, 'w') as filePath:
                 filePath.write(metrics_buff)
             print("test acc is", evals)

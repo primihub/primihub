@@ -10,6 +10,7 @@ from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from primihub.new_FL.algorithm.utils.base import BaseModel
 from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
 
 
@@ -348,6 +349,7 @@ class HeteroLrHost(HeteroLrBase):
             "std": std
         }
 
+        check_directory_exist(model_path)
         with open(model_path, 'wb') as lr_host:
             pickle.dump(host_model, lr_host)
 
@@ -375,7 +377,8 @@ class HeteroLrHost(HeteroLrBase):
                 "recall": recall
             }
             resut_buf = json.dumps(evals)
-
+            
+            check_directory_exist(self.metric_path)
             with open(self.metric_path, 'w') as indicts:
                 indicts.write(resut_buf)
 
@@ -384,7 +387,9 @@ class HeteroLrHost(HeteroLrBase):
                 'prediction': best_y,
                 'probability': self.sigmoid(best_y)
             })
-            pred_df.to_csv(self.model_pred, index=False, sep='\t')
+
+            check_directory_exist(self.model_pred)
+            pred_df.to_csv(self.model_pred, index=False)
 
     def score(self, x, y):
         pass
@@ -525,6 +530,7 @@ class HeteroLrGuest(HeteroLrBase):
             "std": std
         }
 
+        check_directory_exist(model_path)
         with open(model_path, 'wb') as lr_guest:
             pickle.dump(host_model, lr_guest)
 
