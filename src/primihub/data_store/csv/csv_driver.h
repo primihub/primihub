@@ -67,8 +67,7 @@ class CSVCursor : public Cursor {
    * if column data type provided when the dataset register,
    * using registed data type
   */
-  retcode BuildConvertOptions(char delimiter,
-                              arrow::csv::ConvertOptions* convert_option);
+  retcode BuildConvertOptions(arrow::csv::ConvertOptions* convert_option);
 
  private:
   std::string filePath;
@@ -95,6 +94,7 @@ public:
 
 protected:
   void setDriverType();
+  retcode GetColumnNames(const char delimiter, std::vector<std::string>* column_names);
 
 private:
   std::string filePath_;

@@ -268,27 +268,27 @@ void PSIKkrtTask::_kkrtSend(osuCrypto::Channel& chl) {
 }
 
 retcode PSIKkrtTask::_GetIntsection(osuCrypto::KkrtPsiReceiver &receiver) {
-    /*for (auto pos : receiver.mIntersection) {
-        LOG(INFO) << pos;
-    }*/
-
-    if (psi_type_ == rpc::PsiType::DIFFERENCE) {
-        std::map<u64, int> inter_map;
-        for (auto pos : receiver.mIntersection) {
-            inter_map[pos] = 1;
-        }
-        u64 num_elements = elements_.size();
-        for (u64 i = 0; i < num_elements; i++) {
-            if (inter_map.find(i) == inter_map.end()) {
-                result_.push_back(elements_[i]);
-            }
-        }
-    } else {
-        for (auto pos : receiver.mIntersection) {
-            result_.push_back(elements_[pos]);
-        }
+  /*for (auto pos : receiver.mIntersection) {
+      LOG(INFO) << pos;
+  }*/
+  std::set<u64> inter_pos;
+  for (auto pos : receiver.mIntersection) {
+    inter_pos.insert(pos);
+  }
+  result_.clear();
+  if (psi_type_ == rpc::PsiType::DIFFERENCE) {
+    u64 num_elements = elements_.size();
+    for (u64 i = 0; i < num_elements; i++) {
+      if (inter_pos.find(i) == inter_pos.end()) {
+        result_.push_back(elements_[i]);
+      }
     }
-    return retcode::SUCCESS;
+  } else {
+    for (const auto pos : inter_pos) {
+      result_.push_back(elements_[pos]);
+    }
+  }
+  return retcode::SUCCESS;
 }
 #endif
 
