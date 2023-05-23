@@ -43,7 +43,8 @@
             "selected_column": null,
             "id": "id",
             "label": "y",
-            "print_metrics": true
+            "print_metrics": true,
+            "metric_path": "metrics.json"
         },
         "role_params": {
             "Bob": {

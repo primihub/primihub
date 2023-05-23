@@ -1,8 +1,11 @@
 from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 from primihub.new_FL.algorithm.utils.dataset import read_csv
 from primihub.utils.logger_util import logger
 
+import pickle
+import pandas as pd
 from sklearn import metrics
 import torch
 import torch.utils.data as data_utils
@@ -42,32 +45,32 @@ class NeuralNetworkClient(BaseModel):
         y = x.pop(label).values
         x = x.values
         
-        # model init
+        # client init
         # Get cpu or gpu device for training.
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using {device} device")
 
         method = self.common_params['method']
         if method == 'Plaintext':
-            model = Plaintext_Client(x, y,
-                                     method,
-                                     self.common_params['task'],
-                                     device,
-                                     self.common_params['optimizer'],
-                                     self.common_params['learning_rate'],
-                                     self.common_params['alpha'],
-                                     server_channel)
+            client = Plaintext_Client(x, y,
+                                      method,
+                                      self.common_params['task'],
+                                      device,
+                                      self.common_params['optimizer'],
+                                      self.common_params['learning_rate'],
+                                      self.common_params['alpha'],
+                                      server_channel)
         elif method == 'DPSGD':
-            model = DPSGD_Client(x, y,
-                                 method,
-                                 self.common_params['task'],
-                                 device,
-                                 self.common_params['optimizer'],
-                                 self.common_params['learning_rate'],
-                                 self.common_params['alpha'],
-                                 self.common_params['noise_multiplier'],
-                                 self.common_params['l2_norm_clip'],
-                                 server_channel)
+            client = DPSGD_Client(x, y,
+                                  method,
+                                  self.common_params['task'],
+                                  device,
+                                  self.common_params['optimizer'],
+                                  self.common_params['learning_rate'],
+                                  self.common_params['alpha'],
+                                  self.common_params['noise_multiplier'],
+                                  self.common_params['l2_norm_clip'],
+                                  server_channel)
         else:
             logger.error(f"Not supported method: {method}")
 
@@ -85,21 +88,21 @@ class NeuralNetworkClient(BaseModel):
         x = (x - data_min) / (data_max - data_min)
 
         # create dataloaders
-        if model.output_dim == 1:
+        if client.output_dim == 1:
             y = torch.tensor(y.reshape(-1, 1), dtype=torch.float32)
         else:
             y = torch.tensor(y)
         x = torch.tensor(x, dtype=torch.float32)
         data_tensor = data_utils.TensorDataset(x, y)
-        num_examples = model.num_examples
+        num_examples = client.num_examples
         batch_size = min(num_examples, self.common_params['batch_size'])
         train_dataloader = DataLoader(data_tensor,
                                       batch_size=batch_size,
                                       shuffle=True)
         if method == 'DPSGD':
-            model.enable_DP_training(train_dataloader)
+            client.enable_DP_training(train_dataloader)
 
-        # model training
+        # client training
         logger.info("-------- start training --------")
         global_epoch = self.common_params['global_epoch']
         for i in range(global_epoch):
@@ -110,29 +113,111 @@ class NeuralNetworkClient(BaseModel):
                 logger.info(f"-------- local epoch {j+1} / {local_epoch} --------")
                 if method == 'DPSGD':
                     # DP data loader: Poisson sampling 
-                    model.fit(model.train_dataloader)
+                    client.fit(client.train_dataloader)
                 else:
-                    model.fit(train_dataloader)
+                    client.fit(train_dataloader)
 
-            model.train()
+            client.train()
 
             # print metrics
             if self.common_params['print_metrics']:
-                model.print_metrics(train_dataloader)
+                client.print_metrics(train_dataloader)
         logger.info("-------- finish training --------")
 
         # send final epsilon when using DPSGD
         if method == 'DPSGD':
             delta = self.common_params['delta']
-            eps = model.compute_epsilon(delta)
+            eps = client.compute_epsilon(delta)
             server_channel.send("eps", eps)
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         
         # send final metrics
-        model.send_metrics(train_dataloader)
+        client.send_metrics(train_dataloader)
+
+        # save model for prediction
+        modelFile = {
+            "task": self.common_params['task'],
+            "output_dim": client.output_dim,
+            "selected_column": selected_column,
+            "id": id,
+            "label": label,
+            "data_max": data_max,
+            "data_min": data_min,
+            "model": client.model
+        }
+        model_path = self.role_params['model_path']
+        check_directory_exist(model_path)
+        logger.info(f"model path: {model_path}")
+        with open(model_path, 'wb') as file_path:
+            pickle.dump(modelFile, file_path)
         
     def predict(self):
-        pass
+        # Get cpu or gpu device for training.
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Using {device} device")
+
+        # load model for prediction
+        model_path = self.role_params['model_path']
+        logger.info(f"model path: {model_path}")
+        with open(model_path, 'rb') as file_path:
+            modelFile = pickle.load(file_path)
+
+        # load dataset
+        data_path = self.role_params['data']['data_path']
+        origin_data = read_csv(data_path, selected_column=None, id=None)
+
+        x = origin_data.copy()
+        selected_column = modelFile['selected_column']
+        if selected_column:
+            x = x[selected_column]
+        id = modelFile['id']
+        if id in x.columns:
+            x.pop(id)
+        label = modelFile['label']
+        if label in x.columns:
+            y = x.pop(label).values
+        x = x.values
+
+        # data preprocessing
+        # minmaxscaler
+        data_max = modelFile['data_max']
+        data_min = modelFile['data_min']
+        x = (x - data_min) / (data_max - data_min)
+        x = torch.tensor(x, dtype=torch.float32).to(device)
+
+        # test data prediction
+        task = modelFile['task']
+        model = modelFile['model'].to(device)
+        model.eval()
+        with torch.no_grad():
+            pred = model(x)
+            
+            if task == 'classification':
+                if modelFile['output_dim'] == 1:
+                    pred_prob = torch.sigmoid(pred)
+                    pred_y = (pred_prob > 0.5).int()
+                else:
+                    pred_prob = torch.softmax(pred, dim=1)
+                    pred_y = pred_prob.argmax(1)
+        
+        if task == 'classification':
+            if modelFile['output_dim'] == 1:
+                pred_prob = pred_prob.reshape(-1)
+            result = pd.DataFrame({
+                'pred_prob': pred_prob.tolist(),
+                'pred_y': pred_y.reshape(-1).tolist()
+            })
+        else:
+            result = pd.DataFrame({
+                'pred_y': pred.reshape(-1).tolist()
+            })
+        
+        data_result = pd.concat([origin_data, result], axis=1)
+        predict_path = self.role_params['predict_path']
+        check_directory_exist(predict_path)
+        logger.info(f"predict path: {predict_path}")
+        data_result.to_csv(predict_path, index=False)
+
 
 class Plaintext_Client:
 
@@ -296,11 +381,11 @@ class Plaintext_Client:
         elif self.task == 'regression':
             mse /= size
             client_metrics['train_mse'] = mse
-            self.server_channel.send("mse", mse)
+            self.server_channel.send("mse", mse.type(torch.float64))
 
             mae /= size
             client_metrics['train_mae'] = mae
-            self.server_channel.send("mae", mae)
+            self.server_channel.send("mae", mae.type(torch.float64))
 
             logger.info(f"mse={mse}, mae={mae}")
 

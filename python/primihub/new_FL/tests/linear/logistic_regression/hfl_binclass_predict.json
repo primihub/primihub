@@ -1,0 +1,27 @@
+{
+    "party_info": {
+        "Bob": {
+            "ip": "127.0.0.1",
+            "port": "50051",
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "client": "Bob"
+        },
+        "common_params": {
+            "model": "HFL_logistic_regression",
+            "process": "predict",
+            "task_name": "HFL_logistic_regression_binclass_predict"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "test_homo_lr",
+                "model_path": "Bob_model.pkl",
+                "predict_path": "Bob_predict.csv"
+            }
+        }
+    }
+}
