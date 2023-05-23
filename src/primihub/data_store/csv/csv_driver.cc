@@ -27,6 +27,38 @@
 #include "src/primihub/util/util.h"
 
 namespace primihub {
+namespace csv {
+std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
+                                        const arrow::csv::ReadOptions& read_opt,
+                                        const arrow::csv::ParseOptions& parse_opt,
+                                        const arrow::csv::ConvertOptions& convert_opt) {
+  arrow::io::IOContext io_context = arrow::io::default_io_context();
+  arrow::fs::LocalFileSystem local_fs(arrow::fs::LocalFileSystemOptions::Defaults());
+  auto result_ifstream = local_fs.OpenInputStream(file_path);
+  if (!result_ifstream.ok()) {
+    LOG(ERROR) << "Failed to open file: " << file_path;
+    return nullptr;
+  }
+  std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
+  // Instantiate TableReader from input stream and options
+  auto maybe_reader = arrow::csv::TableReader::Make(
+      io_context, input, read_opt, parse_opt, convert_opt);
+  if (!maybe_reader.ok()) {
+    LOG(ERROR) << "read data failed";
+    return nullptr;
+  }
+  std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
+  // Read table from CSV file
+  auto maybe_table = reader->Read();
+  if (!maybe_table.ok()) {
+    // (for example a CSV syntax error or failed type conversion)
+    LOG(ERROR) << "read data failed";
+    return nullptr;
+  }
+  return *maybe_table;
+}
+}  // namespace csv
+
 // CSVAccessInfo
 std::string CSVAccessInfo::toString() {
   std::stringstream ss;
@@ -98,94 +130,59 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
     const std::vector<int>& column_index,
     const char delimiter,
     std::vector<std::string>* column_name) {
-  if (column_index.empty()) {
-    LOG(ERROR) << "no column index need to convert";
+  auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+  int num_fields = arrow_schema->num_fields();
+  if (arrow_schema != nullptr) {
+    for (auto index : column_index) {
+      if (index < num_fields) {
+        auto field = arrow_schema->field(index);
+        column_name->push_back(field->name());
+      } else {
+        LOG(ERROR) << "index [" << index << "] is invalid";
+        return retcode::FAIL;
+      }
+    }
+  } else {
+    LOG(ERROR) << "dataset schema is empty";
     return retcode::FAIL;
-  }
-  auto& include_columns = *column_name;
-  include_columns.clear();
-  std::ifstream csv_data(file_path, std::ios::in);
-  if (!csv_data.is_open()) {
-    LOG(ERROR) << "open csv file: " << file_path << " failed";
-    return retcode::FAIL;
-  }
-  std::vector<std::string> colum_names;
-  std::string tile_row;
-  std::getline(csv_data, tile_row);
-  str_split(tile_row, &colum_names, delimiter);
-  if (VLOG_IS_ON(5)) {
-    std::string title_name;
-    for (const auto& name : colum_names) {
-      title_name.append("[").append(name).append("] ");
-    }
-    VLOG(5) << title_name;
-  }
-  if (!colum_names.empty()) {
-    auto& last_item = colum_names[colum_names.size() -1];
-    auto it = std::find(last_item.begin(), last_item.end(), '\n');
-    if (it != last_item.end()) {
-      last_item.erase(it);
-    }
-    it = std::find(last_item.begin(), last_item.end(), '\r');
-    if (it != last_item.end()) {
-      last_item.erase(it);
-    }
-  }
-  for (const auto index : column_index) {
-    if (index > colum_names.size()) {
-      LOG(ERROR) << "selected column index is outof range, "
-          << "column index: " << index
-          << " total column size: " << colum_names.size();
-      return retcode::FAIL;
-    }
-    include_columns.push_back(colum_names[index]);
-  }
-  if (VLOG_IS_ON(5)) {
-    for (const auto& name : include_columns) {
-      VLOG(5) << "column name: " << name;
-    }
   }
   return retcode::SUCCESS;
 }
 
-retcode CSVCursor::BuildConvertOptions(char delimiter,
-    arrow::csv::ConvertOptions* convert_options_ptr) {
-  if (!this->SelectedColumnIndex().empty()) {
-    // specify the colum needed to read
-    auto& include_columns = convert_options_ptr->include_columns;
-    auto ret = ColumnIndexToColumnName(filePath,
-        this->SelectedColumnIndex(), delimiter, &include_columns);
-    if (ret != retcode::SUCCESS) {
-      return retcode::FAIL;
-    }
-    auto& column_types = convert_options_ptr->column_types;
-    if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
-      auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
-      for (const auto& name : include_columns) {
-        auto field = arrow_schema->GetFieldByName(name);
-        if (field == nullptr) {
-          LOG(ERROR) << "column name: " << name << " is not found";
-          return retcode::FAIL;
-        }
-        auto& field_type = field->type();
+retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_options_ptr) {
+  if (this->driver_->dataSetAccessInfo()->schema.empty()) {
+    LOG(ERROR) << "no schema is set for dataset";
+    return retcode::FAIL;
+  }
+  auto& include_columns = convert_options_ptr->include_columns;
+  auto& column_types = convert_options_ptr->column_types;
+  auto& selected_index = this->SelectedColumnIndex();
+  auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+  int number_fields = arrow_schema->num_fields();
+  if (!selected_index.empty()) {
+    for (const auto index : selected_index) {
+      if (index < number_fields) {
+        auto field_ptr = arrow_schema->field(index);
+        const auto& name = field_ptr->name();
+        const auto& field_type = field_ptr->type();
+        include_columns.push_back(name);
         column_types[name] = field_type;
-        VLOG(7) << "name: " << name << " type: " << field_type->id();
+        VLOG(7) << "name: [" << name << "] type: " << field_type->id();
+      } else {
+        LOG(ERROR) << "index is out of range, index: " << index
+            << " total columns: " << number_fields;
+        return retcode::FAIL;
       }
     }
   } else {
-    // auto& include_columns = convert_options_ptr->include_columns;
-    // auto& column_types = convert_options_ptr->column_types;
-    // if (this->driver_->dataSetAccessInfo()->arrow_schema != nullptr) {
-    //   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
-    //   auto& all_fields = arrow_schema->fields();
-    //   for (const auto& field : all_fields) {
-    //     auto& col_name = field->name();
-    //     auto& field_type = field->type();
-    //     include_columns.push_back(col_name);
-    //     column_types[col_name] = field_type;
-    //     VLOG(7) << "name: " << col_name << " type: " << field_type->id();
-    //   }
-    // }
+    auto all_fields = arrow_schema->fields();
+    for (const auto& field : all_fields) {
+      const auto& col_name = field->name();
+      const auto& field_type = field->type();
+      include_columns.push_back(col_name);
+      column_types[col_name] = field_type;
+      VLOG(7) << "name: " << col_name << " type: " << field_type->id();
+    }
   }
   return retcode::SUCCESS;
 }
@@ -196,45 +193,22 @@ std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
 
 // read all data from csv file
 std::shared_ptr<Dataset> CSVCursor::read() {
-  arrow::io::IOContext io_context = arrow::io::default_io_context();
-  arrow::fs::LocalFileSystem local_fs(
-      arrow::fs::LocalFileSystemOptions::Defaults());
-  auto result_ifstream = local_fs.OpenInputStream(filePath);
-  if (!result_ifstream.ok()) {
-    LOG(ERROR) << "Failed to open file: " << filePath;
-    return nullptr;
-  }
-  std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
-
   auto read_options = arrow::csv::ReadOptions::Defaults();
+  read_options.skip_rows = 1;
+  auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+  auto field_names = arrow_schema->field_names();
+  read_options.column_names = field_names;
   auto parse_options = arrow::csv::ParseOptions::Defaults();
-
-  auto convert_options_ptr = std::make_unique<arrow::csv::ConvertOptions>();
-  auto ret = BuildConvertOptions(parse_options.delimiter, convert_options_ptr.get());
+  auto convert_options = arrow::csv::ConvertOptions::Defaults();
+  auto ret = BuildConvertOptions(&convert_options);
   if (ret != retcode::SUCCESS) {
     return nullptr;
   }
-
-  // Instantiate TableReader from input stream and options
-  auto maybe_reader = arrow::csv::TableReader::Make(
-      io_context, input, read_options, parse_options, *convert_options_ptr);
-  if (!maybe_reader.ok()) {
-    // TODO Handle TableReader instantiation error...
-    LOG(ERROR) << "read data failed";
+  auto arrow_table = csv::ReadCSVFile(filePath, read_options, parse_options, convert_options);
+  if (arrow_table == nullptr) {
     return nullptr;
   }
-  std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
-
-  // Read table from CSV file
-  auto maybe_table = reader->Read();
-  if (!maybe_table.ok()) {
-    // TODO Handle CSV read error
-    // (for example a CSV syntax error or failed type conversion)
-    LOG(ERROR) << "read data failed";
-    return nullptr;
-  }
-  std::shared_ptr<arrow::Table> table = *maybe_table;
-  auto dataset = std::make_shared<Dataset>(table, this->driver_);
+  auto dataset = std::make_shared<Dataset>(arrow_table, this->driver_);
   return dataset;
 }
 
@@ -282,11 +256,77 @@ void CSVDriver::setDriverType() {
   driver_type = "CSV";
 }
 
+retcode CSVDriver::GetColumnNames(const char delimiter,
+                                  std::vector<std::string>* column_names) {
+  column_names->clear();
+  auto& colum_names = *column_names;
+  auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
+  if (csv_access_info == nullptr) {
+    LOG(ERROR) << "file access info is unavailable";
+    return retcode::FAIL;
+  }
+  std::ifstream csv_data(csv_access_info->file_path_, std::ios::in);
+  if (!csv_data.is_open()) {
+    LOG(ERROR) << "open csv file: " << csv_access_info->file_path_ << " failed";
+    return retcode::FAIL;
+  }
+  std::string tile_row;
+  std::getline(csv_data, tile_row);
+  str_split(tile_row, &colum_names, delimiter);
+  if (VLOG_IS_ON(5)) {
+    std::string title_name;
+    for (const auto& name : colum_names) {
+      title_name.append("[").append(name).append("] ");
+    }
+    VLOG(5) << title_name;
+  }
+  if (!colum_names.empty()) {
+    auto& last_item = colum_names[colum_names.size() -1];
+    auto it = std::find(last_item.begin(), last_item.end(), '\n');
+    if (it != last_item.end()) {
+      last_item.erase(it);
+    }
+    it = std::find(last_item.begin(), last_item.end(), '\r');
+    if (it != last_item.end()) {
+      last_item.erase(it);
+    }
+  }
+  if (VLOG_IS_ON(5)) {
+    for (const auto& name : colum_names) {
+      VLOG(5) << "column name: [" << name << "]";
+    }
+  }
+  return retcode::SUCCESS;
+}
+
 std::unique_ptr<Cursor> CSVDriver::read() {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
     LOG(ERROR) << "file access info is unavailable";
     return nullptr;
+  }
+  VLOG(5) << "access_info_ptr schema column size: " << csv_access_info->schema.size();
+  if (csv_access_info->Schema().empty()) {
+    auto read_options = arrow::csv::ReadOptions::Defaults();
+    auto parse_options = arrow::csv::ParseOptions::Defaults();
+    auto convert_options = arrow::csv::ConvertOptions::Defaults();
+    auto ret = GetColumnNames(parse_options.delimiter, &read_options.column_names);
+    if (ret != retcode::SUCCESS) {
+      return nullptr;
+    }
+    auto arrow_data = csv::ReadCSVFile(csv_access_info->file_path_, read_options,
+                                      parse_options, convert_options);
+    if (arrow_data == nullptr) {
+      return nullptr;
+    }
+    std::vector<FieldType> fileds;
+    auto arrow_fileds = arrow_data->schema()->fields();
+    for (const auto& field : arrow_fileds) {
+      const auto& name = field->name();
+      int type = field->type()->id();
+      fileds.emplace_back(std::make_tuple(name, type));
+    }
+    csv_access_info->SetDatasetSchema(std::move(fileds));
   }
   return this->initCursor(csv_access_info->file_path_);
 }

@@ -85,6 +85,16 @@ retcode DataSetAccessInfo::FromMetaInfo(const DatasetMetaInfo& meta_info) {
 }
 
 retcode DataSetAccessInfo::ParseSchema(const nlohmann::json& json_schema) {
+  {
+    std::shared_lock<std::shared_mutex> lck(this->schema_mtx);
+    if (!this->schema.empty()) {
+      return retcode::SUCCESS;
+    }
+  }
+  std::lock_guard<std::shared_mutex> lck(this->schema_mtx);
+  if (!this->schema.empty()) {
+    return retcode::SUCCESS;
+  }
   try {
     const auto& filed_list = json_schema;
     for (const auto& filed : filed_list) {
@@ -100,7 +110,16 @@ retcode DataSetAccessInfo::ParseSchema(const nlohmann::json& json_schema) {
 }
 
 retcode DataSetAccessInfo::ParseSchema(const YAML::Node& yaml_schema) {
-  this->schema.clear();
+  {
+    std::shared_lock<std::shared_mutex> lck(this->schema_mtx);
+    if (!this->schema.empty()) {
+      return retcode::SUCCESS;
+    }
+  }
+  std::lock_guard<std::shared_mutex> lck(this->schema_mtx);
+  if (!this->schema.empty()) {
+    return retcode::SUCCESS;
+  }
   try {
     for (const auto& field : yaml_schema) {
       auto col_name = field["name"].as<std::string>();
@@ -114,7 +133,16 @@ retcode DataSetAccessInfo::ParseSchema(const YAML::Node& yaml_schema) {
   return MakeArrowSchema();
 }
 retcode DataSetAccessInfo::SetDatasetSchema(const std::vector<FieldType>& schema_info) {
-  this->schema.clear();
+  {
+    std::shared_lock<std::shared_mutex> lck(this->schema_mtx);
+    if (!this->schema.empty()) {
+      return retcode::SUCCESS;
+    }
+  }
+  std::lock_guard<std::shared_mutex> lck(this->schema_mtx);
+  if (!this->schema.empty()) {
+    return retcode::SUCCESS;
+  }
   for (const auto& field : schema_info) {
     this->schema.push_back(field);
   }
@@ -122,6 +150,16 @@ retcode DataSetAccessInfo::SetDatasetSchema(const std::vector<FieldType>& schema
 }
 
 retcode DataSetAccessInfo::SetDatasetSchema(std::vector<FieldType>&& schema_info) {
+  {
+    std::shared_lock<std::shared_mutex> lck(this->schema_mtx);
+    if (!this->schema.empty()) {
+      return retcode::SUCCESS;
+    }
+  }
+  std::lock_guard<std::shared_mutex> lck(this->schema_mtx);
+  if (!this->schema.empty()) {
+    return retcode::SUCCESS;
+  }
   this->schema = std::move(schema_info);
   return MakeArrowSchema();
 }
