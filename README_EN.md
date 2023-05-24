@@ -96,12 +96,6 @@ Start three docker containers using docker-compose.
 docker-compose up -d
 ```
 
-or, you could specify the container register and version, such as:
-
-```shell
-echo -e "REGISTRY=registry.cn-beijing.aliyuncs.com\nTAG=1.5.0" >> .env && docker-compose up -d
-```
-
 Check out the running docker **container**
 
 ```shell
@@ -115,28 +109,7 @@ primihub-node1          "/bin/bash -c './pri…"   node1                   runni
 primihub-node2          "/bin/bash -c './pri…"   node2                   running             0.0.0.0:6668->6668/tcp, 0.0.0.0:8052->50052/tcp
 ```
 
-### Create an MPC task
-
-***Let three nodes jointly perform a logistic regression task of multi-party secure computation (MPC)***
-
-```shell
-docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
-```
-
-> 💡 The node responds to the task
->
-> You can request a computing task to any node in the computing cluster
->
-
-> 💡 Available task parameters
->
-> The following parameters can be specified by primihub-cli:
->
->  1. Which node is requested to start the task?
->  2. Which shared datasets to use?
->  3. What kind of private computing tasks to do?
-
-In this example, primihub-cli uses the default parameters to request an ABY3 tripartite logistic regression task to ***node 0***. The parameters can be specified by cli, please refer to ***[Create task](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***
+## To create a task, refer to [here](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
 
 ## Advanced use
 

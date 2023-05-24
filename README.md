@@ -78,10 +78,9 @@ git clone https://github.com/primihub/primihub.git
 cd primihub
 ```
 
-***启动测试用的节点***
+使用docker-compose 启动容器
 
-使用docker-compose 启动容器。<br/>
-容器包括：三个meta service服务、三个primihub-node节点<br/>
+容器包括：三个meta service服务、三个primihub-node节点
 ```bash
 docker-compose up -d
 ```
@@ -99,28 +98,9 @@ primihub-node1          "/bin/bash -c './pri…"   node1                   runni
 primihub-node2          "/bin/bash -c './pri…"   node2                   running             0.0.0.0:6668->6668/tcp, 0.0.0.0:8052->50052/tcp
 ```
 
-### 创建一个MPC任务
+## 创建任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
 
-***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
 
-```shell
-docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
-```
-
-> 💡 请求任务的节点
->
-> 你可以向计算集群中任意一个节点请求计算任务
->
-
-> 💡 可用的任务参数
->
-> 通过primihub-cli可以指定以下参数
->
->  1. 请求哪个节点启动任务
->  2. 使用哪些共享数据集
->  3. 做什么样的隐私计算任务
-
-在这个例子中primihub-cli会使用默认参数向 ***node 0*** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见 ***[创建任务](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***。
 
 ## 进阶使用
 
