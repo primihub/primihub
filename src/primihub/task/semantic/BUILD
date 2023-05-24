@@ -123,6 +123,7 @@ cc_library(
         "//src/primihub/util:endian_util",
         "%s:psi_client" % OPENMINED_PSI,
         "%s:psi_server" % OPENMINED_PSI,
+        "@fmt//:fmt",
     ],
 )
 

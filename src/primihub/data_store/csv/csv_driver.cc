@@ -83,16 +83,26 @@ retcode CSVAccessInfo::fromJsonString(const std::string& access_info) {
         << e.what() << "] "
         << "item: " << access_info;
     this->file_path_ = access_info;
+
   }
   return ret;
 }
 
-retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
+retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& meta_info) {
   try {
-    this->file_path_ = access_info["access_meta"];
+    // this->file_path_ = access_info["access_meta"];
+    std::string access_info = meta_info["access_meta"].get<std::string>();
+    nlohmann::json js_access_info = nlohmann::json::parse(access_info);
+    this->file_path_ = js_access_info["data_path"].get<std::string>();
   } catch (std::exception& e) {
-    LOG(ERROR) << "get dataset path failed, " << e.what();
-    return retcode::FAIL;
+    // LOG(ERROR) << "get dataset path failed, " << e.what() << " "
+    //   << "detail: " << meta_info;
+    this->file_path_ = meta_info["access_meta"];
+    if (this->file_path_.empty()) {
+      LOG(ERROR) << "get dataset path failed, " << e.what() << " "
+          << "detail: " << meta_info;
+      return retcode::FAIL;
+    }
   }
   return retcode::SUCCESS;
 }
@@ -103,7 +113,19 @@ retcode CSVAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
 }
 
 retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
-  this->file_path_ = meta_info.access_info;
+  try {
+    nlohmann::json js_access_info = nlohmann::json::parse(meta_info.access_info);
+    this->file_path_ = js_access_info["data_path"].get<std::string>();
+  } catch (std::exception& e) {
+    this->file_path_ = meta_info.access_info;
+    // check validattion of the path
+    std::ifstream csv_data(file_path_, std::ios::in);
+    if (!csv_data.is_open()) {
+      LOG(ERROR) << "file_path: " << file_path_ << " is not exist";
+      return retcode::FAIL;
+    }
+    return retcode::SUCCESS;
+  }
   return retcode::SUCCESS;
 }
 
@@ -281,7 +303,7 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
     VLOG(5) << title_name;
   }
   if (!colum_names.empty()) {
-    auto& last_item = colum_names[colum_names.size() -1];
+    auto& last_item = colum_names[colum_names.size() - 1];
     auto it = std::find(last_item.begin(), last_item.end(), '\n');
     if (it != last_item.end()) {
       last_item.erase(it);

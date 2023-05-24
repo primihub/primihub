@@ -54,3 +54,9 @@ fi
 if [ ! -d "log" ]; then
     mkdir log
 fi
+
+#detect platform and machine hardware
+KERNEL_NAME=$(uname -s)
+KERNEL_NAME=$(echo $KERNEL_NAME | tr '[:upper:]' '[:lower:]')
+MACHINE_HARDWARE=$(uname -m)
+sed -e "s|PLATFORM_HARDWARE|${KERNEL_NAME}_${MACHINE_HARDWARE}|g" Makefile > Makefile.tmp && mv Makefile.tmp Makefile

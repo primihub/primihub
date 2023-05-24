@@ -1,0 +1,15 @@
+[
+  {
+    "id": "psi_client_data",
+    "type": "csv",
+    "access_info": "data/client_e.csv"
+  },
+  {
+    "id": "psi_client_data_db",
+    "type": "sqlite",
+    "access_info": {
+      "tableName": "psi_client_data",
+      "db_path": "data/client_e.db3"
+    }
+  }
+]

@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "src/primihub/task/language/parser.h"
-#include "src/primihub/service/dataset/service.h"
 #include "src/primihub/common/common.h"
 
 using primihub::service::DatasetWithParamTag;

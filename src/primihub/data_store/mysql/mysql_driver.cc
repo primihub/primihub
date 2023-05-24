@@ -481,6 +481,7 @@ std::unique_ptr<Cursor> MySQLDriver::read() {
     // first connect to db
     auto ret = this->connect(access_info_ptr);
     if (ret != retcode::SUCCESS) {
+      LOG(ERROR) << "connect to mysql failed";
       return nullptr;
     }
     std::string sql_change_db{"USE "};

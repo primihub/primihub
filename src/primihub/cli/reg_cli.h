@@ -43,7 +43,7 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/service.grpc.pb.h"
 
-using primihub::rpc::DataService;
+using primihub::rpc::DataSetService;
 using primihub::rpc::NewDatasetRequest;
 using primihub::rpc::NewDatasetResponse;
 
@@ -52,7 +52,7 @@ namespace primihub {
 class RegClient {
  public:
   explicit RegClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(DataService::NewStub(channel)) {
+    : stub_(DataSetService::NewStub(channel)) {
   }
 
   int RegDataSet(const std::string& uid,
@@ -60,7 +60,7 @@ class RegClient {
                 const std::string& meta_info);
 
  private:
-  std::unique_ptr<DataService::Stub> stub_;
+  std::unique_ptr<DataSetService::Stub> stub_;
 };
 
 }  // namespace primihub

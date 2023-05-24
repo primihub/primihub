@@ -75,7 +75,7 @@ def run(task_params):
 class Executor:
     '''
     Excute the py file. Note the Context is passed
-    from c++ level. 
+    from c++ level.
     '''
 
     def __init__(self):
