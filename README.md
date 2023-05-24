@@ -12,8 +12,6 @@
 
 PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)。
 
-[GitHub源码](https://github.com/primihub/primihub)
-
 ## 快速开始
 
 5分钟运行起来一个MPC应用
@@ -48,7 +46,7 @@ PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)�
 ```
 
 服务的日志分别存储在log_node0, log_node1, log_node2文件中，便于以后查看<br/>
-如果服务正常运行，通过linux命令 ps -ef | grep bin/node, 你会获取到一下服务信息<br/>
+如果服务正常运行，通过linux命令 ``ps -ef | grep bin/node``, 你会获取到一下服务信息<br/>
 
 ```shell
 root       4915       1  0 3月13 ?        00:08:49 ./redis-server 127.0.0.1:6379
