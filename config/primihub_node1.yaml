@@ -105,6 +105,20 @@ datasets:
     image_dir: "/tmp/FL/mnist/test/test_mnist_host.zip"
     annotations_file: "/tmp/FL/mnist/test/test_mnist_host_annotations.csv"
 
+  # FL preprocess
+  - description: "preprocess_vfl_train_host"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/train/host.csv"
+  - description: "preprocess_vfl_test_host"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/test/host.csv"
+  - description: "preprocess_hfl_train_client1"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/train/client1.csv"
+  - description: "preprocess_hfl_test_client1"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/test/client1.csv"
+
 localkv:
   model: "leveldb"
   path: "/data/localdb1"

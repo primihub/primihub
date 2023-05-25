@@ -133,6 +133,20 @@ datasets:
     model: "csv"
     source: "data/FL/hetero_iv/iv_host.csv"
 
+  # FL preprocess
+  - description: "preprocess_vfl_train_host"
+    model: "csv"
+    source: "data/FL/preprocess/vfl/train/host.csv"
+  - description: "preprocess_vfl_test_host"
+    model: "csv"
+    source: "data/FL/preprocess/vfl/test/host.csv"
+  - description: "preprocess_hfl_train_client1"
+    model: "csv"
+    source: "data/FL/preprocess/hfl/train/client1.csv"
+  - description: "preprocess_hfl_test_client1"
+    model: "csv"
+    source: "data/FL/preprocess/hfl/test/client1.csv"
+
 localkv:
   model: "leveldb"
   path: "./localdb/node1"

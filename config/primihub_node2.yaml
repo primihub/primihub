@@ -84,6 +84,20 @@ datasets:
   - description: "test_hetero_xgb_guest"
     model: "csv"
     source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
+  
+  # FL preprocess
+  - description: "preprocess_vfl_train_guest"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/train/guest.csv"
+  - description: "preprocess_vfl_test_guest"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/test/guest.csv"
+  - description: "preprocess_hfl_train_client2"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/train/client2.csv"
+  - description: "preprocess_hfl_test_client2"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/test/client2.csv"
 
 localkv:
   model: "leveldb"
