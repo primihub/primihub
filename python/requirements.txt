@@ -15,7 +15,7 @@ protobuf==3.20.0
 
 pydantic
 sphinx
-scikit-learn==1.1.1
+scikit-learn==1.2.2
 phe==1.5.0
 
 mysql-connector-python
