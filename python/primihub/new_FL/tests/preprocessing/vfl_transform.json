@@ -1,0 +1,38 @@
+{
+    "party_info": {
+        "Bob": {
+            "ip": "127.0.0.1",
+            "port": "50051",
+            "use_tls": false
+        },
+        "Charlie": {
+            "ip": "127.0.0.1",
+            "port": "50052",
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": "Charlie"
+        },
+        "common_params": {
+            "model": "FL_Preprocess",
+            "process": "transform",
+            "task_name": "VFL_preprocess_transform"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_vfl_test_host",
+                "processed_dataset_path": "Bob_test_dataset.csv",
+                "transformer_path": "Bob_transformer.pkl"
+            },
+            "Charlie": {
+                "data_set": "preprocess_vfl_test_guest",
+                "processed_dataset_path": "Charlie_test_dataset.csv",
+                "transformer_path": "Charlie_transformer.pkl"
+            }
+        }
+    }
+}
