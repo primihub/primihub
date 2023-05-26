@@ -51,4 +51,4 @@ PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)�
 
 ## 许可证
 
-此代码在 Apache 2.0 下发布，参见 [LICENSE]（https://github.com/primihub/primihub/blob/develop/LICENSE） 文件。
+此代码在 Apache 2.0 下发布，参见 [LICENSE](https://github.com/primihub/primihub/blob/develop/LICENSE) 文件。
