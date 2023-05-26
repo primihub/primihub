@@ -183,11 +183,18 @@ retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_optio
   auto& column_types = convert_options_ptr->column_types;
   auto& selected_index = this->SelectedColumnIndex();
   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+  auto& schema = this->driver_->dataSetAccessInfo()->schema;
   int number_fields = arrow_schema->num_fields();
   if (!selected_index.empty()) {
     for (const auto index : selected_index) {
       if (index < number_fields) {
-        auto field_ptr = arrow_schema->field(index);
+        auto field_info = schema[index];
+        const auto& field_name = std::get<0>(field_info);
+        auto field_ptr = arrow_schema->GetFieldByName(field_name);
+        if (field_ptr == nullptr) {
+          LOG(ERROR) << "field is not found by name: " << field_name;
+          return retcode::FAIL;
+        }
         const auto& name = field_ptr->name();
         const auto& field_type = field_ptr->type();
         include_columns.push_back(name);
