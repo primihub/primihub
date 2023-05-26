@@ -14,7 +14,8 @@ PrimiHub is a platform that supports Multi-Party Computing (MPC), Federated Lear
 
 ## Framework
 
-![Depolyment](doc/tutorial-depolyment.jpg)
+![PrimiHub](doc/primihub.jpg)
+![Deployment](doc/deployment.svg)
 
 ## Quick start
 
