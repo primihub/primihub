@@ -126,31 +126,42 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   if (local_id_ == 0) {
     rpc::Node &node = party_id_node_map[0];
     uint16_t port = 0;
+    std::string ip;
 
     // Two Local server addr.
     port = node.vm(0).next().port();
-    next_addr_ = std::make_pair(node.ip(), port);
+    ip = node.vm(0).next().ip();
+    next_addr_ = std::make_pair(ip, port);
 
     port = node.vm(0).prev().port();
-    prev_addr_ = std::make_pair(node.ip(), port);
+    ip = node.vm(0).prev().ip();
+    prev_addr_ = std::make_pair(ip, port);
   } else if (local_id_ == 1) {
     rpc::Node &node = party_id_node_map[1];
 
     // A local server addr.
-    uint16_t port = node.vm(0).next().port();
-    next_addr_ = std::make_pair(node.ip(), port);
+    std::string ip;
+    uint16_t port{0};
+    port = node.vm(0).next().port();
+    ip = node.vm(0).next().ip();
+    next_addr_ = std::make_pair(ip, port);
 
     // A remote server addr.
-    prev_addr_ =
-        std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
+    ip = node.vm(0).prev().ip();
+    port = node.vm(0).prev().port();
+    prev_addr_ = std::make_pair(ip, port);
   } else {
     rpc::Node &node = party_id_node_map[2];
-
+    std::string ip;
+    uint16_t port{0};
     // Two remote server addr.
-    next_addr_ =
-        std::make_pair(node.vm(0).next().ip(), node.vm(0).next().port());
-    prev_addr_ =
-        std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
+    ip = node.vm(0).next().ip();
+    port = node.vm(0).next().port();
+    next_addr_ = std::make_pair(ip, port);
+
+    ip = node.vm(0).prev().ip();
+    port = node.vm(0).prev().port();
+    prev_addr_ = std::make_pair(ip, port);
   }
 
   // Key when save model.
