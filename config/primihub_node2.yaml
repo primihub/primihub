@@ -2,8 +2,9 @@ version: 1.0
 
 node: "node2"
 location: "primihub-node2"
-grpc_port: 50052
 use_tls: false
+
+grpc_port: 50052
 
 #certificate:
 #  root_ca: "data/cert/ca.crt"
