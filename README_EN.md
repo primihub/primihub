@@ -10,7 +10,7 @@
 
 ## Introduction
 
-PrimiHub is a platform that supports Multi-Party Computing (MPC), Federated Learning (FL), Private set intersection (PSI), and Private Information Retrieval (PIR). It also supports extensions of data source access, data consumption, access application, syntax, semantics, and security protocols. For more details, please refer to PrimiHub [core feature](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1).
+PrimiHub is a platform that supports Multi-Party Computing (MPC), Federated Learning (FL), Private set intersection (PSI), and Private Information Retrieval (PIR). It also supports extensions of data source access, data consumption, access application, syntax, semantics, and security protocols. For more details, please refer to PrimiHub [core feature](https://docs.primihub.com/docs/developer-docs/core-concept/model).
 
 ## Framework
 
