@@ -92,7 +92,8 @@ std::shared_ptr<primihub::Dataset> ImageCursor::read() {
       arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(annotations_file);
   if (!result_ifstream.ok()) {
-    LOG(ERROR) << "Failed to open file: " << annotations_file;
+    LOG(ERROR) << "Failed to open file: " << annotations_file << ", "
+        << "detail: " << result_ifstream.status();
     return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
@@ -105,7 +106,8 @@ std::shared_ptr<primihub::Dataset> ImageCursor::read() {
   auto maybe_reader = arrow::csv::TableReader::Make(
       io_context, input, read_options, parse_options, convert_options);
   if (!maybe_reader.ok()) {
-    LOG(ERROR) << "read annotations_file failed";
+    LOG(ERROR) << "read annotations_file failed, "
+        << "detail: " << maybe_reader.status();
     return nullptr;
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
@@ -113,7 +115,8 @@ std::shared_ptr<primihub::Dataset> ImageCursor::read() {
   // Read table from CSV file
   auto maybe_table = reader->Read();
   if (!maybe_table.ok()) {
-    LOG(ERROR) << "read annotations_file failed";
+    LOG(ERROR) << "read annotations_file failed, "
+        << "detail: " << maybe_table.status();
     return nullptr;
   }
   std::shared_ptr<arrow::Table> table = *maybe_table;
