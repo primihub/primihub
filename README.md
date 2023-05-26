@@ -43,13 +43,13 @@ root     298759       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar -
 - 直接从github获取最新发布的[二进制文件](https://github.com/primihub/primihub/releases)
 - 通过[源码编译](https://docs.primihub.com/docs/advance-usage/start/build)
 
-！！注意： 发布的二进制文件是基于ubuntu20.04系统编译，在其他系统可能出现不兼容的情况
+> 注意： 发布的二进制文件是基于ubuntu20.04系统编译，在其他系统可能出现不兼容的情况
 
 运行服务
 
 切换到bazel-bin的同级目录
 
-！！注意：如果是通过源码编译的，请手动将start_server.sh中定义的PYTHONPATH环境变量注释
+> 注意：如果是通过源码编译的，请手动将start_server.sh中定义的PYTHONPATH环境变量注释
 
 检查 PrimiHub 中配置的meta_service服务的地址和端口是否与启动的端口一致，配置在 config/nodeX.yaml，使用默认配置则不用修改
 
