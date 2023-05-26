@@ -55,6 +55,7 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
     LOG(ERROR) << "read data failed";
     return nullptr;
   }
+  
   return *maybe_table;
 }
 }  // namespace csv
@@ -336,11 +337,14 @@ std::unique_ptr<Cursor> CSVDriver::read() {
     if (ret != retcode::SUCCESS) {
       return nullptr;
     }
+
+    read_options.skip_rows = 1;
     auto arrow_data = csv::ReadCSVFile(csv_access_info->file_path_, read_options,
                                       parse_options, convert_options);
     if (arrow_data == nullptr) {
       return nullptr;
     }
+    
     std::vector<FieldType> fileds;
     auto arrow_fileds = arrow_data->schema()->fields();
     for (const auto& field : arrow_fileds) {

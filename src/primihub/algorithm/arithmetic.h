@@ -31,10 +31,6 @@ public:
   int saveModel(void);
 
 private:
-  // int _ConstructShares(sf64Matrix<D> &w, sf64Matrix<D> &train_data,
-  //                      sf64Matrix<D> &train_label, sf64Matrix<D>
-  //                      &test_data, sf64Matrix<D> &test_label);
-
   int _LoadDatasetFromCSV(std::string &filename);
   bool is_cmp;
   MPCExpressExecutor<Dbit> *mpc_exec_;
@@ -48,7 +44,7 @@ private:
   IOService ios_;
   std::string next_ip_, prev_ip_;
   uint16_t next_port_, prev_port_;
-  std::string data_file_path_;
+  std::string dataset_id_;
   std::map<std::string, u32> col_and_owner_;
   std::map<std::string, bool> col_and_dtype_;
   std::vector<uint32_t> parties_;
