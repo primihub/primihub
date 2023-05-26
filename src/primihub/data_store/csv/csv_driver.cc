@@ -36,7 +36,8 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   arrow::fs::LocalFileSystem local_fs(arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(file_path);
   if (!result_ifstream.ok()) {
-    LOG(ERROR) << "Failed to open file: " << file_path;
+    LOG(ERROR) << "Failed to open file: " << file_path << " "
+        << "detail: " << result_ifstream.status();
     return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
@@ -44,7 +45,8 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   auto maybe_reader = arrow::csv::TableReader::Make(
       io_context, input, read_opt, parse_opt, convert_opt);
   if (!maybe_reader.ok()) {
-    LOG(ERROR) << "read data failed";
+    LOG(ERROR) << "read data failed, "
+        << "detail: " << maybe_reader.status();
     return nullptr;
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
@@ -52,7 +54,8 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   auto maybe_table = reader->Read();
   if (!maybe_table.ok()) {
     // (for example a CSV syntax error or failed type conversion)
-    LOG(ERROR) << "read data failed";
+    LOG(ERROR) << "read data failed, "
+        << "detail: " << maybe_table.status();
     return nullptr;
   }
   return *maybe_table;
@@ -216,7 +219,7 @@ std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
 // read all data from csv file
 std::shared_ptr<Dataset> CSVCursor::read() {
   auto read_options = arrow::csv::ReadOptions::Defaults();
-  read_options.skip_rows = 1;
+  read_options.skip_rows = 1;  // skip title row
   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
   auto field_names = arrow_schema->field_names();
   read_options.column_names = field_names;
@@ -243,7 +246,8 @@ int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
   // write Dataset to csv file
   auto result = arrow::io::FileOutputStream::Open(this->filePath);
   if (!result.ok()) {
-    LOG(ERROR) << "Open file " << filePath << " failed.";
+    LOG(ERROR) << "Open file " << filePath << " failed, "
+        << "detail: " << result.status();
     return -1;
   }
 
@@ -255,7 +259,7 @@ int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
       *(csv_table), options, mem_pool,
       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
   if (!status.ok()) {
-    LOG(ERROR) << "Write content to csv file failed.";
+    LOG(ERROR) << "Write content to csv file failed. " << status;
     return -2;
   }
   return 0;
@@ -336,6 +340,7 @@ std::unique_ptr<Cursor> CSVDriver::read() {
     if (ret != retcode::SUCCESS) {
       return nullptr;
     }
+    read_options.skip_rows = 1;  // skip title row
     auto arrow_data = csv::ReadCSVFile(csv_access_info->file_path_, read_options,
                                       parse_options, convert_options);
     if (arrow_data == nullptr) {
@@ -382,7 +387,7 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
   filePath_ = filePath;
   auto result = arrow::io::FileOutputStream::Open(filePath);
   if (!result.ok()) {
-    LOG(ERROR) << "Open file " << filePath << " failed.";
+    LOG(ERROR) << "Open file " << filePath << " failed. " << result.status();
     return -1;
   }
 
@@ -394,10 +399,9 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
       *(csv_table), options, mem_pool,
       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
   if (!status.ok()) {
-    LOG(ERROR) << "Write content to csv file failed.";
+    LOG(ERROR) << "Write content to csv file failed. " << status;
     return -2;
   }
-
   return 0;
 }
 
