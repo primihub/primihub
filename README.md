@@ -12,24 +12,27 @@
 
 PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)。
 
-## PrimiHub 部署架构图
+## 部署架构图
 
 ![Depolyment](doc/tutorial-depolyment.jpg)
 
 ## 启动PrimiHub
-#### 使用 docker-compose 启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/quick-start)
 
-#### 下载二进制文件启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/start-nodes)
+使用 docker-compose 启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/quick-start)
 
-#### 本地编译启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/build)
+下载二进制文件启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/start-nodes)
+
+本地编译启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/build)
+
 ## 运行任务
 
-#### 运行多方安全计算任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
+运行多方安全计算任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
 
-#### 运行联邦学习任务，参考 [这里](https://docs.primihub.com/docs/category/%E8%81%94%E9%82%A6%E5%AD%A6%E4%B9%A0fl%E4%BB%BB%E5%8A%A1)
-#### 运行隐私求交任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task)
+运行联邦学习任务，参考 [这里](https://docs.primihub.com/docs/category/%E8%81%94%E9%82%A6%E5%AD%A6%E4%B9%A0fl%E4%BB%BB%E5%8A%A1)
 
-#### 运行隐匿查询任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/pir-task)
+运行隐私求交任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task)
+
+运行隐匿查询任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/pir-task)
 
 ## 进阶使用
 
@@ -45,3 +48,7 @@ PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)�
 * 微信助手:
 
 ![wechat_helper](./doc/wechat.jpeg)
+
+## 许可证
+
+此代码在 Apache 2.0 下发布，参见 [LICENSE]（https://github.com/primihub/primihub/blob/develop/LICENSE） 文件。
