@@ -14,7 +14,7 @@ PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)�
 
 ## 系统架构
 
-![PrimiHub](doc/primihub.jpg)
+![PrimiHub](doc/architecture.svg)
 
 ## 启动PrimiHub
 
