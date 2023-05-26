@@ -320,18 +320,22 @@ int LogisticRegressionExecutor::initPartyComm(void) {
     ss.str("");
     ss << "sess_" << local_id_ << "_2";
     std::string sess_name_2 = ss.str();
-
+    LOG(INFO) << "[Next] begin Init server session, party " << local_id_ << ", "
+              << "ip " << next_addr_.first << ", port " << next_addr_.second
+              << ", name " << sess_name_1 << ".";
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
+              << ", name " << sess_name_1 << ". sucess";
+    LOG(INFO) << "[Prev] begin Init server session, party " << local_id_ << ", "
+              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+              << ", name " << sess_name_2 << ".";
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Server, sess_name_2);
     LOG(INFO) << "[Prev] Init server session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
+              << ", name " << sess_name_2 << ". success";
   } else if (local_id_ == 1) {
     std::ostringstream ss;
     ss << "sess_" << local_id_ << "_1";
@@ -340,18 +344,22 @@ int LogisticRegressionExecutor::initPartyComm(void) {
 
     ss << "sess_" << (local_id_ + 2) % 3 << "_1";
     std::string sess_name_2 = ss.str();
-
+    LOG(INFO) << "[Next] begin Init server session, party " << local_id_ << ", "
+              << "ip " << next_addr_.first << ", port " << next_addr_.second
+              << ", name " << sess_name_1 << ".";
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
+              << ", name " << sess_name_1 << ". success";
+    LOG(INFO) << "[Prev] begin Init client session, party " << local_id_ << ", "
+              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+              << ", name " << sess_name_2 << ".";
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
+              << ", name " << sess_name_2 << ". success";
   } else {
     std::ostringstream ss;
     ss.str("");
@@ -361,18 +369,22 @@ int LogisticRegressionExecutor::initPartyComm(void) {
     ss.str("");
     ss << "sess_" << (local_id_ + 2) % 3 << "_1";
     std::string sess_name_2 = ss.str();
-
+    LOG(INFO) << "[Next] begin Init client session, party " << local_id_ << ", "
+              << "ip " << next_addr_.first << ", port " << next_addr_.second
+              << ", name " << sess_name_1 << ".";
     ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    SessionMode::Client, sess_name_1);
     LOG(INFO) << "[Next] Init client session, party " << local_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
+              << ", name " << sess_name_1 << ". success";
+    LOG(INFO) << "[Prev] begin Init client session, party " << local_id_ << ", "
+              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+              << ", name " << sess_name_2 << ".";
     ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
+              << ", name " << sess_name_2 << ". success";
   }
 
   auto chann_next = ep_next_.addChannel();
