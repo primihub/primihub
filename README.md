@@ -12,10 +12,9 @@
 
 PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)。
 
-## 部署架构图
+## 系统架构
 
 ![PrimiHub](doc/primihub.jpg)
-![Deployment](doc/deployment.svg)
 
 ## 启动PrimiHub
 
