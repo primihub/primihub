@@ -10,11 +10,11 @@ use_tls: false
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
-# Use redis by default, set `use_redis: False` to use libp2p
-redis_meta_service:
-  redis_addr: "redis:6379"
-  use_redis: True
-  redis_password: "primihub"
+meta_service:
+  mode: "grpc"
+  ip: "127.0.0.1"
+  port: 7977
+  use_tls: false
 
 datasets:
   # ABY3 LR test case datasets
@@ -99,15 +99,3 @@ datasets:
     model: "csv"
     source: "/tmp/FL/preprocess/hfl/test/client2.csv"
 
-localkv:
-  model: "leveldb"
-  path: "/data/localdb2"
-
-p2p:
-  bootstrap_nodes:
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/172.28.1.12/tcp/8888"
-  dht_get_value_timeout:  120
-
-notify_server: 0.0.0.0:6668

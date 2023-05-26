@@ -44,119 +44,140 @@ using primihub::task::LanguageParserFactory;
 using primihub::task::ProtocolSemanticParser;
 
 namespace primihub {
-VMNodeImpl::VMNodeImpl(const std::string &node_id_,
-                    const std::string &node_ip_, int service_port_,
-                    bool singleton_, const std::string &config_file_path_)
-        : node_id(node_id_), node_ip(node_ip_), service_port(service_port_),
-          singleton(singleton_), config_file_path(config_file_path_) {
-    running_set.clear();
-    task_executor_map.clear();
-    nodelet = std::make_shared<Nodelet>(config_file_path);
-    link_ctx_ = primihub::network::LinkFactory::createLinkContext(primihub::network::LinkMode::GRPC);
-    // clean finished task
-    finished_worker_fut = std::async(
-        std::launch::async,
-        [&]() {
-            SET_THREAD_NAME("cleanFinihsedTask");
-            while(true) {
-                std::string finished_worker_id;
-                fininished_workers.wait_and_pop(finished_worker_id);
-                if (stop_.load(std::memory_order::memory_order_relaxed)) {
-                  break;
-                }
-                {
-                    std::lock_guard<std::mutex> lck(this->task_executor_mtx);
-                    auto it = task_executor_map.find(finished_worker_id);
-                    if (it != task_executor_map.end()) {
-                        VLOG(5) << "worker id : " << finished_worker_id << " "
-                                << "has finished, begin to erase";
-                        task_executor_map.erase(finished_worker_id);
-                        VLOG(5) << "erase worker id : " << finished_worker_id << " success";
-                    }
-                }
-            }
-        });
-    // clean cached timeout stask status
-    clean_cached_task_status_fut_ = std::async(
-        std::launch::async,
-        [&]() {
-            SET_THREAD_NAME("cleanCachedTaskStatus");
-            while(true) {
-                if (stop_.load(std::memory_order::memory_order_relaxed)) {
-                    LOG(WARNING) << "service begin to exit";
-                    break;
-                }
-                std::set<std::string> timeout_worker_id;
-                {
-                    time_t now_ = ::time(nullptr);
-                    std::shared_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
-                    for (const auto& task_status : finished_task_status_) {
-                        auto& timestamp = std::get<2>(task_status.second);
-                        if (now_ - timestamp > this->cached_task_status_timeout_) {
-                            timeout_worker_id.emplace(task_status.first);
-                        }
-                    }
-                }
-                if (!timeout_worker_id.empty()) {
-                    VLOG(2) << "number of timeout task status need to earse: " << timeout_worker_id.size();
-                    std::unique_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
-                    for (const auto& worker_id : timeout_worker_id) {
-                        finished_task_status_.erase(worker_id);
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::seconds(this->cached_task_status_timeout_/2));
-            }
+
+VMNodeImpl::VMNodeImpl(const std::string& node_id_,
+                        const std::string& config_file_path_,
+                        std::shared_ptr<service::DatasetService> service) :
+    node_id(node_id_), config_file_path(config_file_path_),
+    dataset_service_(std::move(service)) {
+  Init();
+}
+
+retcode VMNodeImpl::Init() {
+  running_set.clear();
+  task_executor_map.clear();
+  nodelet = std::make_shared<Nodelet>(config_file_path, dataset_service_);
+  auto link_mode{primihub::network::LinkMode::GRPC};
+  link_ctx_ = primihub::network::LinkFactory::createLinkContext(link_mode);
+  CleanFinishedTaskThread();
+  CleanTimeoutCachedTaskStatusThread();
+  CleanFinishedSchedulerWorkerThread();
+  return retcode::SUCCESS;
+}
+
+void VMNodeImpl::CleanFinishedTaskThread() {
+  // clean finished task
+  finished_worker_fut = std::async(
+    std::launch::async,
+    [&]() {
+      SET_THREAD_NAME("cleanFinihsedTask");
+      while(true) {
+        std::string finished_worker_id;
+        fininished_workers.wait_and_pop(finished_worker_id);
+        if (stop_.load(std::memory_order::memory_order_relaxed)) {
+          LOG(WARNING) << "cleanFinihsedTask begin to exit";
+          break;
         }
-    );
-    // clean finished scheduler worker
-    finished_scheduler_worker_fut = std::async(
-        std::launch::async,
-        [&]() {
-            SET_THREAD_NAME("cleanSchedulerTask");
-            // time_t now_ = ::time(nullptr);
-            std::map<std::string, time_t> finished_scheduler;
-            while(true) {
-                std::set<std::string> timeouted_shceduler;
-                do {
-                    std::string finished_scheduler_worker_id;
-                    fininished_scheduler_workers_.wait_and_pop(finished_scheduler_worker_id);
-                    if (stop_.load(std::memory_order::memory_order_relaxed)) {
-                        LOG(ERROR) << "cleanSchedulerTask begin to quit";
-                        return;
-                    }
-                    time_t now_ = ::time(nullptr);
-                    finished_scheduler[finished_scheduler_worker_id] = now_;
-                    for (auto it = finished_scheduler.begin(); it != finished_scheduler.end();) {
-                        if (now_ - it->second > this->scheduler_worker_timeout_s) {
-                            timeouted_shceduler.insert(it->first);
-                            it = finished_scheduler.erase(it);
-                        } else {
-                            ++it;
-                        }
-                    }
-                    if (timeouted_shceduler.size() > 100) {
-                        break;
-                    }
-                } while (true);
+        {
+          std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+          auto it = task_executor_map.find(finished_worker_id);
+          if (it != task_executor_map.end()) {
+            VLOG(5) << "worker id : " << finished_worker_id << " "
+                    << "has finished, begin to erase";
+            task_executor_map.erase(finished_worker_id);
+            VLOG(5) << "erase worker id : " << finished_worker_id << " success";
+          }
+        }
+      }
+    });
+}
 
-                SCopedTimer timer;
-                {
-
-                    VLOG(3) << "cleanSchedulerTask size of need to clean task: " << timeouted_shceduler.size();
-                    std::lock_guard<std::mutex> lck(this->task_executor_mtx);
-                    for (const auto& scheduler_worker_id : timeouted_shceduler) {
-                        auto it = task_scheduler_map_.find(scheduler_worker_id);
-                        if (it != task_scheduler_map_.end()) {
-                            VLOG(5) << "scheduler worker id : " << scheduler_worker_id << " "
-                                    << "has timeouted, begin to erase";
-                            task_scheduler_map_.erase(scheduler_worker_id);
-                            VLOG(5) << "erase scheduler worker id : " << scheduler_worker_id << " success";
-                        }
-                    }
-                }
-                LOG(ERROR) << "clean timeouted scheduler task cost(ms): " << timer.timeElapse();
+void VMNodeImpl::CleanTimeoutCachedTaskStatusThread() {
+  // clean cached timeout stask status
+  clean_cached_task_status_fut_ = std::async(
+    std::launch::async,
+    [&]() {
+      SET_THREAD_NAME("cleanCachedTaskStatus");
+      while(true) {
+        if (stop_.load(std::memory_order::memory_order_relaxed)) {
+          LOG(WARNING) << "service begin to exit";
+          break;
+        }
+        std::set<std::string> timeout_worker_id;
+        {
+          time_t now_ = ::time(nullptr);
+          std::shared_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
+          for (const auto& task_status : finished_task_status_) {
+            auto& timestamp = std::get<2>(task_status.second);
+            if (now_ - timestamp > this->cached_task_status_timeout_) {
+              timeout_worker_id.emplace(task_status.first);
             }
-        });
+          }
+        }
+        if (!timeout_worker_id.empty()) {
+          VLOG(2) << "number of timeout task status need to earse: " << timeout_worker_id.size();
+          std::unique_lock<std::shared_mutex> lck(this->finished_task_status_mtx_);
+          for (const auto& worker_id : timeout_worker_id) {
+            finished_task_status_.erase(worker_id);
+          }
+        }
+        std::this_thread::sleep_for(
+            std::chrono::seconds(this->cached_task_status_timeout_/2));
+      }
+    }
+  );
+}
+void VMNodeImpl::CleanFinishedSchedulerWorkerThread() {
+  // clean finished scheduler worker
+  finished_scheduler_worker_fut = std::async(
+    std::launch::async,
+    [&]() {
+      SET_THREAD_NAME("cleanSchedulerTask");
+      // time_t now_ = ::time(nullptr);
+      std::map<std::string, time_t> finished_scheduler;
+      while(true) {
+        std::set<std::string> timeouted_shceduler;
+        do {
+          std::string finished_scheduler_worker_id;
+          fininished_scheduler_workers_.wait_and_pop(finished_scheduler_worker_id);
+          if (stop_.load(std::memory_order::memory_order_relaxed)) {
+            LOG(ERROR) << "cleanSchedulerTask begin to quit";
+            return;
+          }
+          time_t now_ = ::time(nullptr);
+          finished_scheduler[finished_scheduler_worker_id] = now_;
+          for (auto it = finished_scheduler.begin(); it != finished_scheduler.end();) {
+            if (now_ - it->second > this->scheduler_worker_timeout_s) {
+              timeouted_shceduler.insert(it->first);
+              it = finished_scheduler.erase(it);
+            } else {
+              ++it;
+            }
+          }
+          if (timeouted_shceduler.size() > 100) {
+            break;
+          }
+        } while (true);
+
+        SCopedTimer timer;
+        {
+          VLOG(3) << "cleanSchedulerTask size of need to clean task: "
+              << timeouted_shceduler.size();
+          std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+          for (const auto& scheduler_worker_id : timeouted_shceduler) {
+            auto it = task_scheduler_map_.find(scheduler_worker_id);
+            if (it != task_scheduler_map_.end()) {
+              VLOG(5) << "scheduler worker id : " << scheduler_worker_id << " "
+                      << "has timeouted, begin to erase";
+              task_scheduler_map_.erase(scheduler_worker_id);
+              VLOG(5) << "erase scheduler worker id : "
+                  << scheduler_worker_id << " success";
+            }
+          }
+        }
+        LOG(INFO) << "clean timeouted scheduler task cost(ms): " << timer.timeElapse();
+      }
+    });
 }
 
 VMNodeImpl::~VMNodeImpl() {
@@ -849,10 +870,6 @@ retcode VMNodeImpl::ExecuteTask(const PushTaskRequest& task_request, PushTaskRep
   LOG(INFO) << "create worker thread for task: "
           << "job_id : " << job_id  << " task_id: " << task_id << " "
           << "request id: " << request_id << " finished";
-  // running_set.erase(job_task);
-  auto& notify_server_info = this->nodelet->getNotifyServerConfig();
-  auto notify_server = reply->add_notify_server();
-  node2PbNode(notify_server_info, notify_server);
   // service node info
   auto& server_cfg = ServerConfig::getInstance();
   auto& service_node_info = server_cfg.getServiceConfig();
@@ -1046,7 +1063,7 @@ Status VMNodeImpl::ExecuteTask(ServerContext* context,
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker(const std::string& worker_id) {
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id << " worker id: " << worker_id;
     // absl::MutexLock lock(&worker_map_mutex_);
-    auto worker = std::make_shared<Worker>(this->node_id, worker_id, this->nodelet);
+    auto worker = std::make_shared<Worker>(this->node_id, worker_id, getNodelet());
     // workers_.emplace("simple_test_worker", worker);
     LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id << " worker id: " << worker_id;
     return worker;
@@ -1056,7 +1073,7 @@ std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
     std::string worker_id = "";
     LOG(INFO) << " 🤖️ Start create worker " << this->node_id;
     // absl::MutexLock lock(&worker_map_mutex_);
-    auto worker = std::make_shared<Worker>(this->node_id, worker_id, this->nodelet);
+    auto worker = std::make_shared<Worker>(this->node_id, worker_id, getNodelet());
     // workers_.emplace("simple_test_worker", worker);
     LOG(INFO) << " 🤖️ Fininsh create worker " << this->node_id;
     return worker;

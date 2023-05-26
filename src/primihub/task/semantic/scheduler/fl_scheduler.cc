@@ -61,13 +61,11 @@ void nodeContext2TaskParam(const NodeContext& node_context,
     for (auto &dataset_meta : dataset_meta_list) {
         ParamValue pv_dataset;
         pv_dataset.set_var_type(VarType::STRING);
-        // Get data path from data URL
-        std::string dataset_path;
+        std::string server_info = dataset_meta->getServerInfo();
         Node node_info;
-        std::string data_url = dataset_meta->getDataURL();
-        DataURLToDetail(data_url, node_info, dataset_path);
+        node_info.fromString(server_info);
         // Only set dataset path
-        pv_dataset.set_value_string(dataset_path);
+        pv_dataset.set_value_string(dataset_meta->getAccessInfo());
         (*params_map)[dataset_meta->getDescription()] = std::move(pv_dataset);
 
         node_dataset_map[node_info.id()] = dataset_meta->getDescription();
@@ -76,6 +74,7 @@ void nodeContext2TaskParam(const NodeContext& node_context,
     // Save every node's dataset name.
     for (auto pair : node_dataset_map) {
         std::string key = pair.first + "_dataset";
+        VLOG(7) << "key: " << key << " value: " << pair.second;
         ParamValue pv_name;
         pv_name.set_var_type(VarType::STRING);
         pv_name.set_value_string(pair.second);

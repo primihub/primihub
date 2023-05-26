@@ -39,31 +39,32 @@ enum DatasetLocation {
     REMOTE,
 };
 
-using DatasetContainerType = std::variant<
-                                        std::shared_ptr<arrow::Table>,
-                                        std::shared_ptr<arrow::Tensor>,
-                                        std::shared_ptr<arrow::Array>>;
+using DatasetContainerType =
+    std::variant<std::shared_ptr<arrow::Table>,
+                std::shared_ptr<arrow::Tensor>,
+                std::shared_ptr<arrow::Array>>;
 
 class Dataset {
  public:
     // Local dataset
-    Dataset(std::shared_ptr<arrow::Table> table, std::shared_ptr<primihub::DataDriver> driver)
-            : data(table), driver_(driver) {
-        location_ = DatasetLocation::LOCAL;
+    Dataset(std::shared_ptr<arrow::Table> table,
+        std::shared_ptr<primihub::DataDriver> driver)
+        : data(table), driver_(std::move(driver)) {
+      location_ = DatasetLocation::LOCAL;
     }
 
     Dataset(const std::vector<std::shared_ptr<arrow::RecordBatch>> &batches,
-                        std::shared_ptr<primihub::DataDriver> driver)
-            : driver_(driver) {
-        location_ = DatasetLocation::LOCAL;
-        // Convert RecordBatch to Table
-        auto result = arrow::Table::FromRecordBatches(batches);
+            std::shared_ptr<primihub::DataDriver> driver)
+        : driver_(std::move(driver)) {
+      location_ = DatasetLocation::LOCAL;
+      // Convert RecordBatch to Table
+      auto result = arrow::Table::FromRecordBatches(batches);
 
-        if (result.ok()) {
-            data = result.ValueOrDie();
-        } else {
-            throw std::runtime_error("Error converting RecordBatch to Table");
-        }
+      if (result.ok()) {
+        data = result.ValueOrDie();
+      } else {
+        throw std::runtime_error("Error converting RecordBatch to Table");
+      }
     }
 
     // TODO: Only support table now. May support Tensor later.

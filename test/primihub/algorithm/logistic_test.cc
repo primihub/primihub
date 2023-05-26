@@ -5,9 +5,10 @@
 #include <vector>
 #include <memory>
 
+#include "src/primihub/common/common.h"
 #include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/service/dataset/localkv/storage_default.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/service/dataset/meta_service/factory.h"
 using namespace primihub;
 
 static void RunLogistic(std::string node_id, rpc::Task &task,
@@ -21,16 +22,18 @@ static void RunLogistic(std::string node_id, rpc::Task &task,
   EXPECT_EQ(exec.saveModel(), 0);
   exec.finishPartyComm();
 }
-using meta_type_t = std::tuple<std::string, std::string, std::string>;
-void registerDataSet(const std::vector<meta_type_t>& meta_infos,
+
+void registerDataSet(const std::vector<DatasetMetaInfo>& meta_infos,
     std::shared_ptr<DatasetService> service) {
   for (auto& meta : meta_infos) {
-    auto& dataset_id = std::get<0>(meta);
-    auto& dataset_type = std::get<1>(meta);
-    auto& dataset_path = std::get<2>(meta);
-    auto access_info = service->createAccessInfo(dataset_type, dataset_path);
+    auto& dataset_id = meta.id;
+    auto& dataset_type = meta.driver_type;
+    auto access_info = service->createAccessInfo(dataset_type, meta);
+    std::string access_meta = access_info->toString();
     auto driver = DataDirverFactory::getDriver(dataset_type, "test addr", std::move(access_info));
     service->registerDriver(dataset_id, driver);
+    service::DatasetMeta meta_;
+    service->newDataset(driver, dataset_id, access_meta, &meta_);
   }
 }
 
@@ -150,14 +153,12 @@ TEST(logistic, logistic_3pc_test) {
   pid_t pid = fork();
   if (pid != 0) {
     // Child process as party 0.
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/65530");
-    auto storage_backend = std::make_shared<service::StorageBackendDefault>();
-    auto meta_service = std::make_shared<service::DatasetMetaService>(stub, storage_backend);
-
-    auto service = std::make_shared<DatasetService>(meta_service, "test addr");
-    using meta_type_t = std::tuple<std::string, std::string, std::string>;
-    std::vector<meta_type_t> meta_infos {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<DatasetService>(std::move(meta_service));
+    std::vector<DatasetMetaInfo> meta_infos {
       {"train_party_0", "csv", "data/train_party_0.csv"},
     };
     registerDataSet(meta_infos, service);
@@ -170,14 +171,12 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/65531");
-    auto storage_backend = std::make_shared<service::StorageBackendDefault>();
-    auto meta_service = std::make_shared<service::DatasetMetaService>(stub, storage_backend);
-
-    auto service = std::make_shared<DatasetService>(meta_service, "test addr");
-    using meta_type_t = std::tuple<std::string, std::string, std::string>;
-    std::vector<meta_type_t> meta_infos {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<DatasetService>(std::move(meta_service));
+    std::vector<DatasetMetaInfo> meta_infos {
       {"train_party_1", "csv", "data/train_party_1.csv"},
     };
     registerDataSet(meta_infos, service);
@@ -188,16 +187,13 @@ TEST(logistic, logistic_3pc_test) {
 
   // Parent process as party 2.
   sleep(3);
-  auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/65532");
-  auto storage_backend = std::make_shared<service::StorageBackendDefault>();
-  auto meta_service = std::make_shared<service::DatasetMetaService>(stub, storage_backend);
-
-  auto service = std::make_shared<DatasetService>(meta_service, "test addr");
+  primihub::Node node;
+  auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+  auto service = std::make_shared<DatasetService>(std::move(meta_service));
   // register dataset
-  // dataset_id, dataset_type, dataset_metainfo
-  using meta_type_t = std::tuple<std::string, std::string, std::string>;
-  std::vector<meta_type_t> meta_infos {
+  std::vector<DatasetMetaInfo> meta_infos {
     {"train_party_2", "csv", "data/train_party_2.csv"},
   };
   registerDataSet(meta_infos, service);

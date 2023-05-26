@@ -1,26 +1,28 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "node_impl",
-    hdrs = ["node.h"],
-    srcs = [
-        "main.cc",
-        "node.cc",
-    ],
-    deps = [
-        ":data_register_service",
-        ":nodelet_lib",
-        "//src/primihub/node/worker:worker_lib_impl",
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/common/config:config_lib",
-        "//src/primihub/util:util_lib",
-        "//src/primihub/task/language:language_parser_factory",
-        "//src/primihub/task/semantic:task_semantic_parser",
-        "@com_github_glog_glog//:glog",
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-    ],
+  name = "node_impl",
+  hdrs = ["node.h"],
+  srcs = [
+    "main.cc",
+    "node.cc",
+  ],
+  deps = [
+    ":data_register_service",
+    ":nodelet_lib",
+    "//src/primihub/node/worker:worker_lib_impl",
+    "//src/primihub/protos:worker_proto",
+    "//src/primihub/common/config:config_lib",
+    "//src/primihub/util:util_lib",
+    "//src/primihub/task/language:language_parser_factory",
+    "//src/primihub/task/semantic:task_semantic_parser",
+    "//src/primihub/service/dataset/meta_service:meta_service_factory",
+    "@com_github_glog_glog//:glog",
+    "@com_github_grpc_grpc//:grpc++",
+    "@com_google_absl//absl/flags:flag",
+    "@com_google_absl//absl/flags:parse",
+    "@arrow",
+  ],
 )
 
 cc_library(
@@ -46,12 +48,11 @@ cc_library(
 )
 
 cc_library(
-    name = "nodelet_lib",
-    hdrs = ["nodelet.h"],
-    srcs = ["nodelet.cc"],
-    deps = [
-        "//src/primihub/common:common_defination",
-        "//src/primihub/p2p:p2p_lib",
-        "//src/primihub/service:dataset_service",
-    ],
+  name = "nodelet_lib",
+  hdrs = ["nodelet.h"],
+  srcs = ["nodelet.cc"],
+  deps = [
+    "//src/primihub/common:common_defination",
+    "//src/primihub/service:dataset_service",
+  ],
 )

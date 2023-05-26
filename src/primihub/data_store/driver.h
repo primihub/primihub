@@ -30,6 +30,7 @@
 #include <exception>
 #include <memory>
 #include <unordered_map>
+#include <shared_mutex>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/common.h"
@@ -67,6 +68,9 @@ struct DataSetAccessInfo {
  public:
   std::vector<FieldType> schema;
   std::shared_ptr<arrow::Schema> arrow_schema{nullptr};
+
+ private:
+  std::shared_mutex schema_mtx;
 };
 
 class Cursor {

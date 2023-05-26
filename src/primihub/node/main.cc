@@ -13,9 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-
 #include <arrow/util/logging.h>
 #include "arrow/api.h"
+#include <arrow/flight/internal.h>
+#include <arrow/flight/server.h>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
@@ -25,6 +26,8 @@
 #include "src/primihub/node/ds.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/node/server_config.h"
+#include "src/primihub/service/dataset/service.h"
+#include "src/primihub/service/dataset/meta_service/factory.h"
 
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
@@ -35,8 +38,8 @@ ABSL_FLAG(int, service_port, 50050, "node service port");
  * @brief
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
-void RunServer(primihub::VMNodeImpl *node_service,
-        primihub::DataServiceImpl *dataset_service, int service_port) {
+void RunServer(primihub::VMNodeImpl* node_service,
+        primihub::DataServiceImpl* dataset_service, int service_port) {
     // Initialize server
     arrow::flight::Location location;
     auto& server_config = primihub::ServerConfig::getInstance();
@@ -55,10 +58,7 @@ void RunServer(primihub::VMNodeImpl *node_service,
     }
     arrow::flight::FlightServerOptions options(location);
 
-    auto server = std::unique_ptr<arrow::flight::FlightServerBase>(
-        new primihub::service::FlightIntegrationServer(
-            node_service->getNodelet()->getDataService()));
-
+    auto server = std::make_unique<arrow::flight::FlightServerBase>();
     // Use builder_hook to register grpc service
     options.builder_hook = [&](void *raw_builder) {
         auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
@@ -120,14 +120,23 @@ int main(int argc, char **argv) {
         return -1;
     }
     auto& host_config = server_config.getServiceConfig();
-    int service_port = host_config.port();
+    int32_t service_port = host_config.port();
     auto& cert_config = server_config.getCertificateConfig();
     std::string node_ip = "0.0.0.0";
+    // service for dataset meta controle
+    auto& node_cfg = server_config.getNodeConfig();
+    auto& meta_service_cfg = node_cfg.meta_service_config;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(meta_service_cfg.mode,
+                                                      meta_service_cfg.host_info);
+    // service for dataset manager
+    using DatasetService = primihub::service::DatasetService;
+    auto dataset_manager = std::make_shared<DatasetService>(std::move(meta_service));
+    // service for task process
     auto node_service = std::make_unique<primihub::VMNodeImpl>(
-            node_id, node_ip, service_port, singleton, config_file);
-    auto data_service = std::make_unique<primihub::DataServiceImpl>(
-        node_service->getNodelet()->getDataService(),
-        node_service->getNodelet()->getNodeletAddr());
+        node_id, config_file, dataset_manager);
+    // service for dataset register
+    auto data_service = std::make_unique<primihub::DataServiceImpl>(dataset_manager.get());
     RunServer(node_service.get(), data_service.get(), service_port);
     return EXIT_SUCCESS;
 }
