@@ -10,13 +10,6 @@ from .scaler import MinMaxScaler
 import pickle
 
 
-def get_preprocess_data(data, column):
-    if len(column) == 1:
-        return data[column].values.reshape(-1, 1)
-    else:
-        return data[column]
-
-
 class Transformer(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,6 +21,7 @@ class Transformer(BaseModel):
         
     def run(self):
         process = self.common_params['process']
+        logger.info(f"process: {process}")
         if process == 'fit_transform':
             self.fit_transform()
         elif process == 'transform':
@@ -58,9 +52,10 @@ class Transformer(BaseModel):
         transformer = []
         num_type = ['float', 'int']
 
-        # label encoder
         role = self.role_params['self_role']
         logger.info(f"role: {role}")
+
+        # label encoder
         if role != 'guest':
             label = self.role_params['label']
             if label:
@@ -71,7 +66,7 @@ class Transformer(BaseModel):
                                                 role=role)
                     self.data[label] = \
                         label_encoder.fit_transform(self.data[label])
-                    transformer.append(('label_encoder',
+                    transformer.append(('LabelEncoder',
                                         label_encoder.module,
                                         label))
                 
@@ -89,10 +84,9 @@ class Transformer(BaseModel):
                                         role=role)
             self.data[str_nan_column] = \
                 str_imputer.fit_transform(
-                    get_preprocess_data(self.data,
-                                        str_nan_column)
+                    self.data[str_nan_column]
                 )
-            transformer.append(('str_imputer',
+            transformer.append(('String Imputer',
                                 str_imputer.module,
                                 str_nan_column))
         
@@ -105,10 +99,9 @@ class Transformer(BaseModel):
                                         role=role)
             self.data[num_nan_column] = \
                 num_imputer.fit_transform(
-                    get_preprocess_data(self.data,
-                                        num_nan_column)
+                    self.data[num_nan_column]
                 )
-            transformer.append(('num_imputer',
+            transformer.append(('Numeric Imputer',
                                 num_imputer.module,
                                 num_nan_column))   
         
@@ -122,10 +115,9 @@ class Transformer(BaseModel):
                                      role=role)
             self.data[obj_column] = \
                 encoder.fit_transform(
-                    get_preprocess_data(self.data,
-                                        obj_column)
+                    self.data[obj_column]
                 )
-            transformer.append(('encoder',
+            transformer.append(('Encoder',
                                 encoder.module,
                                 obj_column))
         
@@ -137,10 +129,9 @@ class Transformer(BaseModel):
                                   role=role)
             self.data[scale_column] = \
                 scaler.fit_transform(
-                    get_preprocess_data(self.data,
-                                        scale_column)
+                    self.data[scale_column]
                 )
-            transformer.append(('scaler',
+            transformer.append(('Scaler',
                                 scaler.module,
                                 scale_column))
 
@@ -167,14 +158,7 @@ class Transformer(BaseModel):
         # transform dataset
         for name, module, column in transformer:
             logger.info(f"{name}: {column}")
-            if name == 'label_encoder':
-                self.data[column] = \
-                    module.transform(self.data[column])
-            else:
-                self.data[column] = \
-                    module.transform(
-                        get_preprocess_data(self.data, column)
-                )
+            self.data[column] = module.transform(self.data[column])
 
         # save transformed dataset
         processed_dataset_path = self.role_params['processed_dataset_path']
