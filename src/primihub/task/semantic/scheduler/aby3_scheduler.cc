@@ -162,14 +162,16 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     // auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
     auto party_access_info = send_request.mutable_task()->mutable_party_access_info();
     const auto& party_info = send_request.task().party_access_info();
-    std::set<std::string> party_names;
+    std::vector<std::string> party_names;
     std::vector<rpc::Node> party_nodes;
+    std::set<std::string> dup_names;
     for (const auto& [party_name, node] : party_info) {
-      party_names.insert(party_name);
+      dup_names.insert(party_name);
+      party_names.emplace_back(party_name);
       party_nodes.emplace_back(node);
     }
-    if (party_names.size() != 3) {
-      LOG(ERROR) << "ABY3 need 3 party, but get " << party_names.size();
+    if (dup_names.size() != 3) {
+      LOG(ERROR) << "ABY3 need 3 party, but get " << dup_names.size();
       return retcode::FAIL;
     }
     int party_id = {0};
