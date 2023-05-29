@@ -30,7 +30,7 @@
         "role_params": {
             "Bob": {
                 "data_set": "test_hetero_xgb_host",
-                "id": null,
+                "id": "id",
                 "selected_column": null,
                 "label": "y",
                 "lookup_table": "host_lookup.pkl",
@@ -38,7 +38,7 @@
             },
             "Charlie": {
                 "data_set": "test_hetero_xgb_guest",
-                "id": null,
+                "id": "id",
                 "model_path": "guest_model.pkl",
                 "selected_column": null,
                 "lookup_table": "guest_lookup.pkl",
