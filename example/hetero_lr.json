@@ -1,5 +1,5 @@
 {
-    "task_manager": "127.0.0.1:60050",
+    "task_manager": "127.0.0.1:50050",
     "component_params": {
         "roles": {
             "guest": [

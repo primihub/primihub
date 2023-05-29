@@ -1,9 +1,10 @@
 version: 1.0
 
 node: "node2"
-location: "172.28.1.12"
-grpc_port: 50052
+location: "primihub-node2"
 use_tls: false
+
+grpc_port: 50052
 
 #certificate:
 #  root_ca: "data/cert/ca.crt"
@@ -12,8 +13,8 @@ use_tls: false
 
 meta_service:
   mode: "grpc"
-  ip: "127.0.0.1"
-  port: 7977
+  ip: "primihub-meta2"
+  port: 9099
   use_tls: false
 
 datasets:
