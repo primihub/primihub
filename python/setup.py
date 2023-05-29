@@ -220,5 +220,7 @@ setup(
         #     'edge=primihub.__main__:main'
         # ]
     },
-
+    scripts=[
+        'bin/submit',
+    ],
 )
