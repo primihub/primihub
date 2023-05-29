@@ -648,10 +648,10 @@ class VGBTBase(BaseModel):
         else:
             self.data = self.data
 
-        if self.id is not None:
+        if self.id in self.data.columns:
             self.data.pop(self.id)
 
-        if self.label is not None:
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label)
         else:
             self.y = (np.random.random(self.data.shape[0]) > 0.5).astype('int')
@@ -1928,7 +1928,10 @@ class VGBTHostInfer(BaseModel):
         self.lookup_table_sum = lookup_table_sum
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
@@ -2079,7 +2082,10 @@ class VGBGuestInfer(BaseModel):
         self.lookup_table_sum = lookup_table_sum
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):

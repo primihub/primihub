@@ -49,7 +49,10 @@ class HeteroLrHostInfer(BaseModel):
         self.std = model_dict['std']
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
         if len(self.col_names) > 0:
@@ -143,7 +146,10 @@ class HeteroLrGuestInfer(BaseModel):
         self.std = model_dict['std']
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+            
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
         if len(self.col_names) > 0:
