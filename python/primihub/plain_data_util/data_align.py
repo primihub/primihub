@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import primihub as ph
-from primihub.client import primihub_cli as cli
 # from primihub import context, dataset
 from primihub.dataset import register_dataset
 from concurrent.futures import ThreadPoolExecutor
