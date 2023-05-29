@@ -72,14 +72,18 @@ class HeteroLrHostInfer(BaseModel):
         return 1.0 / (1 + np.exp(-x))
 
     def run(self):
+        origin_data = self.data.copy()
         self.load_dict()
         self.preprocess()
         y_hat = self.predict_raw(self.data)
-        pred_y = (self.sigmoid(y_hat) > 0.5).astype('int')
+        pred_prob = self.sigmoid(y_hat)
+        pred_y = (pred_prob > 0.5).astype('int')
 
-        pred_df = pd.DataFrame({'preds': pred_y, 'probs': self.sigmoid(y_hat)})
+        pred_df = pd.DataFrame({'pred_prob': pred_prob,
+                                'pred_y': pred_y})
+        data_result = pd.concat([origin_data, pred_df], axis=1)
         check_directory_exist(self.model_pred)
-        pred_df.to_csv(self.model_pred, index=False)
+        data_result.to_csv(self.model_pred, index=False)
         if self.label is not None:
             acc = sum((pred_y == self.y).astype('int')) / self.data.shape[0]
             ks, auc = evaluate_ks_and_roc_auc(self.y, self.sigmoid(y_hat))
@@ -148,7 +152,7 @@ class HeteroLrGuestInfer(BaseModel):
     def preprocess(self):
         if self.id in self.data.columns:
             self.data.pop(self.id)
-            
+
         if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 

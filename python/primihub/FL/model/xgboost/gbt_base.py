@@ -1999,6 +1999,7 @@ class VGBTHostInfer(BaseModel):
         return (preds >= 0.5).astype('int')
 
     def run(self):
+        origin_data = self.data.copy()
         self.load_model()
         self.preprocess()
         pred_prob = self.host_predict_prob(self.data)
@@ -2006,9 +2007,9 @@ class VGBTHostInfer(BaseModel):
             'pred_prob': pred_prob,
             "pred_y": (pred_prob >= 0.5).astype('int')
         })
-
+        data_result = pd.concat([origin_data, pred_df], axis=1)
         check_directory_exist(self.model_pred)
-        pred_df.to_csv(self.model_pred, index=False)
+        data_result.to_csv(self.model_pred, index=False)
 
         if self.label is not None:
             acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
