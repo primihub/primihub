@@ -125,6 +125,8 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_dtype_.insert(make_pair(col, dtype));
+      LOG(INFO) << "col: " << col << " ;type: "<< dtype;
+
     }
 
     expr_ = param_map["Expr"].value_string();
@@ -210,17 +212,25 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
     try {
       sbMatrix sh_res;
       f64Matrix<Dbit> m;
-      if (col_and_owner_[expr_.substr(4, 1)] == party_id_) {
-        m.resize(1, col_and_val_double[expr_.substr(4, 1)].size());
-        for (size_t i = 0; i < col_and_val_double[expr_.substr(4, 1)].size();
+      //CMP(col0,col1)
+      int pos = expr_.find(',');
+      int pos_end = expr_.find(')');
+      std::string op_num_1 = expr_.substr(4, pos - 4);
+      LOG(INFO) << "op_num_1: " << op_num_1 ;
+      std::string op_num_2 = expr_.substr(pos + 1, pos_end - pos - 1);
+      LOG(INFO) << "op_num_2: " << op_num_2 ;
+
+      if (col_and_owner_[op_num_1] == party_id_) {
+        m.resize(1, col_and_val_double[op_num_1].size());
+        for (size_t i = 0; i < col_and_val_double[op_num_1].size();
              i++)
-          m(i) = col_and_val_double[expr_.substr(4, 1)][i];
+          m(i) = col_and_val_double[op_num_1][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
-      } else if (col_and_owner_[expr_.substr(6, 1)] == party_id_) {
-        m.resize(1, col_and_val_double[expr_.substr(6, 1)].size());
-        for (size_t i = 0; i < col_and_val_double[expr_.substr(6, 1)].size();
+      } else if (col_and_owner_[op_num_2] == party_id_) {
+        m.resize(1, col_and_val_double[op_num_2].size());
+        for (size_t i = 0; i < col_and_val_double[op_num_2].size();
              i++)
-          m(i) = col_and_val_double[expr_.substr(6, 1)][i];
+          m(i) = col_and_val_double[op_num_2][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
       } else
         mpc_op_exec_->MPC_Compare(sh_res);
@@ -372,6 +382,9 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
 
   for (int i = 0; i < num_col; i++) {
     int chunk_num = table->column(i)->chunks().size();
+
+    if(col_and_dtype_.count(col_names[i]) != 1)
+      continue;
     if (col_and_dtype_[col_names[i]] == 0) {
       if (table->schema()->GetFieldByName(col_names[i])->type()->id() != 9) {
         LOG(ERROR) << "Local data type is inconsistent with the demand data "
