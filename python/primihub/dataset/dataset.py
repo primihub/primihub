@@ -64,12 +64,18 @@ def register_dataset(service_addr, driver, path, name):
     else:
         channel = grpc.insecure_channel(host_port)
 
-    stub = service_pb2_grpc.DataServiceStub(channel)
-    request = service_pb2.NewDatasetRequest()
-    request.fid = name
-    request.driver = driver
-    request.path = path
+    stub = service_pb2_grpc.DataSetServiceStub(channel)
 
+    reg_req_data = {
+        "op_type": service_pb2.NewDatasetRequest.REGISTER,
+        "meta_info": {
+          "id": name,
+          "driver": driver,
+          "access_info": path,
+          "visibility": service_pb2.MetaInfo.PUBLIC
+        }
+    }
+    request = service_pb2.NewDatasetRequest(**reg_req_data)
     response = stub.NewDataset(request)
     if response.ret_code != 0:
         logger.error("Register dataset {} failed.".foramt(name));
@@ -147,7 +153,7 @@ class ImageCursor(TorchDataset):
             self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
-        
+
     def __len__(self):
         return len(self.img_labels)
 
@@ -159,8 +165,8 @@ class ImageCursor(TorchDataset):
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
-        return image, label 
-    
+        return image, label
+
 
 class CSVDataDriver(FileDriver):
     """ CSV data driver.
@@ -247,7 +253,7 @@ def read(dataset_key: str = None,
         dataset = d().read(annotations_file, img_dir,
                            transform, target_transform)
     else:
-        logger.error(f"Not supported file type: {file_type}") 
+        logger.error(f"Not supported file type: {file_type}")
         raise NotImplementedError()
 
     return dataset
