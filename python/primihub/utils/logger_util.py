@@ -2,6 +2,7 @@ import sys
 import logging
 from loguru import logger
 
+logger.remove()
 logger.add(sys.stdout, colorize=True)
 
 level_dict = {

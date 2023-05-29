@@ -108,14 +108,20 @@ class CertificateConfig {
     std::string cert_path_;
 };
 
+struct MetaServerConfig {
+  std::string mode;
+  Node host_info;
+};
+
 struct NodeConfig {
-    Node server_config;
-    CertificateConfig cert_config;
-    std::vector<Dataset> datasets;
-    RedisConfig redis_cfg;
-    P2P p2p;
-    LocalKV localkv;
-    std::string notify_server;
+  Node server_config;
+  MetaServerConfig meta_service_config;
+  CertificateConfig cert_config;
+  std::vector<Dataset> datasets;
+  RedisConfig redis_cfg;
+  P2P p2p;
+  LocalKV localkv;
+  std::string notify_server;
 };
 
 }  // namespace primihub::common
@@ -129,6 +135,7 @@ using primihub::common::DBInfo;
 using ServerConfig = primihub::Node;
 using primihub::common::CertificateConfig;
 using primihub::common::RedisConfig;
+using primihub::common::MetaServerConfig;
 
 template <> struct convert<RedisConfig> {
     static Node encode(const RedisConfig &redis_cfg) {
@@ -240,6 +247,26 @@ template <> struct convert<P2P> {
     }
 };
 
+template <> struct convert<MetaServerConfig> {
+  static Node encode(const MetaServerConfig& cfg) {
+    Node node;
+    node["ip"] = cfg.host_info.ip_;
+    node["port"] = cfg.host_info.port_;
+    node["use_tls"] = cfg.host_info.use_tls_;
+    node["mode"] = cfg.mode;
+    return node;
+  }
+
+  static bool decode(const Node &node, MetaServerConfig& cfg) {  // NOLINT
+    cfg.mode = node["mode"].as<std::string>();
+    cfg.host_info.ip_ = node["ip"].as<std::string>();
+    cfg.host_info.port_ = node["port"].as<int32_t>();
+    cfg.host_info.use_tls_ = node["use_tls"].as<bool>();
+    VLOG(5) << cfg.host_info.to_string();
+    return true;
+  }
+};
+
 template <> struct convert<NodeConfig> {
     static Node encode(const NodeConfig &nc) {
         Node node;
@@ -247,11 +274,11 @@ template <> struct convert<NodeConfig> {
         node["location"] = nc.server_config.ip();
         node["grpc_port"] = nc.server_config.port();
         node["use_tls"] = nc.server_config.use_tls();
-        node["redis_meta_service"] = nc.redis_cfg;
-        // node["datasets"] = nc.datasets;
-        node["localkv"] = nc.localkv;
-        node["p2p"] = nc.p2p;
-        node["notify_server"] = nc.notify_server;
+        // node["redis_meta_service"] = nc.redis_cfg;
+        // // node["datasets"] = nc.datasets;
+        // node["localkv"] = nc.localkv;
+        // node["p2p"] = nc.p2p;
+        // node["notify_server"] = nc.notify_server;
         return node;
     }
 
@@ -265,18 +292,21 @@ template <> struct convert<NodeConfig> {
         if (node["certificate"]) {
             nc.cert_config = node["certificate"].as<CertificateConfig>();
         }
-        if (node["redis_meta_service"]) {
-            nc.redis_cfg = node["redis_meta_service"].as<RedisConfig>();
+        if (node["meta_service"]) {
+          nc.meta_service_config = node["meta_service"].as<MetaServerConfig>();
         }
+        // if (node["redis_meta_service"]) {
+        //     nc.redis_cfg = node["redis_meta_service"].as<RedisConfig>();
+        // }
         // datasets may be too much, so do not parse from here
         // auto datasets = node["datasets"].as<YAML::Node>();
         // for (size_t i = 0; i < datasets.size(); i++) {
         //     auto dataset = datasets[i].as<Dataset>();
         //     nc.datasets.push_back(dataset);
         // }
-        nc.localkv = node["localkv"].as<LocalKV>();
-        nc.p2p = node["p2p"].as<P2P>();
-        nc.notify_server = node["notify_server"].as<std::string>();
+        // nc.localkv = node["localkv"].as<LocalKV>();
+        // nc.p2p = node["p2p"].as<P2P>();
+        // nc.notify_server = node["notify_server"].as<std::string>();
 
         return true;
     }

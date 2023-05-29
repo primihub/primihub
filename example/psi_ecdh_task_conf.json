@@ -13,7 +13,7 @@
     },
     "serverIndex": {
       "type": "INT32",
-      "value": [0]
+      "value": [1]
     },
     "psiType": {
       "description": "availabe value: [INTERSECTION = 0; DIFFERENCE = 1;]",

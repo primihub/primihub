@@ -21,43 +21,36 @@
 
 #include <string>
 #include <future>
-
-#include "src/primihub/p2p/node_stub.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/service/dataset/localkv/storage_backend.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/node/server_config.h"
 
 namespace primihub {
-
 /**
  * @brief The Nodelet class
  * Provide protocols, services
  *
  */
 class Nodelet {
-  public:
-    explicit Nodelet(const std::string &config_file_path);
-    ~Nodelet();
-    std::shared_ptr<primihub::service::DatasetService> &getDataService();
-    std::string getNodeletAddr();
-    std::string getNotifyServerAddr();
-    Node& getNotifyServerConfig() {
-      return notify_server_info_;
-    }
+ public:
+  explicit Nodelet(const std::string &config_file_path,
+                  std::shared_ptr<service::DatasetService> service) :
+      config_file_path_(config_file_path), dataset_service_(std::move(service)) {
+    auto& server_cfg = ServerConfig::getInstance();
+    auto& service_cfg = server_cfg.getServiceConfig();
+    nodelet_addr_ = service_cfg.to_string();
+    loadConifg(config_file_path, 20);
+  }
 
-  private:
-    void loadConifg(const std::string &config_file_path, unsigned int timeout);
+  ~Nodelet() = default;
+  std::string getNodeletAddr() const {return nodelet_addr_;}
+  std::shared_ptr<service::DatasetService>& getDataService() {return dataset_service_;}
 
-    std::shared_ptr<primihub::p2p::NodeStub> p2p_node_stub_;
-    std::shared_ptr<primihub::service::StorageBackend> local_kv_;
-    // protocols, servcies, etc.
-    std::shared_ptr<primihub::service::DatasetMetaService> meta_service_;
-    std::shared_ptr<primihub::service::DatasetService> dataset_service_;
-    // std::shared_ptr<primihub::service::NotifyService> notify_service_;
-    std::string nodelet_addr_;
-    std::string notify_server_addr_;
-    std::future<void> notify_service_fut;
-    Node notify_server_info_;
+ private:
+  void loadConifg(const std::string &config_file_path, unsigned int timeout);
+  std::string nodelet_addr_;
+  std::string config_file_path_;
+  std::shared_ptr<service::DatasetService> dataset_service_{nullptr};
 };
 
 } // namespace primihub

@@ -28,7 +28,7 @@ retcode PSIEcdhTask::LoadParams(Task &task) {
     reveal_intersection_ = true;
     try {
         std::string party_name = task.party_name();
-        LOG(ERROR) << "party_name: " << task.party_name();
+        VLOG(2) << "party_name: " << task.party_name();
         psi_type_ = param_map["psiType"].value_int32();
         result_file_path_ = param_map["outputFullFilename"].value_string();
         auto it = param_map.find("sync_result_to_server");
@@ -238,7 +238,9 @@ retcode PSIEcdhTask::buildInitParam(std::string* init_params_str) {
 
 retcode PSIEcdhTask::sendInitParam(const std::string& init_param) {
     CHECK_TASK_STOPPED(retcode::FAIL);
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(peer_node);
     return channel->send(this->key, init_param);
 }
 

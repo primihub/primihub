@@ -1,5 +1,70 @@
 syntax = "proto3";
+
+option java_package = "com.primihub.grpc";
+option java_multiple_files = true;
 package primihub.rpc;
+
+service DataSetService {
+  rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
+  rpc GetDataset(GetDatasetRequest) returns (GetDatasetResponse);
+}
+
+message NewDatasetRequest {
+  enum Operator {
+    REGISTER = 0;
+    UNREGISTER = 1;
+    UPDATE = 2;
+  }
+  Operator op_type = 1;
+  MetaInfo meta_info = 2;
+}
+
+message NewDatasetResponse {
+  enum ResultCode {
+    SUCCESS = 0;
+    FAIL = 1;
+  }
+  ResultCode ret_code = 1;
+  string dataset_url = 2;
+  string ret_msg = 3;
+}
+
+message GetDatasetRequest {
+  repeated string id = 1;    // dataset id for request meta info,
+                             // empty to accquire all dataset
+}
+
+message GetDatasetResponse {
+  enum ResultCode {
+    SUCCESS = 0;
+    FAIL = 1;
+  }
+  ResultCode ret_code = 1;
+  string ret_msg = 2;
+  repeated DatasetData data_set = 3;
+}
+
+message DatasetData{
+  enum Status {
+    Available = 0;
+    Unavailable = 1;
+  }
+  Status available = 1;
+  MetaInfo meta_info = 2;
+}
+
+message MetaInfo {
+  enum Visibility {
+    PUBLIC = 0;
+    PRIVATE = 1;
+  }
+  string id = 1;            // global unique
+  string driver = 2;        // dataset type
+  string access_info = 3;   // dataset access info
+  string address = 4;       // location of dataset
+  Visibility visibility = 5;  // visibility for dataset
+  repeated DataTypeInfo data_type = 6;   // type for each field
+}
 
 message DataTypeInfo {
   enum PlainDataType {
@@ -83,94 +148,6 @@ message DataTypeInfo {
     /// Precision- and scale-based decimal type with 256 bits.
     DECIMAL256 = 25;
   }
-
   string name = 1;
   PlainDataType type = 2;
 }
-
-service DataService {
-  rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
-}
-
-message NewDatasetRequest {
-  string driver = 1;
-  string path = 2;
-  string fid = 3;
-  repeated DataTypeInfo data_type = 4;  // data type for each column
-}
-
-message NewDatasetResponse {
-  int32 ret_code = 1;  // 0: success  1: doing  2: error
-  string dataset_url = 2;
-}
-
-// # task status service
-// service NodeService {
-//     rpc SubscribeNodeEvent(ClientContext) returns (stream NodeEventReply);
-// }
-//
-// enum NodeEventType {
-//     NODE_EVENT_TYPE_NODE_CONTEXT = 0;
-//     NODE_EVENT_TYPE_TASK_STATUS = 1;
-//     NODE_EVENT_TYPE_TASK_RESULT = 2;
-// }
-//
-// message NodeEventReply {
-//     NodeEventType event_type = 1;
-//     oneof node_event {
-//         NodeContext node_context = 2;
-//         TaskStatus task_status = 3;
-//         TaskResult task_result = 4;
-//     }
-// }
-//
-// message ClientContext {
-//     string client_id = 1;
-//     string client_ip = 2;
-//     int32 client_port = 3; // TODO no need or from grpc server
-// }
-//
-// // Notify channnel usage: task running status and result.
-// message NotifyChannel {
-//     string key = 1;
-//     string connect_str = 2;
-// }
-//
-// message TaskContext {
-//     string node_id = 1;
-//     string task_id = 2;
-//     string job_id = 3;
-// }
-//
-// message TaskStatus{
-//     TaskContext task_context = 1;
-//     string status = 2;  // TODO enum
-//     string message = 3;
-// }
-//
-// message TaskResult {
-//     TaskContext task_context = 1;
-//     string result_dataset_url = 2; // TODO many
-// }
-//
-// // enum DatasetRetriveType {
-// //     ARROW_FLIGHT = 0;
-// //     HDFS_FILE = 1;
-// // }
-//
-// message DatasetRetriveChannel {
-//     int32 retrive_type = 1;
-// }
-//
-// // Node public certificate.
-// message NodeCertficate {
-//     bytes cert = 1;
-// }
-//
-// // Node context: notify channel, dataset retrive channel, Node certificate.
-// message NodeContext {
-//     int64 session_id = 1;
-//     NotifyChannel notify_channel = 2;
-//     DatasetRetriveChannel dataset_retrive_channel = 3;
-//     NodeCertficate node_certficate = 4;
-// }

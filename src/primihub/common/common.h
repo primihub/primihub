@@ -24,6 +24,8 @@ static const char* DEFAULT = "DEFAULT";
 static int WAIT_TASK_WORKER_READY_TIMEOUT_MS = 5*1000;
 static int CACHED_TASK_STATUS_TIMEOUT_S = 5;
 static int SCHEDULE_WORKER_TIMEOUT_S = 20;
+static int CONTROL_CMD_TIMEOUT_S = 5;
+static int GRPC_RETRY_MAX_TIMES = 3;
 // common type defination
 using u64 = uint64_t;
 using i64 = int64_t;
@@ -110,11 +112,22 @@ struct Node {
     bool use_tls_{false};
     std::string role_;
 };
+/**
+ * vibility for dataset
+ * public: vibiliable for all party
+ * private: vibiable only for the party who public
+*/
+enum class Visibility {
+  PUBLIC = 0,
+  PRIVATE = 1,
+};
 
 struct DatasetMetaInfo {
   std::string id;
   std::string driver_type;
   std::string access_info;
+  Node location;
+  Visibility visibility;
   std::vector<std::tuple<std::string, int>> schema;
 };
 

@@ -45,7 +45,7 @@ PYBIND11_MODULE(linkcontext, m)
 
     py::class_<Node>(m, "Node")
         .def(py::init<const std::string &, const uint32_t, bool, const std::string &>())
-        .def("to_string", &Node::to_string);
+        .def("to_string", &Node::to_string, py::call_guard<py::gil_scoped_release>());
 
     py::class_<LinkFactory>(m, "LinkFactory")
         .def_static("createLinkContext", &LinkFactory::createLinkContext);
@@ -62,15 +62,22 @@ PYBIND11_MODULE(linkcontext, m)
         .def(py::init());
 
     py::class_<IChannel, std::shared_ptr<IChannel>>(m, "IChannel")
-        .def("send", py::overload_cast<const std::string &, std::string_view>(&IChannel::send_wrapper))
-        .def("send", py::overload_cast<const std::string &, const std::string &>(&IChannel::send_wrapper))
-        //.def("recv", py::overload_cast<const std::string&>(&IChannel::forwardRecv));
-        .def("recv", [](IChannel &self, const std::string &key) {
-            std::string recv_str = self.forwardRecv(key);
-            if (recv_str.empty()) {
-                throw pybind11::value_error("received data encountes error");
-            }
-            return py::bytes(recv_str);
+        .def("send",
+            py::overload_cast<const std::string&, std::string_view>(&IChannel::send_wrapper),
+            py::call_guard<py::gil_scoped_release>())
+        .def("send",
+            py::overload_cast<const std::string&, const std::string&>(&IChannel::send_wrapper),
+            py::call_guard<py::gil_scoped_release>())
+        .def("recv", [](IChannel& self, const std::string& key) {
+          std::string recv_str;
+          {
+            py::gil_scoped_release release;
+            recv_str = self.forwardRecv(key);
+          }
+          if (recv_str.empty()) {
+            throw pybind11::value_error("received data encountes error");
+          }
+          return py::bytes(recv_str);
         });
 
     py::class_<GrpcChannel, IChannel, std::shared_ptr<GrpcChannel>>(m, "GrpcChannel")

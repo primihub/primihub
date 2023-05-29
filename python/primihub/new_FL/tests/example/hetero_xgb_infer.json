@@ -1,0 +1,49 @@
+{
+    "party_info": {
+        "Bob": {
+            "ip": "127.0.0.1",
+            "port": "50051",
+            "use_tls": false
+        },
+        "Charlie": {
+            "ip": "127.0.0.1",
+            "port": "50052",
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "guest": [
+                "Charlie"
+            ],
+            "host": [
+                "Bob"
+            ]
+        },
+        "common_params": {
+            "model": "HeteroXGBInfer",
+            "task_name": "predict",
+            "metric_path": "metrics.json",
+            "model_pred": "pred.csv"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "test_hetero_xgb_host",
+                "id": null,
+                "selected_column": null,
+                "label": "y",
+                "lookup_table": "host_lookup.pkl",
+                "model_path": "host_model.pkl"
+            },
+            "Charlie": {
+                "data_set": "test_hetero_xgb_guest",
+                "id": null,
+                "model_path": "guest_model.pkl",
+                "selected_column": null,
+                "lookup_table": "guest_lookup.pkl",
+                "label": null
+            }
+        }
+    }
+}

@@ -22,6 +22,9 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
   const auto& participate_node = task_request.task().party_access_info();
   std::vector<std::thread> thrds;
   std::vector<std::future<retcode>> result_fut;
+  for (const auto& [party_name, node] : participate_node) {
+    this->error_msg_.insert({party_name, ""});
+  }
   for (const auto& [party_name, pb_node] : participate_node) {
     Node dest_node;
     pbNode2Node(pb_node, &dest_node);
@@ -36,18 +39,14 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
         dest_node,
         std::ref(task_request)));
   }
-  bool has_error{false};
   for (auto&& fut : result_fut) {
     auto ret = fut.get();
-    if (ret != retcode::SUCCESS) {
-      has_error = true;
-    }
   }
-  if (has_error) {
+  if (has_error()) {
     LOG(ERROR) << "dispatch task has error";
     return retcode::FAIL;
   } else {
-    LOG(ERROR) << "dispatch task success";
+    VLOG(2) << "dispatch task success";
     return retcode::SUCCESS;
   }
 }
@@ -115,6 +114,7 @@ retcode VMScheduler::ScheduleTask(const std::string& party_name,
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "send executeTask to : " << dest_node_address << " reply success";
   } else {
+    set_error();
     LOG(ERROR) << "send executeTask to : " << dest_node_address << " reply failed";
     return retcode::FAIL;
   }

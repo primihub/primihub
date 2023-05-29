@@ -77,7 +77,7 @@ retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
     auto datasets_with_tag = _parser->getDatasets();
     VLOG(2) << "Finding meta list from datasets...";
     // get party access info from dataset meta service using dataset id
-    dataset_service_->metaService()->findPeerListFromDatasets(
+    dataset_service_->MetaService()->FindPeerListFromDatasets(
       datasets_with_tag,
       [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
         VLOG(2) << "Find meta list from datasets: " << metas_with_param_tag.size();
@@ -108,7 +108,7 @@ retcode ProtocolSemanticParser::scheduleProtoTask(
   }
   auto ret = scheduler_ptr->dispatch(&task_request);
   parseTaskServer(scheduler_ptr->taskServer());
-  return retcode::SUCCESS;
+  return ret;
 }
 
 retcode ProtocolSemanticParser::schedulePythonTask(
@@ -129,7 +129,7 @@ retcode ProtocolSemanticParser::schedulePythonTask(
   }
   auto ret = scheduler_ptr->dispatch(&task_request);
   parseTaskServer(scheduler_ptr->taskServer());
-  return retcode::SUCCESS;
+  return ret;
 }
 
 void ProtocolSemanticParser::metasToDatasetAndOwner(
@@ -206,7 +206,7 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
     Node node_info;
     auto server_info = _meta->getServerInfo();
     node_info.fromString(server_info);
-    std::string dataset_id = _meta->getDescription();
+    std::string dataset_id = _meta->id;
     // find node_id in peer_dataset_map
     auto it = peer_dataset_map.find(node_info.id());
     if (it == peer_dataset_map.end()) {
@@ -235,6 +235,7 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
     node_info.fromString(server_info);
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
+    VLOG(7) << "ds_name: " << ds_name << " tag: " << tag;
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
     auto& ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
     auto iter = ds_port_map.find(ds_name);

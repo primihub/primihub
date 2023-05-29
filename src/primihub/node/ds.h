@@ -31,26 +31,43 @@
 #include "src/primihub/protos/service.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/data_store/factory.h"
-
-using grpc::ServerContext;
-using primihub::rpc::DataService;
-using primihub::rpc::NewDatasetRequest;
-using primihub::rpc::NewDatasetResponse;
-using primihub::service::DatasetService;
+#include "src/primihub/node/server_config.h"
 
 namespace primihub {
-class DataServiceImpl final: public DataService::Service {
+class DataServiceImpl final: public rpc::DataSetService::Service {
  public:
-    explicit DataServiceImpl(std::shared_ptr<primihub::service::DatasetService> dataset_service,
-                             const std::string& nodelet_addr)
-        : dataset_service_(dataset_service), nodelet_addr_(nodelet_addr) {}
+  explicit DataServiceImpl(service::DatasetService* service) :
+      dataset_service_ref_(service) {
+    auto& ins = ServerConfig::getInstance();
+    auto& server_info = ins.getServiceConfig();
+    location_info_ = server_info.to_string();
+  }
 
-    grpc::Status NewDataset(grpc::ServerContext *context, const NewDatasetRequest *request,
-                            NewDatasetResponse *response) override;
+  grpc::Status NewDataset(grpc::ServerContext *context,
+                          const rpc::NewDatasetRequest *request,
+                          rpc::NewDatasetResponse *response) override;
 
+ protected:
+  std::string DatasetLocation() {
+    return location_info_;
+  }
+  service::DatasetService* GetDatasetService() {
+    return dataset_service_ref_;
+  }
+  retcode RegisterDatasetProcess(const DatasetMetaInfo& meta_info,
+                                rpc::NewDatasetResponse* reply);
+  retcode UnRegisterDatasetProcess(const DatasetMetaInfo& meta_info,
+                                rpc::NewDatasetResponse* reply);
+  retcode UpdateDatasetProcess(const DatasetMetaInfo& meta_info,
+                              rpc::NewDatasetResponse* reply);
+  template<typename T>
+  void SetResponseErrorMsg(std::string&& err_msg, T* reply);
+
+  retcode ConvertToDatasetMetaInfo(const rpc::MetaInfo& meta_info_pb,
+                                  DatasetMetaInfo* meta_info);
  private:
-    std::shared_ptr<primihub::service::DatasetService> dataset_service_;
-    std::string nodelet_addr_;
+  service::DatasetService* dataset_service_ref_{nullptr};
+  std::string location_info_;
 };
 
 }  // namespace primihub

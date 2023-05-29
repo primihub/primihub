@@ -23,6 +23,7 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
+#include "src/primihub/data_store/image/image_driver.h"
 #include "src/primihub/util/util.h"
 #ifdef ENABLE_MYSQL_DRIVER
 #include "src/primihub/data_store/mysql/mysql_driver.h"
@@ -31,12 +32,15 @@
 #define SQLITE_DRIVER_NAME "SQLITE"
 #define HDFS_DRIVER_NAME "HDFS"
 #define MYSQL_DRIVER_NAME "MYSQL"
+#define IMAGE_DRIVER_NAME "IMAGE"
 namespace primihub {
 class DataDirverFactory {
  public:
     using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
     static std::shared_ptr<DataDriver>
-    getDriver(const std::string &dirverName, const std::string& nodeletAddr, DataSetAccessInfoPtr access_info = nullptr) {
+    getDriver(const std::string &dirverName,
+            const std::string& nodeletAddr,
+            DataSetAccessInfoPtr access_info = nullptr) {
         if (boost::to_upper_copy(dirverName) == CSV_DRIVER_NAME) {
             if (access_info == nullptr) {
                 return std::make_shared<CSVDriver>(nodeletAddr);
@@ -64,6 +68,12 @@ class DataDirverFactory {
             LOG(ERROR) << err_msg;
             throw std::invalid_argument(err_msg);
 #endif
+        } else if (boost::to_upper_copy(dirverName) == IMAGE_DRIVER_NAME) {
+            if (access_info == nullptr) {
+                return std::make_shared<ImageDriver>(nodeletAddr);
+            } else {
+                return std::make_shared<ImageDriver>(nodeletAddr, std::move(access_info));
+            }
         } else {
             std::string err_msg = "[DataDirverFactory]Invalid dirver name [" + dirverName + "]";
             throw std::invalid_argument(err_msg);
@@ -84,6 +94,8 @@ class DataDirverFactory {
 #else
             LOG(ERROR) << "MySQL is not enabled";
 #endif
+        } else if (drive_type_ == IMAGE_DRIVER_NAME) {
+          access_info_ptr = std::make_unique<ImageAccessInfo>();
         } else {
             LOG(ERROR) << "unsupported driver type: " << drive_type_;
             return access_info_ptr;

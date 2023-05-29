@@ -1,10 +1,5 @@
 {
     "party_info": {
-        "Alice": {
-            "ip": "127.0.0.1",
-            "port": "50050",
-            "use_tls": false
-        },
         "Bob": {
             "ip": "127.0.0.1",
             "port": "50051",

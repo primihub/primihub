@@ -37,7 +37,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "src/primihub/common/config/config.h"
-#include "src/primihub/node/nodelet.h"
+// #include "src/primihub/node/nodelet.h"
 #include "src/primihub/node/worker/worker.h"
 #include "src/primihub/protos/psi.grpc.pb.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
@@ -46,6 +46,7 @@
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/common/defines.h"
+#include "src/primihub/service/dataset/service.h"
 
 // using grpc::ClientContext;
 using grpc::Server;
@@ -77,9 +78,13 @@ namespace primihub {
 
 class VMNodeImpl final: public VMNode::Service {
   public:
-    explicit VMNodeImpl(const std::string &node_id_,
-                        const std::string &node_ip_, int service_port_,
-                        bool singleton_, const std::string &config_file_path_);
+    // VMNodeImpl(const std::string &node_id_,
+    //           const std::string &node_ip_, int service_port_,
+    //           bool singleton_, const std::string &config_file_path_);
+
+    VMNodeImpl(const std::string& node_id_,
+              const std::string& config_file_path_,
+              std::shared_ptr<service::DatasetService> service);
     ~VMNodeImpl();
 
     Status SubmitTask(ServerContext *context,
@@ -188,6 +193,16 @@ class VMNodeImpl final: public VMNode::Service {
     */
     std::tuple<bool, std::string, std::string> isFinishedTask(const std::string& worker_id);
 
+  void CleanFinishedTaskThread();
+  void CleanTimeoutCachedTaskStatusThread();
+  void CleanFinishedSchedulerWorkerThread();
+
+  std::shared_ptr<service::DatasetService> GetDatasetService() {
+    return dataset_service_;
+  }
+
+ private:
+  retcode Init();
  private:
     std::unordered_map<std::string, std::shared_ptr<Worker>>
         workers_ GUARDED_BY(worker_map_mutex_);
@@ -201,7 +216,7 @@ class VMNodeImpl final: public VMNode::Service {
     // std::vector<Node> peer_list;
     // PeerDatasetMap peer_dataset_map;
     // std::shared_ptr<LanguageParser> lan_parser_;
-    bool singleton;
+    bool singleton{false};
     std::set<std::string> running_set;
     // key; job_id+task_id value: tasker
     using task_executor_t = std::tuple<std::shared_ptr<Worker>, std::future<void>>;
@@ -228,6 +243,7 @@ class VMNodeImpl final: public VMNode::Service {
     ThreadSafeQueue<std::string> fininished_scheduler_workers_;
     std::future<void> finished_scheduler_worker_fut;
     int scheduler_worker_timeout_s{SCHEDULE_WORKER_TIMEOUT_S};
+    std::shared_ptr<service::DatasetService> dataset_service_{nullptr};
 };
 
 } // namespace primihub

@@ -13,8 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-import traceback
-from cloudpickle import loads
 import json
 from importlib import import_module
 from primihub.context import Context
@@ -25,56 +23,59 @@ import primihub
 path = primihub.__file__
 path = path[:-12]
 
-global FUNC_MAP
+def run(task_params):
+    party_name = task_params.party_name
+    params_str = task_params.params.param_map["component_params"].value_string
+    params_dict = json.loads(params_str.decode())
 
-with open(path + '/new_FL/model_map.json', 'r') as f:
-    FUNC_MAP = json.load(f)
+    # load commom_parmas, roles, node_info, task_info
+    common_params = params_dict['common_params']
+    roles = params_dict['roles']
+    node_info = task_params.party_access_info
+    task_info = task_params.task_info
 
+    # set role_params for current party
+    all_role_params = params_dict['role_params']
+    if party_name in all_role_params.keys():
+        role_params = all_role_params[party_name]
+        role_params['data'] = eval(task_params.party_datasets[party_name].data['data_set'])
+    else:
+        role_params = {}
 
-def execute_function(common_params, role_params, node_info, task_params):
+    role_params['self_name'] = party_name
+    role_params['others_role'] = []
+    for key, val in roles.items():
+        if party_name in val:
+            role_params['self_role'] = key
+        else:
+            role_params['others_role'].append(key)
+        
+    if len(role_params['others_role']) == 1:
+        role_params['others_role'] = role_params['others_role'][0]
+
+    # load model and run
+    with open(path + '/new_FL/model_map.json', 'r') as f:
+        FUNC_MAP = json.load(f)
+
     model = common_params['model']
-    role = role_params['role']
-
+    role = role_params['self_role']
     func_path = FUNC_MAP[model][role]
     cls_module, cls_name = func_path.rsplit(".", maxsplit=1)
 
     module_name = import_module(cls_module)
     get_model_attr = getattr(module_name, cls_name)
-    initial_model = get_model_attr(common_params=common_params,
-                                   role_params=role_params,
-                                   node_info=node_info,
-                                   other_params=task_params)
-    initial_model.run()
-
-
-def run(task_params):
-    party_name = task_params.party_name
-    component_params_str = task_params.params.param_map[party_name].value_string
-    component_params_dict = json.loads(component_params_str.decode())
-
-    # set commom parmas, role params and node_info
-    common_params = component_params_dict['common_params']
-    all_role_params = component_params_dict['role_params']
-    roles = component_params_dict['roles']
-
-    current_role_params = all_role_params[party_name]
-
-    # set role for current party
-    for key, val in roles.items():
-        if party_name in val:
-            current_role_params['role'] = key
-        else:
-            current_role_params['neighbors'] = val
-
-    node_info = task_params.party_access_info
-
-    execute_function(common_params, current_role_params, node_info, task_params)
+    model = get_model_attr(roles=roles,
+                           common_params=common_params,
+                           role_params=role_params,
+                           node_info=node_info,
+                           task_info=task_info)
+    model.run()
 
 
 class Executor:
     '''
     Excute the py file. Note the Context is passed
-    from c++ level. 
+    from c++ level.
     '''
 
     def __init__(self):

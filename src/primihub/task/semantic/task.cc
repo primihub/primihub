@@ -31,25 +31,40 @@ TaskParam* TaskBase::getTaskParam()  {
 }
 
 void TaskBase::setTaskParam(const TaskParam& task_param) {
-    task_param_.CopyFrom(task_param);
+  task_param_.CopyFrom(task_param);
+  const auto& task_info = task_param.task_info();
+  this->job_id_ = task_info.job_id();
+  this->task_id_ = task_info.task_id();
+  this->request_id_ = task_info.request_id();
+  this->party_name_ = task_param.party_name();
 }
 
-retcode TaskBase::send(const std::string& key, const Node& dest_node, const std::string& send_buff) {
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(dest_node);
-    return channel->send(key, send_buff);
+retcode TaskBase::send(const std::string& key,
+                        const Node& dest_node,
+                        const std::string& send_buff) {
+  auto& link_ctx = this->getTaskContext().getLinkContext();
+  CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+  auto channel = link_ctx->getChannel(dest_node);
+  return channel->send(key, send_buff);
 }
 
-retcode TaskBase::send(const std::string& key, const Node& dest_node, std::string_view send_buff) {
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(dest_node);
-    return channel->send(key, send_buff);
+retcode TaskBase::send(const std::string& key,
+                        const Node& dest_node,
+                        std::string_view send_buff) {
+  auto& link_ctx = this->getTaskContext().getLinkContext();
+  CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+  auto channel = link_ctx->getChannel(dest_node);
+  return channel->send(key, send_buff);
 }
 
 retcode TaskBase::recv(const std::string& key, std::string* recv_buff) {
-    auto& recv_queue = this->getTaskContext().getRecvQueue(key);
-    std::string recv_data;
-    recv_queue.wait_and_pop(recv_data);
-    *recv_buff = std::move(recv_data);
-    return retcode::SUCCESS;
+  auto& link_ctx = this->getTaskContext().getLinkContext();
+  CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+  auto& recv_queue = link_ctx->GetRecvQueue(key);
+  std::string recv_data;
+  recv_queue.wait_and_pop(recv_data);
+  *recv_buff = std::move(recv_data);
+  return retcode::SUCCESS;
 }
 
 retcode TaskBase::recv(const std::string& key, char* recv_buff, size_t length) {
@@ -76,7 +91,9 @@ retcode TaskBase::sendRecv(const std::string& key, const Node& dest_node,
 retcode TaskBase::sendRecv(const std::string& key, const Node& dest_node,
         std::string_view send_buff, std::string* recv_buff) {
     std::string recv_data_str;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(dest_node);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(dest_node);
     auto ret = channel->sendRecv(key, send_buff, &recv_data_str);
     if (ret != retcode::SUCCESS) {
         return retcode::FAIL;
@@ -84,14 +101,17 @@ retcode TaskBase::sendRecv(const std::string& key, const Node& dest_node,
     *recv_buff = std::move(recv_data_str);
     return retcode::SUCCESS;
 }
+
 retcode TaskBase::pushDataToSendQueue(const std::string& key, std::string&& send_data) {
     if (send_data.empty()) {
         LOG(ERROR) << "data can not be emptry";
         return retcode::FAIL;
     }
-    auto& send_queue = this->getTaskContext().getSendQueue(key);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto& send_queue = link_ctx->GetSendQueue(key);
     send_queue.push(std::move(send_data));
-    auto& complete_queue = this->getTaskContext().getCompleteQueue(key);
+    auto& complete_queue = link_ctx->GetCompleteQueue(key);
     retcode complete_flag;
     complete_queue.wait_and_pop(complete_flag);
     return retcode::SUCCESS;

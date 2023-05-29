@@ -1,114 +1,101 @@
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer
+from primihub.new_FL.algorithm.utils.net_work import MultiGrpcClients
 from primihub.new_FL.algorithm.utils.base import BaseModel
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
+from primihub.utils.logger_util import logger
 
-import logging
+import json
 import numpy as np
 import torch
-from primihub.new_FL.algorithm.neural_network.base import create_model
 from primihub.FL.model.metrics.metrics import fpr_tpr_merge2,\
                                               ks_from_fpr_tpr,\
                                               auc_from_fpr_tpr
+from .base import create_model
 
 
-class Server(BaseModel):
-    def __init__(self, task_parameter, party_access_info):
-        super().__init__(task_parameter, party_access_info)
-        self.task_parameter = task_parameter
-        self.party_access_info = party_access_info
-    
+class NeuralNetworkServer(BaseModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
     def run(self):
-        if self.task_parameter['process'] == 'train':
+        if self.common_params['process'] == 'train':
             self.train()
     
     def train(self):
         # setup communication channels
-        Clients = self.role2party('client')
-        server = self.task_parameter['party_name']
+        remote_parties = self.roles[self.role_params['others_role']]
+        client_channel = MultiGrpcClients(local_party=self.role_params['self_name'],
+                                          remote_parties=remote_parties,
+                                          node_info=self.node_info,
+                                          task_info=self.task_info)
         
-        Client_Channels = []
-        for client in Clients:
-            Client_Channels.append((client,
-                                    GrpcServer(server, client,
-                                               self.party_access_info,
-                                               self.task_parameter['task_info'])))
-        
-        # model init
+        # server init
         # Get cpu or gpu device for training.
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using {device} device")
+        logger.info(f"Using {device} device")
 
-        train_method = self.task_parameter['mode']
-        if train_method == 'Plaintext':
-            model = NeuralNetwork_Server(train_method,
-                                         self.task_parameter['task'],
-                                         device,
-                                         Client_Channels)
-        elif train_method == 'DPSGD':
-            model = NeuralNetwork_DPSGD_Server(train_method,
-                                               self.task_parameter['task'],
-                                               device,
-                                               Client_Channels)
+        method = self.common_params['method']
+        if method == 'Plaintext':
+            server = Plaintext_Server(method,
+                                      self.common_params['task'],
+                                      device,
+                                      client_channel)
+        elif method == 'DPSGD':
+            server = DPSGD_Server(method,
+                                  self.common_params['task'],
+                                  device,
+                                  client_channel)
         else:
-            logging.error(f"Not supported train method: {train_method}")
+            logger.error(f"Not supported method: {method}")
 
         # data preprocessing
         # minmaxscaler
-        data_max = []
-        data_min = []
-
-        for client_channel in Client_Channels:
-            client, channel = client_channel
-            data_max.append(channel.recv(client + '_data_max'))
-            data_min.append(channel.recv(client + '_data_min'))
+        data_max = client_channel.recv_all('data_max')
+        data_min = client_channel.recv_all('data_min')
         
         data_max = np.array(data_max).max(axis=0)
         data_min = np.array(data_min).min(axis=0)
 
-        for client_channel in Client_Channels:
-            _, channel = client_channel
-            channel.sender('data_max', data_max)
-            channel.sender('data_min', data_min)
+        client_channel.send_all('data_max', data_max)
+        client_channel.send_all('data_min', data_min)
 
         # model training
-        print("-------- start training --------")
-        for i in range(self.task_parameter['epoch']):
-            print(f"-------- epoch {i+1} --------")
-            model.train()
+        logger.info("-------- start training --------")
+        global_epoch = self.common_params['global_epoch']
+        for i in range(global_epoch):
+            logger.info(f"-------- global epoch {i+1} / {global_epoch} --------")
+            server.train()
         
             # print metrics
-            if self.task_parameter['print_metrics']:
-                model.print_metrics()
-        print("-------- finish training --------")
+            if self.common_params['print_metrics']:
+                server.print_metrics()
+        logger.info("-------- finish training --------")
 
         # receive final epsilons when using DPSGD
-        if train_method == 'DPSGD':
-            eps = []
-            for client_channel in Client_Channels:
-                client, channel = client_channel
-                eps.append(
-                    channel.recv(client + "_eps")
-                )
-            print(f"""For delta={self.task_parameter['delta']},
-                    the current epsilon is {max(eps)}""")
+        if method == 'DPSGD':
+            delta = self.common_params['delta']
+            eps = client_channel.recv_all("eps")
+            logger.info(f"For delta={delta}, the current epsilon is {max(eps)}")
 
         # receive final metrics
-        trainMetrics = model.get_metrics()
+        trainMetrics = server.get_metrics()
+        metric_path = self.common_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
-    def predict(self):
-        pass
 
+class Plaintext_Server:
 
-class NeuralNetwork_Server:
-
-    def __init__(self, train_method, task, device, Client_Channels):
+    def __init__(self, method, task, device, client_channel):
         self.task = task
         self.device = device
-        self.Client_Channels = Client_Channels
+        self.client_channel = client_channel
 
         self.output_dim = None
         self.recv_output_dims()
 
-        self.model = create_model(train_method, self.output_dim, device)
+        self.model = create_model(method, self.output_dim, device)
 
         self.input_shape = None
         self.recv_input_shapes()
@@ -120,31 +107,19 @@ class NeuralNetwork_Server:
             self.num_negtive_examples_weights = None
         self.recv_params()    
 
-    def recv_from_all_clients(self, key):
-        vals_list = []
-        for client_channel in self.Client_Channels:
-            client, channel = client_channel
-            vals_list.append(channel.recv(client + '_' + key))
-        return vals_list
-    
-    def send_to_all_clients(self, key, val):
-        for client_channel in self.Client_Channels:
-            _, channel = client_channel
-            channel.sender(key, val)
-
     def recv_output_dims(self):
         # recv output dims for all clients
-        Output_Dims = self.recv_from_all_clients('output_dim')
+        Output_Dims = self.client_channel.recv_all('output_dim')
 
         # set final output dim
         self.output_dim = max(Output_Dims)
 
         # send output dim to all clients
-        self.send_to_all_clients("output_dim", self.output_dim)
+        self.client_channel.send_all("output_dim", self.output_dim)
 
     def recv_input_shapes(self):
         # recv input shapes for all clients
-        Input_Shapes = self.recv_from_all_clients('input_shape')
+        Input_Shapes = self.client_channel.recv_all('input_shape')
 
         # check if all input shapes are the same
         all_input_shapes_same = True
@@ -152,14 +127,14 @@ class NeuralNetwork_Server:
         for idx, cinput_shape in enumerate(Input_Shapes):
             if input_shape != cinput_shape:
                 all_input_shapes_same = False
-                logging.error(f"""Not all input shapes are the same,
-                                client {self.Client_Channels[idx][0]}'s
+                logger.error(f"""Not all input shapes are the same,
+                                client {self.client_channel.keys()[idx]}'s
                                 input shape is {cinput_shape},
                                 but others' are {input_shape}""")
                 break
 
         # send signal of input shapes to all clients
-        self.send_to_all_clients("input_dim_same", all_input_shapes_same)
+        self.client_channel.send_all("input_dim_same", all_input_shapes_same)
 
         if all_input_shapes_same:
             self.input_shape = input_shape
@@ -175,12 +150,12 @@ class NeuralNetwork_Server:
 
     def recv_params(self):
         # receive other params to compute aggregated metrics
-        self.num_examples_weights = self.recv_from_all_clients('num_examples')
+        self.num_examples_weights = self.client_channel.recv_all('num_examples')
         
 
         if self.task == 'classification' and self.output_dim == 1:
             self.num_positive_examples_weights = \
-                self.recv_from_all_clients('num_positive_examples')
+                self.client_channel.recv_all('num_positive_examples')
 
             self.num_negtive_examples_weights = \
                 (np.array(self.num_examples_weights) - \
@@ -190,11 +165,8 @@ class NeuralNetwork_Server:
                                                  dtype=torch.float32)
         self.num_examples_weights_sum = self.num_examples_weights.sum()
 
-    def recv_client_model(self):
-        return self.recv_from_all_clients('model')
-
     def client_model_aggregate(self):
-        client_models = self.recv_client_model()
+        client_models = self.client_channel.recv_all('client_model')
         
         server_model = self.model.state_dict()
         for layer in server_model:
@@ -210,8 +182,8 @@ class NeuralNetwork_Server:
         self.model.load_state_dict(server_model)
 
     def server_model_broadcast(self, prefix=''):
-        self.send_to_all_clients("server_model",
-                                 self.model.state_dict(prefix=prefix))
+        self.client_channel.send_all("server_model",
+                                     self.model.state_dict(prefix=prefix))
 
     def train(self):
         self.client_model_aggregate()
@@ -221,18 +193,18 @@ class NeuralNetwork_Server:
         metrics_name = metrics_name.lower()
         supported_metrics = ['loss', 'acc', 'auc', 'mse', 'mae']
         if metrics_name not in supported_metrics:
-            logging.error(f"""Not supported metrics {metrics_name},
+            logger.error(f"""Not supported metrics {metrics_name},
                           use {supported_metrics} instead""")
 
-        client_metrics = self.recv_from_all_clients(metrics_name)
+        client_metrics = self.client_channel.recv_all(metrics_name)
             
         return np.average(client_metrics,
                           weights=self.num_examples_weights)
     
     def get_fpr_tpr(self):
-        client_fpr = self.recv_from_all_clients('fpr')
-        client_tpr = self.recv_from_all_clients('tpr')
-        client_thresholds = self.recv_from_all_clients('thresholds')
+        client_fpr = self.client_channel.recv_all('fpr')
+        client_tpr = self.client_channel.recv_all('tpr')
+        client_thresholds = self.client_channel.recv_all('thresholds')
 
         # fpr & tpr
         # Note: fpr_tpr_merge2 only support two clients
@@ -263,7 +235,7 @@ class NeuralNetwork_Server:
             auc = auc_from_fpr_tpr(fpr, tpr)
             server_metrics["train_auc"] = auc
 
-            print(f"ks={ks}, auc={auc}")
+            logger.info(f"ks={ks}, auc={auc}")
             
         return server_metrics
     
@@ -278,12 +250,12 @@ class NeuralNetwork_Server:
             server_metrics["train_acc"] = acc
 
             if self.output_dim == 1:
-                print(f"loss={loss}, acc={acc}")
+                logger.info(f"loss={loss}, acc={acc}")
             else:
                 auc = self.get_scalar_metrics('auc')
                 server_metrics["train_auc"] = auc
 
-                print(f"loss={loss}, acc={acc}, auc={auc}")
+                logger.info(f"loss={loss}, acc={acc}, auc={auc}")
 
         if self.task == 'regression':
             mse = self.get_scalar_metrics('mse')
@@ -292,12 +264,12 @@ class NeuralNetwork_Server:
             mae = self.get_scalar_metrics('mae')
             server_metrics["train_mae"] = mae
 
-            print(f"mse={mse}, mae={mae}")
+            logger.info(f"mse={mse}, mae={mae}")
             
         return server_metrics
 
 
-class NeuralNetwork_DPSGD_Server(NeuralNetwork_Server):
+class DPSGD_Server(Plaintext_Server):
 
     def train(self):
         self.client_model_aggregate()

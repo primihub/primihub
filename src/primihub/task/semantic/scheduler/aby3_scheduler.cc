@@ -52,7 +52,11 @@ retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
-    LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
+    std::string error_msg = "submit task to : ";
+    error_msg.append(dest_node_address).append(" reply failed");
+    LOG(ERROR) << error_msg;
+    this->set_error();
+    this->error_msg_[party_name] = error_msg;
     return retcode::FAIL;
   }
   parseNotifyServer(reply);
@@ -189,6 +193,9 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
   std::vector<std::future<retcode>> result_fut;
   const auto& party_access_info = send_request.task().party_access_info();
   for (const auto& [party_name, node] : party_access_info) {
+    this->error_msg_.insert({party_name, ""});
+  }
+  for (const auto& [party_name, node] : party_access_info) {
     Node dest_node;
     pbNode2Node(node, &dest_node);
     LOG(INFO) << "Dispatch Task to party: " << dest_node.to_string() << " "
@@ -202,14 +209,13 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
         dest_node,
         std::ref(send_request)));
   }
-  bool has_error{false};
   for (auto&& fut : result_fut) {
     auto ret = fut.get();
-    if (ret != retcode::SUCCESS) {
-      has_error = true;
-    }
   }
-  return has_error ? retcode::FAIL : retcode::SUCCESS;
+  if (has_error()) {
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 } // namespace primihub::task

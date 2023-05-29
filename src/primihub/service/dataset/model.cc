@@ -14,22 +14,20 @@
  limitations under the License.
  */
 
-
-#include <string>
-#include <sstream> // string stream
-#include <iterator> // ostream_iterator
 #include <glog/logging.h>
 #include <arrow/type.h>
+
+#include <string>
+#include <sstream>  // string stream
+#include <iterator>  // ostream_iterator
 #include <nlohmann/json.hpp>
-#include <libp2p/multi/content_identifier_codec.hpp>
 
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/data_store/driver.h"
 
-namespace primihub {
-    class DataDriver;
-}
 namespace primihub::service {
+class DataDriver;
+
 // ======== DatasetSchema ========
 std::vector<FieldType> TableSchema::extractFields(const std::string &json) {
   try {
@@ -55,7 +53,7 @@ std::vector<FieldType> TableSchema::extractFields(const nlohmann::json& oJson) {
   return fields;
 }
 
-std::string TableSchema::toJSON () {
+std::string TableSchema::toJSON() {
   std::stringstream ss;
   nlohmann::json js = nlohmann::json::array();
   for (int iCol = 0; iCol < schema->num_fields(); ++iCol) {
@@ -70,15 +68,15 @@ std::string TableSchema::toJSON () {
 
 void TableSchema::fromJSON(const std::string& json) {
   auto field_info = this->extractFields(json);
-  fromJSON(field_info);
+  FromFields(field_info);
 }
 
 void TableSchema::fromJSON(const nlohmann::json& json) {
   auto field_info = this->extractFields(json);
-  fromJSON(field_info);
+  FromFields(field_info);
 }
 
-void TableSchema::fromJSON(std::vector<FieldType>& field_info) {
+void TableSchema::FromFields(std::vector<FieldType>& field_info) {
   std::vector<std::shared_ptr<arrow::Field>> arrowFields;
   for (const auto& it : field_info) {
     auto name = std::get<0>(it);
@@ -110,7 +108,7 @@ DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
   this->data_type = DatasetType::TABLE;   // FIXME only support table now
   this->schema = NewDatasetSchema(data_type, arrowSchemaParam);
   this->total_records = std::get<0>(dataset->data)->num_rows();
-  // TODO Maybe description is duplicated with other dataset?
+  // Maybe description is duplicated with other dataset?
   this->id = DatasetId(description);
   this->description = description;
   this->driver_type = dataset->getDataDriver()->getDriverType();
@@ -118,19 +116,17 @@ DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
   this->data_url = nodelet_addr + ":" + dataset->getDataDriver()->getDataURL();
   this->server_meta_ = nodelet_addr;
   this->access_meta_ = dataset_access_info;
-  VLOG(5) << "data_url: " << this->data_url;
+  VLOG(5) << "dataset_access_info: " << this->access_meta_;
 }
 
 DatasetMeta::DatasetMeta(const std::string& json) {
     fromJSON(json);
 }
 
-std::string DatasetMeta::toJSON() {
+std::string DatasetMeta::toJSON() const {
     std::stringstream ss;
-    auto sid = libp2p::multi::ContentIdentifierCodec::toString(
-            libp2p::multi::ContentIdentifierCodec::decode(id.data).value());
     nlohmann::json j;
-    j["id"] = sid.value();
+    j["id"] = id;
     j["data_url"] = data_url;
     j["data_type"] = static_cast<int>(data_type);
     j["description"] = description;
@@ -146,13 +142,11 @@ std::string DatasetMeta::toJSON() {
 void DatasetMeta::fromJSON(const std::string &json) {
     nlohmann::json oJson = nlohmann::json::parse(json);
     auto sid = oJson["id"].get<std::string>();
-    auto _id_data = libp2p::multi::ContentIdentifierCodec::encode(
-            libp2p::multi::ContentIdentifierCodec::fromString(sid).value());
-    this->id.data = _id_data.value();
+    this->id = sid;
     this->data_url = oJson["data_url"].get<std::string>();
     this->description = oJson["description"].get<std::string>();
     this->data_type = oJson["data_type"].get<primihub::service::DatasetType>();
-    this->visibility = oJson["visibility"].get<DatasetVisbility>(); // string to enum
+    this->visibility = oJson["visibility"].get<DatasetVisbility>();  // string to enum
     // Construct schema from data type(Table, Array, Tensor)
     SchemaConstructorParamType oJsonSchemaParam = oJson["schema"].get<std::string>();
     this->schema = NewDatasetSchema(this->data_type, oJsonSchemaParam);

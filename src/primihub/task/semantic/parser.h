@@ -86,7 +86,6 @@ class ProtocolSemanticParser {
   std::vector<rpc::Node> peer_list_;
   PeerDatasetMap peer_dataset_map_;
   std::vector<Node> task_server_;
-
 };
 
 } // namespace primihub::task

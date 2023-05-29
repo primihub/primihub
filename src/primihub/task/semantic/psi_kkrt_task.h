@@ -35,53 +35,47 @@
 #include "src/primihub/common/common.h"
 #include "src/primihub/task/semantic/psi_task.h"
 
-#if defined(__linux__) && defined(__x86_64__)
-using namespace osuCrypto;
-using osuCrypto::KkrtPsiReceiver;
-#endif
-
 namespace rpc = primihub::rpc;
-
 
 namespace primihub::task {
 
 class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
  public:
-    explicit PSIKkrtTask(const TaskParam *task_param,
-                        std::shared_ptr<DatasetService> dataset_service);
+  explicit PSIKkrtTask(const TaskParam *task_param,
+                      std::shared_ptr<DatasetService> dataset_service);
 
-    ~PSIKkrtTask() {}
-    int execute() override;
-    retcode saveResult();
-    retcode broadcastResultToServer();
-    retcode recvIntersectionData();
+  ~PSIKkrtTask() = default;
+  int execute() override;
+  retcode saveResult();
+  retcode broadcastResultToServer();
+  retcode recvIntersectionData();
 
  private:
-    retcode exchangeDataPort();
-    retcode _LoadParams(Task &task);
-    retcode _LoadDataset();
+  retcode _LoadParams(rpc::Task &task);
+  retcode _LoadDataset();
 #if defined(__linux__) && defined(__x86_64__)
-    void _kkrtRecv(Channel& chl);
-    void _kkrtSend(Channel& chl);
-    retcode _GetIntsection(KkrtPsiReceiver &receiver);
+  void _kkrtRecv(osuCrypto::Channel& chl);
+  void _kkrtSend(osuCrypto::Channel& chl);
+  retcode _GetIntsection(osuCrypto::KkrtPsiReceiver &receiver);
 #endif
 
  private:
-    std::vector<int> data_index_;
-    int psi_type_;
-    int role_tag_;
-    std::string dataset_path_;
-    std::string dataset_id_;
-    std::string result_file_path_;
-    std::vector <std::string> elements_;
-    std::vector <std::string> result_;
-    std::string host_address_;
-    bool sync_result_to_server{false};
-    std::string server_result_path;
-    uint32_t data_port{0};
-    uint32_t peer_data_port{1212};
-    primihub::Node peer_node;
-    std::string key{"default"};
+  std::vector<int> data_index_;
+  int psi_type_;
+  int role_tag_;
+  std::string dataset_path_;
+  std::string dataset_id_;
+  std::string result_file_path_;
+  std::vector <std::string> elements_;
+  std::vector <std::string> result_;
+  std::string host_address_;
+  bool sync_result_to_server{false};
+  std::string server_result_path;
+  uint32_t data_port{0};
+  uint32_t peer_data_port{1212};
+  primihub::Node peer_node;
+  std::string peer_party_name_;
+  std::string key{"default"};
 };
-}
-#endif //SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
+}  // namespace primihub::task
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_

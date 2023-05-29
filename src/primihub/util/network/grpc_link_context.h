@@ -49,6 +49,7 @@ class GrpcChannel : public IChannel {
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
   std::shared_ptr<grpc::Channel> grpc_channel_{nullptr};
   primihub::Node dest_node_;
+  int retry_max_times_{3};
 
 };
 

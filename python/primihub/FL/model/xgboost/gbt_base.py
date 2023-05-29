@@ -23,12 +23,13 @@ import ray
 from ray.util import ActorPool
 from primihub.new_FL.algorithm.utils.base import BaseModel
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from primihub.new_FL.algorithm.utils.net_work import GrpcServer, GrpcServers
+from primihub.new_FL.algorithm.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
-
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_crt, opt_paillier_encrypt_crt, opt_paillier_add, opt_paillier_keygen
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
+from primihub.new_FL.algorithm.utils.dataset import read_csv
+from primihub.new_FL.algorithm.utils.file import check_directory_exist
 
 T = TypeVar("T", contravariant=True)
 U = TypeVar("U", covariant=True)
@@ -224,14 +225,14 @@ class PallierSum(_AggregateOnKeyBase):
 @ray.remote
 class PallierAdd(object):
 
-    def __init__(self, pub, nums, add_actors, encrypted):
+    def __init__(self, pub, nums, add_actors, encrypted_proto):
         self.pub = pub
         self.nums = nums
         self.add_actors = add_actors
-        self.encrypted = encrypted
+        self.encrypted_proto = encrypted_proto
 
     def pai_add(self, items, min_num=3):
-        if self.encrypted:
+        if self.encrypted_proto is not None:
             nums = self.nums * min_num
             if len(items) < nums:
                 return functools.reduce(
@@ -588,52 +589,43 @@ class VGBTBase(BaseModel):
 
     def set_inputs(self):
         # set common parameters
-        self.model = self.kwargs['common_params']['model']
-        self.task_name = self.kwargs['common_params']['task_name']
-        self.num_tree = self.kwargs['common_params']['num_tree']
-        self.max_depth = self.kwargs['common_params']['max_depth']
-        self.reg_lambda = self.kwargs['common_params']['reg_lambda']
-        self.merge_gh = self.kwargs['common_params']['merge_gh']
-        self.ray_group = self.kwargs['common_params']['ray_group']
-        self.sample_type = self.kwargs['common_params']['sample_type']
-        self.feature_sample = self.kwargs['common_params']['feature_sample']
-        self.learning_rate = self.kwargs['common_params']['learning_rate']
-        self.gamma = self.kwargs['common_params']['gamma']
-        self.min_child_weight = self.kwargs['common_params']['min_child_weight']
-        self.min_child_sample = self.kwargs['common_params']['min_child_sample']
-        self.record = self.kwargs['common_params']['record']
-        self.encrypted_proto = self.kwargs['common_params']['encrypted_proto']
-        self.estimators = self.kwargs['common_params']['num_tree']
-        self.samples_clip_size = self.kwargs['common_params'][
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+        self.num_tree = self.common_params['num_tree']
+        self.max_depth = self.common_params['max_depth']
+        self.reg_lambda = self.common_params['reg_lambda']
+        self.merge_gh = self.common_params['merge_gh']
+        self.ray_group = self.common_params['ray_group']
+        self.sample_type = self.common_params['sample_type']
+        self.feature_sample = self.common_params['feature_sample']
+        self.learning_rate = self.common_params['learning_rate']
+        self.gamma = self.common_params['gamma']
+        self.min_child_weight = self.common_params['min_child_weight']
+        self.min_child_sample = self.common_params['min_child_sample']
+        self.record = self.common_params['record']
+        self.encrypted_proto = self.common_params['encrypted_proto']
+        self.estimators = self.common_params['num_tree']
+        self.samples_clip_size = self.common_params[
             'samples_clip_size']
-        self.large_grads_ratio = self.kwargs['common_params'][
+        self.large_grads_ratio = self.common_params[
             'large_grads_ratio']
-        self.small_grads_ratio = self.kwargs['common_params'][
+        self.small_grads_ratio = self.common_params[
             'small_grads_ratio']
-        self.actors = int(self.kwargs['common_params']['actors'])
+        self.actors = int(self.common_params['actors'])
 
         cpus = int(ray.available_resources()['CPU']) - 1
         self.actors = min(self.actors, cpus)
 
-        self.metric_path = self.kwargs['common_params']['metric_path']
-        self.model_pred = self.kwargs['common_params']['model_pred']
+        self.metric_path = self.common_params['metric_path']
+        self.model_pred = self.common_params['model_pred']
 
         # set role special parameters
-        self.role_params = self.kwargs['role_params']
         self.data_set = self.role_params['data_set']
 
-        # set party node information
-        self.node_info = self.kwargs['node_info']
-
-        # set other parameters
-        self.other_params = self.kwargs['other_params']
-
         # read from data path
-        value = eval(self.other_params.party_datasets[
-            self.other_params.party_name].data['data_set'])
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
 
-        data_path = value['data_path']
-        self.data = pd.read_csv(data_path)
 
         self.tree_structure = {}
         self.lookup_table_sum = {}
@@ -669,10 +661,11 @@ class VGBTHost(VGBTBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
         self.id = self.role_params['id']
         self.selected_column = self.role_params['selected_column']
         self.objective = self.role_params['objective']
@@ -686,7 +679,7 @@ class VGBTHost(VGBTBase):
         self.ratio = 10**8
         self.pub, self.prv = opt_paillier_keygen(self.secure_bits)
 
-        self.channel.sender("pub", self.pub)
+        self.channel.send("pub", self.pub)
 
         self.encrypt_pool = ActorPool([
             PaillierActor.remote(self.prv, self.pub) for _ in range(self.actors)
@@ -1035,8 +1028,7 @@ class VGBTHost(VGBTBase):
 
         plain_gh_sums = gh.sum(axis=0)
 
-        guest_gh_sums = self.channel.recv('encrypte_gh_sums')[
-            self.role_params['neighbors'][0]]
+        guest_gh_sums = self.channel.recv('encrypte_gh_sums')
 
         if self.ray_group:
             dec_guest_gh_sums = self.gh_sums_decrypted_with_ray(
@@ -1047,7 +1039,7 @@ class VGBTHost(VGBTBase):
 
         guest_best = self.guest_best_cut(dec_guest_gh_sums)
 
-        self.channel.sender('best_cut', {
+        self.channel.send('best_cut', {
             'host_best': host_best,
             'guest_best': guest_best
         })
@@ -1078,8 +1070,7 @@ class VGBTHost(VGBTBase):
                 role = "guest"
                 record = self.guest_record
                 # ids_w = self.proxy_server.Get('ids_w')
-                ids_w = self.channel.recv('ids_w')[self.role_params['neighbors']
-                                                   [0]]
+                ids_w = self.channel.recv('ids_w')
 
                 id_left = ids_w['id_left']
                 id_right = ids_w['id_right']
@@ -1110,7 +1101,7 @@ class VGBTHost(VGBTBase):
                 #         'w_left': w_left,
                 #         'w_right': w_right
                 #     }, 'ids_w')
-                self.channel.sender(
+                self.channel.send(
                     'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
@@ -1165,8 +1156,7 @@ class VGBTHost(VGBTBase):
 
             if role == 'guest':
                 # ids = self.proxy_server.Get(str(record_id) + '_ids')
-                ids = self.channel.recv(str(record_id) + '_ids')[
-                    self.role_params['neighbors'][0]]
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
                 id_right = ids['id_right']
                 host_test_left = host_test.loc[id_left]
@@ -1185,7 +1175,7 @@ class VGBTHost(VGBTBase):
                 host_test_right = host_test.loc[host_test[var] >= cut]
                 id_right = host_test_right.index.tolist()
 
-                self.channel.sender(
+                self.channel.send(
                     str(record_id) + '_ids', {
                         'id_left': host_test_left.index,
                         'id_right': host_test_right.index
@@ -1211,7 +1201,7 @@ class VGBTHost(VGBTBase):
             Y = Y.values
         train_losses = []
 
-        self.channel.sender("xgb_pub", self.pub)
+        self.channel.send("xgb_pub", self.pub)
         start = time.time()
         for t in range(self.estimators):
             # fl_console_log.info("Begin to trian tree {}".format(t + 1))
@@ -1252,7 +1242,7 @@ class VGBTHost(VGBTBase):
                 sample_ids = None
 
             # self.proxy_client_guest.Remote(sample_ids, "sample_ids")
-            self.channel.sender("sample_ids", sample_ids)
+            self.channel.send("sample_ids", sample_ids)
             if sample_ids is not None:
                 # select from 'X_host', Y and ghs
                 # print("sample_ids: ", sample_ids)
@@ -1331,7 +1321,7 @@ class VGBTHost(VGBTBase):
 
                 # send all encrypted gradients and hessians to 'guest'
                 # self.proxy_client_guest.Remote(enc_gh_df, "gh_en")
-                self.channel.sender("gh_en", enc_gh_df)
+                self.channel.send("gh_en", enc_gh_df)
 
                 end_send_gh = time.time()
                 # fl_console_log.info(
@@ -1344,7 +1334,7 @@ class VGBTHost(VGBTBase):
 
             else:
                 # self.proxy_client_guest.Remote(current_ghs, "gh_en")
-                self.channel.sender("gh_en", current_ghs)
+                self.channel.send("gh_en", current_ghs)
 
             # self.tree_structure[t + 1] = self.host_tree_construct(
             #     X_host.copy(), f_t, 0, gh)
@@ -1399,23 +1389,28 @@ class VGBTHost(VGBTBase):
         }
 
         train_metrics_buff = json.dumps(trainMetrics)
+
+        check_directory_exist(self.metric_path)
         with open(self.metric_path, 'w') as filePath:
             filePath.write(train_metrics_buff)
 
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as hostTable:
             pickle.dump(self.lookup_table_sum, hostTable)
 
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as hostModel:
             pickle.dump(
                 {
                     'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
+                    'lr': self.learning_rate,
+                    "base_score": self.base_score
                 }, hostModel)
 
     def fit(self):
         y_hat = np.array([self.base_score] * len(self.y))
         losses = []
-        self.channel.sender("xgb_pub", self.pub)
+        self.channel.send("xgb_pub", self.pub)
 
         for iter in range(self.estimators):
             f_t = pd.Series([0] * self.y.shape[0])
@@ -1429,7 +1424,7 @@ class VGBTHost(VGBTBase):
             sample_gh = self.gh_sampling(grad_and_hess)
             sample_inds = sample_gh.index.tolist()
 
-            self.channel.sender("sample_ids", sample_inds)
+            self.channel.send("sample_ids", sample_inds)
 
             sample_data = self.data.iloc[sample_inds].copy()
             sample_y_hat = y_hat[sample_inds].copy()
@@ -1472,10 +1467,10 @@ class VGBTHost(VGBTBase):
                     enc_gh_df['id'] = sample_gh.index.tolist()
                     enc_gh_df.set_index('id', inplace=True)
 
-                self.channel.sender("gh_en", enc_gh_df)
+                self.channel.send("gh_en", enc_gh_df)
 
             else:
-                self.channel.sender("gh_en", sample_gh)
+                self.channel.send("gh_en", sample_gh)
 
             self.tree_structure[iter + 1] = self.host_tree_construct(
                 sample_data, sample_f_t, 0, sample_gh)
@@ -1494,17 +1489,22 @@ class VGBTHost(VGBTBase):
         y_hat = self.predict_prob(self.data, lookup=self.lookup_table_sum)
         train_metrics = self.train_metrics(y_true=self.y, y_hat=y_hat)
         train_metrics_buff = json.dumps(train_metrics)
+
+        check_directory_exist(self.metric_path)
         with open(self.metric_path, 'w') as filePath:
             filePath.write(train_metrics_buff)
 
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as hostTable:
             pickle.dump(self.lookup_table_sum, hostTable)
 
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as hostModel:
             pickle.dump(
                 {
                     'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
+                    'lr': self.learning_rate,
+                    "base_score": self.base_score
                 }, hostModel)
 
 
@@ -1512,10 +1512,11 @@ class VGBTGuest(VGBTBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.channel = GrpcServers(local_role=self.other_params.party_name,
-                                   remote_roles=self.role_params['neighbors'],
-                                   party_info=self.node_info,
-                                   task_info=self.other_params.task_info)
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
         self.id = self.role_params['id']
         self.selected_column = self.role_params['selected_column']
         self.label = self.role_params['label']
@@ -1523,7 +1524,7 @@ class VGBTGuest(VGBTBase):
 
         self.lookup_table_path = self.role_params['lookup_table']
         self.batch_size = self.role_params['batch_size']
-        self.pub = self.channel.recv("pub")[self.role_params['neighbors'][0]]
+        self.pub = self.channel.recv("pub")
         self.add_pool = ActorPool(
             [ActorAdd.remote(self.pub) for _ in range(self.actors)])
 
@@ -1667,7 +1668,7 @@ class VGBTGuest(VGBTBase):
         # generate actor pool for mapping
         map_pool = ActorPool([
             PallierAdd.remote(self.pub, map_pools, paillier_add_actors,
-                              self.encrypted)
+                              self.encrypted_proto)
         ])
 
         sum_maps = [
@@ -1699,9 +1700,8 @@ class VGBTGuest(VGBTBase):
             encrypte_gh_sums = self.sums_of_encrypted_ghs(
                 X_guest, encrypted_ghs)
 
-        self.channel.sender('encrypte_gh_sums', encrypte_gh_sums)
-        best_cut = self.channel.recv('best_cut')[self.role_params['neighbors']
-                                                 [0]]
+        self.channel.send('encrypte_gh_sums', encrypte_gh_sums)
+        best_cut = self.channel.recv('best_cut')
 
         host_best = best_cut['host_best']
         guest_best = best_cut['guest_best']
@@ -1741,7 +1741,7 @@ class VGBTGuest(VGBTBase):
                 w_right = -guest_best['G_right'] / (guest_best['H_right'] +
                                                     self.reg_lambda)
 
-                self.channel.sender(
+                self.channel.send(
                     'ids_w', {
                         'id_left': id_left,
                         'id_right': id_right,
@@ -1755,8 +1755,7 @@ class VGBTGuest(VGBTBase):
 
             else:
                 # ids_w = self.proxy_server.Get('ids_w')
-                ids_w = self.channel.recv('ids_w')[self.role_params['neighbors']
-                                                   [0]]
+                ids_w = self.channel.recv('ids_w')
                 role = 'host'
                 record = self.host_record
                 id_left = ids_w['id_left']
@@ -1790,8 +1789,7 @@ class VGBTGuest(VGBTBase):
     def fit(self):
 
         # receving public key from host
-        self.pub = self.channel.recv("xgb_pub")[self.role_params['neighbors']
-                                                [0]]
+        self.pub = self.channel.recv("xgb_pub")
 
         # initialize adding actors on paillier encryption
         paillier_add_actors = ActorPool(
@@ -1810,14 +1808,13 @@ class VGBTGuest(VGBTBase):
             ])
 
         for t in range(self.estimators):
-            sample_ids = self.channel.recv('sample_ids')[
-                self.role_params['neighbors'][0]]
+            sample_ids = self.channel.recv('sample_ids')
 
             if sample_ids is None:
                 sample_guest = self.data.copy()
             else:
                 sample_guest = self.data.iloc[sample_ids].copy()
-            gh_en = self.channel.recv('gh_en')[self.role_params['neighbors'][0]]
+            gh_en = self.channel.recv('gh_en')
 
             self.tree_structure[t + 1] = self.guest_tree_construct(
                 sample_guest, gh_en, 0)
@@ -1825,14 +1822,14 @@ class VGBTGuest(VGBTBase):
             self.lookup_table_sum[t + 1] = self.lookup_table
 
         # save guest part model
+        check_directory_exist(self.model_path)
         with open(self.model_path, 'wb') as guestModel:
-            pickle.dump(
-                {
-                    'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate
-                }, guestModel)
+            pickle.dump({
+                'tree_struct': self.tree_structure,
+            }, guestModel)
 
         # save guest part table
+        check_directory_exist(self.lookup_table_path)
         with open(self.lookup_table_path, 'wb') as guestTable:
             pickle.dump(self.lookup_table_sum, guestTable)
 
@@ -1853,7 +1850,7 @@ class VGBTGuest(VGBTBase):
                 guest_test_right = guest_test.loc[guest_test[var] >= cut]
                 id_right = guest_test_right.index
 
-                self.channel.sender(
+                self.channel.send(
                     str(record_id) + '_ids', {
                         'id_left': id_left,
                         'id_right': id_right
@@ -1861,8 +1858,7 @@ class VGBTGuest(VGBTBase):
 
             else:
                 # ids = self.proxy_server.Get(str(record_id) + '_ids')
-                ids = self.channel.recv(str(record_id) + '_ids')[
-                    self.role_params['neighbors'][0]]
+                ids = self.channel.recv(str(record_id) + '_ids')
                 id_left = ids['id_left']
 
                 guest_test_left = guest_test.loc[id_left]
@@ -1884,3 +1880,262 @@ class VGBTGuest(VGBTBase):
             tree = self.tree_structure[t + 1]
             current_lookup = lookup_sum[t + 1]
             self.guest_get_tree_ids(X, tree, current_lookup)
+
+
+class VGBTHostInfer(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_inputs()
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
+
+    def set_inputs(self):
+        # set common params
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+        self.metric_path = self.common_params['metric_path']
+        self.model_pred = self.common_params['model_pred']
+
+        # set role params
+        self.data_set = self.role_params['data_set']
+        self.id = self.role_params['id']
+        self.selected_column = self.role_params['selected_column']
+        self.label = self.role_params['label']
+        self.model_path = self.role_params['model_path']
+        self.lookup_table_path = self.role_params['lookup_table']
+        # read from data path
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
+
+
+    def load_model(self):
+        # interpret the xgb model
+        with open(self.model_path, "rb") as current_model:
+            model_dict = pickle.load(current_model)
+
+        self.tree_struct = model_dict['tree_struct']
+        self.learing_rate = model_dict['lr']
+        self.base_score = model_dict['base_score']
+
+        # interpret the lookup table
+        with open(self.lookup_table_path, "rb") as hostTable:
+            lookup_table_sum = pickle.load(hostTable)
+
+        self.lookup_table_sum = lookup_table_sum
+
+    def preprocess(self):
+        if self.label is not None:
+            self.y = self.data.pop(self.label).values
+
+    def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+
+            if role == 'guest':
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
+                id_left = ids['id_left']
+                id_right = ids['id_right']
+                host_test_left = host_test.loc[id_left]
+                host_test_right = host_test.loc[id_right]
+                id_left = id_left.tolist()
+                id_right = id_right.tolist()
+
+            else:
+                tmp_lookup = current_lookup
+                # var, cut = tmp_lookup['feature_id'], tmp_lookup['threshold_value']
+                var, cut = tmp_lookup[record_id][0], tmp_lookup[record_id][1]
+
+                host_test_left = host_test.loc[host_test[var] < cut]
+                id_left = host_test_left.index.tolist()
+                # id_left = host_test_left.index
+                host_test_right = host_test.loc[host_test[var] >= cut]
+                id_right = host_test_right.index.tolist()
+
+                self.channel.send(
+                    str(record_id) + '_ids', {
+                        'id_left': host_test_left.index,
+                        'id_right': host_test_right.index
+                    })
+
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                    w[id_left] = kk[1]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+                    w[id_right] = kk[1]
+            # print("current w: ", w)
+            self.host_get_tree_node_weight(host_test_left, tree_left,
+                                           current_lookup, w)
+            self.host_get_tree_node_weight(host_test_right, tree_right,
+                                           current_lookup, w)
+
+    def host_predict_prob(self, X):
+        pred_y = np.array([self.base_score] * len(X))
+
+        for t in range(len(self.lookup_table_sum)):
+            tree = self.tree_struct[t + 1]
+            lookup_table = self.lookup_table_sum[t + 1]
+            # y_t = pd.Series([0] * X.shape[0])
+            y_t = np.zeros(len(X))
+            #self._get_tree_node_w(X, tree, lookup_table, y_t, t)
+            self.host_get_tree_node_weight(X, tree, lookup_table, y_t)
+            pred_y = pred_y + self.learing_rate * y_t
+
+        return 1 / (1 + np.exp(-pred_y))
+
+    def host_predict(self, X):
+        preds = self.host_predict_prob(X)
+
+        return (preds >= 0.5).astype('int')
+
+    def run(self):
+        self.load_model()
+        self.preprocess()
+        pred_prob = self.host_predict_prob(self.data)
+        pred_df = pd.DataFrame({
+            'pred_prob': pred_prob,
+            "pred_y": (pred_prob >= 0.5).astype('int')
+        })
+
+        check_directory_exist(self.model_pred)
+        pred_df.to_csv(self.model_pred, index=False)
+
+        if self.label is not None:
+            acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
+                                         self.y)
+
+            ks, auc = evaluate_ks_and_roc_auc(y_real=self.y, y_proba=pred_prob)
+            fpr, tpr, threshold = metrics.roc_curve(self.y, pred_prob)
+            test_metrics = {
+                "test_acc": acc,
+                "test_ks": ks,
+                "test_auc": auc,
+                "test_fpr": fpr.tolist(),
+                "test_tpr": tpr.tolist()
+            }
+            test_metrics_buff = json.dumps(test_metrics)
+
+            check_directory_exist(self.metric_path)
+            with open(self.metric_path, 'w') as filePath:
+                filePath.write(test_metrics_buff)
+
+    def get_summary(self):
+        return {}
+
+    def get_outputs(self):
+        return {}
+
+    def get_status(self):
+        return {}
+
+
+class VGBGuestInfer(BaseModel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_inputs()
+        remote_party = self.roles[self.role_params['others_role']][0]
+        self.channel = GrpcClient(local_party=self.role_params['self_name'],
+                                    remote_party=remote_party,
+                                    node_info=self.node_info,
+                                    task_info=self.task_info)
+
+    def set_inputs(self):
+        # set common params
+        self.model = self.common_params['model']
+        self.task_name = self.common_params['task_name']
+
+        # set role params
+        self.data_set = self.role_params['data_set']
+        self.id = self.role_params['id']
+        self.selected_column = self.role_params['selected_column']
+        self.label = self.role_params['label']
+        self.model_path = self.role_params['model_path']
+        self.lookup_table_path = self.role_params['lookup_table']
+        # read from data path
+        data_path = self.role_params['data']['data_path']
+        self.data = read_csv(data_path, selected_column=None, id=None)
+
+    def load_model(self):
+        # interpret the xgb model
+        with open(self.model_path, "rb") as current_model:
+            model_dict = pickle.load(current_model)
+
+        self.tree_struct = model_dict['tree_struct']
+        # self.learing_rate = model_dict['lr']
+        # self.base_score = model_dict['base_score']
+
+        # interpret the lookup table
+        with open(self.lookup_table_path, "rb") as hostTable:
+            lookup_table_sum = pickle.load(hostTable)
+
+        self.lookup_table_sum = lookup_table_sum
+
+    def preprocess(self):
+        if self.label is not None:
+            self.y = self.data.pop(self.label).values
+
+    def guest_get_tree_ids(self, guest_test, tree, current_lookup):
+        if tree is not None:
+            k = list(tree.keys())[0]
+            role, record_id = k[0], k[1]
+
+            if role == "guest":
+
+                tmp_lookup = current_lookup[record_id]
+                var, cut = tmp_lookup[0], tmp_lookup[1]
+                guest_test_left = guest_test.loc[guest_test[var] < cut]
+                id_left = guest_test_left.index
+                guest_test_right = guest_test.loc[guest_test[var] >= cut]
+                id_right = guest_test_right.index
+
+                self.channel.send(
+                    str(record_id) + '_ids', {
+                        'id_left': id_left,
+                        'id_right': id_right
+                    })
+
+            else:
+                # ids = self.proxy_server.Get(str(record_id) + '_ids')
+                ids = self.channel.recv(str(record_id) + '_ids')
+                id_left = ids['id_left']
+
+                guest_test_left = guest_test.loc[id_left]
+                id_right = ids['id_right']
+                guest_test_right = guest_test.loc[id_right]
+
+            for kk in tree[k].keys():
+                if kk[0] == 'left':
+                    tree_left = tree[k][kk]
+                elif kk[0] == 'right':
+                    tree_right = tree[k][kk]
+
+            self.guest_get_tree_ids(guest_test_left, tree_left, current_lookup)
+            self.guest_get_tree_ids(guest_test_right, tree_right,
+                                    current_lookup)
+
+    def guest_predict(self, X):
+        for t in range(len(self.lookup_table_sum)):
+            tree = self.tree_struct[t + 1]
+            current_lookup = self.lookup_table_sum[t + 1]
+            self.guest_get_tree_ids(X, tree, current_lookup)
+
+    def run(self):
+        self.load_model()
+        self.guest_predict(self.data)
+
+    def get_summary(self):
+        return {}
+
+    def get_outputs(self):
+        return {}
+
+    def get_status(self):
+        return {}
