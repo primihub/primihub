@@ -117,4 +117,18 @@ datasets:
   - description: "iv_filter_guest"
     model: "csv"
     source: "data/FL/hetero_iv/iv_guest.csv"
+  
+  # FL preprocess
+  - description: "preprocess_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/preprocess/vfl/train/guest.csv"
+  - description: "preprocess_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/preprocess/vfl/test/guest.csv"
+  - description: "preprocess_hfl_train_client2"
+    model: "csv"
+    source: "data/FL/preprocess/hfl/train/client2.csv"
+  - description: "preprocess_hfl_test_client2"
+    model: "csv"
+    source: "data/FL/preprocess/hfl/test/client2.csv"
 
