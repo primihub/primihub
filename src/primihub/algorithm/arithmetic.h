@@ -17,9 +17,8 @@
 #include "src/primihub/data_store/driver.h"
 
 namespace primihub {
-   
-template <Decimal Dbit>
-class ArithmeticExecutor : public AlgorithmBase {
+
+template <Decimal Dbit> class ArithmeticExecutor : public AlgorithmBase {
 public:
   explicit ArithmeticExecutor(PartyConfig &config,
                               std::shared_ptr<DatasetService> dataset_service);
@@ -32,27 +31,37 @@ public:
 
 private:
   int _LoadDatasetFromCSV(std::string &filename);
+  int _getPartyIdWithPartyName(const std::string &party_name,
+                               uint16_t &party_id);
+  void _fillPartyNameAndPartyId(const primihub::rpc::Task &task);
+
   bool is_cmp;
-  MPCExpressExecutor<Dbit> *mpc_exec_;
-  MPCOperator *mpc_op_exec_;
+
   std::string res_name_;
-  uint16_t local_id_;
-  std::pair<std::string, uint16_t> next_addr_;
-  std::pair<std::string, uint16_t> prev_addr_;
+  std::map<std::string, uint16_t> party_info_;
+  std::vector<uint32_t> parties_;
+
   Session ep_next_;
   Session ep_prev_;
   IOService ios_;
+  std::pair<std::string, uint16_t> next_addr_;
+  std::pair<std::string, uint16_t> prev_addr_;
   std::string next_ip_, prev_ip_;
   uint16_t next_port_, prev_port_;
+
   std::string dataset_id_;
-  std::map<std::string, u32> col_and_owner_;
-  std::map<std::string, bool> col_and_dtype_;
-  std::vector<uint32_t> parties_;
   uint32_t party_id_;
+
+  MPCExpressExecutor<Dbit> *mpc_exec_;
+  MPCOperator *mpc_op_exec_;
+
   std::vector<double> final_val_double_;
   std::vector<int64_t> final_val_int64_;
   std::vector<bool> cmp_res_;
+
   std::string expr_;
+  std::map<std::string, u32> col_and_owner_;
+  std::map<std::string, bool> col_and_dtype_;
   std::map<std::string, std::vector<double>> col_and_val_double;
   std::map<std::string, std::vector<int64_t>> col_and_val_int;
 };

@@ -160,12 +160,16 @@ namespace primihub::task
       LOG(ERROR) << "Algorithm is not initialized";
       return -1;
     }
-    // algorithm_->set_task_info(platform(),job_id(),task_id());
 
-    algorithm_->loadParams(task_param_);
     int ret = 0;
     do
     {
+      ret = algorithm_->loadParams(task_param_);
+      if (ret) {
+        LOG(ERROR) << "Load params failed.";
+        break;
+      }
+
       ret = algorithm_->loadDataset();
       if (ret)
       {

@@ -86,6 +86,33 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
 }
 
 template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::_getPartyIdWithPartyName(
+    const std::string &party_name, uint16_t &party_id) {
+  auto iter = party_info_.find(party_name);
+  if (iter == party_info_.end())
+    return -1;
+
+  party_id = iter->second;
+  return 0;
+}
+
+template <Decimal Dbit>
+void ArithmeticExecutor<Dbit>::_fillPartyNameAndPartyId(
+    const primihub::rpc::Task &task) {
+  const auto &all_info = task.party_access_info();
+  for (const auto &party_info : all_info) {
+    if (party_info.first == SCHEDULER_NODE)
+      continue;
+
+    uint16_t party_id = party_info.second.vm(0).party_id();
+    std::string party_name = party_info.first;
+    party_info_.insert(std::make_pair(party_info.first, party_id));
+
+    LOG(INFO) << "Party " << party_name << " has party id " << party_id << ".";
+  }
+}
+
+template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   LOG(INFO) << task.DebugString();
   auto param_map = task.params().param_map();
@@ -108,14 +135,28 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
                 << ".";
     }
 
+    _fillPartyNameAndPartyId(task);
+
     std::string col_and_owner = param_map["Col_And_Owner"].value_string();
     std::vector<string> tmp1, tmp2, tmp3;
     spiltStr(col_and_owner, ";", tmp1);
+
+    int ret = 0;
     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
       int pos = itr->find('-');
       std::string col = itr->substr(0, pos);
-      int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
-      col_and_owner_.insert(make_pair(col, owner));
+      std::string party_name = itr->substr(pos + 1, itr->size());
+      uint16_t party_id = 0;
+      ret = _getPartyIdWithPartyName(party_name, party_id);
+      if (ret) {
+        std::stringstream ss;
+        ss << "Get party id with party name " << party_name << " failed.";
+        LOG(ERROR) << ss.str();
+        throw std::runtime_error(ss.str());
+      }
+
+      col_and_owner_.insert(make_pair(col, party_id));
+      LOG(INFO) << "Column " << col << " belong to party " << party_name << ".";
     }
 
     std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
@@ -125,8 +166,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       std::string col = itr->substr(0, pos);
       int dtype = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
       col_and_dtype_.insert(make_pair(col, dtype));
-      LOG(INFO) << "col: " << col << " ;type: "<< dtype;
-
+      LOG(INFO) << "Dtype of column " << col << " is " << dtype << ".";
     }
 
     expr_ = param_map["Expr"].value_string();
@@ -154,8 +194,18 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     std::string parties = param_map["Parties"].value_string();
     spiltStr(parties, ";", tmp3);
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
-      uint32_t party = std::atoi((*itr).c_str());
-      parties_.push_back(party);
+      uint16_t party_id = 0;
+      ret = _getPartyIdWithPartyName(*itr, party_id);
+      if (ret) {
+        std::stringstream ss;
+        ss << "Can't get party id with party name " << *itr << ".";
+        LOG(ERROR) << ss.str();
+        throw std::runtime_error(ss.str());
+      }
+
+      parties_.emplace_back(party_id);
+      LOG(INFO) << "Reveal result to party " << *itr << ", party id "
+                << party_id << ".";
     }
 
     res_name_ = param_map["ResFileName"].value_string();
@@ -212,24 +262,22 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
     try {
       sbMatrix sh_res;
       f64Matrix<Dbit> m;
-      //CMP(col0,col1)
+      // CMP(col0,col1)
       int pos = expr_.find(',');
       int pos_end = expr_.find(')');
       std::string cmp_par_1 = expr_.substr(4, pos - 4);
-      LOG(INFO) << "cmp_par_1: " << cmp_par_1 ;
+      LOG(INFO) << "cmp_par_1: " << cmp_par_1;
       std::string cmp_par_2 = expr_.substr(pos + 1, pos_end - pos - 1);
-      LOG(INFO) << "cmp_par_2: " << cmp_par_2 ;
+      LOG(INFO) << "cmp_par_2: " << cmp_par_2;
 
       if (col_and_owner_[cmp_par_1] == party_id_) {
         m.resize(1, col_and_val_double[cmp_par_1].size());
-        for (size_t i = 0; i < col_and_val_double[cmp_par_1].size();
-             i++)
+        for (size_t i = 0; i < col_and_val_double[cmp_par_1].size(); i++)
           m(i) = col_and_val_double[cmp_par_1][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
       } else if (col_and_owner_[cmp_par_2] == party_id_) {
         m.resize(1, col_and_val_double[cmp_par_2].size());
-        for (size_t i = 0; i < col_and_val_double[cmp_par_2].size();
-             i++)
+        for (size_t i = 0; i < col_and_val_double[cmp_par_2].size(); i++)
           m(i) = col_and_val_double[cmp_par_2][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
       } else
@@ -246,7 +294,9 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       }
     } catch (std::exception &e) {
       LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
+      return -1;
     }
+
     return 0;
   }
 
@@ -258,9 +308,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       mpc_exec_->revealMPCResult(parties_, final_val_int64_);
     }
   } catch (const std::exception &e) {
-    std::string msg = "In party 0, ";
-    msg = msg + e.what();
-    throw std::runtime_error(msg);
+    throw std::runtime_error(e.what());
   }
   return 0;
 }
@@ -361,8 +409,6 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
   }
 
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
-  LOG(INFO) << table->ToString();
-
 
   std::vector<std::string> col_names = table->ColumnNames();
   bool errors = false;
@@ -383,7 +429,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &filename) {
   for (int i = 0; i < num_col; i++) {
     int chunk_num = table->column(i)->chunks().size();
 
-    if(col_and_dtype_.count(col_names[i]) != 1)
+    if (col_and_dtype_.count(col_names[i]) != 1)
       continue;
     if (col_and_dtype_[col_names[i]] == 0) {
       if (table->schema()->GetFieldByName(col_names[i])->type()->id() != 9) {
