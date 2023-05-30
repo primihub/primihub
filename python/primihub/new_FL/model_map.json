@@ -39,9 +39,9 @@
         "executor": "primihub.plain_data_util.data_align.DataAlign"
     },
     "FL_Preprocess": {
-        "guest": "primihub.new_FL.algorithm.preprocessing.FL.Transformer",
-        "host": "primihub.new_FL.algorithm.preprocessing.FL.Transformer",
-        "client": "primihub.new_FL.algorithm.preprocessing.FL.Transformer",
-        "server": "primihub.new_FL.algorithm.preprocessing.FL.Transformer"
+        "guest": "primihub.new_FL.algorithm.preprocessing.transform.Transformer",
+        "host": "primihub.new_FL.algorithm.preprocessing.transform.Transformer",
+        "client": "primihub.new_FL.algorithm.preprocessing.transform.Transformer",
+        "server": "primihub.new_FL.algorithm.preprocessing.transform.Transformer"
     }
 }

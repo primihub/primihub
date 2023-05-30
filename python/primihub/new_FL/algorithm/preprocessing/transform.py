@@ -11,6 +11,18 @@ import pickle
 
 
 class Transformer(BaseModel):
+    '''
+    transform to usable data
+    1. load data
+    2. select column
+    3. label encoding (if needed)
+    4. (string) impute
+    5. (numeric) impute
+    6. encoding
+    7. scaling
+    8. save data
+    '''
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
