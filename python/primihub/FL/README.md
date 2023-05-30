@@ -47,13 +47,13 @@ class ExampleGuest(BaseModel):
 ### 2. 在model_map.json中添加模型
 
 ```json
-"Dev_example": {
-        "guest": "primihub.FL.algorithm.example.dev_example_guest.ExampleGuest",
-        "host": "primihub.FL.algorithm.example.dev_example_host.ExampleHost"
+"example": {
+        "guest": "primihub.FL.algorithm.example.example_guest.ExampleGuest",
+        "host": "primihub.FL.algorithm.example.example_host.ExampleHost"
     },
 ```
 
-``Dev_example``为模型名称，要与json文件``common_params``中的``model``名称对应
+``example``为模型名称，要与json文件``common_params``中的``model``名称对应
 
 ``guest`` 、``host``为角色名，要与json文件中的``roles``对应，后面为模型的代码路径
 
@@ -84,7 +84,7 @@ class ExampleGuest(BaseModel):
             ]
         },
         "common_params": {
-            "model": "Dev_example",
+            "model": "example",
             "task_name": "demo",
             "n_iter": 10
         },
@@ -119,5 +119,5 @@ class ExampleGuest(BaseModel):
 发起任务
 
 ```bash
-submit python/primihub/FL/tests/example/dev_example.json
+submit python/primihub/FL/tests/example/example.json
 ```
