@@ -8,119 +8,31 @@
 
 > 中文 | [English](README_EN.md)
 
-## 特性
+## 简介
 
-PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)。
+PrimiHub是一个支持多方计算(MPC)、联邦学习(FL)、隐私求交(PSI)、隐私查询(PIR)特性的平台，支持数据源接入、数据消费、接入应用、语法、语义、安全协议多方面的扩展。 具体请见 PrimiHub [核心特性](https://docs.primihub.com/docs/developer-docs/core-concept/model)。
 
-## 快速开始
+## 系统架构
 
-5分钟运行起来一个MPC应用
+![PrimiHub](doc/architecture.svg)
 
-## 运行一个MPC案例部署图
+## 启动PrimiHub
 
-![Depolyment](doc/tutorial-depolyment.jpg)
+使用 docker-compose 启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/quick-start)
 
-启动服务有两种方式，直接在物理机启动服务，基于docker容器获取服务
+下载二进制文件启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/start-nodes)
 
-## 在物理机上启动服务
-启动MetaSerivce服务
+本地编译启动，参考 [这里](https://docs.primihub.com/docs/advance-usage/start/build)
 
-获取应用的二进制有两种选择<br/>
-1）直接从github获取发布的二进制文件[最新发布](https://github.com/primihub/primihub/releases)<br/>
-2) 下载预配置MetaService<br/>
-  [meta service](https://primihub.oss-cn-beijing.aliyuncs.com/tools/meta_service.tar.gz)<br/>
+## 运行任务
 
-3) 通过源码编译[编译步骤](https://docs.primihub.com/docs/advance-usage/start/build)<br/>
+运行多方安全计算任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
 
-！！！注意： 发布的二进制文件是基于ubuntu20.04系统编译，在其他系统可能出现不兼容的情况
+运行联邦学习任务，参考 [这里](https://docs.primihub.com/docs/category/%E8%81%94%E9%82%A6%E5%AD%A6%E4%B9%A0fl%E4%BB%BB%E5%8A%A1)
 
-运行服务
+运行隐私求交任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task)
 
-```bash
-解压metaservice 服务
-tar -zxvf meta_service.tar.gz
-进入 meta service 目录
-执行 ./run.sh 启动meta service（依赖JRE8环境）, 默认启动三个meta service服务，每个参与有自己的meta service 服务
-查看meta_log(1/2/3)分别查看服务是否启动成功
-或者通过命令查看 ps -ef |grep fusion-simple.jar
-root     298757       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7877 --grpc.server.port=7977 --db.path=/home/cuibo/meta_service/storage/node0 --collaborate=http://127.0.0.1:7878/,http://127.0.0.1:7879/
-root     298758       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7878 --grpc.server.port=7978 --db.path=/home/cuibo/meta_service/storage/node1 --collaborate=http://127.0.0.1:7877/,http://127.0.0.1:7879/
-root     298759       1 99 13:33 pts/8    00:00:10 java -jar fusion-simple.jar --server.port=7879 --grpc.server.port=7979 --db.path=/home/cuibo/meta_service/storage/node2 --collaborate=http://127.0.0.1:7878/,http://127.0.0.1:7877/
-
-切换到与bazel-bin平行的目录
-注意！！！！！！ 如果目标程序是通过源码编译获取的，请手动将start_server.sh中定义的PYTHONPATH环境变量注释
-检查primihub中配置的meta service服务的地址和端口是否与启动的端口一致，配置在 config/nodeX.yaml 或者 config/primihub_nodeX.yaml
-meta_service:
-  mode: "grpc"
-  ip: "127.0.0.1"
-  port: 7977
-  use_tls: false
-上述配置都正常，启动primihub node
-./start_server.sh
-```
-
-服务的日志分别存储在log_node0, log_node1, log_node2文件中，便于以后查看<br/>
-如果服务正常运行，通过linux命令 ``ps -ef | grep bin/node``, 你会获取到一下服务信息<br/>
-
-```shell
-root    4172627       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml
-root    4172628       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml
-root    4172629       1  0 10:03 pts/6    00:00:00 ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml
-```
-
-## 基于docker容器 启动服务
-
-安装 [docker](https://docs.docker.com/install/overview/) 和 [docker-compose](https://docs.docker.com/compose/install/)<br/>
-下载代码并进到代码根目录<br/>
-
-```shell
-git clone https://github.com/primihub/primihub.git
-cd primihub
-```
-
-***启动测试用的节点***
-
-使用docker-compose 启动容器。<br/>
-容器包括：三个meta service服务、三个primihub-node节点<br/>
-```bash
-docker-compose up -d
-```
-
-查看运行起来的 docker 容器：<br/>
-
-```shell
-docker-compose ps
-```
-
-```shell
-NAME                    COMMAND                  SERVICE                 STATUS              PORTS
-primihub-node0          "/bin/bash -c './pri…"   node0                   running             0.0.0.0:6666->6666/tcp, 0.0.0.0:8050->50050/tcp
-primihub-node1          "/bin/bash -c './pri…"   node1                   running             0.0.0.0:6667->6667/tcp, 0.0.0.0:8051->50051/tcp
-primihub-node2          "/bin/bash -c './pri…"   node2                   running             0.0.0.0:6668->6668/tcp, 0.0.0.0:8052->50052/tcp
-```
-
-### 创建一个MPC任务
-
-***让三个节点共同执行一个多方安全计算（MPC）的逻辑回归任务***
-
-```shell
-docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --server=127.0.0.1:8050
-```
-
-> 💡 请求任务的节点
->
-> 你可以向计算集群中任意一个节点请求计算任务
->
-
-> 💡 可用的任务参数
->
-> 通过primihub-cli可以指定以下参数
->
->  1. 请求哪个节点启动任务
->  2. 使用哪些共享数据集
->  3. 做什么样的隐私计算任务
-
-在这个例子中primihub-cli会使用默认参数向 ***node 0*** 请求一个ABY3的三方逻辑回归测试任务，关于cli可以指定的参数请见 ***[创建任务](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1)***。
+运行隐匿查询任务，参考 [这里](https://docs.primihub.com/docs/advance-usage/create-tasks/pir-task)
 
 ## 进阶使用
 
@@ -128,8 +40,7 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 
 ## 开发者
 
-* 关于如何编译，请见[编译](https://docs.primihub.com/docs/advance-usage/start/build)
-* 如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面开启一个新的话题，比如文档、创意、Bug等。
+如果你想参与PrimiHub项目，可以在[Issue](https://github.com/primihub/primihub/issues) 页面开启一个新的话题，比如文档、创意、Bug等。
 同时可以了解我们的社区治理结构 [PrimiHub社区治理委员会](https://docs.primihub.com/docs/developer-docs/primihub-community)，我们是一个开放共建的开源项目，欢迎参与到我们的项目中。
 
 ## 社区
@@ -137,3 +48,7 @@ docker run --network=host -it primihub/primihub-node:latest ./primihub-cli --ser
 * 微信助手:
 
 ![wechat_helper](./doc/wechat.jpeg)
+
+## 许可证
+
+此代码在 Apache 2.0 下发布，参见 [LICENSE](https://github.com/primihub/primihub/blob/develop/LICENSE) 文件。

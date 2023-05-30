@@ -43,7 +43,7 @@
         "role_params": {
             "Bob": {
                 "data_set": "train_hetero_xgb_host",
-                "id": null,
+                "id": "id",
                 "selected_column": null,
                 "add_noise": "regular",
                 "tol": 0.001,
@@ -53,7 +53,7 @@
             },
             "Charlie": {
                 "data_set": "train_hetero_xgb_guest",
-                "id": null,
+                "id": "id",
                 "model_path": "guest_model.pkl",
                 "selected_column": null,
                 "label": null

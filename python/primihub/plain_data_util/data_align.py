@@ -33,12 +33,11 @@ class DataAlign:
         self.common_params = self.kwargs['common_params']
         self.role_params = self.kwargs['role_params']
         self.node_info = self.kwargs['node_info']
-        self.task_params = self.kwargs['other_params']
-        self.party_name = self.task_params.party_name
+        self.task_info = self.kwargs['task_info']
+        self.party_name = self.role_params["self_name"]
         logger.info(self.common_params)
         logger.info(self.role_params)
         logger.info(self.node_info)
-        logger.info(self.task_params)
 
 
     def parse_dataset_param(self):
@@ -50,14 +49,14 @@ class DataAlign:
                                         self_host_info.port,
                                         use_tls)
         logger.info(service_addr)
-        # find detail of dataset
-        data_access_info = self.task_params.party_datasets[self.party_name].data["data_set"]
-        logger.info("data_access_info: {}".format(data_access_info))
         if not self.role_params:
           raise Exception("no meta info found for {}".format(self.party_name))
-        js_access_info = json.loads(data_access_info)
+        # find detail of dataset
+        data_access_info = self.role_params["data"]
+        logger.info("data_access_info: {}".format(data_access_info))
+
         local_meta_info = copy.deepcopy(self.role_params)
-        local_meta_info["localdata_path"] = js_access_info
+        local_meta_info["localdata_path"] = data_access_info
         local_meta_info["host_address"] = service_addr
         logger.info(local_meta_info)
         return local_meta_info
@@ -425,30 +424,3 @@ class DataAlign:
             raise RuntimeError(
                 "Don't support dataset model {} now.".format(dataset_model))
 
-# Below is a simple example which demonstrates how to use this script,
-# replace value in 'datasets' with your own dataset name then run it with cli.
-
-# import primihub as ph
-# from primihub.utils.logger_util import logger
-# from primihub.utils.after_psi import filter_rows_with_intersect_ids
-#
-# @ph.context.function(role="host", protocol="python", datasets=["psi_host"], port="localhost:9000")
-# def filter_rows_host():
-#     role = ph.context.Context.params_map["role"]
-#     assert(role == "host")
-#
-#     if ph.context.Context.nodes_context.get(role, None) is None:
-#         raise RuntimeError("Can't get node context by role {}.".format(role))
-#     else:
-#         filter_rows_with_intersect_ids(role)
-#
-#
-# @ph.context.function(role="guest", protocol="python", datasets=["psi_guest"], port="localhost:9000")
-# def filter_rows_guest():
-#     role = ph.context.Context.params_map["role"]
-#     assert(role == "guest")
-#
-#     if ph.context.Context.nodes_context.get(role, None) is None:
-#         raise RuntimeError("Can't get node context by role {}.".format(role))
-#     else:
-#         filter_rows_with_intersect_ids(role)

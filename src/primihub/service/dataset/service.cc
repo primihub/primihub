@@ -70,7 +70,15 @@ DatasetService::newDataset(std::shared_ptr<primihub::DataDriver> driver,
     // just get meta info from dataset
     // auto dataset = driver->getCursor()->read();
     auto cursor = driver->read();
+    if (cursor == nullptr) {
+      LOG(ERROR) << "get cursor for dataset: " << dataset_id << " failed";
+      return nullptr;
+    }
     auto dataset = cursor->readMeta();
+    if (dataset == nullptr) {
+      LOG(ERROR) << "get dataset meta for dataset id: " << dataset_id << " failed";
+      return nullptr;
+    }
     *meta = DatasetMeta(dataset,
                         dataset_id,
                         DatasetVisbility::PUBLIC,
@@ -182,7 +190,11 @@ void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
                                               nodelet_addr,
                                               std::move(access_info));
     this->registerDriver(dataset_uid, driver);
-    driver->read();
+    auto cursor = driver->read();
+    if (cursor == nullptr) {
+      LOG(WARNING) << "get cursor for " << dataset_uid << " failed";
+      continue;
+    }
     DatasetMeta meta;
     newDataset(driver, dataset_uid, access_info_str, &meta);
   }

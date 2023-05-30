@@ -648,10 +648,10 @@ class VGBTBase(BaseModel):
         else:
             self.data = self.data
 
-        if self.id is not None:
+        if self.id in self.data.columns:
             self.data.pop(self.id)
 
-        if self.label is not None:
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label)
         else:
             self.y = (np.random.random(self.data.shape[0]) > 0.5).astype('int')
@@ -1928,7 +1928,10 @@ class VGBTHostInfer(BaseModel):
         self.lookup_table_sum = lookup_table_sum
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
     def host_get_tree_node_weight(self, host_test, tree, current_lookup, w):
@@ -1996,6 +1999,7 @@ class VGBTHostInfer(BaseModel):
         return (preds >= 0.5).astype('int')
 
     def run(self):
+        origin_data = self.data.copy()
         self.load_model()
         self.preprocess()
         pred_prob = self.host_predict_prob(self.data)
@@ -2003,9 +2007,9 @@ class VGBTHostInfer(BaseModel):
             'pred_prob': pred_prob,
             "pred_y": (pred_prob >= 0.5).astype('int')
         })
-
+        data_result = pd.concat([origin_data, pred_df], axis=1)
         check_directory_exist(self.model_pred)
-        pred_df.to_csv(self.model_pred, index=False)
+        data_result.to_csv(self.model_pred, index=False)
 
         if self.label is not None:
             acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
@@ -2079,7 +2083,10 @@ class VGBGuestInfer(BaseModel):
         self.lookup_table_sum = lookup_table_sum
 
     def preprocess(self):
-        if self.label is not None:
+        if self.id in self.data.columns:
+            self.data.pop(self.id)
+
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label).values
 
     def guest_get_tree_ids(self, guest_test, tree, current_lookup):
