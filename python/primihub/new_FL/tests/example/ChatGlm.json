@@ -2,17 +2,17 @@
     "party_info": {
         "Alice": {
             "ip": "172.21.1.58",
-            "port": "50050",
+            "port": 50050,
             "use_tls": false
         },
         "Bob": {
             "ip": "172.21.1.63",
-            "port": "50051",
+            "port": 50051,
             "use_tls": false
         },
         "Charlie": {
             "ip": "172.21.1.58",
-            "port": "50052",
+            "port": 50052,
             "use_tls": false
         },
         "task_manager": "127.0.0.1:50050"
