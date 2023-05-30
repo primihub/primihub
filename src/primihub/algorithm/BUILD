@@ -27,6 +27,7 @@ cc_library(
         # "src/primihub/executor/express.cc",
         # "src/primihub/operator/aby3_operator.cc",
         "missing_val_processing.cc",
+        "mpc_statistics.cc",
     ]),
     hdrs = glob([
         "base.h",
@@ -39,6 +40,7 @@ cc_library(
         "falcon_lenet.h",
         "arithmetic.h",
         "missing_val_processing.h",
+        "mpc_statistics.h",
     ]),
     linkstatic = False,
     deps = [

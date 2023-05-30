@@ -20,6 +20,7 @@ PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
   this->node_id = task.party_name();
   this->task_id = task.task_info().task_id();
   this->job_id = task.task_info().job_id();
+  this->request_id = task.task_info().request_id();
   this->node_map = std::move(node_map);
 }
 

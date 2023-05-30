@@ -20,11 +20,18 @@ cc_library(
 )
 
 cc_library(
-    name = "mpc_express_executor",
-    hdrs = ["express.h"],
-    srcs = ["express.cc"],
-    deps = [
-        "//src/primihub/operator:aby3_operator",
-        "@com_github_glog_glog//:glog"
-    ],
+  name = "mpc_express_executor",
+  hdrs = [
+    "express.h",
+    "statistics.h",
+  ],
+  srcs = [
+    "express.cc",
+    "statistics.cc",
+  ],
+  deps = [
+    "//src/primihub/operator:aby3_operator",
+    "//src/primihub/service:dataset_service",
+    "@com_github_glog_glog//:glog"
+  ],
 )
