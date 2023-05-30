@@ -121,10 +121,10 @@ class HeteroLrBase(BaseModel):
         else:
             self.data = self.data
 
-        if self.id is not None:
+        if self.id in self.data.columns:
             self.data.pop(self.id)
 
-        if self.label is not None:
+        if self.label in self.data.columns:
             self.y = self.data.pop(self.label)
         else:
             self.y = (np.random.random(self.data.shape[0]) > 0.5).astype('int')
