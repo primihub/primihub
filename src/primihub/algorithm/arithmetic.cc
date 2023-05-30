@@ -215,22 +215,22 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       //CMP(col0,col1)
       int pos = expr_.find(',');
       int pos_end = expr_.find(')');
-      std::string op_num_1 = expr_.substr(4, pos - 4);
-      LOG(INFO) << "op_num_1: " << op_num_1 ;
-      std::string op_num_2 = expr_.substr(pos + 1, pos_end - pos - 1);
-      LOG(INFO) << "op_num_2: " << op_num_2 ;
+      std::string cmp_par_1 = expr_.substr(4, pos - 4);
+      LOG(INFO) << "cmp_par_1: " << cmp_par_1 ;
+      std::string cmp_par_2 = expr_.substr(pos + 1, pos_end - pos - 1);
+      LOG(INFO) << "cmp_par_2: " << cmp_par_2 ;
 
-      if (col_and_owner_[op_num_1] == party_id_) {
-        m.resize(1, col_and_val_double[op_num_1].size());
-        for (size_t i = 0; i < col_and_val_double[op_num_1].size();
+      if (col_and_owner_[cmp_par_1] == party_id_) {
+        m.resize(1, col_and_val_double[cmp_par_1].size());
+        for (size_t i = 0; i < col_and_val_double[cmp_par_1].size();
              i++)
-          m(i) = col_and_val_double[op_num_1][i];
+          m(i) = col_and_val_double[cmp_par_1][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
-      } else if (col_and_owner_[op_num_2] == party_id_) {
-        m.resize(1, col_and_val_double[op_num_2].size());
-        for (size_t i = 0; i < col_and_val_double[op_num_2].size();
+      } else if (col_and_owner_[cmp_par_2] == party_id_) {
+        m.resize(1, col_and_val_double[cmp_par_2].size());
+        for (size_t i = 0; i < col_and_val_double[cmp_par_2].size();
              i++)
-          m(i) = col_and_val_double[op_num_2][i];
+          m(i) = col_and_val_double[cmp_par_2][i];
         mpc_op_exec_->MPC_Compare(m, sh_res);
       } else
         mpc_op_exec_->MPC_Compare(sh_res);
