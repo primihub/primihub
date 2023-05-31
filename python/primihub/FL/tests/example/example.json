@@ -1,0 +1,28 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "guest": [
+                "Bob"
+            ],
+            "host": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "example",
+            "task_name": "demo",
+            "n_iter": 10
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "iv_filter_host"
+            },
+            "Charlie": {
+                "data_set": "iv_filter_guest"
+            }
+        }
+    }
+}

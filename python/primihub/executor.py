@@ -54,7 +54,7 @@ def run(task_params):
         role_params['others_role'] = role_params['others_role'][0]
 
     # load model and run
-    with open(path + '/new_FL/model_map.json', 'r') as f:
+    with open(path + '/FL/model_map.json', 'r') as f:
         FUNC_MAP = json.load(f)
 
     model = common_params['model']
