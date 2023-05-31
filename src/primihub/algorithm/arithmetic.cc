@@ -37,9 +37,6 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
   auto &node_map = config.node_map;
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    if (iter->first == SCHEDULER_NODE)
-      continue;
-
     rpc::Node &node = iter->second;
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     party_id_node_map[party_id] = node;
@@ -114,7 +111,6 @@ void ArithmeticExecutor<Dbit>::_fillPartyNameAndPartyId(
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
-  LOG(INFO) << task.DebugString();
   auto param_map = task.params().param_map();
   try {
     {
