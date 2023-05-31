@@ -1,6 +1,6 @@
 {
   "task_type": "ACTOR_TASK",
-  "task_name": "mpc_statistics",
+  "task_name": "mpc_statistics_max",
   "task_lang": "proto",
   "task_code": {
     "code_file_path": "",
@@ -14,15 +14,15 @@
         "type": "3",
         "features": [
           {
-            "resourceId": "avg_a_test_mysql",
+            "resourceId": "mpc_statistics_0",
             "checked": ["x_1", "x_2"]
           },
           {
-            "resourceId": "avg_b_test_mysql",
+            "resourceId": "mpc_statistics_1",
             "checked": ["x_1", "x_2"]
           },
           {
-            "resourceId": "avg_c_test_mysql",
+            "resourceId": "mpc_statistics_2",
             "checked": ["x_1", "x_2"]
           }
         ]
@@ -31,28 +31,28 @@
     "ColumnInfo": {
       "type": "OBJECT",
       "value": {
-        "avg_a_test_mysql": {
+        "mpc_statistics_0": {
           "columns": {
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_a_test_mysql",
+          "newDataSetId": "new_avg_a_test",
           "outputFilePath": "data/result/mpc_max_party_0.csv"
         },
-        "avg_b_test_mysql": {
+        "mpc_statistics_1": {
           "columns": {
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_b_test_mysql",
+          "newDataSetId": "new_avg_b_test",
           "outputFilePath": "data/result/mpc_max_party_1.csv"
         },
-        "avg_c_test_mysql": {
+        "mpc_statistics_2": {
           "columns": {
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_c_test_mysql",
+          "newDataSetId": "new_avg_c_test",
           "outputFilePath": "data/result/mpc_max_party_2.csv"
         }
       }
@@ -60,15 +60,15 @@
   },
   "party_datasets": {
     "PARTY0": {
-      "Data_File": "avg_a_test_mysql",
+      "Data_File": "mpc_statistics_0",
       "TestData" : "test_party_0"
     },
     "PARTY1": {
-      "Data_File": "avg_b_test_mysql",
+      "Data_File": "mpc_statistics_1",
       "TestData" : "test_party_1"
     },
     "PARTY2": {
-      "Data_File": "avg_c_test_mysql",
+      "Data_File": "mpc_statistics_2",
       "TestData": "test_party_2"
     }
   },

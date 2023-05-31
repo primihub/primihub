@@ -54,4 +54,6 @@ datasets:
   - description: "train_homo_regression"
     model: "csv"
     source: "/tmp/FL/homo_regression/train/train_boston_house.csv"
-
+  - description: "mpc_statistics_0"
+    model: "csv"
+    source: "data/mpc_test.csv"

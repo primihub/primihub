@@ -88,6 +88,10 @@ datasets:
     model: "csv"
     source: "data/client_e.csv"
 
+  - description: "mpc_statistics_0"
+    model: "csv"
+    source: "data/mpc_test.csv"
+
   # use mysql table as dataset
   #- description: "psi_client"
   #  model: "mysql"

@@ -139,7 +139,7 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
   for (const auto& pair : datasets_with_tag) {
     auto& dataset_id = std::get<0>(pair);
     auto& dataset_tag = std::get<1>(pair);
-    LOG(ERROR) << "dataset_id: " << dataset_id << " "
+    VLOG(5) << "dataset_id: " << dataset_id << " "
         << "dataset_tag: " << dataset_tag;
     request.add_id(dataset_id);
     id2tag[dataset_id] = dataset_tag;
