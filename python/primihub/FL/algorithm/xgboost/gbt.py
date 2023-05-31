@@ -2011,24 +2011,24 @@ class VGBTHostInfer(BaseModel):
         check_directory_exist(self.model_pred)
         data_result.to_csv(self.model_pred, index=False)
 
-        if self.label is not None:
-            acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
-                                         self.y)
+        # if self.label is not None:
+        #     acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
+        #                                  self.y)
 
-            ks, auc = evaluate_ks_and_roc_auc(y_real=self.y, y_proba=pred_prob)
-            fpr, tpr, threshold = metrics.roc_curve(self.y, pred_prob)
-            test_metrics = {
-                "test_acc": acc,
-                "test_ks": ks,
-                "test_auc": auc,
-                "test_fpr": fpr.tolist(),
-                "test_tpr": tpr.tolist()
-            }
-            test_metrics_buff = json.dumps(test_metrics)
+        #     ks, auc = evaluate_ks_and_roc_auc(y_real=self.y, y_proba=pred_prob)
+        #     fpr, tpr, threshold = metrics.roc_curve(self.y, pred_prob)
+        #     test_metrics = {
+        #         "test_acc": acc,
+        #         "test_ks": ks,
+        #         "test_auc": auc,
+        #         "test_fpr": fpr.tolist(),
+        #         "test_tpr": tpr.tolist()
+        #     }
+        #     test_metrics_buff = json.dumps(test_metrics)
 
-            check_directory_exist(self.metric_path)
-            with open(self.metric_path, 'w') as filePath:
-                filePath.write(test_metrics_buff)
+        #     check_directory_exist(self.metric_path)
+        #     with open(self.metric_path, 'w') as filePath:
+        #         filePath.write(test_metrics_buff)
 
     def get_summary(self):
         return {}

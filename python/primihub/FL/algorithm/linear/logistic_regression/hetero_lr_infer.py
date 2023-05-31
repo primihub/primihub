@@ -84,25 +84,26 @@ class HeteroLrHostInfer(BaseModel):
         data_result = pd.concat([origin_data, pred_df], axis=1)
         check_directory_exist(self.model_pred)
         data_result.to_csv(self.model_pred, index=False)
-        if self.label is not None:
-            acc = sum((pred_y == self.y).astype('int')) / self.data.shape[0]
-            ks, auc = evaluate_ks_and_roc_auc(self.y, self.sigmoid(y_hat))
-            fpr, tpr, threshold = metrics.roc_curve(self.y, self.sigmoid(y_hat))
 
-            evals = {
-                "test_acc": acc,
-                "test_ks": ks,
-                "test_auc": auc,
-                "test_fpr": fpr.tolist(),
-                "test_tpr": tpr.tolist()
-            }
+        # if self.label is not None:
+        #     acc = sum((pred_y == self.y).astype('int')) / self.data.shape[0]
+        #     ks, auc = evaluate_ks_and_roc_auc(self.y, self.sigmoid(y_hat))
+        #     fpr, tpr, threshold = metrics.roc_curve(self.y, self.sigmoid(y_hat))
 
-            metrics_buff = json.dumps(evals)
+        #     evals = {
+        #         "test_acc": acc,
+        #         "test_ks": ks,
+        #         "test_auc": auc,
+        #         "test_fpr": fpr.tolist(),
+        #         "test_tpr": tpr.tolist()
+        #     }
 
-            check_directory_exist(self.metric_path)
-            with open(self.metric_path, 'w') as filePath:
-                filePath.write(metrics_buff)
-            print("test acc is", evals)
+        #     metrics_buff = json.dumps(evals)
+
+        #     check_directory_exist(self.metric_path)
+        #     with open(self.metric_path, 'w') as filePath:
+        #         filePath.write(metrics_buff)
+        #     print("test acc is", evals)
 
     def get_summary(self):
         return {}
