@@ -1,4 +1,4 @@
-# --extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 pyarrow==6.0.1
 pandas
@@ -15,7 +15,7 @@ protobuf==3.20.0
 
 pydantic
 sphinx
-scikit-learn==1.1.1
+scikit-learn==1.2.2
 phe==1.5.0
 
 mysql-connector-python
@@ -27,13 +27,12 @@ transformers
 requests
 line_profiler
 matplotlib
-#tensorflow==2.11.0
-#tensorflow-federated==0.49.0
 dp-accounting==0.3.0
 attrs~=21.4.0
 scipy~=1.7.1
 modin
 
-# torch==1.13.1+cpu
-# torchvision==0.14.1+cpu
-# torchaudio==0.13.1+cpu
+opacus==1.4.0
+torch==1.13.1+cpu
+torchvision==0.14.1+cpu
+torchaudio==0.13.1+cpu

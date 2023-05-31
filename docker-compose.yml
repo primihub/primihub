@@ -4,9 +4,8 @@ services:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: primihub-node0
-    ports:
-      - "8050:50050"
-      - "6666:6666"
+    # ports:
+    #   - "50050:50050"
     volumes:
       - ./config:/app/config
       - ./data:/data
@@ -14,19 +13,16 @@ services:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
-    networks:
-      primihub_net:
-        ipv4_address: 172.28.1.10
     depends_on:
-      - redis
+      meta0:
+        condition: service_healthy
 
   node1:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: primihub-node1
-    ports:
-      - "8051:50051"
-      - "6667:6667"
+    # ports:
+    #   - "50051:50051"
     volumes:
       - ./config:/app/config
       - ./data:/data
@@ -34,19 +30,16 @@ services:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
-    networks:
-      primihub_net:
-        ipv4_address: 172.28.1.11
     depends_on:
-      - redis
+      meta1:
+        condition: service_healthy
 
   node2:
     image: ${REGISTRY:-docker.io}/primihub/primihub-node:${TAG:-latest}
     restart: "always"
     container_name: primihub-node2
-    ports:
-      - "8052:50052"
-      - "6668:6668"
+    # ports:
+    #   - "50052:50052"
     volumes:
       - ./config:/app/config
       - ./data:/data
@@ -54,41 +47,75 @@ services:
       - "/bin/bash"
       - "-c"
       - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
-    networks:
-      primihub_net:
-        ipv4_address: 172.28.1.12
     depends_on:
-      - redis
+      meta2:
+        condition: service_healthy
 
-  simple_bootstrap_node:
-    image: ${REGISTRY:-docker.io}/primihub/simple-bootstrap-node:${BOOTTAG:-1.0}
-    container_name: simple_bootstrap_node
+  meta0:
+    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
     restart: "always"
-    ports:
-      - "4001:4001"
-    entrypoint: 
-      - "/app/simple-bootstrap-node"
-    networks:
-      primihub_net:
-        ipv4_address: 172.28.1.13
+    container_name: primihub-meta0
+    # ports:
+    #   - "7977:9099"
+    # volumes:
+    #   - ./data:/data
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "java -jar /applications/fusion-simple.jar \
+        --server.port=8088 \
+        --grpc.server.port=9099 \
+        --db.path=/data/meta_service/node0 \ 
+        --collaborate=http://primihub-meta1:8088/,http://primihub-meta2:8088/"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - -q http://localhost:8088/health"]
+      interval: 8s
+      timeout: 3s
+      retries: 3
 
-  redis:
-    image: ${REGISTRY:-docker.io}/primihub/redis:latest
-    container_name: redis 
+  meta1:
+    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
     restart: "always"
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./config/redis.conf:/etc/redis/redis.conf
-      - ./data:/data
-    command: redis-server /etc/redis/redis.conf
-    networks:
-      primihub_net:
-        ipv4_address: 172.28.1.14
+    container_name: primihub-meta1
+    # ports:
+    #   - "7977:9099"
+    # volumes:
+    #   - ./data:/data
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "java -jar /applications/fusion-simple.jar \
+        --server.port=8088 \
+        --grpc.server.port=9099 \
+        --db.path=/data/meta_service/node1 \ 
+        --collaborate=http://primihub-meta0:8088/,http://primihub-meta2:8088/"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - -q http://localhost:8088/health"]
+      interval: 8s
+      timeout: 3s
+      retries: 3
+
+  meta2:
+    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
+    restart: "always"
+    container_name: primihub-meta2
+    # ports:
+    #   - "7977:9099"
+    # volumes:
+    #   - ./data:/data
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - "java -jar /applications/fusion-simple.jar \
+        --server.port=8088 \
+        --grpc.server.port=9099 \
+        --db.path=/data/meta_service/node2 \
+        --collaborate=http://primihub-meta0:8088/,http://primihub-meta1:8088/"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - -q http://localhost:8088/health"]
+      interval: 8s
+      timeout: 3s
+      retries: 3
 
 networks:
   primihub_net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16

@@ -7,14 +7,6 @@
     "code": ""
   },
   "params": {
-    "clientData": {
-      "type": "STRING",
-      "value": "psi_client_data"
-    },
-    "serverData": {
-      "type": "STRING",
-      "value": "psi_server_data"
-    },
     "clientIndex": {
       "type": "INT32",
       "value": [0]
@@ -46,5 +38,13 @@
       "value": "data/result/server/psi_result.csv"
     }
   },
-  "input_datasets": ["clientData", "serverData"]
+  "party_datasets": {
+    "CLIENT": {
+      "CLIENT": "psi_client_data"
+    },
+    "SERVER": {
+      "SERVER": "psi_server_data"
+    }
+  },
+  "input_datasets": []
 }

@@ -18,36 +18,36 @@
 #define SRC_PRIMIHUB_TASK_LANGUAGE_PARSER_H_
 
 #include <string>
+#include <map>
+#include <vector>
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 
 using primihub::service::DatasetWithParamTag;
 
-using primihub::rpc::PushTaskRequest;
-
 namespace primihub::task {
 // Primihub language layer
 class LanguageParser {
  public:
-    LanguageParser(const PushTaskRequest &pushTaskRequest) {
-        pushTaskRequest_.CopyFrom(pushTaskRequest);
-    }
-    ~LanguageParser() {}
-
+    explicit LanguageParser(const rpc::PushTaskRequest& task_request);
+    ~LanguageParser() = default;
     virtual retcode parseTask() = 0;
     virtual retcode parseDatasets() = 0;
     virtual retcode parseNodes()  = 0;
+    retcode MergePartyAccessInfo(
+        const std::map<std::string, Node>& party_access_info);
 
-    PushTaskRequest getPushTaskRequest() { return pushTaskRequest_; }
-    std::vector<DatasetWithParamTag> getDatasets() { return input_datasets_with_tag_; }
+    rpc::PushTaskRequest& getPushTaskRequest() {
+      return task_request_;
+    }
+    std::vector<DatasetWithParamTag>& getDatasets() {
+      return input_datasets_with_tag_;
+    }
 
  protected:
-    PushTaskRequest pushTaskRequest_;
+    rpc::PushTaskRequest task_request_;
     std::vector<DatasetWithParamTag> input_datasets_with_tag_;
 };
-
-} // namespace primihub::task
-
-
-#endif // SRC_PRIMIHUB_TASK_LANGUAGE_PARSER_H_
+}  // namespace primihub::task
+#endif  // SRC_PRIMIHUB_TASK_LANGUAGE_PARSER_H_

@@ -46,20 +46,13 @@ bool PsiCommonOperator::isString(const arrow::Type::type& type_id) {
 }
 
 bool PsiCommonOperator::validationDataColum(const std::vector<int>& data_cols, int table_max_colums) {
-    if (data_cols.empty()) {    // invalid condition
-        LOG(ERROR) << "no data colum index need to check";
-        return false;
-    }
-    for (const auto col : data_cols) {
-        if(col < table_max_colums) {
-            continue;
-        }
-        LOG(ERROR) << "psi dataset colunum number should be smaller than table_max_colums, "
-            << "dataset total colum: " << table_max_colums
-            << "expected col index: " << col;
-        return false;
-    }
-    return true;
+  if (data_cols.size() != table_max_colums) {
+    LOG(ERROR) << "data col size does not match, " << " "
+        << "expected: " << data_cols.size() << " "
+        << " actually: " << table_max_colums;
+    return false;
+  }
+  return true;
 }
 
 retcode PsiCommonOperator::LoadDatasetFromTable(
@@ -70,8 +63,9 @@ retcode PsiCommonOperator::LoadDatasetFromTable(
     // int data_col = col_index[0];
     int64_t num_rows = table->num_rows();
     col_array.resize(num_rows);
-    for (const auto data_col : col_index) {
-        auto col_ptr = table->column(data_col);
+    int num_cols = table->num_columns();
+    for (int col_i = 0; col_i < num_cols; col_i++) {
+        auto col_ptr = table->column(col_i);
         int chunk_size = col_ptr->num_chunks();
         auto type_id = col_ptr->type()->id();
         bool is_numeric = this->isNumeric(type_id);
@@ -122,19 +116,23 @@ retcode PsiCommonOperator::LoadDatasetInternal(
         const std::vector<int>& data_cols,
         std::vector<std::string>& col_array) {
 //
-    auto cursor = driver->read();
-    auto ds = cursor->read();
-    if (ds == nullptr) {
-        LOG(ERROR) << "get data failed";
-        return retcode::FAIL;
-    }
-    auto& table = std::get<std::shared_ptr<arrow::Table>>(ds->data);
-    int col_count = table->num_columns();
-    bool all_colum_valid = validationDataColum(data_cols, col_count);
-    if(!all_colum_valid) {
-        return retcode::FAIL;
-    }
-    return LoadDatasetFromTable(table, data_cols, col_array);
+  auto cursor = driver->GetCursor(data_cols);
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get cursor for dataset failed";
+    return retcode::FAIL;
+  }
+  auto ds = cursor->read();
+  if (ds == nullptr) {
+    LOG(ERROR) << "get data failed";
+    return retcode::FAIL;
+  }
+  auto& table = std::get<std::shared_ptr<arrow::Table>>(ds->data);
+  int col_count = table->num_columns();
+  bool all_colum_valid = validationDataColum(data_cols, col_count);
+  if(!all_colum_valid) {
+    return retcode::FAIL;
+  }
+  return LoadDatasetFromTable(table, data_cols, col_array);
 }
 
 retcode PsiCommonOperator::LoadDatasetInternal(

@@ -1,0 +1,28 @@
+{
+    "component_params": {
+        "roles": {
+            "executor": [
+                "Charlie", "Bob"
+            ]
+        },
+        "common_params": {
+            "model": "DataAlign"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "psi_client_data",
+                "newDataSetId":"dataresource_1_new",
+                "psiPath": "data/result/psi_result.csv",
+                "outputPath":"data/result/new_data_dataset.csv",
+                "index":[ 0 ]
+            },
+            "Charlie": {
+                "data_set": "psi_server_data",
+                "newDataSetId": "dataresource_2_new",
+                "psiPath": "data/result/server/psi_result.csv",
+                "outputPath": "data/result/server/new_data_dataset.csv",
+                "index":[0]
+            }
+        }
+    }
+}

@@ -19,23 +19,18 @@
 
 #include <string>
 #include <vector>
-#include <pybind11/embed.h>
 
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/common.h"
-
-namespace py = pybind11;
 
 namespace primihub::task {
 
 class PyParser : public LanguageParser {
  public:
-    PyParser(const PushTaskRequest &pushTaskRequest)
+    PyParser(const rpc::PushTaskRequest &pushTaskRequest)
         : LanguageParser(pushTaskRequest) {
-        py_code_ = pushTaskRequest_.task().code();
     }
     ~PyParser();
-
     retcode parseTask() override;
     retcode parseDatasets();
     retcode parseNodes() override;
@@ -50,10 +45,8 @@ class PyParser : public LanguageParser {
     std::vector<std::string> roles_;
     std::vector<std::string> func_params_;
     std::map<std::string, NodeContext> nodes_context_map_;
-
-    py::object  ph_context_, ph_exec_m_;
 };
 
-} // namespace primihub::task
+}  // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_
+#endif  // SRC_PRIMIHUB_TASK_LANGUAGE_PY_PARSER_H_

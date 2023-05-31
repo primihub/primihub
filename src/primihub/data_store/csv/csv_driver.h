@@ -16,6 +16,11 @@
 
 #ifndef SRC_PRIMIHUB_DATA_STORE_CSV_CSV_DRIVER_H_
 #define SRC_PRIMIHUB_DATA_STORE_CSV_CSV_DRIVER_H_
+#include <arrow/api.h>
+#include <arrow/csv/api.h>
+#include <arrow/csv/writer.h>
+#include <arrow/filesystem/localfs.h>
+#include <arrow/io/api.h>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
@@ -26,15 +31,21 @@ struct CSVAccessInfo : public DataSetAccessInfo {
   CSVAccessInfo() = default;
   CSVAccessInfo(const std::string& file_path) : file_path_(file_path) {}
   std::string toString() override;
-  retcode fromJsonString(const std::string& json_str) override;
-  retcode fromYamlConfig(const YAML::Node& meta_info) override;
+  retcode fromJsonString(const std::string& access_info) override;
+  retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
+  retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) override;
+  retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) override;
 
+ public:
   std::string file_path_;
 };
 
 class CSVCursor : public Cursor {
-public:
+ public:
   CSVCursor(std::string filePath, std::shared_ptr<CSVDriver> driver);
+  CSVCursor(std::string filePath,
+            const std::vector<int>& colnum_index,
+            std::shared_ptr<CSVDriver> driver);
   ~CSVCursor();
   std::shared_ptr<primihub::Dataset> readMeta() override;
   std::shared_ptr<Dataset> read() override;
@@ -42,20 +53,40 @@ public:
   int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
 
-private:
+ protected:
+  /**
+   * convert column index to column name
+  */
+  retcode ColumnIndexToColumnName(const std::string& file_path,
+                                  const std::vector<int>& column_index,
+                                  const char delimiter,
+                                  std::vector<std::string>* column_name);
+  /**
+   * customize convert option
+   * if Specific columns selected, just get data from the specific columns
+   * if column data type provided when the dataset register,
+   * using registed data type
+  */
+  retcode BuildConvertOptions(arrow::csv::ConvertOptions* convert_option);
+
+ private:
   std::string filePath;
   unsigned long long offset = 0;
   std::shared_ptr<CSVDriver> driver_;
+  std::vector<int> colum_index_;
 };
 
 class CSVDriver : public DataDriver,
                   public std::enable_shared_from_this<CSVDriver> {
 public:
   explicit CSVDriver(const std::string &nodelet_addr);
-  CSVDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
+  CSVDriver(const std::string &nodelet_addr,
+            std::unique_ptr<DataSetAccessInfo> access_info);
   ~CSVDriver() {}
   std::unique_ptr<Cursor> read() override;
   std::unique_ptr<Cursor> read(const std::string &filePath) override;
+  std::unique_ptr<Cursor> GetCursor() override;
+  std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
   std::unique_ptr<Cursor> initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
   // FIXME to be deleted
@@ -63,6 +94,7 @@ public:
 
 protected:
   void setDriverType();
+  retcode GetColumnNames(const char delimiter, std::vector<std::string>* column_names);
 
 private:
   std::string filePath_;

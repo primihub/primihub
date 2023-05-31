@@ -1,7 +1,7 @@
 version: 1.0
 
 node: "node1"
-location: "172.28.1.11"
+location: "primihub-node1"
 use_tls: false
 
 grpc_port: 50051
@@ -11,11 +11,11 @@ grpc_port: 50051
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
-# Use redis by default, set `use_redis: False` to use libp2p
-redis_meta_service:
-  redis_addr: "redis:6379"
-  use_redis: True
-  redis_password: "primihub"
+meta_service:
+  mode: "grpc"
+  ip: "primihub-meta1"
+  port: 9099
+  use_tls: false
 
 datasets:
   # ABY3 LR test case datasets
@@ -79,16 +79,42 @@ datasets:
     model: "csv"
     source: "/tmp/FL/homo_lr/test_breast_cancer.csv"
 
-localkv:
-  model: "leveldb"
-  path: "/data/localdb1"
+  # FL homo nn multiclass test case datasets
+  - description: "train_homo_nn_multiclass_host"
+    model: "csv"
+    source: "/tmp/FL/homo_nn/train/train_mobile_price_host.csv"
+  - description: "test_homo_nn_multiclass_host"
+    model: "csv"
+    source: "/tmp/FL/homo_nn/test/test_mobile_price_host.csv"
 
-p2p:
-  bootstrap_nodes:
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/172.28.1.11/tcp/8887"
-  dht_get_value_timeout:  120
+  # FL homo regression test case datasets
+  - description: "train_homo_regression_host"
+    model: "csv"
+    source: "/tmp/FL/homo_regression/train/train_boston_house_host.csv"
+  - description: "test_homo_regression_host"
+    model: "csv"
+    source: "/tmp/FL/homo_regression/test/test_boston_house_host.csv"
 
-notify_server: 0.0.0.0:6667
+  # FL image test case datasets
+  - description: "train_mnist_host"
+    model: "image"
+    image_dir: "/tmp/FL/mnist/train/train_mnist_host.zip"
+    annotations_file: "/tmp/FL/mnist/train/train_mnist_host_annotations.csv"
+  - description: "test_mnist_host"
+    model: "image"
+    image_dir: "/tmp/FL/mnist/test/test_mnist_host.zip"
+    annotations_file: "/tmp/FL/mnist/test/test_mnist_host_annotations.csv"
 
+  # FL preprocess
+  - description: "preprocess_vfl_train_host"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/train/host.csv"
+  - description: "preprocess_vfl_test_host"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/test/host.csv"
+  - description: "preprocess_hfl_train_client1"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/train/client1.csv"
+  - description: "preprocess_hfl_test_client1"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/test/client1.csv"

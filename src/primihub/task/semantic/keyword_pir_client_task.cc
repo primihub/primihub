@@ -39,49 +39,60 @@ KeywordPIRClientTask::KeywordPIRClientTask(
 
 retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     CHECK_TASK_STOPPED(retcode::FAIL);
+    std::string party_name = task.party_name();
     const auto& param_map = task.params().param_map();
     try {
         auto client_data_it = param_map.find("clientData");
         if (client_data_it != param_map.end()) {
-            auto& client_data = client_data_it->second;
-            if (client_data.is_array()) {
-                recv_query_data_direct = true;   // read query data from clientData key directly
+          auto& client_data = client_data_it->second;
+          if (client_data.is_array()) {
+            recv_query_data_direct = true;   // read query data from clientData key directly
+            const auto& items = client_data.value_string_array().value_string_array();
+            for (const auto& item : items) {
+              recv_data_.push_back(item);
             }
+          } else {
             dataset_path_ = client_data.value_string();
             dataset_id_ = client_data.value_string();
-            VLOG(5) << "dataset_path_: " << dataset_path_;
+          }
         } else {
-            LOG(ERROR) << "no keyword: clientData match found";
+          // check client has dataset
+          const auto& party_datasets = task.party_datasets();
+          auto it = party_datasets.find(party_name);
+          if (it == party_datasets.end()) {
+            LOG(ERROR) << "no query data found for client, party_name: " << party_name;
             return retcode::FAIL;
+          }
+          const auto& datasets_map = it->second.data();
+          auto iter = datasets_map.find(party_name);
+          if (iter == datasets_map.end()) {
+            LOG(ERROR) << "no query data found for client, party_name: " << party_name;
+            return retcode::FAIL;
+          }
+          dataset_id_ = iter->second;
         }
+        VLOG(7) << "dataset_id: " << dataset_id_;
         auto result_file_path_it = param_map.find("outputFullFilename");
         if (result_file_path_it != param_map.end()) {
             result_file_path_ = result_file_path_it->second.value_string();
             VLOG(5) << "result_file_path_: " << result_file_path_;
         } else  {
-            LOG(ERROR) << "no keyword: outputFullFilename match found";
-            return retcode::FAIL;
-        }
-        auto server_address_it = param_map.find("serverAddress");
-        if (server_address_it != param_map.end()) {
-            server_address_ = server_address_it->second.value_string();
-            VLOG(5) << "server_address_: " << server_address_;
-        } else {
-            LOG(ERROR) << "no keyword: serverAddress found";
+            LOG(ERROR) << "no keyword outputFullFilename match";
             return retcode::FAIL;
         }
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return retcode::FAIL;
     }
-    const auto& node_map = task.node_map();
-    for (const auto& [_node_id, pb_node] : node_map) {
-        if (!isParty(_node_id)) {
-            continue;
-        }
-        primihub::pbNode2Node(pb_node, &peer_node_);
-        VLOG(5) << "peer_node: " << peer_node_.to_string();
+    const auto& party_info = task.party_access_info();
+    auto it = party_info.find(PARTY_SERVER);
+    if (it == party_info.end()) {
+      LOG(ERROR) << "client can not found access info to server";
+      return retcode::FAIL;
     }
+    auto& pb_node = it->second;
+    pbNode2Node(pb_node, &peer_node_);
+    VLOG(5) << "peer_node: " << peer_node_.to_string();
     return retcode::SUCCESS;
 }
 
@@ -114,17 +125,19 @@ KeywordPIRClientTask::_LoadDataFromDataset() {
 
 std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
 KeywordPIRClientTask::_LoadDataFromRecvData() {
-    std::vector<std::string> orig_items;
-    str_split(this->dataset_path_, &orig_items, ';');
-    // build db_data;
-    // std::unqiue_ptr<apsi::util::CSVReader::DBData>
-    apsi::util::CSVReader::DBData db_data = apsi::util::CSVReader::UnlabeledData();
-    for(const auto& item_str : orig_items) {
-        apsi::Item db_item = item_str;
-        std::get<apsi::util::CSVReader::UnlabeledData>(db_data).push_back(std::move(db_item));
-    }
-    return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), std::move(orig_items)};
-    // return std::make_pair(std::move(db_data), std::move(orig_items));
+  if (recv_data_.empty()) {
+    LOG(ERROR) << "query data is empty";
+    return std::make_pair(nullptr, std::vector<std::string>());
+  }
+  // build db_data;
+  // std::unqiue_ptr<apsi::util::CSVReader::DBData>
+  apsi::util::CSVReader::DBData db_data = apsi::util::CSVReader::UnlabeledData();
+  for(const auto& item_str : recv_data_) {
+    apsi::Item db_item = item_str;
+    std::get<apsi::util::CSVReader::UnlabeledData>(db_data).push_back(std::move(db_item));
+  }
+  return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), recv_data_};
+  // return std::make_pair(std::move(db_data), std::move(orig_items));
 }
 
 std::pair<unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
@@ -188,7 +201,9 @@ retcode KeywordPIRClientTask::requestPSIParams() {
     std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
     VLOG(5) << "send_data length: " << request.length();
     std::string response_str;
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(peer_node_);
     auto ret = channel->sendRecv(this->key, request, &response_str);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send requestPSIParams to peer: [" << peer_node_.to_string()
@@ -241,7 +256,9 @@ retcode KeywordPIRClientTask::requestOprf(const std::vector<Item>& items,
     VLOG(5) << "oprf_request data length: " << oprf_request.size();
     std::string_view oprf_request_sv{
         reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_request.data())), oprf_request.size()};
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node_);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto channel = link_ctx->getChannel(peer_node_);
 
     // auto ret = channel->sendRecv(this->key, oprf_request_sv, &oprf_response);
     auto ret = this->send(this->key, peer_node_, oprf_request_sv);

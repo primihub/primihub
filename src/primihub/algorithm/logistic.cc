@@ -108,9 +108,6 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
   LOG(INFO) << node_map.size();
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    if (iter->first == SCHEDULER_NODE) {
-      continue;
-    }
     rpc::Node &node = iter->second;
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     party_id_node_map[party_id] = node;
@@ -166,7 +163,24 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   auto param_map = task.params().param_map();
   try {
-    train_input_filepath_ = param_map["Data_File"].value_string();
+    std::string party_name = task.party_name();
+    const auto& party_datasets = task.party_datasets();
+    auto it = party_datasets.find(party_name);
+    if (it == party_datasets.end()) {
+      LOG(ERROR) << "no dataset find for party_name: " << party_name;
+      return -1;
+    }
+    {
+      auto& dataset_map = it->second.data();
+      auto it = dataset_map.find("Data_File");
+      if (it == dataset_map.end()) {
+        LOG(ERROR) << "no dataset find for party_name: " << party_name
+            << " train data key word: Data_File";
+        return -1;
+      }
+      train_input_filepath_  = it->second;
+    }
+    // train_input_filepath_ = param_map["Data_File"].value_string();
     // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
@@ -184,8 +198,20 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
   auto driver = this->datasetService()->getDriver(dataset_id);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get dataset read driver for dataset id: " << dataset_id << " failed";
+    return -1;
+  }
   auto cursor = driver->read();
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get read cursor for dataset id: " << dataset_id << " failed";
+    return -1;
+  }
   std::shared_ptr<Dataset> ds = cursor->read();
+  if (ds == nullptr) {
+    LOG(ERROR) << "get data for dataset failed";
+    return -1;
+  }
   std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.

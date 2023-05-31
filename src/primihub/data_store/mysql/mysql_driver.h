@@ -19,6 +19,7 @@
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 #include <iomanip>
 #include <map>
 #include <glog/logging.h>
@@ -52,16 +53,18 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
       : ip_(ip), port_(port), password_(password),
       database_(database), user_name_(user_name),
       db_name_(db_name), table_name_(table_name) {
-      if (!query_colums.empty()) {
-         for (const auto& col : query_colums) {
-            query_colums_.push_back(col);
-         }
+    if (!query_colums.empty()) {
+      for (const auto& col : query_colums) {
+        query_colums_.push_back(col);
       }
-   }
+    }
+  }
   std::string toString() override;
-  retcode fromJsonString(const std::string& json_str) override;
-  retcode fromYamlConfig(const YAML::Node& meta_info) override;
+  retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
+  retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) override;
+  retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) override;
 
+ public:
   std::string ip_;
   uint32_t port_{0};
   std::string user_name_;
@@ -75,36 +78,27 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
 class MySQLCursor : public Cursor {
  public:
     MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> driver);
+    MySQLCursor(const std::string& sql,
+                const std::vector<int>& selected_column_index,
+                std::shared_ptr<MySQLDriver> driver);
     ~MySQLCursor();
     std::shared_ptr<primihub::Dataset> readMeta() override;
     std::shared_ptr<primihub::Dataset> read() override;
     std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
     int write(std::shared_ptr<primihub::Dataset> dataset) override;
     void close() override;
-    enum class sql_type_t : int8_t{
-        STRING = 0,
-        INT,
-        INT64,
-        FLOAT,
-        DOUBLE,
-        BINARY,
-        UNKNOWN,
-    };
 
  protected:
-    std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>
-    getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info);
+    auto getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info) ->
+        std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>;
 
-    retcode fetchData(const std::string& query_sql, std::vector<std::shared_ptr<arrow::Array>>* data_arr);
-    sql_type_t getSQLType(const std::string& col_type);
-    std::shared_ptr<arrow::Array> makeArrowArray(sql_type_t sql_type, const std::vector<std::string>& arr);
-    std::shared_ptr<arrow::Field> makeArrowField(sql_type_t sql_type, const std::string& col_name);
+    retcode fetchData(const std::string& query_sql,
+                      std::vector<std::shared_ptr<arrow::Array>>* data_arr);
     std::shared_ptr<arrow::Schema> makeArrowSchema();
 
  private:
     std::string sql_;
     size_t offset{0};
-    std::vector<std::string> query_cols;
     std::shared_ptr<MySQLDriver> driver_{nullptr};
 };
 
@@ -115,6 +109,8 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     ~MySQLDriver();
     std::unique_ptr<Cursor> read() override;
     std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+    std::unique_ptr<Cursor> GetCursor() override;
+    std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
     std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
     std::string getDataURL() const override;
     // write data to specifiy db table
@@ -138,6 +134,10 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     retcode getTableSchema(const std::string& db_name, const std::string& table_name);
     std::string buildQuerySQL(MySQLAccessInfo* access_info);
     void setDriverType();
+    std::unique_ptr<Cursor> MakeCursor(std::vector<int> col_index);
+    std::string BuildQuerySQL(const MySQLAccessInfo& access_info,
+                              const std::vector<int>& col_index,
+                              std::vector<std::string>* colum_names);
 
  private:
     std::string conn_info_;

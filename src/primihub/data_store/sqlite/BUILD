@@ -5,6 +5,7 @@ cc_library(
     srcs = ["sqlite_driver.cc"],
     deps = [
         "//src/primihub/data_store:base_driver",
+        "//src/primihub/util:arrow_wrapper_util",
         "//src/primihub/util:util_lib",
         "@arrow",
         "@com_github_sqlite_wrapper//:sqlite_wrapper",

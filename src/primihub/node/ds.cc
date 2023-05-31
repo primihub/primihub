@@ -21,43 +21,122 @@
 #include <nlohmann/json.hpp>
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/common/common.h"
 
 using primihub::service::DatasetMeta;
 
 namespace primihub {
 grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
-        const NewDatasetRequest *request, NewDatasetResponse *response) {
-    std::string driver_type = request->driver();
-    const auto& meta_info = request->path();
-    const auto& fid = request->fid();
-    LOG(INFO) << "start to create dataset. meta info: " << meta_info << " "
-            << "fid: " << fid << " driver_type: " << driver_type;
-    std::shared_ptr<DataDriver> driver{nullptr};
-    try {
-        auto access_info = this->dataset_service_->createAccessInfo(driver_type, meta_info);
-        if (access_info == nullptr) {
-            std::string err_msg = "create access info failed";
-            throw std::invalid_argument(err_msg);
-        }
-        driver = DataDirverFactory::getDriver(driver_type, nodelet_addr_, std::move(access_info));
-        this->dataset_service_->registerDriver(fid, driver);
-    } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load dataset from path: " << meta_info << " "
-                << "driver_type: " << driver_type << " "
-                << "fid: " << fid << " "
-                << "exception: " << e.what();
-        response->set_ret_code(2);
-        return grpc::Status::OK;
+                                          const rpc::NewDatasetRequest *request,
+                                          rpc::NewDatasetResponse *response) {
+  DatasetMetaInfo meta_info;
+  // convert pb to DatasetMetaInfo
+  ConvertToDatasetMetaInfo(request->meta_info(), &meta_info);
+  auto op_type = request->op_type();
+  switch (op_type) {
+  case rpc::NewDatasetRequest::REGISTER:
+    RegisterDatasetProcess(meta_info, response);
+    break;
+  case rpc::NewDatasetRequest::UNREGISTER:
+    UnRegisterDatasetProcess(meta_info, response);
+    break;
+  case rpc::NewDatasetRequest::UPDATE:
+    UpdateDatasetProcess(meta_info, response);
+    break;
+  default: {
+    std::string err_msg = "unsupported operation type: ";
+    err_msg.append(std::to_string(op_type));
+    SetResponseErrorMsg(std::move(err_msg), response);
+  }
+  }
+  return grpc::Status::OK;
+}
+
+retcode DataServiceImpl::RegisterDatasetProcess(
+    const DatasetMetaInfo& meta_info,
+    rpc::NewDatasetResponse* reply) {
+  auto& driver_type = meta_info.driver_type;
+  VLOG(2) << "start to create dataset."
+      << "meta info: " << meta_info.access_info << " "
+      << "fid: " << meta_info.id << " "
+      << "driver_type: " << meta_info.driver_type;
+  std::shared_ptr<DataDriver> driver{nullptr};
+  std::string access_meta;
+  try {
+    auto access_info = this->GetDatasetService()->createAccessInfo(driver_type, meta_info);
+    if (access_info == nullptr) {
+      std::string err_msg = "create access info failed";
+      throw std::invalid_argument(err_msg);
     }
+    access_meta = access_info->toString();
+    driver = DataDirverFactory::getDriver(driver_type,
+                                          DatasetLocation(),
+                                          std::move(access_info));
+    this->GetDatasetService()->registerDriver(meta_info.id, driver);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "Failed to load dataset from: "
+            << meta_info.access_info << " "
+            << "driver_type: " << driver_type << " "
+            << "fid: " << meta_info.id << " "
+            << "exception: " << e.what();
+    auto err_msg = std::string(e.what(),
+                              std::min(strlen(e.what()),
+                                      static_cast<size_t>(1024)));
+    SetResponseErrorMsg(std::move(err_msg), reply);
+    return retcode::FAIL;
+  }
 
-    DatasetMeta mate;
-    auto dataset = dataset_service_->newDataset(driver, fid, meta_info, mate);
+  DatasetMeta mate;
+  auto dataset = GetDatasetService()->newDataset(
+      driver, meta_info.id, access_meta, &mate);
+  if (dataset == nullptr) {
+    reply->set_ret_code(rpc::NewDatasetResponse::FAIL);
+    LOG(ERROR) << "register dataset " << meta_info.id << " failed";
+    return retcode::FAIL;
+  } else {
+    reply->set_ret_code(rpc::NewDatasetResponse::SUCCESS);
+    reply->set_dataset_url(mate.getDataURL());
+    LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
+  }
+  return retcode::SUCCESS;
+}
 
-    response->set_ret_code(0);
-    response->set_dataset_url(mate.getDataURL());
-    LOG(INFO) << "dataurl: " << mate.getDataURL();
+retcode DataServiceImpl::UnRegisterDatasetProcess(
+    const DatasetMetaInfo& meta_info,
+    rpc::NewDatasetResponse* reply) {
+  reply->set_ret_code(rpc::NewDatasetResponse::SUCCESS);
+  return retcode::SUCCESS;
+}
 
-    return grpc::Status::OK;
+retcode DataServiceImpl::UpdateDatasetProcess(
+    const DatasetMetaInfo& meta_info,
+    rpc::NewDatasetResponse* reply) {
+  return RegisterDatasetProcess(meta_info, reply);
+}
+
+retcode DataServiceImpl::ConvertToDatasetMetaInfo(
+    const rpc::MetaInfo& meta_info_pb,
+    DatasetMetaInfo* meta_info_ptr) {
+  auto& meta_info = *meta_info_ptr;
+  meta_info.driver_type = meta_info_pb.driver();
+  meta_info.access_info = meta_info_pb.access_info();
+  meta_info.id = meta_info_pb.id();
+  meta_info.visibility = static_cast<Visibility>(meta_info_pb.visibility());
+  auto& schema = meta_info.schema;
+  const auto& data_field_type = meta_info_pb.data_type();
+  for (const auto& field : data_field_type) {
+    auto& name = field.name();
+    int type = field.type();
+    schema.push_back(std::make_tuple(name, type));
+  }
+  return retcode::SUCCESS;
+}
+
+template<typename T>
+void DataServiceImpl::SetResponseErrorMsg(std::string&& err_msg,
+                                        T* reply) {
+  reply->set_ret_code(T::FAIL);
+  reply->set_ret_msg(std::move(err_msg));
 }
 
 }  // namespace primihub

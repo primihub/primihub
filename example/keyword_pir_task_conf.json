@@ -10,14 +10,13 @@
     "clientData": {
       "type": "STRING",
       "value": [
-        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT"
+        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT",
+        "IGvEVefbEuKPEIEoRxBUhGaiJlbaQqoGtXhzLFdrKMdBpqAkJJOqNvomqPBvBKmL",
+        "nLmrRIMTaYRaeMRoGHcTGumAJsgsGjNKvJkEYgEEspLHDUIaxUtqEdowjDWOjsJn"
       ]
     },
-    "serverData": {
-      "type": "STRING",
-      "value": "keyword_pir_server_data"
-    },
     "pirType": {
+      "description": "ID_PIR = 0 [Unimplement]; KEY_PIR = 1;",
       "type": "INT32",
       "value": 1
     },
@@ -26,5 +25,10 @@
       "value": "data/result/pir_result.csv"
     }
   },
-  "input_datasets": ["serverData"]
+  "party_datasets": {
+    "SERVER": {
+      "SERVER": "keyword_pir_server_data"
+    }
+  },
+  "input_datasets": []
 }

@@ -1,0 +1,60 @@
+{
+    "task_manager": "127.0.0.1:50050",
+    "component_params": {
+        "roles": {
+            "guest": [
+                "Charlie"
+            ],
+            "host": [
+                "Bob"
+            ]
+        },
+        "common_params": {
+            "model": "HeteroXGB",
+            "task_name": "train",
+            "num_tree": 5,
+            "max_depth": 5,
+            "reg_lambda": 1,
+            "merge_gh": true,
+            "ray_group": true,
+            "sample_type": "random",
+            "feature_sample": true,
+            "learning_rate": 0.1,
+            "gamma": 0,
+            "min_child_weight": 5,
+            "min_child_sample": 1,
+            "record": 0,
+            "encrypted_proto": "paillier",
+            "sampling_stategy": "random",
+            "samples_clip_size": 20000,
+            "large_grads_ratio": 0.2,
+            "small_grads_ratio": 0.2,
+            "actors": 20,
+            "metric_path": "metrics.json",
+            "model_pred": "pred.csv"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "train_hetero_xgb_host",
+                "id": null,
+                "secure_bits": 112,
+                "selected_column": null,
+                "objective": "linear",
+                "base_score": 0.5,
+                "amplify_ratio": 8,
+                "label": "y",
+                "lookup_table": "host_lookup.pkl",
+                "model_path": "host_model.pkl"
+            },
+            "Charlie": {
+                "data_set": "train_hetero_xgb_guest",
+                "id": null,
+                "model_path": "guest_model.pkl",
+                "selected_column": null,
+                "lookup_table": "guest_lookup.pkl",
+                "label": null,
+                "batch_size": 5
+            }
+        }
+    }
+}

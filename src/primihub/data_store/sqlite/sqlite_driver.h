@@ -31,19 +31,31 @@ struct SQLiteAccessInfo : public DataSetAccessInfo {
   SQLiteAccessInfo() = default;
   SQLiteAccessInfo(const std::string& db_path, const std::string& tab_name,
       const std::vector<std::string>& query_colums)
-      : db_path_(db_path), table_name_(tab_name), query_colums_(query_colums) {}
+      : db_path_(db_path), table_name_(tab_name) {}
   std::string toString() override;
-  retcode fromJsonString(const std::string& json_str) override;
-  retcode fromYamlConfig(const YAML::Node& meta_info) override;
+  retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
+  retcode ParseFromYamlConfigImpl(const YAML::Node& meta_info) override;
+  retcode ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) override;
 
+ public:
   std::string db_path_;
   std::string table_name_;
-  std::vector<std::string> query_colums_;
+  // std::vector<std::string> query_colums_;
 };
 
 class SQLiteCursor : public Cursor {
 public:
   SQLiteCursor(const std::string& sql, std::shared_ptr<SQLiteDriver> driver);
+  /**
+   * build read cursor by selected column
+   * paramter:
+   * sql: query sql
+   * col_index: select col index, must be match with sql
+   * driver: datset driver
+  */
+  SQLiteCursor(const std::string& sql,
+              const std::vector<int>& col_index,
+              std::shared_ptr<SQLiteDriver> driver);
   ~SQLiteCursor();
   std::shared_ptr<primihub::Dataset> readMeta() override;
   std::shared_ptr<primihub::Dataset> read() override;
@@ -93,7 +105,6 @@ public:
     {"INTEGER", sql_type_t::INT64},
     {"INT", sql_type_t::INT},
     {"DOUBLE", sql_type_t::DOUBLE},
-
   };
 };
 
@@ -105,6 +116,8 @@ public:
   ~SQLiteDriver() = default;
   std::unique_ptr<Cursor> read() override;
   std::unique_ptr<Cursor> read(const std::string& conn_str) override;
+  std::unique_ptr<Cursor> GetCursor() override;
+  std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
   std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
   std::string getDataURL() const override;
   std::unique_ptr<SQLite::Database>& getDBConnector() { return db_connector; }
@@ -119,11 +132,19 @@ public:
     QUERY_CONDITION,
   };
   std::string buildQuerySQL(SQLiteAccessInfo* access_info);
-  std::string buildQuerySQL(const std::string& table_name, const std::string& query_index);
+  std::string buildQuerySQL(const std::string& table_name,
+                            const std::string& query_index);
+  retcode GetDBTableSchema();
+  std::string BuildQuerySQL(const SQLiteAccessInfo& access_info,
+                            const std::vector<int>& col_index,
+                            std::vector<std::string>* colum_names);
+
  private:
   std::string conn_info_;
   std::string db_path_;
   std::unique_ptr<SQLite::Database> db_connector{nullptr};
+  std::map<std::string, std::string> table_schema_;   // dbtable schema
+  std::vector<std::string> table_cols_;               // db table column name
 };
 
 } // namespace primihub

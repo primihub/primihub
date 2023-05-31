@@ -45,12 +45,8 @@ using namespace seal::util;
 namespace primihub::task {
 
 std::shared_ptr<SenderDB>
-KeywordPIRServerTask::create_sender_db(
-        const CSVReader::DBData &db_data,
-        std::unique_ptr<PSIParams> psi_params,
-        OPRFKey &oprf_key,
-        size_t nonce_byte_count,
-        bool compress) {
+KeywordPIRServerTask::create_sender_db(const CSVReader::DBData &db_data,
+    std::unique_ptr<PSIParams> psi_params, OPRFKey &oprf_key, size_t nonce_byte_count, bool compress) {
     CHECK_TASK_STOPPED(nullptr);
     SCopedTimer timer;
     if (psi_params == nullptr) {
@@ -114,33 +110,32 @@ KeywordPIRServerTask::KeywordPIRServerTask(
 }
 
 retcode KeywordPIRServerTask::_LoadParams(Task &task) {
-    const auto& node_map = task.node_map();
-    for (const auto& node_info : node_map) {
-        auto& _node_id = node_info.first;
-        if (!isParty(_node_id)) {
-            continue;
-        }
-        auto& node = node_info.second;
-        this->client_address = node.ip() + ":" + std::to_string(node.port());
-        primihub::pbNode2Node(node, &client_node_);
-        VLOG(5) << "client_address: " << this->client_node_.to_string();
+    std::string party_name = task.party_name();
+    const auto& party_info = task.party_access_info();
+    auto it = party_info.find(PARTY_CLIENT);
+    if (it == party_info.end()) {
+      LOG(ERROR) << "server does not find client access info, party_name: " << party_name;
+      return retcode::FAIL;
+    }
+    auto& pb_node = it->second;
+    pbNode2Node(pb_node, &client_node_);
+    VLOG(5) << "client_address: " << this->client_node_.to_string();
+    const auto& party_datasets = task.party_datasets();
+    auto dataset_it = party_datasets.find(party_name);
+    if (dataset_it == party_datasets.end()) {
+      LOG(ERROR) << "no datasets is set for server";
+      return retcode::FAIL;
+    }
+    const auto& datasets_map = dataset_it->second.data();
+    {
+      auto it = datasets_map.find(party_name);
+      if (it == datasets_map.end()) {
+        LOG(ERROR) << "no datasets is set for server";
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
     }
 
-    const auto& param_map = task.params().param_map();
-    try {
-        auto it = param_map.find("serverData");
-        if (it != param_map.end()) {
-            dataset_path_ = it->second.value_string();
-            dataset_id_ = it->second.value_string();
-        } else {
-            LOG(ERROR) << "Failed to load params serverData, no match key find";
-            return retcode::FAIL;
-        }
-        // dataset_path_ = param_map["serverData"].value_string();
-    } catch (std::exception &e) {
-        LOG(ERROR) << "Failed to load params: " << e.what();
-        return retcode::FAIL;
-    }
     return retcode::SUCCESS;
 }
 
@@ -291,7 +286,9 @@ retcode KeywordPIRServerTask::broadcastPortInfo() {
 retcode KeywordPIRServerTask::processPSIParams() {
     CHECK_TASK_STOPPED(retcode::FAIL);
     std::string request_type_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
+    auto& recv_queue = link_ctx->GetRecvQueue(this->key);
     recv_queue.wait_and_pop(request_type_str);
     auto recv_type = reinterpret_cast<RequestType*>(const_cast<char*>(request_type_str.c_str()));
     VLOG(5) << "recv_data type: " << static_cast<int>(*recv_type);

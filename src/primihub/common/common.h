@@ -17,9 +17,15 @@ namespace primihub {
 
 // macro defination
 static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
+static const char* PARTY_CLIENT = "CLIENT";
+static const char* PARTY_SERVER = "SERVER";
+static const char* DEFAULT = "DEFAULT";
+
 static int WAIT_TASK_WORKER_READY_TIMEOUT_MS = 5*1000;
 static int CACHED_TASK_STATUS_TIMEOUT_S = 5;
 static int SCHEDULE_WORKER_TIMEOUT_S = 20;
+static int CONTROL_CMD_TIMEOUT_S = 5;
+static int GRPC_RETRY_MAX_TIMES = 3;
 // common type defination
 using u64 = uint64_t;
 using i64 = int64_t;
@@ -62,6 +68,11 @@ struct Node {
     Node(const Node&) = default;
     Node& operator=(const Node&) = default;
     Node& operator=(Node&&) = default;
+    bool operator==(const Node& item) {
+      return (this->ip() == item.ip()) &&
+          (this->port() == item.port()) &&
+          (this->use_tls() == item.use_tls());
+    }
     std::string to_string() const {
         std::string sep = ":";
         std::string node_info = id_;
@@ -80,14 +91,13 @@ struct Node {
             getline(ss, substr, delimiter);
             v.push_back(substr);
         }
-        if (v.size() != 5) {
-            return retcode::FAIL;
-        }
         id_ = v[0];
         ip_ = v[1];
         port_ = std::stoi(v[2]);
         use_tls_ = (v[3] == "1" ? true : false);
-        role_ = v[4];
+        if (v.size() == 5) {
+            role_ = v[4];
+        }
         return retcode::SUCCESS;
     }
     std::string ip() const {return ip_;}
@@ -96,11 +106,29 @@ struct Node {
     std::string id() const {return id_;}
     std::string role() const {return role_;}
 
-    std::string id_{"defalut"};
+    std::string id_;
     std::string ip_;
-    uint32_t port_;
+    uint32_t port_{0};
     bool use_tls_{false};
-    std::string role_{"default"};
+    std::string role_;
+};
+/**
+ * vibility for dataset
+ * public: vibiliable for all party
+ * private: vibiable only for the party who public
+*/
+enum class Visibility {
+  PUBLIC = 0,
+  PRIVATE = 1,
+};
+
+struct DatasetMetaInfo {
+  std::string id;
+  std::string driver_type;
+  std::string access_info;
+  Node location;
+  Visibility visibility;
+  std::vector<std::tuple<std::string, int>> schema;
 };
 
 }  // namespace primihub

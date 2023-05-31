@@ -192,6 +192,7 @@ setup(
     url=primihub.__homepage__,
     packages=find_packages(),
     install_requires=install_requires,
+    package_data = {'': ['*.json']},
     # package_data={
     #     '': [
     #         '*.yaml',
@@ -219,5 +220,7 @@ setup(
         #     'edge=primihub.__main__:main'
         # ]
     },
-
+    scripts=[
+        'bin/submit',
+    ],
 )

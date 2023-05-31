@@ -30,29 +30,27 @@ using primihub::rpc::TaskType;
 using primihub::service::DatasetService;
 
 namespace primihub::task {
-
 using primihub::rpc::Language;
-
 class LanguageParserFactory {
-  public:
-    static std::shared_ptr<LanguageParser>
-    Create(const PushTaskRequest &pushTaskRequest) {
-        auto language = pushTaskRequest.task().language();
-        if (language == Language::PROTO) {
-            auto parser = std::make_shared<ProtoParser>(pushTaskRequest);
-            return std::dynamic_pointer_cast<LanguageParser>(parser);
-        } else if (language == Language::PYTHON) {
-            auto parser = std::make_shared<PyParser>(pushTaskRequest);
-            return std::dynamic_pointer_cast<LanguageParser>(parser);
-        } else if (language == Language::CPP) {
-            // TODO
-        } else {
-            LOG(ERROR) << "Unsupported language: " << language;
-            return nullptr;
-        }
-        return nullptr;
+ public:
+  static std::shared_ptr<LanguageParser> Create(
+      const PushTaskRequest &task_request) {
+    auto language = task_request.task().language();
+    std::shared_ptr<LanguageParser> parser_ptr{nullptr};
+    switch (language) {
+    case Language::PROTO:
+      parser_ptr = std::make_shared<ProtoParser>(task_request);
+      break;
+    case Language::PYTHON:
+      parser_ptr = std::make_shared<PyParser>(task_request);
+      break;
+    default:
+      LOG(WARNING) << "Unsupported language: " << language;
+      break;
     }
-}; // class LanguageParserFactory
-} // namespace primihub::task
+    return parser_ptr;
+  }
+};  // class LanguageParserFactory
+}   // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_LANGUAGE_FACTORY_H_
+#endif  // SRC_PRIMIHUB_TASK_LANGUAGE_FACTORY_H_

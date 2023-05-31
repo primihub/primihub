@@ -64,7 +64,7 @@ jobs:
         run: |
           # cc_binary
           bash pre_build.sh
-          bazel build --config=linux_`arch` --define enable_mysql_driver=true //:node \
+          bazel build --config=linux_`arch` //:node \
             //:py_main \
             //:cli \
             //src/primihub/pybind_warpper:opt_paillier_c2py \

@@ -1,20 +1,21 @@
 version: 1.0
 
 node: "node2"
-location: "172.28.1.12"
-grpc_port: 50052
+location: "primihub-node2"
 use_tls: false
+
+grpc_port: 50052
 
 #certificate:
 #  root_ca: "data/cert/ca.crt"
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
-# Use redis by default, set `use_redis: False` to use libp2p
-redis_meta_service:
-  redis_addr: "redis:6379"
-  use_redis: True
-  redis_password: "primihub"
+meta_service:
+  mode: "grpc"
+  ip: "primihub-meta2"
+  port: 9099
+  use_tls: false
 
 datasets:
   # ABY3 LR test case datasets
@@ -46,6 +47,32 @@ datasets:
     model: "csv"
     source: "/tmp/FL/homo_lr/train/train_breast_cancer_guest.csv"
 
+  # FL homo nn multiclass test case datasets
+  - description: "train_homo_nn_multiclass_guest"
+    model: "csv"
+    source: "/tmp/FL/homo_nn/train/train_mobile_price_guest.csv"
+  - description: "test_homo_nn_multiclass_guest"
+    model: "csv"
+    source: "/tmp/FL/homo_nn/test/test_mobile_price_guest.csv"
+
+  # FL homo regression test case datasets
+  - description: "train_homo_regression_guest"
+    model: "csv"
+    source: "/tmp/FL/homo_regression/train/train_boston_house_guest.csv"
+  - description: "test_homo_regression_guest"
+    model: "csv"
+    source: "/tmp/FL/homo_regression/test/test_boston_house_guest.csv"
+
+  # FL image test case datasets
+  - description: "train_mnist_guest"
+    model: "image"
+    image_dir: "/tmp/FL/mnist/train/train_mnist_guest.zip"
+    annotations_file: "/tmp/FL/mnist/train/train_mnist_guest_annotations.csv"
+  - description: "test_mnist_guest"
+    model: "image"
+    image_dir: "/tmp/FL/mnist/test/test_mnist_guest.zip"
+    annotations_file: "/tmp/FL/mnist/test/test_mnist_guest_annotations.csv"
+
   # PSI test caset datasets
   - description: "psi_client_data"
     model: "csv"
@@ -58,16 +85,18 @@ datasets:
   - description: "test_hetero_xgb_guest"
     model: "csv"
     source: "/tmp/FL/hetero_xgb/test/test_breast_cancer_guest.csv"
+  
+  # FL preprocess
+  - description: "preprocess_vfl_train_guest"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/train/guest.csv"
+  - description: "preprocess_vfl_test_guest"
+    model: "csv"
+    source: "/tmp/FL/preprocess/vfl/test/guest.csv"
+  - description: "preprocess_hfl_train_client2"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/train/client2.csv"
+  - description: "preprocess_hfl_test_client2"
+    model: "csv"
+    source: "/tmp/FL/preprocess/hfl/test/client2.csv"
 
-localkv:
-  model: "leveldb"
-  path: "/data/localdb2"
-
-p2p:
-  bootstrap_nodes:
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd"
-    - "/ip4/172.28.1.13/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/172.28.1.12/tcp/8888"
-  dht_get_value_timeout:  120
-
-notify_server: 0.0.0.0:6668

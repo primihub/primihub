@@ -5,6 +5,8 @@ cc_library(
     srcs = ["csv_driver.cc"],
     deps = [
         "//src/primihub/data_store:base_driver",
+        "//src/primihub/util:util_lib",
         "@arrow",
+        "@nlohmann_json",
     ],
 )

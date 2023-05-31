@@ -1,0 +1,58 @@
+{
+    "party_info": {
+        "Alice": {
+            "ip": "172.21.1.58",
+            "port": 50050,
+            "use_tls": false
+        },
+        "Bob": {
+            "ip": "172.21.1.63",
+            "port": 50051,
+            "use_tls": false
+        },
+        "Charlie": {
+            "ip": "172.21.1.58",
+            "port": 50052,
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Charlie",
+            "client": [
+                "Alice",
+                "Bob"
+            ]
+        },
+        "common_params": {
+            "model": "Chat_glm",
+            "process": "train",
+            "aggration_iter": 2,
+            "train_iter": 3
+        },
+        "role_params": {
+            "Alice": {
+                "path": "/home/primihub/czl/ChatGLM-6B-Med/ptuning",
+                "train_file": "Meddata/train.json",
+                "validation_file": "Meddata/train.json",
+                "prompt_column": "prompt",
+                "response_column": "response",
+                "history_column": "history",
+                "model_name_or_path": "/home/primihub/czl/chatglm-6b-int4",
+                "output_dir": "output/Alice_result",
+                "num_examples": 10
+            },
+            "Bob": {
+                "path": "/home/primihub/czl/ChatGLM-6B/ptuning",
+                "train_file": "AdvertiseGen/train.json",
+                "validation_file": "AdvertiseGen/dev.json",
+                "prompt_column": "content",
+                "response_column": "summary",
+                "model_name_or_path": "/home/primihub/czl/chatglm-6b-int4",
+                "output_dir": "output/Bob_result",
+                "num_examples": 10
+            }
+        }
+    }
+}

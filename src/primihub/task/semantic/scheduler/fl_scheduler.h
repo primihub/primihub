@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
 
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/common/defines.h"
@@ -27,43 +27,42 @@ using primihub::service::DatasetMetaWithParamTag;
 using primihub::service::DatasetMeta;
 
 namespace primihub::task {
-
 class FLScheduler : public VMScheduler {
  public:
-     FLScheduler(const std::string &node_id,
-                    bool singleton,
-                    const std::vector<NodeWithRoleTag> &peers_with_tag,
-                    const PeerContextMap &peer_context_map,
-                    const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
-               : VMScheduler(node_id, singleton),
-               peers_with_tag_(peers_with_tag),
-               peer_context_map_(peer_context_map),
-               metas_with_role_tag_(metas_with_role_tag) {}
-     ~FLScheduler() {}
+  FLScheduler() = default;
+  FLScheduler(const std::string &node_id,
+                bool singleton,
+                const std::vector<NodeWithRoleTag> &peers_with_tag,
+                const PeerContextMap &peer_context_map,
+                const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
+            : VMScheduler(node_id, singleton),
+            peers_with_tag_(peers_with_tag),
+            peer_context_map_(peer_context_map),
+            metas_with_role_tag_(metas_with_role_tag) {}
+  ~FLScheduler() {}
 
-     void dispatch(const PushTaskRequest *pushTaskRequest) override;
+  retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
+
  protected:
-     void push_node_py_task(const std::string& node_id,
-                        const std::string& role,
-                        const Node& dest_node,
-                        const PushTaskRequest& nodePushTaskRequest,
-                        const PeerContextMap& peer_context_map,
-                        const std::vector<std::shared_ptr<DatasetMeta>>& dataset_meta_list);
+  retcode ScheduleTask(const std::string& party_name,
+                    const Node dest_node,
+                    const PushTaskRequest& request);
 
  private:
-     void add_vm(rpc::Node *node, int i, int role_num,
-                    const PushTaskRequest *pushTaskRequest);
+  void add_vm(rpc::Node *node, int i, int role_num,
+                 const PushTaskRequest *pushTaskRequest);
 
-     void getDataMetaListByRole(const std::string &role,
-                              std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);
+  void getDataMetaListByRole(const std::string &role,
+                           std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);
 
-     std::vector<NodeWithRoleTag> peers_with_tag_;
-     PeerContextMap peer_context_map_;
-     std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
+  std::vector<NodeWithRoleTag> peers_with_tag_;
+  PeerContextMap peer_context_map_;
+  std::vector<DatasetMetaWithParamTag> metas_with_role_tag_;
 
 };
 
-} // namespace primihub::task
+}  // namespace primihub::task
 
 
-#endif // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_FL_SCHEDULER_H_
+

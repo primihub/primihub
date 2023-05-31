@@ -20,22 +20,20 @@
 #include <vector>
 
 #include "src/primihub/task/language/parser.h"
-#include "src/primihub/service/dataset/service.h"
 #include "src/primihub/common/common.h"
 
 using primihub::service::DatasetWithParamTag;
 
 namespace primihub::task {
-
 class ProtoParser : public LanguageParser {
  public:
-    ProtoParser(const PushTaskRequest &pushTaskRequest);
-    ~ProtoParser() {}
-    retcode parseTask() override {return retcode::SUCCESS;} // TODO
-    retcode parseDatasets() override;
-    retcode parseNodes() override {return retcode::SUCCESS;} // TODO
+  ProtoParser(const rpc::PushTaskRequest &pushTaskRequest);
+  ~ProtoParser() = default;
+  retcode parseTask() override {return retcode::SUCCESS;}
+  retcode parseDatasets() override;
+  retcode parseNodes() override {return retcode::SUCCESS;}
 };
 
-} // namespace primihub::task
+}  // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_LANGUAGE_PROTO_PARSER_H_
+#endif  // SRC_PRIMIHUB_TASK_LANGUAGE_PROTO_PARSER_H_

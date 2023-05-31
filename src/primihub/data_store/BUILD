@@ -16,6 +16,7 @@ cc_library(
     deps = [
         "//src/primihub/data_store/csv:csv_driver",
         "//src/primihub/data_store/sqlite:sqlite_driver",
+        "//src/primihub/data_store/image:image_driver",
     ] + select({
         "enable_mysql_driver": [
             "//src/primihub/data_store/mysql:mysql_driver",
@@ -35,9 +36,11 @@ cc_library(
     ],
     deps = [
         "//src/primihub/common:common_defination",
+        "//src/primihub/util:arrow_wrapper_util",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_github_glog_glog//:glog",
         "@arrow",
+        "@nlohmann_json",
     ],
 )
 cc_library(

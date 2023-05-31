@@ -14,69 +14,84 @@
  limitations under the License.
  */
 
-
-#include <string>
-#include <sstream> // string stream
-#include <iterator> // ostream_iterator
 #include <glog/logging.h>
 #include <arrow/type.h>
-#include <libp2p/multi/content_identifier_codec.hpp>
+
+#include <string>
+#include <sstream>  // string stream
+#include <iterator>  // ostream_iterator
+#include <nlohmann/json.hpp>
 
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/data_store/driver.h"
 
-
-namespace primihub {
-    class DataDriver;
-}
 namespace primihub::service {
-    // ======== DatasetSchema ========
+class DataDriver;
 
-std::vector<std::string> TableSchema::extractFields(const std::string &json) {
+// ======== DatasetSchema ========
+std::vector<FieldType> TableSchema::extractFields(const std::string &json) {
+  try {
     nlohmann::json oJson = nlohmann::json::parse(json);
     return extractFields(oJson);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "extractFields failed: " << e.what();
+  }
+  return std::vector<FieldType>();
 }
 
-std::vector<std::string> TableSchema::extractFields(const nlohmann::json& oJson) {
-    std::vector<std::string> fields;
-    for (auto &it : oJson.items()) {
-        fields.push_back(it.key());
+std::vector<FieldType> TableSchema::extractFields(const nlohmann::json& oJson) {
+  std::vector<FieldType> fields;
+  if (oJson.is_array()) {
+    for (const auto& it : oJson) {
+      for (const auto&[name, type] : it.items()) {
+        fields.push_back(std::make_tuple(name, type));
+      }
     }
-    return fields;
+  } else {
+    LOG(ERROR) << "no need to parser";
+  }
+  return fields;
 }
 
-std::string TableSchema::toJSON () {
-    std::string json = "{";
-
-    for (int iCol = 0; iCol < schema->num_fields(); ++iCol) {
-        std::shared_ptr<arrow::Field> field = schema->field(iCol);
-        json += "\"" + field->name() + "\":[],";
-    }
-
-    json = json.substr(0, json.size() - 1);
-    json += "}";
-
-    return json;
+std::string TableSchema::toJSON() {
+  std::stringstream ss;
+  nlohmann::json js = nlohmann::json::array();
+  for (int iCol = 0; iCol < schema->num_fields(); ++iCol) {
+    std::shared_ptr<arrow::Field> field = schema->field(iCol);
+    nlohmann::json item;
+    item[field->name()] = field->type()->id();
+    js.emplace_back(item);
+  }
+  ss << js;
+  return ss.str();
 }
 
-void TableSchema::fromJSON(std::string json) {
-    std::vector<std::string> fieldNames = this->extractFields(json);
-    fromJSON(fieldNames);
+void TableSchema::fromJSON(const std::string& json) {
+  auto field_info = this->extractFields(json);
+  FromFields(field_info);
 }
 
 void TableSchema::fromJSON(const nlohmann::json& json) {
-    std::vector<std::string> fieldNames = this->extractFields(json);
-    fromJSON(fieldNames);
+  auto field_info = this->extractFields(json);
+  FromFields(field_info);
 }
 
-void TableSchema::fromJSON(std::vector<std::string>& fieldNames) {
-    std::vector<std::shared_ptr<arrow::Field>> arrowFields;
-    for (auto &it : fieldNames) {
-        std::shared_ptr<arrow::Field> arrowField = arrow::field(it, arrow::int64());
-        arrowFields.push_back(arrowField);
-    }
+void TableSchema::FromFields(std::vector<FieldType>& field_info) {
+  std::vector<std::shared_ptr<arrow::Field>> arrowFields;
+  for (const auto& it : field_info) {
+    auto name = std::get<0>(it);
+    int type = std::get<1>(it);
+    auto data_type = arrow_wrapper::util::MakeArrowDataType(type);
+    // std::shared_ptr<arrow::Field>
+    auto arrow_filed = arrow::field(name, std::move(data_type));
+    arrowFields.push_back(std::move(arrow_filed));
+  }
+  if (arrowFields.empty()) {
+    LOG(WARNING) << "arrowFields is empty";
     this->schema = arrow::schema({});
+  } else {
     this->schema = arrow::schema(arrowFields);
+  }
 }
 
 
@@ -85,34 +100,33 @@ void TableSchema::fromJSON(std::vector<std::string>& fieldNames) {
 
 // Constructor from local dataset object.
 DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
-        const std::string& description, const DatasetVisbility& visibility,
-        const std::string& dataset_access_info)
-        : visibility(visibility) {
-    SchemaConstructorParamType arrowSchemaParam = std::get<0>(dataset->data)->schema(); // TODO schema may not be available
-    this->data_type = DatasetType::TABLE;   // FIXME only support table now
-    this->schema = NewDatasetSchema(data_type, arrowSchemaParam);
-    this->total_records = std::get<0>(dataset->data)->num_rows();
-    // TODO Maybe description is duplicated with other dataset?
-    this->id = DatasetId(description);
-    this->description = description;
-    this->driver_type = dataset->getDataDriver()->getDriverType();
-    auto nodelet_addr = dataset->getDataDriver()->getNodeletAddress();
-    this->data_url = nodelet_addr + ":" + dataset->getDataDriver()->getDataURL(); // TODO string connect node address
-    this->server_meta_ = nodelet_addr;
-    this->access_meta_ = dataset_access_info;
-    VLOG(5) << "data_url: " << this->data_url;
+                        const std::string& description,
+                        const DatasetVisbility& visibility,
+                        const std::string& dataset_access_info)
+                        : visibility(visibility) {
+  SchemaConstructorParamType arrowSchemaParam = std::get<0>(dataset->data)->schema();
+  this->data_type = DatasetType::TABLE;   // FIXME only support table now
+  this->schema = NewDatasetSchema(data_type, arrowSchemaParam);
+  this->total_records = std::get<0>(dataset->data)->num_rows();
+  // Maybe description is duplicated with other dataset?
+  this->id = DatasetId(description);
+  this->description = description;
+  this->driver_type = dataset->getDataDriver()->getDriverType();
+  auto nodelet_addr = dataset->getDataDriver()->getNodeletAddress();
+  this->data_url = nodelet_addr + ":" + dataset->getDataDriver()->getDataURL();
+  this->server_meta_ = nodelet_addr;
+  this->access_meta_ = dataset_access_info;
+  VLOG(5) << "dataset_access_info: " << this->access_meta_;
 }
 
 DatasetMeta::DatasetMeta(const std::string& json) {
     fromJSON(json);
 }
 
-std::string DatasetMeta::toJSON() {
+std::string DatasetMeta::toJSON() const {
     std::stringstream ss;
-    auto sid = libp2p::multi::ContentIdentifierCodec::toString(
-            libp2p::multi::ContentIdentifierCodec::decode(id.data).value());
     nlohmann::json j;
-    j["id"] = sid.value();
+    j["id"] = id;
     j["data_url"] = data_url;
     j["data_type"] = static_cast<int>(data_type);
     j["description"] = description;
@@ -128,15 +142,13 @@ std::string DatasetMeta::toJSON() {
 void DatasetMeta::fromJSON(const std::string &json) {
     nlohmann::json oJson = nlohmann::json::parse(json);
     auto sid = oJson["id"].get<std::string>();
-    auto _id_data = libp2p::multi::ContentIdentifierCodec::encode(
-            libp2p::multi::ContentIdentifierCodec::fromString(sid).value());
-    this->id.data = _id_data.value();
+    this->id = sid;
     this->data_url = oJson["data_url"].get<std::string>();
     this->description = oJson["description"].get<std::string>();
     this->data_type = oJson["data_type"].get<primihub::service::DatasetType>();
-    this->visibility = oJson["visibility"].get<DatasetVisbility>(); // string to enum
+    this->visibility = oJson["visibility"].get<DatasetVisbility>();  // string to enum
     // Construct schema from data type(Table, Array, Tensor)
-    SchemaConstructorParamType oJsonSchemaParam = oJson["schema"];
+    SchemaConstructorParamType oJsonSchemaParam = oJson["schema"].get<std::string>();
     this->schema = NewDatasetSchema(this->data_type, oJsonSchemaParam);
     this->driver_type = oJson["driver_type"].get<std::string>();
     if (oJson.contains("server_meta")) {

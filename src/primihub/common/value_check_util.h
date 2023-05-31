@@ -25,19 +25,19 @@ namespace primihub {
     } while (0);
 
 #define CHECK_NULLPOINTER(ptr, ret_code)          \
-    do {                                          \
-        if (ptr == nullptr) {                     \
-            return ret_code;                      \
-        }                                         \
-    } while (0);
+  do {                                            \
+    if (ptr == nullptr) {                         \
+      return ret_code;                            \
+    }                                             \
+  } while (0);
 
 #define CHECK_NULLPOINTER_WITH_ERROR_MSG(ptr, error_msg)    \
-    do {                                                    \
-        if (ret_code == nullptr) {                          \
-            LOG(ERROR) << error_msg;                        \
-            return retcode::FAIL;                           \
-        }                                                   \
-    } while (0);
+  do {                                                      \
+    if (ptr == nullptr) {                                   \
+      LOG(ERROR) << error_msg;                              \
+      return retcode::FAIL;                                 \
+    }                                                       \
+  } while (0);
 
 // task worker stop check
 #define CHECK_TASK_STOPPED(ret_data)                        \

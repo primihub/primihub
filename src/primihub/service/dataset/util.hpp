@@ -20,13 +20,11 @@
 #include <glog/logging.h>
 #include <string>
 
-#include <libp2p/multi/content_identifier_codec.hpp>
 #include "src/primihub/common/common.h"
 #include "src/primihub/util/util.h"
 
-namespace kade = libp2p::protocol::kademlia;
 namespace primihub::service {
-using Key = kade::ContentId;
+using Key = std::string;
 using Value = std::string;
 using primihub::str_split;
 
@@ -78,17 +76,17 @@ static retcode DataURLToDetail(const std::string &data_url,
     return retcode::SUCCESS;
 }
 
-static  std::string Key2Str(const Key &key) {
-     auto s = libp2p::multi::ContentIdentifierCodec::toString(
-          libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
-     return s.value();
-}
+// static  std::string Key2Str(const Key &key) {
+//      auto s = libp2p::multi::ContentIdentifierCodec::toString(
+//           libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
+//      return s.value();
+// }
 
-static Key Str2Key(const std::string &str) {
-     auto k = libp2p::multi::ContentIdentifierCodec::encode(
-          libp2p::multi::ContentIdentifierCodec::fromString(str).value());
-     return Key(k.value());
-}
+// static Key Str2Key(const std::string &str) {
+//      auto k = libp2p::multi::ContentIdentifierCodec::encode(
+//           libp2p::multi::ContentIdentifierCodec::fromString(str).value());
+//      return Key(k.value());
+// }
 
 } // namespace primihub::service
 

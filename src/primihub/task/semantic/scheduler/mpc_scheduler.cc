@@ -70,7 +70,7 @@ void MPCScheduler::push_task(const std::string &node_id,
   parseNotifyServer(pushTaskReply);
 }
 
-void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
+retcode MPCScheduler::dispatch(const PushTaskRequest *push_request) {
   PushTaskRequest request;
   request.CopyFrom(*push_request);
 
@@ -80,7 +80,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
 
     if (peer_list_.size() != party_num_) {
       LOG(ERROR) << "Only support two party in crypTFlow2 protocol.";
-      return;
+      return retcode::FAIL;
     }
 
     for (uint8_t i = 0; i < party_num_; i++) {
@@ -100,7 +100,7 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
     auto iter = node_map.find(node_id);
     if (iter == node_map.end()) {
       LOG(ERROR) << "Can't find node " << node_id << " in node map.";
-      return;
+      return retcode::FAIL;
     }
     auto& pb_node = iter->second;
     std::string node_addr = absl::StrCat(pb_node.ip(), ":", pb_node.port());
@@ -120,6 +120,10 @@ void MPCScheduler::dispatch(const PushTaskRequest *push_request) {
   for (auto &t : threads) {
     t.join();
   }
+  if (has_error()) {
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 void CRYPTFLOW2Scheduler::add_vm(rpc::Node *node, int i,

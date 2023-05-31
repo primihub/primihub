@@ -19,6 +19,7 @@ from typing import List
 
 import pandas as pd
 import pyarrow as pa
+import pickle
 from primihub.context import Context
 from primihub.context import reg_dataset
 from primihub.utils.logger_util import logger
@@ -26,6 +27,11 @@ from primihub.utils.logger_util import logger
 import grpc
 from primihub.client.ph_grpc.src.primihub.protos import service_pb2
 from primihub.client.ph_grpc.src.primihub.protos import service_pb2_grpc
+
+import zipfile
+import os
+from torchvision.io import read_image
+from torch.utils.data import Dataset as TorchDataset
 
 def register_dataset(service_addr, driver, path, name):
     logger.info("Dataset service is {}.".format(service_addr))
@@ -58,12 +64,18 @@ def register_dataset(service_addr, driver, path, name):
     else:
         channel = grpc.insecure_channel(host_port)
 
-    stub = service_pb2_grpc.DataServiceStub(channel)
-    request = service_pb2.NewDatasetRequest()
-    request.fid = name
-    request.driver = driver
-    request.path = path
+    stub = service_pb2_grpc.DataSetServiceStub(channel)
 
+    reg_req_data = {
+        "op_type": service_pb2.NewDatasetRequest.REGISTER,
+        "meta_info": {
+          "id": name,
+          "driver": driver,
+          "access_info": path,
+          "visibility": service_pb2.MetaInfo.PUBLIC
+        }
+    }
+    request = service_pb2.NewDatasetRequest(**reg_req_data)
     response = stub.NewDataset(request)
     if response.ret_code != 0:
         logger.error("Register dataset {} failed.".foramt(name));
@@ -129,6 +141,33 @@ class CSVCursor(Cursor):
         return Dataset(df)
 
 
+class ImageCursor(TorchDataset):
+    def __init__(self, annotations_file: str, img_dir: str,
+                 transform=None, target_transform=None):
+        self.img_labels = pd.read_csv(annotations_file)
+        if zipfile.is_zipfile(img_dir):
+            with zipfile.ZipFile(img_dir, 'r') as zip_ref:
+                zip_ref.extractall(os.path.dirname(img_dir))
+                self.img_dir = img_dir.strip('.zip')
+        else:
+            self.img_dir = img_dir
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, self.img_labels.loc[idx, 'file_name'])
+        image = read_image(img_path)
+        label = self.img_labels.loc[idx, 'y']
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return image, label
+
+
 class CSVDataDriver(FileDriver):
     """ CSV data driver.
     Usage:
@@ -145,6 +184,22 @@ class CSVDataDriver(FileDriver):
         return self.cursor
 
 
+class ImageDataDriver(FileDriver):
+    """ Image data driver.
+    Usage:
+        cursor = ImageDataDriver().read("path/to/file")
+    """
+
+    def __init__(self) -> None:
+        self.cursor: ImageCursor = None
+
+    def read(self, annotations_file, img_dir,
+             transform, target_transform) -> ImageCursor:
+        self.cursor = ImageCursor(annotations_file, img_dir,
+                                  transform, target_transform)
+        return self.cursor
+
+
 class HDFSDataDriver(DataDriver):
     # TODO (chenhongbo)
     pass
@@ -152,6 +207,7 @@ class HDFSDataDriver(DataDriver):
 
 __drivers__ = {
     "csv": CSVDataDriver,
+    "image": ImageDataDriver,
 }
 
 
@@ -177,12 +233,29 @@ def read(dataset_key: str = None,
          names: List = None,
          usecols: List = None,
          skiprows=None,
-         nrows=None, **kwargs):
-    dataset_path = Context.dataset_map.get(dataset_key, None)
-    d = driver(name="csv")
-    cursor = d().read(path=dataset_path)
-    dataset = cursor.read(names=names, usecols=usecols,
-                          skiprows=skiprows, nrows=nrows)
+         nrows=None,
+         transform=None,
+         target_transform=None,
+         **kwargs):
+    dataset_info = eval(Context.dataset_map.get(dataset_key, None))
+    file_type = dataset_info['type']
+
+    if file_type == "csv":
+        dataset_path = dataset_info['file_path']
+        d = driver(name="csv")
+        cursor = d().read(path=dataset_path)
+        dataset = cursor.read(names=names, usecols=usecols,
+                              skiprows=skiprows, nrows=nrows)
+    elif file_type == "image":
+        annotations_file = dataset_info['annotations_file']
+        img_dir = dataset_info['image_dir']
+        d = driver(name="image")
+        dataset = d().read(annotations_file, img_dir,
+                           transform, target_transform)
+    else:
+        logger.error(f"Not supported file type: {file_type}")
+        raise NotImplementedError()
+
     return dataset
 
 

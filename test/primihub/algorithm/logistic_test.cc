@@ -5,9 +5,10 @@
 #include <vector>
 #include <memory>
 
+#include "src/primihub/common/common.h"
 #include "src/primihub/algorithm/logistic.h"
-#include "src/primihub/service/dataset/localkv/storage_default.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/service/dataset/meta_service/factory.h"
 using namespace primihub;
 
 static void RunLogistic(std::string node_id, rpc::Task &task,
@@ -21,17 +22,57 @@ static void RunLogistic(std::string node_id, rpc::Task &task,
   EXPECT_EQ(exec.saveModel(), 0);
   exec.finishPartyComm();
 }
-using meta_type_t = std::tuple<std::string, std::string, std::string>;
-void registerDataSet(const std::vector<meta_type_t>& meta_infos,
+
+void registerDataSet(const std::vector<DatasetMetaInfo>& meta_infos,
     std::shared_ptr<DatasetService> service) {
   for (auto& meta : meta_infos) {
-    auto& dataset_id = std::get<0>(meta);
-    auto& dataset_type = std::get<1>(meta);
-    auto& dataset_path = std::get<2>(meta);
-    auto access_info = service->createAccessInfo(dataset_type, dataset_path);
+    auto& dataset_id = meta.id;
+    auto& dataset_type = meta.driver_type;
+    auto access_info = service->createAccessInfo(dataset_type, meta);
+    std::string access_meta = access_info->toString();
     auto driver = DataDirverFactory::getDriver(dataset_type, "test addr", std::move(access_info));
     service->registerDriver(dataset_id, driver);
+    service::DatasetMeta meta_;
+    service->newDataset(driver, dataset_id, access_meta, &meta_);
   }
+}
+
+void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node_list,
+    std::map<std::string, std::string>& dataset_list, rpc::Task* task_config) {
+//
+  auto& task = *task_config;
+  task.set_party_name(role);
+  // party access info
+  auto party_access_info = task.mutable_party_access_info();
+  auto& party0 = (*party_access_info)["PARTY0"];
+  party0.CopyFrom(node_list[0]);
+  auto& party1 = (*party_access_info)["PARTY1"];
+  party1.CopyFrom(node_list[1]);
+  auto& party2 = (*party_access_info)["PARTY2"];
+  party2.CopyFrom(node_list[2]);
+  // task info
+  auto task_info = task.mutable_task_info();
+  task_info->set_task_id("mpc_lr");
+  task_info->set_job_id("lr_job");
+  task_info->set_request_id("lr_task");
+  // datsets
+  auto party_datasets = task.mutable_party_datasets();
+  auto datasets = (*party_datasets)[role].mutable_data();
+  for (const auto& [key, dataset_id] : dataset_list) {
+    (*datasets)[key] = dataset_id;
+  }
+  // param
+  rpc::ParamValue pv_batch_size;
+  pv_batch_size.set_var_type(rpc::VarType::INT32);
+  pv_batch_size.set_value_int32(128);
+
+  rpc::ParamValue pv_num_iter;
+  pv_num_iter.set_var_type(rpc::VarType::INT32);
+  pv_num_iter.set_value_int32(100);
+
+  auto param_map = task.mutable_params()->mutable_param_map();
+  (*param_map)["NumIters"] = pv_num_iter;
+  (*param_map)["BatchSize"] = pv_batch_size;
 }
 
 TEST(logistic, logistic_3pc_test) {
@@ -78,79 +119,30 @@ TEST(logistic, logistic_3pc_test) {
   prev->set_ip("127.0.0.1");
   prev->set_port(base_port+200);
 
+  std::vector<rpc::Node> node_list;
+  node_list.emplace_back(std::move(node_1));
+  node_list.emplace_back(std::move(node_2));
+  node_list.emplace_back(std::move(node_3));
   // Construct task for party 0.
   rpc::Task task1;
-  auto node_map = task1.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task1_info = task1.mutable_task_info();
-  task1_info->set_task_id("mpc_lr");
-  task1_info->set_job_id("lr_job");
-  task1_info->set_request_id("lr_task");
-
-  rpc::ParamValue pv_train_input;
-  pv_train_input.set_var_type(rpc::VarType::STRING);
-  // pv_train_input.set_value_string("data/train_party_0.csv");
-  pv_train_input.set_value_string("train_party_0");
-
-  // rpc::ParamValue pv_test_input;
-  // pv_test_input.set_var_type(rpc::VarType::STRING);
-  // pv_test_input.set_value_string("data/test_party_0.csv");
-
-  rpc::ParamValue pv_batch_size;
-  pv_batch_size.set_var_type(rpc::VarType::INT32);
-  pv_batch_size.set_value_int32(128);
-
-  rpc::ParamValue pv_num_iter;
-  pv_num_iter.set_var_type(rpc::VarType::INT32);
-  pv_num_iter.set_value_int32(100);
-
-  auto param_map = task1.mutable_params()->mutable_param_map();
-  (*param_map)["Data_File"] = pv_train_input;
-  // (*param_map)["TestData"] = pv_test_input;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::map<std::string, std::string> party0_datasets{
+    {"Data_File", "train_party_0"},
+    {"TestData", "test_party_0"}};
+  BuildTaskConfig("PARTY0", node_list, party0_datasets, &task1);
 
   // Construct task for party 1.
   rpc::Task task2;
-  node_map = task2.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task2_info = task2.mutable_task_info();
-  task2_info->set_task_id("mpc_lr");
-  task2_info->set_job_id("lr_job");
-  task2_info->set_request_id("lr_task");
-
-  // pv_train_input.set_value_string("data/train_party_1.csv");
-  pv_train_input.set_value_string("train_party_1");
-  // pv_test_input.set_value_string("data/test_party_1.csv");
-  param_map = task2.mutable_params()->mutable_param_map();
-  (*param_map)["Data_File"] = pv_train_input;
-  // (*param_map)["TestData"] = pv_test_input;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::map<std::string, std::string> party1_datasets{
+    {"Data_File", "train_party_1"},
+    {"TestData", "test_party_1"}};
+  BuildTaskConfig("PARTY1", node_list, party1_datasets, &task2);
 
   // Construct task for party 2.
   rpc::Task task3;
-  node_map = task3.mutable_node_map();
-  (*node_map)["node_1"] = node_1;
-  (*node_map)["node_2"] = node_2;
-  (*node_map)["node_3"] = node_3;
-  auto task3_info = task3.mutable_task_info();
-  task3_info->set_task_id("mpc_lr");
-  task3_info->set_job_id("lr_job");
-  task3_info->set_request_id("lr_task");
-
-  // pv_train_input.set_value_string("data/train_party_2.csv");
-  pv_train_input.set_value_string("train_party_2");
-  // pv_test_input.set_value_string("data/test_party_2.csv");
-  param_map = task3.mutable_params()->mutable_param_map();
-  (*param_map)["Data_File"] = pv_train_input;
-  // (*param_map)["TestData"] = pv_test_input;
-  (*param_map)["NumIters"] = pv_num_iter;
-  (*param_map)["BatchSize"] = pv_batch_size;
+  std::map<std::string, std::string> party2_datasets{
+    {"Data_File", "train_party_2"},
+    {"TestData", "test_party_2"}};
+  BuildTaskConfig("PARTY2", node_list, party2_datasets, &task3);
 
   std::vector<std::string> bootstrap_ids;
   bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
@@ -161,17 +153,12 @@ TEST(logistic, logistic_3pc_test) {
   pid_t pid = fork();
   if (pid != 0) {
     // Child process as party 0.
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/65530");
-
-    std::shared_ptr<service::DatasetMetaService> meta_service =
-	    std::make_shared<service::DatasetMetaService>(
-			    stub, std::make_shared<service::StorageBackendDefault>());
-
-    std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
-    using meta_type_t = std::tuple<std::string, std::string, std::string>;
-    std::vector<meta_type_t> meta_infos {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<DatasetService>(std::move(meta_service));
+    std::vector<DatasetMetaInfo> meta_infos {
       {"train_party_0", "csv", "data/train_party_0.csv"},
     };
     registerDataSet(meta_infos, service);
@@ -184,17 +171,12 @@ TEST(logistic, logistic_3pc_test) {
   if (pid != 0) {
     // Child process as party 1.
     sleep(1);
-    auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-    stub->start("/ip4/127.0.0.1/tcp/65531");
-
-    std::shared_ptr<service::DatasetMetaService> meta_service =
-	    std::make_shared<service::DatasetMetaService>(
-			    stub, std::make_shared<service::StorageBackendDefault>());
-
-    std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-        meta_service, "test addr");
-    using meta_type_t = std::tuple<std::string, std::string, std::string>;
-    std::vector<meta_type_t> meta_infos {
+    primihub::Node node;
+    auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+    auto service = std::make_shared<DatasetService>(std::move(meta_service));
+    std::vector<DatasetMetaInfo> meta_infos {
       {"train_party_1", "csv", "data/train_party_1.csv"},
     };
     registerDataSet(meta_infos, service);
@@ -205,19 +187,13 @@ TEST(logistic, logistic_3pc_test) {
 
   // Parent process as party 2.
   sleep(3);
-  auto stub = std::make_shared<p2p::NodeStub>(bootstrap_ids);
-  stub->start("/ip4/127.0.0.1/tcp/65532");
-
-  std::shared_ptr<service::DatasetMetaService> meta_service =
-	  std::make_shared<service::DatasetMetaService>(
-			  stub, std::make_shared<service::StorageBackendDefault>());
-
-  std::shared_ptr<DatasetService> service = std::make_shared<DatasetService>(
-      meta_service, "test addr");
+  primihub::Node node;
+  auto meta_service =
+        primihub::service::MetaServiceFactory::Create(
+            primihub::service::MetaServiceMode::MODE_MEMORY, node);
+  auto service = std::make_shared<DatasetService>(std::move(meta_service));
   // register dataset
-  // dataset_id, dataset_type, dataset_metainfo
-  using meta_type_t = std::tuple<std::string, std::string, std::string>;
-  std::vector<meta_type_t> meta_infos {
+  std::vector<DatasetMetaInfo> meta_infos {
     {"train_party_2", "csv", "data/train_party_2.csv"},
   };
   registerDataSet(meta_infos, service);

@@ -8,13 +8,16 @@ PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
   // content to std::map.
   std::map<std::string, rpc::Node> node_map;
   {
-    auto tmp = task.node_map();
-    for (auto iter = tmp.begin(); iter != tmp.end(); iter++) {
-      node_map[iter->first] = iter->second;
+    const auto& info = task.party_access_info();
+    for (const auto& [party_name, node] : info) {
+      if (party_name == SCHEDULER_NODE) {
+        continue;
+      }
+      node_map[party_name] = node;
     }
   }
 
-  this->node_id = node_id;
+  this->node_id = task.party_name();
   this->task_id = task.task_info().task_id();
   this->job_id = task.task_info().job_id();
   this->node_map = std::move(node_map);

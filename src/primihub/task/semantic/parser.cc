@@ -22,17 +22,11 @@
 #include "src/primihub/task/language/proto_parser.h"
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/task/semantic/parser.h"
-#include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
-#include "src/primihub/task/semantic/scheduler/fl_scheduler.h"
-#include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
-#include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
-#include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
-#include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
+#include "src/primihub/task/semantic/scheduler/factory.h"
 #include "src/primihub/util/util.h"
 
 using primihub::service::DataURLToDetail;
 using primihub::rpc::TaskType;
-
 
 namespace primihub::task {
 
@@ -43,195 +37,99 @@ namespace primihub::task {
  * 2. Find all datasets in the task syntax tree using dataset service.
  * 3. Generate a scheduler object
  */
-void ProtocolSemanticParser::parseTaskSyntaxTree(
+retcode ProtocolSemanticParser::parseTaskSyntaxTree(
     std::shared_ptr<LanguageParser> lan_parser) {
   if (lan_parser == nullptr) {
-    return;
+    LOG(ERROR) << "no language handler found";
+    return retcode::FAIL;
   }
+  retcode ret_code{retcode::SUCCESS};
   auto task_language = lan_parser->getPushTaskRequest().task().language();
   switch (task_language) {
   case Language::PROTO:
-    scheduleProtoTask(lan_parser);
+    ret_code = scheduleProtoTask(lan_parser);
     break;
   case Language::PYTHON:
-    schedulePythonTask(lan_parser);
+    ret_code = schedulePythonTask(lan_parser);
     break;
   default:
     LOG(WARNING) << "unsupported language type: " << task_language;
+    ret_code = retcode::FAIL;
     break;
+  }
+  return ret_code;
+}
+
+void ProtocolSemanticParser::parseTaskServer(
+    const std::vector<Node>& task_servers) {
+  for (const auto& node : task_servers) {
+    task_server_.push_back(node);
   }
 }
 
-void ProtocolSemanticParser::scheduleProtoTask(
+bool ProtocolSemanticParser::DatasetMetaSerivceEnabled() {
+  return true;
+}
+
+retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
+    LanguageParser* _parser) {
+  if (DatasetMetaSerivceEnabled()) {
+    auto datasets_with_tag = _parser->getDatasets();
+    VLOG(2) << "Finding meta list from datasets...";
+    // get party access info from dataset meta service using dataset id
+    dataset_service_->MetaService()->FindPeerListFromDatasets(
+      datasets_with_tag,
+      [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
+        VLOG(2) << "Find meta list from datasets: " << metas_with_param_tag.size();
+        std::map<std::string, Node> party_access_info;
+        metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
+        _parser->MergePartyAccessInfo(party_access_info);
+        VLOG(2) << "end of MergePartyAccessInfo";
+      });
+  }
+  return retcode::SUCCESS;
+}
+
+retcode ProtocolSemanticParser::scheduleProtoTask(
     std::shared_ptr<LanguageParser> proto_parser) {
-    auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(proto_parser);
-    auto datasets_with_tag = _proto_parser->getDatasets();
-    // Start find peer node by dataset list
-
-    // for (auto &pair : datasets_with_tag) {
-    //   LOG(INFO) << "first: " << pair.first <<", second:" << pair.second;
-    // }
-    std::shared_ptr<VMScheduler> scheduler{nullptr};
-    std::thread t([&]() {
-        LOG(INFO) << " 🔍 Proto task finding meta list from datasets...";
-        dataset_service_->metaService()->findPeerListFromDatasets(
-            datasets_with_tag,
-            [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-                LOG(INFO) << " 🔍 Proto task found meta list from datasets: "
-                          << metas_with_param_tag.size();
-
-                std::vector<rpc::Node> peer_list;
-                PeerDatasetMap peer_dataset_map;
-                metasToPeerList(metas_with_param_tag, peer_list);
-                metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map);
-
-                std::map<std::string, std::string> dataset_owner;
-                metasToDatasetAndOwner(metas_with_param_tag, dataset_owner);
-
-                //  Generate MPC algorthim scheduler
-                auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-                if (pushTaskRequest.task().code() == "maxpool") {
-                    scheduler = std::make_shared<CRYPTFLOW2Scheduler>(
-                        node_id_, peer_list_, peer_dataset_map, singleton_);
-                    scheduler->dispatch(&pushTaskRequest);
-                } else if (pushTaskRequest.task().code() == "lenet") {
-                    scheduler = std::make_shared<FalconScheduler>(
-                        node_id_, peer_list, peer_dataset_map, singleton_);
-                    scheduler->dispatch(&pushTaskRequest);
-                } else {
-                    //  Generate ABY3 scheduler
-                    scheduler = std::make_shared<ABY3Scheduler>(
-                        node_id_, peer_list, peer_dataset_map, singleton_);
-                    scheduler->set_dataset_owner(dataset_owner);
-                    scheduler->dispatch(&pushTaskRequest);
-                }
-
-                // TEE task scheduler
-                if (pushTaskRequest.task().type() == TaskType::TEE_TASK) {
-                    // TODO peer_list add server Node object
-                    scheduler = std::make_shared<TEEScheduler>(
-                            node_id_, peer_list_, peer_dataset_map,
-                            pushTaskRequest.task().params(), singleton_);
-                    scheduler->dispatch(&pushTaskRequest);
-                }
-            });
-    });
-    t.join();
-    if (scheduler == nullptr) {
-        LOG(ERROR) << "no scheduler created to dispatch task";
-    } else {
-        parseNofifyServer(scheduler->notifyServer());
-        parseTaskServer(scheduler->taskServer());
-    }
+  auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(proto_parser);
+  ParseDatasetToPartyAccessInfo(proto_parser.get());
+  // schedule task
+  auto& task_request = _proto_parser->getPushTaskRequest();
+  auto& task_config = task_request.task();
+  if (task_config.party_access_info().empty()) {
+    LOG(ERROR) << "no party access config found for dispatch";
+    return retcode::FAIL;
+  }
+  auto scheduler_ptr = SchedulerFactory::CreateScheduler(task_config);
+  if (scheduler_ptr == nullptr) {
+    LOG(ERROR) << "no scheduler created to dispatch task";
+    return retcode::FAIL;
+  }
+  auto ret = scheduler_ptr->dispatch(&task_request);
+  parseTaskServer(scheduler_ptr->taskServer());
+  return ret;
 }
 
-void ProtocolSemanticParser::schedulePythonTask(
+retcode ProtocolSemanticParser::schedulePythonTask(
     std::shared_ptr<LanguageParser> python_parser) {
-
-    std::vector<NodeWithRoleTag> _peers_with_role_tag;
-    PeerContextMap _peer_context_map;
-
-    auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
-    auto datasets_with_tag =
-        _python_parser->getDatasets(); // dataset with role tag
-    _peer_context_map = _python_parser->getNodeContextMap();
-
-    // Start find peer node by dataset list
-    std::shared_ptr<VMScheduler> scheduler{nullptr};
-    std::thread t([&]() {
-        LOG(INFO) << " 🔍 Python task finding meta list from datasets...";
-        dataset_service_->metaService()->findPeerListFromDatasets(
-            datasets_with_tag,
-            [&](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-                LOG(INFO) << " 🔍 Python task found meta list from datasets: "
-                          << metas_with_param_tag.size();
-
-                metasToPeerWithTagAndPort(metas_with_param_tag,
-                                          _peer_context_map,
-                                          _peers_with_role_tag);
-                scheduler = std::make_shared<FLScheduler>(
-                        node_id_, singleton_, _peers_with_role_tag,
-                        _peer_context_map, metas_with_param_tag);
-
-                // Dispatch task to worker nodes
-                auto pushTaskRequest = _python_parser->getPushTaskRequest();
-                scheduler->dispatch(&pushTaskRequest);
-            });
-    });
-    t.join();
-    if (scheduler == nullptr) {
-        LOG(ERROR) << "no scheduler created to dispatch task";
-    } else {
-        parseNofifyServer(scheduler->notifyServer());
-        parseTaskServer(scheduler->taskServer());
-    }
-}
-
-void ProtocolSemanticParser::schedulePirTask(
-        std::shared_ptr<LanguageParser> lan_parser,
-        std::string nodelet_attr) {
-    if (lan_parser == nullptr || nodelet_attr == "") {
-        return;
-    }
-    auto task_language = lan_parser->getPushTaskRequest().task().language();
-    if (task_language != Language::PROTO) {
-        return;
-    }
-    auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(lan_parser);
-    auto datasets_with_tag = _proto_parser->getDatasets();
-    LOG(INFO) << " 🔍 Finding meta list from datasets...";
-    dataset_service_->metaService()->findPeerListFromDatasets(
-        datasets_with_tag,
-        [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-            LOG(INFO) << " 🔍 Found meta list from datasets: "
-                      << metas_with_param_tag.size() << " "
-                      << "nodelet_attr: " << nodelet_attr;
-            metasToPeerList(metas_with_param_tag, peer_list_);
-            rpc::Node client_node;
-            parseTopbNode(nodelet_attr, &client_node);
-            peer_list_.push_back(std::move(client_node));
-            metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::shared_ptr<VMScheduler> scheduler =
-                std::make_shared<PIRScheduler>(node_id_,
-                                                peer_list_,
-                                                peer_dataset_map_,
-                                                singleton_);
-            auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-            scheduler->dispatch(&pushTaskRequest);
-            parseNofifyServer(scheduler->notifyServer());
-            parseTaskServer(scheduler->taskServer());
-    });
-}
-
-void ProtocolSemanticParser::schedulePsiTask(
-        std::shared_ptr<LanguageParser> lan_parser) {
-    if (lan_parser == nullptr)
-        return;
-    auto task_language = lan_parser->getPushTaskRequest().task().language();
-    if (task_language != Language::PROTO) {
-        return;
-    }
-    auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(lan_parser);
-    auto datasets_with_tag = _proto_parser->getDatasets();
-    // Start find peer node by dataset list
-    LOG(INFO) << " 🔍 PSI task finding meta list from datasets...";
-    dataset_service_->metaService()->findPeerListFromDatasets(
-        datasets_with_tag,
-        [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-            LOG(INFO) << " 🔍 PSItask found meta list from datasets: "
-                            << metas_with_param_tag.size();
-            metasToPeerList(metas_with_param_tag, peer_list_);
-            metasToPeerDatasetMap(metas_with_param_tag, peer_dataset_map_);
-            std::shared_ptr<VMScheduler> scheduler =
-                std::make_shared<PSIScheduler>(node_id_,
-                                                peer_list_,
-                                                peer_dataset_map_,
-                                                singleton_);
-            auto pushTaskRequest = _proto_parser->getPushTaskRequest();
-            scheduler->dispatch(&pushTaskRequest);
-            parseNofifyServer(scheduler->notifyServer());
-            parseTaskServer(scheduler->taskServer());
-    });
+  auto _python_parser = std::dynamic_pointer_cast<PyParser>(python_parser);
+  ParseDatasetToPartyAccessInfo(python_parser.get());
+  // schedule task
+  auto& task_request = _python_parser->getPushTaskRequest();
+  auto& task_config = task_request.task();
+  if (task_config.party_access_info().empty()) {
+    LOG(ERROR) << "no party access config found for dispatch";
+    return retcode::FAIL;
+  }
+  auto scheduler_ptr = SchedulerFactory::CreateScheduler(task_config);
+  if (scheduler_ptr == nullptr) {
+    LOG(ERROR) << "no scheduler created to dispatch task";
+    return retcode::FAIL;
+  }
+  auto ret = scheduler_ptr->dispatch(&task_request);
+  parseTaskServer(scheduler_ptr->taskServer());
+  return ret;
 }
 
 void ProtocolSemanticParser::metasToDatasetAndOwner(
@@ -250,38 +148,6 @@ void ProtocolSemanticParser::metasToDatasetAndOwner(
         LOG(INFO) << "Dataset " << meta->getDescription() << "'s owner is "
                 << node_info.id() << ".";
     }
-}
-
-
-int ProtocolSemanticParser::transformPirRequest(std::shared_ptr<LanguageParser> lan_parser,
-                                                PushTaskRequest &taskRequest) {
-    if (lan_parser == nullptr) {
-        LOG(ERROR) << "Language parser is null.";
-        return -1;
-    }
-    LOG(INFO) << "test transformPirRequest.";
-
-    if (lan_parser->getPushTaskRequest().task().language() ==
-            Language::PROTO) {
-        auto _proto_parser = std::dynamic_pointer_cast<ProtoParser>(lan_parser);
-        taskRequest.CopyFrom(_proto_parser->getPushTaskRequest());
-    } else {
-        LOG(INFO) << "Pir task needs to implement this language: "
-                  << lan_parser->getPushTaskRequest().task().language();
-        return -1;
-    }
-
-    auto scheduler =
-        std::make_shared<PIRScheduler>(node_id_, peer_list_,
-                                       peer_dataset_map_, singleton_);
-
-    int ret = scheduler->transformRequest(taskRequest);
-    if (ret) {
-        LOG(ERROR) << "Transform pir request failed.";
-        return -1;
-    }
-
-    return 0;
 }
 
 void ProtocolSemanticParser::metasToPeerList(
@@ -309,7 +175,25 @@ void ProtocolSemanticParser::metasToPeerList(
     }
   }
 }
+void ProtocolSemanticParser::metasToPartyAccessInfo(
+    const std::vector<DatasetMetaWithParamTag>& metas_with_tag,
+    std::map<std::string, Node>* party_access_info) {
+  party_access_info->clear();
+  std::map<std::string, std::set<std::string>> duplicate_filter;
+  for (const auto& meta_with_tag : metas_with_tag) {
+    const auto& meta_info = meta_with_tag.first;
+    const auto& party_name = meta_with_tag.second;
+    std::string server_info = meta_info->getServerInfo();
+    Node access_info;
+    access_info.fromString(server_info);
 
+    auto it = party_access_info->find(party_name);
+    if (it != party_access_info->end()) {
+      LOG(WARNING) << "update access info for party_name: " << party_name;
+    }
+    (*party_access_info)[party_name] = access_info;
+  }
+}
 // output  key: node_id, value: <dataset_path, dataset_name>
 void ProtocolSemanticParser::metasToPeerDatasetMap(
     const std::vector<DatasetMetaWithParamTag> &metas_with_param_tag,
@@ -322,7 +206,7 @@ void ProtocolSemanticParser::metasToPeerDatasetMap(
     Node node_info;
     auto server_info = _meta->getServerInfo();
     node_info.fromString(server_info);
-    std::string dataset_id = _meta->getDescription();
+    std::string dataset_id = _meta->id;
     // find node_id in peer_dataset_map
     auto it = peer_dataset_map.find(node_info.id());
     if (it == peer_dataset_map.end()) {
@@ -345,13 +229,15 @@ void ProtocolSemanticParser::metasToPeerWithTagAndPort(
   for (auto &meta_with_tag : metas_with_tag) {
     auto meta = meta_with_tag.first;
     auto tag = meta_with_tag.second;
+
     Node node_info;
     std::string server_info = meta->getServerInfo();
     node_info.fromString(server_info);
     // Get tcp port used by FL algorithm.
     std::string ds_name = meta->getDescription();
+    VLOG(7) << "ds_name: " << ds_name << " tag: " << tag;
     // auto &ds_port_map = peer_context_map[tag].dataset_port_map;
-    auto &ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
+    auto& ds_port_map = peer_context_map.find(tag)->second.dataset_port_map;
     auto iter = ds_port_map.find(ds_name);
     if (iter == ds_port_map.end()) {
       LOG(ERROR) << "Can't find data port for dataset " << ds_name << ".";
@@ -423,21 +309,14 @@ void ProtocolSemanticParser::metasToPeerWithTagList(
     }
   }
 }
-void ProtocolSemanticParser::prepareReply(primihub::rpc::PushTaskReply* reply) {
-    for (const auto& node : this->notify_server_) {
-        auto server = reply->add_notify_server();
-        server->set_ip(node.ip_);
-        server->set_port(node.port_);
-        server->set_use_tls(node.use_tls_);
-        server->set_role(node.role_);
-    }
-    for (const auto& node : this->task_server_) {
-        auto server = reply->add_task_server();
-        server->set_ip(node.ip_);
-        server->set_port(node.port_);
-        server->set_use_tls(node.use_tls_);
-        server->set_role(node.role_);
-    }
+void ProtocolSemanticParser::prepareReply(rpc::PushTaskReply* reply) {
+  for (const auto& node : this->task_server_) {
+    auto server = reply->add_task_server();
+    server->set_ip(node.ip_);
+    server->set_port(node.port_);
+    server->set_use_tls(node.use_tls_);
+    server->set_role(node.role_);
+  }
 }
 
 } // namespace primihub::task

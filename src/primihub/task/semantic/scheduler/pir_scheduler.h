@@ -34,7 +34,7 @@
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/task/semantic/scheduler.h"
+#include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/common/defines.h"
 
 using primihub::rpc::PushTaskReply;
@@ -47,29 +47,24 @@ namespace primihub::task {
 namespace rpc = primihub::rpc;
 class PIRScheduler : public VMScheduler {
  public:
-    PIRScheduler(const std::string &node_id,
-                 const std::vector<rpc::Node> &peer_list,
-                 const PeerDatasetMap &peer_dataset_map, bool singleton)
-        : VMScheduler(node_id, singleton),
-          peer_list_(peer_list),
-          peer_dataset_map_(peer_dataset_map) {}
+  PIRScheduler() = default;
+  PIRScheduler(const std::string &node_id,
+              const std::vector<rpc::Node> &peer_list,
+              const PeerDatasetMap &peer_dataset_map, bool singleton)
+    : VMScheduler(node_id, singleton),
+      peer_list_(peer_list),
+      peer_dataset_map_(peer_dataset_map) {}
 
-    void dispatch(const PushTaskRequest *pushTaskRequest) override;
-
-    void add_vm(rpc::Node *single_node, int i,
-                const PushTaskRequest *pushTaskRequest);
-
-    int transformRequest(PushTaskRequest &taskRequest);
+  retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
 
  protected:
-    void node_push_pir_task(const std::string& node_id,
-        const PeerDatasetMap& peer_dataset_map,
-        const PushTaskRequest& nodePushTaskRequest,
-        const Node& dest_node, bool is_client);
+  retcode ScheduleTask(const std::string& party_name,
+                    const Node dest_node,
+                    const PushTaskRequest& request);
 
  private:
-    const std::vector<rpc::Node> peer_list_;
-    const PeerDatasetMap peer_dataset_map_;
+  const std::vector<rpc::Node> peer_list_;
+  const PeerDatasetMap peer_dataset_map_;
 };
 }
 

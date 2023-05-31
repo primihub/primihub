@@ -13,101 +13,78 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
-import multiprocessing
-import traceback
-from cloudpickle import loads
+import json
+from importlib import import_module
 from primihub.context import Context
-
 from primihub.utils.logger_util import logger
+from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
+import primihub
 
-shared_globals = dict()
-shared_globals['context'] = Context
+path = primihub.__file__
+path = path[:-12]
 
+def run(task_params):
+    party_name = task_params.party_name
+    params_str = task_params.params.param_map["component_params"].value_string
+    params_dict = json.loads(params_str.decode())
 
-def _run_in_process(target, args=(), kwargs={}):
-    """Runs target in process and returns its exitcode after 10s (None if still alive)."""
-    process = multiprocessing.Process(target=target, args=args, kwargs=kwargs)
-    process.daemon = True
-    process.start()
-    return process
+    # load commom_parmas, roles, node_info, task_info
+    common_params = params_dict['common_params']
+    roles = params_dict['roles']
+    node_info = task_params.party_access_info
+    task_info = task_params.task_info
+
+    # set role_params for current party
+    all_role_params = params_dict['role_params']
+    if party_name in all_role_params.keys():
+        role_params = all_role_params[party_name]
+        role_params['data'] = eval(task_params.party_datasets[party_name].data['data_set'])
+    else:
+        role_params = {}
+
+    role_params['self_name'] = party_name
+    role_params['others_role'] = []
+    for key, val in roles.items():
+        if party_name in val:
+            role_params['self_role'] = key
+        else:
+            role_params['others_role'].append(key)
+        
+    if len(role_params['others_role']) == 1:
+        role_params['others_role'] = role_params['others_role'][0]
+
+    # load model and run
+    with open(path + '/FL/model_map.json', 'r') as f:
+        FUNC_MAP = json.load(f)
+
+    model = common_params['model']
+    role = role_params['self_role']
+    func_path = FUNC_MAP[model][role]
+    cls_module, cls_name = func_path.rsplit(".", maxsplit=1)
+
+    module_name = import_module(cls_module)
+    get_model_attr = getattr(module_name, cls_name)
+    model = get_model_attr(roles=roles,
+                           common_params=common_params,
+                           role_params=role_params,
+                           node_info=node_info,
+                           task_info=task_info)
+    model.run()
 
 
 class Executor:
+    '''
+    Excute the py file. Note the Context is passed
+    from c++ level.
+    '''
+
     def __init__(self):
         pass
 
     @staticmethod
-    def execute(py_code: str):
-        exec(py_code, shared_globals)
+    def execute_py():
+        PushTaskRequest = worker_pb2.PushTaskRequest()
+        PushTaskRequest.ParseFromString(Context.message)
+        task = PushTaskRequest.task
 
-    @staticmethod
-    def execute_role(role: str):
-        try:
-            loads(Context.nodes_context[role].dumps_func)()
-        except Exception as e:
-            logger.error(str(e))
-            raise e
-
-    @staticmethod
-    def execute_py(dumps_func):
-        logger.info("execute py code.")
-        func_name = loads(dumps_func).__name__
-        logger.debug("func name: {}".format(func_name))
-        func_params = Context.get_func_params_map().get(func_name, None)
-        func = loads(dumps_func)
-        logger.debug("func params: {}".format(func_params))
-        logger.debug("params_map: {}".format(Context.params_map))
-        if not func_params:
-            try:
-                logger.debug("start execute")
-                func()
-                logger.debug("end start execute")
-                # func()
-                # process = _run_in_process(target=func)
-                # # Context.clean_content()
-
-                # while process.exitcode is None:
-                #     process.join(timeout=5)
-                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                # logger.info("end execute with exit code: {}".format(process.exitcode))
-                # # process.exitcode 0 success, -exit_code failed
-                # if (process.exitcode != 0):
-                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                #     logger.error(err_msg)
-                #     raise Exception(err_msg)
-            except Exception as e:
-                logger.error("Exception: ", str(e))
-                traceback.print_exc()
-                raise e
-            finally:
-                # Context.clean_content()
-                pass
-        else:
-            try:
-                logger.debug("start execute with params")
-                func(*func_params)
-                logger.debug("end start execute with params")
-                # # func(*func_params)
-                # process = _run_in_process(target=func, args=func_params)
-                # # Context.clean_content()
-
-                # while process.exitcode is None:
-                #     process.join(timeout=5)
-                #     logger.debug("Wait for FL task to finish, pid is {}".format(process.pid))
-                # logger.info("end execute with exit code: {}".format(process.exitcode))
-                # # process.exitcode 0 success, -exit_code failed
-                # if (process.exitcode != 0):
-                #     err_msg = "Task executes failed with exit code: {}".format(process.exitcode)
-                #     logger.error(err_msg)
-                #     raise Exception(err_msg)
-            except Exception as e:
-                logger.error("Exception: ", str(e))
-                traceback.print_exc()
-                raise e
-            finally:
-                # Context.clean_content()
-                pass
-
-    @staticmethod
-    def execute_test():
-        print("This is a tset function.")
+        run(task)

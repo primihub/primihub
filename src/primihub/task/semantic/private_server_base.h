@@ -32,7 +32,9 @@ using primihub::service::DatasetService;
 namespace primihub::task {
 class ServerTaskBase {
  public:
-    using task_context_t = TaskContext<primihub::rpc::ExecuteTaskRequest, primihub::rpc::ExecuteTaskResponse>;
+    // using task_context_t = TaskContext<primihub::rpc::ExecuteTaskRequest, primihub::rpc::ExecuteTaskResponse>;
+    //
+    using task_context_t = TaskContext;
     ServerTaskBase(const Params *params,
                    std::shared_ptr<DatasetService> dataset_service);
     ~ServerTaskBase(){}

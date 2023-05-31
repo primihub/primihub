@@ -28,11 +28,11 @@ grpc_port: 50050
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
-# Use redis by default, set `use_redis: False` to use libp2p
-redis_meta_service:
-  redis_addr: "127.0.0.1:6379"
-  use_redis: True
-  redis_password: "primihub"
+meta_service:
+  mode: "grpc"
+  ip: "127.0.0.1"
+  port: 7977
+  use_tls: false
 
 # load datasets
 datasets:
@@ -63,6 +63,16 @@ datasets:
     model: "csv"
     source: "data/FL/homo_lr/train_breast_cancer.csv"
 
+  # FL homo nn multiclass test case datasets
+  - description: "train_homo_nn_multiclass"
+    model: "csv"
+    source: "data/FL/homo_nn/train/train_mobile_price.csv"
+
+  # FL homo regression test case datasets
+  - description: "train_homo_regression"
+    model: "csv"
+    source: "data/FL/homo_regression/train/train_boston_house.csv"
+
   # PSI test case datasets for sqlite database
   - description: "psi_client_data_db"
     model: "sqlite"
@@ -90,16 +100,3 @@ datasets:
   #  tableName: "psi_client"
   #  query_index: "ID"  ## [[optional]]
 
-localkv:
-  model: "leveldb"
-  path: "./localdb/node0"
-
-# p2p paramaters
-p2p:
-  bootstrap_nodes:
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmaoqnKLY74VdY4P4Ujqyja3eZHy9xX7Q3tQaLWLcvuqHp"
-    - "/ip4/127.0.0.1/tcp/4001/ipfs/QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA"
-  multi_addr: "/ip4/127.0.0.1/tcp/8886"
-  dht_get_value_timeout:  60
-
-notify_server: 0.0.0.0:6666

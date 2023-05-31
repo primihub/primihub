@@ -13,27 +13,31 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include "src/primihub/task/language/py_parser.h"
 #include <glog/logging.h>
 #include <iostream>
-#include <mutex>
 
-#include "src/primihub/task/language/py_parser.h"
-
-std::mutex global_mtx;
 namespace primihub::task {
 /**
  * @brief Parse datasets from python code.
  * @return Dataset names.
  */
 retcode PyParser::parseDatasets() {
+  auto& push_task = getPushTaskRequest();
+  const auto& task_config = push_task.task();
+  const auto& party_datasets = task_config.party_datasets();
+  LOG(ERROR) << "party_datasets: " << party_datasets.size();
+  for (const auto& [party_name,  dataset_map] : party_datasets) {
+    for (const auto& [dataset_index, dataset_id] : dataset_map.data()) {
+      LOG(ERROR) << "party_name: " << party_name << " dataset_id: " << dataset_id;
+      auto dataset_with_tag = std::make_pair(dataset_id, party_name);
+      this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
+    }
+  }
   return retcode::SUCCESS;
 }
 
-PyParser::~PyParser() {
-  ph_context_.release();
-  ph_exec_m_.release();
-  // py::gil_scoped_release;
-}
+PyParser::~PyParser() {}
 
 /**
  * @brief Get
@@ -44,63 +48,6 @@ PyParser::~PyParser() {
  *         from python code.
  */
 retcode PyParser::parseTask() {
-  try {
-    std::lock_guard<std::mutex> lck(global_mtx);
-    py::gil_scoped_acquire acquire;
-    ph_context_ = py::module::import("primihub.context").attr("Context");
-    ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
-    ph_exec_m_.attr("execute")(this->py_code_);
-    // get protocol
-    procotol_ = ph_context_.attr("get_protocol")().cast<std::string>();
-    // get roles
-    auto roles = ph_context_.attr("get_roles")().cast<py::list>();
-    // get func params map
-    auto func_params_ =
-        ph_context_.attr("get_func_params_map")().cast<py::tuple>();
-
-    for (auto &role : roles) {
-      this->roles_.push_back(role.cast<std::string>());
-    }
-
-    // get task type.
-    std::string task_type =
-        ph_context_.attr("get_task_type")().cast<std::string>();
-
-    // get NodeContext map
-    auto nodes_context_map = ph_context_.attr("nodes_context").cast<py::dict>();
-    for (auto &node_context : nodes_context_map) {
-      auto node_context_obj = node_context.second.cast<py::object>();
-      NodeContext _node_context;
-      _node_context.role = node_context_obj.attr("role").cast<std::string>();
-      _node_context.protocol =
-          node_context_obj.attr("protocol").cast<std::string>();
-      _node_context.dumps_func =
-          node_context_obj.attr("dumps_func").cast<std::string>();
-      _node_context.task_type = task_type;
-      auto datasets = node_context_obj.attr("datasets").cast<py::list>();
-      for (auto &dataset : datasets) {
-        VLOG(3) << "Python assign dataset: " << dataset.cast<std::string>();
-        _node_context.datasets.push_back(dataset.cast<std::string>());
-        // Datasets with role tag.
-        this->input_datasets_with_tag_.push_back(
-            std::make_pair(dataset.cast<std::string>(), _node_context.role));
-      }
-
-      auto dataset_port_map =
-          node_context_obj.attr("dataset_port_map").cast<py::dict>();
-      for (auto ds_port : dataset_port_map) {
-        std::string dataset = ds_port.first.cast<std::string>();
-        std::string port = ds_port.second.cast<std::string>();
-        _node_context.dataset_port_map[dataset] = port;
-      }
-      this->nodes_context_map_[_node_context.role] = _node_context;
-    }
-    // clean code parse result
-    ph_context_.attr("clean_content")();
-  } catch (std::exception &e) {
-    LOG(ERROR) << "Failed to parse python: " << e.what();
-    return retcode::FAIL;
-  }
   return retcode::SUCCESS;
 }
 

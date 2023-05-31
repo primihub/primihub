@@ -53,21 +53,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "scheduler_interface",
-    hdrs = [
-        "scheduler.h",
-    ],
-    deps = [
-        "//src/primihub/node:server_config",
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/util/network:communication_lib",
-        "//src/primihub/common:common_util",
-        "//src/primihub/service:dataset_service",
-        "@com_github_glog_glog//:glog",
-    ],
-)
-
 #fl task
 cc_library(
     name = "fl_task",
@@ -138,6 +123,7 @@ cc_library(
         "//src/primihub/util:endian_util",
         "%s:psi_client" % OPENMINED_PSI,
         "%s:psi_server" % OPENMINED_PSI,
+        "@fmt//:fmt",
     ],
 )
 
@@ -150,10 +136,13 @@ cc_library(
         "//src/primihub/util:endian_util",
         "//src/primihub/protos:worker_proto",
     ] + select({
-        ":aarch64": [],
-        ":x86_64":  ["@osu_libpsi//:libpsi"],
-        ":darwin_x86_64": [],
-        "//conditions:default": [],
+      ":aarch64": [],
+      ":x86_64":  [
+        "@osu_libpsi//:libpsi",
+        "//src/primihub/util/network:message_exchange_interface",
+      ],
+      ":darwin_x86_64": [],
+      "//conditions:default": [],
     })
 )
 
@@ -170,10 +159,13 @@ cc_library(
 # pir task
 cc_library(
     name = "pir_task",
-    deps = select({
-        "microsoft-apsi" : [":keyword_pir_task"],
-        "//conditions:default": [":id_pir_task"],
-    }),
+    deps = [
+      ":keyword_pir_task",
+    ],
+    # deps = select({
+    #     "microsoft-apsi" : [":keyword_pir_task"],
+    #     "//conditions:default": [":id_pir_task"],
+    # }),
 )
 
 cc_library(
@@ -235,7 +227,7 @@ cc_library(
     deps = [
         ":task_factory",
         "//src/primihub/task/language:language_parser_factory",
-        "//src/primihub/task/semantic/scheduler:scheduler_lib",
+        "//src/primihub/task/semantic/scheduler:scheduler_factory",
         "//src/primihub/task:task_common",
         "//src/primihub/service:dataset_service",
     ]

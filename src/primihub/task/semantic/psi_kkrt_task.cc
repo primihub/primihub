@@ -13,6 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include <glog/logging.h>
+#include <chrono>
+#include <numeric>
+#include <utility>
+#include <map>
 
 #if defined(__linux__) && defined(__x86_64__)
 #include "cryptoTools/Network/IOService.h"
@@ -24,6 +29,12 @@
 #include "cryptoTools/Crypto/RandomOracle.h"
 #include "cryptoTools/Crypto/PRNG.h"
 #include "cryptoTools/Common/Timer.h"
+
+#include "src/primihub/util/network/message_interface.h"
+#include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
+#include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
+#include "libOTe/NChooseOne/Kkrt/KkrtNcoOtSender.h"
+#include "libOTe/NChooseOne/NcoOtExt.h"
 #endif
 
 #include "src/primihub/task/semantic/psi_kkrt_task.h"
@@ -31,29 +42,17 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/endian_util.h"
-#include <glog/logging.h>
-#include <chrono>
+#include "src/primihub/common/value_check_util.h"
 
 #if defined(__linux__) && defined(__x86_64__)
-#include "libPSI/PSI/Kkrt/KkrtPsiSender.h"
-
-#include "libOTe/NChooseOne/Kkrt/KkrtNcoOtReceiver.h"
-#include "libOTe/NChooseOne/Kkrt/KkrtNcoOtSender.h"
-#include "libOTe/NChooseOne/NcoOtExt.h"
+using primihub::network::TaskMessagePassInterface;
 #endif
 
-#include <numeric>
-
-
-#if defined(__linux__) && defined(__x86_64__)
-using namespace osuCrypto;
-#endif
 using arrow::Table;
 using arrow::StringArray;
 using arrow::DoubleArray;
 using arrow::Int64Builder;
 using primihub::rpc::VarType;
-using std::map;
 
 namespace primihub::task {
 
@@ -64,9 +63,24 @@ PSIKkrtTask::PSIKkrtTask(const TaskParam *task_param,
 retcode PSIKkrtTask::_LoadParams(Task &task) {
     auto param_map = task.params().param_map();
     auto param_map_it = param_map.find("serverAddress");
-
-    if (param_map_it != param_map.end()) {
-        //role_tag_ = EpMode::Client;
+    std::string party_name = task.party_name();
+    const auto& party_datasets = task.party_datasets();
+    auto it = party_datasets.find(party_name);
+    if (it == party_datasets.end()) {
+      LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+      return retcode::FAIL;
+    }
+    auto& dataset_map = it->second.data();
+    {
+      auto it = dataset_map.find(party_name);
+      if (it == dataset_map.end()) {
+        LOG(ERROR) << "no dataset is found for party_name: " << party_name;
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
+    }
+    if (party_name == PARTY_CLIENT) {
+        // role_tag_ = EpMode::Client;
         role_tag_ = 0;
         try {
             VLOG(5) << "parse paramerter";
@@ -80,12 +94,8 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
                 server_result_path = it->second.value_string();
                 VLOG(5) << "server_outputFullFilname: " << server_result_path;
             }
-            // data_index_ = param_map["clientIndex"].value_int32();
-	        psi_type_ = param_map["psiType"].value_int32();
-            dataset_id_ = param_map["clientData"].value_string();
+            psi_type_ = param_map["psiType"].value_int32();
             result_file_path_ = param_map["outputFullFilename"].value_string();
-            host_address_ = param_map["serverAddress"].value_string();
-            VLOG(5) << "serverAddress: " << host_address_;
             auto index_it = param_map.find("clientIndex");
             if (index_it != param_map.end()) {
                 const auto& client_index = index_it->second;
@@ -103,7 +113,7 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
             return retcode::FAIL;
         }
     } else {
-        //role_tag_ = EpMode::Server;
+        // role_tag_ = EpMode::Server;
         role_tag_ = 1;
         try {
             // data_index_ = param_map["serverIndex"].value_int32();
@@ -119,9 +129,6 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
                     data_index_.push_back(client_index.value_int32());
                 }
             }
-            dataset_id_ = param_map["serverData"].value_string();
-            host_address_ = param_map["clientAddress"].value_string();
-            VLOG(5) << "clientAddress: " << host_address_;
             auto it = param_map.find("sync_result_to_server");
             if (it != param_map.end()) {
                 sync_result_to_server = it->second.value_int32() > 0;
@@ -137,15 +144,15 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
             return retcode::FAIL;
         }
     }
-    const auto& node_map = task.node_map();
-    for (const auto& it : node_map) {
-        std::string node_id = it.first;
-        if (!isParty(node_id)) {
-            continue;
-        }
-        const auto& node = it.second;
-        primihub::pbNode2Node(node, &peer_node);
+    const auto& party_info = task.party_access_info();
+    this->peer_party_name_ = party_name == PARTY_CLIENT ? PARTY_SERVER : PARTY_CLIENT;
+    auto party_it = party_info.find(this->peer_party_name_);
+    if (party_it == party_info.end()) {
+      LOG(ERROR) << "get peer node access info failed for party: " << party_name;
+      return retcode::FAIL;
     }
+    auto& pb_peer_node = party_it->second;
+    pbNode2Node(pb_peer_node, &peer_node);
     VLOG(5) << "peer_address_: " << peer_node.to_string();
     return retcode::SUCCESS;
 }
@@ -165,12 +172,12 @@ retcode PSIKkrtTask::_LoadDataset(void) {
 }
 
 #if defined(__linux__) && defined(__x86_64__)
-void PSIKkrtTask::_kkrtRecv(Channel& chl) {
+void PSIKkrtTask::_kkrtRecv(osuCrypto::Channel& chl) {
     u8 dummy[1];
-    PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
 
     u64 sendSize;
-    //u64 recvSize = 10;
+    // u64 recvSize = 10;
     u64 recvSize = elements_.size();
 
     std::vector<u64> data{recvSize};
@@ -178,44 +185,44 @@ void PSIKkrtTask::_kkrtRecv(Channel& chl) {
     std::vector<u64> dest;
     chl.recv(dest);
 
-    //LOG(INFO) << "send size:" << dest[0];
+    // LOG(INFO) << "send size:" << dest[0];
     sendSize = dest[0];
-    std::vector<block> sendSet(sendSize), recvSet(recvSize);
+    std::vector<osuCrypto::block> sendSet(sendSize), recvSet(recvSize);
 
-    u8 block_size = sizeof(block);
-    RandomOracle  sha1(block_size);
-    u8 hash_dest[block_size];
+    u8 block_size = sizeof(osuCrypto::block);
+    osuCrypto::RandomOracle  sha1(block_size);
+    u8 hash_dest[block_size];   // NOLINT
     for (u64 i = 0; i < recvSize; ++i) {
-        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());
-        sha1.Final((u8 *)hash_dest);
-        recvSet[i] = toBlock(hash_dest);
+        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());  // NOLINT
+        sha1.Final((u8 *)hash_dest);  // NOLINT
+        recvSet[i] = osuCrypto::toBlock(hash_dest);
         sha1.Reset();
     }
-    KkrtNcoOtReceiver otRecv;
-    KkrtPsiReceiver recvPSIs;
-    //LOG(INFO) << "client step 1";
+    osuCrypto::KkrtNcoOtReceiver otRecv;
+    osuCrypto::KkrtPsiReceiver recvPSIs;
+    // LOG(INFO) << "client step 1";
 
-    //recvPSIs.setTimer(gTimer);
+    // recvPSIs.setTimer(gTimer);
     chl.recv(dummy, 1);
-    //LOG(INFO) << "client step 2";
-    //gTimer.reset();
+    // LOG(INFO) << "client step 2";
+    // gTimer.reset();
     chl.asyncSend(dummy, 1);
-    //LOG(INFO) << "client step 3";
-    //Timer timer;
-    //auto start = timer.setTimePoint("start");
-    recvPSIs.init(sendSize, recvSize, 40, chl, otRecv, prng.get<block>());
-    //LOG(INFO) << "client step 4";
-    //auto mid = timer.setTimePoint("init");
+    // LOG(INFO) << "client step 3";
+    // Timer timer;
+    // auto start = timer.setTimePoint("start");
+    recvPSIs.init(sendSize, recvSize, 40, chl, otRecv, prng.get<osuCrypto::block>());
+    // LOG(INFO) << "client step 4";
+    // auto mid = timer.setTimePoint("init");
     recvPSIs.sendInput(recvSet, chl);
-    //LOG(INFO) << "client step 5";
-    //auto end = timer.setTimePoint("done");
+    // LOG(INFO) << "client step 5";
+    // auto end = timer.setTimePoint("done");
 
     _GetIntsection(recvPSIs);
 }
 
-void PSIKkrtTask::_kkrtSend(Channel& chl) {
+void PSIKkrtTask::_kkrtSend(osuCrypto::Channel& chl) {
     u8 dummy[1];
-    PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
 
     u64 sendSize = elements_.size();
     u64 recvSize;
@@ -225,63 +232,63 @@ void PSIKkrtTask::_kkrtSend(Channel& chl) {
     std::vector<u64> dest;
     chl.recv(dest);
 
-    //LOG(INFO) << "recv size:" << dest[0];
+    // LOG(INFO) << "recv size:" << dest[0];
     recvSize = dest[0];
-    std::vector<block> set(sendSize);
-    u8 block_size = sizeof(block);
-    RandomOracle  sha1(block_size);
-    u8 hash_dest[block_size];
-    //prng.get(set.data(), set.size());
+    std::vector<osuCrypto::block> set(sendSize);
+    u8 block_size = sizeof(osuCrypto::block);
+    osuCrypto::RandomOracle sha1(block_size);
+    u8 hash_dest[block_size];   // NOLINT
+    // prng.get(set.data(), set.size());
     for (u64 i = 0; i < sendSize; ++i) {
-        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());
-        sha1.Final((u8 *)hash_dest);
-        set[i] = toBlock(hash_dest);
+        sha1.Update((u8 *)elements_[i].data(), elements_[i].size());    // NOLINT
+        sha1.Final((u8 *)hash_dest);                                    // NOLINT
+        set[i] = osuCrypto::toBlock(hash_dest);
         sha1.Reset();
     }
 
-    KkrtNcoOtSender otSend;
-    KkrtPsiSender sendPSIs;
-    //LOG(INFO) << "server step 1";
+    osuCrypto::KkrtNcoOtSender otSend;
+    osuCrypto::KkrtPsiSender sendPSIs;
+    // LOG(INFO) << "server step 1";
 
-    sendPSIs.setTimer(gTimer);
+    sendPSIs.setTimer(osuCrypto::gTimer);
     chl.asyncSend(dummy, 1);
-    //LOG(INFO) << "server step 2";
+    // LOG(INFO) << "server step 2";
     chl.recv(dummy, 1);
-    //LOG(INFO) << "server step 3";
-    sendPSIs.init(sendSize, recvSize, 40, chl, otSend, prng.get<block>());
-    //LOG(INFO) << "server step 4";
+    // LOG(INFO) << "server step 3";
+    sendPSIs.init(sendSize, recvSize, 40, chl, otSend, prng.get<osuCrypto::block>());
+    // LOG(INFO) << "server step 4";
     sendPSIs.sendInput(set, chl);
-    //LOG(INFO) << "server step 5";
+    // LOG(INFO) << "server step 5";
 
     u64 dataSent = chl.getTotalDataSent();
-    //LOG(INFO) << "server step 6";
+    // LOG(INFO) << "server step 6";
 
     chl.resetStats();
-    //LOG(INFO) << "server step 7";
+    // LOG(INFO) << "server step 7";
 }
 
-retcode PSIKkrtTask::_GetIntsection(KkrtPsiReceiver &receiver) {
-    /*for (auto pos : receiver.mIntersection) {
-        LOG(INFO) << pos;
-    }*/
-
-    if (psi_type_ == rpc::PsiType::DIFFERENCE) {
-        map<u64, int> inter_map;
-        for (auto pos : receiver.mIntersection) {
-            inter_map[pos] = 1;
-        }
-        u64 num_elements = elements_.size();
-        for (u64 i = 0; i < num_elements; i++) {
-            if (inter_map.find(i) == inter_map.end()) {
-                result_.push_back(elements_[i]);
-            }
-        }
-    } else {
-        for (auto pos : receiver.mIntersection) {
-            result_.push_back(elements_[pos]);
-        }
+retcode PSIKkrtTask::_GetIntsection(osuCrypto::KkrtPsiReceiver &receiver) {
+  /*for (auto pos : receiver.mIntersection) {
+      LOG(INFO) << pos;
+  }*/
+  std::set<u64> inter_pos;
+  for (auto pos : receiver.mIntersection) {
+    inter_pos.insert(pos);
+  }
+  result_.clear();
+  if (psi_type_ == rpc::PsiType::DIFFERENCE) {
+    u64 num_elements = elements_.size();
+    for (u64 i = 0; i < num_elements; i++) {
+      if (inter_pos.find(i) == inter_pos.end()) {
+        result_.push_back(elements_[i]);
+      }
     }
-    return retcode::SUCCESS;
+  } else {
+    for (const auto pos : inter_pos) {
+      result_.push_back(elements_[pos]);
+    }
+  }
+  return retcode::SUCCESS;
 }
 #endif
 
@@ -346,32 +353,31 @@ int PSIKkrtTask::execute() {
     VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
 #if defined(__linux__) && defined(__x86_64__)
     osuCrypto::IOService ios;
-    auto mode = role_tag_ ? EpMode::Server : EpMode::Client;
-    getAvailablePort(&data_port);
-    VLOG(5) << "getAvailablePort: " << data_port;
-    exchangeDataPort();
-    std::string server_addr;
-    if (mode == EpMode::Client) {
-        server_addr = peer_node.ip() + ":" + std::to_string(peer_data_port);
-    } else {
-        server_addr = peer_node.ip() + ":" + std::to_string(data_port);
+    auto mode = role_tag_ ? osuCrypto::EpMode::Server : osuCrypto::EpMode::Client;
+    auto& link_ctx = this->getTaskContext().getLinkContext();
+    if (link_ctx == nullptr) {
+      LOG(ERROR) << "Linkcontext is empty";
+      return -1;
     }
-    VLOG(5) << "server_addr: " << server_addr;
-    Endpoint ep(ios, server_addr, mode);
-    Channel chl = ep.addChannel();
+    auto base_channel = link_ctx->getChannel(peer_node);
+    // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
+    // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
+    auto msg_interface = std::make_unique<TaskMessagePassInterface>(
+        job_id(), task_id(), request_id(), this->party_name(),
+        this->peer_party_name_, link_ctx.get(), base_channel);
 
-    if (mode == EpMode::Client) {
+    osuCrypto::Channel chl(ios, msg_interface.release());
+
+    if (mode == osuCrypto::EpMode::Client) {
         LOG(INFO) << "start recv.";
         auto recv_data_start = timer.timeElapse();
         try {
             _kkrtRecv(chl);
         } catch (std::exception &e) {
-            LOG(ERROR) << "Kkrt psi client node task failed:"
-	               << e.what();
+            LOG(ERROR) << "Kkrt psi client node task failed:" << e.what();
             chl.close();
-            ep.stop();
             ios.stop();
-	    return -1;
+            return -1;
         }
         auto recv_data_end = timer.timeElapse();
         auto time_cost = recv_data_end - recv_data_start;
@@ -382,10 +388,8 @@ int PSIKkrtTask::execute() {
         try {
             _kkrtSend(chl);
         } catch (std::exception &e) {
-            LOG(ERROR) << "Kkrt psi server node task failed:"
-		       << e.what();
+            LOG(ERROR) << "Kkrt psi server node task failed:" << e.what();
             chl.close();
-            ep.stop();
             ios.stop();
             return -1;
         }
@@ -394,11 +398,10 @@ int PSIKkrtTask::execute() {
         VLOG(5) << "kkrt server process data time cost(ms): " << time_cost;
     }
     chl.close();
-    ep.stop();
     ios.stop();
     LOG(INFO) << "kkrt psi run success";
 
-    if (mode == EpMode::Client) {
+    if (mode == osuCrypto::EpMode::Client) {
         auto _start = timer.timeElapse();
         ret = saveResult();
         if (ret != retcode::SUCCESS) {
@@ -408,7 +411,7 @@ int PSIKkrtTask::execute() {
         auto _end = timer.timeElapse();
         auto time_cost = _end - _start;
         VLOG(5) << "kkrt client save result data time cost(ms): " << time_cost;
-    } else if (mode == EpMode::Server) {
+    } else if (mode == osuCrypto::EpMode::Server) {
         if (sync_result_to_server) {
             recvIntersectionData();
         }
@@ -420,9 +423,11 @@ int PSIKkrtTask::execute() {
 retcode PSIKkrtTask::recvIntersectionData() {
     VLOG(5) << "recvPSIResult from client";
     std::vector<std::string> psi_result;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
     std::string recv_data_str;
-    recv_queue.wait_and_pop(recv_data_str);
+    auto ret = this->recv(this->key, &recv_data_str);
+    if (ret != retcode::SUCCESS) {
+      return retcode::FAIL;
+    }
     uint64_t offset = 0;
     uint64_t data_len = recv_data_str.length();
     VLOG(5) << "data_len_data_len: " << data_len;
@@ -442,43 +447,4 @@ retcode PSIKkrtTask::recvIntersectionData() {
     return saveDataToCSVFile(psi_result, server_result_path, col_title);
 }
 
-retcode PSIKkrtTask::exchangeDataPort() {
-    std::string data_port_info_str;
-    rpc::Params data_port_params;
-    auto param_map = data_port_params.mutable_param_map();
-    // dataset size
-    rpc::ParamValue pv_data_port;
-    pv_data_port.set_var_type(rpc::VarType::INT32);
-    pv_data_port.set_value_int32(this->data_port);
-    pv_data_port.set_is_array(false);
-    (*param_map)["data_port"] = std::move(pv_data_port);
-    bool success = data_port_params.SerializeToString(&data_port_info_str);
-    if (!success) {
-        LOG(ERROR) << "serialize data port info failed";
-        return retcode::FAIL;
-    }
-    auto channel = this->getTaskContext().getLinkContext()->getChannel(peer_node);
-    auto ret = channel->send(this->key, data_port_info_str);
-    if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "send data port info to peer: [" << peer_node.to_string()
-            << "] failed";
-        return ret;
-    }
-    // // wait for peer data port info
-    VLOG(5) << "begin to recv data port info from peer.........";
-    std::string recv_data_port_info_str;
-    auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    recv_queue.wait_and_pop(recv_data_port_info_str);
-    rpc::Params recv_data_port_info;
-    recv_data_port_info.ParseFromString(recv_data_port_info_str);
-    const auto& recv_param_map = recv_data_port_info.param_map();
-    auto it = recv_param_map.find("data_port");
-    if (it == recv_param_map.end()) {
-        CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, "data_port info does not find");
-    }
-    peer_data_port = it->second.value_int32();
-    VLOG(5) << "peer_data_port: " << peer_data_port;
-    return retcode::SUCCESS;
-}
-
-} // namespace primihub::task
+}  // namespace primihub::task
