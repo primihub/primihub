@@ -1287,6 +1287,8 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
+      LOG(INFO) << "Reveal MPC result to party "
+                << static_cast<char>(party + '0') << ".";
     }
   }
 
@@ -1316,6 +1318,8 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
+      LOG(INFO) << "Reveal MPC result to party "
+                << static_cast<char>(party + '0') << ".";
     }
   }
 
