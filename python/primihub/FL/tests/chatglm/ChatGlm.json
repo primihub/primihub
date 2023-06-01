@@ -28,6 +28,7 @@
         "common_params": {
             "model": "Chat_glm",
             "process": "train",
+            "task_name": "HFL_chatglm",
             "aggration_iter": 2,
             "train_iter": 3
         },

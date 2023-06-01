@@ -27,8 +27,9 @@ class Client:
         party_datasets = {}
         for party_name, role_param in self.role_params.items():
             Dataset = common_pb2.Dataset()
-            Dataset.data['data_set'] = role_param['data_set']
-            party_datasets[party_name] = Dataset
+            if 'data_set' in role_param.keys():
+                Dataset.data['data_set'] = role_param['data_set']
+                party_datasets[party_name] = Dataset
 
         # construct 'task_info'
         task_info = common_pb2.TaskContext()
