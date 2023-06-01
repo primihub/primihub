@@ -11,6 +11,10 @@
         "client": "primihub.FL.algorithm.neural_network.hfl_client.NeuralNetworkClient",
         "server": "primihub.FL.algorithm.neural_network.hfl_server.NeuralNetworkServer"
     },
+    "HFL_CNN": {
+        "client": "primihub.FL.algorithm.neural_network.hfl_cnn_client.CNNClient",
+        "server": "primihub.FL.algorithm.neural_network.hfl_cnn_server.CNNServer"
+    },
     "Chat_glm": {
         "client": "primihub.FL.algorithm.chatglm.ChatGlm_client.ChatGlmClient",
         "server": "primihub.FL.algorithm.chatglm.ChatGlm_server.ChatGlmServer"

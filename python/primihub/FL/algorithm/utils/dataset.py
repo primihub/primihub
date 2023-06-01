@@ -1,6 +1,11 @@
 import numpy as np
 from numpy.random import default_rng
 import pandas as pd
+import os
+import imghdr
+import zipfile
+from torchvision.io import read_image
+from torch.utils.data import Dataset as TorchDataset
 
 
 def read_csv(data_path, selected_column=None, id=None):
@@ -11,9 +16,53 @@ def read_csv(data_path, selected_column=None, id=None):
         data.pop(id)
     return data
 
-def read_image(img_dir, annotations_file, transform=None, target_transform=None):
-    #Todo
-    pass
+
+class TorchImageDataset(TorchDataset):
+
+    def __init__(self,
+                 img_dir,
+                 annotations_file=None,
+                 transform=None,
+                 target_transform=None):
+        if zipfile.is_zipfile(img_dir):
+            with zipfile.ZipFile(img_dir, 'r') as zip_ref:
+                zip_ref.extractall(os.path.dirname(img_dir))
+                self.img_dir = os.path.join(os.path.dirname(img_dir),
+                                             zip_ref.namelist()[0])
+        else:
+            self.img_dir = img_dir
+
+        self.transform = transform
+        self.target_transform = target_transform
+
+        img_type = ['jpeg', 'png']
+        if annotations_file:
+            self.img_labels = pd.read_csv(annotations_file)
+        else:
+            file_name = [
+                f for f in os.listdir(self.img_dir)
+                if imghdr.what(os.path.join(self.img_dir, f)) in img_type
+            ]
+            self.img_labels = pd.DataFrame(file_name,
+                                           columns=['file_name'])
+            
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir,
+                                self.img_labels.loc[idx, 'file_name'])
+        image = read_image(img_path)
+        if self.transform:
+            image = self.transform(image)
+        
+        if 'y' in self.img_labels.columns:
+            label = self.img_labels.loc[idx, 'y']
+            if self.target_transform:
+                label = self.target_transform(label)
+            return image, label
+        else:
+            return image
 
 
 class DataLoader:
