@@ -23,6 +23,8 @@ namespace primihub::task {
 class PsiCommonOperator {
  public:
      bool isNumeric(const arrow::Type::type& type_id);
+     bool isNumeric64Type(const arrow::Type::type& type_id);
+     bool isNumeric32Type(const arrow::Type::type& type_id);
      bool isString(const arrow::Type::type& type_id);
      bool validationDataColum(const std::vector<int>& data_cols, int table_max_colums);
      retcode LoadDatasetFromTable(std::shared_ptr<arrow::Table> table,
