@@ -35,6 +35,14 @@
 #include "src/primihub/util/network/mpc_commpkg.h"
 #endif
 
+#ifdef MPC_SOCKET_CHANNEL
+#include "src/primihub/util/network/socket/channel.h"
+#include "src/primihub/util/network/socket/commpkg.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#include "src/primihub/util/network/mpc_commpkg.h"
+#endif
+
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
 class MPCOperator {
