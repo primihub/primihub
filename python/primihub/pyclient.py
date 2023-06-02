@@ -49,7 +49,7 @@ class Client:
         self.current_worker = WorkerClient(
             node=self.party_info['task_manager'],
             cert=None,
-            task_name=self.component_params['common_params']['task_name'],
+            task_name=self.component_params['common_params'].get('task_name',''),
             language=common_pb2.Language.PYTHON,
             params=params,
             task_info=task_info,
