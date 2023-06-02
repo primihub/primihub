@@ -27,7 +27,7 @@ class Client:
         party_datasets = {}
         for party_name, role_param in self.role_params.items():
             Dataset = common_pb2.Dataset()
-            Dataset.data['data_set'] = role_param['data_set']
+            Dataset.data['data_set'] = role_param.get('data_set','')
             party_datasets[party_name] = Dataset
 
         # construct 'task_info'
@@ -49,7 +49,7 @@ class Client:
         self.current_worker = WorkerClient(
             node=self.party_info['task_manager'],
             cert=None,
-            task_name=self.component_params['common_params']['task_name'],
+            task_name=self.component_params['common_params'].get('task_name',''),
             language=common_pb2.Language.PYTHON,
             params=params,
             task_info=task_info,
