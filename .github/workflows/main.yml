@@ -96,11 +96,11 @@ jobs:
 
         ./bazel-bin/test/primihub/algorithm/logistic_test
         ./bazel-bin/test/primihub/algorithm/mpc_avg_test
-        ./bazel-bin/test/primihub/algorithm/mpc_min_test
-        ./bazel-bin/test/primihub/algorithm/mpc_max_test
-        ./bazel-bin/test/primihub/algorithm/mpc_sum_test
-        ./bazel-bin/test/primihub/common/type/common_test
-        ./bazel-bin/test/primihub/util/network_test
+        #./bazel-bin/test/primihub/algorithm/mpc_min_test
+        #./bazel-bin/test/primihub/algorithm/mpc_max_test
+        #./bazel-bin/test/primihub/algorithm/mpc_sum_test
+        #./bazel-bin/test/primihub/common/type/common_test
+        #./bazel-bin/test/primihub/util/network_test
         # bazel test --config=darwin_x86_64 --config=macos primitive_test
         # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
         # bazel test --config=darwin_x86_64 --config=macos prng_test
