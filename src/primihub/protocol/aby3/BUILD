@@ -28,6 +28,8 @@ cc_library(
       "//src/primihub/util/crypto:crypto_lib",
       "@lib_function2//:function2",
       "@com_github_glog_glog//:glog",
+      #TODO(cuibo) condition Selection
+      "//src/primihub/util/network:mpc_commpkg",
   ],
 )
 

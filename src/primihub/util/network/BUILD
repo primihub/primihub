@@ -43,3 +43,23 @@ cc_library(
     "//src/primihub/util:threadsafe_queue",
   ],
 )
+
+cc_library(
+  name = "mpc_channel",
+  hdrs = ["mpc_channel.h"],
+  srcs = ["mpc_channel.cc"],
+  deps = [
+    ":communication_lib",
+    "//src/primihub/util:threadsafe_queue",
+    "//src/primihub/common:common_lib",
+    "//src/primihub/util:util_lib",
+  ],
+)
+
+cc_library(
+  name = "mpc_commpkg",
+  hdrs = ["mpc_commpkg.h"],
+  deps = [
+    ":mpc_channel",
+  ],
+)

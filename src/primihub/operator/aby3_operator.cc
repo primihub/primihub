@@ -2,6 +2,7 @@
 #include "src/primihub/operator/aby3_operator.h"
 #include <memory>
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
                        u32 prev_port) {
   CommPkg comm = CommPkg();
@@ -79,12 +80,33 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
 
   return 1;
 }
+#else
+int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
+  commPtr = std::make_shared<CommPkg>(prev, next);
+  enc.init(partyIdx, *commPtr, sysRandomSeed());
+  eval.init(partyIdx, *commPtr, sysRandomSeed());
 
+  binEval.mPrng.SetSeed(toBlock(partyIdx));
 
+  gen.init(toBlock(partyIdx), toBlock((partyIdx + 1) % 3));
+
+  runtime.init(partyIdx, commPtr);
+
+  mNext = &next;
+  mPrev = &prev;
+
+  return 0;
+}
+#endif
+
+#ifdef MPC_SOCKET_CHANNEL
 void MPCOperator::fini() {
   mPrev.close();
   mNext.close();
 }
+#else
+void MPCOperator::fini() { return; }
+#endif
 
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
@@ -103,10 +125,15 @@ void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 }
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{static_cast<u64>(val.rows()),
-                          static_cast<u64>(val.cols())};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
+                          static_cast<unsigned long long>(val.cols())};
+#ifdef MPC_SOCKET_CHANNEL
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
+#else
+  mNext->asyncSendCopy(size);
+  mPrev->asyncSendCopy(size);
+#endif
 
   si64Matrix dest(size[0], size[1]);
   enc.localIntMatrix(runtime, val, dest).get();
@@ -116,9 +143,17 @@ si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
 si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
   std::array<u64, 2> size;
   if (pIdx == (partyIdx + 1) % 3)
+#ifdef MPC_SOCKET_CHANNEL
     mNext.recv(size);
+#else
+    mNext->recv(size);
+#endif
   else if (pIdx == (partyIdx + 2) % 3)
+#ifdef MPC_SOCKET_CHANNEL
     mPrev.recv(size);
+#else
+    mPrev->recv(size);
+#endif
   else
     throw RTE_LOC;
 
@@ -129,10 +164,15 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 
 // only support val is column vector
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
-  std::array<u64, 2> size{static_cast<u64>(val.rows()),
-                          static_cast<u64>(bitCount)};
+  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
+                          static_cast<unsigned long long>(bitCount)};
+#ifdef MPC_SOCKET_CHANNEL
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
+#else
+  mNext->asyncSendCopy(size);
+  mPrev->asyncSendCopy(size);
+#endif
 
   sbMatrix dest(size[0], size[1]);
   enc.localBinMatrix(runtime, val, dest).get();
@@ -142,9 +182,17 @@ sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
 sbMatrix MPCOperator::createBinSharesByShape(u64 pIdx) {
   std::array<u64, 2> size;
   if (pIdx == (partyIdx + 1) % 3)
+#ifdef MPC_SOCKET_CHANNEL
     mNext.recv(size);
+#else
+    mNext->recv(size);
+#endif
   else if (pIdx == (partyIdx + 2) % 3)
+#ifdef MPC_SOCKET_CHANNEL
     mPrev.recv(size);
+#else
+    mPrev->recv(size);
+#endif
   else
     throw RTE_LOC;
 
@@ -313,13 +361,26 @@ void MPCOperator::MPC_Compare(i64Matrix &m, sbMatrix &sh_res) {
     if (partyIdx == i) {
       shape[0] = m.rows();
       shape[1] = m.cols();
+#ifdef MPC_SOCKET_CHANNEL
       mNext.asyncSendCopy(shape);
       mPrev.asyncSendCopy(shape);
+#else
+      mNext->asyncSendCopy(shape);
+      mPrev->asyncSendCopy(shape);
+#endif
     } else {
       if (partyIdx == (i + 1) % 3)
+#ifdef MPC_SOCKET_CHANNEL
         mPrev.recv(shape);
+#else
+        mPrev->recv(shape);
+#endif
       else if (partyIdx == (i + 2) % 3)
+#ifdef MPC_SOCKET_CHANNEL
         mNext.recv(shape);
+#else
+        mPrev->recv(shape);
+#endif
       else
         throw std::runtime_error("Message recv logic error.");
     }
@@ -440,13 +501,26 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
       shape[0] = 0;
       shape[1] = 0;
 
+#ifdef MPC_SOCKET_CHANNEL
       mNext.asyncSendCopy(shape);
       mPrev.asyncSendCopy(shape);
+#else
+      mNext->asyncSendCopy(shape);
+      mPrev->asyncSendCopy(shape);
+#endif
     } else {
       if (partyIdx == (i + 1) % 3)
+#ifdef MPC_SOCKET_CHANNEL
         mPrev.recv(shape);
+#else
+        mPrev->recv(shape);
+#endif
       else
+#ifdef MPC_SOCKET_CHANNEL
         mNext.recv(shape);
+#else
+        mNext->recv(shape);
+#endif
     }
 
     all_party_shape.emplace_back(shape);
@@ -506,4 +580,4 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
   LOG(INFO) << "Finish evaluate MSB circuit.";
 }
 
-}  // namespace primihub
+} // namespace primihub

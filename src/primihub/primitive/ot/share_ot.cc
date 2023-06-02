@@ -2,7 +2,11 @@
 #include "src/primihub/primitive/ot/share_ot.h"
 
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 void SharedOT::send(Channel & chl, span<std::array<i64, 2>> m) {
+#else
+void SharedOT::send(MpcChannel &chl, span<std::array<i64, 2>> m) {
+#endif
   if (mIdx == -1)
     throw RTE_LOC;
 
@@ -19,7 +23,11 @@ void SharedOT::send(Channel & chl, span<std::array<i64, 2>> m) {
   chl.asyncSend(std::move(msgs));
 }
 
+#ifdef MPC_SOCKET_CHANNEL
 void SharedOT::help(Channel & chl, const BitVector& choices) {
+#else
+void SharedOT::help(MpcChannel & chl, const BitVector& choices) {
+#endif
   if (mIdx == -1)
     throw RTE_LOC;
 
@@ -42,8 +50,13 @@ void SharedOT::setSeed(const block & seed, u64 seedIdx) {
   mIdx = seedIdx;
 }
 
+#ifdef MPC_SOCKET_CHANNEL
 void SharedOT::recv(Channel & sender, Channel & helper,
                     const BitVector & choices, span<i64> recvMsgs) {
+#else
+void SharedOT::recv(MpcChannel &sender, MpcChannel &helper,
+                    const BitVector & choices, span<i64> recvMsgs) {
+#endif
   std::vector<std::array<i64, 2>> msgs(choices.size());
   std::vector<i64> mc(choices.size());
 
@@ -55,8 +68,17 @@ void SharedOT::recv(Channel & sender, Channel & helper,
   }
 }
 
-std::future<void> SharedOT::asyncRecv(Channel & sender,
-  Channel & helper, BitVector && choices, span<i64> recvMsgs) {
+#ifdef MPC_SOCKET_CHANNEL
+std::future<void> SharedOT::asyncRecv(Channel& sender,
+    Channel& helper,
+    BitVector&& choices,
+    span<i64> recvMsgs) {
+#else
+std::future<void> SharedOT::asyncRecv(MpcChannel& sender,
+    MpcChannel& helper,
+    BitVector && choices,
+    span<i64> recvMsgs) {
+#endif
   auto m = std::make_shared<
                 std::tuple<std::vector<std::array<i64, 2>>,
                            std::vector<i64>,

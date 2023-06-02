@@ -20,30 +20,49 @@
 #include <string>
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/util/network/link_context.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub {
 class AlgorithmBase {
-  public:
-    explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service)
-        : dataset_service_(dataset_service) {};
-    virtual ~AlgorithmBase(){};
+ public:
+  explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service)
+      : dataset_service_(dataset_service) {};
+  virtual ~AlgorithmBase(){};
 
-    virtual int loadParams(primihub::rpc::Task &task) = 0;
-    virtual int loadDataset() = 0;
-    virtual int initPartyComm() = 0;
-    virtual int execute() = 0;
-    virtual int finishPartyComm() = 0;
-    virtual int saveModel() = 0;
-    std::shared_ptr<DatasetService>& datasetService() {
-      return dataset_service_;
-    }
+  virtual int loadParams(primihub::rpc::Task &task) = 0;
+  virtual int loadDataset() = 0;
+  virtual int initPartyComm() = 0;
+  virtual int execute() = 0;
+  virtual int finishPartyComm() = 0;
+  virtual int saveModel() = 0;
 
-  protected:
-    std::shared_ptr<DatasetService> dataset_service_;
-    std::string algorithm_name_;
+  std::shared_ptr<DatasetService>& datasetService() {
+    return dataset_service_;
+  }
+
+  void InitLinkContext(network::LinkContext* link_ctx) {
+    link_ctx_ref_ = link_ctx;
+  }
+
+  network::LinkContext* GetLinkContext() {
+    return link_ctx_ref_;
+  }
+
+  uint16_t party_id() {return party_id_;}
+  void set_party_id(uint16_t party_id) {party_id_ = party_id;}
+
+  std::string party_name() {return party_name_;}
+  void set_party_name(const std::string& party_name) {party_name_ = party_name;}
+
+ protected:
+  std::shared_ptr<DatasetService> dataset_service_;
+  std::string algorithm_name_;
+  network::LinkContext* link_ctx_ref_{nullptr};
+  std::string party_name_;
+  uint16_t party_id_;
 };
 } // namespace primihub
 

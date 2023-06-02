@@ -3,9 +3,15 @@
 #define SRC_primihub_PROTOCOL_ABY3_SH3_GEN_H_
 
 #include "src/primihub/common/type/type.h"
+#include "src/primihub/util/crypto/prng.h"
+
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/channel.h"
 #include "src/primihub/util/network/socket/commpkg.h"
-#include "src/primihub/util/crypto/prng.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#include "src/primihub/util/network/mpc_commpkg.h"
+#endif
 
 namespace primihub {
 
@@ -37,7 +43,7 @@ struct Sh3ShareGen {
     comm.mNext().asyncSendCopy(seed);
     block prevSeed;
     comm.mPrev().recv(prevSeed);
-    
+
     init(prevSeed, seed, buffSize);
   }
 

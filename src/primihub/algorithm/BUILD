@@ -55,6 +55,9 @@ cc_library(
         "//src/primihub/executor:mpc_express_executor",
         "//src/primihub/data_store:data_store_util",
         "//src/primihub/util/crypto:crypto_lib",
+        #TODO condition select
+        "//src/primihub/util/network:communication_lib",
+        "//src/primihub/util/network:mpc_commpkg"
     ],
 )
 
@@ -79,5 +82,6 @@ cc_library(
         "//src/primihub/protocol:protocol_cryptflow2_ot_lib",
         "//src/primihub/util/network:network_lib",
         "//src/primihub/util:instruction_check_util",
+        "//src/primihub/util/network:communication_lib",
     ],
 )

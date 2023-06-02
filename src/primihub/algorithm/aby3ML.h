@@ -13,13 +13,23 @@
 #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
 #include "src/primihub/protocol/aby3/sh3_gen.h"
 #include "src/primihub/util/crypto/prng.h"
+
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/channel.h"
 #include "src/primihub/util/network/socket/session.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#endif
 
 namespace primihub {
 class aby3ML {
  public:
+#ifdef MPC_SOCKET_CHANNEL
   Channel mPreproNext, mPreproPrev, mNext, mPrev;
+#else
+  MpcChannel mNext, mPrev;
+#endif
+
   Sh3Encryptor mEnc;
   Sh3Evaluator mEval;
   Sh3Runtime mRt;
@@ -29,8 +39,11 @@ class aby3ML {
     return mRt.mPartyIdx;
   }
 
-  void init(u64 partyIdx, Session& prev, Session& next,
-    block seed);
+#ifdef MPC_SOCKET_CHANNEL
+  void init(u64 partyIdx, Session& prev, Session& next, block seed);
+#else
+  void init(u64 partyIdx, MpcChannel &prev, MpcChannel &next, block seed);
+#endif
 
   void fini(void);
 
@@ -137,7 +150,7 @@ class aby3ML {
     return ret;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64<D> mul(const sf64<D>& left, const sf64<D>& right) {
     sf64<D> dest;
@@ -152,7 +165,7 @@ class aby3ML {
     return static_cast<double>(dest);
   }
 
-  // 
+  //
   template<Decimal D>
   sf64<D> constMul(const i64& a, const sf64<D>& vals) {
     sf64<D> dest;
@@ -160,7 +173,7 @@ class aby3ML {
     return dest;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64Matrix<D> constMul(const i64& a, const sf64Matrix<D>& vals) {
     sf64Matrix<D> dest;
@@ -168,7 +181,7 @@ class aby3ML {
     return dest;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64<D> constFixedMul(const double& a, const sf64<D>& vals) {
     sf64<D> dest;
@@ -177,7 +190,7 @@ class aby3ML {
     return dest;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64Matrix<D> constFixedMul(const double& a, const sf64Matrix<D>& vals) {
     sf64Matrix<D> dest;
@@ -186,7 +199,7 @@ class aby3ML {
     return dest;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64<D> FixedPow(const u64& n, const sf64<D>& B) {
     i64 i, j;
@@ -211,7 +224,7 @@ class aby3ML {
     return C;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64Matrix<D> FixedPow(const u64& n, const sf64Matrix<D>& B) {
     i64 i, j;
@@ -236,7 +249,7 @@ class aby3ML {
     return C;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64<D> average(sf64<D> *A, u64 n) {
     double inv = 1.0 / n;
@@ -251,7 +264,7 @@ class aby3ML {
     return dest;
   }
 
-  // 
+  //
   template<Decimal D>
   sf64Matrix<D> average(sf64Matrix<D> *A, u64 n) {
     double inv = 1.0 / n;

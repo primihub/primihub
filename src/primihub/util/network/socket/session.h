@@ -39,14 +39,22 @@ class Channel;
 typedef SessionMode EpMode;
 
 struct PartyConfig {
+  PartyConfig() = default;
+  PartyConfig(const std::string &node_id, const rpc::Task &task);
+  void CopyFrom(const PartyConfig& config);
+  std::string party_name() {return node_id;}
+  uint16_t party_id() {return this->party_id_;}
+  std::map<uint16_t, std::string>& PartyId2PartyNameMap() {return node_id_map;}
+  std::map<std::string, rpc::Node>& PartyName2PartyInfoMap() {return node_map;}
+
+ public:
   std::string node_id;
+  uint16_t party_id_;
   std::string task_id;
   std::string job_id;
   std::string request_id;
   std::map<uint16_t, std::string> node_id_map;
   std::map<std::string, rpc::Node> node_map;
-
-  PartyConfig(const std::string &node_id, const rpc::Task &task);
 };
 
 class Session {

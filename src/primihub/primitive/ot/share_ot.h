@@ -11,10 +11,16 @@
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/crypto/prng.h"
 #include "src/primihub/util/crypto/bit_vector.h"
+
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/channel.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#endif
 
 namespace primihub {
 
+#ifdef MPC_SOCKET_CHANNEL
 class SharedOT {
  public:
   AES_Type mAes;
@@ -30,10 +36,32 @@ class SharedOT {
                    const BitVector& choices, span<i64> recvMsgs);
 
   static std::future<void> asyncRecv(Channel& sender,
-                                     Channel & helper,
+                                     Channel& helper,
                                      BitVector&& choices,
                                      span<i64> recvMsgs);
 };
+#else
+class SharedOT {
+ public:
+  AES_Type mAes;
+  u64 mIdx = -1;
+
+  void setSeed(const block& seed, u64 seedIdx = 0);
+
+  void send(MpcChannel& recver, span<std::array<i64,2>> msgs);
+
+  void help(MpcChannel& recver, const BitVector& choices);
+
+  static void recv(MpcChannel& sender, MpcChannel & helper,
+                   const BitVector& choices, span<i64> recvMsgs);
+
+  static std::future<void> asyncRecv(MpcChannel& sender,
+                                     MpcChannel& helper,
+                                     BitVector&& choices,
+                                     span<i64> recvMsgs);
+};
+
+#endif
 
 }  // namespace primihub
 
