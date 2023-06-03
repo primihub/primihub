@@ -252,16 +252,14 @@ MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
+  this->set_party_name(config.party_name());
+  this->set_party_id(config.party_id());
 
 #ifdef MPC_SOCKET_CHANNEL
   std::map<std::string, rpc::Node> &node_map = config.node_map;
 
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    if (iter->first == SCHEDULER_NODE) {
-      continue;
-    }
-
     rpc::Node &node = iter->second;
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     party_id_node_map[party_id] = node;
@@ -308,61 +306,28 @@ MissingProcess::MissingProcess(PartyConfig &config,
 
   node_id_ = config.node_id;
 #else
-  node_id_ = config.node_id;
-  auto &node_map = config.node_map;
-
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    if (iter->first == SCHEDULER_NODE) {
-      continue;
-    }
-
-    const rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    partyid_node_map_[party_id] =
-        primihub::Node(node.ip(), node.port(), node.use_tls());
-    partyid_node_map_[party_id].id_ = node.node_id();
-
-    LOG(INFO) << "Party id " << party_id << ", node id " << node.node_id()
-              << ".";
-  }
-
-  auto iter = node_map.find(config.node_id);
-  if (iter == node_map.end()) {
-    std::stringstream ss;
-    ss << "Can't find node config with node id " << config.node_id << ".";
-    throw std::runtime_error(ss.str());
-  }
-
-  local_party_id_ = iter->second.vm(0).party_id();
-  local_node_.ip_ = iter->second.ip();
-  local_node_.port_ = iter->second.port();
-  local_node_.use_tls_ = iter->second.use_tls();
-  local_node_.id_ = iter->second.node_id();
-
-  next_party_id_ = (local_party_id_ + 1) % 3;
-  prev_party_id_ = (local_party_id_ + 2) % 3;
-  auto next_node = partyid_node_map_[next_party_id_];
-  auto prev_node = partyid_node_map_[prev_party_id_];
-
-  LOG(INFO) << "Local party: party id " << local_party_id_ << ", node "
-            << local_node_.to_string() << ", node id " << local_node_.id()
-            << ".";
-
-  LOG(INFO) << "Next party: party id " << next_party_id_ << ", node "
-            << next_node.to_string() << ", node id " << next_node.id()
-            << ".";
-
-  LOG(INFO) << "Prev party: party id " << prev_party_id_ << ", node "
-            << prev_node.to_string() << ", node id " << prev_node.id()
-            << ".";
+  party_config_.Init(config);
 #endif
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
-  auto param_map = task.params().param_map();
-
+  LOG(INFO) << "party_name: " << this->party_name_;
+  auto party_datasets = task.party_datasets();
+  auto it = party_datasets.find(this->party_name());
+  if (it == party_datasets.end()) {
+    LOG(ERROR) << "no data set found for party name: " << this->party_name();
+    return -1;
+  }
+  const auto& dataset = it->second.data();
+  auto iter = dataset.find("Data_File");
+  if (iter == dataset.end()) {
+    LOG(ERROR) << "no dataset found for dataset name Data_File";
+    return -1;
+  }
   // File path.
-  data_file_path_ = param_map["Data_File"].value_string();
+  data_file_path_ = iter->second;
+
+  auto param_map = task.params().param_map();
   replace_type_ = param_map["Replace_Type"].value_string();
   if (replace_type_ == "")
     replace_type_ = "MAX";
@@ -382,27 +347,8 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   Document doc;
   doc.Parse(json_str.c_str());
 
-  bool found = false;
-  std::string local_dataset;
-
-  for (Value::ConstMemberIterator iter = doc.MemberBegin();
-       iter != doc.MemberEnd(); iter++) {
-    std::string ds_name = iter->name.GetString();
-    std::string ds_node = param_map[ds_name].value_string();
-    if (ds_node == this->node_id_) {
-      local_dataset = iter->name.GetString();
-      found = true;
-    }
-  }
-
-  if (!found) {
-    // TODO: This request every node has dataset to handle, but sometimes only
-    // two node has dataset to handle, fix it later.
-    std::stringstream ss;
-    ss << "Can't not find dataset belong to " << this->node_id_ << ".";
-    LOG(ERROR) << ss.str();
-    throw std::runtime_error(ss.str());
-  }
+  // bool found = false;
+  std::string local_dataset = data_file_path_;
 
   Document doc_ds;
   auto doc_iter = doc.FindMember(local_dataset.c_str());
@@ -467,37 +413,44 @@ int MissingProcess::initPartyComm(void) {
     LOG(ERROR) << "link context is not available";
     return -1;
   }
-  base_channel_next_ =
-      link_ctx->getChannel(partyid_node_map_[next_party_id_]);
-  base_channel_prev_ =
-      link_ctx->getChannel(partyid_node_map_[prev_party_id_]);
+  // construct channel for next party
+  std::string next_party_name = this->party_config_.NextPartyName();
+  auto next_party_info = this->party_config_.NextPartyInfo();
+  base_channel_next_ = link_ctx->getChannel(next_party_info);
+
+  // construct channel for prev party
+  auto prev_party_name = this->party_config_.PrevPartyName();
+  auto prev_party_info = this->party_config_.PrevPartyInfo();
+  base_channel_prev_ = link_ctx->getChannel(prev_party_info);
 
   mpc_channel_next_ = std::make_shared<MpcChannel>(
-      job_id_, task_id_, local_node_.id(), link_ctx);
+      this->party_config_.SelfPartyName(), link_ctx);
   mpc_channel_prev_ = std::make_shared<MpcChannel>(
-      job_id_, task_id_, local_node_.id(), link_ctx);
+      this->party_config_.SelfPartyName(), link_ctx);
 
-  mpc_channel_next_->SetupBaseChannel(
-      partyid_node_map_[next_party_id_].id(), base_channel_next_);
-
-  mpc_channel_prev_->SetupBaseChannel(
-      partyid_node_map_[prev_party_id_].id(), base_channel_prev_);
+  mpc_channel_next_->SetupBaseChannel(next_party_name, base_channel_next_);
+  mpc_channel_prev_->SetupBaseChannel(prev_party_name, base_channel_prev_);
 
   std::string next_name = "fake_next";
   std::string prev_name = "fake_prev";
 
   mpc_op_exec_ = std::make_unique<MPCOperator>(
-      local_party_id_, next_name.c_str(), prev_name.c_str());
+      this->party_config_.SelfPartyId(), next_name.c_str(), prev_name.c_str());
 
   mpc_op_exec_->setup(*mpc_channel_prev_, *mpc_channel_next_);
 
-  party_id_ = local_party_id_;
-
+  party_id_ = this->party_config_.SelfPartyId();
+  LOG(INFO) << "local_id_local_id_: " << party_id_;
+  LOG(INFO) << "next_party: " << next_party_name
+      << " detail: " << next_party_info.to_string();
+  LOG(INFO) << "prev_party: " << prev_party_name
+      << " detail: " << prev_party_info.to_string();
   return 0;
 }
 #endif
 
 int MissingProcess::execute() {
+
   try {
     int cols_0, cols_1, cols_2;
     for (uint64_t i = 0; i < 3; i++) {

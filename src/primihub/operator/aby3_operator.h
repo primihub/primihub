@@ -51,7 +51,8 @@ class MPCOperator {
   Channel mNext, mPrev;
   IOService ios;
 #else
-  MpcChannel *mNext, *mPrev;
+  MpcChannel *mNext{nullptr};
+  MpcChannel *mPrev{nullptr};
   std::shared_ptr<CommPkg> commPtr;
 #endif
 

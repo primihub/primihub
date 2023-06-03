@@ -128,7 +128,7 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   try {
-    LOG(ERROR) << "party_name: " << this->party_name_;
+    LOG(INFO) << "party_name: " << this->party_name_;
     auto party_datasets = task.party_datasets();
     auto it = party_datasets.find(this->party_name());
     if (it == party_datasets.end()) {

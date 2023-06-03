@@ -70,6 +70,7 @@ private:
   std::string next_ip_, prev_ip_;
   uint16_t next_port_, prev_port_;
 #else
+  ABY3PartyConfig party_config_;
   uint16_t local_party_id_;
   uint16_t next_party_id_;
   uint16_t prev_party_id_;
