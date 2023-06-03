@@ -25,9 +25,13 @@ namespace primihub {
 class aby3ML {
  public:
 #ifdef MPC_SOCKET_CHANNEL
-  Channel mPreproNext, mPreproPrev, mNext, mPrev;
+  Channel mPreproNext;
+  Channel mPreproPrev;
+  Channel mNext;
+  Channel mPrev;
 #else
-  MpcChannel mNext, mPrev;
+  MpcChannel mNext;
+  MpcChannel mPrev;
 #endif
 
   Sh3Encryptor mEnc;

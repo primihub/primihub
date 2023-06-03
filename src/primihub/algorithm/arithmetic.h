@@ -55,6 +55,7 @@ private:
 
   std::shared_ptr<MpcChannel> mpc_channel_next_;
   std::shared_ptr<MpcChannel> mpc_channel_prev_;
+  ABY3PartyConfig party_config_;
 #endif
 
   std::string task_id_;

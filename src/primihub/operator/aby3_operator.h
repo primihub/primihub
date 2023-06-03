@@ -48,8 +48,11 @@ const uint8_t VAL_BITCOUNT = 64;
 class MPCOperator {
  public:
 #ifdef MPC_SOCKET_CHANNEL
-  Channel mNext, mPrev;
+  Channel mNext_;
+  Channel mPrev_;
   IOService ios;
+  Channel* mNext{nullptr};
+  Channel* mPrev{nullptr};
 #else
   MpcChannel *mNext{nullptr};
   MpcChannel *mPrev{nullptr};
@@ -106,13 +109,8 @@ class MPCOperator {
   template <Decimal D>
   sf64Matrix<D> createSharesByShape(const f64Matrix<D> &val) {
     std::array<u64, 2> size{val.rows(), val.cols()};
-#ifdef MPC_SOCKET_CHANNEL
-    mNext.asyncSendCopy(size);
-    mPrev.asyncSendCopy(size);
-#else
     mNext->asyncSendCopy(size);
     mPrev->asyncSendCopy(size);
-#endif
 
     sf64Matrix<D> dest(size[0], size[1]);
     enc.localFixedMatrix(runtime, val, dest).get();
@@ -123,18 +121,9 @@ class MPCOperator {
   template <Decimal D> sf64Matrix<D> createSharesByShape(u64 pIdx) {
     std::array<u64, 2> size;
     if (pIdx == (partyIdx + 1) % 3)
-#ifdef MPC_SOCKET_CHANNEL
-      mNext.recv(size);
-#else
       mNext->recv(size);
-#endif
-
     else if (pIdx == (partyIdx + 2) % 3)
-#ifdef MPC_SOCKET_CHANNEL
-      mPrev.recv(size);
-#else
       mPrev->recv(size);
-#endif
     else
       throw RTE_LOC;
 
@@ -869,26 +858,13 @@ class MPCOperator {
       if (partyIdx == i) {
         shape[0] = m.rows();
         shape[1] = m.cols();
-#ifdef MPC_SOCKET_CHANNEL
-        mNext.asyncSendCopy(shape);
-        mPrev.asyncSendCopy(shape);
-#else
         mNext->asyncSendCopy(shape);
         mPrev->asyncSendCopy(shape);
-#endif
       } else {
         if (partyIdx == (i + 1) % 3)
-#ifdef MPC_SOCKET_CHANNEL
-          mPrev.recv(shape);
-#else
           mPrev->recv(shape);
-#endif
         else if (partyIdx == (i + 2) % 3)
-#ifdef MPC_SOCKET_CHANNEL
-          mNext.recv(shape);
-#else
           mNext->recv(shape);
-#endif
         else
           throw std::runtime_error("Message recv logic error.");
       }

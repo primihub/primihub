@@ -96,35 +96,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     prev_port_ = node.vm(0).prev().port();
   }
 #else
-  auto &node_map = config.node_map;
-
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    if (iter->first == SCHEDULER_NODE) {
-      continue;
-    }
-
-    const rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    this->node_map_[party_id] =
-        primihub::Node(node.ip(), node.port(), node.use_tls());
-    this->node_map_[party_id].id_ = node.node_id();
-
-    LOG(INFO) << "Party id " << party_id << ", node id " << node.node_id()
-              << ".";
-  }
-
-  auto iter = node_map.find(config.node_id);
-  if (iter == node_map.end()) {
-    std::stringstream ss;
-    ss << "Can't find node config with node id " << config.node_id << ".";
-    throw std::runtime_error(ss.str());
-  }
-
-  party_id_ = iter->second.vm(0).party_id();
-  local_node_.ip_ = iter->second.ip();
-  local_node_.port_ = iter->second.port();
-  local_node_.use_tls_ = iter->second.use_tls();
-  local_node_.id_ = iter->second.node_id();
+  party_config_.Init(config);
 #endif
 }
 
@@ -257,30 +229,34 @@ int ArithmeticExecutor<Dbit>::initPartyComm(void) {
     LOG(ERROR) << "link context is unavailable";
     return -1;
   }
-  uint16_t next_party_id = (party_id_ + 1) % 3;
-  uint16_t prev_party_id = (party_id_ + 2) % 3;
+  // construct channel for next party
+  std::string next_party_name = this->party_config_.NextPartyName();
+  Node next_party_info = this->party_config_.NextPartyInfo();
+  // construct channel for prev party
+  std::string prev_party_name = this->party_config_.PrevPartyName();
+  Node prev_party_info = this->party_config_.PrevPartyInfo();
 
-  base_channel_next_ =
-      link_ctx->getChannel(node_map_[next_party_id]);
-  base_channel_prev_ =
-      link_ctx->getChannel(node_map_[prev_party_id]);
+  base_channel_next_ = link_ctx->getChannel(next_party_info);
+
+  base_channel_prev_ = link_ctx->getChannel(prev_party_info);
 
   mpc_channel_next_ = std::make_shared<MpcChannel>(
-      job_id_, task_id_, local_node_.id(), link_ctx);
+      party_config_.SelfPartyName(), link_ctx);
   mpc_channel_prev_ = std::make_shared<MpcChannel>(
-      job_id_, task_id_, local_node_.id(), link_ctx);
+      party_config_.SelfPartyName(), link_ctx);
 
-  mpc_channel_next_->SetupBaseChannel(node_map_[next_party_id].id(),
-                                      base_channel_next_);
+  mpc_channel_next_->SetupBaseChannel(next_party_name, base_channel_next_);
 
-  mpc_channel_prev_->SetupBaseChannel(node_map_[prev_party_id].id(),
-                                      base_channel_prev_);
-
+  mpc_channel_prev_->SetupBaseChannel(prev_party_name, base_channel_prev_);
+  LOG(INFO) << "local_id_local_id_: " << party_config_.SelfPartyId();
+  LOG(INFO) << "next_party: " << next_party_name
+      << " detail: " << next_party_info.to_string();
+  LOG(INFO) << "prev_party: " << prev_party_name
+      << " detail: " << prev_party_info.to_string();
   if (is_cmp) {
     mpc_op_exec_->setup(*mpc_channel_prev_, *mpc_channel_next_);
     return 0;
   }
-
   mpc_exec_->initMPCRuntime(party_id_, *mpc_channel_prev_, *mpc_channel_next_);
   return 0;
 }

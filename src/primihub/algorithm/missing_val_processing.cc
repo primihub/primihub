@@ -456,26 +456,13 @@ int MissingProcess::execute() {
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
         cols_0 = col_and_dtype_.size();
-#ifdef MPC_SOCKET_CHANNEL
-        mpc_op_exec_->mNext.asyncSendCopy(cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(cols_0);
-#else
         mpc_op_exec_->mNext->asyncSendCopy(cols_0);
         mpc_op_exec_->mPrev->asyncSendCopy(cols_0);
-#endif
       } else {
         if (party_id_ == (i + 1) % 3) {
-#ifdef MPC_SOCKET_CHANNEL
-          mpc_op_exec_->mPrev.recv(cols_2);
-#else
           mpc_op_exec_->mPrev->recv(cols_2);
-#endif
         } else if (party_id_ == (i + 2) % 3) {
-#ifdef MPC_SOCKET_CHANNEL
-          mpc_op_exec_->mNext.recv(cols_1);
-#else
           mpc_op_exec_->mNext->recv(cols_1);
-#endif
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";
@@ -504,26 +491,13 @@ int MissingProcess::execute() {
 
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-#ifdef MPC_SOCKET_CHANNEL
-        mpc_op_exec_->mNext.asyncSendCopy(arr_dtype0, cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(arr_dtype0, cols_0);
-#else
         mpc_op_exec_->mNext->asyncSendCopy(arr_dtype0, cols_0);
         mpc_op_exec_->mPrev->asyncSendCopy(arr_dtype0, cols_0);
-#endif
       } else {
         if (party_id_ == (i + 1) % 3) {
-#ifdef MPC_SOCKET_CHANNEL
-          mpc_op_exec_->mPrev.recv(arr_dtype1, cols_0);
-#else
           mpc_op_exec_->mPrev->recv(arr_dtype1, cols_0);
-#endif
         } else if (party_id_ == (i + 2) % 3) {
-#ifdef MPC_SOCKET_CHANNEL
-          mpc_op_exec_->mNext.recv(arr_dtype2, cols_0);
-#else
           mpc_op_exec_->mNext->recv(arr_dtype2, cols_0);
-#endif
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";
