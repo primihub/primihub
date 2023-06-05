@@ -147,3 +147,6 @@ datasets:
   - description: "preprocess_hfl_test_client1"
     model: "csv"
     source: "data/FL/preprocess/hfl/test/client1.csv"
+  - description: "mpc_statistics_1"
+    model: "csv"
+    source: "data/mpc_test.csv"

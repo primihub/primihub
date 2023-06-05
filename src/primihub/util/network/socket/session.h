@@ -42,6 +42,7 @@ struct PartyConfig {
   std::string node_id;
   std::string task_id;
   std::string job_id;
+  std::string request_id;
   std::map<uint16_t, std::string> node_id_map;
   std::map<std::string, rpc::Node> node_map;
 

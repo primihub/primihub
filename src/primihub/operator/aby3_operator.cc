@@ -1,6 +1,6 @@
+// "Copyright [2023] <Primihub>"
 #include "src/primihub/operator/aby3_operator.h"
-#include <glog/logging.h>
-
+#include <memory>
 namespace primihub {
 int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
                        u32 prev_port) {
@@ -73,36 +73,41 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
   // Copies the Channels and will use them for later protcols.
   mNext = comm.mNext();
   mPrev = comm.mPrev();
+
   auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
   runtime.init(partyIdx, commPtr);
+
   return 1;
 }
+
 
 void MPCOperator::fini() {
   mPrev.close();
   mNext.close();
 }
+
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
   enc.localIntMatrix(runtime, vals, sharedMatrix).get();
 }
 
+void MPCOperator::createShares(i64 vals, si64 &sharedInt) {
+  enc.localInt(runtime, vals, sharedInt).get();
+}
+
+void MPCOperator::createShares(si64 &sharedInt) {
+  enc.remoteInt(runtime, sharedInt).get();
+}
+
 void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 }
-
-void MPCOperator::createShares(i64 val, si64 &dest) {
-  enc.localInt(runtime, val, dest).get();
-}
-
-void MPCOperator::createShares(si64 &dest) {
-  enc.remoteInt(runtime, dest).get();
-}
-
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), static_cast<unsigned long long>(val.cols())};
+  std::array<u64, 2> size{static_cast<u64>(val.rows()),
+                          static_cast<u64>(val.cols())};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
+
   si64Matrix dest(size[0], size[1]);
   enc.localIntMatrix(runtime, val, dest).get();
   return dest;
@@ -124,9 +129,11 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 
 // only support val is column vector
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()), bitCount};
+  std::array<u64, 2> size{static_cast<u64>(val.rows()),
+                          static_cast<u64>(bitCount)};
   mNext.asyncSendCopy(size);
   mPrev.asyncSendCopy(size);
+
   sbMatrix dest(size[0], size[1]);
   enc.localBinMatrix(runtime, val, dest).get();
   return dest;
@@ -152,7 +159,13 @@ i64Matrix MPCOperator::revealAll(const si64Matrix &vals) {
   return ret;
 }
 
-i64 MPCOperator::revealAll(const si64 &val){
+i64Matrix MPCOperator::revealAll(const sbMatrix &sh_res) {
+  i64Matrix ret(sh_res.rows(), sh_res.i64Cols());
+  enc.revealAll(runtime, sh_res, ret).get();
+  return ret;
+}
+
+i64 MPCOperator::revealAll(const si64 &val) {
   i64 ret;
   enc.revealAll(runtime, val, ret).get();
   return ret;
@@ -199,14 +212,19 @@ si64 MPCOperator::MPC_Add_Const(i64 constInt, si64 &sharedInt) {
 si64Matrix MPCOperator::MPC_Add_Const(i64 constInt,
                                       si64Matrix &sharedIntMatrix) {
   si64Matrix temp = sharedIntMatrix;
-  if (partyIdx == 0)
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+  if (partyIdx == 0) {
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[0](i, j) = sharedIntMatrix[0](i, j) + constInt;
-  else if (partyIdx == 1)
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+      }
+    }
+  } else if (partyIdx == 1) {
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[1](i, j) = sharedIntMatrix[1](i, j) + constInt;
+      }
+    }
+  }
   return temp;
 }
 
@@ -236,14 +254,20 @@ si64 MPCOperator::MPC_Sub_Const(i64 constInt, si64 &sharedInt, bool mode) {
 si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix,
                                       bool mode) {
   si64Matrix temp = sharedIntMatrix;
-  if (partyIdx == 0)
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+  if (partyIdx == 0) {
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[0](i, j) = sharedIntMatrix[0](i, j) - constInt;
-  else if (partyIdx == 1)
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++)
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++)
+      }
+    }
+  } else if (partyIdx == 1) {
+    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[1](i, j) = sharedIntMatrix[1](i, j) - constInt;
+      }
+    }
+  }
+
   if (mode != true) {
     temp[0] = -temp[0];
     temp[1] = -temp[1];
@@ -281,6 +305,132 @@ si64Matrix MPCOperator::MPC_Mul_Const(const i64 &constInt,
   return ret;
 }
 
+void MPCOperator::MPC_Compare(i64Matrix &m, sbMatrix &sh_res) {
+  // Get matrix shape of all party.
+  std::vector<std::array<uint64_t, 2>> all_party_shape;
+  for (uint64_t i = 0; i < 3; i++) {
+    std::array<uint64_t, 2> shape;
+    if (partyIdx == i) {
+      shape[0] = m.rows();
+      shape[1] = m.cols();
+      mNext.asyncSendCopy(shape);
+      mPrev.asyncSendCopy(shape);
+    } else {
+      if (partyIdx == (i + 1) % 3)
+        mPrev.recv(shape);
+      else if (partyIdx == (i + 2) % 3)
+        mNext.recv(shape);
+      else
+        throw std::runtime_error("Message recv logic error.");
+    }
+
+    all_party_shape.emplace_back(shape);
+  }
+
+  {
+    LOG(INFO) << "Dump shape of all party's matrix:";
+    for (uint64_t i = 0; i < 3; i++)
+      LOG(INFO) << "Party " << i << ": (" << all_party_shape[i][0] << ", "
+                << all_party_shape[i][1] << ")";
+    LOG(INFO) << "Dump finish.";
+  }
+
+  // The compare is a binary operator, so only two party will provide value
+  // for compare, find out which party don't provide value.
+  int skip_index = -1;
+  for (uint64_t i = 0; i < 3; i++) {
+    if (all_party_shape[i][0] == 0 && all_party_shape[i][1] == 0) {
+      if (skip_index != -1) {
+        throw std::runtime_error(
+            "There are two party that don't provide any value at last, but "
+            "compare operator require value from two party.");
+      } else {
+        skip_index = i;
+      }
+    }
+  }
+
+  if (skip_index == -1)
+    throw std::runtime_error(
+        "This operator is binary, can only handle value from two party.");
+
+  // Shape of matrix in two party shoubld be the same.
+  if (skip_index == 0) {
+    all_party_shape[0][0] = all_party_shape[1][0];
+    all_party_shape[0][1] = all_party_shape[1][1];
+    all_party_shape[1][0] = all_party_shape[2][0];
+    all_party_shape[1][1] = all_party_shape[2][1];
+  } else if (skip_index != 2) {
+    all_party_shape[1][0] = all_party_shape[2][0];
+    all_party_shape[1][1] = all_party_shape[2][1];
+  }
+
+  if ((all_party_shape[0][0] != all_party_shape[1][0]) ||
+      (all_party_shape[0][1] != all_party_shape[1][1]))
+    throw std::runtime_error("Shape of matrix in two party must be the same.");
+
+  // Set value to it's negative for some party.
+  if (skip_index == 0 || skip_index == 1) {
+    if (partyIdx == 2)
+      m = m.array() * -1;
+  } else {
+    if (partyIdx == 1)
+      m = m.array() * -1;
+  }
+
+  LOG(INFO) << "Party " << (skip_index + 1) % 3 << " and party "
+            << (skip_index + 2) % 3 << " provide value for MPC compare.";
+
+  // Create binary shares.
+  uint64_t num_elem = all_party_shape[0][0] * all_party_shape[0][1];
+  m.resize(num_elem, 1);
+
+  std::vector<sbMatrix> sh_m_vec;
+  for (uint64_t i = 0; i < 3; i++) {
+    if (static_cast<int>(i) == skip_index)
+      continue;
+    if (i == partyIdx) {
+      sbMatrix sh_m(num_elem, VAL_BITCOUNT);
+      auto task = runtime.noDependencies();
+      task.get();
+      enc.localBinMatrix(task, m, sh_m).get();
+      sh_m_vec.emplace_back(sh_m);
+    } else {
+      sbMatrix sh_m(num_elem, VAL_BITCOUNT);
+      auto task = runtime.noDependencies();
+      task.get();
+      enc.remoteBinMatrix(task, sh_m).get();
+      sh_m_vec.emplace_back(sh_m);
+    }
+  }
+
+  LOG(INFO) << "Create binary share for value from two party finish.";
+
+  // Build then run MSB circuit.
+  KoggeStoneLibrary lib;
+  uint64_t size = 64;
+  BetaCircuit *cir = lib.int_int_add_msb(size);
+  cir->levelByAndDepth();
+
+  sh_res.resize(m.size(), 1);
+  std::vector<const sbMatrix *> input = {&sh_m_vec[0], &sh_m_vec[1]};
+  std::vector<sbMatrix *> output = {&sh_res};
+  auto task = runtime.noDependencies();
+  task = binEval.asyncEvaluate(task, cir, gen, input, output);
+  task.get();
+
+  // Recover original value.
+  if (skip_index == 0 || skip_index == 1) {
+    if (partyIdx == 2)
+      m = m.array() * -1;
+  } else {
+    if (partyIdx == 1)
+      m = m.array() * -1;
+  }
+
+  LOG(INFO) << "Finish evalute MSB circuit.";
+}
+
 void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
   std::vector<std::array<uint64_t, 2>> all_party_shape;
   // Get matrix shape of all party.
@@ -289,6 +439,7 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
     if (partyIdx == i) {
       shape[0] = 0;
       shape[1] = 0;
+
       mNext.asyncSendCopy(shape);
       mPrev.asyncSendCopy(shape);
     } else {
@@ -296,17 +447,27 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
         mPrev.recv(shape);
       else
         mNext.recv(shape);
-
-      all_party_shape.emplace_back(shape);
     }
+
+    all_party_shape.emplace_back(shape);
   }
 
   if (VLOG_IS_ON(2)) {
     VLOG(2) << "Dump shape of all party's matrix:";
     for (uint64_t i = 0; i < 3; i++)
-      VLOG(2) << "Party 0: (" << all_party_shape[i][0] << ", "
+      VLOG(2) << "Party " << i << ": (" << all_party_shape[i][0] << ", "
               << all_party_shape[i][1] << ")";
     VLOG(2) << "Dump finish.";
+  }
+
+  if (partyIdx == 0) {
+    all_party_shape[0][0] = all_party_shape[1][0];
+    all_party_shape[0][1] = all_party_shape[1][1];
+    all_party_shape[1][0] = all_party_shape[2][0];
+    all_party_shape[1][1] = all_party_shape[2][1];
+  } else if (partyIdx == 1) {
+    all_party_shape[1][0] = all_party_shape[2][0];
+    all_party_shape[1][1] = all_party_shape[2][1];
   }
 
   // Shape of matrix in two party shoubld be the same.
@@ -344,4 +505,5 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
 
   LOG(INFO) << "Finish evaluate MSB circuit.";
 }
-} // namespace primihub
+
+}  // namespace primihub
