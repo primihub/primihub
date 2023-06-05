@@ -187,7 +187,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       mpc_exec_ = new MPCExpressExecutor<Dbit>();
     }
 
-    std::string parties = param_map["Parties"].value_string();
+    std::string parties = param_map["RevealToParties"].value_string();
     spiltStr(parties, ";", tmp3);
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
       uint16_t party_id = 0;

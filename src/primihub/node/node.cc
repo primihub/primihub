@@ -710,6 +710,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     LOG(INFO) << str;
   }
   DispatchTask(*pushTaskRequest, pushTaskReply);
+
+  auto task_info = pushTaskReply->mutable_task_info();
+  task_info->CopyFrom(pushTaskRequest->task().task_info());
+
   return Status::OK;
 }
 
