@@ -95,21 +95,34 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     prev_ip_ = node.vm(0).prev().ip();
     prev_port_ = node.vm(0).prev().port();
   }
-#else
-  party_config_.Init(config);
 #endif
+  party_config_.Init(config);
+  party_id_ = party_config_.SelfPartyId();
 }
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
+  LOG(INFO) << "party_name: " << this->party_name_;
+  auto party_datasets = task.party_datasets();
+  auto it = party_datasets.find(this->party_name());
+  if (it == party_datasets.end()) {
+    LOG(ERROR) << "no data set found for party name: " << this->party_name();
+    return -1;
+  }
+  const auto& dataset = it->second.data();
+  auto iter = dataset.find("Data_File");
+  if (iter == dataset.end()) {
+    LOG(ERROR) << "no dataset found for dataset name Data_File";
+    return -1;
+  }
+  // File path.
+  data_file_path_ = iter->second;
+  LOG(INFO) << "Data file path is " << data_file_path_ << ".";
   auto param_map = task.params().param_map();
   try {
     const auto& task_info = task.task_info();
     task_id_ = task_info.task_id();
     job_id_ = task_info.job_id();
-
-    data_file_path_ = param_map["Data_File"].value_string();
-    LOG(INFO) << "Data file path is " << data_file_path_ << ".";
 
     // col_and_owner
     std::string col_and_owner = param_map["Col_And_Owner"].value_string();
@@ -118,7 +131,13 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
       int pos = itr->find('-');
       std::string col = itr->substr(0, pos);
-      int owner = std::atoi((itr->substr(pos + 1, itr->size())).c_str());
+      std::string party_name = itr->substr(pos + 1, itr->size());
+      uint16_t owner;
+      auto ret = party_config_.PartyName2PartyId(party_name, &owner);
+      if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "convert party name to party id failed for: " << party_name;
+        return -1;
+      }
       col_and_owner_.insert(make_pair(col, owner));
       // LOG(INFO) << col << ":" << owner;
     }
@@ -162,8 +181,14 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     std::string parties = param_map["RevealToParties"].value_string();
     spiltStr(parties, ";", tmp3);
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
-      uint32_t party = std::atoi((*itr).c_str());
-      parties_.push_back(party);
+      // uint32_t party = std::atoi((*itr).c_str());
+      uint16_t party_id;
+      auto ret = party_config_.PartyName2PartyId(*itr, &party_id);
+      if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "convert party name to party id failed for: " << *itr;
+        return -1;
+      }
+      parties_.push_back(party_id);
       // LOG(INFO) << party;
     }
     // LOG(INFO) << parties;

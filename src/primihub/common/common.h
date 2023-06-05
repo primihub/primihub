@@ -15,6 +15,7 @@ namespace primihub {
 #define SET_THREAD_NAME(name)
 #endif
 
+static uint16_t ABY3_TOTAL_PARTY_NUM = 3;
 // macro defination
 static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
 static const char* PARTY_CLIENT = "CLIENT";

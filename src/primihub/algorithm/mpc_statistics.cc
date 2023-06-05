@@ -1,5 +1,7 @@
-// "Copyright [2023] <Primihub>"
 #include "src/primihub/algorithm/mpc_statistics.h"
+#include "src/primihub/common/common.h"
+#include "src/primihub/util/file_util.h"
+
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
@@ -7,13 +9,8 @@
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
+
 #include <rapidjson/document.h>
-
-#include <algorithm>
-
-#include "src/primihub/common/common.h"
-#include "src/primihub/util/file_util.h"
-#include "src/primihub/util/util.h"
 
 using namespace rapidjson;
 using primihub::columnDtypeToString;
@@ -22,84 +19,54 @@ namespace primihub {
 MPCStatisticsExecutor::MPCStatisticsExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
-  node_id_ = config.node_id;
-  job_id_ = config.job_id;
-  task_id_ = config.task_id;
-  request_id_ = config.request_id;
+  party_config_.Init(config);
+  party_id_ = party_config_.SelfPartyId();
+  this->set_party_name(party_config_.SelfPartyName());
+  this->set_party_id(party_config_.SelfPartyId());
+  // node_id_ = config.node_id;
+  // job_id_ = config.job_id;
+  // task_id_ = config.task_id;
 
-  // Save all party's node config.
-  std::map<uint16_t, rpc::Node> party_id_node_map;
-  const auto &node_map = config.node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    const rpc::Node &node = iter->second;
-    auto party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    Node node_info;
-    pbNode2Node(node, &node_info);
-    node_map_[party_id] = std::move(node_info);
-    party_id_node_map[party_id] = node;
-    LOG(INFO) << "Import node: party id " << party_id << ", node "
-              << node_map_[party_id].to_string() << ".";
-  }
+  // // Save all party's node config.
+  // const auto &node_map = config.node_map;
+  // for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+  //   const rpc::Node &node = iter->second;
+  //   uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
+  //   node_map_[party_id] =
+  //       primihub::Node(node.node_id(), node.ip(), node.port(), node.use_tls());
+  //   node_map_[party_id].id_ = node.node_id();
 
-  // Find config of local node then fill local node config.
-  auto iter = node_map.find(config.node_id);
-  if (iter == node_map.end()) {
-    std::stringstream ss;
-    ss << "Can't find node config with node id " << config.node_id << ".";
-    throw std::runtime_error(ss.str());
-  }
+  //   LOG(INFO) << "Import node: party id " << party_id << ", node "
+  //             << node_map_[party_id].to_string() << ".";
+  // }
 
-  party_id_ = iter->second.vm(0).party_id();
-  pbNode2Node(iter->second, &local_node_);
+  // // Find config of local node then fill local node config.
+  // auto iter = node_map.find(config.node_id);
+  // if (iter == node_map.end()) {
+  //   std::stringstream ss;
+  //   ss << "Can't find node config with node id " << config.node_id << ".";
+  //   throw std::runtime_error(ss.str());
+  // }
 
-  if (party_id_ == 0) {
-    rpc::Node &node = party_id_node_map[0];
-    // Two Local server addr.
-    std::string next_ip = node.ip();
-    uint16_t next_port = node.vm(0).next().port();
-    next_addr_ = std::make_pair(next_ip, next_port);
+  // party_id_ = iter->second.vm(0).party_id();
+  // local_node_.ip_ = iter->second.ip();
+  // local_node_.port_ = iter->second.port();
+  // local_node_.use_tls_ = iter->second.use_tls();
+  // local_node_.id_ = iter->second.node_id();
 
-    std::string prev_ip = node.ip();
-    uint16_t prev_port = node.vm(0).prev().port();
-    prev_addr_ = std::make_pair(prev_ip, prev_port);
-  } else if (party_id_ == 1) {
-    rpc::Node &node = party_id_node_map[1];
+  // // Dump all party of the task.
+  // LOG(INFO) << "[Local party] party id " << party_id_
+  //           << ", node: " << local_node_.to_string() << ".";
 
-    // A local server addr.
-    uint16_t next_port = node.vm(0).next().port();
-    std::string next_ip = node.ip();
-    next_addr_ = std::make_pair(next_ip, next_port);
+  // uint16_t next_party_id = (party_id_ + 1) % 3;
+  // LOG(INFO) << "[Remote party] party id " << next_party_id
+  //           << ", node: " << node_map_[next_party_id].to_string() << ".";
 
-    // A remote server addr.
-    std::string prev_ip = node.vm(0).prev().ip();
-    uint16_t prev_port = node.vm(0).prev().port();
-    prev_addr_ = std::make_pair(prev_ip, prev_port);
-  } else {
-    rpc::Node &node = party_id_node_map[2];
-
-    // Two remote server addr.
-    uint16_t next_port = node.vm(0).next().port();
-    std::string next_ip = node.vm(0).next().ip();
-    next_addr_ = std::make_pair(next_ip, next_port);
-
-    uint16_t prev_port = node.vm(0).prev().port();
-    std::string prev_ip = node.vm(0).prev().ip();
-    prev_addr_ = std::make_pair(prev_ip, prev_port);
-  }
-
-  // Dump all party of the task.
-  LOG(INFO) << "[Local party] party id " << party_id_
-            << ", node: " << local_node_.to_string() << ".";
-
-  uint16_t next_party_id = (party_id_ + 1) % 3;
-  LOG(INFO) << "[Remote party] party id " << next_party_id
-            << ", node: " << node_map_[next_party_id].to_string() << ".";
-
-  next_party_id = (party_id_ + 2) % 3;
-  LOG(INFO) << "[Remote party] party id " << next_party_id
-            << ", node: " << node_map_[next_party_id].to_string() << ".";
+  // next_party_id = (party_id_ + 2) % 3;
+  // LOG(INFO) << "[Remote party] party id " << next_party_id
+  //           << ", node: " << node_map_[next_party_id].to_string() << ".";
 }
-
+#ifndef MPC_SOCKET_CHANNEL
 retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {
   do_nothing_ = false;
   Document json_doc;
@@ -137,11 +104,8 @@ retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {
       return retcode::FAIL;
     }
 
-    if (ds_name_ != resource_id.GetString()) {
-      LOG(ERROR) << "name doest match: " << ds_name_ << " resource id: " << resource_id.GetString();
+    if (ds_name_ != resource_id.GetString())
       continue;
-    }
-
 
     // Value of 'checked' is array that include target column.
     const Value &checked = item["checked"];
@@ -276,23 +240,25 @@ retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {
   return retcode::SUCCESS;
 }
 
+
 int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {
-  std::string party_name = task.party_name();
-  const auto& party_dataset = task.party_datasets();
-  auto it = party_dataset.find(party_name);
-  if (it == party_dataset.end()) {
-    LOG(ERROR) << "no dataset found for party_name: " << party_name;
+  LOG(INFO) << "party_name: " << this->party_name_;
+  auto party_datasets = task.party_datasets();
+  auto it = party_datasets.find(this->party_name());
+  if (it == party_datasets.end()) {
+    LOG(ERROR) << "no data set found for party name: " << this->party_name();
     return -1;
   }
   const auto& dataset = it->second.data();
-  auto it_ds = dataset.find("Data_File");
-  if (it_ds == dataset.end()) {
-    LOG(ERROR) << "no dataset index Data_File found for party: " << party_name;
+  auto iter = dataset.find("Data_File");
+  if (iter == dataset.end()) {
+    LOG(ERROR) << "no dataset found for dataset name Data_File";
     return -1;
   }
-  ds_name_ = it_ds->second;
+  // File path.
+  ds_name_ = iter->second;
+
   auto param_map = task.params().param_map();
-  // ds_name_ = param_map["Data_File"].value_string();
   std::string task_detail = param_map["TaskDetail"].value_string();
   std::string col_info = param_map["ColumnInfo"].value_string();
 
@@ -397,18 +363,42 @@ int MPCStatisticsExecutor::initPartyComm() {
     LOG(WARNING) << "Skip setup channel due to nothing to do.";
     return 0;
   }
-  executor_->setupChannel(party_id_,
-                          next_addr_.first, next_addr_.second,
-                          prev_addr_.first, prev_addr_.second);
+  auto link_ctx = this->GetLinkContext();
+  if (link_ctx == nullptr) {
+    LOG(ERROR) << "link context is unavailable";
+    return -1;
+  }
+
+  // uint16_t next_party = (party_id_ + 1) % 3;
+  // construct channel for next party
+  std::string next_party_name = this->party_config_.NextPartyName();
+  Node next_party_info = this->party_config_.NextPartyInfo();
+  auto base_channel_1 = link_ctx->getChannel(next_party_info);
+
+  LOG(INFO) << "Create channel to node " << next_party_info.to_string() << ".";
+
+  channel_1 = std::make_shared<MpcChannel>(
+      this->party_config_.SelfPartyName(), link_ctx);
+  channel_1->SetupBaseChannel(next_party_name, base_channel_1);
+
+  // construct channel for prev party
+  std::string prev_party_name = this->party_config_.PrevPartyName();
+  // next_party = (party_id_ + 2) % 3;
+  Node prev_party_info = this->party_config_.PrevPartyInfo();
+  auto base_channel_2 = link_ctx->getChannel(prev_party_info);
+
+  LOG(INFO) << "Create channel to node " << prev_party_info.to_string() << ".";
+
+  channel_2 = std::make_shared<MpcChannel>(
+      this->party_config_.SelfPartyName(), link_ctx);
+  channel_2->SetupBaseChannel(prev_party_name, base_channel_2);
+
+  executor_->setupChannel(party_id_, *channel_2, *channel_1);
 
   return 0;
 }
 
-int MPCStatisticsExecutor::finishPartyComm() {
-  // ep_next_.stop();
-  // ep_prev_.stop();
-  return 0;
-}
+int MPCStatisticsExecutor::finishPartyComm() { return 0; }
 
 int MPCStatisticsExecutor::loadDataset() {
   if (do_nothing_) {
@@ -474,4 +464,14 @@ int MPCStatisticsExecutor::saveModel() {
   return 0;
 }
 
-};  // namespace primihub
+#else
+int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {return 0;}
+int MPCStatisticsExecutor::loadDataset() {return 0;}
+int MPCStatisticsExecutor::initPartyComm() {return 0;}
+int MPCStatisticsExecutor::execute() {return 0;}
+int MPCStatisticsExecutor::finishPartyComm() {return 0;}
+int MPCStatisticsExecutor::saveModel() {return 0;}
+retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {return retcode::SUCCESS;}
+retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {return retcode::SUCCESS;}
+#endif  // endif MPC_SOCKET_CHANNEL
+}; // namespace primihub

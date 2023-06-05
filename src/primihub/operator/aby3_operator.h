@@ -24,16 +24,6 @@
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
-#include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/commpkg.h"
-
-#ifdef MPC_SOCKET_CHANNEL
-#include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/commpkg.h"
-#else
-#include "src/primihub/util/network/mpc_channel.h"
-#include "src/primihub/util/network/mpc_commpkg.h"
-#endif
 
 #ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/channel.h"

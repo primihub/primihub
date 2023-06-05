@@ -1,26 +1,21 @@
-// "Copyright [2023] <Primihub>"
-#ifndef SRC_PRIMIHUB_EXECUTOR_STATISTICS_H_
-#define SRC_PRIMIHUB_EXECUTOR_STATISTICS_H_
-#include <arrow/api.h>
-#include <arrow/array.h>
-#include <arrow/result.h>
-
-#include <vector>
-#include <map>
-#include <string>
-#include <limits>
-#include <memory>
+#ifndef _STATISTICS_EXECUTOR_H_
+#define _STATISTICS_EXECUTOR_H_
 
 #include "src/primihub/common/common.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/operator/aby3_operator.h"
 
+#include <arrow/api.h>
+#include <arrow/array.h>
+#include <arrow/result.h>
+
 namespace primihub {
+#ifndef MPC_SOCKET_CHANNEL
 class MPCStatisticsOperator {
- public:
+public:
   MPCStatisticsOperator() {}
-  virtual ~MPCStatisticsOperator() = default;
+  virtual ~MPCStatisticsOperator() {}
 
   enum MPCStatisticsType {
     AVG,
@@ -40,11 +35,8 @@ class MPCStatisticsOperator {
     return _always_error("Method 'run' not implement.");
   }
 
-  virtual retcode setupChannel(uint16_t party_id,
-                              const std::string& next_ip,
-                              uint32_t next_port,
-                              const std::string& prev_ip,
-                              uint32_t prev_port) {
+  virtual retcode setupChannel(uint16_t party_id, MpcChannel &next,
+                               MpcChannel &prev) {
     return _always_error("Method 'setupChannel' not implement.");
   }
 
@@ -72,7 +64,7 @@ class MPCStatisticsOperator {
     return str;
   }
 
- private:
+private:
   retcode _always_error(const std::string msg) {
     LOG(ERROR) << msg;
     return retcode::FAIL;
@@ -80,12 +72,15 @@ class MPCStatisticsOperator {
 };
 
 class MPCSumOrAvg : public MPCStatisticsOperator {
- public:
-  explicit MPCSumOrAvg(const MPCStatisticsType &type) {
+public:
+  MPCSumOrAvg(const MPCStatisticsType &type) {
     use_mpc_div_ = false;
-    if (type == MPCStatisticsType::AVG) {
+    if (type == MPCStatisticsType::AVG)
       avg_result_ = true;
-    }
+  };
+
+  virtual ~MPCSumOrAvg() {
+    mpc_op_.reset();
   }
 
   retcode getResult(eMatrix<double> &col_avg) override;
@@ -94,13 +89,10 @@ class MPCSumOrAvg : public MPCStatisticsOperator {
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
 
-  retcode setupChannel(uint16_t party_id,
-                      const std::string& next_ip,
-                      uint32_t next_port,
-                      const std::string& prev_ip,
-                      uint32_t prev_port) override;
+  retcode setupChannel(uint16_t party_id, MpcChannel &next,
+                       MpcChannel &prev) override;
 
- private:
+private:
   bool use_mpc_div_;
   bool avg_result_;
   eMatrix<double> result;
@@ -109,8 +101,11 @@ class MPCSumOrAvg : public MPCStatisticsOperator {
 };
 
 class MPCMinOrMax : public MPCStatisticsOperator {
- public:
-  explicit MPCMinOrMax(const MPCStatisticsType &type) : type_(type) {}
+public:
+  MPCMinOrMax(const MPCStatisticsType &type) { type_ = type; }
+  virtual ~MPCMinOrMax() {
+    mpc_op_.reset();
+  }
 
   retcode run(std::shared_ptr<primihub::Dataset> &dataset,
               const std::vector<std::string> &columns,
@@ -118,13 +113,9 @@ class MPCMinOrMax : public MPCStatisticsOperator {
 
   retcode getResult(eMatrix<double> &result) override;
 
-  retcode setupChannel(uint16_t party_id,
-                      const std::string& next_ip,
-                      uint32_t next_port,
-                      const std::string& prev_ip,
-                      uint32_t prev_port) override;
-
- private:
+  retcode setupChannel(uint16_t party_id, MpcChannel &next,
+                       MpcChannel &prev) override;
+private:
   double minValueOfAllParty(double local_min);
   double maxValueOfAllParty(double local_max);
 
@@ -192,6 +183,7 @@ class MPCMinOrMax : public MPCStatisticsOperator {
   MPCStatisticsType type_;
   uint16_t party_id_;
 };
-};  // namespace primihub
+#endif  // MPC_SOCKET_CHANNEL
+}; // namespace primihub
 
-#endif  // SRC_PRIMIHUB_EXECUTOR_STATISTICS_H_
+#endif

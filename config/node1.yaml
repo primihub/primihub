@@ -150,3 +150,7 @@ datasets:
   - description: "mpc_statistics_1"
     model: "csv"
     source: "data/mpc_test.csv"
+  - description: "mpc_arithmetic_1"
+    model: "csv"
+    source: "data/mpc_arithmetic_1.csv"
+
