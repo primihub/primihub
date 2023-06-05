@@ -30,7 +30,6 @@ cc_library(
       "//src/primihub/util:util_lib",
       "//src/primihub/util/network:network_lib",
       "@lib_function2//:function2",
-      #TODO(cuibo)
       "//src/primihub/util/network:mpc_commpkg",
   ],
 )

@@ -91,6 +91,9 @@ datasets:
   - description: "mpc_statistics_0"
     model: "csv"
     source: "data/mpc_test.csv"
+  - description: "mpc_arithmetic_0"
+    model: "csv"
+    source: "data/mpc_arithmetic_0.csv"
 
   # use mysql table as dataset
   #- description: "psi_client"

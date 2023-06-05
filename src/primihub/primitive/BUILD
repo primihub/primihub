@@ -29,7 +29,6 @@ cc_library(
         "//src/primihub/util/crypto:bit_vector",
         "//src/primihub/util/network:network_lib",
         "@nlohmann_json",
-        #TODO(cuibo)
         "//src/primihub/util/network:mpc_commpkg",
     ],
 )

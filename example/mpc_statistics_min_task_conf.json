@@ -36,7 +36,7 @@
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_a_test",
+          "newDataSetId": "new_min_a_test",
           "outputFilePath": "data/result/mpc_min_party_0.csv"
         },
         "mpc_statistics_1": {
@@ -44,7 +44,7 @@
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_b_test",
+          "newDataSetId": "new_min_b_test",
           "outputFilePath": "data/result/mpc_min_party_1.csv"
         },
         "mpc_statistics_2": {
@@ -52,7 +52,7 @@
             "x_1": 2,
             "x_2": 2
           },
-          "newDataSetId": "new_avg_c_test",
+          "newDataSetId": "new_min_c_test",
           "outputFilePath": "data/result/mpc_min_party_2.csv"
         }
       }

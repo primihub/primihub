@@ -21,11 +21,96 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/protos/common.grpc.pb.h"
 #include "src/primihub/util/network/link_context.h"
+#include "src/primihub/util/network/socket/session.h"
+
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub {
+struct ABY3PartyConfig {
+  ABY3PartyConfig() = default;
+  ABY3PartyConfig(const PartyConfig& config) {
+    party_config.CopyFrom(config);
+  }
+
+  retcode Init(const PartyConfig& config) {
+    party_config.CopyFrom(config);
+  }
+  uint16_t NextPartyId() {
+    return (SelfPartyId() + 1) % ABY3_TOTAL_PARTY_NUM;
+  }
+
+  uint16_t SelfPartyId() {
+    return party_config.party_id();
+  }
+
+  uint16_t PrevPartyId() {
+    return (SelfPartyId() + 2) % ABY3_TOTAL_PARTY_NUM;
+  }
+
+  std::string NextPartyName() {
+    auto& party_id_map = party_config.PartyId2PartyNameMap();
+    return party_id_map[NextPartyId()];
+  }
+
+  std::string PrevPartyName() {
+    auto& party_id_map = party_config.PartyId2PartyNameMap();
+    return party_id_map[PrevPartyId()];
+  }
+
+  std::string SelfPartyName() {
+    return party_config.party_name();
+  }
+
+  Node NextPartyInfo() {
+    return PartyName2PartyInfo(NextPartyName());
+  }
+
+  Node PrevPartyInfo() {
+    return PartyName2PartyInfo(PrevPartyName());
+  }
+
+  Node SelfPartyInfo() {
+    return PartyName2PartyInfo(SelfPartyName());
+  }
+
+  bool IsSelfParty(const uint16_t party_id) {
+    return party_id == SelfPartyId();
+  }
+
+  bool IsPrevParty(const uint16_t party_id) {
+    return party_id == PrevPartyId();
+  }
+
+  bool IsNextParty(const uint16_t party_id) {
+    return party_id == NextPartyId();
+  }
+
+  retcode PartyName2PartyId(const std::string& party_name, uint16_t* party_id) {
+    auto& party_id_map = party_config.PartyId2PartyNameMap();
+    for (const auto& [id, name] : party_id_map) {
+      if (party_name == name) {
+        *party_id = id;
+        return retcode::SUCCESS;
+      }
+    }
+    return retcode::FAIL;
+  }
+
+ protected:
+  Node PartyName2PartyInfo(const std::string& party_name) {
+    Node party_node;
+    auto& party_map = party_config.PartyName2PartyInfoMap();
+    auto& pb_party_node = party_map[party_name];
+    pbNode2Node(pb_party_node, &party_node);
+    return party_node;
+  }
+
+ private:
+  PartyConfig party_config;
+};
+
 class AlgorithmBase {
  public:
   explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service)
