@@ -112,15 +112,15 @@ datasets:
     model: "csv"
     source: "data/FL/homo_regression/test/test_boston_house_host.csv"
 
-  # FL image test case datasets
-  - description: "train_mnist_host"
+  # FL mnist image classification
+  - description: "mnist_train_client1"
     model: "image"
-    image_dir: "data/FL/mnist/train/train_mnist_host.zip"
-    annotations_file: "data/FL/mnist/train/train_mnist_host_annotations.csv"
-  - description: "test_mnist_host"
+    image_dir: "data/FL/mnist/train/client1.zip"
+    annotations_file: "data/FL/mnist/train/client1_annotations.csv"
+  - description: "mnist_test_client1"
     model: "image"
-    image_dir: "data/FL/mnist/test/test_mnist_host.zip"
-    annotations_file: "data/FL/mnist/test/test_mnist_host_annotations.csv"
+    image_dir: "data/FL/mnist/test/client1.zip"
+    annotations_file: "data/FL/mnist/test/client1_annotations.csv"
 
   - description: "train_hetero_xgb_host"
     model: "csv"

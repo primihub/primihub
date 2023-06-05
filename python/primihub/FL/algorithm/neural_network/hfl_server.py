@@ -152,7 +152,6 @@ class Plaintext_Server:
         # receive other params to compute aggregated metrics
         self.num_examples_weights = self.client_channel.recv_all('num_examples')
         
-
         if self.task == 'classification' and self.output_dim == 1:
             self.num_positive_examples_weights = \
                 self.client_channel.recv_all('num_positive_examples')

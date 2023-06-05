@@ -1,11 +1,20 @@
 import torch
 from primihub.utils.logger_util import logger
 from opacus.validators import ModuleValidator
-from .mlp import NeuralNetwork
+from .mlp import NeuralNetwork as MLP
+from .cnn import NeuralNetwork as CNN
 
 
-def create_model(method, output_dim, device):
-    model = NeuralNetwork(output_dim)
+def create_model(method, output_dim, device, nn_model='mlp'):
+    # select model
+    if nn_model == 'mlp':
+        model = MLP(output_dim)
+    elif nn_model == 'cnn':
+        model = CNN(output_dim)
+    else:
+        logger.error(f"Unsupported NN model: {nn_model}")
+
+    # validate model (DPSGD)
     if method == 'DPSGD':
         errors = ModuleValidator.validate(model, strict=False)
         if len(errors) != 0:

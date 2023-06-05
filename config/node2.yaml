@@ -85,15 +85,15 @@ datasets:
     model: "csv"
     source: "data/FL/homo_regression/test/test_boston_house_guest.csv"
 
-  # FL image test case datasets
-  - description: "train_mnist_guest"
+  # FL mnist image classification
+  - description: "mnist_train_client2"
     model: "image"
-    image_dir: "data/FL/mnist/train/train_mnist_guest.zip"
-    annotations_file: "data/FL/mnist/train/train_mnist_guest_annotations.csv"
-  - description: "test_mnist_guest"
+    image_dir: "data/FL/mnist/train/client2.zip"
+    annotations_file: "data/FL/mnist/train/client2_annotations.csv"
+  - description: "mnist_test_client2"
     model: "image"
-    image_dir: "data/FL/mnist/test/test_mnist_guest.zip"
-    annotations_file: "data/FL/mnist/test/test_mnist_guest_annotations.csv"
+    image_dir: "data/FL/mnist/test/client2.zip"
+    annotations_file: "data/FL/mnist/test/client2_annotations.csv"
 
   ## PSI test caset datasets
   #- description: "psi_client_data"
