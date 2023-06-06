@@ -20,8 +20,12 @@
 #include "src/primihub/protocol/scheduler.h"
 #include "src/primihub/protocol/sh_task.h"
 #include "src/primihub/util/log.h"
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/util/network/socket/session.h"
+#else
+#include "src/primihub/util/network/mpc_commpkg.h"
+#endif
 
 namespace primihub {
 class ShTask;

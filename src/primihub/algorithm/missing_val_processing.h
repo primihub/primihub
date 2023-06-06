@@ -17,12 +17,8 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 #include "src/primihub/service/dataset/service.h"
-// #include "src/primihub/util/log_wrapper.h"
 
 namespace primihub {
-// #define LOG_INFO() LOG_INFO_WRAPPER(platform(), job_id(), task_id())
-// #define LOG_WARNING() LOG_WARNING_WRAPPER(platform(), job_id(), task_id())
-// #define LOG_ERROR() LOG_ERROR_WRAPPER(platform(), job_id(), task_id())
 
 class MissingProcess : public AlgorithmBase {
 public:
@@ -62,18 +58,39 @@ private:
 
   void _spiltStr(string str, const string &split, std::vector<string> &strlist);
 
-  MPCOperator *mpc_op_exec_;
+  std::unique_ptr<MPCOperator> mpc_op_exec_;
 
+  std::string job_id_;
+  std::string task_id_;
+
+#ifdef MPC_SOCKET_CHANNEL
   IOService ios_;
   Session ep_next_;
   Session ep_prev_;
   std::string next_ip_, prev_ip_;
   uint16_t next_port_, prev_port_;
+#else
+  ABY3PartyConfig party_config_;
+  uint16_t local_party_id_;
+  uint16_t next_party_id_;
+  uint16_t prev_party_id_;
+
+  primihub::Node local_node_;
+
+  std::shared_ptr<network::IChannel> base_channel_next_;
+  std::shared_ptr<network::IChannel> base_channel_prev_;
+
+  std::shared_ptr<MpcChannel> mpc_channel_next_;
+  std::shared_ptr<MpcChannel> mpc_channel_prev_;
+
+  std::map<uint16_t, primihub::Node> partyid_node_map_;
+#endif
 
   std::map<std::string, uint32_t> col_and_dtype_;
   std::vector<std::string> local_col_names;
 
   std::string data_file_path_;
+  std::string replace_type_;
   std::string conn_info_;
   std::shared_ptr<arrow::Table> table;
   std::map<std::string, std::vector<int>> db_both_index;
@@ -85,8 +102,53 @@ private:
 
   std::string new_dataset_id_;
   std::string platform_type_ = "";
-  std::string job_id_ = "";
-  std::string task_id_ = "";
+
+  template <class T>
+  void replaceValue(map<std::string, uint32_t>::iterator &iter,
+                    std::shared_ptr<arrow::Table> &table, int &col_index,
+                    T &col_value,
+                    std::vector<std::vector<unsigned int>> &abnormal_index,
+                    bool &use_db, bool need_double) {
+    std::shared_ptr<arrow::Array> new_array;
+
+    if (use_db) {
+      _buildNewColumn(table, col_index, std::to_string(col_value),
+                      db_both_index[iter->first], need_double, new_array);
+    } else {
+      _buildNewColumn(table, col_index, std::to_string(col_value),
+                      abnormal_index, need_double, new_array);
+    }
+    std::shared_ptr<arrow::ChunkedArray> chunk_array =
+        std::make_shared<arrow::ChunkedArray>(new_array);
+
+    bool isDouble = std::is_same<T, double>::value;
+    std::shared_ptr<arrow::Field> field;
+    if (!isDouble) {
+      field = std::make_shared<arrow::Field>(iter->first, arrow::int64());
+    } else {
+      field = std::make_shared<arrow::Field>(iter->first, arrow::float64());
+    }
+
+    LOG(INFO) << "Replace column " << iter->first
+              << " with new array in table.";
+
+    LOG(INFO) << "col_index:" << col_index;
+    LOG(INFO) << "name:" << field->name();
+    LOG(INFO) << "type:" << field->type();
+    LOG(INFO) << "table->type:" << table->field(col_index)->type();
+
+    auto result = table->SetColumn(col_index, field, chunk_array);
+    if (!result.ok()) {
+      std::stringstream ss;
+      ss << "Replace content of column " << iter->first << " failed, "
+         << result.status();
+      LOG(ERROR) << ss.str();
+      throw std::runtime_error(ss.str());
+    }
+
+    table = result.ValueOrDie();
+    LOG(INFO) << "Finish.";
+  }
 };
 
 } // namespace primihub

@@ -11,8 +11,11 @@
 #include "src/primihub/common/defines.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/util/network/socket/session.h"
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/commpkg.h"
-
+#else
+#include "src/primihub/util/network/mpc_commpkg.h"
+#endif
 namespace primihub {
 
 

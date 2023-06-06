@@ -46,9 +46,13 @@ public:
                          std::vector<double> &col_vec);
 
   // Method group 5: Init MPC operator.
+#ifdef MPC_SOCKET_CHANNEL
   void initMPCRuntime(uint32_t party_id, const std::string &next_ip,
                       const std::string &prev_ip, uint16_t next_port,
                       uint16_t prev_port);
+#else
+  void initMPCRuntime(uint32_t party_id, MpcChannel &prev, MpcChannel &next);
+#endif
 
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);
@@ -236,7 +240,7 @@ private:
   std::string expr_;
   std::stack<std::string> suffix_stk_;
   ColumnConfig *col_config_;
-  MPCOperator *mpc_op_;
+  std::unique_ptr<MPCOperator> mpc_op_;
   FeedDict *feed_dict_;
   std::map<std::string, TokenValue> token_val_map_;
   std::map<std::string, TokenType> token_type_map_;

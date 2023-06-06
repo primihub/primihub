@@ -215,6 +215,8 @@ std::string strToUpper(const std::string& str);
 std::string strToLower(const std::string& str);
 std::string getCurrentProcessPath();
 std::string getCurrentProcessDir();
+std::string buf_to_hex_string(const uint8_t* pdata, size_t size);
+
 }  // namespace primihub
 
 #endif  // SRC_PRIMIHUB_UTIL_UTIL_H_

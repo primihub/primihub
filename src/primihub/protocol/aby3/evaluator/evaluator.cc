@@ -114,9 +114,12 @@ namespace primihub {
         auto fu1 = comm_cast.mPrev().asyncRecv(c.mShares[0].data(),
                       c.size()).share();
         i64* dd = c.mShares[1].data();
+        fu1.get();
+
         auto fu2 = SharedOT::asyncRecv(comm_cast.mNext(), comm_cast.mPrev(),
                         std::move(c1), { dd, i64(c.size())
                       }).share();
+        fu2.get();
 
         self.then([
             fu1 = std::move(fu1),
@@ -185,10 +188,13 @@ namespace primihub {
         auto fu1 = SharedOT::asyncRecv(comm_cast.mNext(), comm_cast.mPrev(),
                             std::move(c0), { dd0, i64(c.size()) }).share();
 
+        fu1.get();
+
         // share 1: from p1 to p0,p2
         i64* dd1 = c.mShares[0].data();
         auto fu2 = SharedOT::asyncRecv(comm_cast.mPrev(), comm_cast.mNext(),
                     std::move(c1), { dd1, i64(c.size()) }).share();
+        fu2.get();
 
         self.then([
             fu1 = std::move(fu1),
@@ -387,8 +393,14 @@ namespace primihub {
       auto next = (rt.mPartyIdx + 1) % 3;
       auto prev = (rt.mPartyIdx + 2) % 3;
       auto comm_cast = dynamic_cast<CommPkg&>(*comm);
-      if (next < 2) comm_cast.mNext().asyncSendCopy(abMinusR.data(), abMinusR.size());
-      if (prev < 2) comm_cast.mPrev().asyncSendCopy(abMinusR.data(), abMinusR.size());
+      if (next < 2) {
+        comm_cast.mNext().asyncSendCopy(abMinusR.data(), abMinusR.size());
+      }
+
+      if (prev < 2) {
+        comm_cast.mPrev().asyncSendCopy(abMinusR.data(), abMinusR.size());
+      }
+
       if (rt.mPartyIdx < 2) {
         auto shares = std::make_unique<std::array<i64Matrix, 3>>();
 
@@ -521,7 +533,7 @@ namespace primihub {
       }
     }).getClosure();
   }
-  
+
   Sh3Task Sh3Evaluator::asyncDotMul(Sh3Task dependency, const si64Matrix &A,
                                   const si64Matrix &B, si64Matrix &C) {
     return dependency
@@ -545,7 +557,7 @@ namespace primihub {
           self.then([fu = std::move(fu)](CommPkgBase *comm, Sh3Task &self) {
             fu.get();
           });
-        })  
+        })
         .getClosure();
   }
 
