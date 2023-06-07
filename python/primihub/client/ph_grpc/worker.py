@@ -105,6 +105,7 @@ class WorkerClient:
                 4: "FINISHED"
             }
             party_status = {}
+            is_fail = False
 
             while True:
                 time.sleep(1)
@@ -113,7 +114,14 @@ class WorkerClient:
                 for task_status in TaskStatusReply.task_status:
                     party = task_status.party
                     status = task_status.status
-                    
+
+                    if status == worker_pb2.TaskStatus.StatusCode.FAIL or \
+                       status == worker_pb2.TaskStatus.StatusCode.NONEXIST:
+                        is_fail = True
+
+                    if is_fail:
+                        break
+
                     if party:
                         print('party:', party)
                         print('status:', status_map[status])
@@ -122,9 +130,13 @@ class WorkerClient:
                         if status != worker_pb2.TaskStatus.StatusCode.RUNNING:
                             party_status[party] = status_map[status]
                 
-                if len(party_status) == PushTaskReply.party_count:
+                if is_fail or len(party_status) == PushTaskReply.party_count:
                     break
 
             end_time = time.time()
             print(f'time spend: {end_time - start_time:.3f} s')
-            print(f'status: {party_status}')
+
+            if is_fail:
+                print(f"fail: {TaskStatusReply}")
+            else:
+                print(f'status: {party_status}')
