@@ -101,4 +101,4 @@ datasets:
     source: "/tmp/FL/preprocess/hfl/test/client2.csv"
   - description: "mpc_statistics_2"
     model: "csv"
-    source: "data/mpc_test.csv"
+    source: "/tmp/mpc_test.csv"
