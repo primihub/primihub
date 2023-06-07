@@ -75,7 +75,7 @@ class WorkerClient:
         request = worker_pb2.PushTaskRequest(**request_data)
         return request
 
-    def submit_task(self) -> worker_pb2.PushTaskReply:
+    def submit_task(self):
         """gRPC submit task
 
         :returns: gRPC reply
@@ -89,7 +89,8 @@ class WorkerClient:
             PushTaskReply = self.stub.SubmitTask(PushTaskRequest)
             start_time = time.time()
 
-            print('ret_code:', PushTaskReply.ret_code)
+            ret_code_map = {0: 'success', 1: 'doing', 2: 'error'}
+            print('ret_code:', ret_code_map[PushTaskReply.ret_code])
             print('task_info:', PushTaskReply.task_info)
             print('party_count:', PushTaskReply.party_count)
             print('task_server:', PushTaskReply.task_server)
@@ -106,7 +107,6 @@ class WorkerClient:
             party_status = {}
 
             while True:
-                count = 0
                 time.sleep(1)
 
                 TaskStatusReply = self.stub.FetchTaskStatus(task_info)
@@ -116,16 +116,15 @@ class WorkerClient:
                     
                     if party:
                         print('party:', party)
-                        print('status:', status)
-                        print('message:', task_status.message)
+                        print('status:', status_map[status])
                         print(20*'-')
-                        party_status[party] = status_map[status]
-                        if status != worker_pb2.TaskStatus.StatusCode.RUNNING:
-                            count += 1
 
-                if count == PushTaskReply.party_count:
+                        if status != worker_pb2.TaskStatus.StatusCode.RUNNING:
+                            party_status[party] = status_map[status]
+                
+                if len(party_status) == PushTaskReply.party_count:
                     break
 
             end_time = time.time()
-            print(f'time spend: {int(end_time - start_time)} s')
+            print(f'time spend: {end_time - start_time:.3f} s')
             print(f'status: {party_status}')
