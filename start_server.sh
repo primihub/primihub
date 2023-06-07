@@ -13,9 +13,7 @@ proto_file=${py_primihub_path}/primihub/client/ph_grpc/src/primihub/protos/commo
 if [ -f "${proto_file}" ]; then
   export PYTHONPATH=${PYTHONPATH}:${py_primihub_path}
 fi
-if [ ! -d localdb ]; then
-  mkdir localdb
-fi
+
 # log_level 1->7,the larger the value the more detailed the log
 log_level=7
 export GLOG_logtostderr=1 GLOG_v=${log_level} 

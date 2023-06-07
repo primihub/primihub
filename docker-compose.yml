@@ -7,12 +7,12 @@ services:
     # ports:
     #   - "50050:50050"
     volumes:
-      - ./config:/app/config
+      # - ./config:/app/config
       - ./data:/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
+      - "./primihub-node --config=/app/config/primihub_node0.yaml"
     depends_on:
       meta0:
         condition: service_healthy
@@ -24,12 +24,12 @@ services:
     # ports:
     #   - "50051:50051"
     volumes:
-      - ./config:/app/config
+      # - ./config:/app/config
       - ./data:/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
+      - "./primihub-node --config=/app/config/primihub_node1.yaml"
     depends_on:
       meta1:
         condition: service_healthy
@@ -41,12 +41,12 @@ services:
     # ports:
     #   - "50052:50052"
     volumes:
-      - ./config:/app/config
+      # - ./config:/app/config
       - ./data:/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
+      - "./primihub-node --config=/app/config/primihub_node2.yaml"
     depends_on:
       meta2:
         condition: service_healthy
