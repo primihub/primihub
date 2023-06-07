@@ -33,7 +33,7 @@ class ChatGlmServer(BaseModel):
             for idx, prefix_state_dict in enumerate(received_dict):
                 for k, v in prefix_state_dict.items():
                     if k.startswith("transformer.prefix_encoder."):
-                        new_prefix_state_dict[k] = v * weights[idx]
+                        new_prefix_state_dict[k] += v * weights[idx]
 
             self.channel.send_all(f'server_res_{i}', new_prefix_state_dict)
 
