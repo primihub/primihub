@@ -7,9 +7,11 @@ import uuid
 class Client:
 
     def __init__(self, json_file, var_type=common_pb2.VarType.STRING, is_array=False):
-        # json_file contains three components:
+        # json_file: party_info, component_params
         self.party_info = json_file['party_info']
         self.component_params = json_file['component_params']
+        # component_params: common_params, role_params
+        self.common_params = self.component_params['common_params']
         self.role_params = self.component_params['role_params']
         self.var_type = var_type
         self.is_array = is_array
@@ -27,7 +29,7 @@ class Client:
         party_datasets = {}
         for party_name, role_param in self.role_params.items():
             Dataset = common_pb2.Dataset()
-            Dataset.data['data_set'] = role_param.get('data_set','')
+            Dataset.data['data_set'] = role_param.get('data_set','{}')
             party_datasets[party_name] = Dataset
 
         # construct 'task_info'
@@ -46,10 +48,10 @@ class Client:
                 Node.use_tls = party_info['use_tls']
                 party_access_info[party_name] = Node
 
-        self.current_worker = WorkerClient(
+        self.worker = WorkerClient(
             node=self.party_info['task_manager'],
             cert=None,
-            task_name=self.component_params['common_params'].get('task_name',''),
+            task_name=self.common_params.get('task_name',''),
             language=common_pb2.Language.PYTHON,
             params=params,
             task_info=task_info,
@@ -58,8 +60,4 @@ class Client:
 
     def submit(self):
         self.prepare_for_worker()
-        reply = self.current_worker.submit_task(request=None)
-
-    def get_status(self, task_id):
-        #Todo
-        pass
+        self.worker.submit_task()
