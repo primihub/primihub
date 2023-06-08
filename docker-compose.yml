@@ -12,7 +12,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --config=/app/config/primihub_node0.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node0 --config=/app/config/primihub_node0.yaml"
     # GLOG_v 0->7,the larger the value the more detailed the log
     depends_on:
       meta0:
@@ -30,7 +30,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --config=/app/config/primihub_node1.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node1 --config=/app/config/primihub_node1.yaml"
     depends_on:
       meta1:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --config=/app/config/primihub_node2.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node2 --config=/app/config/primihub_node2.yaml"
     depends_on:
       meta2:
         condition: service_healthy
