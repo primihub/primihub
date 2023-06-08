@@ -18,10 +18,7 @@ from importlib import import_module
 from primihub.context import Context
 from primihub.utils.logger_util import logger
 from primihub.client.ph_grpc.src.primihub.protos import worker_pb2
-import primihub
 
-path = primihub.__file__
-path = path[:-12]
 
 def run(task_params):
     party_name = task_params.party_name
@@ -49,18 +46,20 @@ def run(task_params):
             role_params['self_role'] = key
         else:
             role_params['others_role'].append(key)
-        
+
     if len(role_params['others_role']) == 1:
         role_params['others_role'] = role_params['others_role'][0]
 
     # load model and run
-    with open(path + '/FL/model_map.json', 'r') as f:
-        FUNC_MAP = json.load(f)
+    with open('python/primihub/FL/model_map.json', 'r') as f:
+        model_map = json.load(f)
 
     model = common_params['model']
+    logger.info(f'model: {model}')
     role = role_params['self_role']
-    func_path = FUNC_MAP[model][role]
-    cls_module, cls_name = func_path.rsplit(".", maxsplit=1)
+    logger.info(f'role: {role}')
+    model_path = model_map[model][role]
+    cls_module, cls_name = model_path.rsplit(".", maxsplit=1)
 
     module_name = import_module(cls_module)
     get_model_attr = getattr(module_name, cls_name)
