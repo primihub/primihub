@@ -1,0 +1,49 @@
+{
+    "party_info": {
+        "Alice": {
+            "ip": "127.0.0.1",
+            "port": 50050,
+            "use_tls": false
+        },
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Alice",
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "HFL_logistic_regression",
+            "method": "DPSGD",
+            "process": "train",
+            "task_name": "HFL_logistic_regression_multiclass_dpsgd_train",
+            "delta": 1e-3,
+            "noise_multiplier": 2.0,
+            "l2_norm_clip": 1.0,
+            "secure_mode": true,
+            "learning_rate": "optimal",
+            "alpha": 0.0005,
+            "batch_size": 100,
+            "global_epoch": 100,
+            "local_epoch": 1,
+            "selected_column": null,
+            "id": "id",
+            "label": "y",
+            "print_metrics": true,
+            "metric_path": "data/result/metrics.json"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "train_homo_nn_multiclass_host",
+                "model_path": "data/result/Bob_model.pkl"
+            },
+            "Charlie": {
+                "data_set": "train_homo_nn_multiclass_guest",
+                "model_path": "data/result/Charlie_model.pkl"
+            }
+        }
+    }
+}
