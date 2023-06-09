@@ -13,7 +13,7 @@
         },
         "role_params": {
             "Bob": {
-                "data_set": "test_homo_nn_multiclass_host",
+                "data_set": "multiclass_hfl_test_client1",
                 "model_path": "data/result/Bob_model.pkl",
                 "predict_path": "data/result/Bob_predict.csv"
             }
