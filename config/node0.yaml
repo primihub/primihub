@@ -55,23 +55,10 @@ datasets:
     model: "csv"
     source: "data/falcon/dataset/MNIST/input_1"
 
-  # FL homo lr test case datasets
-  - description: "homo_lr_data"
+  # FL fake dataset for hfl server
+  - description: "hfl_server_fake_data"
     model: "csv"
-    source: "data/FL/homo_lr/breast_cancer.csv"
-  - description: "train_homo_lr"
-    model: "csv"
-    source: "data/FL/homo_lr/train_breast_cancer.csv"
-
-  # FL homo nn multiclass test case datasets
-  - description: "train_homo_nn_multiclass"
-    model: "csv"
-    source: "data/FL/homo_nn/train/train_mobile_price.csv"
-
-  # FL homo regression test case datasets
-  - description: "train_homo_regression"
-    model: "csv"
-    source: "data/FL/homo_regression/train/train_boston_house.csv"
+    source: "data/FL/fake.csv"
 
   # PSI test case datasets for sqlite database
   - description: "psi_client_data_db"
@@ -88,6 +75,7 @@ datasets:
     model: "csv"
     source: "data/client_e.csv"
 
+  # MPC statistics & arithmetic
   - description: "mpc_statistics_0"
     model: "csv"
     source: "data/mpc_test.csv"

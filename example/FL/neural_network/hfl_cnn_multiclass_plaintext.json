@@ -1,10 +1,5 @@
 {
     "party_info": {
-        "Alice": {
-            "ip": "127.0.0.1",
-            "port": 50050,
-            "use_tls": false
-        },
         "task_manager": "127.0.0.1:50050"
     },
     "component_params": {
@@ -24,7 +19,7 @@
             "alpha": 1e-4,
             "optimizer": "adam",
             "batch_size": 100,
-            "global_epoch": 100,
+            "global_epoch": 10,
             "local_epoch": 1,
             "print_metrics": true,
             "metric_path": "data/result/metrics.json"
@@ -37,6 +32,9 @@
             "Charlie": {
                 "data_set": "mnist_train_client2",
                 "model_path": "data/result/Charlie_model.pkl"
+            },
+            "Alice": {
+                "data_set": "hfl_server_fake_data"
             }
         }
     }

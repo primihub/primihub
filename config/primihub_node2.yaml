@@ -34,34 +34,29 @@ datasets:
     model: "csv"
     source: "/tmp/falcon/dataset/MNIST/input_0"
 
-  #  FL xgb test case datasets
-  - description: "guest_dataset"
+# FL binclass
+  - description: "binclass_hfl_train_client2"
     model: "csv"
-    source: "/tmp/FL/wisconsin_guest.data"
-  - description: "breast_2"
+    source: "/tmp/FL/binclass/hfl/train/client2.csv"
+  - description: "binclass_hfl_test_client2"
     model: "csv"
-    source: "/tmp/FL/wisconsin.data"
+    source: "/tmp/FL/binclass/hfl/test/client2.csv"
 
-  # FL homo lr test case datasets
-  - description: "train_homo_lr_guest"
+  # FL multiclass
+  - description: "multiclass_hfl_train_client2"
     model: "csv"
-    source: "/tmp/FL/homo_lr/train/train_breast_cancer_guest.csv"
+    source: "/tmp/FL/multiclass/hfl/train/client2.csv"
+  - description: "multiclass_hfl_test_client1"
+    model: "csv"
+    source: "/tmp/FL/multiclass/hfl/test/client2.csv"
 
-  # FL homo nn multiclass test case datasets
-  - description: "train_homo_nn_multiclass_guest"
+  # FL regression
+  - description: "regression_hfl_train_client2"
     model: "csv"
-    source: "/tmp/FL/homo_nn/train/train_mobile_price_guest.csv"
-  - description: "test_homo_nn_multiclass_guest"
+    source: "/tmp/FL/regression/hfl/train/client2.csv"
+  - description: "regression_hfl_test_client2"
     model: "csv"
-    source: "/tmp/FL/homo_nn/test/test_mobile_price_guest.csv"
-
-  # FL homo regression test case datasets
-  - description: "train_homo_regression_guest"
-    model: "csv"
-    source: "/tmp/FL/homo_regression/train/train_boston_house_guest.csv"
-  - description: "test_homo_regression_guest"
-    model: "csv"
-    source: "/tmp/FL/homo_regression/test/test_boston_house_guest.csv"
+    source: "/tmp/FL/regression/hfl/test/client2.csv"
 
   # FL mnist image classification
   - description: "mnist_train_client2"
@@ -99,6 +94,11 @@ datasets:
   - description: "preprocess_hfl_test_client2"
     model: "csv"
     source: "/tmp/FL/preprocess/hfl/test/client2.csv"
+
+  # MPC statistics & arithmetic
   - description: "mpc_statistics_2"
     model: "csv"
     source: "/tmp/mpc_test.csv"
+  - description: "mpc_arithmetic_2"
+    model: "csv"
+    source: "/tmp/mpc_arithmetic_2.csv"
