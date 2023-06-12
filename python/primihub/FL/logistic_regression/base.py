@@ -51,7 +51,7 @@ class LogisticRegression:
     def BCELoss(self, x, y):
         z = x.dot(self.theta[1:]) + self.theta[0]
         return (np.maximum(z, 0.).sum() - y.dot(z) +
-                np.log(1 + np.exp(-np.abs(z))).sum()) / x.shape[0] \
+                np.log1p(np.exp(-np.abs(z))).sum()) / x.shape[0] \
                 + 0.5 * self.alpha * (self.theta ** 2).sum()
 
     def CELoss(self, x, y, eps=1e-20):
