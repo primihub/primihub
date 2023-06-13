@@ -51,7 +51,7 @@ class LogisticRegression:
     def BCELoss(self, x, y):
         z = x.dot(self.theta[1:]) + self.theta[0]
         return (np.maximum(z, 0.).sum() - y.dot(z) +
-                np.log(1 + np.exp(-np.abs(z))).sum()) / x.shape[0] \
+                np.log1p(np.exp(-np.abs(z))).sum()) / x.shape[0] \
                 + 0.5 * self.alpha * (self.theta ** 2).sum()
 
     def CELoss(self, x, y, eps=1e-20):
@@ -207,9 +207,9 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
                     / x.shape[0] + self.alpha * self.theta
 
     def BCELoss(self, x, y):
-        # Approximate loss: L(x) = (1. - 2 * y) * (x.dot(w) + b)
+        # Approximate loss: L(x) = (0.5 - y) * (x.dot(w) + b)
         # Ignore regularization term due to paillier doesn't support ciphertext multiplication
-        return (1. - 2 * y).dot(x.dot(self.theta[1:] + self.theta[0])) / x.shape[0]
+        return (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0])) / x.shape[0]
 
     def CELoss(self, x, y, eps=1e-20):
         logging.error("Paillier method doesn't support multiclass classification")
