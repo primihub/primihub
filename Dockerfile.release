@@ -13,7 +13,7 @@ WORKDIR /app
 COPY primihub-linux-amd64.tar.gz primihub-linux-arm64.tar.gz /opt/
 
 COPY example ./example
-COPY data/ /tmp/
+COPY data/ ./data
 COPY config/ ./config
 COPY python/ ./python
 COPY src/primihub/protos/ src/primihub/protos/
