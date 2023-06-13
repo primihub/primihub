@@ -28,6 +28,24 @@ using primihub::task::TaskFactory;
 using primihub::rpc::PsiTag;
 
 namespace primihub {
+
+std::string TaskStatusCodeToString(rpc::TaskStatus::StatusCode code) {
+  switch (code) {
+  case rpc::TaskStatus::RUNNING:
+    return "RUNNING";
+  case rpc::TaskStatus::SUCCESS:
+    return "SUCCESS";
+  case rpc::TaskStatus::FAIL:
+    return "FAIL";
+  case rpc::TaskStatus::NONEXIST:
+    return "NONEXIST";
+  case rpc::TaskStatus::FINISHED:
+    return "FINISHED";
+  default:
+    return "UNKNOWN";
+  }
+}
+
 retcode Worker::waitForTaskReady() {
   bool ready = task_ready_future_.get();
   if (!ready) {
@@ -78,12 +96,15 @@ retcode Worker::fetchTaskStatus(rpc::TaskStatus* task_status) {
 }
 
 retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
-  const auto& status = task_status.status();
+  const auto& status_code = task_status.status();
   const auto& party = task_status.party();
-  if (status == rpc::TaskStatus::SUCCESS || status == rpc::TaskStatus::FAIL) {
+  const auto& request_id = task_status.task_info().request_id();
+  if (status_code == rpc::TaskStatus::SUCCESS ||
+      status_code == rpc::TaskStatus::FAIL) {
     std::unique_lock<std::shared_mutex> lck(final_status_mtx_);
-    final_status_[party] = status;
-    if (status == rpc::TaskStatus::FAIL) {
+    final_status_[party] = status_code;
+
+    if (status_code == rpc::TaskStatus::FAIL) {
       if (!scheduler_finished.load(std::memory_order::memory_order_relaxed)) {
         task_finish_promise_.set_value(retcode::FAIL);
         scheduler_finished.store(true);
@@ -95,8 +116,12 @@ retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
         scheduler_finished.store(true);
       }
     }
-    VLOG(5) << "collected finished party count: " << final_status_.size();
+    VLOG(0) << "collected finished party count: " << final_status_.size();
   }
+  std::string task_status_str = TaskStatusCodeToString(status_code);
+  VLOG(0) << "Request id: " << request_id << " "
+          << "update party: " << party << " "
+          << "status to: " << task_status_str;
   task_status_.push(task_status);
   return retcode::SUCCESS;
 }
