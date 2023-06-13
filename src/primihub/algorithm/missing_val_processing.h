@@ -101,6 +101,7 @@ private:
   uint32_t party_id_;
 
   std::string new_dataset_id_;
+  std::string new_dataset_path_;
   std::string platform_type_ = "";
 
   template <class T>

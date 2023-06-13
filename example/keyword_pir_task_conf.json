@@ -8,6 +8,7 @@
   },
   "params": {
     "clientData": {
+      "description": "query data",
       "type": "STRING",
       "value": [
         "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT",
@@ -21,6 +22,7 @@
       "value": 1
     },
     "outputFullFilename": {
+      "description": "path for client save query result",
       "type": "STRING",
       "value": "data/result/pir_result.csv"
     }
@@ -29,6 +31,5 @@
     "SERVER": {
       "SERVER": "keyword_pir_server_data"
     }
-  },
-  "input_datasets": []
+  }
 }
