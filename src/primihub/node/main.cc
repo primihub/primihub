@@ -29,10 +29,10 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
 
-ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
+ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated, remove in future
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
 ABSL_FLAG(bool, singleton, false, "singleton mode");
-ABSL_FLAG(int, service_port, 50050, "node service port");
+ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated, remove in future
 
 /**
  * @brief
@@ -108,9 +108,6 @@ int main(int argc, char **argv) {
     FLAGS_stop_logging_if_full_disk = true;
 
     absl::ParseCommandLine(argc, argv);
-    const std::string node_id = absl::GetFlag(FLAGS_node_id);
-    bool singleton = absl::GetFlag(FLAGS_singleton);
-
     // int service_port = absl::GetFlag(FLAGS_service_port);
     std::string config_file = absl::GetFlag(FLAGS_config);
     auto& server_config = primihub::ServerConfig::getInstance();
@@ -121,6 +118,7 @@ int main(int argc, char **argv) {
     }
     auto& host_config = server_config.getServiceConfig();
     int32_t service_port = host_config.port();
+    std::string node_id = host_config.id();
     auto& cert_config = server_config.getCertificateConfig();
     std::string node_ip = "0.0.0.0";
     // service for dataset meta controle
