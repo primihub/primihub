@@ -15,21 +15,21 @@
  */
 
 #include "src/primihub/data_store/sqlite/sqlite_driver.h"
-#include "src/primihub/data_store/driver.h"
-#include "src/primihub/util/arrow_wrapper_util.h"
-#include "src/primihub/util/util.h"
 #include <glog/logging.h>
-#include <variant>
-
 #include <arrow/api.h>
-// #include <arrow/csv/api.h>
-// #include <arrow/csv/writer.h>
-// #include <arrow/filesystem/localfs.h>
 #include <arrow/io/api.h>
+
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
+#include <variant>
+#include <sstream>
+
 #include <nlohmann/json.hpp>
+#include "src/primihub/data_store/driver.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
+#include "src/primihub/util/util.h"
+#include "src/primihub/util/thread_local_data.h"
 
 namespace primihub {
 // SQLiteAccessInfo implementation
@@ -49,8 +49,12 @@ retcode SQLiteAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
     this->db_path_ = js["db_path"].get<std::string>();
     this->table_name_ = js["tableName"].get<std::string>();
   } catch (std::exception& e) {
-    LOG(ERROR) << "parse sqlite access info failed, " << e.what()
+    std::stringstream ss;
+    ss << "parse sqlite access info failed, " << e.what()
         << " origin access info: [" << access_info << "]";
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
@@ -122,7 +126,11 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string&
   std::shared_ptr<arrow::Table> table{nullptr};
   auto& db_connector = this->driver_->getDBConnector();
   if (db_connector == nullptr) {
-    LOG(ERROR) << "db connector for sqlite is invalid";
+    std::stringstream ss;
+    ss << "db connector for sqlite is invalid";
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return nullptr;
   }
   SQLite::Statement sql_query(*db_connector, query_sql);
@@ -159,8 +167,12 @@ std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string&
       auto array = arrow_wrapper::util::MakeArrowArray(field_type, query_result[i]);
       array_data.push_back(std::move(array));
     } else {
-      LOG(ERROR) << "index out of range, current index: " << i << " "
+      std::stringstream ss;
+      ss << "index out of range, current index: " << i << " "
           << "total colnum fields: " << schema_fields;
+      std::string err_msg = ss.str();
+      SetThreadLocalErrorMsg(err_msg);
+      LOG(ERROR) << err_msg;
       return nullptr;
     }
     i++;
@@ -460,7 +472,12 @@ std::unique_ptr<Cursor> SQLiteDriver::read() {
     try {
       this->db_connector = std::make_unique<SQLite::Database>(access_info_ptr->db_path_);
     } catch (std::exception& e) {
-      LOG(ERROR) << "create cursor failed: " << e.what();
+      std::stringstream ss;
+      ss << "create cursor failed: " << e.what()
+          << " db path: " << access_info_ptr->db_path_;
+      std::string err_msg = ss.str();
+      SetThreadLocalErrorMsg(err_msg);
+      LOG(ERROR) << err_msg;
       return nullptr; // nullptr
     }
   }
@@ -513,7 +530,7 @@ std::string SQLiteDriver::buildQuerySQL(const std::string& table_name,
   // sql_str.append(" FROM ").append(table_name);
   // VLOG(5) << "query sql: " << sql_str;
   // return sql_str;
-  LOG(ERROR) << "depracated method";
+  LOG(ERROR) << "deperacated method";
   return std::string("");
 }
 
@@ -553,7 +570,11 @@ std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
   try {
     this->db_connector = std::make_unique<SQLite::Database>(db_path);
   } catch (std::exception& e) {
-    LOG(ERROR) << "create cursor failed: " << e.what();
+    std::stringstream ss;
+    ss << "create cursor failed: " << e.what();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return nullptr; // nullptr
   }
 
@@ -612,8 +633,12 @@ std::string SQLiteDriver::BuildQuerySQL(const SQLiteAccessInfo& access_info,
       std::string col_name = std::get<0>(schema[index]);
       sql_str.append("`").append(col_name).append("`,");
     } else {
-      LOG(ERROR) << "query index is out of range, "
+      std::stringstream ss;
+      ss << "query index is out of range, "
           << "index: " << index << " total columns: " << table_cols_.size();
+      std::string err_msg = ss.str();
+      SetThreadLocalErrorMsg(err_msg);
+      LOG(ERROR) << err_msg;
       return std::string("");
     }
   }

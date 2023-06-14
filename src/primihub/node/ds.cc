@@ -75,15 +75,14 @@ retcode DataServiceImpl::RegisterDatasetProcess(
                                           std::move(access_info));
     this->GetDatasetService()->registerDriver(meta_info.id, driver);
   } catch (std::exception& e) {
+    auto& err_info = ThreadLocalErrorMsg();
     LOG(ERROR) << "Failed to load dataset from: "
             << meta_info.access_info << " "
             << "driver_type: " << driver_type << " "
             << "fid: " << meta_info.id << " "
-            << "exception: " << e.what();
-    auto err_msg = std::string(e.what(),
-                              std::min(strlen(e.what()),
-                                      static_cast<size_t>(1024)));
-    SetResponseErrorMsg(std::move(err_msg), reply);
+            << "exception: " << err_info;
+    SetResponseErrorMsg(err_info, reply);
+    ResetThreadLocalErrorMsg();
     return retcode::FAIL;
   }
 
@@ -93,7 +92,9 @@ retcode DataServiceImpl::RegisterDatasetProcess(
   if (dataset == nullptr) {
     auto& err_msg = ThreadLocalErrorMsg();
     SetResponseErrorMsg(err_msg, reply);
+    ResetThreadLocalErrorMsg();
     LOG(ERROR) << "register dataset " << meta_info.id << " failed";
+    this->GetDatasetService()->unRegisterDriver(meta_info.id);
     return retcode::FAIL;
   } else {
     reply->set_ret_code(rpc::NewDatasetResponse::SUCCESS);
