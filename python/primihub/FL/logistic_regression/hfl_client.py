@@ -279,7 +279,7 @@ class Plaintext_Client:
                                                      drop_intermediate=False)
             self.server_channel.send("fpr", fpr)
             self.server_channel.send("tpr", tpr)
-            self.server_channel.send("thresholds", thresholds)
+            # self.server_channel.send("thresholds", thresholds)
 
             # ks
             ks = ks_from_fpr_tpr(fpr, tpr)
