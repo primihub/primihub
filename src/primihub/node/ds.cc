@@ -22,6 +22,7 @@
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/util/thread_local_data.h"
 
 using primihub::service::DatasetMeta;
 
@@ -90,7 +91,8 @@ retcode DataServiceImpl::RegisterDatasetProcess(
   auto dataset = GetDatasetService()->newDataset(
       driver, meta_info.id, access_meta, &mate);
   if (dataset == nullptr) {
-    reply->set_ret_code(rpc::NewDatasetResponse::FAIL);
+    auto& err_msg = ThreadLocalErrorMsg();
+    SetResponseErrorMsg(err_msg, reply);
     LOG(ERROR) << "register dataset " << meta_info.id << " failed";
     return retcode::FAIL;
   } else {
@@ -98,6 +100,7 @@ retcode DataServiceImpl::RegisterDatasetProcess(
     reply->set_dataset_url(mate.getDataURL());
     LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
   }
+
   return retcode::SUCCESS;
 }
 
@@ -133,10 +136,15 @@ retcode DataServiceImpl::ConvertToDatasetMetaInfo(
 }
 
 template<typename T>
-void DataServiceImpl::SetResponseErrorMsg(std::string&& err_msg,
-                                        T* reply) {
+void DataServiceImpl::SetResponseErrorMsg(std::string&& err_msg, T* reply) {
   reply->set_ret_code(T::FAIL);
   reply->set_ret_msg(std::move(err_msg));
+}
+
+template<typename T>
+void DataServiceImpl::SetResponseErrorMsg(const std::string& err_msg, T* reply) {
+  reply->set_ret_code(T::FAIL);
+  reply->set_ret_msg(err_msg);
 }
 
 }  // namespace primihub
