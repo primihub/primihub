@@ -6,6 +6,6 @@
 namespace primihub {
 std::string& ThreadLocalErrorMsg();
 void SetThreadLocalErrorMsg(const std::string& msg_info);
-
+void ResetThreadLocalErrorMsg();
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_UTIL_THREAD_LOCAL_DATA_H_

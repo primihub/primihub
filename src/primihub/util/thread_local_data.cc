@@ -11,4 +11,9 @@ void SetThreadLocalErrorMsg(const std::string& msg_info) {
   err_msg = msg_info;
 }
 
+void ResetThreadLocalErrorMsg() {
+  auto& err_msg = ThreadLocalErrorMsg();
+  err_msg.clear();
+}
+
 }  // namespace primihub

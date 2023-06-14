@@ -285,7 +285,6 @@ int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
     std::string err_msg = ss.str();
     SetThreadLocalErrorMsg(err_msg);
     LOG(ERROR) << err_msg;
-
     return -1;
   }
 

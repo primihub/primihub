@@ -62,11 +62,11 @@ int RegClient::RegDataSet(const std::string& dataset_id,
     if (response.ret_code() == rpc::GetDatasetResponse::SUCCESS) {
       LOG(INFO) << "dataset_url: " << response.dataset_url() << " success";
     } else {
-      LOG(INFO) << "dataset_url: " << response.dataset_url() << " failed, "
+      LOG(ERROR) << "dataset_url: " << response.dataset_url() << " failed, "
           << "error info: " << response.ret_msg();
     }
   } else {
-    LOG(INFO) << "ERROR: " << status.error_message() << "NewDataset rpc failed.";
+    LOG(ERROR) << "ERROR: " << status.error_message() << "NewDataset rpc failed.";
     return -1;
   }
   return 0;

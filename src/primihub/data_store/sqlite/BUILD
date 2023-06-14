@@ -7,6 +7,7 @@ cc_library(
         "//src/primihub/data_store:base_driver",
         "//src/primihub/util:arrow_wrapper_util",
         "//src/primihub/util:util_lib",
+        "//src/primihub/util:thread_local_data",
         "@arrow",
         "@com_github_sqlite_wrapper//:sqlite_wrapper",
         "@nlohmann_json",
