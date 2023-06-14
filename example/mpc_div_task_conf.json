@@ -9,7 +9,7 @@
     "params": {
         "ResFileName": {
             "type": "STRING",
-            "value": "mpc_div_result"
+            "value": "data/result/mpc_div_result.csv"
         },
         "Expr": {
             "type": "STRING",

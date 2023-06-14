@@ -400,15 +400,17 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
         std::make_shared<arrow::Schema>(schema_vector_bool), {array});
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-  std::shared_ptr<CSVDriver> csv_driver =
-      std::dynamic_pointer_cast<CSVDriver>(driver);
-
-  std::string filepath = "data/" + res_name_ + ".csv";
-  int ret = 0;
-  if (col_and_val_double.size() != 0)
-    ret = csv_driver->write(table, filepath);
-  else
-    ret = csv_driver->write(table, filepath);
+  // std::shared_ptr<CSVDriver> csv_driver =
+  //     std::dynamic_pointer_cast<CSVDriver>(driver);
+  auto& filepath = res_name_;
+  auto data_cursor = driver->initCursor(filepath);
+  auto dataset = std::make_shared<primihub::Dataset>(table, driver);
+  // int ret = 0;
+  // if (col_and_val_double.size() != 0)
+  //   ret = csv_driver->write(table, filepath);
+  // else
+  //   ret = csv_driver->write(table, filepath);
+  int ret = data_cursor->write(dataset);
   if (ret != 0) {
     LOG(ERROR) << "Save res to file " << filepath << " failed.";
     return -1;

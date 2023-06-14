@@ -356,8 +356,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
   doc_ds.Swap(doc_iter->value);
 
   Value &vals = doc_ds["columns"];
-  for (Value::ConstMemberIterator iter = vals.MemberBegin();
-       iter != vals.MemberEnd(); iter++) {
+  for (auto iter = vals.MemberBegin(); iter != vals.MemberEnd(); iter++) {
     std::string col_name = iter->name.GetString();
     uint32_t col_dtype = iter->value.GetInt();
     col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
@@ -365,8 +364,15 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
               << iter->value.GetInt() << ".";
   }
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
-  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
+  if (doc_ds.HasMember("newDataPath") && doc_ds["newDataPath"].IsString()) {
+    new_dataset_path_ = doc_ds["newDataPath"].GetString();
+  } else {
+    new_dataset_path_ = "./" + new_dataset_id_ + ".csv";
+    LOG(WARNING) << "using default path: " << new_dataset_path_;
+  }
 
+  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ". "
+      << "new dataset path: " << new_dataset_path_;
   return 0;
 }
 
@@ -1238,11 +1244,11 @@ int MissingProcess::finishPartyComm(void) {
 
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
-  std::string delimiter = ".";
-  int pos = data_file_path_.rfind(delimiter);
+  // std::string delimiter = ".";
+  // int pos = data_file_path_.rfind(delimiter);
 
-  std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
-
+  // std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
+  auto& new_path = new_dataset_path_;
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 

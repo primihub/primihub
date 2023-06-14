@@ -25,6 +25,7 @@
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/file_util.h"
 
 namespace primihub {
 namespace csv {
@@ -58,7 +59,7 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
         << "detail: " << maybe_table.status();
     return nullptr;
   }
-  
+
   return *maybe_table;
 }
 }  // namespace csv
@@ -244,6 +245,12 @@ std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
 }
 
 int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
+  // check existence of file directory
+  auto ret = ValidateDir(this->filePath);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << this->filePath;
+    return -1;
+  }
   // write Dataset to csv file
   auto result = arrow::io::FileOutputStream::Open(this->filePath);
   if (!result.ok()) {
@@ -349,7 +356,7 @@ std::unique_ptr<Cursor> CSVDriver::read() {
     if (arrow_data == nullptr) {
       return nullptr;
     }
-    
+
     std::vector<FieldType> fileds;
     auto arrow_fileds = arrow_data->schema()->fields();
     for (const auto& field : arrow_fileds) {
@@ -388,7 +395,11 @@ std::unique_ptr<Cursor> CSVDriver::initCursor(const std::string &filePath) {
 // FIXME to be deleted write file in driver directly.
 int CSVDriver::write(std::shared_ptr<arrow::Table> table,
                      const std::string& filePath) {
-  filePath_ = filePath;
+  auto ret = ValidateDir(filePath);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << filePath;
+    return -1;
+  }
   auto result = arrow::io::FileOutputStream::Open(filePath);
   if (!result.ok()) {
     LOG(ERROR) << "Open file " << filePath << " failed. " << result.status();

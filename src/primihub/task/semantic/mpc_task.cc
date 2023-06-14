@@ -165,7 +165,11 @@ int MPCTask::execute() {
       }
 
       algorithm_->finishPartyComm();
-      algorithm_->saveModel();
+      ret = algorithm_->saveModel();
+      if (ret != 0) {
+        LOG(ERROR) << "saveModel failed.";
+        break;
+      }
     } while (0);
   } catch (std::exception &e) {
     LOG(ERROR) << e.what();
