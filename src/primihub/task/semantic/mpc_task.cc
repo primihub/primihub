@@ -31,8 +31,8 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
                  const TaskParam *task_param,
                  std::shared_ptr<DatasetService> dataset_service)
     : TaskBase(task_param, dataset_service) {
+  PartyConfig config(node_id, task_param_);
   if (function_name == "logistic_regression") {
-    PartyConfig config(node_id, task_param_);
     try {
       algorithm_ = std::make_shared<primihub::LogisticRegressionExecutor>(config, dataset_service);
     } catch (std::exception &e) {
@@ -43,7 +43,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     // TODO(XXX): implement linear regression
   } else if (function_name == "maxpool") {
 #if defined(__linux__) && defined(__x86_64__)
-    PartyConfig config(node_id, task_param_);
     try {
       algorithm_ =
           std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(config, dataset_service);
@@ -57,7 +56,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
 #endif
   } else if (function_name == "lenet") {
 #if defined(__linux__) && defined(__x86_64__)
-    PartyConfig config(node_id, task_param_);
     algorithm_ =
         std::make_shared<primihub::falcon::FalconLenetExecutor>(config, dataset_service);
 #else
@@ -65,7 +63,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
                     "for apple and aarch64 platform.";
 #endif
   } else if (function_name == "mpc_statistics") {
-    PartyConfig config(node_id, task_param_);
     algorithm_ =
         std::make_shared<primihub::MPCStatisticsExecutor>(config, dataset_service);
   } else if (function_name == "xgboost") {
@@ -83,7 +80,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
   } else if (function_name == "lstm") {
     // TODO(XXX): implement lstm
   } else if (function_name == "arithmetic") {
-    PartyConfig config(node_id, task_param_);
     try {
       auto param_map = task_param_.params().param_map();
       std::string accuracy = param_map["Accuracy"].value_string();
@@ -100,7 +96,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
       algorithm_ = nullptr;
     }
   } else if (function_name == "AbnormalProcessTask") {
-    PartyConfig config(node_id, task_param_);
     try {
       algorithm_ =
           std::make_shared<primihub::MissingProcess>(config, dataset_service);
@@ -108,8 +103,29 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
       LOG(ERROR) << error.what();
       algorithm_ = nullptr;
     }
+  } else if (function_name == "arithmetic") {
+    try {
+      auto param_map = task_param_.params().param_map();
+      std::string accuracy = param_map["Accuracy"].value_string();
+      if (accuracy == "D32") {
+        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+            std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
+                                                      dataset_service));
+      } else {
+        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
+            std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
+                                                      dataset_service));
+      }
+    } catch (const std::runtime_error &error) {
+      LOG(ERROR) << error.what();
+      algorithm_ = nullptr;
+    }
   } else {
     LOG(ERROR) << "Unsupported algorithm: " << function_name;
+  }
+
+  if (algorithm_ != nullptr) {
+    algorithm_->InitLinkContext(getTaskContext().getLinkContext().get());
   }
 }
 
@@ -149,7 +165,11 @@ int MPCTask::execute() {
       }
 
       algorithm_->finishPartyComm();
-      algorithm_->saveModel();
+      ret = algorithm_->saveModel();
+      if (ret != 0) {
+        LOG(ERROR) << "saveModel failed.";
+        break;
+      }
     } while (0);
   } catch (std::exception &e) {
     LOG(ERROR) << e.what();

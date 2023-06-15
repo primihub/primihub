@@ -1,5 +1,6 @@
 #include <glog/logging.h>
 #include <sstream>
+#include <time.h>
 
 #include "src/primihub/executor/express.h"
 
@@ -349,7 +350,6 @@ template <Decimal Dbit> MPCExpressExecutor<Dbit>::FeedDict::~FeedDict() {
 // Implement of class MPCExpressExecutor<Dbit>.
 template <Decimal Dbit> MPCExpressExecutor<Dbit>::MPCExpressExecutor() {
   col_config_ = nullptr;
-  mpc_op_ = nullptr;
   feed_dict_ = nullptr;
 }
 
@@ -657,6 +657,7 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
   return 0;
 }
 
+#ifdef MPC_SOCKET_CHANNEL
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
                                               const std::string &next_ip,
@@ -677,12 +678,22 @@ void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
     prev_name = "12";
   }
 
-  mpc_op_ = new MPCOperator(party_id, next_name, prev_name);
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, next_name, prev_name);
   mpc_op_->setup(next_ip, prev_ip, next_port, prev_port);
 
   party_id_ = party_id;
   return;
 }
+#else
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
+                                              MpcChannel &prev,
+                                              MpcChannel &next) {
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+  mpc_op_->setup(prev, next);
+  party_id_ = party_id;
+}
+#endif
 
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::constructI64Matrix(TokenValue &val,
@@ -879,8 +890,8 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   si64Matrix *p_sh_val1 = nullptr;
   si64Matrix *p_sh_val2 = nullptr;
   i64 constInt;
-  uint32_t val_count = feed_dict_->getColumnValuesCount();
 
+  uint32_t val_count = feed_dict_->getColumnValuesCount();
   if (val1.type == 1 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
@@ -902,6 +913,7 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
   }
 
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
+
   if (val1.type != 3 && val2.type != 3) {
     std::vector<si64Matrix> sh_val_vec;
     sh_val_vec.emplace_back(*p_sh_val1);
@@ -913,6 +925,7 @@ void MPCExpressExecutor<Dbit>::runMPCAddI64(TokenValue &val1, TokenValue &val2,
     else
       *sh_res = mpc_op_->MPC_Add_Const(constInt, *p_sh_val1);
   }
+
   createTokenValue(sh_res, res);
 }
 
@@ -1058,6 +1071,7 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
 
   uint32_t val_count = feed_dict_->getColumnValuesCount();
 
+
   if (val1.type == 1 || val1.type == 4) {
     sh_val1.resize(val_count, 1);
     createI64Shares(val1, sh_val1);
@@ -1078,7 +1092,10 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     p_sh_val2 = val2.val_union.sh_i64_m;
   }
 
+
+
   si64Matrix *sh_res = new si64Matrix(val_count, 1);
+
   if (val1.type != 3 && val2.type != 3) {
     *sh_res = mpc_op_->MPC_Dot_Mul(*p_sh_val1, *p_sh_val2);
   } else {
@@ -1087,6 +1104,7 @@ void MPCExpressExecutor<Dbit>::runMPCMulI64(TokenValue &val1, TokenValue &val2,
     else
       *sh_res = mpc_op_->MPC_Mul_Const(constInt, *p_sh_val1);
   }
+
 
   createTokenValue(sh_res, res);
 }
@@ -1287,8 +1305,6 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
-      LOG(INFO) << "Reveal MPC result to party "
-                << static_cast<char>(party + '0') << ".";
     }
   }
 
@@ -1306,7 +1322,7 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
 
   for (auto party : parties) {
     if (party_id_ == party) {
-      i64Matrix m = mpc_op_->revealAll(*p_final_share);
+      i64Matrix m = mpc_op_->reveal(*p_final_share);
       uint32_t count = 0;
       for (size_t i = 0; i < m.rows(); i++) {
         val_vec.emplace_back(m(i, 0));
@@ -1318,8 +1334,6 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
                 << ".";
     } else {
       mpc_op_->reveal(*p_final_share, party);
-      LOG(INFO) << "Reveal MPC result to party "
-                << static_cast<char>(party + '0') << ".";
     }
   }
 
@@ -1351,12 +1365,6 @@ template <Decimal Dbit> void MPCExpressExecutor<Dbit>::Clean(void) {
     feed_dict_ = nullptr;
   }
 
-  if (mpc_op_) {
-    mpc_op_->fini();
-    delete mpc_op_;
-    mpc_op_ = nullptr;
-  }
-
   while (!suffix_stk_.empty())
     suffix_stk_.pop();
 
@@ -1365,6 +1373,7 @@ template <Decimal Dbit> void MPCExpressExecutor<Dbit>::Clean(void) {
 }
 
 template <Decimal Dbit> MPCExpressExecutor<Dbit>::~MPCExpressExecutor() {
+  mpc_op_->fini();
   Clean();
 }
 

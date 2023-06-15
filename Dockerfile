@@ -51,7 +51,7 @@ RUN apt-get update \
 
 COPY --from=builder /opt/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
 # Copy test data files to /tmp/
-COPY --from=builder /src/data/ /tmp/
+COPY --from=builder /src/data /app/data
 # Copy all test config files to /app/config
 COPY --from=builder /src/config /app/config
 # Copy primihub python sources to /app and setup to system python3

@@ -24,15 +24,30 @@
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/network/socket/ioservice.h"
 #include "src/primihub/util/network/socket/session.h"
+
+#ifdef MPC_SOCKET_CHANNEL
 #include "src/primihub/util/network/socket/channel.h"
 #include "src/primihub/util/network/socket/commpkg.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#include "src/primihub/util/network/mpc_commpkg.h"
+#endif
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
 class MPCOperator {
  public:
-  Channel mNext, mPrev;
+#ifdef MPC_SOCKET_CHANNEL
+  Channel mNext_;
+  Channel mPrev_;
   IOService ios;
+  Channel* mNext{nullptr};
+  Channel* mPrev{nullptr};
+#else
+  MpcChannel *mNext{nullptr};
+  MpcChannel *mPrev{nullptr};
+  std::shared_ptr<CommPkg> commPtr;
+#endif
 
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
@@ -50,11 +65,15 @@ class MPCOperator {
   MPCOperator(u64 partyIdx_, string NextName, string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
+#ifdef MPC_SOCKET_CHANNEL
+  int setup(std::string next_ip, std::string prev_ip, u32 next_port,
+            u32 prev_port);
   ~MPCOperator() {
     fini();
   }
-  int setup(std::string next_ip, std::string prev_ip, u32 next_port,
-            u32 prev_port);
+#else
+  int setup(MpcChannel &next, MpcChannel &prev);
+#endif
 
   void fini();
   template <Decimal D>
@@ -80,8 +99,8 @@ class MPCOperator {
   template <Decimal D>
   sf64Matrix<D> createSharesByShape(const f64Matrix<D> &val) {
     std::array<u64, 2> size{val.rows(), val.cols()};
-    mNext.asyncSendCopy(size);
-    mPrev.asyncSendCopy(size);
+    mNext->asyncSendCopy(size);
+    mPrev->asyncSendCopy(size);
 
     sf64Matrix<D> dest(size[0], size[1]);
     enc.localFixedMatrix(runtime, val, dest).get();
@@ -92,9 +111,9 @@ class MPCOperator {
   template <Decimal D> sf64Matrix<D> createSharesByShape(u64 pIdx) {
     std::array<u64, 2> size;
     if (pIdx == (partyIdx + 1) % 3)
-      mNext.recv(size);
+      mNext->recv(size);
     else if (pIdx == (partyIdx + 2) % 3)
-      mPrev.recv(size);
+      mPrev->recv(size);
     else
       throw RTE_LOC;
 
@@ -678,7 +697,6 @@ class MPCOperator {
       denominatorLess[0](i, 0) = denominator[0](lessIdx[i], 0);
       denominatorLess[1](i, 0) = denominator[1](lessIdx[i], 0);
     }
-
     for (u64 i = 0; i < moreIdx.size(); i++) {
       denominatorMore[0](i, 0) = denominator[0](moreIdx[i], 0);
       denominatorMore[1](i, 0) = denominator[1](moreIdx[i], 0);
@@ -830,13 +848,13 @@ class MPCOperator {
       if (partyIdx == i) {
         shape[0] = m.rows();
         shape[1] = m.cols();
-        mNext.asyncSendCopy(shape);
-        mPrev.asyncSendCopy(shape);
+        mNext->asyncSendCopy(shape);
+        mPrev->asyncSendCopy(shape);
       } else {
         if (partyIdx == (i + 1) % 3)
-          mPrev.recv(shape);
+          mPrev->recv(shape);
         else if (partyIdx == (i + 2) % 3)
-          mNext.recv(shape);
+          mNext->recv(shape);
         else
           throw std::runtime_error("Message recv logic error.");
       }

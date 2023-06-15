@@ -18,8 +18,11 @@
 #include <parquet/stream_reader.h>
 #include <rapidjson/document.h>
 
+#include <float.h>
 #include <iostream>
+#include <limits>
 
+#include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
@@ -53,6 +56,7 @@ void MissingProcess::_spiltStr(string str, const string &split,
 
 int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
   try {
+
     VLOG(5) << "Convert string '" << str << "' into int64 value.";
     size_t conv_length = 0;
     i64_val = stoll(str, &conv_length);
@@ -147,12 +151,6 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
     auto chunk_vals = new_col_val[k];
     new_col_val[0].insert(new_col_val[0].end(), chunk_vals.begin(),
                           chunk_vals.end());
-  }
-
-  if (VLOG_IS_ON(5)) {
-    VLOG(5) << "After rebuild, value in this column is:";
-    for (auto &val : new_col_val[0])
-      VLOG(5) << val;
   }
 
   if (need_double) {
@@ -254,9 +252,12 @@ MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
+  this->set_party_name(config.party_name());
+  this->set_party_id(config.party_id());
 
+#ifdef MPC_SOCKET_CHANNEL
   std::map<std::string, rpc::Node> &node_map = config.node_map;
-  LOG(INFO) << node_map.size();
+
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
     rpc::Node &node = iter->second;
@@ -282,7 +283,6 @@ MissingProcess::MissingProcess(PartyConfig &config,
 
     prev_ip_ = node.ip();
     prev_port_ = node.vm(0).prev().port();
-
   } else if (party_id_ == 1) {
     rpc::Node &node = party_id_node_map[1];
 
@@ -305,29 +305,33 @@ MissingProcess::MissingProcess(PartyConfig &config,
   }
 
   node_id_ = config.node_id;
+#else
+  party_config_.Init(config);
+#endif
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
-  auto param_map = task.params().param_map();
-
-  // File path.
-  const auto& party_name = task.party_name();
-  const auto& party_dataset = task.party_datasets();
-  {
-    auto it = party_dataset.find(party_name);
-    if (it == party_dataset.end()) {
-      LOG(ERROR) << "no dataset is found for party_name: " << party_name;
-      return -1;
-    }
-    const auto& datasets = it->second.data();
-    auto data_it = datasets.find("Data_File");
-    if (data_it == datasets.end()) {
-      LOG(ERROR) << "no dataset named Data_File is found for party_name: " << party_name;
-      return -1;
-    }
-    data_file_path_ = data_it->second;
+  LOG(INFO) << "party_name: " << this->party_name_;
+  auto party_datasets = task.party_datasets();
+  auto it = party_datasets.find(this->party_name());
+  if (it == party_datasets.end()) {
+    LOG(ERROR) << "no data set found for party name: " << this->party_name();
+    return -1;
   }
-  //
+  const auto& dataset = it->second.data();
+  auto iter = dataset.find("Data_File");
+  if (iter == dataset.end()) {
+    LOG(ERROR) << "no dataset found for dataset name Data_File";
+    return -1;
+  }
+  // File path.
+  data_file_path_ = iter->second;
+
+  auto param_map = task.params().param_map();
+  replace_type_ = param_map["Replace_Type"].value_string();
+  if (replace_type_ == "")
+    replace_type_ = "MAX";
+
   use_db = false;
   if (data_file_path_.find("sqlite") == 0) {
     use_db = true;
@@ -337,65 +341,38 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     data_file_path_ = conn_info[1];
     table_name = conn_info[2];
   }
-
   // Column dtype.
   std::string json_str = param_map["ColumnInfo"].value_string();
 
   Document doc;
   doc.Parse(json_str.c_str());
 
-  bool found = false;
-  std::string local_dataset;
-  for (Value::ConstMemberIterator iter = doc.MemberBegin();
-       iter != doc.MemberEnd(); iter++) {
-    std::string dataset_id = iter->name.GetString();
-    // std::string ds_node = param_map[ds_name].value_string();
-    if (dataset_id == data_file_path_) {
-      local_dataset = iter->name.GetString();
-      found = true;
-    }
-  }
-
-  if (!found) {
-    // TODO: This request every node has dataset to handle, but sometimes only
-    // two node has dataset to handle, fix it later.
-    std::stringstream ss;
-    ss << "Can't not find dataset belong to " << this->node_id_ << ".";
-    LOG(ERROR) << ss.str();
-    throw std::runtime_error(ss.str());
-  }
+  // bool found = false;
+  std::string local_dataset = data_file_path_;
 
   Document doc_ds;
   auto doc_iter = doc.FindMember(local_dataset.c_str());
+
   doc_ds.Swap(doc_iter->value);
 
   Value &vals = doc_ds["columns"];
-  for (Value::ConstMemberIterator iter = vals.MemberBegin();
-       iter != vals.MemberEnd(); iter++) {
+  for (auto iter = vals.MemberBegin(); iter != vals.MemberEnd(); iter++) {
     std::string col_name = iter->name.GetString();
     uint32_t col_dtype = iter->value.GetInt();
     col_and_dtype_.insert(std::make_pair(col_name, col_dtype));
     LOG(INFO) << "Type of column " << iter->name.GetString() << " is "
               << iter->value.GetInt() << ".";
   }
-
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
-  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ".";
-  std::string next_name;
-  std::string prev_name;
-  if (party_id_ == 0) {
-    next_name = "01";
-    prev_name = "02";
-  } else if (party_id_ == 1) {
-    next_name = "12";
-    prev_name = "01";
-  } else if (party_id_ == 2) {
-    next_name = "02";
-    prev_name = "12";
+  if (doc_ds.HasMember("newDataPath") && doc_ds["newDataPath"].IsString()) {
+    new_dataset_path_ = doc_ds["newDataPath"].GetString();
+  } else {
+    new_dataset_path_ = "./" + new_dataset_id_ + ".csv";
+    LOG(WARNING) << "using default path: " << new_dataset_path_;
   }
-  mpc_op_exec_ = new MPCOperator(party_id_, next_name, prev_name);
-  // mpc_op_exec_->set_task_info(platform_type_, job_id_, task_id_);
 
+  LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ". "
+      << "new dataset path: " << new_dataset_path_;
   return 0;
 }
 
@@ -414,28 +391,91 @@ int MissingProcess::loadDataset() {
   return 0;
 }
 
+#ifdef MPC_SOCKET_CHANNEL
 int MissingProcess::initPartyComm(void) {
-  LOG(INFO) << "Begin to init party comm.";
+  std::string next_name;
+  std::string prev_name;
+
+  if (party_id_ == 0) {
+    next_name = "01";
+    prev_name = "02";
+  } else if (party_id_ == 1) {
+    next_name = "12";
+    prev_name = "01";
+  } else if (party_id_ == 2) {
+    next_name = "02";
+    prev_name = "12";
+  }
+
+  mpc_op_exec_ = std::make_unique<MPCOperator>(party_id_, next_name, prev_name);
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-  LOG(INFO) << "Finish to init party comm.";
+
   return 0;
 }
+#else
+int MissingProcess::initPartyComm(void) {
+  auto link_ctx = GetLinkContext();
+  if (link_ctx == nullptr) {
+    LOG(ERROR) << "link context is not available";
+    return -1;
+  }
+  // construct channel for next party
+  std::string next_party_name = this->party_config_.NextPartyName();
+  auto next_party_info = this->party_config_.NextPartyInfo();
+  base_channel_next_ = link_ctx->getChannel(next_party_info);
+
+  // construct channel for prev party
+  auto prev_party_name = this->party_config_.PrevPartyName();
+  auto prev_party_info = this->party_config_.PrevPartyInfo();
+  base_channel_prev_ = link_ctx->getChannel(prev_party_info);
+
+  mpc_channel_next_ = std::make_shared<MpcChannel>(
+      this->party_config_.SelfPartyName(), link_ctx);
+  mpc_channel_prev_ = std::make_shared<MpcChannel>(
+      this->party_config_.SelfPartyName(), link_ctx);
+
+  mpc_channel_next_->SetupBaseChannel(next_party_name, base_channel_next_);
+  mpc_channel_prev_->SetupBaseChannel(prev_party_name, base_channel_prev_);
+
+  std::string next_name = "fake_next";
+  std::string prev_name = "fake_prev";
+
+  mpc_op_exec_ = std::make_unique<MPCOperator>(
+      this->party_config_.SelfPartyId(), next_name.c_str(), prev_name.c_str());
+
+  mpc_op_exec_->setup(*mpc_channel_prev_, *mpc_channel_next_);
+
+  party_id_ = this->party_config_.SelfPartyId();
+  LOG(INFO) << "local_id_local_id_: " << party_id_;
+  LOG(INFO) << "next_party: " << next_party_name
+      << " detail: " << next_party_info.to_string();
+  LOG(INFO) << "prev_party: " << prev_party_name
+      << " detail: " << prev_party_info.to_string();
+  return 0;
+}
+#endif
 
 int MissingProcess::execute() {
+
   try {
     int cols_0, cols_1, cols_2;
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
         cols_0 = col_and_dtype_.size();
-        mpc_op_exec_->mNext.asyncSendCopy(cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(cols_0);
+        mpc_op_exec_->mNext->asyncSendCopy(cols_0);
+        mpc_op_exec_->mPrev->asyncSendCopy(cols_0);
       } else {
-        if (party_id_ == (i + 1) % 3)
-          mpc_op_exec_->mPrev.recv(cols_2);
-        else if (party_id_ == (i + 2) % 3)
-          mpc_op_exec_->mNext.recv(cols_1);
-        else
-          throw std::runtime_error("Message recv logic error.");
+        if (party_id_ == (i + 1) % 3) {
+          mpc_op_exec_->mPrev->recv(cols_2);
+        } else if (party_id_ == (i + 2) % 3) {
+          mpc_op_exec_->mNext->recv(cols_1);
+        } else {
+          std::stringstream ss;
+          ss << "Abnormal party id value " << party_id_ << ".";
+
+          LOG(ERROR) << ss.str();
+          throw std::runtime_error(ss.str());
+        }
       }
     }
 
@@ -457,15 +497,20 @@ int MissingProcess::execute() {
 
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-        mpc_op_exec_->mNext.asyncSendCopy(arr_dtype0, cols_0);
-        mpc_op_exec_->mPrev.asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mNext->asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mPrev->asyncSendCopy(arr_dtype0, cols_0);
       } else {
-        if (party_id_ == (i + 1) % 3)
-          mpc_op_exec_->mPrev.recv(arr_dtype1, cols_0);
-        else if (party_id_ == (i + 2) % 3)
-          mpc_op_exec_->mNext.recv(arr_dtype2, cols_0);
-        else
-          throw std::runtime_error("Message recv logic error.");
+        if (party_id_ == (i + 1) % 3) {
+          mpc_op_exec_->mPrev->recv(arr_dtype1, cols_0);
+        } else if (party_id_ == (i + 2) % 3) {
+          mpc_op_exec_->mNext->recv(arr_dtype2, cols_0);
+        } else {
+          std::stringstream ss;
+          ss << "Abnormal party id value " << party_id_ << ".";
+
+          LOG(ERROR) << ss.str();
+          throw std::runtime_error(ss.str());
+        }
       }
     }
 
@@ -485,6 +530,7 @@ int MissingProcess::execute() {
 
     for (auto iter = col_and_dtype_.begin(); iter != col_and_dtype_.end();
          iter++) {
+
       auto t = std::find(local_col_names.begin(), local_col_names.end(),
                          iter->first);
 
@@ -497,15 +543,29 @@ int MissingProcess::execute() {
       int null_num = 0;
       int abnormal_num = 0;
 
+      int64_t int_max = LONG_MIN;
+      int64_t int_min = LONG_MAX;
+      double double_min = DBL_MAX;
+      double double_max = DBL_MIN;
+      // 0:avge 1:max 2:min
+      int process_type = 0;
+      int col_index = -1;
+      double double_col_max = 0;
+      int64_t int_col_max = 0;
+      double double_col_min = 0;
+      int64_t int_col_min = 0;
+
       // For each column type of which maybe double or int64, read every row as
       // a string then try to convert string into int64 value or double value,
       // this value should be a abnormal value when convert failed.
       if (t != local_col_names.end()) {
         LOG(INFO) << "Begin to process column " << iter->first << ":";
         std::vector<std::vector<uint32_t>> abnormal_index;
-        int col_index = std::distance(local_col_names.begin(), t);
+        col_index = std::distance(local_col_names.begin(), t);
 
+        // Integer Long
         if (iter->second == 1 || iter->second == 3) {
+
           null_num = 0;
           int_count = 0;
           int_sum = 0;
@@ -516,6 +576,7 @@ int MissingProcess::execute() {
                     << " chunk(s), expect type is int64.";
 
           abnormal_index.resize(chunk_num);
+
           if (use_db) {
             for (int k = 0; k < chunk_num; k++) {
               auto value_array = std::static_pointer_cast<Int64Array>(
@@ -524,6 +585,8 @@ int MissingProcess::execute() {
               for (int64_t j = 0; j < value_array->length(); j++) {
                 i64_val = value_array->Value(j);
                 int_sum += i64_val;
+                int_max = i64_val > int_max ? i64_val : int_max;
+                int_min = i64_val < int_min ? i64_val : int_min;
               }
             }
             int_count = table->num_rows() - db_both_index[iter->first].size();
@@ -534,7 +597,10 @@ int MissingProcess::execute() {
 
               // Detect string that can't convert into int64_t value.
               int ret = 0;
+
               int64_t i64_val = 0;
+              LOG(WARNING) << "str_array->length() :" << str_array->length()
+                           << ".";
               for (int64_t j = 0; j < str_array->length(); j++) {
                 if (str_array->IsNull(j)) {
                   LOG(WARNING) << "Find missing value in column " << iter->first
@@ -543,6 +609,9 @@ int MissingProcess::execute() {
                 }
 
                 ret = _strToInt64(str_array->GetString(j), i64_val);
+
+                // convert fails
+
                 if (ret != 0) {
                   abnormal_num++;
                   abnormal_index[k].emplace_back(j);
@@ -551,6 +620,10 @@ int MissingProcess::execute() {
                       << "' in column " << iter->first << ", chunk " << k
                       << ", index " << j << ".";
                 } else {
+
+                  int_max = i64_val > int_max ? i64_val : int_max;
+                  int_min = i64_val < int_min ? i64_val : int_min;
+
                   int_sum += i64_val;
                 }
               }
@@ -559,7 +632,9 @@ int MissingProcess::execute() {
                   table->column(col_index)->chunk(k)->data()->GetNullCount();
             }
             int_count = table->num_rows() - null_num - abnormal_num;
-          }
+
+          } // double
+
         } else if (iter->second == 2) {
           null_num = 0;
           double_count = 0;
@@ -579,6 +654,8 @@ int MissingProcess::execute() {
               for (int64_t j = 0; j < value_array->length(); j++) {
                 d_val = value_array->Value(j);
                 double_sum += d_val;
+                double_max = d_val > double_max ? d_val : double_max;
+                double_min = d_val < double_min ? d_val : double_min;
               }
             }
             double_count =
@@ -590,9 +667,9 @@ int MissingProcess::execute() {
               // Detect string that can't convert into double value.
               double d_val = 0;
               int ret = 0;
-              // LOG_INFO()<< str_array->length();
+
               for (int64_t j = 0; j < str_array->length(); j++) {
-                // LOG(INFO) << str_array->GetString(j);
+
                 if (str_array->IsNull(j)) {
                   LOG(WARNING) << "Find missing value in column " << iter->first
                                << ", chunk " << k << ", index " << j << ".";
@@ -608,6 +685,10 @@ int MissingProcess::execute() {
                       << ", index " << j << ".";
 
                 } else {
+
+                  double_max = d_val > double_max ? d_val : double_max;
+                  double_min = d_val < double_min ? d_val : double_min;
+
                   double_sum += d_val;
                 }
               }
@@ -620,151 +701,530 @@ int MissingProcess::execute() {
           }
         }
 
-        if (iter->second == 1 || iter->second == 3) {
-          i64Matrix m(2, 1);
-          m(0, 0) = int_sum;
-          m(1, 0) = int_count;
+        // MPC
+        //.........................................................................................
+        const Decimal myD = D16;
+        // 1:max 2:min 3:avg
+        // enum replace { MAX, MIN, AVG };
+        // replace replace_type = AVG;
 
-          LOG(INFO) << "Local column: sum " << int_sum << ", count "
-                    << int_count << ".";
+        if (replace_type_ == "MAX") {
+          if (iter->second == 1 || iter->second == 3) {
+            i64Matrix m(1, 1);
 
-          si64Matrix sh_m[3];
-          for (uint8_t i = 0; i < 3; i++) {
-            if (i == party_id_) {
-              sh_m[i].resize(2, 1);
-              mpc_op_exec_->createShares(m, sh_m[i]);
+            std::vector<bool> mpc_res;
+
+            m(0, 0) = int_max;
+            LOG(INFO) << "The max of party" << party_id_
+                      << " column is: " << int_max << ".";
+
+            sbMatrix sh_res;
+            // first compare:p0-p1
+            if (party_id_ != 2) {
+              mpc_op_exec_->MPC_Compare(m, sh_res);
             } else {
-              sh_m[i].resize(2, 1);
-              mpc_op_exec_->createShares(sh_m[i]);
+              mpc_op_exec_->MPC_Compare(sh_res);
             }
-          }
 
-          si64Matrix sh_sum(2, 1);
-          sh_sum = sh_m[0];
-          for (uint8_t i = 1; i < 3; i++)
-            sh_sum = sh_sum + sh_m[i];
+            i64Matrix tmp;
+            tmp.resize(sh_res.rows(), sh_res.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
+                .get();
+            for (size_t i = 0; i < tmp.rows(); i++) {
+              mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
+            }
+            LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
+            LOG(INFO) << "Second: The mpc_res is " << mpc_res[0] << ".";
+            // second compare
+            // 0:p0 is greater
+            // 1:p1 is greater
+            // 2:p2
+            int flag = 0;
+            sbMatrix sh_res2;
+            for (int i = 0; i < mpc_res.size(); i++) {
+              // p0<p1
+              if (mpc_res[i]) {
+                flag = 1;
+                // p1-p2
+                if (party_id_ != 0) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              } else {
+                flag = 0;
+                // p0-p2
+                if (party_id_ != 1) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+            }
 
-          LOG(INFO) << "Run MPC sum to get sum of all party.";
+            std::vector<bool> mpc_res2;
+            i64Matrix tmp2;
+            tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
+                .get();
+            for (size_t i = 0; i < tmp2.rows(); i++) {
+              mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
+            }
 
-          i64Matrix plain_sum(2, 1);
-          plain_sum = mpc_op_exec_->revealAll(sh_sum);
+            LOG(INFO) << "Second: The revealed sh_res2 is " << tmp2 << ".";
+            LOG(INFO) << "Second: The mpc_res2 is " << mpc_res2[0] << ".";
 
-          LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
-                    << ", sum of count in all party is " << plain_sum(1, 0)
-                    << ".";
+            si64Matrix sh_max;
+            sh_max.resize(m.rows(), m.cols());
+            for (int i = 0; i < mpc_res2.size(); i++) {
+              // max is p2
+              if (mpc_res2[i]) {
+                flag = 2;
+                if (party_id_ == 2) {
+                  mpc_op_exec_->createShares(m, sh_max);
+                } else {
+                  mpc_op_exec_->createShares(sh_max);
+                }
+              } else {
+                // max is p0 or p1
+                if (flag == 0) {
+                  if (party_id_ == 0) {
+                    mpc_op_exec_->createShares(m, sh_max);
+                  } else {
+                    mpc_op_exec_->createShares(sh_max);
+                  }
+                } else if (flag == 1) {
+                  if (party_id_ == 1) {
+                    mpc_op_exec_->createShares(m, sh_max);
+                  } else {
+                    mpc_op_exec_->createShares(sh_max);
+                  }
+                }
+              }
+              i64Matrix plain_max(1, 1);
+              plain_max = mpc_op_exec_->revealAll(sh_max);
+              LOG(WARNING) << "The max value is " << plain_max << " in party "
+                           << flag << ".";
+              int_col_max = plain_max(0, 0);
+            }
 
-          LOG(INFO) << "Build new array to save column value, missing and "
-                       "abnormal value will be replaced by average value.";
+            replaceValue(iter, table, col_index, int_col_max, abnormal_index,
+                         use_db, true);
 
-          // Update value in position that have null or abormal value with
-          // average value.
-          int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
-          std::shared_ptr<arrow::Array> new_array;
-          if (use_db) {
-            _buildNewColumn(table, col_index, std::to_string(col_avg),
-                            db_both_index[iter->first], false, new_array);
-          } else {
-            _buildNewColumn(table, col_index, std::to_string(col_avg),
-                            abnormal_index, false, new_array);
-          }
-          std::shared_ptr<arrow::ChunkedArray> chunk_array =
-              std::make_shared<arrow::ChunkedArray>(new_array);
-          std::shared_ptr<arrow::Field> field =
-              std::make_shared<arrow::Field>(iter->first, arrow::int64());
+            //++++++++++++++++++++++++++++++++++++++Double+++++++++++++++++++++++++++++++++++++++++++++++
+          } else if (iter->second == 2) {
+            f64Matrix<myD> m(1, 1);
 
-          LOG(INFO) << "Replace column " << iter->first
-                    << " with new array in table.";
+            std::vector<bool> mpc_res;
 
-          LOG(INFO) << "col_index:" << col_index;
-          LOG(INFO) << "name:" << field->name();
-          LOG(INFO) << "type:" << field->type();
-          LOG(INFO) << "table->type:" << table->field(col_index)->type();
+            m(0, 0) = double_max;
+            LOG(INFO) << "The max of party" << party_id_
+                      << " column is: " << double_max << ".";
 
-          auto result = table->SetColumn(col_index, field, chunk_array);
-          if (!result.ok()) {
-            std::stringstream ss;
-            ss << "Replace content of column " << iter->first << " failed, "
-               << result.status();
-            LOG(ERROR) << ss.str();
-            throw std::runtime_error(ss.str());
-          }
-
-          table = result.ValueOrDie();
-          LOG(INFO) << "Finish.";
-        } else if (iter->second == 2) {
-          eMatrix<double> m(2, 1);
-          m(0, 0) = double_sum;
-          m(1, 0) = double_count;
-
-          LOG(INFO) << "Local column: sum " << double_sum << ", count "
-                    << double_count << ".";
-
-          sf64Matrix<D16> sh_m[3];
-          for (uint8_t i = 0; i < 3; i++) {
-            if (i == party_id_) {
-              sh_m[i].resize(2, 1);
-              mpc_op_exec_->createShares(m, sh_m[i]);
+            sbMatrix sh_res;
+            // first compare:p0-p1
+            if (party_id_ != 2) {
+              mpc_op_exec_->MPC_Compare(m, sh_res);
             } else {
-              sh_m[i].resize(2, 1);
-              mpc_op_exec_->createShares(sh_m[i]);
+              mpc_op_exec_->MPC_Compare(sh_res);
             }
-          }
+            LOG(INFO) << "The first compare is completely. ";
 
-          sf64Matrix<D16> sh_sum;
-          sh_sum = sh_m[0];
-          for (int j = 1; j < 3; j++)
-            sh_sum = sh_sum + sh_m[j];
+            i64Matrix tmp;
+            tmp.resize(sh_res.rows(), sh_res.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
+                .get();
+            for (size_t i = 0; i < tmp.rows(); i++) {
+              mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
+            }
 
-          LOG(INFO) << "Run MPC sum to get sum of all party.";
+            LOG(INFO) << "First: the revealed sh_res is " << tmp << ".";
+            LOG(INFO) << "First: The mpc_res is " << mpc_res[0] << ".";
 
-          eMatrix<double> plain_sum(2, 0);
-          plain_sum = mpc_op_exec_->revealAll(sh_sum);
+            // second compare
+            // 0:p0 is greater
+            // 1:p1 is greater
+            // 2:p2
+            int flag = 0;
+            sbMatrix sh_res2;
+            for (int i = 0; i < mpc_res.size(); i++) {
+              // p0<p1
+              if (mpc_res[i]) {
+                flag = 1;
+                // p1-p2
+                if (party_id_ != 0) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+              // p0>=p1
+              else {
+                flag = 0;
+                // p0-p2
+                if (party_id_ != 1) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+            }
 
-          LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
-                    << ", sum of count in all party is " << plain_sum(1, 0)
-                    << ".";
+            std::vector<bool> mpc_res2;
+            i64Matrix tmp2;
+            tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
+                .get();
+            for (size_t i = 0; i < tmp2.rows(); i++) {
+              mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
+            }
 
-          LOG(INFO) << "Build new array to save column value, missing and "
-                       "abnormal value will be replaced by average value.";
+            LOG(INFO) << "Second: The revealed sh_res is " << tmp2 << ".";
+            LOG(INFO) << "Second: The mpc_res2 is " << mpc_res2[0] << ".";
 
-          // Update value in position that have null or abormal value with
-          // average value.
-          double col_avg = plain_sum(0, 0) / plain_sum(1, 0);
+            sf64Matrix<myD> sh_max;
+            sh_max.resize(m.rows(), m.cols());
+            for (int i = 0; i < mpc_res2.size(); i++) {
+              // max is p2
+              if (mpc_res2[i]) {
+                flag = 2;
+                if (party_id_ == 2) {
+                  mpc_op_exec_->createShares(m, sh_max);
+                } else {
+                  mpc_op_exec_->createShares(sh_max);
+                }
+              } else {
+                // max is p0 or p1
+                if (flag == 0) {
+                  if (party_id_ == 0) {
+                    mpc_op_exec_->createShares(m, sh_max);
+                  } else {
+                    mpc_op_exec_->createShares(sh_max);
+                  }
+                } else if (flag == 1) {
+                  if (party_id_ == 1) {
+                    mpc_op_exec_->createShares(m, sh_max);
+                  } else {
+                    mpc_op_exec_->createShares(sh_max);
+                  }
+                }
+              }
+              eMatrix<double> plain_max(1, 1);
+              plain_max = mpc_op_exec_->revealAll(sh_max);
+              LOG(WARNING) << "The max value is " << plain_max << " in party "
+                           << flag << ".";
+              double_col_max = plain_max(0, 0);
+            }
 
-          std::shared_ptr<arrow::Array> new_array;
-          if (use_db) {
-            _buildNewColumn(table, col_index, std::to_string(col_avg),
-                            db_both_index[iter->first], true, new_array);
+            replaceValue(iter, table, col_index, double_col_max, abnormal_index,
+                         use_db, true);
           } else {
-            _buildNewColumn(table, col_index, std::to_string(col_avg),
-                            abnormal_index, true, new_array);
+            LOG(ERROR) << "Can't find value of column " << iter->first << ".";
           }
-          std::shared_ptr<arrow::ChunkedArray> chunk_array =
-              std::make_shared<arrow::ChunkedArray>(new_array);
-          std::shared_ptr<arrow::Field> field =
-              std::make_shared<arrow::Field>(iter->first, arrow::float64());
+        } else if (replace_type_ == "MIN") {
+          if (iter->second == 1 || iter->second == 3) {
+            i64Matrix m(1, 1);
 
-          LOG(INFO) << "Replace column " << iter->first
-                    << " with new array in table.";
+            std::vector<bool> mpc_res;
 
-          auto result = table->SetColumn(col_index, field, chunk_array);
-          if (!result.ok()) {
-            std::stringstream ss;
-            ss << "Replace content of column " << iter->first << " failed, "
-               << result.status();
-            LOG(ERROR) << ss.str();
-            throw std::runtime_error(ss.str());
+            m(0, 0) = int_min;
+            LOG(INFO) << "The min of party" << party_id_
+                      << " column is: " << int_min << ".";
+
+            sbMatrix sh_res;
+            // first compare:p0-p1
+            if (party_id_ != 2) {
+              mpc_op_exec_->MPC_Compare(m, sh_res);
+            } else {
+              mpc_op_exec_->MPC_Compare(sh_res);
+            }
+
+            i64Matrix tmp;
+            tmp.resize(sh_res.rows(), sh_res.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
+                .get();
+            for (size_t i = 0; i < tmp.rows(); i++) {
+              mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
+            }
+            LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
+            LOG(INFO) << "Second: The mpc_res is " << mpc_res[0] << ".";
+            // second compare
+            // 0:p0 is greater
+            // 1:p1 is greater
+            // 2:p2
+            int flag = 0;
+            sbMatrix sh_res2;
+            for (int i = 0; i < mpc_res.size(); i++) {
+              // p0<p1
+              if (!mpc_res[i]) {
+                flag = 1;
+                // p1-p2
+                if (party_id_ != 0) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              } else {
+                flag = 0;
+                // p0-p2
+                if (party_id_ != 1) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+            }
+
+            std::vector<bool> mpc_res2;
+            i64Matrix tmp2;
+            tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
+                .get();
+            for (size_t i = 0; i < tmp2.rows(); i++) {
+              mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
+            }
+
+            LOG(INFO) << "Second: The revealed sh_res2 is " << tmp2 << ".";
+            LOG(INFO) << "Second: The mpc_res2 is " << mpc_res2[0] << ".";
+
+            si64Matrix sh_min;
+            sh_min.resize(m.rows(), m.cols());
+
+            for (int i = 0; i < mpc_res2.size(); i++) {
+              // min is p2
+              if (!mpc_res2[i]) {
+                flag = 2;
+                if (party_id_ == 2) {
+                  mpc_op_exec_->createShares(m, sh_min);
+                } else {
+                  mpc_op_exec_->createShares(sh_min);
+                }
+              } else {
+                // min is p0 or p1
+                if (flag == 0) {
+                  if (party_id_ == 0) {
+                    mpc_op_exec_->createShares(m, sh_min);
+                  } else {
+                    mpc_op_exec_->createShares(sh_min);
+                  }
+                } else if (flag == 1) {
+                  if (party_id_ == 1) {
+                    mpc_op_exec_->createShares(m, sh_min);
+                  } else {
+                    mpc_op_exec_->createShares(sh_min);
+                  }
+                }
+              }
+              i64Matrix plain_min(1, 1);
+              plain_min = mpc_op_exec_->revealAll(sh_min);
+              LOG(WARNING) << "The min value is " << plain_min << " in party "
+                           << flag << ".";
+              int_col_min = plain_min(0, 0);
+            }
+
+            replaceValue(iter, table, col_index, int_col_min, abnormal_index,
+                         use_db, true);
+            //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            //++++++++++++++++++++++++++++++++++++++Double+++++++++++++++++++++++++++++++++++++++++++++++
+          } else if (iter->second == 2) {
+            f64Matrix<myD> m(1, 1);
+
+            std::vector<bool> mpc_res;
+
+            m(0, 0) = double_min;
+
+            LOG(INFO) << "The min of party" << party_id_
+                      << " column is: " << double_min << ".";
+
+            sbMatrix sh_res;
+            // first compare:p0-p1
+            if (party_id_ != 2) {
+              mpc_op_exec_->MPC_Compare(m, sh_res);
+            } else {
+              mpc_op_exec_->MPC_Compare(sh_res);
+            }
+            LOG(INFO) << "The first compare is completely. ";
+
+            i64Matrix tmp;
+            tmp.resize(sh_res.rows(), sh_res.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
+                .get();
+            for (size_t i = 0; i < tmp.rows(); i++) {
+              mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
+            }
+
+            LOG(INFO) << "First: the revealed sh_res is " << tmp << ".";
+            LOG(INFO) << "First: The mpc_res is " << mpc_res[0] << ".";
+
+            // second compare
+            // 0:p0 is greater
+            // 1:p1 is greater
+            // 2:p2
+            int flag = 0;
+            sbMatrix sh_res2;
+            for (int i = 0; i < mpc_res.size(); i++) {
+              // p0>=p1
+              if (!mpc_res[i]) {
+                flag = 1;
+                // p1-p2
+                if (party_id_ != 0) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+              // p0<p1
+              else {
+                flag = 0;
+                // p0-p2
+                if (party_id_ != 1) {
+                  mpc_op_exec_->MPC_Compare(m, sh_res2);
+                } else {
+                  mpc_op_exec_->MPC_Compare(sh_res2);
+                }
+              }
+            }
+
+            std::vector<bool> mpc_res2;
+            i64Matrix tmp2;
+            tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
+            mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
+                .get();
+            for (size_t i = 0; i < tmp2.rows(); i++) {
+              mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
+            }
+
+            sf64Matrix<myD> sh_min;
+            sh_min.resize(m.rows(), m.cols());
+            for (int i = 0; i < mpc_res2.size(); i++) {
+              // min is p2
+              if (!mpc_res2[i]) {
+                flag = 2;
+                if (party_id_ == 2) {
+                  mpc_op_exec_->createShares(m, sh_min);
+                } else {
+                  mpc_op_exec_->createShares(sh_min);
+                }
+              } else {
+                // min is p0 or p1
+                if (flag == 0) {
+                  if (party_id_ == 0) {
+                    mpc_op_exec_->createShares(m, sh_min);
+                  } else {
+                    mpc_op_exec_->createShares(sh_min);
+                  }
+                } else if (flag == 1) {
+                  if (party_id_ == 1) {
+                    mpc_op_exec_->createShares(m, sh_min);
+                  } else {
+                    mpc_op_exec_->createShares(sh_min);
+                  }
+                }
+              }
+              eMatrix<double> plain_min(1, 1);
+              plain_min = mpc_op_exec_->revealAll(sh_min);
+              LOG(WARNING) << "The min value is " << plain_min << " in party "
+                           << flag << ".";
+              double_col_min = plain_min(0, 0);
+            }
+
+            replaceValue(iter, table, col_index, double_col_min, abnormal_index,
+                         use_db, true);
+          } else {
+            LOG(ERROR) << "Can't find value of column " << iter->first << ".";
           }
+        } else if (replace_type_ == "AVG") {
+          if (iter->second == 1 || iter->second == 3) {
+            i64Matrix m(2, 1);
+            m(0, 0) = int_sum;
+            m(1, 0) = int_count;
 
-          table = result.ValueOrDie();
-          LOG(INFO) << "Finish.";
+            LOG(INFO) << "Local column: sum " << int_sum << ", count "
+                      << int_count << ".";
+
+            si64Matrix sh_m[3];
+            for (uint8_t i = 0; i < 3; i++) {
+              if (i == party_id_) {
+                sh_m[i].resize(2, 1);
+                mpc_op_exec_->createShares(m, sh_m[i]);
+              } else {
+                sh_m[i].resize(2, 1);
+                mpc_op_exec_->createShares(sh_m[i]);
+              }
+            }
+
+            si64Matrix sh_sum(2, 1);
+            sh_sum = sh_m[0];
+            for (uint8_t i = 1; i < 3; i++)
+              sh_sum = sh_sum + sh_m[i];
+
+            LOG(INFO) << "Run MPC sum to get sum of all party.";
+
+            i64Matrix plain_sum(2, 1);
+            plain_sum = mpc_op_exec_->revealAll(sh_sum);
+
+            LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
+                      << ", sum of count in all party is " << plain_sum(1, 0)
+                      << ".";
+
+            LOG(INFO) << "Build new array to save column value, missing and "
+                         "abnormal value will be replaced by average value.";
+
+            // Update value in position that have null or abormal value with
+            // average value.
+            int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
+            replaceValue(iter, table, col_index, col_avg, abnormal_index,
+                         use_db, true);
+          } else if (iter->second == 2) {
+            eMatrix<double> m(2, 1);
+            m(0, 0) = double_sum;
+            m(1, 0) = double_count;
+
+            LOG(INFO) << "Local column: sum " << double_sum << ", count "
+                      << double_count << ".";
+
+            sf64Matrix<D16> sh_m[3];
+            for (uint8_t i = 0; i < 3; i++) {
+              if (i == party_id_) {
+                sh_m[i].resize(2, 1);
+                mpc_op_exec_->createShares(m, sh_m[i]);
+              } else {
+                sh_m[i].resize(2, 1);
+                mpc_op_exec_->createShares(sh_m[i]);
+              }
+            }
+
+            sf64Matrix<D16> sh_sum;
+            sh_sum = sh_m[0];
+            for (int j = 1; j < 3; j++)
+              sh_sum = sh_sum + sh_m[j];
+
+            LOG(INFO) << "Run MPC sum to get sum of all party.";
+
+            eMatrix<double> plain_sum(2, 0);
+            plain_sum = mpc_op_exec_->revealAll(sh_sum);
+
+            LOG(INFO) << "Sum of column in all party is " << plain_sum(0, 0)
+                      << ", sum of count in all party is " << plain_sum(1, 0)
+                      << ".";
+
+            LOG(INFO) << "Build new array to save column value, missing and "
+                         "abnormal value will be replaced by average value.";
+
+            // Update value in position that have null or abormal value with
+            // average value.
+            double col_avg = plain_sum(0, 0) / plain_sum(1, 0);
+
+            replaceValue(iter, table, col_index, col_avg, abnormal_index,
+                         use_db, true);
+          } else {
+            LOG(ERROR) << "Can't find value of column " << iter->first << ".";
+          }
         }
-      } else {
-        LOG(ERROR) << "Can't find value of column " << iter->first << ".";
       }
     }
   } catch (std::exception &e) {
-    LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what() << ".";
+    LOG(ERROR) << "In party " << party_id_ << ":\n" << e.what();
     return -1;
   }
 
@@ -777,18 +1237,18 @@ int MissingProcess::finishPartyComm(void) {
     mpc_op_exec_->createShares(1, tmp_share0);
   else
     mpc_op_exec_->createShares(tmp_share0);
+
   mpc_op_exec_->fini();
-  delete mpc_op_exec_;
   return 0;
 }
 
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
-  std::string delimiter = ".";
-  int pos = data_file_path_.rfind(delimiter);
+  // std::string delimiter = ".";
+  // int pos = data_file_path_.rfind(delimiter);
 
-  std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
-
+  // std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
+  auto& new_path = new_dataset_path_;
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 
@@ -811,13 +1271,15 @@ int MissingProcess::saveModel(void) {
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
-  auto driver = this->datasetService()->getDriver(dataset_id);
-  auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
+  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto access_info =
+      dynamic_cast<CSVAccessInfo *>(driver->dataSetAccessInfo().get());
   if (access_info == nullptr) {
-    LOG(ERROR) << "get csv access info for dataset: " << dataset_id << " failed";
+    LOG(ERROR) << "get csv access info for dataset: " << dataset_id
+               << " failed";
     return -1;
   }
-  auto& filename = access_info->file_path_;
+  auto &filename = access_info->file_path_;
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(
       arrow::fs::LocalFileSystemOptions::Defaults());
@@ -826,7 +1288,6 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
     LOG(ERROR) << "Open file " << filename << " failed.";
     return -1;
   }
-
   std::shared_ptr<arrow::io::InputStream> input = file_stream.ValueOrDie();
 
   auto read_options = arrow::csv::ReadOptions::Defaults();
@@ -840,7 +1301,7 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
 
   std::vector<std::string> target_column;
   for (auto &pair : col_and_dtype_) {
-    if (pair.second == 1 || pair.second == 2)
+    if (pair.second == 1 || pair.second == 2 || pair.second == 3)
       target_column.emplace_back(pair.first);
   }
 

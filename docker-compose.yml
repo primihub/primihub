@@ -7,12 +7,13 @@ services:
     # ports:
     #   - "50050:50050"
     volumes:
-      - ./config:/app/config
-      - ./data:/data
+      # - ./config:/app/config
+      - ./data:/app/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50050  --node_id=node0 --config=/app/config/primihub_node0.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node0 --config=/app/config/primihub_node0.yaml"
+    # GLOG_v 0->7,the larger the value the more detailed the log
     depends_on:
       meta0:
         condition: service_healthy
@@ -24,12 +25,12 @@ services:
     # ports:
     #   - "50051:50051"
     volumes:
-      - ./config:/app/config
-      - ./data:/data
+      # - ./config:/app/config
+      - ./data:/app/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50051 --node_id=node1 --config=/app/config/primihub_node1.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node1 --config=/app/config/primihub_node1.yaml"
     depends_on:
       meta1:
         condition: service_healthy
@@ -41,18 +42,18 @@ services:
     # ports:
     #   - "50052:50052"
     volumes:
-      - ./config:/app/config
-      - ./data:/data
+      # - ./config:/app/config
+      - ./data:/app/data
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "./primihub-node --service_port=50052 --node_id=node2 --config=/app/config/primihub_node2.yaml"
+      - "GLOG_logtostderr=1 GLOG_v=2 ./primihub-node --node_id=node2 --config=/app/config/primihub_node2.yaml"
     depends_on:
       meta2:
         condition: service_healthy
 
   meta0:
-    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-meta:${TAG:-latest}
     restart: "always"
     container_name: primihub-meta0
     # ports:
@@ -74,7 +75,7 @@ services:
       retries: 3
 
   meta1:
-    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-meta:${TAG:-latest}
     restart: "always"
     container_name: primihub-meta1
     # ports:
@@ -96,7 +97,7 @@ services:
       retries: 3
 
   meta2:
-    image: ${REGISTRY:-docker.io}/primihub/primihub-fusion:${TAG:-latest}
+    image: ${REGISTRY:-docker.io}/primihub/primihub-meta:${TAG:-latest}
     restart: "always"
     container_name: primihub-meta2
     # ports:

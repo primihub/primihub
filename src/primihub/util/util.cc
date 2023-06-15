@@ -23,7 +23,7 @@
 #elif __APPLE__
 #include <mach-o/dyld.h>
 #endif
-
+#include <iomanip>
 #include <glog/logging.h>
 #include <algorithm>
 #include <string>
@@ -206,6 +206,15 @@ std::string getCurrentProcessDir() {
     std::string path = getCurrentProcessPath();
     char* dir_path = dirname(const_cast<char*>(path.c_str()));
     return std::string(dir_path);
+}
+
+std::string buf_to_hex_string(const uint8_t* pdata, size_t size) {
+  std::stringstream ss;
+  ss << std::hex << std::setfill('0');
+  for (size_t i=0; i < size; i++) {
+    ss << std::setw(2) << static_cast<unsigned>(pdata[i]);
+  }
+  return ss.str();
 }
 
 }  // namespace primihub

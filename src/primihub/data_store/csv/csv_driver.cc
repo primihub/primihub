@@ -20,11 +20,14 @@
 #include <fstream>
 #include <variant>
 #include <iostream>
+#include <sstream>
 #include <nlohmann/json.hpp>
 
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/file_util.h"
+#include "src/primihub/util/thread_local_data.h"
 
 namespace primihub {
 namespace csv {
@@ -36,8 +39,12 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   arrow::fs::LocalFileSystem local_fs(arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(file_path);
   if (!result_ifstream.ok()) {
-    LOG(ERROR) << "Failed to open file: " << file_path << " "
+    std::stringstream ss;
+    ss << "Failed to open file: " << file_path << " "
         << "detail: " << result_ifstream.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return nullptr;
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
@@ -45,8 +52,11 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   auto maybe_reader = arrow::csv::TableReader::Make(
       io_context, input, read_opt, parse_opt, convert_opt);
   if (!maybe_reader.ok()) {
-    LOG(ERROR) << "read data failed, "
-        << "detail: " << maybe_reader.status();
+    std::stringstream ss;
+    ss << "read data failed, " << "detail: " << maybe_reader.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return nullptr;
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
@@ -54,11 +64,14 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   auto maybe_table = reader->Read();
   if (!maybe_table.ok()) {
     // (for example a CSV syntax error or failed type conversion)
-    LOG(ERROR) << "read data failed, "
-        << "detail: " << maybe_table.status();
+    std::stringstream ss;
+    ss << "read data failed, " << "detail: " << maybe_table.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return nullptr;
   }
-  
+
   return *maybe_table;
 }
 }  // namespace csv
@@ -99,12 +112,14 @@ retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& meta_info) {
     nlohmann::json js_access_info = nlohmann::json::parse(access_info);
     this->file_path_ = js_access_info["data_path"].get<std::string>();
   } catch (std::exception& e) {
-    // LOG(ERROR) << "get dataset path failed, " << e.what() << " "
-    //   << "detail: " << meta_info;
     this->file_path_ = meta_info["access_meta"];
     if (this->file_path_.empty()) {
-      LOG(ERROR) << "get dataset path failed, " << e.what() << " "
+      std::stringstream ss;
+      ss << "get dataset path failed, " << e.what() << " "
           << "detail: " << meta_info;
+      std::string err_msg = ss.str();
+      SetThreadLocalErrorMsg(err_msg);
+      LOG(ERROR) << err_msg;
       return retcode::FAIL;
     }
   }
@@ -125,7 +140,11 @@ retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
     // check validattion of the path
     std::ifstream csv_data(file_path_, std::ios::in);
     if (!csv_data.is_open()) {
-      LOG(ERROR) << "file_path: " << file_path_ << " is not exist";
+      std::stringstream ss;
+      ss << "file_path: " << file_path_ << " is not exist";
+      std::string err_msg = ss.str();
+      SetThreadLocalErrorMsg(err_msg);
+      LOG(ERROR) << err_msg;
       return retcode::FAIL;
     }
     return retcode::SUCCESS;
@@ -164,7 +183,11 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
         auto field = arrow_schema->field(index);
         column_name->push_back(field->name());
       } else {
-        LOG(ERROR) << "index [" << index << "] is invalid";
+        std::stringstream ss;
+        ss << "index [" << index << "] is invalid";
+        std::string err_msg = ss.str();
+        SetThreadLocalErrorMsg(err_msg);
+        LOG(ERROR) << err_msg;
         return retcode::FAIL;
       }
     }
@@ -195,8 +218,12 @@ retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_optio
         column_types[name] = field_type;
         VLOG(7) << "name: [" << name << "] type: " << field_type->id();
       } else {
-        LOG(ERROR) << "index is out of range, index: " << index
+        std::stringstream ss;
+        ss << "index is out of range, index: " << index
             << " total columns: " << number_fields;
+        std::string err_msg = ss.str();
+        SetThreadLocalErrorMsg(err_msg);
+        LOG(ERROR) << err_msg;
         return retcode::FAIL;
       }
     }
@@ -244,11 +271,20 @@ std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
 }
 
 int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
+  // check existence of file directory
+  auto ret = ValidateDir(this->filePath);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << this->filePath;
+    return -1;
+  }
   // write Dataset to csv file
   auto result = arrow::io::FileOutputStream::Open(this->filePath);
   if (!result.ok()) {
-    LOG(ERROR) << "Open file " << filePath << " failed, "
-        << "detail: " << result.status();
+    std::stringstream ss;
+    ss << "Open file " << filePath << " failed, " << "detail: " << result.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return -1;
   }
 
@@ -260,7 +296,11 @@ int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
       *(csv_table), options, mem_pool,
       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
   if (!status.ok()) {
-    LOG(ERROR) << "Write content to csv file failed. " << status;
+    std::stringstream ss;
+    ss << "Write content to csv file failed. " << status;
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return -2;
   }
   return 0;
@@ -294,7 +334,11 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
   }
   std::ifstream csv_data(csv_access_info->file_path_, std::ios::in);
   if (!csv_data.is_open()) {
-    LOG(ERROR) << "open csv file: " << csv_access_info->file_path_ << " failed";
+    std::stringstream ss;
+    ss << "open csv file: " << csv_access_info->file_path_ << " failed";
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return retcode::FAIL;
   }
   std::string tile_row;
@@ -349,7 +393,7 @@ std::unique_ptr<Cursor> CSVDriver::read() {
     if (arrow_data == nullptr) {
       return nullptr;
     }
-    
+
     std::vector<FieldType> fileds;
     auto arrow_fileds = arrow_data->schema()->fields();
     for (const auto& field : arrow_fileds) {
@@ -388,10 +432,18 @@ std::unique_ptr<Cursor> CSVDriver::initCursor(const std::string &filePath) {
 // FIXME to be deleted write file in driver directly.
 int CSVDriver::write(std::shared_ptr<arrow::Table> table,
                      const std::string& filePath) {
-  filePath_ = filePath;
+  auto ret = ValidateDir(filePath);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << filePath;
+    return -1;
+  }
   auto result = arrow::io::FileOutputStream::Open(filePath);
   if (!result.ok()) {
-    LOG(ERROR) << "Open file " << filePath << " failed. " << result.status();
+    std::stringstream ss;
+    ss << "Open file " << filePath << " failed. " << result.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return -1;
   }
 
@@ -403,7 +455,11 @@ int CSVDriver::write(std::shared_ptr<arrow::Table> table,
       *(csv_table), options, mem_pool,
       reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
   if (!status.ok()) {
-    LOG(ERROR) << "Write content to csv file failed. " << status;
+    std::stringstream ss;
+    ss << "Write content to csv file failed. " << status;
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
     return -2;
   }
   return 0;

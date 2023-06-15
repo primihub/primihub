@@ -201,7 +201,7 @@ namespace primihub
     u64 aB = std::log2(1 / (params.mLearningRate / params.mBatchSize));
     auto start = std::chrono::system_clock::now();
 
-    for (u64 i = 0; i < (X.rows() / params.mBatchSize); ++i)
+    for (u64 i = 0; i < params.mIterations; ++i)
     {
       // sample the next mini-batch without replacement.
       getSubset(batchIndices, indices, idxIter, prng);
@@ -209,20 +209,18 @@ namespace primihub
       // extract the rows indexed by batchIndices and store them in XX, YY.
       extractBatch(XX, YY, X, Y, batchIndices);
 
-      // std::cout << "E[" << i << "] " << ", after extractBatch" << std::endl;
       DEBUG_PRINT(engine << "X[" << i << "] "
                          << engine.reveal(XX).format(HeavyFmt) << std::endl);
       DEBUG_PRINT(engine << "Y[" << i << "] "
                          << engine.reveal(YY).format(HeavyFmt) << std::endl);
       DEBUG_PRINT(engine << "W[" << i << "] " << engine.reveal(w).format(HeavyFmt)
                          << std::endl);
+
       // compute the errors on the current batch.
-      // std::cout << "E[" << i << "] " << ", before engine.mul" << std::endl;
       Matrix xw = engine.mul(XX, w);
-      // std::cout << "E[" << i << "] " << ", after engine.mul" << std::endl;
+
       Matrix fxw = engine.logisticFunc(xw);
-      // std::cout << "E[" << i << "] " << ", after engine.logisticFunc" <<
-      // std::endl;
+
       DEBUG_PRINT(engine << "P[" << i << "] "
                          << engine.reveal(xw).format(HeavyFmt) << std::endl);
       DEBUG_PRINT(engine << "F[" << i << "] "
@@ -230,34 +228,25 @@ namespace primihub
 
       Matrix error = fxw - YY;
 
-      // std::cout << "E[" << i << "] " << ", after error" << std::endl;
       DEBUG_PRINT(engine << "E[" << i << "] "
                          << engine.reveal(error).format(HeavyFmt) << std::endl);
 
-      // compute XX = XX^T
       XX.transposeInPlace();
 
       // apply the update function  w = w - a/|B| (XX^T * (XX * w - YY))
       Matrix update = engine.mulTruncate(XX, error, aB);
 
-      // std::cout << "U[" <<i<< "] = " << ", after engine.mulTruncate"  <<
-      // std::endl;
       w = w - update;
 
       DEBUG_PRINT(engine << "U[" << i << "] "
                          << engine.reveal(update).format(HeavyFmt) << std::endl);
-      if (X_test && i % 10 == 0 && i > (u64)(params.mIterations * 0.2))
-      {
 
-        auto now = std::chrono::system_clock::now();
-        auto dur =
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
-                .count();
+      if (X_test && i % 10 == 0)
+      {
         auto score = test_logisticModel(engine, w, *X_test, *Y_test);
         auto l2 = score[0];
         auto percent = score[1];
-        LOG(INFO) << i << " @ " << ((i + 1) * 1000.0 / dur)
-                  << " iters/s  l2:" << l2 << " percent:" << percent << ".";
+        LOG(INFO) << i << " @ " << " percent:" << percent << ".";
       }
     }
   }

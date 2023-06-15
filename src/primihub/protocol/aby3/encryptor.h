@@ -8,17 +8,22 @@
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/common/type/matrix_view.h"
-#include "src/primihub/util/network/socket/commpkg.h"
 #include "src/primihub/protocol/aby3/runtime.h"
 #include "src/primihub/protocol/aby3/sh3_gen.h"
 #include "src/primihub/protocol/aby3/transpose.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/util/log.h"
 
+#ifdef MPC_SOCKET_CHANNEL
+#include "src/primihub/util/network/socket/commpkg.h"
+#else
+#include "src/primihub/util/network/mpc_channel.h"
+#endif
+
 namespace primihub {
 class Sh3Encryptor {
  public:
-  void init(u64 partyIdx, block prevSeed, block nextSeed, u64 buffSize = 256) { 
+  void init(u64 partyIdx, block prevSeed, block nextSeed, u64 buffSize = 256) {
     mShareGen.init(prevSeed, nextSeed, buffSize);
     mPartyIdx = partyIdx;
   }

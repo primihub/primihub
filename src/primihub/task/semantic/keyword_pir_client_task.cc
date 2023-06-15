@@ -163,7 +163,7 @@ retcode KeywordPIRClientTask::saveResult(
     std::stringstream csv_output;
     for (size_t i = 0; i < orig_items.size(); i++) {
         if (!intersection[i].found) {
-            VLOG(5) << "no match result found for query: [" << orig_items[i] << "]";
+            VLOG(0) << "no match result found for query: [" << orig_items[i] << "]";
             continue;
         }
         if (intersection[i].label) {
@@ -179,7 +179,7 @@ retcode KeywordPIRClientTask::saveResult(
         }
 
     }
-    VLOG(5) << "result_file_path_: " << result_file_path_;
+    VLOG(0) << "save query result to : " << result_file_path_;
     if (ValidateDir(result_file_path_)) {
         LOG(ERROR) << "can't access file path: " << result_file_path_;
         return retcode::FAIL;

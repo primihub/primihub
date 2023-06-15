@@ -4,8 +4,6 @@ pyarrow==6.0.1
 pandas
 pytest
 numpy
-cloudpickle
-pyzmq
 bitarray
 mmh3
 
@@ -13,19 +11,15 @@ grpcio==1.43.0
 grpcio-tools==1.43.0
 protobuf==3.20.0
 
-pydantic
 sphinx
 scikit-learn==1.2.2
 phe==1.5.0
 
 mysql-connector-python
 loguru
-gevent
-redis
 ray==2.2.0
 transformers
 requests
-line_profiler
 matplotlib
 dp-accounting==0.3.0
 attrs~=21.4.0

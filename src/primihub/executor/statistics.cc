@@ -1,9 +1,9 @@
-// "Copyright [2023] <Primihub>"
 #include "src/primihub/executor/statistics.h"
 
 #include <glog/logging.h>
 
 namespace primihub {
+#ifndef MPC_SOCKET_CHANNEL
 retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &all_type) {
@@ -186,32 +186,15 @@ retcode MPCSumOrAvg::getResult(eMatrix<double> &col_avg) {
     LOG(WARNING) << "Wrong shape of output matrix, reshape it.";
   }
 
-  for (int i = 0; i < result.rows(); i++) {
-    col_avg(i, 0) = result(i, 0);
-  }
+  for (int i = 0; i < result.rows(); i++) col_avg(i, 0) = result(i, 0);
 
   return retcode::SUCCESS;
 }
 
-retcode MPCSumOrAvg::setupChannel(uint16_t party_id,
-                                  const std::string& next_ip,
-                                  uint32_t next_port,
-                                  const std::string& prev_ip,
-                                  uint32_t prev_port) {
-  std::string next_name;
-  std::string prev_name;
-  if (party_id == 0) {
-    next_name = "01";
-    prev_name = "02";
-  } else if (party_id == 1) {
-    next_name = "12";
-    prev_name = "01";
-  } else if (party_id == 2) {
-    next_name = "02";
-    prev_name = "12";
-  }
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, next_name, prev_name);
-  mpc_op_->setup(next_ip, prev_ip, next_port, prev_port);
+retcode MPCSumOrAvg::setupChannel(uint16_t party_id, MpcChannel &next,
+                                  MpcChannel &prev) {
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+  mpc_op_->setup(next, prev);
   party_id_ = party_id;
 }
 
@@ -221,24 +204,22 @@ double MPCMinOrMax::minValueOfAllParty(double local_min) {
   m(0, 0) = local_min;
 
   sbMatrix sh_result;
-  if (party_id_ == 0) {
+  if (party_id_ == 0)
     mpc_op_->MPC_Compare(m, sh_result);
-  } else if (party_id_ == 1) {
+  else if (party_id_ == 1)
     mpc_op_->MPC_Compare(m, sh_result);
-  } else {
+  else
     mpc_op_->MPC_Compare(sh_result);
-  }
 
   i64Matrix cmp_result;
   cmp_result.resize(1, 1);
   cmp_result = mpc_op_->revealAll(sh_result);
 
   uint8_t smaller_party = UINT8_MAX;
-  if (cmp_result(0, 0)) {
+  if (cmp_result(0, 0))
     smaller_party = 0;
-  } else {
+  else
     smaller_party = 1;
-  }
 
   LOG(INFO) << "The min value of party 0 and party 1 is at party "
             << std::to_string(smaller_party) << ".";
@@ -247,13 +228,12 @@ double MPCMinOrMax::minValueOfAllParty(double local_min) {
   if (smaller_party == 0) {
     // Compare value from party 0 and party 2.
     sbMatrix sh_result;
-    if (party_id_ == 0) {
+    if (party_id_ == 0)
       mpc_op_->MPC_Compare(m, sh_result);
-    } else if (party_id_ == 2) {
+    else if (party_id_ == 2)
       mpc_op_->MPC_Compare(m, sh_result);
-    } else {
+    else
       mpc_op_->MPC_Compare(sh_result);
-    }
 
     cmp_result(0, 0) = UINT8_MAX;
     cmp_result = mpc_op_->revealAll(sh_result);
@@ -261,30 +241,27 @@ double MPCMinOrMax::minValueOfAllParty(double local_min) {
   } else {
     // Compare value from party 1 and party 2.
     sbMatrix sh_result;
-    if (party_id_ == 1) {
+    if (party_id_ == 1)
       mpc_op_->MPC_Compare(m, sh_result);
-    } else if (party_id_ == 2) {
+    else if (party_id_ == 2)
       mpc_op_->MPC_Compare(m, sh_result);
-    } else {
+    else
       mpc_op_->MPC_Compare(sh_result);
-    }
 
     cmp_result(0, 0) = UINT8_MAX;
     cmp_result = mpc_op_->revealAll(sh_result);
   }
 
   if (smaller_party == 0) {
-    if (cmp_result(0, 0)) {
+    if (cmp_result(0, 0))
       smallest_party = 0;
-    } else {
+    else
       smallest_party = 2;
-    }
   } else {
-    if (cmp_result(0, 0)) {
+    if (cmp_result(0, 0))
       smallest_party = 1;
-    } else {
+    else
       smallest_party = 2;
-    }
   }
 
   LOG(INFO) << "The min value of three party is at party "
@@ -294,15 +271,13 @@ double MPCMinOrMax::minValueOfAllParty(double local_min) {
 
   if (party_id_ == smallest_party) {
     mpc_op_->createShares(m, sh_m);
-  } else {
+  } else
     mpc_op_->createShares(sh_m);
-  }
 
   eMatrix<double> min_val;
   min_val = mpc_op_->revealAll(sh_m);
   return min_val(0, 0);
 }
-
 double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   // Compare value from party 0 and party 1.
   // P0:2 P1:3 P2:4  P0:-2 P1:-3 P2:-4
@@ -313,13 +288,12 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   sbMatrix sh_result;
 
   // the same as min
-  if (party_id_ == 0) {
+  if (party_id_ == 0)
     mpc_op_->MPC_Compare(m_negative, sh_result);  // P0:2  -2
-  } else if (party_id_ == 1) {
+  else if (party_id_ == 1)
     mpc_op_->MPC_Compare(m_negative, sh_result);  // P1:3   -3
-  } else {
+  else
     mpc_op_->MPC_Compare(sh_result);
-  }
   // because origin is smaller，keep -3
 
   i64Matrix cmp_result;
@@ -327,11 +301,10 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   cmp_result = mpc_op_->revealAll(sh_result);
 
   uint8_t larger_party = UINT8_MAX;
-  if (cmp_result(0, 0)) {
+  if (cmp_result(0, 0))
     larger_party = 0;  // notice:this larger is "larger"
-  } else {              // to let P1(3)(-3) win
+  else                 // to let P1(3)(-3) win
     larger_party = 1;
-  }
 
   LOG(INFO) << "The max value of party 0 and party 1 is at party "
             << std::to_string(larger_party) << ".";
@@ -341,13 +314,12 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
     // Compare value from party 0 and party 2.
     // P0:2 P1:3 P2:4  P0:-2 P1:-3 P2:-4
     sbMatrix sh_result;
-    if (party_id_ == 0)  {          // P0:2  -2
+    if (party_id_ == 0)  // P0:2  -2
       mpc_op_->MPC_Compare(m_negative, sh_result);
-    } else if (party_id_ == 2) {    // P2:4   -4
+    else if (party_id_ == 2)  // P2:4   -4
       mpc_op_->MPC_Compare(m_negative, sh_result);
-    } else {
+    else
       mpc_op_->MPC_Compare(sh_result);
-    }
     // because origin's alg is smaller，keep -4
 
     cmp_result(0, 0) = UINT8_MAX;
@@ -355,13 +327,12 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   } else {
     // Compare value from party 1 and party 2.
     sbMatrix sh_result;
-    if (party_id_ == 1) {                             // similar to the above
-      mpc_op_->MPC_Compare(m_negative, sh_result);    // P0:2 P1:3 P2:4
-    } else if (party_id_ == 2) {
-      mpc_op_->MPC_Compare(m_negative, sh_result);    // -3 -4
-    } else {
-      mpc_op_->MPC_Compare(sh_result);                // keep -4
-    }
+    if (party_id_ == 1)                             //  similar to the above
+      mpc_op_->MPC_Compare(m_negative, sh_result);  // P0:2 P1:3 P2:4
+    else if (party_id_ == 2)
+      mpc_op_->MPC_Compare(m_negative, sh_result);  //-3 -4
+    else
+      mpc_op_->MPC_Compare(sh_result);  // keep -4
 
     cmp_result(0, 0) = UINT8_MAX;
     cmp_result = mpc_op_->revealAll(sh_result);
@@ -369,17 +340,15 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   // Because the algorithm at the beginning keeps the minimum value, it finally
   // keeps -4
   if (larger_party == 0) {
-    if (cmp_result(0, 0)) {
+    if (cmp_result(0, 0))
       largest_party = 0;
-    } else {
+    else
       largest_party = 2;
-    }
   } else {
-    if (cmp_result(0, 0)) {
+    if (cmp_result(0, 0))
       largest_party = 1;
-    } else {
+    else
       largest_party = 2;  // notice:this largest is "largest"
-    }
   }
 
   LOG(INFO) << "The max value of three party is at party "
@@ -387,17 +356,15 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
 
   sf64Matrix<D16> sh_m(1, 1);
 
-  if (party_id_ == largest_party) {
+  if (party_id_ == largest_party)
     mpc_op_->createShares(m, sh_m);
-  } else {
+  else
     mpc_op_->createShares(sh_m);
-  }
 
   eMatrix<double> max_val;
   max_val = mpc_op_->revealAll(sh_m);
   return max_val(0, 0);
 }
-
 retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &col_dtype) {
@@ -485,32 +452,16 @@ retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
     LOG(WARNING) << "Wrong shape of output matrix, reshape it.";
   }
 
-  for (int i = 0; i < result.rows(); i++) {
-    result(i, 0) = mpc_result_(i, 0);
-  }
+  for (int i = 0; i < result.rows(); i++) result(i, 0) = mpc_result_(i, 0);
+
   return retcode::SUCCESS;
 }
 
-retcode MPCMinOrMax::setupChannel(uint16_t party_id,
-                                  const std::string& next_ip,
-                                  uint32_t next_port,
-                                  const std::string& prev_ip,
-                                  uint32_t prev_port) {
-  std::string next_name;
-  std::string prev_name;
-  if (party_id == 0) {
-    next_name = "01";
-    prev_name = "02";
-  } else if (party_id == 1) {
-    next_name = "12";
-    prev_name = "01";
-  } else if (party_id == 2) {
-    next_name = "02";
-    prev_name = "12";
-  }
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, next_name, prev_name);
-  mpc_op_->setup(next_ip, prev_ip, next_port, prev_port);
+retcode MPCMinOrMax::setupChannel(uint16_t party_id, MpcChannel &next,
+                                  MpcChannel &prev) {
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+  mpc_op_->setup(next, prev);
   party_id_ = party_id;
 }
-
+#endif  // MPC_SOCKET_CHANNEL
 };  // namespace primihub
