@@ -17,7 +17,7 @@ A clear and concise description of what you expected to happen.
 If applicable, post the log output to help explain your problem.
 
 **Enviroment (please complete the following information):**
- - OS: [e.g. macOS, Windows, Linux]
+ - OS: [e.g. macOS, Windows, CentOS, Ubuntu]
  - Arch: [e.g. armd64, arm64]
  - Version of Primihub:
 
