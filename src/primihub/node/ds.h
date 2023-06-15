@@ -63,6 +63,9 @@ class DataServiceImpl final: public rpc::DataSetService::Service {
   template<typename T>
   void SetResponseErrorMsg(std::string&& err_msg, T* reply);
 
+  template<typename T>
+  void SetResponseErrorMsg(const std::string& err_msg, T* reply);
+
   retcode ConvertToDatasetMetaInfo(const rpc::MetaInfo& meta_info_pb,
                                   DatasetMetaInfo* meta_info);
  private:
