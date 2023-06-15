@@ -34,7 +34,7 @@
                 "model_path": "data/result/Charlie_model.pkl"
             },
             "Alice": {
-                "data_set": "hfl_server_fake_data"
+                "data_set": "fl_fake_data"
             }
         }
     }

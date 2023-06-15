@@ -35,6 +35,12 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0"
 
   # FL binclass
+  - description: "binclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/train/guest.csv"
+  - description: "binclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/test/guest.csv"
   - description: "binclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/binclass/hfl/train/client2.csv"

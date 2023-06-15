@@ -55,6 +55,12 @@ datasets:
     source: "data/server_e.db3"
 
   # FL binclass
+  - description: "binclass_vfl_train_host"
+    model: "csv"
+    source: "data/FL/binclass/vfl/train/host.csv"
+  - description: "binclass_vfl_test_host"
+    model: "csv"
+    source: "data/FL/binclass/vfl/test/host.csv"
   - description: "binclass_hfl_train_client1"
     model: "csv"
     source: "data/FL/binclass/hfl/train/client1.csv"
