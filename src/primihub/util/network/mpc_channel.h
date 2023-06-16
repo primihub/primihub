@@ -184,17 +184,18 @@ template <typename T> void MpcChannel::_channelSend(const T &val) {
 
 template <typename T>
 void MpcChannel::_channelSend(const T *ptr, uint64_t elem_num) {
+  std::string send_key = SendKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);
     VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
-            << ", elem_num " << elem_num << ".";
+            << ", elem_num " << elem_num << ". send key: " << send_key;
   }
 
   const char *raw_ptr = reinterpret_cast<const char *>(ptr);
   uint64_t raw_size = elem_num * sizeof(T);
 
   std::string_view send_str(reinterpret_cast<const char *>(raw_ptr), raw_size);
-  std::string send_key = SendKey();
+
   VLOG(5) << "Send key is " << send_key << ", send length " << raw_size
           << " bytes.";
 
@@ -258,12 +259,12 @@ template <typename T> void MpcChannel::send(const T &val) {
 
 template <typename T>
 std::future<void> MpcChannel::asyncRecv(std::vector<T> &dest) {
+  std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "Recv type of T is " << typeid(dest).name() << ", recv size "
-            << dest.size() << ".";
+            << dest.size() << ". recv key: " << recv_key;
   }
 
-  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(dest.data());
   uint64_t recv_size = dest.size();
@@ -302,13 +303,13 @@ template <typename T> std::future<void> MpcChannel::asyncRecv(T &dest) {
 
 template <typename T>
 std::future<void> MpcChannel::asyncRecv(eMatrix<T> &dest) {
+  std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);
     VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
-            << ", elem_num " << dest.size() << ".";
+            << ", elem_num " << dest.size() << ". recv key: " << recv_key;
   }
 
-  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(dest.data());
   uint64_t recv_size = dest.size() * sizeof(T);
@@ -328,13 +329,13 @@ std::future<void> MpcChannel::asyncRecv(eMatrix<T> &dest) {
 
 template <typename T>
 std::future<void> MpcChannel::asyncRecv(T *ptr, uint64_t elem_num) {
+  std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);
     VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
-            << ", elem_num " << elem_num << ".";
+            << ", elem_num " << elem_num << ". recv key: " << recv_key;
   }
 
-  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(ptr);
   uint64_t recv_size = elem_num * sizeof(T);
@@ -355,13 +356,13 @@ std::future<void> MpcChannel::asyncRecv(T *ptr, uint64_t elem_num) {
 template <typename T>
 std::future<void> MpcChannel::asyncRecv(T *ptr, uint64_t elem_num,
                                         std::function<void()> done) {
+  std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);
     VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
-            << ", elem_num " << elem_num << ".";
+            << ", elem_num " << elem_num << ". recv key: " << recv_key;
   }
 
-  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   char *recv_ptr = reinterpret_cast<char *>(ptr);
   uint64_t recv_size = elem_num * sizeof(T);
@@ -382,12 +383,12 @@ std::future<void> MpcChannel::asyncRecv(T *ptr, uint64_t elem_num,
 }
 
 template <typename T> std::future<void> MpcChannel::asyncRecv(span<T> &c) {
+  std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);
     VLOG(5) << "Type of T " << r.name() << ", sizeof T " << sizeof(T)
-            << ", elem_num " << c.size() << ".";
+            << ", elem_num " << c.size() << ". recv key: " << recv_key;
   }
-  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   char *recv_ptr = reinterpret_cast<char*>(c.data());
   uint64_t recv_size = c.size() * sizeof(T);
