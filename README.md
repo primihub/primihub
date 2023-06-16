@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/primihub/primihub/develop/doc/header.jpeg" alt="Header">
+  <img src="doc/header.jpeg" alt="Header">
   <br>
 
   <p align="center"><strong>由密码学专家团队打造的开源隐私计算平台</strong></p>
@@ -61,7 +61,7 @@ X3
 ...
 ```
 
-<p align="center"><img src="https://raw.githubusercontent.com/primihub/primihub/develop/doc/kt.gif" width=700 alt="PSI"></p>
+<p align="center"><img src="doc/kt.gif" width=700 alt="PSI"></p>
 
 <p align="center"><em>隐私求交例子 <a href="https://docs.primihub.com/docs/quick-start-platform/">在线尝试</a>・<a href="https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task/">命令行</a></em></p>
 
@@ -82,7 +82,7 @@ X3
 欢迎添加我们的微信助手，加入「PrimiHub 开源社区」微信群。“零距离”接触**项目核心开发、密码学专家、隐私计算行业大咖**，获得更及时的回复和隐私计算的第一手资讯。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/primihub/primihub/develop/doc/wechat.jpeg" alt="Header">
+  <img src="doc/wechat.jpeg" alt="Header">
 </p>
 
 
