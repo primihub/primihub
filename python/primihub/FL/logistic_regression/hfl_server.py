@@ -38,7 +38,7 @@ class LogisticRegressionServer(BaseModel):
                                      self.common_params['n_length'],
                                      client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            logger.error(f"Unsupported method: {method}")
 
         # data preprocessing
         # minmaxscaler
@@ -146,7 +146,7 @@ class Plaintext_DPSGD_Server:
         metrics_name = metrics_name.lower()
         supported_metrics = ['loss', 'acc', 'auc']
         if metrics_name not in supported_metrics:
-            logger.error(f"""Not supported metrics {metrics_name},
+            logger.error(f"""Unsupported metrics {metrics_name},
                           use {supported_metrics} instead""")
 
         client_metrics = self.client_channel.recv_all(metrics_name)

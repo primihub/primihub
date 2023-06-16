@@ -49,6 +49,12 @@ datasets:
     source: "data/FL/binclass/hfl/test/client2.csv"
 
   # FL multiclass
+  - description: "multiclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/train/guest.csv"
+  - description: "multiclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/test/guest.csv"
   - description: "multiclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/multiclass/hfl/train/client2.csv"
