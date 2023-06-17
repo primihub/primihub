@@ -1,55 +1,87 @@
-# PrimiHub
+<p align="center">
+  <img src="doc/header.jpeg" alt="Header">
+  <br>
 
-![build workflow](https://github.com/primihub/primihub/actions/workflows/main.yml/badge.svg?branch=master)
-[![Contributors](https://img.shields.io/github/contributors/primihub/primihub.svg)](https://github.com/linuxsuren/github-go/graphs/contributors)
-[![Gitter](https://badges.gitter.im/primihub/community.svg)](https://gitter.im/primihub/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![GitHub release](https://img.shields.io/github/release/primihub/primihub.svg?label=release)](https://github.com/linuxsuren/github-go/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/primihub/primihub-node.svg)](https://hub.docker.com/r/primihub/primihub-node/tags)
+  <p align="center"><strong>An open source privacy-preserving computation platform built by a team of cryptography experts</strong></p>
 
-> English | [中文](README.md)
+  <p align="center">
+    <a href="https://github.com/primihub/primihub/releases"><img src="https://img.shields.io/github/v/release/primihub/primihub?style=flat-square" alt="GitHub Release"></a>
+    <a href="https://github.com/primihub/primihub/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/primihub/primihub/main.yml?logo=github&style=flat-square" alt="Build Status"></a>
+    <a href="https://hub.docker.com/r/primihub/primihub-node"><img src="https://img.shields.io/docker/pulls/primihub/primihub-node?style=flat-square" alt="Docker Pulls"></a>
+  </p>
 
-## Introduction
+</p>
 
-PrimiHub is a platform that supports Multi-Party Computing (MPC), Federated Learning (FL), Private set intersection (PSI), and Private Information Retrieval (PIR). It also supports extensions of data source access, data consumption, access application, syntax, semantics, and security protocols. For more details, please refer to PrimiHub [core feature](https://docs.primihub.com/docs/developer-docs/core-concept/model).
+English | [Chinese](README.md)
 
-## Framework
+Privacy-Preserving Computation
+-------
 
-![PrimiHub](doc/architecture.svg)
+Data circulation to create greater value. With the continuous rapid growth of the digital economy, **the demand for data interconnection is increasingly strong**, ranging from confidential data of government agencies, core data of business companies, to personal information. In the past two years, our country has also promulgated **"Data Security Law"** and **"Personal Information Protection Law"**. Therefore, **how to make data circulate safely is a problem that must be solved**.
 
-## Quick start
+Privacy-preserving computation, as a link between **Data Circulation and Privacy Protection Regulations**, enables **"data available but not visible"**. That is, **a collection of technologies that enable data analysis and computation while protecting the data itself from external leakage**. As an **important innovative cutting-edge technology** for data circulation, privacy-preserving computation has been widely used in many industries such as finance, healthcare, communications, and government.
 
-Start with docker-compose, please refer to [here](https://docs.primihub.com/docs/advance-usage/start/quick-start)
+PrimiHub
+-------
 
-Start with binary file, please refer to [here](https://docs.primihub.com/docs/advance-usage/start/start-nodes)
+If you are interested in privacy-preserving computation and want to experience the charm of privacy computing up close, try PrimiHub! An **open source privacy-preserving computation platform built by a team of cryptography experts**. It is secure, reliable, out-of-the-box, independent-developed, and feature-rich.
 
-Start with source code, please refer to [here](https://docs.primihub.com/docs/advance-usage/start/build)
+Characteristics
+---
 
-## Run tasks
+* **Open source**: Completely open-source and free
+* **Easy to install**: Support Docker one-click deployment
+* **Out-of-the-box**: With [Web UI](https://github.com/primihub/primihub-platform), [Command Line](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1), and [Python SDK](https://docs.primihub.com/docs/category/python-sdk-client) to use
+* **Feature-rich**: Support PIR, PSI, joint statistics, data resource management, etc.
+* **Flexible configuration**: Support customized syntax, semantics, security protocols, etc.
+* **Independently development**: Based on secure multi-party computing, federated learning, homomorphic encryption, trusted computing, etc.
 
-Run MPC tasks, please refer to [here](https://docs.primihub.com/docs/advance-usage/create-tasks/mpc-task)
+Quick start
+-------
 
-Run FL tasks, please refer to [here](https://docs.primihub.com/docs/category/%E8%81%94%E9%82%A6%E5%AD%A6%E4%B9%A0fl%E4%BB%BB%E5%8A%A1)
+It is recommended to use Docker to deploy PrimiHub and start your journey to privacy-preserving computation.
 
-Run PSI tasks, please refer to [here](https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task)
+```
+# Step 1: Download
+git clone https://github.com/primihub/primihub.git
+# Step 2: Start container
+cd primihub && docker-compose up -d
+# Step 3: Enter the container
+docker exec -it primihub-node0 bash
+# Step 4: Execute PSI task
+./primihub-cli --task_config_file="example/psi_ecdh_task_conf.json"
+I20230616 13:40:10.683375 28 cli.cc:524] all node has finished
+I20230616 13:40:10.683745 28 cli.cc:598] SubmitTask time cost(ms): 1419
+# View results
+cat data/result/psi_result.csv
+"intersection_row"
+X3
+...
+```
 
-Run PIR tasks, please refer to [here](https://docs.primihub.com/docs/advance-usage/create-tasks/pir-task)
+<p align="center"><img src="doc/kt.gif" width=700 alt="PSI"></p>
 
-## Advanced usage
+<p align="center"><em>PSI example <a href="https://docs.primihub.com/docs/quick-start-platform/">Try online</a>・<a href ="https://docs.primihub.com/docs/advance-usage/create-tasks/psi-task/">Command line</a></em></p>
 
-To learn how to start from native applications and how to use PrimiHub features to implement more applications, see [Advanced Usage](https://docs.primihub.com/docs/developer-docs/core-concept/model/)
+In addition, PrimiHub provides a variety of uses for **different populations**:
 
-## Contributing
+* [Online](https://docs.primihub.com/docs/quick-start-platform/)
+* [Docker](https://docs.primihub.com/docs/advance-usage/start/quick-start)
+* [Binary](https://docs.primihub.com/docs/advance-usage/start/start-nodes)
+* [Source](https://docs.primihub.com/docs/advance-usage/start/build)
 
-If you want to contribute to this project, feel free to create an issue at our [Issue](https://github.com/primihub/primihub/issues) page (e.g., documentation, new idea, and proposal).<br/>
-Also, you can learn about our community [PrimiHub Open Source Community Governance](https://docs.primihub.com/docs/developer-docs/primihub-community)<br/>
-This is an active open-source project, and we are always open to everyone who wants to use this platform or contribute to it.<br/>
+Question / Help / Bug
+------------
 
-## Community
+If you encounter any problems while using PrimiHub and need our help, please [click](https://github.com/primihub/primihub/issues/new/choose) to report the problem.
 
-* Wechat Official Account:
+Feel free to add our WeChat assistant and join the "PrimiHub Open Source Community" WeChat group. Get direct contact with **project core developers, cryptography experts, and privacy industry experts** to get more timely responses and first-hand information about privacy-preserving computation.
 
-![wechat_helper](./doc/wechat.jpeg)
+<p align="center">
+  <img src="doc/wechat.jpeg" alt="Header">
+</p>
 
-## LICENSE
+License
+-----
 
 This code is released under Apache 2.0, as found in the [LICENSE](https://github.com/primihub/primihub/blob/develop/LICENSE) file.
