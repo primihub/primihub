@@ -18,9 +18,9 @@
 Privacy-Preserving Computation
 -------
 
-Data circulation to create greater value. With the continuous rapid growth of the digital economy, **the demand for data interconnection is increasingly strong**, ranging from confidential data of government agencies, core data of business companies, to personal information. In the past two years, our country has also promulgated **"Data Security Law"** and **"Personal Information Protection Law"**. Therefore, **how to make data circulate safely is a problem that must be solved**.
+Data circulation can create greater value. With the continuous rapid growth of the digital economy, **the demand for data interconnection is increasingly strong**, ranging from confidential data of government agencies, core data of business companies, to personal information. In the past two years, our country has also promulgated **"Data Security Law"** and **"Personal Information Protection Law"**. Therefore, **how to make data circulate privately is a problem that must be solved**.
 
-Privacy-preserving computation, as a link between **Data Circulation and Privacy Protection Regulations**, enables **"data available but not visible"**. That is, **a collection of technologies that enable data analysis and computation while protecting the data itself from external leakage**. As an **important innovative cutting-edge technology** for data circulation, privacy-preserving computation has been widely used in many industries such as finance, healthcare, communications, and government.
+Privacy-preserving computation, as a link between **Data Circulation and Privacy Protection Regulations**, enables **"data available but not visible"**. That is, **a collection of technologies that enable data analysis and computation while protecting the data itself from external leakage**. As an **important innovative cutting-edge technology** for data circulation, privacy-preserving computation has been widely used in many industries such as finance, healthcare, communication, and government.
 
 PrimiHub
 -------
@@ -35,7 +35,7 @@ Characteristics
 * **Out-of-the-box**: With [Web UI](https://github.com/primihub/primihub-platform), [Command Line](https://docs.primihub.com/docs/category/%E5%88%9B%E5%BB%BA%E4%BB%BB%E5%8A%A1), and [Python SDK](https://docs.primihub.com/docs/category/python-sdk-client) to use
 * **Feature-rich**: Support PIR, PSI, joint statistics, data resource management, etc.
 * **Flexible configuration**: Support customized syntax, semantics, security protocols, etc.
-* **Independently development**: Based on secure multi-party computing, federated learning, homomorphic encryption, trusted computing, etc.
+* **Independent development**: Based on secure multi-party computation, federated learning, homomorphic encryption, trusted computing, etc.
 
 Quick start
 -------
