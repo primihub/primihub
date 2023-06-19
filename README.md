@@ -9,10 +9,12 @@
     <a href="https://github.com/primihub/primihub/actions/workflows/main.yml"><img src="https://img.shields.io/github/actions/workflow/status/primihub/primihub/main.yml?logo=github&style=flat-square" alt="Build Status"></a>
     <a href="https://hub.docker.com/r/primihub/primihub-node"><img src="https://img.shields.io/docker/pulls/primihub/primihub-node?style=flat-square" alt="Docker Pulls"></a>
   </p>
+  
+  <p align="center">
+   中文 | <a href='README_EN.md'>English</a>
+  </p>
 
 </p>
-
-中文 | [英文](README_EN.md)
 
 隐私计算
 -------

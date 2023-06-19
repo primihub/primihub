@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="doc/header.jpeg" alt="Header">
+  <img src="doc/header_en.jpeg" alt="Header">
   <br>
 
   <p align="center"><strong>An open source privacy-preserving computation platform built by a team of cryptography experts</strong></p>
@@ -10,9 +10,10 @@
     <a href="https://hub.docker.com/r/primihub/primihub-node"><img src="https://img.shields.io/docker/pulls/primihub/primihub-node?style=flat-square" alt="Docker Pulls"></a>
   </p>
 
+  <p align="center">
+    English | <a href='README.md'>中文</a>
+  </p>
 </p>
-
-English | [Chinese](README.md)
 
 Privacy-Preserving Computation
 -------
