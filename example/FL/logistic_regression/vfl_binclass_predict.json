@@ -6,8 +6,7 @@
         "roles": {
             "host": "Bob",
             "guest": [
-                "Charlie",
-                "D"
+                "Charlie"
             ]
         },
         "common_params": {
@@ -24,10 +23,6 @@
             "Charlie": {
                 "data_set": "binclass_vfl_test_guest",
                 "model_path": "data/result/guest_model.pkl"
-            },
-            "D": {
-                "data_set": "binclass_vfl_test_guest1",
-                "model_path": "data/result/guest1_model.pkl"
             }
         }
     }

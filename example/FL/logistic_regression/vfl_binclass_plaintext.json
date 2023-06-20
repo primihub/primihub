@@ -6,8 +6,7 @@
         "roles": {
             "host": "Bob",
             "guest": [
-                "Charlie",
-                "D"
+                "Charlie"
             ]
         },
         "common_params": {
@@ -36,12 +35,6 @@
                 "selected_column": null,
                 "id": "id",
                 "model_path": "data/result/guest_model.pkl"
-            },
-            "D": {
-                "data_set": "binclass_vfl_train_guest1",
-                "selected_column": null,
-                "id": "id",
-                "model_path": "data/result/guest1_model.pkl"
             }
         }
     }

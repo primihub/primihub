@@ -10,6 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from .vfl_base import LogisticRegression_Guest_Plaintext
 
 class LogisticRegressionGuest(BaseModel):
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         

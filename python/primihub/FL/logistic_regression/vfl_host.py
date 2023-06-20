@@ -17,6 +17,7 @@ from .vfl_base import LogisticRegression_Host_Plaintext
 
 
 class LogisticRegressionHost(BaseModel):
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         

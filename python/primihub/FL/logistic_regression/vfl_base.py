@@ -1,4 +1,5 @@
 import numpy as np
+from primihub.utils.logger_util import logger
 from .base import LogisticRegression
 
 
