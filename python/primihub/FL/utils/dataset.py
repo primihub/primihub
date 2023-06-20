@@ -25,8 +25,7 @@ def read_mysql(user,
                database,
                table_name,
                selected_column=None,
-               id=None,
-               label=None):
+               id=None):
     engine_str = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
     engine = create_engine(engine_str)
     with engine.connect() as conn:
