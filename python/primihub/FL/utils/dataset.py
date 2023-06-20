@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import imghdr
 import zipfile
+from sqlalchemy import create_engine
 from torchvision.io import read_image
 from torch.utils.data import Dataset as TorchDataset
 
@@ -15,6 +16,24 @@ def read_csv(data_path, selected_column=None, id=None):
     if id in data.columns:
         data.pop(id)
     return data
+
+
+def read_mysql(user,
+               password,
+               host,
+               port,
+               database,
+               table_name,
+               selected_column=None,
+               id=None,
+               label=None):
+    engine_str = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
+    engine = create_engine(engine_str)
+    with engine.connect() as conn:
+        df = pd.read_sql_table(table_name, conn, columns=selected_column)
+        if id in df.columns:
+            df.pop(id)
+        return df
 
 
 class TorchImageDataset(TorchDataset):
