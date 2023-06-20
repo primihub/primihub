@@ -17,7 +17,7 @@
             "x3": 2
           },
           "newDataSetId": "train_party_missing_0",
-          "newDataPath": "data/result/train_party_missing_0.csv"
+          "outputFilePath": "data/result/train_party_missing_0.csv"
         },
         "train_party_1": {
           "columns": {
@@ -26,7 +26,7 @@
             "x3": 2
           },
           "newDataSetId": "train_party_missing_1",
-          "newDataPath": "data/result/train_party_missing_1.csv"
+          "outputFilePath": "data/result/train_party_missing_1.csv"
         },
         "train_party_2": {
           "columns": {
@@ -35,7 +35,7 @@
             "x3": 2
           },
           "newDataSetId": "train_party_missing_2",
-          "newDataPath": "data/result/train_party_missing_2.csv"
+          "outputFilePath": "data/result/train_party_missing_2.csv"
         }
       }
     }
