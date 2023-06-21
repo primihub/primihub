@@ -1,16 +1,17 @@
 // Copyright [2021] <primihub.com>
-#ifndef SRC_primihub_COMMON_TYPE_TYPE_H_
-#define SRC_primihub_COMMON_TYPE_TYPE_H_
+#ifndef SRC_PRIMIHUB_COMMON_TYPE_TYPE_H_
+#define SRC_PRIMIHUB_COMMON_TYPE_TYPE_H_
 
 #include <memory>
 #include <vector>
 #include <list>
 #include <mutex>
+#include <utility>
+#include <string>
 
 #include "Eigen/Dense"
 #include "src/primihub/common/type/matrix.h"
 #include "src/primihub/common/type/matrix_view.h"
-
 #include "src/primihub/common/defines.h"
 
 namespace primihub {
@@ -221,7 +222,7 @@ struct sbMatrix {
   }
 };
 
-/* 
+/*
   Represents a packed set of binary secrets. Data is stored in a tranposed
   format. The i'th bit of all the shares are packed together into the i'th row.
   This allows efficient SIMD operations. E.g. applying bit[0] = bit[1] ^ bit[2]
@@ -370,9 +371,9 @@ class SpscQueue {
     BaseQueue(const BaseQueue&) = delete;
     BaseQueue(BaseQueue&&) = delete;
 
-    BaseQueue(uint64_t cap) : mPopIdx(0), mPushIdx(0),
+    explicit BaseQueue(uint64_t cap) : mPopIdx(0), mPushIdx(0),
       mData(new uint8_t[cap * sizeof(T)]),
-      mStorage((T*)mData.get(), cap) {};
+      mStorage((T*)mData.get(), cap) {}
 
     ~BaseQueue() {
       while (size())
@@ -411,23 +412,23 @@ class SpscQueue {
     }
   };
 
-  //boost::circular_buffer_space_optimized<T> mQueue;
+  // boost::circular_buffer_space_optimized<T> mQueue;
   std::list<BaseQueue> mQueues;
   mutable std::mutex mMtx;
 
-  SpscQueue(uint64_t cap = 64) { 
+  explicit SpscQueue(uint64_t cap = 64) {
     mQueues.emplace_back(cap);
   }
 
   bool isEmpty() const {
     std::lock_guard<std::mutex> l(mMtx);
-    //return mQueue.empty();
+    // return mQueue.empty();
     return mQueues.front().empty();
   }
 
   void push_back(T&& v) {
     std::lock_guard<std::mutex> l(mMtx);
-    if(mQueues.back().full())
+    if (mQueues.back().full())
       mQueues.emplace_back(mQueues.back().size() * 4);
     mQueues.back().push_back(std::forward<T>(v));
   }
@@ -441,7 +442,7 @@ class SpscQueue {
     std::lock_guard<std::mutex> l(mMtx);
     out = std::move(mQueues.front().front());
     mQueues.front().pop_front();
-    if(mQueues.front().empty() && mQueues.size() > 1)
+    if (mQueues.front().empty() && mQueues.size() > 1)
       mQueues.pop_front();
   }
 
@@ -451,6 +452,18 @@ class SpscQueue {
   }
 };
 
+enum ColumnDtype {
+  STRING = 0,
+  INTEGER = 1,
+  DOUBLE = 2,
+  LONG = 3,
+  ENUM = 4,
+  BOOLEAN = 5,
+  UNKNOWN = 6,
+};
+
+std::string columnDtypeToString(const ColumnDtype &type);
+void columnDtypeFromInteger(int val, ColumnDtype &type);
 }  // namespace primihub
 
-#endif  // SRC_primihub_COMMON_TYPE_TYPE_H_
+#endif  // SRC_PRIMIHUB_COMMON_TYPE_TYPE_H_

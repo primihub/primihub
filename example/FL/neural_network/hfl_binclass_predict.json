@@ -1,0 +1,22 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "client": "Bob"
+        },
+        "common_params": {
+            "model": "HFL_neural_network",
+            "process": "predict",
+            "task_name": "HFL_NN_binclass_predict"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "binclass_hfl_test_client1",
+                "model_path": "data/result/Bob_model.pkl",
+                "predict_path": "data/result/Bob_predict.csv"
+            }
+        }
+    }
+}

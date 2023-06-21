@@ -44,11 +44,12 @@
 #include "src/primihub/util/network/socket/session.h"
 
 namespace primihub {
-eMatrix<double>
-logistic_main(sf64Matrix<D> &train_data_0_1, sf64Matrix<D> &train_label_0_1,
-              sf64Matrix<D> &W2_0_1, sf64Matrix<D> &test_data_0_1,
-              sf64Matrix<D> &test_label_0_1, aby3ML &p, int B, int IT, int pIdx,
-              bool print, Session &chlPrev, Session &chlNext);
+eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
+                              sf64Matrix<D> &train_label_0_1,
+                              sf64Matrix<D> &W2_0_1,
+                              sf64Matrix<D> &test_data_0_1,
+                              sf64Matrix<D> &test_label_0_1, aby3ML &p, int B,
+                              int IT, int pIdx);
 
 class LogisticRegressionExecutor : public AlgorithmBase {
 public:
@@ -70,18 +71,27 @@ private:
 
   int _LoadDatasetFromCSV(std::string &filename);
 
+  uint16_t NextPartyId() {return (local_id_ + 1) % 3;}
+  uint16_t PrevPartyId() {return (local_id_ + 2) % 3;}
+
   std::string model_file_name_;
   std::string model_name_;
   uint16_t local_id_;
   eMatrix<double> train_input_;
   eMatrix<double> test_input_;
   eMatrix<double> model_;
+
+  aby3ML engine_;
+
+#ifdef MPC_SOCKET_CHANNEL
   std::pair<std::string, uint16_t> next_addr_;
   std::pair<std::string, uint16_t> prev_addr_;
-  aby3ML engine_;
   Session ep_next_;
   Session ep_prev_;
   IOService ios_;
+#else
+  PartyConfig party_config_;
+#endif
 
   // Logistic regression parameters
   std::string train_input_filepath_, test_input_filepath_;

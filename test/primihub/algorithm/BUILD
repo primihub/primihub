@@ -17,6 +17,55 @@ cc_test(
     ],
 )
 
+cc_library(
+  name = "mpc_statistics_util_lib",
+  hdrs = ["statistics_util.h"],
+  srcs = ["statistics_util.cc"],
+  deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+    "//src/primihub/algorithm:algorithm_lib",
+  ],
+)
+
+cc_test(
+  name = "mpc_avg_test",
+  srcs = [
+    "statistics_avg_test.cc"
+  ],
+  deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+    "//src/primihub/algorithm:algorithm_lib",
+    ":mpc_statistics_util_lib",
+  ],
+)
+cc_test(
+  name = "mpc_sum_test",
+  srcs = [
+    "statistics_sum_test.cc"
+  ],
+  deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+    "//src/primihub/algorithm:algorithm_lib",
+    ":mpc_statistics_util_lib",
+  ],
+)
+cc_test(
+  name = "mpc_min_test",
+  srcs = [
+    "statistics_min_test.cc"
+  ],
+  deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+    "//src/primihub/algorithm:algorithm_lib",
+    ":mpc_statistics_util_lib",
+  ],
+)
+cc_test(
+  name = "mpc_max_test",
+  srcs = [
+    "statistics_max_test.cc"
+  ],
+  deps = DEFAULT_ALGORITHM_LINK_DEPS + [
+    "//src/primihub/algorithm:algorithm_lib",
+    ":mpc_statistics_util_lib",
+  ],
+)
 
 cc_test(
     name = "maxpool_test",

@@ -28,6 +28,7 @@ cc_library(
       "//src/primihub/util/crypto:crypto_lib",
       "@lib_function2//:function2",
       "@com_github_glog_glog//:glog",
+      "//src/primihub/util/network:mpc_commpkg",
   ],
 )
 

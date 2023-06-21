@@ -9,6 +9,15 @@ cc_library(
 )
 
 cc_library(
+  name = "thread_local_data",
+  hdrs = ["thread_local_data.h"],
+  srcs = ["thread_local_data.cc"],
+  linkopts = [
+    "-lpthread",
+  ],
+)
+
+cc_library(
     name = "instruction_check_util",
     hdrs = [
         "cpu_check.h",

@@ -74,53 +74,39 @@ datasets:
     table_name: "psi_server_data"
     source: "data/server_e.db3"
 
-  #  FL xgb test case datasets
-  - description: "label_dataset"
+  # FL binclass
+  - description: "binclass_hfl_train_client1"
     model: "csv"
-    source: "data/FL/wisconsin_host.data"
-  - description: "test_dataset"
+    source: "data/FL/binclass/hfl/train/client1.csv"
+  - description: "binclass_hfl_test_client1"
     model: "csv"
-    source: "data/FL/wisconsin_test.data"
-  - description: "breast_1"
-    model: "csv"
-    source: "data/FL/wisconsin.data"
-  - description: "homo_lr_test"
-    model: "csv"
-    source: "data/FL/homo_lr_test.data"
+    source: "data/FL/binclass/hfl/test/client1.csv"
 
-  # FL homo lr test case datasets
-  - description: "train_homo_lr_host"
+  # FL multiclass
+  - description: "multiclass_hfl_train_client1"
     model: "csv"
-    source: "data/FL/homo_lr/train/train_breast_cancer_host.csv"
-  - description: "test_homo_lr"
+    source: "data/FL/multiclass/hfl/train/client1.csv"
+  - description: "multiclass_hfl_test_client1"
     model: "csv"
-    source: "data/FL/homo_lr/test_breast_cancer.csv"
+    source: "data/FL/multiclass/hfl/test/client1.csv"
 
-  # FL homo nn multiclass test case datasets
-  - description: "train_homo_nn_multiclass_host"
+  # FL regression
+  - description: "regression_hfl_train_client1"
     model: "csv"
-    source: "data/FL/homo_nn/train/train_mobile_price_host.csv"
-  - description: "test_homo_nn_multiclass_host"
+    source: "data/FL/regression/hfl/train/client1.csv"
+  - description: "regression_hfl_test_client1"
     model: "csv"
-    source: "data/FL/homo_nn/test/test_mobile_price_host.csv"
+    source: "data/FL/regression/hfl/test/client1.csv"
 
-  # FL homo regression test case datasets
-  - description: "train_homo_regression_host"
-    model: "csv"
-    source: "data/FL/homo_regression/train/train_boston_house_host.csv"
-  - description: "test_homo_regression_host"
-    model: "csv"
-    source: "data/FL/homo_regression/test/test_boston_house_host.csv"
-
-  # FL image test case datasets
-  - description: "train_mnist_host"
+  # FL mnist image classification
+  - description: "mnist_train_client1"
     model: "image"
-    image_dir: "data/FL/mnist/train/train_mnist_host.zip"
-    annotations_file: "data/FL/mnist/train/train_mnist_host_annotations.csv"
-  - description: "test_mnist_host"
+    image_dir: "data/FL/mnist/train/client1.zip"
+    annotations_file: "data/FL/mnist/train/client1_annotations.csv"
+  - description: "mnist_test_client1"
     model: "image"
-    image_dir: "data/FL/mnist/test/test_mnist_host.zip"
-    annotations_file: "data/FL/mnist/test/test_mnist_host_annotations.csv"
+    image_dir: "data/FL/mnist/test/client1.zip"
+    annotations_file: "data/FL/mnist/test/client1_annotations.csv"
 
   - description: "train_hetero_xgb_host"
     model: "csv"
@@ -147,3 +133,12 @@ datasets:
   - description: "preprocess_hfl_test_client1"
     model: "csv"
     source: "data/FL/preprocess/hfl/test/client1.csv"
+
+  # MPC statistics & arithmetic
+  - description: "mpc_statistics_1"
+    model: "csv"
+    source: "data/mpc_test.csv"
+  - description: "mpc_arithmetic_1"
+    model: "csv"
+    source: "data/mpc_arithmetic_1.csv"
+

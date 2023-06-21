@@ -667,11 +667,12 @@ retcode VMNodeImpl::notifyTaskStatus(const PushTaskRequest& request,
     Node scheduler_node;
     getSchedulerNodeCfg(request, &scheduler_node);
     rpc::TaskStatus task_status;
+    auto& task_config = request.task();
     auto task_info = task_status.mutable_task_info();
-    task_info->set_task_id(request.task().task_info().task_id());
-    task_info->set_job_id(request.task().task_info().job_id());
-    task_info->set_request_id(request.task().task_info().request_id());
-    task_status.set_party(node_id);
+    task_info->set_task_id(task_config.task_info().task_id());
+    task_info->set_job_id(task_config.task_info().job_id());
+    task_info->set_request_id(task_config.task_info().request_id());
+    task_status.set_party(task_config.party_name());
     task_status.set_status(status);
     task_status.set_message(message);
     rpc::Empty no_reply;
@@ -710,6 +711,10 @@ Status VMNodeImpl::SubmitTask(ServerContext *context,
     LOG(INFO) << str;
   }
   DispatchTask(*pushTaskRequest, pushTaskReply);
+
+  auto task_info = pushTaskReply->mutable_task_info();
+  task_info->CopyFrom(pushTaskRequest->task().task_info());
+
   return Status::OK;
 }
 

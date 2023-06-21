@@ -15,25 +15,9 @@
       "type": "INT32",
       "value": 100
     },
-    "modelFileName": {
+    "modelName": {
       "type": "STRING",
-      "value": "./model"
-    },
-    "hostLookupTable": {
-      "type": "STRING",
-      "value": "./hostlookuptable.csv"
-    },
-    "guestLookupTable": {
-      "type": "STRING",
-      "value": "./guestlookuptable.csv"
-    },
-    "predictFileName": {
-      "type": "STRING",
-      "value": "./prediction.csv"
-    },
-    "indicatorFileName": {
-      "type": "STRING",
-      "value": "./indicator.csv"
+      "value": "data/result/mpc_lr_model.csv"
     }
   },
   "party_datasets": {
@@ -49,6 +33,5 @@
       "Data_File": "train_party_2",
       "TestData" : "test_party_2"
     }
-  },
-  "input_datasets": []
+  }
 }

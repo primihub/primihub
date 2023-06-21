@@ -8,10 +8,12 @@
   },
   "params": {
     "clientIndex": {
+      "description": "selected columns index for client dataset",
       "type": "INT32",
       "value": [0]
     },
     "serverIndex": {
+      "description": "selected columns index for server dataset",
       "type": "INT32",
       "value": [0]
     },
@@ -26,14 +28,17 @@
       "value": 1
     },
     "outputFullFilename": {
+      "description": "path for client save intersection result",
       "type": "STRING",
       "value": "data/result/psi_result.csv"
     },
     "sync_result_to_server": {
+      "description": "whether client sync result to server or not. 1: true, 0: false",
       "type": "INT32",
       "value": 1
     },
     "server_outputFullFilname": {
+      "description": "path for server save intersection result",
       "type": "STRING",
       "value": "data/result/server/psi_result.csv"
     }
@@ -45,6 +50,5 @@
     "SERVER": {
       "SERVER": "psi_server_data"
     }
-  },
-  "input_datasets": []
+  }
 }

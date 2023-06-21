@@ -44,6 +44,7 @@ cc_library(
         "//src/primihub/protos:service_proto",
         "//src/primihub/data_store:data_store_lib",
         "//src/primihub/service:dataset_service",
+        "//src/primihub/util:thread_local_data",
     ],
 )
 

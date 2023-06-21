@@ -1,47 +1,51 @@
 {
     "example": {
-        "guest": "primihub.FL.algorithm.example.example_guest.ExampleGuest",
-        "host": "primihub.FL.algorithm.example.example_host.ExampleHost"
+        "guest": "primihub.FL.example.example_guest.ExampleGuest",
+        "host": "primihub.FL.example.example_host.ExampleHost"
     },
     "HFL_logistic_regression": {
-        "client": "primihub.FL.algorithm.linear.logistic_regression.hfl_client.LogisticRegressionClient",
-        "server": "primihub.FL.algorithm.linear.logistic_regression.hfl_server.LogisticRegressionServer"
+        "client": "primihub.FL.logistic_regression.hfl_client.LogisticRegressionClient",
+        "server": "primihub.FL.logistic_regression.hfl_server.LogisticRegressionServer"
     },
     "HFL_neural_network": {
-        "client": "primihub.FL.algorithm.neural_network.hfl_client.NeuralNetworkClient",
-        "server": "primihub.FL.algorithm.neural_network.hfl_server.NeuralNetworkServer"
+        "client": "primihub.FL.neural_network.hfl_client.NeuralNetworkClient",
+        "server": "primihub.FL.neural_network.hfl_server.NeuralNetworkServer"
+    },
+    "HFL_CNN": {
+        "client": "primihub.FL.neural_network.hfl_cnn_client.CNNClient",
+        "server": "primihub.FL.neural_network.hfl_cnn_server.CNNServer"
     },
     "Chat_glm": {
-        "client": "primihub.FL.algorithm.chatglm.ChatGlm_client.ChatGlmClient",
-        "server": "primihub.FL.algorithm.chatglm.ChatGlm_server.ChatGlmServer"
+        "client": "primihub.FL.chatglm.ChatGlm_client.ChatGlmClient",
+        "server": "primihub.FL.chatglm.ChatGlm_server.ChatGlmServer"
     },
     "HeteroXGB": {
-        "guest": "primihub.FL.algorithm.xgboost.gbt.VGBTGuest",
-        "host": "primihub.FL.algorithm.xgboost.gbt.VGBTHost"
+        "guest": "primihub.FL.xgboost.gbt.VGBTGuest",
+        "host": "primihub.FL.xgboost.gbt.VGBTHost"
     },
     "HeteroXGBInfer": {
-        "guest": "primihub.FL.algorithm.xgboost.gbt.VGBGuestInfer",
-        "host": "primihub.FL.algorithm.xgboost.gbt.VGBTHostInfer"
+        "guest": "primihub.FL.xgboost.gbt.VGBGuestInfer",
+        "host": "primihub.FL.xgboost.gbt.VGBTHostInfer"
     },
     "HeteroLR": {
-        "guest": "primihub.FL.algorithm.linear.logistic_regression.hetero_lr.HeteroLrGuest",
-        "host": "primihub.FL.algorithm.linear.logistic_regression.hetero_lr.HeteroLrHost"
+        "guest": "primihub.FL.logistic_regression.hetero_lr.HeteroLrGuest",
+        "host": "primihub.FL.logistic_regression.hetero_lr.HeteroLrHost"
     },
     "HeteroLRInfer": {
-        "guest": "primihub.FL.algorithm.linear.logistic_regression.hetero_lr_infer.HeteroLrGuestInfer",
-        "host": "primihub.FL.algorithm.linear.logistic_regression.hetero_lr_infer.HeteroLrHostInfer"
+        "guest": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrGuestInfer",
+        "host": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrHostInfer"
     },
     "HeteroIV": {
-        "guest": "primihub.FL.algorithm.preprocessing.woe_iv.IVGuest",
-        "host": "primihub.FL.algorithm.preprocessing.woe_iv.IVHost"
+        "guest": "primihub.FL.preprocessing.woe_iv.IVGuest",
+        "host": "primihub.FL.preprocessing.woe_iv.IVHost"
     },
     "DataAlign": {
         "executor": "primihub.plain_data_util.data_align.DataAlign"
     },
     "FL_Preprocess": {
-        "guest": "primihub.FL.algorithm.preprocessing.transform.Transformer",
-        "host": "primihub.FL.algorithm.preprocessing.transform.Transformer",
-        "client": "primihub.FL.algorithm.preprocessing.transform.Transformer",
-        "server": "primihub.FL.algorithm.preprocessing.transform.Transformer"
+        "guest": "primihub.FL.preprocessing.transform.Transformer",
+        "host": "primihub.FL.preprocessing.transform.Transformer",
+        "client": "primihub.FL.preprocessing.transform.Transformer",
+        "server": "primihub.FL.preprocessing.transform.Transformer"
     }
 }

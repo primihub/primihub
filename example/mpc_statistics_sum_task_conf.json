@@ -1,0 +1,76 @@
+{
+  "task_type": "ACTOR_TASK",
+  "task_name": "mpc_statistics_sum",
+  "task_lang": "proto",
+  "task_code": {
+    "code_file_path": "",
+    "code": "mpc_statistics"
+  },
+  "params": {
+    "TaskDetail": {
+      "type": "OBJECT",
+      "value": {
+        "type_description": "1为均值, 2为求和, 3为最大值, 4为最小值",
+        "type": "2",
+        "features": [
+          {
+            "resourceId": "mpc_statistics_0",
+            "checked": ["x_1", "x_2"]
+          },
+          {
+            "resourceId": "mpc_statistics_1",
+            "checked": ["x_1", "x_2"]
+          },
+          {
+            "resourceId": "mpc_statistics_2",
+            "checked": ["x_1", "x_2"]
+          }
+        ]
+      }
+    },
+    "ColumnInfo": {
+      "type": "OBJECT",
+      "value": {
+        "mpc_statistics_0": {
+          "columns": {
+            "x_1": 2,
+            "x_2": 2
+          },
+          "newDataSetId": "new_sum_a_test",
+          "outputFilePath": "data/result/mpc_sum_party_0.csv"
+        },
+        "mpc_statistics_1": {
+          "columns": {
+            "x_1": 2,
+            "x_2": 2
+          },
+          "newDataSetId": "new_sum_b_test",
+          "outputFilePath": "data/result/mpc_sum_party_1.csv"
+        },
+        "mpc_statistics_2": {
+          "columns": {
+            "x_1": 2,
+            "x_2": 2
+          },
+          "newDataSetId": "new_sum_c_test",
+          "outputFilePath": "data/result/mpc_sum_party_2.csv"
+        }
+      }
+    }
+  },
+  "party_datasets": {
+    "PARTY0": {
+      "Data_File": "mpc_statistics_0",
+      "TestData" : "test_party_0"
+    },
+    "PARTY1": {
+      "Data_File": "mpc_statistics_1",
+      "TestData" : "test_party_1"
+    },
+    "PARTY2": {
+      "Data_File": "mpc_statistics_2",
+      "TestData": "test_party_2"
+    }
+  },
+  "input_datasets": []
+}

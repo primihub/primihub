@@ -27,6 +27,7 @@ cc_library(
         # "src/primihub/executor/express.cc",
         # "src/primihub/operator/aby3_operator.cc",
         "missing_val_processing.cc",
+        "mpc_statistics.cc",
     ]),
     hdrs = glob([
         "base.h",
@@ -39,6 +40,7 @@ cc_library(
         "falcon_lenet.h",
         "arithmetic.h",
         "missing_val_processing.h",
+        "mpc_statistics.h",
     ]),
     linkstatic = False,
     deps = [
@@ -53,6 +55,9 @@ cc_library(
         "//src/primihub/executor:mpc_express_executor",
         "//src/primihub/data_store:data_store_util",
         "//src/primihub/util/crypto:crypto_lib",
+        #TODO condition select
+        "//src/primihub/util/network:communication_lib",
+        "//src/primihub/util/network:mpc_commpkg"
     ],
 )
 
@@ -77,5 +82,6 @@ cc_library(
         "//src/primihub/protocol:protocol_cryptflow2_ot_lib",
         "//src/primihub/util/network:network_lib",
         "//src/primihub/util:instruction_check_util",
+        "//src/primihub/util/network:communication_lib",
     ],
 )

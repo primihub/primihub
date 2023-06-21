@@ -20,22 +20,37 @@
 #include "src/primihub/util/file_util.h"
 
 namespace primihub::task {
+
+
+bool PsiCommonOperator::isNumeric32Type(const arrow::Type::type& type_id) {
+  static std::set<arrow::Type::type> numeric_type_id_set = {
+    arrow::Type::UINT8,
+    arrow::Type::INT8,
+    arrow::Type::UINT16,
+    arrow::Type::INT16,
+    arrow::Type::UINT32,
+    arrow::Type::INT32,
+  };
+  if (numeric_type_id_set.find(type_id) != numeric_type_id_set.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+bool PsiCommonOperator::isNumeric64Type(const arrow::Type::type& type_id) {
+  static std::set<arrow::Type::type> numeric_type_id_set = {
+    arrow::Type::UINT64,
+    arrow::Type::INT64,
+  };
+  if (numeric_type_id_set.find(type_id) != numeric_type_id_set.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool PsiCommonOperator::isNumeric(const arrow::Type::type& type_id) {
-    static std::set<arrow::Type::type> numeric_type_id_set = {
-        arrow::Type::UINT8,
-        arrow::Type::INT8,
-        arrow::Type::UINT16,
-        arrow::Type::INT16,
-        arrow::Type::UINT32,
-        arrow::Type::INT32,
-        arrow::Type::UINT64,
-        arrow::Type::INT64,
-    };
-    if (numeric_type_id_set.find(type_id) != numeric_type_id_set.end()) {
-        return true;
-    } else {
-        return false;
-    }
+  return isNumeric64Type(type_id) || isNumeric32Type(type_id);
 }
 
 bool PsiCommonOperator::isString(const arrow::Type::type& type_id) {
@@ -72,16 +87,31 @@ retcode PsiCommonOperator::LoadDatasetFromTable(
         bool is_string = this->isString(type_id);
         size_t index = 0;
         if (is_numeric) {
-            VLOG(5) << "covert numeric to string";
+          VLOG(5) << "covert numeric to string";
+          if (this->isNumeric64Type(type_id)) {
             for (int i = 0; i < chunk_size; i++) {
-                auto array = std::static_pointer_cast<
-                        arrow::NumericArray<arrow::Int64Type>>(col_ptr->chunk(i));
-                for (int64_t j = 0; j < array->length(); j++) {
-                    std::string value = std::to_string(array->Value(j));
-                    col_array[index].append(value);
-                    index++;
-                }
+              auto array = std::static_pointer_cast<
+                      arrow::NumericArray<arrow::Int64Type>>(col_ptr->chunk(i));
+              for (int64_t j = 0; j < array->length(); j++) {
+                std::string value = std::to_string(array->Value(j));
+                col_array[index].append(value);
+                index++;
+              }
             }
+          } else if (this->isNumeric32Type(type_id)) {
+            for (int i = 0; i < chunk_size; i++) {
+              auto array = std::static_pointer_cast<
+                      arrow::NumericArray<arrow::Int32Type>>(col_ptr->chunk(i));
+              for (int64_t j = 0; j < array->length(); j++) {
+                std::string value = std::to_string(array->Value(j));
+                col_array[index].append(value);
+                index++;
+              }
+            }
+          } else {
+            LOG(ERROR) << "unknown type: " << static_cast<int>(type_id);
+            return retcode::FAIL;
+          }
         } else if (is_string) {
             for (int i = 0; i < chunk_size; i++) {
                 auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(i));

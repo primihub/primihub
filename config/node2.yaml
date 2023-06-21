@@ -53,47 +53,39 @@ datasets:
     model: "csv"
     source: "data/falcon/dataset/MNIST/input_0"
 
-  #  FL xgb test case datasets
-  - description: "xgb_predict_test_data"
+  # FL binclass
+  - description: "binclass_hfl_train_client2"
     model: "csv"
-    source: "data/FL/wisconsin_test.data"
-  - description: "guest_dataset"
+    source: "data/FL/binclass/hfl/train/client2.csv"
+  - description: "binclass_hfl_test_client2"
     model: "csv"
-    source: "data/FL/wisconsin_guest.data"
-  - description: "breast_2"
-    model: "csv"
-    source: "data/FL/wisconsin.data"
+    source: "data/FL/binclass/hfl/test/client2.csv"
 
-  # FL homo lr test case datasets
-  - description: "train_homo_lr_guest"
+  # FL multiclass
+  - description: "multiclass_hfl_train_client2"
     model: "csv"
-    source: "data/FL/homo_lr/train/train_breast_cancer_guest.csv"
+    source: "data/FL/multiclass/hfl/train/client2.csv"
+  - description: "multiclass_hfl_test_client1"
+    model: "csv"
+    source: "data/FL/multiclass/hfl/test/client2.csv"
 
-  # FL homo nn multiclass test case datasets
-  - description: "train_homo_nn_multiclass_guest"
+  # FL regression
+  - description: "regression_hfl_train_client2"
     model: "csv"
-    source: "data/FL/homo_nn/train/train_mobile_price_guest.csv"
-  - description: "test_homo_nn_multiclass_guest"
+    source: "data/FL/regression/hfl/train/client2.csv"
+  - description: "regression_hfl_test_client2"
     model: "csv"
-    source: "data/FL/homo_nn/test/test_mobile_price_guest.csv"
+    source: "data/FL/regression/hfl/test/client2.csv"
 
-  # FL homo regression test case datasets
-  - description: "train_homo_regression_guest"
-    model: "csv"
-    source: "data/FL/homo_regression/train/train_boston_house_guest.csv"
-  - description: "test_homo_regression_guest"
-    model: "csv"
-    source: "data/FL/homo_regression/test/test_boston_house_guest.csv"
-
-  # FL image test case datasets
-  - description: "train_mnist_guest"
+  # FL mnist image classification
+  - description: "mnist_train_client2"
     model: "image"
-    image_dir: "data/FL/mnist/train/train_mnist_guest.zip"
-    annotations_file: "data/FL/mnist/train/train_mnist_guest_annotations.csv"
-  - description: "test_mnist_guest"
+    image_dir: "data/FL/mnist/train/client2.zip"
+    annotations_file: "data/FL/mnist/train/client2_annotations.csv"
+  - description: "mnist_test_client2"
     model: "image"
-    image_dir: "data/FL/mnist/test/test_mnist_guest.zip"
-    annotations_file: "data/FL/mnist/test/test_mnist_guest_annotations.csv"
+    image_dir: "data/FL/mnist/test/client2.zip"
+    annotations_file: "data/FL/mnist/test/client2_annotations.csv"
 
   ## PSI test caset datasets
   #- description: "psi_client_data"
@@ -131,4 +123,12 @@ datasets:
   - description: "preprocess_hfl_test_client2"
     model: "csv"
     source: "data/FL/preprocess/hfl/test/client2.csv"
+
+  # MPC statistics & arithmetic
+  - description: "mpc_statistics_2"
+    model: "csv"
+    source: "data/mpc_test.csv"
+  - description: "mpc_arithmetic_2"
+    model: "csv"
+    source: "data/mpc_arithmetic_2.csv"
 

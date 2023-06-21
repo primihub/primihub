@@ -38,7 +38,7 @@ class MPCTask : public TaskBase {
     int execute() override;
 
   private:
-    std::shared_ptr<AlgorithmBase> algorithm_;
+    std::shared_ptr<AlgorithmBase> algorithm_{nullptr};
 };
 
 } // namespace primihub::task
