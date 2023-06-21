@@ -38,7 +38,15 @@ RUN bash pre_build.sh \
     //:cli \
     //src/primihub/pybind_warpper:opt_paillier_c2py \
     //src/primihub/pybind_warpper::linkcontext \
-  && tar zcf /opt/bazel-bin.tar.gz --exclude=*_objs ./bazel-bin/*
+  && tar zcf bazel-bin.tar.gz bazel-bin/cli \
+             bazel-bin/node \
+             bazel-bin/py_main \
+             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
+             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+             python \
+             config \
+             example \
+             data
 
 FROM ubuntu:20.04 as runner
 
@@ -50,23 +58,17 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
-# Copy test data files to /tmp/
-COPY --from=builder /src/data /app/data
-# Copy all test config files to /app/config
-COPY --from=builder /src/config /app/config
-# Copy primihub python sources to /app and setup to system python3
-COPY --from=builder /src/python /app/python
 COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
 
 WORKDIR /app
 
-RUN tar zxf /opt/bazel-bin.tar.gz \
-  && mkdir log
-
 # Copy opt_paillier_c2py.so linkcontext.so to /app/python, this enable setup.py find it.
-RUN mv $TARGET_PATH/src/primihub/pybind_warpper/opt_paillier_c2py.so /app/python/ \
-  && mv $TARGET_PATH/src/primihub/pybind_warpper/linkcontext.so /app/python/ \
-  && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
+RUN tar zxf /opt/bazel-bin.tar.gz \
+  && mkdir log \
+  && mv bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python/ \
+  && mv bazel-bin/src/primihub/pybind_warpper/linkcontext.so python/ \
+  && ln -s bazel-bin/node primihub-node \
+  && ln -s bazel-bin/cli primihub-cli
 
 WORKDIR /app/python
 
