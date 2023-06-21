@@ -13,12 +13,10 @@ RUN  apt-get update \
 # Change WorkDir to /app
 WORKDIR /app
 
-ADD primihub-linux-amd64.tar.gz ./
+ADD bazel-bin.tar.gz ./
 COPY src/primihub/protos/ src/primihub/protos/
 # Make symlink to primihub-node & primihub-cli
 RUN mkdir log \
-  && mv bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python/ \
-  && mv bazel-bin/src/primihub/pybind_warpper/linkcontext.so python/ \
   && ln -s bazel-bin/node primihub-node \
   && ln -s bazel-bin/cli primihub-cli
 

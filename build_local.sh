@@ -28,14 +28,18 @@ if [ $? -ne 0 ]; then
     exit
 fi
 
-tar zcf primihub-linux-amd64.tar.gz bazel-bin/cli \
-             bazel-bin/node \
-             bazel-bin/py_main \
-             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
-             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
-             python \
-             config \
-             example \
-             data
+git rev-parse --abbrev-ref HEAD >> commit.txt
+git rev-parse HEAD >> commit.txt
+
+tar zcf bazel-bin.tar.gz bazel-bin/cli \
+        bazel-bin/node \
+        bazel-bin/py_main \
+        bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
+        bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+        python \
+        config \
+        example \
+        data \
+        commit.txt
 
 docker build -t $IMAGE_NAME:$TAG . -f Dockerfile.local

@@ -65,8 +65,6 @@ WORKDIR /app
 # Copy opt_paillier_c2py.so linkcontext.so to /app/python, this enable setup.py find it.
 RUN tar zxf /opt/bazel-bin.tar.gz \
   && mkdir log \
-  && mv bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python/ \
-  && mv bazel-bin/src/primihub/pybind_warpper/linkcontext.so python/ \
   && ln -s bazel-bin/node primihub-node \
   && ln -s bazel-bin/cli primihub-cli
 
