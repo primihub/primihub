@@ -11,19 +11,13 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY primihub-linux-amd64.tar.gz primihub-linux-arm64.tar.gz /opt/
-
-COPY example ./example
-COPY data/ ./data
-COPY config/ ./config
-COPY python/ ./python
 COPY src/primihub/protos/ src/primihub/protos/
 
 RUN ARCH=`arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/` \
   && tar zxf /opt/primihub-linux-${ARCH}.tar.gz \
   && mkdir log \
-  && mv bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python/ \
-  && mv bazel-bin/src/primihub/pybind_warpper/linkcontext.so python/ \
-  && ln -s bazel-bin/node primihub-node && ln -s bazel-bin/cli primihub-cli
+  && ln -s bazel-bin/node primihub-node \
+  && ln -s bazel-bin/cli primihub-cli
 
 WORKDIR /app/python
 
