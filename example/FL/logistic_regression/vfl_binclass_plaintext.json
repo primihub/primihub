@@ -16,7 +16,7 @@
             "task_name": "VFL_logistic_regression_binclass_plaintext_train",
             "learning_rate": 1e-0,
             "alpha": 1e-4,
-            "epoch": 5,
+            "epoch": 10,
             "shuffle_seed": 0,
             "batch_size": 100,
             "print_metrics": true
