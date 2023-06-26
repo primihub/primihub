@@ -561,8 +561,9 @@ Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
     std::string request_id = request->task_info().request_id();
     auto executor = request->executor();
     VLOG(0) << "receive request for kill task for: "
-        << " job_id: " << job_id << " "
+        << "job_id: " << job_id << " "
         << "task id: " << task_id << " "
+        << "request id: " << request_id << " "
         << "from " << (executor == rpc::KillTaskRequest::CLIENT ? "CLIENT" : "SCHEDULER");
     std::string worker_id = this->getWorkerId(job_id, task_id, request_id);
     auto finished_task = this->isFinishedTask(worker_id);
@@ -572,11 +573,6 @@ Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
             .append(" request id: ").append(request_id)
             .append(" has finished");
         LOG(WARNING) << err_msg;
-        // using EventBusNotifyDelegate = primihub::service::EventBusNotifyDelegate;
-        // auto& notify_proxy = EventBusNotifyDelegate::getInstance();
-        // std::string submit_client_id = std::get<1>(finished_task);
-        // std::string status = std::get<2>(finished_task);
-        // notify_proxy.notifyStatus(job_id, task_id, submit_client_id, status, err_msg);
         response->set_ret_code(rpc::SUCCESS);
         response->set_msg_info(std::move(err_msg));
         return Status::OK;
@@ -584,12 +580,22 @@ Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
     std::shared_ptr<Worker> worker{nullptr};
     if (executor == rpc::KillTaskRequest::CLIENT) {
         worker = this->getSchedulerWorker(job_id, task_id, request_id);
+        if (worker != nullptr) {
+          rpc::TaskStatus task_status;
+          auto task_info = task_status.mutable_task_info();
+          task_info->CopyFrom(request->task_info());
+          task_status.set_party("SCHEDULER");
+          task_status.set_message("kill task by client actively");
+          task_status.set_status(rpc::TaskStatus::FAIL);
+          worker->updateTaskStatus(task_status);
+        }
     } else {
         worker = this->getWorker(job_id, task_id, request_id);
+        if (worker != nullptr) {
+            worker->kill_task();
+        }
     }
-    if (worker != nullptr) {
-        worker->kill_task();
-    } else {
+    if (worker == nullptr) {
         LOG(WARNING) << "worker does not find for worker id: " << worker_id;
     }
     response->set_ret_code(rpc::SUCCESS);
@@ -600,7 +606,6 @@ Status VMNodeImpl::KillTask(::grpc::ServerContext* context,
 Status VMNodeImpl::FetchTaskStatus(::grpc::ServerContext* context,
                                   const ::primihub::rpc::TaskContext* request,
                                   ::primihub::rpc::TaskStatusReply* response) {
-    // LOG(ERROR) << "VMNodeImpl::FetchTaskStatus";
     const auto& request_id = request->request_id();
     const auto& task_id = request->task_id();
     const auto& job_id = request->job_id();
@@ -611,6 +616,8 @@ Status VMNodeImpl::FetchTaskStatus(::grpc::ServerContext* context,
         task_status->set_message("No shecudler found for task");
         return grpc::Status::OK;
     }
+    // fetch all exist task status which has been collected from all party
+    // and return to client in one request
     do {
         auto res = response->add_task_status();
         auto ret = worker_ptr->fetchTaskStatus(res);
