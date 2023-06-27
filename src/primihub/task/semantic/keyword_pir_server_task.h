@@ -20,7 +20,8 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/task/semantic/task.h"
 
-#include "apsi/util/csv_reader.h"
+#include "src/primihub/task/semantic/pir_util.h"
+// #include "apsi/util/csv_reader.h"
 #include "apsi/util/common_utils.h"
 #include "apsi/sender.h"
 #include "apsi/oprf/oprf_sender.h"
@@ -78,10 +79,10 @@ class KeywordPIRServerTask : public TaskBase {
 
  private:
     retcode _LoadParams(Task &task);
-    std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
+    std::unique_ptr<pir::util::CSVReader::DBData> _LoadDataset(void);
     std::unique_ptr<apsi::PSIParams> _SetPsiParams();
     std::shared_ptr<apsi::sender::SenderDB> create_sender_db(
-        const apsi::util::CSVReader::DBData &db_data,
+        const pir::util::CSVReader::DBData &db_data,
         std::unique_ptr<apsi::PSIParams> psi_params,
         apsi::oprf::OPRFKey &oprf_key,
         size_t nonce_byte_count,

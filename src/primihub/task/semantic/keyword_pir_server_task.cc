@@ -41,7 +41,7 @@ using namespace apsi::network;
 
 using namespace seal;
 using namespace seal::util;
-
+using CSVReader = primihub::pir::util::CSVReader;
 namespace primihub::task {
 
 std::shared_ptr<SenderDB>
@@ -157,12 +157,13 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
         VLOG(5) << "begin to read data, dataset path: " << dataset_path_
                 << " data set id: " << this->dataset_id_;
         CSVReader reader(dataset_path_);
-        tie(db_data, ignore) = reader.read();
+        tie(db_data, ignore) = reader.read(&this->stop_);
     } catch (const exception &ex) {
         LOG(ERROR) << "Could not open or read file `"
                    << dataset_path_ << "`: " << ex.what();
         return nullptr;
     }
+    CHECK_TASK_STOPPED(nullptr);
     VLOG(5) << "read data set of size " << std::get<CSVReader::LabeledData>(db_data).size();
     auto reader_ptr = std::make_unique<CSVReader::DBData>(std::move(db_data));
     return reader_ptr;
@@ -226,7 +227,7 @@ int KeywordPIRServerTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return -1;
     }
-    ThreadPoolMgr::SetThreadCount(1);
+    ThreadPoolMgr::SetThreadCount(20);
 
     auto params = _SetPsiParams();
     CHECK_NULLPOINTER(params, -1);
