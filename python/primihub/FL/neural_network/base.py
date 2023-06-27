@@ -7,13 +7,15 @@ from .cnn import NeuralNetwork as CNN
 
 def create_model(method, output_dim, device, nn_model='mlp'):
     # select model
+    nn_model = nn_model.lower()
     if nn_model == 'mlp':
         model = MLP(output_dim)
     elif nn_model == 'cnn':
         model = CNN(output_dim)
     else:
-        logger.error(f"Unsupported NN model: {nn_model}")
-        raise RuntimeError
+        error_msg = f"Unsupported NN model: {nn_model}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
     # validate model (DPSGD)
     if method == 'DPSGD':
@@ -26,6 +28,7 @@ def create_model(method, output_dim, device, nn_model='mlp'):
 
 
 def choose_loss_fn(output_dim, task):
+    task = task.lower()
     if task == 'classification':
         if output_dim == 1:
             return torch.nn.BCEWithLogitsLoss()
@@ -34,11 +37,13 @@ def choose_loss_fn(output_dim, task):
     if task == 'regression':
         return torch.nn.MSELoss()
     else:
-        logger.error(f"Unsupported task: {task}")
-        raise RuntimeError
+        error_msg = f"Unsupported task: {task}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
 
 def choose_optimizer(model, optimizer, learning_rate, alpha):
+    optimizer = optimizer.lower()
     if optimizer == 'adadelta':
         return torch.optim.Adadelta(model.parameters(),
                                     lr=learning_rate,
@@ -80,5 +85,6 @@ def choose_optimizer(model, optimizer, learning_rate, alpha):
                                lr=learning_rate,
                                weight_decay=alpha)
     else:
-        logger.error(f"Unsupported optimizer: {optimizer}")
-        raise RuntimeError
+        error_msg = f"Unsupported optimizer: {optimizer}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)

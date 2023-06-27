@@ -37,16 +37,18 @@ class Transformer(BaseModel):
         elif process == 'transform':
             self.transform()
         else:
-            logger.error(f"Unsupported process: {process}")
-            raise RuntimeError
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def fit_transform(self):
         FL_type = self.common_params['FL_type']
         if FL_type in ['V', 'H']:
             logger.info(f"FL type: {FL_type}")
         else:
-            logger.error(f"Unsupported FL type: {FL_type}")
-            raise RuntimeError
+            error_msg = f"Unsupported FL type: {FL_type}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # select process column
         selected_column = self.role_params['selected_column']

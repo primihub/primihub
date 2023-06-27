@@ -67,8 +67,9 @@ class LogisticRegressionClient(BaseModel):
                                      self.common_params['alpha'],
                                      server_channel)
         else:
-            logger.error(f"Unsupported method: {method}")
-            raise RuntimeError
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
         # minmaxscaler

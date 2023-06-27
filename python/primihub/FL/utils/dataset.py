@@ -35,8 +35,9 @@ def read_data(data_info,
                           selected_column,
                           id)
     else:
-        logger.error(f'Unsupported data type: {data_type}')
-        raise RuntimeError
+        error_msg = f'Unsupported data type: {data_type}'
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
 
 def read_csv(data_path, selected_column=None, id=None):
