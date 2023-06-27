@@ -45,7 +45,9 @@ class NeuralNetworkServer(BaseModel):
                                   device,
                                   client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
         # minmaxscaler
@@ -127,11 +129,12 @@ class Plaintext_Server:
         for idx, cinput_shape in enumerate(Input_Shapes):
             if input_shape != cinput_shape:
                 all_input_shapes_same = False
-                logger.error(f"""Not all input shapes are the same,
+                error_msg = f"""Not all input shapes are the same,
                                 client {self.client_channel.keys()[idx]}'s
                                 input shape is {cinput_shape},
-                                but others' are {input_shape}""")
-                break
+                                but others' are {input_shape}"""
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
         # send signal of input shapes to all clients
         self.client_channel.send_all("input_dim_same", all_input_shapes_same)
@@ -192,8 +195,10 @@ class Plaintext_Server:
         metrics_name = metrics_name.lower()
         supported_metrics = ['loss', 'acc', 'auc', 'mse', 'mae']
         if metrics_name not in supported_metrics:
-            logger.error(f"""Not supported metrics {metrics_name},
-                          use {supported_metrics} instead""")
+            error_msg = f"""Unsupported metrics {metrics_name},
+                          use {supported_metrics} instead"""
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         client_metrics = self.client_channel.recv_all(metrics_name)
             

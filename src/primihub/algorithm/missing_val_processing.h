@@ -58,30 +58,30 @@ private:
 
   void _spiltStr(string str, const string &split, std::vector<string> &strlist);
 
-  std::unique_ptr<MPCOperator> mpc_op_exec_;
+  std::unique_ptr<MPCOperator> mpc_op_exec_{nullptr};
 
-  std::string job_id_;
-  std::string task_id_;
+  std::string job_id_{""};
+  std::string task_id_{""};
 
 #ifdef MPC_SOCKET_CHANNEL
   IOService ios_;
   Session ep_next_;
   Session ep_prev_;
-  std::string next_ip_, prev_ip_;
-  uint16_t next_port_, prev_port_;
+  std::string next_ip_{""}, prev_ip_{""};
+  uint16_t next_port_{0}, prev_port_{0};
 #else
   ABY3PartyConfig party_config_;
-  uint16_t local_party_id_;
-  uint16_t next_party_id_;
-  uint16_t prev_party_id_;
+  uint16_t local_party_id_{0};
+  uint16_t next_party_id_{0};
+  uint16_t prev_party_id_{0};
 
   primihub::Node local_node_;
 
-  std::shared_ptr<network::IChannel> base_channel_next_;
-  std::shared_ptr<network::IChannel> base_channel_prev_;
+  std::shared_ptr<network::IChannel> base_channel_next_{nullptr};
+  std::shared_ptr<network::IChannel> base_channel_prev_{nullptr};
 
-  std::shared_ptr<MpcChannel> mpc_channel_next_;
-  std::shared_ptr<MpcChannel> mpc_channel_prev_;
+  std::shared_ptr<MpcChannel> mpc_channel_next_{nullptr};
+  std::shared_ptr<MpcChannel> mpc_channel_prev_{nullptr};
 
   std::map<uint16_t, primihub::Node> partyid_node_map_;
 #endif
@@ -89,20 +89,20 @@ private:
   std::map<std::string, uint32_t> col_and_dtype_;
   std::vector<std::string> local_col_names;
 
-  std::string data_file_path_;
-  std::string replace_type_;
-  std::string conn_info_;
-  std::shared_ptr<arrow::Table> table;
+  std::string data_file_path_{""};
+  std::string replace_type_{""};
+  std::string conn_info_{""};
+  std::shared_ptr<arrow::Table> table{nullptr};
   std::map<std::string, std::vector<int>> db_both_index;
 
-  bool use_db;
-  std::string table_name;
-  std::string node_id_;
-  uint32_t party_id_;
+  bool use_db{false};
+  std::string table_name{""};
+  std::string node_id_{""};
+  uint32_t party_id_{0};
 
-  std::string new_dataset_id_;
-  std::string new_dataset_path_;
-  std::string platform_type_ = "";
+  std::string new_dataset_id_{""};
+  std::string new_dataset_path_{""};
+  std::string platform_type_{""};
 
   template <class T>
   void replaceValue(map<std::string, uint32_t>::iterator &iter,
@@ -122,9 +122,8 @@ private:
     std::shared_ptr<arrow::ChunkedArray> chunk_array =
         std::make_shared<arrow::ChunkedArray>(new_array);
 
-    bool isDouble = std::is_same<T, double>::value;
     std::shared_ptr<arrow::Field> field;
-    if (!isDouble) {
+    if (!need_double) {
       field = std::make_shared<arrow::Field>(iter->first, arrow::int64());
     } else {
       field = std::make_shared<arrow::Field>(iter->first, arrow::float64());
@@ -132,11 +131,6 @@ private:
 
     LOG(INFO) << "Replace column " << iter->first
               << " with new array in table.";
-
-    LOG(INFO) << "col_index:" << col_index;
-    LOG(INFO) << "name:" << field->name();
-    LOG(INFO) << "type:" << field->type();
-    LOG(INFO) << "table->type:" << table->field(col_index)->type();
 
     auto result = table->SetColumn(col_index, field, chunk_array);
     if (!result.ok()) {

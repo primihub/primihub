@@ -41,7 +41,9 @@ class CNNServer(BaseModel):
                                   device,
                                   client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # model training
         logger.info("-------- start training --------")

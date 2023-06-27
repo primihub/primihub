@@ -85,12 +85,12 @@ int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
       throw std::invalid_argument("Invalid stod argument");
     }
   } catch (std::invalid_argument &ex) {
-    LOG(ERROR) << "Can't convert string " << str
-               << " to double value, invalid numberic string.";
+    LOG(WARNING) << "Can't convert string " << str
+                 << " to double value, invalid numberic string.";
     return -1;
   } catch (std::out_of_range &ex) {
-    LOG(ERROR) << "Can't convert string " << str
-               << " to double value, value in string out of range.";
+    LOG(WARNING) << "Can't convert string " << str
+                 << " to double value, value in string out of range.";
     return -2;
   }
 
@@ -318,7 +318,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     LOG(ERROR) << "no data set found for party name: " << this->party_name();
     return -1;
   }
-  const auto& dataset = it->second.data();
+  const auto &dataset = it->second.data();
   auto iter = dataset.find("Data_File");
   if (iter == dataset.end()) {
     LOG(ERROR) << "no dataset found for dataset name Data_File";
@@ -364,15 +364,15 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
               << iter->value.GetInt() << ".";
   }
   new_dataset_id_ = doc_ds["newDataSetId"].GetString();
-  if (doc_ds.HasMember("newDataPath") && doc_ds["newDataPath"].IsString()) {
-    new_dataset_path_ = doc_ds["newDataPath"].GetString();
+  if (doc_ds.HasMember("outputFilePath") && doc_ds["outputFilePath"].IsString()) {
+    new_dataset_path_ = doc_ds["outputFilePath"].GetString();
   } else {
     new_dataset_path_ = "./" + new_dataset_id_ + ".csv";
     LOG(WARNING) << "using default path: " << new_dataset_path_;
   }
 
   LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ". "
-      << "new dataset path: " << new_dataset_path_;
+            << "new dataset path: " << new_dataset_path_;
   return 0;
 }
 
@@ -448,9 +448,9 @@ int MissingProcess::initPartyComm(void) {
   party_id_ = this->party_config_.SelfPartyId();
   LOG(INFO) << "local_id_local_id_: " << party_id_;
   LOG(INFO) << "next_party: " << next_party_name
-      << " detail: " << next_party_info.to_string();
+            << " detail: " << next_party_info.to_string();
   LOG(INFO) << "prev_party: " << prev_party_name
-      << " detail: " << prev_party_info.to_string();
+            << " detail: " << prev_party_info.to_string();
   return 0;
 }
 #endif
@@ -597,10 +597,7 @@ int MissingProcess::execute() {
 
               // Detect string that can't convert into int64_t value.
               int ret = 0;
-
               int64_t i64_val = 0;
-              LOG(WARNING) << "str_array->length() :" << str_array->length()
-                           << ".";
               for (int64_t j = 0; j < str_array->length(); j++) {
                 if (str_array->IsNull(j)) {
                   LOG(WARNING) << "Find missing value in column " << iter->first
@@ -809,9 +806,7 @@ int MissingProcess::execute() {
             }
 
             replaceValue(iter, table, col_index, int_col_max, abnormal_index,
-                         use_db, true);
-
-            //++++++++++++++++++++++++++++++++++++++Double+++++++++++++++++++++++++++++++++++++++++++++++
+                         use_db, false);
           } else if (iter->second == 2) {
             f64Matrix<myD> m(1, 1);
 
@@ -1023,9 +1018,7 @@ int MissingProcess::execute() {
             }
 
             replaceValue(iter, table, col_index, int_col_min, abnormal_index,
-                         use_db, true);
-            //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            //++++++++++++++++++++++++++++++++++++++Double+++++++++++++++++++++++++++++++++++++++++++++++
+                         use_db, false);
           } else if (iter->second == 2) {
             f64Matrix<myD> m(1, 1);
 
@@ -1174,7 +1167,7 @@ int MissingProcess::execute() {
             // average value.
             int64_t col_avg = plain_sum(0, 0) / plain_sum(1, 0);
             replaceValue(iter, table, col_index, col_avg, abnormal_index,
-                         use_db, true);
+                         use_db, false);
           } else if (iter->second == 2) {
             eMatrix<double> m(2, 1);
             m(0, 0) = double_sum;
@@ -1244,11 +1237,7 @@ int MissingProcess::finishPartyComm(void) {
 
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
-  // std::string delimiter = ".";
-  // int pos = data_file_path_.rfind(delimiter);
-
-  // std::string new_path = data_file_path_.substr(0, pos) + "_missing.csv";
-  auto& new_path = new_dataset_path_;
+  auto &new_path = new_dataset_path_;
   std::shared_ptr<DataDriver> driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
 
@@ -1378,7 +1367,7 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
 
   // auto cursor = driver->initCursor(new_path);
   auto cursor = driver->read(source);
-  auto sql_cursor = dynamic_cast<SQLiteCursor*>(cursor.get());
+  auto sql_cursor = dynamic_cast<SQLiteCursor *>(cursor.get());
   if (sql_cursor == nullptr) {
     return -1;
   }

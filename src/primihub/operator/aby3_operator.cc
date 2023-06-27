@@ -341,7 +341,7 @@ void MPCOperator::MPC_Compare(i64Matrix &m, sbMatrix &sh_res) {
       if (partyIdx == (i + 1) % 3)
         mPrev->recv(shape);
       else if (partyIdx == (i + 2) % 3)
-        mPrev->recv(shape);
+        mNext->recv(shape);
       else
         throw std::runtime_error("Message recv logic error.");
     }

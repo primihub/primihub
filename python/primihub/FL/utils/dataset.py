@@ -4,8 +4,40 @@ import pandas as pd
 import os
 import imghdr
 import zipfile
+from sqlalchemy import create_engine
 from torchvision.io import read_image
 from torch.utils.data import Dataset as TorchDataset
+from primihub.utils.logger_util import logger
+
+
+def read_data(data_info,
+              selected_column=None,
+              id=None,
+              transform=None,
+              target_transform=None):
+    data_type = data_info['type'].lower()
+    if data_type == 'csv':
+        return read_csv(data_info['data_path'],
+                        selected_column,
+                        id)
+    elif data_type == 'image':
+        return TorchImageDataset(data_info['image_dir'],
+                                 data_info['annotations_file'],
+                                 transform,
+                                 target_transform)
+    elif data_type == 'mysql':
+        return read_mysql(data_info['username'],
+                          data_info['password'],
+                          data_info['host'],
+                          data_info['port'],
+                          data_info['dbName'],
+                          data_info['tableName'],
+                          selected_column,
+                          id)
+    else:
+        error_msg = f'Unsupported data type: {data_type}'
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
 
 def read_csv(data_path, selected_column=None, id=None):
@@ -15,6 +47,23 @@ def read_csv(data_path, selected_column=None, id=None):
     if id in data.columns:
         data.pop(id)
     return data
+
+
+def read_mysql(user,
+               password,
+               host,
+               port,
+               database,
+               table_name,
+               selected_column=None,
+               id=None):
+    engine_str = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}"
+    engine = create_engine(engine_str)
+    with engine.connect() as conn:
+        df = pd.read_sql_table(table_name, conn, columns=selected_column)
+        if id in df.columns:
+            df.pop(id)
+        return df
 
 
 class TorchImageDataset(TorchDataset):
