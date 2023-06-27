@@ -138,35 +138,114 @@ retcode KeywordPIRServerTask::_LoadParams(Task &task) {
 
     return retcode::SUCCESS;
 }
+std::vector<std::string> KeywordPIRServerTask::GetSelectedContent(
+    std::shared_ptr<arrow::Table>& data_tbl,
+    const std::vector<int>& selected_col) {
+  // return std::vector<std::string>();
+  int col_count = data_tbl->num_columns();
+  size_t row_count = data_tbl->num_rows();
+  if (selected_col.empty()) {
+    LOG(ERROR) << "no col selected for data";
+    return std::vector<std::string>();
+  }
+
+  std::vector<std::string> content_array;
+  auto lable_ptr = data_tbl->column(selected_col[0]);
+  auto chunk_size = lable_ptr->num_chunks();
+  size_t total_row_count = col_count * chunk_size;
+  content_array.reserve(total_row_count);
+  for (int i = 0; i < chunk_size; ++i) {
+    auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(i));
+    for (int64_t j = 0; j < array->length(); j++) {
+      content_array.push_back(array->GetString(j));
+    }
+  }
+
+  // process left colums
+  for (size_t i = 1; i < selected_col.size(); ++i) {
+    size_t index{0};
+    int col_index = selected_col[i];
+    auto lable_ptr = data_tbl->column(col_index);
+    int chunk_size = lable_ptr->num_chunks();
+    for (int j = 0; j < chunk_size; ++j) {
+      auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(j));
+      for (int64_t k = 0; k < array->length(); ++k) {
+        content_array[index++].append(",").append(array->GetString(k));
+      }
+    }
+  }
+  return content_array;
+}
+
+std::unique_ptr<CSVReader::DBData>
+KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
+  auto& table = std::get<std::shared_ptr<arrow::Table>>(data->data);
+  int col_count = table->num_columns();
+  size_t row_count = table->num_rows();
+  if (col_count < 2) {
+    LOG(ERROR) << "data for server must have lable";
+    return nullptr;
+  }
+  auto result = CSVReader::LabeledData();
+
+  // get item
+  std::vector<int> item_col = {0};
+  auto item_array = GetSelectedContent(table, item_col);
+  // get label
+  std::vector<int> label_col;
+  for (int i = 1; i < col_count; i++) {
+    label_col.push_back(i);
+  }
+  if (label_col.empty()) {
+    LOG(ERROR) << "no selected colum for lable";
+    return nullptr;
+  }
+  CHECK_TASK_STOPPED(nullptr);
+  auto label_array = GetSelectedContent(table, label_col);
+  CHECK_TASK_STOPPED(nullptr);
+  result.reserve(item_array.size());
+  std::set<std::string> duplicate_item;
+  for (size_t i = 0; i < item_array.size(); ++i) {
+    // item
+    auto& item_str = item_array[i];
+    if (duplicate_item.find(item_str) != duplicate_item.end()) {
+      LOG(WARNING) << "[" << item_str << "] has already exist, ignore this recored";
+      continue;
+    }
+    apsi::Item item = item_str;
+    // label
+    auto& label_str = label_array[i];
+    apsi::Label label;
+    label.clear();
+    label.reserve(label_str.size());
+    copy(label_str.begin(), label_str.end(), back_inserter(label));
+    result.push_back(std::make_pair(std::move(item), std::move(label)));
+    duplicate_item.insert(std::move(item_str));
+  }
+  return std::make_unique<CSVReader::DBData>(std::move(result));
+}
 
 std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
-    CHECK_TASK_STOPPED(nullptr);
-    CSVReader::DBData db_data;
-    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
-    if (driver == nullptr) {
-        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
-        return nullptr;
-    }
-    auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
-    if (access_info == nullptr) {
-        LOG(ERROR) << "get data accessinfo for dataset: " << this->dataset_id_ << " failed";
-        return nullptr;
-    }
-    dataset_path_ = access_info->file_path_;
-    try {
-        VLOG(5) << "begin to read data, dataset path: " << dataset_path_
-                << " data set id: " << this->dataset_id_;
-        CSVReader reader(dataset_path_);
-        tie(db_data, ignore) = reader.read(&this->stop_);
-    } catch (const exception &ex) {
-        LOG(ERROR) << "Could not open or read file `"
-                   << dataset_path_ << "`: " << ex.what();
-        return nullptr;
-    }
-    CHECK_TASK_STOPPED(nullptr);
-    VLOG(5) << "read data set of size " << std::get<CSVReader::LabeledData>(db_data).size();
-    auto reader_ptr = std::make_unique<CSVReader::DBData>(std::move(db_data));
-    return reader_ptr;
+  CHECK_TASK_STOPPED(nullptr);
+  CSVReader::DBData db_data;
+  auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+    return nullptr;
+  }
+  auto cursor = driver->GetCursor();
+  if (cursor == nullptr) {
+    LOG(ERROR) << "init cursor failed for dataset id: " << this->dataset_id_;
+    return nullptr;
+  }
+  // maybe pass schema to get expected data type
+  auto data = cursor->read();
+  if (data == nullptr) {
+    LOG(ERROR) << "read data failed for dataset id: " << this->dataset_id_;
+    return nullptr;
+  }
+  CHECK_TASK_STOPPED(nullptr);
+  return CreateDbData(data);
 }
 
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
@@ -227,21 +306,30 @@ int KeywordPIRServerTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return -1;
     }
-    ThreadPoolMgr::SetThreadCount(20);
+    CHECK_TASK_STOPPED(-1);
+    size_t cpu_core_num = std::thread::hardware_concurrency();
+    size_t use_core_num = cpu_core_num / 2;
+    LOG(INFO) << "ThreadPoolMgr thread count: " << use_core_num;
+    ThreadPoolMgr::SetThreadCount(use_core_num);
 
     auto params = _SetPsiParams();
     CHECK_NULLPOINTER(params, -1);
+    CHECK_TASK_STOPPED(-1);
 
     rt_code = processPSIParams();
     CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+    CHECK_TASK_STOPPED(-1);
 
-    std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
+    // std::unique_ptr<CSVReader::DBData>
+    auto db_data = _LoadDataset();
     CHECK_NULLPOINTER(db_data, -1);
+    CHECK_TASK_STOPPED(-1);
 
     // OPRFKey oprf_key;
     std::shared_ptr<SenderDB> sender_db
         = create_sender_db(*db_data, move(params), *(this->oprf_key_), 16, false);
     CHECK_NULLPOINTER(sender_db, -1);
+    CHECK_TASK_STOPPED(-1);
     uint32_t max_bin_bundles_per_bundle_idx = 0;
     for (uint32_t bundle_idx = 0; bundle_idx < sender_db->get_params().bundle_idx_count();
          bundle_idx++) {
@@ -251,9 +339,11 @@ int KeywordPIRServerTask::execute() {
     }
     rt_code = processOprf();
     CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+    CHECK_TASK_STOPPED(-1);
 
     rt_code = processQuery(sender_db);
     CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+    CHECK_TASK_STOPPED(-1);
 
     VLOG(5) << "end of execute task";
     return 0;
@@ -314,8 +404,6 @@ retcode KeywordPIRServerTask::processOprf() {
         LOG(ERROR) << "received oprf request from client failed ";
         return ret;
     }
-    // auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    // recv_queue.wait_and_pop(oprf_request_str);
     VLOG(5) << "received oprf request: " << oprf_request_str.size();
 
     // // OPRFKey key_oprf;

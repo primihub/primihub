@@ -87,7 +87,9 @@ class KeywordPIRServerTask : public TaskBase {
         apsi::oprf::OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress);
-
+    std::unique_ptr<pir::util::CSVReader::DBData> CreateDbData(std::shared_ptr<Dataset>& data);
+    std::vector<std::string> GetSelectedContent(std::shared_ptr<arrow::Table>& data_tbl,
+                                                const std::vector<int>& selected_col);
  private:
     std::string dataset_path_;
     std::string dataset_id_;
