@@ -1,7 +1,7 @@
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import read_csv, DataLoader
+from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 
 import pickle
@@ -29,10 +29,11 @@ class LogisticRegressionGuest(BaseModel):
                                   task_info=self.task_info)
         
         # load dataset
-        data_path = self.role_params['data']['data_path']
         selected_column = self.role_params['selected_column']
         id = self.role_params['id']
-        x = read_csv(data_path, selected_column, id)
+        x = read_data(data_info=self.role_params['data'],
+                      selected_column=selected_column,
+                      id=id)
         x = x.values
 
         # guest init
@@ -101,8 +102,7 @@ class LogisticRegressionGuest(BaseModel):
             modelFile = pickle.load(file_path)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
-        x = read_csv(data_path, selected_column=None, id=None)
+        x = read_data(data_info=self.role_params['data'])
 
         selected_column = modelFile['selected_column']
         if selected_column:
