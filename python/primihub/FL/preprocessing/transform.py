@@ -1,6 +1,6 @@
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import read_csv
+from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 
 from .encoder import OrdinalEncoder, LabelEncoder
@@ -27,9 +27,7 @@ class Transformer(BaseModel):
         super().__init__(**kwargs)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
-        logger.info(f"data path: {data_path}")
-        self.data = read_csv(data_path, selected_column=None, id=None)
+        self.data = read_data(data_info=self.role_params['data'])
         
     def run(self):
         process = self.common_params['process']

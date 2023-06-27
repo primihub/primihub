@@ -5,7 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_add, opt_paillier_keygen, opt_paillier_encrypt_crt, opt_paillier_decrypt_crt
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.dataset import read_csv
+from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 
 
@@ -37,8 +37,7 @@ class IVBase(BaseModel):
         self.bin_dict = self.role_params['bin_dict']
 
         # read from data path
-        data_path = self.role_params['data']['data_path']
-        self.data = read_csv(data_path, selected_column=None, id=None)
+        self.data = read_data(data_info=self.role_params['data'])
 
         # set current channel
         remote_party = self.roles[self.role_params['others_role']][0]

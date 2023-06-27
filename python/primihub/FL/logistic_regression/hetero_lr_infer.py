@@ -6,7 +6,7 @@ from sklearn import metrics
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.dataset import read_csv
+from primihub.FL.utils.dataset import read_data
 from primihub.FL.utils.file import check_directory_exist
 
 
@@ -36,8 +36,7 @@ class HeteroLrHostInfer(BaseModel):
         self.model_path = self.role_params['model_path']
 
         # read from data path
-        data_path = self.role_params['data']['data_path']
-        self.data = read_csv(data_path, selected_column=None, id=None)
+        self.data = read_data(data_info=self.role_params['data'])
 
     def load_dict(self):
         with open(self.model_path, "rb") as current_model:
@@ -138,8 +137,7 @@ class HeteroLrGuestInfer(BaseModel):
         self.model_path = self.role_params['model_path']
 
         # read from data path
-        data_path = self.role_params['data']['data_path']
-        self.data = read_csv(data_path, selected_column=None, id=None)
+        self.data = read_data(data_info=self.role_params['data'])
 
     def load_dict(self):
         with open(self.model_path, "rb") as current_model:
