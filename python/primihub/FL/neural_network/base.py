@@ -13,6 +13,7 @@ def create_model(method, output_dim, device, nn_model='mlp'):
         model = CNN(output_dim)
     else:
         logger.error(f"Unsupported NN model: {nn_model}")
+        raise RuntimeError
 
     # validate model (DPSGD)
     if method == 'DPSGD':
@@ -33,7 +34,8 @@ def choose_loss_fn(output_dim, task):
     if task == 'regression':
         return torch.nn.MSELoss()
     else:
-        logger.error(f"Not supported task: {task}")
+        logger.error(f"Unsupported task: {task}")
+        raise RuntimeError
 
 
 def choose_optimizer(model, optimizer, learning_rate, alpha):
@@ -78,4 +80,5 @@ def choose_optimizer(model, optimizer, learning_rate, alpha):
                                lr=learning_rate,
                                weight_decay=alpha)
     else:
-        logger.error(f"Not supported optimizer: {optimizer}")
+        logger.error(f"Unsupported optimizer: {optimizer}")
+        raise RuntimeError

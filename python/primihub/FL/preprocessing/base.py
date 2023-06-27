@@ -8,11 +8,13 @@ class PreprocessBase:
             self.FL_type = FL_type
         else:
             logger.error(f"Unsupported FL type: {FL_type}")
+            raise RuntimeError
 
         if role in ['host', 'guest', 'client', 'server']:
             self.role = role
         else:
             logger.error(f"Unsupported role: {role}")
+            raise RuntimeError
         
         self.channel = channel
 

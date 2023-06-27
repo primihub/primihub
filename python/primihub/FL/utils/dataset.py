@@ -15,7 +15,7 @@ def read_data(data_info,
               id=None,
               transform=None,
               target_transform=None):
-    data_type = data_info['type']
+    data_type = data_info['type'].lower()
     if data_type == 'csv':
         return read_csv(data_info['data_path'],
                         selected_column,
@@ -36,6 +36,7 @@ def read_data(data_info,
                           id)
     else:
         logger.error(f'Unsupported data type: {data_type}')
+        raise RuntimeError
 
 
 def read_csv(data_path, selected_column=None, id=None):

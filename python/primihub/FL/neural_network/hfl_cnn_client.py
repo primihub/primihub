@@ -64,7 +64,8 @@ class CNNClient(BaseModel):
                                   self.common_params['l2_norm_clip'],
                                   server_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            logger.error(f"Unsupported method: {method}")
+            raise RuntimeError
         
         # create dataloaders
         num_examples = client.num_examples
@@ -198,6 +199,7 @@ class Plaintext_Client(MLP_Plaintext_Client):
         all_input_shapes_same = self.server_channel.recv("input_dim_same")
         if not all_input_shapes_same:
             logger.error("Input shapes don't match for all clients")
+            raise RuntimeError
         
 
 class DPSGD_Client(Plaintext_Client, MLP_DPSGD_Client):
