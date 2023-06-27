@@ -1,6 +1,6 @@
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import read_csv
+from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 
 from .encoder import OrdinalEncoder, LabelEncoder
@@ -27,9 +27,7 @@ class Transformer(BaseModel):
         super().__init__(**kwargs)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
-        logger.info(f"data path: {data_path}")
-        self.data = read_csv(data_path, selected_column=None, id=None)
+        self.data = read_data(data_info=self.role_params['data'])
         
     def run(self):
         process = self.common_params['process']
@@ -39,14 +37,18 @@ class Transformer(BaseModel):
         elif process == 'transform':
             self.transform()
         else:
-            logger.error(f"Unsupported process: {process}")
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def fit_transform(self):
         FL_type = self.common_params['FL_type']
         if FL_type in ['V', 'H']:
             logger.info(f"FL type: {FL_type}")
         else:
-            logger.error(f"Unsupported FL type: {FL_type}")
+            error_msg = f"Unsupported FL type: {FL_type}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # select process column
         selected_column = self.role_params['selected_column']

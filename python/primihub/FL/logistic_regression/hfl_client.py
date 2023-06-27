@@ -1,7 +1,7 @@
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import read_csv,\
+from primihub.FL.utils.dataset import read_data,\
                                       DataLoader,\
                                       DPDataLoader
 from primihub.utils.logger_util import logger
@@ -37,10 +37,11 @@ class LogisticRegressionClient(BaseModel):
                                     task_info=self.task_info)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
         selected_column = self.common_params['selected_column']
         id = self.common_params['id']
-        x = read_csv(data_path, selected_column, id)
+        x = read_data(data_info=self.role_params['data'],
+                      selected_column=selected_column,
+                      id=id)
         label = self.common_params['label']
         y = x.pop(label).values
         x = x.values
@@ -66,7 +67,9 @@ class LogisticRegressionClient(BaseModel):
                                      self.common_params['alpha'],
                                      server_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
         # minmaxscaler
@@ -148,8 +151,7 @@ class LogisticRegressionClient(BaseModel):
             modelFile = pickle.load(file_path)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
-        origin_data = read_csv(data_path, selected_column=None, id=None)
+        origin_data = read_data(data_info=self.role_params['data'])
 
         x = origin_data.copy()
         selected_column = modelFile['selected_column']
