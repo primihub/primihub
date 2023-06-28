@@ -19,13 +19,12 @@ function kill_app() {
   echo $pids
   if [ -n "${pids}" ]; then
     kill -9 ${pids}
-    echo "stop meta server done!"
+    echo "stop ${app_name} done!"
   fi
   return 0
 }
 
 function main() {
-  set -x
   #kill meta server
   meta_app="fusion-simple.jar"
   echo "begin to stop meta service"
