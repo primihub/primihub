@@ -13,22 +13,23 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-
-#include <variant>
-#include <sys/stat.h>
-
 #include "src/primihub/data_store/image/image_driver.h"
-#include "src/primihub/data_store/driver.h"
+
+#include <sys/stat.h>
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
 #include <arrow/filesystem/localfs.h>
 #include <arrow/io/api.h>
-#include <fstream>
 #include <glog/logging.h>
+
+#include <variant>
+#include <fstream>
 #include <iostream>
+#include <utility>
 #include <nlohmann/json.hpp>
 
+#include "src/primihub/data_store/driver.h"
 namespace primihub {
 // ImageAccessInfo
 std::string ImageAccessInfo::toString() {
@@ -78,12 +79,12 @@ ImageCursor::~ImageCursor() { this->close(); }
 
 void ImageCursor::close() {}
 
-std::shared_ptr<primihub::Dataset> ImageCursor::readMeta() {
+std::shared_ptr<Dataset> ImageCursor::readMeta() {
   return read();
 }
 
 // read all data from image file
-std::shared_ptr<primihub::Dataset> ImageCursor::read() {
+std::shared_ptr<Dataset> ImageCursor::read() {
   auto access_info = this->driver_->dataSetAccessInfo().get();
   auto access_info_ptr = dynamic_cast<ImageAccessInfo*>(access_info);
   std::string annotations_file = access_info_ptr->annotations_file_;
@@ -124,12 +125,15 @@ std::shared_ptr<primihub::Dataset> ImageCursor::read() {
   return dataset;
 }
 
-std::shared_ptr<primihub::Dataset>
-ImageCursor::read(int64_t offset, int64_t limit) {
+std::shared_ptr<Dataset> ImageCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
-int ImageCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
+std::shared_ptr<Dataset> ImageCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+  return nullptr;
+}
+
+int ImageCursor::write(std::shared_ptr<Dataset> dataset) {
   return 0;
 }
 
@@ -175,6 +179,6 @@ std::unique_ptr<Cursor> ImageDriver::GetCursor(const std::vector<int>& col_index
 
 std::string ImageDriver::getDataURL() const {
   return std::string("");
-};
+}
 
-} // namespace primihub
+}  // namespace primihub

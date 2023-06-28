@@ -16,15 +16,19 @@
 
 #ifndef SRC_PRIMIHUB_DATA_STORE_MYSQL_MYSQL_DRIVER_H_
 #define SRC_PRIMIHUB_DATA_STORE_MYSQL_MYSQL_DRIVER_H_
+#include <glog/logging.h>
+#include <arrow/api.h>
+#include <mysql/mysql.h>
+
+#include <iomanip>
+#include <map>
+#include <memory>
+#include <vector>
+#include <string>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/util/arrow_wrapper_util.h"
-#include <iomanip>
-#include <map>
-#include <glog/logging.h>
-#include <arrow/api.h>
-#include <mysql/mysql.h>
 
 namespace primihub {
 class MySQLDriver;
@@ -82,17 +86,20 @@ class MySQLCursor : public Cursor {
                 const std::vector<int>& selected_column_index,
                 std::shared_ptr<MySQLDriver> driver);
     ~MySQLCursor();
-    std::shared_ptr<primihub::Dataset> readMeta() override;
-    std::shared_ptr<primihub::Dataset> read() override;
-    std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
-    int write(std::shared_ptr<primihub::Dataset> dataset) override;
+    std::shared_ptr<Dataset> readMeta() override;
+    std::shared_ptr<Dataset> read() override;
+    std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
+    std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) override;
+    int write(std::shared_ptr<Dataset> dataset) override;
     void close() override;
 
  protected:
+    std::shared_ptr<Dataset> ReadImpl(const std::shared_ptr<arrow::Schema>& data_schema);
     auto getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info) ->
         std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>;
 
     retcode fetchData(const std::string& query_sql,
+                      const std::shared_ptr<arrow::Schema>& data_schema,
                       std::vector<std::shared_ptr<arrow::Array>>* data_arr);
     std::shared_ptr<arrow::Schema> makeArrowSchema();
 
@@ -148,6 +155,6 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     int32_t connect_timeout_ms{3000};
 };
 
-} // namespace primihub
+}  // namespace primihub
 
-#endif // SRC_PRIMIHUB_DATA_STORE_MYSQL_MYSQL_DRIVER_H_
+#endif  // SRC_PRIMIHUB_DATA_STORE_MYSQL_MYSQL_DRIVER_H_
