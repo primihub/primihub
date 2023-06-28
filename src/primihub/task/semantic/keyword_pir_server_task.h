@@ -20,17 +20,20 @@
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/task/semantic/task.h"
 
-#include "apsi/util/csv_reader.h"
 #include "apsi/util/common_utils.h"
 #include "apsi/sender.h"
 #include "apsi/oprf/oprf_sender.h"
 #include "apsi/bin_bundle.h"
+#include "apsi/item.h"
 
 #include "seal/context.h"
 #include "seal/modulus.h"
 #include "seal/util/common.h"
 #include "seal/util/defines.h"
 namespace primihub::task {
+using UnlabeledData = std::vector<apsi::Item>;
+using LabeledData = std::vector<std::pair<apsi::Item, apsi::Label>>;
+using DBData = std::variant<UnlabeledData, LabeledData>;
 
 class KeywordPIRServerTask : public TaskBase {
  public:
@@ -78,15 +81,17 @@ class KeywordPIRServerTask : public TaskBase {
 
  private:
     retcode _LoadParams(Task &task);
-    std::unique_ptr<apsi::util::CSVReader::DBData> _LoadDataset(void);
+    std::unique_ptr<DBData> _LoadDataset(void);
     std::unique_ptr<apsi::PSIParams> _SetPsiParams();
     std::shared_ptr<apsi::sender::SenderDB> create_sender_db(
-        const apsi::util::CSVReader::DBData &db_data,
+        const DBData &db_data,
         std::unique_ptr<apsi::PSIParams> psi_params,
         apsi::oprf::OPRFKey &oprf_key,
         size_t nonce_byte_count,
         bool compress);
-
+    std::unique_ptr<DBData> CreateDbData(std::shared_ptr<Dataset>& data);
+    std::vector<std::string> GetSelectedContent(std::shared_ptr<arrow::Table>& data_tbl,
+                                                const std::vector<int>& selected_col);
  private:
     std::string dataset_path_;
     std::string dataset_id_;
