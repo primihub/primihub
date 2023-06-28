@@ -185,25 +185,11 @@ cc_library(
     defines = ["USE_MICROSOFT_APSI"],
     deps = [
         ":task_interface",
-        ":pir_util",
         "//src/primihub/protos:common_proto",
         "@mircrosoft_apsi//:APSI",
     ]
 )
 
-cc_library(
-  name = "pir_util",
-  hdrs = ["pir_util.h"],
-  srcs = ["pir_util.cc"],
-  copts = [
-    "-w",
-    "-D_ASPI",
-  ],
-  deps = [
-    "//src/primihub/common:common_defination",
-    "@mircrosoft_apsi//:APSI",
-  ],
-)
 cc_library(
     name = "private_server_base",
     hdrs = ["private_server_base.h"],

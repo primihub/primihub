@@ -25,7 +25,7 @@
 #include "apsi/thread_pool_mgr.h"
 #include "apsi/sender_db.h"
 #include "apsi/oprf/oprf_sender.h"
-#include "apsi/item.h"
+
 #include "apsi/powers.h"
 
 
@@ -41,11 +41,10 @@ using namespace apsi::network;
 
 using namespace seal;
 using namespace seal::util;
-using CSVReader = primihub::pir::util::CSVReader;
 namespace primihub::task {
 
 std::shared_ptr<SenderDB>
-KeywordPIRServerTask::create_sender_db(const CSVReader::DBData &db_data,
+KeywordPIRServerTask::create_sender_db(const DBData &db_data,
     std::unique_ptr<PSIParams> psi_params, OPRFKey &oprf_key, size_t nonce_byte_count, bool compress) {
     CHECK_TASK_STOPPED(nullptr);
     SCopedTimer timer;
@@ -54,11 +53,11 @@ KeywordPIRServerTask::create_sender_db(const CSVReader::DBData &db_data,
         return nullptr;
     }
     std::shared_ptr<SenderDB> sender_db;
-    if (holds_alternative<CSVReader::LabeledData>(db_data)) {
-        VLOG(5) << "CSVReader::LabeledData";
+    if (holds_alternative<LabeledData>(db_data)) {
+        VLOG(5) << "LabeledData";
         try {
             auto _start = timer.timeElapse();
-            auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
+            auto &labeled_db_data = std::get<LabeledData>(db_data);
             // Find the longest label and use that as label size
             size_t label_byte_count =
                  std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
@@ -87,7 +86,7 @@ KeywordPIRServerTask::create_sender_db(const CSVReader::DBData &db_data,
             return nullptr;
         }
 
-    } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
+    } else if (holds_alternative<UnlabeledData>(db_data)) {
         LOG(ERROR) << "Loaded keyword pir database is without label";
         return nullptr;
     } else {
@@ -177,7 +176,7 @@ std::vector<std::string> KeywordPIRServerTask::GetSelectedContent(
   return content_array;
 }
 
-std::unique_ptr<CSVReader::DBData>
+std::unique_ptr<DBData>
 KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
   auto& table = std::get<std::shared_ptr<arrow::Table>>(data->data);
   int col_count = table->num_columns();
@@ -186,7 +185,7 @@ KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
     LOG(ERROR) << "data for server must have lable";
     return nullptr;
   }
-  auto result = CSVReader::LabeledData();
+  auto result = LabeledData();
   // get item
   std::vector<int> item_col = {0};
   auto item_array = GetSelectedContent(table, item_col);
@@ -221,12 +220,12 @@ KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
     result.push_back(std::make_pair(std::move(item), std::move(label)));
     duplicate_item.insert(std::move(item_str));
   }
-  return std::make_unique<CSVReader::DBData>(std::move(result));
+  return std::make_unique<DBData>(std::move(result));
 }
 
-std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
+std::unique_ptr<DBData> KeywordPIRServerTask::_LoadDataset(void) {
   CHECK_TASK_STOPPED(nullptr);
-  CSVReader::DBData db_data;
+  DBData db_data;
   auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
   if (driver == nullptr) {
     LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
@@ -327,7 +326,7 @@ int KeywordPIRServerTask::execute() {
     CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
     CHECK_TASK_STOPPED(-1);
 
-    // std::unique_ptr<CSVReader::DBData>
+    // std::unique_ptr<DBData>
     auto db_data = _LoadDataset();
     CHECK_NULLPOINTER(db_data, -1);
     CHECK_TASK_STOPPED(-1);
