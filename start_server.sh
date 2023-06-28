@@ -7,7 +7,7 @@ META_TAR_NAME="meta_service.tar.gz"
 MAX_CHECK_TIMES=30
 META_DIR=meta_service
 META_SERVER_NAME=fusion-simple.jar
-META_SERVER_PORT=7977
+META_SERVER_PORT="7977 7978 7979"
 function helper_for_install_jre8() {
   echo "jre 8 is required, please first install jre"
   echo "for ubuntu20.04, follow this instruction: sudo apt install openjdk-8-jre-headless"
@@ -15,12 +15,13 @@ function helper_for_install_jre8() {
 }
 
 function check_meta_server_available() {
-  result=$(netstat -na 2> /dev/null |awk '{print $4}' | grep ${META_SERVER_PORT} | grep -v grep)
-  if [ -n "${result}" ]; then
-    return 0
-  else
-    return 1
-  fi
+  for meta_port in ${META_SERVER_PORT[@]}; do
+    result=$(netstat -na 2> /dev/null |awk '{print $4}' | grep ${meta_port} | grep -v grep)
+    if [ -z "${result}" ]; then
+      return 1
+    fi
+  done
+  return 0
 }
 
 function start_meta_server() {
