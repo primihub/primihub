@@ -163,7 +163,22 @@ retcode DataSetAccessInfo::SetDatasetSchema(std::vector<FieldType>&& schema_info
   this->schema = std::move(schema_info);
   return MakeArrowSchema();
 }
-
+// cursor
+std::shared_ptr<arrow::Schema>
+Cursor::MakeArrowSchema(const std::vector<FieldType>& data_schema) {
+  std::vector<std::shared_ptr<arrow::Field>> arrow_fields;
+  for (const auto& it : data_schema) {
+    auto name = std::get<0>(it);
+    int type = std::get<1>(it);
+    auto data_type = arrow_wrapper::util::MakeArrowDataType(type);
+    // std::shared_ptr<arrow::Field>
+    auto arrow_filed = arrow::field(name, std::move(data_type));
+    arrow_fields.push_back(std::move(arrow_filed));
+  }
+  auto arrow_schema = arrow::schema(std::move(arrow_fields));
+  VLOG(5) << "arrow_schema: " << arrow_schema->field_names().size();
+  return arrow_schema;
+}
 ////////////////////// DataDriver /////////////////////////////
 std::string DataDriver::getDriverType() const {
   return driver_type;

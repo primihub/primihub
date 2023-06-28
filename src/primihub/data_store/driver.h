@@ -85,12 +85,22 @@ class Cursor {
   virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
   virtual std::shared_ptr<Dataset> read() = 0;
   virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
+  virtual std::shared_ptr<Dataset> read(const std::vector<FieldType>& data_schema) {
+    auto arrow_schema = MakeArrowSchema(data_schema);
+    return read(arrow_schema);
+  }
+
+  virtual std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) = 0;
   virtual int write(std::shared_ptr<Dataset> dataset) = 0;
   virtual void close() = 0;
   std::vector<int>& SelectedColumnIndex() {return selected_column_index_;}
 
+ protected:
+  std::shared_ptr<arrow::Schema> MakeArrowSchema(const std::vector<FieldType>& data_schema);
+
  public:
   std::vector<int> selected_column_index_;
+
 };
 
 class DataDriver {

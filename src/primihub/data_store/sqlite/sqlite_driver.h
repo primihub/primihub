@@ -59,6 +59,7 @@ public:
   ~SQLiteCursor();
   std::shared_ptr<primihub::Dataset> readMeta() override;
   std::shared_ptr<primihub::Dataset> read() override;
+  std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
   std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
   std::shared_ptr<primihub::Dataset> readInternal(const std::string& query_sql);
   std::shared_ptr<arrow::Table>

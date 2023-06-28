@@ -240,8 +240,41 @@ retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_optio
   return retcode::SUCCESS;
 }
 
+retcode CSVCursor::BuildConvertOptions(const std::shared_ptr<arrow::Schema>& data_schema,
+                                        arrow::csv::ConvertOptions* convert_option) {
+//
+  if (data_schema == nullptr) {
+    return retcode::FAIL;
+  }
+  auto& include_columns = convert_option->include_columns;
+  auto& column_types = convert_option->column_types;
+  int number_fields = data_schema->num_fields();
+  for (int i = 0; i < number_fields; i++) {
+    auto field_ptr = data_schema->field(i);
+    const auto& name = field_ptr->name();
+    const auto& field_type = field_ptr->type();
+    include_columns.push_back(name);
+    column_types[name] = field_type;
+  }
+  return retcode::SUCCESS;
+}
+
 std::shared_ptr<primihub::Dataset> CSVCursor::readMeta() {
   return read();
+}
+
+std::shared_ptr<Dataset> CSVCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+  auto read_options = arrow::csv::ReadOptions::Defaults();
+  read_options.skip_rows = 1;  // skip title row
+  auto field_names = data_schema->field_names();
+  read_options.column_names = field_names;
+  auto parse_options = arrow::csv::ParseOptions::Defaults();
+  auto convert_options = arrow::csv::ConvertOptions::Defaults();
+  auto ret = BuildConvertOptions(data_schema, &convert_options);
+  if (ret != retcode::SUCCESS) {
+    return nullptr;
+  }
+  return ReadImpl(filePath, read_options, parse_options, convert_options);
 }
 
 // read all data from csv file
@@ -257,17 +290,24 @@ std::shared_ptr<Dataset> CSVCursor::read() {
   if (ret != retcode::SUCCESS) {
     return nullptr;
   }
-  auto arrow_table = csv::ReadCSVFile(filePath, read_options, parse_options, convert_options);
-  if (arrow_table == nullptr) {
-    return nullptr;
-  }
-  auto dataset = std::make_shared<Dataset>(arrow_table, this->driver_);
-  return dataset;
+  return ReadImpl(filePath, read_options, parse_options, convert_options);
 }
 
 std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
   // TODO
   return nullptr;
+}
+std::shared_ptr<Dataset> CSVCursor::ReadImpl(const std::string& file_path,
+    const arrow::csv::ReadOptions& read_options,
+    const arrow::csv::ParseOptions& parse_options,
+    const arrow::csv::ConvertOptions& convert_options) {
+  auto arrow_table = csv::ReadCSVFile(file_path, read_options,
+                                      parse_options, convert_options);
+  if (arrow_table == nullptr) {
+    return nullptr;
+  }
+  auto dataset = std::make_shared<Dataset>(arrow_table, this->driver_);
+  return dataset;
 }
 
 int CSVCursor::write(std::shared_ptr<Dataset> dataset) {

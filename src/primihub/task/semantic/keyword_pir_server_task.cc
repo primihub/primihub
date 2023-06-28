@@ -187,7 +187,6 @@ KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
     return nullptr;
   }
   auto result = CSVReader::LabeledData();
-
   // get item
   std::vector<int> item_col = {0};
   auto item_array = GetSelectedContent(table, item_col);
@@ -239,7 +238,15 @@ std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
     return nullptr;
   }
   // maybe pass schema to get expected data type
-  auto data = cursor->read();
+  // copy dataset schema, and change all filed to string
+  auto schema = driver->dataSetAccessInfo()->Schema();
+  for (auto& field : schema) {
+    auto& name = std::get<0>(field);
+    LOG(ERROR) << "name_name_name: " << name;
+    auto& type = std::get<1>(field);
+    type = arrow::Type::type::STRING;
+  }
+  auto data = cursor->read(schema);
   if (data == nullptr) {
     LOG(ERROR) << "read data failed for dataset id: " << this->dataset_id_;
     return nullptr;

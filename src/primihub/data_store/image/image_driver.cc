@@ -129,6 +129,11 @@ ImageCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
+std::shared_ptr<primihub::Dataset>
+ImageCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+  return nullptr;
+}
+
 int ImageCursor::write(std::shared_ptr<primihub::Dataset> dataset) {
   return 0;
 }

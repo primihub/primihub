@@ -49,6 +49,7 @@ class CSVCursor : public Cursor {
   ~CSVCursor();
   std::shared_ptr<primihub::Dataset> readMeta() override;
   std::shared_ptr<Dataset> read() override;
+  std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
   std::shared_ptr<Dataset> read(int64_t offset, int64_t limit);
   int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
@@ -68,7 +69,18 @@ class CSVCursor : public Cursor {
    * using registed data type
   */
   retcode BuildConvertOptions(arrow::csv::ConvertOptions* convert_option);
+  /**
+   * customize convert option
+   * convert option is specified by data schema
+   *
+  */
+  retcode BuildConvertOptions(const std::shared_ptr<arrow::Schema>& data_schema,
+                              arrow::csv::ConvertOptions* convert_option);
 
+  std::shared_ptr<Dataset> ReadImpl(const std::string& file_path,
+                                    const arrow::csv::ReadOptions& read_opt,
+                                    const arrow::csv::ParseOptions& parse_opt,
+                                    const arrow::csv::ConvertOptions& convert_opt);
  private:
   std::string filePath;
   unsigned long long offset = 0;

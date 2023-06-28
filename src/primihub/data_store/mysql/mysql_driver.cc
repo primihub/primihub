@@ -78,7 +78,7 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
 retcode MySQLAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
   auto ret{retcode::SUCCESS};
   try {
-    LOG(ERROR) << "meta_info: " << meta_info.access_info;
+    LOG(INFO) << "meta_info: " << meta_info.access_info;
     nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
     ret = ParseFromJsonImpl(access_info);
   } catch (std::exception& e) {
@@ -196,6 +196,7 @@ auto MySQLCursor::getDBConnector(
 }
 
 retcode MySQLCursor::fetchData(const std::string& query_sql,
+    const std::shared_ptr<arrow::Schema>& table_schema,
     std::vector<std::shared_ptr<arrow::Array>>* data_arr) {
   VLOG(5) << "fetchData query sql: " << this->sql_;
   std::vector<std::vector<std::string>> result_data;
@@ -255,14 +256,14 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
       result_data[i].push_back(item);
     }
   }
-  // convert data to arrow format
-  auto table_schema = this->driver_->dataSetAccessInfo()->ArrowSchema();
-  if (VLOG_IS_ON(5)) {
-    for (const auto& name :  table_schema->field_names()) {
-      VLOG(5) << "name: " << name << " "
-              << "size: " << table_schema->field_names().size();
-    }
-  }
+  // // convert data to arrow format
+  // auto table_schema = this->driver_->dataSetAccessInfo()->ArrowSchema();
+  // if (VLOG_IS_ON(5)) {
+  //   for (const auto& name :  table_schema->field_names()) {
+  //     VLOG(5) << "name: " << name << " "
+  //             << "size: " << table_schema->field_names().size();
+  //   }
+  // }
 
   int schema_fields = table_schema->num_fields();
   auto& all_select_index = this->SelectedColumnIndex();
@@ -293,7 +294,8 @@ std::shared_ptr<primihub::Dataset> MySQLCursor::readMeta() {
     meta_query_sql.append(" limit 100");
     auto schema = makeArrowSchema();
     std::vector<std::shared_ptr<arrow::Array>> array_data;
-    auto ret = fetchData(meta_query_sql, &array_data);
+    auto table_schema = this->driver_->dataSetAccessInfo()->ArrowSchema();
+    auto ret = fetchData(meta_query_sql, table_schema, &array_data);
     if (ret != retcode::SUCCESS) {
         return nullptr;
     }
@@ -304,21 +306,33 @@ std::shared_ptr<primihub::Dataset> MySQLCursor::readMeta() {
 
 // read all data from mysql
 std::shared_ptr<primihub::Dataset> MySQLCursor::read() {
-    auto schema = makeArrowSchema();
-    std::vector<std::shared_ptr<arrow::Array>> array_data;
-    auto ret = fetchData(this->sql_, &array_data);
-    if (ret != retcode::SUCCESS) {
-        return nullptr;
-    }
-    auto table = arrow::Table::Make(schema, array_data);
-    auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
-    return dataset;
+  auto schema = makeArrowSchema();
+  return ReadImpl(schema);
+}
+
+std::shared_ptr<primihub::Dataset>
+MySQLCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+  return ReadImpl(data_schema);
 }
 
 std::shared_ptr<primihub::Dataset>
 MySQLCursor::read(int64_t offset, int64_t limit) {
     return nullptr;
 }
+
+std::shared_ptr<Dataset>
+MySQLCursor::ReadImpl(const std::shared_ptr<arrow::Schema>& schema) {
+  std::vector<std::shared_ptr<arrow::Array>> array_data;
+  LOG(ERROR) << "sql_sql_sql_: " << this->sql_;
+  auto ret = fetchData(this->sql_, schema, &array_data);
+  if (ret != retcode::SUCCESS) {
+      return nullptr;
+  }
+  auto table = arrow::Table::Make(schema, array_data);
+  auto dataset = std::make_shared<primihub::Dataset>(table, this->driver_);
+  return dataset;
+}
+
 
 int MySQLCursor::write(std::shared_ptr<primihub::Dataset> dataset) {}
 
@@ -546,7 +560,7 @@ std::unique_ptr<Cursor> MySQLDriver::read(const std::string &conn_str) {
 }
 
 std::unique_ptr<Cursor> MySQLDriver::GetCursor() {
-  return nullptr;
+  return read();
 }
 
 std::unique_ptr<Cursor> MySQLDriver::GetCursor(const std::vector<int>& col_index) {
@@ -573,6 +587,7 @@ std::unique_ptr<Cursor> MySQLDriver::GetCursor(const std::vector<int>& col_index
   std::vector<std::string> colum_names;
   std::string query_sql = BuildQuerySQL(*access_info_ptr, col_index, &colum_names);
   if (query_sql.empty()) {
+    LOG(ERROR) << "query_sql is empty";
     return nullptr;
   }
   return std::make_unique<MySQLCursor>(query_sql, col_index, shared_from_this());

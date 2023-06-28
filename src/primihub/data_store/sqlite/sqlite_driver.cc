@@ -118,6 +118,11 @@ std::shared_ptr<Dataset> SQLiteCursor::read() {
   return readInternal(sql_);
 }
 
+std::shared_ptr<primihub::Dataset>
+SQLiteCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+  return nullptr;
+}
+
 std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }

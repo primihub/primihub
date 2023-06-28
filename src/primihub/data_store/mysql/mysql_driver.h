@@ -84,15 +84,18 @@ class MySQLCursor : public Cursor {
     ~MySQLCursor();
     std::shared_ptr<primihub::Dataset> readMeta() override;
     std::shared_ptr<primihub::Dataset> read() override;
+    std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
     std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
     int write(std::shared_ptr<primihub::Dataset> dataset) override;
     void close() override;
 
  protected:
+    std::shared_ptr<Dataset> ReadImpl(const std::shared_ptr<arrow::Schema>& data_schema);
     auto getDBConnector(std::unique_ptr<DataSetAccessInfo>& access_info) ->
         std::unique_ptr<MYSQL, decltype(conn_threadsafe_dctor)>;
 
     retcode fetchData(const std::string& query_sql,
+                      const std::shared_ptr<arrow::Schema>& data_schema,
                       std::vector<std::shared_ptr<arrow::Array>>* data_arr);
     std::shared_ptr<arrow::Schema> makeArrowSchema();
 
