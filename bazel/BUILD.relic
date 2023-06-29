@@ -11,6 +11,9 @@ cmake(
   cache_entries = {
     "CMAKE_INSTALL_LIBDIR": "lib",
   },
+  build_args = [
+    "-j4",
+  ],
   linkopts = [
     "-lpthread",
   ],

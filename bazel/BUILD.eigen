@@ -8,13 +8,16 @@ filegroup(
 )
 
 cmake(
-    name = "eigen",
-    cache_entries = {
-        "CMAKE_C_FLAGS": "-fPIC",
-    },
-    lib_source = ":src",
-    out_headers_only = True,
-    includes = ["eigen3/",],
-    install = True,
-    visibility = ["//visibility:public"],
+  name = "eigen",
+  cache_entries = {
+    "CMAKE_C_FLAGS": "-fPIC",
+  },
+  build_args = [
+    "-j4",
+  ],
+  lib_source = ":src",
+  out_headers_only = True,
+  includes = ["eigen3/",],
+  install = True,
+  visibility = ["//visibility:public"],
 )

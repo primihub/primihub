@@ -9,13 +9,16 @@ filegroup(
 )
 
 cmake(
-   name = "kuku",
-   cache_entries = {
-      "CMAKE_INSTALL_LIBDIR": "lib",
-   },
-   lib_source = ":src",
-   out_include_dir = "include/Kuku-2.1",
-   out_static_libs = ["libkuku-2.1.a"],
-   visibility = ["//visibility:public"],
-   tags = ["requires-network"],
+  name = "kuku",
+  cache_entries = {
+    "CMAKE_INSTALL_LIBDIR": "lib",
+  },
+  build_args = [
+    "-j4",
+  ],
+  lib_source = ":src",
+  out_include_dir = "include/Kuku-2.1",
+  out_static_libs = ["libkuku-2.1.a"],
+  visibility = ["//visibility:public"],
+  tags = ["requires-network"],
 )
