@@ -173,7 +173,9 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
 
     def compute_grad(self, x, y):
         if self.multiclass:
-            logger.error("Paillier method doesn't support multiclass classification")
+            error_msg = "Paillier method doesn't support multiclass classification"
+            logger.error(error_msg)
+            raise AttributeError(error_msg)
         else:
             # Approximate gradient
             # First order of taylor expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
@@ -187,4 +189,6 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
         return (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0])) / x.shape[0]
 
     def CELoss(self, x, y, eps=1e-20):
-        logger.error("Paillier method doesn't support multiclass classification")
+        error_msg = "Paillier method doesn't support multiclass classification"
+        logger.error(error_msg)
+        raise AttributeError(error_msg)
