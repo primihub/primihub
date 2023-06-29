@@ -423,11 +423,14 @@ new_git_repository(
 )
 
 http_archive(
-    name = "com_github_gmp",
-    build_file = "//bazel:gmp.BUILD",
-    #sha256 = "87b565e89a9a684fe4ebeeddb8399dce2599f9c9049854ca8c0dfbdea0e21912",
-    strip_prefix = "gmp-6.2.1",
-    urls = ["https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz"],
+  name = "com_github_gmp",
+  build_file = "//bazel:gmp.BUILD",
+  #sha256 = "87b565e89a9a684fe4ebeeddb8399dce2599f9c9049854ca8c0dfbdea0e21912",
+  strip_prefix = "gmp-6.2.1",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/gmp-6.2.1.tar.xz",
+    "https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz"
+  ],
 )
 
 # Google dense_hash_set

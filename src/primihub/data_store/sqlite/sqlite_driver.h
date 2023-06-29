@@ -57,14 +57,15 @@ public:
               const std::vector<int>& col_index,
               std::shared_ptr<SQLiteDriver> driver);
   ~SQLiteCursor();
-  std::shared_ptr<primihub::Dataset> readMeta() override;
-  std::shared_ptr<primihub::Dataset> read() override;
-  std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
-  std::shared_ptr<primihub::Dataset> readInternal(const std::string& query_sql);
+  std::shared_ptr<Dataset> readMeta() override;
+  std::shared_ptr<Dataset> read() override;
+  std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
+  std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) override;
+  std::shared_ptr<Dataset> readInternal(const std::string& query_sql);
   std::shared_ptr<arrow::Table>
   read_from_abnormal(std::map<std::string, uint32_t> col_type,
                      std::map<std::string, std::vector<int>> &index);
-  int write(std::shared_ptr<primihub::Dataset> dataset) override;
+  int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
 
  protected:
@@ -98,7 +99,7 @@ public:
 
  private:
   std::string sql_;
-  unsigned long long offset = 0;
+  unsigned long long offset_{0};
   std::shared_ptr<SQLiteDriver> driver_{nullptr};
   std::map<std::string, sql_type_t> sql_type_name_to_enum {
     {"TEXT", sql_type_t::STRING},

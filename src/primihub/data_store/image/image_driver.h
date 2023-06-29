@@ -17,6 +17,10 @@
 #ifndef SRC_PRIMIHUB_DATA_STORE_IMAGE_IMAGE_DRIVER_H_
 #define SRC_PRIMIHUB_DATA_STORE_IMAGE_IMAGE_DRIVER_H_
 
+#include <memory>
+#include <vector>
+#include <string>
+
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 
@@ -37,22 +41,23 @@ struct ImageAccessInfo : public DataSetAccessInfo {
 };
 
 class ImageCursor : public Cursor {
-public:
-  ImageCursor(std::shared_ptr<ImageDriver> driver);
+ public:
+  explicit ImageCursor(std::shared_ptr<ImageDriver> driver);
   ~ImageCursor();
-  std::shared_ptr<primihub::Dataset> readMeta() override;
-  std::shared_ptr<primihub::Dataset> read() override;
-  std::shared_ptr<primihub::Dataset> read(int64_t offset, int64_t limit);
-  int write(std::shared_ptr<primihub::Dataset> dataset) override;
+  std::shared_ptr<Dataset> readMeta() override;
+  std::shared_ptr<Dataset> read() override;
+  std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
+  std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) override;
+  int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
 
-private:
-  unsigned long long offset = 0;
+ private:
+  unsigned long long offset_{0};    // NOLINT
   std::shared_ptr<ImageDriver> driver_;
 };
 
 class ImageDriver : public DataDriver, public std::enable_shared_from_this<ImageDriver> {
-public:
+ public:
   explicit ImageDriver(const std::string &nodelet_addr);
   ImageDriver(const std::string &nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info);
   ~ImageDriver() {}
@@ -64,11 +69,10 @@ public:
   std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
   std::string getDataURL() const override;
 
-protected:
+ protected:
   void setDriverType();
-
 };
 
-} // namespace primihub
+}  // namespace primihub
 
-#endif // SRC_PRIMIHUB_DATA_STORE_IMAGE_IMAGE_DRIVER_H_
+#endif  // SRC_PRIMIHUB_DATA_STORE_IMAGE_IMAGE_DRIVER_H_
