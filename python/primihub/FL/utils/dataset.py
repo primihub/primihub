@@ -116,7 +116,7 @@ class TorchImageDataset(TorchDataset):
 
 class DataLoader:
 
-    def __init__(self, dataset, label=None, batch_size=1, shuffle=True):
+    def __init__(self, dataset, label=None, batch_size=1, shuffle=True, seed=None):
         self.dataset = dataset
         self.label = label
         self.batch_size = batch_size
@@ -124,6 +124,8 @@ class DataLoader:
         self.n_samples = self.__len__()
         self.indices = np.arange(self.n_samples)
         self.start = 0
+        if seed:
+            np.random.seed(seed)
 
     def __len__(self):
         return len(self.dataset)

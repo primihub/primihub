@@ -52,8 +52,8 @@ datasets:
     model: "csv"
     source: "data/falcon/dataset/MNIST/input_1"
 
-  # FL fake dataset for hfl server
-  - description: "hfl_server_fake_data"
+  # FL fake dataset
+  - description: "fl_fake_data"
     model: "csv"
     source: "data/FL/fake.csv"
 

@@ -15,8 +15,8 @@
             "method": "Plaintext",
             "process": "train",
             "task_name": "HFL_logistic_regression_binclass_plaintext_train",
-            "learning_rate": "optimal",
-            "alpha": 0.0001,
+            "learning_rate": 1e-0,
+            "alpha": 1e-4,
             "batch_size": 100,
             "global_epoch": 10,
             "local_epoch": 1,
@@ -36,7 +36,7 @@
                 "model_path": "data/result/Charlie_model.pkl"
             },
             "Alice": {
-                "data_set": "hfl_server_fake_data"
+                "data_set": "fl_fake_data"
             }
         }
     }

@@ -7,6 +7,10 @@
         "client": "primihub.FL.logistic_regression.hfl_client.LogisticRegressionClient",
         "server": "primihub.FL.logistic_regression.hfl_server.LogisticRegressionServer"
     },
+    "VFL_logistic_regression": {
+        "guest": "primihub.FL.logistic_regression.vfl_guest.LogisticRegressionGuest",
+        "host": "primihub.FL.logistic_regression.vfl_host.LogisticRegressionHost"
+    },
     "HFL_neural_network": {
         "client": "primihub.FL.neural_network.hfl_client.NeuralNetworkClient",
         "server": "primihub.FL.neural_network.hfl_server.NeuralNetworkServer"
@@ -26,14 +30,6 @@
     "HeteroXGBInfer": {
         "guest": "primihub.FL.xgboost.gbt.VGBGuestInfer",
         "host": "primihub.FL.xgboost.gbt.VGBTHostInfer"
-    },
-    "HeteroLR": {
-        "guest": "primihub.FL.logistic_regression.hetero_lr.HeteroLrGuest",
-        "host": "primihub.FL.logistic_regression.hetero_lr.HeteroLrHost"
-    },
-    "HeteroLRInfer": {
-        "guest": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrGuestInfer",
-        "host": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrHostInfer"
     },
     "HeteroIV": {
         "guest": "primihub.FL.preprocessing.woe_iv.IVGuest",

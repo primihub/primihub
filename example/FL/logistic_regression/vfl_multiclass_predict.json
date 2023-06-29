@@ -1,0 +1,29 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "VFL_logistic_regression",
+            "process": "predict",
+            "task_name": "VFL_logistic_regression_multiclass_predict"
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "multiclass_vfl_test_host",
+                "model_path": "data/result/host_model.pkl",
+                "predict_path": "data/result/host_predict.csv"
+            },
+            "Charlie": {
+                "data_set": "multiclass_vfl_test_guest",
+                "model_path": "data/result/guest_model.pkl"
+            }
+        }
+    }
+}
