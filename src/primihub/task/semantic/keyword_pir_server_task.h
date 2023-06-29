@@ -17,19 +17,27 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
 
-#include "src/primihub/protos/common.pb.h"
-#include "src/primihub/task/semantic/task.h"
+#include <utility>
+#include <vector>
+#include <string>
+#include <memory>
 
+// APSI
 #include "apsi/util/common_utils.h"
 #include "apsi/sender.h"
 #include "apsi/oprf/oprf_sender.h"
 #include "apsi/bin_bundle.h"
 #include "apsi/item.h"
 
+// SEAL
 #include "seal/context.h"
 #include "seal/modulus.h"
 #include "seal/util/common.h"
 #include "seal/util/defines.h"
+
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/task/semantic/task.h"
+
 namespace primihub::task {
 using UnlabeledData = std::vector<apsi::Item>;
 using LabeledData = std::vector<std::pair<apsi::Item, apsi::Label>>;
@@ -37,61 +45,60 @@ using DBData = std::variant<UnlabeledData, LabeledData>;
 
 class KeywordPIRServerTask : public TaskBase {
  public:
-    enum class RequestType : uint8_t {
-      PsiParam = 0,
-      Opfr,
-      Query,
-   };
-    explicit KeywordPIRServerTask(const TaskParam* task_param,
-                                  std::shared_ptr<DatasetService> dataset_service);
-    ~KeywordPIRServerTask() = default;
-    int execute() override;
-    retcode broadcastPortInfo();
+  enum class RequestType : uint8_t {
+    PsiParam = 0,
+    Opfr,
+    Query,
+  };
+  explicit KeywordPIRServerTask(const TaskParam* task_param,
+                                std::shared_ptr<DatasetService> dataset_service);
+  ~KeywordPIRServerTask() = default;
+  int execute() override;
 
  protected:
-    /**
-     * process a Get Parameters request to the Sender.
-    */
-    retcode processPSIParams();
-    /**
-      process an OPRF query request to the Sender.
-    */
-    retcode processOprf();
-    /**
-      process a Query request to the Sender.
-    */
-    retcode processQuery(std::shared_ptr<apsi::sender::SenderDB> sender_db);
+  /**
+   * process a Get Parameters request to the Sender.
+  */
+  retcode processPSIParams();
+  /**
+    process an OPRF query request to the Sender.
+  */
+  retcode processOprf();
+  /**
+    process a Query request to the Sender.
+  */
+  retcode processQuery(std::shared_ptr<apsi::sender::SenderDB> sender_db);
 
-    retcode ComputePowers(const shared_ptr<apsi::sender::SenderDB> &sender_db,
-            const apsi::CryptoContext &crypto_context,
-            std::vector<apsi::sender::CiphertextPowers> &all_powers,
-            const apsi::PowersDag &pd,
-            uint32_t bundle_idx,
-            seal::MemoryPoolHandle &pool);
+  retcode ComputePowers(const shared_ptr<apsi::sender::SenderDB> &sender_db,
+                        const apsi::CryptoContext &crypto_context,
+                        std::vector<apsi::sender::CiphertextPowers> &all_powers,
+                        const apsi::PowersDag &pd,
+                        uint32_t bundle_idx,
+                        seal::MemoryPoolHandle &pool);
 
-    std::unique_ptr<apsi::network::ResultPackage>
-    ProcessBinBundleCache(
-        const shared_ptr<apsi::sender::SenderDB> &sender_db,
-        const apsi::CryptoContext &crypto_context,
-        reference_wrapper<const apsi::sender::BinBundleCache> cache,
-        std::vector<apsi::sender::CiphertextPowers> &all_powers,
-        uint32_t bundle_idx,
-        compr_mode_type compr_mode,
-        seal::MemoryPoolHandle &pool);
+  auto ProcessBinBundleCache(const shared_ptr<apsi::sender::SenderDB> &sender_db,
+                             const apsi::CryptoContext &crypto_context,
+                             reference_wrapper<const apsi::sender::BinBundleCache> cache,
+                             std::vector<apsi::sender::CiphertextPowers> &all_powers,
+                             uint32_t bundle_idx,
+                             compr_mode_type compr_mode,
+                             seal::MemoryPoolHandle &pool) ->
+                             std::unique_ptr<apsi::network::ResultPackage>;
 
  private:
-    retcode _LoadParams(Task &task);
-    std::unique_ptr<DBData> _LoadDataset(void);
-    std::unique_ptr<apsi::PSIParams> _SetPsiParams();
-    std::shared_ptr<apsi::sender::SenderDB> create_sender_db(
-        const DBData &db_data,
-        std::unique_ptr<apsi::PSIParams> psi_params,
-        apsi::oprf::OPRFKey &oprf_key,
-        size_t nonce_byte_count,
-        bool compress);
-    std::unique_ptr<DBData> CreateDbData(std::shared_ptr<Dataset>& data);
-    std::vector<std::string> GetSelectedContent(std::shared_ptr<arrow::Table>& data_tbl,
-                                                const std::vector<int>& selected_col);
+  retcode _LoadParams(Task &task);
+  std::unique_ptr<DBData> _LoadDataset(void);
+  std::unique_ptr<apsi::PSIParams> _SetPsiParams();
+  std::shared_ptr<apsi::sender::SenderDB> create_sender_db(const DBData& db_data,
+      std::unique_ptr<apsi::PSIParams> psi_params,
+      apsi::oprf::OPRFKey &oprf_key,
+      size_t nonce_byte_count,
+      bool compress);
+
+  std::unique_ptr<DBData> CreateDbData(std::shared_ptr<Dataset>& data);
+  std::vector<std::string> GetSelectedContent(std::shared_ptr<arrow::Table>& data_tbl,
+                                              const std::vector<int>& selected_col);
+
  private:
     std::string dataset_path_;
     std::string dataset_id_;
@@ -102,5 +109,5 @@ class KeywordPIRServerTask : public TaskBase {
     std::string psi_params_str_;
     std::unique_ptr<apsi::oprf::OPRFKey> oprf_key_{nullptr};
 };
-} // namespace primihub::task
-#endif // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
+}  // namespace primihub::task
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_
