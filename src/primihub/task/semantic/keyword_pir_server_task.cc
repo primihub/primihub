@@ -15,98 +15,100 @@
  */
 
 #include "src/primihub/task/semantic/keyword_pir_server_task.h"
+
+#include<sstream>
+#include <future>
+#include <thread>
+#include <algorithm>
+#include <unordered_map>
+#include <set>
+
+// APSI
+#include "apsi/thread_pool_mgr.h"
+#include "apsi/sender_db.h"
+#include "apsi/oprf/oprf_sender.h"
+#include "apsi/powers.h"
+
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/common/defines.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
-#include "src/primihub/util/util.h"
 
-#include "apsi/thread_pool_mgr.h"
-#include "apsi/sender_db.h"
-#include "apsi/oprf/oprf_sender.h"
-#include "apsi/item.h"
-#include "apsi/powers.h"
+using namespace apsi;           // NOLINT
+using namespace apsi::sender;   // NOLINT
+using namespace apsi::oprf;     // NOLINT
+using namespace apsi::network;  // NOLINT
 
-
-#include<sstream>
-#include <future>
-#include <thread>
-
-
-using namespace apsi;
-using namespace apsi::sender;
-using namespace apsi::oprf;
-using namespace apsi::network;
-
-using namespace seal;
-using namespace seal::util;
+using namespace seal;           // NOLINT
+using namespace seal::util;     // NOLINT
 
 namespace primihub::task {
 
-std::shared_ptr<SenderDB>
-KeywordPIRServerTask::create_sender_db(const CSVReader::DBData &db_data,
-    std::unique_ptr<PSIParams> psi_params, OPRFKey &oprf_key, size_t nonce_byte_count, bool compress) {
-    CHECK_TASK_STOPPED(nullptr);
-    SCopedTimer timer;
-    if (psi_params == nullptr) {
-        LOG(ERROR) << "No Keyword pir parameters were given";
-        return nullptr;
+std::shared_ptr<SenderDB> KeywordPIRServerTask::create_sender_db(const DBData &db_data,
+    std::unique_ptr<PSIParams> psi_params,
+    OPRFKey &oprf_key,
+    size_t nonce_byte_count,
+    bool compress) {
+  CHECK_TASK_STOPPED(nullptr);
+  SCopedTimer timer;
+  if (psi_params == nullptr) {
+    LOG(ERROR) << "No Keyword pir parameters were given";
+    return nullptr;
+  }
+  std::shared_ptr<SenderDB> sender_db;
+  if (holds_alternative<LabeledData>(db_data)) {
+    VLOG(5) << "LabeledData";
+    try {
+      auto _start = timer.timeElapse();
+      auto &labeled_db_data = std::get<LabeledData>(db_data);
+      // Find the longest label and use that as label size
+      size_t label_byte_count =
+            std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
+              [](auto &a, auto &b) {
+                  return a.second.size() < b.second.size();
+              })->second.size();
+
+      auto max_label_count_ts = timer.timeElapse();
+      VLOG(5) << "label_byte_count: " << label_byte_count << " "
+              << "nonce_byte_count: " << nonce_byte_count << " "
+              << "get max label count time cost(ms): " << max_label_count_ts;
+      sender_db =
+          std::make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
+      auto _mid = timer.timeElapse();
+      VLOG(5) << "sender_db address: " << reinterpret_cast<uint64_t>(&(*sender_db));
+      auto constuct_sender_db_time_cost = _mid - max_label_count_ts;
+      sender_db->set_data(labeled_db_data);
+      auto _end = timer.timeElapse();
+      auto set_data_time_cost = _end - _mid;
+      auto time_cost = _end - _start;
+      VLOG(5) << "construct sender db time cost(ms): " << constuct_sender_db_time_cost << " "
+              << "set sender db data time cost(ms): " << time_cost << " "
+              << "total cost(ms): " << time_cost;
+    } catch (const exception &ex) {
+      LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
+      return nullptr;
     }
-    std::shared_ptr<SenderDB> sender_db;
-    if (holds_alternative<CSVReader::LabeledData>(db_data)) {
-        VLOG(5) << "CSVReader::LabeledData";
-        try {
-            auto _start = timer.timeElapse();
-            auto &labeled_db_data = std::get<CSVReader::LabeledData>(db_data);
-            // Find the longest label and use that as label size
-            size_t label_byte_count =
-                 std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
-                    [](auto &a, auto &b) {
-                        return a.second.size() < b.second.size();
-                    })->second.size();
+  } else if (holds_alternative<UnlabeledData>(db_data)) {
+    LOG(ERROR) << "Loaded keyword pir database is without label";
+    return nullptr;
+  } else {
+    LOG(ERROR) << "Loaded keyword pir database is in an invalid state";
+    return nullptr;
+  }
 
-            auto max_label_count_ts = timer.timeElapse();
-            VLOG(5) << "label_byte_count: " << label_byte_count << " "
-                    << "nonce_byte_count: " << nonce_byte_count << " "
-                    << "get max label count time cost(ms): " << max_label_count_ts;
-            sender_db =
-                std::make_shared<SenderDB>(*psi_params, label_byte_count, nonce_byte_count, compress);
-            auto _mid = timer.timeElapse();
-            VLOG(5) << "sender_db address: " << reinterpret_cast<uint64_t>(&(*sender_db));
-            auto constuct_sender_db_time_cost = _mid - max_label_count_ts;
-            sender_db->set_data(labeled_db_data);
-            auto _end = timer.timeElapse();
-            auto set_data_time_cost = _end - _mid;
-            auto time_cost = _end - _start;
-            VLOG(5) << "construct sender db time cost(ms): " << constuct_sender_db_time_cost << " "
-                    << "set sender db data time cost(ms): " << time_cost << " "
-                    << "total cost(ms): " << time_cost;
-        } catch (const exception &ex) {
-            LOG(ERROR) << "Failed to create keyword pir SenderDB: " << ex.what();
-            return nullptr;
-        }
-
-    } else if (holds_alternative<CSVReader::UnlabeledData>(db_data)) {
-        LOG(ERROR) << "Loaded keyword pir database is without label";
-        return nullptr;
-    } else {
-        LOG(ERROR) << "Loaded keyword pir database is in an invalid state";
-        return nullptr;
-    }
-
-    oprf_key = sender_db->strip();
-    auto time_cost = timer.timeElapse();
-    VLOG(5) << "create_sender_db success, time cost(ms): " << time_cost;
-    return sender_db;
+  oprf_key = sender_db->strip();
+  auto time_cost = timer.timeElapse();
+  VLOG(5) << "create_sender_db success, time cost(ms): " << time_cost;
+  return sender_db;
 }
 
-KeywordPIRServerTask::KeywordPIRServerTask(
-    const TaskParam *task_param, std::shared_ptr<DatasetService> dataset_service)
-    : TaskBase(task_param, dataset_service) {
-    VLOG(0) << "enter KeywordPIRServerTask ctr";
-    oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
-    VLOG(0) << "exit KeywordPIRServerTask ctr";
+KeywordPIRServerTask::KeywordPIRServerTask(const TaskParam *task_param,
+                                           std::shared_ptr<DatasetService> dataset_service)
+                                           : TaskBase(task_param, dataset_service) {
+  VLOG(0) << "enter KeywordPIRServerTask ctr";
+  oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
+  VLOG(0) << "exit KeywordPIRServerTask ctr";
 }
 
 retcode KeywordPIRServerTask::_LoadParams(Task &task) {
@@ -138,34 +140,119 @@ retcode KeywordPIRServerTask::_LoadParams(Task &task) {
 
     return retcode::SUCCESS;
 }
+std::vector<std::string> KeywordPIRServerTask::GetSelectedContent(
+    std::shared_ptr<arrow::Table>& data_tbl,
+    const std::vector<int>& selected_col) {
+  // return std::vector<std::string>();
+  int col_count = data_tbl->num_columns();
+  size_t row_count = data_tbl->num_rows();
+  if (selected_col.empty()) {
+    LOG(ERROR) << "no col selected for data";
+    return std::vector<std::string>();
+  }
 
-std::unique_ptr<CSVReader::DBData> KeywordPIRServerTask::_LoadDataset(void) {
-    CHECK_TASK_STOPPED(nullptr);
-    CSVReader::DBData db_data;
-    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
-    if (driver == nullptr) {
-        LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
-        return nullptr;
+  std::vector<std::string> content_array;
+  auto lable_ptr = data_tbl->column(selected_col[0]);
+  auto chunk_size = lable_ptr->num_chunks();
+  size_t total_row_count = col_count * chunk_size;
+  content_array.reserve(total_row_count);
+  for (int i = 0; i < chunk_size; ++i) {
+    auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(i));
+    for (int64_t j = 0; j < array->length(); j++) {
+      content_array.push_back(array->GetString(j));
     }
-    auto access_info = dynamic_cast<CSVAccessInfo*>(driver->dataSetAccessInfo().get());
-    if (access_info == nullptr) {
-        LOG(ERROR) << "get data accessinfo for dataset: " << this->dataset_id_ << " failed";
-        return nullptr;
+  }
+
+  // process left colums
+  for (size_t i = 1; i < selected_col.size(); ++i) {
+    size_t index{0};
+    int col_index = selected_col[i];
+    auto lable_ptr = data_tbl->column(col_index);
+    int chunk_size = lable_ptr->num_chunks();
+    for (int j = 0; j < chunk_size; ++j) {
+      auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(j));
+      for (int64_t k = 0; k < array->length(); ++k) {
+        content_array[index++].append(",").append(array->GetString(k));
+      }
     }
-    dataset_path_ = access_info->file_path_;
-    try {
-        VLOG(5) << "begin to read data, dataset path: " << dataset_path_
-                << " data set id: " << this->dataset_id_;
-        CSVReader reader(dataset_path_);
-        tie(db_data, ignore) = reader.read();
-    } catch (const exception &ex) {
-        LOG(ERROR) << "Could not open or read file `"
-                   << dataset_path_ << "`: " << ex.what();
-        return nullptr;
+  }
+  return content_array;
+}
+
+std::unique_ptr<DBData>
+KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
+  auto& table = std::get<std::shared_ptr<arrow::Table>>(data->data);
+  int col_count = table->num_columns();
+  size_t row_count = table->num_rows();
+  if (col_count < 2) {
+    LOG(ERROR) << "data for server must have lable";
+    return nullptr;
+  }
+  auto result = LabeledData();
+  // get item
+  std::vector<int> item_col = {0};
+  auto item_array = GetSelectedContent(table, item_col);
+  // get label
+  std::vector<int> label_col;
+  for (int i = 1; i < col_count; i++) {
+    label_col.push_back(i);
+  }
+  if (label_col.empty()) {
+    LOG(ERROR) << "no selected colum for lable";
+    return nullptr;
+  }
+  auto label_array = GetSelectedContent(table, label_col);
+
+  std::unordered_map<std::string, std::string> db_raw_data(item_array.size());
+  for (size_t i = 0; i < item_array.size(); ++i) {
+    auto& item = item_array[i];
+    auto& label = label_array[i];
+    auto it = db_raw_data.find(item);
+    if (it != db_raw_data.end()) {
+      it->second.append(PIR_RECORD_SEP).append(label);    // concat label with same key
+    } else {
+      db_raw_data[item] = label;
     }
-    VLOG(5) << "read data set of size " << std::get<CSVReader::LabeledData>(db_data).size();
-    auto reader_ptr = std::make_unique<CSVReader::DBData>(std::move(db_data));
-    return reader_ptr;
+  }
+  result.reserve(db_raw_data.size());
+  for (const auto& [item_str, label_str] : db_raw_data) {
+    apsi::Item item = item_str;
+    // label
+    apsi::Label label;
+    label.clear();
+    label.reserve(label_str.size());
+    copy(label_str.begin(), label_str.end(), back_inserter(label));
+    result.push_back(std::make_pair(std::move(item), std::move(label)));
+  }
+  return std::make_unique<DBData>(std::move(result));
+}
+
+std::unique_ptr<DBData> KeywordPIRServerTask::_LoadDataset() {
+  CHECK_TASK_STOPPED(nullptr);
+  DBData db_data;
+  auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get driver for dataset: " << this->dataset_id_ << " failed";
+    return nullptr;
+  }
+  auto cursor = driver->GetCursor();
+  if (cursor == nullptr) {
+    LOG(ERROR) << "init cursor failed for dataset id: " << this->dataset_id_;
+    return nullptr;
+  }
+  // maybe pass schema to get expected data type
+  // copy dataset schema, and change all filed to string
+  auto schema = driver->dataSetAccessInfo()->Schema();
+  for (auto& field : schema) {
+    auto& type = std::get<1>(field);
+    type = arrow::Type::type::STRING;
+  }
+  auto data = cursor->read(schema);
+  if (data == nullptr) {
+    LOG(ERROR) << "read data failed for dataset id: " << this->dataset_id_;
+    return nullptr;
+  }
+  return CreateDbData(data);
 }
 
 std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
@@ -187,7 +274,8 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
         }
         input_file.close();
     } catch (const std::exception &ex) {
-        LOG(ERROR) << "Error trying to read input file " << pir_server_config_path << ": " << ex.what();
+        LOG(ERROR) << "Error trying to read input file "
+            << pir_server_config_path << ": " << ex.what();
         return nullptr;
     }
 
@@ -208,16 +296,15 @@ std::unique_ptr<PSIParams> KeywordPIRServerTask::_SetPsiParams() {
     return params;
 }
 
-static std::string to_hexstring(const Item &item)
-{
-    std::stringstream ss;
-    ss << std::hex;
+static std::string to_hexstring(const Item &item) {
+  std::stringstream ss;
+  ss << std::hex;
 
-    auto item_string = item.to_string();
-    for(int i(0); i < 16; ++i)
-        ss << std::setw(2) << std::setfill('0') << (int)item_string[i];
-
-    return ss.str();
+  auto item_string = item.to_string();
+  for (int i = 0; i < 16; ++i) {
+    ss << std::setw(2) << std::setfill('0') << static_cast<int>(item_string[i]);
+  }
+  return ss.str();
 }
 
 int KeywordPIRServerTask::execute() {
@@ -226,7 +313,10 @@ int KeywordPIRServerTask::execute() {
         LOG(ERROR) << "Pir client load task params failed.";
         return -1;
     }
-    ThreadPoolMgr::SetThreadCount(1);
+    size_t cpu_core_num = std::thread::hardware_concurrency();
+    size_t use_core_num = cpu_core_num / 2;
+    LOG(INFO) << "ThreadPoolMgr thread count: " << use_core_num;
+    ThreadPoolMgr::SetThreadCount(use_core_num);
 
     auto params = _SetPsiParams();
     CHECK_NULLPOINTER(params, -1);
@@ -234,7 +324,8 @@ int KeywordPIRServerTask::execute() {
     rt_code = processPSIParams();
     CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
 
-    std::unique_ptr<CSVReader::DBData> db_data = _LoadDataset();
+    // std::unique_ptr<DBData>
+    auto db_data = _LoadDataset();
     CHECK_NULLPOINTER(db_data, -1);
 
     // OPRFKey oprf_key;
@@ -256,31 +347,6 @@ int KeywordPIRServerTask::execute() {
 
     VLOG(5) << "end of execute task";
     return 0;
-}
-
-retcode KeywordPIRServerTask::broadcastPortInfo() {
-    CHECK_TASK_STOPPED(retcode::FAIL);
-    std::string data_port_info_str;
-    rpc::Params data_port_params;
-    auto param_map = data_port_params.mutable_param_map();
-    // dataset size
-    rpc::ParamValue pv_data_port;
-    pv_data_port.set_var_type(rpc::VarType::INT32);
-    pv_data_port.set_value_int32(this->data_port);
-    pv_data_port.set_is_array(false);
-    (*param_map)["data_port"] = std::move(pv_data_port);
-    bool success = data_port_params.SerializeToString(&data_port_info_str);
-    if (!success) {
-        LOG(ERROR) << "serialize data port info failed";
-        return retcode::FAIL;
-    }
-    auto ret = this->send(this->key, client_node_, data_port_info_str);
-    if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "send data port info to peer: [" << client_node_.to_string()
-            << "] failed";
-        return ret;
-    }
-    return retcode::SUCCESS;
 }
 
 retcode KeywordPIRServerTask::processPSIParams() {
@@ -313,8 +379,6 @@ retcode KeywordPIRServerTask::processOprf() {
         LOG(ERROR) << "received oprf request from client failed ";
         return ret;
     }
-    // auto& recv_queue = this->getTaskContext().getRecvQueue(this->key);
-    // recv_queue.wait_and_pop(oprf_request_str);
     VLOG(5) << "received oprf request: " << oprf_request_str.size();
 
     // // OPRFKey key_oprf;
@@ -474,7 +538,7 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
         std::async(
             std::launch::async,
             [&, this]() -> void {
-                VLOG(5) << "package_count_package_count_package_count_package_count: " << package_count;
+                VLOG(5) << "package_count: " << package_count;
                 for (size_t i = 0; i < package_count; i++) {
                     std::string send_data;
                     result_package_queue.wait_and_pop(send_data);
@@ -487,9 +551,7 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
                     VLOG(5) << "send result to client, index: " << i
                             << " data length: " << send_data.size();
                 }
-            }
-        )
-    );
+            }));
     // Wait until all bin bundle caches have been processed
     for (auto& f : futures) {
         f.get();
@@ -593,52 +655,51 @@ retcode KeywordPIRServerTask::ComputePowers(
     }
 }
 
-std::unique_ptr<apsi::network::ResultPackage>
-KeywordPIRServerTask::ProcessBinBundleCache(
-        const shared_ptr<apsi::sender::SenderDB> &sender_db,
-        const apsi::CryptoContext &crypto_context,
-        reference_wrapper<const apsi::sender::BinBundleCache> cache,
-        std::vector<apsi::sender::CiphertextPowers> &all_powers,
-        uint32_t bundle_idx,
-        compr_mode_type compr_mode,
-        seal::MemoryPoolHandle &pool) {
-    CHECK_TASK_STOPPED(nullptr);
-    // Package for the result data
-    auto rp = std::make_unique<apsi::network::ResultPackage>();
-    rp->compr_mode = compr_mode;
+auto KeywordPIRServerTask::ProcessBinBundleCache(
+    const shared_ptr<apsi::sender::SenderDB> &sender_db,
+    const apsi::CryptoContext &crypto_context,
+    reference_wrapper<const apsi::sender::BinBundleCache> cache,
+    std::vector<apsi::sender::CiphertextPowers> &all_powers,
+    uint32_t bundle_idx,
+    compr_mode_type compr_mode,
+    seal::MemoryPoolHandle &pool) -> std::unique_ptr<apsi::network::ResultPackage> {
+  CHECK_TASK_STOPPED(nullptr);
+  // Package for the result data
+  auto rp = std::make_unique<apsi::network::ResultPackage>();
+  rp->compr_mode = compr_mode;
 
-    rp->bundle_idx = bundle_idx;
-    rp->nonce_byte_count = safe_cast<uint32_t>(sender_db->get_nonce_byte_count());
-    rp->label_byte_count = safe_cast<uint32_t>(sender_db->get_label_byte_count());
+  rp->bundle_idx = bundle_idx;
+  rp->nonce_byte_count = safe_cast<uint32_t>(sender_db->get_nonce_byte_count());
+  rp->label_byte_count = safe_cast<uint32_t>(sender_db->get_label_byte_count());
 
-    // Compute the matching result and move to rp
-    // const apsi::sender::BatchedPlaintextPolyn
-    const auto& matching_polyn = cache.get().batched_matching_polyn;
+  // Compute the matching result and move to rp
+  // const apsi::sender::BatchedPlaintextPolyn
+  const auto& matching_polyn = cache.get().batched_matching_polyn;
 
-    // Determine if we use Paterson-Stockmeyer or not
-    uint32_t ps_low_degree = sender_db->get_params().query_params().ps_low_degree;
-    uint32_t degree = safe_cast<uint32_t>(matching_polyn.batched_coeffs.size()) - 1;
-    bool using_ps = (ps_low_degree > 1) && (ps_low_degree < degree);
+  // Determine if we use Paterson-Stockmeyer or not
+  uint32_t ps_low_degree = sender_db->get_params().query_params().ps_low_degree;
+  uint32_t degree = safe_cast<uint32_t>(matching_polyn.batched_coeffs.size()) - 1;
+  bool using_ps = (ps_low_degree > 1) && (ps_low_degree < degree);
+  if (using_ps) {
+    rp->psi_result = matching_polyn.eval_patstock(
+        crypto_context, all_powers[bundle_idx], safe_cast<size_t>(ps_low_degree), pool);
+  } else {
+    rp->psi_result = matching_polyn.eval(all_powers[bundle_idx], pool);
+  }
+
+  for (const auto &interp_polyn : cache.get().batched_interp_polyns) {
+    // Compute the label result and move to rp
+    degree = safe_cast<uint32_t>(interp_polyn.batched_coeffs.size()) - 1;
+    using_ps = (ps_low_degree > 1) && (ps_low_degree < degree);
     if (using_ps) {
-        rp->psi_result = matching_polyn.eval_patstock(
-            crypto_context, all_powers[bundle_idx], safe_cast<size_t>(ps_low_degree), pool);
+      rp->label_result.push_back(interp_polyn.eval_patstock(
+          crypto_context, all_powers[bundle_idx], ps_low_degree, pool));
     } else {
-        rp->psi_result = matching_polyn.eval(all_powers[bundle_idx], pool);
+      rp->label_result.push_back(interp_polyn.eval(all_powers[bundle_idx], pool));
     }
-
-    for (const auto &interp_polyn : cache.get().batched_interp_polyns) {
-        // Compute the label result and move to rp
-        degree = safe_cast<uint32_t>(interp_polyn.batched_coeffs.size()) - 1;
-        using_ps = (ps_low_degree > 1) && (ps_low_degree < degree);
-        if (using_ps) {
-            rp->label_result.push_back(interp_polyn.eval_patstock(
-                crypto_context, all_powers[bundle_idx], ps_low_degree, pool));
-        } else {
-            rp->label_result.push_back(interp_polyn.eval(all_powers[bundle_idx], pool));
-        }
-    }
-    return rp;
-    VLOG(5) << "get ResultPackage for bundle_idx:  " << bundle_idx;
+  }
+  return rp;
+  VLOG(5) << "get ResultPackage for bundle_idx:  " << bundle_idx;
 }
 
 }  // namespace primihub::task
