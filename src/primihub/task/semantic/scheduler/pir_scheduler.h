@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PIR_SCHEDULER_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_PIR_SCHEDULER_H_
+#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_PIR_SCHEDULER_H_
+#define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_PIR_SCHEDULER_H_
 
 #include <glog/logging.h>
 #include <cmath>
@@ -25,12 +25,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#ifdef USE_MICROSOFT_APSI
-#include "apsi/oprf/oprf_sender.h"
-#include "apsi/thread_pool_mgr.h"
-#include "apsi/version.h"
-#endif
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
@@ -66,6 +60,6 @@ class PIRScheduler : public VMScheduler {
   const std::vector<rpc::Node> peer_list_;
   const PeerDatasetMap peer_dataset_map_;
 };
-}
+}  // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_SEMANTIC_PIR_SCHEDULER_H_
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_PIR_SCHEDULER_H_

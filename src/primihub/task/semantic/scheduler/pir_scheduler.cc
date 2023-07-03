@@ -14,6 +14,8 @@
  limitations under the License.
  */
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
+#include <utility>
+
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "src/primihub/node/server_config.h"
@@ -59,6 +61,7 @@ retcode PIRScheduler::ScheduleTask(const std::string& party_name,
   if (ret == retcode::SUCCESS) {
     VLOG(5) << "submit task to : " << dest_node_address << " reply success";
   } else {
+    set_error();
     LOG(ERROR) << "submit task to : " << dest_node_address << " reply failed";
     return retcode::FAIL;
   }
@@ -114,7 +117,7 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   if (has_error()) {
     return retcode::FAIL;
   }
-  retcode::SUCCESS;
+  return retcode::SUCCESS;
 }
 
-} // namespace primihub::task
+}  // namespace primihub::task
