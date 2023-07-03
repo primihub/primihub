@@ -10,7 +10,7 @@ class LogisticRegression_Host_Plaintext(LogisticRegression):
         super().__init__(x, y, learning_rate, alpha)
 
     def compute_z(self, x, guest_z):
-        z = x.dot(self.theta[1:]) + self.theta[0]
+        z = x.dot(self.weight) + self.bias
         z += np.array(guest_z).sum(axis=0)
         return z
     
@@ -30,7 +30,7 @@ class LogisticRegression_Host_Plaintext(LogisticRegression):
         return error
     
     def compute_regular_loss(self, guest_regular_loss):
-        return 0.5 * self.alpha * (self.theta ** 2).sum() \
+        return 0.5 * self.alpha * (self.weight ** 2).sum() \
                + sum(guest_regular_loss)
 
     def BCELoss(self, y, z, regular_loss):
@@ -51,21 +51,23 @@ class LogisticRegression_Host_Plaintext(LogisticRegression):
     
     def compute_grad(self, x, error):
         if self.multiclass:
-            return np.vstack((error.sum(axis=0, keepdims=True), x.T.dot(error))) \
-                    / x.shape[0] + self.alpha * self.theta
+            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+            db = error.mean(axis=0, keepdims=True)
         else:
-            return np.hstack((error.sum(keepdims=True), x.T.dot(error))) \
-                    / x.shape[0] + self.alpha * self.theta
-
+            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+            db = error.sum(keepdims=True)
+        return dw, db
+    
     def gradient_descent(self, x, error):
-        grad = self.compute_grad(x, error)
-        self.theta -= self.learning_rate * grad
+        dw, db = self.compute_grad(x, error)
+        self.weight -= self.learning_rate * dw
+        self.bias -= self.learning_rate * db
     
     def fit(self, x, error):
         self.gradient_descent(x, error)
 
 
-class LogisticRegression_Guest_Plaintext(LogisticRegression_Host_Plaintext):
+class LogisticRegression_Guest_Plaintext:
 
     def __init__(self, x, learning_rate=0.2, alpha=0.0001, output_dim=1):
 
@@ -73,17 +75,25 @@ class LogisticRegression_Guest_Plaintext(LogisticRegression_Host_Plaintext):
         self.alpha = alpha
 
         if output_dim > 2:
-            self.theta = np.zeros((x.shape[1], output_dim))
+            self.weight = np.zeros((x.shape[1], output_dim))
             self.multiclass = True
         else:
-            self.theta = np.zeros(x.shape[1])
+            self.weight = np.zeros(x.shape[1])
             self.multiclass = False
     
     def compute_z(self, x):
-        return x.dot(self.theta)
+        return x.dot(self.weight)
     
     def compute_regular_loss(self):
-        return 0.5 * self.alpha * (self.theta ** 2).sum()
+        return 0.5 * self.alpha * (self.weight ** 2).sum()
     
     def compute_grad(self, x, error):
-        return x.T.dot(error) / x.shape[0] + self.alpha * self.theta
+        dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+        return dw
+    
+    def gradient_descent(self, x, error):
+        dw = self.compute_grad(x, error)
+        self.weight -= self.learning_rate * dw
+    
+    def fit(self, x, error):
+        self.gradient_descent(x, error)

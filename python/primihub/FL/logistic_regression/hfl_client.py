@@ -211,7 +211,7 @@ class Plaintext_Client:
         self.send_params()
 
     def train(self):
-        self.server_channel.send("client_model", self.model.theta)
+        self.server_channel.send("client_model", self.model.get_theta())
         self.model.set_theta(self.server_channel.recv("server_model"))
 
     def send_output_dim(self, y):
@@ -227,11 +227,15 @@ class Plaintext_Client:
         
         # init theta
         if self.model.multiclass:
-            if output_dim != self.model.theta.shape[1]:
-                self.model.theta = np.zeros((self.model.theta.shape[0], output_dim))
+            if output_dim != self.model.bias.shape[1]:
+                self.model.set_theta(
+                    np.zeros((self.model.weight.shape[0] + 1, output_dim))
+                )
         else:
             if output_dim > 1:
-                self.model.theta = np.zeros((self.model.theta.shape[0], output_dim))
+                self.model.set_theta(
+                    np.zeros((self.model.weight.shape[0] + 1, output_dim))
+                )
                 self.model.multiclass = True
 
     def send_params(self):
@@ -243,7 +247,7 @@ class Plaintext_Client:
     def send_loss(self, x, y):
         loss = self.model.loss(x, y)
         if self.model.alpha > 0:
-            loss -= 0.5 * self.model.alpha * (self.model.theta ** 2).sum()
+            loss -= 0.5 * self.model.alpha * (self.model.weight ** 2).sum()
         self.server_channel.send("loss", loss)
         return loss
 
@@ -338,7 +342,7 @@ class Paillier_Client(Plaintext_Client):
         self.param_init(x, y, server_channel)
 
         self.model.public_key = server_channel.recv("public_key")
-        self.model.set_theta(self.model.encrypt_vector(self.model.theta))
+        self.model.set_theta(self.model.encrypt_vector(self.model.get_theta()))
 
     def send_loss(self, x, y):
         # pallier only support compute approximate loss without penalty

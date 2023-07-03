@@ -173,7 +173,7 @@ class Plaintext_Host:
         self.guest_channel = guest_channel
 
         if self.model.multiclass:
-            output_dim = self.model.theta.shape[1]
+            output_dim = self.model.weight.shape[1]
         else:
             output_dim = 1
 

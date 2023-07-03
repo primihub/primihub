@@ -12,10 +12,12 @@ class LogisticRegression:
 
         max_y = max(y)
         if max_y == 1:
-            self.theta = np.zeros(x.shape[1] + 1)
+            self.weight = np.zeros(x.shape[1])
+            self.bias = np.zeros(1)
             self.multiclass = False
         else:
-            self.theta = np.zeros((x.shape[1] + 1, max_y + 1))
+            self.weight = np.zeros((x.shape[1], max_y + 1))
+            self.bias = np.zeros((1, max_y + 1))
             self.multiclass = True
 
     def sigmoid(self, x):
@@ -26,23 +28,27 @@ class LogisticRegression:
         return exp / np.sum(exp, axis=1, keepdims=True)
 
     def get_theta(self):
-        return self.theta
+        if self.multiclass:
+            return np.vstack((self.bias, self.weight))
+        else:
+            return np.hstack((self.bias, self.weight))
 
     def set_theta(self, theta):
         if not isinstance(theta, np.ndarray):
             theta = np.array(theta)
-        self.theta = theta
+        self.bias = theta[[0]]
+        self.weight = theta[1:]
 
     def BCELoss(self, x, y):
-        z = x.dot(self.theta[1:]) + self.theta[0]
+        z = x.dot(self.weight) + self.bias
         return (np.maximum(z, 0.).sum() - y.dot(z) +
                 np.log1p(np.exp(-np.abs(z))).sum()) / x.shape[0] \
-                + 0.5 * self.alpha * (self.theta ** 2).sum()
+                + 0.5 * self.alpha * (self.weight ** 2).sum()
 
     def CELoss(self, x, y, eps=1e-20):
         prob = self.predict_prob(x)
         return -np.sum(np.log(np.clip(prob[np.arange(len(y)), y], eps, 1.))) \
-                / x.shape[0] + 0.5 * self.alpha * (self.theta ** 2).sum()
+                / x.shape[0] + 0.5 * self.alpha * (self.weight ** 2).sum()
     
     def loss(self, x, y):
         if self.multiclass:
@@ -55,22 +61,24 @@ class LogisticRegression:
             error = self.predict_prob(x)
             idx = np.arange(len(y))
             error[idx, y] -= 1
-            return np.vstack((error.sum(axis=0, keepdims=True), x.T.dot(error))) \
-                    / x.shape[0] + self.alpha * self.theta
+            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+            db = error.mean(axis=0, keepdims=True)
         else:
             error = self.predict_prob(x) - y
-            return np.hstack((error.sum(keepdims=True), x.T.dot(error))) \
-                    / x.shape[0] + self.alpha * self.theta
+            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+            db = error.mean(keepdims=True)
+        return dw, db
 
     def gradient_descent(self, x, y):
-        grad = self.compute_grad(x, y)
-        self.theta -= self.learning_rate * grad
+        dw, db = self.compute_grad(x, y)
+        self.weight -= self.learning_rate * dw
+        self.bias -= self.learning_rate * db
     
     def fit(self, x, y):
         self.gradient_descent(x, y)
 
     def predict_prob(self, x):
-        z = x.dot(self.theta[1:]) + self.theta[0]
+        z = x.dot(self.weight) + self.bias
         if self.multiclass:
             return self.softmax(z)
         else:
@@ -101,6 +109,20 @@ class LogisticRegression_DPSGD(LogisticRegression):
 
     def set_l2_norm_clip(self, l2_norm_clip):
         self.l2_norm_clip = l2_norm_clip
+
+    def add_noise(self, x, n=2):
+        # add gaussian noise
+        if self.secure_mode:
+            noise = np.zeros(x.shape)
+            for _ in range(2 * n):
+                noise += np.random.normal(
+                    0, self.l2_norm_clip * self.noise_multiplier, x.shape)
+            noise /= np.sqrt(2 * n)
+        else:
+            noise = np.random.normal(
+                0, self.l2_norm_clip * self.noise_multiplier, x.shape)
+
+        return x + noise
     
     def compute_grad(self, x, y): 
         # compute & clip per-example gradient
@@ -108,41 +130,32 @@ class LogisticRegression_DPSGD(LogisticRegression):
             error = self.predict_prob(x)
             idx = np.arange(len(y))
             error[idx, y] -= 1
-            batch_dz = np.expand_dims(error, axis=1)
-            batch_dw = np.expand_dims(x, axis=2) @ batch_dz
-            batch_grad = np.hstack((batch_dz, batch_dw))
-            batch_grad_l2_norm = np.sqrt((batch_grad**2).sum(axis=(1, 2)))
+            batch_db = error
+            batch_dw = np.expand_dims(x, axis=2) @ np.expand_dims(error, axis=1)
+            batch_grad_l2_norm = np.sqrt((batch_dw**2).sum(axis=(1, 2)) + \
+                                         (batch_db**2).sum(axis=1))
 
             clip = np.maximum(1., batch_grad_l2_norm / self.l2_norm_clip)
-            grad = (batch_grad / np.expand_dims(clip, axis=(1, 2))).sum(axis=0)
+            dw = (batch_dw / np.expand_dims(clip, axis=(1, 2))).sum(axis=0)
+            db = (batch_db / np.expand_dims(clip, axis=1)).sum(axis=0)
         else:
             error = self.predict_prob(x) - y
-            batch_dz = np.expand_dims(error, axis=1)
-            batch_dw = x * batch_dz
-            batch_grad = np.hstack((batch_dz, batch_dw))
-            batch_grad_l2_norm = np.sqrt((batch_grad**2).sum(axis=1))
+            batch_db = error
+            batch_dw = x * np.expand_dims(error, axis=1)
+            batch_grad_l2_norm = np.sqrt((batch_dw**2).sum(axis=1) + batch_db**2)
 
             clip = np.maximum(1., batch_grad_l2_norm / self.l2_norm_clip)
-            grad = (batch_grad / np.expand_dims(clip, axis=1)).sum(axis=0)
+            dw = (batch_dw / np.expand_dims(clip, axis=1)).sum(axis=0)
+            db = (batch_db / clip).sum(axis=0)
 
         # add gaussian noise
-        if self.secure_mode:
-            noise = np.zeros(grad.shape)
-            n = 2
-            for _ in range(2 * n):
-                noise += np.random.normal(
-                    0, self.l2_norm_clip * self.noise_multiplier, grad.shape)
-            noise /= np.sqrt(2 * n)
-        else:
-            noise = np.random.normal(0,
-                                     self.l2_norm_clip * self.noise_multiplier,
-                                     grad.shape)
-
-        grad += noise
-        return grad / x.shape[0] + self.alpha * self.theta
+        dw = self.add_noise(dw) / x.shape[0] + self.alpha * self.weight
+        db = self.add_noise(db) / x.shape[0]
+        return dw, db 
 
 
 class PaillierFunc:
+
     def __init__(self, public_key, private_key):
         self.public_key = public_key
         self.private_key = private_key
@@ -177,14 +190,16 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
         else:
             # Approximate gradient
             # First order of taylor expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
-            z = 0.5 + 0.25 * (x.dot(self.theta[1:]) + self.theta[0]) - y
-            return np.concatenate((z.sum(keepdims=True), x.T.dot(z))) \
-                    / x.shape[0] + self.alpha * self.theta
+            z = 0.5 + 0.25 * (x.dot(self.weight) + self.bias) - y
+            dw = x.T.dot(z) / x.shape[0] + self.alpha * self.weight
+            db = z.mean(keepdims=True)
+            return dw, db
+                    
 
     def BCELoss(self, x, y):
         # Approximate loss: L(x) = (0.5 - y) * (x.dot(w) + b)
         # Ignore regularization term due to paillier doesn't support ciphertext multiplication
-        return (0.5 - y).dot(x.dot(self.theta[1:] + self.theta[0])) / x.shape[0]
+        return (0.5 - y).dot(x.dot(self.weight) + self.bias) / x.shape[0]
 
     def CELoss(self, x, y, eps=1e-20):
         logger.error("Paillier method doesn't support multiclass classification")
