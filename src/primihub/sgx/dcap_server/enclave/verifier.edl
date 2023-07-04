@@ -1,0 +1,13 @@
+enclave {
+    from "common_util.edl" import *;
+    include "sgx_utils.h"
+    trusted {
+        public sgx_status_t ecall_get_target_info([out] sgx_target_info_t* target_info);
+        public sgx_status_t ecall_verify_report([in]sgx_report_t* report_data,
+                                            [in, string] const char* privatekey_path,
+                                            [in, size=nonce_size] const char* nonce,
+                                            size_t nonce_size,
+                                            [user_check]char* signature,
+                                            [out, count=1] size_t* sig_len);
+    };
+};
