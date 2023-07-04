@@ -13,7 +13,9 @@ from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
 from sklearn.preprocessing import MinMaxScaler
 
-from .vfl_base import LogisticRegression_Host_Plaintext
+from .vfl_base import LogisticRegression_Host_Plaintext,\
+                      LogisticRegression_Host_CKKS
+from .vfl_coordinator import CKKS
 
 
 class LogisticRegressionHost(BaseModel):
@@ -29,11 +31,17 @@ class LogisticRegressionHost(BaseModel):
 
     def train(self):
         # setup communication channels
-        remote_parties = self.roles[self.role_params['others_role']]
         guest_channel = MultiGrpcClients(local_party=self.role_params['self_name'],
-                                         remote_parties=remote_parties,
+                                         remote_parties=self.roles['guest'],
                                          node_info=self.node_info,
                                          task_info=self.task_info)
+        
+        method = self.common_params['method']
+        if method == 'CKKS':
+            coordinator_channel = GrpcClient(local_party=self.role_params['self_name'],
+                                             remote_party=self.roles['coordinator'],
+                                             node_info=self.node_info,
+                                             task_info=self.task_info)
         
         # load dataset
         selected_column = self.role_params['selected_column']
@@ -46,12 +54,21 @@ class LogisticRegressionHost(BaseModel):
         x = x.values
 
         # host init
-        method = self.common_params['method']
+        batch_size = min(x.shape[0], self.common_params['batch_size'])
         if method == 'Plaintext':
             host = Plaintext_Host(x, y,
                                   self.common_params['learning_rate'],
                                   self.common_params['alpha'],
                                   guest_channel)
+        elif method == 'CKKS':
+            coordinator_channel.send('batch_size', batch_size)
+            host = CKKS_Host(x, y,
+                             self.common_params['learning_rate'],
+                             self.common_params['alpha'],
+                             batch_size,
+                             self.common_params['epoch'],
+                             guest_channel,
+                             coordinator_channel)
         else:
             error_msg = f"Unsupported method: {method}"
             logger.error(error_msg)
@@ -63,7 +80,6 @@ class LogisticRegressionHost(BaseModel):
         x = scaler.fit_transform(x)
         
         # host training
-        batch_size = min(x.shape[0], self.common_params['batch_size'])
         train_dataloader = DataLoader(dataset=x,
                                       label=y,
                                       batch_size=batch_size,
@@ -81,6 +97,10 @@ class LogisticRegressionHost(BaseModel):
             if self.common_params['print_metrics']:
                 host.compute_metrics(x, y)
         logger.info("-------- finish training --------")
+
+        # receive plaintext model
+        if method == 'CKKS':
+            host.update_plaintext_model()
 
         # compute final metrics
         trainMetrics = host.compute_metrics(x, y)
@@ -237,3 +257,68 @@ class Plaintext_Host:
                 'train_auc': auc
                 }
             
+
+class CKKS_Host(Plaintext_Host, CKKS):
+
+    def __init__(self, x, y, learning_rate, alpha,
+                 batch_size, epoch,
+                 guest_channel, coordinator_channel):
+        self.batch_size = batch_size
+        self.epoch = epoch
+        self.t = 0
+        self.model = LogisticRegression_Host_CKKS(x, y,
+                                                  learning_rate,
+                                                  alpha)
+        self.send_output_dim(guest_channel)
+        self.recv_public_context(coordinator_channel)
+        self.max_iter = coordinator_channel.recv('max_iter')
+        coordinator_channel.send('num_examples', x.shape[0])
+        CKKS.__init__(self, self.context)
+        self.encrypt_model()
+
+    def recv_public_context(self, coordinator_channel):
+        self.coordinator_channel = coordinator_channel
+        self.context = coordinator_channel.recv('public_context')
+
+    def encrypt_model(self):
+        self.model.weight = self.encrypt_vector(self.model.weight.tolist())
+        self.model.bias = self.encrypt_vector(self.model.bias.tolist())
+
+    def update_encrypt_model(self):
+        self.coordinator_channel.send('host_weight',
+                                      self.model.weight.serialize())
+        self.coordinator_channel.send('host_bias',
+                                      self.model.bias.serialize())
+        self.model.weight = self.load_vector(
+            self.coordinator_channel.recv('host_weight'))
+        self.model.bias = self.load_vector(
+            self.coordinator_channel.recv('host_bias'))
+        
+    def update_plaintext_model(self):
+        self.coordinator_channel.send('host_weight',
+                                      self.model.weight.serialize())
+        self.coordinator_channel.send('host_bias',
+                                      self.model.bias.serialize())
+        self.model.weight = self.coordinator_channel.recv('host_weight')
+        self.model.bias = self.coordinator_channel.recv('host_bias')
+
+    def compute_enc_z(self, x):
+        guest_z = self.guest_channel.recv_all('guest_z')
+        guest_z = [self.load_vector(z) for z in guest_z]
+        return self.model.compute_enc_z(x, guest_z)
+    
+    def train(self, x, y):
+        if self.t >= self.max_iter:
+            self.t = 0
+            self.update_encrypt_model()
+        self.t += 1
+
+        z = self.compute_enc_z(x)
+        
+        error = self.model.compute_error(y, z)
+        self.guest_channel.send_all('error', error.serialize())
+
+        self.model.fit(x, error)
+
+    def compute_metrics(self, x, y):
+        logger.info('No printed metrics while using CKKS')

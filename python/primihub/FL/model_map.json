@@ -9,7 +9,8 @@
     },
     "VFL_logistic_regression": {
         "guest": "primihub.FL.logistic_regression.vfl_guest.LogisticRegressionGuest",
-        "host": "primihub.FL.logistic_regression.vfl_host.LogisticRegressionHost"
+        "host": "primihub.FL.logistic_regression.vfl_host.LogisticRegressionHost",
+        "coordinator": "primihub.FL.logistic_regression.vfl_coordinator.LogisticRegressionCoordinator"
     },
     "HFL_neural_network": {
         "client": "primihub.FL.neural_network.hfl_client.NeuralNetworkClient",
