@@ -16,7 +16,7 @@ function helper_for_install_jre8() {
 
 function check_meta_server_available() {
   for meta_port in ${META_SERVER_PORT[@]}; do
-    result=$(netstat -na 2> /dev/null |awk '{print $4}' | grep ${meta_port} | grep -v grep)
+    result=$(netstat -na 2> /dev/null |grep "LISTEN" | awk '{print $4}' | grep ${meta_port} | grep -v grep)
     if [ -z "${result}" ]; then
       return 1
     fi
