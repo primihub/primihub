@@ -70,11 +70,11 @@ class MultiGrpcClients:
     def send_seperately(self, key, valList):
         assert len(valList) == len(self.Clients)
         i = 0
-        for remote, client in self.Clients.items():
-            logger.info(f"Start send to {remote}")
+        logger.info(f"Start send seperately")
+        for client in self.Clients.values():
             client.send(key, valList[i])
             i += 1
-            logger.info(f"End send to {remote}")
+        logger.info(f"End send seperately")
 
     def recv_all(self, key):
         logger.info("Start receive all")

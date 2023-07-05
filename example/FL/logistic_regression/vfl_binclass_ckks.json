@@ -15,7 +15,7 @@
             "method": "CKKS",
             "process": "train",
             "task_name": "VFL_logistic_regression_binclass_ckks_train",
-            "learning_rate": 1e-0,
+            "learning_rate": 1e-1,
             "alpha": 1e-4,
             "epoch": 10,
             "shuffle_seed": 0,

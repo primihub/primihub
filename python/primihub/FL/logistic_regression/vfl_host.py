@@ -94,7 +94,7 @@ class LogisticRegressionHost(BaseModel):
                 host.train(batch_x, batch_y)
         
             # print metrics
-            if self.common_params['print_metrics']:
+            if method != 'CKKS' and self.common_params['print_metrics']:
                 host.compute_metrics(x, y)
         logger.info("-------- finish training --------")
 
@@ -319,6 +319,3 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.guest_channel.send_all('error', error.serialize())
 
         self.model.fit(x, error)
-
-    def compute_metrics(self, x, y):
-        logger.info('No printed metrics while using CKKS')

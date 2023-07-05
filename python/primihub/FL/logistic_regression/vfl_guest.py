@@ -52,7 +52,7 @@ class LogisticRegressionGuest(BaseModel):
                                     self.common_params['learning_rate'],
                                     self.common_params['alpha'],
                                     host_channel)
-        if method == 'CKKS':
+        elif method == 'CKKS':
             guest = CKKS_Guest(x,
                                self.common_params['learning_rate'],
                                self.common_params['alpha'],
@@ -85,7 +85,7 @@ class LogisticRegressionGuest(BaseModel):
                 guest.train(batch_x)
         
             # print metrics
-            if self.common_params['print_metrics']:
+            if method != 'CKKS' and self.common_params['print_metrics']:
                 guest.compute_metrics(x)
         logger.info("-------- finish training --------")
 
@@ -229,6 +229,3 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
         error = self.load_vector(self.host_channel.recv('error'))
 
         self.model.fit(x, error)
-
-    def compute_metrics(self, x):
-        logger.info('No printed metrics while using CKKS')

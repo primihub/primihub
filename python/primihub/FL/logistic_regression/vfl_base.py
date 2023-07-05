@@ -79,19 +79,19 @@ class LogisticRegression_Host_CKKS(LogisticRegression_Host_Plaintext):
             error = 2. + z - 4 * y
         return error
 
-    def BCELoss(self, y, z):
-        return z.dot((0.5 - y) / y.shape[0])
+    def BCELoss(self, y, z, regular_loss):
+        return z.dot((0.5 - y) / y.shape[0]) + regular_loss
 
-    def CELoss(self, y, z):
+    def CELoss(self, y, z, regular_loss):
         error_msg = "CKKS method doesn't support multiclass classification"
         logger.error(error_msg)
         raise AttributeError(error_msg)
     
-    def loss(self, y, z):
+    def loss(self, y, z, regular_loss):
         if self.multiclass:
-            return self.CELoss(y, z)
+            return self.CELoss(y, z, regular_loss)
         else:
-            return self.BCELoss(y, z)
+            return self.BCELoss(y, z, regular_loss)
 
     def gradient_descent(self, x, error):
         if self.multiclass:
@@ -100,7 +100,7 @@ class LogisticRegression_Host_CKKS(LogisticRegression_Host_Plaintext):
             raise AttributeError(error_msg)
         else:
             factor = -self.learning_rate / x.shape[0]
-            self.weight += error.mm(factor * x)
+            self.weight += error.mm(factor * x) + self.alpha * self.weight
             self.bias += error.sum() * factor
 
 
@@ -143,5 +143,5 @@ class LogisticRegression_Guest_CKKS(LogisticRegression_Guest_Plaintext):
     
     def gradient_descent(self, x, error):
         factor = -self.learning_rate / x.shape[0]
-        self.weight += error.mm(factor * x)
+        self.weight += error.mm(factor * x) + self.alpha * self.weight
         
