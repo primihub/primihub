@@ -353,4 +353,4 @@ class Paillier_Client(Plaintext_Client):
     def print_metrics(self, x, y):
         # print loss
         self.send_loss(x, y)
-        logger.info('No printed metrics while using Paillier')
+        logger.info('View metrics at server while using Paillier')

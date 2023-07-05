@@ -31,19 +31,25 @@ class LogisticRegressionCoordinator(BaseModel):
         method = self.common_params['method']
         if method == 'CKKS':
             batch_size = host_channel.recv('batch_size')
-            coordinator = CKKSCoordinator(host_channel,
+            coordinator = CKKSCoordinator(batch_size,
+                                          host_channel,
                                           guest_channel)
 
         # coordinator training
         logger.info("-------- start training --------")
-
-        if method == 'CKKS':
-            coordinator.train(batch_size, self.common_params['epoch'])
-
+        epoch = self.common_params['epoch']
+        for i in range(epoch):
+            logger.info(f"-------- epoch {i+1} / {epoch} --------")
+            coordinator.train()
+                
+            # print metrics
+            if self.common_params['print_metrics']:
+                coordinator.compute_loss()
         logger.info("-------- finish training --------")
 
         # decrypt & send plaintext model
         coordinator.update_plaintext_model()
+
 
 class CKKS:
 
@@ -70,17 +76,19 @@ class CKKS:
 
 class CKKSCoordinator(CKKS):
 
-    def __init__(self, host_channel, guest_channel):
+    def __init__(self, batch_size, host_channel, guest_channel):
+        self.t = 0
         self.host_channel = host_channel
         self.guest_channel = guest_channel
 
         # set CKKS params
         poly_mod_degree = 32768
         bits_scale = 27
-        multiply_per_iter = 2
-        self.max_iter = 4
+        multiply_per_iter = 7
+        self.max_iter = 2
         multiply_depth = multiply_per_iter * self.max_iter
         fe_bits_scale = 35
+        # 35*2 + 27*2*15 = 880 < 881
         coeff_mod_bit_sizes = [fe_bits_scale] + \
                               [bits_scale] * multiply_depth + \
                               [fe_bits_scale]
@@ -101,7 +109,9 @@ class CKKSCoordinator(CKKS):
 
         self.send_public_context()
         self.send_max_iter()
-        self.num_examples = host_channel.recv('num_examples')
+        num_examples = host_channel.recv('num_examples')
+
+        self.iter_per_epoch = math.ceil(num_examples / batch_size)
 
     def send_max_iter(self):
         self.host_channel.send("max_iter", self.max_iter)
@@ -169,8 +179,22 @@ class CKKSCoordinator(CKKS):
 
         self.send_model(host_weight, host_bias, guest_weight)
 
-    def train(self, batch_size, epoch):
-        num_update = epoch * math.ceil(self.num_examples / batch_size) // self.max_iter
-        for i in range(num_update):
-            logger.info(f"-------- decrypt model {i+1} / {num_update} --------")
+    def train(self):
+        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        self.t += self.iter_per_epoch
+        for i in range(self.t // self.max_iter):
             self.update_encrypt_model()
+            logger.warning(f'decrypt model #{i+1}')
+        self.t = self.t % self.max_iter
+
+    def compute_loss(self):
+        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        self.t += 1
+        if self.t > self.max_iter:
+            self.t = 0
+            self.update_encrypt_model()
+            logger.warning('decrypt model')
+
+        loss = self.load_vector(self.host_channel.recv('loss'))
+        loss = self.decrypt(loss, self.secret_context.secret_key())[0]
+        logger.info(f'loss={loss}')

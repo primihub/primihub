@@ -65,8 +65,6 @@ class LogisticRegressionHost(BaseModel):
             host = CKKS_Host(x, y,
                              self.common_params['learning_rate'],
                              self.common_params['alpha'],
-                             batch_size,
-                             self.common_params['epoch'],
                              guest_channel,
                              coordinator_channel)
         else:
@@ -94,7 +92,7 @@ class LogisticRegressionHost(BaseModel):
                 host.train(batch_x, batch_y)
         
             # print metrics
-            if method != 'CKKS' and self.common_params['print_metrics']:
+            if self.common_params['print_metrics']:
                 host.compute_metrics(x, y)
         logger.info("-------- finish training --------")
 
@@ -103,7 +101,7 @@ class LogisticRegressionHost(BaseModel):
             host.update_plaintext_model()
 
         # compute final metrics
-        trainMetrics = host.compute_metrics(x, y)
+        trainMetrics = host.compute_final_metrics(x, y)
         metric_path = self.role_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")
@@ -206,7 +204,7 @@ class Plaintext_Host:
     def compute_regular_loss(self):
         if self.model.alpha != 0:
             guest_regular_loss = self.guest_channel.recv_all('guest_regular_loss')
-            return self.model.compute_regular_loss(guest_regular_loss)
+            return self.model.compute_regular_loss(sum(guest_regular_loss))
         else:
             return 0.
         
@@ -256,15 +254,15 @@ class Plaintext_Host:
                 'train_ks': ks,
                 'train_auc': auc
                 }
-            
+    
+    def compute_final_metrics(self, x, y):
+        return self.compute_metrics(x, y)
+
 
 class CKKS_Host(Plaintext_Host, CKKS):
 
     def __init__(self, x, y, learning_rate, alpha,
-                 batch_size, epoch,
                  guest_channel, coordinator_channel):
-        self.batch_size = batch_size
-        self.epoch = epoch
         self.t = 0
         self.model = LogisticRegression_Host_CKKS(x, y,
                                                   learning_rate,
@@ -307,10 +305,20 @@ class CKKS_Host(Plaintext_Host, CKKS):
         guest_z = [self.load_vector(z) for z in guest_z]
         return self.model.compute_enc_z(x, guest_z)
     
+    def compute_enc_regular_loss(self):
+        if self.model.alpha != 0:
+            guest_regular_loss = self.guest_channel.recv_all('guest_regular_loss')
+            guest_regular_loss = [self.load_vector(s) for s in guest_regular_loss]
+            return self.model.compute_regular_loss(sum(guest_regular_loss))
+        else:
+            return 0.
+    
     def train(self, x, y):
+        logger.warning(f'iteration {self.t} / {self.max_iter}')
         if self.t >= self.max_iter:
             self.t = 0
             self.update_encrypt_model()
+            logger.warning(f'decrypt model')
         self.t += 1
 
         z = self.compute_enc_z(x)
@@ -319,3 +327,21 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.guest_channel.send_all('error', error.serialize())
 
         self.model.fit(x, error)
+
+    def compute_metrics(self, x, y):
+        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        self.t += 1
+        if self.t > self.max_iter:
+            self.t = 0
+            self.update_encrypt_model()
+            logger.warning(f'decrypt model')
+
+        z = self.compute_enc_z(x)
+
+        regular_loss = self.compute_enc_regular_loss()
+        loss = self.model.loss(y, z, regular_loss)
+        self.coordinator_channel.send('loss', loss.serialize())
+        logger.info('View metrics at coordinator while using Paillier')
+    
+    def compute_final_metrics(self, x, y):
+        return super().compute_metrics(x, y)

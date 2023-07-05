@@ -26,8 +26,8 @@ class LogisticRegression_Host_Plaintext(LogisticRegression):
         return error
     
     def compute_regular_loss(self, guest_regular_loss):
-        return 0.5 * self.alpha * (self.weight ** 2).sum() \
-               + sum(guest_regular_loss)
+        return (0.5 * self.alpha) * (self.weight ** 2).sum() \
+               + guest_regular_loss
 
     def BCELoss(self, y, z, regular_loss):
         return (np.maximum(z, 0.).sum() - y.dot(z) +
@@ -122,7 +122,7 @@ class LogisticRegression_Guest_Plaintext:
         return x.dot(self.weight)
     
     def compute_regular_loss(self):
-        return 0.5 * self.alpha * (self.weight ** 2).sum()
+        return (0.5 * self.alpha) * (self.weight ** 2).sum()
     
     def compute_grad(self, x, error):
         dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
