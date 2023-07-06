@@ -69,6 +69,49 @@ bool PsiCommonOperator::validationDataColum(const std::vector<int>& data_cols, i
   }
   return true;
 }
+retcode PsiCommonOperator::LoadDatasetFromTable(std::shared_ptr<arrow::Table> table,
+                                                const std::vector<int>& col_index,
+                                                std::vector<std::string>* col_data,
+                                                std::vector<std::string>* col_name) {
+  // load data
+  int num_cols = table->num_columns();
+  int64_t num_rows = table->num_rows();
+  col_data->reserve(num_rows);
+  if (num_cols == 0) {
+    LOG(ERROR) << "no colum selected";
+    return retcode::FAIL;
+  }
+
+  // get data from first col
+  auto col_ptr = table->column(0);
+  int chunk_size = col_ptr->num_chunks();
+  auto field_ptr = table->field(0);
+  col_name->push_back(field_ptr->name());
+  for (int j = 0; j < chunk_size; j++) {
+    auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(j));
+    for (int64_t k = 0; k < array->length(); k++) {
+      col_data->push_back(array->GetString(k));
+    }
+  }
+  // get rest data
+  for (int i = 1; i < num_cols; i++) {
+    auto field_ptr = table->field(i);
+    col_name->push_back(field_ptr->name());
+    auto col_ptr = table->column(i);
+    int chunk_size = col_ptr->num_chunks();
+    size_t index = 0;
+    for (int j = 0; j < chunk_size; j++) {
+      auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(j));
+      for (int64_t k = 0; k < array->length(); k++) {
+        (*col_data)[index].append(array->GetString(k));
+        index++;
+      }
+    }
+  }
+  VLOG(0) << "data records loaded number: " << col_data->size();
+  return retcode::SUCCESS;
+
+}
 
 retcode PsiCommonOperator::LoadDatasetFromTable(
         std::shared_ptr<arrow::Table> table,
@@ -163,6 +206,35 @@ retcode PsiCommonOperator::LoadDatasetInternal(
     return retcode::FAIL;
   }
   return LoadDatasetFromTable(table, data_cols, col_array);
+}
+
+retcode PsiCommonOperator::LoadDatasetInternal(std::shared_ptr<DataDriver>& driver,
+                                               const std::vector<int>& col_index,
+                                               std::vector<std::string>* col_data,
+                                               std::vector<std::string>* col_names) {
+//
+  auto cursor = driver->GetCursor(col_index);
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get cursor for dataset failed";
+    return retcode::FAIL;
+  }
+  auto& schema = driver->dataSetAccessInfo()->Schema();
+  std::decay_t<decltype(schema)> new_schema{};
+  for (const auto index : col_index) {
+    new_schema.push_back(schema[index]);
+  }
+  auto ds = cursor->read(new_schema);
+  if (ds == nullptr) {
+    LOG(ERROR) << "get data failed";
+    return retcode::FAIL;
+  }
+  auto& table = std::get<std::shared_ptr<arrow::Table>>(ds->data);
+  int col_count = table->num_columns();
+  bool all_colum_valid = validationDataColum(col_index, col_count);
+  if(!all_colum_valid) {
+    return retcode::FAIL;
+  }
+  return LoadDatasetFromTable(table, col_index, col_data, col_names);
 }
 
 retcode PsiCommonOperator::LoadDatasetInternal(

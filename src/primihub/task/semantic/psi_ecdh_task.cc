@@ -109,7 +109,7 @@ retcode PSIEcdhTask::LoadDataset() {
         std::string err_msg = fmt::format("get driver for dataset: {} failed", this->dataset_id_);
         CHECK_RETCODE_WITH_ERROR_MSG(retcode::FAIL, err_msg);
     }
-    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
+    auto ret = LoadDatasetInternal(driver, data_index_, &elements_, &data_colums_name_);
     CHECK_RETCODE_WITH_ERROR_MSG(ret, "Load dataset for psi client failed");
     return retcode::SUCCESS;
 }
@@ -246,6 +246,7 @@ retcode PSIEcdhTask::sendInitParam(const std::string& init_param) {
 
 retcode PSIEcdhTask::saveResult() {
     CHECK_TASK_STOPPED(retcode::FAIL);
+
     std::string col_title =
         psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
     return saveDataToCSVFile(result_, result_file_path_, col_title);

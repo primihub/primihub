@@ -269,7 +269,8 @@ std::shared_ptr<Dataset> CSVCursor::readMeta() {
 std::shared_ptr<Dataset> CSVCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
   auto read_options = arrow::csv::ReadOptions::Defaults();
   read_options.skip_rows = 1;  // skip title row
-  auto field_names = data_schema->field_names();
+  auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
+  auto field_names = arrow_schema->field_names();
   read_options.column_names = field_names;
   auto parse_options = arrow::csv::ParseOptions::Defaults();
   auto convert_options = arrow::csv::ConvertOptions::Defaults();
