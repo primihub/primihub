@@ -1,0 +1,18 @@
+enclave {
+  from "sgx_tprotected_fs.edl" import *;
+  from "common_util.edl" import *;
+  include "sgx_report.h"
+
+    trusted {
+      public sgx_status_t enclave_create_report([in]const sgx_target_info_t* p_qe3_target,
+                                              [out]sgx_report_t* p_report, [in] sgx_report_data_t* p_report_data);
+      public int ecall_gen_keypair([in, string] const char* privatekey_path, [user_check] char* pubkey_hash,
+      [user_check] char* pubkey, [in,out] size_t* key_len);
+      public int ecall_gen_x509req_with_quote_extension([in, string] const char* privatekey_path,
+                                                        [in, count=pubkey_len] const char* pubkey, size_t pubkey_len,
+                                                        [in, count =quote_len]const char* quote, size_t quote_len,
+                                                        [in, count =cn_len]const char* cn, size_t cn_len,
+                                                        [user_check] char* csr_buf,
+                                                        [in, out, count=nonce_len] char* nonce, size_t nonce_len);
+   };
+};
