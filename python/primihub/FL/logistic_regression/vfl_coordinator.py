@@ -84,8 +84,8 @@ class CKKSCoordinator(CKKS):
         # set CKKS params
         poly_mod_degree = 32768
         bits_scale = 27
-        multiply_per_iter = 7
-        self.max_iter = 2
+        multiply_per_iter = 2
+        self.max_iter = 7
         multiply_depth = multiply_per_iter * self.max_iter
         fe_bits_scale = 35
         # 35*2 + 27*2*15 = 880 < 881

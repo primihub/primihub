@@ -279,8 +279,8 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        self.model.weight = self.encrypt_vector(self.model.weight.tolist())
-        self.model.bias = self.encrypt_vector(self.model.bias.tolist())
+        self.model.weight = self.encrypt_vector(self.model.weight)
+        self.model.bias = self.encrypt_vector(self.model.bias)
 
     def update_encrypt_model(self):
         self.coordinator_channel.send('host_weight',

@@ -199,7 +199,7 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        self.model.weight = self.encrypt_vector(self.model.weight.tolist())
+        self.model.weight = self.encrypt_vector(self.model.weight)
 
     def update_encrypt_model(self):
         self.coordinator_channel.send('guest_weight',
