@@ -1,0 +1,9 @@
+enclave {
+  from "sgx_tprotected_fs.edl" import *;
+    trusted {
+   };
+  untrusted {
+    void ocall_log_info([in, string] const char *str);
+    void ocall_log_error([in, string] const char *str);
+  };
+};

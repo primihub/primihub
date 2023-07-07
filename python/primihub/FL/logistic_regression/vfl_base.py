@@ -144,4 +144,3 @@ class LogisticRegression_Guest_CKKS(LogisticRegression_Guest_Plaintext):
     def gradient_descent(self, x, error):
         factor = -self.learning_rate / x.shape[0]
         self.weight += error.mm(factor * x) + self.alpha * self.weight
-        

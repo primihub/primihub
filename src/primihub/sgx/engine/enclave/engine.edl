@@ -1,0 +1,12 @@
+enclave {
+    from "common_util.edl" import *;
+
+    trusted {
+
+
+      public int enclave_2pc_psi([in, string]const char *data1_path, [in, string]const char *data2_path,
+                                 [in, string]const char *result_path, size_t data_size, [out]size_t* result_count);
+
+
+    };
+};
