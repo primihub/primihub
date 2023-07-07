@@ -103,7 +103,7 @@ retcode PsiCommonOperator::LoadDatasetFromTable(std::shared_ptr<arrow::Table> ta
     for (int j = 0; j < chunk_size; j++) {
       auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(j));
       for (int64_t k = 0; k < array->length(); k++) {
-        (*col_data)[index].append(array->GetString(k));
+        (*col_data)[index].append(PIR_RECORD_SEP).append(array->GetString(k));
         index++;
       }
     }
@@ -257,6 +257,65 @@ retcode PsiCommonOperator::LoadDatasetInternal(
         return retcode::FAIL;
     }
     return LoadDatasetFromTable(table, data_cols, col_array);
+}
+
+retcode PsiCommonOperator::SaveDataToCSVFile(const std::vector<std::string>& data,
+                                             const std::string& file_path,
+                                             const std::vector<std::string>& col_names) {
+  std::vector<std::shared_ptr<arrow::Array>> arrow_array;
+  if (col_names.size() == 1) {
+    arrow::StringBuilder builder;
+    builder.AppendValues(data);
+    std::shared_ptr<arrow::Array> array;
+    builder.Finish(&array);
+    arrow_array.push_back(std::move(array));
+  } else {
+    std::vector<std::vector<std::string>> result_data;
+    result_data.resize(col_names.size());
+    for (auto& item : result_data) {
+      item.resize(data.size());
+    }
+    for (size_t i = 0; i < data.size(); i++) {
+      std::vector<std::string> vec;
+      str_split(data[i], &vec, PIR_RECORD_SEP);
+      if (vec.size() != col_names.size()) {
+        LOG(ERROR) << "data colum does not match, expected: " << col_names.size()
+            << " but get: " << vec.size();
+        return retcode::FAIL;
+      }
+      for (int j = 0; j < vec.size(); j ++) {
+        LOG(ERROR) << "row: " << i << " col: " << j << " data: " << data[i];
+        result_data[j][i] = std::move(vec[j]);
+      }
+    }
+    for (auto& col_data : result_data) {
+      arrow::StringBuilder builder;
+      builder.AppendValues(col_data);
+      std::shared_ptr<arrow::Array> array;
+      builder.Finish(&array);
+      arrow_array.push_back(std::move(array));
+    }
+  }
+
+  std::vector<std::shared_ptr<arrow::Field>> schema_vector;
+  for (const auto& col_name : col_names) {
+    schema_vector.push_back(arrow::field(col_name, arrow::int64()));
+  }
+  auto schema = std::make_shared<arrow::Schema>(schema_vector);
+  std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, arrow_array);
+  auto driver = DataDirverFactory::getDriver("CSV", "test address");
+  auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
+  if (ValidateDir(file_path)) {
+    LOG(ERROR) << "can't access file path: " << file_path;
+    return retcode::FAIL;
+  }
+  int ret = csv_driver->write(table, file_path);
+  if (ret != 0) {
+    LOG(ERROR) << "Save PSI result to file " << file_path << " failed.";
+    return retcode::FAIL;
+  }
+  LOG(INFO) << "Save PSI result to " << file_path << ".";
+  return retcode::SUCCESS;
 }
 
 retcode PsiCommonOperator::saveDataToCSVFile(const std::vector<std::string>& data,

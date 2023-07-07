@@ -245,11 +245,8 @@ retcode PSIEcdhTask::sendInitParam(const std::string& init_param) {
 }
 
 retcode PSIEcdhTask::saveResult() {
-    CHECK_TASK_STOPPED(retcode::FAIL);
-
-    std::string col_title =
-        psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
-    return saveDataToCSVFile(result_, result_file_path_, col_title);
+  CHECK_TASK_STOPPED(retcode::FAIL);
+  return SaveDataToCSVFile(result_, result_file_path_, data_colums_name_);
 }
 
 retcode PSIEcdhTask::parsePsiResponseFromeString(
@@ -500,28 +497,28 @@ retcode PSIEcdhTask::initRequest(psi_proto::Request* psi_request) {
 }
 
 retcode PSIEcdhTask::recvPSIResult() {
-    CHECK_TASK_STOPPED(retcode::FAIL);
-    VLOG(5) << "recvPSIResult from client";
-    std::vector<std::string> psi_result;
-    std::string recv_data_str;
-    auto ret = this->recv(this->key, &recv_data_str);
-    CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive psi result from client failed");
-    uint64_t offset = 0;
-    uint64_t data_len = recv_data_str.length();
-    VLOG(5) << "data_len_data_len: " << data_len;
-    auto data_ptr = const_cast<char*>(recv_data_str.c_str());
-    // format length: value
-    while (offset < data_len) {
-        auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
-        uint64_t be_len = *len_ptr;
-        uint64_t len = ntohll(be_len);
-        offset += sizeof(uint64_t);
-        psi_result.push_back(std::string(data_ptr+offset, len));
-        offset += len;
-    }
-    VLOG(5) << "psi_result size: " << psi_result.size();
-    std::string col_title{"intersection_row"};
-    return saveDataToCSVFile(psi_result, server_result_path, col_title);
+  CHECK_TASK_STOPPED(retcode::FAIL);
+  VLOG(5) << "recvPSIResult from client";
+  std::vector<std::string> psi_result;
+  std::string recv_data_str;
+  auto ret = this->recv(this->key, &recv_data_str);
+  CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive psi result from client failed");
+  uint64_t offset = 0;
+  uint64_t data_len = recv_data_str.length();
+  VLOG(5) << "data_len_data_len: " << data_len;
+  auto data_ptr = const_cast<char*>(recv_data_str.c_str());
+  // format length: value
+  while (offset < data_len) {
+    auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
+    uint64_t be_len = *len_ptr;
+    uint64_t len = ntohll(be_len);
+    offset += sizeof(uint64_t);
+    psi_result.push_back(std::string(data_ptr+offset, len));
+    offset += len;
+  }
+  VLOG(5) << "psi_result size: " << psi_result.size();
+  VLOG(0) << "Server save psi result to path: " << server_result_path;
+  return SaveDataToCSVFile(psi_result, server_result_path, data_colums_name_);
 }
 
 }   // namespace primihub::task

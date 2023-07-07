@@ -54,6 +54,9 @@ class PsiCommonOperator {
     retcode saveDataToCSVFile(const std::vector<std::string>& data,
                               const std::string& file_path,
                               const std::string& col_title);
+    retcode SaveDataToCSVFile(const std::vector<std::string>& data,
+                              const std::string& file_path,
+                              const std::vector<std::string>& col_title);
 
 };
 }  // namespace primihub::task
