@@ -35,6 +35,41 @@
 
 namespace primihub {
 namespace csv {
+static const uint8_t kBOM[] = {0xEF, 0xBB, 0xBF};
+retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
+  int64_t i;
+  new_data->clear();
+  if (origin_data.empty()) {
+    retcode::SUCCESS;
+  }
+  auto data = reinterpret_cast<const uint8_t*>(origin_data.data());
+  size_t size = origin_data.size();
+  for (i = 0; i < static_cast<int64_t>(sizeof(kBOM)); ++i) {
+    if (size == 0) {
+      if (i == 0) {
+        // Empty string
+        return retcode::SUCCESS;
+      } else {
+        std::stringstream ss;
+        ss << "UTF8 string too short (truncated byte order mark?)";
+        std::string err_msg = ss.str();
+        SetThreadLocalErrorMsg(err_msg);
+        LOG(ERROR) << err_msg;
+        return retcode::FAIL;
+      }
+    }
+    if (*(data+i) != kBOM[i]) {
+      // BOM not found
+      *new_data = origin_data;
+      return retcode::SUCCESS;
+    }
+    --size;
+  }
+  // BOM found
+  *new_data = std::string(origin_data.data() + i, size);
+  return retcode::SUCCESS;
+}
+
 std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
                                         const arrow::csv::ReadOptions& read_opt,
                                         const arrow::csv::ParseOptions& parse_opt,
@@ -395,7 +430,7 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
     for (const auto& name : colum_names) {
       title_name.append("[").append(name).append("] ");
     }
-    VLOG(5) << title_name;
+    VLOG(5) << "origin title content: " << title_name;
   }
   if (!colum_names.empty()) {
     auto& last_item = colum_names[colum_names.size() - 1];
@@ -406,6 +441,32 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
     it = std::find(last_item.begin(), last_item.end(), '\r');
     if (it != last_item.end()) {
       last_item.erase(it);
+    }
+    // remove bom mark
+    auto& first_item = colum_names[0];
+    std::string new_first_item;
+    auto ret = primihub::csv::SkipUTF8BOM(first_item, &new_first_item);
+    if (ret == retcode::SUCCESS) {
+      first_item = std::move(new_first_item);
+    } else {
+      LOG(ERROR) << "check bom and remove failed for item: " << first_item;
+      return retcode::FAIL;
+    }
+    // remove quotation mark if it exists
+    for (auto& col_num : colum_names) {
+      // Trim leading quotation mark
+      col_num.erase(
+          col_num.begin(),
+          find_if(col_num.begin(),
+                  col_num.end(),
+                  [](int ch) { return !(ch == 0x22); }));
+
+      // Trim trailing quotation mark
+      col_num.erase(
+          find_if(col_num.rbegin(),
+                  col_num.rend(),
+                  [](int ch) {return !(ch == 0x22); }).base(),
+          col_num.end());
     }
   }
   if (VLOG_IS_ON(5)) {

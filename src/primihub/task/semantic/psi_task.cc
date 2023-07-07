@@ -60,6 +60,14 @@ bool PsiCommonOperator::isString(const arrow::Type::type& type_id) {
     return is_string;
 }
 
+bool PsiCommonOperator::IsValidDataType(const arrow::Type::type& type_id) {
+  if (isNumeric(type_id) || isString(type_id)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool PsiCommonOperator::validationDataColum(const std::vector<int>& data_cols, int table_max_colums) {
   if (data_cols.size() != table_max_colums) {
     LOG(ERROR) << "data col size does not match, " << " "
@@ -103,7 +111,7 @@ retcode PsiCommonOperator::LoadDatasetFromTable(std::shared_ptr<arrow::Table> ta
     for (int j = 0; j < chunk_size; j++) {
       auto array = std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(j));
       for (int64_t k = 0; k < array->length(); k++) {
-        (*col_data)[index].append(PIR_RECORD_SEP).append(array->GetString(k));
+        (*col_data)[index].append(DATA_RECORD_SEP).append(array->GetString(k));
         index++;
       }
     }
@@ -219,9 +227,20 @@ retcode PsiCommonOperator::LoadDatasetInternal(std::shared_ptr<DataDriver>& driv
     return retcode::FAIL;
   }
   auto& schema = driver->dataSetAccessInfo()->Schema();
+  // construct new schema and check data type for each selected colums,
+  // float type is not allowed
   std::decay_t<decltype(schema)> new_schema{};
   for (const auto index : col_index) {
-    new_schema.push_back(schema[index]);
+    auto filed = schema[index];
+    auto& type = std::get<1>(filed);
+    if (!IsValidDataType(static_cast<arrow::Type::type>(type))) {
+      auto arrow_schema = driver->dataSetAccessInfo()->ArrowSchema();
+      auto data_type = arrow_schema->field(index);
+      LOG(ERROR) << "data type: " << data_type->ToString() << " is not supported";
+      return retcode::FAIL;
+    }
+    type = arrow::Type::type::STRING;
+    new_schema.push_back(std::move(filed));
   }
   auto ds = cursor->read(new_schema);
   if (ds == nullptr) {
@@ -277,14 +296,13 @@ retcode PsiCommonOperator::SaveDataToCSVFile(const std::vector<std::string>& dat
     }
     for (size_t i = 0; i < data.size(); i++) {
       std::vector<std::string> vec;
-      str_split(data[i], &vec, PIR_RECORD_SEP);
+      str_split(data[i], &vec, DATA_RECORD_SEP);
       if (vec.size() != col_names.size()) {
         LOG(ERROR) << "data colum does not match, expected: " << col_names.size()
             << " but get: " << vec.size();
         return retcode::FAIL;
       }
       for (int j = 0; j < vec.size(); j ++) {
-        LOG(ERROR) << "row: " << i << " col: " << j << " data: " << data[i];
         result_data[j][i] = std::move(vec[j]);
       }
     }

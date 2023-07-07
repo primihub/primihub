@@ -22,6 +22,7 @@
 namespace primihub::task {
 class PsiCommonOperator {
  public:
+    bool IsValidDataType(const arrow::Type::type& type_id);
     bool isNumeric(const arrow::Type::type& type_id);
     bool isNumeric64Type(const arrow::Type::type& type_id);
     bool isNumeric32Type(const arrow::Type::type& type_id);

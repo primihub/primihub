@@ -459,7 +459,6 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
                                                  sf64Matrix<D> &test_data,
                                                  sf64Matrix<D> &test_label) {
   // Construct shares of train data and train label.
-  LOG(ERROR) << "Construct shares of train data and train label.";
   sf64Matrix<D> train_shares[3];
   for (u64 i = 0; i < 3; i++) {
     if (local_id_ == i)
@@ -467,7 +466,6 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
     else
       train_shares[i] = engine_.remoteInput<D>(i);
   }
-  LOG(ERROR) << "end Construct shares of train data and train label.";
   if (train_shares[0].cols() != train_shares[1].cols()) {
     LOG(ERROR)
         << "Count of column in train dataset mismatch between party 0 and 1, "

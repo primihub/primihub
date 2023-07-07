@@ -158,17 +158,17 @@ retcode PSIKkrtTask::_LoadParams(Task &task) {
 }
 
 retcode PSIKkrtTask::_LoadDataset(void) {
-    auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
-    if (driver == nullptr) {
-        LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
-        return retcode::FAIL;
-    }
-    auto ret = LoadDatasetInternal(driver, data_index_, elements_);
-    if (ret != retcode::SUCCESS) {
-        LOG(ERROR) << "Load dataset for psi server failed.";
-        return retcode::FAIL;
-    }
-    return retcode::SUCCESS;
+  auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
+    return retcode::FAIL;
+  }
+  auto ret = LoadDatasetInternal(driver, data_index_, &elements_, &data_colums_name_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "Load dataset for psi server failed.";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 #if defined(__linux__) && defined(__x86_64__)
@@ -316,14 +316,15 @@ retcode PSIKkrtTask::broadcastResultToServer() {
 }
 
 retcode PSIKkrtTask::saveResult() {
-    std::string col_title =
-        psi_type_ == rpc::PsiType::DIFFERENCE ? "difference_row" : "intersection_row";
-    auto ret = saveDataToCSVFile(result_, result_file_path_, col_title);
-    if (ret != retcode::SUCCESS) { return ret;}
-    if (this->sync_result_to_server) {
-        ret = broadcastResultToServer();
-    }
-    return ret;
+  auto ret = SaveDataToCSVFile(result_, result_file_path_, data_colums_name_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "save result to " << result_file_path_ << " failed";
+    return retcode::FAIL;
+  }
+  if (this->sync_result_to_server) {
+    ret = broadcastResultToServer();
+  }
+  return ret;
 }
 
 int PSIKkrtTask::execute() {
@@ -421,30 +422,30 @@ int PSIKkrtTask::execute() {
 }
 
 retcode PSIKkrtTask::recvIntersectionData() {
-    VLOG(5) << "recvPSIResult from client";
-    std::vector<std::string> psi_result;
-    std::string recv_data_str;
-    auto ret = this->recv(this->key, &recv_data_str);
-    if (ret != retcode::SUCCESS) {
-      return retcode::FAIL;
-    }
-    uint64_t offset = 0;
-    uint64_t data_len = recv_data_str.length();
-    VLOG(5) << "data_len_data_len: " << data_len;
-    auto data_ptr = const_cast<char*>(recv_data_str.c_str());
-    // format length: value
-    while (offset < data_len) {
-        auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
-        uint64_t be_len = *len_ptr;
-        uint64_t len = ntohll(be_len);
-        offset += sizeof(uint64_t);
-        psi_result.push_back(std::string(data_ptr+offset, len));
-        offset += len;
-    }
+  VLOG(5) << "recvPSIResult from client";
+  std::vector<std::string> psi_result;
+  std::string recv_data_str;
+  auto ret = this->recv(this->key, &recv_data_str);
+  if (ret != retcode::SUCCESS) {
+    return retcode::FAIL;
+  }
+  uint64_t offset = 0;
+  uint64_t data_len = recv_data_str.length();
+  VLOG(5) << "data_len_data_len: " << data_len;
+  auto data_ptr = const_cast<char*>(recv_data_str.c_str());
+  // format length: value
+  while (offset < data_len) {
+    auto len_ptr = reinterpret_cast<uint64_t*>(data_ptr+offset);
+    uint64_t be_len = *len_ptr;
+    uint64_t len = ntohll(be_len);
+    offset += sizeof(uint64_t);
+    psi_result.push_back(std::string(data_ptr+offset, len));
+    offset += len;
+  }
 
-    VLOG(5) << "psi_result size: " << psi_result.size();
-    std::string col_title{"intersection_row"};
-    return saveDataToCSVFile(psi_result, server_result_path, col_title);
+  VLOG(5) << "psi_result size: " << psi_result.size();
+  VLOG(0) << "PSI server save result to " << server_result_path << server_result_path;
+  return SaveDataToCSVFile(psi_result, server_result_path, data_colums_name_);
 }
 
 }  // namespace primihub::task
