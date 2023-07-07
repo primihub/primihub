@@ -161,6 +161,11 @@ retcode KeywordPIRClientTask::saveResult(
     }
 
     std::stringstream csv_output;
+    // write bom
+    uint8_t kBOM[] = {0xEF, 0xBB, 0xBF};
+    for (auto ch : kBOM) {
+      csv_output << ch;
+    }
     for (size_t i = 0; i < orig_items.size(); i++) {
         if (!intersection[i].found) {
             VLOG(0) << "no match result found for query: [" << orig_items[i] << "]";
