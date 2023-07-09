@@ -86,6 +86,7 @@ std::string CSVAccessInfo::toString() {
   nlohmann::json js;
   js["type"] = "csv";
   js["data_path"] = this->file_path_;
+  js["schema"] = SchemaToJsonString();
   ss << js;
   return ss.str();
 }

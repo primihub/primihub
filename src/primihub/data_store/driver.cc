@@ -163,6 +163,23 @@ retcode DataSetAccessInfo::SetDatasetSchema(std::vector<FieldType>&& schema_info
   this->schema = std::move(schema_info);
   return MakeArrowSchema();
 }
+
+std::string DataSetAccessInfo::SchemaToJsonString() {
+  auto schema = this->ArrowSchema();
+  if (schema == nullptr) {
+    return std::string("");
+  }
+  nlohmann::json js_schema = nlohmann::json::array();
+  for (int col_index = 0; col_index < schema->num_fields(); ++col_index) {
+    auto field = schema->field(col_index);
+    nlohmann::json item;
+    item[field->name()] = field->type()->id();
+    js_schema.emplace_back(item);
+  }
+  return js_schema.dump();
+}
+
+
 // cursor
 std::shared_ptr<arrow::Schema>
 Cursor::MakeArrowSchema(const std::vector<FieldType>& data_schema) {

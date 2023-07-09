@@ -66,6 +66,7 @@ struct DataSetAccessInfo {
  protected:
   std::shared_ptr<arrow::DataType> MakeArrowDataType(int type);
   retcode MakeArrowSchema();
+  std::string SchemaToJsonString();
 
  public:
   std::vector<FieldType> schema;
