@@ -179,7 +179,7 @@ retcode KeywordPIRClientTask::saveResult(
         if (intersection[i].label) {
             std::string label_info = intersection[i].label.to_string();
             std::vector<std::string> labels;
-            std::string sep = PIR_RECORD_SEP;
+            std::string sep = DATA_RECORD_SEP;
             str_split(label_info, &labels, sep);
             for (const auto& lable_ : labels) {
                 csv_output << orig_items[i] << "," << lable_ << endl;

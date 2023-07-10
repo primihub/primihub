@@ -53,7 +53,7 @@ retcode ProtoParser::parseDatasets() {
     return retcode::FAIL;
   }
   const auto& party_datasets = task_config.party_datasets();
-  LOG(ERROR) << "party_datasets: " << party_datasets.size();
+  VLOG(0) << "party_datasets: " << party_datasets.size();
   for (const auto& [party_name,  dataset_map] : party_datasets) {
     for (const auto& [dataset_index, datasetid] : dataset_map.data()) {
       this->input_datasets_with_tag_.emplace_back(std::make_pair(datasetid, party_name));

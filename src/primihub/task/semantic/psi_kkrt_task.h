@@ -61,6 +61,7 @@ class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
 
  private:
   std::vector<int> data_index_;
+  std::vector<std::string> data_colums_name_;
   int psi_type_;
   int role_tag_;
   std::string dataset_path_;

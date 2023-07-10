@@ -70,6 +70,7 @@ class PSIEcdhTask : public TaskBase, public PsiCommonOperator {
                     rpc::PsiResponse& taskResponse);
  private:
   std::vector<int> data_index_;
+  std::vector<std::string> data_colums_name_;
   int psi_type_;
   std::string dataset_path_;
   std::string dataset_id_;

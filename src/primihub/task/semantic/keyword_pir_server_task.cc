@@ -209,7 +209,7 @@ KeywordPIRServerTask::CreateDbData(std::shared_ptr<Dataset>& data) {
     auto& label = label_array[i];
     auto it = db_raw_data.find(item);
     if (it != db_raw_data.end()) {
-      it->second.append(PIR_RECORD_SEP).append(label);    // concat label with same key
+      it->second.append(DATA_RECORD_SEP).append(label);    // concat label with same key
     } else {
       db_raw_data[item] = label;
     }
