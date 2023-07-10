@@ -1,16 +1,6 @@
 # Call this Dockerfile via the build_local.sh script
-FROM ubuntu:20.04
+FROM primihub/primihub-base
 
-ENV LANG c.UTF-8
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-
-RUN  apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata libmysqlclient-dev \
-  && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-  && rm -rf /var/lib/apt/lists/*
-
-# Change WorkDir to /app
 WORKDIR /app
 
 ADD bazel-bin.tar.gz ./
@@ -20,14 +10,7 @@ RUN mkdir log \
   && ln -s bazel-bin/node primihub-node \
   && ln -s bazel-bin/cli primihub-cli
 
-WORKDIR /app/python
-RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install -r requirements.txt -i https://pypi.douban.com/simple/ \
-  && python3 setup.py develop \
-  && rm -rf /root/.cache/pip/
+RUN cd python \
+  && python3 setup.py develop
 
-WORKDIR /app
-# ENV PYTHONPATH=/usr/lib/python3.9/site-packages/:$TARGET_PATH
-
-# gRPC server port
 EXPOSE 50050
