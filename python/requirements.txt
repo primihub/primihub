@@ -1,4 +1,4 @@
-# --extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 pyarrow==6.0.1
 pandas
@@ -14,6 +14,7 @@ protobuf==3.20.0
 sphinx
 scikit-learn==1.2.2
 phe==1.5.0
+tenseal==0.3.14; platform_machine != "arm64" and platform_machine != "aarch64"
 
 mysql-connector-python
 sqlalchemy==2.0.16
@@ -28,7 +29,7 @@ scipy~=1.7.1
 modin
 
 opacus==1.4.0
-torch==1.13.1
-torchvision==0.14.1
-# torch==1.13.1+cpu
-# torchvision==0.14.1+cpu
+torch==1.13.1+cpu; platform_machine != "arm64" and platform_machine != "aarch64"
+torchvision==0.14.1+cpu; platform_machine != "arm64" and platform_machine != "aarch64"
+torch==1.13.1; platform_machine == "arm64" or platform_machine == "aarch64"
+torchvision==0.14.1; platform_machine == "arm64" or platform_machine == "aarch64"

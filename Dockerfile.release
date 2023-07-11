@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
 RUN apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip tzdata libmysqlclient-dev \
+  && apt-get install -y python3 python3-dev libgmp-dev python3-pip tzdata wget libmysqlclient-dev \
   && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
   && rm -rf /var/lib/apt/lists/*
 
@@ -13,8 +13,7 @@ WORKDIR /app
 COPY primihub-linux-amd64.tar.gz primihub-linux-arm64.tar.gz /opt/
 COPY src/primihub/protos/ src/primihub/protos/
 
-RUN ARCH=`arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/` \
-  && tar zxf /opt/primihub-linux-${ARCH}.tar.gz \
+RUN tar zxf /opt/primihub-linux-$(dpkg --print-architecture).tar.gz \
   && mkdir log \
   && ln -s bazel-bin/node primihub-node \
   && ln -s bazel-bin/cli primihub-cli
@@ -23,6 +22,10 @@ WORKDIR /app/python
 
 RUN python3 -m pip install --upgrade pip \
   && python3 -m pip install -r requirements.txt \
+  && if [ "$(dpkg --print-architecture)" = "arm64" ]; then \
+     wget https://primihub.oss-cn-beijing.aliyuncs.com/dev/tenseal-0.3.14-cp38-cp38-linux_aarch64.whl \
+     && pip install tenseal-0.3.14-cp38-cp38-linux_aarch64.whl; \
+     fi \
   && python3 setup.py install \
   && rm -rf /root/.cache/pip/
 
