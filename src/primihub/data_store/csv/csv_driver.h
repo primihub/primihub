@@ -106,8 +106,19 @@ class CSVDriver : public DataDriver,
   std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
   std::unique_ptr<Cursor> initCursor(const std::string &filePath) override;
   std::string getDataURL() const override;
-  // FIXME to be deleted
-  int write(std::shared_ptr<arrow::Table> table, const std::string &filePath);
+  /**
+   *  table: data need to write
+   *  file_path: file location
+  */
+  int write(std::shared_ptr<arrow::Table> table,
+            const std::string& file_path);
+  /**
+   * write csv title using customer define colum name
+   * and ignore the title defined by table schema
+  */
+  retcode Write(const std::vector<std::string>& fields_name,
+                std::shared_ptr<arrow::Table> table,
+                const std::string& file_path);
 
  protected:
   void setDriverType();

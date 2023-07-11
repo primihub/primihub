@@ -80,6 +80,38 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
             LOG(ERROR) << "no keyword outputFullFilename match";
             return retcode::FAIL;
         }
+        // get server dataset id
+        do {
+          const auto& party_datasets = task.party_datasets();
+          auto it = party_datasets.find(PARTY_SERVER);
+          if (it == party_datasets.end()) {
+            LOG(WARNING) << "no dataset found for party_name: " << PARTY_SERVER;
+            break;
+          }
+          const auto& datasets_map = it->second.data();
+          auto iter = datasets_map.find(PARTY_SERVER);
+          if (iter == datasets_map.end()) {
+            LOG(WARNING) << "no dataset found for party_name: " << PARTY_SERVER;
+            break;
+          }
+          std::string server_dataset_id = iter->second;
+          auto& dataset_service = this->getDatasetService();
+          auto driver = dataset_service->getDriver(server_dataset_id);
+          if (driver == nullptr) {
+            LOG(WARNING) << "no dataset access info found for id: " << server_dataset_id;
+            break;
+          }
+          auto& access_info = driver->dataSetAccessInfo();
+          if (access_info == nullptr) {
+            LOG(WARNING) << "no dataset access info found for id: " << server_dataset_id;
+            break;
+          }
+          auto& schema = access_info->Schema();
+          for (const auto& field : schema) {
+            server_dataset_schema_.push_back(std::get<0>(field));
+          }
+        } while (0);
+
     } catch (std::exception &e) {
         LOG(ERROR) << "Failed to load params: " << e.what();
         return retcode::FAIL;
@@ -96,8 +128,7 @@ retcode KeywordPIRClientTask::_LoadParams(Task &task) {
     return retcode::SUCCESS;
 }
 
-std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
-KeywordPIRClientTask::_LoadDataFromDataset() {
+KeywordPIRClientTask::DatasetDBPair KeywordPIRClientTask::_LoadDataFromDataset() {
     apsi::util::CSVReader::DBData db_data;
     std::vector<std::string> orig_items;
     auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
@@ -123,8 +154,7 @@ KeywordPIRClientTask::_LoadDataFromDataset() {
     return {std::make_unique<apsi::util::CSVReader::DBData>(std::move(db_data)), std::move(orig_items)};
 }
 
-std::pair<std::unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
-KeywordPIRClientTask::_LoadDataFromRecvData() {
+KeywordPIRClientTask::DatasetDBPair KeywordPIRClientTask::_LoadDataFromRecvData() {
   if (recv_data_.empty()) {
     LOG(ERROR) << "query data is empty";
     return std::make_pair(nullptr, std::vector<std::string>());
@@ -140,8 +170,7 @@ KeywordPIRClientTask::_LoadDataFromRecvData() {
   // return std::make_pair(std::move(db_data), std::move(orig_items));
 }
 
-std::pair<unique_ptr<apsi::util::CSVReader::DBData>, std::vector<std::string>>
-KeywordPIRClientTask::_LoadDataset(void) {
+KeywordPIRClientTask::DatasetDBPair KeywordPIRClientTask::_LoadDataset(void) {
     if (!recv_query_data_direct) {
         return _LoadDataFromDataset();
     } else {
@@ -160,48 +189,57 @@ retcode KeywordPIRClientTask::saveResult(
         return retcode::FAIL;
     }
 
-    std::stringstream csv_output;
-    // write bom
-    uint8_t kBOM[] = {0xEF, 0xBB, 0xBF};
-
-    bool write_bom_header_done{false};
+    std::vector<std::vector<std::string>> result_data;
+    result_data.resize(2);
+    for (auto& item : result_data) {
+      item.reserve(orig_items.size());
+    }
+    auto& key = result_data[0];
+    auto& result_value = result_data[1];
     for (size_t i = 0; i < orig_items.size(); i++) {
-        if (!intersection[i].found) {
-            VLOG(0) << "no match result found for query: [" << orig_items[i] << "]";
-            continue;
+      if (!intersection[i].found) {
+        VLOG(0) << "no match result found for query: [" << orig_items[i] << "]";
+        continue;
+      }
+      if (intersection[i].label) {
+        std::string label_info = intersection[i].label.to_string();
+        std::vector<std::string> labels;
+        std::string sep = DATA_RECORD_SEP;
+        str_split(label_info, &labels, sep);
+        for (const auto& lable_ : labels) {
+          key.push_back(orig_items[i]);
+          result_value.push_back(lable_);
         }
-        if (!write_bom_header_done) {
-            for (auto ch : kBOM) {
-                csv_output << ch;
-            }
-            write_bom_header_done = true;
-        }
-        if (intersection[i].label) {
-            std::string label_info = intersection[i].label.to_string();
-            std::vector<std::string> labels;
-            std::string sep = DATA_RECORD_SEP;
-            str_split(label_info, &labels, sep);
-            for (const auto& lable_ : labels) {
-                csv_output << orig_items[i] << "," << lable_ << endl;
-            }
-        } else {
-            csv_output << orig_items[i] << endl;
-        }
-
+      } else {
+        LOG(WARNING) << "no value found for query key: " << orig_items[i];
+      }
     }
     VLOG(0) << "save query result to : " << result_file_path_;
-    if (ValidateDir(result_file_path_)) {
-        LOG(ERROR) << "can't access file path: " << result_file_path_;
-        return retcode::FAIL;
+
+    std::vector<std::shared_ptr<arrow::Field>> schema_vector;
+    std::vector<std::string> tmp_colums{"key", "value"};
+    for (const auto& col_name : tmp_colums) {
+      schema_vector.push_back(arrow::field(col_name, arrow::int64()));
     }
-    if (!result_file_path_.empty()) {
-        std::ofstream ofs(result_file_path_);
-        ofs << csv_output.str();
-    } else {
-        LOG(ERROR) << "result_file_path is empty, skip save data";
-        return retcode::FAIL;
+    std::vector<std::shared_ptr<arrow::Array>> arrow_array;
+    for (auto& item : result_data) {
+      arrow::StringBuilder builder;
+      builder.AppendValues(item);
+      std::shared_ptr<arrow::Array> array;
+      builder.Finish(&array);
+      arrow_array.push_back(std::move(array));
     }
 
+    auto schema = std::make_shared<arrow::Schema>(schema_vector);
+    // std::shared_ptr<arrow::Table>
+    auto table = arrow::Table::Make(schema, arrow_array);
+    auto driver = DataDirverFactory::getDriver("CSV", "test address");
+    auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
+    auto rtcode = csv_driver->Write(server_dataset_schema_, table, result_file_path_);
+    if (rtcode != retcode::SUCCESS) {
+      LOG(ERROR) << "save PIR data to file " << result_file_path_ << " failed.";
+      return retcode::FAIL;
+    }
     return retcode::SUCCESS;
 }
 
@@ -239,8 +277,7 @@ retcode KeywordPIRClientTask::requestPSIParams() {
     return retcode::SUCCESS;
 }
 
-static std::string to_hexstring(const Item &item)
-{
+static std::string to_hexstring(const Item &item) {
     std::stringstream ss;
     ss << std::hex;
 

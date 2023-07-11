@@ -69,11 +69,113 @@ retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
   *new_data = std::string(origin_data.data() + i, size);
   return retcode::SUCCESS;
 }
+/**
+   *  write csv title to file
+*/
+retcode WriteHeader(const std::vector<std::string>& col_name,
+                    const std::string& file_path) {
+  auto ret = ValidateDir(file_path);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << file_path;
+    return retcode::FAIL;
+  }
+  if (col_name.empty()) {
+    LOG(WARNING) << "no feild name need to write";
+    return retcode::SUCCESS;
+  }
+  std::string header_str;
+  // write BOM
+  header_str.append(std::begin(primihub::csv::kBOM), std::end(primihub::csv::kBOM));
+  for (const auto& item : col_name) {
+    header_str.append(item).append(",");
+  }
+  header_str[header_str.size() - 1] = '\n';
+  std::ofstream csv_data(file_path, std::ios::out);
+  csv_data << header_str;
+  return retcode::SUCCESS;
+}
+/**
+   * write table data to file
+   * table: data need to write to file
+   * file_path: the location of data file
+   * include_header:
+   *  true: write csv title line using table schema (default)
+   *  false: do not write csv title line using table schema
+   * append_flag:
+   *  true: append table data to existing file_path
+   *  false: truncated to 0 bytes, deleting any existing data (default)
+*/
+retcode WriteContent(std::shared_ptr<arrow::Table> table,
+                     const std::string& file_path,
+                     bool include_header = true,
+                     bool append_flag = false) {
+//
+  auto ret = ValidateDir(file_path);
+  if (ret != 0) {
+    LOG(ERROR) << "something wrong with operatating file path: " << file_path;
+    return retcode::FAIL;
+  }
+  auto result = arrow::io::FileOutputStream::Open(file_path, append_flag);
+  if (!result.ok()) {
+    std::stringstream ss;
+    ss << "Open file " << file_path << " failed. " << result.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
+    return retcode::FAIL;
+  }
+
+  auto stream = result.ValueOrDie();
+  auto options = arrow::csv::WriteOptions::Defaults();
+  options.include_header = include_header;
+  auto csv_table = table.get();
+  auto mem_pool = arrow::default_memory_pool();
+  arrow::Status status = arrow::csv::WriteCSV(
+      *(csv_table), options, mem_pool,
+      reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
+  if (!status.ok()) {
+    std::stringstream ss;
+    ss << "Write content to csv file failed. " << status;
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode WriteImpl(const std::vector<std::string>& fields_name,
+                  std::shared_ptr<arrow::Table> table,
+                  const std::string& file_path) {
+  auto rtcode = WriteHeader(fields_name, file_path);
+  if (rtcode != retcode::SUCCESS) {
+    LOG(ERROR) << "WriteHeader to " << file_path << " failed";
+    return retcode::FAIL;
+  }
+  bool include_header{false};
+  bool append_data{true};
+  rtcode = WriteContent(table, file_path, include_header, append_data);
+  if (rtcode != retcode::SUCCESS) {
+    LOG(ERROR) << "write data to " << file_path << " failed";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode WriteImpl(std::shared_ptr<arrow::Table> table,
+                  const std::string& file_path) {
+  auto rtcode = WriteContent(table, file_path);
+  if (rtcode != retcode::SUCCESS) {
+    LOG(ERROR) << "write data to " << file_path << " failed";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
 
 std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
-                                        const arrow::csv::ReadOptions& read_opt,
-                                        const arrow::csv::ParseOptions& parse_opt,
-                                        const arrow::csv::ConvertOptions& convert_opt) {
+                                          const arrow::csv::ReadOptions& read_opt,
+                                          const arrow::csv::ParseOptions& parse_opt,
+                                          const arrow::csv::ConvertOptions& convert_opt) {
   arrow::io::IOContext io_context = arrow::io::default_io_context();
   arrow::fs::LocalFileSystem local_fs(arrow::fs::LocalFileSystemOptions::Defaults());
   auto result_ifstream = local_fs.OpenInputStream(file_path);
@@ -113,6 +215,7 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
 
   return *maybe_table;
 }
+
 }  // namespace csv
 
 // CSVAccessInfo
@@ -352,37 +455,11 @@ std::shared_ptr<Dataset> CSVCursor::ReadImpl(const std::string& file_path,
 }
 
 int CSVCursor::write(std::shared_ptr<Dataset> dataset) {
-  // check existence of file directory
-  auto ret = ValidateDir(this->file_path_);
-  if (ret != 0) {
-    LOG(ERROR) << "something wrong with operatating file path: " << this->file_path_;
-    return -1;
-  }
-  // write Dataset to csv file
-  auto result = arrow::io::FileOutputStream::Open(this->file_path_);
-  if (!result.ok()) {
-    std::stringstream ss;
-    ss << "Open file " << file_path_ << " failed, " << "detail: " << result.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return -1;
-  }
-
-  auto stream = result.ValueOrDie();
-  auto options = arrow::csv::WriteOptions::Defaults();
   auto csv_table = std::get<std::shared_ptr<arrow::Table>>(dataset->data);
-  auto mem_pool = arrow::default_memory_pool();
-  arrow::Status status = arrow::csv::WriteCSV(
-      *(csv_table), options, mem_pool,
-      reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
-  if (!status.ok()) {
-    std::stringstream ss;
-    ss << "Write content to csv file failed. " << status;
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return -2;
+  auto ret = primihub::csv::WriteImpl(csv_table, this->file_path_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "write data to " << this->file_path_ << " failed";
+    return -1;
   }
   return 0;
 }
@@ -536,40 +613,20 @@ std::unique_ptr<Cursor> CSVDriver::initCursor(const std::string &filePath) {
   return std::make_unique<CSVCursor>(filePath, shared_from_this());
 }
 
-// FIXME to be deleted write file in driver directly.
 int CSVDriver::write(std::shared_ptr<arrow::Table> table,
-                     const std::string& filePath) {
-  auto ret = ValidateDir(filePath);
-  if (ret != 0) {
-    LOG(ERROR) << "something wrong with operatating file path: " << filePath;
+                     const std::string& file_path) {
+  auto ret = primihub::csv::WriteImpl(table, file_path);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "write data to file: " << file_path << " failed";
     return -1;
-  }
-  auto result = arrow::io::FileOutputStream::Open(filePath);
-  if (!result.ok()) {
-    std::stringstream ss;
-    ss << "Open file " << filePath << " failed. " << result.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return -1;
-  }
-
-  auto stream = result.ValueOrDie();
-  auto options = arrow::csv::WriteOptions::Defaults();
-  auto csv_table = table.get();
-  auto mem_pool = arrow::default_memory_pool();
-  arrow::Status status = arrow::csv::WriteCSV(
-      *(csv_table), options, mem_pool,
-      reinterpret_cast<arrow::io::OutputStream *>(stream.get()));
-  if (!status.ok()) {
-    std::stringstream ss;
-    ss << "Write content to csv file failed. " << status;
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return -2;
   }
   return 0;
+}
+
+retcode CSVDriver::Write(const std::vector<std::string>& fields_name,
+                         std::shared_ptr<arrow::Table> table,
+                         const std::string& file_path) {
+  return primihub::csv::WriteImpl(fields_name, table, file_path);
 }
 
 std::string CSVDriver::getDataURL() const {
