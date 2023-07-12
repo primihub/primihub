@@ -17,8 +17,9 @@ cmake(
   linkopts = [
     "-lpthread",
   ],
+  #includes = ["include"],
   lib_source = ":src",
-  out_include_dir = "include/relic",
+  #out_include_dir = "include/relic",
   out_static_libs = ["librelic_s.a"],
   postfix_script = "[ \"$OSTYPE\" == \"linux-gnu\" ] && objcopy --localize-symbol=bn_init $INSTALLDIR/lib/librelic_s.a",
   #postfix_script = "objcopy --localize-symbol=bn_init $INSTALLDIR/lib/librelic_s.a",

@@ -201,13 +201,13 @@ http_archive(
 
 
 http_archive(
-    name = "bzip2",
-    build_file = "//bazel:bzip2.BUILD",
-    sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-    strip_prefix = "bzip2-1.0.8",
-    urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/bzip2-1.0.8.tar.gz"
-    ],
+  name = "bzip2",
+  build_file = "//bazel:bzip2.BUILD",
+  sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+  strip_prefix = "bzip2-1.0.8",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/bzip2-1.0.8.tar.gz"
+  ],
 )
 
 
@@ -428,27 +428,26 @@ http_archive(
 )
 
 # libPSI start
-new_git_repository(
+git_repository(
   name = "osu_libpsi",
-  build_file = "//bazel:BUILD.libpsi",
-  commit = "4c5d5a3e49533c8547dcd4869e6a9842b6ce5b90",
+  #branch = "bazel_branch",
+  commit = "d56340b515989832983ac84132fef1a03184a9bc",
   remote = "https://gitee.com/primihub/libPSI.git",
 )
 
-# libote
-new_git_repository(
-  name = "osu_libote",
-  build_file = "//bazel:libOTe.BUILD",
-  commit = "f455eb7bf83034ebca6cab42e3aea9d9b33f8102",
-  remote = "https://gitee.com/primihub/libOTe.git",
+git_repository(
+  name = "ladnir_cryptoTools",
+  #branch = "bazel_branch",
+  commit = "c3fb58a11f6ac1fc2cd4d8c62c081e13987deef8",
+  remote = "https://gitee.com/primihub/cryptoTools.git",
 )
 
-new_git_repository(
-  name = "ladnir_cryptoTools",
-  build_file = "//bazel:cryptoTools.BUILD",
-  commit = "d52e05e2e803006256ddb66f48a0d51080f4b285",
-  remote = "https://gitee.com/primihub/cryptoTools.git",
-  # shallow_since = "1591047380 -0700",
+# libote
+git_repository(
+  name = "osu_libote",
+  #branch = "bazel_branch",
+  commit = "b1f83ced131c58e565dbd47a5166bd9904ffdd83",
+  remote = "https://gitee.com/primihub/libOTe.git",
 )
 
 new_git_repository(
@@ -477,14 +476,6 @@ http_archive(
   strip_prefix = "hiredis-392de5d7f97353485df1237872cb682842e8d83f"
 )
 
-# libote
-# http_archive(
-#   name = "osu_libote",
-#   build_file = "//external:libOTe.BUILD",
-#   #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-#   strip_prefix = "libOTe-master",
-#   urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
-# )
 
 # cryptoTools
 # http_archive(

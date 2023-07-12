@@ -17,7 +17,7 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
 
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Common/Defines.h"
 #include "libPSI/PSI/Kkrt/KkrtPsiReceiver.h"
@@ -53,7 +53,7 @@ class PSIKkrtTask : public TaskBase, public PsiCommonOperator {
  private:
   retcode _LoadParams(rpc::Task &task);
   retcode _LoadDataset();
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
   void _kkrtRecv(osuCrypto::Channel& chl);
   void _kkrtSend(osuCrypto::Channel& chl);
   retcode _GetIntsection(osuCrypto::KkrtPsiReceiver &receiver);

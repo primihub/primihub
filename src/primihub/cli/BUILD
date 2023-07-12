@@ -18,7 +18,6 @@ cc_library(
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/memory",
         "@com_github_glog_glog//:glog",
-        "@toolkit_relic//:relic",
         "//src/primihub/protos:worker_proto",
         "//src/primihub/protos:service_proto",
         "//src/primihub/common:common_lib",
