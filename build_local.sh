@@ -15,13 +15,7 @@ fi
 
 bash pre_build.sh
 
-ARCH=`arch`
-
-bazel build --config=linux_$ARCH --define enable_mysql_driver=true //:node \
-    //:py_main \
-    //:cli \
-    //src/primihub/pybind_warpper:opt_paillier_c2py \
-    //src/primihub/pybind_warpper:linkcontext
+make mysql=y
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
@@ -33,6 +27,8 @@ git rev-parse HEAD >> commit.txt
 
 tar zcf bazel-bin.tar.gz bazel-bin/cli \
         bazel-bin/node \
+        primihub-cli \
+        primihub-node \
         bazel-bin/py_main \
         bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
         bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
