@@ -19,7 +19,7 @@
 #include <utility>
 #include <map>
 
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Endpoint.h"
 #include "cryptoTools/Network/SocketAdapter.h"
@@ -44,7 +44,7 @@
 #include "src/primihub/util/endian_util.h"
 #include "src/primihub/common/value_check_util.h"
 
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 using primihub::network::TaskMessagePassInterface;
 #endif
 
@@ -171,11 +171,11 @@ retcode PSIKkrtTask::_LoadDataset(void) {
   return retcode::SUCCESS;
 }
 
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 void PSIKkrtTask::_kkrtRecv(osuCrypto::Channel& chl) {
     u8 dummy[1];
-    osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
-
+    // osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    osuCrypto::PRNG prng(osuCrypto::block(time(nullptr), time(nullptr)));
     u64 sendSize;
     // u64 recvSize = 10;
     u64 recvSize = elements_.size();
@@ -222,8 +222,8 @@ void PSIKkrtTask::_kkrtRecv(osuCrypto::Channel& chl) {
 
 void PSIKkrtTask::_kkrtSend(osuCrypto::Channel& chl) {
     u8 dummy[1];
-    osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
-
+    // osuCrypto::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    osuCrypto::PRNG prng(osuCrypto::block(time(nullptr), time(nullptr)));
     u64 sendSize = elements_.size();
     u64 recvSize;
 
@@ -294,7 +294,7 @@ retcode PSIKkrtTask::_GetIntsection(osuCrypto::KkrtPsiReceiver &receiver) {
 
 retcode PSIKkrtTask::broadcastResultToServer() {
     retcode ret{retcode::SUCCESS};
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
     VLOG(5) << "broadcast_result_to_server";
     std::string result_str;
     size_t total_size{0};
@@ -352,7 +352,7 @@ int PSIKkrtTask::execute() {
     auto load_dataset_ts = timer.timeElapse();
     auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
     VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
     osuCrypto::IOService ios;
     auto mode = role_tag_ ? osuCrypto::EpMode::Server : osuCrypto::EpMode::Client;
     auto& link_ctx = this->getTaskContext().getLinkContext();
