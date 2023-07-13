@@ -32,9 +32,9 @@ class GrpcClient:
 
     def send(self, key, val):
         key = self.local_party + '_' + key
-        logger.info(f"Start send {key}")
+        logger.info(f"Start send {key} to {self.remote_party}")
         self.send_channel.send(key, pickle.dumps(val))
-        logger.info(f"End send {key}")
+        logger.info(f"End send {key} to {self.remote_party}")
 
     def recv(self, key):
         key = self.remote_party + '_' + key
@@ -61,11 +61,20 @@ class MultiGrpcClients:
         logger.info("End send all")
 
     def send_selected(self, key, val, selected_remote):
-        logger.info(f"Start send {selected_remote}")
+        logger.info(f"Start send to {selected_remote}")
         for remote_party in selected_remote:
             client = self.Clients[remote_party]
             client.send(key, val)
-        logger.info(f"End send {selected_remote}")
+        logger.info(f"End send to {selected_remote}")
+
+    def send_seperately(self, key, valList):
+        assert len(valList) == len(self.Clients)
+        i = 0
+        logger.info(f"Start send seperately")
+        for client in self.Clients.values():
+            client.send(key, valList[i])
+            i += 1
+        logger.info(f"End send seperately")
 
     def recv_all(self, key):
         logger.info("Start receive all")

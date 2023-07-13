@@ -7,7 +7,10 @@ from primihub.utils.logger_util import logger
 import pickle
 from sklearn.preprocessing import MinMaxScaler
 
-from .vfl_base import LogisticRegression_Guest_Plaintext
+from .vfl_base import LogisticRegression_Guest_Plaintext,\
+                      LogisticRegression_Guest_CKKS
+from .vfl_coordinator import CKKS
+
 
 class LogisticRegressionGuest(BaseModel):
     
@@ -15,18 +18,30 @@ class LogisticRegressionGuest(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
-        elif self.common_params['process'] == 'predict':
+        elif process == 'predict':
             self.predict()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def train(self):
         # setup communication channels
-        remote_party = self.roles[self.role_params['others_role']]
         host_channel = GrpcClient(local_party=self.role_params['self_name'],
-                                  remote_party=remote_party,
+                                  remote_party=self.roles['host'],
                                   node_info=self.node_info,
                                   task_info=self.task_info)
+        
+        method = self.common_params['method']
+        if method == 'CKKS':
+            coordinator_channel = GrpcClient(local_party=self.role_params['self_name'],
+                                             remote_party=self.roles['coordinator'],
+                                             node_info=self.node_info,
+                                             task_info=self.task_info)
         
         # load dataset
         selected_column = self.role_params['selected_column']
@@ -37,12 +52,18 @@ class LogisticRegressionGuest(BaseModel):
         x = x.values
 
         # guest init
-        method = self.common_params['method']
+        batch_size = min(x.shape[0], self.common_params['batch_size'])
         if method == 'Plaintext':
             guest = Plaintext_Guest(x,
                                     self.common_params['learning_rate'],
                                     self.common_params['alpha'],
                                     host_channel)
+        elif method == 'CKKS':
+            guest = CKKS_Guest(x,
+                               self.common_params['learning_rate'],
+                               self.common_params['alpha'],
+                               host_channel,
+                               coordinator_channel)
         else:
             error_msg = f"Unsupported method: {method}"
             logger.error(error_msg)
@@ -54,7 +75,6 @@ class LogisticRegressionGuest(BaseModel):
         x = scaler.fit_transform(x)
 
         # guest training
-        batch_size = min(x.shape[0], self.common_params['batch_size'])
         train_dataloader = DataLoader(dataset=x,
                                       label=None,
                                       batch_size=batch_size,
@@ -73,8 +93,12 @@ class LogisticRegressionGuest(BaseModel):
                 guest.compute_metrics(x)
         logger.info("-------- finish training --------")
 
+        # receive plaintext model
+        if method == 'CKKS':
+            guest.update_plaintext_model()
+
         # compute final metrics
-        guest.compute_metrics(x)
+        guest.compute_final_metrics(x)
 
         # save model for prediction
         modelFile = {
@@ -156,4 +180,79 @@ class Plaintext_Guest:
     def compute_metrics(self, x):
         self.send_z(x)
         self.send_regular_loss()
+
+    def compute_final_metrics(self, x):
+        self.compute_metrics(x)
             
+
+class CKKS_Guest(Plaintext_Guest, CKKS):
+
+    def __init__(self, x, learning_rate, alpha,
+                 host_channel, coordinator_channel):
+        self.t = 0
+        output_dim = self.recv_output_dim(host_channel)
+        self.model = LogisticRegression_Guest_CKKS(x,
+                                                   learning_rate,
+                                                   alpha,
+                                                   output_dim)
+        self.recv_public_context(coordinator_channel)
+        self.max_iter = coordinator_channel.recv('max_iter')
+        CKKS.__init__(self, self.context)
+        self.encrypt_model()
+    
+    def recv_public_context(self, coordinator_channel):
+        self.coordinator_channel = coordinator_channel
+        self.context = coordinator_channel.recv('public_context')
+
+    def encrypt_model(self):
+        self.model.weight = self.encrypt_vector(self.model.weight)
+
+    def update_ciphertext_model(self):
+        self.coordinator_channel.send('guest_weight',
+                                      self.model.weight.serialize())
+        self.model.weight = self.load_vector(
+            self.coordinator_channel.recv('guest_weight'))
+
+    def update_plaintext_model(self):
+        self.coordinator_channel.send('guest_weight',
+                                      self.model.weight.serialize())
+        self.model.weight = self.coordinator_channel.recv('guest_weight')
+
+    def send_enc_z(self, x):
+        guest_z = self.model.compute_enc_z(x)
+        self.host_channel.send('guest_z', guest_z.serialize())
+
+    def send_enc_regular_loss(self):
+        if self.model.alpha != 0.:
+            guest_regular_loss = self.model.compute_regular_loss()
+            self.host_channel.send('guest_regular_loss',
+                                   guest_regular_loss.serialize())
+    
+    def train(self, x):
+        logger.info(f'iteration {self.t} / {self.max_iter}')
+        if self.t >= self.max_iter:
+            self.t = 0
+            self.update_ciphertext_model()
+            logger.warning(f'decrypt model')
+        self.t += 1
+
+        self.send_enc_z(x)
+
+        error = self.load_vector(self.host_channel.recv('error'))
+
+        self.model.fit(x, error)
+
+    def compute_metrics(self, x):
+        logger.info(f'iteration {self.t} / {self.max_iter}')
+        self.t += 1
+        if self.t > self.max_iter:
+            self.t = 0
+            self.update_ciphertext_model()
+            logger.warning(f'decrypt model')
+
+        self.send_enc_z(x)
+        self.send_enc_regular_loss()
+        logger.info('View metrics at coordinator while using CKKS')
+
+    def compute_final_metrics(self, x):
+        super().compute_metrics(x)
