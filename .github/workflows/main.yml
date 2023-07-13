@@ -45,12 +45,7 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux_`arch` //:node \
-            //:py_main \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext
+        make
 
   build-on-ubuntu-arm64:
     runs-on: [self-hosted, Linux, ARM64]
@@ -60,11 +55,7 @@ jobs:
       run: |
         # cc_binary
         bash pre_build.sh
-        bazel build --config=linux_`arch` //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:linkcontext \
-            //src/primihub/pybind_warpper:opt_paillier_c2py
+        make
 
 
   build-on-mac-amd64:
@@ -95,9 +86,5 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext
+        make
 

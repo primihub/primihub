@@ -11,6 +11,10 @@ ifeq ($(mysql), y)
     BUILD_FLAG += --define enable_mysql_driver=true
 endif
 
+ifeq ($(protos), y)
+    TARGET += //src/primihub/protos:worker_py_pb2_grpc //src/primihub/protos:service_py_pb2_grpc
+endif
+
 release:
 	bazel build --config=PLATFORM_HARDWARE $(BUILD_FLAG) ${TARGET}
 	ln -s bazel-bin/cli primihub-cli
