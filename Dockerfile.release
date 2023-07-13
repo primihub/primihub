@@ -14,9 +14,7 @@ COPY primihub-linux-amd64.tar.gz primihub-linux-arm64.tar.gz /opt/
 COPY src/primihub/protos/ src/primihub/protos/
 
 RUN tar zxf /opt/primihub-linux-$(dpkg --print-architecture).tar.gz \
-  && mkdir log \
-  && ln -s bazel-bin/node primihub-node \
-  && ln -s bazel-bin/cli primihub-cli
+  && mkdir log
 
 WORKDIR /app/python
 

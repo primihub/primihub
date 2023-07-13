@@ -24,6 +24,9 @@ jobs:
             //src/primihub/protos:worker_py_pb2_grpc \
             //src/primihub/protos:service_py_pb2_grpc \
             //src/primihub/pybind_warpper:linkcontext
+          
+          ln -s bazel-bin/cli primihub-cli
+          ln -s bazel-bin/node primihub-node
           #copy generated py pb to python dir
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
@@ -32,6 +35,8 @@ jobs:
 
           tar zcf primihub-linux-amd64.tar.gz bazel-bin/cli \
              bazel-bin/node \
+             primihub-cli \
+             primihub-node \
              bazel-bin/py_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
@@ -71,7 +76,9 @@ jobs:
             //src/primihub/pybind_warpper:linkcontext \
             //src/primihub/protos:worker_py_pb2_grpc \
             //src/primihub/protos:service_py_pb2_grpc
-
+          
+          ln -s bazel-bin/cli primihub-cli
+          ln -s bazel-bin/node primihub-node
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
@@ -79,6 +86,8 @@ jobs:
 
           tar zcf primihub-linux-arm64.tar.gz bazel-bin/cli \
              bazel-bin/node \
+             primihub-cli \
+             primihub-node \
              bazel-bin/py_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
@@ -125,6 +134,8 @@ jobs:
             #//src/primihub/protos:worker_py_pb2_grpc \
             #//src/primihub/protos:service_py_pb2_grpc
 
+          ln -s bazel-bin/cli primihub-cli
+          ln -s bazel-bin/node primihub-node
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
           #cp -f bazel-bin/src/primihub/protos/*.py \
@@ -132,6 +143,8 @@ jobs:
 
           tar zcf primihub-darwin-amd64.tar.gz bazel-bin/cli \
             bazel-bin/node \
+            primihub-cli \
+            primihub-node \
             bazel-bin/py_main \
             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
@@ -166,6 +179,8 @@ jobs:
               //src/primihub/protos:worker_py_pb2_grpc \
               //src/primihub/protos:service_py_pb2_grpc
 
+          ln -s bazel-bin/cli primihub-cli
+          ln -s bazel-bin/node primihub-node
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
@@ -173,6 +188,8 @@ jobs:
 
           tar zcf primihub-darwin-arm64.tar.gz bazel-bin/cli \
               bazel-bin/node \
+              primihub-cli \
+              primihub-node \
               bazel-bin/py_main \
               bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
               bazel-bin/src/primihub/pybind_warpper/linkcontext.so \

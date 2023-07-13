@@ -5,12 +5,9 @@ WORKDIR /app
 
 ADD bazel-bin.tar.gz ./
 COPY src/primihub/protos/ src/primihub/protos/
-# Make symlink to primihub-node & primihub-cli
-RUN mkdir log \
-  && ln -s bazel-bin/node primihub-node \
-  && ln -s bazel-bin/cli primihub-cli
 
-RUN cd python \
+RUN mkdir log \
+  && cd python \
   && python3 setup.py develop
 
 EXPOSE 50050
