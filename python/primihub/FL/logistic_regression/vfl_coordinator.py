@@ -13,8 +13,14 @@ class LogisticRegressionCoordinator(BaseModel):
         super().__init__(**kwargs)
 
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def train(self):
         # setup communication channels
@@ -34,6 +40,10 @@ class LogisticRegressionCoordinator(BaseModel):
             coordinator = CKKSCoordinator(batch_size,
                                           host_channel,
                                           guest_channel)
+        else:
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # coordinator training
         logger.info("-------- start training --------")
@@ -82,13 +92,17 @@ class CKKSCoordinator(CKKS):
         self.guest_channel = guest_channel
 
         # set CKKS params
+        # use larger poly_mod_degree to support more encrypted multiplications
         poly_mod_degree = 32768
-        bits_scale = 27
+        # gradient descent uses as least two multiplications per interation
         multiply_per_iter = 2
+        # more multiplications lead to larger context size
         self.max_iter = 7
         multiply_depth = multiply_per_iter * self.max_iter
+        # sum(coeff_mod_bit_sizes) <= max coeff_modulus bit-length
         fe_bits_scale = 35
-        # 35*2 + 27*2*15 = 880 < 881
+        bits_scale = 27
+        # 35*2 + 27*2*7 = 448 < 881 (for N = 32768 & 128 bit security)
         coeff_mod_bit_sizes = [fe_bits_scale] + \
                               [bits_scale] * multiply_depth + \
                               [fe_bits_scale]
@@ -134,7 +148,7 @@ class CKKSCoordinator(CKKS):
     def send_model(self, host_weight, host_bias, guest_weight):
         self.host_channel.send('host_weight', host_weight)
         self.host_channel.send('host_bias', host_bias)
-
+        # send n sub-lists to n parties seperately
         self.guest_channel.send_seperately('guest_weight', guest_weight)
 
     def decrypt_model(self, host_weight, host_bias, guest_weight):
@@ -154,7 +168,7 @@ class CKKSCoordinator(CKKS):
         
         return host_weight, host_bias, guest_weight
 
-    def update_encrypt_model(self):
+    def update_ciphertext_model(self):
         host_weight, host_bias, guest_weight = self.recv_model()
         host_weight, host_bias, guest_weight = self.decrypt_model(
             host_weight, host_bias, guest_weight)
@@ -180,19 +194,19 @@ class CKKSCoordinator(CKKS):
         self.send_model(host_weight, host_bias, guest_weight)
 
     def train(self):
-        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        logger.info(f'iteration {self.t} / {self.max_iter}')
         self.t += self.iter_per_epoch
         for i in range(self.t // self.max_iter):
-            self.update_encrypt_model()
+            self.update_ciphertext_model()
             logger.warning(f'decrypt model #{i+1}')
         self.t = self.t % self.max_iter
 
     def compute_loss(self):
-        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        logger.info(f'iteration {self.t} / {self.max_iter}')
         self.t += 1
         if self.t > self.max_iter:
             self.t = 0
-            self.update_encrypt_model()
+            self.update_ciphertext_model()
             logger.warning('decrypt model')
 
         loss = self.load_vector(self.host_channel.recv('loss'))

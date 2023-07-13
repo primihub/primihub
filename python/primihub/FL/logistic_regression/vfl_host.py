@@ -24,10 +24,16 @@ class LogisticRegressionHost(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
-        elif self.common_params['process'] == 'predict':
+        elif process == 'predict':
             self.predict()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def train(self):
         # setup communication channels
@@ -282,7 +288,7 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.model.weight = self.encrypt_vector(self.model.weight)
         self.model.bias = self.encrypt_vector(self.model.bias)
 
-    def update_encrypt_model(self):
+    def update_ciphertext_model(self):
         self.coordinator_channel.send('host_weight',
                                       self.model.weight.serialize())
         self.coordinator_channel.send('host_bias',
@@ -314,10 +320,10 @@ class CKKS_Host(Plaintext_Host, CKKS):
             return 0.
     
     def train(self, x, y):
-        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        logger.info(f'iteration {self.t} / {self.max_iter}')
         if self.t >= self.max_iter:
             self.t = 0
-            self.update_encrypt_model()
+            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
         self.t += 1
 
@@ -329,11 +335,11 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.model.fit(x, error)
 
     def compute_metrics(self, x, y):
-        logger.warning(f'iteration {self.t} / {self.max_iter}')
+        logger.info(f'iteration {self.t} / {self.max_iter}')
         self.t += 1
         if self.t > self.max_iter:
             self.t = 0
-            self.update_encrypt_model()
+            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
 
         z = self.compute_enc_z(x)
