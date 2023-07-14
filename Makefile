@@ -17,8 +17,10 @@ endif
 
 release:
 	bazel build --config=PLATFORM_HARDWARE $(BUILD_FLAG) ${TARGET}
-	ln -s bazel-bin/cli primihub-cli
-	ln -s bazel-bin/node primihub-node
+	rm -f primihub-cli
+	ln -s -f bazel-bin/cli primihub-cli
+	rm -f primihub-node
+	ln -s -f bazel-bin/node primihub-node
 
 #linux_x86_64:
 #	bazel build --config=linux_x86_64 ${TARGET}
