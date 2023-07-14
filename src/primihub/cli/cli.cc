@@ -325,7 +325,10 @@ retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* t
       continue;
     }
     auto dataset_ptr = (*party_dataset_ptr)[party_name].mutable_data();
-    (*dataset_ptr)["data_set"] = role_param["data_set"].get<std::string>();
+    std::string data_key = role_param["data_set"].get<std::string>();
+    if (!data_key.empty()) {
+      (*dataset_ptr)["data_set"] = data_key;
+    }
   }
   return retcode::SUCCESS;
 }
