@@ -2,9 +2,12 @@
 #include <arrow/array.h>
 #include <arrow/result.h>
 
+#include <string>
+
 #include "src/primihub/algorithm/arithmetic.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/util.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -12,21 +15,6 @@ using arrow::Int64Array;
 using arrow::Table;
 
 namespace primihub {
-void spiltStr(string str, const string &split, std::vector<string> &strlist) {
-  strlist.clear();
-  if (str == "")
-    return;
-  string strs = str + split;
-  size_t pos = strs.find(split);
-  int steps = split.size();
-
-  while (pos != strs.npos) {
-    string temp = strs.substr(0, pos);
-    strlist.push_back(temp);
-    strs = strs.substr(pos + steps, strs.size());
-    pos = strs.find(split);
-  }
-}
 
 template <Decimal Dbit>
 ArithmeticExecutor<Dbit>::ArithmeticExecutor(
@@ -47,7 +35,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
 
   auto iter = node_map.find(config.node_id); // node_id
   if (iter == node_map.end()) {
-    stringstream ss;
+    std::stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
     throw std::runtime_error(ss.str());
   }
@@ -126,8 +114,8 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
 
     // col_and_owner
     std::string col_and_owner = param_map["Col_And_Owner"].value_string();
-    std::vector<string> tmp1, tmp2, tmp3;
-    spiltStr(col_and_owner, ";", tmp1);
+    std::vector<std::string> tmp1, tmp2, tmp3;
+    str_split(col_and_owner, &tmp1, ';');
     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
       int pos = itr->find('-');
       std::string col = itr->substr(0, pos);
@@ -144,7 +132,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     // LOG(INFO) << col_and_owner;
 
     std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
-    spiltStr(col_and_dtype, ";", tmp2);
+    str_split(col_and_dtype, &tmp2, ';');
     for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
       int pos = itr->find('-');
       std::string col = itr->substr(0, pos);
@@ -179,7 +167,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     }
 
     std::string parties = param_map["RevealToParties"].value_string();
-    spiltStr(parties, ";", tmp3);
+    str_split(parties, &tmp3, ';');
     for (auto itr = tmp3.begin(); itr != tmp3.end(); itr++) {
       // uint32_t party = std::atoi((*itr).c_str());
       uint16_t party_id;
@@ -312,7 +300,7 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
       for (const auto &party : parties_) {
         if (party_id_ == party) {
           i64Matrix tmp = mpc_op_exec_->reveal(sh_res);
-          for (size_t i = 0; i < tmp.rows(); i++)
+          for (i64 i = 0; i < tmp.rows(); i++)
             cmp_res_.emplace_back(static_cast<bool>(tmp(i, 0)));
         } else {
           mpc_op_exec_->reveal(sh_res, party);
@@ -369,15 +357,20 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
   }
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::DoubleBuilder builder(pool);
-  if (final_val_double_.size() != 0)
-    for (int i = 0; i < final_val_double_.size(); i++)
+  if (final_val_double_.size() != 0) {
+    for (size_t i = 0; i < final_val_double_.size(); i++) {
       builder.Append(final_val_double_[i]);
-  else if (final_val_int64_.size() != 0)
-    for (int i = 0; i < final_val_int64_.size(); i++)
+    }
+  } else if (final_val_int64_.size() != 0) {
+    for (size_t i = 0; i < final_val_int64_.size(); i++) {
       builder.Append(final_val_int64_[i]);
-  else
-    for (int i = 0; i < cmp_res_.size(); i++)
+    }
+  } else {
+    for (size_t i = 0; i < cmp_res_.size(); i++) {
       builder.Append(cmp_res_[i]);
+    }
+  }
+
   std::shared_ptr<arrow::Array> array;
   builder.Finish(&array);
 
@@ -471,8 +464,8 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
         errors = true;
         break;
       }
-      col_and_val_int.insert(
-          pair<string, std::vector<int64_t>>(col_names[i], tmp_data));
+      col_and_val_int.insert(std::make_pair(col_names[i], tmp_data));
+          // std::pair<std::string, std::vector<int64_t>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_int.begin(); itr != col_and_val_int.end();
       //      itr++) {
       //   LOG(INFO) << itr->first;
@@ -518,8 +511,8 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
           break;
         }
       }
-      col_and_val_double.insert(
-          pair<string, std::vector<double>>(col_names[i], tmp_data));
+      col_and_val_double.insert(std::make_pair(col_names[i], tmp_data));
+          // pair<string, std::vector<double>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_double.begin();
       //      itr != col_and_val_double.end(); itr++) {
       //   LOG(INFO) << itr->first;

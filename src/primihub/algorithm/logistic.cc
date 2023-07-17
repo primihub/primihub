@@ -396,7 +396,7 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   chann_next.close();
   chann_prev.close();
 
-  engine_.init(local_id_, ep_prev_, ep_next_, toBlock(local_id_));
+  engine_.init(local_id_, ep_prev_, ep_next_, oc::toBlock(local_id_));
   LOG(INFO) << "Init party: " << local_id_ << " communication finish.";
 
   return 0;
@@ -436,7 +436,7 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   channel_next.SetupBaseChannel(party_name_next, base_channel_next);
   channel_prev.SetupBaseChannel(party_name_prev, base_channel_prev);
 
-  engine_.init(local_id_, channel_prev, channel_next, toBlock(local_id_));
+  engine_.init(local_id_, channel_prev, channel_next, oc::toBlock(local_id_));
   return 0;
 }
 #endif
@@ -491,8 +491,8 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   int row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < train_shares[h].rows(); i++) {
-      for (int j = 0; j < train_shares[h].cols() - 1; j++) {
+    for (u64 i = 0; i < train_shares[h].rows(); i++) {
+      for (u64 j = 0; j < train_shares[h].cols() - 1; j++) {
         train_data[0](row_index, j) = train_shares[h][0](i, j);
         train_data[1](row_index, j) = train_shares[h][1](i, j);
       }
@@ -502,7 +502,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < train_shares[h].rows(); i++) {
+    for (u64 i = 0; i < train_shares[h].rows(); i++) {
       train_label[0](row_index, 0) = train_shares[h][0](i, num_cols);
       train_label[1](row_index, 0) = train_shares[h][1](i, num_cols);
       row_index++;
@@ -551,8 +551,8 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < test_shares[h].rows(); i++) {
-      for (int j = 0; j < test_shares[h].cols() - 1; j++) {
+    for (u64 i = 0; i < test_shares[h].rows(); i++) {
+      for (u64 j = 0; j < test_shares[h].cols() - 1; j++) {
         test_data[0](row_index, j) = test_shares[h][0](i, j);
         test_data[1](row_index, j) = test_shares[h][1](i, j);
       }
@@ -562,7 +562,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < test_shares[h].rows(); i++) {
+    for (u64 i = 0; i < test_shares[h].rows(); i++) {
       // train_label(row_index++, 1) = train_shares[h](i, num_cols);
       test_label[0](row_index, 0) = test_shares[h][0](i, num_cols);
       test_label[1](row_index, 0) = test_shares[h][1](i, num_cols);

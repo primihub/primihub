@@ -1,7 +1,5 @@
+// "Copyright [2023] <Primihub>"
 #include "src/primihub/algorithm/mpc_statistics.h"
-#include "src/primihub/common/common.h"
-#include "src/primihub/util/file_util.h"
-
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
@@ -9,11 +7,16 @@
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
-
 #include <rapidjson/document.h>
 
+#include <algorithm>
+#include <utility>
+
+#include "src/primihub/common/common.h"
+#include "src/primihub/util/file_util.h"
+
 using namespace rapidjson;
-using primihub::columnDtypeToString;
+// using primihub::columnDtypeToString;
 
 namespace primihub {
 MPCStatisticsExecutor::MPCStatisticsExecutor(
@@ -26,7 +29,6 @@ MPCStatisticsExecutor::MPCStatisticsExecutor(
   // node_id_ = config.node_id;
   // job_id_ = config.job_id;
   // task_id_ = config.task_id;
-
   // // Save all party's node config.
   // const auto &node_map = config.node_map;
   // for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
@@ -471,7 +473,11 @@ int MPCStatisticsExecutor::initPartyComm() {return 0;}
 int MPCStatisticsExecutor::execute() {return 0;}
 int MPCStatisticsExecutor::finishPartyComm() {return 0;}
 int MPCStatisticsExecutor::saveModel() {return 0;}
-retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {return retcode::SUCCESS;}
-retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {return retcode::SUCCESS;}
+retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {
+  return retcode::SUCCESS;
+}
+retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {
+  return retcode::SUCCESS;
+}
 #endif  // endif MPC_SOCKET_CHANNEL
 }; // namespace primihub

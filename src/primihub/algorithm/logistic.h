@@ -35,15 +35,27 @@
 #include "src/primihub/algorithm/linear_model_gen.h"
 #include "src/primihub/algorithm/plainML.h"
 #include "src/primihub/algorithm/regression.h"
-#include "src/primihub/common/clp.h"
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/type.h"
+// #include "src/primihub/common/clp.h"
+// #include "src/primihub/common/common.h"
+// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
-#include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/ioservice.h"
-#include "src/primihub/util/network/socket/session.h"
+// #include "src/primihub/util/network/socket/channel.h"
+// #include "src/primihub/util/network/socket/ioservice.h"
+// #include "src/primihub/util/network/socket/session.h"
+#include "cryptoTools/Network/Session.h"
+#include "cryptoTools/Network/IOService.h"
+#include "cryptoTools/Network/Channel.h"
+#include "cryptoTools/Common/Defines.h"
+#include "aby3/sh3/Sh3FixedPoint.h"
 
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
+using Session = oc::Session;
+using IOService = oc::IOService;
+using SessionMode = oc::SessionMode;
+#endif
+using Decimal = aby3::Decimal;
+const Decimal D = Decimal::D20;
 eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
                               sf64Matrix<D> &train_label_0_1,
                               sf64Matrix<D> &W2_0_1,

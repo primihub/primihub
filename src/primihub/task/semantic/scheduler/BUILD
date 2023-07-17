@@ -20,7 +20,7 @@ cc_library(
     "//src/primihub/node:server_config",
     "//src/primihub/protos:worker_proto",
     "//src/primihub/util/network:communication_lib",
-    "//src/primihub/common:common_util",
+    "//src/primihub/common:common_defination",
     "//src/primihub/service:dataset_service",
     "@com_github_glog_glog//:glog",
   ],

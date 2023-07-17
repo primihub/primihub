@@ -1,26 +1,24 @@
 // Copyright [2021] <primihub.com>
-#ifndef SRC_primihub_UTIL_EIGEN_UTIL_H_
-#define SRC_primihub_UTIL_EIGEN_UTIL_H_
-
-#include <Eigen/Dense>
+#ifndef SRC_PRIMIHUB_UTIL_EIGEN_UTIL_H_
+#define SRC_PRIMIHUB_UTIL_EIGEN_UTIL_H_
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
 
-using namespace Eigen;
-using namespace std;
+#include "Eigen/Dense"
 
 namespace primihub {
 
-const static Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ",", "\n", "[", "]");
+static Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ",", "\n", "[", "]");
 
-const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
+static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
 
 template <typename Derived>
 void writeToCSVfile(std::string name, const Eigen::MatrixBase<Derived>& matrix);
 
 Eigen::MatrixXd openData(std::string fileToOpen);
 
-}
+}  // namespace primihub
 
-#endif // SRC_primihub_UTIL_EIGEN_UTIL_H_
+#endif  // SRC_PRIMIHUB_UTIL_EIGEN_UTIL_H_

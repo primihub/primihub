@@ -1,27 +1,42 @@
-
-#ifndef SRC_primihub_ALGORITHM_ABY3ML_H_
-#define SRC_primihub_ALGORITHM_ABY3ML_H_
+// "Copyright [2021] <Primihub>"
+#ifndef SRC_PRIMIHUB_ALGORITHM_ABY3ML_H_
+#define SRC_PRIMIHUB_ALGORITHM_ABY3ML_H_
 
 #include <algorithm>
 #include <random>
 #include <vector>
 
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/fixed_point.h"
-#include "src/primihub/protocol/aby3/encryptor.h"
-#include "src/primihub/protocol/aby3/evaluator/evaluator.h"
-#include "src/primihub/protocol/aby3/evaluator/piecewise.h"
-#include "src/primihub/protocol/aby3/sh3_gen.h"
-#include "src/primihub/util/crypto/prng.h"
+// #include "src/primihub/common/common.h"
+// #include "src/primihub/common/type/fixed_point.h"
+// #include "src/primihub/protocol/aby3/encryptor.h"
+// #include "src/primihub/protocol/aby3/evaluator/evaluator.h"
+// #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
+// #include "src/primihub/protocol/aby3/sh3_gen.h"
+// #include "src/primihub/util/crypto/prng.h"
+#include "cryptoTools/Common/Defines.h"
+#include "aby3/sh3/Sh3Types.h"
+#include "aby3/sh3/Sh3Encryptor.h"
+#include "aby3/sh3/Sh3Evaluator.h"
+#include "aby3/sh3/Sh3Piecewise.h"
+#include "aby3/sh3/Sh3ShareGen.h"
+#include "aby3/sh3/Sh3FixedPoint.h"
 
 #ifdef MPC_SOCKET_CHANNEL
-#include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/session.h"
+#include "cryptoTools/Network/Channel.h"
+#include "cryptoTools/Network/Session.h"
+// #include "src/primihub/util/network/socket/channel.h"
+// #include "src/primihub/util/network/socket/session.h"
 #else
 #include "src/primihub/util/network/mpc_channel.h"
 #endif
 
+#ifdef MPC_SOCKET_CHANNEL
+using Channel = osuCrypto::Channel;
+using Session = osuCrypto::Session;
+
+#endif
 namespace primihub {
+using namespace aby3;   // NOLINT
 class aby3ML {
  public:
 #ifdef MPC_SOCKET_CHANNEL
@@ -29,6 +44,7 @@ class aby3ML {
   Channel mPreproPrev;
   Channel mNext;
   Channel mPrev;
+  aby3::CommPkg comm_pkg_;
 #else
   MpcChannel mNext;
   MpcChannel mPrev;
@@ -71,8 +87,8 @@ class aby3ML {
 
   void localInputSize(const eMatrix<double>& val) {
     std::array<u64, 2> size{
-      static_cast<unsigned long long>(val.rows()),
-      static_cast<unsigned long long>(val.cols())
+      static_cast<u64>(val.rows()),
+      static_cast<u64>(val.cols())
     };
     mNext.send(size);
     mPrev.send(size);
@@ -82,7 +98,7 @@ class aby3ML {
   template<Decimal D>
   sf64Matrix<D> localInput(const eMatrix<double>& vals) {
     f64Matrix<D> v2(vals.rows(), vals.cols());
-    for (u64 i = 0; i < vals.size(); ++i)
+    for (i64 i = 0; i < vals.size(); ++i)
       v2(i) = vals(i);
     return localInput(v2);
   }
@@ -139,7 +155,7 @@ class aby3ML {
     mEnc.revealAll(mRt.noDependencies(), vals, temp).get();
 
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (u64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i)
       ret(i) = static_cast<double>(temp(i));
     return ret;
   }
@@ -149,8 +165,9 @@ class aby3ML {
     mEnc.revealAll(mRt.noDependencies(), vals, temp).get();
 
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (u64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i) {
       ret(i) = static_cast<double>(temp(i));
+    }
     return ret;
   }
 
@@ -386,9 +403,9 @@ class aby3ML {
     e.seed(time(nullptr));
 
     if (e() != 0) {
-      return int(e());
+      return static_cast<int>(e());
     } else {
-      return int(e() + 1);
+      return static_cast<int>(e() + 1);
     }
   }
 
@@ -525,4 +542,4 @@ class aby3ML {
 
 }  // namespace primihub
 
-#endif  // SRC_primihub_ALGORITHM_ABY3ML_H_
+#endif  // SRC_PRIMIHUB_ALGORITHM_ABY3ML_H_

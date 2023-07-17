@@ -2,7 +2,8 @@
 #define _STATISTICS_EXECUTOR_H_
 
 #include "src/primihub/common/common.h"
-#include "src/primihub/common/type/type.h"
+// #include "src/primihub/common/type/type.h"
+#include "aby3/sh3/Sh3Types.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/operator/aby3_operator.h"
 

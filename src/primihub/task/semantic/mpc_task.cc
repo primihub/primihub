@@ -19,12 +19,12 @@
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/algorithm/missing_val_processing.h"
 #include "src/primihub/algorithm/mpc_statistics.h"
-#include "src/primihub/util/network/socket/session.h"
 
-#if defined(__linux__) && defined(__x86_64__)
-#include "src/primihub/algorithm/cryptflow2_maxpool.h"
-#include "src/primihub/algorithm/falcon_lenet.h"
-#endif
+
+// #if defined(__linux__) && defined(__x86_64__)
+// #include "src/primihub/algorithm/cryptflow2_maxpool.h"
+// #include "src/primihub/algorithm/falcon_lenet.h"
+// #endif
 
 namespace primihub::task {
 MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
@@ -41,28 +41,30 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     }
   } else if (function_name == "linear_regression") {
     // TODO(XXX): implement linear regression
-  } else if (function_name == "maxpool") {
-#if defined(__linux__) && defined(__x86_64__)
-    try {
-      algorithm_ =
-          std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(config, dataset_service);
-    } catch (const std::runtime_error &error) {
-      LOG(ERROR) << error.what();
-      algorithm_ = nullptr;
-    }
-#else
-    LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support "
-                    "for apple and aarch64 platform.";
-#endif
-  } else if (function_name == "lenet") {
-#if defined(__linux__) && defined(__x86_64__)
-    algorithm_ =
-        std::make_shared<primihub::falcon::FalconLenetExecutor>(config, dataset_service);
-#else
-    LOG(WARNING) << "Skip init lenet algorithm instance due to lack support "
-                    "for apple and aarch64 platform.";
-#endif
-  } else if (function_name == "mpc_statistics") {
+  }
+//   else if (function_name == "maxpool") {
+// #if defined(__linux__) && defined(__x86_64__)
+//     try {
+//       algorithm_ =
+//           std::make_shared<primihub::cryptflow2::MaxPoolExecutor>(config, dataset_service);
+//     } catch (const std::runtime_error &error) {
+//       LOG(ERROR) << error.what();
+//       algorithm_ = nullptr;
+//     }
+// #else
+//     LOG(WARNING) << "Skip init maxpool algorithm instance due to lack support "
+//                     "for apple and aarch64 platform.";
+// #endif
+//   } else if (function_name == "lenet") {
+// #if defined(__linux__) && defined(__x86_64__)
+//     algorithm_ =
+//         std::make_shared<primihub::falcon::FalconLenetExecutor>(config, dataset_service);
+// #else
+//     LOG(WARNING) << "Skip init lenet algorithm instance due to lack support "
+//                     "for apple and aarch64 platform.";
+// #endif
+//   }
+   else if (function_name == "mpc_statistics") {
     algorithm_ =
         std::make_shared<primihub::MPCStatisticsExecutor>(config, dataset_service);
   } else if (function_name == "xgboost") {

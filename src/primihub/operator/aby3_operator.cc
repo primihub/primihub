@@ -1,11 +1,13 @@
 // "Copyright [2023] <Primihub>"
 #include "src/primihub/operator/aby3_operator.h"
+#include "cryptoTools/Common/Defines.h"
 #include <memory>
 namespace primihub {
+
 #ifdef MPC_SOCKET_CHANNEL
 int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
                        u32 prev_port) {
-  CommPkg comm = CommPkg();
+  // auto comm = aby3::CommPkg();
   Session ep_next_;
   Session ep_prev_;
 
@@ -39,17 +41,19 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
     break;
   }
 
-  comm.setNext(ep_next_.addChannel());
-  comm.setPrev(ep_prev_.addChannel());
-  comm.mNext().waitForConnection();
-  comm.mPrev().waitForConnection();
-  comm.mNext().send(partyIdx);
-  comm.mPrev().send(partyIdx);
+  // comm.setNext(ep_next_.addChannel());
+  // comm.setPrev(ep_prev_.addChannel());
+  // comm.mNext().waitForConnection();
+  // comm.mPrev().waitForConnection();
+  comm_.mNext = ep_next_.addChannel();
+  comm_.mPrev = ep_prev_.addChannel();
+  comm_.mNext.send(partyIdx);
+  comm_.mPrev.send(partyIdx);
 
   u64 prev_party = 0;
   u64 next_party = 0;
-  comm.mNext().recv(next_party);
-  comm.mPrev().recv(prev_party);
+  comm_.mNext.recv(next_party);
+  comm_.mPrev.recv(prev_party);
   if (next_party != (partyIdx + 1) % 3) {
     LOG(ERROR) << "Party " << partyIdx << ", expect next party id "
                << (partyIdx + 1) % 3 << ", but give " << next_party << ".";
@@ -63,32 +67,32 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
   }
 
   // Establishes some shared randomness needed for the later protocols
-  enc.init(partyIdx, comm, sysRandomSeed());
+  enc.init(partyIdx, comm_, oc::sysRandomSeed());
 
   // Establishes some shared randomness needed for the later protocols
-  eval.init(partyIdx, comm, sysRandomSeed());
+  eval.init(partyIdx, comm_, oc::sysRandomSeed());
 
-  binEval.mPrng.SetSeed(toBlock(partyIdx));
-  gen.init(toBlock(partyIdx), toBlock((partyIdx + 1) % 3));
+  binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
+  gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
 
   // Copies the Channels and will use them for later protcols.
-  mNext_ = comm.mNext();
-  mPrev_ = comm.mPrev();
-  mNext = &mNext_;
-  mPrev = &mPrev_;
-  auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
-  runtime.init(partyIdx, commPtr);
+  // mNext_ = comm_.mNext;
+  // mPrev_ = comm_.mPrev;
+  mNext = &(comm_.mNext);
+  mPrev = &(comm_.mPrev);
+  runtime.init(partyIdx, comm_);
   return 0;
 }
 #else
-int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
+// int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
+int MPCOperator::setup(osuCrypto::Channel& next, osuCrypto::Channel& prev);
   commPtr = std::make_shared<CommPkg>(prev, next);
-  enc.init(partyIdx, *commPtr, sysRandomSeed());
-  eval.init(partyIdx, *commPtr, sysRandomSeed());
+  enc.init(partyIdx, *commPtr, oc::sysRandomSeed());
+  eval.init(partyIdx, *commPtr, oc::sysRandomSeed());
 
-  binEval.mPrng.SetSeed(toBlock(partyIdx));
+  binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
 
-  gen.init(toBlock(partyIdx), toBlock((partyIdx + 1) % 3));
+  gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
 
   runtime.init(partyIdx, commPtr);
 
@@ -235,14 +239,14 @@ si64Matrix MPCOperator::MPC_Add_Const(i64 constInt,
                                       si64Matrix &sharedIntMatrix) {
   si64Matrix temp = sharedIntMatrix;
   if (partyIdx == 0) {
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
+    for (u64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (u64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[0](i, j) = sharedIntMatrix[0](i, j) + constInt;
       }
     }
   } else if (partyIdx == 1) {
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
+    for (u64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (u64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[1](i, j) = sharedIntMatrix[1](i, j) + constInt;
       }
     }
@@ -277,14 +281,14 @@ si64Matrix MPCOperator::MPC_Sub_Const(i64 constInt, si64Matrix &sharedIntMatrix,
                                       bool mode) {
   si64Matrix temp = sharedIntMatrix;
   if (partyIdx == 0) {
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
+    for (u64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (u64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[0](i, j) = sharedIntMatrix[0](i, j) - constInt;
       }
     }
   } else if (partyIdx == 1) {
-    for (i64 i = 0; i < sharedIntMatrix.rows(); i++) {
-      for (i64 j = 0; j < sharedIntMatrix.cols(); j++) {
+    for (u64 i = 0; i < sharedIntMatrix.rows(); i++) {
+      for (u64 j = 0; j < sharedIntMatrix.cols(); j++) {
         temp[1](i, j) = sharedIntMatrix[1](i, j) - constInt;
       }
     }

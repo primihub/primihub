@@ -2,51 +2,98 @@
 #ifndef SRC_PRIMIHUB_OPERATOR_ABY3_OPERATOR_H_
 #define SRC_PRIMIHUB_OPERATOR_ABY3_OPERATOR_H_
 #include <unistd.h>
+#include <glog/logging.h>
 
-#include <Eigen/Dense>
 #include <algorithm>
 #include <cmath>
 #include <random>
 #include <vector>
 #include <string>
 
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/fixed_point.h"
-#include "src/primihub/common/type/type.h"
-#include "src/primihub/primitive/ppa/kogge_stone.h"
-#include "src/primihub/protocol/aby3/encryptor.h"
-#include "src/primihub/protocol/aby3/evaluator/binary_evaluator.h"
-#include "src/primihub/protocol/aby3/evaluator/evaluator.h"
-#include "src/primihub/protocol/aby3/evaluator/piecewise.h"
-#include "src/primihub/protocol/aby3/sh3_gen.h"
-#include "src/primihub/util/crypto/prng.h"
+#include "Eigen/Dense"
+
+// #include "src/primihub/common/common.h"
+// #include "src/primihub/common/type/fixed_point.h"
+// #include "src/primihub/common/type/type.h"
+// #include "src/primihub/primitive/ppa/kogge_stone.h"
+// #include "src/primihub/protocol/aby3/encryptor.h"
+// #include "src/primihub/protocol/aby3/evaluator/binary_evaluator.h"
+// #include "src/primihub/protocol/aby3/evaluator/evaluator.h"
+// #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
+// #include "src/primihub/protocol/aby3/sh3_gen.h"
+// #include "src/primihub/util/crypto/prng.h"
 #include "src/primihub/util/eigen_util.h"
-#include "src/primihub/util/log.h"
-#include "src/primihub/util/network/socket/ioservice.h"
-#include "src/primihub/util/network/socket/session.h"
+// #include "src/primihub/util/log.h"
+// #include "src/primihub/util/network/socket/ioservice.h"
+// #include "src/primihub/util/network/socket/session.h"
+#include "aby3/sh3/Sh3Encryptor.h"
+#include "aby3/sh3/Sh3Evaluator.h"
+#include "aby3/sh3/Sh3BinaryEvaluator.h"
+#include "aby3/sh3/Sh3ShareGen.h"
+#include "aby3/sh3/Sh3Piecewise.h"
+#include "aby3/sh3/Sh3Runtime.h"
+#include "aby3/sh3/Sh3FixedPoint.h"
+#include "aby3/sh3/Sh3Types.h"
+
+#include "cryptoTools/Circuit/BetaCircuit.h"
+
+#include "aby3/Circuit/kogge_stone.h"
 
 #ifdef MPC_SOCKET_CHANNEL
-#include "src/primihub/util/network/socket/channel.h"
-#include "src/primihub/util/network/socket/commpkg.h"
+#include "cryptoTools/Network/Channel.h"
+#include "cryptoTools/Network/IOService.h"
+#include "cryptoTools/Network/Session.h"
 #else
 #include "src/primihub/util/network/mpc_channel.h"
 #include "src/primihub/util/network/mpc_commpkg.h"
+#include "cryptoTools/Network/Channel.h"
 #endif
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
+// using Sh3Encryptor = aby3::Sh3Encryptor;
+// using Sh3BinaryEvaluator = aby3::Sh3BinaryEvaluator;
+// using Sh3ShareGen = aby3::Sh3ShareGen;
+// using Sh3Piecewise = aby3::Sh3Piecewise;
+// using Sh3Evaluator = aby3::Sh3Evaluator;
+// using Sh3Runtime = aby3::Sh3Runtime;
+
+// using si64Matrix
+// using si64 = aby3::si64;
+// using si64Matrix = aby3::si64Matrix;
+// using sbMatrix = aby3::sbMatrix;
+// using Decimal = aby3::Decimal;
+using namespace aby3;
+
+using BetaCircuit = osuCrypto::BetaCircuit;
+using KoggeStoneLibrary = aby3::KoggeStoneLibrary;   // TODO move to crptotool
+
+#ifdef MPC_SOCKET_CHANNEL
+using Channel = osuCrypto::Channel;
+using IOService = osuCrypto::IOService;
+using SessionMode = osuCrypto::SessionMode;
+using Session = osuCrypto::Session;
+#endif
+
+
 class MPCOperator {
  public:
 #ifdef MPC_SOCKET_CHANNEL
+  // Channel mNext_;
+  // Channel mPrev_;
+  IOService ios;
+  Channel* mNext{nullptr};
+  Channel* mPrev{nullptr};
+  aby3::CommPkg comm_;
+#else
+  // MpcChannel *mNext{nullptr};
+  // MpcChannel *mPrev{nullptr};
   Channel mNext_;
   Channel mPrev_;
   IOService ios;
   Channel* mNext{nullptr};
   Channel* mPrev{nullptr};
-#else
-  MpcChannel *mNext{nullptr};
-  MpcChannel *mPrev{nullptr};
-  std::shared_ptr<CommPkg> commPtr;
+  std::shared_ptr<aby3::CommPkg> commPtr;
 #endif
 
   Sh3Encryptor enc;
@@ -59,10 +106,10 @@ class MPCOperator {
   Sh3Evaluator eval;
   Sh3Runtime runtime;
   u64 partyIdx;
-  string next_name;
-  string prev_name;
+  std::string next_name;
+  std::string prev_name;
 
-  MPCOperator(u64 partyIdx_, string NextName, string PrevName)
+  MPCOperator(u64 partyIdx_, std::string NextName, std::string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
 #ifdef MPC_SOCKET_CHANNEL
@@ -79,7 +126,7 @@ class MPCOperator {
   template <Decimal D>
   void createShares(const eMatrix<double> &vals, sf64Matrix<D> &sharedMatrix) {
     f64Matrix<D> fixedMatrix(vals.rows(), vals.cols());
-    for (u64 i = 0; i < vals.size(); ++i)
+    for (i64 i = 0; i < vals.size(); ++i)
       fixedMatrix(i) = vals(i);
     enc.localFixedMatrix(runtime, fixedMatrix, sharedMatrix).get();
   }
@@ -108,7 +155,8 @@ class MPCOperator {
     return dest;
   }
 
-  template <Decimal D> sf64Matrix<D> createSharesByShape(u64 pIdx) {
+  template <Decimal D>
+  sf64Matrix<D> createSharesByShape(u64 pIdx) {
     std::array<u64, 2> size;
     if (pIdx == (partyIdx + 1) % 3)
       mNext->recv(size);
@@ -139,11 +187,13 @@ class MPCOperator {
     enc.localFixedMatrix<D>(runtime, vals, sharedMatrix).get();
   }
 
-  template <Decimal D> void createShares(double vals, sf64<D> &sharedFixedInt) {
+  template <Decimal D>
+  void createShares(double vals, sf64<D> &sharedFixedInt) {
     enc.localFixed<D>(runtime, vals, sharedFixedInt).get();
   }
 
-  template <Decimal D> void createShares(sf64<D> &sharedFixedInt) {
+  template <Decimal D>
+  void createShares(sf64<D> &sharedFixedInt) {
     enc.remoteFixed<D>(runtime, sharedFixedInt).get();
   }
 
@@ -151,32 +201,36 @@ class MPCOperator {
 
   sbMatrix createBinSharesByShape(u64 partyIdx);
 
-  template <Decimal D> eMatrix<double> revealAll(const sf64Matrix<D> &vals) {
+  template <Decimal D>
+  eMatrix<double> revealAll(const sf64Matrix<D> &vals) {
     f64Matrix<D> temp(vals.rows(), vals.cols());
     enc.revealAll(runtime, vals, temp).get();
 
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (u64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i)
       ret(i) = static_cast<double>(temp(i));
     return ret;
   }
 
-  template <Decimal D> double revealAll(const sf64<D> &vals) {
+  template <Decimal D>
+  double revealAll(const sf64<D> &vals) {
     f64<D> ret;
     enc.revealAll(runtime, vals, ret).get();
     return static_cast<double>(ret);
   }
 
-  template <Decimal D> eMatrix<double> reveal(const sf64Matrix<D> &vals) {
+  template <Decimal D>
+  eMatrix<double> reveal(const sf64Matrix<D> &vals) {
     f64Matrix<D> temp(vals.rows(), vals.cols());
     enc.reveal(runtime, vals, temp).get();
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (u64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i)
       ret(i) = static_cast<double>(temp(i));
     return ret;
   }
 
-  template <Decimal D> void reveal(const sf64Matrix<D> &vals, u64 Idx) {
+  template <Decimal D>
+  void reveal(const sf64Matrix<D> &vals, u64 Idx) {
     enc.reveal(runtime, Idx, vals).get();
   }
 
@@ -190,13 +244,15 @@ class MPCOperator {
 
   void reveal(const si64Matrix &vals, u64 Idx);
 
-  template <Decimal D> double reveal(const sf64<D> &vals) {
+  template <Decimal D>
+  double reveal(const sf64<D> &vals) {
     f64<D> ret;
     enc.reveal(runtime, vals, ret).get();
     return static_cast<double>(ret);
   }
 
-  template <Decimal D> void reveal(const sf64<D> &vals, u64 Idx) {
+  template <Decimal D>
+  void reveal(const sf64<D> &vals, u64 Idx) {
     enc.reveal(runtime, Idx, vals).get();
   }
 
@@ -204,7 +260,8 @@ class MPCOperator {
   i64Matrix reveal(const sbMatrix &sh_res);
   void reveal(const sbMatrix &sh_res, uint64_t party_id);
 
-  template <Decimal D> sf64<D> MPC_Add(std::vector<sf64<D>> sharedFixedInt) {
+  template <Decimal D>
+  sf64<D> MPC_Add(std::vector<sf64<D>> sharedFixedInt) {
     sf64<D> sum;
     sum = sharedFixedInt[0];
     for (u64 i = 1; i < sharedFixedInt.size(); i++) {
@@ -239,14 +296,14 @@ class MPCOperator {
   sf64Matrix<D> MPC_Add_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed) {
     sf64Matrix<D> temp = sharedFixed;
     if (partyIdx == 0) {
-      for (i64 i = 0; i < sharedFixed.rows(); i++) {
-        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+      for (u64 i = 0; i < sharedFixed.rows(); i++) {
+        for (u64 j = 0; j < sharedFixed.cols(); j++) {
           temp[0](i, j) = sharedFixed[0](i, j) + constfixed.mValue;
         }
       }
     } else if (partyIdx == 1) {
-      for (i64 i = 0; i < sharedFixed.rows(); i++) {
-        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+      for (u64 i = 0; i < sharedFixed.rows(); i++) {
+        for (u64 j = 0; j < sharedFixed.cols(); j++) {
           temp[1](i, j) = sharedFixed[1](i, j) + constfixed.mValue;
         }
       }
@@ -314,19 +371,18 @@ class MPCOperator {
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed,
-                              bool mode) {
+  sf64Matrix<D> MPC_Sub_Const(f64<D> constfixed, sf64Matrix<D> &sharedFixed, bool mode) {
     sf64Matrix<D> temp = sharedFixed;
 
     if (partyIdx == 0) {
-      for (i64 i = 0; i < sharedFixed.rows(); i++) {
-        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+      for (u64 i = 0; i < sharedFixed.rows(); i++) {
+        for (u64 j = 0; j < sharedFixed.cols(); j++) {
           temp[0](i, j) = sharedFixed[0](i, j) - constfixed.mValue;
         }
       }
     } else if (partyIdx == 1) {
-      for (i64 i = 0; i < sharedFixed.rows(); i++) {
-        for (i64 j = 0; j < sharedFixed.cols(); j++) {
+      for (u64 i = 0; i < sharedFixed.rows(); i++) {
+        for (u64 j = 0; j < sharedFixed.cols(); j++) {
           temp[1](i, j) = sharedFixed[1](i, j) - constfixed.mValue;
         }
       }
@@ -395,7 +451,8 @@ class MPCOperator {
   si64Matrix MPC_Mul_Const(const i64 &constInt,
                            const si64Matrix &sharedIntMatrix);
 
-  template <Decimal D> sf64Matrix<D> MPC_Abs(const sf64Matrix<D> &Y) {
+  template <Decimal D>
+  sf64Matrix<D> MPC_Abs(const sf64Matrix<D> &Y) {
     if (mAbs.mThresholds.size() == 0) {
       mAbs.mThresholds.resize(1);
       mAbs.mThresholds[0] = 0;
@@ -413,7 +470,8 @@ class MPCOperator {
     return out;
   }
 
-  template <Decimal D> sf64Matrix<D> MPC_QuoDertermine(const sf64Matrix<D> &Y) {
+  template <Decimal D>
+  sf64Matrix<D> MPC_QuoDertermine(const sf64Matrix<D> &Y) {
     if (mQuoDertermine.mThresholds.size() == 0) {
       mQuoDertermine.mThresholds.resize(1);
       mQuoDertermine.mThresholds[0] = 0;
@@ -429,7 +487,8 @@ class MPCOperator {
     return out;
   }
 
-  template <Decimal D> sf64Matrix<D> MPC_DReLu(const sf64Matrix<D> &Y) {
+  template <Decimal D>
+  sf64Matrix<D> MPC_DReLu(const sf64Matrix<D> &Y) {
     if (mdivision.mThresholds.size() == 0) {
       mdivision.mThresholds.resize(1);
       mdivision.mThresholds[0] = 0;
@@ -447,12 +506,13 @@ class MPCOperator {
     return out;
   }
   // >0.5
-  template <Decimal D> eMatrix<i64> MPC_Pow(const sf64Matrix<D> &Y) {
+  template <Decimal D>
+  eMatrix<i64> MPC_Pow(const sf64Matrix<D> &Y) {
     sf64Matrix<D> Y_temp(Y.rows(), Y.cols());
     sf64Matrix<D> drelu_result(Y.rows(), Y.cols());
     eMatrix<i64> Alpha_matrix(Y.rows(), Y.cols());
-    for (int k = 0; k < Y.rows(); k++) {
-      for (int j = 0; j < Y.cols(); j++) {
+    for (u64 k = 0; k < Y.rows(); k++) {
+      for (u64 j = 0; j < Y.cols(); j++) {
         Alpha_matrix(k, j) = 0;
       }
     }
@@ -466,15 +526,15 @@ class MPCOperator {
       u64 round_bound = 1 << i;
       // u64 rank <<=  D;
 
-      for (int k = 0; k < Y.rows(); k++) {
-        for (int j = 0; j < Y.cols(); j++) {
+      for (u64 k = 0; k < Y.rows(); k++) {
+        for (u64 j = 0; j < Y.cols(); j++) {
           rank_matrix(k, j) = Alpha_matrix(k, j) + round_bound;
         }
       }
 
       f64Matrix<D> rank_temp(Y.rows(), Y.cols());
-      for (int k = 0; k < Y.rows(); k++) {
-        for (int j = 0; j < Y.cols(); j++) {
+      for (u64 k = 0; k < Y.rows(); k++) {
+        for (u64 j = 0; j < Y.cols(); j++) {
           rank_temp(k, j) = 1ULL << rank_matrix(k, j);
         }
       }
@@ -504,13 +564,13 @@ class MPCOperator {
       drelu_result_temp = revealAll(
           drelu_result);  // ematrix should mutiply rank to get rank matrix.
       // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
-      for (u64 i = 0; i < Alpha_matrix.size(); ++i) {
+      for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
       }
     }  // 5 rounds iteration.
 
-    for (u64 i = 0; i < Alpha_matrix.rows(); i++) {
-      for (u64 j = 0; j < Alpha_matrix.cols(); j++) {
+    for (i64 i = 0; i < Alpha_matrix.rows(); i++) {
+      for (i64 j = 0; j < Alpha_matrix.cols(); j++) {
         Alpha_matrix(i, j) = Alpha_matrix(i, j) + 1;
       }
     }
@@ -522,12 +582,13 @@ class MPCOperator {
   }
 
   // <0.5
-  template <Decimal D> eMatrix<i64> MPC_Pow2(const sf64Matrix<D> &Y) {
+  template <Decimal D>
+  eMatrix<i64> MPC_Pow2(const sf64Matrix<D> &Y) {
     sf64Matrix<D> Y_temp(Y.rows(), Y.cols());
     sf64Matrix<D> drelu_result(Y.rows(), Y.cols());
     eMatrix<i64> Alpha_matrix(Y.rows(), Y.cols());
-    for (int k = 0; k < Y.rows(); k++) {
-      for (int j = 0; j < Y.cols(); j++) {
+    for (u64 k = 0; k < Y.rows(); k++) {
+      for (u64 j = 0; j < Y.cols(); j++) {
         Alpha_matrix(k, j) = 0;
       }
     }
@@ -539,15 +600,15 @@ class MPCOperator {
       u64 round_bound = 1 << i;
       // u64 rank <<=  D;
 
-      for (int k = 0; k < Y.rows(); k++) {
-        for (int j = 0; j < Y.cols(); j++) {
+      for (u64 k = 0; k < Y.rows(); k++) {
+        for (u64 j = 0; j < Y.cols(); j++) {
           rank_matrix(k, j) = Alpha_matrix(k, j) + round_bound;
         }
       }
 
       f64Matrix<D> rank_temp(Y.rows(), Y.cols());
-      for (int k = 0; k < Y.rows(); k++) {
-        for (int j = 0; j < Y.cols(); j++) {
+      for (u64 k = 0; k < Y.rows(); k++) {
+        for (u64 j = 0; j < Y.cols(); j++) {
           rank_temp(k, j) = pow(2, rank_matrix(k, j) * (-1));
         }
       }
@@ -576,13 +637,13 @@ class MPCOperator {
       drelu_result_temp = revealAll(
           drelu_result);  // ematrix should mutiply rank to get rank matrix.
       // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
-      for (u64 i = 0; i < Alpha_matrix.size(); ++i) {
+      for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
       }
     }  // 5 rounds iteration.
 
-    for (u64 i = 0; i < Alpha_matrix.rows(); i++) {
-      for (u64 j = 0; j < Alpha_matrix.cols(); j++) {
+    for (i64 i = 0; i < Alpha_matrix.rows(); i++) {
+      for (i64 j = 0; j < Alpha_matrix.cols(); j++) {
         Alpha_matrix(i, j) = Alpha_matrix(i, j) * (-1);
       }
     }
@@ -591,8 +652,8 @@ class MPCOperator {
   }
 
   template <Decimal D>
-  vector<sf64<D>> MPC_sfmatrixTosfvec(const sf64Matrix<D> &X) {
-    vector<sf64<D>> dest(X.size());
+  std::vector<sf64<D>> MPC_sfmatrixTosfvec(const sf64Matrix<D> &X) {
+    std::vector<sf64<D>> dest(X.size());
     int count = 0;
     for (int k = 0; k < X.rows(); k++) {
       for (int j = 0; j < X.cols(); j++) {
@@ -605,7 +666,7 @@ class MPCOperator {
   }
 
   template <Decimal D>
-  sf64Matrix<D> MPC_sfvecTosfmatrix(const vector<sf64<D>> &X, int rows,
+  sf64Matrix<D> MPC_sfvecTosfmatrix(const std::vector<sf64<D>> &X, int rows,
                                     int cols) {
     assert(rows * cols == X.size() &&
            "Input vector size should be consistent of output matrix!");
@@ -678,8 +739,8 @@ class MPCOperator {
     eMatrix<double> drelu_result_temp(B.rows(), B.cols());
     drelu_result_temp = revealAll(drelu_result);
 
-    vector<u64> lessIdx;
-    vector<u64> moreIdx;
+    std::vector<u64> lessIdx;
+    std::vector<u64> moreIdx;
 
     for (u64 i = 0; i < drelu_result.rows(); i++) {
       // <0.5
@@ -739,8 +800,8 @@ class MPCOperator {
     // so no additional truncation of the precision bit is required
     // and matrix dot multiplication can be performed directly without
     // recirculation
-    for (int k = 0; k < B.rows(); k++) {
-      for (int j = 0; j < B.cols(); j++) {
+    for (u64 k = 0; k < B.rows(); k++) {
+      for (u64 j = 0; j < B.cols(); j++) {
         twopotnine(k, j) = 2.9142;
         constant_one(k, j) = 1;
         precision(k, j) = rank(k, j);
@@ -840,7 +901,8 @@ class MPCOperator {
     return ret;
   }
 
-  template <Decimal D> void MPC_Compare(f64Matrix<D> &m, sbMatrix &sh_res) {
+  template <Decimal D>
+  void MPC_Compare(f64Matrix<D> &m, sbMatrix &sh_res) {
     // Get matrix shape of all party.
     std::vector<std::array<uint64_t, 2>> all_party_shape;
     for (uint64_t i = 0; i < 3; i++) {

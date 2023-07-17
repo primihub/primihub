@@ -12,8 +12,9 @@
 #include <vector>
 
 #include "src/primihub/algorithm/base.h"
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/type.h"
+#include "src/primihub/common/type.h"
+// #include "src/primihub/common/common.h"
+// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 #include "src/primihub/service/dataset/service.h"
@@ -56,7 +57,7 @@ private:
 
   int _LoadDatasetFromDB(std::string &source);
 
-  void _spiltStr(string str, const string &split, std::vector<string> &strlist);
+  void _spiltStr(std::string str, const std::string &split, std::vector<std::string> &strlist);
 
   std::unique_ptr<MPCOperator> mpc_op_exec_{nullptr};
 
@@ -105,7 +106,7 @@ private:
   std::string platform_type_{""};
 
   template <class T>
-  void replaceValue(map<std::string, uint32_t>::iterator &iter,
+  void replaceValue(std::map<std::string, uint32_t>::iterator &iter,
                     std::shared_ptr<arrow::Table> &table, int &col_index,
                     T &col_value,
                     std::vector<std::vector<unsigned int>> &abnormal_index,

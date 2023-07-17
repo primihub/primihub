@@ -22,7 +22,7 @@
 #include <iostream>
 #include <limits>
 
-#include "src/primihub/common/type/fixed_point.h"
+// #include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
@@ -37,17 +37,17 @@ using arrow::Table;
 using namespace rapidjson;
 
 namespace primihub {
-void MissingProcess::_spiltStr(string str, const string &split,
-                               std::vector<string> &strlist) {
+void MissingProcess::_spiltStr(std::string str, const std::string &split,
+                               std::vector<std::string> &strlist) {
   strlist.clear();
   if (str == "")
     return;
-  string strs = str + split;
+  std::string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
 
   while (pos != strs.npos) {
-    string temp = strs.substr(0, pos);
+    std::string temp = strs.substr(0, pos);
     strlist.push_back(temp);
     strs = strs.substr(pos + steps, strs.size());
     pos = strs.find(split);
@@ -111,8 +111,9 @@ void MissingProcess::_buildNewColumn(std::vector<std::string> &col_val,
                                      std::shared_ptr<arrow::Array> &array) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::StringBuilder builder(pool);
-  for (auto i = 0; i < col_val.size(); i++)
+  for (size_t i = 0; i < col_val.size(); i++) {
     builder.Append(col_val[i]);
+  }
 
   builder.Finish(&array);
 }
@@ -156,13 +157,13 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
   if (need_double) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::DoubleBuilder builder(pool);
-    for (auto i = 0; i < new_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_col_val[0].size(); i++)
       builder.Append(std::stod(new_col_val[0][i]));
     builder.Finish(&new_array);
   } else {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::Int64Builder builder(pool);
-    for (auto i = 0; i < new_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_col_val[0].size(); i++)
       builder.Append(std::stoll(new_col_val[0][i]));
     builder.Finish(&new_array);
   }
@@ -236,13 +237,13 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
   if (need_double) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::DoubleBuilder builder(pool);
-    for (auto i = 0; i < new_double_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_double_col_val[0].size(); i++)
       builder.Append(new_double_col_val[0][i]);
     builder.Finish(&new_array);
   } else {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::Int64Builder builder(pool);
-    for (auto i = 0; i < new_int_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_int_col_val[0].size(); i++)
       builder.Append(new_int_col_val[0][i]);
     builder.Finish(&new_array);
   }
@@ -267,7 +268,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
 
   auto iter = node_map.find(config.node_id); // node_id
   if (iter == node_map.end()) {
-    stringstream ss;
+    std::stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
     throw std::runtime_error(ss.str());
   }
@@ -514,7 +515,7 @@ int MissingProcess::execute() {
       }
     }
 
-    for (uint64_t i = 0; i < cols_0; i++) {
+    for (int i = 0; i < cols_0; i++) {
       if ((arr_dtype0[i] != arr_dtype1[i]) ||
           (arr_dtype0[i] != arr_dtype2[i]) ||
           (arr_dtype1[i] != arr_dtype2[i])) {
@@ -592,7 +593,7 @@ int MissingProcess::execute() {
             int_count = table->num_rows() - db_both_index[iter->first].size();
           } else {
             for (int k = 0; k < chunk_num; k++) {
-              auto str_array = static_pointer_cast<StringArray>(
+              auto str_array = std::static_pointer_cast<StringArray>(
                   table->column(col_index)->chunk(k));
 
               // Detect string that can't convert into int64_t value.
@@ -727,7 +728,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
             LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
@@ -738,7 +739,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (mpc_res[i]) {
                 flag = 1;
@@ -764,7 +765,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -773,7 +774,7 @@ int MissingProcess::execute() {
 
             si64Matrix sh_max;
             sh_max.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // max is p2
               if (mpc_res2[i]) {
                 flag = 2;
@@ -829,7 +830,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
 
@@ -842,7 +843,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (mpc_res[i]) {
                 flag = 1;
@@ -870,7 +871,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -879,7 +880,7 @@ int MissingProcess::execute() {
 
             sf64Matrix<myD> sh_max;
             sh_max.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // max is p2
               if (mpc_res2[i]) {
                 flag = 2;
@@ -938,7 +939,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
             LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
@@ -949,7 +950,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (!mpc_res[i]) {
                 flag = 1;
@@ -975,7 +976,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -985,7 +986,7 @@ int MissingProcess::execute() {
             si64Matrix sh_min;
             sh_min.resize(m.rows(), m.cols());
 
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // min is p2
               if (!mpc_res2[i]) {
                 flag = 2;
@@ -1042,7 +1043,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
 
@@ -1055,7 +1056,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0>=p1
               if (!mpc_res[i]) {
                 flag = 1;
@@ -1083,13 +1084,13 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
             sf64Matrix<myD> sh_min;
             sh_min.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // min is p2
               if (!mpc_res2[i]) {
                 flag = 2;
@@ -1354,11 +1355,9 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
       break;
     }
 
-    if (errors)
-      return -1;
 
-    return array_len;
   }
+  return errors ? -1 : array_len;
 }
 
 int MissingProcess::_LoadDatasetFromDB(std::string &source) {
@@ -1379,7 +1378,7 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
   int num_col = table->num_columns();
 
   local_col_names = table->ColumnNames();
-  for (auto i = 0; i < local_col_names.size(); i++)
+  for (size_t i = 0; i < local_col_names.size(); i++)
     LOG(INFO) << local_col_names[i];
   // 'array' include values in a column of csv file.
   int chunk_num = table->column(num_col - 1)->chunks().size();
@@ -1412,11 +1411,8 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
       break;
     }
 
-    if (errors)
-      return -1;
-
-    return array_len;
   }
+  return errors ? -1 : array_len;
 }
 
 int MissingProcess::set_task_info(std::string platform_type, std::string job_id,

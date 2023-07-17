@@ -40,7 +40,7 @@ static void run_mpc(uint64_t party_id, std::string ip, uint16_t next_port,
     if (party_id == 0) {
       i64Matrix tmp;
       tmp = mpc_exec->reveal(sh_res);
-      for (size_t i = 0; i < tmp.rows(); i++)
+      for (i64 i = 0; i < tmp.rows(); i++)
         cmp_res.emplace_back(static_cast<bool>(tmp(i, 0)));
     } else {
       mpc_exec->reveal(sh_res, 0);

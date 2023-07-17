@@ -1,12 +1,15 @@
-#ifndef __MPC_STATISTICS_H__
-#define __MPC_STATISTICS_H__
+// "Copyright [2023] <Primihub>"
+#ifndef SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
+#define SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
+#include <string>
+#include <vector>
+#include <map>
+#include <memory>
 
 #include "src/primihub/algorithm/base.h"
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/type.h"
+#include "src/primihub/common/type.h"
 #include "src/primihub/operator/aby3_operator.h"
 #include "src/primihub/executor/statistics.h"
-#include <string>
 
 #ifndef MPC_SOCKET_CHANNEL
 using primihub::ColumnDtype;
@@ -15,7 +18,7 @@ using MPCStatisticsType = primihub::MPCStatisticsOperator::MPCStatisticsType;
 
 namespace primihub {
 class MPCStatisticsExecutor : public AlgorithmBase {
-public:
+ public:
   explicit MPCStatisticsExecutor(
       PartyConfig &config, std::shared_ptr<DatasetService> dataset_service);
 
@@ -28,7 +31,7 @@ public:
   int finishPartyComm() override;
   int saveModel() override;
 
-private:
+ private:
   retcode _parseColumnName(const std::string &json_str);
   retcode _parseColumnDtype(const std::string &json_str);
 
@@ -60,5 +63,5 @@ private:
 #endif
   ABY3PartyConfig party_config_;
 };
-}; // namespace primihub
-#endif
+}  // namespace primihub
+#endif  // SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_

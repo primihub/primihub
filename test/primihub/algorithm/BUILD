@@ -76,7 +76,7 @@ cc_test(
       "-maes",
     ],
     deps = DEFAULT_ALGORITHM_LINK_DEPS + [
-        "//src/primihub/algorithm:cryptflow2_algorithm_lib",
+        #"//src/primihub/algorithm:cryptflow2_algorithm_lib",
     ]
 )
 

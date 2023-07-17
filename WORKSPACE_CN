@@ -438,8 +438,21 @@ git_repository(
 git_repository(
   name = "ladnir_cryptoTools",
   #branch = "bazel_branch",
-  commit = "c3fb58a11f6ac1fc2cd4d8c62c081e13987deef8",
+  commit = "f83f2b29ae0f1c32dfc948568e4227a73eb02883",
   remote = "https://gitee.com/primihub/cryptoTools.git",
+)
+
+#git_repository(
+#  name = "com_github_ladnir_aby3",
+#  #branch = "bazel_branch",
+#  commit = "f83f2b29ae0f1c32dfc948568e4227a73eb02883",
+#  remote = "https://gitee.com/primihub/cryptoTools.git",
+#)
+
+#TODO
+local_repository(
+  name = "com_github_ladnir_aby3",
+  path = "/home/cuibo/workspace/aby3_migrate/aby3",
 )
 
 # libote
@@ -587,12 +600,14 @@ git_repository(
   remote = "https://gitee.com/primihub/cpp-base64.git",
 )
 
-# for libp2p
-new_git_repository(
-  name = "com_github_microsoft_gsl_v2_0_0",
-  build_file = "//bazel:BUILD.gsl_v_2_0_0",
-  tag = "v2.0.0",
-  remote = "https://gitee.com/mirrors_microsoft/GSL.git",
+http_archive(
+  name = "com_github_microsoft_gsl",
+  build_file = "//bazel:BUILD.gsl",
+  sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
+  strip_prefix = "GSL-4.0.0",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/SEAL-4.1.1.tar.gz"
+  ],
 )
 
 #python include

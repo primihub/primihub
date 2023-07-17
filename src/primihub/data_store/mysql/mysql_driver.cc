@@ -127,7 +127,7 @@ MySQLCursor::MySQLCursor(const std::string& sql, std::shared_ptr<MySQLDriver> dr
   this->sql_ = sql;
   this->driver_ = driver;
   auto& schema = this->driver_->dataSetAccessInfo()->Schema();
-  for (int i = 0; i < schema.size(); i++) {
+  for (size_t i = 0; i < schema.size(); i++) {
     selected_column_index_.push_back(i);
   }
 }

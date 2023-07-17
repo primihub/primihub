@@ -19,10 +19,10 @@
 
 #include <string>
 #include "src/primihub/service/dataset/service.h"
-#include "src/primihub/protos/common.grpc.pb.h"
+#include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/network/link_context.h"
-#include "src/primihub/util/network/socket/session.h"
-
+#include "cryptoTools/Network/Session.h"
+#include "src/primihub/common/party_config.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
@@ -36,6 +36,7 @@ struct ABY3PartyConfig {
 
   retcode Init(const PartyConfig& config) {
     party_config.CopyFrom(config);
+    return retcode::SUCCESS;
   }
   uint16_t NextPartyId() {
     return (SelfPartyId() + 1) % ABY3_TOTAL_PARTY_NUM;

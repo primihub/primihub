@@ -27,13 +27,6 @@ cc_library(
 )
 
 cc_library(
-    name = "network_lib",
-    deps = [
-        "//src/primihub/util/network/socket:network_lib",
-    ]
-)
-
-cc_library(
   name = "message_exchange_interface",
   hdrs = ["message_interface.h"],
   srcs = ["message_interface.cc"],
@@ -53,6 +46,7 @@ cc_library(
     "//src/primihub/util:threadsafe_queue",
     "//src/primihub/common:common_lib",
     "//src/primihub/util:util_lib",
+    "@ladnir_cryptoTools//:libcryptoTools",
   ],
 )
 

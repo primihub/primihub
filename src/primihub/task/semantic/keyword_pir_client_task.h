@@ -22,7 +22,7 @@
 #include "apsi/match_record.h"
 #include "apsi/util/csv_reader.h"
 #include "src/primihub/task/semantic/task.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "apsi/receiver.h"
 
 using apsi::Item;

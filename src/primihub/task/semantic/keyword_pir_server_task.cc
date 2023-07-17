@@ -31,7 +31,7 @@
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/util/util.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 

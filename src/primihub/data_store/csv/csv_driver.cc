@@ -40,7 +40,7 @@ retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
   int64_t i;
   new_data->clear();
   if (origin_data.empty()) {
-    retcode::SUCCESS;
+    return retcode::SUCCESS;
   }
   auto data = reinterpret_cast<const uint8_t*>(origin_data.data());
   size_t size = origin_data.size();

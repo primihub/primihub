@@ -1,32 +1,37 @@
-
+// "Copyright [2021] <Primihub>"
+#include <memory>
 #include "src/primihub/algorithm/aby3ML.h"
 
 namespace primihub {
 #ifdef MPC_SOCKET_CHANNEL
-void aby3ML::init(u64 partyIdx, Session& prev, Session& next,
-  block seed) {
-  mPreproPrev = prev.addChannel();
-  mPreproNext = next.addChannel();
+void aby3ML::init(u64 partyIdx, Session& prev,
+                  Session& next, block seed) {
+  // mPreproPrev = prev.addChannel();
+  // mPreproNext = next.addChannel();
   mPrev = prev.addChannel();
   mNext = next.addChannel();
 
-  auto commPtr = std::make_shared<CommPkg>(mPrev, mNext);
+  // auto commPtr = std::make_shared<CommPkg>(mPrev, mNext);
+  comm_pkg_.mNext = next.addChannel();
+  comm_pkg_.mPrev = prev.addChannel();
+  mRt.init(partyIdx, comm_pkg_);
 
-  mRt.init(partyIdx, commPtr);
-
-  PRNG prng(seed);
-  mEnc.init(partyIdx, *commPtr.get(), prng.get<block>());
-  mEval.init(partyIdx, *commPtr.get(), prng.get<block>());
+  osuCrypto::PRNG prng(seed);
+  mEnc.init(partyIdx, comm_pkg_, prng.get<block>());
+  mEval.init(partyIdx, comm_pkg_, prng.get<block>());
 }
 
 void aby3ML::fini(void) {
-  mPreproPrev.close();
-  mPreproNext.close();
+  // mPreproPrev.close();
+  // mPreproNext.close();
   mPrev.close();
   mNext.close();
+  comm_pkg_.mNext.close();
+  comm_pkg_.mPrev.close();
 }
 #else
-void aby3ML::init(u64 partyIdx, MpcChannel &prev, MpcChannel &next, block seed) {
+void aby3ML::init(u64 partyIdx, MpcChannel &prev,
+                  MpcChannel &next, block seed) {
   mNext = next;
   mPrev = prev;
 
