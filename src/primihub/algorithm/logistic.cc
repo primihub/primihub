@@ -24,6 +24,8 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
+#include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/network/link_context.h"
 
 using namespace std;
 using namespace Eigen;
@@ -31,7 +33,6 @@ using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
 using arrow::Table;
-
 namespace primihub {
 eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
                               sf64Matrix<D> &train_label_0_1,
@@ -115,9 +116,8 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
     prev_addr_ =
         std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
   }
-#else
-  this->party_config_.CopyFrom(config);
 #endif
+  this->party_config_.CopyFrom(config);
 
   // Key when save model.
   std::stringstream ss;
@@ -304,101 +304,147 @@ int LogisticRegressionExecutor::initPartyComm(void) {
   VLOG(3) << "Prev addr: " << prev_addr_.first << ":" << prev_addr_.second
           << ".";
 
-  if (local_id_ == 0) {
-    std::ostringstream ss;
-    ss << "sess_" << local_id_ << "_1";
-    std::string sess_name_1 = ss.str();
+  // if (local_id_ == 0) {
+  //   std::ostringstream ss;
+  //   ss << "sess_" << local_id_ << "_1";
+  //   std::string sess_name_1 = ss.str();
 
-    ss.str("");
-    ss << "sess_" << local_id_ << "_2";
-    std::string sess_name_2 = ss.str();
+  //   ss.str("");
+  //   ss << "sess_" << local_id_ << "_2";
+  //   std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
+  //   ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+  //                  SessionMode::Server, sess_name_1);
+  //   LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
+  //             << "ip " << next_addr_.first << ", port " << next_addr_.second
+  //             << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Server, sess_name_2);
-    LOG(INFO) << "[Prev] Init server session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
-  } else if (local_id_ == 1) {
-    std::ostringstream ss;
-    ss << "sess_" << local_id_ << "_1";
-    std::string sess_name_1 = ss.str();
-    ss.str("");
+  //   ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+  //                  SessionMode::Server, sess_name_2);
+  //   LOG(INFO) << "[Prev] Init server session, party " << local_id_ << ", "
+  //             << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+  //             << ", name " << sess_name_2 << ".";
+  // } else if (local_id_ == 1) {
+  //   std::ostringstream ss;
+  //   ss << "sess_" << local_id_ << "_1";
+  //   std::string sess_name_1 = ss.str();
+  //   ss.str("");
 
-    ss << "sess_" << PrevPartyId() << "_1";
-    std::string sess_name_2 = ss.str();
+  //   ss << "sess_" << PrevPartyId() << "_1";
+  //   std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
+  //   ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+  //                  SessionMode::Server, sess_name_1);
+  //   LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
+  //             << "ip " << next_addr_.first << ", port " << next_addr_.second
+  //             << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
-  } else {
-    std::ostringstream ss;
-    ss.str("");
-    ss << "sess_" << this->NextPartyId() << "_2";
-    std::string sess_name_1 = ss.str();
+  //   ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+  //                  SessionMode::Client, sess_name_2);
+  //   LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
+  //             << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+  //             << ", name " << sess_name_2 << ".";
+  // } else {
+  //   std::ostringstream ss;
+  //   ss.str("");
+  //   ss << "sess_" << this->NextPartyId() << "_2";
+  //   std::string sess_name_1 = ss.str();
 
-    ss.str("");
-    ss << "sess_" << this->PrevPartyId() << "_1";
-    std::string sess_name_2 = ss.str();
+  //   ss.str("");
+  //   ss << "sess_" << this->PrevPartyId() << "_1";
+  //   std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Client, sess_name_1);
-    LOG(INFO) << "[Next] Init client session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
+  //   ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+  //                  SessionMode::Client, sess_name_1);
+  //   LOG(INFO) << "[Next] Init client session, party " << local_id_ << ", "
+  //             << "ip " << next_addr_.first << ", port " << next_addr_.second
+  //             << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
+  //   ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+  //                  SessionMode::Client, sess_name_2);
+  //   LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
+  //             << "ip " << prev_addr_.first << ", port " << prev_addr_.second
+  //             << ", name " << sess_name_2 << ".";
+  // }
+
+  // auto chann_next = ep_next_.addChannel();
+  // auto chann_prev = ep_prev_.addChannel();
+
+  // chann_next.waitForConnection();
+  // chann_prev.waitForConnection();
+
+  // chann_next.send(local_id_);
+  // chann_prev.send(local_id_);
+
+  // uint16_t prev_party = 0;
+  // uint16_t next_party = 0;
+  // chann_next.recv(next_party);
+  // chann_prev.recv(prev_party);
+
+  // if (next_party != this->NextPartyId()) {
+  //   LOG(ERROR) << "Party " << local_id_ << ", expect next party id "
+  //              << this->NextPartyId() << ", but give " << next_party << ".";
+  //   return -3;
+  // }
+
+  // if (prev_party != this->PrevPartyId()) {
+  //   LOG(ERROR) << "Party " << local_id_ << ", expect prev party id "
+  //              << this->PrevPartyId() << ", but give " << prev_party << ".";
+  //   return -3;
+  // }
+
+  // chann_next.close();
+  // chann_prev.close();
+
+  // engine_.init(local_id_, ep_prev_, ep_next_, oc::toBlock(local_id_));
+  uint16_t prev_party_id = this->PrevPartyId();
+  uint16_t next_party_id = this->NextPartyId();
+  auto link_ctx = this->GetLinkContext();
+  if (link_ctx == nullptr) {
+    LOG(ERROR) << "link context is not available";
+    return -1;
   }
+  auto& party_id_map = party_config_.PartyId2PartyNameMap();
+  auto& party_info_map = party_config_.PartyName2PartyInfoMap();
 
-  auto chann_next = ep_next_.addChannel();
-  auto chann_prev = ep_prev_.addChannel();
+  // construct channel for communication to next party
+  std::string party_name_next = party_id_map[next_party_id];
+  auto pb_party_node_next = party_info_map[party_name_next];
+  Node party_node_next;
+  pbNode2Node(pb_party_node_next, &party_node_next);
+  auto base_channel_next = link_ctx->getChannel(party_node_next);
 
-  chann_next.waitForConnection();
-  chann_prev.waitForConnection();
+  // construct channel for communication to prev party
+  std::string party_name_prev = party_id_map[prev_party_id];
+  auto pb_party_node_prev = party_info_map[party_name_prev];
+  Node party_node_prev;
+  pbNode2Node(pb_party_node_prev, &party_node_prev);
+  auto base_channel_prev = link_ctx->getChannel(party_node_prev);
 
-  chann_next.send(local_id_);
-  chann_prev.send(local_id_);
+  std::string job_id = link_ctx->job_id();
+  std::string task_id = link_ctx->task_id();
+  std::string request_id = link_ctx->request_id();
+  LOG(INFO) << "local_id_local_id_: " << local_id_;
+  LOG(INFO) << "next_party: " << party_name_next << " detail: " << party_node_next.to_string();
+  LOG(INFO) << "prev_party: " << party_name_prev << " detail: " << party_node_prev.to_string();
+  LOG(INFO) << "job_id: " << job_id << " task_id: " << task_id << " request id: " << request_id;
+  // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
+  // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
 
-  uint16_t prev_party = 0;
-  uint16_t next_party = 0;
-  chann_next.recv(next_party);
-  chann_prev.recv(prev_party);
+  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
+      job_id, task_id, request_id, this->party_name(),
+      party_name_prev, link_ctx, base_channel_prev);
 
-  if (next_party != this->NextPartyId()) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect next party id "
-               << this->NextPartyId() << ", but give " << next_party << ".";
-    return -3;
-  }
+  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
+      job_id, task_id, request_id, this->party_name(),
+      party_name_next, link_ctx, base_channel_next);
 
-  if (prev_party != this->PrevPartyId()) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect prev party id "
-               << this->PrevPartyId() << ", but give " << prev_party << ".";
-    return -3;
-  }
-
-  chann_next.close();
-  chann_prev.close();
-
-  engine_.init(local_id_, ep_prev_, ep_next_, oc::toBlock(local_id_));
-  LOG(INFO) << "Init party: " << local_id_ << " communication finish.";
-
+  osuCrypto::Channel chl_prev(ios_, msg_interface_prev.release());
+  osuCrypto::Channel chl_next(ios_, msg_interface_next.release());
+  auto com_pkg = std::make_unique<aby3::CommPkg>();
+  com_pkg->mPrev = std::move(chl_prev);
+  com_pkg->mNext = std::move(chl_next);
+  engine_.init(local_id_, std::move(com_pkg), oc::toBlock(local_id_));
   return 0;
 }
 #else
@@ -443,8 +489,8 @@ int LogisticRegressionExecutor::initPartyComm(void) {
 
 #ifdef MPC_SOCKET_CHANNEL
 int LogisticRegressionExecutor::finishPartyComm(void) {
-  ep_next_.stop();
-  ep_prev_.stop();
+  // ep_next_.stop();
+  // ep_prev_.stop();
   engine_.fini();
   return 0;
 }

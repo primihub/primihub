@@ -192,7 +192,7 @@ VMNodeImpl::~VMNodeImpl() {
 
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
-    VLOG(5) << "VMNodeImpl::Send: received";
+    VLOG(5) << "VMNodeImpl::Send: begin to receive data...";
     bool recv_meta_info{false};
     std::string job_id;
     std::string task_id;
@@ -252,9 +252,10 @@ Status VMNodeImpl::Send(ServerContext* context,
       response->set_msg_info(std::move(err_msg));
       return Status::OK;
     }
+    size_t data_size = received_data.size();
     auto& recv_queue = link_ctx->GetRecvQueue(role);
     recv_queue.push(std::move(received_data));
-    VLOG(5) << "end of VMNodeImpl::Send";
+    VLOG(5) << "end of VMNodeImpl::Send, data total received size:" << data_size;
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
     return Status::OK;
 }

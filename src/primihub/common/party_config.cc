@@ -32,6 +32,7 @@ void PartyConfig::CopyFrom(const PartyConfig& config) {
   this->node_id = config.node_id;
   this->task_id = config.task_id;
   this->job_id = config.job_id;
+  this->request_id = config.request_id;
   this->party_id_ = config.party_id_;
   this->node_id_map = config.node_id_map;
   this->node_map = config.node_map;

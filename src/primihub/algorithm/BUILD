@@ -25,6 +25,7 @@ cc_library(
   deps = [
     "@com_github_ladnir_aby3//aby3:aby3_lib",
     "@ladnir_cryptoTools//:libcryptoTools",
+    "@com_github_glog_glog//:glog",
   ],
 )
 
@@ -95,7 +96,7 @@ cc_library(
     ":plain_ml",
     ":regression",
     "//src/primihub/service:dataset_service",
-    "//src/primihub/util/network:communication_lib",
+    "//src/primihub/util/network:message_exchange_interface",
     "@ladnir_cryptoTools//:libcryptoTools",
     "@arrow",
     "@com_github_glog_glog//:glog",

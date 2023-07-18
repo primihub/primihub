@@ -40,11 +40,9 @@ using namespace aby3;   // NOLINT
 class aby3ML {
  public:
 #ifdef MPC_SOCKET_CHANNEL
-  Channel mPreproNext;
-  Channel mPreproPrev;
-  Channel mNext;
-  Channel mPrev;
-  aby3::CommPkg comm_pkg_;
+  // Channel mNext;
+  // Channel mPrev;
+  std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
 #else
   MpcChannel mNext;
   MpcChannel mPrev;
@@ -61,6 +59,7 @@ class aby3ML {
 
 #ifdef MPC_SOCKET_CHANNEL
   void init(u64 partyIdx, Session& prev, Session& next, block seed);
+  void init(u64 partyIdx, std::unique_ptr<aby3::CommPkg> comm_pkg, block seed);
 #else
   void init(u64 partyIdx, MpcChannel &prev, MpcChannel &next, block seed);
 #endif
@@ -69,6 +68,8 @@ class aby3ML {
 
   template<Decimal D>
   sf64Matrix<D> localInput(const f64Matrix<D>& val) {
+    auto& mNext = comm_pkg_->mNext;
+    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size{ val.rows(), val.cols() };
     mNext.asyncSendCopy(size);
     mPrev.asyncSendCopy(size);
@@ -86,6 +87,8 @@ class aby3ML {
   }
 
   void localInputSize(const eMatrix<double>& val) {
+    auto& mNext = comm_pkg_->mNext;
+    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size{
       static_cast<u64>(val.rows()),
       static_cast<u64>(val.cols())
@@ -112,6 +115,8 @@ class aby3ML {
 
   template<Decimal D>
   sf64Matrix<D> remoteInput(u64 partyIdx) {
+    auto& mNext = comm_pkg_->mNext;
+    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size;
     if (partyIdx == (mRt.mPartyIdx + 1) % 3)
       mNext.recv(size);
@@ -134,6 +139,8 @@ class aby3ML {
   }
 
   std::array<u64, 2> remoteInputSize(u64 partyIdx) {
+    auto& mNext = comm_pkg_->mNext;
+    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size;
     if (partyIdx == (mRt.mPartyIdx + 1) % 3)
       mNext.recv(size);

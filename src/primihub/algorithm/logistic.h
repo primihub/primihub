@@ -35,13 +35,7 @@
 #include "src/primihub/algorithm/linear_model_gen.h"
 #include "src/primihub/algorithm/plainML.h"
 #include "src/primihub/algorithm/regression.h"
-// #include "src/primihub/common/clp.h"
-// #include "src/primihub/common/common.h"
-// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
-// #include "src/primihub/util/network/socket/channel.h"
-// #include "src/primihub/util/network/socket/ioservice.h"
-// #include "src/primihub/util/network/socket/session.h"
 #include "cryptoTools/Network/Session.h"
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Channel.h"
@@ -101,9 +95,8 @@ private:
   Session ep_next_;
   Session ep_prev_;
   IOService ios_;
-#else
-  PartyConfig party_config_;
 #endif
+  PartyConfig party_config_;
 
   // Logistic regression parameters
   std::string train_input_filepath_, test_input_filepath_;
