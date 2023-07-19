@@ -435,41 +435,28 @@ git_repository(
   remote = "https://gitee.com/primihub/libPSI.git",
 )
 
-#git_repository(
-#  name = "ladnir_cryptoTools",
-#  #branch = "bazel_branch",
-#  commit = "f83f2b29ae0f1c32dfc948568e4227a73eb02883",
-#  remote = "https://gitee.com/primihub/cryptoTools.git",
-#)
-
-local_repository(
+git_repository(
   name = "ladnir_cryptoTools",
-  path = "/home/cuibo/workspace/aby3_migrate/cryptoTools",
+  # branch = "bazel_branch",
+  commit = "53026be7bf1f12cb572c3d8ef9c7ee1a21742360",
+  remote = "https://gitee.com/primihub/cryptoTools.git",
 )
 
-#git_repository(
-#  name = "com_github_ladnir_aby3",
-#  #branch = "bazel_branch",
-#  commit = "f83f2b29ae0f1c32dfc948568e4227a73eb02883",
-#  remote = "https://gitee.com/primihub/cryptoTools.git",
-#)
-
-#TODO
-local_repository(
+git_repository(
   name = "com_github_ladnir_aby3",
-  path = "/home/cuibo/workspace/aby3_migrate/aby3",
+  # branch = "bazel_branch",
+  commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
+  # remote = "https://gitee.com/primihub/cryptoTools.git",
+  remote = "https://github.com/primihub/aby3.git",
 )
-local_repository(
-  name = "osu_libote",
-  path = "/home/cuibo/workspace/aby3_migrate/libOTe",
-)
+
 # libote
-#git_repository(
-#  name = "osu_libote",
-#  #branch = "bazel_branch",
-#  commit = "b1f83ced131c58e565dbd47a5166bd9904ffdd83",
-#  remote = "https://gitee.com/primihub/libOTe.git",
-#)
+git_repository(
+  name = "osu_libote",
+  # branch = "bazel_branch",
+  commit = "d797f316d94b2931505f1862515b6e161a24cacb",
+  remote = "https://gitee.com/primihub/libOTe.git",
+)
 
 new_git_repository(
   name = "github_ntl",

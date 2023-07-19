@@ -659,7 +659,6 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
                                               const std::string &next_ip,
@@ -686,16 +685,14 @@ void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
   party_id_ = party_id;
   return;
 }
-#else
+
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
-                                              MpcChannel &prev,
-                                              MpcChannel &next) {
+                                              std::shared_ptr<aby3::CommPkg> comm_pkg) {
   mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(prev, next);
+  mpc_op_->setup(std::move(comm_pkg));
   party_id_ = party_id;
 }
-#endif
 
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::constructI64Matrix(TokenValue &val,
@@ -1151,13 +1148,19 @@ void MPCExpressExecutor<Dbit>::runMPCDivFP64(TokenValue &val1, TokenValue &val2,
   }
   sf64Matrix<Dbit> *sh_res = new sf64Matrix<Dbit>(val_count, 1);
   if (val1.type != 2 && val2.type != 2) {
+    LOG(ERROR) << "begin mpc_op_->MPC_Div";
     *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
+    LOG(ERROR) << "end mpc_op_->MPC_Div";
   } else {
     if (val1.type == 2) {
+      LOG(ERROR) << "type == 2 begin mpc_op_->MPC_Div";
       *sh_res = mpc_op_->MPC_Div(*p_sh_val1, *p_sh_val2);
+      LOG(ERROR) << "end type == 2 begin mpc_op_->MPC_Div";
     } else {
+      LOG(ERROR) << "type != 2 begin mpc_op_->MPC_Div";
       constfixed = 1.0 / static_cast<double>(constfixed);
       *sh_res = mpc_op_->MPC_Mul_Const(constfixed, *p_sh_val1);
+      LOG(ERROR) << "end type != 2 begin mpc_op_->MPC_Div";
     }
   }
   createTokenValue(sh_res, res);

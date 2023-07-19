@@ -11,10 +11,8 @@
 #include "src/primihub/operator/aby3_operator.h"
 #include "src/primihub/executor/statistics.h"
 
-#ifndef MPC_SOCKET_CHANNEL
 using primihub::ColumnDtype;
 using MPCStatisticsType = primihub::MPCStatisticsOperator::MPCStatisticsType;
-#endif
 
 namespace primihub {
 class MPCStatisticsExecutor : public AlgorithmBase {
@@ -55,13 +53,10 @@ class MPCStatisticsExecutor : public AlgorithmBase {
   std::string node_id_;
   uint16_t party_id_;
   std::map<uint16_t, Node> node_map_;
-#ifndef MPC_SOCKET_CHANNEL
   MPCStatisticsType type_;
   std::unique_ptr<MPCStatisticsOperator> executor_;
-  std::shared_ptr<MpcChannel> channel_1;
-  std::shared_ptr<MpcChannel> channel_2;
-#endif
   ABY3PartyConfig party_config_;
+  oc::IOService ios_;
 };
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_

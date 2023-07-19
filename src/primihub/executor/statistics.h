@@ -2,17 +2,16 @@
 #define _STATISTICS_EXECUTOR_H_
 
 #include "src/primihub/common/common.h"
-// #include "src/primihub/common/type/type.h"
 #include "aby3/sh3/Sh3Types.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/operator/aby3_operator.h"
+#include "src/primihub/common/type.h"
 
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/result.h>
 
 namespace primihub {
-#ifndef MPC_SOCKET_CHANNEL
 class MPCStatisticsOperator {
 public:
   MPCStatisticsOperator() {}
@@ -36,8 +35,8 @@ public:
     return _always_error("Method 'run' not implement.");
   }
 
-  virtual retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                               MpcChannel &prev) {
+  virtual retcode setupChannel(uint16_t party_id,
+                               std::unique_ptr<aby3::CommPkg> comm_pkg) {
     return _always_error("Method 'setupChannel' not implement.");
   }
 
@@ -93,8 +92,8 @@ public:
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
 
-  retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                       MpcChannel &prev) override;
+  retcode setupChannel(uint16_t party_id,
+                       std::unique_ptr<aby3::CommPkg> comm_pkg) override;
 
 private:
   bool use_mpc_div_{false};
@@ -117,8 +116,9 @@ public:
 
   retcode getResult(eMatrix<double> &result) override;
 
-  retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                       MpcChannel &prev) override;
+  retcode setupChannel(uint16_t party_id,
+                       std::unique_ptr<aby3::CommPkg> comm_pkg) override;
+
 private:
   double minValueOfAllParty(double local_min);
   double maxValueOfAllParty(double local_max);
@@ -187,7 +187,6 @@ private:
   MPCStatisticsType type_;
   uint16_t party_id_;
 };
-#endif  // MPC_SOCKET_CHANNEL
 }; // namespace primihub
 
 #endif

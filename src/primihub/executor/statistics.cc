@@ -191,10 +191,10 @@ retcode MPCSumOrAvg::getResult(eMatrix<double> &col_avg) {
   return retcode::SUCCESS;
 }
 
-retcode MPCSumOrAvg::setupChannel(uint16_t party_id, MpcChannel &next,
-                                  MpcChannel &prev) {
+retcode MPCSumOrAvg::setupChannel(uint16_t party_id,
+                               std::unique_ptr<aby3::CommPkg> comm_pkg) {
   mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(next, prev);
+  mpc_op_->setup(std::move(comm_pkg));
   party_id_ = party_id;
 }
 
@@ -452,15 +452,17 @@ retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
     LOG(WARNING) << "Wrong shape of output matrix, reshape it.";
   }
 
-  for (int i = 0; i < result.rows(); i++) result(i, 0) = mpc_result_(i, 0);
+  for (int i = 0; i < result.rows(); i++) {
+    result(i, 0) = mpc_result_(i, 0);
+  }
 
   return retcode::SUCCESS;
 }
 
-retcode MPCMinOrMax::setupChannel(uint16_t party_id, MpcChannel &next,
-                                  MpcChannel &prev) {
+retcode MPCMinOrMax::setupChannel(uint16_t party_id,
+                                  std::unique_ptr<aby3::CommPkg> comm_pkg) {
   mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(next, prev);
+  mpc_op_->setup(std::move(comm_pkg));
   party_id_ = party_id;
 }
 #endif  // MPC_SOCKET_CHANNEL

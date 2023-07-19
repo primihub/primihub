@@ -6,13 +6,6 @@
 #include <random>
 #include <vector>
 
-// #include "src/primihub/common/common.h"
-// #include "src/primihub/common/type/fixed_point.h"
-// #include "src/primihub/protocol/aby3/encryptor.h"
-// #include "src/primihub/protocol/aby3/evaluator/evaluator.h"
-// #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
-// #include "src/primihub/protocol/aby3/sh3_gen.h"
-// #include "src/primihub/util/crypto/prng.h"
 #include "cryptoTools/Common/Defines.h"
 #include "aby3/sh3/Sh3Types.h"
 #include "aby3/sh3/Sh3Encryptor.h"
@@ -21,58 +14,36 @@
 #include "aby3/sh3/Sh3ShareGen.h"
 #include "aby3/sh3/Sh3FixedPoint.h"
 
-#ifdef MPC_SOCKET_CHANNEL
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/Session.h"
-// #include "src/primihub/util/network/socket/channel.h"
-// #include "src/primihub/util/network/socket/session.h"
-#else
-#include "src/primihub/util/network/mpc_channel.h"
-#endif
 
-#ifdef MPC_SOCKET_CHANNEL
 using Channel = osuCrypto::Channel;
 using Session = osuCrypto::Session;
 
-#endif
 namespace primihub {
 using namespace aby3;   // NOLINT
 class aby3ML {
  public:
-#ifdef MPC_SOCKET_CHANNEL
-  // Channel mNext;
-  // Channel mPrev;
   std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
-#else
-  MpcChannel mNext;
-  MpcChannel mPrev;
-#endif
-
   Sh3Encryptor mEnc;
   Sh3Evaluator mEval;
   Sh3Runtime mRt;
   bool mPrint = true;
 
-  u64 partyIdx() {
-    return mRt.mPartyIdx;
-  }
+  u64 partyIdx() { return mRt.mPartyIdx;}
 
-#ifdef MPC_SOCKET_CHANNEL
   void init(u64 partyIdx, Session& prev, Session& next, block seed);
   void init(u64 partyIdx, std::unique_ptr<aby3::CommPkg> comm_pkg, block seed);
-#else
-  void init(u64 partyIdx, MpcChannel &prev, MpcChannel &next, block seed);
-#endif
 
   void fini(void);
+  Channel& mNext() {return comm_pkg_->mNext;}
+  Channel& mPrev() {return comm_pkg_->mPrev;}
 
   template<Decimal D>
   sf64Matrix<D> localInput(const f64Matrix<D>& val) {
-    auto& mNext = comm_pkg_->mNext;
-    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size{ val.rows(), val.cols() };
-    mNext.asyncSendCopy(size);
-    mPrev.asyncSendCopy(size);
+    this->mNext().asyncSendCopy(size);
+    this->mPrev().asyncSendCopy(size);
     sf64Matrix<D> dest(size[0], size[1]);
     mEnc.localFixedMatrix(mRt.noDependencies(), val, dest).get();
     return dest;
@@ -87,22 +58,21 @@ class aby3ML {
   }
 
   void localInputSize(const eMatrix<double>& val) {
-    auto& mNext = comm_pkg_->mNext;
-    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size{
       static_cast<u64>(val.rows()),
       static_cast<u64>(val.cols())
     };
-    mNext.send(size);
-    mPrev.send(size);
+    this->mNext().send(size);
+    this->mPrev().send(size);
     return;
   }
 
   template<Decimal D>
   sf64Matrix<D> localInput(const eMatrix<double>& vals) {
     f64Matrix<D> v2(vals.rows(), vals.cols());
-    for (i64 i = 0; i < vals.size(); ++i)
+    for (i64 i = 0; i < vals.size(); ++i) {
       v2(i) = vals(i);
+    }
     return localInput(v2);
   }
 
@@ -115,15 +85,14 @@ class aby3ML {
 
   template<Decimal D>
   sf64Matrix<D> remoteInput(u64 partyIdx) {
-    auto& mNext = comm_pkg_->mNext;
-    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size;
-    if (partyIdx == (mRt.mPartyIdx + 1) % 3)
-      mNext.recv(size);
-    else if (partyIdx == (mRt.mPartyIdx + 2) % 3)
-      mPrev.recv(size);
-    else
+    if (partyIdx == (mRt.mPartyIdx + 1) % 3) {
+      this->mNext().recv(size);
+    } else if (partyIdx == (mRt.mPartyIdx + 2) % 3) {
+      this->mPrev().recv(size);
+    } else {
       throw RTE_LOC;
+    }
 
     sf64Matrix<D> dest(size[0], size[1]);
     mEnc.remoteFixedMatrix(mRt.noDependencies(), dest).get();
@@ -139,16 +108,14 @@ class aby3ML {
   }
 
   std::array<u64, 2> remoteInputSize(u64 partyIdx) {
-    auto& mNext = comm_pkg_->mNext;
-    auto& mPrev = comm_pkg_->mPrev;
     std::array<u64, 2> size;
-    if (partyIdx == (mRt.mPartyIdx + 1) % 3)
-      mNext.recv(size);
-    else if (partyIdx == (mRt.mPartyIdx + 2) % 3)
-      mPrev.recv(size);
-    else
+    if (partyIdx == (mRt.mPartyIdx + 1) % 3) {
+      this->mNext().recv(size);
+    } else if (partyIdx == (mRt.mPartyIdx + 2) % 3) {
+      this->mPrev().recv(size);
+    } else {
       throw RTE_LOC;
-
+    }
     return size;
   }
 
@@ -162,8 +129,9 @@ class aby3ML {
     mEnc.revealAll(mRt.noDependencies(), vals, temp).get();
 
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (i64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i) {
       ret(i) = static_cast<double>(temp(i));
+    }
     return ret;
   }
 

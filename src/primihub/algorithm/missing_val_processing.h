@@ -64,28 +64,12 @@ private:
   std::string job_id_{""};
   std::string task_id_{""};
 
-#ifdef MPC_SOCKET_CHANNEL
   IOService ios_;
   Session ep_next_;
   Session ep_prev_;
   std::string next_ip_{""}, prev_ip_{""};
   uint16_t next_port_{0}, prev_port_{0};
-#else
   ABY3PartyConfig party_config_;
-  uint16_t local_party_id_{0};
-  uint16_t next_party_id_{0};
-  uint16_t prev_party_id_{0};
-
-  primihub::Node local_node_;
-
-  std::shared_ptr<network::IChannel> base_channel_next_{nullptr};
-  std::shared_ptr<network::IChannel> base_channel_prev_{nullptr};
-
-  std::shared_ptr<MpcChannel> mpc_channel_next_{nullptr};
-  std::shared_ptr<MpcChannel> mpc_channel_prev_{nullptr};
-
-  std::map<uint16_t, primihub::Node> partyid_node_map_;
-#endif
 
   std::map<std::string, uint32_t> col_and_dtype_;
   std::vector<std::string> local_col_names;

@@ -86,7 +86,6 @@ private:
   eMatrix<double> train_input_;
   eMatrix<double> test_input_;
   eMatrix<double> model_;
-
   aby3ML engine_;
 
 #ifdef MPC_SOCKET_CHANNEL
@@ -94,13 +93,15 @@ private:
   std::pair<std::string, uint16_t> prev_addr_;
   Session ep_next_;
   Session ep_prev_;
-  IOService ios_;
 #endif
+  oc::IOService ios_;
   PartyConfig party_config_;
 
   // Logistic regression parameters
-  std::string train_input_filepath_, test_input_filepath_;
-  int batch_size_, num_iter_;
+  std::string train_input_filepath_;
+  std::string test_input_filepath_;
+  int batch_size_;
+  int num_iter_;
 };
 
 } // namespace primihub

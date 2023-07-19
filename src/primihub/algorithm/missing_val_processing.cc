@@ -27,6 +27,7 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/network/message_interface.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -251,7 +252,7 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
 
 MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+                               : AlgorithmBase(dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
   this->set_party_name(config.party_name());
   this->set_party_id(config.party_id());
@@ -266,7 +267,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
     party_id_node_map[party_id] = node;
   }
 
-  auto iter = node_map.find(config.node_id); // node_id
+  auto iter = node_map.find(config.node_id);  // node_id
   if (iter == node_map.end()) {
     std::stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
@@ -306,9 +307,9 @@ MissingProcess::MissingProcess(PartyConfig &config,
   }
 
   node_id_ = config.node_id;
-#else
-  party_config_.Init(config);
 #endif
+  party_config_.Init(config);
+  party_id_ = party_config_.SelfPartyId();
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
@@ -410,7 +411,6 @@ int MissingProcess::initPartyComm(void) {
 
   mpc_op_exec_ = std::make_unique<MPCOperator>(party_id_, next_name, prev_name);
   mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-
   return 0;
 }
 #else
@@ -423,20 +423,29 @@ int MissingProcess::initPartyComm(void) {
   // construct channel for next party
   std::string next_party_name = this->party_config_.NextPartyName();
   auto next_party_info = this->party_config_.NextPartyInfo();
-  base_channel_next_ = link_ctx->getChannel(next_party_info);
+  auto base_channel_next = link_ctx->getChannel(next_party_info);
 
   // construct channel for prev party
   auto prev_party_name = this->party_config_.PrevPartyName();
   auto prev_party_info = this->party_config_.PrevPartyInfo();
-  base_channel_prev_ = link_ctx->getChannel(prev_party_info);
+  auto base_channel_prev = link_ctx->getChannel(prev_party_info);
 
-  mpc_channel_next_ = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
-  mpc_channel_prev_ = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
 
-  mpc_channel_next_->SetupBaseChannel(next_party_name, base_channel_next_);
-  mpc_channel_prev_->SetupBaseChannel(prev_party_name, base_channel_prev_);
+  // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
+  // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
+  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
+      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
+      prev_party_name, link_ctx, base_channel_prev);
+
+  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
+      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
+      next_party_name, link_ctx, base_channel_next);
+
+  osuCrypto::Channel chl_prev(ios_, msg_interface_prev.release());
+  osuCrypto::Channel chl_next(ios_, msg_interface_next.release());
+  auto com_pkg = std::make_shared<aby3::CommPkg>();
+  com_pkg->mPrev = std::move(chl_prev);
+  com_pkg->mNext = std::move(chl_next);
 
   std::string next_name = "fake_next";
   std::string prev_name = "fake_prev";
@@ -444,9 +453,9 @@ int MissingProcess::initPartyComm(void) {
   mpc_op_exec_ = std::make_unique<MPCOperator>(
       this->party_config_.SelfPartyId(), next_name.c_str(), prev_name.c_str());
 
-  mpc_op_exec_->setup(*mpc_channel_prev_, *mpc_channel_next_);
+  mpc_op_exec_->setup(com_pkg);
 
-  party_id_ = this->party_config_.SelfPartyId();
+
   LOG(INFO) << "local_id_local_id_: " << party_id_;
   LOG(INFO) << "next_party: " << next_party_name
             << " detail: " << next_party_info.to_string();
@@ -463,13 +472,13 @@ int MissingProcess::execute() {
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
         cols_0 = col_and_dtype_.size();
-        mpc_op_exec_->mNext->asyncSendCopy(cols_0);
-        mpc_op_exec_->mPrev->asyncSendCopy(cols_0);
+        mpc_op_exec_->mNext().asyncSendCopy(cols_0);
+        mpc_op_exec_->mPrev().asyncSendCopy(cols_0);
       } else {
         if (party_id_ == (i + 1) % 3) {
-          mpc_op_exec_->mPrev->recv(cols_2);
+          mpc_op_exec_->mPrev().recv(cols_2);
         } else if (party_id_ == (i + 2) % 3) {
-          mpc_op_exec_->mNext->recv(cols_1);
+          mpc_op_exec_->mNext().recv(cols_1);
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";
@@ -498,13 +507,13 @@ int MissingProcess::execute() {
 
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-        mpc_op_exec_->mNext->asyncSendCopy(arr_dtype0, cols_0);
-        mpc_op_exec_->mPrev->asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mNext().asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mPrev().asyncSendCopy(arr_dtype0, cols_0);
       } else {
         if (party_id_ == (i + 1) % 3) {
-          mpc_op_exec_->mPrev->recv(arr_dtype1, cols_0);
+          mpc_op_exec_->mPrev().recv(arr_dtype1, cols_0);
         } else if (party_id_ == (i + 2) % 3) {
-          mpc_op_exec_->mNext->recv(arr_dtype2, cols_0);
+          mpc_op_exec_->mNext().recv(arr_dtype2, cols_0);
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";

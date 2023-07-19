@@ -4,25 +4,22 @@
 #include <memory>
 namespace primihub {
 
-#ifdef MPC_SOCKET_CHANNEL
-int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
-                       u32 prev_port) {
-  // auto comm = aby3::CommPkg();
+int MPCOperator::setup(std::string next_ip, std::string prev_ip,
+                       u32 next_port, u32 prev_port) {
   Session ep_next_;
   Session ep_prev_;
-
   switch (partyIdx) {
   case 0:
-    ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Server, prev_name);
+    ep_next_.start(ios_, next_ip, next_port, SessionMode::Server, next_name);
+    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Server, prev_name);
 
     VLOG(3) << "Start server session, listen port " << next_port << ".";
     VLOG(3) << "Start server session, listen port " << prev_port << ".";
 
     break;
   case 1:
-    ep_next_.start(ios, next_ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
+    ep_next_.start(ios_, next_ip, next_port, SessionMode::Server, next_name);
+    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Client, prev_name);
 
     VLOG(3) << "Start server session, listen port " << next_port << ".";
     VLOG(3) << "Start client session, connect to " << prev_ip << ":"
@@ -30,8 +27,8 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
 
     break;
   default:
-    ep_next_.start(ios, next_ip, next_port, SessionMode::Client, next_name);
-    ep_prev_.start(ios, prev_ip, prev_port, SessionMode::Client, prev_name);
+    ep_next_.start(ios_, next_ip, next_port, SessionMode::Client, next_name);
+    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Client, prev_name);
 
     VLOG(3) << "Start client session, connect to " << next_ip << ":"
             << next_port << ".";
@@ -41,19 +38,16 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
     break;
   }
 
-  // comm.setNext(ep_next_.addChannel());
-  // comm.setPrev(ep_prev_.addChannel());
-  // comm.mNext().waitForConnection();
-  // comm.mPrev().waitForConnection();
-  comm_.mNext = ep_next_.addChannel();
-  comm_.mPrev = ep_prev_.addChannel();
-  comm_.mNext.send(partyIdx);
-  comm_.mPrev.send(partyIdx);
+  comm_pkg_ = std::make_shared<aby3::CommPkg>();
+  comm_pkg_->mNext = ep_next_.addChannel();
+  comm_pkg_->mPrev = ep_prev_.addChannel();
+  this->mNext().send(partyIdx);
+  this->mPrev().send(partyIdx);
 
   u64 prev_party = 0;
   u64 next_party = 0;
-  comm_.mNext.recv(next_party);
-  comm_.mPrev.recv(prev_party);
+  this->mNext().recv(next_party);
+  this->mPrev().recv(prev_party);
   if (next_party != (partyIdx + 1) % 3) {
     LOG(ERROR) << "Party " << partyIdx << ", expect next party id "
                << (partyIdx + 1) % 3 << ", but give " << next_party << ".";
@@ -67,50 +61,33 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip, u32 next_port,
   }
 
   // Establishes some shared randomness needed for the later protocols
-  enc.init(partyIdx, comm_, oc::sysRandomSeed());
+  enc.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
 
   // Establishes some shared randomness needed for the later protocols
-  eval.init(partyIdx, comm_, oc::sysRandomSeed());
+  eval.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
 
   binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
   gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
 
-  // Copies the Channels and will use them for later protcols.
-  // mNext_ = comm_.mNext;
-  // mPrev_ = comm_.mPrev;
-  mNext = &(comm_.mNext);
-  mPrev = &(comm_.mPrev);
-  runtime.init(partyIdx, comm_);
+  runtime.init(partyIdx, *comm_pkg_);
   return 0;
 }
-#else
+
 // int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
-int MPCOperator::setup(osuCrypto::Channel& next, osuCrypto::Channel& prev);
-  commPtr = std::make_shared<CommPkg>(prev, next);
-  enc.init(partyIdx, *commPtr, oc::sysRandomSeed());
-  eval.init(partyIdx, *commPtr, oc::sysRandomSeed());
-
+int MPCOperator::setup(std::shared_ptr<aby3::CommPkg> comm_pkg) {
+  comm_pkg_ = std::move(comm_pkg);
+  enc.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
+  eval.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
   binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
-
   gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
-
-  runtime.init(partyIdx, commPtr);
-
-  mNext = &next;
-  mPrev = &prev;
-
+  runtime.init(partyIdx, *comm_pkg_);
   return 0;
 }
-#endif
 
-#ifdef MPC_SOCKET_CHANNEL
 void MPCOperator::fini() {
-  mPrev->close();
-  mNext->close();
+  this->mPrev().close();
+  this->mNext().close();
 }
-#else
-void MPCOperator::fini() { return; }
-#endif
 
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
@@ -129,10 +106,10 @@ void MPCOperator::createShares(si64Matrix &sharedMatrix) {
   enc.remoteIntMatrix(runtime, sharedMatrix).get();
 }
 si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
-  std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
-                          static_cast<unsigned long long>(val.cols())};
-  mNext->asyncSendCopy(size);
-  mPrev->asyncSendCopy(size);
+  std::array<u64, 2> size{static_cast<u64>(val.rows()),
+                          static_cast<u64>(val.cols())};
+  this->mNext().asyncSendCopy(size);
+  this->mPrev().asyncSendCopy(size);
 
   si64Matrix dest(size[0], size[1]);
   enc.localIntMatrix(runtime, val, dest).get();
@@ -141,12 +118,13 @@ si64Matrix MPCOperator::createSharesByShape(const i64Matrix &val) {
 
 si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
   std::array<u64, 2> size;
-  if (pIdx == (partyIdx + 1) % 3)
-    mNext->recv(size);
-  else if (pIdx == (partyIdx + 2) % 3)
-    mPrev->recv(size);
-  else
+  if (pIdx == (partyIdx + 1) % 3) {
+    this->mNext().recv(size);
+  } else if (pIdx == (partyIdx + 2) % 3) {
+    this->mPrev().recv(size);
+  } else {
     throw RTE_LOC;
+  }
 
   si64Matrix dest(size[0], size[1]);
   enc.remoteIntMatrix(runtime, dest).get();
@@ -157,8 +135,8 @@ si64Matrix MPCOperator::createSharesByShape(u64 pIdx) {
 sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
   std::array<u64, 2> size{static_cast<unsigned long long>(val.rows()),
                           static_cast<unsigned long long>(bitCount)};
-  mNext->asyncSendCopy(size);
-  mPrev->asyncSendCopy(size);
+  this->mNext().asyncSendCopy(size);
+  this->mPrev().asyncSendCopy(size);
 
   sbMatrix dest(size[0], size[1]);
   enc.localBinMatrix(runtime, val, dest).get();
@@ -167,12 +145,13 @@ sbMatrix MPCOperator::createBinSharesByShape(i64Matrix &val, u64 bitCount) {
 
 sbMatrix MPCOperator::createBinSharesByShape(u64 pIdx) {
   std::array<u64, 2> size;
-  if (pIdx == (partyIdx + 1) % 3)
-    mNext->recv(size);
-  else if (pIdx == (partyIdx + 2) % 3)
-    mPrev->recv(size);
-  else
+  if (pIdx == (partyIdx + 1) % 3) {
+    this->mNext().recv(size);
+  } else if (pIdx == (partyIdx + 2) % 3) {
+    this->mPrev().recv(size);
+  } else {
     throw RTE_LOC;
+  }
 
   sbMatrix dest(size[0], size[1]);
   enc.remoteBinMatrix(runtime, dest).get();
@@ -339,13 +318,13 @@ void MPCOperator::MPC_Compare(i64Matrix &m, sbMatrix &sh_res) {
     if (partyIdx == i) {
       shape[0] = m.rows();
       shape[1] = m.cols();
-      mNext->asyncSendCopy(shape);
-      mPrev->asyncSendCopy(shape);
+      this->mNext().asyncSendCopy(shape);
+      this->mPrev().asyncSendCopy(shape);
     } else {
       if (partyIdx == (i + 1) % 3)
-        mPrev->recv(shape);
+        this->mPrev().recv(shape);
       else if (partyIdx == (i + 2) % 3)
-        mNext->recv(shape);
+        this->mNext().recv(shape);
       else
         throw std::runtime_error("Message recv logic error.");
     }
@@ -465,13 +444,13 @@ void MPCOperator::MPC_Compare(sbMatrix &sh_res) {
     if (partyIdx == i) {
       shape[0] = 0;
       shape[1] = 0;
-      mNext->asyncSendCopy(shape);
-      mPrev->asyncSendCopy(shape);
+      this->mNext().asyncSendCopy(shape);
+      this->mPrev().asyncSendCopy(shape);
     } else {
       if (partyIdx == (i + 1) % 3)
-        mPrev->recv(shape);
+        this->mPrev().recv(shape);
       else
-        mNext->recv(shape);
+        this->mNext().recv(shape);
     }
 
     all_party_shape.emplace_back(shape);

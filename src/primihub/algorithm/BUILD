@@ -114,6 +114,7 @@ cc_library(
     "//src/primihub/service:dataset_service",
     "//src/primihub/util/network:communication_lib",
     "//src/primihub/common:common_defination",
+    "//src/primihub/util/network:message_exchange_interface",
     "//src/primihub/util:util_lib",
     "@com_github_ladnir_aby3//aby3:aby3_lib",
     "@arrow",
@@ -128,6 +129,7 @@ cc_library(
     "//src/primihub/executor:mpc_express_executor",
     "//src/primihub/service:dataset_service",
     "//src/primihub/util/network:communication_lib",
+    "//src/primihub/util/network:message_exchange_interface",
     "@arrow",
   ],
 )
@@ -140,6 +142,7 @@ cc_library(
     "//src/primihub/executor:mpc_express_executor",
     "//src/primihub/service:dataset_service",
     "//src/primihub/util/network:communication_lib",
+    "//src/primihub/util/network:message_exchange_interface",
     "@arrow",
   ],
 )

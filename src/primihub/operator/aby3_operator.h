@@ -11,21 +11,7 @@
 #include <string>
 
 #include "Eigen/Dense"
-
-// #include "src/primihub/common/common.h"
-// #include "src/primihub/common/type/fixed_point.h"
-// #include "src/primihub/common/type/type.h"
-// #include "src/primihub/primitive/ppa/kogge_stone.h"
-// #include "src/primihub/protocol/aby3/encryptor.h"
-// #include "src/primihub/protocol/aby3/evaluator/binary_evaluator.h"
-// #include "src/primihub/protocol/aby3/evaluator/evaluator.h"
-// #include "src/primihub/protocol/aby3/evaluator/piecewise.h"
-// #include "src/primihub/protocol/aby3/sh3_gen.h"
-// #include "src/primihub/util/crypto/prng.h"
 #include "src/primihub/util/eigen_util.h"
-// #include "src/primihub/util/log.h"
-// #include "src/primihub/util/network/socket/ioservice.h"
-// #include "src/primihub/util/network/socket/session.h"
 #include "aby3/sh3/Sh3Encryptor.h"
 #include "aby3/sh3/Sh3Evaluator.h"
 #include "aby3/sh3/Sh3BinaryEvaluator.h"
@@ -36,18 +22,10 @@
 #include "aby3/sh3/Sh3Types.h"
 
 #include "cryptoTools/Circuit/BetaCircuit.h"
-
 #include "aby3/Circuit/kogge_stone.h"
-
-#ifdef MPC_SOCKET_CHANNEL
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Session.h"
-#else
-#include "src/primihub/util/network/mpc_channel.h"
-#include "src/primihub/util/network/mpc_commpkg.h"
-#include "cryptoTools/Network/Channel.h"
-#endif
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
@@ -67,34 +45,16 @@ using namespace aby3;
 
 using BetaCircuit = osuCrypto::BetaCircuit;
 using KoggeStoneLibrary = aby3::KoggeStoneLibrary;   // TODO move to crptotool
-
-#ifdef MPC_SOCKET_CHANNEL
 using Channel = osuCrypto::Channel;
 using IOService = osuCrypto::IOService;
 using SessionMode = osuCrypto::SessionMode;
 using Session = osuCrypto::Session;
-#endif
 
 
 class MPCOperator {
  public:
-#ifdef MPC_SOCKET_CHANNEL
-  // Channel mNext_;
-  // Channel mPrev_;
-  IOService ios;
-  Channel* mNext{nullptr};
-  Channel* mPrev{nullptr};
-  aby3::CommPkg comm_;
-#else
-  // MpcChannel *mNext{nullptr};
-  // MpcChannel *mPrev{nullptr};
-  Channel mNext_;
-  Channel mPrev_;
-  IOService ios;
-  Channel* mNext{nullptr};
-  Channel* mPrev{nullptr};
-  std::shared_ptr<aby3::CommPkg> commPtr;
-#endif
+  std::shared_ptr<aby3::CommPkg> comm_pkg_{nullptr};
+  IOService ios_;
 
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
@@ -112,15 +72,11 @@ class MPCOperator {
   MPCOperator(u64 partyIdx_, std::string NextName, std::string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
-#ifdef MPC_SOCKET_CHANNEL
-  int setup(std::string next_ip, std::string prev_ip, u32 next_port,
-            u32 prev_port);
-  ~MPCOperator() {
-    fini();
-  }
-#else
-  int setup(MpcChannel &next, MpcChannel &prev);
-#endif
+  Channel& mNext() {return comm_pkg_->mNext;}
+  Channel& mPrev() {return comm_pkg_->mPrev;}
+  int setup(std::string next_ip, std::string prev_ip, u32 next_port, u32 prev_port);
+  int setup(std::shared_ptr<aby3::CommPkg> comm_pkg);
+  ~MPCOperator() { fini(); }
 
   void fini();
   template <Decimal D>
@@ -138,16 +94,17 @@ class MPCOperator {
   template <Decimal D>
   sf64Matrix<D> createSharesByShape(const eMatrix<double> &val) {
     f64Matrix<D> v2(val.rows(), val.cols());
-    for (u64 i = 0; i < val.size(); ++i)
+    for (u64 i = 0; i < val.size(); ++i) {
       v2(i) = val(i);
+    }
     return createSharesByShape(v2);
   }
 
   template <Decimal D>
   sf64Matrix<D> createSharesByShape(const f64Matrix<D> &val) {
     std::array<u64, 2> size{val.rows(), val.cols()};
-    mNext->asyncSendCopy(size);
-    mPrev->asyncSendCopy(size);
+    this->mNext().asyncSendCopy(size);
+    this->mPrev().asyncSendCopy(size);
 
     sf64Matrix<D> dest(size[0], size[1]);
     enc.localFixedMatrix(runtime, val, dest).get();
@@ -158,12 +115,13 @@ class MPCOperator {
   template <Decimal D>
   sf64Matrix<D> createSharesByShape(u64 pIdx) {
     std::array<u64, 2> size;
-    if (pIdx == (partyIdx + 1) % 3)
-      mNext->recv(size);
-    else if (pIdx == (partyIdx + 2) % 3)
-      mPrev->recv(size);
-    else
+    if (pIdx == (partyIdx + 1) % 3) {
+      this->mNext().recv(size);
+    } else if (pIdx == (partyIdx + 2) % 3) {
+      this->mPrev().recv(size);
+    } else {
       throw RTE_LOC;
+    }
 
     sf64Matrix<D> dest(size[0], size[1]);
     enc.remoteFixedMatrix(runtime, dest).get();
@@ -207,8 +165,10 @@ class MPCOperator {
     enc.revealAll(runtime, vals, temp).get();
 
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (i64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i) {
       ret(i) = static_cast<double>(temp(i));
+    }
+
     return ret;
   }
 
@@ -224,8 +184,10 @@ class MPCOperator {
     f64Matrix<D> temp(vals.rows(), vals.cols());
     enc.reveal(runtime, vals, temp).get();
     eMatrix<double> ret(vals.rows(), vals.cols());
-    for (i64 i = 0; i < ret.size(); ++i)
+    for (i64 i = 0; i < ret.size(); ++i) {
       ret(i) = static_cast<double>(temp(i));
+    }
+
     return ret;
   }
 
@@ -285,10 +247,12 @@ class MPCOperator {
   template <Decimal D>
   sf64<D> MPC_Add_Const(f64<D> constfixed, sf64<D> &sharedFixed) {
     sf64<D> temp = sharedFixed;
-    if (partyIdx == 0)
+    if (partyIdx == 0) {
       temp[0] = sharedFixed[0] + constfixed.mValue;
-    else if (partyIdx == 1)
+    } else if (partyIdx == 1) {
       temp[1] = sharedFixed[1] + constfixed.mValue;
+    }
+
     return temp;
   }
 
@@ -403,8 +367,9 @@ class MPCOperator {
   template <Decimal D>
   sf64<D> MPC_Mul(std::vector<sf64<D>> sharedFixedInt, sf64<D> &prod) {
     prod = sharedFixedInt[0];
-    for (u64 i = 1; i < sharedFixedInt.size(); ++i)
+    for (u64 i = 1; i < sharedFixedInt.size(); ++i) {
       eval.asyncMul(runtime, prod, sharedFixedInt[i], prod).get();
+    }
     return prod;
   }
 
@@ -412,8 +377,9 @@ class MPCOperator {
   sf64Matrix<D> MPC_Mul(std::vector<sf64Matrix<D>> sharedFixedInt) {
     sf64Matrix<D> prod;
     prod = sharedFixedInt[0];
-    for (u64 i = 1; i < sharedFixedInt.size(); ++i)
+    for (u64 i = 1; i < sharedFixedInt.size(); ++i) {
       eval.asyncMul(runtime, prod, sharedFixedInt[i], prod).get();
+    }
     return prod;
   }
 
@@ -738,7 +704,6 @@ class MPCOperator {
     drelu_result = MPC_DReLu(diff_temp);
     eMatrix<double> drelu_result_temp(B.rows(), B.cols());
     drelu_result_temp = revealAll(drelu_result);
-
     std::vector<u64> lessIdx;
     std::vector<u64> moreIdx;
 
@@ -750,7 +715,6 @@ class MPCOperator {
         moreIdx.push_back(i);
       }
     }
-
     sf64Matrix<D> denominatorLess(lessIdx.size(), B.cols());
     sf64Matrix<D> denominatorMore(moreIdx.size(), B.cols());
     f64<D> temp;
@@ -910,15 +874,16 @@ class MPCOperator {
       if (partyIdx == i) {
         shape[0] = m.rows();
         shape[1] = m.cols();
-        mNext->asyncSendCopy(shape);
-        mPrev->asyncSendCopy(shape);
+        this->mNext().asyncSendCopy(shape);
+        this->mPrev().asyncSendCopy(shape);
       } else {
-        if (partyIdx == (i + 1) % 3)
-          mPrev->recv(shape);
-        else if (partyIdx == (i + 2) % 3)
-          mNext->recv(shape);
-        else
+        if (partyIdx == (i + 1) % 3) {
+          this->mPrev().recv(shape);
+        } else if (partyIdx == (i + 2) % 3) {
+          this->mNext().recv(shape);
+        } else {
           throw std::runtime_error("Message recv logic error.");
+        }
       }
 
       all_party_shape.emplace_back(shape);
