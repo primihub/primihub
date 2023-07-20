@@ -79,7 +79,11 @@ void VMNodeImpl::CleanFinishedTaskThread() {
           break;
         }
         {
-          std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+          std::unique_lock<std::mutex> lck(task_executor_mtx, std::try_to_lock);
+          if (!lck.owns_lock()) {
+            LOG(WARNING) << "try to lock task executor map failed, ignore....";
+            continue;
+          }
           auto it = task_executor_map.find(finished_worker_id);
           if (it != task_executor_map.end()) {
             VLOG(5) << "worker id : " << finished_worker_id << " "
@@ -863,7 +867,7 @@ retcode VMNodeImpl::ExecuteTask(const PushTaskRequest& task_request, PushTaskRep
                         worker,
                         task_request,
                         &this->fininished_workers);
-  LOG(INFO) << "create worker thread future for task: "
+  LOG(INFO) << "create execute worker thread future for task: "
           << "job_id : " << job_id  << " task_id: " << task_id
           << " request id: " << request_id << " finished";
   auto ret = worker->waitForTaskReady();
@@ -1038,7 +1042,8 @@ retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
             LOG(ERROR) << "context is cancelled by client";
             return retcode::FAIL;
         }
-        VLOG(5) << "sleep and wait for worker ready........";
+        VLOG(5) << "sleep and wait for worker ready, "
+                << "worker id : " << worker_id << " ........";
         std::this_thread::sleep_for(std::chrono::seconds(1));
          if (timeout_ms == -1) {
             continue;

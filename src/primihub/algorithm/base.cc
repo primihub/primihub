@@ -18,7 +18,9 @@
 
 #include "src/primihub/util/network/message_interface.h"
 #include "src/primihub/util/network/link_context.h"
+
 namespace primihub {
+oc::IOService g_ios_;
 AlgorithmBase::AlgorithmBase(const PartyConfig& config,
                              std::shared_ptr<DatasetService> dataset_service)
                              : dataset_service_(std::move(dataset_service)) {
@@ -232,8 +234,8 @@ int AlgorithmBase::initPartyComm() {
   auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
       this->party_name(), party_name_next, link_ctx, base_channel_next);
 
-  oc::Channel chl_prev(ios_, msg_interface_prev.release());
-  oc::Channel chl_next(ios_, msg_interface_next.release());
+  oc::Channel chl_prev(g_ios_, msg_interface_prev.release());
+  oc::Channel chl_next(g_ios_, msg_interface_next.release());
   comm_pkg_ = std::make_unique<aby3::CommPkg>();
   comm_pkg_->mPrev = std::move(chl_prev);
   comm_pkg_->mNext = std::move(chl_next);
@@ -244,7 +246,10 @@ int AlgorithmBase::finishPartyComm() {
   if (comm_pkg_ == nullptr) {
     return 0;
   }
+  // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  VLOG(5) << "stop next channel, " << link_ctx_ref_->request_id();
   this->mNext().close();
+  VLOG(5) << "stop prev channel " << link_ctx_ref_->request_id();
   this->mPrev().close();
   return 0;
 }

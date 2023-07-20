@@ -24,9 +24,8 @@ class MPCStatisticsExecutor : public AlgorithmBase {
 
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset() override;
-  int initPartyComm() override;
   int execute() override;
-  int finishPartyComm() override;
+  retcode InitEngine() override;
   int saveModel() override;
 
  private:
@@ -49,14 +48,8 @@ class MPCStatisticsExecutor : public AlgorithmBase {
   std::string statistics_type_;
   std::map<std::string, ColumnDtype> col_type_;
 
-  Node local_node_;
-  std::string node_id_;
-  uint16_t party_id_;
-  std::map<uint16_t, Node> node_map_;
   MPCStatisticsType type_;
   std::unique_ptr<MPCStatisticsOperator> executor_;
-  ABY3PartyConfig party_config_;
-  oc::IOService ios_;
 };
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_

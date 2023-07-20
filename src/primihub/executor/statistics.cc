@@ -191,13 +191,6 @@ retcode MPCSumOrAvg::getResult(eMatrix<double> &col_avg) {
   return retcode::SUCCESS;
 }
 
-retcode MPCSumOrAvg::setupChannel(uint16_t party_id,
-                               std::unique_ptr<aby3::CommPkg> comm_pkg) {
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(std::move(comm_pkg));
-  party_id_ = party_id;
-}
-
 double MPCMinOrMax::minValueOfAllParty(double local_min) {
   // Compare value from party 0 and party 1.
   f64Matrix<D16> m(1, 1);
@@ -459,11 +452,5 @@ retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
   return retcode::SUCCESS;
 }
 
-retcode MPCMinOrMax::setupChannel(uint16_t party_id,
-                                  std::unique_ptr<aby3::CommPkg> comm_pkg) {
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(std::move(comm_pkg));
-  party_id_ = party_id;
-}
 #endif  // MPC_SOCKET_CHANNEL
 };  // namespace primihub

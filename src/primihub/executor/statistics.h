@@ -15,7 +15,7 @@ namespace primihub {
 class MPCStatisticsOperator {
 public:
   MPCStatisticsOperator() {}
-  virtual ~MPCStatisticsOperator() {}
+  virtual ~MPCStatisticsOperator() = default;
 
   enum MPCStatisticsType {
     AVG,
@@ -36,8 +36,11 @@ public:
   }
 
   virtual retcode setupChannel(uint16_t party_id,
-                               std::unique_ptr<aby3::CommPkg> comm_pkg) {
-    return _always_error("Method 'setupChannel' not implement.");
+                               aby3::CommPkg* comm_pkg) {
+    mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+    mpc_op_->setup(comm_pkg);
+    party_id_ = party_id;
+    return retcode::SUCCESS;
   }
 
   static std::string statisticsTypeToString(const MPCStatisticsType &type) {
@@ -64,16 +67,23 @@ public:
     return str;
   }
 
+protected:
+  uint16_t party_id_;
+  std::unique_ptr<MPCOperator> mpc_op_{nullptr};
+  MPCStatisticsType type_{MPCStatisticsType::UNKNOWN};
+
 private:
   retcode _always_error(const std::string msg) {
     LOG(ERROR) << msg;
     return retcode::FAIL;
   }
+
 };
 
 class MPCSumOrAvg : public MPCStatisticsOperator {
 public:
   MPCSumOrAvg(const MPCStatisticsType &type) {
+    type_ = type;
     use_mpc_div_ = false;
     if (type == MPCStatisticsType::AVG) {
       avg_result_ = true;
@@ -92,20 +102,19 @@ public:
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
 
-  retcode setupChannel(uint16_t party_id,
-                       std::unique_ptr<aby3::CommPkg> comm_pkg) override;
-
 private:
   bool use_mpc_div_{false};
   bool avg_result_{false};
   eMatrix<double> result;
-  std::unique_ptr<MPCOperator> mpc_op_;
-  uint16_t party_id_;
+
+  // uint16_t party_id_;
 };
 
 class MPCMinOrMax : public MPCStatisticsOperator {
 public:
-  MPCMinOrMax(const MPCStatisticsType &type) { type_ = type; }
+  MPCMinOrMax(const MPCStatisticsType &type) {
+    type_ = type;
+  }
   virtual ~MPCMinOrMax() {
     mpc_op_.reset();
   }
@@ -115,9 +124,6 @@ public:
               const std::map<std::string, ColumnDtype> &col_dtype) override;
 
   retcode getResult(eMatrix<double> &result) override;
-
-  retcode setupChannel(uint16_t party_id,
-                       std::unique_ptr<aby3::CommPkg> comm_pkg) override;
 
 private:
   double minValueOfAllParty(double local_min);
@@ -183,9 +189,6 @@ private:
   }
 
   eMatrix<double> mpc_result_;
-  std::unique_ptr<MPCOperator> mpc_op_;
-  MPCStatisticsType type_;
-  uint16_t party_id_;
 };
 }; // namespace primihub
 

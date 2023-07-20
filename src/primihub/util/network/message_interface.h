@@ -93,11 +93,11 @@ class TaskMessagePassInterface : public SocketInterface {
       std::condition_variable cv_;
   };
 
-  void _channelSend(const std::string& send_key,
+  void _channelSend(const std::string send_key,
                     osuCrypto::span<boost::asio::mutable_buffer> buffers,
                     io_completion_handle &&fn);
 
-  void _channelRecv(const std::string& recv_key,
+  void _channelRecv(const std::string recv_key,
                     ThreadSafeQueue<std::string> &queue,
                     osuCrypto::span<boost::asio::mutable_buffer> buffers,
                     io_completion_handle &&fn);

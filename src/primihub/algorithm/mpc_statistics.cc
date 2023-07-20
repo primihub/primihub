@@ -24,7 +24,7 @@ MPCStatisticsExecutor::MPCStatisticsExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   party_config_.Init(config);
-  party_id_ = party_config_.SelfPartyId();
+  // party_id_ = party_config_.SelfPartyId();
   this->set_party_name(party_config_.SelfPartyName());
   this->set_party_id(party_config_.SelfPartyId());
   // node_id_ = config.node_id;
@@ -361,54 +361,10 @@ int MPCStatisticsExecutor::execute() {
   return 0;
 }
 
-int MPCStatisticsExecutor::initPartyComm() {
-  if (do_nothing_) {
-    LOG(WARNING) << "Skip setup channel due to nothing to do.";
-    return 0;
-  }
-
-  auto link_ctx = this->GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is unavailable";
-    return -1;
-  }
-
-  // uint16_t next_party = (party_id_ + 1) % 3;
-  // construct channel for next party
-  std::string party_name_next = this->party_config_.NextPartyName();
-  Node next_party_info = this->party_config_.NextPartyInfo();
-  auto base_channel_next = link_ctx->getChannel(next_party_info);
-
-  LOG(INFO) << "Create channel to node " << next_party_info.to_string() << ".";
-
-  // construct channel for prev party
-  std::string party_name_prev = this->party_config_.PrevPartyName();
-  // next_party = (party_id_ + 2) % 3;
-  Node prev_party_info = this->party_config_.PrevPartyInfo();
-  auto base_channel_prev = link_ctx->getChannel(prev_party_info);
-
-  LOG(INFO) << "Create channel to node " << prev_party_info.to_string() << ".";
-  // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
-  // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
-  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      party_name_prev, link_ctx, base_channel_prev);
-
-  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      party_name_next, link_ctx, base_channel_next);
-
-  osuCrypto::Channel chl_prev(ios_, msg_interface_prev.release());
-  osuCrypto::Channel chl_next(ios_, msg_interface_next.release());
-  auto com_pkg = std::make_unique<aby3::CommPkg>();
-  com_pkg->mPrev = std::move(chl_prev);
-  com_pkg->mNext = std::move(chl_next);
-
-  executor_->setupChannel(party_id_, std::move(com_pkg));
-  return 0;
+retcode MPCStatisticsExecutor::InitEngine() {
+  executor_->setupChannel(this->party_id(), this->CommPkgPtr());
+  return retcode::SUCCESS;
 }
-
-int MPCStatisticsExecutor::finishPartyComm() { return 0; }
 
 int MPCStatisticsExecutor::loadDataset() {
   if (do_nothing_) {

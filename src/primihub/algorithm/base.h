@@ -37,6 +37,7 @@ using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub {
+extern oc::IOService g_ios_;
 struct ABY3PartyConfig {
   ABY3PartyConfig() = default;
   explicit ABY3PartyConfig(const PartyConfig& config) {
@@ -175,7 +176,7 @@ class AlgorithmBase {
 
   // communication related
   std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
-  oc::IOService ios_;
+  // oc::IOService ios_;
   ABY3PartyConfig party_config_;
 };
 }  // namespace primihub
