@@ -46,7 +46,7 @@ def solib2sitepackage(solib_path=None):
     else:
         paths = get_python_lib()
     py_so_root_path = "../bazel-bin/src/primihub/pybind_warpper"
-    module_list = ["opt_paillier_c2py.so", "linkcontext.so"]
+    module_list = ["linkcontext.so"]
     for module_name in module_list:
         module_installed = False
         if os.path.isfile("{}/{}".format(py_so_root_path, module_name)):
