@@ -446,8 +446,7 @@ git_repository(
   name = "com_github_ladnir_aby3",
   # branch = "bazel_branch",
   commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
-  # remote = "https://gitee.com/primihub/cryptoTools.git",
-  remote = "https://github.com/primihub/aby3.git",
+  remote = "https://gitee.com/primihub/aby3.git",
 )
 
 # libote
