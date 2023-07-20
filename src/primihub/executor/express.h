@@ -13,7 +13,8 @@ namespace primihub {
 
 template <Decimal Dbit> class LocalExpressExecutor;
 
-template <Decimal Dbit> class MPCExpressExecutor {
+template <Decimal Dbit>
+class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
@@ -50,6 +51,7 @@ public:
                       const std::string &prev_ip, uint16_t next_port,
                       uint16_t prev_port);
   void initMPCRuntime(uint32_t party_id, std::shared_ptr<aby3::CommPkg> comm_pkg);
+  void initMPCRuntime(uint32_t party_id, aby3::CommPkg* comm_pkg);
 
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);

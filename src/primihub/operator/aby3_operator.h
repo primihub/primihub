@@ -26,6 +26,7 @@
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Session.h"
+#include "src/primihub/common/common.h"
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
@@ -46,15 +47,11 @@ using namespace aby3;
 using BetaCircuit = osuCrypto::BetaCircuit;
 using KoggeStoneLibrary = aby3::KoggeStoneLibrary;   // TODO move to crptotool
 using Channel = osuCrypto::Channel;
-using IOService = osuCrypto::IOService;
-using SessionMode = osuCrypto::SessionMode;
-using Session = osuCrypto::Session;
 
 
 class MPCOperator {
  public:
-  std::shared_ptr<aby3::CommPkg> comm_pkg_{nullptr};
-  IOService ios_;
+  aby3::CommPkg* comm_pkg_ref_{nullptr};
 
   Sh3Encryptor enc;
   Sh3BinaryEvaluator binEval;
@@ -72,10 +69,12 @@ class MPCOperator {
   MPCOperator(u64 partyIdx_, std::string NextName, std::string PrevName)
       : partyIdx(partyIdx_), next_name(NextName), prev_name(PrevName) {}
 
-  Channel& mNext() {return comm_pkg_->mNext;}
-  Channel& mPrev() {return comm_pkg_->mPrev;}
+  Channel& mNext() {return comm_pkg_ref_->mNext;}
+  Channel& mPrev() {return comm_pkg_ref_->mPrev;}
   int setup(std::string next_ip, std::string prev_ip, u32 next_port, u32 prev_port);
   int setup(std::shared_ptr<aby3::CommPkg> comm_pkg);
+  int setup(aby3::CommPkg* comm_pkg);
+  retcode InitEngine();
   ~MPCOperator() { fini(); }
 
   void fini();

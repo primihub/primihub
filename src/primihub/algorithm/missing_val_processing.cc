@@ -252,63 +252,63 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
 
 MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
-                               : AlgorithmBase(dataset_service) {
+                               : AlgorithmBase(config, dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
   this->set_party_name(config.party_name());
   this->set_party_id(config.party_id());
 
-#ifdef MPC_SOCKET_CHANNEL
-  std::map<std::string, rpc::Node> &node_map = config.node_map;
+// #ifdef MPC_SOCKET_CHANNEL
+//   std::map<std::string, rpc::Node> &node_map = config.node_map;
 
-  std::map<uint16_t, rpc::Node> party_id_node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    party_id_node_map[party_id] = node;
-  }
+//   std::map<uint16_t, rpc::Node> party_id_node_map;
+//   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+//     rpc::Node &node = iter->second;
+//     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
+//     party_id_node_map[party_id] = node;
+//   }
 
-  auto iter = node_map.find(config.node_id);  // node_id
-  if (iter == node_map.end()) {
-    std::stringstream ss;
-    ss << "Can't find " << config.node_id << " in node_map.";
-    throw std::runtime_error(ss.str());
-  }
+//   auto iter = node_map.find(config.node_id);  // node_id
+//   if (iter == node_map.end()) {
+//     std::stringstream ss;
+//     ss << "Can't find " << config.node_id << " in node_map.";
+//     throw std::runtime_error(ss.str());
+//   }
 
-  party_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
+//   party_id_ = iter->second.vm(0).party_id();
+//   LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
 
-  if (party_id_ == 0) {
-    rpc::Node &node = party_id_node_map[0];
+//   if (party_id_ == 0) {
+//     rpc::Node &node = party_id_node_map[0];
 
-    next_ip_ = node.ip();
-    next_port_ = node.vm(0).next().port();
+//     next_ip_ = node.ip();
+//     next_port_ = node.vm(0).next().port();
 
-    prev_ip_ = node.ip();
-    prev_port_ = node.vm(0).prev().port();
-  } else if (party_id_ == 1) {
-    rpc::Node &node = party_id_node_map[1];
+//     prev_ip_ = node.ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   } else if (party_id_ == 1) {
+//     rpc::Node &node = party_id_node_map[1];
 
-    // A local server addr.
-    uint16_t port = node.vm(0).next().port();
+//     // A local server addr.
+//     uint16_t port = node.vm(0).next().port();
 
-    next_ip_ = node.ip();
-    next_port_ = port;
+//     next_ip_ = node.ip();
+//     next_port_ = port;
 
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  } else {
-    rpc::Node &node = party_id_node_map[2];
+//     prev_ip_ = node.vm(0).prev().ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   } else {
+//     rpc::Node &node = party_id_node_map[2];
 
-    next_ip_ = node.vm(0).next().ip();
-    next_port_ = node.vm(0).next().port();
+//     next_ip_ = node.vm(0).next().ip();
+//     next_port_ = node.vm(0).next().port();
 
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  }
+//     prev_ip_ = node.vm(0).prev().ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   }
 
-  node_id_ = config.node_id;
-#endif
-  party_config_.Init(config);
+//   node_id_ = config.node_id;
+// #endif
+//   party_config_.Init(config);
   party_id_ = party_config_.SelfPartyId();
 }
 
@@ -393,77 +393,14 @@ int MissingProcess::loadDataset() {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
-int MissingProcess::initPartyComm(void) {
-  std::string next_name;
-  std::string prev_name;
-
-  if (party_id_ == 0) {
-    next_name = "01";
-    prev_name = "02";
-  } else if (party_id_ == 1) {
-    next_name = "12";
-    prev_name = "01";
-  } else if (party_id_ == 2) {
-    next_name = "02";
-    prev_name = "12";
-  }
-
-  mpc_op_exec_ = std::make_unique<MPCOperator>(party_id_, next_name, prev_name);
-  mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-  return 0;
-}
-#else
-int MissingProcess::initPartyComm(void) {
-  auto link_ctx = GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is not available";
-    return -1;
-  }
-  // construct channel for next party
-  std::string next_party_name = this->party_config_.NextPartyName();
-  auto next_party_info = this->party_config_.NextPartyInfo();
-  auto base_channel_next = link_ctx->getChannel(next_party_info);
-
-  // construct channel for prev party
-  auto prev_party_name = this->party_config_.PrevPartyName();
-  auto prev_party_info = this->party_config_.PrevPartyInfo();
-  auto base_channel_prev = link_ctx->getChannel(prev_party_info);
-
-
-  // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
-  // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
-  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      prev_party_name, link_ctx, base_channel_prev);
-
-  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      next_party_name, link_ctx, base_channel_next);
-
-  osuCrypto::Channel chl_prev(ios_, msg_interface_prev.release());
-  osuCrypto::Channel chl_next(ios_, msg_interface_next.release());
-  auto com_pkg = std::make_shared<aby3::CommPkg>();
-  com_pkg->mPrev = std::move(chl_prev);
-  com_pkg->mNext = std::move(chl_next);
-
+retcode MissingProcess::InitEngine() {
   std::string next_name = "fake_next";
   std::string prev_name = "fake_prev";
-
   mpc_op_exec_ = std::make_unique<MPCOperator>(
-      this->party_config_.SelfPartyId(), next_name.c_str(), prev_name.c_str());
-
-  mpc_op_exec_->setup(com_pkg);
-
-
-  LOG(INFO) << "local_id_local_id_: " << party_id_;
-  LOG(INFO) << "next_party: " << next_party_name
-            << " detail: " << next_party_info.to_string();
-  LOG(INFO) << "prev_party: " << prev_party_name
-            << " detail: " << prev_party_info.to_string();
-  return 0;
+      this->party_id(), next_name.c_str(), prev_name.c_str());
+  mpc_op_exec_->setup(this->CommPkgPtr());
+  return retcode::SUCCESS;
 }
-#endif
 
 int MissingProcess::execute() {
 
@@ -1242,6 +1179,7 @@ int MissingProcess::finishPartyComm(void) {
     mpc_op_exec_->createShares(tmp_share0);
 
   mpc_op_exec_->fini();
+  AlgorithmBase::finishPartyComm();
   return 0;
 }
 

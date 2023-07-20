@@ -13,8 +13,6 @@
 
 #include "src/primihub/algorithm/base.h"
 #include "src/primihub/common/type.h"
-// #include "src/primihub/common/common.h"
-// #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 #include "src/primihub/service/dataset/service.h"
@@ -22,72 +20,45 @@
 namespace primihub {
 
 class MissingProcess : public AlgorithmBase {
-public:
+ public:
   explicit MissingProcess(PartyConfig &config,
                           std::shared_ptr<DatasetService> dataset_service);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
-  int initPartyComm(void) override;
   int execute() override;
   int finishPartyComm(void) override;
   int saveModel(void);
+  retcode InitEngine() override;
   int set_task_info(std::string platform_type, std::string job_id,
                     std::string task_id);
   inline std::string platform() { return platform_type_; }
   inline std::string job_id() { return job_id_; }
   inline std::string task_id() { return task_id_; }
 
-private:
+ private:
   using NestedVectorI32 = std::vector<std::vector<uint32_t>>;
 
-  inline int _strToInt64(const std::string &str, int64_t &i64_val);
-  inline int _strToDouble(const std::string &str, double &d_val);
-  inline int _avoidStringArray(std::shared_ptr<arrow::Array> array);
-  inline void _buildNewColumn(std::vector<std::string> &col_val,
-                              std::shared_ptr<arrow::Array> &array);
-  inline void _buildNewColumn(std::shared_ptr<arrow::Table> table,
-                              int col_index, const std::string &replace,
-                              NestedVectorI32 &abnormal_index, bool need_double,
-                              std::shared_ptr<arrow::Array> &new_array);
-  inline void _buildNewColumn(std::shared_ptr<arrow::Table> table,
-                              int col_index, const std::string &replace,
-                              std::vector<int> both_index, bool need_double,
-                              std::shared_ptr<arrow::Array> &new_array);
+  int _strToInt64(const std::string &str, int64_t &i64_val);
+  int _strToDouble(const std::string &str, double &d_val);
+  int _avoidStringArray(std::shared_ptr<arrow::Array> array);
+  void _buildNewColumn(std::vector<std::string> &col_val,
+                       std::shared_ptr<arrow::Array> &array);
+  void _buildNewColumn(std::shared_ptr<arrow::Table> table,
+                       int col_index, const std::string &replace,
+                       NestedVectorI32 &abnormal_index, bool need_double,
+                       std::shared_ptr<arrow::Array> &new_array);
+  void _buildNewColumn(std::shared_ptr<arrow::Table> table,
+                       int col_index, const std::string &replace,
+                       std::vector<int> both_index, bool need_double,
+                       std::shared_ptr<arrow::Array> &new_array);
   int _LoadDatasetFromCSV(std::string &filename);
 
   int _LoadDatasetFromDB(std::string &source);
 
-  void _spiltStr(std::string str, const std::string &split, std::vector<std::string> &strlist);
+  void _spiltStr(std::string str,
+                 const std::string &split,
+                 std::vector<std::string> &strlist);
 
-  std::unique_ptr<MPCOperator> mpc_op_exec_{nullptr};
-
-  std::string job_id_{""};
-  std::string task_id_{""};
-
-  IOService ios_;
-  Session ep_next_;
-  Session ep_prev_;
-  std::string next_ip_{""}, prev_ip_{""};
-  uint16_t next_port_{0}, prev_port_{0};
-  ABY3PartyConfig party_config_;
-
-  std::map<std::string, uint32_t> col_and_dtype_;
-  std::vector<std::string> local_col_names;
-
-  std::string data_file_path_{""};
-  std::string replace_type_{""};
-  std::string conn_info_{""};
-  std::shared_ptr<arrow::Table> table{nullptr};
-  std::map<std::string, std::vector<int>> db_both_index;
-
-  bool use_db{false};
-  std::string table_name{""};
-  std::string node_id_{""};
-  uint32_t party_id_{0};
-
-  std::string new_dataset_id_{""};
-  std::string new_dataset_path_{""};
-  std::string platform_type_{""};
 
   template <class T>
   void replaceValue(std::map<std::string, uint32_t>::iterator &iter,
@@ -129,6 +100,30 @@ private:
     table = result.ValueOrDie();
     LOG(INFO) << "Finish.";
   }
+
+ private:
+  std::unique_ptr<MPCOperator> mpc_op_exec_{nullptr};
+
+  std::string job_id_{""};
+  std::string task_id_{""};
+
+  std::map<std::string, uint32_t> col_and_dtype_;
+  std::vector<std::string> local_col_names;
+
+  std::string data_file_path_{""};
+  std::string replace_type_{""};
+  std::string conn_info_{""};
+  std::shared_ptr<arrow::Table> table{nullptr};
+  std::map<std::string, std::vector<int>> db_both_index;
+
+  bool use_db{false};
+  std::string table_name{""};
+  std::string node_id_{""};
+  uint32_t party_id_{0};
+
+  std::string new_dataset_id_{""};
+  std::string new_dataset_path_{""};
+  std::string platform_type_{""};
 };
 
 } // namespace primihub

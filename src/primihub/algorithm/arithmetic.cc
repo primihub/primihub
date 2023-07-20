@@ -20,72 +20,10 @@ namespace primihub {
 template <Decimal Dbit>
 ArithmeticExecutor<Dbit>::ArithmeticExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    : AlgorithmBase(config, dataset_service) {
   this->algorithm_name_ = "arithmetic";
   this->set_party_name(config.party_name());
   this->set_party_id(config.party_id());
-#ifdef MPC_SOCKET_CHANNEL
-  auto &node_map = config.node_map;
-  // LOG(INFO) << node_map.size();
-  std::map<uint16_t, rpc::Node> party_id_node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    party_id_node_map[party_id] = node;
-  }
-
-  auto iter = node_map.find(config.node_id); // node_id
-  if (iter == node_map.end()) {
-    std::stringstream ss;
-    ss << "Can't find " << config.node_id << " in node_map.";
-    throw std::runtime_error(ss.str());
-  }
-
-  party_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
-
-  if (party_id_ == 0) {
-    rpc::Node &node = party_id_node_map[0];
-
-    next_ip_ = node.ip();
-    next_port_ = node.vm(0).next().port();
-
-    prev_ip_ = node.ip();
-    prev_port_ = node.vm(0).prev().port();
-
-  } else if (party_id_ == 1) {
-    rpc::Node &node = party_id_node_map[1];
-
-    // A local server addr.
-    uint16_t port = node.vm(0).next().port();
-    // next_addr_ = std::make_pair(node.ip(), port);
-
-    // // A remote server addr.
-    // prev_addr_ =
-    //     std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
-
-    next_ip_ = node.ip();
-    next_port_ = port;
-
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  } else {
-    rpc::Node &node = party_id_node_map[2];
-
-    // Two remote server addr.
-    // next_addr_ =
-    //     std::make_pair(node.vm(0).next().ip(), node.vm(0).next().port());
-    // prev_addr_ =
-    //     std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
-
-    next_ip_ = node.vm(0).next().ip();
-    next_port_ = node.vm(0).next().port();
-
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  }
-#endif
-  party_config_.Init(config);
   party_id_ = party_config_.SelfPartyId();
 }
 
@@ -223,66 +161,19 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::loadDataset() {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
-template <Decimal Dbit> int ArithmeticExecutor<Dbit>::initPartyComm(void) {
-  if (is_cmp) {
-    mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-    return 0;
-  }
-  mpc_exec_->initMPCRuntime(party_id_, next_ip_, prev_ip_, next_port_, prev_port_);
-  return 0;
-}
-#else
 template <Decimal Dbit>
-int ArithmeticExecutor<Dbit>::initPartyComm(void) {
-  auto link_ctx = this->GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is unavailable";
-    return -1;
-  }
-  // construct channel for next party
-  std::string next_party_name = this->party_config_.NextPartyName();
-  Node next_party_info = this->party_config_.NextPartyInfo();
-  // construct channel for prev party
-  std::string prev_party_name = this->party_config_.PrevPartyName();
-  Node prev_party_info = this->party_config_.PrevPartyInfo();
-
-  auto base_channel_next_ = link_ctx->getChannel(next_party_info);
-
-  auto base_channel_prev_ = link_ctx->getChannel(prev_party_info);
-
-  LOG(INFO) << "Create channel to node " << prev_party_info.to_string() << ".";
-  // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
-  // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
-  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      prev_party_name, link_ctx, base_channel_prev_);
-
-  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
-      link_ctx->job_id(), link_ctx->task_id(), link_ctx->request_id(), this->party_name(),
-      next_party_name, link_ctx, base_channel_next_);
-
-  osuCrypto::Channel chl_prev(ios_, msg_interface_prev.release());
-  osuCrypto::Channel chl_next(ios_, msg_interface_next.release());
-  comm_pkg_ = std::make_shared<aby3::CommPkg>();
-  comm_pkg_->mPrev = std::move(chl_prev);
-  comm_pkg_->mNext = std::move(chl_next);
-
-  LOG(INFO) << "local_id_local_id_: " << party_config_.SelfPartyId();
-  LOG(INFO) << "next_party: " << next_party_name
-      << " detail: " << next_party_info.to_string();
-  LOG(INFO) << "prev_party: " << prev_party_name
-      << " detail: " << prev_party_info.to_string();
+retcode ArithmeticExecutor<Dbit>::InitEngine() {
   if (is_cmp) {
-    mpc_op_exec_->setup(comm_pkg_);
-    return 0;
+    // mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
+    mpc_op_exec_->setup(this->CommPkgPtr());
+    return retcode::SUCCESS;
   }
-  mpc_exec_->initMPCRuntime(party_id_, comm_pkg_);
-  return 0;
+  mpc_exec_->initMPCRuntime(this->party_id(), this->CommPkgPtr());
+  return retcode::SUCCESS;
 }
-#endif
 
-template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
+template <Decimal Dbit>
+int ArithmeticExecutor<Dbit>::execute() {
   if (is_cmp) {
     try {
       sbMatrix sh_res;
@@ -338,16 +229,6 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::execute() {
     msg = msg + e.what();
     throw std::runtime_error(msg);
   }
-  return 0;
-}
-
-template <Decimal Dbit> int ArithmeticExecutor<Dbit>::finishPartyComm(void) {
-  if (is_cmp) {
-    mpc_op_exec_->fini();
-    mpc_op_exec_.reset();
-  }
-
-  mpc_exec_.reset();
   return 0;
 }
 

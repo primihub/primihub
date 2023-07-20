@@ -687,10 +687,19 @@ void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
 }
 
 template <Decimal Dbit>
-void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
-                                              std::shared_ptr<aby3::CommPkg> comm_pkg) {
+void MPCExpressExecutor<Dbit>::initMPCRuntime(
+    uint32_t party_id,
+    std::shared_ptr<aby3::CommPkg> comm_pkg) {
   mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
   mpc_op_->setup(std::move(comm_pkg));
+  party_id_ = party_id;
+}
+
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
+                                              aby3::CommPkg* comm_pkg) {
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+  mpc_op_->setup(comm_pkg);
   party_id_ = party_id;
 }
 

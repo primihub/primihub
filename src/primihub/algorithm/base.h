@@ -157,7 +157,7 @@ class AlgorithmBase {
 
   oc::Channel& mNext() {return comm_pkg_->mNext;}
   oc::Channel& mPrev() {return comm_pkg_->mPrev;}
-
+  aby3::CommPkg* CommPkgPtr() {return comm_pkg_.get();}
  protected:
   std::shared_ptr<DatasetService> dataset_service_;
   std::string algorithm_name_;

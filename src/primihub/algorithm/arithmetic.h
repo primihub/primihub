@@ -1,4 +1,5 @@
 #include "src/primihub/algorithm/base.h"
+
 #include <stdlib.h>
 #include <time.h>
 #include <algorithm>
@@ -11,26 +12,21 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 // #include "src/primihub/service/dataset/service.h"
-
 #include "src/primihub/common/type.h"
-
 
 namespace primihub {
 
-template <Decimal Dbit> class ArithmeticExecutor : public AlgorithmBase {
+template <Decimal Dbit>
+class ArithmeticExecutor : public AlgorithmBase {
 public:
   explicit ArithmeticExecutor(PartyConfig &config,
                               std::shared_ptr<DatasetService> dataset_service);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
-  int initPartyComm(void) override;
   int execute() override;
-  int finishPartyComm(void) override;
   int saveModel(void);
+  retcode InitEngine() override;
 
-protected:
-  Channel& mNext() {return comm_pkg_->mNext;}
-  Channel& mPrev() {return comm_pkg_->mPrev;}
 private:
   int _LoadDatasetFromCSV(std::string &filename);
 
@@ -43,19 +39,6 @@ private:
 
   std::unique_ptr<MPCOperator> mpc_op_exec_;
   std::unique_ptr<MPCExpressExecutor<Dbit>> mpc_exec_;
-
-#ifdef MPC_SOCKET_CHANNEL
-  Session ep_next_;
-  Session ep_prev_;
-
-  std::string next_ip_, prev_ip_;
-  uint16_t next_port_, prev_port_;
-
-#endif
-
-  IOService ios_;
-  std::shared_ptr<aby3::CommPkg> comm_pkg_;
-  ABY3PartyConfig party_config_;
 
   std::string task_id_;
   std::string job_id_;

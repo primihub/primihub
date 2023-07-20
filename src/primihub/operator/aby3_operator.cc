@@ -6,76 +6,12 @@ namespace primihub {
 
 int MPCOperator::setup(std::string next_ip, std::string prev_ip,
                        u32 next_port, u32 prev_port) {
-  Session ep_next_;
-  Session ep_prev_;
-  switch (partyIdx) {
-  case 0:
-    ep_next_.start(ios_, next_ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Server, prev_name);
-
-    VLOG(3) << "Start server session, listen port " << next_port << ".";
-    VLOG(3) << "Start server session, listen port " << prev_port << ".";
-
-    break;
-  case 1:
-    ep_next_.start(ios_, next_ip, next_port, SessionMode::Server, next_name);
-    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Client, prev_name);
-
-    VLOG(3) << "Start server session, listen port " << next_port << ".";
-    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
-            << prev_port << ".";
-
-    break;
-  default:
-    ep_next_.start(ios_, next_ip, next_port, SessionMode::Client, next_name);
-    ep_prev_.start(ios_, prev_ip, prev_port, SessionMode::Client, prev_name);
-
-    VLOG(3) << "Start client session, connect to " << next_ip << ":"
-            << next_port << ".";
-    VLOG(3) << "Start client session, connect to " << prev_ip << ":"
-            << prev_port << ".";
-
-    break;
-  }
-
-  comm_pkg_ = std::make_shared<aby3::CommPkg>();
-  comm_pkg_->mNext = ep_next_.addChannel();
-  comm_pkg_->mPrev = ep_prev_.addChannel();
-  this->mNext().send(partyIdx);
-  this->mPrev().send(partyIdx);
-
-  u64 prev_party = 0;
-  u64 next_party = 0;
-  this->mNext().recv(next_party);
-  this->mPrev().recv(prev_party);
-  if (next_party != (partyIdx + 1) % 3) {
-    LOG(ERROR) << "Party " << partyIdx << ", expect next party id "
-               << (partyIdx + 1) % 3 << ", but give " << next_party << ".";
-    return -3;
-  }
-
-  if (prev_party != (partyIdx + 2) % 3) {
-    LOG(ERROR) << "Party " << partyIdx << ", expect prev party id "
-               << (partyIdx + 2) % 3 << ", but give " << prev_party << ".";
-    return -3;
-  }
-
-  // Establishes some shared randomness needed for the later protocols
-  enc.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
-
-  // Establishes some shared randomness needed for the later protocols
-  eval.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
-
-  binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
-  gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
-
-  runtime.init(partyIdx, *comm_pkg_);
   return 0;
 }
 
 // int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
 int MPCOperator::setup(std::shared_ptr<aby3::CommPkg> comm_pkg) {
-  comm_pkg_ = std::move(comm_pkg);
+  auto comm_pkg_ = std::move(comm_pkg);
   enc.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
   eval.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());
   binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
@@ -84,10 +20,21 @@ int MPCOperator::setup(std::shared_ptr<aby3::CommPkg> comm_pkg) {
   return 0;
 }
 
-void MPCOperator::fini() {
-  this->mPrev().close();
-  this->mNext().close();
+int MPCOperator::setup(aby3::CommPkg* comm_pkg) {
+  comm_pkg_ref_ = comm_pkg;
+  InitEngine();
 }
+
+retcode MPCOperator::InitEngine() {
+  enc.init(partyIdx, *comm_pkg_ref_, oc::sysRandomSeed());
+  eval.init(partyIdx, *comm_pkg_ref_, oc::sysRandomSeed());
+  binEval.mPrng.SetSeed(oc::toBlock(partyIdx));
+  gen.init(oc::toBlock(partyIdx), oc::toBlock((partyIdx + 1) % 3));
+  runtime.init(partyIdx, *comm_pkg_ref_);
+  return retcode::SUCCESS;
+}
+
+void MPCOperator::fini() {}
 
 void MPCOperator::createShares(const i64Matrix &vals,
                                si64Matrix &sharedMatrix) {
