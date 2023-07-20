@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include <memory>
 
 #include "cryptoTools/Common/Defines.h"
 #include "aby3/sh3/Sh3Types.h"
@@ -24,7 +25,8 @@ namespace primihub {
 using namespace aby3;   // NOLINT
 class aby3ML {
  public:
-  std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
+  // std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
+  aby3::CommPkg* comm_pkg_ref_{nullptr};
   Sh3Encryptor mEnc;
   Sh3Evaluator mEval;
   Sh3Runtime mRt;
@@ -34,10 +36,11 @@ class aby3ML {
 
   void init(u64 partyIdx, Session& prev, Session& next, block seed);
   void init(u64 partyIdx, std::unique_ptr<aby3::CommPkg> comm_pkg, block seed);
+  void init(u64 partyIdx, aby3::CommPkg* comm_pkg, block seed);
 
   void fini(void);
-  Channel& mNext() {return comm_pkg_->mNext;}
-  Channel& mPrev() {return comm_pkg_->mPrev;}
+  Channel& mNext() {return comm_pkg_ref_->mNext;}
+  Channel& mPrev() {return comm_pkg_ref_->mPrev;}
 
   template<Decimal D>
   sf64Matrix<D> localInput(const f64Matrix<D>& val) {

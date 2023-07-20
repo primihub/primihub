@@ -9,8 +9,8 @@ struct PartyConfig {
   PartyConfig() = default;
   PartyConfig(const std::string &node_id, const rpc::Task &task);
   void CopyFrom(const PartyConfig& config);
-  std::string party_name() {return node_id;}
-  uint16_t party_id() {return this->party_id_;}
+  const std::string party_name() const {return node_id;}
+  const uint16_t party_id() const {return this->party_id_;}
   std::map<uint16_t, std::string>& PartyId2PartyNameMap() {return node_id_map;}
   std::map<std::string, rpc::Node>& PartyName2PartyInfoMap() {return node_map;}
 

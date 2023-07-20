@@ -159,6 +159,12 @@ int MPCTask::execute() {
         LOG(ERROR) << "Initialize party communicate failed.";
         break;
       }
+      auto retcode = algorithm_->InitEngine();
+      if (retcode != retcode::SUCCESS) {
+        LOG(ERROR) << "init engine failed";
+        ret = -1;
+        break;
+      }
 
       ret = algorithm_->execute();
       if (ret) {

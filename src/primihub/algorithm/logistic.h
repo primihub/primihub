@@ -17,28 +17,26 @@
 #ifndef SRC_PRIMIHUB_ALGORITHM_LOGISTIC_H_
 #define SRC_PRIMIHUB_ALGORITHM_LOGISTIC_H_
 
+#include <time.h>
+#include <stdlib.h>
+#include <math.h>
 #include <algorithm>
 #include <exception>
 #include <fstream>
 #include <iostream>
-#include <math.h>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
-#include <time.h>
 #include <vector>
+#include <utility>
+#include <memory>
 
 #include "Eigen/Dense"
-
 #include "src/primihub/algorithm/aby3ML.h"
 #include "src/primihub/algorithm/base.h"
 #include "src/primihub/algorithm/linear_model_gen.h"
 #include "src/primihub/algorithm/plainML.h"
 #include "src/primihub/algorithm/regression.h"
 #include "src/primihub/data_store/driver.h"
-#include "cryptoTools/Network/Session.h"
-#include "cryptoTools/Network/IOService.h"
-#include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Common/Defines.h"
 #include "aby3/sh3/Sh3FixedPoint.h"
 
@@ -58,19 +56,18 @@ eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
                               int IT, int pIdx);
 
 class LogisticRegressionExecutor : public AlgorithmBase {
-public:
+ public:
   explicit LogisticRegressionExecutor(
       PartyConfig &config, std::shared_ptr<DatasetService> dataset_service);
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset(void) override;
-  int initPartyComm(void) override;
   int execute() override;
-  int finishPartyComm(void) override;
 
   int constructShares(void);
   int saveModel(void);
+  retcode InitEngine() override;
 
-private:
+ private:
   int _ConstructShares(sf64Matrix<D> &w, sf64Matrix<D> &train_data,
                        sf64Matrix<D> &train_label, sf64Matrix<D> &test_data,
                        sf64Matrix<D> &test_label);
@@ -88,15 +85,6 @@ private:
   eMatrix<double> model_;
   aby3ML engine_;
 
-#ifdef MPC_SOCKET_CHANNEL
-  std::pair<std::string, uint16_t> next_addr_;
-  std::pair<std::string, uint16_t> prev_addr_;
-  Session ep_next_;
-  Session ep_prev_;
-#endif
-  oc::IOService ios_;
-  PartyConfig party_config_;
-
   // Logistic regression parameters
   std::string train_input_filepath_;
   std::string test_input_filepath_;
@@ -104,6 +92,6 @@ private:
   int num_iter_;
 };
 
-} // namespace primihub
+}  // namespace primihub
 
-#endif // SRC_PRIMIHUB_ALGORITHM_LOGISTIC_H_
+#endif  // SRC_PRIMIHUB_ALGORITHM_LOGISTIC_H_

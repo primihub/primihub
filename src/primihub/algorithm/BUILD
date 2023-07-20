@@ -80,8 +80,12 @@ cc_library(
 cc_library(
   name = "algorithm_base",
   hdrs = ["base.h"],
+  srcs = ["base.cc"],
   deps = [
     "//src/primihub/common:party_config",
+    "//src/primihub/service:dataset_service",
+    "//src/primihub/util/network:communication_lib",
+    "//src/primihub/util/network:message_exchange_interface",
   ],
 )
 
