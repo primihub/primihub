@@ -358,6 +358,7 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   max_val = mpc_op_->revealAll(sh_m);
   return max_val(0, 0);
 }
+
 retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &col_dtype) {
@@ -436,6 +437,7 @@ retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
               << mpc_result_(col_index - 1, 0) << ".";
     }
   }
+  return retcode::SUCCESS;
 }
 
 retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
