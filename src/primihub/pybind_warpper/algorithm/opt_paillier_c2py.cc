@@ -1,4 +1,4 @@
-#include "src/primihub/pybind_warpper/primitive/opt_paillier_c2py.hpp"
+#include "src/primihub/pybind_warpper/algorithm/opt_paillier_c2py.hpp"
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -293,7 +293,8 @@ void opt_paillier_pack_encrypt_warpper(
     opt_public_key_t* pub = py_pub_2_cpp_pub(py_pub);
 
     CrtMod* crtmod;
-    if (py_crt_mod == py::none()) {
+    // if (py_crt_mod == py::none()) {
+    if (py_crt_mod.is(py::none())) {
         init_crt(&crtmod, CRT_MOD_MAX_DIMENSION, CRT_MOD_SIZE);
     } else {
         crtmod = dict_2_CrtMod(py::dict(py_crt_mod));
@@ -306,8 +307,9 @@ void opt_paillier_pack_encrypt_warpper(
     mpz_init(pack);
     mpz_t cipher_text;
     mpz_init(cipher_text);
-    for (int pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
-        size_t data_size = std::min(plain_texts_dimension - pos, (size_t)CRT_MOD_MAX_DIMENSION);
+    for (size_t pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
+        size_t data_size = std::min(plain_texts_dimension - pos,
+                                    static_cast<size_t>(CRT_MOD_MAX_DIMENSION));
         char** nums = (char**)malloc(sizeof(char*) * data_size);
         for (size_t j = 0; j < data_size; ++j) {
             std::string py_plain_text = std::string(py::str(py_plain_texts[pos + j]));
@@ -348,7 +350,8 @@ void opt_paillier_pack_encrypt_crt_warpper(
     opt_secret_key_t* prv = py_prv_2_cpp_prv(py_prv);
 
     CrtMod* crtmod;
-    if (py_crt_mod == py::none()) {
+    // if (py_crt_mod == py::none()) {
+    if (py_crt_mod.is(py::none())) {
         init_crt(&crtmod, CRT_MOD_MAX_DIMENSION, CRT_MOD_SIZE);
     } else {
         crtmod = dict_2_CrtMod(py::dict(py_crt_mod));
@@ -361,8 +364,9 @@ void opt_paillier_pack_encrypt_crt_warpper(
     mpz_init(pack);
     mpz_t cipher_text;
     mpz_init(cipher_text);
-    for (int pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
-        size_t data_size = std::min(plain_texts_dimension - pos, (size_t)CRT_MOD_MAX_DIMENSION);
+    for (size_t pos = 0; pos < plain_texts_dimension; pos += CRT_MOD_MAX_DIMENSION) {
+        size_t data_size = std::min(plain_texts_dimension - pos,
+                                   static_cast<size_t>(CRT_MOD_MAX_DIMENSION));
         char** nums = (char**)malloc(sizeof(char*) * data_size);
         for (size_t j = 0; j < data_size; ++j) {
             std::string py_plain_text = std::string(py::str(py_plain_texts[pos + j]));

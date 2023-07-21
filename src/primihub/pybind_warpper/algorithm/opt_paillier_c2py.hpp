@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <iostream>
-#include "src/primihub/primitive/opt_paillier/include/paillier.h"
-#include "src/primihub/primitive/opt_paillier/include/crt_datapack.h"
+#include "src/primihub/algorithm/opt_paillier/include/paillier.h"
+#include "src/primihub/algorithm/opt_paillier/include/crt_datapack.h"
 #include <string>
 
 #define BASE 10

@@ -14,6 +14,13 @@ config_setting(
     values = {"define": "cpu_arch=darwin_x86_64"},
 )
 
+DEFAULT_DEPS_OPT = [
+  "//src/primihub/common:common_defination",
+  "@eigen//:eigen",
+  "@com_github_ladnir_aby3//aby3:aby3_lib",
+  "@ladnir_cryptoTools//:libcryptoTools",
+  "@com_github_glog_glog//:glog",
+]
 cc_library(
   name = "aby3_ml",
   srcs = [
@@ -22,11 +29,7 @@ cc_library(
   hdrs = [
     "aby3ML.h",
   ],
-  deps = [
-    "@com_github_ladnir_aby3//aby3:aby3_lib",
-    "@ladnir_cryptoTools//:libcryptoTools",
-    "@com_github_glog_glog//:glog",
-  ],
+  deps = DEFAULT_DEPS_OPT,
 )
 
 cc_library(
@@ -37,33 +40,21 @@ cc_library(
   hdrs = [
     "linear_model_gen.h",
   ],
-  deps = [
-    "@eigen//:eigen",
-    "@com_github_ladnir_aby3//aby3:aby3_lib",
-    "@ladnir_cryptoTools//:libcryptoTools",
-  ]
+  deps = DEFAULT_DEPS_OPT,
 )
 
 cc_library(
   name = "regression",
   hdrs = ["regression.h"],
   srcs = ["regression.cc"],
-  deps = [
-    "//src/primihub/common:common_defination",
-    "@com_github_glog_glog//:glog",
-    "@eigen//:eigen",
-    "@com_github_ladnir_aby3//aby3:aby3_lib",
-    "@ladnir_cryptoTools//:libcryptoTools",
-  ],
+  deps = DEFAULT_DEPS_OPT,
 )
+
 cc_library(
   name = "plain_ml",
   srcs = ["plainML.cc",],
   hdrs = ["plainML.h",],
-  deps = [
-    "//src/primihub/common:common_defination",
-    "@com_github_ladnir_aby3//aby3:aby3_lib",
-  ],
+  deps = DEFAULT_DEPS_OPT,
 )
 
 cc_library(
@@ -167,72 +158,10 @@ cc_library(
   ],
 )
 
-#cc_library(
-#    name = "algorithm_lib",
-#    srcs = glob([
-#        "aby3ML.cc",
-#        "linear_model_gen.cc",
-#        "logistic.cc",
-#        "logistic_plain.cc",
-#        "plainML.cc",
-#        "falcon_lenet.cc",
-#        "arithmetic.cc",
-#        "missing_val_processing.cc",
-#        "mpc_statistics.cc",
-#    ]),
-#    hdrs = glob([
-#        "base.h",
-#        "aby3ML.h",
-#        "linear_model_gen.h",
-#        "logistic.h",
-#        "logistic_plain.h",
-#        "plainML.h",
-#        "regression.h",
-#        "falcon_lenet.h",
-#        "arithmetic.h",
-#        "missing_val_processing.h",
-#        "mpc_statistics.h",
-#    ]),
-#    linkstatic = False,
-#    deps = [
-#        # ":eigen",
-#        "//src/primihub/common:common_lib",
-#        "//src/primihub/protocol:protocol_aby3_lib",
-#         "//src/primihub/protocol:protocol_falcon_lib",
-#        "//src/primihub/data_store:data_store_lib",
-#        "//src/primihub/util:model_util_lib",
-#        "//src/primihub/util:util_lib",
-#        "//src/primihub/service:dataset_service",
-#        "//src/primihub/executor:mpc_express_executor",
-#        "//src/primihub/data_store:data_store_util",
-#        "//src/primihub/util/crypto:crypto_lib",
-#        #TODO condition select
-#        "//src/primihub/util/network:communication_lib",
-#        "//src/primihub/util/network:mpc_commpkg"
-#    ],
-#)
-
 cc_library(
-    name = "cryptflow2_algorithm_lib",
-    srcs = glob([
-        "cryptflow2_maxpool.cc",
-    ]),
-    hdrs = glob([
-        "base.h",
-        "cryptflow2_maxpool.h",
-    ]),
-    copts = select({
-        ":x86_64": ["-maes", "-mrdseed", "-mavx2"],
-        ":aarch64": [],
-        "//conditions:default": [],
-    }),
-    deps = [
-        "//src/primihub/common:common_lib",
-        "//src/primihub/data_store:data_store_lib",
-        "//src/primihub/service:dataset_service",
-        "//src/primihub/protocol:protocol_cryptflow2_ot_lib",
-        "//src/primihub/util/network:network_lib",
-        "//src/primihub/util:instruction_check_util",
-        "//src/primihub/util/network:communication_lib",
-    ],
+  name = "lib_opt_paillier",
+  deps = [
+      "//src/primihub/algorithm/opt_paillier:lib_opt_paillier_impl",
+  ],
+  visibility = ["//visibility:public"],
 )
