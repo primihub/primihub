@@ -441,29 +441,38 @@ http_archive(
     urls = ["https://github.com/google/sparsehash/archive/master.zip"],
 )
 
+
 # libPSI start
-new_git_repository(
-    name = "osu_libpsi",
-    build_file = "//bazel:BUILD.libpsi",
-    commit = "4c5d5a3e49533c8547dcd4869e6a9842b6ce5b90",
-    remote = "https://github.com/primihub/libPSI.git",
+git_repository(
+  name = "osu_libpsi",
+  #branch = "bazel_branch",
+  commit = "d56340b515989832983ac84132fef1a03184a9bc",
+  remote = "https://github.com/primihub/libPSI.git",
+)
+
+
+git_repository(
+  name = "ladnir_cryptoTools",
+  # branch = "bazel_branch",
+  commit = "53026be7bf1f12cb572c3d8ef9c7ee1a21742360",
+  remote = "https://github.com/primihub/cryptoTools.git",
+)
+
+git_repository(
+  name = "com_github_ladnir_aby3",
+  # branch = "bazel_branch",
+  commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
+  remote = "https://gitee.com/primihub/aby3.git",
 )
 
 # libote
-new_git_repository(
-    name = "osu_libote",
-    build_file = "//bazel:libOTe.BUILD",
-    commit = "f455eb7bf83034ebca6cab42e3aea9d9b33f8102",
-    remote = "https://github.com/primihub/libOTe.git",
+git_repository(
+  name = "osu_libote",
+  # branch = "bazel_branch",
+  commit = "d797f316d94b2931505f1862515b6e161a24cacb",
+  remote = "https://github.com/primihub/libOTe.git",
 )
 
-new_git_repository(
-    name = "ladnir_cryptoTools",
-    build_file = "//bazel:cryptoTools.BUILD",
-    commit = "d52e05e2e803006256ddb66f48a0d51080f4b285",
-    remote = "https://github.com/primihub/cryptoTools.git",
-    # shallow_since = "1591047380 -0700",
-)
 
 new_git_repository(
     name = "github_ntl",
@@ -489,24 +498,6 @@ http_archive(
     strip_prefix = "hiredis-392de5d7f97353485df1237872cb682842e8d83f"
 )
 
-# libote
-#http_archive(
-#    name = "osu_libote",
-#    build_file = "//external:libOTe.BUILD",
-#    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-#    strip_prefix = "libOTe-master",
-#    urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
-#)
-
-# cryptoTools
-#http_archive(
-#    name = "ladnir_cryptoTools",
-#    build_file = "//external:cryptoTools.BUILD",
-#    #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-#    strip_prefix = "cryptoTools-master",
-#    urls = ["https://github.com/ladnir/cryptoTools/archive/refs/heads/master.zip"],
-#)
-
 #PSI
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
@@ -514,7 +505,7 @@ git_repository(
    name = "org_openmined_psi",
    remote = "https://github.com/primihub/PSI.git",
    branch = "master",
-   init_submodules = True,
+   init_submodules = False,
 )
 
 load("@org_openmined_psi//private_set_intersection:preload.bzl", "psi_preload")
@@ -533,7 +524,7 @@ git_repository(
    name = "org_openmined_pir",
    remote = "https://github.com/primihub/PIR.git",
    branch = "master",
-   init_submodules = True,
+   init_submodules = False,
 )
 
 load("@org_openmined_pir//pir:preload.bzl", "pir_preload")
