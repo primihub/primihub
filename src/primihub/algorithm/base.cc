@@ -32,14 +32,14 @@ AlgorithmBase::AlgorithmBase(const PartyConfig& config,
   auto &node_map = config.node_map;
   std::map<uint16_t, rpc::Node> party_id_node_map;
   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    rpc::Node &node = iter->second;
+    auto& node = iter->second;
     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
     party_id_node_map[party_id] = node;
   }
 
   auto iter = node_map.find(config.node_id);  // node_id
   if (iter == node_map.end()) {
-    stringstream ss;
+    std::stringstream ss;
     ss << "Can't find " << config.node_id << " in node_map.";
     throw std::runtime_error(ss.str());
   }
@@ -88,7 +88,6 @@ AlgorithmBase::AlgorithmBase(const PartyConfig& config,
 int AlgorithmBase::initPartyComm() {
   VLOG(3) << "Next addr: " << next_addr_.first << ":" << next_addr_.second << ".";
   VLOG(3) << "Prev addr: " << prev_addr_.first << ":" << prev_addr_.second << ".";
-
   if (party_id_ == 0) {
     std::ostringstream ss;
     ss << "sess_" << party_id_ << "_1";
@@ -98,13 +97,13 @@ int AlgorithmBase::initPartyComm() {
     ss << "sess_" << party_id_ << "_2";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Server, sess_name_2);
     LOG(INFO) << "[Prev] Init server session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -115,16 +114,16 @@ int AlgorithmBase::initPartyComm() {
     std::string sess_name_1 = ss.str();
     ss.str("");
 
-    ss << "sess_" << PrevPartyId() << "_1";
+    ss << "sess_" << party_config_.PrevPartyId() << "_1";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -132,20 +131,20 @@ int AlgorithmBase::initPartyComm() {
   } else {
     std::ostringstream ss;
     ss.str("");
-    ss << "sess_" << this->NextPartyId() << "_2";
+    ss << "sess_" << party_config_.NextPartyId() << "_2";
     std::string sess_name_1 = ss.str();
 
     ss.str("");
-    ss << "sess_" << this->PrevPartyId() << "_1";
+    ss << "sess_" << party_config_.PrevPartyId() << "_1";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Client, sess_name_1);
     LOG(INFO) << "[Next] Init client session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -170,15 +169,15 @@ int AlgorithmBase::initPartyComm() {
   this->mNext().recv(next_party);
   this->mPrev().recv(prev_party);
 
-  if (next_party != this->NextPartyId()) {
+  if (next_party != party_config_.NextPartyId()) {
     LOG(ERROR) << "Party " << party_id_ << ", expect next party id "
-               << this->NextPartyId() << ", but give " << next_party << ".";
+               << party_config_.NextPartyId() << ", but give " << next_party << ".";
     return -3;
   }
 
-  if (prev_party != this->PrevPartyId()) {
+  if (prev_party != party_config_.PrevPartyId()) {
     LOG(ERROR) << "Party " << party_id_ << ", expect prev party id "
-               << this->PrevPartyId() << ", but give " << prev_party << ".";
+               << party_config_.PrevPartyId() << ", but give " << prev_party << ".";
     return -3;
   }
   return 0;

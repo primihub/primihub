@@ -433,10 +433,11 @@ int MPCStatisticsExecutor::saveModel() {
 #else
 int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {return 0;}
 int MPCStatisticsExecutor::loadDataset() {return 0;}
-int MPCStatisticsExecutor::initPartyComm() {return 0;}
 int MPCStatisticsExecutor::execute() {return 0;}
-int MPCStatisticsExecutor::finishPartyComm() {return 0;}
 int MPCStatisticsExecutor::saveModel() {return 0;}
+retcode MPCStatisticsExecutor::InitEngine() {
+  return retcode::SUCCESS;
+}
 retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {
   return retcode::SUCCESS;
 }
