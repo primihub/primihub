@@ -726,10 +726,10 @@ class MPCOperator {
       denominatorMore[1](i, 0) = denominator[1](moreIdx[i], 0);
     }
 
-    VLOG(6) << "denominatorLess: "
-            << revealAll(denominatorLess).format(HeavyFmt);
-    VLOG(6) << "denominatorMore: "
-            << revealAll(denominatorMore).format(HeavyFmt);
+    // VLOG(6) << "denominatorLess: "
+    //         << revealAll(denominatorLess).format(HeavyFmt);
+    // VLOG(6) << "denominatorMore: "
+    //         << revealAll(denominatorMore).format(HeavyFmt);
 
     eMatrix<i64> rankLess(lessIdx.size(), B.cols());
     eMatrix<i64> rankMore(moreIdx.size(), B.cols());
