@@ -97,13 +97,13 @@ int AlgorithmBase::initPartyComm() {
     ss << "sess_" << party_id_ << "_2";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Server, sess_name_2);
     LOG(INFO) << "[Prev] Init server session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -117,13 +117,13 @@ int AlgorithmBase::initPartyComm() {
     ss << "sess_" << party_config_.PrevPartyId() << "_1";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Server, sess_name_1);
     LOG(INFO) << "[Next] Init server session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -138,13 +138,13 @@ int AlgorithmBase::initPartyComm() {
     ss << "sess_" << party_config_.PrevPartyId() << "_1";
     std::string sess_name_2 = ss.str();
 
-    ep_next_.start(g_ios_, next_addr_.first, next_addr_.second,
+    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
                    oc::SessionMode::Client, sess_name_1);
     LOG(INFO) << "[Next] Init client session, party " << party_id_ << ", "
               << "ip " << next_addr_.first << ", port " << next_addr_.second
               << ", name " << sess_name_1 << ".";
 
-    ep_prev_.start(g_ios_, prev_addr_.first, prev_addr_.second,
+    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
                    oc::SessionMode::Client, sess_name_2);
     LOG(INFO) << "[Prev] Init client session, party " << party_id_ << ", "
               << "ip " << prev_addr_.first << ", port " << prev_addr_.second
@@ -155,9 +155,6 @@ int AlgorithmBase::initPartyComm() {
   comm_pkg_ = std::make_unique<aby3::CommPkg>();
   comm_pkg_->mNext = ep_next_.addChannel();
   comm_pkg_->mPrev = ep_prev_.addChannel();
-  // auto chann_next = ep_next_.addChannel();
-  // auto chann_prev = ep_prev_.addChannel();
-
   this->mNext().waitForConnection();
   this->mPrev().waitForConnection();
 

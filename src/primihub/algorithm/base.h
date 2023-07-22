@@ -171,6 +171,7 @@ class AlgorithmBase {
   std::pair<std::string, uint16_t> prev_addr_;  // ip::port
   oc::Session ep_next_;
   oc::Session ep_prev_;
+  oc::IOService ios_;
   bool session_enabled{false};
 #endif
 
