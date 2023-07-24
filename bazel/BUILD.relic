@@ -22,10 +22,6 @@ cmake(
       "CMAKE_INSTALL_LIBDIR": "lib",
       "WSIZE": "32",
     },
-    "@platforms//cpu:arm64": {
-      "CMAKE_INSTALL_LIBDIR": "lib",
-      "WSIZE": "64",
-    },
     "@platforms//cpu:arm": {
       "CMAKE_INSTALL_LIBDIR": "lib",
       "WSIZE": "32",
