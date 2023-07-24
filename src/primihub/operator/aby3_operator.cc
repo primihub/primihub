@@ -9,7 +9,6 @@ int MPCOperator::setup(std::string next_ip, std::string prev_ip,
   return 0;
 }
 
-// int MPCOperator::setup(MpcChannel &prev, MpcChannel &next) {
 int MPCOperator::setup(std::shared_ptr<aby3::CommPkg> comm_pkg) {
   auto comm_pkg_ = std::move(comm_pkg);
   enc.init(partyIdx, *comm_pkg_, oc::sysRandomSeed());

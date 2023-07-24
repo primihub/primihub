@@ -166,13 +166,13 @@ void TaskMessagePassInterface::async_send(
   ss << request_id_ << "_" << local_node_id_ << "_" << peer_node_id_;
   std::string send_key = ss.str();
 
-  // auto send_fn = std::bind(&TaskMessagePassInterface::_channelSend, this,
-  //                          std::placeholders::_1, std::placeholders::_2,
-  //                          std::placeholders::_3);
+  auto send_fn = std::bind(&TaskMessagePassInterface::_channelSend, this,
+                           std::placeholders::_1, std::placeholders::_2,
+                           std::placeholders::_3);
 
-  // auto send_thread = std::thread(send_fn, send_key, buffers, std::move(fn));
-  // send_thread.detach();
-  _channelSend(send_key, buffers, std::move(fn));
+  auto send_thread = std::thread(send_fn, send_key, buffers, std::move(fn));
+  send_thread.detach();
+  // _channelSend(send_key, buffers, std::move(fn));
 }
 
 void TaskMessagePassInterface::async_recv(
@@ -184,14 +184,14 @@ void TaskMessagePassInterface::async_recv(
   std::string recv_key = ss.str();
 
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
-  _channelRecv(recv_key, recv_queue, buffers, std::move(fn));
-  // auto recv_fn = std::bind(&TaskMessagePassInterface::_channelRecv, this,
-  //                          std::placeholders::_1, std::placeholders::_2,
-  //                          std::placeholders::_3, std::placeholders::_4);
+  // _channelRecv(recv_key, recv_queue, buffers, std::move(fn));
+  auto recv_fn = std::bind(&TaskMessagePassInterface::_channelRecv, this,
+                           std::placeholders::_1, std::placeholders::_2,
+                           std::placeholders::_3, std::placeholders::_4);
 
-  // auto recv_thread = std::thread(recv_fn, recv_key,
-  //                                std::ref(recv_queue), buffers, std::move(fn));
-  // recv_thread.join();
+  auto recv_thread = std::thread(recv_fn, recv_key,
+                                 std::ref(recv_queue), buffers, std::move(fn));
+  recv_thread.detach();
 }
 
 void TaskMessagePassInterface::cancel() {

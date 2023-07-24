@@ -18,11 +18,6 @@
 #include "cryptoTools/Crypto/PRNG.h"
 #include "cryptoTools/Common/Log.h"
 
-// #include "src/primihub/common/type/fixed_point.h"
-// #include "src/primihub/util/crypto/prng.h"
-// #include "src/primihub/util/eigen_util.h"
-// #include "src/primihub/util/log.h"
-
 #define DEBUG_PRINT(x)
 
 namespace primihub {

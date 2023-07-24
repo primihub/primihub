@@ -607,11 +607,15 @@ git_repository(
   remote = "https://github.com/primihub/cpp-base64.git",
 )
 
-new_git_repository(
-    name = "com_github_microsoft_gsl_v2_0_0",
-    build_file = "//bazel:BUILD.gsl_v_2_0_0",
-    tag = "v2.0.0",
-    remote = "https://github.com/microsoft/GSL.git",
+http_archive(
+  name = "com_github_microsoft_gsl",
+  build_file = "//bazel:BUILD.gsl",
+  sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
+  strip_prefix = "GSL-4.0.0",
+  urls = [
+    "https://github.com/microsoft/GSL/archive/refs/tags/v4.0.0.tar.gz",
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/GSL-4.0.0.tar.gz",
+  ],
 )
 
 #python include

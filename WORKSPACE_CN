@@ -601,7 +601,7 @@ http_archive(
   sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
   strip_prefix = "GSL-4.0.0",
   urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/SEAL-4.1.1.tar.gz"
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/GSL-4.0.0.tar.gz",
   ],
 )
 
