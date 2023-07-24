@@ -154,7 +154,7 @@ class LogisticRegression_DPSGD(LogisticRegression):
         return dw, db 
 
 
-class PaillierFunc:
+class Paillier:
 
     def __init__(self, public_key, private_key):
         self.public_key = public_key
@@ -179,12 +179,9 @@ class PaillierFunc:
         return [[self.private_key.encrypt(i) for i in pv] for pv in plain_matrix]
 
 
-class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
+class LogisticRegression_Paillier(LogisticRegression):
 
-    def __init__(self, x, y, learning_rate=0.2, alpha=0.0001, *args):
-        super().__init__(x, y, learning_rate, alpha, *args)
-
-    def compute_grad(self, x, y):
+    def gradient_descent(self, x, y):
         if self.multiclass:
             error_msg = "Paillier method doesn't support multiclass classification"
             logger.error(error_msg)
@@ -192,16 +189,16 @@ class LogisticRegression_Paillier(LogisticRegression, PaillierFunc):
         else:
             # Approximate gradient
             # First order of taylor expansion: sigmoid(x) = 0.5 + 0.25 * (x.dot(w) + b)
-            z = 0.5 + 0.25 * (x.dot(self.weight) + self.bias) - y
-            dw = x.T.dot(z) / x.shape[0] + self.alpha * self.weight
-            db = z.mean(keepdims=True)
-            return dw, db
-                    
+            error = 2 + x.dot(self.weight) + self.bias - 4 * y
+            factor = -self.learning_rate / x.shape[0]
+
+            self.weight += (factor * x).T.dot(error) + self.alpha * self.weight
+            self.bias += factor * error.sum(keepdims=True)
 
     def BCELoss(self, x, y):
         # Approximate loss: L(x) = (0.5 - y) * (x.dot(w) + b)
         # Ignore regularization term due to paillier doesn't support ciphertext multiplication
-        return (0.5 - y).dot(x.dot(self.weight) + self.bias) / x.shape[0]
+        return ((0.5 - y) / x.shape[0]).dot(x.dot(self.weight) + self.bias)
 
     def CELoss(self, x, y, eps=1e-20):
         error_msg = "Paillier method doesn't support multiclass classification"

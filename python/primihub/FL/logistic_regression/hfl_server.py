@@ -9,7 +9,7 @@ from phe import paillier
 from primihub.FL.metrics.hfl_metrics import roc_vertical_avg,\
                                             ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
-from .base import PaillierFunc
+from .base import Paillier
 
 
 class LogisticRegressionServer(BaseModel):
@@ -219,8 +219,7 @@ class Plaintext_DPSGD_Server:
             logger.info(f"loss={loss}, acc={acc}")
 
 
-class Paillier_Server(Plaintext_DPSGD_Server,
-                      PaillierFunc):
+class Paillier_Server(Plaintext_DPSGD_Server, Paillier):
     
     def __init__(self, alpha, n_length, client_channel):
         Plaintext_DPSGD_Server.__init__(self, alpha, client_channel)
