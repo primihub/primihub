@@ -134,18 +134,9 @@ cc_library(
         ":psi_task_util",
         "//src/primihub/util:endian_util",
         "//src/primihub/protos:worker_proto",
-    ] + select({
-      ":aarch64": [
         "@osu_libpsi//:libpsi",
         "//src/primihub/util/network:message_exchange_interface",
-      ],
-      ":x86_64":  [
-        "@osu_libpsi//:libpsi",
-        "//src/primihub/util/network:message_exchange_interface",
-      ],
-      ":darwin_x86_64": [],
-      "//conditions:default": [],
-    })
+    ]
 )
 
 cc_library(
