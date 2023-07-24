@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,24 +18,35 @@
 #define SRC_PRIMIHUB_ALGORITHM_BASE_H_
 
 #include <string>
-#include "src/primihub/service/dataset/service.h"
-#include "src/primihub/protos/common.grpc.pb.h"
-#include "src/primihub/util/network/link_context.h"
-#include "src/primihub/util/network/socket/session.h"
+#include <memory>
+#include <utility>
 
+#include "src/primihub/service/dataset/service.h"
+#include "src/primihub/protos/common.pb.h"
+#include "src/primihub/util/network/link_context.h"
+#include "src/primihub/common/party_config.h"
+#include "src/primihub/common/common.h"
+
+#include "cryptoTools/Common/Defines.h"
+#include "cryptoTools/Network/IOService.h"
+#include "cryptoTools/Network/Channel.h"
+#include "cryptoTools/Network/Session.h"
+#include "aby3/sh3/Sh3Types.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
 
 namespace primihub {
+extern oc::IOService g_ios_;
 struct ABY3PartyConfig {
   ABY3PartyConfig() = default;
-  ABY3PartyConfig(const PartyConfig& config) {
+  explicit ABY3PartyConfig(const PartyConfig& config) {
     party_config.CopyFrom(config);
   }
 
   retcode Init(const PartyConfig& config) {
     party_config.CopyFrom(config);
+    return retcode::SUCCESS;
   }
   uint16_t NextPartyId() {
     return (SelfPartyId() + 1) % ABY3_TOTAL_PARTY_NUM;
@@ -114,14 +125,17 @@ struct ABY3PartyConfig {
 class AlgorithmBase {
  public:
   explicit AlgorithmBase(std::shared_ptr<DatasetService> dataset_service)
-      : dataset_service_(dataset_service) {};
-  virtual ~AlgorithmBase(){};
+                         : dataset_service_(dataset_service) {}
+  AlgorithmBase(const PartyConfig& party_config,
+                std::shared_ptr<DatasetService> dataset_service);
+  virtual ~AlgorithmBase() = default;
 
   virtual int loadParams(primihub::rpc::Task &task) = 0;
   virtual int loadDataset() = 0;
-  virtual int initPartyComm() = 0;
+  virtual int initPartyComm();
+  virtual retcode InitEngine() {return retcode::SUCCESS;}   // to be pure virtual
   virtual int execute() = 0;
-  virtual int finishPartyComm() = 0;
+  virtual int finishPartyComm();
   virtual int saveModel() = 0;
 
   std::shared_ptr<DatasetService>& datasetService() {
@@ -142,13 +156,30 @@ class AlgorithmBase {
   std::string party_name() {return party_name_;}
   void set_party_name(const std::string& party_name) {party_name_ = party_name;}
 
+  oc::Channel& mNext() {return comm_pkg_->mNext;}
+  oc::Channel& mPrev() {return comm_pkg_->mPrev;}
+  aby3::CommPkg* CommPkgPtr() {return comm_pkg_.get();}
  protected:
   std::shared_ptr<DatasetService> dataset_service_;
   std::string algorithm_name_;
   network::LinkContext* link_ctx_ref_{nullptr};
   std::string party_name_;
   uint16_t party_id_;
-};
-} // namespace primihub
 
-#endif // SRC_PRIMIHUB_ALGORITHM_BASE_H_
+#ifdef MPC_SOCKET_CHANNEL
+  std::pair<std::string, uint16_t> next_addr_;  // ip:port
+  std::pair<std::string, uint16_t> prev_addr_;  // ip::port
+  oc::Session ep_next_;
+  oc::Session ep_prev_;
+  oc::IOService ios_;
+  bool session_enabled{false};
+#endif
+
+  // communication related
+  std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
+  // oc::IOService ios_;
+  ABY3PartyConfig party_config_;
+};
+}  // namespace primihub
+
+#endif  // SRC_PRIMIHUB_ALGORITHM_BASE_H_

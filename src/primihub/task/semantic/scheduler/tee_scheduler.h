@@ -22,7 +22,7 @@
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/util.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 
 
 using primihub::service::DatasetMeta;

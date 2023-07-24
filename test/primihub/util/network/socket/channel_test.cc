@@ -10,7 +10,7 @@
 
 #include "gtest/gtest.h"
 
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/common/finally.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/timer.h"
@@ -824,7 +824,7 @@ TEST(BtNetwork_bitVector_Test, bit_vector) {
   BitVector bb(77);
   bb[55] = 1;
   bb[33] = 1;
-   
+
   // Send.
   chl1.send(bb.data(), bb.sizeBytes());
 

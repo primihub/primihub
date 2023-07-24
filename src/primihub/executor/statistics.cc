@@ -191,13 +191,6 @@ retcode MPCSumOrAvg::getResult(eMatrix<double> &col_avg) {
   return retcode::SUCCESS;
 }
 
-retcode MPCSumOrAvg::setupChannel(uint16_t party_id, MpcChannel &next,
-                                  MpcChannel &prev) {
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(next, prev);
-  party_id_ = party_id;
-}
-
 double MPCMinOrMax::minValueOfAllParty(double local_min) {
   // Compare value from party 0 and party 1.
   f64Matrix<D16> m(1, 1);
@@ -365,6 +358,7 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   max_val = mpc_op_->revealAll(sh_m);
   return max_val(0, 0);
 }
+
 retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &col_dtype) {
@@ -443,6 +437,7 @@ retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
               << mpc_result_(col_index - 1, 0) << ".";
     }
   }
+  return retcode::SUCCESS;
 }
 
 retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
@@ -452,16 +447,12 @@ retcode MPCMinOrMax::getResult(eMatrix<double> &result) {
     LOG(WARNING) << "Wrong shape of output matrix, reshape it.";
   }
 
-  for (int i = 0; i < result.rows(); i++) result(i, 0) = mpc_result_(i, 0);
+  for (int i = 0; i < result.rows(); i++) {
+    result(i, 0) = mpc_result_(i, 0);
+  }
 
   return retcode::SUCCESS;
 }
 
-retcode MPCMinOrMax::setupChannel(uint16_t party_id, MpcChannel &next,
-                                  MpcChannel &prev) {
-  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(next, prev);
-  party_id_ = party_id;
-}
 #endif  // MPC_SOCKET_CHANNEL
 };  // namespace primihub

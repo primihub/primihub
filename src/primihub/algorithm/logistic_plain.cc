@@ -1,10 +1,23 @@
 // Copyright [2021] <primihub.com>
 #include "src/primihub/algorithm/logistic_plain.h"
+#include <random>
 
-using namespace std;
-using namespace Eigen;
+#include "src/primihub/util/eigen_util.h"
+#include "aby3/sh3/Sh3Types.h"
+#include "cryptoTools/Crypto/PRNG.h"
+#include "cryptoTools/Common/Defines.h"
+#include "src/primihub/common/common.h"
+#include "src/primihub/algorithm/linear_model_gen.h"
+#include "src/primihub/algorithm/regression.h"
+#include "src/primihub/algorithm/plainML.h"
+// using namespace std;
+// using namespace Eigen;
 
 namespace primihub {
+template<typename T>
+using eMatrix = aby3::eMatrix<T>;
+
+using PRNG = oc::PRNG;
 
 template <typename Derived>
 void writeToCSVfile(std::string name, const Eigen::MatrixBase<Derived>& matrix)
@@ -15,8 +28,9 @@ void writeToCSVfile(std::string name, const Eigen::MatrixBase<Derived>& matrix)
 }
 
 // 明文的逻辑回归
-void plain_Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<double>& mModel, double mNoise = 1,
-    double mSd = 1, bool print = false) {
+void plain_Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y,
+                           eMatrix<double>& mModel, double mNoise = 1,
+                           double mSd = 1, bool print = false) {
   if (X.rows() != Y.rows()) throw std::runtime_error(LOCATION);
   if (1 != Y.cols()) throw std::runtime_error(LOCATION);
   if (X.cols() != mModel.rows()) throw std::runtime_error(LOCATION);
@@ -34,7 +48,7 @@ void plain_Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<doubl
 
   Y = X * mModel + noise;
 
-  IOFormat HeavyFmt(FullPrecision, 0, ", ", ";\n", "[", "]");
+  Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ", ", ";\n", "[", "]");
   for (int i = 0; i < Y.size(); ++i) {
     if (print) {
       std::cout << X.row(i).format(HeavyFmt);
@@ -47,9 +61,9 @@ void plain_Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y, eMatrix<doubl
 int logistic_plain_main() {
   int N = 1000, D = 100, B = 128, IT = 10, testN = 100;
 
-  PRNG prng(toBlock(1));
+  PRNG prng(oc::toBlock(1));
   eMatrix<double> model(D, 1);
-  for (u64 i = 0; i < D; ++i) {
+  for (int i = 0; i < D; ++i) {
     model(i, 0) = prng.get<int>() % 10;
   }
 
@@ -57,7 +71,7 @@ int logistic_plain_main() {
   eMatrix<double> test_data(testN, D), test_label(testN, 1);
   plain_Logistic_sample(train_data, train_label, model);
 
-  MatrixXd result;
+  Eigen::MatrixXd result;
   result.resize(train_data.rows(), train_data.cols() + 1);
   result << train_data, train_label;
   writeToCSVfile("matrix.csv", result);
@@ -78,7 +92,7 @@ int logistic_plain_main() {
   SGD_Logistic(params, engine, train_data, train_label, W2,
     &test_data, &test_label);
 
-  for (u64 i = 0; i < D; ++i) {
+  for (int i = 0; i < D; ++i) {
     std::cout << i << " " << model(i, 0) << " " << W2(i, 0) << std::endl;
   }
 
@@ -88,13 +102,13 @@ int logistic_plain_main() {
 int logistic_2plain_main(std::string &filename) {
   int B = 128, IT = 10000, testN = 1000;
 
-  PRNG prng(toBlock(1));
+  PRNG prng(oc::toBlock(1));
   LogisticModelGen gen;
 
   eMatrix<double> bytematrix;
   u64 row, col;
 
-  bytematrix = load_data_local_logistic(filename);
+  bytematrix = LoadDataLocalLogistic(filename);
   row = bytematrix.rows();
   col = bytematrix.cols();
 
@@ -139,7 +153,7 @@ int logistic_2plain_main(std::string &filename) {
   SGD_Logistic(params, engine, train_data, train_label, W2,
     &test_data, &test_label);
 
-  for (u64 i = 0; i < D; ++i) {
+  for (int i = 0; i < D; ++i) {
     std::cout << i << " " << W2(i, 0) << std::endl;
   }
 

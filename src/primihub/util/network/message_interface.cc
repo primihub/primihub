@@ -10,7 +10,7 @@
 
 namespace primihub::network {
 void TaskMessagePassInterface::_channelSend(
-    const std::string& send_key,
+    const std::string send_key,
     osuCrypto::span<boost::asio::mutable_buffer> buffers,
     io_completion_handle &&fn) {
   if (send_count_.fetch_add(1) > 0)
@@ -74,7 +74,7 @@ void TaskMessagePassInterface::_channelSend(
 }
 
 void TaskMessagePassInterface::_channelRecv(
-    const std::string &recv_key, ThreadSafeQueue<std::string> &queue,
+    const std::string recv_key, ThreadSafeQueue<std::string> &queue,
     osuCrypto::span<boost::asio::mutable_buffer> buffers,
     io_completion_handle &&fn) {
   std::shared_ptr<WaitLock> wait_lock(new WaitLock());
@@ -172,6 +172,7 @@ void TaskMessagePassInterface::async_send(
 
   auto send_thread = std::thread(send_fn, send_key, buffers, std::move(fn));
   send_thread.detach();
+  // _channelSend(send_key, buffers, std::move(fn));
 }
 
 void TaskMessagePassInterface::async_recv(
@@ -183,11 +184,12 @@ void TaskMessagePassInterface::async_recv(
   std::string recv_key = ss.str();
 
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
+  // _channelRecv(recv_key, recv_queue, buffers, std::move(fn));
   auto recv_fn = std::bind(&TaskMessagePassInterface::_channelRecv, this,
                            std::placeholders::_1, std::placeholders::_2,
                            std::placeholders::_3, std::placeholders::_4);
 
-  auto recv_thread = std::thread(recv_fn, std::ref(recv_key),
+  auto recv_thread = std::thread(recv_fn, recv_key,
                                  std::ref(recv_queue), buffers, std::move(fn));
   recv_thread.detach();
 }

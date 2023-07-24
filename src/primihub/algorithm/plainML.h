@@ -1,13 +1,16 @@
-
-#ifndef SRC_primihub_ALGORITHM_PLAINML_H_
-#define SRC_primihub_ALGORITHM_PLAINML_H_
+// Copyright [2021] <primihub.com>
+#ifndef SRC_PRIMIHUB_ALGORITHM_PLAINML_H_
+#define SRC_PRIMIHUB_ALGORITHM_PLAINML_H_
 
 #include <iostream>
 
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/type.h"
+#include "aby3/Common/Defines.h"
+#include "aby3/sh3/Sh3Types.h"
+#include "src/primihub/common/common.h"
 
 namespace primihub {
+template<typename T>
+using eMatrix = aby3::eMatrix<T>;
 
 class PlainML {
  public:
@@ -20,7 +23,7 @@ class PlainML {
     const eMatrix<double>& right, u64 shift) {
     auto div = 1ull << shift;
     eMatrix<double> ret = left * right;
-    for (u64 i = 0; i < ret.size(); ++i) {
+    for (i64 i = 0; i < ret.size(); ++i) {
       ret(i) /= div;
     }
 
@@ -28,7 +31,7 @@ class PlainML {
   }
 
   eMatrix<double> logisticFunc(eMatrix<double> x) {
-    for (u64 i = 0; i < x.size(); ++i)
+    for (i64 i = 0; i < x.size(); ++i)
       x(i) = 1.0 / (1 + std::exp(-x(i)));
     return x;
   }
@@ -77,4 +80,4 @@ class PlainML {
 
 }  // namespace primihub
 
-#endif  // SRC_primihub_ALGORITHM_PLAINML_H_
+#endif  // SRC_PRIMIHUB_ALGORITHM_PLAINML_H_

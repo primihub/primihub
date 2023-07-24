@@ -17,6 +17,7 @@ static void RunLogistic(std::string node_id, rpc::Task &task,
   LogisticRegressionExecutor exec(config, data_service);
   EXPECT_EQ(exec.loadParams(task), 0);
   EXPECT_EQ(exec.initPartyComm(), 0);
+  EXPECT_EQ(exec.InitEngine(), retcode::SUCCESS);
   EXPECT_EQ(exec.loadDataset(), 0);
   EXPECT_EQ(exec.execute(), 0);
   EXPECT_EQ(exec.saveModel(), 0);

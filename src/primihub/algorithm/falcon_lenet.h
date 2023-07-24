@@ -24,7 +24,7 @@
 #include "Eigen/Dense"
 #include "assert.h"
 #include "src/primihub/common/clp.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/util/network/socket/session.h"
 

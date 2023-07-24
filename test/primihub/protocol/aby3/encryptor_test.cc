@@ -5,7 +5,7 @@
 
 #include "gtest/gtest.h"
 
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/protocol/aby3/evaluator/evaluator.h"

@@ -23,43 +23,45 @@
 #elif __APPLE__
 #include <mach-o/dyld.h>
 #endif
-#include <iomanip>
 #include <glog/logging.h>
+
+#include <iomanip>
 #include <algorithm>
 #include <string>
 #include <cctype>
 
-
 namespace primihub {
 
 void str_split(const std::string& str, std::vector<std::string>* v, char delimiter) {
-    std::stringstream ss(str);
-    while (ss.good()) {
-        std::string substr;
-        getline(ss, substr, delimiter);
-        v->push_back(substr);
-    }
+  std::stringstream ss(str);
+  while (ss.good()) {
+    std::string substr;
+    getline(ss, substr, delimiter);
+    v->push_back(substr);
+  }
 }
 
-void str_split(const std::string& str, std::vector<std::string>* v, const std::string& pattern) {
-    std::string::size_type pos1, pos2;
-    pos2 = str.find(pattern);
-    pos1 = 0;
-    while (std::string::npos != pos2) {
-        v->push_back(str.substr(pos1, pos2 - pos1));
-        pos1 = pos2 + pattern.size();
-        pos2 = str.find(pattern, pos1);
-    }
-    if (pos1 != str.length()) {
-        v->push_back(str.substr(pos1));
-    }
+void str_split(const std::string& str,
+               std::vector<std::string>* v,
+               const std::string& pattern) {
+  std::string::size_type pos1, pos2;
+  pos2 = str.find(pattern);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    v->push_back(str.substr(pos1, pos2 - pos1));
+    pos1 = pos2 + pattern.size();
+    pos2 = str.find(pattern, pos1);
+  }
+  if (pos1 != str.length()) {
+    v->push_back(str.substr(pos1));
+  }
 }
 
 void peer_to_list(const std::vector<std::string>& peer,
                   std::vector<primihub::rpc::Node>* list) {
   list->clear();
   for (auto iter : peer) {
-    DLOG(INFO) << "split param list:" << iter;
+    VLOG(3) << "split param list:" << iter;
     primihub::rpc::Node node;
     parseTopbNode(iter, &node);
     list->push_back(node);
@@ -152,7 +154,8 @@ int getAvailablePort(uint32_t* port) {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = 0;        // system will allocate one available port when call bind if sin_port is 0
+    addr.sin_port = 0;        // system will allocate one available port
+                              // when call bind if sin_port is 0
     int ret = bind(sock, (struct sockaddr *) &addr, sizeof addr);
     do {
       if (0 != ret) {     // 4. acquire available port by calling getsockname
@@ -160,7 +163,9 @@ int getAvailablePort(uint32_t* port) {
       }
       struct sockaddr_in sockaddr;
       int len = sizeof(sockaddr);
-      ret = getsockname(sock, (struct sockaddr *) &sockaddr, (socklen_t *)&len);
+      ret = getsockname(sock,
+                        reinterpret_cast<struct sockaddr*>(&sockaddr),
+                        reinterpret_cast<socklen_t*>(&len));
       if (0 != ret) {
         break;
       }
@@ -185,6 +190,7 @@ std::string strToLower(const std::string& str) {
     std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::tolower);
     return lower_str;
 }
+
 std::string getCurrentProcessPath() {
     char path[PATH_MAX];
     memset(path, 0, PATH_MAX);

@@ -1,7 +1,5 @@
+// "Copyright [2023] <Primihub>"
 #include "src/primihub/algorithm/mpc_statistics.h"
-#include "src/primihub/common/common.h"
-#include "src/primihub/util/file_util.h"
-
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
@@ -9,24 +7,29 @@
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
-
 #include <rapidjson/document.h>
 
+#include <algorithm>
+#include <utility>
+
+#include "src/primihub/common/common.h"
+#include "src/primihub/util/file_util.h"
+#include "src/primihub/util/network/message_interface.h"
+
 using namespace rapidjson;
-using primihub::columnDtypeToString;
+// using primihub::columnDtypeToString;
 
 namespace primihub {
 MPCStatisticsExecutor::MPCStatisticsExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
     : AlgorithmBase(dataset_service) {
   party_config_.Init(config);
-  party_id_ = party_config_.SelfPartyId();
+  // party_id_ = party_config_.SelfPartyId();
   this->set_party_name(party_config_.SelfPartyName());
   this->set_party_id(party_config_.SelfPartyId());
   // node_id_ = config.node_id;
   // job_id_ = config.job_id;
   // task_id_ = config.task_id;
-
   // // Save all party's node config.
   // const auto &node_map = config.node_map;
   // for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
@@ -358,47 +361,10 @@ int MPCStatisticsExecutor::execute() {
   return 0;
 }
 
-int MPCStatisticsExecutor::initPartyComm() {
-  if (do_nothing_) {
-    LOG(WARNING) << "Skip setup channel due to nothing to do.";
-    return 0;
-  }
-  auto link_ctx = this->GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is unavailable";
-    return -1;
-  }
-
-  // uint16_t next_party = (party_id_ + 1) % 3;
-  // construct channel for next party
-  std::string next_party_name = this->party_config_.NextPartyName();
-  Node next_party_info = this->party_config_.NextPartyInfo();
-  auto base_channel_1 = link_ctx->getChannel(next_party_info);
-
-  LOG(INFO) << "Create channel to node " << next_party_info.to_string() << ".";
-
-  channel_1 = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
-  channel_1->SetupBaseChannel(next_party_name, base_channel_1);
-
-  // construct channel for prev party
-  std::string prev_party_name = this->party_config_.PrevPartyName();
-  // next_party = (party_id_ + 2) % 3;
-  Node prev_party_info = this->party_config_.PrevPartyInfo();
-  auto base_channel_2 = link_ctx->getChannel(prev_party_info);
-
-  LOG(INFO) << "Create channel to node " << prev_party_info.to_string() << ".";
-
-  channel_2 = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
-  channel_2->SetupBaseChannel(prev_party_name, base_channel_2);
-
-  executor_->setupChannel(party_id_, *channel_2, *channel_1);
-
-  return 0;
+retcode MPCStatisticsExecutor::InitEngine() {
+  executor_->setupChannel(this->party_id(), this->CommPkgPtr());
+  return retcode::SUCCESS;
 }
-
-int MPCStatisticsExecutor::finishPartyComm() { return 0; }
 
 int MPCStatisticsExecutor::loadDataset() {
   if (do_nothing_) {
@@ -467,11 +433,16 @@ int MPCStatisticsExecutor::saveModel() {
 #else
 int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {return 0;}
 int MPCStatisticsExecutor::loadDataset() {return 0;}
-int MPCStatisticsExecutor::initPartyComm() {return 0;}
 int MPCStatisticsExecutor::execute() {return 0;}
-int MPCStatisticsExecutor::finishPartyComm() {return 0;}
 int MPCStatisticsExecutor::saveModel() {return 0;}
-retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {return retcode::SUCCESS;}
-retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {return retcode::SUCCESS;}
+retcode MPCStatisticsExecutor::InitEngine() {
+  return retcode::SUCCESS;
+}
+retcode MPCStatisticsExecutor::_parseColumnName(const std::string &json_str) {
+  return retcode::SUCCESS;
+}
+retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {
+  return retcode::SUCCESS;
+}
 #endif  // endif MPC_SOCKET_CHANNEL
 }; // namespace primihub

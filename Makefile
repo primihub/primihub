@@ -1,4 +1,4 @@
-BUILD_FLAG ?= 
+BUILD_FLAG ?=
 
 TARGET := //:node \
           //:cli \

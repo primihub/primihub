@@ -25,6 +25,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <future>
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
