@@ -61,12 +61,10 @@ class LogisticRegression:
             error = self.predict_prob(x)
             idx = np.arange(len(y))
             error[idx, y] -= 1
-            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
-            db = error.mean(axis=0, keepdims=True)
         else:
             error = self.predict_prob(x) - y
-            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
-            db = error.mean(keepdims=True)
+        dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+        db = error.mean(axis=0, keepdims=True)
         return dw, db
 
     def gradient_descent(self, x, y):

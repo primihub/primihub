@@ -1,9 +1,17 @@
+import tenseal as ts
 import numpy as np
 from primihub.utils.logger_util import logger
 from .base import LogisticRegression
 
 
 class LogisticRegression_Host_Plaintext(LogisticRegression):
+
+    def __init__(self, x, y, learning_rate=0.2, alpha=0.0001):
+        super().__init__(x, y, learning_rate, alpha)
+        if self.multiclass:
+            self.output_dim = self.weight.shape[1]
+        else:
+            self.output_dim = 1
 
     def compute_z(self, x, guest_z):
         z = x.dot(self.weight) + self.bias
@@ -46,12 +54,8 @@ class LogisticRegression_Host_Plaintext(LogisticRegression):
             return self.BCELoss(y, z, regular_loss)
     
     def compute_grad(self, x, error):
-        if self.multiclass:
-            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
-            db = error.mean(axis=0, keepdims=True)
-        else:
-            dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
-            db = error.sum(keepdims=True)
+        dw = x.T.dot(error) / x.shape[0] + self.alpha * self.weight
+        db = error.mean(axis=0, keepdims=True)
         return dw, db
     
     def gradient_descent(self, x, error):
@@ -67,25 +71,38 @@ class LogisticRegression_Host_CKKS(LogisticRegression_Host_Plaintext):
 
     def compute_enc_z(self, x, guest_z):
         z = self.weight.mm(x.T) + self.bias
-        z += np.array(guest_z).sum(axis=0)
+        z += sum(guest_z)
         return z
     
     def compute_error(self, y, z):
         if self.multiclass:
-            error_msg = "CKKS method doesn't support multiclass classification"
-            logger.error(error_msg)
-            raise AttributeError(error_msg)
+            error = z + 1 - self.output_dim * np.eye(self.output_dim)[y].T
         else:
             error = 2. + z - 4 * y
         return error
+    
+    def compute_regular_loss(self, guest_regular_loss):
+        if self.multiclass and isinstance(self.weight, ts.CKKSTensor):
+            return (0.5 * self.alpha) * (self.weight ** 2).sum().sum() \
+                    + guest_regular_loss
+        else:
+            return super().compute_regular_loss(guest_regular_loss)
 
     def BCELoss(self, y, z, regular_loss):
         return z.dot((0.5 - y) / y.shape[0]) + regular_loss
 
     def CELoss(self, y, z, regular_loss):
-        error_msg = "CKKS method doesn't support multiclass classification"
-        logger.error(error_msg)
-        raise AttributeError(error_msg)
+        factor = 1. / (y.shape[0] * self.output_dim)
+        if isinstance(z, ts.CKKSTensor):
+            # Todo: fix encrypted1 and encrypted2 parameter mismatch
+            return (z * factor \
+                    - z * ((np.eye(self.output_dim)[y].T 
+                    + np.random.normal(0, 1e-4, (self.output_dim, y.shape[0]))) \
+                    * factor)).sum().sum() \
+                    + regular_loss
+        else:
+            return np.sum(np.sum(z, axis=1) - z[np.arange(len(y)), y]) \
+                    * factor + regular_loss
     
     def loss(self, y, z, regular_loss):
         if self.multiclass:
@@ -95,13 +112,13 @@ class LogisticRegression_Host_CKKS(LogisticRegression_Host_Plaintext):
 
     def gradient_descent(self, x, error):
         if self.multiclass:
-            error_msg = "CKKS method doesn't support multiclass classification"
-            logger.error(error_msg)
-            raise AttributeError(error_msg)
+            factor = -self.learning_rate / (self.output_dim * x.shape[0])
+            self.bias += error.sum(axis=1).reshape((self.output_dim, 1)) * factor
         else:
             factor = -self.learning_rate / x.shape[0]
-            self.weight += error.mm(factor * x) + self.alpha * self.weight
             self.bias += error.sum() * factor
+        self.weight += error.mm(factor * x) \
+            + (-self.learning_rate * self.alpha) * self.weight
 
 
 class LogisticRegression_Guest_Plaintext:
@@ -138,9 +155,23 @@ class LogisticRegression_Guest_Plaintext:
 
 class LogisticRegression_Guest_CKKS(LogisticRegression_Guest_Plaintext):
 
+    def __init__(self, x, learning_rate=0.2, alpha=0.0001, output_dim=1):
+        super().__init__(x, learning_rate, alpha, output_dim)
+        self.output_dim = output_dim
+    
     def compute_enc_z(self, x):
         return self.weight.mm(x.T)
     
+    def compute_regular_loss(self):
+        if self.multiclass and isinstance(self.weight, ts.CKKSTensor):
+            return (0.5 * self.alpha) * (self.weight ** 2).sum().sum()
+        else:
+            return super().compute_regular_loss()
+    
     def gradient_descent(self, x, error):
-        factor = -self.learning_rate / x.shape[0]
-        self.weight += error.mm(factor * x) + self.alpha * self.weight
+        if self.multiclass:
+            factor = -self.learning_rate / (self.output_dim * x.shape[0])
+        else:
+            factor = -self.learning_rate / x.shape[0]
+        self.weight += error.mm(factor * x) + \
+            (-self.learning_rate * self.alpha) * self.weight

@@ -5,7 +5,7 @@ from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 
 import pickle
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 from .vfl_base import LogisticRegression_Guest_Plaintext,\
                       LogisticRegression_Guest_CKKS
@@ -70,8 +70,8 @@ class LogisticRegressionGuest(BaseModel):
             raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        scaler = MinMaxScaler()
+        # StandardScaler
+        scaler = StandardScaler()
         x = scaler.fit_transform(x)
 
         # guest training
@@ -196,8 +196,9 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
                                                    alpha,
                                                    output_dim)
         self.recv_public_context(coordinator_channel)
-        self.max_iter = coordinator_channel.recv('max_iter')
         CKKS.__init__(self, self.context)
+        multiply_per_iter = 2
+        self.max_iter = self.multiply_depth // multiply_per_iter
         self.encrypt_model()
     
     def recv_public_context(self, coordinator_channel):
@@ -205,13 +206,21 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        self.model.weight = self.encrypt_vector(self.model.weight)
+        if self.model.multiclass:
+            self.model.weight = self.encrypt_tensor(self.model.weight.T)
+        else:
+            self.model.weight = self.encrypt_vector(self.model.weight)
 
     def update_ciphertext_model(self):
         self.coordinator_channel.send('guest_weight',
                                       self.model.weight.serialize())
-        self.model.weight = self.load_vector(
-            self.coordinator_channel.recv('guest_weight'))
+        
+        if self.model.multiclass:
+            self.model.weight = self.load_tensor(
+                self.coordinator_channel.recv('guest_weight'))
+        else:
+            self.model.weight = self.load_vector(
+                self.coordinator_channel.recv('guest_weight'))
 
     def update_plaintext_model(self):
         self.coordinator_channel.send('guest_weight',
@@ -232,23 +241,26 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
         logger.info(f'iteration {self.t} / {self.max_iter}')
         if self.t >= self.max_iter:
             self.t = 0
-            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
+            self.update_ciphertext_model()
+            
         self.t += 1
 
         self.send_enc_z(x)
 
-        error = self.load_vector(self.host_channel.recv('error'))
+        if self.model.multiclass:
+            error = self.load_tensor(self.host_channel.recv('error'))
+        else:
+            error = self.load_vector(self.host_channel.recv('error'))
 
         self.model.fit(x, error)
 
     def compute_metrics(self, x):
         logger.info(f'iteration {self.t} / {self.max_iter}')
-        self.t += 1
-        if self.t > self.max_iter:
+        if self.t >= self.max_iter:
             self.t = 0
-            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
+            self.update_ciphertext_model()
 
         self.send_enc_z(x)
         self.send_enc_regular_loss()
