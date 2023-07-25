@@ -164,12 +164,8 @@ retcode WriteImpl(const std::vector<std::string>& fields_name,
 
 retcode WriteImpl(std::shared_ptr<arrow::Table> table,
                   const std::string& file_path) {
-  auto rtcode = WriteContent(table, file_path);
-  if (rtcode != retcode::SUCCESS) {
-    LOG(ERROR) << "write data to " << file_path << " failed";
-    return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
+  auto colum_names = table->ColumnNames();
+  return WriteImpl(colum_names, table, file_path);
 }
 
 std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
