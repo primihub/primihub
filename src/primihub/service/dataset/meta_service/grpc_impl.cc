@@ -281,6 +281,7 @@ retcode GrpcDatasetMetaService::MetaToPbMetaInfo(const DatasetMeta& meta,
     int type = field->type()->id();
     item->set_type(static_cast<rpc::DataTypeInfo::PlainDataType>(type));
   }
+  return retcode::SUCCESS;
 }
 
 retcode GrpcDatasetMetaService::PbMetaInfoToMeta(
@@ -301,6 +302,7 @@ retcode GrpcDatasetMetaService::PbMetaInfoToMeta(
     data_types.emplace_back(std::make_tuple(name, type));
   }
   meta_info.SetDataSchema(data_types);
+  return retcode::SUCCESS;
 }
 
 }  // namespace primihub::service

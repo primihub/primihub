@@ -1,8 +1,11 @@
 // Copyright [2021] <primihub.com>
-
 #include "src/primihub/util/model_util.h"
 
 #include <iostream>
+#include <random>
+
+#include "cryptoTools/Common/Defines.h"
+
 #include "src/primihub/util/eigen_util.h"
 
 namespace primihub {
@@ -10,13 +13,13 @@ namespace primihub {
 void Linear_sample(eMatrix<double>& X, eMatrix<double>& Y,
                    eMatrix<double>& mModel, double mNoise = 1, double mSd = 1) {
   if (X.rows() != Y.rows()) {
-      throw std::runtime_error(LOCATION);
+    throw std::runtime_error(LOCATION);
   }
   if (1 != Y.cols()) {
-      throw std::runtime_error(LOCATION);
+    throw std::runtime_error(LOCATION);
   }
   if (X.cols() != mModel.rows()) {
-      throw std::runtime_error(LOCATION);
+    throw std::runtime_error(LOCATION);
   }
 
   std::default_random_engine generator;

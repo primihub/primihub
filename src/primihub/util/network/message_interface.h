@@ -44,6 +44,28 @@ class TaskMessagePassInterface : public SocketInterface {
             << peer_node_id_;
   }
 
+  TaskMessagePassInterface(const std::string &local_node_id,
+                           const std::string &peer_node_id,
+                           LinkContext *link_context,
+                           std::shared_ptr<network::IChannel> channel) {
+    job_id_ = link_context->job_id();
+    task_id_ = link_context->task_id();
+    request_id_ = link_context->request_id();
+    local_node_id_ = local_node_id;
+    peer_node_id_ = peer_node_id;
+    link_context_ = link_context;
+    channel_ = channel;
+    cancel_ = false;
+
+    send_count_.store(0);
+    recv_count_.store(0);
+
+    VLOG(3) << "job_id " << job_id_ << ", task_id " << task_id_
+            << ", request_id " << request_id_
+            << ", local_node " << local_node_id_ << ", peer node "
+            << peer_node_id_;
+  }
+
   ~TaskMessagePassInterface() {}
 
   void async_recv(osuCrypto::span<boost::asio::mutable_buffer> buffers,
@@ -71,11 +93,11 @@ class TaskMessagePassInterface : public SocketInterface {
       std::condition_variable cv_;
   };
 
-  void _channelSend(const std::string& send_key,
+  void _channelSend(const std::string send_key,
                     osuCrypto::span<boost::asio::mutable_buffer> buffers,
                     io_completion_handle &&fn);
 
-  void _channelRecv(const std::string& recv_key,
+  void _channelRecv(const std::string recv_key,
                     ThreadSafeQueue<std::string> &queue,
                     osuCrypto::span<boost::asio::mutable_buffer> buffers,
                     io_completion_handle &&fn);

@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/common/finally.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/timer.h"

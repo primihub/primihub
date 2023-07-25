@@ -20,7 +20,7 @@
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/model.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/task/common.h"
 
 using primihub::service::DatasetMetaWithParamTag;

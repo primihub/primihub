@@ -40,7 +40,7 @@ retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
   int64_t i;
   new_data->clear();
   if (origin_data.empty()) {
-    retcode::SUCCESS;
+    return retcode::SUCCESS;
   }
   auto data = reinterpret_cast<const uint8_t*>(origin_data.data());
   size_t size = origin_data.size();
@@ -164,12 +164,8 @@ retcode WriteImpl(const std::vector<std::string>& fields_name,
 
 retcode WriteImpl(std::shared_ptr<arrow::Table> table,
                   const std::string& file_path) {
-  auto rtcode = WriteContent(table, file_path);
-  if (rtcode != retcode::SUCCESS) {
-    LOG(ERROR) << "write data to " << file_path << " failed";
-    return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
+  auto colum_names = table->ColumnNames();
+  return WriteImpl(colum_names, table, file_path);
 }
 
 std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,

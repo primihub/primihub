@@ -89,7 +89,7 @@ SQLiteCursor::SQLiteCursor(const std::string &sql,
   this->sql_ = sql;
   this->driver_ = std::move(driver);
   auto& schema = this->driver_->dataSetAccessInfo()->Schema();
-  for (int i = 0; i < schema.size(); i++) {
+  for (size_t i = 0; i < schema.size(); i++) {
     selected_column_index_.push_back(i);
   }
 }
@@ -630,7 +630,7 @@ std::string SQLiteDriver::BuildQuerySQL(const SQLiteAccessInfo& access_info,
     std::vector<std::string>* colum_names) {
   auto& table_name = access_info.table_name_;
   auto& schema = access_info.Schema();
-  size_t number_fields = schema.size();
+  int number_fields = schema.size();
   std::string sql_str = "SELECT ";
   for (const auto index : col_index) {
     if (index < number_fields) {

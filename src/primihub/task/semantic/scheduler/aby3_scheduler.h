@@ -31,7 +31,7 @@
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;

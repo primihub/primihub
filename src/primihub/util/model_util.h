@@ -8,8 +8,7 @@
 #include <chrono>
 #include <array>
 
-#include "src/primihub/common/type/type.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/type.h"
 
 namespace primihub {
 

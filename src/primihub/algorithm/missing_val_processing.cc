@@ -22,11 +22,12 @@
 #include <iostream>
 #include <limits>
 
-#include "src/primihub/common/type/fixed_point.h"
+// #include "src/primihub/common/type/fixed_point.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
+#include "src/primihub/util/network/message_interface.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -37,17 +38,17 @@ using arrow::Table;
 using namespace rapidjson;
 
 namespace primihub {
-void MissingProcess::_spiltStr(string str, const string &split,
-                               std::vector<string> &strlist) {
+void MissingProcess::_spiltStr(std::string str, const std::string &split,
+                               std::vector<std::string> &strlist) {
   strlist.clear();
   if (str == "")
     return;
-  string strs = str + split;
+  std::string strs = str + split;
   size_t pos = strs.find(split);
   int steps = split.size();
 
   while (pos != strs.npos) {
-    string temp = strs.substr(0, pos);
+    std::string temp = strs.substr(0, pos);
     strlist.push_back(temp);
     strs = strs.substr(pos + steps, strs.size());
     pos = strs.find(split);
@@ -111,8 +112,9 @@ void MissingProcess::_buildNewColumn(std::vector<std::string> &col_val,
                                      std::shared_ptr<arrow::Array> &array) {
   arrow::MemoryPool *pool = arrow::default_memory_pool();
   arrow::StringBuilder builder(pool);
-  for (auto i = 0; i < col_val.size(); i++)
+  for (size_t i = 0; i < col_val.size(); i++) {
     builder.Append(col_val[i]);
+  }
 
   builder.Finish(&array);
 }
@@ -156,13 +158,13 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
   if (need_double) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::DoubleBuilder builder(pool);
-    for (auto i = 0; i < new_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_col_val[0].size(); i++)
       builder.Append(std::stod(new_col_val[0][i]));
     builder.Finish(&new_array);
   } else {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::Int64Builder builder(pool);
-    for (auto i = 0; i < new_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_col_val[0].size(); i++)
       builder.Append(std::stoll(new_col_val[0][i]));
     builder.Finish(&new_array);
   }
@@ -236,13 +238,13 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
   if (need_double) {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::DoubleBuilder builder(pool);
-    for (auto i = 0; i < new_double_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_double_col_val[0].size(); i++)
       builder.Append(new_double_col_val[0][i]);
     builder.Finish(&new_array);
   } else {
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     arrow::Int64Builder builder(pool);
-    for (auto i = 0; i < new_int_col_val[0].size(); i++)
+    for (size_t i = 0; i < new_int_col_val[0].size(); i++)
       builder.Append(new_int_col_val[0][i]);
     builder.Finish(&new_array);
   }
@@ -250,64 +252,64 @@ void MissingProcess::_buildNewColumn(std::shared_ptr<arrow::Table> table,
 
 MissingProcess::MissingProcess(PartyConfig &config,
                                std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+                               : AlgorithmBase(config, dataset_service) {
   this->algorithm_name_ = "missing_val_processing";
   this->set_party_name(config.party_name());
   this->set_party_id(config.party_id());
 
-#ifdef MPC_SOCKET_CHANNEL
-  std::map<std::string, rpc::Node> &node_map = config.node_map;
+// #ifdef MPC_SOCKET_CHANNEL
+//   std::map<std::string, rpc::Node> &node_map = config.node_map;
 
-  std::map<uint16_t, rpc::Node> party_id_node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    party_id_node_map[party_id] = node;
-  }
+//   std::map<uint16_t, rpc::Node> party_id_node_map;
+//   for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
+//     rpc::Node &node = iter->second;
+//     uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
+//     party_id_node_map[party_id] = node;
+//   }
 
-  auto iter = node_map.find(config.node_id); // node_id
-  if (iter == node_map.end()) {
-    stringstream ss;
-    ss << "Can't find " << config.node_id << " in node_map.";
-    throw std::runtime_error(ss.str());
-  }
+//   auto iter = node_map.find(config.node_id);  // node_id
+//   if (iter == node_map.end()) {
+//     std::stringstream ss;
+//     ss << "Can't find " << config.node_id << " in node_map.";
+//     throw std::runtime_error(ss.str());
+//   }
 
-  party_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
+//   party_id_ = iter->second.vm(0).party_id();
+//   LOG(INFO) << "Note party id of this node is " << party_id_ << ".";
 
-  if (party_id_ == 0) {
-    rpc::Node &node = party_id_node_map[0];
+//   if (party_id_ == 0) {
+//     rpc::Node &node = party_id_node_map[0];
 
-    next_ip_ = node.ip();
-    next_port_ = node.vm(0).next().port();
+//     next_ip_ = node.ip();
+//     next_port_ = node.vm(0).next().port();
 
-    prev_ip_ = node.ip();
-    prev_port_ = node.vm(0).prev().port();
-  } else if (party_id_ == 1) {
-    rpc::Node &node = party_id_node_map[1];
+//     prev_ip_ = node.ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   } else if (party_id_ == 1) {
+//     rpc::Node &node = party_id_node_map[1];
 
-    // A local server addr.
-    uint16_t port = node.vm(0).next().port();
+//     // A local server addr.
+//     uint16_t port = node.vm(0).next().port();
 
-    next_ip_ = node.ip();
-    next_port_ = port;
+//     next_ip_ = node.ip();
+//     next_port_ = port;
 
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  } else {
-    rpc::Node &node = party_id_node_map[2];
+//     prev_ip_ = node.vm(0).prev().ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   } else {
+//     rpc::Node &node = party_id_node_map[2];
 
-    next_ip_ = node.vm(0).next().ip();
-    next_port_ = node.vm(0).next().port();
+//     next_ip_ = node.vm(0).next().ip();
+//     next_port_ = node.vm(0).next().port();
 
-    prev_ip_ = node.vm(0).prev().ip();
-    prev_port_ = node.vm(0).prev().port();
-  }
+//     prev_ip_ = node.vm(0).prev().ip();
+//     prev_port_ = node.vm(0).prev().port();
+//   }
 
-  node_id_ = config.node_id;
-#else
-  party_config_.Init(config);
-#endif
+//   node_id_ = config.node_id;
+// #endif
+//   party_config_.Init(config);
+  party_id_ = party_config_.SelfPartyId();
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
@@ -391,69 +393,14 @@ int MissingProcess::loadDataset() {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
-int MissingProcess::initPartyComm(void) {
-  std::string next_name;
-  std::string prev_name;
-
-  if (party_id_ == 0) {
-    next_name = "01";
-    prev_name = "02";
-  } else if (party_id_ == 1) {
-    next_name = "12";
-    prev_name = "01";
-  } else if (party_id_ == 2) {
-    next_name = "02";
-    prev_name = "12";
-  }
-
-  mpc_op_exec_ = std::make_unique<MPCOperator>(party_id_, next_name, prev_name);
-  mpc_op_exec_->setup(next_ip_, prev_ip_, next_port_, prev_port_);
-
-  return 0;
-}
-#else
-int MissingProcess::initPartyComm(void) {
-  auto link_ctx = GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is not available";
-    return -1;
-  }
-  // construct channel for next party
-  std::string next_party_name = this->party_config_.NextPartyName();
-  auto next_party_info = this->party_config_.NextPartyInfo();
-  base_channel_next_ = link_ctx->getChannel(next_party_info);
-
-  // construct channel for prev party
-  auto prev_party_name = this->party_config_.PrevPartyName();
-  auto prev_party_info = this->party_config_.PrevPartyInfo();
-  base_channel_prev_ = link_ctx->getChannel(prev_party_info);
-
-  mpc_channel_next_ = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
-  mpc_channel_prev_ = std::make_shared<MpcChannel>(
-      this->party_config_.SelfPartyName(), link_ctx);
-
-  mpc_channel_next_->SetupBaseChannel(next_party_name, base_channel_next_);
-  mpc_channel_prev_->SetupBaseChannel(prev_party_name, base_channel_prev_);
-
+retcode MissingProcess::InitEngine() {
   std::string next_name = "fake_next";
   std::string prev_name = "fake_prev";
-
   mpc_op_exec_ = std::make_unique<MPCOperator>(
-      this->party_config_.SelfPartyId(), next_name.c_str(), prev_name.c_str());
-
-  mpc_op_exec_->setup(*mpc_channel_prev_, *mpc_channel_next_);
-
-  party_id_ = this->party_config_.SelfPartyId();
-  LOG(INFO) << "local_id_local_id_: " << party_id_;
-  LOG(INFO) << "next_party: " << next_party_name
-            << " detail: " << next_party_info.to_string();
-  LOG(INFO) << "prev_party: " << prev_party_name
-            << " detail: " << prev_party_info.to_string();
-  return 0;
+      this->party_id(), next_name.c_str(), prev_name.c_str());
+  mpc_op_exec_->setup(this->CommPkgPtr());
+  return retcode::SUCCESS;
 }
-#endif
 
 int MissingProcess::execute() {
 
@@ -462,13 +409,13 @@ int MissingProcess::execute() {
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
         cols_0 = col_and_dtype_.size();
-        mpc_op_exec_->mNext->asyncSendCopy(cols_0);
-        mpc_op_exec_->mPrev->asyncSendCopy(cols_0);
+        mpc_op_exec_->mNext().asyncSendCopy(cols_0);
+        mpc_op_exec_->mPrev().asyncSendCopy(cols_0);
       } else {
         if (party_id_ == (i + 1) % 3) {
-          mpc_op_exec_->mPrev->recv(cols_2);
+          mpc_op_exec_->mPrev().recv(cols_2);
         } else if (party_id_ == (i + 2) % 3) {
-          mpc_op_exec_->mNext->recv(cols_1);
+          mpc_op_exec_->mNext().recv(cols_1);
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";
@@ -497,13 +444,13 @@ int MissingProcess::execute() {
 
     for (uint64_t i = 0; i < 3; i++) {
       if (party_id_ == i) {
-        mpc_op_exec_->mNext->asyncSendCopy(arr_dtype0, cols_0);
-        mpc_op_exec_->mPrev->asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mNext().asyncSendCopy(arr_dtype0, cols_0);
+        mpc_op_exec_->mPrev().asyncSendCopy(arr_dtype0, cols_0);
       } else {
         if (party_id_ == (i + 1) % 3) {
-          mpc_op_exec_->mPrev->recv(arr_dtype1, cols_0);
+          mpc_op_exec_->mPrev().recv(arr_dtype1, cols_0);
         } else if (party_id_ == (i + 2) % 3) {
-          mpc_op_exec_->mNext->recv(arr_dtype2, cols_0);
+          mpc_op_exec_->mNext().recv(arr_dtype2, cols_0);
         } else {
           std::stringstream ss;
           ss << "Abnormal party id value " << party_id_ << ".";
@@ -514,7 +461,7 @@ int MissingProcess::execute() {
       }
     }
 
-    for (uint64_t i = 0; i < cols_0; i++) {
+    for (int i = 0; i < cols_0; i++) {
       if ((arr_dtype0[i] != arr_dtype1[i]) ||
           (arr_dtype0[i] != arr_dtype2[i]) ||
           (arr_dtype1[i] != arr_dtype2[i])) {
@@ -592,7 +539,7 @@ int MissingProcess::execute() {
             int_count = table->num_rows() - db_both_index[iter->first].size();
           } else {
             for (int k = 0; k < chunk_num; k++) {
-              auto str_array = static_pointer_cast<StringArray>(
+              auto str_array = std::static_pointer_cast<StringArray>(
                   table->column(col_index)->chunk(k));
 
               // Detect string that can't convert into int64_t value.
@@ -727,7 +674,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
             LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
@@ -738,7 +685,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (mpc_res[i]) {
                 flag = 1;
@@ -764,7 +711,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -773,7 +720,7 @@ int MissingProcess::execute() {
 
             si64Matrix sh_max;
             sh_max.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // max is p2
               if (mpc_res2[i]) {
                 flag = 2;
@@ -829,7 +776,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
 
@@ -842,7 +789,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (mpc_res[i]) {
                 flag = 1;
@@ -870,7 +817,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -879,7 +826,7 @@ int MissingProcess::execute() {
 
             sf64Matrix<myD> sh_max;
             sh_max.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // max is p2
               if (mpc_res2[i]) {
                 flag = 2;
@@ -938,7 +885,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
             LOG(INFO) << "Second: The revealed sh_res is " << tmp << ".";
@@ -949,7 +896,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0<p1
               if (!mpc_res[i]) {
                 flag = 1;
@@ -975,7 +922,7 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
@@ -985,7 +932,7 @@ int MissingProcess::execute() {
             si64Matrix sh_min;
             sh_min.resize(m.rows(), m.cols());
 
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // min is p2
               if (!mpc_res2[i]) {
                 flag = 2;
@@ -1042,7 +989,7 @@ int MissingProcess::execute() {
             tmp.resize(sh_res.rows(), sh_res.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res, tmp)
                 .get();
-            for (size_t i = 0; i < tmp.rows(); i++) {
+            for (i64 i = 0; i < tmp.rows(); i++) {
               mpc_res.emplace_back(static_cast<bool>(tmp(i, 0)));
             }
 
@@ -1055,7 +1002,7 @@ int MissingProcess::execute() {
             // 2:p2
             int flag = 0;
             sbMatrix sh_res2;
-            for (int i = 0; i < mpc_res.size(); i++) {
+            for (size_t i = 0; i < mpc_res.size(); i++) {
               // p0>=p1
               if (!mpc_res[i]) {
                 flag = 1;
@@ -1083,13 +1030,13 @@ int MissingProcess::execute() {
             tmp2.resize(sh_res2.rows(), sh_res2.i64Cols());
             mpc_op_exec_->enc.revealAll(mpc_op_exec_->runtime, sh_res2, tmp2)
                 .get();
-            for (size_t i = 0; i < tmp2.rows(); i++) {
+            for (i64 i = 0; i < tmp2.rows(); i++) {
               mpc_res2.emplace_back(static_cast<bool>(tmp2(i, 0)));
             }
 
             sf64Matrix<myD> sh_min;
             sh_min.resize(m.rows(), m.cols());
-            for (int i = 0; i < mpc_res2.size(); i++) {
+            for (size_t i = 0; i < mpc_res2.size(); i++) {
               // min is p2
               if (!mpc_res2[i]) {
                 flag = 2;
@@ -1232,6 +1179,7 @@ int MissingProcess::finishPartyComm(void) {
     mpc_op_exec_->createShares(tmp_share0);
 
   mpc_op_exec_->fini();
+  AlgorithmBase::finishPartyComm();
   return 0;
 }
 
@@ -1354,11 +1302,9 @@ int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
       break;
     }
 
-    if (errors)
-      return -1;
 
-    return array_len;
   }
+  return errors ? -1 : array_len;
 }
 
 int MissingProcess::_LoadDatasetFromDB(std::string &source) {
@@ -1379,7 +1325,7 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
   int num_col = table->num_columns();
 
   local_col_names = table->ColumnNames();
-  for (auto i = 0; i < local_col_names.size(); i++)
+  for (size_t i = 0; i < local_col_names.size(); i++)
     LOG(INFO) << local_col_names[i];
   // 'array' include values in a column of csv file.
   int chunk_num = table->column(num_col - 1)->chunks().size();
@@ -1412,11 +1358,8 @@ int MissingProcess::_LoadDatasetFromDB(std::string &source) {
       break;
     }
 
-    if (errors)
-      return -1;
-
-    return array_len;
   }
+  return errors ? -1 : array_len;
 }
 
 int MissingProcess::set_task_info(std::string platform_type, std::string job_id,

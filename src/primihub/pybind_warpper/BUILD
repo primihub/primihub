@@ -23,12 +23,12 @@ py_library(
 pybind_extension(
     name = "opt_paillier_c2py",  # This name is not actually created!
     srcs = [
-        "primitive/opt_paillier_c2py.cc",
-        "primitive/opt_paillier_c2py.hpp",
+        "algorithm/opt_paillier_c2py.cc",
+        "algorithm/opt_paillier_c2py.hpp",
     ],
     deps = [
         "//:python3_lib",
-        "//src/primihub/primitive:lib_opt_paillier",
+        "//src/primihub/algorithm:lib_opt_paillier",
     ],
 )
 

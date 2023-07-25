@@ -14,8 +14,6 @@ void MpcChannel::SetupBaseChannel(const std::string &peer_party_name,
 int MpcChannel::_channelRecvNonBlock(ThreadSafeQueue<std::string> &queue,
                                      char *recv_ptr, uint64_t recv_size,
                                      const std::string &recv_key) {
-  int ret = 0;
-
   std::string recv_str;
   queue.wait_and_pop(recv_str);
 

@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include <signal.h>
 #include <arrow/util/logging.h>
 #include "arrow/api.h"
 #include <arrow/flight/internal.h>

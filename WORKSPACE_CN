@@ -12,6 +12,15 @@ filegroup(
 """
 
 http_archive(
+  name = "platforms",
+  urls = [
+    "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
+    "https://github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
+  ],
+  sha256 = "5308fc1d8865406a49427ba24a9ab53087f17f5266a7aabbfc28823f3916e1ca",
+)
+
+http_archive(
   name = "rules_foreign_cc",
   sha256 = "484fc0e14856b9f7434072bc2662488b3fe84d7798a5b7c92a1feb1a0fa8d088",
   strip_prefix = "rules_foreign_cc-0.8.0",
@@ -435,18 +444,26 @@ git_repository(
   remote = "https://gitee.com/primihub/libPSI.git",
 )
 
+
 git_repository(
   name = "ladnir_cryptoTools",
-  #branch = "bazel_branch",
-  commit = "c3fb58a11f6ac1fc2cd4d8c62c081e13987deef8",
+  # branch = "bazel_branch",
+  commit = "53026be7bf1f12cb572c3d8ef9c7ee1a21742360",
   remote = "https://gitee.com/primihub/cryptoTools.git",
+)
+
+git_repository(
+  name = "com_github_ladnir_aby3",
+  # branch = "bazel_branch",
+  commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
+  remote = "https://gitee.com/primihub/aby3.git",
 )
 
 # libote
 git_repository(
   name = "osu_libote",
-  #branch = "bazel_branch",
-  commit = "b1f83ced131c58e565dbd47a5166bd9904ffdd83",
+  # branch = "bazel_branch",
+  commit = "d797f316d94b2931505f1862515b6e161a24cacb",
   remote = "https://gitee.com/primihub/libOTe.git",
 )
 
@@ -458,12 +475,13 @@ new_git_repository(
   # shallow_since = "1591047380 -0700",
 )
 
+
 new_git_repository(
   name = "toolkit_relic",
   build_file = "//bazel:BUILD.relic",
-  remote = "https://gitee.com/orzmzp/relic.git",
-  commit = "3f616ad64c3e63039277b8c90915607b6a2c504c",
-  shallow_since = "1581106153 -0800",
+  remote = "https://gitee.com/primihub/relic.git",
+  # tag 0.6.0
+  commit = "d7dcb22846e32172bb94111823bd3358ec9a49aa",
 )
 
 http_archive(
@@ -587,12 +605,14 @@ git_repository(
   remote = "https://gitee.com/primihub/cpp-base64.git",
 )
 
-# for libp2p
-new_git_repository(
-  name = "com_github_microsoft_gsl_v2_0_0",
-  build_file = "//bazel:BUILD.gsl_v_2_0_0",
-  tag = "v2.0.0",
-  remote = "https://gitee.com/mirrors_microsoft/GSL.git",
+http_archive(
+  name = "com_github_microsoft_gsl",
+  build_file = "//bazel:BUILD.gsl",
+  sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
+  strip_prefix = "GSL-4.0.0",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/GSL-4.0.0.tar.gz",
+  ],
 )
 
 #python include

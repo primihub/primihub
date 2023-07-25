@@ -79,7 +79,11 @@ void VMNodeImpl::CleanFinishedTaskThread() {
           break;
         }
         {
-          std::lock_guard<std::mutex> lck(this->task_executor_mtx);
+          std::unique_lock<std::mutex> lck(task_executor_mtx, std::try_to_lock);
+          if (!lck.owns_lock()) {
+            LOG(WARNING) << "try to lock task executor map failed, ignore....";
+            continue;
+          }
           auto it = task_executor_map.find(finished_worker_id);
           if (it != task_executor_map.end()) {
             VLOG(5) << "worker id : " << finished_worker_id << " "
@@ -192,7 +196,7 @@ VMNodeImpl::~VMNodeImpl() {
 
 Status VMNodeImpl::Send(ServerContext* context,
         ServerReader<TaskRequest>* reader, TaskResponse* response) {
-    VLOG(5) << "VMNodeImpl::Send: received";
+    VLOG(5) << "VMNodeImpl::Send: begin to receive data...";
     bool recv_meta_info{false};
     std::string job_id;
     std::string task_id;
@@ -252,9 +256,10 @@ Status VMNodeImpl::Send(ServerContext* context,
       response->set_msg_info(std::move(err_msg));
       return Status::OK;
     }
+    size_t data_size = received_data.size();
     auto& recv_queue = link_ctx->GetRecvQueue(role);
     recv_queue.push(std::move(received_data));
-    VLOG(5) << "end of VMNodeImpl::Send";
+    VLOG(5) << "end of VMNodeImpl::Send, data total received size:" << data_size;
     response->set_ret_code(primihub::rpc::retcode::SUCCESS);
     return Status::OK;
 }
@@ -862,7 +867,7 @@ retcode VMNodeImpl::ExecuteTask(const PushTaskRequest& task_request, PushTaskRep
                         worker,
                         task_request,
                         &this->fininished_workers);
-  LOG(INFO) << "create worker thread future for task: "
+  LOG(INFO) << "create execute worker thread future for task: "
           << "job_id : " << job_id  << " task_id: " << task_id
           << " request id: " << request_id << " finished";
   auto ret = worker->waitForTaskReady();
@@ -1037,7 +1042,8 @@ retcode VMNodeImpl::waitUntilWorkerReady(const std::string& worker_id,
             LOG(ERROR) << "context is cancelled by client";
             return retcode::FAIL;
         }
-        VLOG(5) << "sleep and wait for worker ready........";
+        VLOG(5) << "sleep and wait for worker ready, "
+                << "worker id : " << worker_id << " ........";
         std::this_thread::sleep_for(std::chrono::seconds(1));
          if (timeout_ms == -1) {
             continue;

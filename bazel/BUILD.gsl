@@ -1,0 +1,13 @@
+# Description:
+package(default_visibility = ["//visibility:public"])
+cc_library(
+  name = "gsl_lib",
+  textual_hdrs = glob([
+    "include/gsl",
+    "include/gsl/*",
+  ]),
+  includes = ["include"],
+  copts = [
+    "--std=c++17",
+  ],
+)

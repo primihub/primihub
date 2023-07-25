@@ -1,6 +1,7 @@
 #include <glog/logging.h>
 #include <sstream>
 #include <time.h>
+#include <string>
 
 #include "src/primihub/executor/express.h"
 
@@ -156,6 +157,7 @@ int MPCExpressExecutor<Dbit>::FeedDict::checkLocalColumn(
 
   if (is_local == false)
     return 0;
+  return 0;
 }
 
 template <Decimal Dbit>
@@ -418,7 +420,7 @@ template <Decimal Dbit> bool MPCExpressExecutor<Dbit>::checkExpress(void) {
       num_op++;
   }
 
-  if ((suffix_vec.size() - num_op) != (num_op + 1)) {
+  if ((suffix_vec.size() - num_op) != static_cast<size_t>(num_op + 1)) {
     LOG(ERROR) << "Illegal express found, too many operator"
                << " or column in express.";
     return false;
@@ -446,7 +448,7 @@ void MPCExpressExecutor<Dbit>::parseExpress(const std::string &expr) {
   std::string suffix;
   std::stack<std::string> stk2;
 
-  for (int i = 0; i <= expr.length(); i++) {
+  for (size_t i = 0; i <= expr.length(); i++) {
     if ((!temp.empty()) && (i == expr.length())) {
       stk2.push(temp);
       temp.clear();
@@ -657,7 +659,6 @@ template <Decimal Dbit> int MPCExpressExecutor<Dbit>::resolveRunMode(void) {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
                                               const std::string &next_ip,
@@ -684,16 +685,23 @@ void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
   party_id_ = party_id;
   return;
 }
-#else
+
 template <Decimal Dbit>
-void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
-                                              MpcChannel &prev,
-                                              MpcChannel &next) {
+void MPCExpressExecutor<Dbit>::initMPCRuntime(
+    uint32_t party_id,
+    std::shared_ptr<aby3::CommPkg> comm_pkg) {
   mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
-  mpc_op_->setup(prev, next);
+  mpc_op_->setup(std::move(comm_pkg));
   party_id_ = party_id;
 }
-#endif
+
+template <Decimal Dbit>
+void MPCExpressExecutor<Dbit>::initMPCRuntime(uint32_t party_id,
+                                              aby3::CommPkg* comm_pkg) {
+  mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+  mpc_op_->setup(comm_pkg);
+  party_id_ = party_id;
+}
 
 template <Decimal Dbit>
 void MPCExpressExecutor<Dbit>::constructI64Matrix(TokenValue &val,
@@ -1295,7 +1303,7 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
     if (party_id_ == party) {
       eMatrix<double> m = mpc_op_->reveal(*p_final_share);
       uint32_t count = 0;
-      for (size_t i = 0; i < m.rows(); i++) {
+      for (i64 i = 0; i < m.rows(); i++) {
         val_vec.emplace_back(m(i, 0));
         count++;
       }
@@ -1324,7 +1332,7 @@ void MPCExpressExecutor<Dbit>::revealMPCResult(std::vector<uint32_t> &parties,
     if (party_id_ == party) {
       i64Matrix m = mpc_op_->reveal(*p_final_share);
       uint32_t count = 0;
-      for (size_t i = 0; i < m.rows(); i++) {
+      for (i64 i = 0; i < m.rows(); i++) {
         val_vec.emplace_back(m(i, 0));
         count++;
       }
@@ -1605,17 +1613,18 @@ template <Decimal Dbit> int LocalExpressExecutor<Dbit>::runLocalEvaluate() {
     suffix_stk.push(stk1.top());
     stk1.pop();
   }
-  string final_token = suffix_stk.top();
+  std::string final_token = suffix_stk.top();
   suffix_stk.pop();
   TokenValue finalVal = token_val_map_[final_token];
-  if (finalVal.type == 0)
-    for (int i = 0; i < finalVal.val_union.fp64_vec->size(); i++) {
+  if (finalVal.type == 0) {
+    for (size_t i = 0; i < finalVal.val_union.fp64_vec->size(); i++) {
       final_val_double.push_back((*finalVal.val_union.fp64_vec)[i]);
     }
-  else
-    for (int i = 0; i < finalVal.val_union.i64_vec->size(); i++) {
+  } else {
+    for (size_t i = 0; i < finalVal.val_union.i64_vec->size(); i++) {
       final_val_int64.push_back((*finalVal.val_union.i64_vec)[i]);
     }
+  }
   // return
   return 0;
 }

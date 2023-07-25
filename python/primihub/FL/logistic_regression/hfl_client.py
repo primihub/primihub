@@ -15,7 +15,8 @@ from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
 from .base import LogisticRegression,\
                   LogisticRegression_DPSGD,\
-                  LogisticRegression_Paillier
+                  LogisticRegression_Paillier,\
+                  Paillier
 
 
 class LogisticRegressionClient(BaseModel):
@@ -202,7 +203,7 @@ class LogisticRegressionClient(BaseModel):
 
 class Plaintext_Client:
 
-    def __init__(self, x, y, learning_rate, alpha, server_channel, *args):
+    def __init__(self, x, y, learning_rate, alpha, server_channel):
         self.model = LogisticRegression(x, y, learning_rate, alpha)
         self.param_init(x, y, server_channel)
 
@@ -340,15 +341,15 @@ class DPSGD_Client(Plaintext_Client):
         return accountant.get_epsilon(target_delta=delta)
     
 
-class Paillier_Client(Plaintext_Client):
+class Paillier_Client(Plaintext_Client, Paillier):
 
     def __init__(self, x, y, learning_rate, alpha,
                  server_channel):
         self.model = LogisticRegression_Paillier(x, y, learning_rate, alpha)
         self.param_init(x, y, server_channel)
 
-        self.model.public_key = server_channel.recv("public_key")
-        self.model.set_theta(self.model.encrypt_vector(self.model.get_theta()))
+        self.public_key = server_channel.recv("public_key")
+        self.model.set_theta(self.encrypt_vector(self.model.get_theta()))
 
     def send_loss(self, x, y):
         # pallier only support compute approximate loss without penalty
