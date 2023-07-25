@@ -190,7 +190,8 @@ class LogisticRegression_Paillier(LogisticRegression):
             error = 2 + x.dot(self.weight) + self.bias - 4 * y
             factor = -self.learning_rate / x.shape[0]
 
-            self.weight += (factor * x).T.dot(error) + self.alpha * self.weight
+            self.weight += (factor * x).T.dot(error) + \
+                (-self.learning_rate * self.alpha) * self.weight
             self.bias += factor * error.sum(keepdims=True)
 
     def BCELoss(self, x, y):
