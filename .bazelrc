@@ -38,6 +38,11 @@ build:linux_asan --copt -g
 build:linux_asan --copt -fno-omit-frame-pointer
 build:linux_asan --linkopt -fsanitize=address
 build:linux_asan --linkopt -static-libasan
+build:linux_asan --copt=-maes
+build:linux_asan --copt=-msse2
+build:linux_asan --copt=-msse3
+build:linux_asan --copt=-msse4.1
+build:linux_asan --copt=-mpclmul
 build:linux_asan --define enable_mysql_driver=true
 
 
