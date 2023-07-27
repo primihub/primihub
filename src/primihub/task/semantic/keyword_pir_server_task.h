@@ -94,20 +94,31 @@ class KeywordPIRServerTask : public TaskBase {
       apsi::oprf::OPRFKey &oprf_key,
       size_t nonce_byte_count,
       bool compress);
+  std::shared_ptr<apsi::sender::SenderDB> LoadDbFromCache(const std::string& db_file_cache_);
 
   std::unique_ptr<DBData> CreateDbData(std::shared_ptr<Dataset>& data);
   std::vector<std::string> GetSelectedContent(std::shared_ptr<arrow::Table>& data_tbl,
                                               const std::vector<int>& selected_col);
+  retcode CreateDbDataCache(const DBData& db_data,
+      std::unique_ptr<apsi::PSIParams> psi_params,
+      apsi::oprf::OPRFKey &oprf_key,
+      size_t nonce_byte_count,
+      bool compress);
+
+  bool DbCacheAvailable(const std::string& db_file_cache);
 
  private:
     std::string dataset_path_;
     std::string dataset_id_;
+    std::string db_cache_dir_{"data/cache"};
+    std::string db_file_cache_;
     uint32_t data_port{2222};
     std::string client_address;
     primihub::Node client_node_;
     std::string key{"default"};
     std::string psi_params_str_;
     std::unique_ptr<apsi::oprf::OPRFKey> oprf_key_{nullptr};
+    bool generate_db_offline_{false};
 };
 }  // namespace primihub::task
 #endif  // SRC_PRIMIHUB_TASK_SEMANTIC_KEYWORD_PIR_SERVER_TASK_H_

@@ -34,6 +34,7 @@
 #include "src/primihub/common/common.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/data_store/csv/csv_driver.h"
+#include "src/primihub/util/file_util.h"
 
 using namespace apsi;           // NOLINT
 using namespace apsi::sender;   // NOLINT
@@ -44,6 +45,39 @@ using namespace seal;           // NOLINT
 using namespace seal::util;     // NOLINT
 
 namespace primihub::task {
+bool KeywordPIRServerTask::DbCacheAvailable(const std::string& db_file_cache) {
+  return FileExists(db_file_cache);
+}
+
+retcode KeywordPIRServerTask::CreateDbDataCache(const DBData& db_data,
+      std::unique_ptr<apsi::PSIParams> psi_params,
+      apsi::oprf::OPRFKey &oprf_key,
+      size_t nonce_byte_count,
+      bool compress) {
+  auto sender_db = create_sender_db(db_data, std::move(psi_params),
+                                    oprf_key, nonce_byte_count, compress);
+  if (sender_db == nullptr) {
+    LOG(ERROR) << "create sender db failed";
+    return retcode::FAIL;
+  }
+  std::fstream fout(db_file_cache_, std::ios::out);
+  size_t save_size = sender_db->save(fout);
+  VLOG(0) << "save_size: " << save_size;
+  return retcode::SUCCESS;
+}
+
+std::shared_ptr<apsi::sender::SenderDB>
+KeywordPIRServerTask::LoadDbFromCache(const std::string& db_file_cache_) {
+  SCopedTimer timer;
+  std::fstream fin(db_file_cache_, std::ios::in);
+  auto db_info = SenderDB::Load(fin);
+  auto sender_db = std::make_shared<SenderDB>(std::move(std::get<0>(db_info)));
+  VLOG(0) << "db_size: " << std::get<1>(db_info);
+  *(this->oprf_key_) = sender_db->get_oprf_key();
+  auto time_cost = timer.timeElapse();
+  VLOG(5) << "LoadDbFromCache cost time(ms): " << time_cost;
+  return sender_db;
+}
 
 std::shared_ptr<SenderDB> KeywordPIRServerTask::create_sender_db(const DBData &db_data,
     std::unique_ptr<PSIParams> psi_params,
@@ -56,7 +90,7 @@ std::shared_ptr<SenderDB> KeywordPIRServerTask::create_sender_db(const DBData &d
     LOG(ERROR) << "No Keyword pir parameters were given";
     return nullptr;
   }
-  std::shared_ptr<SenderDB> sender_db;
+  std::shared_ptr<SenderDB> sender_db{nullptr};
   if (holds_alternative<LabeledData>(db_data)) {
     VLOG(5) << "LabeledData";
     try {
@@ -64,10 +98,10 @@ std::shared_ptr<SenderDB> KeywordPIRServerTask::create_sender_db(const DBData &d
       auto &labeled_db_data = std::get<LabeledData>(db_data);
       // Find the longest label and use that as label size
       size_t label_byte_count =
-            std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
-              [](auto &a, auto &b) {
-                  return a.second.size() < b.second.size();
-              })->second.size();
+          std::max_element(labeled_db_data.begin(), labeled_db_data.end(),
+            [](auto &a, auto &b) {
+                return a.second.size() < b.second.size();
+            })->second.size();
 
       auto max_label_count_ts = timer.timeElapse();
       VLOG(5) << "label_byte_count: " << label_byte_count << " "
@@ -96,8 +130,7 @@ std::shared_ptr<SenderDB> KeywordPIRServerTask::create_sender_db(const DBData &d
     LOG(ERROR) << "Loaded keyword pir database is in an invalid state";
     return nullptr;
   }
-
-  oprf_key = sender_db->strip();
+  oprf_key = sender_db->get_oprf_key();
   auto time_cost = timer.timeElapse();
   VLOG(5) << "create_sender_db success, time cost(ms): " << time_cost;
   return sender_db;
@@ -112,7 +145,27 @@ KeywordPIRServerTask::KeywordPIRServerTask(const TaskParam *task_param,
 }
 
 retcode KeywordPIRServerTask::_LoadParams(Task &task) {
-    std::string party_name = task.party_name();
+  std::string party_name = task.party_name();
+  const auto& param_map = task.params().param_map();
+  auto iter = param_map.find("DbInfo");
+  if (iter != param_map.end()) {
+    db_file_cache_ = iter->second.value_string();
+    LOG(INFO) << "db_file_cache path: " << db_file_cache_;
+    const auto& party_datasets = task.party_datasets();
+    auto dataset_it = party_datasets.find(party_name);
+    const auto& datasets_map = dataset_it->second.data();
+    {
+      auto it = datasets_map.find(party_name);
+      if (it == datasets_map.end()) {
+        LOG(ERROR) << "no datasets is set for server";
+        return retcode::FAIL;
+      }
+      dataset_id_ = it->second;
+      ValidateDir(db_file_cache_);
+    }
+    generate_db_offline_ = true;
+    return retcode::SUCCESS;
+  } else {
     const auto& party_info = task.party_access_info();
     auto it = party_info.find(PARTY_CLIENT);
     if (it == party_info.end()) {
@@ -122,24 +175,29 @@ retcode KeywordPIRServerTask::_LoadParams(Task &task) {
     auto& pb_node = it->second;
     pbNode2Node(pb_node, &client_node_);
     VLOG(5) << "client_address: " << this->client_node_.to_string();
-    const auto& party_datasets = task.party_datasets();
-    auto dataset_it = party_datasets.find(party_name);
-    if (dataset_it == party_datasets.end()) {
+  }
+
+  const auto& party_datasets = task.party_datasets();
+  auto dataset_it = party_datasets.find(party_name);
+  if (dataset_it == party_datasets.end()) {
+    LOG(ERROR) << "no datasets is set for server";
+    return retcode::FAIL;
+  }
+  const auto& datasets_map = dataset_it->second.data();
+  {
+    auto it = datasets_map.find(party_name);
+    if (it == datasets_map.end()) {
       LOG(ERROR) << "no datasets is set for server";
       return retcode::FAIL;
     }
-    const auto& datasets_map = dataset_it->second.data();
-    {
-      auto it = datasets_map.find(party_name);
-      if (it == datasets_map.end()) {
-        LOG(ERROR) << "no datasets is set for server";
-        return retcode::FAIL;
-      }
-      dataset_id_ = it->second;
-    }
+    dataset_id_ = it->second;
+    ValidateDir(db_cache_dir_);
+    db_file_cache_ = db_cache_dir_ + "/" + dataset_id_;
+  }
 
-    return retcode::SUCCESS;
+  return retcode::SUCCESS;
 }
+
 std::vector<std::string> KeywordPIRServerTask::GetSelectedContent(
     std::shared_ptr<arrow::Table>& data_tbl,
     const std::vector<int>& selected_col) {
@@ -308,45 +366,58 @@ static std::string to_hexstring(const Item &item) {
 }
 
 int KeywordPIRServerTask::execute() {
-    auto rt_code = _LoadParams(task_param_);
+  auto rt_code = _LoadParams(task_param_);
+  if (rt_code != retcode::SUCCESS) {
+      LOG(ERROR) << "Pir client load task params failed.";
+      return -1;
+  }
+  size_t cpu_core_num = std::thread::hardware_concurrency();
+  size_t use_core_num = cpu_core_num / 2;
+  LOG(INFO) << "ThreadPoolMgr thread count: " << use_core_num;
+  ThreadPoolMgr::SetThreadCount(use_core_num);
+
+  auto params = _SetPsiParams();
+  CHECK_NULLPOINTER(params, -1);
+  if (generate_db_offline_) {
+    // generae db offline which can load when task execute
+    auto db_data = _LoadDataset();
+    CHECK_NULLPOINTER(db_data, -1);
+    auto ret = CreateDbDataCache(*db_data, std::move(params), *(this->oprf_key_), 16, false);
     if (rt_code != retcode::SUCCESS) {
-        LOG(ERROR) << "Pir client load task params failed.";
-        return -1;
+      LOG(ERROR) << "CreateDbDataCache failed.";
+      return -1;
     }
-    size_t cpu_core_num = std::thread::hardware_concurrency();
-    size_t use_core_num = cpu_core_num / 2;
-    LOG(INFO) << "ThreadPoolMgr thread count: " << use_core_num;
-    ThreadPoolMgr::SetThreadCount(use_core_num);
-
-    auto params = _SetPsiParams();
-    CHECK_NULLPOINTER(params, -1);
-
-    rt_code = processPSIParams();
-    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
-
+    return 0;
+  }
+  rt_code = processPSIParams();
+  CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+  std::shared_ptr<SenderDB> sender_db{nullptr};
+  if (DbCacheAvailable(this->db_file_cache_)) {
+    sender_db = LoadDbFromCache(this->db_file_cache_);
+  } else {
     // std::unique_ptr<DBData>
     auto db_data = _LoadDataset();
     CHECK_NULLPOINTER(db_data, -1);
-
     // OPRFKey oprf_key;
-    std::shared_ptr<SenderDB> sender_db
-        = create_sender_db(*db_data, move(params), *(this->oprf_key_), 16, false);
-    CHECK_NULLPOINTER(sender_db, -1);
-    uint32_t max_bin_bundles_per_bundle_idx = 0;
-    for (uint32_t bundle_idx = 0; bundle_idx < sender_db->get_params().bundle_idx_count();
-         bundle_idx++) {
-        max_bin_bundles_per_bundle_idx =
-            std::max(max_bin_bundles_per_bundle_idx,
-                static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
-    }
-    rt_code = processOprf();
-    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+    sender_db = create_sender_db(*db_data, std::move(params), *(this->oprf_key_), 16, false);
+  }
 
-    rt_code = processQuery(sender_db);
-    CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+  CHECK_NULLPOINTER(sender_db, -1);
+  uint32_t max_bin_bundles_per_bundle_idx = 0;
+  uint32_t bundle_idx_count = sender_db->get_params().bundle_idx_count();
+  for (uint32_t bundle_idx = 0; bundle_idx < bundle_idx_count; bundle_idx++) {
+    max_bin_bundles_per_bundle_idx =
+        std::max(max_bin_bundles_per_bundle_idx,
+            static_cast<uint32_t>(sender_db->get_bin_bundle_count(bundle_idx)));
+  }
+  rt_code = processOprf();
+  CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
 
-    VLOG(5) << "end of execute task";
-    return 0;
+  rt_code = processQuery(sender_db);
+  CHECK_RETCODE_WITH_RETVALUE(rt_code, -1);
+
+  VLOG(5) << "end of execute task";
+  return 0;
 }
 
 retcode KeywordPIRServerTask::processPSIParams() {
@@ -529,7 +600,8 @@ retcode KeywordPIRServerTask::processQuery(std::shared_ptr<apsi::sender::SenderD
                         std::string result_package_str = string_ss.str();
                         size_t data_len = result_package_str.length();
                         result_package_queue.push(std::move(result_package_str));
-                        VLOG(5) << "push data into result package queue, data length: " << data_len;
+                        VLOG(5) << "push data into result package queue, data length: " << data_len
+                          << " label_result size: " << result_package->label_result.size();
                     }));
         }
     }
@@ -579,7 +651,6 @@ retcode KeywordPIRServerTask::ComputePowers(
 
     auto evaluator = crypto_context.evaluator();
     auto relin_keys = crypto_context.relin_keys();
-
     CiphertextPowers &powers_at_this_bundle_idx = all_powers[bundle_idx];
     bool relinearize = crypto_context.seal_context()->using_keyswitching();
     pd.parallel_apply([&](const PowersDag::PowersNode &node) {

@@ -45,7 +45,7 @@ class VMScheduler {
  public:
   VMScheduler();
   VMScheduler(const std::string &node_id, bool singleton);
-
+  virtual ~VMScheduler() = default;
   virtual retcode dispatch(const PushTaskRequest *pushTaskRequest);
   virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
 

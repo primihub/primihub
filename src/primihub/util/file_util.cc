@@ -42,4 +42,15 @@ int ValidateDir(const std::string &file_path) {
     return 0;
 }
 
+bool FileExists(const std::string& file_path) {
+  if (file_path.empty()) {
+    return false;
+  }
+  if (::access(file_path.c_str(), F_OK) == 0) {
+    return true;
+  } else {
+    return false;
+  }
 }
+
+}  // namespace primihub
