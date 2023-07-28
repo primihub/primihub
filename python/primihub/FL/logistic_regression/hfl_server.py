@@ -2,6 +2,7 @@ from primihub.FL.utils.net_work import MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
+from primihub.FL.crypto.paillier import Paillier
 
 import json
 import numpy as np
@@ -9,7 +10,6 @@ from phe import paillier
 from primihub.FL.metrics.hfl_metrics import roc_vertical_avg,\
                                             ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
-from .base import Paillier
 
 
 class LogisticRegressionServer(BaseModel):

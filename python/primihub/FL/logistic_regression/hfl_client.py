@@ -5,6 +5,7 @@ from primihub.FL.utils.dataset import read_data,\
                                       DataLoader,\
                                       DPDataLoader
 from primihub.utils.logger_util import logger
+from primihub.FL.crypto.paillier import Paillier
 
 import pickle
 import pandas as pd
@@ -15,8 +16,7 @@ from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
 from .base import LogisticRegression,\
                   LogisticRegression_DPSGD,\
-                  LogisticRegression_Paillier,\
-                  Paillier
+                  LogisticRegression_Paillier
 
 
 class LogisticRegressionClient(BaseModel):

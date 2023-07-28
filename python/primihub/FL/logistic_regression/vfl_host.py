@@ -3,6 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
+from primihub.FL.crypto.ckks import CKKS
 
 import pickle
 import json
@@ -15,7 +16,6 @@ from sklearn.preprocessing import StandardScaler
 
 from .vfl_base import LogisticRegression_Host_Plaintext,\
                       LogisticRegression_Host_CKKS
-from .vfl_coordinator import CKKS
 
 
 class LogisticRegressionHost(BaseModel):
