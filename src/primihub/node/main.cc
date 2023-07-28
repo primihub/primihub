@@ -15,7 +15,7 @@
  */
 #include <signal.h>
 #include <arrow/util/logging.h>
-#include "arrow/api.h"
+#include <arrow/api.h>
 #include <arrow/flight/internal.h>
 #include <arrow/flight/server.h>
 #include "absl/flags/flag.h"
@@ -23,23 +23,26 @@
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
-#include "src/primihub/node/node.h"
+#include "src/primihub/node/node_interface.h"
+#include "src/primihub/node/node_impl.h"
+
 #include "src/primihub/node/ds.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/node/server_config.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
 
-ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated, remove in future
+ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated,
+                                                             // remove in future
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
 ABSL_FLAG(bool, singleton, false, "singleton mode");
-ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated, remove in future
-
+ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated,
+                                                           // remove in future
 /**
  * @brief
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
-void RunServer(primihub::VMNodeImpl* node_service,
+void RunServer(primihub::VMNodeInterface* node_service,
         primihub::DataServiceImpl* dataset_service, int service_port) {
     // Initialize server
     arrow::flight::Location location;
@@ -89,17 +92,12 @@ void RunServer(primihub::VMNodeImpl* node_service,
     ARROW_CHECK_OK(server->Serve());
 }
 
-
 int main(int argc, char **argv) {
-    // std::atomic<bool> quit(false);    // signal flag for server to quit
     // Register SIGINT signal and signal handler
     signal(SIGINT, [](int sig) {
         LOG(INFO) << "Node received SIGINT signal, shutting down...";
         exit(0);
     });
-
-    // py::scoped_interpreter python;
-    // py::gil_scoped_release release;
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
@@ -126,16 +124,20 @@ int main(int argc, char **argv) {
     auto& node_cfg = server_config.getNodeConfig();
     auto& meta_service_cfg = node_cfg.meta_service_config;
     auto meta_service =
-        primihub::service::MetaServiceFactory::Create(meta_service_cfg.mode,
-                                                      meta_service_cfg.host_info);
+        primihub::service::MetaServiceFactory::Create(
+            meta_service_cfg.mode, meta_service_cfg.host_info);
     // service for dataset manager
     using DatasetService = primihub::service::DatasetService;
-    auto dataset_manager = std::make_shared<DatasetService>(std::move(meta_service));
+    auto dataset_manager = std::make_shared<DatasetService>(
+        std::move(meta_service));
     // service for task process
-    auto node_service = std::make_unique<primihub::VMNodeImpl>(
-        node_id, config_file, dataset_manager);
+    auto node_service_impl = std::make_unique<primihub::VMNodeImpl>(
+        config_file, dataset_manager);
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
     // service for dataset register
-    auto data_service = std::make_unique<primihub::DataServiceImpl>(dataset_manager.get());
+    auto data_service = std::make_unique<primihub::DataServiceImpl>(
+        dataset_manager.get());
     RunServer(node_service.get(), data_service.get(), service_port);
     return EXIT_SUCCESS;
 }

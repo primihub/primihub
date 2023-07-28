@@ -72,7 +72,7 @@ KeywordPIRServerTask::LoadDbFromCache(const std::string& db_file_cache_) {
   std::fstream fin(db_file_cache_, std::ios::in);
   auto db_info = SenderDB::Load(fin);
   auto sender_db = std::make_shared<SenderDB>(std::move(std::get<0>(db_info)));
-  VLOG(0) << "db_size: " << std::get<1>(db_info);
+  VLOG(0) << "load data from cache file, db_size: " << std::get<1>(db_info);
   *(this->oprf_key_) = sender_db->get_oprf_key();
   auto time_cost = timer.timeElapse();
   VLOG(5) << "LoadDbFromCache cost time(ms): " << time_cost;

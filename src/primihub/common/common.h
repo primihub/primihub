@@ -16,7 +16,10 @@ namespace primihub {
 #endif
 
 [[maybe_unused]] static uint16_t ABY3_TOTAL_PARTY_NUM = 3;
+[[maybe_unused]] static uint64_t LIMITED_PACKAGE_SIZE = 1 << 21;  // 4M
 // macro defination
+[[maybe_unused]] static const char* ROLE_CLIENT = "CLIENT";
+[[maybe_unused]] static const char* ROLE_SCHEDULER = "SCHEDULER";
 [[maybe_unused]] static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
 [[maybe_unused]] static const char* PARTY_CLIENT = "CLIENT";
 [[maybe_unused]] static const char* PARTY_SERVER = "SERVER";
