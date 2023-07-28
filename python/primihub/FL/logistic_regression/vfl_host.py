@@ -11,7 +11,7 @@ import numpy as np
 from sklearn import metrics
 from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 from .vfl_base import LogisticRegression_Host_Plaintext,\
                       LogisticRegression_Host_CKKS
@@ -79,8 +79,8 @@ class LogisticRegressionHost(BaseModel):
             raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        scaler = MinMaxScaler()
+        # StandardScaler
+        scaler = StandardScaler()
         x = scaler.fit_transform(x)
         
         # host training
@@ -195,13 +195,7 @@ class Plaintext_Host:
 
     def send_output_dim(self, guest_channel):
         self.guest_channel = guest_channel
-
-        if self.model.multiclass:
-            output_dim = self.model.weight.shape[1]
-        else:
-            output_dim = 1
-
-        guest_channel.send_all('output_dim', output_dim)
+        guest_channel.send_all('output_dim', self.model.output_dim)
 
     def compute_z(self, x):
         guest_z = self.guest_channel.recv_all('guest_z')
@@ -274,10 +268,12 @@ class CKKS_Host(Plaintext_Host, CKKS):
                                                   learning_rate,
                                                   alpha)
         self.send_output_dim(guest_channel)
+        coordinator_channel.send('multiclass', self.model.multiclass)
         self.recv_public_context(coordinator_channel)
-        self.max_iter = coordinator_channel.recv('max_iter')
         coordinator_channel.send('num_examples', x.shape[0])
         CKKS.__init__(self, self.context)
+        multiply_per_iter = 2
+        self.max_iter = self.multiply_depth // multiply_per_iter
         self.encrypt_model()
 
     def recv_public_context(self, coordinator_channel):
@@ -285,18 +281,29 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        self.model.weight = self.encrypt_vector(self.model.weight)
-        self.model.bias = self.encrypt_vector(self.model.bias)
+        if self.model.multiclass:
+            self.model.weight = self.encrypt_tensor(self.model.weight.T)
+            self.model.bias = self.encrypt_tensor(self.model.bias.T)
+        else:
+            self.model.weight = self.encrypt_vector(self.model.weight)
+            self.model.bias = self.encrypt_vector(self.model.bias)
 
     def update_ciphertext_model(self):
         self.coordinator_channel.send('host_weight',
                                       self.model.weight.serialize())
         self.coordinator_channel.send('host_bias',
                                       self.model.bias.serialize())
-        self.model.weight = self.load_vector(
-            self.coordinator_channel.recv('host_weight'))
-        self.model.bias = self.load_vector(
-            self.coordinator_channel.recv('host_bias'))
+        
+        if self.model.multiclass:
+            self.model.weight = self.load_tensor(
+                self.coordinator_channel.recv('host_weight'))
+            self.model.bias = self.load_tensor(
+                self.coordinator_channel.recv('host_bias'))
+        else:
+            self.model.weight = self.load_vector(
+                self.coordinator_channel.recv('host_weight'))
+            self.model.bias = self.load_vector(
+                self.coordinator_channel.recv('host_bias'))
         
     def update_plaintext_model(self):
         self.coordinator_channel.send('host_weight',
@@ -308,13 +315,19 @@ class CKKS_Host(Plaintext_Host, CKKS):
 
     def compute_enc_z(self, x):
         guest_z = self.guest_channel.recv_all('guest_z')
-        guest_z = [self.load_vector(z) for z in guest_z]
+        if self.model.multiclass:
+            guest_z = [self.load_tensor(z) for z in guest_z]
+        else:
+            guest_z = [self.load_vector(z) for z in guest_z]
         return self.model.compute_enc_z(x, guest_z)
     
     def compute_enc_regular_loss(self):
         if self.model.alpha != 0:
             guest_regular_loss = self.guest_channel.recv_all('guest_regular_loss')
-            guest_regular_loss = [self.load_vector(s) for s in guest_regular_loss]
+            if self.model.multiclass:
+                guest_regular_loss = [self.load_tensor(s) for s in guest_regular_loss]
+            else:
+                guest_regular_loss = [self.load_vector(s) for s in guest_regular_loss]
             return self.model.compute_regular_loss(sum(guest_regular_loss))
         else:
             return 0.
@@ -323,8 +336,9 @@ class CKKS_Host(Plaintext_Host, CKKS):
         logger.info(f'iteration {self.t} / {self.max_iter}')
         if self.t >= self.max_iter:
             self.t = 0
-            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
+            self.update_ciphertext_model()
+            
         self.t += 1
 
         z = self.compute_enc_z(x)
@@ -336,11 +350,10 @@ class CKKS_Host(Plaintext_Host, CKKS):
 
     def compute_metrics(self, x, y):
         logger.info(f'iteration {self.t} / {self.max_iter}')
-        self.t += 1
-        if self.t > self.max_iter:
+        if self.t >= self.max_iter:
             self.t = 0
-            self.update_ciphertext_model()
             logger.warning(f'decrypt model')
+            self.update_ciphertext_model()
 
         z = self.compute_enc_z(x)
 

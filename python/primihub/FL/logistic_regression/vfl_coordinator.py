@@ -67,6 +67,7 @@ class CKKS:
         if isinstance(context, bytes):
             context = ts.context_from(context)
         self.context = context
+        self.multiply_depth = context.data.seal_context().first_context_data().chain_index()
 
     def encrypt_vector(self, vector, context=None):
         if context:
@@ -74,15 +75,24 @@ class CKKS:
         else:
             return ts.ckks_vector(self.context, vector)
     
-    def decrypt(self, vector, secret_key=None):
-        if vector.context().has_secret_key():
-            return vector.decrypt()
+    def encrypt_tensor(self, tensor, context=None):
+        if context:
+            return ts.ckks_tensor(context, tensor)
         else:
-            return vector.decrypt(secret_key)
+            return ts.ckks_tensor(self.context, tensor)
+        
+    def decrypt(self, ciphertext, secret_key=None):
+        if ciphertext.context().has_secret_key():
+            return ciphertext.decrypt()
+        else:
+            return ciphertext.decrypt(secret_key)
     
     def load_vector(self, vector):
         return ts.ckks_vector_from(self.context, vector)
 
+    def load_tensor(self, tensor):
+        return ts.ckks_tensor_from(self.context, tensor)
+    
 
 class CKKSCoordinator(CKKS):
 
@@ -90,19 +100,20 @@ class CKKSCoordinator(CKKS):
         self.t = 0
         self.host_channel = host_channel
         self.guest_channel = guest_channel
+        self.multiclass = host_channel.recv('multiclass')
 
         # set CKKS params
         # use larger poly_mod_degree to support more encrypted multiplications
-        poly_mod_degree = 32768
-        # gradient descent uses as least two multiplications per interation
-        multiply_per_iter = 2
+        poly_mod_degree = 8192
+        # the least multiplication per iteration of gradient descent
         # more multiplications lead to larger context size
-        self.max_iter = 7
+        multiply_per_iter = 2
+        self.max_iter = 1
         multiply_depth = multiply_per_iter * self.max_iter
         # sum(coeff_mod_bit_sizes) <= max coeff_modulus bit-length
-        fe_bits_scale = 35
-        bits_scale = 27
-        # 35*2 + 27*2*7 = 448 < 881 (for N = 32768 & 128 bit security)
+        fe_bits_scale = 60
+        bits_scale = 49
+        # 60*2 + 49*1*2 = 218 == 218 (for N = 8192 & 128 bit security)
         coeff_mod_bit_sizes = [fe_bits_scale] + \
                               [bits_scale] * multiply_depth + \
                               [fe_bits_scale]
@@ -122,14 +133,9 @@ class CKKSCoordinator(CKKS):
         self.secret_context = secret_context
 
         self.send_public_context()
-        self.send_max_iter()
         num_examples = host_channel.recv('num_examples')
 
         self.iter_per_epoch = math.ceil(num_examples / batch_size)
-
-    def send_max_iter(self):
-        self.host_channel.send("max_iter", self.max_iter)
-        self.guest_channel.send_all("max_iter", self.max_iter)
 
     def send_public_context(self):
         serialize_context = self.context.serialize()
@@ -137,11 +143,18 @@ class CKKSCoordinator(CKKS):
         self.guest_channel.send_all("public_context", serialize_context)
 
     def recv_model(self):
-        host_weight = self.load_vector(self.host_channel.recv('host_weight'))
-        host_bias = self.load_vector(self.host_channel.recv('host_bias'))
+        if self.multiclass:
+            host_weight = self.load_tensor(self.host_channel.recv('host_weight'))
+            host_bias = self.load_tensor(self.host_channel.recv('host_bias'))
 
-        guest_weight = self.guest_channel.recv_all('guest_weight')
-        guest_weight = [self.load_vector(weight) for weight in guest_weight]
+            guest_weight = self.guest_channel.recv_all('guest_weight')
+            guest_weight = [self.load_tensor(weight) for weight in guest_weight]
+        else:
+            host_weight = self.load_vector(self.host_channel.recv('host_weight'))
+            host_bias = self.load_vector(self.host_channel.recv('host_bias'))
+
+            guest_weight = self.guest_channel.recv_all('guest_weight')
+            guest_weight = [self.load_vector(weight) for weight in guest_weight]
 
         return host_weight, host_bias, guest_weight
     
@@ -161,10 +174,16 @@ class CKKSCoordinator(CKKS):
         return host_weight, host_bias, guest_weight
     
     def encrypt_model(self, host_weight, host_bias, guest_weight):
-        host_weight = self.encrypt_vector(host_weight)
-        host_bias = self.encrypt_vector(host_bias)
+        if self.multiclass:
+            host_weight = self.encrypt_tensor(host_weight)
+            host_bias = self.encrypt_tensor(host_bias)
 
-        guest_weight = [self.encrypt_vector(weight) for weight in guest_weight]
+            guest_weight = [self.encrypt_tensor(weight) for weight in guest_weight]
+        else:
+            host_weight = self.encrypt_vector(host_weight)
+            host_bias = self.encrypt_vector(host_bias)
+
+            guest_weight = [self.encrypt_vector(weight) for weight in guest_weight]
         
         return host_weight, host_bias, guest_weight
 
@@ -187,28 +206,41 @@ class CKKSCoordinator(CKKS):
             host_weight, host_bias, guest_weight)
         
         # list to numpy ndarrry
-        host_weight = np.array(host_weight)
-        host_bias = np.array(host_bias)
-        guest_weight = [np.array(weight) for weight in guest_weight]
+        if self.multiclass:
+            host_weight = np.array(host_weight.tolist()).T
+            host_bias = np.array(host_bias.tolist()).T
+            guest_weight = [np.array(weight.tolist()).T for weight in guest_weight]
+        else:
+            host_weight = np.array(host_weight)
+            host_bias = np.array(host_bias)
+            guest_weight = [np.array(weight) for weight in guest_weight]
 
         self.send_model(host_weight, host_bias, guest_weight)
 
     def train(self):
         logger.info(f'iteration {self.t} / {self.max_iter}')
         self.t += self.iter_per_epoch
-        for i in range(self.t // self.max_iter):
-            self.update_ciphertext_model()
-            logger.warning(f'decrypt model #{i+1}')
+        num_dec = self.t // self.max_iter
         self.t = self.t % self.max_iter
+        if self.t == 0:
+            num_dec -= 1
+            self.t = self.max_iter
+
+        for i in range(num_dec):
+            logger.warning(f'decrypt model #{i+1}')
+            self.update_ciphertext_model()    
 
     def compute_loss(self):
         logger.info(f'iteration {self.t} / {self.max_iter}')
-        self.t += 1
-        if self.t > self.max_iter:
+        if self.t >= self.max_iter:
             self.t = 0
-            self.update_ciphertext_model()
             logger.warning('decrypt model')
+            self.update_ciphertext_model()
 
-        loss = self.load_vector(self.host_channel.recv('loss'))
-        loss = self.decrypt(loss, self.secret_context.secret_key())[0]
+        if self.multiclass:
+            loss = self.load_tensor(self.host_channel.recv('loss'))
+            loss = self.decrypt(loss, self.secret_context.secret_key()).tolist()
+        else:
+            loss = self.load_vector(self.host_channel.recv('loss'))
+            loss = self.decrypt(loss, self.secret_context.secret_key())[0]
         logger.info(f'loss={loss}')
