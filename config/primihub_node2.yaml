@@ -63,6 +63,12 @@ datasets:
     source: "data/FL/multiclass/hfl/test/client2.csv"
 
   # FL regression
+  - description: "regression_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/train/guest.csv"
+  - description: "regression_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/test/guest.csv"
   - description: "regression_hfl_train_client2"
     model: "csv"
     source: "data/FL/regression/hfl/train/client2.csv"
