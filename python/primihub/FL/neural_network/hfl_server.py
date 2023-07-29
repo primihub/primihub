@@ -152,7 +152,7 @@ class Plaintext_Server:
         input_shape = list(self.input_shape)
         # set batch size equals to 1 to initilize lazy module
         input_shape.insert(0, 1)
-        self.model.forward(torch.ones(input_shape))
+        self.model.forward(torch.ones(input_shape).to(self.device))
         self.model.load_state_dict(self.model.state_dict())
 
         self.server_model_broadcast()
@@ -170,7 +170,7 @@ class Plaintext_Server:
                 np.array(self.num_positive_examples_weights)).tolist()
 
         self.num_examples_weights = torch.tensor(self.num_examples_weights,
-                                                 dtype=torch.float32)
+                                                 dtype=torch.float32).to(self.device)
         self.num_examples_weights_sum = self.num_examples_weights.sum()
 
     def client_model_aggregate(self):
@@ -207,9 +207,11 @@ class Plaintext_Server:
             raise RuntimeError(error_msg)
 
         client_metrics = self.client_channel.recv_all(metrics_name)
-            
-        return np.average(client_metrics,
-                          weights=self.num_examples_weights)
+
+        metrics = torch.tensor(client_metrics, dtype=torch.float).to(self.device) \
+                        @ self.num_examples_weights \
+                        / self.num_examples_weights_sum
+        return float(metrics)
     
     def get_fpr_tpr(self):
         client_fpr = self.client_channel.recv_all('fpr')

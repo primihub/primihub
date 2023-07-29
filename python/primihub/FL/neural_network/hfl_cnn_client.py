@@ -146,6 +146,7 @@ class CNNClient(BaseModel):
         model.eval()
         with torch.no_grad():
             for x, y in data_loader:
+                x = x.to(device)
                 pred = model(x)
                 pred_prob = torch.softmax(pred, dim=1)
                 pred_y = pred_prob.argmax(1)

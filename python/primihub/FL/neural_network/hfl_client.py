@@ -263,6 +263,7 @@ class Plaintext_Client:
     
     def set_model(self, model):
         self.model.load_state_dict(model)
+        self.model.to(self.device)
 
     def send_output_dim(self, y):
         if self.task == 'regression':
@@ -350,8 +351,8 @@ class Plaintext_Client:
                 pred = self.model(x)
 
                 if self.task == 'classification':
-                    y_true = torch.cat((y_true, y))
-                    y_score = torch.cat((y_score, pred))
+                    y_true = torch.cat((y_true, y.cpu()))
+                    y_score = torch.cat((y_score, pred.cpu()))
                     loss += self.loss_fn(pred, y).item() * len(x)
 
                     if self.output_dim == 1:
@@ -359,8 +360,8 @@ class Plaintext_Client:
                     else:
                         acc += (pred.argmax(1) == y).type(torch.float).sum().item()
                 elif self.task == 'regression':
-                    mae += F.l1_loss(pred, y) * len(x)
-                    mse += F.mse_loss(pred, y) * len(x)
+                    mae += F.l1_loss(pred, y).cpu() * len(x)
+                    mse += F.mse_loss(pred, y).cpu() * len(x)
 
         client_metrics = {}
 
@@ -390,11 +391,11 @@ class Plaintext_Client:
         elif self.task == 'regression':
             mse /= size
             client_metrics['train_mse'] = mse
-            self.server_channel.send("mse", mse.type(torch.float64))
+            self.server_channel.send("mse", mse)
 
             mae /= size
             client_metrics['train_mae'] = mae
-            self.server_channel.send("mae", mae.type(torch.float64))
+            self.server_channel.send("mae", mae)
 
             logger.info(f"mse={mse}, mae={mae}")
 
@@ -420,7 +421,7 @@ class DPSGD_Client(Plaintext_Client):
         input_shape = list(self.input_shape)
         # set batch size equals to 1 to initilize lazy module
         input_shape.insert(0, 1)
-        self.model.forward(torch.ones(input_shape))
+        self.model.forward(torch.ones(input_shape).to(self.device))
         super().lazy_module_init()
         
     def enable_DP_training(self, train_dataloader):
