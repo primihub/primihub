@@ -153,7 +153,7 @@ message Task {
   bytes code = 5;
   map<string, Node> node_map = 6;                   // key: node_id deprecated remove in future
   repeated string input_datasets = 7;               // deprecated, remove in future
-  TaskContext task_info = 8;
+  TaskContext task_info = 8;                        // unique id info for task
   string party_name = 11;                           // participate name
   map<string, Dataset> party_datasets = 13;         // key: party, value: party related datasets
   map<string, Node> party_access_info = 14;         // key: party, value: Party Access info

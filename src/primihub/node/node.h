@@ -137,6 +137,7 @@ class VMNodeImpl final: public VMNode::Service {
     std::shared_ptr<Nodelet> getNodelet() { return this->nodelet;}
 
  protected:
+  std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
     retcode DispatchTask(const PushTaskRequest& task_request, PushTaskReply* reply);
     retcode ExecuteTask(const PushTaskRequest& task_request, PushTaskReply* reply);
     retcode getSchedulerNodeCfg(const PushTaskRequest& request, Node* scheduler_node);
@@ -151,14 +152,7 @@ class VMNodeImpl final: public VMNode::Service {
     void buildTaskRequest(const std::string& job_id, const std::string& task_id,
         const std::string& request_id, const std::string& role,
         const std::string& data, std::vector<rpc::TaskRequest>* requests);
-    std::unique_ptr<VMNode::Stub> get_stub(const std::string& dest_address, bool use_tls);
-    int process_task_reseponse(bool is_psi_response,
-          const ExecuteTaskResponse& response,
-          std::vector<ExecuteTaskResponse>* splited_responses);
-    int process_psi_response(const ExecuteTaskResponse& response,
-          std::vector<ExecuteTaskResponse>* splited_responses);
-    int process_pir_response(const ExecuteTaskResponse& response,
-          std::vector<ExecuteTaskResponse>* splited_responses);
+
     std::shared_ptr<Worker> getWorker(const std::string& job_id,
                                       const std::string& task_id,
                                       const std::string& request_id);
