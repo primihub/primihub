@@ -12,6 +12,15 @@
         "host": "primihub.FL.logistic_regression.vfl_host.LogisticRegressionHost",
         "coordinator": "primihub.FL.logistic_regression.vfl_coordinator.LogisticRegressionCoordinator"
     },
+    "HFL_linear_regression": {
+        "client": "primihub.FL.linear_regression.hfl_client.LinearRegressionClient",
+        "server": "primihub.FL.linear_regression.hfl_server.LinearRegressionServer"
+    },
+    "VFL_linear_regression": {
+        "guest": "primihub.FL.linear_regression.vfl_guest.LinearRegressionGuest",
+        "host": "primihub.FL.linear_regression.vfl_host.LinearRegressionHost",
+        "coordinator": "primihub.FL.linear_regression.vfl_coordinator.LinearRegressionCoordinator"
+    },
     "HFL_neural_network": {
         "client": "primihub.FL.neural_network.hfl_client.NeuralNetworkClient",
         "server": "primihub.FL.neural_network.hfl_server.NeuralNetworkServer"
