@@ -93,23 +93,34 @@ cc_library(
 )
 
 # psi task
+# cc_library(
+#     name = "psi_task",
+#     deps = [
+#         ":ecdh_psi_task",
+#         ":kkrt_psi_task",
+#     ],
+# )
+
 cc_library(
-    name = "psi_task",
-    deps = [
-        ":ecdh_psi_task",
-        ":kkrt_psi_task",
-    ],
+  name = "psi_task_util",
+  hdrs = ["psi_task_util.h"],
+  srcs = ["psi_task_util.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/common:common_defination",
+    "//src/primihub/data_store:data_store_lib",
+    "@arrow",
+  ],
 )
+
 cc_library(
-    name = "psi_task_util",
-    hdrs = ["psi_task.h"],
-    srcs = ["psi_task.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/common:common_defination",
-        "//src/primihub/data_store:data_store_lib",
-        "@arrow",
-    ],
+  name = "psi_task",
+  hdrs = ["psi_task.h"],
+  srcs = ["psi_task.cc"],
+  deps = [
+    ":psi_task_util",
+    "//src/primihub/task/semantic/psi/operator:factor",
+  ],
 )
 
 OPENMINED_PSI = "@org_openmined_psi//private_set_intersection/cpp"

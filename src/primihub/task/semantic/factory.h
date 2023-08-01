@@ -23,8 +23,7 @@
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/task/semantic/fl_task.h"
-#include "src/primihub/task/semantic/psi_kkrt_task.h"
-#include "src/primihub/task/semantic/psi_ecdh_task.h"
+#include "src/primihub/task/semantic/psi_task.h"
 #include "src/primihub/task/semantic/private_server_base.h"
 
 #ifndef USE_MICROSOFT_APSI
@@ -106,25 +105,9 @@ class TaskFactory {
   static std::shared_ptr<TaskBase> CreatePSITask(const std::string& node_id,
       const PushTaskRequest& request,
       std::shared_ptr<DatasetService> dataset_service) {
-    std::shared_ptr<TaskBase> task_ptr{nullptr};
     const auto& task_config = request.task();
-    const auto& param_map = task_config.params().param_map();
-    int psi_tag{PsiTag::ECDH};
-    auto param_it = param_map.find("psiTag");
-    if (param_it != param_map.end()) {
-      psi_tag = param_it->second.value_int32();
-    }
-    switch (psi_tag) {
-    case PsiTag::ECDH:
-      task_ptr = std::make_shared<PSIEcdhTask>(&task_config, dataset_service);
-      break;
-    case PsiTag::KKRT:
-      task_ptr = std::make_shared<PSIKkrtTask>(&task_config, dataset_service);
-      break;
-    default:
-      LOG(ERROR) << "Unsupported psi tag: " << psi_tag;
-      break;
-    }
+    std::shared_ptr<TaskBase> task_ptr{nullptr};
+    task_ptr = std::make_shared<PsiTask>(&task_config, dataset_service);
     return task_ptr;
   }
 
