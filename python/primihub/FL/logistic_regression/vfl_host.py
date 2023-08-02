@@ -360,7 +360,7 @@ class CKKS_Host(Plaintext_Host, CKKS):
         regular_loss = self.compute_enc_regular_loss()
         loss = self.model.loss(y, z, regular_loss)
         self.coordinator_channel.send('loss', loss.serialize())
-        logger.info('View metrics at coordinator while using Paillier')
+        logger.info('View metrics at coordinator while using CKKS')
     
     def compute_final_metrics(self, x, y):
         return super().compute_metrics(x, y)

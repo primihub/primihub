@@ -285,7 +285,7 @@ class CKKS_Host(Plaintext_Host, CKKS):
 
         mse = ((z - y) ** 2).sum()
         self.coordinator_channel.send('mse', mse.serialize())
-        logger.info('View metrics at coordinator while using Paillier')
+        logger.info('View metrics at coordinator while using CKKS')
     
     def compute_final_metrics(self, x, y):
         return super().compute_metrics(x, y)
