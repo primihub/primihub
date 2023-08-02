@@ -33,7 +33,8 @@ namespace primihub {
 class CSVDriver;
 struct CSVAccessInfo : public DataSetAccessInfo {
   CSVAccessInfo() = default;
-  explicit CSVAccessInfo(const std::string& file_path) : file_path_(file_path) {}
+  explicit CSVAccessInfo(const std::string& file_path) :
+      file_path_(file_path) {}
   std::string toString() override;
   retcode fromJsonString(const std::string& access_info) override;
   retcode ParseFromJsonImpl(const nlohmann::json& access_info) override;
@@ -46,6 +47,15 @@ struct CSVAccessInfo : public DataSetAccessInfo {
 
 class CSVCursor : public Cursor {
  public:
+  using ReadOptions = arrow::csv::ReadOptions;
+  using ParseOptions = arrow::csv::ParseOptions;
+  using ConvertOptions = arrow::csv::ConvertOptions;
+
+  struct CsvOptions {
+    ReadOptions read_options{ReadOptions::Defaults()};
+    ParseOptions parse_options{ParseOptions::Defaults()};
+    ConvertOptions convert_options{ConvertOptions::Defaults()};
+  };
   CSVCursor(const std::string& file_path, std::shared_ptr<CSVDriver> driver);
   CSVCursor(const std::string& file_path,
             const std::vector<int>& colnum_index,
@@ -53,7 +63,8 @@ class CSVCursor : public Cursor {
   ~CSVCursor();
   std::shared_ptr<Dataset> readMeta() override;
   std::shared_ptr<Dataset> read() override;
-  std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) override;
+  std::shared_ptr<Dataset> read(
+      const std::shared_ptr<arrow::Schema>& data_schema) override;
   std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) override;
   int write(std::shared_ptr<Dataset> dataset) override;
   void close() override;
@@ -72,19 +83,27 @@ class CSVCursor : public Cursor {
    * if column data type provided when the dataset register,
    * using registed data type
   */
-  retcode BuildConvertOptions(arrow::csv::ConvertOptions* convert_option);
+  retcode BuildConvertOptions(ConvertOptions* convert_option);
   /**
    * customize convert option
    * convert option is specified by data schema
    *
   */
   retcode BuildConvertOptions(const std::shared_ptr<arrow::Schema>& data_schema,
-                              arrow::csv::ConvertOptions* convert_option);
+                              ConvertOptions* convert_option);
+  retcode MakeCsvOptions(CsvOptions* options);
+  retcode MakeCsvOptions(const std::shared_ptr<arrow::Schema>& data_schema,
+                         CsvOptions* options);
 
   std::shared_ptr<Dataset> ReadImpl(const std::string& file_path,
-                                    const arrow::csv::ReadOptions& read_opt,
-                                    const arrow::csv::ParseOptions& parse_opt,
-                                    const arrow::csv::ConvertOptions& convert_opt);
+                                    const ReadOptions& read_opt,
+                                    const ParseOptions& parse_opt,
+                                    const ConvertOptions& convert_opt);
+
+  std::shared_ptr<Dataset> ReadImpl(std::string_view content_buf,
+                                    const ReadOptions& read_opt,
+                                    const ParseOptions& parse_opt,
+                                    const ConvertOptions& convert_opt);
 
  private:
   std::string file_path_;
@@ -122,12 +141,11 @@ class CSVDriver : public DataDriver,
 
  protected:
   void setDriverType();
-  retcode GetColumnNames(const char delimiter, std::vector<std::string>* column_names);
+  retcode GetColumnNames(const char delimiter,
+                         std::vector<std::string>* column_names);
 
  private:
   std::string filePath_;
 };
-
 }  // namespace primihub
-
 #endif  // SRC_PRIMIHUB_DATA_STORE_CSV_CSV_DRIVER_H_
