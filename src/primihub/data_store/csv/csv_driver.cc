@@ -26,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <nlohmann/json.hpp>
+#include "arrow/io/memory.h"
 
 #include "src/primihub/data_store/csv/csv_driver.h"
 #include "src/primihub/data_store/driver.h"
@@ -35,6 +36,9 @@
 
 namespace primihub {
 namespace csv {
+using ReadOptions = arrow::csv::ReadOptions;
+using ParseOptions = arrow::csv::ParseOptions;
+using ConvertOptions = arrow::csv::ConvertOptions;
 static const uint8_t kBOM[] = {0xEF, 0xBB, 0xBF};
 retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
   int64_t i;
@@ -69,6 +73,8 @@ retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
   *new_data = std::string(origin_data.data() + i, size);
   return retcode::SUCCESS;
 }
+
+// -------------------------write operation------------------------------
 /**
    *  write csv title to file
 */
@@ -85,7 +91,8 @@ retcode WriteHeader(const std::vector<std::string>& col_name,
   }
   std::string header_str;
   // write BOM
-  header_str.append(std::begin(primihub::csv::kBOM), std::end(primihub::csv::kBOM));
+  header_str.append(std::begin(primihub::csv::kBOM),
+                    std::end(primihub::csv::kBOM));
   for (const auto& item : col_name) {
     header_str.append(item).append(",");
   }
@@ -168,23 +175,13 @@ retcode WriteImpl(std::shared_ptr<arrow::Table> table,
   return WriteImpl(colum_names, table, file_path);
 }
 
-std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
-                                          const arrow::csv::ReadOptions& read_opt,
-                                          const arrow::csv::ParseOptions& parse_opt,
-                                          const arrow::csv::ConvertOptions& convert_opt) {
+// ---------------------------Read operation----------------------------------
+std::shared_ptr<arrow::Table> Read(
+    std::shared_ptr<arrow::io::InputStream> input,
+    const arrow::csv::ReadOptions& read_opt,
+    const arrow::csv::ParseOptions& parse_opt,
+    const arrow::csv::ConvertOptions& convert_opt) {
   arrow::io::IOContext io_context = arrow::io::default_io_context();
-  arrow::fs::LocalFileSystem local_fs(arrow::fs::LocalFileSystemOptions::Defaults());
-  auto result_ifstream = local_fs.OpenInputStream(file_path);
-  if (!result_ifstream.ok()) {
-    std::stringstream ss;
-    ss << "Failed to open file: " << file_path << " "
-        << "detail: " << result_ifstream.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return nullptr;
-  }
-  std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
   // Instantiate TableReader from input stream and options
   auto maybe_reader = arrow::csv::TableReader::Make(
       io_context, input, read_opt, parse_opt, convert_opt);
@@ -198,6 +195,7 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
   // Read table from CSV file
+  SCopedTimer timer;
   auto maybe_table = reader->Read();
   if (!maybe_table.ok()) {
     // (for example a CSV syntax error or failed type conversion)
@@ -208,9 +206,68 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
     LOG(ERROR) << err_msg;
     return nullptr;
   }
-
+  auto time_cost = timer.timeElapse();
+  VLOG(5) << "read csv data time cost(ms): " << time_cost;
   return *maybe_table;
 }
+
+std::shared_ptr<arrow::Table> ReadCSVData(std::string_view data_buff,
+                                          const ReadOptions& read_opt,
+                                          const ParseOptions& parse_opt,
+                                          const ConvertOptions& convert_opt) {
+  auto input = std::make_shared<arrow::io::BufferReader>(
+      reinterpret_cast<uint8_t*>(const_cast<char*>(data_buff.data())),
+      data_buff.size());
+  return Read(input, read_opt, parse_opt, convert_opt);
+}
+
+std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
+                                          const ReadOptions& read_opt,
+                                          const ParseOptions& parse_opt,
+                                          const ConvertOptions& convert_opt) {
+  auto local_fs_options = arrow::fs::LocalFileSystemOptions::Defaults();
+  local_fs_options.use_mmap = true;
+  arrow::fs::LocalFileSystem local_fs(local_fs_options);
+  auto result_ifstream = local_fs.OpenInputStream(file_path);
+  if (!result_ifstream.ok()) {
+    std::stringstream ss;
+    ss << "Failed to open file: " << file_path << " "
+        << "detail: " << result_ifstream.status();
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
+    return nullptr;
+  }
+  std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
+  return Read(input, read_opt, parse_opt, convert_opt);
+}
+
+std::string ReadRawData(const std::string& file_path, int64_t line_number) {
+  // read data first 100 lines
+  std::ifstream csv_data(file_path, std::ios::in);
+  if (!csv_data.is_open()) {
+    std::stringstream ss;
+    ss << "open csv file: " << file_path << " failed";
+    std::string err_msg = ss.str();
+    SetThreadLocalErrorMsg(err_msg);
+    LOG(ERROR) << err_msg;
+    return std::string();
+  }
+  std::string content_buf;
+  std::string tmp_buf;
+  for (int i = 0; i < line_number; i++) {
+    if (csv_data.eof()) {
+      break;
+    }
+    std::getline(csv_data, tmp_buf);
+    if (tmp_buf.empty()) {
+      continue;
+    }
+    content_buf.append(tmp_buf).append("\n");
+  }
+  return content_buf;
+}
+
 
 }  // namespace csv
 
@@ -230,7 +287,8 @@ retcode CSVAccessInfo::fromJsonString(const std::string& access_info) {
   try {
     nlohmann::json js_access_info = nlohmann::json::parse(access_info);
     if (js_access_info.contains("schema")) {
-      auto schema_json = nlohmann::json::parse(js_access_info["schema"].get<std::string>());
+      auto schema_json =
+          nlohmann::json::parse(js_access_info["schema"].get<std::string>());
       ret = ParseSchema(schema_json);
     }
     ret = ParseFromJsonImpl(js_access_info);
@@ -271,7 +329,8 @@ retcode CSVAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
 
 retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
   try {
-    nlohmann::json js_access_info = nlohmann::json::parse(meta_info.access_info);
+    nlohmann::json js_access_info =
+        nlohmann::json::parse(meta_info.access_info);
     this->file_path_ = js_access_info["data_path"].get<std::string>();
   } catch (std::exception& e) {
     this->file_path_ = meta_info.access_info;
@@ -291,14 +350,16 @@ retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
 }
 
 // csv cursor implementation
-CSVCursor::CSVCursor(const std::string& file_path, std::shared_ptr<CSVDriver> driver) {
+CSVCursor::CSVCursor(const std::string& file_path,
+                     std::shared_ptr<CSVDriver> driver) {
   this->file_path_ = file_path;
   this->driver_ = driver;
 }
 
 CSVCursor::CSVCursor(const std::string& file_path,
-                    const std::vector<int>& colnum_index,
-                    std::shared_ptr<CSVDriver> driver) : Cursor(colnum_index) {
+                     const std::vector<int>& colnum_index,
+                     std::shared_ptr<CSVDriver> driver)
+                     : Cursor(colnum_index) {
   this->file_path_ = file_path;
   this->driver_ = driver;
 }
@@ -335,7 +396,8 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
   return retcode::SUCCESS;
 }
 
-retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_options_ptr) {
+retcode CSVCursor::BuildConvertOptions(
+    arrow::csv::ConvertOptions* convert_options_ptr) {
   if (this->driver_->dataSetAccessInfo()->schema.empty()) {
     LOG(ERROR) << "no schema is set for dataset";
     return retcode::FAIL;
@@ -377,8 +439,9 @@ retcode CSVCursor::BuildConvertOptions(arrow::csv::ConvertOptions* convert_optio
   return retcode::SUCCESS;
 }
 
-retcode CSVCursor::BuildConvertOptions(const std::shared_ptr<arrow::Schema>& data_schema,
-                                       arrow::csv::ConvertOptions* convert_option) {
+retcode CSVCursor::BuildConvertOptions(
+    const std::shared_ptr<arrow::Schema>& data_schema,
+    arrow::csv::ConvertOptions* convert_option) {
   if (data_schema == nullptr) {
     LOG(ERROR) << "data schema is invalid";
     return retcode::FAIL;
@@ -396,41 +459,66 @@ retcode CSVCursor::BuildConvertOptions(const std::shared_ptr<arrow::Schema>& dat
   return retcode::SUCCESS;
 }
 
-std::shared_ptr<Dataset> CSVCursor::readMeta() {
-  return read();
+retcode CSVCursor::MakeCsvOptions(CsvOptions* options) {
+  return MakeCsvOptions(nullptr, options);
 }
 
-std::shared_ptr<Dataset> CSVCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
-  auto read_options = arrow::csv::ReadOptions::Defaults();
+retcode CSVCursor::MakeCsvOptions(
+    const std::shared_ptr<arrow::Schema>& data_schema,
+    CsvOptions* options) {
+  auto& read_options = options->read_options;
   read_options.skip_rows = 1;  // skip title row
   auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
   auto field_names = arrow_schema->field_names();
   read_options.column_names = field_names;
-  auto parse_options = arrow::csv::ParseOptions::Defaults();
-  auto convert_options = arrow::csv::ConvertOptions::Defaults();
-  auto ret = BuildConvertOptions(data_schema, &convert_options);
+  auto& convert_options = options->convert_options;
+  auto ret{retcode::SUCCESS};
+  if (data_schema == nullptr) {
+    ret = BuildConvertOptions(&convert_options);
+  } else {
+    ret = BuildConvertOptions(data_schema, &convert_options);
+  }
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "BuildConvertOptions failed";
+  }
+  return ret;
+}
+
+std::shared_ptr<Dataset> CSVCursor::readMeta() {
+  CsvOptions csv_options;
+  auto ret = MakeCsvOptions(&csv_options);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "make csv file options failed";
     return nullptr;
   }
-  return ReadImpl(this->file_path_, read_options, parse_options, convert_options);
+  std::string content_buf = csv::ReadRawData(file_path_, 100);
+  std::string_view content_sv(content_buf.data(), content_buf.size());
+  return ReadImpl(content_sv, csv_options.read_options,
+                  csv_options.parse_options, csv_options.convert_options);
+}
+
+std::shared_ptr<Dataset> CSVCursor::read(
+    const std::shared_ptr<arrow::Schema>& data_schema) {
+  CsvOptions csv_options;
+  auto ret = MakeCsvOptions(data_schema, &csv_options);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "make csv file options failed";
+    return nullptr;
+  }
+  return ReadImpl(this->file_path_, csv_options.read_options,
+                  csv_options.parse_options, csv_options.convert_options);
 }
 
 // read all data from csv file
 std::shared_ptr<Dataset> CSVCursor::read() {
-  auto read_options = arrow::csv::ReadOptions::Defaults();
-  read_options.skip_rows = 1;  // skip title row
-  auto& arrow_schema = this->driver_->dataSetAccessInfo()->arrow_schema;
-  auto field_names = arrow_schema->field_names();
-  read_options.column_names = field_names;
-  auto parse_options = arrow::csv::ParseOptions::Defaults();
-  auto convert_options = arrow::csv::ConvertOptions::Defaults();
-  auto ret = BuildConvertOptions(&convert_options);
+  CsvOptions csv_options;
+  auto ret = MakeCsvOptions(&csv_options);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "BuildConvertOptions failed";
+    LOG(ERROR) << "make csv file options failed";
     return nullptr;
   }
-  return ReadImpl(this->file_path_, read_options, parse_options, convert_options);
+  return ReadImpl(this->file_path_, csv_options.read_options,
+                  csv_options.parse_options, csv_options.convert_options);
 }
 
 std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
@@ -438,10 +526,23 @@ std::shared_ptr<Dataset> CSVCursor::read(int64_t offset, int64_t limit) {
 }
 
 std::shared_ptr<Dataset> CSVCursor::ReadImpl(const std::string& file_path,
-                                             const arrow::csv::ReadOptions& read_options,
-                                             const arrow::csv::ParseOptions& parse_options,
-                                             const arrow::csv::ConvertOptions& convert_options) {
+    const ReadOptions& read_options,
+    const ParseOptions& parse_options,
+    const ConvertOptions& convert_options) {
   auto arrow_table = csv::ReadCSVFile(file_path, read_options,
+                                      parse_options, convert_options);
+  if (arrow_table == nullptr) {
+    return nullptr;
+  }
+  auto dataset = std::make_shared<Dataset>(arrow_table, this->driver_);
+  return dataset;
+}
+
+std::shared_ptr<Dataset> CSVCursor::ReadImpl(std::string_view input_data,
+    const ReadOptions& read_options,
+    const ParseOptions& parse_options,
+    const ConvertOptions& convert_options) {
+  auto arrow_table = csv::ReadCSVData(input_data, read_options,
                                       parse_options, convert_options);
   if (arrow_table == nullptr) {
     return nullptr;
@@ -486,17 +587,11 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
     LOG(ERROR) << "file access info is unavailable";
     return retcode::FAIL;
   }
-  std::ifstream csv_data(csv_access_info->file_path_, std::ios::in);
-  if (!csv_data.is_open()) {
-    std::stringstream ss;
-    ss << "open csv file: " << csv_access_info->file_path_ << " failed";
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
+  std::string tile_row = csv::ReadRawData(csv_access_info->file_path_, 1);
+  if (tile_row.empty()) {
+    LOG(ERROR) << "file is empty";
     return retcode::FAIL;
   }
-  std::string tile_row;
-  std::getline(csv_data, tile_row);
   str_split(tile_row, &colum_names, delimiter);
   if (VLOG_IS_ON(5)) {
     std::string title_name;
@@ -556,20 +651,24 @@ std::unique_ptr<Cursor> CSVDriver::read() {
     LOG(ERROR) << "file access info is unavailable";
     return nullptr;
   }
-  VLOG(5) << "access_info_ptr schema column size: " << csv_access_info->schema.size();
+  VLOG(5) << "access_info_ptr schema column size: "
+          << csv_access_info->schema.size();
   if (csv_access_info->Schema().empty()) {
     auto read_options = arrow::csv::ReadOptions::Defaults();
+    read_options.skip_rows = 1;  // skip title row
     auto parse_options = arrow::csv::ParseOptions::Defaults();
     auto convert_options = arrow::csv::ConvertOptions::Defaults();
-    auto ret = GetColumnNames(parse_options.delimiter, &read_options.column_names);
+    auto ret = GetColumnNames(parse_options.delimiter,
+                              &read_options.column_names);
     if (ret != retcode::SUCCESS) {
       return nullptr;
     }
-
-    read_options.skip_rows = 1;  // skip title row
-
-    auto arrow_data = csv::ReadCSVFile(csv_access_info->file_path_, read_options,
-                                      parse_options, convert_options);
+    std::string content_buf =
+        csv::ReadRawData(csv_access_info->file_path_, 100);
+    std::string_view content_sv(content_buf.data(), content_buf.size());
+    auto arrow_data = csv::ReadCSVData(content_sv,
+                                       read_options, parse_options,
+                                       convert_options);
     if (arrow_data == nullptr) {
       return nullptr;
     }
@@ -594,7 +693,8 @@ std::unique_ptr<Cursor> CSVDriver::GetCursor() {
   return read();
 }
 
-std::unique_ptr<Cursor> CSVDriver::GetCursor(const std::vector<int>& col_index) {
+std::unique_ptr<Cursor> CSVDriver::GetCursor(
+    const std::vector<int>& col_index) {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
     LOG(ERROR) << "file access info is unavailable";
