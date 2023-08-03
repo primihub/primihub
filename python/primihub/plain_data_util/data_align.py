@@ -181,8 +181,6 @@ class DataAlign:
 
 
     def generate_new_datast_from_mysql(self, meta_info, query_thread_num):
-        if not self.has_data_rows(meta_info["psiPath"]):
-            raise Exception("PSI result is empty, no intersection is found")
         db_info = meta_info["localdata_path"]
         # Connect to mysql server and create cursor.
         try:
@@ -239,17 +237,19 @@ class DataAlign:
         # Collect all ids that PSI output.
         intersect_ids = []
         try:
-            in_f = open(meta_info["psiPath"])
-            reader = csv.reader(in_f)
-            next(reader)
-            for id in reader:
-                intersect_ids.append(id[0])
+
+            with open(meta_info["psiPath"]) as in_f:
+                reader = csv.reader(in_f)
+                next(reader)
+                for id in reader:
+                    intersect_ids.append(id[0])
         except OSError as e:
             logger.error("Open file {} for read failed.".format(
                 meta_info["psiPath"]))
             logger.error(e)
             raise e
-
+        if (len(intersect_ids) == 0):
+            raise Exception("PSI result is empty, no intersection is found")
         # Open new file to save all value of these ids.
         writer = None
         try:
@@ -347,10 +347,6 @@ class DataAlign:
 
         return
 
-    def has_data_rows(self, fname):
-        with open(fname) as file:
-            return file.readline() and file.readline()
-
     def generate_new_dataset_from_csv(self, meta_info):
         psi_path = meta_info["psiPath"]
         new_dataset_id = meta_info["newDataSetId"]
@@ -366,9 +362,6 @@ class DataAlign:
                                       psi_index, old_dataset_path)
         logger.info(log_msg)
 
-        if not self.has_data_rows(psi_path):
-            raise Exception("PSI result is empty, no intersection is found")
-
         intersection_map = {}
         intersection_set = set()
         intersection_list = list()
@@ -382,6 +375,8 @@ class DataAlign:
                     continue
                 intersection_set.add(item)
                 intersection_list.append(item)
+        if (len(intersection_list) == 0):
+            raise Exception("PSI result is empty, no intersection is found")
 
         with open(old_dataset_path) as old_f, open(new_dataset_output_path, 'w') as new_f:
             f_csv = csv.reader(old_f)
