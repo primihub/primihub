@@ -8,17 +8,14 @@ from primihub.FL.crypto.ckks import CKKS
 import pickle
 import json
 import pandas as pd
-import numpy as np
 from sklearn import metrics
-from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
 from sklearn.preprocessing import StandardScaler
 
-from .vfl_base import LogisticRegression_Host_Plaintext,\
-                      LogisticRegression_Host_CKKS
+from .vfl_base import LinearRegression_Host_Plaintext,\
+                      LinearRegression_Host_CKKS
 
 
-class LogisticRegressionHost(BaseModel):
+class LinearRegressionHost(BaseModel):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -62,13 +59,13 @@ class LogisticRegressionHost(BaseModel):
         # host init
         batch_size = min(x.shape[0], self.common_params['batch_size'])
         if method == 'Plaintext':
-            host = Plaintext_Host(x, y,
+            host = Plaintext_Host(x,
                                   self.common_params['learning_rate'],
                                   self.common_params['alpha'],
                                   guest_channel)
         elif method == 'CKKS':
             coordinator_channel.send('batch_size', batch_size)
-            host = CKKS_Host(x, y,
+            host = CKKS_Host(x,
                              self.common_params['learning_rate'],
                              self.common_params['alpha'],
                              guest_channel,
@@ -165,17 +162,9 @@ class LogisticRegressionHost(BaseModel):
         model = modelFile['model']
         guest_z = guest_channel.recv_all('guest_z')
         z = model.compute_z(x, guest_z)
-        pred_prob = model.predict_prob(z)
-
-        if model.multiclass:
-            pred_y = np.argmax(pred_prob, axis=1)
-            pred_prob = pred_prob.tolist()
-        else:
-            pred_y = np.array(pred_prob > 0.5, dtype='int')
 
         result = pd.DataFrame({
-            'pred_prob': pred_prob,
-            'pred_y': pred_y
+            'pred_y': z
         })
         
         data_result = pd.concat([origin_data, result], axis=1)
@@ -187,26 +176,15 @@ class LogisticRegressionHost(BaseModel):
 
 class Plaintext_Host:
 
-    def __init__(self, x, y, learning_rate, alpha, guest_channel):
-        self.model = LogisticRegression_Host_Plaintext(x, y,
-                                                       learning_rate,
-                                                       alpha)
-        self.send_output_dim(guest_channel)
-
-    def send_output_dim(self, guest_channel):
+    def __init__(self, x, learning_rate, alpha, guest_channel):
+        self.model = LinearRegression_Host_Plaintext(x,
+                                                     learning_rate,
+                                                     alpha)
         self.guest_channel = guest_channel
-        guest_channel.send_all('output_dim', self.model.output_dim)
 
     def compute_z(self, x):
         guest_z = self.guest_channel.recv_all('guest_z')
         return self.model.compute_z(x, guest_z)
-    
-    def compute_regular_loss(self):
-        if self.model.alpha != 0:
-            guest_regular_loss = self.guest_channel.recv_all('guest_regular_loss')
-            return self.model.compute_regular_loss(sum(guest_regular_loss))
-        else:
-            return 0.
         
     def train(self, x, y):
         z = self.compute_z(x)
@@ -218,42 +196,15 @@ class Plaintext_Host:
 
     def compute_metrics(self, x, y):
         z = self.compute_z(x)
-
-        regular_loss = self.compute_regular_loss()
-        loss = self.model.loss(y, z, regular_loss)
-
-        y_hat = self.model.predict_prob(z)
-        if self.model.multiclass:
-            y_pred = np.argmax(y_hat, axis=1)
-        else:
-            y_pred = np.array(y_hat > 0.5, dtype='int')
         
-        acc = metrics.accuracy_score(y, y_pred)
+        mse = metrics.mean_squared_error(y, z)
+        mae = metrics.mean_absolute_error(y, z)
 
-        if self.model.multiclass:
-            # one-vs-rest
-            auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr')
-
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
-            return {
-                'train_loss': loss,
-                'train_acc': acc,
-                'train_auc': auc
-                }
-        else:
-            fpr, tpr, thresholds = metrics.roc_curve(y, y_hat)
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            auc = auc_from_fpr_tpr(fpr, tpr)
-
-            logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
-            return {
-                'train_loss': loss,
-                'train_acc': acc,
-                'train_fpr': fpr.tolist(),
-                'train_tpr': tpr.tolist(),
-                'train_ks': ks,
-                'train_auc': auc
-                }
+        logger.info(f"mse={mse}, mae={mae}")
+        return {
+            'train_mse': mse,
+            'train_mae': mae
+        }
     
     def compute_final_metrics(self, x, y):
         return self.compute_metrics(x, y)
@@ -261,14 +212,13 @@ class Plaintext_Host:
 
 class CKKS_Host(Plaintext_Host, CKKS):
 
-    def __init__(self, x, y, learning_rate, alpha,
+    def __init__(self, x, learning_rate, alpha,
                  guest_channel, coordinator_channel):
         self.t = 0
-        self.model = LogisticRegression_Host_CKKS(x, y,
-                                                  learning_rate,
-                                                  alpha)
-        self.send_output_dim(guest_channel)
-        coordinator_channel.send('multiclass', self.model.multiclass)
+        self.model = LinearRegression_Host_CKKS(x,
+                                                learning_rate,
+                                                alpha)
+        self.guest_channel = guest_channel
         self.recv_public_context(coordinator_channel)
         coordinator_channel.send('num_examples', x.shape[0])
         CKKS.__init__(self, self.context)
@@ -281,12 +231,8 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        if self.model.multiclass:
-            self.model.weight = self.encrypt_tensor(self.model.weight.T)
-            self.model.bias = self.encrypt_tensor(self.model.bias.T)
-        else:
-            self.model.weight = self.encrypt_vector(self.model.weight)
-            self.model.bias = self.encrypt_vector(self.model.bias)
+        self.model.weight = self.encrypt_vector(self.model.weight)
+        self.model.bias = self.encrypt_vector(self.model.bias)
 
     def update_ciphertext_model(self):
         self.coordinator_channel.send('host_weight',
@@ -294,16 +240,10 @@ class CKKS_Host(Plaintext_Host, CKKS):
         self.coordinator_channel.send('host_bias',
                                       self.model.bias.serialize())
         
-        if self.model.multiclass:
-            self.model.weight = self.load_tensor(
-                self.coordinator_channel.recv('host_weight'))
-            self.model.bias = self.load_tensor(
-                self.coordinator_channel.recv('host_bias'))
-        else:
-            self.model.weight = self.load_vector(
-                self.coordinator_channel.recv('host_weight'))
-            self.model.bias = self.load_vector(
-                self.coordinator_channel.recv('host_bias'))
+        self.model.weight = self.load_vector(
+            self.coordinator_channel.recv('host_weight'))
+        self.model.bias = self.load_vector(
+            self.coordinator_channel.recv('host_bias'))
         
     def update_plaintext_model(self):
         self.coordinator_channel.send('host_weight',
@@ -315,22 +255,8 @@ class CKKS_Host(Plaintext_Host, CKKS):
 
     def compute_enc_z(self, x):
         guest_z = self.guest_channel.recv_all('guest_z')
-        if self.model.multiclass:
-            guest_z = [self.load_tensor(z) for z in guest_z]
-        else:
-            guest_z = [self.load_vector(z) for z in guest_z]
+        guest_z = [self.load_vector(z) for z in guest_z]
         return self.model.compute_enc_z(x, guest_z)
-    
-    def compute_enc_regular_loss(self):
-        if self.model.alpha != 0:
-            guest_regular_loss = self.guest_channel.recv_all('guest_regular_loss')
-            if self.model.multiclass:
-                guest_regular_loss = [self.load_tensor(s) for s in guest_regular_loss]
-            else:
-                guest_regular_loss = [self.load_vector(s) for s in guest_regular_loss]
-            return self.model.compute_regular_loss(sum(guest_regular_loss))
-        else:
-            return 0.
     
     def train(self, x, y):
         logger.info(f'iteration {self.t} / {self.max_iter}')
@@ -357,9 +283,8 @@ class CKKS_Host(Plaintext_Host, CKKS):
 
         z = self.compute_enc_z(x)
 
-        regular_loss = self.compute_enc_regular_loss()
-        loss = self.model.loss(y, z, regular_loss)
-        self.coordinator_channel.send('loss', loss.serialize())
+        mse = ((z - y) ** 2).sum()
+        self.coordinator_channel.send('mse', mse.serialize())
         logger.info('View metrics at coordinator while using CKKS')
     
     def compute_final_metrics(self, x, y):

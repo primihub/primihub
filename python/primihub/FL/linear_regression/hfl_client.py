@@ -9,17 +9,14 @@ from primihub.FL.crypto.paillier import Paillier
 
 import pickle
 import pandas as pd
-import numpy as np
 import dp_accounting
 from sklearn import metrics
-from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
-from .base import LogisticRegression,\
-                  LogisticRegression_DPSGD,\
-                  LogisticRegression_Paillier
+from .base import LinearRegression,\
+                  LinearRegression_DPSGD,\
+                  LinearRegression_Paillier
 
 
-class LogisticRegressionClient(BaseModel):
+class LinearRegressionClient(BaseModel):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -57,12 +54,12 @@ class LogisticRegressionClient(BaseModel):
         # client init
         method = self.common_params['method']
         if method == 'Plaintext':
-            client = Plaintext_Client(x, y,
+            client = Plaintext_Client(x,
                                       self.common_params['learning_rate'],
                                       self.common_params['alpha'],
                                       server_channel)
         elif method == 'DPSGD':
-            client = DPSGD_Client(x, y,
+            client = DPSGD_Client(x,
                                   self.common_params['learning_rate'],
                                   self.common_params['alpha'],
                                   self.common_params['noise_multiplier'],
@@ -181,16 +178,9 @@ class LogisticRegressionClient(BaseModel):
 
         # test data prediction
         model = modelFile['model']
-        pred_prob = model.predict_prob(x)
-
-        if model.multiclass:
-            pred_y = np.argmax(pred_prob, axis=1)
-            pred_prob = pred_prob.tolist()
-        else:
-            pred_y = np.array(pred_prob > 0.5, dtype='int')
+        pred_y = model.predict(x)
 
         result = pd.DataFrame({
-            'pred_prob': pred_prob,
             'pred_y': pred_y
         })
         
@@ -203,124 +193,44 @@ class LogisticRegressionClient(BaseModel):
 
 class Plaintext_Client:
 
-    def __init__(self, x, y, learning_rate, alpha, server_channel):
-        self.model = LogisticRegression(x, y, learning_rate, alpha)
-        self.param_init(x, y, server_channel)
+    def __init__(self, x, learning_rate, alpha, server_channel):
+        self.model = LinearRegression(x, learning_rate, alpha)
+        self.param_init(x, server_channel)
 
-    def param_init(self, x, y, server_channel):
+    def param_init(self, x, server_channel):
         self.server_channel = server_channel
-
-        self.send_output_dim(y)
-
         self.num_examples = x.shape[0]
-        if not self.model.multiclass:
-            self.num_positive_examples = y.sum()
         self.send_params()
 
     def train(self):
         self.server_channel.send("client_model", self.model.get_theta())
         self.model.set_theta(self.server_channel.recv("server_model"))
 
-    def send_output_dim(self, y):
-        # assume labels start from 0
-        output_dim = y.max() + 1
-
-        if output_dim == 2:
-            # binary classification
-            output_dim = 1
-
-        self.server_channel.send('output_dim', output_dim)
-        output_dim = self.server_channel.recv('output_dim')
-        
-        # init theta
-        if self.model.multiclass:
-            if output_dim != self.model.bias.shape[1]:
-                self.model.set_theta(
-                    np.zeros((self.model.weight.shape[0] + 1, output_dim))
-                )
-        else:
-            if output_dim > 1:
-                self.model.set_theta(
-                    np.zeros((self.model.weight.shape[0] + 1, output_dim))
-                )
-                self.model.multiclass = True
-
     def send_params(self):
         self.server_channel.send('num_examples', self.num_examples)
-        if not self.model.multiclass:
-            self.server_channel.send('num_positive_examples',
-                                     self.num_positive_examples)
-
-    def send_loss(self, x, y):
-        loss = self.model.loss(x, y)
-        if self.model.alpha > 0:
-            loss -= 0.5 * self.model.alpha * (self.model.weight ** 2).sum()
-        self.server_channel.send("loss", loss)
-        return loss
-
-    def send_acc(self, x, y):
-        y_hat = self.model.predict_prob(x)
-        if self.model.multiclass:
-            y_pred = np.argmax(y_hat, axis=1)
-        else:
-            y_pred = np.array(y_hat > 0.5, dtype='int')
-        
-        acc = metrics.accuracy_score(y, y_pred)
-        self.server_channel.send("acc", acc)
-        return y_hat, acc
-    
-    def get_auc(self, y_hat, y):
-        if self.model.multiclass:
-            # one-vs-rest
-            auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr') 
-        else:
-            auc = metrics.roc_auc_score(y, y_hat)
-        return auc
 
     def send_metrics(self, x, y):
-        loss = self.send_loss(x, y)
+        y_hat = self.model.predict(x)
+        mse = metrics.mean_squared_error(y, y_hat)
+        mae = metrics.mean_absolute_error(y, y_hat)
 
-        y_hat, acc = self.send_acc(x, y)
+        logger.info(f"mse={mse}, mae={mae}")
 
-        if self.model.multiclass:
-            auc = self.get_auc(y_hat, y)
-            self.server_channel.send("auc", auc)
-
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
-        else:
-            # fpr, tpr
-            fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
-                                                     drop_intermediate=False)
-            self.server_channel.send("fpr", fpr)
-            self.server_channel.send("tpr", tpr)
-            # self.server_channel.send("thresholds", thresholds)
-
-            # ks
-            ks = ks_from_fpr_tpr(fpr, tpr)
-
-            # auc
-            auc = auc_from_fpr_tpr(fpr, tpr)
-
-            logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+        self.server_channel.send('mse', mse)
+        self.server_channel.send('mae', mae)
 
     def print_metrics(self, x, y):
-        # print loss & acc & auc
-        loss = self.send_loss(x, y)
-        y_hat, acc = self.send_acc(x, y)
-        auc = self.get_auc(y_hat, y)
-        if self.model.multiclass:
-            self.server_channel.send("auc", auc)
-        logger.info(f"loss={loss}, acc={acc}, auc={auc}")
+        self.send_metrics(x, y)
 
 
 class DPSGD_Client(Plaintext_Client):
 
-    def __init__(self, x, y, learning_rate, alpha,
+    def __init__(self, x, learning_rate, alpha,
                  noise_multiplier, l2_norm_clip, secure_mode,
                  server_channel):
-        self.model = LogisticRegression_DPSGD(x, y, learning_rate, alpha,
-                                              noise_multiplier, l2_norm_clip, secure_mode)
-        self.param_init(x, y, server_channel)
+        self.model = LinearRegression_DPSGD(x, learning_rate, alpha,
+                                            noise_multiplier, l2_norm_clip, secure_mode)
+        self.param_init(x, server_channel)
 
     def compute_epsilon(self, steps, batch_size, delta):
         if self.model.noise_multiplier == 0.0:
@@ -345,19 +255,11 @@ class Paillier_Client(Plaintext_Client, Paillier):
 
     def __init__(self, x, y, learning_rate, alpha,
                  server_channel):
-        self.model = LogisticRegression_Paillier(x, y, learning_rate, alpha)
-        self.param_init(x, y, server_channel)
+        self.model = LinearRegression_Paillier(x, learning_rate, alpha)
+        self.param_init(x, server_channel)
 
         self.public_key = server_channel.recv("public_key")
         self.model.set_theta(self.encrypt_vector(self.model.get_theta()))
 
-    def send_loss(self, x, y):
-        # pallier only support compute approximate loss without penalty
-        loss = self.model.loss(x, y)
-        self.server_channel.send("loss", loss)
-        return loss
-
     def print_metrics(self, x, y):
-        # print loss
-        self.send_loss(x, y)
-        logger.info('View metrics at server while using Paillier')
+        logger.info('No metrics while using Paillier')

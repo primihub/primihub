@@ -7,12 +7,9 @@ from primihub.FL.crypto.paillier import Paillier
 import json
 import numpy as np
 from phe import paillier
-from primihub.FL.metrics.hfl_metrics import roc_vertical_avg,\
-                                            ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
 
 
-class LogisticRegressionServer(BaseModel):
+class LinearRegressionServer(BaseModel):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -97,39 +94,12 @@ class Plaintext_DPSGD_Server:
         self.client_channel = client_channel
 
         self.theta = None
-        self.multiclass = None
-        self.recv_output_dims()
 
         self.num_examples_weights = None
-        if not self.multiclass:
-            self.num_positive_examples_weights = None
-            self.num_negtive_examples_weights = None
         self.recv_params()
-
-    def recv_output_dims(self):
-        # recv output dims for all clients
-        Output_Dims = self.client_channel.recv_all('output_dim')
-
-        # set final output dim
-        output_dim = max(Output_Dims)
-        if output_dim == 1:
-            self.multiclass = False
-        else:
-            self.multiclass = True
-
-        # send output dim to all clients
-        self.client_channel.send_all("output_dim", output_dim)
 
     def recv_params(self):
         self.num_examples_weights = self.client_channel.recv_all('num_examples')
-        
-        if not self.multiclass:
-            self.num_positive_examples_weights = \
-                self.client_channel.recv_all('num_positive_examples')
-            
-            self.num_negtive_examples_weights = \
-                    (np.array(self.num_examples_weights) - \
-                    np.array(self.num_positive_examples_weights)).tolist()
 
     def client_model_aggregate(self):
         client_models = self.client_channel.recv_all("client_model")
@@ -144,16 +114,10 @@ class Plaintext_DPSGD_Server:
     def train(self):
         self.client_model_aggregate()
         self.server_model_broadcast()
-
-    def get_loss(self):
-        loss =  self.get_scalar_metrics('loss')
-        if self.alpha > 0:
-            loss += 0.5 * self.alpha * (self.theta ** 2).sum()
-        return loss
     
     def get_scalar_metrics(self, metrics_name):
         metrics_name = metrics_name.lower()
-        supported_metrics = ['loss', 'acc', 'auc']
+        supported_metrics = ['mse', 'mae']
         if metrics_name not in supported_metrics:
             error_msg = f"""Unsupported metrics {metrics_name},
                           use {supported_metrics} instead"""
@@ -164,59 +128,22 @@ class Plaintext_DPSGD_Server:
             
         return np.average(client_metrics,
                           weights=self.num_examples_weights)
-    
-    def get_fpr_tpr(self):
-        client_fpr = self.client_channel.recv_all('fpr')
-        client_tpr = self.client_channel.recv_all('tpr')
-        # client_thresholds = self.client_channel.recv_all('thresholds')
-
-        # fpr & tpr
-        # roc_vertical_avg: sample = 0.1 * n
-        samples = int(0.1 * sum(self.num_examples_weights))
-        fpr,\
-        tpr = roc_vertical_avg(samples,
-                               client_fpr,
-                               client_tpr)
-        return fpr, tpr
 
     def get_metrics(self):
         server_metrics = {}
 
-        loss = self.get_loss()
-        server_metrics["train_loss"] = loss
+        mse = self.get_scalar_metrics('mse')
+        server_metrics["train_mse"] = mse
 
-        acc = self.get_scalar_metrics('acc')
-        server_metrics["train_acc"] = acc
-        
-        if self.multiclass:
-            auc = self.get_scalar_metrics('auc')
-            server_metrics["train_auc"] = auc
+        mae = self.get_scalar_metrics('mae')
+        server_metrics["train_mae"] = mae
 
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
-        else:
-            fpr, tpr = self.get_fpr_tpr()
-            server_metrics["train_fpr"] = fpr
-            server_metrics["train_tpr"] = tpr
-
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            server_metrics["train_ks"] = ks
-
-            auc = auc_from_fpr_tpr(fpr, tpr)
-            server_metrics["train_auc"] = auc
-
-            logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+        logger.info(f"mse={mse}, mae={mae}")
 
         return server_metrics
     
     def print_metrics(self):
-        # print loss & acc
-        loss = self.get_loss()
-        acc = self.get_scalar_metrics('acc')
-        if self.multiclass:
-            auc = self.get_scalar_metrics('auc')
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
-        else:
-            logger.info(f"loss={loss}, acc={acc}")
+        self.get_metrics()
 
 
 class Paillier_Server(Plaintext_DPSGD_Server, Paillier):
@@ -240,16 +167,5 @@ class Paillier_Server(Plaintext_DPSGD_Server, Paillier):
         self.theta = np.array(self.decrypt_vector(self.theta))
         self.server_model_broadcast()
 
-    def get_loss(self):
-        return self.get_scalar_metrics('loss')
-
     def print_metrics(self):
-        # print loss
-        # pallier only support compute approximate loss
-        client_loss = self.client_channel.recv_all('loss')
-        # client loss is a ciphertext
-        client_loss = self.decrypt_vector(client_loss)
-        loss = np.average(client_loss,
-                          weights=self.num_examples_weights)
-
-        logger.info(f"loss={loss}")
+        logger.info('No metrics while using Paillier')

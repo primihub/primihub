@@ -8,7 +8,7 @@ import numpy as np
 import tenseal as ts
 
 
-class LogisticRegressionCoordinator(BaseModel):
+class LinearRegressionCoordinator(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -68,7 +68,6 @@ class CKKSCoordinator(CKKS):
         self.t = 0
         self.host_channel = host_channel
         self.guest_channel = guest_channel
-        self.multiclass = host_channel.recv('multiclass')
 
         # set CKKS params
         # use larger poly_mod_degree to support more encrypted multiplications
@@ -101,9 +100,9 @@ class CKKSCoordinator(CKKS):
         self.secret_context = secret_context
 
         self.send_public_context()
-        num_examples = host_channel.recv('num_examples')
+        self.num_examples = host_channel.recv('num_examples')
 
-        self.iter_per_epoch = math.ceil(num_examples / batch_size)
+        self.iter_per_epoch = math.ceil(self.num_examples / batch_size)
 
     def send_public_context(self):
         serialize_context = self.context.serialize()
@@ -111,18 +110,11 @@ class CKKSCoordinator(CKKS):
         self.guest_channel.send_all("public_context", serialize_context)
 
     def recv_model(self):
-        if self.multiclass:
-            host_weight = self.load_tensor(self.host_channel.recv('host_weight'))
-            host_bias = self.load_tensor(self.host_channel.recv('host_bias'))
+        host_weight = self.load_vector(self.host_channel.recv('host_weight'))
+        host_bias = self.load_vector(self.host_channel.recv('host_bias'))
 
-            guest_weight = self.guest_channel.recv_all('guest_weight')
-            guest_weight = [self.load_tensor(weight) for weight in guest_weight]
-        else:
-            host_weight = self.load_vector(self.host_channel.recv('host_weight'))
-            host_bias = self.load_vector(self.host_channel.recv('host_bias'))
-
-            guest_weight = self.guest_channel.recv_all('guest_weight')
-            guest_weight = [self.load_vector(weight) for weight in guest_weight]
+        guest_weight = self.guest_channel.recv_all('guest_weight')
+        guest_weight = [self.load_vector(weight) for weight in guest_weight]
 
         return host_weight, host_bias, guest_weight
     
@@ -142,16 +134,10 @@ class CKKSCoordinator(CKKS):
         return host_weight, host_bias, guest_weight
     
     def encrypt_model(self, host_weight, host_bias, guest_weight):
-        if self.multiclass:
-            host_weight = self.encrypt_tensor(host_weight)
-            host_bias = self.encrypt_tensor(host_bias)
+        host_weight = self.encrypt_vector(host_weight)
+        host_bias = self.encrypt_vector(host_bias)
 
-            guest_weight = [self.encrypt_tensor(weight) for weight in guest_weight]
-        else:
-            host_weight = self.encrypt_vector(host_weight)
-            host_bias = self.encrypt_vector(host_bias)
-
-            guest_weight = [self.encrypt_vector(weight) for weight in guest_weight]
+        guest_weight = [self.encrypt_vector(weight) for weight in guest_weight]
         
         return host_weight, host_bias, guest_weight
 
@@ -174,14 +160,9 @@ class CKKSCoordinator(CKKS):
             host_weight, host_bias, guest_weight)
         
         # list to numpy ndarrry
-        if self.multiclass:
-            host_weight = np.array(host_weight.tolist()).T
-            host_bias = np.array(host_bias.tolist()).T
-            guest_weight = [np.array(weight.tolist()).T for weight in guest_weight]
-        else:
-            host_weight = np.array(host_weight)
-            host_bias = np.array(host_bias)
-            guest_weight = [np.array(weight) for weight in guest_weight]
+        host_weight = np.array(host_weight)
+        host_bias = np.array(host_bias)
+        guest_weight = [np.array(weight) for weight in guest_weight]
 
         self.send_model(host_weight, host_bias, guest_weight)
 
@@ -205,10 +186,7 @@ class CKKSCoordinator(CKKS):
             logger.warning('decrypt model')
             self.update_ciphertext_model()
 
-        if self.multiclass:
-            loss = self.load_tensor(self.host_channel.recv('loss'))
-            loss = self.decrypt(loss, self.secret_context.secret_key()).tolist()
-        else:
-            loss = self.load_vector(self.host_channel.recv('loss'))
-            loss = self.decrypt(loss, self.secret_context.secret_key())[0]
-        logger.info(f'loss={loss}')
+        mse = self.load_vector(self.host_channel.recv('mse'))
+        mse = self.decrypt(mse, self.secret_context.secret_key())[0]
+        mse /= self.num_examples
+        logger.info(f'mse={mse}')

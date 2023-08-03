@@ -8,11 +8,11 @@ from primihub.FL.crypto.ckks import CKKS
 import pickle
 from sklearn.preprocessing import StandardScaler
 
-from .vfl_base import LogisticRegression_Guest_Plaintext,\
-                      LogisticRegression_Guest_CKKS
+from .vfl_base import LinearRegression_Guest_Plaintext,\
+                      LinearRegression_Guest_CKKS
 
 
-class LogisticRegressionGuest(BaseModel):
+class LinearRegressionGuest(BaseModel):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -151,24 +151,14 @@ class LogisticRegressionGuest(BaseModel):
 class Plaintext_Guest:
 
     def __init__(self, x, learning_rate, alpha,  host_channel):
-        output_dim = self.recv_output_dim(host_channel)
-        self.model = LogisticRegression_Guest_Plaintext(x,
-                                                        learning_rate,
-                                                        alpha,
-                                                        output_dim)
-
-    def recv_output_dim(self, host_channel):
+        self.model = LinearRegression_Guest_Plaintext(x,
+                                                      learning_rate,
+                                                      alpha)
         self.host_channel = host_channel
-        return host_channel.recv('output_dim')
     
     def send_z(self, x):
         guest_z = self.model.compute_z(x)
         self.host_channel.send('guest_z', guest_z)
-    
-    def send_regular_loss(self):
-        if self.model.alpha != 0.:
-            guest_regular_loss = self.model.compute_regular_loss()
-            self.host_channel.send('guest_regular_loss', guest_regular_loss)
 
     def train(self, x):
         self.send_z(x)
@@ -179,7 +169,6 @@ class Plaintext_Guest:
 
     def compute_metrics(self, x):
         self.send_z(x)
-        self.send_regular_loss()
 
     def compute_final_metrics(self, x):
         self.compute_metrics(x)
@@ -190,11 +179,10 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
     def __init__(self, x, learning_rate, alpha,
                  host_channel, coordinator_channel):
         self.t = 0
-        output_dim = self.recv_output_dim(host_channel)
-        self.model = LogisticRegression_Guest_CKKS(x,
-                                                   learning_rate,
-                                                   alpha,
-                                                   output_dim)
+        self.model = LinearRegression_Guest_CKKS(x,
+                                                 learning_rate,
+                                                 alpha)
+        self.host_channel = host_channel
         self.recv_public_context(coordinator_channel)
         CKKS.__init__(self, self.context)
         multiply_per_iter = 2
@@ -206,21 +194,14 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
         self.context = coordinator_channel.recv('public_context')
 
     def encrypt_model(self):
-        if self.model.multiclass:
-            self.model.weight = self.encrypt_tensor(self.model.weight.T)
-        else:
-            self.model.weight = self.encrypt_vector(self.model.weight)
+        self.model.weight = self.encrypt_vector(self.model.weight)
 
     def update_ciphertext_model(self):
         self.coordinator_channel.send('guest_weight',
                                       self.model.weight.serialize())
         
-        if self.model.multiclass:
-            self.model.weight = self.load_tensor(
-                self.coordinator_channel.recv('guest_weight'))
-        else:
-            self.model.weight = self.load_vector(
-                self.coordinator_channel.recv('guest_weight'))
+        self.model.weight = self.load_vector(
+            self.coordinator_channel.recv('guest_weight'))
 
     def update_plaintext_model(self):
         self.coordinator_channel.send('guest_weight',
@@ -230,12 +211,6 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
     def send_enc_z(self, x):
         guest_z = self.model.compute_enc_z(x)
         self.host_channel.send('guest_z', guest_z.serialize())
-
-    def send_enc_regular_loss(self):
-        if self.model.alpha != 0.:
-            guest_regular_loss = self.model.compute_regular_loss()
-            self.host_channel.send('guest_regular_loss',
-                                   guest_regular_loss.serialize())
     
     def train(self, x):
         logger.info(f'iteration {self.t} / {self.max_iter}')
@@ -248,10 +223,7 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
 
         self.send_enc_z(x)
 
-        if self.model.multiclass:
-            error = self.load_tensor(self.host_channel.recv('error'))
-        else:
-            error = self.load_vector(self.host_channel.recv('error'))
+        error = self.load_vector(self.host_channel.recv('error'))
 
         self.model.fit(x, error)
 
@@ -263,7 +235,6 @@ class CKKS_Guest(Plaintext_Guest, CKKS):
             self.update_ciphertext_model()
 
         self.send_enc_z(x)
-        self.send_enc_regular_loss()
         logger.info('View metrics at coordinator while using CKKS')
 
     def compute_final_metrics(self, x):

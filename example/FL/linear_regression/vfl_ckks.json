@@ -1,0 +1,45 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": [
+                "Charlie"
+            ],
+            "coordinator": "David"
+        },
+        "common_params": {
+            "model": "VFL_linear_regression",
+            "method": "CKKS",
+            "process": "train",
+            "task_name": "VFL_linear_regression_ckks_train",
+            "learning_rate": 1e-1,
+            "alpha": 1e-4,
+            "epoch": 10,
+            "shuffle_seed": 0,
+            "batch_size": 100,
+            "print_metrics": true
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "regression_vfl_train_host",
+                "selected_column": null,
+                "id": "id",
+                "label": "y",
+                "model_path": "data/result/host_model.pkl",
+                "metric_path": "data/result/metrics.json"
+            },
+            "Charlie": {
+                "data_set": "regression_vfl_train_guest",
+                "selected_column": null,
+                "id": "id",
+                "model_path": "data/result/guest_model.pkl"
+            },
+            "David": {
+                "data_set": "fl_fake_data"
+            }
+        }
+    }
+}
