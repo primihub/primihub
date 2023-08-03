@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import csv
 import copy
+import codecs
 import mysql.connector
 from datetime import datetime
 from primihub.utils.logger_util import logger
@@ -347,6 +348,14 @@ class DataAlign:
 
         return
 
+    def hasBOM(self, csv_file):
+        with open(csv_file, 'rb') as f:
+            bom = f.read(3)
+            if bom.startswith(codecs.BOM_UTF8):
+                return True
+            else:
+                return False
+
     def generate_new_dataset_from_csv(self, meta_info):
         psi_path = meta_info["psiPath"]
         new_dataset_id = meta_info["newDataSetId"]
@@ -366,7 +375,11 @@ class DataAlign:
         intersection_set = set()
         intersection_list = list()
 
-        with open(psi_path) as f:
+        code_type = "utf-8"
+        if self.hasBOM(psi_path):
+            code_type = "utf-8-sig"
+
+        with open(psi_path, encoding=code_type) as f:
             f_csv = csv.reader(f)
             header = next(f_csv)
             for items in f_csv:
