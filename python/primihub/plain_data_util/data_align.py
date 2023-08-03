@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import csv
 import copy
+import codecs
 import mysql.connector
 from datetime import datetime
 from primihub.utils.logger_util import logger
@@ -237,8 +238,10 @@ class DataAlign:
         # Collect all ids that PSI output.
         intersect_ids = []
         try:
-
-            with open(meta_info["psiPath"]) as in_f:
+            code_type = "utf-8"
+            if self.hasBOM(meta_info["psiPath"]):
+                code_type = "utf-8-sig"
+            with open(meta_info["psiPath"], encoding=code_type) as in_f:
                 reader = csv.reader(in_f)
                 next(reader)
                 for id in reader:
@@ -332,7 +335,6 @@ class DataAlign:
             return
 
         out_f.close()
-        in_f.close()
 
         if num_rows != len(intersect_ids):
             raise RuntimeError("Expect query {} rows from mysql but mysql return {} rows, this should be a bug.".format(
@@ -346,6 +348,14 @@ class DataAlign:
             logger.info("Finish.")
 
         return
+
+    def hasBOM(self, csv_file):
+        with open(csv_file, 'rb') as f:
+            bom = f.read(3)
+            if bom.startswith(codecs.BOM_UTF8):
+                return True
+            else:
+                return False
 
     def generate_new_dataset_from_csv(self, meta_info):
         psi_path = meta_info["psiPath"]
@@ -366,7 +376,11 @@ class DataAlign:
         intersection_set = set()
         intersection_list = list()
 
-        with open(psi_path) as f:
+        code_type = "utf-8"
+        if self.hasBOM(psi_path):
+            code_type = "utf-8-sig"
+
+        with open(psi_path, encoding=code_type) as f:
             f_csv = csv.reader(f)
             header = next(f_csv)
             for items in f_csv:
