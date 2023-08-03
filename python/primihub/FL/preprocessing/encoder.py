@@ -1,9 +1,12 @@
 import numpy as np
+from itertools import chain
 from sklearn.preprocessing import LabelEncoder as SKL_LabelEncoder
 from sklearn.preprocessing import OneHotEncoder as SKL_OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
-from sklearn.feature_extraction import FeatureHasher
+from sklearn.utils.validation import column_or_1d
+from sklearn.preprocessing._encoders import _BaseEncoder
 from .base import PreprocessBase
+from .util import unique
 
 
 class LabelEncoder(PreprocessBase):
@@ -13,7 +16,20 @@ class LabelEncoder(PreprocessBase):
         self.module = SKL_LabelEncoder()
 
     def Hfit(self, x):
-        pass
+        if self.role == 'client':
+            x = column_or_1d(x, warn=True)
+            classes = unique(x)
+            self.channel.send('classes', classes)
+            classes = self.channel.recv('classes')
+
+        elif self.role == 'server':
+            classes = self.channel.recv_all('classes')
+            classes = list(chain.from_iterable(classes))
+            classes = unique(classes)
+            self.channel.send_all('classes')
+        
+        self.classes_ = classes
+        return self
 
 
 class OneHotEncoder(PreprocessBase):
