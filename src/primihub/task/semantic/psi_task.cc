@@ -25,7 +25,7 @@
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/endian_util.h"
 #include "src/primihub/common/value_check_util.h"
-#include "src/primihub/task/semantic/psi/operator/factory.h"
+#include "src/primihub/kernel/psi/operator/factory.h"
 
 using primihub::network::TaskMessagePassInterface;
 
@@ -59,7 +59,7 @@ retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
   }
 
   const auto& param_map = task.params().param_map();
-  // TODO rename to PsiResultType {intersection or DIFFERENCE}
+  // TODO(XXX) rename to PsiResultType {intersection or DIFFERENCE}
   auto it = param_map.find("psiType");   // psi reuslt
   if (it != param_map.end()) {
     options->psi_result_type =
@@ -98,7 +98,7 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
       break;
     }
     dataset_id_ = it->second;
-  } while(0);
+  } while (0);
   // broadcast result flag
   auto iter = param_map.find("sync_result_to_server");
   if (iter != param_map.end()) {
@@ -152,7 +152,8 @@ retcode PsiTask::LoadDataset(void) {
     LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
     return retcode::FAIL;
   }
-  auto ret = LoadDatasetInternal(driver, data_index_, &elements_, &data_colums_name_);
+  auto ret = LoadDatasetInternal(driver, data_index_,
+                                 &elements_, &data_colums_name_);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "Load dataset for psi server failed.";
     return retcode::FAIL;
@@ -191,7 +192,7 @@ int PsiTask::execute() {
     return -1;
   }
   auto load_params_ts = timer.timeElapse();
-  VLOG(5) << "load_params time cost(ms): " << load_params_ts;
+  VLOG(5) << "LoadParams time cost(ms): " << load_params_ts;
   ret = LoadDataset();
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "Psi load dataset failed.";
@@ -205,16 +206,25 @@ int PsiTask::execute() {
     LOG(ERROR) << "Psi init operator failed.";
     return -1;
   }
+  auto init_op_ts = timer.timeElapse();
+  auto init_op_time_cost = init_op_ts - load_dataset_ts;
+  VLOG(5) << "InitOperator time cost(ms): " << init_op_time_cost;
   ret = ExecuteOperator();
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "Psi execute operator failed.";
     return -1;
   }
+  auto exec_op_ts = timer.timeElapse();
+  auto exec_op_time_cost = exec_op_ts - init_op_ts;
+  VLOG(5) << "ExecuteOperator time cost(ms): " << exec_op_time_cost;
   ret = SaveResult();
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "Psi save result failed.";
     return -1;
   }
+  auto save_res_ts = timer.timeElapse();
+  auto save_res_time_cost = save_res_ts - exec_op_ts;
+  VLOG(5) << "SaveResult time cost(ms): " << save_res_time_cost;
   return 0;
 }
 

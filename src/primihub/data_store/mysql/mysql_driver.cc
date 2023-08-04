@@ -253,7 +253,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
       if (lengths[i] > 0) {
         item = std::string(row[i], lengths[i]);
       }
-      VLOG(5) << "fetch item: " << item << " length: " << lengths[i];
+      VLOG(7) << "fetch item: " << item << " length: " << lengths[i];
       result_data[i].push_back(item);
     }
   }
@@ -265,7 +265,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
     if (i < schema_fields) {
       auto& field_ptr = table_schema->field(i);
       int field_type = field_ptr->type()->id();
-      VLOG(5) << "field_name: " << field_ptr->name() << " type: " << field_type;
+      VLOG(7) << "field_name: " << field_ptr->name() << " type: " << field_type;
       auto array = arrow_wrapper::util::MakeArrowArray(field_type, result_data[i]);
       data_arr->push_back(std::move(array));
     } else {

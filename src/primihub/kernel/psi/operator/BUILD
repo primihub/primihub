@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-  name = "factor",
+  name = "factory",
   hdrs = ["factory.h"],
   deps = [
     ":common_def",
@@ -10,6 +10,7 @@ cc_library(
     ":ecdh_psi_operator",
   ],
 )
+
 cc_library(
   name = "common_def",
   hdrs = ["common.h"],
@@ -22,6 +23,7 @@ cc_library(
   deps = [
     ":common_def",
     "//src/primihub/util:endian_util",
+    "//src/primihub/util:util_lib",
     "//src/primihub/common:common_defination",
     "//src/primihub/util/network:communication_lib",
   ],

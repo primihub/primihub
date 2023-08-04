@@ -14,13 +14,17 @@
  limitations under the License.
  */
 
-#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_UTIL_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_UTIL_H_
+#ifndef SRC_PRIMIHUB_KERNEL_PSI_UTIL_H_
+#define SRC_PRIMIHUB_KERNEL_PSI_UTIL_H_
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "src/primihub/common/common.h"
 #include "arrow/api.h"
 #include "src/primihub/data_store/factory.h"
 
-namespace primihub::task {
+namespace primihub::psi {
 class PsiCommonUtil {
  public:
   bool IsValidDataType(const arrow::Type::type& type_id);
@@ -32,7 +36,7 @@ class PsiCommonUtil {
                            int table_max_colums);
   retcode LoadDatasetFromTable(std::shared_ptr<arrow::Table> table,
                                const std::vector<int>& col_index,
-                              std::vector<std::string>& col_array);
+                               std::vector<std::string>& col_array);
   retcode LoadDatasetFromTable(std::shared_ptr<arrow::Table> table,
                                const std::vector<int>& col_index,
                                std::vector<std::string>* col_data,
@@ -55,6 +59,21 @@ class PsiCommonUtil {
                             const std::string& file_path,
                             const std::vector<std::string>& col_title);
 
+ protected:
+  /**
+   * table with multi trunk
+   * using multi-thread to process data for multi-trunk
+  */
+  retcode ExtractDataFromTrunkArray(std::shared_ptr<arrow::Table>& table_data,
+                                    std::vector<std::string>* col_data,
+                                    std::vector<std::string>* col_name);
+  /**
+   * table with only trunk
+   * using multi-thread to process data for data array
+  */
+  retcode ExtractDataFromArray(std::shared_ptr<arrow::Table>& table_data,
+                               std::vector<std::string>* col_data,
+                               std::vector<std::string>* col_name);
 };
-}  // namespace primihub::task
-#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_UTIL_H_
+}  // namespace primihub::psi
+#endif  // SRC_PRIMIHUB_KERNEL_PSI_UTIL_H_

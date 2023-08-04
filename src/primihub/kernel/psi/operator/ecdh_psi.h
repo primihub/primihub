@@ -1,13 +1,13 @@
 // "Copyright [2023] <Primihub>"
-#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_ECDH_PSI_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_ECDH_PSI_H_
+#ifndef SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_ECDH_PSI_H_
+#define SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_ECDH_PSI_H_
 #include <unordered_map>
 #include <memory>
 #include <string>
 #include <set>
 #include <vector>
 
-#include "src/primihub/task/semantic/psi/operator/base_psi.h"
+#include "src/primihub/kernel/psi/operator/base_psi.h"
 #include "private_set_intersection/cpp/psi_client.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/protos/psi.pb.h"
@@ -52,4 +52,4 @@ class EcdhPsiOperator : public BasePsiOperator {
 };
 }  // namespace primihub::psi
 
-#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_ECDH_PSI_H_
+#endif  // SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_ECDH_PSI_H_

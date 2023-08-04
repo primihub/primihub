@@ -1,13 +1,13 @@
 // "Copyright [2023] <PrimiHub>"
-#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_BASE_PSI_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_BASE_PSI_H_
+#ifndef SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_
+#define SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_
 #include <map>
 #include <vector>
 #include <string>
 
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/common/common.h"
-#include "src/primihub/task/semantic/psi/operator/common.h"
+#include "src/primihub/kernel/psi/operator/common.h"
 namespace primihub::psi {
 using LinkContext = network::LinkContext;
 struct Options {
@@ -75,4 +75,4 @@ class BasePsiOperator {
   std::string key_{"default"};
 };
 }  // namespace primihub::psi
-#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_OPERATOR_BASE_PSI_H_
+#endif  // SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_

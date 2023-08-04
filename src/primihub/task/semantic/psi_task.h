@@ -27,15 +27,15 @@
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/common/common.h"
-#include "src/primihub/task/semantic/psi/operator/base_psi.h"
-#include "src/primihub/task/semantic/psi_task_util.h"
+#include "src/primihub/kernel/psi/operator/base_psi.h"
+#include "src/primihub/kernel/psi/util.h"
 
 namespace rpc = primihub::rpc;
 
 namespace primihub::task {
 using BasePsiOperator = primihub::psi::BasePsiOperator;
 
-class PsiTask : public TaskBase, public PsiCommonUtil {
+class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
  public:
   explicit PsiTask(const TaskParam *task_param,
                    std::shared_ptr<DatasetService> dataset_service);
@@ -66,4 +66,4 @@ class PsiTask : public TaskBase, public PsiCommonUtil {
   primihub::psi::Options options_;
 };
 }  // namespace primihub::task
-#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_KKRT_TASK_H_
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_H_

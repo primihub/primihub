@@ -1,5 +1,5 @@
 // "Copyright [2023] <Primihub>"
-#include "src/primihub/task/semantic/psi/operator/ecdh_psi.h"
+#include "src/primihub/kernel/psi/operator/ecdh_psi.h"
 
 #include <utility>
 #include <set>

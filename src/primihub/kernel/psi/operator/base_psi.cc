@@ -1,13 +1,14 @@
 // "Copyright [2023] <PrimiHub>"
-#include "src/primihub/task/semantic/psi/operator/base_psi.h"
+#include "src/primihub/kernel/psi/operator/base_psi.h"
 #include <utility>
 
 #include "src/primihub/util/endian_util.h"
+#include "src/primihub/util/util.h"
+
 namespace primihub::psi {
 retcode BasePsiOperator::Execute(const std::vector<std::string>& input,
                                  bool sync_result,
                                  std::vector<std::string>* result) {
-//
   auto ret = this->OnExecute(input, result);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "Execut PSI failed";
@@ -16,10 +17,13 @@ retcode BasePsiOperator::Execute(const std::vector<std::string>& input,
   // broadcast result from party who get result during the protocol
   // to the other parties who participate
   if (sync_result) {
+    SCopedTimer timer;
     ret = BroadcastPsiResult(result);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "Broadcast Psi Result failed";
     }
+    auto time_cost = timer.timeElapse();
+    VLOG(5) << "BroadcastPsiResult time cost(ms): " << time_cost;
   }
   return ret;
 }
