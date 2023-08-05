@@ -84,11 +84,11 @@ http_archive(
 
 http_archive(
   name="com_github_grpc_grpc",
-  strip_prefix = "grpc-1.42.x.openssl",
+  strip_prefix = "grpc-1.42.x.openssl.0",
   urls=[
-    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/v1.42.x.openssl_0.tar.gz",
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/grpc-1.42.x.openssl.v1.tar.gz",
   ],
-  sha256 = "ebe6bbdefd349bac46ca1ee5586daddd35b811b4e9000aeeaa236674d33ad902",
+  sha256 = "5911a187c715d37c059ba8655c9a00afb9a113dbeb7adb4a958136f6f5dac76f",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
