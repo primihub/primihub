@@ -46,11 +46,14 @@ class TaskBase {
     stop_.store(true);
     task_context_.clean();
   };
+
   bool has_stopped() {
     return stop_.load(std::memory_order_relaxed);
   }
+
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
-      const std::string& task_id, const std::string& request_id, const std::string& submit_client_id) {
+                   const std::string& task_id, const std::string& request_id,
+                   const std::string& submit_client_id) {
     job_id_ = job_id;
     task_id_ = task_id;
     request_id_ = request_id;
@@ -58,6 +61,7 @@ class TaskBase {
     submit_client_id_ = submit_client_id;
     task_context_.setTaskInfo(job_id, task_id, request_id);
   }
+
   inline std::string job_id() {
     return job_id_;
   }
@@ -87,8 +91,12 @@ class TaskBase {
   std::shared_ptr<DatasetService>& getDatasetService() {
     return dataset_service_;
   }
-  retcode send(const std::string& key, const Node& dest_node,const std::string& send_buff);
-  retcode send(const std::string& key, const Node& dest_node, std::string_view send_buff);
+  retcode send(const std::string& key,
+               const Node& dest_node,
+               const std::string& send_buff);
+  retcode send(const std::string& key,
+               const Node& dest_node,
+               std::string_view send_buff);
   retcode recv(const std::string& key, std::string* recv_buff);
   retcode recv(const std::string& key, char* recv_buff, size_t length);
   retcode sendRecv(const std::string& key, const Node& dest_node,

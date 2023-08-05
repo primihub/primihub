@@ -94,49 +94,14 @@ cc_library(
 
 # psi task
 cc_library(
-    name = "psi_task",
-    deps = [
-        ":ecdh_psi_task",
-        ":kkrt_psi_task",
-    ],
-)
-cc_library(
-    name = "psi_task_util",
-    hdrs = ["psi_task.h"],
-    srcs = ["psi_task.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/common:common_defination",
-        "//src/primihub/data_store:data_store_lib",
-        "@arrow",
-    ],
-)
-
-OPENMINED_PSI = "@org_openmined_psi//private_set_intersection/cpp"
-cc_library(
-    name = "ecdh_psi_task",
-    hdrs = ["psi_ecdh_task.h"],
-    srcs = ["psi_ecdh_task.cc"],
-    deps = [
-        ":psi_task_util",
-        "//src/primihub/util:endian_util",
-        "%s:psi_client" % OPENMINED_PSI,
-        "%s:psi_server" % OPENMINED_PSI,
-        "@fmt//:fmt",
-    ],
-)
-
-cc_library(
-    name = "kkrt_psi_task",
-    hdrs = ["psi_kkrt_task.h"],
-    srcs = ["psi_kkrt_task.cc"],
-    deps = [
-        ":psi_task_util",
-        "//src/primihub/util:endian_util",
-        "//src/primihub/protos:worker_proto",
-        "@osu_libpsi//:libpsi",
-        "//src/primihub/util/network:message_exchange_interface",
-    ]
+  name = "psi_task",
+  hdrs = ["psi_task.h"],
+  srcs = ["psi_task.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/kernel/psi:psi_util",
+    "//src/primihub/kernel/psi/operator:factory",
+  ],
 )
 
 cc_library(
