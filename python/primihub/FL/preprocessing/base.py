@@ -50,6 +50,5 @@ class PreprocessBase:
         return self.module.transform(x)
     
     def fit_transform(self, x):
-        self.fit(x)
-        return self.transform(x)
+        return self.fit(x).transform(x)
         
