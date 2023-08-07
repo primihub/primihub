@@ -25,6 +25,7 @@ namespace primihub {
 [[maybe_unused]] static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
 [[maybe_unused]] static const char* PARTY_CLIENT = "CLIENT";
 [[maybe_unused]] static const char* PARTY_SERVER = "SERVER";
+[[maybe_unused]] static const char* PARTY_TEE_COMPUTE = "TEE_COMPUTE";
 [[maybe_unused]] static const char* DEFAULT = "DEFAULT";
 [[maybe_unused]] static const char* DATA_RECORD_SEP = "####";
 

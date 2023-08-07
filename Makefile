@@ -15,6 +15,21 @@ ifeq ($(protos), y)
     TARGET += //src/primihub/protos:worker_py_pb2_grpc //src/primihub/protos:service_py_pb2_grpc
 endif
 
+JOBS?=
+ifneq ($(jobs), )
+	JOBS = $(jobs)
+	BUILD_FLAG += --jobs=$(JOBS)
+endif
+
+#ifeq ($(tee), y)
+	BUILD_FLAG += --cxxopt=-DSGX
+	BUILD_FLAG += --define enable_sgx=true
+#endif
+
+ifeq ($(debug), y)
+	BUILD_FLAG += --config=linux_asan
+endif
+
 release:
 	bazel build --config=PLATFORM_HARDWARE $(BUILD_FLAG) ${TARGET}
 	rm -f primihub-cli

@@ -37,9 +37,11 @@ using BasePsiOperator = primihub::psi::BasePsiOperator;
 
 class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
  public:
-  explicit PsiTask(const TaskParam *task_param,
-                   std::shared_ptr<DatasetService> dataset_service);
-
+  PsiTask(const TaskParam *task_param,
+          std::shared_ptr<DatasetService> dataset_service);
+  PsiTask(const TaskParam *task_param,
+          std::shared_ptr<DatasetService> dataset_service,
+          void* ra_server, void* tee_engine);
   ~PsiTask() = default;
   int execute() override;
 
@@ -64,6 +66,9 @@ class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
   bool broadcast_result_{false};
   std::unique_ptr<BasePsiOperator> psi_operator_{nullptr};
   primihub::psi::Options options_;
+  // for TEE
+  void* ra_server_{nullptr};
+  void* tee_executor_{nullptr};
 };
 }  // namespace primihub::task
 #endif  // SRC_PRIMIHUB_TASK_SEMANTIC_PSI_TASK_H_

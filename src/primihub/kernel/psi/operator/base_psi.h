@@ -15,6 +15,7 @@ struct Options {
   std::map<std::string, Node> party_info;
   std::string self_party;
   PsiResultType psi_result_type{PsiResultType::INTERSECTION};
+  std::string code;
 };
 
 class BasePsiOperator {
@@ -56,7 +57,14 @@ class BasePsiOperator {
   retcode BroadcastResult(const std::vector<std::string>& result);
   retcode ReceiveResult(std::vector<std::string>* result);
   retcode Send(const Node& peer_node, const std::string& send_buff);
+  retcode Send(const std::string& key,
+               const Node& peer_node,
+               const std::string& send_buff);
+  retcode Send(const std::string& key,
+               const Node& peer_node,
+               const std::string_view send_buff_sv);
   retcode Recv(std::string* recv_buff);
+  retcode Recv(const std::string& key, std::string* recv_buff);
 
   void set_stop() {stop_.store(true);}
 
@@ -68,7 +76,7 @@ class BasePsiOperator {
   LinkContext* GetLinkContext() {return options_.link_ctx_ref;}
   PsiResultType GetPsiResultType() {return options_.psi_result_type;}
   Node PeerNode();
-
+  retcode GetNodeByName(const std::string& party_name, Node* node_info);
  protected:
   std::atomic<bool> stop_{false};
   Options options_;

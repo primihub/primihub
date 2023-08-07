@@ -48,6 +48,7 @@ enum PsiType {
 enum PsiTag {
   ECDH = 0;
   KKRT = 1;
+  TEE = 2;
 }
 
 enum PirType {

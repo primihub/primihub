@@ -42,11 +42,18 @@ PsiTask::PsiTask(const TaskParam* task_param,
                  : TaskBase(task_param, dataset_service) {
 }
 
+PsiTask::PsiTask(const TaskParam *task_param,
+                 std::shared_ptr<DatasetService> dataset_service,
+                 void* ra_server, void* tee_engine)
+                 : TaskBase(task_param, dataset_service),
+                  ra_server_(ra_server), tee_executor_(tee_engine) {}
+
 retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
   // build Options for operator
   options->self_party = this->party_name();
   options->link_ctx_ref = getTaskContext().getLinkContext().get();
   options->psi_result_type = psi::PsiResultType::INTERSECTION;
+  options->code = task.code();
   auto& party_info = options->party_info;
   const auto& pb_party_info = task.party_access_info();
   for (const auto& [party_name, pb_node] : pb_party_info) {
@@ -163,7 +170,8 @@ retcode PsiTask::LoadDataset(void) {
 
 retcode PsiTask::InitOperator() {
   auto type = static_cast<primihub::psi::PsiType>(psi_type_);
-  this->psi_operator_ = primihub::psi::Factory::Create(type, this->options_);
+  this->psi_operator_ =
+      primihub::psi::Factory::Create(type, options_, tee_executor_);
   if (this->psi_operator_ == nullptr) {
     LOG(ERROR) << "create psi operator failed";
     return retcode::FAIL;

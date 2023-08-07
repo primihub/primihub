@@ -1,5 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-
+config_setting(
+  name = "enable_sgx",
+  values = {"define" : "enable_sgx=true"},
+)
 cc_library(
   name = "node_impl",
   hdrs = [
@@ -60,5 +63,11 @@ cc_library(
   deps = [
     "//src/primihub/common:common_defination",
     "//src/primihub/service:dataset_service",
-  ],
+  ] + select({
+    "enable_sgx": [
+      "@tee_engine//sgx/engine:engine_lib",
+      "@tee_engine//sgx/ra:ra_service"
+    ],
+	  "//conditions:default": [],
+  }),
 )

@@ -630,3 +630,40 @@ cc_library(
 )
 """
 )
+
+# repository deps for tee
+git_repository(
+  name = "served",
+  commit = "757172e1d8aa7e273e800ce8ec91974c90a2a8b1",
+  remote = "https://gitee.com/mirrors_meltwater/served.git",
+)
+
+http_archive(
+  name = "sgxsdk",
+  build_file = "//bazel:sgx.BUILD",
+  strip_prefix= "sgxsdk",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/sgxsdk.tar.gz"
+  ]
+)
+
+http_archive(
+  name = "curl",
+  build_file = "//bazel:curl.BUILD",
+  strip_prefix = "curl-7.73.0",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/curl-7.73.0.tar.gz"
+  ]
+)
+
+local_repository(
+  name = "tee_engine",
+  path = "/home/cuibo/workspace/myproject/primihub_tee",
+)
+
+#git_repository(
+#  name = "tee_engine",
+#  #commit = "b6a4a395fa67aa4e9323ddf7f9dfa247629912a1",
+#  commit = "7c2773db66f604951fddc53753e4bbae5f321dab",
+#  remote = "https://github.com/primihub/primihub_tee.git",
+#)

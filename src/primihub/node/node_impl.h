@@ -90,12 +90,13 @@ class VMNodeImpl {
                              std::string* data_buffer);
   retcode WaitUntilWorkerReady(const std::string& worker_id,
                                int timeout_ms = -1);
+  std::shared_ptr<Nodelet> GetNodelet() { return this->nodelet_;}
 
  protected:
   retcode Init();
   std::shared_ptr<Worker> CreateWorker();
   std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
-  std::shared_ptr<Nodelet> GetNodelet() { return this->nodelet_;}
+
 
  private:
   const std::string node_id_;
