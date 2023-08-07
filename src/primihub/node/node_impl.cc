@@ -436,7 +436,7 @@ void VMNodeImpl::CleanFinishedTaskThread() {
         std::string finished_worker_id;
         fininished_workers_.wait_and_pop(finished_worker_id);
         if (stop_.load(std::memory_order::memory_order_relaxed)) {
-          LOG(WARNING) << "cleanFinihsedTask begin to exit";
+          LOG(WARNING) << "cleanFinihsedTask exit";
           break;
         }
         {
@@ -509,7 +509,7 @@ void VMNodeImpl::CleanFinishedSchedulerWorkerThread() {
           std::string worker_id;
           fininished_scheduler_workers_.wait_and_pop(worker_id);
           if (stop_.load(std::memory_order::memory_order_relaxed)) {
-            LOG(ERROR) << "cleanSchedulerTask begin to quit";
+            LOG(ERROR) << "cleanSchedulerTask quit";
             return;
           }
           time_t now_ = ::time(nullptr);

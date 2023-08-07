@@ -149,20 +149,23 @@ int main(int argc, char **argv) {
     // service for task process
     auto node_service_impl = std::make_unique<primihub::VMNodeImpl>(
         config_file, dataset_manager);
-    auto node_service = std::make_unique<primihub::VMNodeInterface>(
-        std::move(node_service_impl));
+
     // service for dataset register
     auto data_service = std::make_unique<primihub::DataServiceImpl>(
         dataset_manager.get());
 #ifdef SGX
-    RunServer(node_service.get(),
-              data_service.get(),
-              node_service_impl->GetNodelet()->GetRaService().get(),
-              service_port);
+    auto ra_service = node_service_impl->GetNodelet()->GetRaService().get();
+    if (ra_service == nullptr) {
+      LOG(ERROR) << "Ra service is invliad";
+      return EXIT_FAILURE;
+    }
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
+    RunServer(node_service.get(), data_service.get(), ra_service, service_port);
 #else
-    RunServer(node_service.get(),
-              data_service.get(),
-              service_port);
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
+    RunServer(node_service.get(), data_service.get(), service_port);
 #endif
     return EXIT_SUCCESS;
 }

@@ -34,6 +34,12 @@ meta_service:
   port: 7977
   use_tls: false
 
+tee:
+  executor: False
+  sgx_enable: True
+  cert_path: "data/sgx/"
+  ra_server_addr: "127.0.0.1:8888"
+
 # load datasets
 datasets:
   # ABY3 LR test case datasets

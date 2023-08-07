@@ -60,10 +60,10 @@ class Nodelet {
   std::string config_file_path_;
   std::shared_ptr<service::DatasetService> dataset_service_{nullptr};
 #ifdef SGX
-  std::shared_ptr<sgx::RaTlsService> ra_service_;
-  std::shared_ptr<sgx::TeeEngine> tee_executor_;
-  std::unique_ptr<sgx::CertAuth> auth_;
-  std::unique_ptr<sgx::RaTlsHandlerImpl> ra_handler_;
+  std::shared_ptr<sgx::RaTlsService> ra_service_{nullptr};
+  std::shared_ptr<sgx::TeeEngine> tee_executor_{nullptr};
+  std::unique_ptr<sgx::CertAuth> auth_{nullptr};
+  std::unique_ptr<sgx::RaTlsHandlerImpl> ra_handler_{nullptr};
 #endif
 };
 

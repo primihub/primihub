@@ -35,6 +35,11 @@ meta_service:
   port: 7979
   use_tls: false
 
+tee:
+  executor: True
+  sgx_enable: True
+  cert_path: "data/sgx/"
+  ra_server_addr: "127.0.0.1:8888"
 # load datasets
 datasets:
   # ABY3 LR test case datasets
@@ -127,7 +132,7 @@ datasets:
   - description: "iv_filter_guest"
     model: "csv"
     source: "data/FL/hetero_iv/iv_guest.csv"
-  
+
   # FL preprocess
   - description: "preprocess_vfl_train_guest"
     model: "csv"
