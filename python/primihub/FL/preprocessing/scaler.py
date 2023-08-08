@@ -6,6 +6,8 @@ from sklearn.preprocessing import RobustScaler as SKL_RobustScaler
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
 
+FLOAT_DTYPES = (np.float64, np.float32, np.float16)
+
 
 class MaxAbsScaler(PreprocessBase):
 
@@ -15,6 +17,12 @@ class MaxAbsScaler(PreprocessBase):
 
     def Hfit(self, x):
         if self.role == 'client':
+            x = self.module._validate_data(
+                x,
+                dtype=FLOAT_DTYPES,
+                force_all_finite="allow-nan",
+            )
+
             self.module.n_samples_seen_ = x.shape[0]
             max_abs = np.nanmax(np.abs(x), axis=0)
             self.channel.send('max_abs', max_abs)
@@ -54,6 +62,12 @@ class MinMaxScaler(PreprocessBase):
             )
         
         if self.role == 'client':
+            x = self.module._validate_data(
+                x,
+                dtype=FLOAT_DTYPES,
+                force_all_finite="allow-nan",
+            )
+
             self.module.n_samples_seen_ = x.shape[0]
             data_max = np.nanmax(x, axis=0)
             data_min = np.nanmin(x, axis=0)
@@ -118,6 +132,12 @@ class StandardScaler(PreprocessBase):
 
     def Hfit(self, x):
         if self.role == 'client':
+            x = self.module._validate_data(
+                x,
+                dtype=FLOAT_DTYPES,
+                force_all_finite="allow-nan",
+            )
+            
             self.module.n_samples_seen_ = np.repeat(x.shape[0], x.shape[1]) \
                                             - np.isnan(x).sum(axis=0)
             if np.ptp(self.module.n_samples_seen_) == 0:

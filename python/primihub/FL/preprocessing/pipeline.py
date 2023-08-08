@@ -44,21 +44,21 @@ class Pipeline(BaseModel):
                 grpcclient = MultiGrpcClients
             else:
                 grpcclient = GrpcClient
-            channel = grpcclient(local_party=self.role_params['self_name'],
-                                 remote_party=remote_party,
-                                 node_info=self.node_info,
-                                 task_info=self.task_info)
+            channel = grpcclient(self.role_params['self_name'],
+                                 remote_party,
+                                 self.node_info,
+                                 self.task_info)
         else:
             channel = None
 
         # load dataset
+        if FL_type == 'H':
+            selected_column = self.common_params['selected_column']
+            id = self.common_params['id']
+        else:
+            selected_column = self.role_params['selected_column']
+            id = self.role_params['id']
         if role != 'server':
-            if FL_type == 'H':
-                selected_column = self.common_params['selected_column']
-                id = self.common_params['id']
-            else:
-                selected_column = self.role_params['selected_column']
-                id = self.role_params['id']
             data = read_data(data_info=self.role_params['data'],
                              selected_column=selected_column,
                              id=id)
@@ -68,12 +68,14 @@ class Pipeline(BaseModel):
             preprocess_column = self.common_params['preprocess_column']
         else:
             preprocess_column = self.role_params['preprocess_column']
+        if preprocess_column is None and selected_column is not None:
+            preprocess_column = selected_column
         if isinstance(preprocess_column, list):
             preprocess_column = pd.Index(preprocess_column)
         if preprocess_column is None and role != 'server':
             preprocess_column = data.columns
         if preprocess_column is not None:
-            logger.info(f"preprocess column: {preprocess_column.tolist()}")
+            logger.info(f"preprocess column: {preprocess_column.tolist()}, # {len(preprocess_column)}")
         
         # label stuff
         if FL_type == 'H':
@@ -107,6 +109,8 @@ class Pipeline(BaseModel):
                     raise RuntimeError(error_msg)
 
             column = params.get('column')
+            if column is None and preprocess_column is not None:
+                column = preprocess_column
             if column is None and role != 'server':
                 if 'SimpleImputer' in module_name:
                     nan_column = preprocess_column[data[preprocess_column].isna().any()]
@@ -118,17 +122,28 @@ class Pipeline(BaseModel):
                         column = nan_column
                 elif 'Encoder' in module_name:
                     column = data[preprocess_column].select_dtypes(exclude=num_type).columns
+                elif 'Scaler' in module_name:
+                    column = data[preprocess_column].select_dtypes(include=num_type).columns
                 else:
                     column = preprocess_column
             if column is not None:
                 if isinstance(column, pd.Index):
                     column = column.tolist()
-                logger.info(f"columns: {column}")
+                logger.info(f"preprocess columns: {column}, # {len(column)}")
 
             module = select_module(module_name, params, FL_type, role, channel)
 
             if role != 'server':
-                data[column] = module.fit_transform(data[column])
+                if 'LabelBinarizer' in module_name:
+                    temp = module.fit_transform(data[column])
+                    data = data.join(
+                        pd.DataFrame(
+                            temp,
+                            columns=[column+str(i) for i in range(temp.shape[1])]
+                        )
+                    )
+                else:
+                    data[column] = module.fit_transform(data[column])
                 preprocess.append((module_name,
                                    module.module,
                                    column))
@@ -171,8 +186,17 @@ class Pipeline(BaseModel):
         preprocess = preprocess['preprocess']
         for module_name, module, column in preprocess:
             logger.info(f"module name: {module_name}")
-            logger.info(f"preprocess columns: {column}")
-            data[column] = module.transform(data[column])
+            logger.info(f"preprocess columns: {column}, # {len(column)}")
+            if 'LabelBinarizer' in module_name:
+                temp = module.fit_transform(data[column])
+                data = data.join(
+                    pd.DataFrame(
+                        temp,
+                        columns=[column+str(i) for i in range(temp.shape[1])]
+                    )
+                )
+            else:
+                data[column] = module.transform(data[column])
 
         # save preprocess dataset
         preprocess_dataset_path = self.role_params['preprocess_dataset_path']
@@ -286,8 +310,8 @@ def select_module(module_name, params, FL_type, role, channel=None):
     elif module_name == "StandardScaler":
         module = StandardScaler(
             copy=params.get('copy', True),
-            with_mean=params.get('copy', True),
-            with_std=params.get('copy', True),
+            with_mean=params.get('with_mean', True),
+            with_std=params.get('with_std', True),
             FL_type=FL_type,
             role=role,
             channel=channel
