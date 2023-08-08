@@ -6,7 +6,7 @@ from primihub.FL.utils.dataset import read_data,\
                                       DPDataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
-from primihub.FL.preprocessing.scaler import StandardScaler
+from primihub.FL.preprocessing import StandardScaler
 
 import pickle
 import pandas as pd

@@ -49,9 +49,9 @@
         "executor": "primihub.plain_data_util.data_align.DataAlign"
     },
     "FL_Preprocess": {
-        "guest": "primihub.FL.preprocessing.transform.Transformer",
-        "host": "primihub.FL.preprocessing.transform.Transformer",
-        "client": "primihub.FL.preprocessing.transform.Transformer",
-        "server": "primihub.FL.preprocessing.transform.Transformer"
+        "guest": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "host": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "client": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "server": "primihub.FL.preprocessing.pipeline.Pipeline"
     }
 }

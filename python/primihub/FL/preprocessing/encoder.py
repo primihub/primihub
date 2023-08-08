@@ -1,133 +1,13 @@
 import numpy as np
 import numbers
 from itertools import chain
-from sklearn.preprocessing import LabelEncoder as SKL_LabelEncoder
-from sklearn.preprocessing import LabelBinarizer as SKL_LabelBinarizer
-from sklearn.preprocessing import MultiLabelBinarizer as SKL_MultiLabelBinarizer
 from sklearn.preprocessing import OneHotEncoder as SKL_OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
-from sklearn.utils.validation import column_or_1d
-from sklearn.utils.multiclass import type_of_target, unique_labels
 from sklearn.utils import is_scalar_nan
 from sklearn.preprocessing._encoders import _BaseEncoder
 from primihub.utils.logger_util import logger
 from .base import PreprocessBase
-from .util import unique, num_samples
-
-
-class LabelEncoder(PreprocessBase):
-
-    def __init__(self, FL_type=None, role=None, channel=None):
-        super().__init__(FL_type, role, channel)
-        self.module = SKL_LabelEncoder()
-
-    def Hfit(self, y):
-        if self.role == 'client':
-            y = column_or_1d(y, warn=True)
-            classes = unique(y)
-            self.channel.send('classes', classes)
-            classes = self.channel.recv('classes')
-
-        elif self.role == 'server':
-            classes = self.channel.recv_all('classes')
-            classes = list(chain.from_iterable(classes))
-            classes = unique(classes)
-            self.channel.send_all('classes', classes)
-        
-        self.module.classes_ = classes
-        return self
-
-
-class LabelBinarizer(PreprocessBase):
-
-    def __init__(self,
-                 neg_label=0,
-                 pos_label=1,
-                 sparse_output=False,
-                 FL_type=None, role=None, channel=None):
-        super().__init__(FL_type, role, channel)
-        self.module = SKL_LabelBinarizer(neg_label=neg_label,
-                                         pos_label=pos_label,
-                                         sparse_output=sparse_output)
-        
-    def Hfit(self, y):
-        if self.module.neg_label >= self.module.pos_label:
-            raise ValueError(
-                f"neg_label={self.module.neg_label} must be strictly less than "
-                f"pos_label={self.module.pos_label}."
-            )
-
-        if self.module.sparse_output and \
-            (self.module.pos_label == 0 or self.module.neg_label != 0):
-            raise ValueError(
-                "Sparse binarization is only supported with non "
-                "zero pos_label and zero neg_label, got "
-                f"pos_label={self.module.pos_label} and neg_label={self.module.neg_label}"
-            )
-        
-        if self.role == 'client':
-            self.module.y_type_ = type_of_target(y, input_name="y")
-
-            if "multioutput" in self.module.y_type_:
-                raise ValueError(
-                    "Multioutput target data is not supported with label binarization"
-                )
-            if num_samples(y) == 0:
-                raise ValueError("y has 0 samples: %r" % y)
-
-            classes = unique_labels(y)
-            self.channel.send('classes', classes)
-            classes = self.channel.recv('classes')
-
-        elif self.role == 'server':
-            classes = self.channel.recv_all('classes')
-            classes = list(chain.from_iterable(classes))
-            classes = unique(classes)
-            self.channel.send_all('classes', classes)
-        
-        self.module.classes_ = classes
-        return self
-
-
-class MultiLabelBinarizer(PreprocessBase):
-
-    def __init__(self,
-                 classes=None,
-                 sparse_output=False,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
-        super().__init__(FL_type, role, channel)
-        self.module = SKL_MultiLabelBinarizer(classes=classes,
-                                              sparse_output=sparse_output)
-
-    def Hfit(self, y):
-        self.module._cached_dict = None
-
-        if self.module.classes is None:
-            if self.role == 'client':
-                classes = sorted(set(chain.from_iterable(y)))
-                self.channel.send('classes', classes)
-                classes = self.channel.recv('classes')
-
-            elif self.rolt == 'server':
-                classes = self.channel.recv_all('classes')
-                classes = sorted(set(chain.from_iterable(classes)))
-                self.channel.send_all('classes', classes)
-
-        elif len(set(self.module.classes)) < len(self.module.classes):
-            raise ValueError(
-                "The classes argument contains duplicate "
-                "classes. Remove these duplicates before passing "
-                "them to MultiLabelBinarizer."
-            )
-        else:
-            classes = self.module.classes
-
-        dtype = int if all(isinstance(c, int) for c in classes) else object
-        self.module.classes_ = np.empty(len(classes), dtype=dtype)
-        self.module.classes_[:] = classes
-        return self
+from .util import unique
 
 
 class OneHotEncoder(PreprocessBase):
@@ -164,6 +44,8 @@ class OrdinalEncoder(PreprocessBase):
                  handle_unknown="error",
                  unknown_value=None,
                  encoded_missing_value=np.nan,
+                 min_frequency=None,
+                 max_categories=None,
                  FL_type=None,
                  role=None,
                  channel=None):
@@ -172,7 +54,9 @@ class OrdinalEncoder(PreprocessBase):
                                          dtype=dtype,
                                          handle_unknown=handle_unknown,
                                          unknown_value=unknown_value,
-                                         encoded_missing_value=encoded_missing_value)
+                                         encoded_missing_value=encoded_missing_value,
+                                         min_frequency=None,
+                                         max_categories=None,)
 
     def Hfit(self, x):
         pass

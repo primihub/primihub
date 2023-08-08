@@ -3,7 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
-from primihub.FL.preprocessing.scaler import StandardScaler
+from primihub.FL.preprocessing import StandardScaler
 
 import pickle
 import pandas as pd

@@ -3,7 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
-from primihub.FL.preprocessing.scaler import StandardScaler
+from primihub.FL.preprocessing import StandardScaler
 
 import json
 import numpy as np

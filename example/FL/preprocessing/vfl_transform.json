@@ -15,13 +15,13 @@
         "role_params": {
             "Bob": {
                 "data_set": "preprocess_vfl_test_host",
-                "processed_dataset_path": "data/result/Bob_test_dataset.csv",
-                "transformer_path": "data/result/Bob_transformer.pkl"
+                "preprocess_dataset_path": "data/result/Bob_test_dataset.csv",
+                "preprocess_module_path": "data/result/Bob_preprocess_module.pkl"
             },
             "Charlie": {
                 "data_set": "preprocess_vfl_test_guest",
-                "processed_dataset_path": "data/result/Charlie_test_dataset.csv",
-                "transformer_path": "data/result/Charlie_transformer.pkl"
+                "preprocess_dataset_path": "data/result/Charlie_test_dataset.csv",
+                "preprocess_module_path": "data/result/Charlie_preprocess_module.pkl"
             }
         }
     }
