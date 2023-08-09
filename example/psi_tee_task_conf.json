@@ -10,12 +10,12 @@
     "clientIndex": {
       "description": "selected columns index for client dataset",
       "type": "INT32",
-      "value": [1]
+      "value": [0]
     },
     "serverIndex": {
       "description": "selected columns index for server dataset",
       "type": "INT32",
-      "value": [1]
+      "value": [0]
     },
     "psiType": {
       "description": "availabe value: [INTERSECTION = 0; DIFFERENCE = 1;]",
@@ -23,9 +23,9 @@
       "value": 0
     },
     "psiTag": {
-      "description": "availabe value: [ECDH = 0; KKRT = 1;]",
+      "description": "availabe value: [ECDH = 0; KKRT = 1; TEE = 2]",
       "type": "INT32",
-      "value": 1
+      "value": 2
     },
     "outputFullFilename": {
       "description": "path for client save intersection result",
@@ -49,13 +49,10 @@
     },
     "SERVER": {
       "SERVER": "psi_server_data"
-    }
-  },
-  "party_access_info": {
-    "TEE_COMPUTATION_ENGINE": {
-      "ip": "127.0.0.1",
-      "port": 50052,
-      "use_tls": false
+    },
+    "TEE_COMPUTE": {
+      "TEE_COMPUTE": "train_party_2"
     }
   }
+
 }

@@ -10,7 +10,9 @@ namespace primihub::psi {
 class TeePsiOperator : public BasePsiOperator {
  public:
   TeePsiOperator(const Options& options, sgx::TeeEngine* executor) :
-      BasePsiOperator(options), executor_(executor) {}
+      BasePsiOperator(options), executor_(executor) {
+    extra_info_.emplace_back("1");
+  }
   retcode OnExecute(const std::vector<std::string>& input,
                     std::vector<std::string>* result) override;
 
@@ -21,9 +23,13 @@ class TeePsiOperator : public BasePsiOperator {
   retcode GetComputeNode(Node* compute_node);
   retcode HashData(const std::vector<std::string>& input,
                    std::unordered_map<std::string, std::string>* hashed_data);
-  std::vector<char> EncryptDataWithShareKey(const std::string& key_id,
-                                            const std::string& plain_data);
-  std::vector<char> DencryptDataWithShareKey(const std::string& cipher_data);
+  retcode EncryptDataWithShareKey(const std::string& key_id,
+                                  const std::string& plain_data,
+                                  std::vector<char>* cipher_data);
+
+  retcode DecryptDataWithShareKey(const std::string& cipher_data,
+                                  std::vector<char>* plain_data);
+
   retcode GetIntersection(std::string_view result_buf,
       std::unordered_map<std::string, std::string>& hashed_data,
       std::vector<std::string>* result);
@@ -58,6 +64,10 @@ class TeePsiOperator : public BasePsiOperator {
   }
   std::vector<std::string>& DataFiles() {return files_;}
   std::vector<std::string>& ExtraInfo() {return extra_info_;}
+  /**
+   * clean the share data file generated on protocal execute
+  */
+  retcode CleanTempFile();
 
  private:
   sgx::RaTlsService* ra_service_{nullptr};

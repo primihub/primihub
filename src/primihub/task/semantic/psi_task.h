@@ -53,6 +53,10 @@ class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
   retcode ExecuteOperator();
   retcode BuildOptions(const rpc::Task& task,
                        primihub::psi::Options* option);
+  bool NeedSaveResult();
+  bool IsClient();
+  bool IsServer();
+  bool IsTeeCompute();
 
  private:
   std::vector<int> data_index_;

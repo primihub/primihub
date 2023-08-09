@@ -74,6 +74,7 @@ cc_library(
     "//src/primihub/util:endian_util",
     "//src/primihub/util:util_lib",
     "//src/primihub/util:hash_lib",
+    "//src/primihub/util:file_util",
     "@tee_engine//sgx/engine:engine_lib",
     "@tee_engine//sgx/ra:ra_service",
   ]

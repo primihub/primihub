@@ -32,11 +32,8 @@ retcode BasePsiOperator::BroadcastPsiResult(std::vector<std::string>* result) {
   if (IgnoreResult(options_.self_party)) {
     return retcode::SUCCESS;
   }
-  if (IgnoreResult(options_.self_party)) {
-    return retcode::SUCCESS;
-  }
   auto ret{retcode::SUCCESS};
-  if (options_.self_party == PARTY_CLIENT) {
+  if (IsClient(options_.self_party)) {
     ret = BroadcastResult(*result);
   } else {
     ret = ReceiveResult(result);
@@ -108,7 +105,7 @@ retcode BasePsiOperator::Send(const std::string& key,
                               const std::string& send_buff) {
   auto channel = options_.link_ctx_ref->getChannel(dest_node);
   auto ret = channel->send(key, send_buff);
-  VLOG(5) << "send psi result to " << dest_node.to_string() << " success";
+  VLOG(5) << "send date to " << dest_node.to_string() << " success";
   return ret;
 }
 
@@ -117,7 +114,7 @@ retcode BasePsiOperator::Send(const std::string& key,
                               const std::string_view send_buff_sv) {
   auto channel = options_.link_ctx_ref->getChannel(dest_node);
   auto ret = channel->send(key, send_buff_sv);
-  VLOG(5) << "send psi result to " << dest_node.to_string() << " success";
+  VLOG(5) << "send data to " << dest_node.to_string() << " success";
   return ret;
 }
 
@@ -148,21 +145,26 @@ retcode BasePsiOperator::BroadcastPartyList(std::vector<Node>* party_list) {
 bool BasePsiOperator::IgnoreParty(const std::string& party_name) {
   if (party_name == options_.self_party) {
     return true;
+  } else if (IgnoreResult(party_name)) {
+    return true;
   } else {
     return false;
   }
 }
 
 bool BasePsiOperator::IgnoreResult(const std::string& party_name) {
+  if (IsTeeCompute(party_name)) {
+    return true;
+  }
   return false;
 }
 
 Node BasePsiOperator::PeerNode() {
   std::string peer_node_name;
   Node peer_node;
-  if (PartyName() == PARTY_CLIENT) {
+  if (IsClient(PartyName())) {
     peer_node_name = PARTY_SERVER;
-  } else if (PartyName() == PARTY_SERVER) {
+  } else if (IsServer(PartyName())) {
     peer_node_name = PARTY_CLIENT;
   } else {
     LOG(ERROR) << "Invalid party name: " << PartyName();
@@ -188,4 +190,13 @@ retcode BasePsiOperator::GetNodeByName(const std::string& party_name,
   return retcode::SUCCESS;
 }
 
+bool BasePsiOperator::IsClient(const std::string& party_name) {
+  return party_name == PARTY_CLIENT;
+}
+bool BasePsiOperator::IsServer(const std::string& party_name) {
+  return party_name == PARTY_SERVER;
+}
+bool BasePsiOperator::IsTeeCompute(const std::string& party_name) {
+  return party_name == PARTY_TEE_COMPUTE;
+}
 }  // namespace primihub::psi

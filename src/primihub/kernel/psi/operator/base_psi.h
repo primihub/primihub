@@ -77,6 +77,10 @@ class BasePsiOperator {
   PsiResultType GetPsiResultType() {return options_.psi_result_type;}
   Node PeerNode();
   retcode GetNodeByName(const std::string& party_name, Node* node_info);
+  bool IsClient(const std::string& party_name);
+  bool IsServer(const std::string& party_name);
+  bool IsTeeCompute(const std::string& party_name);
+
  protected:
   std::atomic<bool> stop_{false};
   Options options_;

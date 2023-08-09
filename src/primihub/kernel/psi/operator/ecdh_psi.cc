@@ -15,10 +15,14 @@
 namespace primihub::psi {
 retcode EcdhPsiOperator::OnExecute(const std::vector<std::string>& input,
                                    std::vector<std::string>* result) {
+  if (input.empty()) {
+    LOG(ERROR) << "no data is set for ecdh psi";
+    return retcode::FAIL;
+  }
   this->peer_node_ = PeerNode();
-  if (this->PartyName() == PARTY_CLIENT) {
+  if (IsClient(PartyName())) {
     return ExecuteAsClient(input, result);
-  } else if (this->PartyName() == PARTY_SERVER) {
+  } else if (IsServer(this->PartyName())) {
     return ExecuteAsServer(input);
   } else {
     LOG(ERROR) << "invalid party name: " << this->PartyName() << " "

@@ -1,15 +1,24 @@
 // "Copyright [2023] <PrimiHub>"
 #include "src/primihub/kernel/psi/operator/tee_psi.h"
 #include "src/primihub/util/hash.h"
+#include "src/primihub/util/file_util.h"
+
 namespace primihub::psi {
 retcode TeePsiOperator::OnExecute(const std::vector<std::string>& input,
                                    std::vector<std::string>* result) {
 //
+  auto ret{retcode::SUCCESS};
   if (IsComputeRole()) {
-    return ExecuteAsCompute();
+    ret = ExecuteAsCompute();
   } else {
-    return ExecuteAsDataProvider(input, result);
+    if (input.empty()) {
+      LOG(ERROR) << "no data is set for tee psi";
+      return retcode::FAIL;
+    }
+    ret = ExecuteAsDataProvider(input, result);
   }
+  CleanTempFile();
+  VLOG(0) << "end of OnExecute for tee psi";
   return retcode::SUCCESS;
 }
 // method for data provider
@@ -49,8 +58,9 @@ retcode TeePsiOperator::ExecuteAsDataProvider(
     plain_data.append(hash_item);
   }
   //
-  auto cipher_data = EncryptDataWithShareKey(key_id, plain_data);
-  if (cipher_data.empty()) {
+  std::vector<char> cipher_data;
+  ret = EncryptDataWithShareKey(key_id, plain_data, &cipher_data);
+  if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "EncryptDataWithShareKey failed";
     return retcode::FAIL;
   }
@@ -79,10 +89,15 @@ retcode TeePsiOperator::ExecuteAsDataProvider(
               << cipher_result_buff.size() << " bytes successed";
   }
   // decrypt data to plain
-  auto plain_result = DencryptDataWithShareKey(cipher_result_buff);
+  std::vector<char> plain_result;
+  ret = DecryptDataWithShareKey(cipher_result_buff, &plain_result);
+  if (ret != retcode::SUCCESS) {
+    LOG(WARNING) << "DecryptDataWithShareKey failed for: " << PartyName();
+    return retcode::SUCCESS;
+  }
   if (plain_result.empty()) {
-    LOG(ERROR) << "DencryptDataWithShareKey failed for: " << PartyName();
-    return retcode::FAIL;
+    LOG(WARNING) << "intersection result is empty";
+    return retcode::SUCCESS;
   }
   std::string_view palin_result_sv{plain_result.data(), plain_result.size()};
   ret = GetIntersection(palin_result_sv, hashed_data, result);
@@ -116,37 +131,42 @@ retcode TeePsiOperator::HashData(const std::vector<std::string>& input,
   return retcode::SUCCESS;
 }
 
-std::vector<char> TeePsiOperator::EncryptDataWithShareKey(
-    const std::string& key_id,
-    const std::string& plain_data) {
+retcode TeePsiOperator::EncryptDataWithShareKey(const std::string& key_id,
+    const std::string& plain_data,
+    std::vector<char>* cipher_data) {
   auto cipher_data_size = TeeExecutor()->get_encrypted_size(plain_data.size());
   // auto encrypted_buf = std::make_unique<char[]>(encrypted_data_size);
-  std::vector<char> encrypted_buf(cipher_data_size);
-  char* encrypted_buf_ptr = encrypted_buf.data();
+  cipher_data->resize(cipher_data_size);
+  char* encrypted_buf_ptr = cipher_data->data();
   bool success_flag = TeeExecutor()->encrypt_data_with_sharekey(
       key_id, plain_data.data(), plain_data.size(),
       encrypted_buf_ptr, cipher_data_size);
   if (!success_flag) {
     LOG(ERROR) << "encrypt data with key:" << key_id << " failed!";
-    return std::vector<char>();
+    return retcode::FAIL;
   }
   LOG(INFO) << "encrypt data with key:" << key_id << " successed!";
-  return encrypted_buf;
+  return retcode::SUCCESS;
 }
 
-std::vector<char> TeePsiOperator::DencryptDataWithShareKey(
-    const std::string& cipher_data) {
+retcode TeePsiOperator::DecryptDataWithShareKey(const std::string& cipher_data,
+                                                std::vector<char>* plain_data) {
+  plain_data->clear();
   size_t plain_result_len = 0;
   bool success_flag = TeeExecutor()->get_plain_size(cipher_data.data(),
                                                     cipher_data.size(),
                                                     &plain_result_len);
   if (!success_flag) {
     LOG(ERROR) << "get_plain_size failed:";
-    return std::vector<char>();
+    return retcode::FAIL;
   }
   LOG(INFO) << "plain_result_len: " << plain_result_len;
-  std::vector<char> plain_result(plain_result_len);
-  char* plain_result_ptr = plain_result.data();
+  if (plain_result_len == 0) {
+    LOG(WARNING) << "no result need to decrypt";
+    return retcode::SUCCESS;
+  }
+  plain_data->resize(plain_result_len);
+  char* plain_result_ptr = plain_data->data();
   Node compute_node;
   GetComputeNode(&compute_node);
   sgx::Node remote_node(
@@ -158,8 +178,9 @@ std::vector<char> TeePsiOperator::DencryptDataWithShareKey(
 
   if (!success_flag) {
     LOG(ERROR) << "encrypt data with key:" << key_id << " failed!";
-    return std::vector<char>();
+    retcode::FAIL;
   }
+  return retcode::SUCCESS;
 }
 
 retcode TeePsiOperator::GetIntersection(std::string_view result_buf,
@@ -180,14 +201,14 @@ retcode TeePsiOperator::GetIntersection(std::string_view result_buf,
 }
 
 bool TeePsiOperator::IsResultReceiver() {
-  if (PartyName() == PARTY_CLIENT) {
+  if (IsClient(PartyName())) {
     return true;
   }
   return false;
 }
 
 bool TeePsiOperator::IsComputeRole() {
-  if (PartyName() == PARTY_TEE_COMPUTE) {
+  if (IsTeeCompute(PartyName())) {
     return true;
   }
   return false;
@@ -306,11 +327,21 @@ retcode TeePsiOperator::SendEncryptedResult() {
   }
   LOG(INFO) << "send data to receiver: [" << result_receiver.to_string()
             << "] successed";
-  return retcode::FAIL;
+  return retcode::SUCCESS;
 }
 
 retcode TeePsiOperator::GetResultReceiver(Node* receiver) {
   return GetNodeByName(PARTY_CLIENT, receiver);
+}
+
+retcode TeePsiOperator::CleanTempFile() {
+  VLOG(5) << "begin to clean temp data";
+  for (const auto& file_name : files_) {
+    if (primihub::FileExists(file_name)) {
+      primihub::RemoveFile(file_name);
+      VLOG(5) << "remove file: " << file_name << " sccess";
+    }
+  }
 }
 
 }  // namespace primihub::psi

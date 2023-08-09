@@ -46,6 +46,9 @@ cc_library(
   name = "file_util",
   hdrs = ["file_util.h"],
   srcs = ["file_util.cc"],
+  deps = [
+    "@com_github_glog_glog//:glog",
+  ],
 )
 
 cc_library(
