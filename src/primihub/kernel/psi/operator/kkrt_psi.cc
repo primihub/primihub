@@ -23,6 +23,10 @@
 namespace primihub::psi {
 retcode KkrtPsiOperator::OnExecute(const std::vector<std::string>& input,
                                    std::vector<std::string>* result) {
+  if (input.empty()) {
+    LOG(ERROR) << "no data is set for kkrt psi";
+    return retcode::FAIL;
+  }
   oc::IOService ios;
   auto msg_interface = BuildChannelInterface();
   if (msg_interface == nullptr) {
@@ -31,7 +35,7 @@ retcode KkrtPsiOperator::OnExecute(const std::vector<std::string>& input,
   }
   oc::Channel chl(ios, msg_interface.release());
   auto ret{retcode::SUCCESS};
-  if (this->PartyName() == PARTY_CLIENT) {
+  if (IsClient(PartyName())) {
     std::unordered_set<uint64_t> result_index;
     ret = KkrtRecv(chl, input, &result_index);
     result->reserve(result_index.size());
@@ -57,9 +61,9 @@ auto KkrtPsiOperator::BuildChannelInterface() ->
     std::unique_ptr<TaskMessagePassInterface> {
 //
   std::string peer_party_name;
-  if (this->PartyName() == PARTY_CLIENT) {
+  if (IsClient(PartyName())) {
     peer_party_name = PARTY_SERVER;
-  } else if (this->PartyName() == PARTY_SERVER) {
+  } else if (IsServer(PartyName())) {
     peer_party_name = PARTY_CLIENT;
   } else {
     LOG(ERROR) << "Invalid Party Name for KKrt Psi: " << this->PartyName()

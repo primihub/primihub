@@ -31,6 +31,9 @@
 #include "src/primihub/node/server_config.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
+#ifdef SGX
+#include "sgx/ra/service.h"
+#endif
 
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated,
                                                              // remove in future
@@ -42,8 +45,16 @@ ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated,
  * @brief
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
+#ifdef SGX
 void RunServer(primihub::VMNodeInterface* node_service,
-        primihub::DataServiceImpl* dataset_service, int service_port) {
+               primihub::DataServiceImpl* dataset_service,
+               sgx::RaTlsService* ratls_service,
+               int service_port) {
+#else
+void RunServer(primihub::VMNodeInterface* node_service,
+               primihub::DataServiceImpl* dataset_service,
+               int service_port) {
+#endif
     // Initialize server
     arrow::flight::Location location;
     auto& server_config = primihub::ServerConfig::getInstance();
@@ -65,9 +76,14 @@ void RunServer(primihub::VMNodeInterface* node_service,
     auto server = std::make_unique<arrow::flight::FlightServerBase>();
     // Use builder_hook to register grpc service
     options.builder_hook = [&](void *raw_builder) {
-        auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
-        builder->RegisterService(node_service);
-        builder->RegisterService(dataset_service);
+      auto builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
+      builder->RegisterService(node_service);
+      builder->RegisterService(dataset_service);
+#ifdef SGX
+      if (ratls_service) {
+        builder->RegisterService(ratls_service);
+      }
+#endif
         // set the max message size to 128M
         builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
     };
@@ -133,11 +149,23 @@ int main(int argc, char **argv) {
     // service for task process
     auto node_service_impl = std::make_unique<primihub::VMNodeImpl>(
         config_file, dataset_manager);
-    auto node_service = std::make_unique<primihub::VMNodeInterface>(
-        std::move(node_service_impl));
+
     // service for dataset register
     auto data_service = std::make_unique<primihub::DataServiceImpl>(
         dataset_manager.get());
+#ifdef SGX
+    auto ra_service = node_service_impl->GetNodelet()->GetRaService().get();
+    if (ra_service == nullptr) {
+      LOG(ERROR) << "Ra service is invliad";
+      return EXIT_FAILURE;
+    }
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
+    RunServer(node_service.get(), data_service.get(), ra_service, service_port);
+#else
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
     RunServer(node_service.get(), data_service.get(), service_port);
+#endif
     return EXIT_SUCCESS;
 }

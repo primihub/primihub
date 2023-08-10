@@ -642,3 +642,31 @@ cc_library(
 """
 )
 
+# repository deps for tee
+git_repository(
+  name = "served",
+  commit = "757172e1d8aa7e273e800ce8ec91974c90a2a8b1",
+  remote = "https://github.com/primihub/served.git",
+)
+
+http_archive(
+  name = "sgxsdk",
+  build_file = "//bazel:sgx.BUILD",
+  strip_prefix= "sgxsdk",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/sgxsdk.tar.gz"
+  ]
+)
+
+new_git_repository(
+  name = "curl",
+  build_file = "//bazel:curl.BUILD",
+  tag = "curl-7_73_0",
+  remote = "https://github.com/primihub/curl.git",
+)
+
+git_repository(
+  name = "tee_engine",
+  commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
+  remote = "https://github.com/primihub/primihub_tee.git",
+)

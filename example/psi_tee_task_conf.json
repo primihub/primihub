@@ -1,0 +1,58 @@
+{
+  "task_type": "PSI_TASK",
+  "task_name": "psi_ecdh_task",
+  "task_lang": "proto",
+  "task_code": {
+    "code_file_path": "",
+    "code": "psi"
+  },
+  "params": {
+    "clientIndex": {
+      "description": "selected columns index for client dataset",
+      "type": "INT32",
+      "value": [0]
+    },
+    "serverIndex": {
+      "description": "selected columns index for server dataset",
+      "type": "INT32",
+      "value": [0]
+    },
+    "psiType": {
+      "description": "availabe value: [INTERSECTION = 0; DIFFERENCE = 1;]",
+      "type": "INT32",
+      "value": 0
+    },
+    "psiTag": {
+      "description": "availabe value: [ECDH = 0; KKRT = 1; TEE = 2]",
+      "type": "INT32",
+      "value": 2
+    },
+    "outputFullFilename": {
+      "description": "path for client save intersection result",
+      "type": "STRING",
+      "value": "data/result/psi_result.csv"
+    },
+    "sync_result_to_server": {
+      "description": "whether client sync result to server or not. 1: true, 0: false",
+      "type": "INT32",
+      "value": 1
+    },
+    "server_outputFullFilname": {
+      "description": "path for server save intersection result",
+      "type": "STRING",
+      "value": "data/result/server/psi_result.csv"
+    }
+  },
+  "party_datasets": {
+    "CLIENT": {
+      "CLIENT": "psi_client_data"
+    },
+    "SERVER": {
+      "SERVER": "psi_server_data"
+    },
+    "TEE_COMPUTE": {
+      "TEE_COMPUTE": "train_party_2"
+    }
+  }
+
+}

@@ -6,6 +6,7 @@ namespace primihub::psi {
 enum class PsiType {
   ECDH = 0,
   KKRT,
+  TEE,
 };
 
 enum class PsiResultType {

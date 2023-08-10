@@ -46,6 +46,9 @@ cc_library(
   name = "file_util",
   hdrs = ["file_util.h"],
   srcs = ["file_util.cc"],
+  deps = [
+    "@com_github_glog_glog//:glog",
+  ],
 )
 
 cc_library(
@@ -60,6 +63,16 @@ cc_library(
   srcs = ["timer.cc"],
   deps = [
     ":log_util",
+  ],
+)
+
+cc_library(
+  name = "hash_lib",
+  hdrs = ["hash.h"],
+  srcs = ["hash.cc"],
+  deps = [
+    "@openssl",
+    "@com_github_glog_glog//:glog",
   ],
 )
 

@@ -1,5 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-
+config_setting(
+  name = "enable_sgx",
+  values = {"define" : "enable_sgx=true"},
+)
 cc_library(
   name = "factory",
   hdrs = ["factory.h"],
@@ -8,7 +11,12 @@ cc_library(
     ":base_psi_operator",
     ":kkrt_psi_operator",
     ":ecdh_psi_operator",
-  ],
+  ] + select({
+    "enable_sgx": [
+      ":tee_psi_operator",
+    ],
+	  "//conditions:default": [],
+  }),
 )
 
 cc_library(
@@ -55,5 +63,19 @@ cc_library(
     "%s:psi_client" % OPENMINED_PSI,
     "%s:psi_server" % OPENMINED_PSI,
     "@fmt//:fmt",
+  ]
+)
+cc_library(
+  name = "tee_psi_operator",
+  hdrs = ["tee_psi.h"],
+  srcs = ["tee_psi.cc"],
+  deps = [
+    ":base_psi_operator",
+    "//src/primihub/util:endian_util",
+    "//src/primihub/util:util_lib",
+    "//src/primihub/util:hash_lib",
+    "//src/primihub/util:file_util",
+    "@tee_engine//sgx/engine:engine_lib",
+    "@tee_engine//sgx/ra:ra_service",
   ]
 )

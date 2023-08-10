@@ -113,6 +113,13 @@ struct MetaServerConfig {
   Node host_info;
 };
 
+struct Tee {
+  bool executor{false};
+  bool sgx_enable{false};
+  std::string ra_server_addr;
+  std::string cert_path;
+};
+
 struct NodeConfig {
   Node server_config;
   MetaServerConfig meta_service_config;
@@ -122,6 +129,7 @@ struct NodeConfig {
   P2P p2p;
   LocalKV localkv;
   std::string notify_server;
+  Tee tee_conf;
 };
 
 }  // namespace primihub::common
@@ -136,6 +144,7 @@ using ServerConfig = primihub::Node;
 using primihub::common::CertificateConfig;
 using primihub::common::RedisConfig;
 using primihub::common::MetaServerConfig;
+using primihub::common::Tee;
 
 template <> struct convert<RedisConfig> {
     static Node encode(const RedisConfig &redis_cfg) {
@@ -279,6 +288,7 @@ template <> struct convert<NodeConfig> {
         // node["localkv"] = nc.localkv;
         // node["p2p"] = nc.p2p;
         // node["notify_server"] = nc.notify_server;
+        node["tee"] = nc.tee_conf;
         return node;
     }
 
@@ -307,10 +317,32 @@ template <> struct convert<NodeConfig> {
         // nc.localkv = node["localkv"].as<LocalKV>();
         // nc.p2p = node["p2p"].as<P2P>();
         // nc.notify_server = node["notify_server"].as<std::string>();
-
+        if (node["tee"]) {
+          nc.tee_conf = node["tee"].as<Tee>();
+        }
         return true;
     }
 };
+
+template <> struct convert<Tee> {
+  static Node encode(const Tee& tee) {
+    Node node;
+    node["ra_server_addr"] = tee.ra_server_addr;
+    node["executor"] = tee.executor;
+    node["sgx_enable"] = tee.sgx_enable;
+    node["cert_path"] = tee.cert_path;
+    return node;
+  }
+
+  static bool decode(const Node &node, Tee &tee) {            // NOLINT
+    tee.ra_server_addr  = node["ra_server_addr"].as<std::string>();
+    tee.executor = node["executor"].as<bool>();
+    tee.sgx_enable = node["sgx_enable"].as<bool>();
+    tee.cert_path  = node["cert_path"].as<std::string>();
+    return true;
+  }
+};
+
 }  // namespace YAML
 
 #endif  // SRC_PRIMIHUB_COMMON_CONFIG_CONFIG_H_

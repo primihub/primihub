@@ -42,20 +42,27 @@ PsiTask::PsiTask(const TaskParam* task_param,
                  : TaskBase(task_param, dataset_service) {
 }
 
+PsiTask::PsiTask(const TaskParam *task_param,
+                 std::shared_ptr<DatasetService> dataset_service,
+                 void* ra_server, void* tee_engine)
+                 : TaskBase(task_param, dataset_service),
+                  ra_server_(ra_server), tee_executor_(tee_engine) {}
+
 retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
   // build Options for operator
   options->self_party = this->party_name();
   options->link_ctx_ref = getTaskContext().getLinkContext().get();
   options->psi_result_type = psi::PsiResultType::INTERSECTION;
+  options->code = task.code();
   auto& party_info = options->party_info;
   const auto& pb_party_info = task.party_access_info();
-  for (const auto& [party_name, pb_node] : pb_party_info) {
-    if (party_name == SCHEDULER_NODE) {
+  for (const auto& [_party_name, pb_node] : pb_party_info) {
+    if (_party_name == SCHEDULER_NODE) {
       continue;
     }
     Node node_info;
     pbNode2Node(pb_node, &node_info);
-    party_info[party_name] = std::move(node_info);
+    party_info[_party_name] = std::move(node_info);
   }
 
   const auto& param_map = task.params().param_map();
@@ -87,8 +94,8 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
   const auto& party_datasets = task.party_datasets();
   auto it = party_datasets.find(party_name);
   if (it == party_datasets.end()) {
-    LOG(ERROR) << "no dataset is found for party_name: " << party_name;
-    return retcode::FAIL;
+    LOG(WARNING) << "no dataset is found for party_name: " << party_name;
+    return retcode::SUCCESS;
   }
   auto& dataset_map = it->second.data();
   do {
@@ -108,10 +115,10 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
 
   // parse selected index
   std::string index_keyword;
-  if (party_name == PARTY_CLIENT) {
+  if (IsClient()) {
     VLOG(5) << "parse index for client";
     index_keyword = "clientIndex";
-  } else if (party_name == PARTY_SERVER) {
+  } else if (IsServer()) {
     VLOG(5) << "parse index for server";
     index_keyword = "serverIndex";
   }
@@ -130,10 +137,10 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
   }
   // parse result path
   std::string result_path_keyword;
-  if (party_name == PARTY_CLIENT) {
+  if (IsClient()) {
     VLOG(5) << "parse result path for client";
     result_path_keyword = "outputFullFilename";
-  } else if (party_name == PARTY_SERVER) {
+  } else if (IsServer()) {
     VLOG(5) << "parse result path for server";
     result_path_keyword = "server_outputFullFilname";
   }
@@ -147,6 +154,9 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
 }
 
 retcode PsiTask::LoadDataset(void) {
+  if (dataset_id_.empty() || data_index_.empty()) {
+    return retcode::SUCCESS;
+  }
   auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
   if (driver == nullptr) {
     LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
@@ -163,7 +173,8 @@ retcode PsiTask::LoadDataset(void) {
 
 retcode PsiTask::InitOperator() {
   auto type = static_cast<primihub::psi::PsiType>(psi_type_);
-  this->psi_operator_ = primihub::psi::Factory::Create(type, this->options_);
+  this->psi_operator_ =
+      primihub::psi::Factory::Create(type, options_, tee_executor_);
   if (this->psi_operator_ == nullptr) {
     LOG(ERROR) << "create psi operator failed";
     return retcode::FAIL;
@@ -176,6 +187,9 @@ retcode PsiTask::ExecuteOperator() {
 }
 
 retcode PsiTask::SaveResult() {
+  if (!NeedSaveResult()) {
+    return retcode::SUCCESS;
+  }
   auto ret = SaveDataToCSVFile(result_, result_file_path_, data_colums_name_);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "save result to " << result_file_path_ << " failed";
@@ -228,4 +242,36 @@ int PsiTask::execute() {
   return 0;
 }
 
+bool PsiTask::NeedSaveResult() {
+  if (IsTeeCompute()) {
+    return false;
+  }
+  if (IsServer() && !broadcast_result_) {
+    return false;
+  }
+  return true;
+}
+
+bool PsiTask::IsClient() {
+  if (party_name() == PARTY_CLIENT) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool PsiTask::IsServer() {
+  if (party_name() == PARTY_SERVER) {
+    return true;
+  } else {
+    return false;
+  }
+}
+bool PsiTask::IsTeeCompute() {
+  if (party_name() == PARTY_TEE_COMPUTE) {
+    return true;
+  } else {
+    return false;
+  }
+}
 }  // namespace primihub::task

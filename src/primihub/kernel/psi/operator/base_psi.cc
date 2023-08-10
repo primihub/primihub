@@ -32,11 +32,8 @@ retcode BasePsiOperator::BroadcastPsiResult(std::vector<std::string>* result) {
   if (IgnoreResult(options_.self_party)) {
     return retcode::SUCCESS;
   }
-  if (IgnoreResult(options_.self_party)) {
-    return retcode::SUCCESS;
-  }
   auto ret{retcode::SUCCESS};
-  if (options_.self_party == PARTY_CLIENT) {
+  if (IsClient(options_.self_party)) {
     ret = BroadcastResult(*result);
   } else {
     ret = ReceiveResult(result);
@@ -98,18 +95,37 @@ retcode BasePsiOperator::ReceiveResult(std::vector<std::string>* result) {
   return retcode::SUCCESS;
 }
 
-retcode BasePsiOperator::Send(const Node& peer_node,
+retcode BasePsiOperator::Send(const Node& dest_node,
                               const std::string& send_buff) {
-  auto channel = options_.link_ctx_ref->getChannel(peer_node);
-  auto ret = channel->send(this->key_, send_buff);
-  VLOG(5) << "send psi result to " << peer_node.to_string() << " success";
+  return Send(this->key_, dest_node, send_buff);
+}
+
+retcode BasePsiOperator::Send(const std::string& key,
+                              const Node& dest_node,
+                              const std::string& send_buff) {
+  auto channel = options_.link_ctx_ref->getChannel(dest_node);
+  auto ret = channel->send(key, send_buff);
+  VLOG(5) << "send date to " << dest_node.to_string() << " success";
+  return ret;
+}
+
+retcode BasePsiOperator::Send(const std::string& key,
+                              const Node& dest_node,
+                              const std::string_view send_buff_sv) {
+  auto channel = options_.link_ctx_ref->getChannel(dest_node);
+  auto ret = channel->send(key, send_buff_sv);
+  VLOG(5) << "send data to " << dest_node.to_string() << " success";
   return ret;
 }
 
 retcode BasePsiOperator::Recv(std::string* recv_buff) {
+  return Recv(this->key_, recv_buff);
+}
+
+retcode BasePsiOperator::Recv(const std::string& key, std::string* recv_buff) {
   std::string recv_data_str;
   auto link_ctx = options_.link_ctx_ref;
-  auto& recv_queue = link_ctx->GetRecvQueue(this->key_);
+  auto& recv_queue = link_ctx->GetRecvQueue(key);
   recv_queue.wait_and_pop(recv_data_str);
   *recv_buff = std::move(recv_data_str);
   return retcode::SUCCESS;
@@ -129,31 +145,58 @@ retcode BasePsiOperator::BroadcastPartyList(std::vector<Node>* party_list) {
 bool BasePsiOperator::IgnoreParty(const std::string& party_name) {
   if (party_name == options_.self_party) {
     return true;
+  } else if (IgnoreResult(party_name)) {
+    return true;
   } else {
     return false;
   }
 }
 
 bool BasePsiOperator::IgnoreResult(const std::string& party_name) {
+  if (IsTeeCompute(party_name)) {
+    return true;
+  }
   return false;
 }
 
 Node BasePsiOperator::PeerNode() {
   std::string peer_node_name;
-  if (PartyName() == PARTY_CLIENT) {
+  Node peer_node;
+  if (IsClient(PartyName())) {
     peer_node_name = PARTY_SERVER;
-  } else if (PartyName() == PARTY_SERVER) {
+  } else if (IsServer(PartyName())) {
     peer_node_name = PARTY_CLIENT;
   } else {
     LOG(ERROR) << "Invalid party name: " << PartyName();
     return Node();
   }
-  auto it = options_.party_info.find(peer_node_name);
-  if (it != options_.party_info.end()) {
-    return it->second;
-  } else {
+  auto ret = GetNodeByName(peer_node_name, &peer_node);
+  if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "no party info for party name: " << peer_node_name;
     return Node();
   }
+  return peer_node;
+}
+
+retcode BasePsiOperator::GetNodeByName(const std::string& party_name,
+                                       Node* node_info) {
+  auto it = options_.party_info.find(party_name);
+  if (it != options_.party_info.end()) {
+    *node_info = it->second;
+  } else {
+    LOG(ERROR) << "no party info for party name: " << party_name;
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+bool BasePsiOperator::IsClient(const std::string& party_name) {
+  return party_name == PARTY_CLIENT;
+}
+bool BasePsiOperator::IsServer(const std::string& party_name) {
+  return party_name == PARTY_SERVER;
+}
+bool BasePsiOperator::IsTeeCompute(const std::string& party_name) {
+  return party_name == PARTY_TEE_COMPUTE;
 }
 }  // namespace primihub::psi

@@ -37,6 +37,7 @@
 #include "src/primihub/task/semantic/tee_task.h"
 #include "src/primihub/service/dataset/service.h"
 
+
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::Language;
 using primihub::rpc::TaskType;
@@ -50,7 +51,9 @@ class TaskFactory {
  public:
   static std::shared_ptr<TaskBase> Create(const std::string& node_id,
       const PushTaskRequest& request,
-      std::shared_ptr<DatasetService> dataset_service) {
+      std::shared_ptr<DatasetService> dataset_service,
+      void* ra_service = nullptr,
+      void* executor = nullptr) {
     auto task_language = request.task().language();
     auto task_type = request.task().type();
     std::shared_ptr<TaskBase> task_ptr{nullptr};
@@ -64,7 +67,9 @@ class TaskFactory {
         task_ptr = TaskFactory::CreateMPCTask(node_id, request, dataset_service);
         break;
       case rpc::TaskType::PSI_TASK:
-        task_ptr = TaskFactory::CreatePSITask(node_id, request, dataset_service);
+        task_ptr =
+            TaskFactory::CreatePSITask(node_id, request, dataset_service,
+                                       ra_service, executor);
         break;
       case rpc::TaskType::PIR_TASK:
         task_ptr = TaskFactory::CreatePIRTask(node_id, request, dataset_service);
@@ -104,10 +109,13 @@ class TaskFactory {
 
   static std::shared_ptr<TaskBase> CreatePSITask(const std::string& node_id,
       const PushTaskRequest& request,
-      std::shared_ptr<DatasetService> dataset_service) {
+      std::shared_ptr<DatasetService> dataset_service,
+      void* ra_server,
+      void* tee_engine) {
     const auto& task_config = request.task();
     std::shared_ptr<TaskBase> task_ptr{nullptr};
-    task_ptr = std::make_shared<PsiTask>(&task_config, dataset_service);
+    task_ptr = std::make_shared<PsiTask>(&task_config, dataset_service,
+                                         ra_server, tee_engine);
     return task_ptr;
   }
 
