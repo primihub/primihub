@@ -24,8 +24,8 @@ class LabelEncoder(PreprocessBase):
 
         elif self.role == 'server':
             classes = self.channel.recv_all('classes')
-            classes = list(set(chain.from_iterable(classes)))
-            classes = unique(np.array(classes))
+            classes = np.concatenate(classes)
+            classes = unique(classes)
             self.channel.send_all('classes', classes)
         
         self.module.classes_ = classes
@@ -75,8 +75,8 @@ class LabelBinarizer(PreprocessBase):
 
         elif self.role == 'server':
             classes = self.channel.recv_all('classes')
-            classes = list(set(chain.from_iterable(classes)))
-            classes = unique(np.array(classes))
+            classes = np.concatenate(classes)
+            classes = unique_labels(classes)
             self.channel.send_all('classes', classes)
         
         self.module.classes_ = classes

@@ -140,6 +140,9 @@ class StandardScaler(PreprocessBase):
             
             self.module.n_samples_seen_ = np.repeat(x.shape[0], x.shape[1]) \
                                             - np.isnan(x).sum(axis=0)
+            # for backward-compatibility, reduce n_samples_seen_ to an integer
+            # if the number of samples is the same for each feature (i.e. no
+            # missing values)
             if np.ptp(self.module.n_samples_seen_) == 0:
                 self.module.n_samples_seen_ = self.module.n_samples_seen_[0]
 
@@ -189,6 +192,8 @@ class StandardScaler(PreprocessBase):
                 var = np.array(un_var).sum(axis=0) / n_sum
                 self.channel.send_all('var', var)
 
+                # Extract the list of near constant features on the raw variances,
+                # before taking the square root.
                 constant_mask = is_constant_feature(
                     var,
                     mean,

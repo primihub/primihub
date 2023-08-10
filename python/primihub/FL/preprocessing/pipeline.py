@@ -271,11 +271,14 @@ def select_module(module_name, params, FL_type, role, channel=None):
             channel=channel
         )
     elif module_name == "OrdinalEncoder":
+        encoded_missing_value = params.get('encoded_missing_value')
+        if encoded_missing_value is None:
+            encoded_missing_value = np.nan
         module = OrdinalEncoder(
             categories=params.get('categories', "auto"),
             handle_unknown=params.get('handle_unknown', "error"),
             unknown_value=params.get('unknown_value'),
-            encoded_missing_value=params.get('encoded_missing_value', np.nan),
+            encoded_missing_value=encoded_missing_value,
             min_frequency=params.get('min_frequency'),
             max_categories=params.get('max_categories'),
             FL_type=FL_type,
