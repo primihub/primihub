@@ -21,10 +21,10 @@ ifneq ($(jobs), )
 	BUILD_FLAG += --jobs=$(JOBS)
 endif
 
-#ifeq ($(tee), y)
+ifeq ($(tee), y)
 	BUILD_FLAG += --cxxopt=-DSGX
 	BUILD_FLAG += --define enable_sgx=true
-#endif
+endif
 
 ifeq ($(debug), y)
 	BUILD_FLAG += --config=linux_asan

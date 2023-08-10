@@ -656,14 +656,8 @@ http_archive(
   ]
 )
 
-local_repository(
+git_repository(
   name = "tee_engine",
-  path = "/home/cuibo/workspace/myproject/primihub_tee",
+  commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
+  remote = "https://github.com/primihub/primihub_tee.git",
 )
-
-#git_repository(
-#  name = "tee_engine",
-#  #commit = "b6a4a395fa67aa4e9323ddf7f9dfa247629912a1",
-#  commit = "7c2773db66f604951fddc53753e4bbae5f321dab",
-#  remote = "https://github.com/primihub/primihub_tee.git",
-#)
