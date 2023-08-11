@@ -525,6 +525,10 @@ int SDKClient::SubmitTask() {
             }
             if (task_status.size() == party_count) {
                 VLOG(0) << "all node has finished";
+                for (const auto& [party_name, msg_info] : task_status) {
+                  LOG(INFO) << "party name: " << party_name
+                            << " msg: " << msg_info;
+                }
                 is_finished = true;
                 break;
             }

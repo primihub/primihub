@@ -15,9 +15,6 @@
 
 #include "src/primihub/task/semantic/fl_task.h"
 #include <glog/logging.h>
-#include <boost/process.hpp>
-#include <boost/asio.hpp>
-#include <boost/process/search_path.hpp>
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -26,9 +23,8 @@
 #include "base64.h"
 #include <google/protobuf/text_format.h>
 
-// using primihub::service::EventBusNotifyDelegate;
-namespace bp = boost::process;
-
+using Process = Poco::Process;
+using ProcessHandle = Poco::ProcessHandle;
 namespace primihub::task {
 FLTask::FLTask(const std::string& node_id,
                const TaskParam* task_param,
@@ -75,54 +71,34 @@ int FLTask::execute() {
         return -1;
     }
     std::string request_base64_str = base64_encode(task_config_str);
-    boost::asio::io_service ios;
+
     // std::future<std::string> data;
     std::string current_process_dir = getCurrentProcessDir();
     VLOG(5) << "current_process_dir: " << current_process_dir;
     std::string execute_app = current_process_dir + "/py_main";
     std::string execute_cmd;
-    execute_cmd.append(execute_app).append(" ")
-        .append("--node_id=").append(node_id_).append(" ")
-        .append("--config_file=").append(server_config.getConfigFile()).append(" ")
-        .append("--request=").append(request_base64_str);
-    // LOG(INFO) << "execute_cmd: " << execute_cmd;
-    bp::child c(execute_cmd, //set the input
-              bp::std_in.close(),
-              bp::std_out > stdout, //so it can be written without anything
-              bp::std_err > stdout,
-              ios);
-    ios.run(); //this will actually block until the py_main is finished
-    uint64_t count{0};
-    do {
-        if (count < 1000) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        } else {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-        if (has_stopped()) {
-            LOG(ERROR) << "begin to terminate py_main";
-            if (c.running()) {
-                ios.stop();
-                c.terminate();
-            }
-            break;
-        }
-        count++;
-    } while (c.running());
-
-    int result = c.exit_code();
-    LOG(INFO) << "py_main executes result code: " << result;
-    if (result != 0) {
-        // auto err =  data.get();
-        // if (!err.empty()) {
-        //     LOG(INFO) << err;
-        //     auto& event_notify_delegeate = EventBusNotifyDelegate::getInstance();
-        //     event_notify_delegeate.notifyStatus(
-        //         job_id(), task_id(), submit_client_id(), "FAIL", err);
-        // }
+    std::vector<std::string> args;
+    args.push_back("--node_id="+node_id_);
+    args.push_back("--config_file="+server_config.getConfigFile());
+    args.push_back("--request="+request_base64_str);
+    // execute_cmd.append(execute_app).append(" ")
+    //     .append("--node_id=").append(node_id_).append(" ")
+    //     .append("--config_file=").append(server_config.getConfigFile()).append(" ")
+    //     .append("--request=").append(request_base64_str);
+    // using POCO process
+    auto handle_ = Process::launch(execute_app, args);
+    process_handler_ = std::make_unique<ProcessHandle>(handle_);
+    try {
+      int ret = handle_.wait();
+      if (ret != 0) {
+        LOG(ERROR) << "ERROR: " << ret;
         return -1;
+      }
+    } catch (std::exception& e) {
+      LOG(ERROR) << e.what();
+      return -1;
     }
-    // fut.get();
+    // POCO process end
     return 0;
 }
 

@@ -11,24 +11,28 @@
 #include "base64.h"
 #include <pybind11/stl.h>
 #include "Python.h"
+#include "src/primihub/util/util.h"
 
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");
 ABSL_FLAG(std::string, config_file, "data/node.yaml", "server config file");
 ABSL_FLAG(std::string, request, "", "task request, serialized by rpc::Task");
 
 namespace primihub::task::python {
-retcode PyExecutor::init(const std::string& node_id, const std::string& server_config_file,
-        const std::string& request) {
-    this->node_id_ = node_id;
-    this->server_config_file_ = server_config_file;
-    pb_task_request_ = base64_decode(request);
-    task_request_ = std::make_unique<rpc::PushTaskRequest>();
-    bool status = task_request_->ParseFromString(pb_task_request_);
-    if (!status) {
-        LOG(ERROR) << "parse task request error";
-        return retcode::FAIL;
-    }
-    return retcode::SUCCESS;
+retcode PyExecutor::init(const std::string& node_id,
+                         const std::string& server_config_file,
+                         const std::string& request) {
+  this->node_id_ = node_id;
+  this->server_config_file_ = server_config_file;
+  pb_task_request_ = base64_decode(request);
+  task_request_ = std::make_unique<rpc::PushTaskRequest>();
+  bool status = task_request_->ParseFromString(pb_task_request_);
+  if (!status) {
+    LOG(ERROR) << "parse task request error";
+    return retcode::FAIL;
+  }
+  GetScheduleNode();
+  link_ctx_ = primihub::network::LinkFactory::createLinkContext(link_mode_);
+  return retcode::SUCCESS;
 }
 
 retcode PyExecutor::execute() {
@@ -43,9 +47,41 @@ retcode PyExecutor::parseParams() {
   return retcode::SUCCESS;
 }
 
+retcode PyExecutor::GetScheduleNode() {
+  const auto& task_config = task_request_->task();
+  const auto& party_access_info = task_config.party_access_info();
+  auto it = party_access_info.find(SCHEDULER_NODE);
+  if (it != party_access_info.end()) {
+    const auto& pb_node = it->second;
+    pbNode2Node(pb_node, &schedule_node_);
+    schedule_node_available_ = true;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode PyExecutor::UpdateStatus(rpc::TaskStatus::StatusCode code_status,
+                                 const std::string& msg_info) {
+  const auto& task_config = task_request_->task();
+  primihub::rpc::TaskStatus task_status;
+  primihub::rpc::Empty reply;
+  auto task_info_ptr = task_status.mutable_task_info();
+  task_info_ptr->CopyFrom(task_config.task_info());
+  task_status.set_party(task_config.party_name());
+  task_status.set_message(msg_info);
+  task_status.set_status(code_status);
+  if (!schedule_node_available_) {
+    LOG(WARNING) << "chedule node is not available";
+    return retcode::FAIL;
+  }
+  auto channel = link_ctx_->getChannel(schedule_node_);
+  channel->updateTaskStatus(task_status, &reply);
+  return retcode::SUCCESS;
+}
+
 retcode PyExecutor::ExecuteTaskCode() {
   py::gil_scoped_acquire acquire;
   try {
+    VLOG(1) << "<<<<<<<<< Import PrmimiHub Python Executor <<<<<<<<<";
     ph_exec_m_ = py::module::import("primihub.executor").attr("Executor");
     ph_context_m_ = py::module::import("primihub.context");
     py::object set_message;
@@ -57,12 +93,13 @@ retcode PyExecutor::ExecuteTaskCode() {
     ph_exec_m_.attr("execute_py")();
     VLOG(1) << "<<<<<<<<< Execute Python Code End <<<<<<<<<" << std::endl;
   } catch (std::exception& e) {
-    LOG(ERROR) << "Failed to execute python: " << e.what();
+    std::string err_msg{e.what()};
+    LOG(ERROR) << "Failed to execute python: " << err_msg;
+    UpdateStatus(rpc::TaskStatus::FAIL, err_msg);
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
 }
-
 }  // namespace primihub::task::python
 
 int main(int argc, char **argv) {

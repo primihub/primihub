@@ -9,6 +9,8 @@ cc_library(
   deps = [
     "//src/primihub/common:common_defination",
     "//src/primihub/protos:worker_proto",
+    "//src/primihub/util/network:communication_lib",
+    "//src/primihub/util:util_lib",
     "@com_github_base64_cpp//:base64_lib",
     "@pybind11",
     "@com_google_absl//absl/base",
