@@ -3,6 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
+from primihub.FL.preprocessing import StandardScaler
 
 import pickle
 import pandas as pd
@@ -84,17 +85,10 @@ class NeuralNetworkClient(BaseModel):
             raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = x.max(axis=0)
-        data_min = x.min(axis=0)
-
-        server_channel.send('data_max', data_max)
-        server_channel.send('data_min', data_min)
-
-        data_max = server_channel.recv('data_max')
-        data_min = server_channel.recv('data_min')
-
-        x = (x - data_min) / (data_max - data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=server_channel)
+        x = scaler.fit_transform(x)
 
         # create dataloaders
         if client.output_dim == 1:
@@ -150,8 +144,7 @@ class NeuralNetworkClient(BaseModel):
             "selected_column": selected_column,
             "id": id,
             "label": label,
-            "data_max": data_max,
-            "data_min": data_min,
+            "preprocess": scaler.module,
             "model": client.model
         }
         model_path = self.role_params['model_path']
@@ -186,10 +179,8 @@ class NeuralNetworkClient(BaseModel):
         x = x.values
 
         # data preprocessing
-        # minmaxscaler
-        data_max = modelFile['data_max']
-        data_min = modelFile['data_min']
-        x = (x - data_min) / (data_max - data_min)
+        scaler = modelFile['preprocess']
+        x = scaler.transform(x)
         x = torch.tensor(x, dtype=torch.float32).to(device)
 
         # test data prediction

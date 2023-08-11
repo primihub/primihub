@@ -3,6 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
+from primihub.FL.preprocessing import StandardScaler
 
 import json
 import numpy as np
@@ -47,15 +48,10 @@ class LinearRegressionServer(BaseModel):
             raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = client_channel.recv_all('data_max')
-        data_min = client_channel.recv_all('data_min')
-        
-        data_max = np.array(data_max).max(axis=0)
-        data_min = np.array(data_min).min(axis=0)
-
-        client_channel.send_all('data_max', data_max)
-        client_channel.send_all('data_min', data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=client_channel)
+        scaler.fit()
 
         # server training
         logger.info("-------- start training --------")

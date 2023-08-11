@@ -6,6 +6,7 @@ from primihub.FL.utils.dataset import read_data,\
                                       DPDataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
+from primihub.FL.preprocessing import StandardScaler
 
 import pickle
 import pandas as pd
@@ -77,17 +78,10 @@ class LinearRegressionClient(BaseModel):
             raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = x.max(axis=0)
-        data_min = x.min(axis=0)
-
-        server_channel.send('data_max', data_max)
-        server_channel.send('data_min', data_min)
-
-        data_max = server_channel.recv('data_max')
-        data_min = server_channel.recv('data_min')
-
-        x = (x - data_min) / (data_max - data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=server_channel)
+        x = scaler.fit_transform(x)
 
         # client training
         num_examples = client.num_examples
@@ -138,8 +132,7 @@ class LinearRegressionClient(BaseModel):
             "selected_column": selected_column,
             "id": id,
             "label": label,
-            "data_max": data_max,
-            "data_min": data_min,
+            "preprocess": scaler.module,
             "model": client.model
         }
         model_path = self.role_params['model_path']
@@ -171,10 +164,8 @@ class LinearRegressionClient(BaseModel):
         x = x.values
 
         # data preprocessing
-        # minmaxscaler
-        data_max = modelFile['data_max']
-        data_min = modelFile['data_min']
-        x = (x - data_min) / (data_max - data_min)
+        scaler = modelFile['preprocess']
+        x = scaler.transform(x)
 
         # test data prediction
         model = modelFile['model']
