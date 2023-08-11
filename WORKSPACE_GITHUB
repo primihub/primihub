@@ -670,3 +670,10 @@ git_repository(
   commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
   remote = "https://github.com/primihub/primihub_tee.git",
 )
+
+new_git_repository(
+  name = "poco",
+  build_file = "//bazel:poco.BUILD",
+  tag = "poco-1.12.4-release",
+  remote = "https://github.com/pocoproject/poco.git",
+)

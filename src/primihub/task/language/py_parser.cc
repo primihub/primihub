@@ -26,10 +26,14 @@ retcode PyParser::parseDatasets() {
   auto& push_task = getPushTaskRequest();
   const auto& task_config = push_task.task();
   const auto& party_datasets = task_config.party_datasets();
-  LOG(ERROR) << "party_datasets: " << party_datasets.size();
+  VLOG(0) << "party_datasets: " << party_datasets.size();
   for (const auto& [party_name,  dataset_map] : party_datasets) {
     for (const auto& [dataset_index, dataset_id] : dataset_map.data()) {
-      LOG(ERROR) << "party_name: " << party_name << " dataset_id: " << dataset_id;
+      if (dataset_id.empty()) {
+        LOG(WARNING) << "dataset id for party: " << party_name << " is empty";
+        continue;
+      }
+      VLOG(0) << "party_name: " << party_name << " dataset_id: " << dataset_id;
       auto dataset_with_tag = std::make_pair(dataset_id, party_name);
       this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
     }

@@ -62,7 +62,7 @@ cc_library(
         ":task_interface",
         "//src/primihub/util:util_lib",
         "@com_github_base64_cpp//:base64_lib",
-        "@boost//:process",
+        "@poco//:poco",
     ],
 )
 

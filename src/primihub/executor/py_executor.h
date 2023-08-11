@@ -8,6 +8,8 @@
 #include "pybind11/embed.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/util/network/link_context.h"
+#include "src/primihub/util/network/link_factory.h"
 
 namespace py = pybind11;
 namespace primihub::task::python {
@@ -34,6 +36,9 @@ class PyExecutor {
     std::string node_id() const {
         return this->node_id_;
     }
+    retcode GetScheduleNode();
+    retcode UpdateStatus(rpc::TaskStatus::StatusCode code_status,
+                         const std::string& msg_info);
 
  private:
     std::unique_ptr<primihub::rpc::PushTaskRequest> task_request_{nullptr};
@@ -53,6 +58,10 @@ class PyExecutor {
     std::string jobid_;
     std::string request_id_;
     std::string pb_task_request_;
+    Node schedule_node_;
+    bool schedule_node_available_{false};
+    network::LinkMode link_mode_{network::LinkMode::GRPC};
+    std::unique_ptr<network::LinkContext> link_ctx_{nullptr};
 };
 
 }  // namespace primihub::task::python

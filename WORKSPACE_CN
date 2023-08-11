@@ -661,3 +661,13 @@ git_repository(
   commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
   remote = "https://github.com/primihub/primihub_tee.git",
 )
+
+http_archive(
+  name = "poco",
+  build_file = "//bazel:poco.BUILD",
+  sha256 = "71ef96c35fced367d6da74da294510ad2c912563f12cd716ab02b6ed10a733ef",
+  strip_prefix = "poco-poco-1.12.4-release",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/poco-poco-1.12.4-release.tar.gz",
+  ],
+)

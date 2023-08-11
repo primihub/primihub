@@ -74,7 +74,7 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
       task_info_->CopyFrom(task_info);
       kill_request.set_executor(rpc::KillTaskRequest::SCHEDULER);
       for (const auto& patry : parties) {
-        LOG(ERROR) << "party info: " << patry.to_string();
+        LOG(ERROR) << "send kill task to party: " << patry.to_string();
         rpc::KillTaskResponse reply;
         auto channel = link_ctx_->getChannel(patry);
         channel->killTask(kill_request, &reply);
