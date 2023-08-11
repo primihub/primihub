@@ -134,12 +134,16 @@ class Pipeline(BaseModel):
             module = select_module(module_name, params, FL_type, role, channel)
 
             if role != 'server':
-                if 'LabelBinarizer' in module_name:
+                if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
                     temp = module.fit_transform(data[column])
+                    if 'LabelBinarizer' in module_name:
+                        col_name = [column+str(i) for i in range(temp.shape[1])]
+                    else:
+                        col_name = module.module.get_feature_names_out()
                     data = data.join(
                         pd.DataFrame(
                             temp,
-                            columns=[column+str(i) for i in range(temp.shape[1])]
+                            columns=col_name
                         )
                     )
                 else:
@@ -187,12 +191,16 @@ class Pipeline(BaseModel):
         for module_name, module, column in preprocess:
             logger.info(f"module name: {module_name}")
             logger.info(f"preprocess columns: {column}, # {len(column)}")
-            if 'LabelBinarizer' in module_name:
+            if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
                 temp = module.fit_transform(data[column])
+                if 'LabelBinarizer' in module_name:
+                    col_name = [column+str(i) for i in range(temp.shape[1])]
+                else:
+                    col_name = module.get_feature_names_out()
                 data = data.join(
                     pd.DataFrame(
                         temp,
-                        columns=[column+str(i) for i in range(temp.shape[1])]
+                        columns=col_name
                     )
                 )
             else:
@@ -266,6 +274,7 @@ def select_module(module_name, params, FL_type, role, channel=None):
             handle_unknown=params.get('handle_unknown', "error"),
             min_frequency=params.get('min_frequency'),
             max_categories=params.get('max_categories'),
+            feature_name_combiner=params.get('feature_name_combiner'),
             FL_type=FL_type,
             role=role,
             channel=channel

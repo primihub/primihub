@@ -1,16 +1,14 @@
 import numpy as np
 import numbers
-from itertools import chain
 from sklearn.preprocessing import OneHotEncoder as SKL_OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
 from sklearn.utils import is_scalar_nan
 from sklearn.preprocessing._encoders import _BaseEncoder
-from primihub.utils.logger_util import logger
 from .base import PreprocessBase
 from .util import unique
 
 
-class OneHotEncoder(PreprocessBase):
+class OneHotEncoder(PreprocessBase, _BaseEncoder):
 
     def __init__(self,
                  categories="auto",
@@ -20,6 +18,7 @@ class OneHotEncoder(PreprocessBase):
                  handle_unknown="error",
                  min_frequency=None,
                  max_categories=None,
+                 feature_name_combiner="concat",
                  FL_type=None,
                  role=None,
                  channel=None):
@@ -30,10 +29,95 @@ class OneHotEncoder(PreprocessBase):
                                         dtype=dtype,
                                         handle_unknown=handle_unknown,
                                         min_frequency=min_frequency,
-                                        max_categories=max_categories)
+                                        max_categories=max_categories,
+                                        feature_name_combiner=feature_name_combiner)
+        if FL_type == 'H':
+            self.categories = categories
+            self.min_frequency = min_frequency
+            self.max_categories = max_categories
 
     def Hfit(self, x):
-        pass
+        infrequent_enabled = \
+            check_infrequent_enabled(self.min_frequency, self.max_categories)
+        self.module._infrequent_enabled = infrequent_enabled
+
+        if self.role == 'client':
+            if infrequent_enabled:
+                return_counts = True
+                min_frequency = self.min_frequency
+                max_categories = self.max_categories
+                self.min_frequency = None
+                self.max_categories = None
+            else:
+                return_counts = False
+
+            fit_results = self._fit(
+                x,
+                handle_unknown=self.module.handle_unknown,
+                force_all_finite="allow-nan",
+                return_counts=return_counts,
+            )
+            self.module.n_features_in_ = self.n_features_in_
+            self.module.feature_names_in_ = self.feature_names_in_
+
+            categories = self.categories_
+            if self.categories == 'auto':
+                self.channel.send('categories', categories)
+                categories = self.channel.recv('categories')
+                self.categories_ = categories
+            self.module.categories_ = categories
+
+            if infrequent_enabled:
+                self.channel.send('n_samples', fit_results['n_samples'])
+                self.channel.send('category_counts', fit_results['category_counts'])
+                infrequent_indices = self.channel.recv('infrequent_indices')
+                self._infrequent_indices = infrequent_indices
+                self.module._infrequent_indices = infrequent_indices
+                self.module._default_to_infrequent_mappings = \
+                    compute_default_to_infrequent_mappings(categories, 
+                                                           infrequent_indices)
+
+        elif self.role == 'server':
+            if self.categories == 'auto':
+                client_categories = self.channel.recv_all('categories')
+                categories = compute_category_union(client_categories)
+                self.channel.send_all('categories', categories)
+            else:
+                categories = self.categories
+            self.categories_ = categories
+            self.module.categories_ = categories
+            self.module.n_features_in_ = len(categories)
+
+            if infrequent_enabled:
+                n_samples = self.channel.recv_all('n_samples')
+                client_category_counts = self.channel.recv_all('category_counts')
+
+                n_samples = sum(n_samples)
+
+                if self.categories == 'auto':
+                    category_counts = \
+                        compute_count_histogram(self.module.n_features_in_,
+                                                categories,
+                                                client_categories,
+                                                client_category_counts)
+                else:
+                    category_counts = np.sum(client_category_counts, axis=0)
+
+                self._fit_infrequent_category_mapping(
+                    n_samples,
+                    category_counts,
+                    missing_indices={}
+                )
+                infrequent_indices = self._infrequent_indices
+                self.channel.send_all('infrequent_indices', infrequent_indices)
+
+                self.module._infrequent_indices = self._infrequent_indices
+                self.module._default_to_infrequent_mappings = self._default_to_infrequent_mappings
+
+        self.module._set_drop_idx()
+        self.module._n_features_outs = self.module._compute_n_features_outs()
+
+        return self
 
 
 class OrdinalEncoder(PreprocessBase, _BaseEncoder):
@@ -63,12 +147,8 @@ class OrdinalEncoder(PreprocessBase, _BaseEncoder):
             self.max_categories = max_categories
 
     def Hfit(self, x):
-        if (self.max_categories is not None and self.max_categories >= 1
-            ) or self.min_frequency is not None:
-            infrequent_enabled = True
-            self.module._infrequent_enabled = True
-        else:
-            infrequent_enabled = False
+        infrequent_enabled = \
+            check_infrequent_enabled(self.min_frequency, self.max_categories)
         self.module._infrequent_enabled = infrequent_enabled
         
         if self.module.handle_unknown == "use_encoded_value":
@@ -110,7 +190,6 @@ class OrdinalEncoder(PreprocessBase, _BaseEncoder):
                 return_counts=return_counts,
                 return_and_ignore_missing_for_infrequent=False,
             )
-
             self.module.n_features_in_ = self.n_features_in_
             self.module.feature_names_in_ = self.feature_names_in_
 
@@ -128,52 +207,17 @@ class OrdinalEncoder(PreprocessBase, _BaseEncoder):
                 self.channel.send('n_samples', fit_results['n_samples'])
                 self.channel.send('category_counts', fit_results['category_counts'])
                 infrequent_indices = self.channel.recv('infrequent_indices')
-
-                # compute mapping from default mapping to infrequent mapping
-                default_to_infrequent_mappings = []
-
-                for feature_idx, infreq_idx in enumerate(infrequent_indices):
-                    cats = categories[feature_idx]
-                    # no infrequent categories
-                    if infreq_idx is None:
-                        default_to_infrequent_mappings.append(None)
-                        continue
-
-                    n_cats = len(cats)
-                    if feature_idx in missing_indices:
-                        # Missing index was removed from this category when computing
-                        # infrequent indices, thus we need to decrease the number of
-                        # total categories when considering the infrequent mapping.
-                        n_cats -= 1
-
-                    # infrequent indices exist
-                    mapping = np.empty(n_cats, dtype=np.int64)
-                    n_infrequent_cats = infreq_idx.size
-
-                    # infrequent categories are mapped to the last element.
-                    n_frequent_cats = n_cats - n_infrequent_cats
-                    mapping[infreq_idx] = n_frequent_cats
-
-                    frequent_indices = np.setdiff1d(np.arange(n_cats), infreq_idx)
-                    mapping[frequent_indices] = np.arange(n_frequent_cats)
-
-                    default_to_infrequent_mappings.append(mapping)
-
                 self._infrequent_indices = infrequent_indices
                 self.module._infrequent_indices = infrequent_indices
-                self.module._default_to_infrequent_mappings = default_to_infrequent_mappings
+                self.module._default_to_infrequent_mappings = \
+                    compute_default_to_infrequent_mappings(categories, 
+                                                           infrequent_indices, 
+                                                           missing_indices)
 
         elif self.role == 'server':
             if self.categories == 'auto':
                 client_categories = self.channel.recv_all('categories')
-                categories = []
-                for feature_idx in range(len(client_categories[0])):
-                    categories_for_idx = []
-                    for client_cat in client_categories:
-                        categories_for_idx.append(client_cat[feature_idx])
-                    categories_for_idx = np.concatenate(categories_for_idx)
-                    categories_for_idx = unique(categories_for_idx)
-                    categories.append(categories_for_idx)
+                categories = compute_category_union(client_categories)
                 self.channel.send_all('categories', categories)
             else:
                 categories = self.categories
@@ -191,23 +235,11 @@ class OrdinalEncoder(PreprocessBase, _BaseEncoder):
                 n_samples = sum(n_samples)
 
                 if self.categories == 'auto':
-                    category_counts = []
-                    for feature_idx in range(self.module.n_features_in_):
-                        categories_for_idx = categories[feature_idx]
-                        category_counts_for_idx = np.zeros(len(categories_for_idx))
-                        category_map = {}
-
-                        for client_idx, client_cat in enumerate(client_categories):
-                            idx_map = category_to_idx_map(
-                                client_cat[feature_idx],
-                                categories_for_idx,
-                                category_map
-                            )
-
-                            category_counts_for_idx[idx_map] += \
-                                client_category_counts[client_idx][feature_idx]
-                            
-                        category_counts.append(category_counts_for_idx)
+                    category_counts = \
+                        compute_count_histogram(self.module.n_features_in_,
+                                                categories,
+                                                client_categories,
+                                                client_category_counts)
                 else:
                     category_counts = np.sum(client_category_counts, axis=0)
 
@@ -284,6 +316,85 @@ class OrdinalEncoder(PreprocessBase, _BaseEncoder):
         return self
     
 
+def check_infrequent_enabled(min_frequency, max_categories):
+    if (max_categories is not None and max_categories >= 1
+        ) or min_frequency is not None:
+        return True
+    else:
+        return False
+    
+
+def compute_category_union(client_categories):
+    categories = []
+    for feature_idx in range(len(client_categories[0])):
+        categories_for_idx = []
+        for client_cat in client_categories:
+            categories_for_idx.append(client_cat[feature_idx])
+        categories_for_idx = np.concatenate(categories_for_idx)
+        categories_for_idx = unique(categories_for_idx)
+        categories.append(categories_for_idx)
+    return categories
+
+
+def compute_count_histogram(n_features,
+                            categories,
+                            client_categories,
+                            client_category_counts):
+    category_counts = []
+    for feature_idx in range(n_features):
+        categories_for_idx = categories[feature_idx]
+        category_counts_for_idx = np.zeros(len(categories_for_idx))
+        category_map = {}
+
+        for client_idx, client_cat in enumerate(client_categories):
+            idx_map = category_to_idx_map(
+                client_cat[feature_idx],
+                categories_for_idx,
+                category_map
+            )
+
+            category_counts_for_idx[idx_map] += \
+                client_category_counts[client_idx][feature_idx]
+            
+        category_counts.append(category_counts_for_idx)
+    return category_counts
+
+
+def compute_default_to_infrequent_mappings(categories, 
+                                           infrequent_indices, 
+                                           missing_indices={}):
+    # compute mapping from default mapping to infrequent mapping
+    default_to_infrequent_mappings = []
+
+    for feature_idx, infreq_idx in enumerate(infrequent_indices):
+        cats = categories[feature_idx]
+        # no infrequent categories
+        if infreq_idx is None:
+            default_to_infrequent_mappings.append(None)
+            continue
+
+        n_cats = len(cats)
+        if feature_idx in missing_indices:
+            # Missing index was removed from this category when computing
+            # infrequent indices, thus we need to decrease the number of
+            # total categories when considering the infrequent mapping.
+            n_cats -= 1
+
+        # infrequent indices exist
+        mapping = np.empty(n_cats, dtype=np.int64)
+        n_infrequent_cats = infreq_idx.size
+
+        # infrequent categories are mapped to the last element.
+        n_frequent_cats = n_cats - n_infrequent_cats
+        mapping[infreq_idx] = n_frequent_cats
+
+        frequent_indices = np.setdiff1d(np.arange(n_cats), infreq_idx)
+        mapping[frequent_indices] = np.arange(n_frequent_cats)
+
+        default_to_infrequent_mappings.append(mapping)
+    return default_to_infrequent_mappings
+
+
 def category_to_idx_map(client_category, server_category, category_map):
     idx_map = []
     i = 0
@@ -294,16 +405,10 @@ def category_to_idx_map(client_category, server_category, category_map):
             continue
         while i < len(server_category):
             scat = server_category[i]
-            if is_scalar_nan(ccat):
-                if is_scalar_nan(scat):
-                    idx_map.append(i)
-                    category_map[ccat] = i
-                    break
-            else:
-                if ccat == scat:
-                    idx_map.append(i)
-                    category_map[ccat] = i
-                    break
+            if ccat == scat or (is_scalar_nan(ccat) and is_scalar_nan(scat)):
+                idx_map.append(i)
+                category_map[ccat] = i
+                break
             i += 1
     return idx_map
 
