@@ -116,15 +116,26 @@ cc_library(
 
 # pir task
 cc_library(
-    name = "pir_task",
-    deps = [
-      ":keyword_pir_task",
-    ],
-    # deps = select({
-    #     "microsoft-apsi" : [":keyword_pir_task"],
-    #     "//conditions:default": [":id_pir_task"],
-    # }),
+  name = "pir_task",
+  hdrs = ["pir_task.h"],
+  srcs = ["pir_task.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/kernel/pir:common_def",
+    "//src/primihub/kernel/pir/operator:factory",
+  ],
 )
+
+# cc_library(
+#     name = "pir_task",
+#     deps = [
+#       ":keyword_pir_task",
+#     ],
+#     # deps = select({
+#     #     "microsoft-apsi" : [":keyword_pir_task"],
+#     #     "//conditions:default": [":id_pir_task"],
+#     # }),
+# )
 
 cc_library(
     name = "keyword_pir_task",

@@ -24,15 +24,16 @@
 #include "src/primihub/task/semantic/mpc_task.h"
 #include "src/primihub/task/semantic/fl_task.h"
 #include "src/primihub/task/semantic/psi_task.h"
-#include "src/primihub/task/semantic/private_server_base.h"
+#include "src/primihub/task/semantic/pir_task.h"
+// #include "src/primihub/task/semantic/private_server_base.h"
 
-#ifndef USE_MICROSOFT_APSI
-#include "src/primihub/task/semantic/pir_client_task.h"
-#include "src/primihub/task/semantic/pir_server_task.h"
-#else
-#include "src/primihub/task/semantic/keyword_pir_client_task.h"
-#include "src/primihub/task/semantic/keyword_pir_server_task.h"
-#endif
+// #ifndef USE_MICROSOFT_APSI
+// #include "src/primihub/task/semantic/pir_client_task.h"
+// #include "src/primihub/task/semantic/pir_server_task.h"
+// #else
+// #include "src/primihub/task/semantic/keyword_pir_client_task.h"
+// #include "src/primihub/task/semantic/keyword_pir_server_task.h"
+// #endif
 
 #include "src/primihub/task/semantic/tee_task.h"
 #include "src/primihub/service/dataset/service.h"
@@ -123,38 +124,41 @@ class TaskFactory {
       const PushTaskRequest& request,
       std::shared_ptr<DatasetService> dataset_service) {
     const auto& task_config = request.task();
-    const auto& param_map = task_config.params().param_map();
-    int pir_type = PirType::ID_PIR;
-    auto param_it = param_map.find("pirType");
-    if (param_it != param_map.end()) {
-      pir_type = param_it->second.value_int32();
-    }
-#ifndef USE_MICROSOFT_APSI
-    const auto& job_id = request.task().task_info().job_id();
-    const auto& task_id = request.task().task_info().task_id();
-    if (pir_type == PirType::ID_PIR) {
-      return std::make_shared<PIRClientTask>(
-          node_id, job_id, task_id, &task_config, dataset_service);
-    } else {
-      // TODO, using condition compile, fix in future
-      LOG(WARNING) << "ID_PIR is not supported when MICROSOFT_APSI enabled";
-      return nullptr;
-    }
-#else   // KEYWORD PIR
-    if (pir_type == PirType::KEY_PIR) {
-      std::string party_name = task_config.party_name();
-      if (party_name == PARTY_SERVER) {
-        return std::make_shared<KeywordPIRServerTask>(&task_config,
-                                                      dataset_service);
-      } else {
-        return std::make_shared<KeywordPIRClientTask>(&task_config,
-                                                      dataset_service);
-      }
-    } else {
-      LOG(ERROR) << "Unsupported pir type: " << pir_type;
-      return nullptr;
-    }
-#endif
+    return std::make_shared<PirTask>(&task_config, dataset_service);
+
+//     const auto& task_config = request.task();
+//     const auto& param_map = task_config.params().param_map();
+//     int pir_type = PirType::ID_PIR;
+//     auto param_it = param_map.find("pirType");
+//     if (param_it != param_map.end()) {
+//       pir_type = param_it->second.value_int32();
+//     }
+// #ifndef USE_MICROSOFT_APSI
+//     const auto& job_id = request.task().task_info().job_id();
+//     const auto& task_id = request.task().task_info().task_id();
+//     if (pir_type == PirType::ID_PIR) {
+//       return std::make_shared<PIRClientTask>(
+//           node_id, job_id, task_id, &task_config, dataset_service);
+//     } else {
+//       // TODO, using condition compile, fix in future
+//       LOG(WARNING) << "ID_PIR is not supported when MICROSOFT_APSI enabled";
+//       return nullptr;
+//     }
+// #else   // KEYWORD PIR
+//     if (pir_type == PirType::KEY_PIR) {
+//       std::string party_name = task_config.party_name();
+//       if (party_name == PARTY_SERVER) {
+//         return std::make_shared<KeywordPIRServerTask>(&task_config,
+//                                                       dataset_service);
+//       } else {
+//         return std::make_shared<KeywordPIRClientTask>(&task_config,
+//                                                       dataset_service);
+//       }
+//     } else {
+//       LOG(ERROR) << "Unsupported pir type: " << pir_type;
+//       return nullptr;
+//     }
+// #endif
   }
 
   static std::shared_ptr<TaskBase> CreateTEETask(const std::string& node_id,
@@ -166,25 +170,25 @@ class TaskFactory {
                                                 dataset_service);
   }
 
-  static std::shared_ptr<ServerTaskBase> Create(const std::string& node_id,
-        rpc::TaskType task_type,
-        const ExecuteTaskRequest& request,
-        ExecuteTaskResponse *response,
-        std::shared_ptr<DatasetService> dataset_service) {
-    if (task_type == rpc::TaskType::NODE_PIR_TASK) {
-#ifdef USE_MICROSOFT_APSI
-      // TODO, using condition compile, fix in future
-      LOG(WARNING) << "ID_PIR is not supported when using MICROSOFT_APSI";
-      return nullptr;
-#else
-      return std::make_shared<PIRServerTask>(node_id, request,
-                                            response, dataset_service);
-#endif
-    } else {
-      LOG(ERROR) << "Unsupported task type at server node: "<< task_type <<".";
-      return nullptr;
-    }
-  }
+//   static std::shared_ptr<ServerTaskBase> Create(const std::string& node_id,
+//         rpc::TaskType task_type,
+//         const ExecuteTaskRequest& request,
+//         ExecuteTaskResponse *response,
+//         std::shared_ptr<DatasetService> dataset_service) {
+//     if (task_type == rpc::TaskType::NODE_PIR_TASK) {
+// #ifdef USE_MICROSOFT_APSI
+//       // TODO, using condition compile, fix in future
+//       LOG(WARNING) << "ID_PIR is not supported when using MICROSOFT_APSI";
+//       return nullptr;
+// #else
+//       return std::make_shared<PIRServerTask>(node_id, request,
+//                                             response, dataset_service);
+// #endif
+//     } else {
+//       LOG(ERROR) << "Unsupported task type at server node: "<< task_type <<".";
+//       return nullptr;
+//     }
+//   }
 };
 
 
