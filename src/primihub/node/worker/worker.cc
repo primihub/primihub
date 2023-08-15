@@ -90,10 +90,6 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
 void Worker::kill_task() {
   if (task_ptr) {
     task_ptr->kill_task();
-    return;
-  }
-  if (task_server_ptr) {
-    task_server_ptr->kill_task();
   }
 }
 

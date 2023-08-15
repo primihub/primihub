@@ -26,6 +26,10 @@ cc_library(
   name = "keyword_pir_operator",
   hdrs = ["keyword_pir.h"],
   srcs = ["keyword_pir.cc"],
+  copts = [
+    "-w",
+    "-D_ASPI",
+  ],
   deps = [
     ":base_pir_operator",
     "//src/primihub/util:endian_util",
