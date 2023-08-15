@@ -308,8 +308,15 @@ def select_module(module_name, params, FL_type, role, channel=None):
             channel=channel
         )
     elif "SimpleImputer" in module_name:
+        missing_values = params.get('missing_values')
+        if isinstance(missing_values, str):
+            missing_values = missing_values.lower()
+            if missing_values == 'np.nan':
+                missing_values = np.nan
+            elif missing_values == 'pd.na':
+                missing_values = pd.NA
         module = SimpleImputer(
-            missing_values=params.get('missing_values', np.nan),
+            missing_values=missing_values,
             strategy=params.get('strategy', 'mean'),
             fill_value=params.get('fill_value'),
             copy=params.get('copy', True),
