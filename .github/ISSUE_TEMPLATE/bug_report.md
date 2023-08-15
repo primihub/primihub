@@ -6,9 +6,7 @@ labels: 'bug'
 assignees: ''
 
 ---
-Before submitting a bug, please make sure the issue
-hasn't been already addressed by searching through
-[the past issues](https://github.com/primihub/primihub/issues).
+Before submitting a bug, please make sure the issue hasn't been already addressed by searching through [the past issues](https://github.com/primihub/primihub/issues).
 
 **Describe the bug**
 <!-- A clear and concise description of what the bug is. -->

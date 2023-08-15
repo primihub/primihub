@@ -1,10 +1,18 @@
-### Your checklist for this pull request
-🚨Please review the [guidelines for contributing](https://github.com/primihub/community#development-workflow) to this repository.
+<!--
+Thanks for contributing a pull request! Please ensure you have taken a look at
+the [contribution guidelines](https://github.com/primihub/community#development-workflow)
 
-- [ ] Make sure you are requesting to **pull a topic/feature/bugfix branch** (right side). Don't request your master!
-- [ ] Check the commit's or even all commits' message styles matches our requested structure.
-- [ ] Check your code additions will fail neither code linting checks nor unit test.
-- [ ] Please provide a readable PR title.
+Checklist
+1. Make sure your request branch is not develop.
+2. Please provide a readable PR title.
+-->
 
-### Description
-Please describe what have you done in this pull request.
+**Reference Issues/PRs**
+<!-- Example: Fixes #1234. See also #3456. -->
+
+**What does this implement/fix?**
+<!-- Please describe what have you done in this pull request. -->
+
+**Any other comments?**
+
+<!-- Thanks for contributing to PrimiHub! -->
