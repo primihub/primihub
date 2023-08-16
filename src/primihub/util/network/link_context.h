@@ -20,6 +20,10 @@ class IChannel;
 */
 class LinkContext {
  public:
+  using StringDataQueue = primihub::ThreadSafeQueue<std::string>;
+  using StringDataContainer = std::unordered_map<std::string, StringDataQueue>;
+  using StatusDataQueue = primihub::ThreadSafeQueue<retcode>;
+  using StatusDataContainer = std::unordered_map<std::string, StatusDataQueue>;
   LinkContext() = default;
   virtual ~LinkContext() = default;
   inline void setTaskInfo(const std::string& job_id,
@@ -43,11 +47,17 @@ class LinkContext {
    * if channel is not exist, create
   */
   virtual std::shared_ptr<IChannel> getChannel(const primihub::Node& node) = 0;
-  void setRecvTimeout(int32_t recv_timeout_ms) {recv_timeout_ms_ = recv_timeout_ms;}
-  void setSendTimeout(int32_t send_timeout_ms) {send_timeout_ms_ = send_timeout_ms;}
+  inline void setRecvTimeout(const int32_t recv_timeout_ms) {
+    recv_timeout_ms_ = recv_timeout_ms;
+  }
+  inline void setSendTimeout(const int32_t send_timeout_ms) {
+    send_timeout_ms_ = send_timeout_ms;
+  }
   int32_t sendTimeout() const {return send_timeout_ms_;}
   int32_t recvTimeout() const {return recv_timeout_ms_;}
-  primihub::common::CertificateConfig& getCertificateConfig() {return *cert_config_;}
+  primihub::common::CertificateConfig& getCertificateConfig() {
+    return *cert_config_;
+  }
 
   void initCertificate(const std::string& root_ca_path,
                       const std::string& key_path,
@@ -62,69 +72,46 @@ class LinkContext {
     return retcode::SUCCESS;
   }
 
-  primihub::ThreadSafeQueue<std::string>&
-  GetRecvQueue(const std::string& key = "default") {
-  std::unique_lock<std::mutex> lck(this->in_queue_mtx);
-    auto it = in_data_queue.find(key);
-    if (it != in_data_queue.end()) {
-      return it->second;
-    } else {
-      in_data_queue[key];
-      if (stop_.load(std::memory_order::memory_order_relaxed)) {
-        in_data_queue[key].shutdown();
-      }
-      return in_data_queue[key];
-    }
-  }
+  StringDataQueue& GetRecvQueue(const std::string& key = "default");
+  StringDataQueue& GetSendQueue(const std::string& key = "default");
+  StatusDataQueue& GetCompleteQueue(const std::string& role = "default");
 
-  primihub::ThreadSafeQueue<std::string>&
-  GetSendQueue(const std::string& key = "default") {
-    std::unique_lock<std::mutex> lck(this->out_queue_mtx);
-    auto it = out_data_queue.find(key);
-    if (it != out_data_queue.end()) {
-      return it->second;
-    } else {
-      return out_data_queue[key];
-    }
-  }
+  void Clean();
+  retcode Send(const std::string& key,
+               const Node& dest_node, const std::string& send_buf);
+  retcode Send(const std::string& key,
+               const Node& dest_node, std::string_view send_buf);
+  retcode Send(const std::string& key,
+               const Node& dest_node, char* send_buf, size_t send_size);
+  retcode Recv(const std::string& key, std::string* recv_buf);
+  retcode Recv(const std::string& key, char* recv_buf, size_t recv_size);
+  /**
+   * sender to process send recv
+  */
+  retcode SendRecv(const std::string& key,
+                   const Node& dest_node,
+                   const std::string& send_buf,
+                   std::string* recv_buf);
+  retcode SendRecv(const std::string& key,
+                   const Node& dest_node,
+                   std::string_view send_buf,
+                   std::string* recv_buf);
+  retcode SendRecv(const std::string& key,
+                   const Node& dest_node,
+                   const char* send_buf, size_t length,
+                   std::string* recv_buf);
+  /**
+   * receiver to process send recv
+  */
+  retcode SendRecv(const std::string& key,
+                   const std::string& send_buf,
+                   std::string* recv_buf);
 
-  primihub::ThreadSafeQueue<retcode>&
-  GetCompleteQueue(const std::string& role = "default") {
-    std::unique_lock<std::mutex> lck(this->complete_queue_mtx);
-    auto it = complete_queue.find(role);
-    if (it != complete_queue.end()) {
-      return it->second;
-    } else {
-      return complete_queue[role];
-    }
-  }
-
-  void Clean() {
-    stop_.store(true);
-    LOG(ERROR) << "stop all in data queue";
-    {
-      std::lock_guard<std::mutex> lck(in_queue_mtx);
-      for(auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
-          it->second.shutdown();
-      }
-    }
-    LOG(ERROR) << "stop all out data queue";
-    {
-      std::lock_guard<std::mutex> lck(out_queue_mtx);
-      for(auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
-        it->second.shutdown();
-      }
-    }
-    LOG(ERROR) << "stop all complete queue";
-    {
-      std::lock_guard<std::mutex> lck(complete_queue_mtx);
-      for(auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
-        it->second.shutdown();
-      }
-    }
-  }
 
  protected:
+  bool HasStopped() {
+    return stop_.load(std::memory_order::memory_order_relaxed);
+  }
   int32_t recv_timeout_ms_{-1};
   int32_t send_timeout_ms_{-1};
   std::shared_mutex connection_mgr_mtx;
@@ -135,11 +122,13 @@ class LinkContext {
   std::unique_ptr<primihub::common::CertificateConfig> cert_config_{nullptr};
 
   std::mutex in_queue_mtx;
-  std::unordered_map<std::string, primihub::ThreadSafeQueue<std::string>> in_data_queue;
+  StringDataContainer in_data_queue;
+
   std::mutex out_queue_mtx;
-  std::unordered_map<std::string, primihub::ThreadSafeQueue<std::string>> out_data_queue;
+  StringDataContainer out_data_queue;
+
   std::mutex complete_queue_mtx;
-  std::unordered_map<std::string, primihub::ThreadSafeQueue<retcode>> complete_queue;
+  StatusDataContainer complete_queue;
   std::atomic<bool> stop_{false};
 };
 
@@ -150,19 +139,26 @@ class IChannel {
   virtual ~IChannel() = default;
   virtual retcode send(const std::string& key, const std::string& data) = 0;
   virtual retcode send(const std::string& key, std::string_view sv_data) = 0;
-  virtual bool send_wrapper(const std::string& key, const std::string& data) = 0;
-  virtual bool send_wrapper(const std::string& key, std::string_view sv_data) = 0;
+  virtual bool send_wrapper(const std::string& key,
+                            const std::string& data) = 0;
+  virtual bool send_wrapper(const std::string& key,
+                            std::string_view sv_data) = 0;
   virtual retcode sendRecv(const std::string& key,
                            const std::string& send_data,
                            std::string* recv_data) = 0;
   virtual retcode sendRecv(const std::string& key,
                           std::string_view send_data,
                           std::string* recv_data) = 0;
-  virtual retcode submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
-  virtual retcode executeTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) = 0;
-  virtual retcode killTask(const rpc::KillTaskRequest& request, rpc::KillTaskResponse* reply) = 0;
-  virtual retcode updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) = 0;
-  virtual retcode fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) = 0;
+  virtual retcode submitTask(const rpc::PushTaskRequest& request,
+                             rpc::PushTaskReply* reply) = 0;
+  virtual retcode executeTask(const rpc::PushTaskRequest& request,
+                              rpc::PushTaskReply* reply) = 0;
+  virtual retcode killTask(const rpc::KillTaskRequest& request,
+                           rpc::KillTaskResponse* reply) = 0;
+  virtual retcode updateTaskStatus(const rpc::TaskStatus& request,
+                                   rpc::Empty* reply) = 0;
+  virtual retcode fetchTaskStatus(const rpc::TaskContext& request,
+                                  rpc::TaskStatusReply* reply) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
   LinkContext* getLinkContext() {
     return link_ctx_;

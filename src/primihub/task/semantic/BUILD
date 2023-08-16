@@ -29,7 +29,6 @@ cc_library(
         ":pir_task",
         ":psi_task",
         ":tee_task",
-        ":private_server_base",
     ],
 )
 cc_library(
@@ -116,65 +115,14 @@ cc_library(
 
 # pir task
 cc_library(
-    name = "pir_task",
-    deps = [
-      ":keyword_pir_task",
-    ],
-    # deps = select({
-    #     "microsoft-apsi" : [":keyword_pir_task"],
-    #     "//conditions:default": [":id_pir_task"],
-    # }),
-)
-
-cc_library(
-    name = "keyword_pir_task",
-    hdrs = [
-        "keyword_pir_client_task.h",
-        "keyword_pir_server_task.h",
-    ],
-    srcs = [
-        "keyword_pir_client_task.cc",
-        "keyword_pir_server_task.cc",
-    ],
-    copts = [
-        "-w",
-        "-D_ASPI",
-    ],
-    defines = ["USE_MICROSOFT_APSI"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/protos:common_proto",
-        "@mircrosoft_apsi//:APSI",
-    ]
-)
-cc_library(
-    name = "private_server_base",
-    hdrs = ["private_server_base.h"],
-    srcs = ["private_server_base.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/common:common_defination",
-        "//src/primihub/data_store:data_store_lib",
-        "//src/primihub/service:dataset_service",
-    ],
-)
-
-cc_library(
-    name = "id_pir_task",
-    hdrs = [
-        "pir_client_task.h",
-        "pir_server_task.h",
-    ],
-    srcs = [
-        "pir_client_task.cc",
-        "pir_server_task.cc",
-    ],
-    deps = [
-        ":private_server_base",
-        ":task_interface",
-        "@org_openmined_pir//pir/cpp:pir",
-    ],
+  name = "pir_task",
+  hdrs = ["pir_task.h"],
+  srcs = ["pir_task.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/kernel/pir:common_def",
+    "//src/primihub/kernel/pir/operator:factory",
+  ],
 )
 
 # task semantic parser

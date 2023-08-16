@@ -59,6 +59,22 @@ enum class Visibility {
   PRIVATE = 1,
 };
 
+class RoleValidation {
+public:
+  static bool IsClient(const std::string& party_name) {
+    return party_name == PARTY_CLIENT;
+  }
+
+  static bool IsServer(const std::string& party_name) {
+    return party_name == PARTY_SERVER;
+  }
+
+  static bool IsTeeCompute(const std::string& party_name) {
+    return party_name == PARTY_TEE_COMPUTE;
+  }
+};
+
+
 struct Node {
   Node() = default;
   Node(const std::string& id, const std::string& ip,

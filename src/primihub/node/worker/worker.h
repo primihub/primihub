@@ -39,7 +39,6 @@
 #include "src/primihub/node/nodelet.h"
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
-#include "src/primihub/task/semantic/private_server_base.h"
 #include "src/primihub/common/common.h"
 
 using primihub::rpc::PushTaskRequest;
@@ -71,9 +70,6 @@ class Worker {
   std::shared_ptr<primihub::task::TaskBase> getTask() {
     return task_ptr;
   }
-  std::shared_ptr<primihub::task::ServerTaskBase> getServerTask() {
-    return task_server_ptr;
-  }
   retcode waitForTaskReady();
 
   // scheduler method
@@ -89,7 +85,6 @@ class Worker {
 
   mutable absl::Mutex worker_map_mutex_;
   std::shared_ptr<primihub::task::TaskBase> task_ptr{nullptr};
-  std::shared_ptr<primihub::task::ServerTaskBase> task_server_ptr{nullptr};
   const std::string& node_id;
   std::shared_ptr<Nodelet> nodelet;
   std::string worker_id_;
