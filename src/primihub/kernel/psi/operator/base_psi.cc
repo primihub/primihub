@@ -1,4 +1,19 @@
-// "Copyright [2023] <PrimiHub>"
+/*
+ * Copyright (c) 2023 by PrimiHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "src/primihub/kernel/psi/operator/base_psi.h"
 #include <utility>
 
@@ -33,7 +48,7 @@ retcode BasePsiOperator::BroadcastPsiResult(std::vector<std::string>* result) {
     return retcode::SUCCESS;
   }
   auto ret{retcode::SUCCESS};
-  if (IsClient(options_.self_party)) {
+  if (RoleValidation::IsClient(options_.self_party)) {
     ret = BroadcastResult(*result);
   } else {
     ret = ReceiveResult(result);
@@ -62,7 +77,7 @@ retcode BasePsiOperator::BroadcastResult(
   std::vector<Node> party_list;
   BroadcastPartyList(&party_list);
   for (const auto& party_info : party_list) {
-    auto ret = this->Send(party_info, result_str);
+    auto ret = this->GetLinkContext()->Send(this->key_, party_info, result_str);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "Send result data to: "
                  << party_info.to_string() << " failed";
@@ -73,7 +88,7 @@ retcode BasePsiOperator::BroadcastResult(
 
 retcode BasePsiOperator::ReceiveResult(std::vector<std::string>* result) {
   std::string recv_data_str;
-  auto ret = Recv(&recv_data_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_, &recv_data_str);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "ReceiveResult failed for party name: "
                << options_.self_party;
@@ -92,42 +107,6 @@ retcode BasePsiOperator::ReceiveResult(std::vector<std::string>* result) {
     result->push_back(std::string(data_ptr+offset, len));
     offset += len;
   }
-  return retcode::SUCCESS;
-}
-
-retcode BasePsiOperator::Send(const Node& dest_node,
-                              const std::string& send_buff) {
-  return Send(this->key_, dest_node, send_buff);
-}
-
-retcode BasePsiOperator::Send(const std::string& key,
-                              const Node& dest_node,
-                              const std::string& send_buff) {
-  auto channel = options_.link_ctx_ref->getChannel(dest_node);
-  auto ret = channel->send(key, send_buff);
-  VLOG(5) << "send date to " << dest_node.to_string() << " success";
-  return ret;
-}
-
-retcode BasePsiOperator::Send(const std::string& key,
-                              const Node& dest_node,
-                              const std::string_view send_buff_sv) {
-  auto channel = options_.link_ctx_ref->getChannel(dest_node);
-  auto ret = channel->send(key, send_buff_sv);
-  VLOG(5) << "send data to " << dest_node.to_string() << " success";
-  return ret;
-}
-
-retcode BasePsiOperator::Recv(std::string* recv_buff) {
-  return Recv(this->key_, recv_buff);
-}
-
-retcode BasePsiOperator::Recv(const std::string& key, std::string* recv_buff) {
-  std::string recv_data_str;
-  auto link_ctx = options_.link_ctx_ref;
-  auto& recv_queue = link_ctx->GetRecvQueue(key);
-  recv_queue.wait_and_pop(recv_data_str);
-  *recv_buff = std::move(recv_data_str);
   return retcode::SUCCESS;
 }
 
@@ -153,7 +132,7 @@ bool BasePsiOperator::IgnoreParty(const std::string& party_name) {
 }
 
 bool BasePsiOperator::IgnoreResult(const std::string& party_name) {
-  if (IsTeeCompute(party_name)) {
+  if (RoleValidation::IsTeeCompute(party_name)) {
     return true;
   }
   return false;
@@ -162,9 +141,9 @@ bool BasePsiOperator::IgnoreResult(const std::string& party_name) {
 Node BasePsiOperator::PeerNode() {
   std::string peer_node_name;
   Node peer_node;
-  if (IsClient(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     peer_node_name = PARTY_SERVER;
-  } else if (IsServer(PartyName())) {
+  } else if (RoleValidation::IsServer(PartyName())) {
     peer_node_name = PARTY_CLIENT;
   } else {
     LOG(ERROR) << "Invalid party name: " << PartyName();
@@ -188,15 +167,5 @@ retcode BasePsiOperator::GetNodeByName(const std::string& party_name,
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
-}
-
-bool BasePsiOperator::IsClient(const std::string& party_name) {
-  return party_name == PARTY_CLIENT;
-}
-bool BasePsiOperator::IsServer(const std::string& party_name) {
-  return party_name == PARTY_SERVER;
-}
-bool BasePsiOperator::IsTeeCompute(const std::string& party_name) {
-  return party_name == PARTY_TEE_COMPUTE;
 }
 }  // namespace primihub::psi

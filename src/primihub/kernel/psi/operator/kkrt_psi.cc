@@ -35,7 +35,7 @@ retcode KkrtPsiOperator::OnExecute(const std::vector<std::string>& input,
   }
   oc::Channel chl(ios, msg_interface.release());
   auto ret{retcode::SUCCESS};
-  if (IsClient(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     std::unordered_set<uint64_t> result_index;
     ret = KkrtRecv(chl, input, &result_index);
     result->reserve(result_index.size());
@@ -61,9 +61,9 @@ auto KkrtPsiOperator::BuildChannelInterface() ->
     std::unique_ptr<TaskMessagePassInterface> {
 //
   std::string peer_party_name;
-  if (IsClient(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     peer_party_name = PARTY_SERVER;
-  } else if (IsServer(PartyName())) {
+  } else if (RoleValidation::IsServer(PartyName())) {
     peer_party_name = PARTY_CLIENT;
   } else {
     LOG(ERROR) << "Invalid Party Name for KKrt Psi: " << this->PartyName()

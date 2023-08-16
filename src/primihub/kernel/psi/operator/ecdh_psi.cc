@@ -1,4 +1,4 @@
-// "Copyright [2023] <PrimiHub>"
+// "Copyright [2023] <Primihub>"
 #include "src/primihub/kernel/psi/operator/ecdh_psi.h"
 
 #include <utility>
@@ -20,9 +20,9 @@ retcode EcdhPsiOperator::OnExecute(const std::vector<std::string>& input,
     return retcode::FAIL;
   }
   this->peer_node_ = PeerNode();
-  if (IsClient(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     return ExecuteAsClient(input, result);
-  } else if (IsServer(this->PartyName())) {
+  } else if (RoleValidation::IsServer(this->PartyName())) {
     return ExecuteAsServer(input);
   } else {
     LOG(ERROR) << "invalid party name: " << this->PartyName() << " "
@@ -157,7 +157,7 @@ retcode EcdhPsiOperator::BuildInitParam(int64_t element_size,
 }
 
 retcode EcdhPsiOperator::SendInitParam(const std::string& init_param) {
-  return this->Send(this->peer_node_, init_param);
+  return this->GetLinkContext()->Send(this->key_, this->peer_node_, init_param);
 }
 
 retcode EcdhPsiOperator::SendPSIRequestAndWaitResponse(
@@ -171,7 +171,8 @@ retcode EcdhPsiOperator::SendPSIRequestAndWaitResponse(
     std::string psi_req_str;
     client_request.SerializeToString(&psi_req_str);
     VLOG(5) << "begin to send psi request to server";
-    auto ret = this->Send(this->peer_node_, psi_req_str);
+    auto ret = this->GetLinkContext()->Send(this->key_,
+                                            this->peer_node_, psi_req_str);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "send psi reuqest to ["
                  << this->peer_node_.to_string() << "] failed";
@@ -182,7 +183,7 @@ retcode EcdhPsiOperator::SendPSIRequestAndWaitResponse(
 
   VLOG(5) << "begin to recv psi response from server";
   std::string recv_data_str;
-  auto ret = this->Recv(&recv_data_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_, &recv_data_str);
   if (ret != retcode::SUCCESS || recv_data_str.empty()) {
     LOG(ERROR) << "recv data is empty";
     return retcode::FAIL;
@@ -276,7 +277,7 @@ retcode EcdhPsiOperator::ExecuteAsServer(
 retcode EcdhPsiOperator::InitRequest(psi_proto::Request* psi_request) {
   CHECK_TASK_STOPPED(retcode::FAIL);
   std::string request_str;
-  auto ret = this->Recv(&request_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_, &request_str);
   CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive request from client failed");
   psi_proto::Request recv_psi_req;
   recv_psi_req.ParseFromString(request_str);
@@ -308,7 +309,8 @@ retcode EcdhPsiOperator::PreparePSIResponse(psi_proto::Response&& psi_response,
   VLOG(5) << "preparePSIResponse data length: " << psi_res_str.size();
   // pushDataToSendQueue(this->key, std::move(psi_res_str));
   VLOG(5) << "begin to send psi response to client";
-  auto ret = this->Send(this->peer_node_, psi_res_str);
+  auto ret = this->GetLinkContext()->Send(this->key_,
+                                          this->peer_node_, psi_res_str);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "send psi response data to ["
                 << this->peer_node_.to_string() << "] failed";
@@ -323,7 +325,7 @@ retcode EcdhPsiOperator::RecvInitParam(size_t* client_dataset_size,
   CHECK_TASK_STOPPED(retcode::FAIL);
   VLOG(5) << "begin to recvInitParam ";
   std::string init_param_str;
-  auto ret = this->Recv(&init_param_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_, &init_param_str);
   CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive init param from client failed");
   auto& client_dataset_size_ = *client_dataset_size;
   auto& reveal_flag = *reveal_intersection;
