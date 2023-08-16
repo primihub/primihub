@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #include "src/primihub/algorithm/mpc_statistics.h"
 #include <arrow/api.h>
 #include <arrow/csv/api.h>

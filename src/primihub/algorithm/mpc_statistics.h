@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
 #define SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
 #include <string>

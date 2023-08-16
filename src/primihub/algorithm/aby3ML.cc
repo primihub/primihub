@@ -1,4 +1,4 @@
-// "Copyright [2021] <Primihub>"
+// "Copyright [2021] <PrimiHub>"
 
 #include "src/primihub/algorithm/aby3ML.h"
 #include <glog/logging.h>

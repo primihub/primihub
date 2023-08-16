@@ -1,5 +1,5 @@
 /**
- * Copyright [2023] <Primihub>
+ * Copyright [2023] <PrimiHub>
 */
 
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_META_SERVICE_MEMORY_IMPL_H_

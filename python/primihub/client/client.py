@@ -1,5 +1,5 @@
 """
-Copyright 2022 Primihub
+Copyright 2022 PrimiHub
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,8 +46,8 @@ def get_host_ip():
     return ip
 
 
-class PrimihubClient(object):
-    """Primihub Python SDK Client."""
+class PrimiHubClient(object):
+    """PrimiHub Python SDK Client."""
     __instance = None
     __first_init = False
 
@@ -61,7 +61,7 @@ class PrimihubClient(object):
         self.node_event_stream = None
         self.code = None
         if not self.__first_init:
-            PrimihubClient.__first_init = True
+            PrimiHubClient.__first_init = True
 
         self.visitor = Visitor()
         self.client_id = "client:" + \
@@ -85,7 +85,7 @@ class PrimihubClient(object):
         self.loop.set_exception_handler(exception_handler)
 
         # Storage
-        self.tasks_map = {}  # Primihub task map task_id: Task
+        self.tasks_map = {}  # PrimiHub task map task_id: Task
         self._pending_task = []  # pending asyncio task
 
         self.notify_channel_connected = False

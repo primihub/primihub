@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_COMMON_PARTY_CONFIG_H_
 #define SRC_PRIMIHUB_COMMON_PARTY_CONFIG_H_
 #include <string>

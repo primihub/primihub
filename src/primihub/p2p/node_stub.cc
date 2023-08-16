@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -214,10 +214,10 @@ groups:
                 }
                 // start p2p host
                 host_->start();
-                
+
                 // start identify protocol
                 identify_->start();
-                
+
                 // start kademlia protocol
                 kademlia_->start();
             });
@@ -229,11 +229,11 @@ groups:
             std::cerr << "Error: " << e.what() << std::endl;
             std::exit(EXIT_FAILURE);
         }
-    } 
+    }
 
     // start put value to kademlia
     void NodeStub::putDHTValue(libp2p::protocol::kademlia::ContentId key, std::string value) {
-        
+
         io_context_->post([&,key,value] {
             auto sid = libp2p::multi::ContentIdentifierCodec::toString(libp2p::multi::ContentIdentifierCodec::decode(key.data).value());
             std::cout << "Put value, key string is : " << sid.value() << std::endl;
@@ -249,10 +249,10 @@ groups:
             } else {
                 std::cout << "Put value failed" << std::endl;
             }
-            
+
         });
     }
-    
+
     void NodeStub::putDHTValue(std::string key, std::string value) {
         // start put value to kademlia
         io_context_->post([&,key,value] {
@@ -287,7 +287,7 @@ groups:
                     auto r = result.value();
                     std::stringstream rs;
                     std::copy(r.begin(), r.end(), std::ostream_iterator<uint8_t>(rs, ""));
-                    std::cout << "🚩🚩 "<< rs.str() <<std::endl;    
+                    std::cout << "🚩🚩 "<< rs.str() <<std::endl;
                 }
             });
              if (not res) {
@@ -301,7 +301,7 @@ groups:
 
 
 
-     void NodeStub::getDHTValue(libp2p::protocol::kademlia::ContentId key, 
+     void NodeStub::getDHTValue(libp2p::protocol::kademlia::ContentId key,
                                 libp2p::protocol::kademlia::FoundValueHandler handler) {
         // start get value from kademlia
         this->io_context_->post([&, key, handler] {
@@ -314,6 +314,6 @@ groups:
             }
         });
     }
-        
+
 
 } // namespace primihub::p2p

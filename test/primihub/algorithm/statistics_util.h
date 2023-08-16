@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef TEST_PRIMIHUB_ALGORITHM_STATISTICS_UTIL_H_
 #define TEST_PRIMIHUB_ALGORITHM_STATISTICS_UTIL_H_
 #include <map>

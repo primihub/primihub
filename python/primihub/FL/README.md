@@ -1,6 +1,6 @@
-# Primihub SDK 实用教程
+# PrimiHub SDK 实用教程
 
-Primihub SDK是为了让用户能够简单开发自己算法的工具。具有易上手性、易开发性、易使用性。
+PrimiHub SDK是为了让用户能够简单开发自己算法的工具。具有易上手性、易开发性、易使用性。
 
 ## SDK的安装
 

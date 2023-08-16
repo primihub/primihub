@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ void test_unwrap_arrow_pyobject(std::shared_ptr<arrow::Table> &table) {
 
 // Register apache arrow table object as primihub dataset and publish on DHT.
 // NOTE defualt using csv driver
-void reg_arrow_table_as_ph_dataset(std::shared_ptr<DatasetService> &dataset_service, 
+void reg_arrow_table_as_ph_dataset(std::shared_ptr<DatasetService> &dataset_service,
                                    std::string &dataset_name,
                                    std::shared_ptr<arrow::Table> &table) {
     // Construct primihub::dataset object from arrow table.
@@ -92,10 +92,10 @@ void reg_arrow_table_as_ph_dataset(std::shared_ptr<DatasetService> &dataset_serv
     std::string filepath = "data/" + dataset_name + ".csv";
     auto cursor = driver->initCursor(filepath);
     auto dataset = std::make_shared<primihub::Dataset>(table, driver);
-    
+
     // Get dataset meta form dataset object.
     DatasetMeta meta(dataset, dataset_name, DatasetVisbility::PUBLIC);
-    
+
     // Register meta on DHT.
     dataset_service->regDataset(meta);
 }

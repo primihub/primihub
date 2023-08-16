@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include "dataset_warpper.hpp"
 
 PYBIND11_MODULE(primihub_dataset_warpper, m) {
-    
+
     m.doc() = "primhub dataset API warpper"; // Optional module docstring
     m.def("test_unwrap_arrow_pyobject", &test_unwrap_arrow_pyobject, pybind11::call_guard<pybind11::gil_scoped_release>());
     m.def("reg_arrow_table_as_ph_dataset", &reg_arrow_table_as_ph_dataset, pybind11::call_guard<pybind11::gil_scoped_release>());

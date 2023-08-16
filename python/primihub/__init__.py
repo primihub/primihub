@@ -3,7 +3,7 @@
 
 VERSION = (0, 1, 0)
 
-__author__ = 'Primihub.Inc'
+__author__ = 'PrimiHub.Inc'
 __contact__ = "openmpc@primihub.com"
 __homepage__ = "https://www.primihub.com"
 __version__ = ".".join(map(str, VERSION))

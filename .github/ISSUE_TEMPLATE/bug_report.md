@@ -36,7 +36,7 @@ node2
 - OS: [e.g. macOS, Windows, CentOS, Ubuntu]
 - Arch: [e.g. x86_64, armd64, arm64]
 - Deployment: [e.g. docker, online, build from source]
-- Primihub version: e.g. 1.6.8
+- PrimiHub version: e.g. 1.6.8
 - Python version: e.g. 3.8.10
 
 **Additional context**

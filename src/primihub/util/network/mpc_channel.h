@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_UTIL_NETWORK_MPC_CHANNEL_H_
 #define SRC_PRIMIHUB_UTIL_NETWORK_MPC_CHANNEL_H_
 

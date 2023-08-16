@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_ECDH_PSI_H_
 #define SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_ECDH_PSI_H_
 #include <unordered_map>

@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 
 namespace primihub::task {
 
-// Primihub semantic layer.
+// PrimiHub semantic layer.
 // This class is responsible for parsing the task and generating Scheduler
 // object.
 class ProtocolSemanticParser {
