@@ -8,7 +8,7 @@ retcode TeePsiOperator::OnExecute(const std::vector<std::string>& input,
                                    std::vector<std::string>* result) {
 //
   auto ret{retcode::SUCCESS};
-  if (IsComputeRole()) {
+  if (RoleValidation::IsTeeCompute(this->PartyName()) ) {
     ret = ExecuteAsCompute();
   } else {
     if (input.empty()) {
@@ -201,14 +201,7 @@ retcode TeePsiOperator::GetIntersection(std::string_view result_buf,
 }
 
 bool TeePsiOperator::IsResultReceiver() {
-  if (IsClient(PartyName())) {
-    return true;
-  }
-  return false;
-}
-
-bool TeePsiOperator::IsComputeRole() {
-  if (IsTeeCompute(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     return true;
   }
   return false;

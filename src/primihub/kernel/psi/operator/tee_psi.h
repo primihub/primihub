@@ -57,7 +57,6 @@ class TeePsiOperator : public BasePsiOperator {
   retcode DoCompute(const std::string& code);
   retcode SendEncryptedResult();
   retcode GetResultReceiver(Node* receiver);
-  bool IsComputeRole();
 
  protected:
   std::string DataIdPrefix() {
