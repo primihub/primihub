@@ -1,16 +1,30 @@
-// Copyright [2023] <Primihub>
+/*
+ * Copyright (c) 2023 by PrimiHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "src/primihub/executor/py_executor.h"
 #include <glog/logging.h>
-
+#include <pybind11/stl.h>
+#include <Python.h>
 #include <iostream>
+#include <string>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/memory/memory.h"
-
 #include "src/primihub/protos/worker.pb.h"
-#include "base64.h"
-#include <pybind11/stl.h>
-#include "Python.h"
+#include "base64.h"                         // NOLINT
 #include "src/primihub/util/util.h"
 
 ABSL_FLAG(std::string, node_id, "node0", "unique node_id");

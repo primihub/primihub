@@ -1,7 +1,7 @@
-from primihub.client.client import PrimihubClient
+from primihub.client.client import PrimiHubClient
 
 # alias
-primihub_cli = PrimihubClient()
+primihub_cli = PrimiHubClient()
 
-# from primihub.client.ray_client import PrimihubClient
-# primihub_cli = PrimihubClient()
+# from primihub.client.ray_client import PrimiHubClient
+# primihub_cli = PrimiHubClient()

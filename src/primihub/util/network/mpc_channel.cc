@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 
 #include "src/primihub/util/network/mpc_channel.h"
 

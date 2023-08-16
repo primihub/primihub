@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ int main() {
 	// p->keyGen();
 	// read key parameters from files
 	p->keyRead();
-	
+
 	//	take some tests for encryption and decryption
-	
+
 	double encrypt_cost = 0.0, decrypt_cost = 0.0;
 	const int round = 100;
 
@@ -59,7 +59,7 @@ int main() {
 
 			if (0 != mr_compare(d, plain)) {
 				std::cout << "Error: result of encryption is error!" << std::endl;
-				// std::cout << "Plaintext is : " << curPlain 
+				// std::cout << "Plaintext is : " << curPlain
 				// 		<< ", Result of decryption is : " << d << std::endl;
 				flag = false;
 			}
@@ -75,14 +75,14 @@ int main() {
 	catch(const char* e) {
 		std::cout << e << std::endl;
 	}
-	
+
 	if (flag)
 	{
-		std::cout << "Number of test cases is " << round 
+		std::cout << "Number of test cases is " << round
 				<< ", Number of successful test cases is " << successCount << std:: endl;
 		std::cout << "All correct!" << std::endl;
 	}
-	
+
 
 	std::cout << "========================================================" << std::endl;
 

@@ -1,4 +1,4 @@
-// "Copyright [2021] <Primihub>"
+// "Copyright [2021] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_ALGORITHM_ABY3ML_H_
 #define SRC_PRIMIHUB_ALGORITHM_ABY3ML_H_
 

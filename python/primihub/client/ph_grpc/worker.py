@@ -1,5 +1,5 @@
 """
-Copyright 2022 Primihub
+Copyright 2022 PrimiHub
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -129,7 +129,7 @@ class WorkerClient:
 
                         if status != worker_pb2.TaskStatus.StatusCode.RUNNING:
                             party_status[party] = status_map[status]
-                
+
                 if is_fail or len(party_status) == PushTaskReply.party_count:
                     break
 

@@ -1,5 +1,5 @@
 """
-Copyright 2022 Primihub
+Copyright 2022 PrimiHub
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ class CLiTransformer(ast.NodeTransformer):
         return node
 
     def visit_ImportFrom(self, node):
-        """for ImportFrom 
+        """for ImportFrom
         - remove visitor
 
         Keyword arguments:
@@ -100,13 +100,13 @@ class CLiTransformer(ast.NodeTransformer):
                 print(
                     "removing `from primihub.client.client import primihub_cli as cli`")
                 node = None
-            if "PrimihubClient" == name:
-                print("removing `from primihub.client import PrimihubClient`")
+            if "PrimiHubClient" == name:
+                print("removing `from primihub.client import PrimiHubClient`")
                 node = None
             return node
 
     def visit_Import(self, node):
-        """for Import 
+        """for Import
         - remove visitor
 
         Keyword arguments:
