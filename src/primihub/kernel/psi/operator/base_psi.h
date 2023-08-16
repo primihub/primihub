@@ -1,4 +1,18 @@
-// "Copyright [2023] <PrimiHub>"
+/*
+ * Copyright (c) 2023 by PrimiHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #ifndef SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_
 #define SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_
 #include <map>
@@ -56,15 +70,6 @@ class BasePsiOperator {
   bool IgnoreResult(const std::string& party_name);
   retcode BroadcastResult(const std::vector<std::string>& result);
   retcode ReceiveResult(std::vector<std::string>* result);
-  retcode Send(const Node& peer_node, const std::string& send_buff);
-  retcode Send(const std::string& key,
-               const Node& peer_node,
-               const std::string& send_buff);
-  retcode Send(const std::string& key,
-               const Node& peer_node,
-               const std::string_view send_buff_sv);
-  retcode Recv(std::string* recv_buff);
-  retcode Recv(const std::string& key, std::string* recv_buff);
 
   void set_stop() {stop_.store(true);}
 
@@ -77,9 +82,6 @@ class BasePsiOperator {
   PsiResultType GetPsiResultType() {return options_.psi_result_type;}
   Node PeerNode();
   retcode GetNodeByName(const std::string& party_name, Node* node_info);
-  bool IsClient(const std::string& party_name);
-  bool IsServer(const std::string& party_name);
-  bool IsTeeCompute(const std::string& party_name);
 
  protected:
   std::atomic<bool> stop_{false};

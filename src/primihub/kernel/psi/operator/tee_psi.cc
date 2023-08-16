@@ -8,7 +8,7 @@ retcode TeePsiOperator::OnExecute(const std::vector<std::string>& input,
                                    std::vector<std::string>* result) {
 //
   auto ret{retcode::SUCCESS};
-  if (IsComputeRole()) {
+  if (RoleValidation::IsTeeCompute(this->PartyName()) ) {
     ret = ExecuteAsCompute();
   } else {
     if (input.empty()) {
@@ -70,7 +70,7 @@ retcode TeePsiOperator::ExecuteAsDataProvider(
   std::string node_id = self_node.id();
   std::string id = GenerateDataId(DataIdPrefix(), node_id);
   std::string_view send_buf{cipher_data.data(), cipher_data.size()};
-  ret = this->Send(id, compute_node, send_buf);
+  ret = this->GetLinkContext()->Send(id, compute_node, send_buf);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "send EncryptData to "
                << compute_node.to_string() << " failed";
@@ -80,7 +80,7 @@ retcode TeePsiOperator::ExecuteAsDataProvider(
   }
   auto result_id = GenerateResultId();
   std::string cipher_result_buff;
-  ret = this->Recv(result_id, &cipher_result_buff);
+  ret = this->GetLinkContext()->Recv(result_id, &cipher_result_buff);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "recv result failed";
     return retcode::FAIL;
@@ -201,14 +201,7 @@ retcode TeePsiOperator::GetIntersection(std::string_view result_buf,
 }
 
 bool TeePsiOperator::IsResultReceiver() {
-  if (IsClient(PartyName())) {
-    return true;
-  }
-  return false;
-}
-
-bool TeePsiOperator::IsComputeRole() {
-  if (IsTeeCompute(PartyName())) {
+  if (RoleValidation::IsClient(PartyName())) {
     return true;
   }
   return false;
@@ -246,7 +239,7 @@ retcode TeePsiOperator::ReceiveDataFromDataProvider() {
     std::string recv_buff;
     std::string node_id = node.id();
     auto id = this->GenerateDataId(DataIdPrefix(), node_id);
-    auto ret = this->Recv(id, &recv_buff);
+    auto ret = this->GetLinkContext()->Recv(id, &recv_buff);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "recv data from peer: [" << node_id
                 << "] failed";
@@ -319,7 +312,8 @@ retcode TeePsiOperator::SendEncryptedResult() {
 
   auto result_id = this->GenerateResultId();    // for receiver to receive
   std::string_view cipher_data_sv(cipher_buf.get(), cipher_size);
-  ret = this->Send(result_id, result_receiver, cipher_data_sv);
+  ret = this->GetLinkContext()->Send(result_id,
+                                     result_receiver, cipher_data_sv);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "send data to receiver: [" << result_receiver.to_string()
                << "] failed";
