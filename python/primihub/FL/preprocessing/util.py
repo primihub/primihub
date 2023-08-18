@@ -6,6 +6,18 @@ from sklearn.utils._encode import MissingValues, _nandict, _NaNCounter
 from contextlib import suppress
 
 
+class RealNotInt(numbers.Real):
+    """A type that represents reals that are not instances of int.
+
+    Behaves like float, but also works with values extracted from numpy arrays.
+    isintance(1, RealNotInt) -> False
+    isinstance(1.0, RealNotInt) -> True
+    """
+
+
+RealNotInt.register(float)
+
+
 def is_constant_feature(var, mean, n_samples):
     """Detect if a feature is indistinguishable from a constant feature.
 

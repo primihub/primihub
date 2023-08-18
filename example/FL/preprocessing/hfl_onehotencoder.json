@@ -1,6 +1,6 @@
 {
     "party_info": {
-        "task_manager": "127.0.0.1:50050"
+        "task_manager": "127.0.0.1:51050"
     },
     "component_params": {
         "roles": {
@@ -33,7 +33,7 @@
                     "drop": "if_binary",
                     "sparse_output": false,
                     "handle_unknown": "error",
-                    "min_frequency": 30,
+                    "min_frequency": null,
                     "max_categories": null,
                     "feature_name_combiner": "concat"
                 }
