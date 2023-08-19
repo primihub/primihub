@@ -1,0 +1,69 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Alice",
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "FL_Preprocess",
+            "process": "fit_transform",
+            "FL_type": "H",
+            "task_name": "HFL_simpleimputer_numeric_fit_transform",
+            "task": "classification",
+            "selected_column": [
+                "MinTemp",
+                "MaxTemp",
+                "Rainfall",
+                "Evaporation",
+                "Sunshine",
+                "WindGustSpeed",
+                "WindSpeed9am",
+                "WindSpeed3pm",
+                "Humidity9am",
+                "Humidity3pm",
+                "Pressure9am",
+                "Pressure3pm",
+                "Cloud9am",
+                "Cloud3pm",
+                "Temp9am",
+                "Temp3pm",
+                "RISK_MM"
+            ],
+            "id": "id",
+            "label": "y",
+            "preprocess_column": null,
+            "preprocess_module": {
+                "SimpleImputer_numeric": {
+                    "column": null,
+                    "missing_values": "np.nan",
+                    "strategy": "mean",
+                    "fill_value": null,
+                    "copy": true,
+                    "add_indicator": false,
+                    "keep_empty_features": false
+                }
+            }
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_hfl_train_client1",
+                "preprocess_dataset_path": "data/result/Bob_train_dataset.csv",
+                "preprocess_module_path": "data/result/Bob_preprocess_module.pkl"
+            },
+            "Charlie": {
+                "data_set": "preprocess_hfl_train_client2",
+                "preprocess_dataset_path": "data/result/Charlie_train_dataset.csv",
+                "preprocess_module_path": "data/result/Charlie_preprocess_module.pkl"
+            },
+            "Alice": {
+                "data_set": "fl_fake_data"
+            }
+        }
+    }
+}
