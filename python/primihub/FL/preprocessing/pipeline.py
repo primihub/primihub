@@ -8,6 +8,7 @@ from primihub.FL.preprocessing import *
 import pickle
 import numpy as np
 import pandas as pd
+from itertools import chain
 
 
 class Pipeline(BaseModel):
@@ -109,23 +110,31 @@ class Pipeline(BaseModel):
                     raise RuntimeError(error_msg)
 
             column = params.get('column')
-            if column is None and preprocess_column is not None:
+            if column is None:
                 column = preprocess_column
-            if column is None and role != 'server':
-                if 'SimpleImputer' in module_name:
-                    nan_column = preprocess_column[data[preprocess_column].isna().any()]
-                    if 'string' in module_name:
-                        column = data[nan_column].select_dtypes(exclude=num_type).columns
-                    elif 'numeric' in module_name:
-                        column = data[nan_column].select_dtypes(include=num_type).columns
-                    else:
-                        column = nan_column
-                elif 'Encoder' in module_name:
-                    column = data[preprocess_column].select_dtypes(exclude=num_type).columns
-                elif 'Scaler' in module_name:
-                    column = data[preprocess_column].select_dtypes(include=num_type).columns
-                else:
-                    column = preprocess_column
+
+                if role != 'server':
+                    if 'SimpleImputer' in module_name:
+                        nan_column = column[data[column].isna().any()]
+                        if 'string' in module_name:
+                            column = data[nan_column].select_dtypes(exclude=num_type).columns
+                        elif 'numeric' in module_name:
+                            column = data[nan_column].select_dtypes(include=num_type).columns
+                        else:
+                            column = nan_column
+                    elif module_name in ['OrdinalEncoder', 'OneHotEncoder']:
+                        column = data[column].select_dtypes(exclude=num_type).columns
+                    elif 'Scaler' in module_name:
+                        column = data[column].select_dtypes(include=num_type).columns
+
+                if role == 'client':
+                    channel.send('column', column)
+                    column = channel.recv('column')
+                if role == 'server':
+                    client_column = channel.recv_all('column')
+                    column = list(set(chain.from_iterable(client_column)))
+                    channel.send_all('column', column)
+
             if column is not None:
                 if isinstance(column, pd.Index):
                     column = column.tolist()
