@@ -79,11 +79,13 @@ auto KkrtPsiOperator::BuildChannelInterface() ->
   }
   auto& peer_node = it->second;
   auto link_ctx = options_.link_ctx_ref;
-  auto base_channel = link_ctx->getChannel(peer_node);
+  auto send_channel = link_ctx->getChannel(peer_node);
+  // get proxy channel
+  auto recv_channel = link_ctx->getChannel(options_.proxy_node);
   // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
   // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
   auto msg_interface = std::make_unique<TaskMessagePassInterface>(
-      this->PartyName(), peer_party_name, link_ctx, base_channel);
+      this->PartyName(), peer_party_name, link_ctx, send_channel, recv_channel);
   return msg_interface;
 }
 

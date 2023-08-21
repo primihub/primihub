@@ -88,7 +88,9 @@ retcode BasePsiOperator::BroadcastResult(
 
 retcode BasePsiOperator::ReceiveResult(std::vector<std::string>* result) {
   std::string recv_data_str;
-  auto ret = this->GetLinkContext()->Recv(this->key_, &recv_data_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_,
+                                          this->ProxyServerNode(),
+                                          &recv_data_str);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "ReceiveResult failed for party name: "
                << options_.self_party;
@@ -155,6 +157,10 @@ Node BasePsiOperator::PeerNode() {
     return Node();
   }
   return peer_node;
+}
+
+Node& BasePsiOperator::ProxyServerNode() {
+  return options_.proxy_node;
 }
 
 retcode BasePsiOperator::GetNodeByName(const std::string& party_name,

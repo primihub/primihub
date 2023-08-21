@@ -19,7 +19,6 @@ retcode EcdhPsiOperator::OnExecute(const std::vector<std::string>& input,
     LOG(ERROR) << "no data is set for ecdh psi";
     return retcode::FAIL;
   }
-  this->peer_node_ = PeerNode();
   if (RoleValidation::IsClient(PartyName())) {
     return ExecuteAsClient(input, result);
   } else if (RoleValidation::IsServer(this->PartyName())) {
@@ -183,7 +182,9 @@ retcode EcdhPsiOperator::SendPSIRequestAndWaitResponse(
 
   VLOG(5) << "begin to recv psi response from server";
   std::string recv_data_str;
-  auto ret = this->GetLinkContext()->Recv(this->key_, &recv_data_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_,
+                                          this->ProxyServerNode(),
+                                          &recv_data_str);
   if (ret != retcode::SUCCESS || recv_data_str.empty()) {
     LOG(ERROR) << "recv data is empty";
     return retcode::FAIL;
@@ -277,7 +278,9 @@ retcode EcdhPsiOperator::ExecuteAsServer(
 retcode EcdhPsiOperator::InitRequest(psi_proto::Request* psi_request) {
   CHECK_TASK_STOPPED(retcode::FAIL);
   std::string request_str;
-  auto ret = this->GetLinkContext()->Recv(this->key_, &request_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_,
+                                          this->ProxyServerNode(),
+                                          &request_str);
   CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive request from client failed");
   psi_proto::Request recv_psi_req;
   recv_psi_req.ParseFromString(request_str);
@@ -325,7 +328,9 @@ retcode EcdhPsiOperator::RecvInitParam(size_t* client_dataset_size,
   CHECK_TASK_STOPPED(retcode::FAIL);
   VLOG(5) << "begin to recvInitParam ";
   std::string init_param_str;
-  auto ret = this->GetLinkContext()->Recv(this->key_, &init_param_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_,
+                                          this->ProxyServerNode(),
+                                          &init_param_str);
   CHECK_RETCODE_WITH_ERROR_MSG(ret, "receive init param from client failed");
   auto& client_dataset_size_ = *client_dataset_size;
   auto& reveal_flag = *reveal_intersection;

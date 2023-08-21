@@ -30,11 +30,14 @@ struct Options {
   std::string self_party;
   PsiResultType psi_result_type{PsiResultType::INTERSECTION};
   std::string code;
+  Node proxy_node;      // location to fecth recv data
 };
 
 class BasePsiOperator {
  public:
-  explicit BasePsiOperator(const Options& options) : options_(options) {}
+  explicit BasePsiOperator(const Options& options) : options_(options) {
+    peer_node_ = PeerNode();
+  }
   virtual ~BasePsiOperator() = default;
   /**
    * PSI protocol
@@ -81,12 +84,14 @@ class BasePsiOperator {
   LinkContext* GetLinkContext() {return options_.link_ctx_ref;}
   PsiResultType GetPsiResultType() {return options_.psi_result_type;}
   Node PeerNode();
+  Node& ProxyServerNode();
   retcode GetNodeByName(const std::string& party_name, Node* node_info);
 
  protected:
   std::atomic<bool> stop_{false};
   Options options_;
   std::string key_{"default"};
+  Node peer_node_;
 };
 }  // namespace primihub::psi
 #endif  // SRC_PRIMIHUB_KERNEL_PSI_OPERATOR_BASE_PSI_H_

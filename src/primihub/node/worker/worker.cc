@@ -14,21 +14,18 @@
  limitations under the License.
  */
 
-
 #include "src/primihub/node/worker/worker.h"
+#include <memory>
+
 #include "src/primihub/task/semantic/factory.h"
 #include "src/primihub/task/semantic/task.h"
+#include "base64.h"
 
-using primihub::rpc::EndPoint;
-using primihub::rpc::LinkType;
-using primihub::rpc::ParamValue;
-using primihub::rpc::TaskType;
-using primihub::rpc::VirtualMachine;
-using primihub::task::TaskFactory;
-using primihub::rpc::PsiTag;
+using TaskFactory = primihub::task::TaskFactory;
+using Process = Poco::Process;
+using ProcessHandle = Poco::ProcessHandle;
 
 namespace primihub {
-
 std::string TaskStatusCodeToString(rpc::TaskStatus::StatusCode code) {
   switch (code) {
   case rpc::TaskStatus::RUNNING:
@@ -56,19 +53,32 @@ retcode Worker::waitForTaskReady() {
   return retcode::SUCCESS;
 }
 
-retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
-  auto type = pushTaskRequest->task().type();
+retcode Worker::execute(const PushTaskRequest *task_request) {
+  auto ret{retcode::SUCCESS};
+  switch (task_run_mode_) {
+  case TaskRunMode::THREAD:
+    ret = ExecuteTaskByThread(task_request);
+    break;
+  case TaskRunMode::PROCESS:
+    ret = ExecuteTaskByProcess(task_request);
+    break;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode Worker::ExecuteTaskByThread(const PushTaskRequest* task_request) {
+  auto type = task_request->task().type();
   VLOG(2) << "Worker::execute task type: " << type;
-  auto dataset_service = nodelet->getDataService();
+  auto& dataset_service = nodelet->getDataService();
 #ifdef SGX
   auto& ra_service = nodelet->GetRaService();
   auto& executor = nodelet->GetTeeExecutor();
   auto ra_service_ptr = reinterpret_cast<void*>(ra_service.get());
   auto tee_executor_ptr = reinterpret_cast<void*>(executor.get());
   task_ptr = TaskFactory::Create(this->node_id,
-      *pushTaskRequest, dataset_service, ra_service_ptr, tee_executor_ptr);
+      *task_request, dataset_service, ra_service_ptr, tee_executor_ptr);
 #else
-  task_ptr = TaskFactory::Create(this->node_id, *pushTaskRequest,
+  task_ptr = TaskFactory::Create(this->node_id, *task_request,
                                  dataset_service);
 #endif
   if (task_ptr == nullptr) {
@@ -83,6 +93,85 @@ retcode Worker::execute(const PushTaskRequest *pushTaskRequest) {
     LOG(ERROR) << "Error occurs during execute task.";
     return retcode::FAIL;
   }
+  return retcode::SUCCESS;
+}
+
+retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
+  this->task_ptr = std::make_shared<task::TaskBase>();
+  auto& server_config = ServerConfig::getInstance();
+  PushTaskRequest send_request;
+  send_request.CopyFrom(*task_request);
+  // change datasetid to datset access info
+  auto& dataset_service = nodelet->getDataService();
+  auto party_datasets = send_request.mutable_task()->mutable_party_datasets();
+  auto param_map_ptr =
+      send_request.mutable_task()->mutable_params()->mutable_param_map();
+  for (auto& [party_name, datasets] : *party_datasets) {
+    auto datset_ptr = datasets.mutable_data();
+    for (auto& [dataset_name, dataset_id] : *(datset_ptr)) {
+      auto driver = dataset_service->getDriver(dataset_id);
+      if (driver == nullptr) {
+        LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+        continue;
+      }
+      auto& access_info = driver->dataSetAccessInfo();
+      if (access_info == nullptr) {
+        LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+        continue;
+      }
+      rpc::ParamValue pv;
+      pv.set_is_array(false);
+      pv.set_value_string(dataset_id);
+      (*param_map_ptr)[dataset_name] = std::move(pv);
+      dataset_id = access_info->toString();
+    }
+    datasets.set_dataset_detail(true);
+  }
+  std::string str;
+  google::protobuf::TextFormat::PrintToString(send_request, &str);
+  LOG(INFO) << "Task Process::execute: " << str;
+
+
+  std::string task_config_str;
+  bool status = send_request.SerializeToString(&task_config_str);
+  if (!status) {
+    LOG(ERROR) << "serialize task config failed";
+    return retcode::FAIL;
+  }
+  std::string request_base64_str = base64_encode(task_config_str);
+
+  // std::future<std::string> data;
+  std::string current_process_dir = getCurrentProcessDir();
+  VLOG(5) << "current_process_dir: " << current_process_dir;
+  std::string execute_app = current_process_dir + "/task_main";
+  std::string execute_cmd;
+  std::vector<std::string> args;
+  args.push_back("--node_id=" + this->node_id);
+  args.push_back("--config_file=" + server_config.getConfigFile());
+  args.push_back("--request=" + request_base64_str);
+  args.push_back("--request_id=" +
+                 task_request->task().task_info().request_id());
+  // execute_cmd.append(execute_app).append(" ")
+  //     .append("--node_id=").append(node_id_).append(" ")
+  //     .append("--config_file=")
+  //     .append(server_config.getConfigFile()).append(" ")
+  //     .append("--request=").append(request_base64_str);
+  // using POCO process
+  auto handle_ = Process::launch(execute_app, args);
+  task_ready_promise_.set_value(true);
+  LOG(INFO) << "Worker start execute task ";
+  process_handler_ = std::make_unique<ProcessHandle>(handle_);
+  try {
+    int ret = handle_.wait();
+    if (ret != 0) {
+      LOG(ERROR) << "ERROR: " << ret;
+      return retcode::FAIL;
+    }
+  } catch (std::exception& e) {
+    LOG(ERROR) << e.what();
+    return retcode::FAIL;
+  }
+  // POCO process end
   return retcode::SUCCESS;
 }
 

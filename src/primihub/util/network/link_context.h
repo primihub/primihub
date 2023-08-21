@@ -85,6 +85,10 @@ class LinkContext {
                const Node& dest_node, char* send_buf, size_t send_size);
   retcode Recv(const std::string& key, std::string* recv_buf);
   retcode Recv(const std::string& key, char* recv_buf, size_t recv_size);
+  retcode Recv(const std::string& key,
+               const Node& dest_node, std::string* recv_buf);
+  retcode Recv(const std::string& key,
+               const Node& dest_node, char* recv_buf, size_t recv_size);
   /**
    * sender to process send recv
   */

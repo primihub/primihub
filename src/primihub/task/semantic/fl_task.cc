@@ -58,6 +58,7 @@ int FLTask::execute() {
         }
         dataset_id = access_info->toString();
       }
+      it->second.set_dataset_detail(true);
     }
     std::string str;
     google::protobuf::TextFormat::PrintToString(send_request, &str);

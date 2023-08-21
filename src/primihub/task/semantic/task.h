@@ -36,11 +36,12 @@ using TaskParam = primihub::rpc::Task;
 class TaskBase {
  public:
   using task_context_t = TaskContext;
+  TaskBase() = default;
   TaskBase(const TaskParam* task_param,
           std::shared_ptr<DatasetService> dataset_service);
 
   virtual ~TaskBase() = default;
-  virtual int execute() = 0;
+  virtual int execute() {return 0;};
   virtual void kill_task() {
     LOG(WARNING) << "task receives kill task request and stop stauts";
     stop_.store(true);
@@ -120,6 +121,7 @@ class TaskBase {
    std::string submit_client_id_;
    std::string request_id_;
    std::string party_name_;
+   bool is_dataset_detail_{false};
 };
 
 } // namespace primihub::task

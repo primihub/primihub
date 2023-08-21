@@ -28,7 +28,6 @@ cc_library(
         ":mpc_task",
         ":pir_task",
         ":psi_task",
-        ":tee_task",
     ],
 )
 cc_library(

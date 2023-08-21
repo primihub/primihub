@@ -76,6 +76,7 @@ retcode KeywordPirOperator::ExecuteAsClient(const PirDataType& input,
   // receive package count
   uint32_t package_count = 0;
   ret = this->GetLinkContext()->Recv("package_count",
+                                     this->ProxyNode(),
                                      reinterpret_cast<char*>(&package_count),
                                      sizeof(package_count));
   CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
@@ -84,7 +85,8 @@ retcode KeywordPirOperator::ExecuteAsClient(const PirDataType& input,
   std::vector<apsi::ResultPart> result_packages;
   for (size_t i = 0; i < package_count; i++) {
     std::string recv_data;
-    ret = this->GetLinkContext()->Recv(this->key_, &recv_data);
+    ret = this->GetLinkContext()->Recv(this->key_,
+                                       this->ProxyNode(), &recv_data);
     CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
     VLOG(5) << "client received data length: " << recv_data.size();
     std::istringstream stream_in(recv_data);
@@ -266,12 +268,13 @@ retcode KeywordPirOperator::RequestPSIParams() {
   std::string response_str;
   auto link_ctx = this->GetLinkContext();
   CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
-  auto ret = link_ctx->SendRecv(this->key_, PeerNode(), request, &response_str);
+  auto ret = link_ctx->Send(this->key_, PeerNode(), request);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "send requestPSIParams to peer: [" << PeerNode().to_string()
         << "] failed";
     return ret;
   }
+  ret = link_ctx->Recv(this->key_, ProxyNode(), &response_str);
   if (VLOG_IS_ON(7)) {
     std::string tmp_str;
     for (const auto& chr : response_str) {
@@ -316,7 +319,7 @@ retcode KeywordPirOperator::RequestOprf(const std::vector<Item>& items,
         << "] failed";
     return ret;
   }
-  ret = link_ctx->Recv(this->key_, &oprf_response);
+  ret = link_ctx->Recv(this->key_, this->ProxyNode(), &oprf_response);
   if (ret != retcode::SUCCESS || oprf_response.empty()) {
     LOG(ERROR) << "receive oprf_response from peer: ["
                << PeerNode().to_string() << "] failed";
@@ -368,7 +371,17 @@ retcode KeywordPirOperator::ProcessPSIParams() {
   std::string request_type_str;
   auto link_ctx = this->GetLinkContext();
   CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
-  return link_ctx->SendRecv(this->key_, psi_params_str_, &request_type_str);
+  auto ret = link_ctx->Recv(this->key_, ProxyNode(), &request_type_str);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "recv reqeust from : " << PeerNode().to_string() << "failed";
+    return retcode::FAIL;
+  }
+  ret = link_ctx->Send(this->key_, PeerNode(), psi_params_str_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "send PSIParams to " << PeerNode().to_string() << "failed";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 retcode KeywordPirOperator::ProcessOprf() {
@@ -376,7 +389,7 @@ retcode KeywordPirOperator::ProcessOprf() {
   VLOG(5) << "begin to process oprf";
   std::string oprf_request_str;
   auto link_ctx = this->GetLinkContext();
-  auto ret = link_ctx->Recv(this->key_, &oprf_request_str);
+  auto ret = link_ctx->Recv(this->key_, this->ProxyNode(), &oprf_request_str);
   if (ret != retcode::SUCCESS || oprf_request_str.empty()) {
     LOG(ERROR) << "received oprf request from client failed ";
     return ret;
@@ -402,7 +415,8 @@ retcode KeywordPirOperator::ProcessQuery(std::shared_ptr<SenderDB> sender_db) {
   auto query_request = std::make_unique<SenderOperationQuery>();
 
   std::string response_str;
-  auto ret = this->GetLinkContext()->Recv(this->key_, &response_str);
+  auto ret = this->GetLinkContext()->Recv(this->key_,
+                                          this->ProxyNode(), &response_str);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "received response failed";
     return retcode::FAIL;

@@ -106,6 +106,35 @@ retcode LinkContext::Recv(const std::string& key,
   return retcode::SUCCESS;
 }
 
+retcode LinkContext::Recv(const std::string& key,
+               const Node& dest_node, std::string* recv_buf) {
+  auto ch = getChannel(dest_node);
+  *recv_buf = ch->forwardRecv(key);
+  if (recv_buf->empty()) {
+    LOG(ERROR) << "recv data is empty";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode LinkContext::Recv(const std::string& key,
+               const Node& dest_node, char* recv_buf, size_t recv_size) {
+  std::string tmp_recv_buf;
+  auto ret = this->Recv(key, dest_node, &tmp_recv_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "recv data from proxy: "
+               << dest_node.to_string() << " failed";
+    return retcode::FAIL;
+  }
+  if (tmp_recv_buf.size() != recv_size) {
+    LOG(ERROR) << "recv data length doest not match, expected: " << recv_size
+               << " but get: " << tmp_recv_buf.size();
+    return retcode::FAIL;
+  }
+  memcpy(recv_buf, tmp_recv_buf.data(), recv_size);
+  return retcode::SUCCESS;
+}
+
 retcode LinkContext::SendRecv(const std::string& key,
                               const Node& dest_node,
                               std::string_view send_buf,

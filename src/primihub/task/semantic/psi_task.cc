@@ -26,8 +26,7 @@
 #include "src/primihub/util/endian_util.h"
 #include "src/primihub/common/value_check_util.h"
 #include "src/primihub/kernel/psi/operator/factory.h"
-
-using primihub::network::TaskMessagePassInterface;
+#include "src/primihub/node/server_config.h"
 
 using arrow::Table;
 using arrow::StringArray;
@@ -64,7 +63,8 @@ retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
     pbNode2Node(pb_node, &node_info);
     party_info[_party_name] = std::move(node_info);
   }
-
+  auto& server_cfg = primihub::ServerConfig::getInstance();
+  options->proxy_node = server_cfg.ProxyServerCfg();
   const auto& param_map = task.params().param_map();
   // TODO(XXX) rename to PsiResultType {intersection or DIFFERENCE}
   auto it = param_map.find("psiType");   // psi reuslt
@@ -105,7 +105,11 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
       break;
     }
     dataset_id_ = it->second;
+
   } while (0);
+  if (it->second.dataset_detail()) {
+    is_dataset_detail_ = true;
+  }
   // broadcast result flag
   auto iter = param_map.find("sync_result_to_server");
   if (iter != param_map.end()) {
@@ -157,7 +161,8 @@ retcode PsiTask::LoadDataset(void) {
   if (dataset_id_.empty() || data_index_.empty()) {
     return retcode::SUCCESS;
   }
-  auto driver = this->getDatasetService()->getDriver(this->dataset_id_);
+  auto driver = this->getDatasetService()->getDriver(this->dataset_id_,
+                                                     is_dataset_detail_);
   if (driver == nullptr) {
     LOG(ERROR) << "get driver for data set: " << this->dataset_id_ << " failed";
     return retcode::FAIL;

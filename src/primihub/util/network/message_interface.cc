@@ -35,7 +35,7 @@ void TaskMessagePassInterface::_channelSend(
     }
 
     std::string_view send_str(reinterpret_cast<const char *>(ptr), size);
-    auto ret = channel_->send(send_key, send_str);
+    auto ret = send_channel_->send(send_key, send_str);
     if (ret != retcode::SUCCESS) {
       std::stringstream ss;
       ss << "Send message to " << peer_node_id_ << " failed, size " << size
@@ -109,8 +109,8 @@ void TaskMessagePassInterface::_channelRecv(
       break;
     }
 
-    std::string recv_str;
-    queue.wait_and_pop(recv_str);
+    std::string recv_str = recv_channel_->forwardRecv(recv_key);
+    // queue.wait_and_pop(recv_str);
 
     if (!recv_str.size()) {
       LOG(ERROR) << "Recv queue has shutdown, recv failed, already recv "
