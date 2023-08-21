@@ -714,7 +714,7 @@ retcode VMNodeImpl::WaitUntilWorkerReady(const std::string& worker_id,
     }
     auto time_elapse_ms = timer.timeElapse();
     if (time_elapse_ms > timeout_ms) {
-      LOG(ERROR) << "wait for worker ready timeout";
+      LOG(ERROR) << "wait for worker ready timeout(ms): " << timeout_ms;
       return retcode::FAIL;
     }
   } while (true);

@@ -32,6 +32,7 @@ private:
 
   std::string res_name_;
   std::string data_file_path_;
+  bool is_dataset_detail_{false};
 
   // Reveal result to which party.
   std::vector<uint32_t> parties_;

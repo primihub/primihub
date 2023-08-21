@@ -258,8 +258,23 @@ int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {
     LOG(ERROR) << "no dataset found for dataset name Data_File";
     return -1;
   }
-  // File path.
-  ds_name_ = iter->second;
+  // dataset id.
+  if (it->second.dataset_detail()) {
+    this->is_dataset_detail_ = true;
+    auto& param_map = task.params().param_map();
+    auto p_iter = param_map.find("Data_File");
+    if (p_iter != param_map.end()) {
+      ds_name_ = p_iter->second.value_string();
+    } else {
+      LOG(ERROR) << "dataset id is not found";
+      return -1;
+    }
+    dataset_id_ = iter->second;
+  } else {
+    ds_name_ = iter->second;
+    dataset_id_ = iter->second;
+  }
+
 
   auto param_map = task.params().param_map();
   std::string task_detail = param_map["TaskDetail"].value_string();
@@ -372,14 +387,22 @@ int MPCStatisticsExecutor::loadDataset() {
     return 0;
   }
 
-  auto driver = dataset_service_->getDriver(ds_name_);
+  auto driver = dataset_service_->getDriver(dataset_id_,
+                                            this->is_dataset_detail_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get datset driver failed";
+    return -1;
+  }
   auto cursor = std::move(driver->read());
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get data cursor failed";
+    return -1;
+  }
   input_value_ = cursor->read();
   if (input_value_.get() == nullptr) {
     LOG(ERROR) << "Load data from dataset failed.";
     return -1;
   }
-
   return 0;
 }
 

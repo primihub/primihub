@@ -43,6 +43,9 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     return -1;
   }
   // File path.
+  if (it->second.dataset_detail()) {
+    this->is_dataset_detail_ = true;
+  }
   data_file_path_ = iter->second;
   LOG(INFO) << "Data file path is " << data_file_path_ << ".";
   auto param_map = task.params().param_map();
@@ -303,10 +306,23 @@ template <Decimal Dbit> int ArithmeticExecutor<Dbit>::saveModel(void) {
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
-  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto driver = this->dataset_service_->getDriver(dataset_id,
+                                                  this->is_dataset_detail_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "load dataset driver failed";
+    return -1;
+  }
   auto cursor = driver->read();
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get data cursor failed";
+    return -1;
+  }
   std::shared_ptr<Dataset> ds = cursor->read();
-  std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
+  if (ds == nullptr) {
+    LOG(ERROR) << "load dataset failed";
+    return -1;
+  }
+  auto& table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();

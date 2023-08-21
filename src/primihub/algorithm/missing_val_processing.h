@@ -111,6 +111,8 @@ class MissingProcess : public AlgorithmBase {
   std::vector<std::string> local_col_names;
 
   std::string data_file_path_{""};
+  std::string dataset_id_;
+  bool is_dataset_detail_{false};
   std::string replace_type_{""};
   std::string conn_info_{""};
   std::shared_ptr<arrow::Table> table{nullptr};

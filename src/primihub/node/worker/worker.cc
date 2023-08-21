@@ -63,7 +63,7 @@ retcode Worker::execute(const PushTaskRequest *task_request) {
     ret = ExecuteTaskByProcess(task_request);
     break;
   }
-  return retcode::SUCCESS;
+  return ret;
 }
 
 retcode Worker::ExecuteTaskByThread(const PushTaskRequest* task_request) {
@@ -171,6 +171,7 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
     LOG(ERROR) << e.what();
     return retcode::FAIL;
   }
+  process_handler_.reset();
   // POCO process end
   return retcode::SUCCESS;
 }
@@ -179,6 +180,9 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
 void Worker::kill_task() {
   if (task_ptr) {
     task_ptr->kill_task();
+  }
+  if (process_handler_ != nullptr) {
+    Poco::Process::kill(*process_handler_);
   }
 }
 

@@ -85,7 +85,21 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
       LOG(ERROR) << "no dataset found for dataset name Data_File";
       return -1;
     }
-    train_input_filepath_ = iter->second;
+    if (it->second.dataset_detail()) {
+      this->is_dataset_detail_ = true;
+      auto& param_map = task.params().param_map();
+      auto p_it = param_map.find("Data_File");
+      if (p_it != param_map.end()) {
+        this->train_input_filepath_ = p_it->second.value_string();
+        this->train_dataset_id_ = iter->second;
+      } else {
+        LOG(ERROR) << "no dataset id found";
+        return -1;
+      }
+    } else {
+      this->train_input_filepath_ = iter->second;
+    }
+
     auto param_map = task.params().param_map();
     // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
@@ -105,10 +119,23 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
 }
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
-  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto driver = this->dataset_service_->getDriver(dataset_id,
+                                                  this->is_dataset_detail_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get datset driver failed";
+    return -1;
+  }
   auto cursor = driver->read();
-  std::shared_ptr<Dataset> ds = cursor->read();
-  std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get data cursor failed";
+    return -1;
+  }
+  auto ds = cursor->read();
+  if (ds == nullptr) {
+    LOG(ERROR) << "read dataset data failed";
+    return -1;
+  }
+  auto& table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();
@@ -212,7 +239,7 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
 }
 
 int LogisticRegressionExecutor::loadDataset() {
-  int ret = _LoadDatasetFromCSV(train_input_filepath_);
+  int ret = _LoadDatasetFromCSV(this->train_dataset_id_);
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset failed.";
