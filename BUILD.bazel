@@ -73,6 +73,13 @@ cc_binary(
     "//src/primihub/executor:py_executor",
   ]
 )
+cc_binary(
+  name = "task_main",
+  deps = [
+    ":python3_lib",
+    "//src/primihub/task_engine:task_engine_impl",
+  ]
+)
 
 cc_binary(
   name = "node",
