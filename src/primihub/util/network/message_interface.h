@@ -5,6 +5,7 @@
 #include <queue>
 #include <memory>
 #include <atomic>
+#include <utility>
 
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Network/SocketAdapter.h"
@@ -12,8 +13,8 @@
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
 
-using osuCrypto::io_completion_handle;
-using osuCrypto::SocketInterface;
+using io_completion_handle = osuCrypto::io_completion_handle;
+using SocketInterface = osuCrypto::SocketInterface;
 using primihub::ThreadSafeQueue;
 
 namespace primihub::network {

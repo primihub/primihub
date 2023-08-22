@@ -38,6 +38,5 @@ class LinkFactory {
     return nullptr;
   }
 };
-
-}
+}  // namespace primihub::network
 #endif  // SRC_PRIMIHUB_UTIL_NETWORK_LINK_FACTORY_H_

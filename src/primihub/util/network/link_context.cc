@@ -1,26 +1,43 @@
-//
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 #include "src/primihub/util/network/link_context.h"
+#include <utility>
+
 namespace primihub::network {
 void LinkContext::Clean() {
   stop_.store(true);
   LOG(WARNING) << "stop all in data queue";
   {
     std::lock_guard<std::mutex> lck(in_queue_mtx);
-    for(auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
+    for (auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
         it->second.shutdown();
     }
   }
   LOG(WARNING) << "stop all out data queue";
   {
     std::lock_guard<std::mutex> lck(out_queue_mtx);
-    for(auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
+    for (auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
       it->second.shutdown();
     }
   }
   LOG(WARNING) << "stop all complete queue";
   {
     std::lock_guard<std::mutex> lck(complete_queue_mtx);
-    for(auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
+    for (auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
       it->second.shutdown();
     }
   }
@@ -185,4 +202,4 @@ retcode LinkContext::SendRecv(const std::string& key,
   return retcode::SUCCESS;
 }
 
-} // namespace primihub::network
+}  // namespace primihub::network
