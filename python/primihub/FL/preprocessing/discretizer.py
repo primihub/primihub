@@ -15,6 +15,8 @@ class KBinsDiscretizer(SKL_KBinsDiscretizer, PreprocessBase):
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
         self.module = SKL_KBinsDiscretizer(n_bins=n_bins,
                                            encode=encode,
                                            strategy=strategy,
@@ -22,6 +24,6 @@ class KBinsDiscretizer(SKL_KBinsDiscretizer, PreprocessBase):
                                            subsample=subsample,
                                            random_state=random_state)
 
-    def Hfit(self, x):
+    def Hfit(self, X):
         pass
     
