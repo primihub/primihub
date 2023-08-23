@@ -53,15 +53,19 @@ cc_library(
 
 #fl task
 cc_library(
-    name = "fl_task",
-    hdrs = ["fl_task.h"],
-    srcs = ["fl_task.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/util:util_lib",
-        "@com_github_base64_cpp//:base64_lib",
-        "@poco//:poco",
-    ],
+  name = "fl_task",
+  hdrs = ["fl_task.h"],
+  srcs = ["fl_task.cc"],
+  copts = [
+    "-fvisibility=hidden"
+  ],
+  deps = [
+    ":task_interface",
+    "//src/primihub/util:util_lib",
+    "@com_github_base64_cpp//:base64_lib",
+    "@poco//:poco",
+    "@pybind11",
+  ],
 )
 
 #mpc task

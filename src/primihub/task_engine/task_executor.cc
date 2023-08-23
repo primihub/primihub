@@ -132,14 +132,24 @@ retcode TaskEngine::Execute() {
     LOG(ERROR) << "task is not available";
     return retcode::FAIL;
   }
-  auto ret = task_->execute();
-  if (ret == 0) {
-    LOG(INFO) << "run task success";
-    return retcode::SUCCESS;
-  } else {
-    LOG(ERROR) << "run task failed";
+  try {
+    auto ret = task_->execute();
+    if (ret == 0) {
+      LOG(INFO) << "run task success";
+      return retcode::SUCCESS;
+    } else {
+      LOG(ERROR) << "run task failed";
+      return retcode::FAIL;
+    }
+  } catch (std::exception& e) {
+    int exception_len = strlen(e.what());
+    size_t err_len = exception_len > 1024 ? 1024 : exception_len;
+    std::string err_msg(e.what(), exception_len);
+    LOG(ERROR) << "Failed to execute python: " << err_msg;
+    UpdateStatus(rpc::TaskStatus::FAIL, err_msg);
     return retcode::FAIL;
   }
+
 }
 
 } // namespace primihub::task_engine

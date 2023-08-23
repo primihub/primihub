@@ -42,9 +42,6 @@ class FLTask : public TaskBase {
       LOG(WARNING) << "task receives kill task request and stop stauts";
       stop_.store(true);
       task_context_.clean();
-      if (process_handler_ != nullptr) {
-        Poco::Process::kill(*process_handler_);
-      }
     };
 
  private:
