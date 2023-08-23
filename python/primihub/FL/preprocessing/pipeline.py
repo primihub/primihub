@@ -39,18 +39,15 @@ class Pipeline(BaseModel):
         logger.info(f"task: {task}")
         
         # setup communication channels
-        if FL_type == 'H':
-            remote_party = self.roles[self.role_params['others_role']]
-            if role == 'server':
-                grpcclient = MultiGrpcClients
-            else:
-                grpcclient = GrpcClient
-            channel = grpcclient(self.role_params['self_name'],
-                                 remote_party,
-                                 self.node_info,
-                                 self.task_info)
+        remote_party = self.roles[self.role_params['others_role']]
+        if role == 'server' or role == 'host':
+            grpcclient = MultiGrpcClients
         else:
-            channel = None
+            grpcclient = GrpcClient
+        channel = grpcclient(self.role_params['self_name'],
+                             remote_party,
+                             self.node_info,
+                             self.task_info)
 
         # load dataset
         if FL_type == 'H':
@@ -90,9 +87,11 @@ class Pipeline(BaseModel):
         
         # preprocessing
         if FL_type == 'H':
-            module_params = self.common_params['preprocess_module']
+            module_params = self.common_params.get('preprocess_module')
         else:
-            module_params = self.role_params['preprocess_module']
+            module_params = self.role_params.get('preprocess_module')
+            if module_params is None:
+                module_params = self.common_params.get('preprocess_module')
 
         preprocess = []
         num_type = ['float', 'int']
@@ -138,7 +137,7 @@ class Pipeline(BaseModel):
             if column is not None:
                 if isinstance(column, pd.Index):
                     column = column.tolist()
-                logger.info(f"preprocess columns: {column}, # {len(column)}")
+                logger.info(f"column: {column}, # {len(column)}")
 
             module = select_module(module_name, params, FL_type, role, channel)
 
@@ -222,7 +221,7 @@ class Pipeline(BaseModel):
         data.to_csv(preprocess_dataset_path, index=False)
 
 
-def select_module(module_name, params, FL_type, role, channel=None):
+def select_module(module_name, params, FL_type, role, channel):
     if module_name == "KBinsDiscretizer":
         module = KBinsDiscretizer(
             n_bins=params.get('n_bins', 5),
@@ -275,6 +274,16 @@ def select_module(module_name, params, FL_type, role, channel=None):
             role=role,
             channel=channel
         )
+    elif module_name == "Normalizer":
+        norm = params.get('norm', 'l2')
+        if isinstance(norm, str):
+            norm = norm.lower()
+        module = Normalizer(
+            norm=norm,
+            copy=params.get('copy', True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel)
     elif module_name == "OneHotEncoder":
         module = OneHotEncoder(
             categories=params.get('categories', "auto"),
