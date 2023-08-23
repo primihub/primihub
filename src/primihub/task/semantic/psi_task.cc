@@ -168,6 +168,23 @@ retcode PsiTask::LoadDataset(void) {
     LOG(ERROR) << "Load dataset for psi server failed.";
     return retcode::FAIL;
   }
+  // filter duplicated data
+  std::vector<std::string> filtered_data;
+  filtered_data.reserve(elements_.size());
+  std::unordered_set<std::string> dup(elements_.size());
+  int64_t duplicate_num = 0;
+  for (auto& item : elements_) {
+    if (dup.find(item) != dup.end()) {
+      duplicate_num++;
+      continue;
+    }
+    dup.insert(item);
+    filtered_data.push_back(item);
+  }
+  if (duplicate_num != 0) {
+    LOG(WARNING) << "item has duplicated time, count: " << duplicate_num;
+  }
+  elements_ = std::move(filtered_data);
   return retcode::SUCCESS;
 }
 
