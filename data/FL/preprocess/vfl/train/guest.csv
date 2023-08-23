@@ -43,7 +43,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 12005,2009-05-06,Moree,9.1,25.1,0.0,4.8,10.1,E,33.0,E,S,17.0
 24067,2010-04-20,Penrith,15.3,27.3,0.0,,,ENE,20.0,,NE,0.0
 19647,2014-10-11,NorahHead,15.4,22.2,0.0,,,NNE,30.0,,ENE,0.0
-15412,2010-10-10,Newcastle,,,0.0,,,,,,,
+15412,2010-10-10,Newcastle,13.2,24.0,0.0,,,,,,,
 10920,2014-09-30,CoffsHarbour,11.0,30.0,0.0,,,,,,,
 6118,2009-06-29,Cobar,7.2,19.8,0.0,1.4,7.1,N,31.0,N,NW,13.0
 19835,2015-04-17,NorahHead,20.6,24.1,0.0,,,SSE,35.0,S,S,6.0
@@ -109,8 +109,8 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 3693,2010-12-21,BadgerysCreek,11.0,26.7,0.0,,,WSW,46.0,WNW,W,9.0
 22852,2015-05-14,NorfolkIsland,17.8,23.1,10.8,3.8,7.2,W,87.0,N,NW,22.0
 6959,2011-11-21,Cobar,13.8,21.6,2.6,2.0,,E,28.0,ESE,SW,13.0
-15189,2010-03-01,Newcastle,,21.4,14.2,,,,,SE,SE,19.0
-4858,2014-06-14,BadgerysCreek,,20.2,5.6,,,W,24.0,,W,0.0
+15189,2010-03-01,Newcastle,13.2,21.4,14.2,,,,,SE,SE,19.0
+4858,2014-06-14,BadgerysCreek,13.2,20.2,5.6,,,W,24.0,,W,0.0
 22917,2015-07-18,NorfolkIsland,15.9,19.4,27.8,3.8,7.7,WNW,65.0,W,W,39.0
 7912,2014-08-31,Cobar,7.2,23.1,0.0,3.0,,NE,22.0,NNE,SW,11.0
 11255,2015-10-08,CoffsHarbour,17.0,20.0,0.0,,,SW,48.0,SW,SSE,24.0
@@ -217,7 +217,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 16990,2015-07-02,Newcastle,5.6,15.5,0.0,,,,,NW,NW,9.0
 7145,2012-05-25,Cobar,3.9,13.5,1.6,1.0,,WSW,39.0,NW,WNW,19.0
 21070,2010-03-29,NorfolkIsland,18.6,24.7,8.6,6.6,7.6,E,52.0,E,ESE,31.0
-14864,2009-04-10,Newcastle,13.0,,0.0,,,,,,,0.0
+14864,2009-04-10,Newcastle,13.0,24.0,0.0,,,,,,,0.0
 12681,2011-03-13,Moree,18.4,33.2,0.0,15.2,11.6,E,35.0,E,E,19.0
 7599,2013-10-22,Cobar,21.8,38.1,5.0,13.0,,NW,69.0,N,NNW,19.0
 17294,2016-05-13,Newcastle,12.8,25.2,0.0,,,,,N,,19.0
@@ -232,13 +232,13 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 11277,2015-10-30,CoffsHarbour,14.4,24.0,2.6,,,NNE,35.0,SSE,NE,13.0
 14487,2016-10-22,Moree,17.6,21.4,28.4,,,NNE,54.0,NNE,SW,31.0
 19212,2013-07-14,NorahHead,11.5,19.1,0.0,,,WSW,19.0,WSW,E,11.0
-17260,2016-04-09,Newcastle,,25.2,1.0,,,,,,,
+17260,2016-04-09,Newcastle,13.2,25.2,1.0,,,,,,,
 16231,2013-05-13,Newcastle,11.4,21.0,0.2,,,,,SW,,4.0
 15743,2011-10-22,Newcastle,16.0,26.5,0.0,,,,,SE,SE,2.0
 10536,2013-08-30,CoffsHarbour,15.4,24.3,0.0,1.0,,NNE,57.0,N,NE,28.0
 8770,2017-01-17,Cobar,27.1,43.4,0.0,,,NNW,54.0,N,NW,24.0
 21037,2010-02-24,NorfolkIsland,19.5,24.1,0.0,5.2,0.3,NE,20.0,NE,S,11.0
-15904,2012-04-11,Newcastle,,19.8,0.0,,,,,,,
+15904,2012-04-11,Newcastle,13.2,19.8,0.0,,,,,,,
 15759,2011-11-07,Newcastle,19.0,32.3,0.0,,,,,N,NW,4.0
 15274,2010-05-25,Newcastle,12.4,18.0,10.6,,,,,,,0.0
 11060,2015-03-27,CoffsHarbour,20.0,24.7,3.6,,,SSW,50.0,SW,SE,22.0
@@ -270,7 +270,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 87,2009-02-27,Albury,15.4,32.6,0.0,,,W,24.0,,S,0.0
 15011,2009-09-04,Newcastle,13.6,23.8,8.0,,,,,N,N,4.0
 4307,2012-10-02,BadgerysCreek,8.0,22.8,0.0,,,E,24.0,W,E,7.0
-15606,2011-06-02,Newcastle,,20.2,4.0,,,,,,SW,0.0
+15606,2011-06-02,Newcastle,13.2,20.2,4.0,,,,,,SW,0.0
 15918,2012-04-25,Newcastle,10.2,19.3,0.4,,,,,NW,NW,19.0
 10429,2013-05-15,CoffsHarbour,10.7,19.9,0.4,1.2,7.5,W,20.0,WSW,ENE,15.0
 20613,2017-06-21,NorahHead,10.7,18.2,1.6,,,S,44.0,W,WSW,9.0
@@ -340,7 +340,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 22523,2014-06-19,NorfolkIsland,13.6,18.7,1.2,2.0,8.2,SW,52.0,S,SW,30.0
 2499,2016-01-26,Albury,18.7,34.2,0.0,,,SE,31.0,SE,SSE,19.0
 2425,2015-11-13,Albury,15.9,27.5,4.8,,,SW,35.0,SSE,SW,7.0
-17951,2009-09-22,NorahHead,,29.5,,,,NNW,70.0,,NNW,
+17951,2009-09-22,NorahHead,13.2,29.5,,,,NNW,70.0,,NNW,
 17292,2016-05-11,Newcastle,12.8,20.8,0.0,,,,,NW,,37.0
 8941,2009-01-15,CoffsHarbour,19.1,32.2,0.0,7.6,13.2,NNE,61.0,NNW,NNE,31.0
 19418,2014-02-22,NorahHead,20.0,25.6,0.0,,,SSE,37.0,S,SSE,20.0
@@ -384,7 +384,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 7242,2012-08-30,Cobar,7.1,17.4,0.0,6.2,,SW,37.0,SSW,SW,19.0
 7581,2013-10-04,Cobar,5.5,23.3,0.0,7.0,,E,22.0,ESE,E,13.0
 7293,2012-10-20,Cobar,17.1,32.8,0.0,10.6,,WSW,39.0,S,SW,15.0
-15259,2010-05-10,Newcastle,,25.5,0.0,,,,,,,
+15259,2010-05-10,Newcastle,13.2,25.5,0.0,,,,,,,
 11135,2015-06-10,CoffsHarbour,7.5,21.3,0.0,,,SW,39.0,SW,S,17.0
 13148,2012-07-30,Moree,1.8,16.6,0.0,2.6,10.1,SW,39.0,SSW,SSW,13.0
 8417,2016-01-20,Cobar,25.6,40.5,0.0,14.6,,NW,54.0,N,NNW,22.0
@@ -492,7 +492,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 19378,2014-01-13,NorahHead,20.3,26.4,0.0,,,E,35.0,SE,ENE,13.0
 20023,2015-11-08,NorahHead,15.7,20.3,5.6,,,S,54.0,WSW,S,13.0
 22067,2013-03-20,NorfolkIsland,19.1,23.7,0.0,6.6,2.9,E,39.0,ESE,ESE,17.0
-17174,2016-01-06,Newcastle,15.5,,216.3,,,,,SE,,37.0
+17174,2016-01-06,Newcastle,15.5,24.0,216.3,,,,,SE,,37.0
 7927,2014-09-15,Cobar,10.4,27.8,0.0,6.6,,N,72.0,E,NW,26.0
 3253,2009-09-02,BadgerysCreek,3.8,20.9,0.0,,,SE,31.0,W,SE,7.0
 921,2011-07-19,Albury,0.4,14.5,1.8,,,WSW,13.0,NW,,4.0
@@ -570,7 +570,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 20640,2009-01-23,NorfolkIsland,20.2,24.5,0.0,7.0,2.6,E,46.0,E,ENE,22.0
 18255,2010-08-24,NorahHead,9.6,19.8,1.2,,,NW,35.0,WNW,W,9.0
 18361,2010-12-11,NorahHead,17.4,25.4,,,,SSW,43.0,S,NE,9.0
-17648,2017-05-15,Newcastle,,20.2,2.0,,,,,NW,,28.0
+17648,2017-05-15,Newcastle,13.2,20.2,2.0,,,,,NW,,28.0
 13638,2014-02-09,Moree,20.2,36.8,0.0,11.2,12.9,NE,39.0,NE,E,28.0
 19187,2013-06-18,NorahHead,8.5,16.8,0.0,,,SE,63.0,SSW,SSE,11.0
 19484,2014-04-29,NorahHead,14.8,23.7,0.6,,,NNE,39.0,NNW,NE,9.0
@@ -653,7 +653,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 12318,2010-03-15,Moree,16.6,30.4,0.0,8.0,9.6,SSW,43.0,ESE,E,15.0
 18012,2009-12-05,NorahHead,18.5,24.2,0.0,,,SSE,33.0,SSW,ESE,20.0
 20714,2009-04-07,NorfolkIsland,18.4,24.5,0.4,5.6,5.4,NE,28.0,NE,SE,13.0
-14865,2009-04-11,Newcastle,,,0.0,,,,,,,
+14865,2009-04-11,Newcastle,13.2,24.0,0.0,,,,,,,
 601,2010-08-02,Albury,5.4,14.7,18.6,,,W,39.0,W,WSW,15.0
 23984,2010-01-18,Penrith,13.5,25.7,0.2,,,WSW,61.0,WNW,SW,20.0
 14157,2015-11-04,Moree,21.9,31.5,0.4,10.6,3.2,SSW,52.0,NE,S,19.0
@@ -743,7 +743,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 13068,2012-05-09,Moree,6.8,27.4,0.0,4.6,10.5,SW,28.0,E,SW,13.0
 23358,2016-10-02,NorfolkIsland,19.3,21.6,0.0,,,WNW,39.0,SW,SW,24.0
 20504,2017-03-04,NorahHead,20.6,23.3,27.8,,,SE,65.0,S,S,35.0
-17613,2017-04-10,Newcastle,11.7,,74.2,,,,,NW,,37.0
+17613,2017-04-10,Newcastle,11.7,24.0,74.2,,,,,NW,,37.0
 2368,2015-09-17,Albury,3.7,17.9,0.0,,,WSW,35.0,SSE,WSW,4.0
 22784,2015-03-07,NorfolkIsland,20.8,25.7,3.4,4.2,11.1,SSW,30.0,SSW,SSW,13.0
 10797,2014-05-29,CoffsHarbour,11.3,22.5,0.0,,,,,,,
@@ -768,7 +768,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 420,2010-01-27,Albury,17.7,36.4,0.0,,,W,43.0,S,WSW,7.0
 2243,2015-05-15,Albury,2.3,17.8,0.0,,,SSE,15.0,SE,SSE,2.0
 8864,2017-04-24,Cobar,18.2,28.6,0.0,,,NE,35.0,ENE,NNE,13.0
-16172,2013-03-10,Newcastle,17.8,,0.0,,,,,,S,0.0
+16172,2013-03-10,Newcastle,17.8,24.0,0.0,,,,,,S,0.0
 3428,2010-03-12,BadgerysCreek,14.5,24.3,0.0,,,ENE,35.0,SSE,ESE,13.0
 9668,2011-01-13,CoffsHarbour,21.1,27.1,9.8,2.4,7.1,ENE,31.0,NE,NNE,11.0
 21700,2012-01-19,NorfolkIsland,21.0,25.2,0.0,4.4,5.6,ENE,41.0,E,ENE,22.0
@@ -866,7 +866,7 @@ id,Date,Location,MinTemp,MaxTemp,Rainfall,Evaporation,Sunshine,WindGustDir,WindG
 21506,2011-07-09,NorfolkIsland,11.2,18.1,0.4,4.2,8.4,WSW,48.0,WSW,W,13.0
 19843,2015-04-25,NorahHead,16.4,25.9,0.0,,,NE,65.0,WNW,NE,9.0
 11043,2015-03-10,CoffsHarbour,19.9,28.9,0.0,,,NE,30.0,NW,ENE,13.0
-17016,2015-07-28,Newcastle,,17.2,0.0,,,,,,SE,0.0
+17016,2015-07-28,Newcastle,13.2,17.2,0.0,,,,,,SE,0.0
 5569,2016-06-03,BadgerysCreek,7.9,17.9,0.0,,,S,17.0,SW,SE,7.0
 6258,2009-11-17,Cobar,23.6,38.2,0.0,16.8,12.1,SW,43.0,SSE,SW,11.0
 23643,2009-02-02,Penrith,21.2,35.4,0.0,,,ENE,39.0,NE,NE,4.0
