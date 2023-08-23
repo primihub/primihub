@@ -19,6 +19,7 @@ class _BaseEncoder(PreprocessBase, _SKL_BaseEncoder):
                  channel=None):
         super().__init__(FL_type, role, channel)
         if FL_type == 'H':
+            self.check_channel()
             self.categories = categories
             self.min_frequency = min_frequency
             self.max_categories = max_categories

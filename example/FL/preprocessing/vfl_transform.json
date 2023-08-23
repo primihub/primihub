@@ -5,7 +5,9 @@
     "component_params": {
         "roles": {
             "host": "Bob",
-            "guest": "Charlie"
+            "guest": [
+                "Charlie"
+            ]
         },
         "common_params": {
             "model": "FL_Preprocess",

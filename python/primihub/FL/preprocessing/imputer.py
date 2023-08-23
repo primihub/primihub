@@ -19,6 +19,8 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H' and strategy != 'constant':
+            self.check_channel()
         self.module = SKL_SimpleImputer(missing_values=missing_values,
                                         strategy=strategy,
                                         fill_value=fill_value,

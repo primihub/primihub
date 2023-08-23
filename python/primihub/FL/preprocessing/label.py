@@ -9,7 +9,33 @@ from .base import PreprocessBase
 from .util import unique, num_samples
 
 
-class LabelEncoder(PreprocessBase):
+class _LabelBase(PreprocessBase):
+
+    def __init__(self, FL_type=None, role=None, channel=None):
+        super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
+
+    def Vfit(self, y):
+        return self.module.fit(y)
+
+    def Hfit(self, y):
+        return self.module.fit(y)
+
+    def fit(self, y=None):
+        if self.FL_type == 'V':
+            return self.Vfit(y)
+        else:
+            return self.Hfit(y)
+
+    def transform(self, y):
+        return self.module.transform(y)
+    
+    def fit_transform(self, y):
+        return self.fit(y).transform(y)
+
+
+class LabelEncoder(_LabelBase):
 
     def __init__(self, FL_type=None, role=None, channel=None):
         super().__init__(FL_type, role, channel)
@@ -32,7 +58,7 @@ class LabelEncoder(PreprocessBase):
         return self
 
 
-class LabelBinarizer(PreprocessBase):
+class LabelBinarizer(_LabelBase):
 
     def __init__(self,
                  neg_label=0,
@@ -83,7 +109,7 @@ class LabelBinarizer(PreprocessBase):
         return self
 
 
-class MultiLabelBinarizer(PreprocessBase):
+class MultiLabelBinarizer(_LabelBase):
 
     def __init__(self,
                  classes=None,

@@ -1,10 +1,13 @@
 import numpy as np
 from sklearn.preprocessing import MaxAbsScaler as SKL_MaxAbsScaler
 from sklearn.preprocessing import MinMaxScaler as SKL_MinMaxScaler
-from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
+from sklearn.preprocessing import Normalizer as SKL_Normalizer
 from sklearn.preprocessing import RobustScaler as SKL_RobustScaler
+from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
+from sklearn.utils import check_array
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
+
 
 FLOAT_DTYPES = (np.float64, np.float32, np.float16)
 
@@ -13,18 +16,20 @@ class MaxAbsScaler(PreprocessBase):
 
     def __init__(self, copy=True, FL_type=None, role=None, channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
         self.module = SKL_MaxAbsScaler(copy=copy)
 
-    def Hfit(self, x):
+    def Hfit(self, X):
         if self.role == 'client':
-            x = self.module._validate_data(
-                x,
+            X = self.module._validate_data(
+                X,
                 dtype=FLOAT_DTYPES,
                 force_all_finite="allow-nan",
             )
 
-            self.module.n_samples_seen_ = x.shape[0]
-            max_abs = np.nanmax(np.abs(x), axis=0)
+            self.module.n_samples_seen_ = X.shape[0]
+            max_abs = np.nanmax(np.abs(X), axis=0)
             self.channel.send('max_abs', max_abs)
             max_abs = self.channel.recv('max_abs')
 
@@ -49,11 +54,13 @@ class MinMaxScaler(PreprocessBase):
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
         self.module = SKL_MinMaxScaler(feature_range=feature_range,
                                        copy=copy,
                                        clip=clip)
 
-    def Hfit(self, x):
+    def Hfit(self, X):
         feature_range = self.module.feature_range
         if feature_range[0] >= feature_range[1]:
             raise ValueError(
@@ -62,15 +69,15 @@ class MinMaxScaler(PreprocessBase):
             )
         
         if self.role == 'client':
-            x = self.module._validate_data(
-                x,
+            X = self.module._validate_data(
+                X,
                 dtype=FLOAT_DTYPES,
                 force_all_finite="allow-nan",
             )
 
-            self.module.n_samples_seen_ = x.shape[0]
-            data_max = np.nanmax(x, axis=0)
-            data_min = np.nanmin(x, axis=0)
+            self.module.n_samples_seen_ = X.shape[0]
+            data_max = np.nanmax(X, axis=0)
+            data_min = np.nanmin(X, axis=0)
             self.channel.send('data_max', data_max)
             self.channel.send('data_min', data_min)
             data_max = self.channel.recv('data_max')
@@ -94,6 +101,67 @@ class MinMaxScaler(PreprocessBase):
         return self
 
 
+class Normalizer(PreprocessBase):
+
+    def __init__(self,
+                 norm='l2',
+                 copy=True,
+                 FL_type=None,
+                 role=None,
+                 channel=None):
+        super().__init__(FL_type, role, channel)
+        if self.FL_type == 'V':
+            self.check_channel()
+        self.module = SKL_Normalizer(norm=norm, copy=copy)
+
+    def fit(self, X):
+        self.module.fit(X)
+        return self
+    
+    def transform(self, X, copy=None):
+        if self.FL_type == 'H':
+            return self.module.transform(X, copy)
+        else:
+            copy = copy if copy is not None else self.module.copy
+            X = self.module._validate_data(X, reset=False)
+            X = check_array(
+                X,
+                copy=copy,
+                estimator="the normalize function",
+                dtype=FLOAT_DTYPES,
+            )
+
+            if self.module.norm == 'l1':
+                norms = np.abs(X).sum(axis=1)
+            elif self.module.norm == 'l2':
+                norms = np.einsum("ij,ij->i", X, X)
+            elif self.module.norm == "max":
+                norms = np.max(abs(X), axis=1)
+
+            if self.role == 'guest':
+                self.channel.send('guest_norms', norms)
+                norms = self.channel.recv('norms')
+
+            elif self.role == 'host':
+                guest_norms = self.channel.recv_all('guest_norms')
+                guest_norms.append(norms)
+
+                if self.module.norm == 'l1':
+                    norms = np.sum(guest_norms, axis=0)
+                elif self.module.norm == 'l2':
+                    norms = np.sum(guest_norms, axis=0)
+                    np.sqrt(norms, norms)
+                elif self.module.norm == "max":
+                    norms = np.max(guest_norms, axis=0)
+
+                self.channel.send_all('norms', norms)
+
+            norms = handle_zeros_in_scale(norms, copy=False)
+            X /= norms[:, np.newaxis]
+
+            return X
+
+
 class RobustScaler(PreprocessBase):
 
     def __init__(self,
@@ -106,13 +174,15 @@ class RobustScaler(PreprocessBase):
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
         self.module = SKL_RobustScaler(with_centering=with_centering,
                                        with_scaling=with_scaling,
                                        quantile_range=quantile_range,
                                        copy=copy,
                                        unit_variance=unit_variance)
 
-    def Hfit(self, x):
+    def Hfit(self, X):
         pass
 
 
@@ -126,20 +196,22 @@ class StandardScaler(PreprocessBase):
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
+        if self.FL_type == 'H':
+            self.check_channel()
         self.module = SKL_StandardScaler(copy=copy,
                                          with_mean=with_mean,
                                          with_std=with_std)
 
-    def Hfit(self, x):
+    def Hfit(self, X):
         if self.role == 'client':
-            x = self.module._validate_data(
-                x,
+            X = self.module._validate_data(
+                X,
                 dtype=FLOAT_DTYPES,
                 force_all_finite="allow-nan",
             )
             
-            self.module.n_samples_seen_ = np.repeat(x.shape[0], x.shape[1]) \
-                                            - np.isnan(x).sum(axis=0)
+            self.module.n_samples_seen_ = np.repeat(X.shape[0], X.shape[1]) \
+                                            - np.isnan(X).sum(axis=0)
             # for backward-compatibility, reduce n_samples_seen_ to an integer
             # if the number of samples is the same for each feature (i.e. no
             # missing values)
@@ -147,20 +219,20 @@ class StandardScaler(PreprocessBase):
                 self.module.n_samples_seen_ = self.module.n_samples_seen_[0]
 
             if self.module.with_mean or self.module.with_std:
-                x_nan_mask = np.isnan(x)
-                if np.any(x_nan_mask):
+                X_nan_mask = np.isnan(X)
+                if np.any(X_nan_mask):
                     sum_op = np.nansum
                 else:
                     sum_op = np.sum
-                x_sum = sum_op(x, axis=0)
-                self.channel.send('x_sum', x_sum)
+                X_sum = sum_op(X, axis=0)
+                self.channel.send('X_sum', X_sum)
                 self.channel.send('n_samples',
                                   self.module.n_samples_seen_)
                 mean = self.channel.recv('mean')
 
             if self.module.with_std:
                 # sum of squares of the deviations from the mean with correction
-                temp = x - mean
+                temp = X - mean
                 correction = sum_op(temp, axis=0)
                 temp **= 2
                 un_var = sum_op(temp, axis=0)
@@ -173,7 +245,7 @@ class StandardScaler(PreprocessBase):
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
             if self.module.with_mean or self.module.with_std:
-                x_sum = self.channel.recv_all('x_sum')
+                X_sum = self.channel.recv_all('X_sum')
                 n_samples = self.channel.recv_all('n_samples')
                 # n_samples could be np.int or np.ndarray
                 n_sum = 0
@@ -182,7 +254,7 @@ class StandardScaler(PreprocessBase):
                 if isinstance(n_sum, np.ndarray) and np.ptp(n_sum) == 0:
                     n_sum = n_sum[0]
 
-                mean = np.array(x_sum).sum(axis=0) / n_sum
+                mean = np.array(X_sum).sum(axis=0) / n_sum
                 self.channel.send_all('mean', mean)
                 self.module.n_samples_seen_ = n_sum
             
