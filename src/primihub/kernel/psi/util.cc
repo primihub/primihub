@@ -363,6 +363,9 @@ retcode PsiCommonUtil::ExtractDataFromTrunkArray(
   // get cpu core info
   size_t cpu_core_num = std::thread::hardware_concurrency();
   int32_t use_core_num = cpu_core_num / 2 - 1;
+  if (use_core_num > 10) {
+    use_core_num = 10;
+  }
   int32_t thread_num = std::max(use_core_num, 1);
   if (chunk_size <= thread_num) {
     thread_num = chunk_size;
@@ -376,19 +379,24 @@ retcode PsiCommonUtil::ExtractDataFromTrunkArray(
     trunk_index_map[j] = array->length();
   }
   int32_t chunk_per_thread = chunk_size / thread_num;
-  if (chunk_size % thread_num) {
+  if (chunk_per_thread * thread_num < chunk_size) {
     thread_num++;
   }
-  VLOG(7) << "chunk_per_thread: " << chunk_per_thread;
+  VLOG(7) << "chunk_per_thread: " << chunk_per_thread
+          << " thread_num: " << thread_num;
   // process trunk data parallel
   std::vector<std::future<void>> futs;
   for (int i = 0; i < thread_num; i++) {
     int32_t chunk_s = i * chunk_per_thread;
-    int32_t chunk_e = std::min(((i+1) * chunk_per_thread), chunk_size);
+    int32_t chunk_e = (i == thread_num - 1) ? chunk_size :
+                                              (i+1) * chunk_per_thread;
     VLOG(7) << "chunk_s: " << chunk_s << " chunk_e: " << chunk_e;
     futs.push_back(std::async(
         std::launch::async,
         [&, chunk_s, chunk_e]() {
+          if (chunk_e < chunk_s) {
+            return;
+          }
           int64_t index = 0;
           for (int32_t i = 0; i < chunk_s; i++) {
             index += trunk_index_map[i];
@@ -422,7 +430,8 @@ retcode PsiCommonUtil::ExtractDataFromTrunkArray(
     std::vector<std::future<void>> futs;
     for (int i = 0; i < thread_num; i++) {
       int32_t chunk_s = i * chunk_per_thread;
-      int32_t chunk_e = std::min(((i+1) * chunk_per_thread), chunk_size);
+      int32_t chunk_e = (i == thread_num - 1) ? chunk_size :
+                                                (i+1) * chunk_per_thread;
       VLOG(7) << "chunk_s: " << chunk_s << " chunk_e: " << chunk_e;
       futs.push_back(std::async(
           std::launch::async,
@@ -478,7 +487,7 @@ retcode PsiCommonUtil::ExtractDataFromArray(
     thread_num = 1;
   }
   int32_t element_per_thread = element_number / thread_num;
-  if (element_number % thread_num) {
+  if (element_per_thread * thread_num < element_number) {
     thread_num++;
   }
   VLOG(7) << "element_per_thread: " << element_per_thread;
@@ -515,7 +524,7 @@ retcode PsiCommonUtil::ExtractDataFromArray(
       return retcode::FAIL;
     }
     auto array =
-        std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(i));
+        std::static_pointer_cast<arrow::StringArray>(col_ptr->chunk(0));
     std::vector<std::future<void>> futs;
     for (int i = 0; i < thread_num; i++) {
       int64_t i_start = i * element_per_thread;
