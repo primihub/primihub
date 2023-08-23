@@ -36,11 +36,11 @@ function start_meta_server() {
   check_meta_cmd=$(ps -ef | grep ${META_SERVER_NAME} | grep -v grep)
   if [ "${check_meta_cmd}" == "" ]; then
     set +x
-    echo "waiting for meta server start..., it will cost about 6 seconds"
     [ ! -d "${META_DIR}" ] && mkdir ${META_DIR}
     pushd ${META_DIR} &> /dev/null
       [ ! -f "${META_TAR_NAME}" ] && wget ${META_DOWNLOAD_URL}
       [ ! -d ${META_DIR} ] && tar -zxf ${META_TAR_NAME}
+      echo "waiting for meta server start..., it will cost about 6 seconds"
       pushd ${META_DIR} &> /dev/null
         ${BASH_CMD} run.sh
         retry_time=0
@@ -80,7 +80,23 @@ function start_primihub_server() {
   if [ -f "${proto_file}" ]; then
     export PYTHONPATH=${PYTHONPATH}:${py_primihub_path}
   fi
+  PYTHON_BIN=python3
+  if ! command -v python3 >/dev/null 2>&1; then
+    if ! command -v python >/dev/null 2>&1; then
+      echo "please install python3"
+      exit
+    else
+      PYTHON_BIN=python
+    fi
+  fi
+  U_V1=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $1}'`
+  U_V2=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $2}'`
+  U_V3=`$PYTHON_BIN -V 2>&1|awk '{print $2}'|awk -F '.' '{print $3}'`
 
+  echo your python version is : "$U_V1.$U_V2.$U_V3"
+  PYTHON_CONFIG_CMD="python$U_V1.$U_V2-config"
+  prefix_path=$(${PYTHON_CONFIG_CMD} --prefix)
+  export LD_LIBRARY_PATH=${prefix_path}/lib:${LD_LIBRARY_PATH}
   # log_level 1->7,the larger the value the more detailed the log
   log_level=7
   export GLOG_logtostderr=1 GLOG_v=${log_level}
