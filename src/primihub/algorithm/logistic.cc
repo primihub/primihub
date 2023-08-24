@@ -98,6 +98,7 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
       }
     } else {
       this->train_input_filepath_ = iter->second;
+      this->train_dataset_id_ = iter->second;
     }
 
     auto param_map = task.params().param_map();

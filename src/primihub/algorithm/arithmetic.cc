@@ -45,8 +45,20 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
   // File path.
   if (it->second.dataset_detail()) {
     this->is_dataset_detail_ = true;
+    auto& param_map = task.params().param_map();
+    auto p_it = param_map.find("Data_File");
+    if (p_it != param_map.end()) {
+      this->data_file_path_ = p_it->second.value_string();
+      this->dataset_id_ = iter->second;
+    } else {
+      LOG(ERROR) << "no dataset id found";
+      return -1;
+    }
+  } else {
+    data_file_path_ = iter->second;
+    this->dataset_id_ = iter->second;
   }
-  data_file_path_ = iter->second;
+
   LOG(INFO) << "Data file path is " << data_file_path_ << ".";
   auto param_map = task.params().param_map();
   try {
@@ -132,7 +144,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
 }
 
 template <Decimal Dbit> int ArithmeticExecutor<Dbit>::loadDataset() {
-  int ret = _LoadDatasetFromCSV(data_file_path_);
+  int ret = _LoadDatasetFromCSV(this->dataset_id_);
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset for train failed.";
