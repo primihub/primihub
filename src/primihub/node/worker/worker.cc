@@ -55,7 +55,8 @@ retcode Worker::waitForTaskReady() {
 
 retcode Worker::execute(const PushTaskRequest *task_request) {
   auto ret{retcode::SUCCESS};
-  switch (task_run_mode_) {
+  auto task_run_mode = ExecuteMode(*task_request);
+  switch (task_run_mode) {
   case TaskRunMode::THREAD:
     ret = ExecuteTaskByThread(task_request);
     break;
@@ -64,6 +65,19 @@ retcode Worker::execute(const PushTaskRequest *task_request) {
     break;
   }
   return ret;
+}
+
+Worker::TaskRunMode Worker::ExecuteMode(const PushTaskRequest& request) {
+  const auto& map_info = request.task().params().param_map();
+  auto it = map_info.find("psiTag");
+  if (it != map_info.end()) {
+    int psi_tag = it->second.value_int32();
+    if (psi_tag == rpc::PsiTag::TEE) {
+      LOG(ERROR) << "here";
+      return TaskRunMode::THREAD;
+    }
+  }
+  return task_run_mode_;
 }
 
 retcode Worker::ExecuteTaskByThread(const PushTaskRequest* task_request) {

@@ -57,15 +57,16 @@ int main(int argc, char **argv) {
   VLOG(0) << "start task process main: " << request_id;
   auto& server_cfg = primihub::ServerConfig::getInstance();
   server_cfg.initServerConfig(config_file);
+  auto& service_cfg = server_cfg.getServiceConfig();
   auto task_engine = std::make_unique<primihub::task_engine::TaskEngine>();
-  auto ret = task_engine->Init(node_id, config_file, task_request_str);
+  auto ret = task_engine->Init(service_cfg.id(), config_file, task_request_str);
   if (ret != primihub::retcode::SUCCESS) {
     LOG(ERROR) << "init py executor failed";
     return -1;
   }
   ret = task_engine->Execute();
   if (ret != primihub::retcode::SUCCESS) {
-    LOG(ERROR) << "py executor encoutes error when executing task";
+    LOG(ERROR) << "task executor encoutes error when executing task";
     return -1;
   }
   return 0;

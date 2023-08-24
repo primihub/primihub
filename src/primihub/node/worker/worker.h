@@ -85,6 +85,9 @@ class Worker {
   void setPartyCount(size_t party_count) {party_count_ = party_count;}
   std::string workerId() const {return worker_id_;}
 
+ protected:
+  TaskRunMode ExecuteMode(const PushTaskRequest& request);
+
  private:
   std::unordered_map<std::string, std::shared_ptr<Worker>> workers_
       GUARDED_BY(worker_map_mutex_);

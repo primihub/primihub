@@ -5,8 +5,7 @@ TARGET := //:node \
           //src/primihub/cli:reg_cli \
           //src/primihub/pybind_warpper:linkcontext \
           //src/primihub/pybind_warpper:opt_paillier_c2py \
-          //:task_main \
-          //:py_main
+          //:task_main
 
 ifeq ($(mysql), y)
     BUILD_FLAG += --define enable_mysql_driver=true
