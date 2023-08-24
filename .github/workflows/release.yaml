@@ -29,7 +29,7 @@ jobs:
              bazel-bin/node \
              primihub-cli \
              primihub-node \
-             bazel-bin/py_main \
+             bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
              start_server.sh \
@@ -62,7 +62,7 @@ jobs:
           # cc_binary
           bash pre_build.sh
           make protos=y
-          
+
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
@@ -72,7 +72,7 @@ jobs:
              bazel-bin/node \
              primihub-cli \
              primihub-node \
-             bazel-bin/py_main \
+             bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
              start_server.sh \
@@ -122,7 +122,7 @@ jobs:
             bazel-bin/node \
             primihub-cli \
             primihub-node \
-            bazel-bin/py_main \
+            bazel-bin/task_main \
             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
             start_server.sh \
@@ -159,7 +159,7 @@ jobs:
               bazel-bin/node \
               primihub-cli \
               primihub-node \
-              bazel-bin/py_main \
+              bazel-bin/task_main \
               bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
               bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
               start_server.sh \
