@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2023 by PrimiHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 // "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
 #define SRC_PRIMIHUB_ALGORITHM_MPC_STATISTICS_H_
@@ -43,6 +58,8 @@ class MPCStatisticsExecutor : public AlgorithmBase {
   std::string new_ds_id_;
   std::string output_path_;
   std::string ds_name_;
+  std::string dataset_id_;
+  bool is_dataset_detail_{false};
   std::string job_id_;
   std::string task_id_;
   std::string statistics_type_;

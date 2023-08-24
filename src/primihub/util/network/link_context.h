@@ -1,14 +1,17 @@
 // Copyright [2022] <primihub.com>
 #ifndef SRC_PRIMIHUB_UTIL_NETWORK_LINK_CONTEXT_H_
 #define SRC_PRIMIHUB_UTIL_NETWORK_LINK_CONTEXT_H_
-#include "src/primihub/common/common.h"
-#include "src/primihub/common/config/config.h"
-#include "src/primihub/protos/worker.pb.h"
-#include "src/primihub/util/threadsafe_queue.h"
 #include <string_view>
 #include <string>
 #include <unordered_map>
 #include <shared_mutex>
+#include <memory>
+
+#include "src/primihub/common/common.h"
+#include "src/primihub/common/config/config.h"
+#include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/util/threadsafe_queue.h"
+
 namespace primihub::network {
 namespace rpc = primihub::rpc;
 class IChannel;
@@ -85,6 +88,10 @@ class LinkContext {
                const Node& dest_node, char* send_buf, size_t send_size);
   retcode Recv(const std::string& key, std::string* recv_buf);
   retcode Recv(const std::string& key, char* recv_buf, size_t recv_size);
+  retcode Recv(const std::string& key,
+               const Node& dest_node, std::string* recv_buf);
+  retcode Recv(const std::string& key,
+               const Node& dest_node, char* recv_buf, size_t recv_size);
   /**
    * sender to process send recv
   */
@@ -147,8 +154,8 @@ class IChannel {
                            const std::string& send_data,
                            std::string* recv_data) = 0;
   virtual retcode sendRecv(const std::string& key,
-                          std::string_view send_data,
-                          std::string* recv_data) = 0;
+                           std::string_view send_data,
+                           std::string* recv_data) = 0;
   virtual retcode submitTask(const rpc::PushTaskRequest& request,
                              rpc::PushTaskReply* reply) = 0;
   virtual retcode executeTask(const rpc::PushTaskRequest& request,
@@ -160,9 +167,8 @@ class IChannel {
   virtual retcode fetchTaskStatus(const rpc::TaskContext& request,
                                   rpc::TaskStatusReply* reply) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
-  LinkContext* getLinkContext() {
-    return link_ctx_;
-  }
+  LinkContext* getLinkContext() { return link_ctx_; }
+
  protected:
   LinkContext* link_ctx_{nullptr};
 };

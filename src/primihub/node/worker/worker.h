@@ -40,14 +40,18 @@
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/common/common.h"
+#include "Poco/Process.h"
 
-using primihub::rpc::PushTaskRequest;
-using primihub::rpc::ExecuteTaskRequest;
-using primihub::rpc::ExecuteTaskResponse;
+using PushTaskRequest = primihub::rpc::PushTaskRequest;
 
 namespace primihub {
 class Worker {
  public:
+  enum class TaskRunMode {
+    THREAD = 0,
+    PROCESS,
+  };
+
   explicit Worker(const std::string& node_id_,
       std::shared_ptr<Nodelet> nodelet_)
       : node_id(node_id_), nodelet(nodelet_) {
@@ -63,6 +67,8 @@ class Worker {
   }
 
   retcode execute(const PushTaskRequest* pushTaskRequest);
+  retcode ExecuteTaskByThread(const PushTaskRequest* pushTaskRequest);
+  retcode ExecuteTaskByProcess(const PushTaskRequest* pushTaskRequest);
   inline std::string worker_id() {return worker_id_;}
 
   void kill_task();
@@ -78,6 +84,9 @@ class Worker {
   retcode waitUntilTaskFinish();
   void setPartyCount(size_t party_count) {party_count_ = party_count;}
   std::string workerId() const {return worker_id_;}
+
+ protected:
+  TaskRunMode ExecuteMode(const PushTaskRequest& request);
 
  private:
   std::unordered_map<std::string, std::shared_ptr<Worker>> workers_
@@ -99,6 +108,11 @@ class Worker {
   std::future<retcode> task_finish_future_;
   size_t party_count_{0};
   std::atomic<bool> scheduler_finished{false};
+
+  // task run mode
+  // TaskRunMode task_run_mode_{TaskRunMode::THREAD};
+  TaskRunMode task_run_mode_{TaskRunMode::PROCESS};
+  std::unique_ptr<Poco::ProcessHandle> process_handler_{nullptr};
 };
 }  // namespace primihub
 

@@ -38,7 +38,7 @@ RUN bash pre_build.sh \
              bazel-bin/node \
              primihub-cli \
              primihub-node \
-             bazel-bin/py_main \
+             bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
              python \

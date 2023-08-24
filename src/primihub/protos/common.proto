@@ -144,6 +144,7 @@ message StringArray {
 
 message Dataset {
   map<string, string> data = 1;
+  bool dataset_detail = 2;
 }
 
 message Task {

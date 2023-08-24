@@ -18,6 +18,7 @@
 
 #include "src/primihub/util/network/message_interface.h"
 #include "src/primihub/util/network/link_context.h"
+#include "src/primihub/node/server_config.h"
 
 namespace primihub {
 oc::IOService g_ios_;
@@ -219,16 +220,26 @@ int AlgorithmBase::initPartyComm() {
   std::string task_id = link_ctx->task_id();
   std::string request_id = link_ctx->request_id();
   LOG(INFO) << "local_id_local_id_: " << this->party_id();
-  LOG(INFO) << "next_party: " << party_name_next << " detail: " << party_node_next.to_string();
-  LOG(INFO) << "prev_party: " << party_name_prev << " detail: " << party_node_prev.to_string();
-  LOG(INFO) << "job_id: " << job_id << " task_id: " << task_id << " request id: " << request_id;
+  LOG(INFO) << "next_party: " << party_name_next
+            << " detail: " << party_node_next.to_string();
+  LOG(INFO) << "prev_party: " << party_name_prev
+            << " detail: " << party_node_prev.to_string();
+  LOG(INFO) << "job_id: " << job_id << " task_id: "
+            << task_id << " request id: " << request_id;
+  auto& ins = primihub::ServerConfig::getInstance();
+  auto proxy_node = ins.ProxyServerCfg();
+  auto recv_channel = link_ctx->getChannel(proxy_node);
   // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
   // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
-  auto msg_interface_prev = std::make_unique<network::TaskMessagePassInterface>(
-      this->party_name(), party_name_prev, link_ctx, base_channel_prev);
+  auto msg_interface_prev =
+      std::make_unique<network::TaskMessagePassInterface>(
+          this->party_name(), party_name_prev,
+          link_ctx, base_channel_prev, recv_channel);
 
-  auto msg_interface_next = std::make_unique<network::TaskMessagePassInterface>(
-      this->party_name(), party_name_next, link_ctx, base_channel_next);
+  auto msg_interface_next =
+      std::make_unique<network::TaskMessagePassInterface>(
+          this->party_name(), party_name_next,
+          link_ctx, base_channel_next, recv_channel);
 
   oc::Channel chl_prev(g_ios_, msg_interface_prev.release());
   oc::Channel chl_next(g_ios_, msg_interface_next.release());

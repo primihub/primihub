@@ -1,26 +1,43 @@
-//
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 #include "src/primihub/util/network/link_context.h"
+#include <utility>
+
 namespace primihub::network {
 void LinkContext::Clean() {
   stop_.store(true);
   LOG(WARNING) << "stop all in data queue";
   {
     std::lock_guard<std::mutex> lck(in_queue_mtx);
-    for(auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
+    for (auto it = in_data_queue.begin(); it != in_data_queue.end(); ++it) {
         it->second.shutdown();
     }
   }
   LOG(WARNING) << "stop all out data queue";
   {
     std::lock_guard<std::mutex> lck(out_queue_mtx);
-    for(auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
+    for (auto it = out_data_queue.begin(); it != out_data_queue.end(); ++it) {
       it->second.shutdown();
     }
   }
   LOG(WARNING) << "stop all complete queue";
   {
     std::lock_guard<std::mutex> lck(complete_queue_mtx);
-    for(auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
+    for (auto it = complete_queue.begin(); it != complete_queue.end(); ++it) {
       it->second.shutdown();
     }
   }
@@ -106,6 +123,35 @@ retcode LinkContext::Recv(const std::string& key,
   return retcode::SUCCESS;
 }
 
+retcode LinkContext::Recv(const std::string& key,
+               const Node& dest_node, std::string* recv_buf) {
+  auto ch = getChannel(dest_node);
+  *recv_buf = ch->forwardRecv(key);
+  if (recv_buf->empty()) {
+    LOG(ERROR) << "recv data is empty";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode LinkContext::Recv(const std::string& key,
+               const Node& dest_node, char* recv_buf, size_t recv_size) {
+  std::string tmp_recv_buf;
+  auto ret = this->Recv(key, dest_node, &tmp_recv_buf);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "recv data from proxy: "
+               << dest_node.to_string() << " failed";
+    return retcode::FAIL;
+  }
+  if (tmp_recv_buf.size() != recv_size) {
+    LOG(ERROR) << "recv data length doest not match, expected: " << recv_size
+               << " but get: " << tmp_recv_buf.size();
+    return retcode::FAIL;
+  }
+  memcpy(recv_buf, tmp_recv_buf.data(), recv_size);
+  return retcode::SUCCESS;
+}
+
 retcode LinkContext::SendRecv(const std::string& key,
                               const Node& dest_node,
                               std::string_view send_buf,
@@ -156,4 +202,4 @@ retcode LinkContext::SendRecv(const std::string& key,
   return retcode::SUCCESS;
 }
 
-} // namespace primihub::network
+}  // namespace primihub::network

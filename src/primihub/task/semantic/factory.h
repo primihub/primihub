@@ -25,10 +25,7 @@
 #include "src/primihub/task/semantic/fl_task.h"
 #include "src/primihub/task/semantic/psi_task.h"
 #include "src/primihub/task/semantic/pir_task.h"
-
-#include "src/primihub/task/semantic/tee_task.h"
 #include "src/primihub/service/dataset/service.h"
-
 
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::Language;
@@ -63,9 +60,6 @@ class TaskFactory {
         break;
       case rpc::TaskType::PIR_TASK:
         task_ptr = TaskFactory::CreatePIRTask(node_id, request, dataset_service);
-        break;
-      case rpc::TaskType::TEE_DATAPROVIDER_TASK:
-        task_ptr = TaskFactory::CreateTEETask(node_id, request, dataset_service);
         break;
       default:
         LOG(ERROR) << "unsupported task type: " << task_type;
@@ -114,15 +108,6 @@ class TaskFactory {
       std::shared_ptr<DatasetService> dataset_service) {
     const auto& task_config = request.task();
     return std::make_shared<PirTask>(&task_config, dataset_service);
-  }
-
-  static std::shared_ptr<TaskBase> CreateTEETask(const std::string& node_id,
-      const PushTaskRequest& request,
-      std::shared_ptr<DatasetService> dataset_service) {
-    const auto& task_config = request.task();
-    return std::make_shared<TEEDataProviderTask>(node_id,
-                                                &task_config,
-                                                dataset_service);
   }
 
 };

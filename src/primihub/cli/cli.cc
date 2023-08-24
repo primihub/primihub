@@ -536,6 +536,19 @@ int SDKClient::SubmitTask() {
         if (is_finished) {
             break;
         }
+        // for test active kill task
+        // {
+        //   std::this_thread::sleep_for(std::chrono::seconds(10));
+        //   rpc::KillTaskRequest request;
+        //   auto task_info = request.mutable_task_info();
+        //   task_info->set_task_id(task_id);
+        //   task_info->set_job_id(job_id);
+        //   task_info->set_request_id(request_id);
+        //   request.set_executor(rpc::KillTaskRequest::CLIENT);
+        //   rpc::KillTaskResponse status_reply;
+        //   auto ret = channel_->killTask(request, &status_reply);
+        // }
+
         if (fetch_count < 1000) {
             std::this_thread::sleep_for(std::chrono::milliseconds(fetch_count*100));
         } else {

@@ -27,6 +27,11 @@ class TeePsiOperator : public BasePsiOperator {
   TeePsiOperator(const Options& options, sgx::TeeEngine* executor) :
       BasePsiOperator(options), executor_(executor) {
     extra_info_.emplace_back("1");
+    auto& party_info = this->options_.party_info;
+    auto it = party_info.find(PartyName());
+    if (it != party_info.end()) {
+      this->options_.proxy_node = it->second;
+    }
   }
   retcode OnExecute(const std::vector<std::string>& input,
                     std::vector<std::string>* result) override;

@@ -4,6 +4,7 @@
 
 #include "src/primihub/kernel/pir/operator/base_pir.h"
 #include "src/primihub/kernel/pir/operator/factory.h"
+#include "src/primihub/node/server_config.h"
 
 namespace primihub::task {
 PirTask::PirTask(const TaskParam* task_param,
@@ -45,8 +46,20 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
         LOG(ERROR) << "dataset id is empty for party: " << party_name();
         return retcode::FAIL;
       }
+      options->db_path = db_cache_dir_ + "/";
       // check db cache exist or not
-      options->db_path = db_cache_dir_ + "/" + this->dataset_id_;
+      if (is_dataset_detail_) {
+        auto it = param_map.find(party_name());
+        if (it != param_map.end()) {
+          options->db_path.append(it->second.value_string());
+        } else {
+          LOG(ERROR) << "dateset id is not set";
+          return retcode::FAIL;
+        }
+      } else {
+         options->db_path.append(this->dataset_id_);
+      }
+
       if (DbCacheAvailable(options->db_path)) {
         options->use_cache = true;
       }
@@ -67,6 +80,9 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
   } else {
     LOG(WARNING) << "find peer node info failed for party: " << party_name();
   }
+  // proxy node
+  auto& ins = primihub::ServerConfig::getInstance();
+  options->proxy_node = ins.ProxyServerCfg();
   // end of build Options
   return retcode::SUCCESS;
 }
@@ -88,6 +104,9 @@ retcode PirTask::LoadParams(const rpc::Task& task) {
     } else {
       dataset_id_ = it->second;
       VLOG(5) << "data set id: " << dataset_id_;
+    }
+    if (dataset_it->second.dataset_detail()) {
+      is_dataset_detail_ = true;
     }
   }
 
@@ -180,6 +199,8 @@ retcode PirTask::ClientLoadDataset() {
     }
     return retcode::SUCCESS;
   }
+
+  // load data from dataset
   if (this->dataset_id_.empty()) {
     LOG(ERROR) << "no dataset found for client: " << party_name();
     return retcode::FAIL;
@@ -248,7 +269,8 @@ retcode PirTask::ServerLoadDataset() {
 
 std::shared_ptr<Dataset> PirTask::LoadDataSetInternal(
     const std::string& dataset_id) {
-  auto driver = this->getDatasetService()->getDriver(dataset_id);
+  auto driver = this->getDatasetService()->getDriver(dataset_id,
+                                                     is_dataset_detail_);
   if (driver == nullptr) {
     LOG(ERROR) << "get driver for dataset: " << dataset_id << " failed";
     return nullptr;

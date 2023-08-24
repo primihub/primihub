@@ -88,6 +88,8 @@ class LogisticRegressionExecutor : public AlgorithmBase {
   // Logistic regression parameters
   std::string train_input_filepath_;
   std::string test_input_filepath_;
+  std::string train_dataset_id_;
+  bool is_dataset_detail_{false};
   int batch_size_;
   int num_iter_;
 };

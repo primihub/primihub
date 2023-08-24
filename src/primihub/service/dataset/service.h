@@ -77,7 +77,8 @@ class DatasetService  {
                       const std::string &schema_url) {}
   retcode registerDriver(const std::string& dataset_id,
                         std::shared_ptr<DataDriver> driver);
-  std::shared_ptr<DataDriver> getDriver(const std::string& dataset_id);
+  std::shared_ptr<DataDriver> getDriver(const std::string& dataset_id,
+                                        bool is_access_info = false);
   retcode unRegisterDriver(const std::string& dataset_id);
   // local config file
   std::unique_ptr<DataSetAccessInfo>

@@ -708,13 +708,13 @@ retcode VMNodeImpl::WaitUntilWorkerReady(const std::string& worker_id,
     }
     VLOG(5) << "sleep and wait for worker ready, "
             << "worker id : " << worker_id << " ........";
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (timeout_ms == -1) {
       continue;
     }
     auto time_elapse_ms = timer.timeElapse();
     if (time_elapse_ms > timeout_ms) {
-      LOG(ERROR) << "wait for worker ready timeout";
+      LOG(ERROR) << "wait for worker ready timeout(ms): " << timeout_ms;
       return retcode::FAIL;
     }
   } while (true);

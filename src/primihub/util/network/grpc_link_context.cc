@@ -1,16 +1,25 @@
 // Copyright [2022] <primihub.com>
 #include "src/primihub/util/network/grpc_link_context.h"
 #include <glog/logging.h>
+#include <vector>
+#include <algorithm>
+#include <utility>
+#include <memory>
+
+#include "src/primihub/util/util.h"
 
 namespace primihub::network {
-GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) : IChannel(link_ctx) {
+GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) :
+    IChannel(link_ctx) {
   dest_node_ = node;
   std::string address_ = node.ip_ + ":" + std::to_string(node.port_);
   auto channel = buildChannel(address_, node.use_tls_);
   stub_ = rpc::VMNode::NewStub(channel);
 }
 
-std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_address, bool use_tls) {
+std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(
+    std::string& server_address,
+    bool use_tls) {
   std::shared_ptr<grpc::ChannelCredentials> creds{nullptr};
   grpc::ChannelArguments channel_args;
   // channel_args.SetMaxReceiveMessageSize(128*1024*1024);
@@ -25,7 +34,8 @@ std::shared_ptr<grpc::Channel> GrpcChannel::buildChannel(std::string& server_add
   } else {
     creds = grpc::InsecureChannelCredentials();
   }
-  grpc_channel_ = grpc::CreateCustomChannel(server_address, creds, channel_args);
+  grpc_channel_ = grpc::CreateCustomChannel(server_address,
+                                            creds, channel_args);
   return grpc_channel_;
 }
 
@@ -38,7 +48,8 @@ retcode GrpcChannel::sendRecv(const std::string& role,
       std::chrono::milliseconds(send_tiemout_ms);
     context.set_deadline(deadline);
   }
-  using reader_writer_t = grpc::ClientReaderWriter<rpc::TaskRequest, rpc::TaskResponse>;
+  using reader_writer_t =
+      grpc::ClientReaderWriter<rpc::TaskRequest, rpc::TaskResponse>;
   std::shared_ptr<reader_writer_t> client_stream(stub_->SendRecv(&context));
   std::vector<rpc::TaskRequest> send_requests;
   buildTaskRequest(role, send_data, &send_requests);
@@ -68,7 +79,8 @@ retcode GrpcChannel::sendRecv(const std::string& role,
   return sendRecv(role, data_sv, recv_data);
 }
 
-bool GrpcChannel::send_wrapper(const std::string& role, const std::string& data) {
+bool GrpcChannel::send_wrapper(const std::string& role,
+                               const std::string& data) {
     auto ret = this->send(role, data);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send data encountes error";
@@ -77,7 +89,8 @@ bool GrpcChannel::send_wrapper(const std::string& role, const std::string& data)
     return true;
 }
 
-bool GrpcChannel::send_wrapper(const std::string& role, std::string_view sv_data) {
+bool GrpcChannel::send_wrapper(const std::string& role,
+                               std::string_view sv_data) {
     auto ret = this->send(role, sv_data);
     if (ret != retcode::SUCCESS) {
         LOG(ERROR) << "send data encountes error";
@@ -179,62 +192,67 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
     } else {
       break;
     }
-  } while(true);
+  } while (true);
   return retcode::SUCCESS;
 }
 
 std::string GrpcChannel::forwardRecv(const std::string& role) {
-    grpc::ClientContext context;
-    auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
-    if (send_tiemout_ms > 0) {
-      auto deadline = std::chrono::system_clock::now() +
-        std::chrono::milliseconds(send_tiemout_ms);
-      context.set_deadline(deadline);
-    }
-    rpc::TaskRequest send_request;
-    auto task_info = send_request.mutable_task_info();
-    task_info->set_task_id(this->getLinkContext()->task_id());
-    task_info->set_job_id(this->getLinkContext()->job_id());
-    task_info->set_request_id(this->getLinkContext()->request_id());
-    send_request.set_role(role);
-    VLOG(5) << "send request info: job_id: " << this->getLinkContext()->job_id()
-            << " task_id: " << this->getLinkContext()->task_id()
-            << " request id: " << this->getLinkContext()->request_id()
-            << " role: " << role
-            << " nodeinfo: " << this->dest_node_.to_string();
-    // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
-    auto client_reader = this->stub_->ForwardRecv(&context, send_request);
+  SCopedTimer timer;
+  grpc::ClientContext context;
+  auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
+  if (send_tiemout_ms > 0) {
+    auto deadline = std::chrono::system_clock::now() +
+      std::chrono::milliseconds(send_tiemout_ms);
+    context.set_deadline(deadline);
+  }
+  rpc::TaskRequest send_request;
+  auto task_info = send_request.mutable_task_info();
+  task_info->set_task_id(this->getLinkContext()->task_id());
+  task_info->set_job_id(this->getLinkContext()->job_id());
+  task_info->set_request_id(this->getLinkContext()->request_id());
+  send_request.set_role(role);
+  VLOG(5) << "send request info: job_id: " << this->getLinkContext()->job_id()
+          << " task_id: " << this->getLinkContext()->task_id()
+          << " request id: " << this->getLinkContext()->request_id()
+          << " role: " << role
+          << " nodeinfo: " << this->dest_node_.to_string();
+  // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
+  auto client_reader = this->stub_->ForwardRecv(&context, send_request);
 
-    // waiting for response
-    std::string tmp_buff;
-    rpc::TaskRequest recv_response;
-    bool init_flag{false};
-    while (client_reader->Read(&recv_response)) {
-        auto data = recv_response.data();
-        if (!init_flag) {
-          size_t data_len = recv_response.data_len();
-          tmp_buff.reserve(data_len);
-          init_flag = true;
-        }
-        VLOG(5) << "data length: " << data.size();
-        tmp_buff.append(data);
+  // waiting for response
+  std::string tmp_buff;
+  rpc::TaskRequest recv_response;
+  bool init_flag{false};
+  while (client_reader->Read(&recv_response)) {
+    auto data = recv_response.data();
+    if (!init_flag) {
+      size_t data_len = recv_response.data_len();
+      tmp_buff.reserve(data_len);
+      init_flag = true;
     }
+    VLOG(5) << "data length: " << data.size();
+    tmp_buff.append(data);
+  }
 
-    grpc::Status status = client_reader->Finish();
-    if (!status.ok()) {
-        LOG(ERROR) << "recv data encountes error, detail: "
-            << status.error_code() << ": " << status.error_message();
-        return std::string("");
-    }
-    VLOG(5) << "recv data success, data size: " << tmp_buff.size();
-    return tmp_buff;
+  grpc::Status status = client_reader->Finish();
+  if (!status.ok()) {
+    LOG(ERROR) << "recv data encountes error, detail: "
+               << status.error_code() << ": " << status.error_message();
+    return std::string("");
+  }
+  VLOG(5) << "recv data success, data size: " << tmp_buff.size();
+  auto time_cost = timer.timeElapse();
+  VLOG(5) << "forwardRecv time cost(ms): " << time_cost;
+  return tmp_buff;
 }
 
-retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTaskReply* reply) {
+retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request,
+                                rpc::PushTaskReply* reply) {
   int retry_time{0};
   do {
     grpc::ClientContext context;
-    auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     grpc::Status status = stub_->SubmitTask(&context, request, reply);
     if (status.ok()) {
@@ -262,11 +280,12 @@ retcode GrpcChannel::submitTask(const rpc::PushTaskRequest& request, rpc::PushTa
 }
 
 retcode GrpcChannel::executeTask(const rpc::PushTaskRequest& request,
-                                rpc::PushTaskReply* reply) {
+                                 rpc::PushTaskReply* reply) {
   int retry_time{0};
   do {
     grpc::ClientContext context;
-    auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     grpc::Status status = stub_->ExecuteTask(&context, request, reply);
     if (status.ok()) {
@@ -297,7 +316,8 @@ retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request,
   int retry_time{0};
   do {
     grpc::ClientContext context;
-    auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     grpc::Status status = stub_->KillTask(&context, request, reply);
     if (status.ok()) {
@@ -323,11 +343,13 @@ retcode GrpcChannel::killTask(const rpc::KillTaskRequest& request,
   return retcode::SUCCESS;
 }
 
-retcode GrpcChannel::updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty* reply) {
+retcode GrpcChannel::updateTaskStatus(const rpc::TaskStatus& request,
+                                      rpc::Empty* reply) {
   int retry_time{0};
   do {
     grpc::ClientContext context;
-    auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     grpc::Status status = stub_->UpdateTaskStatus(&context, request, reply);
     if (status.ok()) {
@@ -353,11 +375,13 @@ retcode GrpcChannel::updateTaskStatus(const rpc::TaskStatus& request, rpc::Empty
   return retcode::SUCCESS;
 }
 
-retcode GrpcChannel::fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskStatusReply* reply) {
+retcode GrpcChannel::fetchTaskStatus(const rpc::TaskContext& request,
+                                     rpc::TaskStatusReply* reply) {
   int retry_time{0};
   do {
     grpc::ClientContext context;
-    auto deadline = std::chrono::system_clock::now() + std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     grpc::Status status = stub_->FetchTaskStatus(&context, request, reply);
     if (status.ok()) {
@@ -383,12 +407,14 @@ retcode GrpcChannel::fetchTaskStatus(const rpc::TaskContext& request, rpc::TaskS
   return retcode::SUCCESS;
 }
 
-std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(const primihub::Node& node,
-                                                        LinkContext* link_ctx) {
+std::shared_ptr<IChannel> GrpcLinkContext::buildChannel(
+    const primihub::Node& node,
+    LinkContext* link_ctx) {
   return std::make_shared<GrpcChannel>(node, link_ctx);
 }
 
-std::shared_ptr<IChannel> GrpcLinkContext::getChannel(const primihub::Node& node) {
+std::shared_ptr<IChannel> GrpcLinkContext::getChannel(
+    const primihub::Node& node) {
   std::string node_info = node.to_string();
   {
     std::shared_lock<std::shared_mutex> lck(this->connection_mgr_mtx);
@@ -406,4 +432,4 @@ std::shared_ptr<IChannel> GrpcLinkContext::getChannel(const primihub::Node& node
   return channel;
 }
 
-}  // primihub::network
+}  // namespace primihub::network

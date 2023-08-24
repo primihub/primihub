@@ -17,10 +17,10 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 
-#include <pybind11/embed.h>
+// #include <pybind11/embed.h>
 #include "src/primihub/task/semantic/task.h"
 
-namespace py = pybind11;
+// namespace py = pybind11;
 namespace primihub::task {
 // /**
 //  * @brief TEE Executor role task

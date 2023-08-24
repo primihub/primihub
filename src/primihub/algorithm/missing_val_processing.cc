@@ -327,7 +327,21 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     return -1;
   }
   // File path.
-  data_file_path_ = iter->second;
+  if (it->second.dataset_detail()) {
+    this->is_dataset_detail_ = true;
+    auto& param_map = task.params().param_map();
+    auto p_it = param_map.find("Data_File");
+    if (p_it != param_map.end()) {
+      data_file_path_ = p_it->second.value_string();
+      this->dataset_id_ = iter->second;
+    } else {
+      LOG(ERROR) << "no dataset id is found";
+      return -1;
+    }
+  } else {
+    data_file_path_ = iter->second;
+    this->dataset_id_ = iter->second;
+  }
 
   auto param_map = task.params().param_map();
   replace_type_ = param_map["Replace_Type"].value_string();
@@ -383,7 +397,7 @@ int MissingProcess::loadDataset() {
   if (use_db) {
     ret = _LoadDatasetFromDB(conn_info_);
   } else {
-    ret = _LoadDatasetFromCSV(data_file_path_);
+    ret = _LoadDatasetFromCSV(this->dataset_id_);
   }
   // file reading error or file empty
   if (ret <= 0) {
@@ -1208,7 +1222,8 @@ int MissingProcess::saveModel(void) {
 }
 
 int MissingProcess::_LoadDatasetFromCSV(std::string &dataset_id) {
-  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto driver = this->dataset_service_->getDriver(dataset_id,
+                                                  this->is_dataset_detail_);
   auto access_info =
       dynamic_cast<CSVAccessInfo *>(driver->dataSetAccessInfo().get());
   if (access_info == nullptr) {
