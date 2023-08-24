@@ -73,7 +73,6 @@ Worker::TaskRunMode Worker::ExecuteMode(const PushTaskRequest& request) {
   if (it != map_info.end()) {
     int psi_tag = it->second.value_int32();
     if (psi_tag == rpc::PsiTag::TEE) {
-      LOG(ERROR) << "here";
       return TaskRunMode::THREAD;
     }
   }

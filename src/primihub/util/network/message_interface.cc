@@ -110,7 +110,6 @@ void TaskMessagePassInterface::_channelRecv(
     }
 
     std::string recv_str = recv_channel_->forwardRecv(recv_key);
-    // queue.wait_and_pop(recv_str);
 
     if (!recv_str.size()) {
       LOG(ERROR) << "Recv queue has shutdown, recv failed, already recv "
