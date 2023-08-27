@@ -142,12 +142,15 @@ class Pipeline(BaseModel):
             module = select_module(module_name, params, FL_type, role, channel)
 
             if role != 'server':
-                if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
+                if ('LabelBinarizer' in module_name
+                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
                     temp = module.fit_transform(data[column])
                     if 'LabelBinarizer' in module_name:
                         col_name = [column+str(i) for i in range(temp.shape[1])]
                     else:
                         col_name = module.module.get_feature_names_out()
+                        if module_name == 'KBinsDiscretizer':
+                            col_name = 'Bin_' + col_name
                     data = data.join(
                         pd.DataFrame(
                             temp,
@@ -199,12 +202,15 @@ class Pipeline(BaseModel):
         for module_name, module, column in preprocess:
             logger.info(f"module name: {module_name}")
             logger.info(f"preprocess columns: {column}, # {len(column)}")
-            if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
+            if ('LabelBinarizer' in module_name
+                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
                 temp = module.fit_transform(data[column])
                 if 'LabelBinarizer' in module_name:
                     col_name = [column+str(i) for i in range(temp.shape[1])]
                 else:
                     col_name = module.get_feature_names_out()
+                    if module_name == 'KBinsDiscretizer':
+                            col_name = 'Bin_' + col_name
                 data = data.join(
                     pd.DataFrame(
                         temp,
