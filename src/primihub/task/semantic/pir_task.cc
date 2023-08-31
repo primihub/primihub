@@ -1,7 +1,7 @@
 //
 #include "src/primihub/task/semantic/pir_task.h"
 #include <glog/logging.h>
-
+#include <nlohmann/json.hpp>
 #include "src/primihub/kernel/pir/operator/base_pir.h"
 #include "src/primihub/kernel/pir/operator/factory.h"
 #include "src/primihub/node/server_config.h"
@@ -145,24 +145,40 @@ retcode PirTask::GetServerDataSetSchema(const rpc::Task& task) {
     LOG(WARNING) << "no dataset found for party_name: " << PARTY_SERVER;
     return retcode::FAIL;
   }
-  auto& server_dataset_id = iter->second;
-  auto& dataset_service = this->getDatasetService();
-  auto driver = dataset_service->getDriver(server_dataset_id);
-  if (driver == nullptr) {
-    LOG(WARNING) << "no dataset access info found for id: "
-                  << server_dataset_id;
-    return retcode::FAIL;
+
+  if (it->second.dataset_detail()) {
+    auto& dataset_access = iter->second;
+    nlohmann::json acc_info = nlohmann::json::parse(dataset_access);
+    auto schema_str = acc_info["schema"].get<std::string>();
+    LOG(ERROR) << schema_str;
+    nlohmann::json filed_list = nlohmann::json::parse(schema_str);
+    for (const auto& filed : filed_list) {
+      for (const auto& [name, _] : filed.items()) {
+        server_dataset_schema_.push_back(name);
+      }
+    }
+  } else {
+    auto& server_dataset_id = iter->second;
+    auto& dataset_service = this->getDatasetService();
+    auto driver = dataset_service->getDriver(server_dataset_id);
+    if (driver == nullptr) {
+      LOG(WARNING) << "no dataset access info found for id: "
+                    << server_dataset_id;
+      return retcode::FAIL;
+    }
+    auto& access_info = driver->dataSetAccessInfo();
+    if (access_info == nullptr) {
+      LOG(WARNING) << "no dataset access info found for id: "
+                    << server_dataset_id;
+      return retcode::FAIL;
+    }
+    auto& schema = access_info->Schema();
+    for (const auto& field : schema) {
+      LOG(ERROR) << "field: " << std::get<0>(field);
+      server_dataset_schema_.push_back(std::get<0>(field));
+    }
   }
-  auto& access_info = driver->dataSetAccessInfo();
-  if (access_info == nullptr) {
-    LOG(WARNING) << "no dataset access info found for id: "
-                  << server_dataset_id;
-    return retcode::FAIL;
-  }
-  auto& schema = access_info->Schema();
-  for (const auto& field : schema) {
-    server_dataset_schema_.push_back(std::get<0>(field));
-  }
+
   return retcode::SUCCESS;
 }
 
