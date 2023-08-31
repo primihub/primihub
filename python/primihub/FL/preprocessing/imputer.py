@@ -4,6 +4,7 @@ from sklearn.impute import SimpleImputer as SKL_SimpleImputer
 from sklearn.impute._base import _BaseImputer
 from .base import PreprocessBase
 from .util import get_dense_mask, unique
+from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
 
 
 class SimpleImputer(PreprocessBase, _BaseImputer):
@@ -118,12 +119,23 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
 
         # Median
         elif strategy == "median":
-            median_masked = np.ma.median(masked_X, axis=0)
-            # Avoid the warning "Warning: converting a masked element to nan."
-            median = np.ma.getdata(median_masked)
-            median[np.ma.getmaskarray(median_masked)] = (
-                0 if self.module.keep_empty_features else np.nan
-            )
+            if self.role == 'client':
+                send_local_kll_sketch(masked_X, self.channel)
+                median = self.channel.recv('median')
+
+            elif self.role == 'server':
+                kll = merge_client_kll_sketch(self.channel)
+                mask = kll.is_empty()
+
+                if not any(mask):
+                    median = kll.get_quantiles(0.5).reshape(-1)
+                else:
+                    median = np.zeros_like(mask, dtype=float)
+                    idx = [i for i, x in enumerate(mask) if not x]
+                    median[idx] = kll.get_quantiles(0.5, isk=idx).reshape(-1)
+                    median[mask] = 0 if self.module.keep_empty_features else np.nan
+
+                self.channel.send_all('median', median)
 
             return median
 
