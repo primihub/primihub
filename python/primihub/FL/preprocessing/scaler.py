@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 from sklearn.preprocessing import MaxAbsScaler as SKL_MaxAbsScaler
 from sklearn.preprocessing import MinMaxScaler as SKL_MinMaxScaler
 from sklearn.preprocessing import Normalizer as SKL_Normalizer
@@ -7,6 +8,7 @@ from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
 from sklearn.utils import check_array
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
+from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
 
 
 FLOAT_DTYPES = (np.float64, np.float32, np.float16)
@@ -183,7 +185,57 @@ class RobustScaler(PreprocessBase):
                                        unit_variance=unit_variance)
 
     def Hfit(self, X):
-        pass
+        q_min, q_max = self.module.quantile_range
+        if not 0 <= q_min <= q_max <= 100:
+            raise ValueError("Invalid quantile range: %s" % str(self.module.quantile_range))
+        
+        if not self.module.with_centering:
+            center = None
+
+        if not self.module.with_scaling:
+            scale = None
+        
+        if self.role == 'client':
+            X = self.module._validate_data(
+                X,
+                dtype=FLOAT_DTYPES,
+                force_all_finite="allow-nan",
+            )
+
+            if self.module.with_centering:
+                send_local_kll_sketch(X, self.channel)
+                center = self.channel.recv('center')
+
+            if self.module.with_scaling:
+                if not self.module.with_centering:
+                    send_local_kll_sketch(X, self.channel)
+                scale = self.channel.recv('scale')
+        
+        elif self.role == 'server':
+            if self.module.with_centering:
+                kll = merge_client_kll_sketch(self.channel)
+                center = kll.get_quantiles(0.5).reshape(-1)
+                self.channel.send_all('center', center)
+
+            if self.module.with_scaling:
+                if not self.module.with_centering:
+                    kll = merge_client_kll_sketch(self.channel)
+
+                quantiles = kll.get_quantiles([q_min / 100.0, q_max / 100.0])
+                quantiles = np.transpose(quantiles)
+
+                scale = quantiles[1] - quantiles[0]
+                scale = handle_zeros_in_scale(scale, copy=False)
+                if self.module.unit_variance:
+                    adjust = stats.norm.ppf(q_max / 100.0) - stats.norm.ppf(q_min / 100.0)
+                    scale = scale / adjust
+                
+                self.channel.send_all('scale', scale)
+            
+        self.module.center_ = center
+        self.module.scale_ = scale
+
+        return self
 
 
 class StandardScaler(PreprocessBase):
