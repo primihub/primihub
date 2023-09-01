@@ -29,8 +29,8 @@
                     "column": null,
                     "n_bins": 5,
                     "encode": "ordinal",
-                    "strategy": "uniform",
-                    "subsample": "warn",
+                    "strategy": "quantile",
+                    "subsample": 200000,
                     "random_state": null
                 }
             }

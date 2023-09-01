@@ -233,7 +233,7 @@ def select_module(module_name, params, FL_type, role, channel):
             n_bins=params.get('n_bins', 5),
             encode=params.get('encode', 'onehot'),
             strategy=params.get('strategy', 'quantile'),
-            subsample=params.get('subsample', 'warn'),
+            subsample=params.get('subsample', 200000),
             random_state=params.get('random_state'),
             FL_type=FL_type,
             role=role,
