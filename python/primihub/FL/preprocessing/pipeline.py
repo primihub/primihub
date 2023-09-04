@@ -142,12 +142,15 @@ class Pipeline(BaseModel):
             module = select_module(module_name, params, FL_type, role, channel)
 
             if role != 'server':
-                if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
+                if ('LabelBinarizer' in module_name
+                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
                     temp = module.fit_transform(data[column])
                     if 'LabelBinarizer' in module_name:
                         col_name = [column+str(i) for i in range(temp.shape[1])]
                     else:
                         col_name = module.module.get_feature_names_out()
+                        if module_name == 'KBinsDiscretizer':
+                            col_name = 'Bin_' + col_name
                     data = data.join(
                         pd.DataFrame(
                             temp,
@@ -199,12 +202,15 @@ class Pipeline(BaseModel):
         for module_name, module, column in preprocess:
             logger.info(f"module name: {module_name}")
             logger.info(f"preprocess columns: {column}, # {len(column)}")
-            if 'LabelBinarizer' in module_name or module_name == 'OneHotEncoder':
+            if ('LabelBinarizer' in module_name
+                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
                 temp = module.fit_transform(data[column])
                 if 'LabelBinarizer' in module_name:
                     col_name = [column+str(i) for i in range(temp.shape[1])]
                 else:
                     col_name = module.get_feature_names_out()
+                    if module_name == 'KBinsDiscretizer':
+                            col_name = 'Bin_' + col_name
                 data = data.join(
                     pd.DataFrame(
                         temp,
@@ -227,7 +233,7 @@ def select_module(module_name, params, FL_type, role, channel):
             n_bins=params.get('n_bins', 5),
             encode=params.get('encode', 'onehot'),
             strategy=params.get('strategy', 'quantile'),
-            subsample=params.get('subsample', 'warn'),
+            subsample=params.get('subsample', 200000),
             random_state=params.get('random_state'),
             FL_type=FL_type,
             role=role,
@@ -349,6 +355,18 @@ def select_module(module_name, params, FL_type, role, channel):
             copy=params.get('copy', True),
             with_mean=params.get('with_mean', True),
             with_std=params.get('with_std', True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "QuantileTransformer":
+        module = QuantileTransformer(
+            n_quantiles=params.get('n_quantiles', 1000),
+            output_distribution=params.get('output_distribution', "uniform"),
+            ignore_implicit_zeros=params.get('ignore_implicit_zeros', False),
+            subsample=params.get('subsample', 10000),
+            random_state=params.get('random_state'),
+            copy=params.get('copy', True),
             FL_type=FL_type,
             role=role,
             channel=channel
