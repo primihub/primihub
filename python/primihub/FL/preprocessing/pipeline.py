@@ -359,6 +359,18 @@ def select_module(module_name, params, FL_type, role, channel):
             role=role,
             channel=channel
         )
+    elif module_name == "QuantileTransformer":
+        module = QuantileTransformer(
+            n_quantiles=params.get('n_quantiles', 1000),
+            output_distribution=params.get('output_distribution', "uniform"),
+            ignore_implicit_zeros=params.get('ignore_implicit_zeros', False),
+            subsample=params.get('subsample', 10000),
+            random_state=params.get('random_state'),
+            copy=params.get('copy', True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
     else:
         error_msg = f"Unsupported module: {module_name}"
         logger.error(error_msg)
