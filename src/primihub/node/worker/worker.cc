@@ -119,7 +119,11 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
   auto party_datasets = send_request.mutable_task()->mutable_party_datasets();
   auto param_map_ptr =
       send_request.mutable_task()->mutable_params()->mutable_param_map();
+  auto self_party_name = send_request.task().party_name();
   for (auto& [party_name, datasets] : *party_datasets) {
+    if (party_name != self_party_name) {
+      continue;
+    }
     auto datset_ptr = datasets.mutable_data();
     for (auto& [dataset_name, dataset_id] : *(datset_ptr)) {
       auto driver = dataset_service->getDriver(dataset_id);
