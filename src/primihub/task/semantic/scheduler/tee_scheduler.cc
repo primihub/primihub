@@ -135,12 +135,9 @@ void TEEScheduler::push_task_to_node(const std::string &node_id,
         (*param_map)[dataset_param.second] = pv;
     }
     {
-        // fill scheduler info
-        auto node_map = _1NodePushTaskRequest.mutable_task()->mutable_node_map();
-        auto& local_node = getLocalNodeCfg();
-        rpc::Node scheduler_node;
-        node2PbNode(local_node, &scheduler_node);
-        (*node_map)[SCHEDULER_NODE] = std::move(scheduler_node);
+      // fill scheduler info
+      auto task_ptr = _1NodePushTaskRequest.mutable_task();
+      AddSchedulerNode(task_ptr);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);

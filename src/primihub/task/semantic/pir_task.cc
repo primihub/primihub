@@ -19,9 +19,6 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
   auto& party_info = options->party_info;
   const auto& pb_party_info = task.party_access_info();
   for (const auto& [_party_name, pb_node] : pb_party_info) {
-    if (_party_name == SCHEDULER_NODE) {
-      continue;
-    }
     Node node_info;
     pbNode2Node(pb_node, &node_info);
     party_info[_party_name] = std::move(node_info);
@@ -81,8 +78,11 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
     LOG(WARNING) << "find peer node info failed for party: " << party_name();
   }
   // proxy node
-  auto& ins = primihub::ServerConfig::getInstance();
-  options->proxy_node = ins.ProxyServerCfg();
+  auto ret = this->ExtractProxyNode(task, &options->proxy_node);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "get proxy node failed";
+    return retcode::FAIL;
+  }
   // end of build Options
   return retcode::SUCCESS;
 }

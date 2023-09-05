@@ -159,6 +159,7 @@ message Task {
   string party_name = 11;                           // participate name
   map<string, Dataset> party_datasets = 13;         // key: party, value: party related datasets
   map<string, Node> party_access_info = 14;         // key: party, value: Party Access info
+  map<string, Node> auxiliary_server = 15;          // key: server name, value: server Access info
 }
 
 message Empty {

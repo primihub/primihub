@@ -85,6 +85,19 @@ AlgorithmBase::AlgorithmBase(const PartyConfig& config,
 #endif
 }
 
+retcode AlgorithmBase::ExtractProxyNode(const rpc::Task& task_config,
+                                        Node* proxy_node) {
+  const auto& auxiliary_server = task_config.auxiliary_server();
+  auto it = auxiliary_server.find(PROXY_NODE);
+  if (it == auxiliary_server.end()) {
+    LOG(ERROR) << "no proxy node found";
+    return retcode::FAIL;
+  }
+  const auto& pb_proxy_node = it->second;
+  pbNode2Node(pb_proxy_node, proxy_node);
+  return retcode::SUCCESS;
+}
+
 #ifdef MPC_SOCKET_CHANNEL
 int AlgorithmBase::initPartyComm() {
   VLOG(3) << "Next addr: " << next_addr_.first << ":" << next_addr_.second << ".";
@@ -226,9 +239,8 @@ int AlgorithmBase::initPartyComm() {
             << " detail: " << party_node_prev.to_string();
   LOG(INFO) << "job_id: " << job_id << " task_id: "
             << task_id << " request id: " << request_id;
-  auto& ins = primihub::ServerConfig::getInstance();
-  auto proxy_node = ins.ProxyServerCfg();
-  auto recv_channel = link_ctx->getChannel(proxy_node);
+
+  auto recv_channel = link_ctx->getChannel(this->proxy_node_);
   // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
   // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
   auto msg_interface_prev =

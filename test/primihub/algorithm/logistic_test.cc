@@ -62,6 +62,12 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   for (const auto& [key, dataset_id] : dataset_list) {
     (*datasets)[key] = dataset_id;
   }
+  auto auxiliary_server = task.mutable_auxiliary_server();
+  rpc::Node fake_proxy_node;
+  fake_proxy_node.set_ip("127.0.0.1");
+  fake_proxy_node.set_port(50050);
+  fake_proxy_node.set_use_tls(false);
+  (*auxiliary_server)[PROXY_NODE] = std::move(fake_proxy_node);
   // param
   rpc::ParamValue pv_batch_size;
   pv_batch_size.set_var_type(rpc::VarType::INT32);

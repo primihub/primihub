@@ -56,15 +56,16 @@ retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
   auto& party_info = options->party_info;
   const auto& pb_party_info = task.party_access_info();
   for (const auto& [_party_name, pb_node] : pb_party_info) {
-    if (_party_name == SCHEDULER_NODE) {
-      continue;
-    }
     Node node_info;
     pbNode2Node(pb_node, &node_info);
     party_info[_party_name] = std::move(node_info);
   }
-  auto& server_cfg = primihub::ServerConfig::getInstance();
-  options->proxy_node = server_cfg.ProxyServerCfg();
+  auto ret = this->ExtractProxyNode(task, &options->proxy_node);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "get proxy node failed";
+    return retcode::FAIL;
+  }
+
   const auto& param_map = task.params().param_map();
   // TODO(XXX) rename to PsiResultType {intersection or DIFFERENCE}
   auto it = param_map.find("psiType");   // psi reuslt

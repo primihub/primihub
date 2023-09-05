@@ -29,6 +29,11 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
+  auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "extract proxy node failed";
+    return -1;
+  }
   LOG(INFO) << "party_name: " << this->party_name_;
   auto party_datasets = task.party_datasets();
   auto it = party_datasets.find(this->party_name());

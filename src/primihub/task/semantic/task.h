@@ -92,6 +92,8 @@ class TaskBase {
   std::shared_ptr<DatasetService>& getDatasetService() {
     return dataset_service_;
   }
+  retcode ExtractProxyNode(const rpc::Task& task_config, Node* proxy_node);
+
   retcode send(const std::string& key,
                const Node& dest_node,
                const std::string& send_buff);
