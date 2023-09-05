@@ -378,4 +378,8 @@ def variance(X_sum, un_var, n_samples):
 
 
 def sum_squares(Sm, Sn, Tm, Tn, m, n):
+    # Tony F. Chan, Gene H. Golub, and Randall J. Leveque.
+    # Algorithms for computing the sample variance: analysis
+    # and recommendations. The American Statistician, 1983.
+    # https://doi.org/10.2307/2683386
     return Sm + Sn + m / (n * (m + n)) * (n/m * Tm - Tn)**2
