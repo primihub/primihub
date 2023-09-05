@@ -323,7 +323,7 @@ http_archive(
     strip_prefix = "opentelemetry-cpp-1.0.1",
     urls = [
         "https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.0.1.tar.gz",
-        "https://primihub.oss-cn-beijing.aliyuncs.com/opentelemetry-cpp-1.0.1.tar.gz"
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/opentelemetry-cpp-1.0.1.tar.gz"
     ],
 )
 

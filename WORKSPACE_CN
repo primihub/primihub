@@ -314,10 +314,10 @@ http_archive(
 
 http_archive(
   name = "io_opentelemetry_cpp",
-  sha256 = "32f12ff15ec257e3462883f84bc291c2d5dc30055604c12ec4b46a36dfa3f189",
+  sha256 = "0cddc5a582b52d9234bd261f1fd218d4cd136ed8c79e7af99034d1dc7da8c33b",
   strip_prefix = "opentelemetry-cpp-1.0.1",
   urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/opentelemetry-cpp-1.0.1.tar.gz"
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/opentelemetry-cpp-1.0.1.tar.gz"
   ],
 )
 

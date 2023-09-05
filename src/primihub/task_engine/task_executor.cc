@@ -87,7 +87,7 @@ retcode TaskEngine::InitDatasetSerivce() {
 
 retcode TaskEngine::GetScheduleNode() {
   const auto& task_config = task_request_->task();
-  const auto& party_access_info = task_config.party_access_info();
+  const auto& party_access_info = task_config.auxiliary_server();
   auto it = party_access_info.find(SCHEDULER_NODE);
   if (it != party_access_info.end()) {
     const auto& pb_node = it->second;

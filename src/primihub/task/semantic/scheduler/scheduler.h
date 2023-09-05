@@ -47,7 +47,8 @@ class VMScheduler {
   VMScheduler(const std::string &node_id, bool singleton);
   virtual ~VMScheduler() = default;
   virtual retcode dispatch(const PushTaskRequest *pushTaskRequest);
-  virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {}
+  virtual void set_dataset_owner(
+      std::map<std::string, std::string> &dataset_owner) {}
 
   inline std::string get_node_id() const {return node_id_;}
   void parseNotifyServer(const PushTaskReply& reply);
@@ -63,6 +64,7 @@ class VMScheduler {
   }
 
  protected:
+  retcode AddSchedulerNode(rpc::Task* task);
   void initCertificate();
   Node& getLocalNodeCfg() const;
   void InitLinkContext();

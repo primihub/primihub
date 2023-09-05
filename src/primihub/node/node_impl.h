@@ -46,8 +46,8 @@ class VMNodeImpl {
                       rpc::PushTaskReply* reply);
   retcode KillTask(const rpc::KillTaskRequest& request,
                    rpc::KillTaskResponse* response);
-  retcode GetSchedulerNodeCfg(const rpc::PushTaskRequest& request,
-                              Node* scheduler_node);
+  retcode GetSchedulerNode(const rpc::PushTaskRequest& request,
+                           Node* scheduler_node);
   retcode FetchTaskStatus(const rpc::TaskContext& request,
                           rpc::TaskStatusReply* response);
   retcode NotifyTaskStatus(const rpc::PushTaskRequest& request,

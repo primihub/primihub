@@ -36,14 +36,7 @@ retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  {
-    auto party_access_info_ptr = task_ptr->mutable_party_access_info();
-    auto& local_node = getLocalNodeCfg();
-    rpc::Node node;
-    node2PbNode(local_node, &node);
-    auto& scheduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
-    scheduler_node = std::move(node);
-  }
+  AddSchedulerNode(task_ptr);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;
@@ -100,13 +93,9 @@ void ABY3Scheduler::node_push_task(const std::string& node_id,
         DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
     }
     {
-        // fill scheduler info
-        auto party_access_info = _1NodePushTaskRequest.mutable_task()->mutable_party_access_info();
-        auto& local_node = getLocalNodeCfg();
-        rpc::Node node;
-        node2PbNode(local_node, &node);
-        auto& scheduler_node = (*party_access_info)[SCHEDULER_NODE];
-        scheduler_node = std::move(scheduler_node);
+      // fill scheduler info
+      auto task_ptr = _1NodePushTaskRequest.mutable_task();
+      AddSchedulerNode(task_ptr);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);

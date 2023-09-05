@@ -159,6 +159,8 @@ class AlgorithmBase {
   oc::Channel& mNext() {return comm_pkg_->mNext;}
   oc::Channel& mPrev() {return comm_pkg_->mPrev;}
   aby3::CommPkg* CommPkgPtr() {return comm_pkg_.get();}
+  retcode ExtractProxyNode(const rpc::Task& task_config, Node* proxy_node);
+
  protected:
   std::shared_ptr<DatasetService> dataset_service_;
   std::string algorithm_name_;
@@ -179,6 +181,7 @@ class AlgorithmBase {
   std::unique_ptr<aby3::CommPkg> comm_pkg_{nullptr};
   // oc::IOService ios_;
   ABY3PartyConfig party_config_;
+  Node proxy_node_;
 };
 }  // namespace primihub
 

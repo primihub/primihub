@@ -314,6 +314,11 @@ MissingProcess::MissingProcess(PartyConfig &config,
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
   LOG(INFO) << "party_name: " << this->party_name_;
+  auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "extract proxy node failed";
+    return -1;
+  }
   auto party_datasets = task.party_datasets();
   auto it = party_datasets.find(this->party_name());
   if (it == party_datasets.end()) {

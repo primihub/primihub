@@ -39,6 +39,19 @@ void TaskBase::setTaskParam(const TaskParam& task_param) {
   this->party_name_ = task_param.party_name();
 }
 
+retcode TaskBase::ExtractProxyNode(const rpc::Task& task_config,
+                                   Node* proxy_node) {
+  const auto& auxiliary_server = task_config.auxiliary_server();
+  auto it = auxiliary_server.find(PROXY_NODE);
+  if (it == auxiliary_server.end()) {
+    LOG(ERROR) << "no proxy node found";
+    return retcode::FAIL;
+  }
+  const auto& pb_proxy_node = it->second;
+  pbNode2Node(pb_proxy_node, proxy_node);
+  return retcode::SUCCESS;
+}
+
 retcode TaskBase::send(const std::string& key,
                         const Node& dest_node,
                         const std::string& send_buff) {

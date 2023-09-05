@@ -177,6 +177,16 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
     std::string task_id = task_info.task_id();
     std::string job_id = task_info.job_id();
     std::string request_id = task_info.request_id();
+    // add proxy server info
+    auto& server_cfg = ServerConfig::getInstance();
+    auto& proxy_node = server_cfg.ProxyServerCfg();
+    auto auxiliary_server = request.mutable_task()->mutable_auxiliary_server();
+    {
+      rpc::Node pb_proxy_node;
+      node2PbNode(proxy_node, &pb_proxy_node);
+      auxiliary_server->insert({PROXY_NODE, std::move(pb_proxy_node)});
+    }
+
     LOG(INFO) << "begin to execute task";
     rpc::TaskStatus::StatusCode status = rpc::TaskStatus::RUNNING;
     std::string status_info = "task is running";
@@ -293,11 +303,11 @@ retcode VMNodeImpl::KillTask(const rpc::KillTaskRequest& request,
   return retcode::SUCCESS;
 }
 
-retcode VMNodeImpl::GetSchedulerNodeCfg(const PushTaskRequest& request,
+retcode VMNodeImpl::GetSchedulerNode(const PushTaskRequest& request,
                                         Node* scheduler_node) {
-  const auto& party_access_info = request.task().party_access_info();
-  auto it = party_access_info.find(SCHEDULER_NODE);
-  if (it != party_access_info.end()) {
+  const auto& auxiliary_server = request.task().auxiliary_server();
+  auto it = auxiliary_server.find(SCHEDULER_NODE);
+  if (it != auxiliary_server.end()) {
     auto& pb_schedule_node = it->second;
     pbNode2Node(pb_schedule_node, scheduler_node);
   } else {
@@ -336,7 +346,7 @@ retcode VMNodeImpl::NotifyTaskStatus(const PushTaskRequest& request,
                                      const rpc::TaskStatus::StatusCode status,
                                      const std::string& message) {
   Node scheduler_node;
-  auto ret = GetSchedulerNodeCfg(request, &scheduler_node);
+  auto ret = GetSchedulerNode(request, &scheduler_node);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "get scheduler node cfg failed";
     return retcode::FAIL;

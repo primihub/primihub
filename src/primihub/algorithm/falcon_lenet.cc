@@ -60,6 +60,11 @@ FalconLenetExecutor::FalconLenetExecutor(
 }
 
 int FalconLenetExecutor::loadParams(primihub::rpc::Task &task) {
+  auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "extract proxy node failed";
+    return -1;
+  }
   auto param_map = task.params().param_map();
   try {
     Test_Input_Self_path = param_map["Test_Input_Self"].value_string();
