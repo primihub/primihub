@@ -255,6 +255,13 @@ class StandardScaler(PreprocessBase):
                                          with_std=with_std)
 
     def Hfit(self, X):
+        if not self.module.with_mean:
+            mean = None
+
+        if not self.module.with_std:
+            var = None
+            scale = None
+
         if self.role == 'client':
             X = self.module._validate_data(
                 X,
@@ -271,6 +278,8 @@ class StandardScaler(PreprocessBase):
                 self.module.n_samples_seen_ = self.module.n_samples_seen_[0]
 
             if self.module.with_mean or self.module.with_std:
+                self.channel.send('n_samples', self.module.n_samples_seen_)
+                
                 X_nan_mask = np.isnan(X)
                 if np.any(X_nan_mask):
                     sum_op = np.nansum
@@ -278,26 +287,22 @@ class StandardScaler(PreprocessBase):
                     sum_op = np.sum
                 X_sum = sum_op(X, axis=0)
                 self.channel.send('X_sum', X_sum)
-                self.channel.send('n_samples',
-                                  self.module.n_samples_seen_)
-                mean = self.channel.recv('mean')
 
-            if self.module.with_std:
-                # sum of squares of the deviations from the mean with correction
-                temp = X - mean
-                correction = sum_op(temp, axis=0)
-                temp **= 2
-                un_var = sum_op(temp, axis=0)
-                un_var -= correction**2 / self.module.n_samples_seen_
-                self.channel.send('un_var', un_var)
-
-                var = self.channel.recv('var')
-                constant_mask = self.channel.recv('constant_mask')
+                if self.module.with_mean:
+                    mean = self.channel.recv('mean')
+                else:
+                    mean = X_sum / self.module.n_samples_seen_
+                    
+                if self.module.with_std:
+                    un_var = unnormalized_variance(X, mean, self.module.n_samples_seen_, sum_op)
+                    self.channel.send('un_var', un_var)
+                    var = self.channel.recv('var')
+                    constant_mask = self.channel.recv('constant_mask')
 
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
+
             if self.module.with_mean or self.module.with_std:
-                X_sum = self.channel.recv_all('X_sum')
                 n_samples = self.channel.recv_all('n_samples')
                 # n_samples could be np.int or np.ndarray
                 n_sum = 0
@@ -305,40 +310,72 @@ class StandardScaler(PreprocessBase):
                     n_sum += n
                 if isinstance(n_sum, np.ndarray) and np.ptp(n_sum) == 0:
                     n_sum = n_sum[0]
-
-                mean = np.array(X_sum).sum(axis=0) / n_sum
-                self.channel.send_all('mean', mean)
                 self.module.n_samples_seen_ = n_sum
-            
-            if self.module.with_std:
-                un_var = self.channel.recv_all('un_var')
-                # biased sample standard deviation
-                var = np.array(un_var).sum(axis=0) / n_sum
-                self.channel.send_all('var', var)
 
-                # Extract the list of near constant features on the raw variances,
-                # before taking the square root.
-                constant_mask = is_constant_feature(
-                    var,
-                    mean,
-                    n_sum
-                )
-                self.channel.send_all('constant_mask', constant_mask)
+                X_sum = self.channel.recv_all('X_sum')
+                mean = np.array(X_sum).sum(axis=0) / n_sum
 
-        if not self.module.with_mean and not self.module.with_std:
-            self.module.mean_ = None
-            self.module.var_ = None
-        else:
-            self.module.mean_ = mean
+                if self.module.with_mean:
+                    self.channel.send_all('mean', mean)
+                
+                if self.module.with_std:
+                    un_var = self.channel.recv_all('un_var')
+
+                    if self.module.with_mean:
+                        var = np.array(un_var).sum(axis=0) / n_sum
+                    else:
+                        var = variance(X_sum, un_var, n_samples)
+                    self.channel.send_all('var', var)
+
+                    # Extract the list of near constant features on the raw variances,
+                    # before taking the square root.
+                    constant_mask = is_constant_feature(
+                        var,
+                        mean,
+                        n_sum
+                    )
+                    self.channel.send_all('constant_mask', constant_mask)
 
         if self.module.with_std:
-            self.module.var_ = var
-            self.module.scale_ = handle_zeros_in_scale(
+            scale = handle_zeros_in_scale(
                 np.sqrt(var),
                 copy=False,
                 constant_mask=constant_mask
             )
-        else:
-            self.module.var_ = None
-            self.module.scale_ = None
+
+        self.module.mean_ = mean
+        self.module.var_ = var
+        self.module.scale_ = scale
+        
         return self
+
+
+def unnormalized_variance(X, mean, n_samples, sum_op):
+    # sum of squares of the deviations from the mean with correction
+    temp = X - mean
+    correction = sum_op(temp, axis=0)
+    temp **= 2
+    un_var = sum_op(temp, axis=0)
+    un_var -= correction**2 / n_samples
+    return un_var
+
+
+def variance(X_sum, un_var, n_samples):
+    Sm = un_var[0]
+    Tm = X_sum[0]
+    m = n_samples[0]
+
+    for i in range(1, len(n_samples)):
+        Sn = un_var[i]
+        Tn = X_sum[i]
+        n = n_samples[i]
+
+        Sm = sum_squares(Sm, Sn, Tm, Tn, m, n)
+        Tm += Tn
+        m += n
+
+    return Sm / m
+
+
+def sum_squares(Sm, Sn, Tm, Tn, m, n):
+    return Sm + Sn + m / (n * (m + n)) * (n/m * Tm - Tn)**2
