@@ -4,7 +4,7 @@ import json
 import pandas as pd
 from loguru import logger
 import mysql.connector
-from primihub.dataset import register_dataset
+from primihub.dataset.dataset import register_dataset
 
 
 def handle_mixed_column(col):
@@ -38,7 +38,7 @@ def handle_mixed_column(col):
 def handle_abnormal_value_for_csv(path_or_info, col_info):
     df = pd.read_csv(path_or_info)
     df.info(verbose=True)
-    
+
     logger.info(col_info)
 
     for col_name, type in col_info.items():
@@ -49,8 +49,8 @@ def handle_abnormal_value_for_csv(path_or_info, col_info):
             if type == 1 or type == 3:
                 df[col_name] = col.astype("int")
             else:
-                df[col_name] = col.astype("float") 
-    
+                df[col_name] = col.astype("float")
+
     df = df.fillna("NA")
     return df
 
@@ -79,10 +79,10 @@ def replace_illegal_string(col_val, col_name, col_type):
             new_col_val.append("NA")
             index = index + 1
             continue
-        
+
         try:
             tmp = convert_fn(val[0])
-            col_sum = col_sum + tmp 
+            col_sum = col_sum + tmp
             count = count + 1
             new_col_val.append(tmp)
         except Exception as e:
@@ -105,9 +105,9 @@ def replace_illegal_string(col_val, col_name, col_type):
 
     return new_col_val
 
-# Now the abnormal value means that a column dtype of which is int or float but 
-# has string that can't convert to int or float value. There are four cases when 
-# handle abnormal value from database, and missing value in some position in some 
+# Now the abnormal value means that a column dtype of which is int or float but
+# has string that can't convert to int or float value. There are four cases when
+# handle abnormal value from database, and missing value in some position in some
 # column is permited, no matter which case.
 #
 # case 1: a column contain number has type int or long or double, no string will
@@ -253,10 +253,10 @@ def run_abnormal_process(params_map, dataset_map):
         filename, _ = path_or_info.split(".csv")
         save_path = filename + "_abnormal.csv"
         df = handle_abnormal_value_for_csv(path_or_info, col_dtype)
-    
+
     df.info(verbose=True)
     df.to_csv(save_path, index=False, float_format='%.6f')
-    
+
     dataset_id = all_col_info[dataset_name]["newDataSetId"]
     register_dataset(params_map["DatasetServiceAddr"], "csv", save_path, new_dataset_id)
 
@@ -267,7 +267,7 @@ def run_abnormal_process(params_map, dataset_map):
 #
 # import primihub as ph
 # from primihub.dataset.abnormal import run_abnormal_process
-# 
+#
 # @ph.context.function(role="host", protocol="None", datasets=["train_party_0", "train_party_1", "train_party_2"], port="-1")
 # def dispatch_abnormal_process():
 #         run_abnormal_process(ph.context.Context.params_map,
