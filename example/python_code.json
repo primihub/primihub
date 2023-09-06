@@ -1,0 +1,24 @@
+{
+  "task_name": "psi_ecdh_task",
+  "task_lang": "python",
+  "task_code": {
+    "code_file_path": "example/code/example.py",
+    "code": ""
+  },
+  "component_params": {
+      "roles": {
+          "executor": ["Alice", "Bob"]
+      },
+      "common_params": {
+          "model": "PythonEngine"
+      },
+      "role_params": {
+          "Alice": {
+              "data_set": "FAKE_DATA_PARTY_0"
+          },
+          "Bob": {
+              "data_set": "FAKE_DATA_PARTY_1"
+          }
+      }
+  }
+}

@@ -92,6 +92,11 @@ datasets:
     model: "csv"
     source: "data/mpc_arithmetic_0.csv"
 
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_0"
+    model: "csv"
+    source: "data/FL/fake.csv"
+
   # use mysql table as dataset
   #- description: "psi_client"
   #  model: "mysql"

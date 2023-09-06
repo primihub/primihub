@@ -27,11 +27,18 @@ retcode PyParser::parseDatasets() {
   const auto& task_config = push_task.task();
   const auto& party_datasets = task_config.party_datasets();
   VLOG(0) << "party_datasets: " << party_datasets.size();
+  std::set<std::string> dup_filter;
   for (const auto& [party_name,  dataset_map] : party_datasets) {
     for (const auto& [dataset_index, dataset_id] : dataset_map.data()) {
       if (dataset_id.empty()) {
         LOG(WARNING) << "dataset id for party: " << party_name << " is empty";
         continue;
+      }
+      std::string uniq_id = party_name + dataset_id;
+      if (dup_filter.find(uniq_id) != dup_filter.end()) {
+        continue;
+      } else {
+        dup_filter.insert(uniq_id);
       }
       VLOG(0) << "party_name: " << party_name << " dataset_id: " << dataset_id;
       auto dataset_with_tag = std::make_pair(dataset_id, party_name);
