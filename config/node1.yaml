@@ -171,4 +171,7 @@ datasets:
   - description: "mpc_arithmetic_1"
     model: "csv"
     source: "data/mpc_arithmetic_1.csv"
-
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_1"
+    model: "csv"
+    source: "data/FL/fake.csv"

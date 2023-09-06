@@ -24,6 +24,11 @@ meta_service:
   use_tls: false
 
 datasets:
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_2"
+    model: "csv"
+    source: "data/FL/fake.csv"
+
   # ABY3 LR test case datasets
   - description: "train_party_2"
     model: "csv"
