@@ -51,6 +51,7 @@ class ProtocolSemanticParser {
    * brief request dataset meta service, get the location of the dataset
   */
   retcode ParseDatasetToPartyAccessInfo(LanguageParser* _parser);
+  retcode ProcessAuxiliaryServer(LanguageParser* _parser);
 
   retcode scheduleProtoTask(std::shared_ptr<LanguageParser> proto_parser);
   retcode schedulePythonTask(std::shared_ptr<LanguageParser> python_parser);
