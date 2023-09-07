@@ -163,11 +163,10 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
       LOG(ERROR) << "ABY3 need 3 party, but get " << dup_names.size();
       return retcode::FAIL;
     }
-    int party_id = {0};
     for (const auto& name_ : party_names) {
       auto& node = (*party_access_info)[name_];
+      int32_t party_id = node.party_id();
       add_vm(party_id, send_request, party_nodes, &node);
-      party_id++;
     }
   }
 

@@ -58,22 +58,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     // TODO(XXX): implement rnn
   } else if (function_name == "lstm") {
     // TODO(XXX): implement lstm
-  } else if (function_name == "arithmetic") {
-    try {
-      auto param_map = task_param_.params().param_map();
-      std::string accuracy = param_map["Accuracy"].value_string();
-
-      if (accuracy == "D32") {
-        std::shared_ptr<ArithmeticExecutor<D32>> executor;
-        algorithm_ = std::make_shared<ArithmeticExecutor<D32>>(config, dataset_service);
-      } else {
-        std::shared_ptr<ArithmeticExecutor<D16>> executor;
-        algorithm_ = std::make_shared<ArithmeticExecutor<D16>>(config, dataset_service);
-      }
-    } catch (const std::runtime_error &error) {
-      LOG(ERROR) << error.what();
-      algorithm_ = nullptr;
-    }
   } else if (function_name == "AbnormalProcessTask") {
     try {
       algorithm_ =
@@ -84,16 +68,18 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     }
   } else if (function_name == "arithmetic") {
     try {
-      auto param_map = task_param_.params().param_map();
-      std::string accuracy = param_map["Accuracy"].value_string();
+      std::string accuracy;
+      const auto& param_map = task_param_.params().param_map();
+      auto it = param_map.find("Accuracy");
+      if (it != param_map.end()) {
+        accuracy = it->second.value_string();
+      }
       if (accuracy == "D32") {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
-                                                      dataset_service));
+        using D32Executor = primihub::ArithmeticExecutor<D32>;
+        algorithm_ = std::make_shared<D32Executor>(config, dataset_service);
       } else {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
-                                                      dataset_service));
+        using D16Executor = primihub::ArithmeticExecutor<D16>;
+        algorithm_ = std::make_shared<D16Executor>(config, dataset_service);
       }
     } catch (const std::runtime_error &error) {
       LOG(ERROR) << error.what();
