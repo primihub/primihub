@@ -5,6 +5,7 @@ from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 
 import pickle
+import json
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
@@ -113,7 +114,12 @@ class CNNClient(BaseModel):
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         
         # send final metrics
-        client.send_metrics(train_dataloader)
+        trainMetrics = client.send_metrics(train_dataloader)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {

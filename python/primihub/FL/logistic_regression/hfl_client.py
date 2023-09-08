@@ -9,6 +9,7 @@ from primihub.FL.crypto.paillier import Paillier
 from primihub.FL.preprocessing import StandardScaler
 
 import pickle
+import json
 import pandas as pd
 import numpy as np
 import dp_accounting
@@ -128,7 +129,12 @@ class LogisticRegressionClient(BaseModel):
             client.model.set_theta(server_channel.recv("server_model"))
         
         # send final metrics
-        client.send_metrics(x, y)
+        trainMetrics = client.send_metrics(x, y)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {
@@ -270,8 +276,12 @@ class Plaintext_Client:
 
     def send_metrics(self, x, y):
         loss = self.send_loss(x, y)
-
         y_hat, acc = self.send_acc(x, y)
+
+        client_metrics = {
+            "train_loss": loss,
+            "train_acc": acc,
+        }
 
         if self.model.multiclass:
             auc = self.get_auc(y_hat, y)
@@ -282,17 +292,23 @@ class Plaintext_Client:
             # fpr, tpr
             fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
                                                      drop_intermediate=False)
+            client_metrics["train_fpr"] = fpr.tolist()
+            client_metrics["train_tpr"] = tpr.tolist()
             self.server_channel.send("fpr", fpr)
             self.server_channel.send("tpr", tpr)
             # self.server_channel.send("thresholds", thresholds)
 
             # ks
             ks = ks_from_fpr_tpr(fpr, tpr)
+            client_metrics["train_ks"] = ks
 
             # auc
             auc = auc_from_fpr_tpr(fpr, tpr)
 
             logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
+        
+        client_metrics["train_auc"] = auc
+        return client_metrics
 
     def print_metrics(self, x, y):
         # print loss & acc & auc

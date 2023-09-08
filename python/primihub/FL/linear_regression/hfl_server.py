@@ -76,7 +76,7 @@ class LinearRegressionServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.common_params['metric_path']
+        metric_path = self.role_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")
         with open(metric_path, 'w') as file_path:
