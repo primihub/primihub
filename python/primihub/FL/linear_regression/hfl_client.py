@@ -9,6 +9,7 @@ from primihub.FL.crypto.paillier import Paillier
 from primihub.FL.preprocessing import StandardScaler
 
 import pickle
+import json
 import pandas as pd
 import dp_accounting
 from sklearn import metrics
@@ -125,7 +126,12 @@ class LinearRegressionClient(BaseModel):
             client.model.set_theta(server_channel.recv("server_model"))
         
         # send final metrics
-        client.send_metrics(x, y)
+        trainMetrics = client.send_metrics(x, y)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {
@@ -210,6 +216,12 @@ class Plaintext_Client:
         self.server_channel.send('mse', mse)
         self.server_channel.send('mae', mae)
 
+        client_metrics = {
+            "train_mse": mse,
+            "train_mae": mae,
+        }
+        return client_metrics
+    
     def print_metrics(self, x, y):
         self.send_metrics(x, y)
 

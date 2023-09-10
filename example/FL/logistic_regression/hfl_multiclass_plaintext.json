@@ -23,20 +23,22 @@
             "selected_column": null,
             "id": "id",
             "label": "y",
-            "print_metrics": true,
-            "metric_path": "data/result/metrics.json"
+            "print_metrics": true
         },
         "role_params": {
             "Bob": {
                 "data_set": "multiclass_hfl_train_client1",
-                "model_path": "data/result/Bob_model.pkl"
+                "model_path": "data/result/Bob_model.pkl",
+                "metric_path": "data/result/Bob_metrics.json"
             },
             "Charlie": {
                 "data_set": "multiclass_hfl_train_client2",
-                "model_path": "data/result/Charlie_model.pkl"
+                "model_path": "data/result/Charlie_model.pkl",
+                "metric_path": "data/result/Charlie_metrics.json"
             },
             "Alice": {
-                "data_set": "fl_fake_data"
+                "data_set": "fl_fake_data",
+                "metric_path": "data/result/server_metrics.json"
             }
         }
     }

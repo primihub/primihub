@@ -6,6 +6,7 @@ from primihub.utils.logger_util import logger
 from primihub.FL.preprocessing import StandardScaler
 
 import pickle
+import json
 import pandas as pd
 from sklearn import metrics
 import torch
@@ -135,7 +136,12 @@ class NeuralNetworkClient(BaseModel):
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         
         # send final metrics
-        client.send_metrics(train_dataloader)
+        trainMetrics = client.send_metrics(train_dataloader)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {
@@ -312,16 +318,16 @@ class Plaintext_Client:
         client_metrics = self.print_metrics(dataloader)
 
         if self.task == 'classification' and self.output_dim == 1:
-            y_true = client_metrics['y_true']
-            y_score = client_metrics['y_score']
+            y_true = client_metrics.pop('y_true')
+            y_score = client_metrics.pop('y_score')
             fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score,
                                                      drop_intermediate=False)
             self.server_channel.send("fpr", fpr)
             self.server_channel.send("tpr", tpr)
             # self.server_channel.send("thresholds", thresholds)
 
-            client_metrics['train_fpr'] = fpr
-            client_metrics['train_tpr'] = tpr
+            client_metrics['train_fpr'] = fpr.tolist()
+            client_metrics['train_tpr'] = tpr.tolist()
             ks = ks_from_fpr_tpr(fpr, tpr)
             client_metrics['train_ks'] = ks
 
@@ -381,11 +387,11 @@ class Plaintext_Client:
 
         elif self.task == 'regression':
             mse /= size
-            client_metrics['train_mse'] = mse
+            client_metrics['train_mse'] = float(mse)
             self.server_channel.send("mse", mse)
 
             mae /= size
-            client_metrics['train_mae'] = mae
+            client_metrics['train_mae'] = float(mae)
             self.server_channel.send("mae", mae)
 
             logger.info(f"mse={mse}, mae={mae}")
