@@ -374,6 +374,7 @@ class Plaintext_Client:
             if self.output_dim == 1:
                 y_score = torch.sigmoid(y_score)
                 auc = metrics.roc_auc_score(y_true, y_score)
+                client_metrics['train_auc'] = auc
                 client_metrics['y_true'] = y_true
                 client_metrics['y_score'] = y_score
             else:
