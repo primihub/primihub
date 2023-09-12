@@ -143,6 +143,7 @@ class Pipeline(BaseModel):
 
             if role != 'server':
                 if ('LabelBinarizer' in module_name
+                    or 'Transformer' in module_name
                     or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
                     temp = module.fit_transform(data[column])
                     if 'LabelBinarizer' in module_name:
@@ -151,6 +152,8 @@ class Pipeline(BaseModel):
                         col_name = module.module.get_feature_names_out()
                         if module_name == 'KBinsDiscretizer':
                             col_name = 'Bin_' + col_name
+                        elif module_name == 'QuantileTransformer':
+                            col_name = 'Quantile_' + col_name
                     data = data.join(
                         pd.DataFrame(
                             temp,
@@ -367,6 +370,19 @@ def select_module(module_name, params, FL_type, role, channel):
             subsample=params.get('subsample', 10000),
             random_state=params.get('random_state'),
             copy=params.get('copy', True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "SplineTransformer":
+        module = SplineTransformer(
+            n_knots=params.get('n_knots', 5),
+            degree=params.get('degree', 3),
+            knots=params.get('knots', "uniform"),
+            extrapolation=params.get('extrapolation', "constant"),
+            include_bias=params.get('include_bias', True),
+            order=params.get('order', "C"),
+            sparse_output=params.get('sparse_output', False),
             FL_type=FL_type,
             role=role,
             channel=channel
