@@ -10,10 +10,9 @@ retcode MPCSumOrAvg::PlainTextDataCompute(
     const std::map<std::string, ColumnDtype>& all_type,
     eMatrix<double>* col_sum,
     eMatrix<double>* col_count) {
-  std::shared_ptr<arrow::Table> table =
-      std::get<std::shared_ptr<arrow::Table>>(dataset->data);
+  auto table = std::get<std::shared_ptr<arrow::Table>>(dataset->data);
 
-  LOG(INFO) << "Schema of table is:\n" << table->schema()->ToString(true);
+  LOG(INFO) << "Schema of table is:" << table->schema()->ToString(true);
   col_sum->resize(columns.size(), 1);
   col_count->resize(columns.size(), 1);
 
@@ -111,7 +110,7 @@ retcode MPCSumOrAvg::CipherTextDataCompute(const eMatrix<double>& col_sum,
             << ".";
 
   eMatrix<double> fp64_count(col_count.rows(), col_count.cols());
-  for (uint16_t j = 0; j < col_count.rows(); j++)
+  for (uint64_t j = 0; j < col_count.rows(); j++)
     fp64_count(j, 0) = col_count(j, 0);
 
   sf64Matrix<D16> sh_count[3];
@@ -185,7 +184,6 @@ retcode MPCSumOrAvg::CipherTextDataCompute(const eMatrix<double>& col_sum,
 retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &all_type) {
-
   eMatrix<double> col_sum;
   eMatrix<double> rows_per_column;
   // run local plain data compute to get sum and total rows for each columns
@@ -459,12 +457,13 @@ retcode MPCMinOrMax::PlainTextDataCompute(
   }
   return retcode::SUCCESS;
 }
+
 retcode MPCMinOrMax::CipherTextDataCompute(const eMatrix<double>& col_data,
     const std::vector<std::string>& col_names,
     const eMatrix<double>& row_records) {
   mpc_result_.resize(col_data.rows(), 1);
   if (type_ == MPCStatisticsType::MIN) {
-    for (int64_t col_index = 0; col_index < col_data.rows(); col_index++) {
+    for (uint64_t col_index = 0; col_index < col_data.rows(); col_index++) {
       auto& col_name = col_names[col_index];
       double col_result = col_data(col_index, 0);
       col_result = minValueOfAllParty(col_result);
@@ -473,7 +472,7 @@ retcode MPCMinOrMax::CipherTextDataCompute(const eMatrix<double>& col_data,
               << mpc_result_(col_index, 0) << ".";
     }
   } else {
-    for (int64_t col_index = 0; col_index < col_data.rows(); col_index++) {
+    for (uint64_t col_index = 0; col_index < col_data.rows(); col_index++) {
       auto& col_name = col_names[col_index];
       double col_result = col_data(col_index, 0);
       col_result = maxValueOfAllParty(col_result);
@@ -484,6 +483,7 @@ retcode MPCMinOrMax::CipherTextDataCompute(const eMatrix<double>& col_data,
   }
   return retcode::SUCCESS;
 }
+
 retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
                          const std::vector<std::string> &columns,
                          const std::map<std::string, ColumnDtype> &col_dtype) {

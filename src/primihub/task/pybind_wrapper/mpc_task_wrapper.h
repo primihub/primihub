@@ -31,11 +31,13 @@
 namespace primihub::task {
 class MPCExecutor {
  public:
-  MPCExecutor(const std::string& task_req, const std::string& protocol);
+  MPCExecutor(const std::string& task_req,
+              const std::string& protocol = "ABY3");
   ~MPCExecutor();
   retcode Max(const std::vector<double>& input, std::vector<double>* result);
   retcode Min(const std::vector<double>& input, std::vector<double>* result);
-  retcode Avg(const std::vector<double>& input, std::vector<double>* result);
+  retcode Avg(const std::vector<double>& input,
+              const std::vector<int64_t>& col_rows, std::vector<double>* result);
   retcode Sum(const std::vector<double>& input, std::vector<double>* result);
 
  protected:
@@ -70,10 +72,14 @@ class MPCExecutor {
   retcode SetArithmeticOperation(rpc::Algorithm::ArithmeticOpType op_type,
                                  rpc::Task* task);
   retcode BroadcastShape(const std::vector<int64_t>& shape);
-
+  retcode ExecuteStatisticsTask(rpc::Algorithm::StatisticsOpType op_type,
+                                const std::vector<double>& data,
+                                const std::vector<int64_t>& col_rows,
+                                std::vector<double>* result);
  private:
   std::unique_ptr<rpc::PushTaskRequest> task_req_ptr_{nullptr};
   std::unique_ptr<MPCTask> task_ptr_{nullptr};
+  std::string func_name_{"mpc_statistics"};
 };
 }  // namespace primihub::task
 

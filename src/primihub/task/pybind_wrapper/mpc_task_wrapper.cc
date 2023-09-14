@@ -35,10 +35,10 @@ MPCExecutor::MPCExecutor(const std::string& task_req_str,
     LOG(ERROR) << "AddAuxiliaryComputeServer failed";
     return;
   }
-  std::string func_name{"mpc_statistics"};
-  this->task_req_ptr_->mutable_task()->set_code("mpc_statistics");
+  this->task_req_ptr_->mutable_task()->set_code(this->func_name_);
   this->task_req_ptr_->set_manual_launch(true);
-  task_ptr_ = std::make_unique<MPCTask>(func_name, &(task_req_ptr_->task()));
+  task_ptr_ = std::make_unique<MPCTask>(this->func_name_,
+                                        &(task_req_ptr_->task()));
 }
 
 MPCExecutor::~MPCExecutor() {
@@ -95,55 +95,36 @@ retcode MPCExecutor::AddAuxiliaryComputeServer(rpc::Task* task) {
 
 retcode MPCExecutor::Max(const std::vector<double>& input,
                          std::vector<double>* result) {
-  std::string sub_task_id;
-  NegotiateSubTaskId(&sub_task_id);
-  auto task_config = this->task_req_ptr_->mutable_task();
-  auto task_info = task_config->mutable_task_info();
-  LOG(ERROR) << "MPCExecutor::Max: " << task_req_ptr_->manual_launch();
-  task_info->set_sub_task_id(sub_task_id);
-  SetStatisticsOperation(rpc::Algorithm::MAX, task_config);
-  auto ret = InviteAuxiliaryServerToTask();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "InviteAuxiliaryServerToTask failed";
-    return retcode::FAIL;
-  }
-  std::vector<int64_t> input_shape;
-  input_shape.push_back(1);
-  input_shape.push_back(input.size());
-  BroadcastShape(input_shape);
-  task_ptr_->setTaskParam(task_req_ptr_->task());
-  if (VLOG_IS_ON(0)) {
-    std::string str;
-    google::protobuf::TextFormat::PrintToString(*task_req_ptr_, &str);
-    VLOG(0) << "MPCExecutor: " << str;
-  }
   std::vector<int64_t> col_rows;
   col_rows.reserve(input.size());
   col_rows.assign(input.size(), 0);
-  ret = task_ptr_->ExecuteTask(input, col_rows, result);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "run max failed";
-    return retcode::FAIL;
-  }
-  return retcode::SUCCESS;
+  return ExecuteStatisticsTask(rpc::Algorithm::MAX,
+                               input, col_rows, result);
 }
 
 retcode MPCExecutor::Min(const std::vector<double>& input,
                          std::vector<double>* result) {
-  *result = input;
-  return retcode::SUCCESS;
+  std::vector<int64_t> col_rows;
+  col_rows.reserve(input.size());
+  col_rows.assign(input.size(), 0);
+  return ExecuteStatisticsTask(rpc::Algorithm::MIN,
+                               input, col_rows, result);
 }
 
 retcode MPCExecutor::Avg(const std::vector<double>& input,
+                         const std::vector<int64_t>& col_rows,
                          std::vector<double>* result) {
-  *result = input;
-  return retcode::SUCCESS;
+  return ExecuteStatisticsTask(rpc::Algorithm::AVG,
+                               input, col_rows, result);
 }
 
 retcode MPCExecutor::Sum(const std::vector<double>& input,
                          std::vector<double>* result) {
-  *result = input;
-  return retcode::SUCCESS;
+  std::vector<int64_t> col_rows;
+  col_rows.reserve(input.size());
+  col_rows.assign(input.size(), 0);
+  return ExecuteStatisticsTask(rpc::Algorithm::SUM,
+                               input, col_rows, result);
 }
 
 retcode MPCExecutor::InviteAuxiliaryServerToTask() {
@@ -351,5 +332,40 @@ retcode MPCExecutor::SetArithmeticOperation(
   algorithm->set_arithmetic_op_type(op_type);
   return retcode::SUCCESS;
 }
-
+retcode MPCExecutor::ExecuteStatisticsTask(
+    rpc::Algorithm::StatisticsOpType op_type,
+    const std::vector<double>& input,
+    const std::vector<int64_t>& col_rows,
+    std::vector<double>* result) {
+  std::string sub_task_id;
+  auto task_ptr = std::make_unique<MPCTask>(this->func_name_,
+                                            &(task_req_ptr_->task()));
+  LOG(ERROR) << "MPCExecutor address: " << reinterpret_cast<int64_t>(this);
+  NegotiateSubTaskId(&sub_task_id);
+  auto task_config = this->task_req_ptr_->mutable_task();
+  auto task_info = task_config->mutable_task_info();
+  task_info->set_sub_task_id(sub_task_id);
+  SetStatisticsOperation(op_type, task_config);
+  auto ret = InviteAuxiliaryServerToTask();
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "InviteAuxiliaryServerToTask failed";
+    return retcode::FAIL;
+  }
+  std::vector<int64_t> input_shape;
+  input_shape.push_back(1);
+  input_shape.push_back(input.size());
+  BroadcastShape(input_shape);
+  task_ptr->setTaskParam(task_req_ptr_->task());
+  if (VLOG_IS_ON(0)) {
+    std::string str;
+    google::protobuf::TextFormat::PrintToString(*task_req_ptr_, &str);
+    VLOG(0) << "MPCExecutor: " << str;
+  }
+  ret = task_ptr->ExecuteTask(input, col_rows, result);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "run sum failed";
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
 }  // namespace primihub::task

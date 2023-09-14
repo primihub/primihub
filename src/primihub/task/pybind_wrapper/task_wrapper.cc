@@ -27,6 +27,7 @@ using MPCExecutor = primihub::task::MPCExecutor;
 PYBIND11_MODULE(ph_secure_lib, m) {
   py::class_<MPCExecutor>(m, "MPCExecutor")
     .def(py::init<const std::string&, const std::string&>())
+    .def(py::init<const std::string&>())
     .def("max", [](MPCExecutor& self, const std::vector<double>& input) {
         std::vector<double> result;
         primihub::retcode ret;
@@ -49,12 +50,14 @@ PYBIND11_MODULE(ph_secure_lib, m) {
           throw pybind11::value_error("receive data encountes error");
         }
         return result;})
-    .def("avg", [](MPCExecutor& self, const std::vector<double>& input) {
+    .def("avg", [](MPCExecutor& self,
+                   const std::vector<double>& input,
+                   const std::vector<int64_t>& col_rows) {
         std::vector<double> result;
         primihub::retcode ret;
         {
           py::gil_scoped_release release;
-          ret = self.Avg(input, &result);
+          ret = self.Avg(input, col_rows, &result);
         }
         if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
