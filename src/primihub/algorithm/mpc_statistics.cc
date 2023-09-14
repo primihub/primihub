@@ -332,6 +332,85 @@ int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {
   if (miss_flag)
     return -1;
 
+  {
+    std::stringstream ss;
+    uint16_t col_count = target_columns_.size();
+    ss << "Run " << MPCStatisticsOperator::statisticsTypeToString(type_)
+       << " on columns";
+    for (uint16_t i = 0; i < col_count - 1; i++)
+      ss << " " << target_columns_[i] << ",";
+    ss << " " << target_columns_[col_count - 1] << ".";
+    LOG(INFO) << ss.str();
+  }
+
+  return 0;
+}
+
+retcode MPCStatisticsExecutor::execute(const eMatrix<double>& input_data_info,
+    const std::vector<std::string>& col_names,
+    std::vector<double>* result) {
+  eMatrix<double> col_data;
+  eMatrix<double> col_rows;
+  col_data.resize(input_data_info.rows(), 1);
+  col_rows.resize(input_data_info.rows(), 1);
+  for (size_t i = 0; i < input_data_info.rows(); i++) {
+    col_data(i, 0) = input_data_info(i, 0);
+    col_rows(i, 0) = input_data_info(i, 1);
+  }
+  auto ret = executor_->CipherTextDataCompute(col_data, col_names, col_rows);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "Run MPC statistics executor failed.";
+    return retcode::FAIL;
+  }
+  executor_->getResult(result_);
+  int64_t rows = result_.rows();
+  int cols = result_.cols();
+  LOG(INFO) << "rows: " << rows << " cols: " << cols;
+  for (int64_t i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      result->push_back(result_(i, j));
+    }
+  }
+  return retcode::SUCCESS;
+}
+
+int MPCStatisticsExecutor::execute() {
+  if (do_nothing_) {
+    LOG(WARNING) << "Skip execute due to nothing to do.";
+    return 0;
+  }
+  auto ret = executor_->run(input_value_, target_columns_, col_type_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "Run MPC statistics executor failed.";
+    return -1;
+  }
+  executor_->getResult(result_);
+  return 0;
+}
+
+retcode MPCStatisticsExecutor::InitEngine() {
+  if (type_ == MPCStatisticsType::UNKNOWN) {
+    auto algorithm = task_config_.algorithm();
+    auto op_type = algorithm.statistics_op_type();
+    switch (op_type) {
+    case rpc::Algorithm::MAX:
+      type_ = MPCStatisticsType::MAX;
+      break;
+    case rpc::Algorithm::MIN:
+      type_ = MPCStatisticsType::MIN;
+      break;
+    case rpc::Algorithm::AVG:
+      type_ = MPCStatisticsType::AVG;
+      break;
+    case rpc::Algorithm::SUM:
+      type_ = MPCStatisticsType::SUM;
+      break;
+    default:
+      LOG(ERROR) << "Unknown Algorithm operation type: "
+                 << static_cast<int>(op_type);
+      return retcode::FAIL;
+    }
+  }
   switch (type_) {
   case MPCStatisticsType::AVG:
     executor_ = std::make_unique<MPCSumOrAvg>(type_);
@@ -348,40 +427,8 @@ int MPCStatisticsExecutor::loadParams(primihub::rpc::Task &task) {
   default:
     LOG(ERROR) << "No executor for "
                << MPCStatisticsOperator::statisticsTypeToString(type_) << ".";
-    return -1;
+    return retcode::FAIL;
   }
-
-  {
-    std::stringstream ss;
-    uint16_t col_count = target_columns_.size();
-    ss << "Run " << MPCStatisticsOperator::statisticsTypeToString(type_)
-       << " on columns";
-    for (uint16_t i = 0; i < col_count - 1; i++)
-      ss << " " << target_columns_[i] << ",";
-    ss << " " << target_columns_[col_count - 1] << ".";
-    LOG(INFO) << ss.str();
-  }
-
-  return 0;
-}
-
-int MPCStatisticsExecutor::execute() {
-  if (do_nothing_) {
-    LOG(WARNING) << "Skip execute due to nothing to do.";
-    return 0;
-  }
-
-  auto ret = executor_->run(input_value_, target_columns_, col_type_);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Run MPC statistics executor failed.";
-    return -1;
-  }
-
-  executor_->getResult(result_);
-  return 0;
-}
-
-retcode MPCStatisticsExecutor::InitEngine() {
   executor_->setupChannel(this->party_id(), this->CommPkgPtr());
   return retcode::SUCCESS;
 }

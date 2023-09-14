@@ -44,6 +44,7 @@ class VMNodeImpl {
                        rpc::PushTaskReply* reply);
   retcode ExecuteTask(const rpc::PushTaskRequest& task_request,
                       rpc::PushTaskReply* reply);
+  retcode StopTask(const rpc::TaskContext& request);
   retcode KillTask(const rpc::KillTaskRequest& request,
                    rpc::KillTaskResponse* response);
   retcode GetSchedulerNode(const rpc::PushTaskRequest& request,

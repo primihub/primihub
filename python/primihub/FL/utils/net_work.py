@@ -18,8 +18,9 @@ class GrpcClient:
             linkcontext.LinkMode.GRPC)
         self.link_context.setTaskInfo(task_info.task_id,
                                       task_info.job_id,
-                                      task_info.request_id)
-        
+                                      task_info.request_id
+                                      task_info.sub_task_id)
+
         local_ip = node_info[local_party].ip
         local_port = node_info[local_party].port
         recv_session = Node(local_ip, int(local_port), False, local_party)
@@ -53,7 +54,7 @@ class MultiGrpcClients:
             client = GrpcClient(local_party, remote_party,
                                 node_info, task_info)
             self.Clients[remote_party] = client
-            
+
     def send_all(self, key, val):
         logger.info("Start send all")
         for client in self.Clients.values():
@@ -83,7 +84,7 @@ class MultiGrpcClients:
             result.append(client.recv(key))
         logger.info("End receive all")
         return result
-    
+
     def recv_selected(self, key, selected_remote):
         logger.info(f"Start receive {selected_remote}")
         result = []

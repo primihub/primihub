@@ -53,9 +53,21 @@ Status VMNodeInterface::ExecuteTask(ServerContext* context,
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "ExecuteTask encountes error";
   }
+  VLOG(5) << "exit VMNodeImpl::ExecuteTask";
   return Status::OK;
 }
-
+Status VMNodeInterface::StopTask(ServerContext* context,
+                                 const rpc::TaskContext* request,
+                                 rpc::Empty* response) {
+//
+  VLOG(0) << "enter VMNodeImpl::StopTask";
+  auto ret = ServerImpl()->StopTask(*request);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "execute StopTask method encountes error";
+  }
+  VLOG(0) << "exit VMNodeImpl::StopTask";
+  return Status::OK;
+}
 Status VMNodeInterface::KillTask(ServerContext* context,
                                  const rpc::KillTaskRequest* request,
                                  rpc::KillTaskResponse* response) {
@@ -112,7 +124,7 @@ Status VMNodeInterface::Send(ServerContext* context,
       VLOG(5) << "job_id: " << task_info.job_id() << " "
               << "task_id: " << task_info.task_id() << " "
               << "request_id: " << task_info.request_id() << " "
-              << "send key: " << key;
+              << "recv key: " << key;
     }
     received_data.append(request.data());
   }

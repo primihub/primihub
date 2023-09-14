@@ -25,9 +25,14 @@ cc_library(
   hdrs = ["mpc_task_wrapper.h"],
   deps = [
     "//src/primihub/task/semantic:mpc_task",
+    "@com_github_stduuid//:stduuid_lib",
   ],
 )
-
+cc_library(
+  name = "util_lib",
+  hdrs = ["util.h"],
+  srcs = ["util.cc"],
+)
 # cc_library(
 #   name = "psi_wrapper",
 #   srcs = ["psi_wrapper.cc"],

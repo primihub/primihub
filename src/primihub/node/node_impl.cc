@@ -184,7 +184,7 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
     {
       rpc::Node pb_proxy_node;
       node2PbNode(proxy_node, &pb_proxy_node);
-      auxiliary_server->insert({PROXY_NODE, std::move(pb_proxy_node)});
+      (*auxiliary_server)[PROXY_NODE] = std::move(pb_proxy_node);
     }
 
     LOG(INFO) << "begin to execute task";
@@ -200,6 +200,10 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
         status_info = "task execute encountes error";
     }
     this->NotifyTaskStatus(request, status, status_info);
+    if (request.manual_launch()) {
+      VLOG(0) << "execute sub task finished";
+      return;
+    }
     VLOG(5) << "execute task end, begin to clean task";
     this->CacheLastTaskStatus(worker->worker_id(), status);
     finished_worker_queue->push(worker->worker_id());
@@ -233,19 +237,34 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
     return retcode::FAIL;
   }
   // save work for future use
-  {
+  do {
     std::lock_guard<std::mutex> lck(task_executor_mtx_);
+    auto it = task_executor_map_.find(worker_id);
+    if (it != task_executor_map_.end()) {
+      LOG(ERROR) << "task has alread created for worker id: " << worker_id;
+      // it->second = std::make_tuple(std::move(worker), std::move(fut));
+      task_executor_map_[worker_id] =
+          std::make_tuple(std::move(worker), std::move(fut));
+      break;
+    }
     task_executor_map_.insert(
         {worker_id, std::make_tuple(std::move(worker), std::move(fut))});
-  }
-  LOG(INFO) << "create worker thread for task: "
+    LOG(INFO) << "create worker thread for task: "
           << "job_id : " << job_id  << " task_id: " << task_id << " "
           << "request id: " << request_id << " finished";
+  } while (0);
+
   // service node info
   auto& server_cfg = ServerConfig::getInstance();
   auto& service_node_info = server_cfg.getServiceConfig();
   auto task_server = reply->add_task_server();
   node2PbNode(service_node_info, task_server);
+  return retcode::SUCCESS;
+}
+
+retcode VMNodeImpl::StopTask(const rpc::TaskContext& task_info) {
+  std::string worker_id = GetWorkerId(task_info);
+  this->fininished_workers_.push(worker_id);
   return retcode::SUCCESS;
 }
 
@@ -476,7 +495,7 @@ void VMNodeImpl::CleanFinishedTaskThread() {
             VLOG(5) << "worker id : " << finished_worker_id << " "
                     << "has finished, begin to erase";
             task_executor_map_.erase(finished_worker_id);
-            VLOG(5) << "erase worker id : " << finished_worker_id << " success";
+            VLOG(0) << "erase worker id : " << finished_worker_id << " success";
           }
         }
       }

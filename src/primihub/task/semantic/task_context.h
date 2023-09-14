@@ -46,8 +46,9 @@ class TaskContext {
 
   void setTaskInfo(const std::string& job_id,
                   const std::string& task_id,
-                  const std::string& request_id) {
-    link_ctx_->setTaskInfo(job_id, task_id, request_id);
+                  const std::string& request_id,
+                  const std::string& sub_task_id) {
+    link_ctx_->setTaskInfo(job_id, task_id, request_id, sub_task_id);
   }
 
   std::unique_ptr<primihub::network::LinkContext>& getLinkContext() {

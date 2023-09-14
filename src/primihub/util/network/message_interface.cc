@@ -51,6 +51,16 @@ void TaskMessagePassInterface::_channelSend(
 
     VLOG(6) << "Send " << index << "th message finish, total " << num
             << ", send size " << size << ".";
+
+    if (VLOG_IS_ON(7)) {
+      std::string send_data;
+      for (const auto& ch : send_str) {
+        send_data.append(std::to_string(static_cast<int>(ch))).append(" ");
+      }
+      LOG(INFO) << "send data using key: " << send_key << " "
+                << "data size: " << send_str.size() << " "
+                << "send data [" << send_data << "]";
+    }
   }
 
   if (cancel_) {
@@ -139,6 +149,16 @@ void TaskMessagePassInterface::_channelRecv(
 
     VLOG(6) << "Recv " << index << "th message, total " << num << ", recv size "
             << size << ".";
+    if (VLOG_IS_ON(7)) {
+      std::string recv_data;
+      for (const auto& ch : recv_str) {
+        recv_data.append(std::to_string(static_cast<int>(ch))).append(" ");
+      }
+      LOG(INFO) << "recv data using key: " << recv_key << " "
+                << "data size: " << recv_str.size() << " "
+                << "send data [" << recv_data << "]";
+    }
+
   }
 
   fn(errcode, bytes_recv);
@@ -160,11 +180,7 @@ void TaskMessagePassInterface::_channelRecv(
 void TaskMessagePassInterface::async_send(
     osuCrypto::span<boost::asio::mutable_buffer> buffers,
     io_completion_handle &&fn) {
-  // key format: request_id self_id remote_id
-  std::stringstream ss;
-  ss << request_id_ << "_" << local_node_id_ << "_" << peer_node_id_;
-  std::string send_key = ss.str();
-
+  std::string send_key = SendKey();
   auto send_fn = std::bind(&TaskMessagePassInterface::_channelSend, this,
                            std::placeholders::_1, std::placeholders::_2,
                            std::placeholders::_3);
@@ -177,11 +193,7 @@ void TaskMessagePassInterface::async_send(
 void TaskMessagePassInterface::async_recv(
     osuCrypto::span<boost::asio::mutable_buffer> buffers,
     io_completion_handle &&fn) {
-  // key format: request_id remote_id self_id
-  std::stringstream ss;
-  ss << request_id_ << "_" << peer_node_id_ << "_" << local_node_id_;
-  std::string recv_key = ss.str();
-
+  std::string recv_key = RecvKey();
   auto &recv_queue = link_context_->GetRecvQueue(recv_key);
   // _channelRecv(recv_key, recv_queue, buffers, std::move(fn));
   auto recv_fn = std::bind(&TaskMessagePassInterface::_channelRecv, this,

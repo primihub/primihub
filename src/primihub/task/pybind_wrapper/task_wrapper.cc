@@ -32,9 +32,9 @@ PYBIND11_MODULE(ph_secure_lib, m) {
         primihub::retcode ret;
         {
           py::gil_scoped_release release;
-          ret = self.Min(input, &result);
+          ret = self.Max(input, &result);
         }
-        if (ret != primihub::retcode::FAIL) {
+        if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
         }
         return result;})
@@ -45,7 +45,7 @@ PYBIND11_MODULE(ph_secure_lib, m) {
           py::gil_scoped_release release;
           ret = self.Min(input, &result);
         }
-        if (ret != primihub::retcode::FAIL) {
+        if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
         }
         return result;})
@@ -54,9 +54,9 @@ PYBIND11_MODULE(ph_secure_lib, m) {
         primihub::retcode ret;
         {
           py::gil_scoped_release release;
-          ret = self.Min(input, &result);
+          ret = self.Avg(input, &result);
         }
-        if (ret != primihub::retcode::FAIL) {
+        if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
         }
         return result;})
@@ -65,9 +65,9 @@ PYBIND11_MODULE(ph_secure_lib, m) {
         primihub::retcode ret;
         {
           py::gil_scoped_release release;
-          ret = self.Min(input, &result);
+          ret = self.Sum(input, &result);
         }
-        if (ret != primihub::retcode::FAIL) {
+        if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
         }
         return result;});

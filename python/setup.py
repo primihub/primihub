@@ -45,17 +45,23 @@ def solib2sitepackage(solib_path=None):
         paths = site.getusersitepackages()
     else:
         paths = get_python_lib()
+    module_map = {}
     py_so_root_path = "../bazel-bin/src/primihub/pybind_warpper"
     module_list = ["opt_paillier_c2py.so", "linkcontext.so"]
     for module_name in module_list:
+      module_map[module_name] = f"{py_so_root_path}/{module_name}"
+    module_list = ["ph_secure_lib.so"]
+    so_root_path = "../bazel-bin/src/primihub/task/pybind_wrapper"
+    for module_name in module_list:
+      module_map[module_name] = f"{so_root_path}/{module_name}"
+    for module_name, module_path in module_map.items():
         module_installed = False
-        if os.path.isfile("{}/{}".format(py_so_root_path, module_name)):
-            shutil.copyfile("{}/{}".format(py_so_root_path, module_name),
-                    paths + "/{}".format(module_name))
-            print("Install {} finish, file found in {}.".format(module_name, py_so_root_path))
+        if os.path.isfile(module_path):
+            shutil.copyfile(module_path, "{}/{}".format(paths, module_name))
+            print("Install {} finish, copy file from: {}.".format(module_name, module_path))
             module_installed = True
         else:
-            print("Can't not find file {}/{}, try to find ./{}.".format(py_so_root_path, module_name, module_name))
+            print("Can't not find file {}, try to find ./{}.".format(module_path, module_name))
         if module_installed:
             continue
         if os.path.isfile("./{}".format(module_name)):

@@ -61,6 +61,13 @@ enum class Visibility {
   PRIVATE = 1,
 };
 
+struct TaskInfo {
+  std::string job_id;
+  std::string task_id;
+  std::string request_id;
+  std::string sub_task_id;
+};
+
 class RoleValidation {
 public:
   static bool IsClient(const std::string& party_name) {
@@ -73,6 +80,9 @@ public:
 
   static bool IsTeeCompute(const std::string& party_name) {
     return party_name == PARTY_TEE_COMPUTE;
+  }
+  static bool IsAuxiliaryCompute(const std::string& party_name) {
+    return party_name == AUX_COMPUTE_NODE;
   }
 };
 

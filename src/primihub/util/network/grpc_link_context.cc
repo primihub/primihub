@@ -104,7 +104,7 @@ retcode GrpcChannel::send(const std::string& role, const std::string& data) {
 }
 
 retcode GrpcChannel::send(const std::string& role, std::string_view data_sv) {
-  VLOG(5) << "execute GrpcChannel::send";
+  // VLOG(5) << "GrpcChannel::send begin to send, use key: " << role;
   std::vector<rpc::TaskRequest> send_requests;
   buildTaskRequest(role, data_sv, &send_requests);
   auto send_tiemout_ms = this->getLinkContext()->sendTimeout();
@@ -148,7 +148,7 @@ retcode GrpcChannel::send(const std::string& role, std::string_view data_sv) {
       }
     }
   } while (true);
-  VLOG(5) << "end of execute GrpcChannel::send";
+  // VLOG(5) << "GrpcChannel::send end of execute, use key: " << role;
   return retcode::SUCCESS;
 }
 
@@ -167,11 +167,11 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
   std::string job_id = this->getLinkContext()->job_id();
   std::string task_id = this->getLinkContext()->task_id();
   std::string request_id = this->getLinkContext()->request_id();
-  VLOG(5) << "job_id: " << job_id << " "
-      << "task_id: " << task_id << " "
-      << "request id: " << request_id << " "
-      << "role: " << role << " "
-      << "send data length: " << total_length;
+  // VLOG(5) << "job_id: " << job_id << " "
+  //     << "task_id: " << task_id << " "
+  //     << "request id: " << request_id << " "
+  //     << "key: " << role << " "
+  //     << "send data length: " << total_length;
   do {
     rpc::TaskRequest task_request;
     auto task_info = task_request.mutable_task_info();
@@ -185,7 +185,7 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
     size_t data_len = std::min(max_package_size, total_length - sended_size);
     data_ptr->append(send_buf + sended_size, data_len);
     sended_size += data_len;
-    VLOG(5) << "sended_size: " << sended_size << " data_len: " << data_len;
+    // VLOG(5) << "sended_size: " << sended_size << " data_len: " << data_len;
     send_pb_data->emplace_back(std::move(task_request));
     if (sended_size < total_length) {
       continue;
@@ -211,11 +211,12 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
   task_info->set_job_id(this->getLinkContext()->job_id());
   task_info->set_request_id(this->getLinkContext()->request_id());
   send_request.set_role(role);
-  VLOG(5) << "send request info: job_id: " << this->getLinkContext()->job_id()
-          << " task_id: " << this->getLinkContext()->task_id()
-          << " request id: " << this->getLinkContext()->request_id()
-          << " role: " << role
-          << " nodeinfo: " << this->dest_node_.to_string();
+  // VLOG(5) << "forwardRecv request info: job_id: "
+  //         << this->getLinkContext()->job_id()
+  //         << " task_id: " << this->getLinkContext()->task_id()
+  //         << " request id: " << this->getLinkContext()->request_id()
+  //         << " recv key: " << role
+  //         << " nodeinfo: " << this->dest_node_.to_string();
   // using reader_t = grpc::ClientReader<rpc::TaskRequest>;
   auto client_reader = this->stub_->ForwardRecv(&context, send_request);
 
@@ -240,7 +241,7 @@ std::string GrpcChannel::forwardRecv(const std::string& role) {
                << status.error_code() << ": " << status.error_message();
     return std::string("");
   }
-  VLOG(5) << "recv data success, data size: " << tmp_buff.size();
+  // VLOG(5) << "recv data success, data size: " << tmp_buff.size();
   auto time_cost = timer.timeElapse();
   VLOG(5) << "forwardRecv time cost(ms): " << time_cost;
   return tmp_buff;
@@ -287,6 +288,8 @@ retcode GrpcChannel::executeTask(const rpc::PushTaskRequest& request,
     auto deadline = std::chrono::system_clock::now() +
         std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
+    auto task_info = request.task().task_info();
+    LOG(ERROR) << "GrpcChannel::executeTask: " << task_info.sub_task_id();
     grpc::Status status = stub_->ExecuteTask(&context, request, reply);
     if (status.ok()) {
       VLOG(5) << "send ExecuteTask to node: ["
@@ -302,6 +305,38 @@ retcode GrpcChannel::executeTask(const rpc::PushTaskRequest& request,
         continue;
       } else {
         LOG(ERROR) << "send ExecuteTask to Node ["
+                << dest_node_.to_string() << "] rpc failed. "
+                << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+      }
+    }
+  } while (true);
+  return retcode::SUCCESS;
+}
+retcode GrpcChannel::StopTask(const rpc::TaskContext& request,
+                              rpc::Empty* reply) {
+//
+  int retry_time{0};
+  do {
+    grpc::ClientContext context;
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    context.set_deadline(deadline);
+    grpc::Status status = stub_->StopTask(&context, request, reply);
+    if (status.ok()) {
+      VLOG(5) << "send StopTask to node: ["
+              <<  dest_node_.to_string() << "] rpc succeeded.";
+      break;
+    } else {
+      LOG(WARNING) << "send StopTask to Node ["
+                <<  dest_node_.to_string() << "] rpc failed. "
+                << status.error_code() << ": " << status.error_message() << " "
+                << "retry times: " << retry_time;
+      retry_time++;
+      if (retry_time < this->retry_max_times_) {
+        continue;
+      } else {
+        LOG(ERROR) << "send StopTask to Node ["
                 << dest_node_.to_string() << "] rpc failed. "
                 << status.error_code() << ": " << status.error_message();
         return retcode::FAIL;
