@@ -1,9 +1,9 @@
-from primihub.dataset import register_dataset 
+from primihub.dataset.dataset import register_dataset
 import primihub as ph
 import numpy as np
 import random
 
-@ph.context.function(role="host", protocol="None", 
+@ph.context.function(role="host", protocol="None",
                      datasets=['train_party_0'], port='-1')
 def test_register():
     array = np.random.uniform(0, 100, (10,10))

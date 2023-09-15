@@ -1,15 +1,23 @@
 package(default_visibility = ["//visibility:public"])
-
+config_setting(
+  name = "enable_sgx",
+  values = {"define" : "enable_sgx=true"},
+)
 cc_library(
   name = "node_impl",
-  hdrs = ["node.h"],
+  hdrs = [
+    "node_interface.h",
+    "node_impl.h"
+  ],
   srcs = [
     "main.cc",
-    "node.cc",
+    "node_interface.cc",
+    "node_impl.cc",
   ],
   deps = [
     ":data_register_service",
     ":nodelet_lib",
+    "//src/primihub/common:common_defination",
     "//src/primihub/node/worker:worker_lib_impl",
     "//src/primihub/protos:worker_proto",
     "//src/primihub/common/config:config_lib",
@@ -26,26 +34,26 @@ cc_library(
 )
 
 cc_library(
-    name = "server_config",
-    hdrs = ["server_config.h"],
-    srcs = ["server_config.cc"],
-    deps = [
-        "//src/primihub/common:common_defination",
-        "//src/primihub/common/config:config_lib",
-    ],
+  name = "server_config",
+  hdrs = ["server_config.h"],
+  srcs = ["server_config.cc"],
+  deps = [
+    "//src/primihub/common:common_defination",
+    "//src/primihub/common/config:config_lib",
+  ],
 )
 
 
 cc_library(
-    name = "data_register_service",
-    hdrs = ["ds.h"],
-    srcs = ["ds.cc"],
-    deps = [
-        "//src/primihub/protos:service_proto",
-        "//src/primihub/data_store:data_store_lib",
-        "//src/primihub/service:dataset_service",
-        "//src/primihub/util:thread_local_data",
-    ],
+  name = "data_register_service",
+  hdrs = ["ds.h"],
+  srcs = ["ds.cc"],
+  deps = [
+    "//src/primihub/protos:service_proto",
+    "//src/primihub/data_store:data_store_lib",
+    "//src/primihub/service:dataset_service",
+    "//src/primihub/util:thread_local_data",
+  ],
 )
 
 cc_library(
@@ -55,5 +63,11 @@ cc_library(
   deps = [
     "//src/primihub/common:common_defination",
     "//src/primihub/service:dataset_service",
-  ],
+  ] + select({
+    "enable_sgx": [
+      "@tee_engine//sgx/engine:engine_lib",
+      "@tee_engine//sgx/ra:ra_service"
+    ],
+	  "//conditions:default": [],
+  }),
 )

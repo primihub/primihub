@@ -1,5 +1,5 @@
 /*
- Copyright 2023 Primihub
+ Copyright 2023 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+#include <signal.h>
 #include <arrow/util/logging.h>
-#include "arrow/api.h"
+#include <arrow/api.h>
 #include <arrow/flight/internal.h>
 #include <arrow/flight/server.h>
 #include "absl/flags/flag.h"
@@ -22,24 +23,38 @@
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 
-#include "src/primihub/node/node.h"
+#include "src/primihub/node/node_interface.h"
+#include "src/primihub/node/node_impl.h"
+
 #include "src/primihub/node/ds.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/node/server_config.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
+#ifdef SGX
+#include "sgx/ra/service.h"
+#endif
 
-ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated, remove in future
+ABSL_FLAG(std::string, node_id, "node0", "unique node_id");  // deprecated,
+                                                             // remove in future
 ABSL_FLAG(std::string, config, "./config/node.yaml", "config file");
 ABSL_FLAG(bool, singleton, false, "singleton mode");
-ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated, remove in future
-
+ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated,
+                                                           // remove in future
 /**
  * @brief
  *  Start Apache arrow flight server with NodeService and DatasetService.
  */
-void RunServer(primihub::VMNodeImpl* node_service,
-        primihub::DataServiceImpl* dataset_service, int service_port) {
+#ifdef SGX
+void RunServer(primihub::VMNodeInterface* node_service,
+               primihub::DataServiceImpl* dataset_service,
+               sgx::RaTlsService* ratls_service,
+               int service_port) {
+#else
+void RunServer(primihub::VMNodeInterface* node_service,
+               primihub::DataServiceImpl* dataset_service,
+               int service_port) {
+#endif
     // Initialize server
     arrow::flight::Location location;
     auto& server_config = primihub::ServerConfig::getInstance();
@@ -61,9 +76,14 @@ void RunServer(primihub::VMNodeImpl* node_service,
     auto server = std::make_unique<arrow::flight::FlightServerBase>();
     // Use builder_hook to register grpc service
     options.builder_hook = [&](void *raw_builder) {
-        auto *builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
-        builder->RegisterService(node_service);
-        builder->RegisterService(dataset_service);
+      auto builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
+      builder->RegisterService(node_service);
+      builder->RegisterService(dataset_service);
+#ifdef SGX
+      if (ratls_service) {
+        builder->RegisterService(ratls_service);
+      }
+#endif
         // set the max message size to 128M
         builder->SetMaxReceiveMessageSize(128 * 1024 * 1024);
     };
@@ -88,17 +108,12 @@ void RunServer(primihub::VMNodeImpl* node_service,
     ARROW_CHECK_OK(server->Serve());
 }
 
-
 int main(int argc, char **argv) {
-    // std::atomic<bool> quit(false);    // signal flag for server to quit
     // Register SIGINT signal and signal handler
     signal(SIGINT, [](int sig) {
         LOG(INFO) << "Node received SIGINT signal, shutting down...";
         exit(0);
     });
-
-    // py::scoped_interpreter python;
-    // py::gil_scoped_release release;
 
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
@@ -125,16 +140,32 @@ int main(int argc, char **argv) {
     auto& node_cfg = server_config.getNodeConfig();
     auto& meta_service_cfg = node_cfg.meta_service_config;
     auto meta_service =
-        primihub::service::MetaServiceFactory::Create(meta_service_cfg.mode,
-                                                      meta_service_cfg.host_info);
+        primihub::service::MetaServiceFactory::Create(
+            meta_service_cfg.mode, meta_service_cfg.host_info);
     // service for dataset manager
     using DatasetService = primihub::service::DatasetService;
-    auto dataset_manager = std::make_shared<DatasetService>(std::move(meta_service));
+    auto dataset_manager = std::make_shared<DatasetService>(
+        std::move(meta_service));
     // service for task process
-    auto node_service = std::make_unique<primihub::VMNodeImpl>(
-        node_id, config_file, dataset_manager);
+    auto node_service_impl = std::make_unique<primihub::VMNodeImpl>(
+        config_file, dataset_manager);
+
     // service for dataset register
-    auto data_service = std::make_unique<primihub::DataServiceImpl>(dataset_manager.get());
+    auto data_service = std::make_unique<primihub::DataServiceImpl>(
+        dataset_manager.get());
+#ifdef SGX
+    auto ra_service = node_service_impl->GetNodelet()->GetRaService().get();
+    if (ra_service == nullptr) {
+      LOG(ERROR) << "Ra service is invliad";
+      return EXIT_FAILURE;
+    }
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
+    RunServer(node_service.get(), data_service.get(), ra_service, service_port);
+#else
+    auto node_service = std::make_unique<primihub::VMNodeInterface>(
+        std::move(node_service_impl));
     RunServer(node_service.get(), data_service.get(), service_port);
+#endif
     return EXIT_SUCCESS;
 }

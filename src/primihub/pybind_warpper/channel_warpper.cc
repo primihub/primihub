@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ PYBIND11_MODULE(primihub_channel, m) {
   py::class_<Session>(m, "Session")
         .def(py::init<IOService &, std::string, SessionMode, std::string>())
         .def("addChannel", &Session::addChannel);
-  
+
   py::class_<Channel>(m, "Channel")
         .def(py::init<>())
         .def("send", &Channel::send<std::string>)

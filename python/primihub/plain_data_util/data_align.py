@@ -1,5 +1,5 @@
 """
-Copyright 2022 Primihub
+Copyright 2022 PrimiHub
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@ limitations under the License.
 
 import primihub as ph
 # from primihub import context, dataset
-from primihub.dataset import register_dataset
+from primihub.dataset.dataset import register_dataset
 from concurrent.futures import ThreadPoolExecutor
 import json
 import csv
 import copy
+import codecs
 import mysql.connector
 from datetime import datetime
 from primihub.utils.logger_util import logger
@@ -87,7 +88,6 @@ class DataAlign:
 
         batch_size = 1000
         num_iter, reminder = divmod(end_index - start_index, batch_size)
-
         result_list = []
         for i in range(num_iter):
             sql_fmt = "select {} from {} where {} in {}"
@@ -97,7 +97,6 @@ class DataAlign:
             query_ids = tuple(intersect_ids[inner_start_index:inner_end_index])
             sql = sql_fmt.format(
                 column_str, db_info["tableName"], db_info["index_column"], query_ids)
-
             try:
                 cursor.execute(sql)
             except Exception as e:
@@ -115,7 +114,6 @@ class DataAlign:
             inner_end_index = inner_start_index + reminder
             sql = sql_fmt.format(column_str, db_info["tableName"], db_info["index_column"],
                                 tuple(intersect_ids[inner_start_index:inner_end_index]))
-
             try:
                 cursor.execute(sql)
             except Exception as e:
@@ -184,9 +182,6 @@ class DataAlign:
 
 
     def generate_new_datast_from_mysql(self, meta_info, query_thread_num):
-        if not self.has_data_rows(meta_info["psiPath"]):
-            raise Exception("PSI result is empty, no intersection is found")
-
         db_info = meta_info["localdata_path"]
         # Connect to mysql server and create cursor.
         try:
@@ -201,52 +196,63 @@ class DataAlign:
             raise e
 
         # Get column name except for id column.
-        sql_template = ("SELECT column_name, data_type FROM information_schema.COLUMNS "
-                        "WHERE TABLE_NAME='{}' and TABLE_SCHEMA='{}' ORDER BY column_name ASC;")
-        sql = sql_template.format(db_info["tableName"], db_info["dbName"])
+        # sql_template = ("SELECT column_name, data_type FROM information_schema.COLUMNS "
+        #                 "WHERE TABLE_NAME='{}' and TABLE_SCHEMA='{}' ORDER BY column_name ASC;")
+        # sql = sql_template.format(db_info["tableName"], db_info["dbName"])
+        # selected_columns = []
+        # try:
+        #     cursor.execute(sql)
+        # except Exception as e:
+        #     logger.error("Run sql 'desc {}' failed.".format(db_info["tableName"]))
+        #     logger.error(e)
+        #     raise e
+        # else:
+        #     table_columns = []
+        #     for col_info in cursor.fetchall():
+        #         table_columns.append(col_info[0])
+
+        #     index_column = table_columns[meta_info["index"][0]]
+        #     db_info["index_column"] = index_column
+
+        #     logger.info("The column corresponds to index {} is {}.".format(
+        #         meta_info["index"], index_column))
+
+        #     selected_columns = []
+        #     for col_name in table_columns:
+        #         selected_columns.append(col_name)
+        # for mysql, just support for one selected index
+        index = meta_info["index"][0]
+        schema = json.loads(db_info["schema"])
         selected_columns = []
-        try:
-            cursor.execute(sql)
-        except Exception as e:
-            logger.error("Run sql 'desc {}' failed.".format(db_info["tableName"]))
-            logger.error(e)
-            raise e
-        else:
-            table_columns = []
-            for col_info in cursor.fetchall():
-                table_columns.append(col_info[0])
-
-            index_column = table_columns[meta_info["index"][0]]
-            db_info["index_column"] = index_column
-
-            logger.info("The column corresponds to index {} is {}.".format(
-                meta_info["index"], index_column))
-
-            selected_columns = []
-            for col_name in table_columns:
-                selected_columns.append(col_name)
-
+        for field in schema:
+          for field_name in field:
+            selected_columns.append(field_name)
+        index_col_name = selected_columns[index]
+        db_info["index_column"] = index_col_name
         logger.info("Column name of table {} is {}.".format(db_info["tableName"], selected_columns))
 
         selected_column_str = "`{}`".format(selected_columns[0])
         for i in range(len(selected_columns) - 1):
             new_str = "`{}`".format(selected_columns[i+1])
             selected_column_str = selected_column_str + "," + new_str
-
         # Collect all ids that PSI output.
         intersect_ids = []
         try:
-            in_f = open(meta_info["psiPath"])
-            reader = csv.reader(in_f)
-            next(reader)
-            for id in reader:
-                intersect_ids.append(id[0])
+            code_type = "utf-8"
+            if self.hasBOM(meta_info["psiPath"]):
+                code_type = "utf-8-sig"
+            with open(meta_info["psiPath"], encoding=code_type) as in_f:
+                reader = csv.reader(in_f)
+                next(reader)
+                for id in reader:
+                    intersect_ids.append(id[0])
         except OSError as e:
             logger.error("Open file {} for read failed.".format(
                 meta_info["psiPath"]))
             logger.error(e)
             raise e
-
+        if (len(intersect_ids) == 0):
+            raise Exception("PSI result is empty, no intersection is found")
         # Open new file to save all value of these ids.
         writer = None
         try:
@@ -329,7 +335,6 @@ class DataAlign:
             return
 
         out_f.close()
-        in_f.close()
 
         if num_rows != len(intersect_ids):
             raise RuntimeError("Expect query {} rows from mysql but mysql return {} rows, this should be a bug.".format(
@@ -344,9 +349,13 @@ class DataAlign:
 
         return
 
-    def has_data_rows(self, fname):
-        with open(fname) as file:
-            return file.readline() and file.readline()
+    def hasBOM(self, csv_file):
+        with open(csv_file, 'rb') as f:
+            bom = f.read(3)
+            if bom.startswith(codecs.BOM_UTF8):
+                return True
+            else:
+                return False
 
     def generate_new_dataset_from_csv(self, meta_info):
         psi_path = meta_info["psiPath"]
@@ -363,14 +372,15 @@ class DataAlign:
                                       psi_index, old_dataset_path)
         logger.info(log_msg)
 
-        if not self.has_data_rows(psi_path):
-            raise Exception("PSI result is empty, no intersection is found")
-
         intersection_map = {}
         intersection_set = set()
         intersection_list = list()
 
-        with open(psi_path) as f:
+        code_type = "utf-8"
+        if self.hasBOM(psi_path):
+            code_type = "utf-8-sig"
+
+        with open(psi_path, encoding=code_type) as f:
             f_csv = csv.reader(f)
             header = next(f_csv)
             for items in f_csv:
@@ -379,8 +389,14 @@ class DataAlign:
                     continue
                 intersection_set.add(item)
                 intersection_list.append(item)
+        if (len(intersection_list) == 0):
+            raise Exception("PSI result is empty, no intersection is found")
 
-        with open(old_dataset_path) as old_f, open(new_dataset_output_path, 'w') as new_f:
+        code_type = "utf-8"
+        if self.hasBOM(old_dataset_path):
+            code_type = "utf-8-sig"
+        with open(old_dataset_path, encoding=code_type) as old_f, \
+                open(new_dataset_output_path, 'w') as new_f:
             f_csv = csv.reader(old_f)
             header = next(f_csv)
             print(header)

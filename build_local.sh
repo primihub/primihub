@@ -15,44 +15,27 @@ fi
 
 bash pre_build.sh
 
-ARCH=`arch`
-
-
-bazel build --config=linux_$ARCH --define enable_mysql_driver=true //:node \
-    //:py_main \
-    //:cli \
-    //src/primihub/pybind_warpper:opt_paillier_c2py \
-    //src/primihub/pybind_warpper:linkcontext
+make mysql=y
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
     exit
 fi
 
-BASE_DIR=`ls -l | grep bazel-bin | awk '{print $11}'`
+git rev-parse --abbrev-ref HEAD >> commit.txt
+git rev-parse HEAD >> commit.txt
 
-if [ ! -d "$BASE_DIR" ]; then
-    echo "BASE_DIR IS NULL"
-    exit
-fi
-
-key_word="ARG TARGET_PATH="
-row_num=$(sed -n "/${key_word}/=" Dockerfile.local)
-sed -i "${row_num}s#.*#ARG TARGET_PATH="${BASE_DIR}"#" Dockerfile.local
-
-rm -rf $BASE_DIR/python $BASE_DIR/config $BASE_DIR/example
-rm -f $BASE_DIR/Dockerfile.local
-rm -f $BASE_DIR/.dockerignore
-rm -rf $BASE_DIR/data
-
-cp -r ./example $BASE_DIR/
-cp -r ./data $BASE_DIR/
-cp -r ./python $BASE_DIR/
-cp -r ./config $BASE_DIR/
-cp ./Dockerfile.local $BASE_DIR/
-cp -r ./src $BASE_DIR/
-
-cd $BASE_DIR
-find ./ -name "_objs" > .dockerignore
+tar zcf bazel-bin.tar.gz bazel-bin/cli \
+        bazel-bin/node \
+        primihub-cli \
+        primihub-node \
+        bazel-bin/task_main \
+        bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
+        bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+        python \
+        config \
+        example \
+        data \
+        commit.txt
 
 docker build -t $IMAGE_NAME:$TAG . -f Dockerfile.local

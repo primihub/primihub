@@ -1,5 +1,5 @@
 /**
- * Copyright [2023] <Primihub>
+ * Copyright [2023] <PrimiHub>
 */
 #include "src/primihub/service/dataset/meta_service/memory_impl.h"
 #include "src/primihub/service/dataset/meta_service/localkv/storage_default.h"

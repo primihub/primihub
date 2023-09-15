@@ -77,6 +77,16 @@ void VMScheduler::initCertificate() {
   }
 }
 
+retcode VMScheduler::AddSchedulerNode(rpc::Task* task) {
+  auto auxiliary_server_ptr = task->mutable_auxiliary_server();
+  auto& local_node = getLocalNodeCfg();
+  rpc::Node node;
+  node2PbNode(local_node, &node);
+  auto& scheduler_node = (*auxiliary_server_ptr)[SCHEDULER_NODE];
+  scheduler_node = std::move(node);
+  return retcode::SUCCESS;
+}
+
 Node& VMScheduler::getLocalNodeCfg() const {
   auto& server_config = primihub::ServerConfig::getInstance();
   return server_config.getServiceConfig();
@@ -98,14 +108,7 @@ retcode VMScheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  {
-    auto party_access_info_ptr = task_ptr->mutable_party_access_info();
-    auto& local_node = getLocalNodeCfg();
-    rpc::Node node;
-    node2PbNode(local_node, &node);
-    auto& schduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
-    schduler_node = std::move(node);
-  }
+  AddSchedulerNode(task_ptr);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;

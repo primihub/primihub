@@ -1,0 +1,51 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "FL_Preprocess",
+            "process": "fit_transform",
+            "FL_type": "V",
+            "task_name": "VFL_normalizer_fit_transform",
+            "task": "classification",
+            "preprocess_module": {
+                "Normalizer": {
+                    "column": null,
+                    "norm": "l2",
+                    "copy": true
+                }
+            }
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_vfl_train_host",
+                "selected_column": [
+                    "RISK_MM"
+                ],
+                "id": "id",
+                "label": "y",
+                "preprocess_column": null,
+                "preprocess_dataset_path": "data/result/Bob_train_dataset.csv",
+                "preprocess_module_path": "data/result/Bob_preprocess_module.pkl"
+            },
+            "Charlie": {
+                "data_set": "preprocess_vfl_train_guest",
+                "selected_column": [
+                    "MinTemp",
+                    "MaxTemp"
+                ],
+                "id": "id",
+                "preprocess_column": null,
+                "preprocess_dataset_path": "data/result/Charlie_train_dataset.csv",
+                "preprocess_module_path": "data/result/Charlie_preprocess_module.pkl"
+            }
+        }
+    }
+}

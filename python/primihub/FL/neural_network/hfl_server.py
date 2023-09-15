@@ -2,6 +2,7 @@ from primihub.FL.utils.net_work import MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
+from primihub.FL.preprocessing import StandardScaler
 
 import json
 import numpy as np
@@ -17,8 +18,14 @@ class NeuralNetworkServer(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def train(self):
         # setup communication channels
@@ -45,18 +52,15 @@ class NeuralNetworkServer(BaseModel):
                                   device,
                                   client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = client_channel.recv_all('data_max')
-        data_min = client_channel.recv_all('data_min')
-        
-        data_max = np.array(data_max).max(axis=0)
-        data_min = np.array(data_min).min(axis=0)
-
-        client_channel.send_all('data_max', data_max)
-        client_channel.send_all('data_min', data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=client_channel)
+        scaler.fit()
 
         # model training
         logger.info("-------- start training --------")
@@ -78,7 +82,7 @@ class NeuralNetworkServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.common_params['metric_path']
+        metric_path = self.role_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")
         with open(metric_path, 'w') as file_path:
@@ -127,11 +131,12 @@ class Plaintext_Server:
         for idx, cinput_shape in enumerate(Input_Shapes):
             if input_shape != cinput_shape:
                 all_input_shapes_same = False
-                logger.error(f"""Not all input shapes are the same,
+                error_msg = f"""Not all input shapes are the same,
                                 client {self.client_channel.keys()[idx]}'s
                                 input shape is {cinput_shape},
-                                but others' are {input_shape}""")
-                break
+                                but others' are {input_shape}"""
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
         # send signal of input shapes to all clients
         self.client_channel.send_all("input_dim_same", all_input_shapes_same)
@@ -143,7 +148,7 @@ class Plaintext_Server:
         input_shape = list(self.input_shape)
         # set batch size equals to 1 to initilize lazy module
         input_shape.insert(0, 1)
-        self.model.forward(torch.ones(input_shape))
+        self.model.forward(torch.ones(input_shape).to(self.device))
         self.model.load_state_dict(self.model.state_dict())
 
         self.server_model_broadcast()
@@ -161,7 +166,7 @@ class Plaintext_Server:
                 np.array(self.num_positive_examples_weights)).tolist()
 
         self.num_examples_weights = torch.tensor(self.num_examples_weights,
-                                                 dtype=torch.float32)
+                                                 dtype=torch.float32).to(self.device)
         self.num_examples_weights_sum = self.num_examples_weights.sum()
 
     def client_model_aggregate(self):
@@ -192,13 +197,17 @@ class Plaintext_Server:
         metrics_name = metrics_name.lower()
         supported_metrics = ['loss', 'acc', 'auc', 'mse', 'mae']
         if metrics_name not in supported_metrics:
-            logger.error(f"""Not supported metrics {metrics_name},
-                          use {supported_metrics} instead""")
+            error_msg = f"""Unsupported metrics {metrics_name},
+                          use {supported_metrics} instead"""
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         client_metrics = self.client_channel.recv_all(metrics_name)
-            
-        return np.average(client_metrics,
-                          weights=self.num_examples_weights)
+
+        metrics = torch.tensor(client_metrics, dtype=torch.float).to(self.device) \
+                        @ self.num_examples_weights \
+                        / self.num_examples_weights_sum
+        return float(metrics)
     
     def get_fpr_tpr(self):
         client_fpr = self.client_channel.recv_all('fpr')

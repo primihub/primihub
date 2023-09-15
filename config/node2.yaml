@@ -1,4 +1,4 @@
-# Copyright 2022 Primihub
+# Copyright 2022 PrimiHub
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,12 @@ use_tls: false
 
 grpc_port: 50052
 
+proxy_server:
+  mode: "grpc"
+  ip:  "127.0.0.1"
+  port: 50052
+  use_tls: false
+
 #certificate:
 #  root_ca: "data/cert/ca.crt"
 #  key: "data/cert/node0.key"
@@ -35,6 +41,11 @@ meta_service:
   port: 7979
   use_tls: false
 
+tee:
+  executor: True
+  sgx_enable: True
+  cert_path: "data/sgx/"
+  ra_server_addr: "127.0.0.1:8888"
 # load datasets
 datasets:
   # ABY3 LR test case datasets
@@ -54,6 +65,12 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0"
 
   # FL binclass
+  - description: "binclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/train/guest.csv"
+  - description: "binclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/test/guest.csv"
   - description: "binclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/binclass/hfl/train/client2.csv"
@@ -62,6 +79,12 @@ datasets:
     source: "data/FL/binclass/hfl/test/client2.csv"
 
   # FL multiclass
+  - description: "multiclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/train/guest.csv"
+  - description: "multiclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/test/guest.csv"
   - description: "multiclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/multiclass/hfl/train/client2.csv"
@@ -70,6 +93,12 @@ datasets:
     source: "data/FL/multiclass/hfl/test/client2.csv"
 
   # FL regression
+  - description: "regression_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/train/guest.csv"
+  - description: "regression_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/test/guest.csv"
   - description: "regression_hfl_train_client2"
     model: "csv"
     source: "data/FL/regression/hfl/train/client2.csv"
@@ -109,7 +138,7 @@ datasets:
   - description: "iv_filter_guest"
     model: "csv"
     source: "data/FL/hetero_iv/iv_guest.csv"
-  
+
   # FL preprocess
   - description: "preprocess_vfl_train_guest"
     model: "csv"
@@ -132,3 +161,7 @@ datasets:
     model: "csv"
     source: "data/mpc_arithmetic_2.csv"
 
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_2"
+    model: "csv"
+    source: "data/FL/fake.csv"

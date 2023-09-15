@@ -103,6 +103,11 @@ MaxPoolExecutor::MaxPoolExecutor(
 }
 
 int MaxPoolExecutor::loadParams(primihub::rpc::Task &task) {
+  auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "extract proxy node failed";
+    return -1;
+  }
   std::string party_name = task.party_name();
   const auto& party_access_info = task.party_access_info();
   auto it = party_access_info.find(party_name);

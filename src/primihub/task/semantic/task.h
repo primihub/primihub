@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -36,21 +36,25 @@ using TaskParam = primihub::rpc::Task;
 class TaskBase {
  public:
   using task_context_t = TaskContext;
+  TaskBase() = default;
   TaskBase(const TaskParam* task_param,
           std::shared_ptr<DatasetService> dataset_service);
 
   virtual ~TaskBase() = default;
-  virtual int execute() = 0;
+  virtual int execute() {return 0;};
   virtual void kill_task() {
     LOG(WARNING) << "task receives kill task request and stop stauts";
     stop_.store(true);
     task_context_.clean();
   };
+
   bool has_stopped() {
     return stop_.load(std::memory_order_relaxed);
   }
+
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
-      const std::string& task_id, const std::string& request_id, const std::string& submit_client_id) {
+                   const std::string& task_id, const std::string& request_id,
+                   const std::string& submit_client_id) {
     job_id_ = job_id;
     task_id_ = task_id;
     request_id_ = request_id;
@@ -58,6 +62,7 @@ class TaskBase {
     submit_client_id_ = submit_client_id;
     task_context_.setTaskInfo(job_id, task_id, request_id);
   }
+
   inline std::string job_id() {
     return job_id_;
   }
@@ -87,8 +92,14 @@ class TaskBase {
   std::shared_ptr<DatasetService>& getDatasetService() {
     return dataset_service_;
   }
-  retcode send(const std::string& key, const Node& dest_node,const std::string& send_buff);
-  retcode send(const std::string& key, const Node& dest_node, std::string_view send_buff);
+  retcode ExtractProxyNode(const rpc::Task& task_config, Node* proxy_node);
+
+  retcode send(const std::string& key,
+               const Node& dest_node,
+               const std::string& send_buff);
+  retcode send(const std::string& key,
+               const Node& dest_node,
+               std::string_view send_buff);
   retcode recv(const std::string& key, std::string* recv_buff);
   retcode recv(const std::string& key, char* recv_buff, size_t length);
   retcode sendRecv(const std::string& key, const Node& dest_node,
@@ -112,6 +123,7 @@ class TaskBase {
    std::string submit_client_id_;
    std::string request_id_;
    std::string party_name_;
+   bool is_dataset_detail_{false};
 };
 
 } // namespace primihub::task

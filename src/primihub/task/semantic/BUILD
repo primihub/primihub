@@ -28,8 +28,6 @@ cc_library(
         ":mpc_task",
         ":pir_task",
         ":psi_task",
-        ":tee_task",
-        ":private_server_base",
     ],
 )
 cc_library(
@@ -55,15 +53,19 @@ cc_library(
 
 #fl task
 cc_library(
-    name = "fl_task",
-    hdrs = ["fl_task.h"],
-    srcs = ["fl_task.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/util:util_lib",
-        "@com_github_base64_cpp//:base64_lib",
-        "@boost//:process",
-    ],
+  name = "fl_task",
+  hdrs = ["fl_task.h"],
+  srcs = ["fl_task.cc"],
+  copts = [
+    "-fvisibility=hidden"
+  ],
+  deps = [
+    ":task_interface",
+    "//src/primihub/util:util_lib",
+    "@com_github_base64_cpp//:base64_lib",
+    "@poco//:poco",
+    "@pybind11",
+  ],
 )
 
 #mpc task
@@ -80,12 +82,11 @@ cc_library(
 
     deps = [
         ":task_interface",
-        "//src/primihub/util/network:network_lib",
         "//src/primihub/algorithm:algorithm_lib",
 
     ] + select({
         ":x86_64": [
-            "//src/primihub/algorithm:cryptflow2_algorithm_lib",
+            #"//src/primihub/algorithm:cryptflow2_algorithm_lib",
         ],
         ":aarch64": [],
         "//conditions:default": [],
@@ -95,55 +96,14 @@ cc_library(
 
 # psi task
 cc_library(
-    name = "psi_task",
-    deps = [
-        ":ecdh_psi_task",
-        ":kkrt_psi_task",
-    ],
-)
-cc_library(
-    name = "psi_task_util",
-    hdrs = ["psi_task.h"],
-    srcs = ["psi_task.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/common:common_defination",
-        "//src/primihub/data_store:data_store_lib",
-        "@arrow",
-    ],
-)
-
-OPENMINED_PSI = "@org_openmined_psi//private_set_intersection/cpp"
-cc_library(
-    name = "ecdh_psi_task",
-    hdrs = ["psi_ecdh_task.h"],
-    srcs = ["psi_ecdh_task.cc"],
-    deps = [
-        ":psi_task_util",
-        "//src/primihub/util:endian_util",
-        "%s:psi_client" % OPENMINED_PSI,
-        "%s:psi_server" % OPENMINED_PSI,
-        "@fmt//:fmt",
-    ],
-)
-
-cc_library(
-    name = "kkrt_psi_task",
-    hdrs = ["psi_kkrt_task.h"],
-    srcs = ["psi_kkrt_task.cc"],
-    deps = [
-        ":psi_task_util",
-        "//src/primihub/util:endian_util",
-        "//src/primihub/protos:worker_proto",
-    ] + select({
-      ":aarch64": [],
-      ":x86_64":  [
-        "@osu_libpsi//:libpsi",
-        "//src/primihub/util/network:message_exchange_interface",
-      ],
-      ":darwin_x86_64": [],
-      "//conditions:default": [],
-    })
+  name = "psi_task",
+  hdrs = ["psi_task.h"],
+  srcs = ["psi_task.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/kernel/psi:psi_util",
+    "//src/primihub/kernel/psi/operator:factory",
+  ],
 )
 
 cc_library(
@@ -158,65 +118,14 @@ cc_library(
 
 # pir task
 cc_library(
-    name = "pir_task",
-    deps = [
-      ":keyword_pir_task",
-    ],
-    # deps = select({
-    #     "microsoft-apsi" : [":keyword_pir_task"],
-    #     "//conditions:default": [":id_pir_task"],
-    # }),
-)
-
-cc_library(
-    name = "keyword_pir_task",
-    hdrs = [
-        "keyword_pir_client_task.h",
-        "keyword_pir_server_task.h",
-    ],
-    srcs = [
-        "keyword_pir_client_task.cc",
-        "keyword_pir_server_task.cc",
-    ],
-    copts = [
-        "-w",
-        "-D_ASPI",
-    ],
-    defines = ["USE_MICROSOFT_APSI"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/protos:common_proto",
-        "@mircrosoft_apsi//:APSI",
-    ]
-)
-cc_library(
-    name = "private_server_base",
-    hdrs = ["private_server_base.h"],
-    srcs = ["private_server_base.cc"],
-    deps = [
-        ":task_interface",
-        "//src/primihub/protos:worker_proto",
-        "//src/primihub/common:common_defination",
-        "//src/primihub/data_store:data_store_lib",
-        "//src/primihub/service:dataset_service",
-    ],
-)
-
-cc_library(
-    name = "id_pir_task",
-    hdrs = [
-        "pir_client_task.h",
-        "pir_server_task.h",
-    ],
-    srcs = [
-        "pir_client_task.cc",
-        "pir_server_task.cc",
-    ],
-    deps = [
-        ":private_server_base",
-        ":task_interface",
-        "@org_openmined_pir//pir/cpp:pir",
-    ],
+  name = "pir_task",
+  hdrs = ["pir_task.h"],
+  srcs = ["pir_task.cc"],
+  deps = [
+    ":task_interface",
+    "//src/primihub/kernel/pir:common_def",
+    "//src/primihub/kernel/pir/operator:factory",
+  ],
 )
 
 # task semantic parser

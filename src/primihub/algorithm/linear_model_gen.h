@@ -1,6 +1,6 @@
 // Copyright [2021] <primihub.com>
-#ifndef SRC_primihub_ALGORITHM_LINEAR_MODEL_GEN_H_
-#define SRC_primihub_ALGORITHM_LINEAR_MODEL_GEN_H_
+#ifndef SRC_PRIMIHUB_ALGORITHM_LINEAR_MODEL_GEN_H_
+#define SRC_PRIMIHUB_ALGORITHM_LINEAR_MODEL_GEN_H_
 
 #include <fstream>
 #include <random>
@@ -8,30 +8,26 @@
 #include <iostream>
 
 #include "Eigen/Dense"
-
-#include "src/primihub/common/type/type.h"
-#include "src/primihub/common/defines.h"
+#include "cryptoTools/Common/Defines.h"
+#include "aby3/sh3/Sh3Types.h"
 
 namespace primihub {
+
 class LinearModelGen {
  public:
-  eMatrix<double> mModel;
+  aby3::eMatrix<double> mModel;
   double mNoise, mSd;
-
-  void setModel(eMatrix<double>& model, double noise = 1,
-    double sd = 1);
+  void setModel(aby3::eMatrix<double>& model, double noise = 1, double sd = 1);
 };
 
 class LogisticModelGen {
  public:
-  eMatrix<double> mModel;
+  aby3::eMatrix<double> mModel;
   double mNoise, mSd;
-
-  void setModel(eMatrix<double>& model, double noise = 1,
-    double sd = 1);
-
+  void setModel(aby3::eMatrix<double>& model, double noise = 1, double sd = 1);
 };
+aby3::eMatrix<double> LoadDataLocalLogistic(const std::string& full_path);
 
 }  // namespace primihub
 
-#endif  // SRC_primihub_ALGORITHM_LINEAR_MODEL_GEN_H_
+#endif  // SRC_PRIMIHUB_ALGORITHM_LINEAR_MODEL_GEN_H_

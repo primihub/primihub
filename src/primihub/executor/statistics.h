@@ -2,20 +2,20 @@
 #define _STATISTICS_EXECUTOR_H_
 
 #include "src/primihub/common/common.h"
-#include "src/primihub/common/type/type.h"
+#include "aby3/sh3/Sh3Types.h"
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/operator/aby3_operator.h"
+#include "src/primihub/common/type.h"
 
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/result.h>
 
 namespace primihub {
-#ifndef MPC_SOCKET_CHANNEL
 class MPCStatisticsOperator {
 public:
   MPCStatisticsOperator() {}
-  virtual ~MPCStatisticsOperator() {}
+  virtual ~MPCStatisticsOperator() = default;
 
   enum MPCStatisticsType {
     AVG,
@@ -35,9 +35,12 @@ public:
     return _always_error("Method 'run' not implement.");
   }
 
-  virtual retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                               MpcChannel &prev) {
-    return _always_error("Method 'setupChannel' not implement.");
+  virtual retcode setupChannel(uint16_t party_id,
+                               aby3::CommPkg* comm_pkg) {
+    mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
+    mpc_op_->setup(comm_pkg);
+    party_id_ = party_id;
+    return retcode::SUCCESS;
   }
 
   static std::string statisticsTypeToString(const MPCStatisticsType &type) {
@@ -64,16 +67,23 @@ public:
     return str;
   }
 
+protected:
+  uint16_t party_id_;
+  std::unique_ptr<MPCOperator> mpc_op_{nullptr};
+  MPCStatisticsType type_{MPCStatisticsType::UNKNOWN};
+
 private:
   retcode _always_error(const std::string msg) {
     LOG(ERROR) << msg;
     return retcode::FAIL;
   }
+
 };
 
 class MPCSumOrAvg : public MPCStatisticsOperator {
 public:
   MPCSumOrAvg(const MPCStatisticsType &type) {
+    type_ = type;
     use_mpc_div_ = false;
     if (type == MPCStatisticsType::AVG) {
       avg_result_ = true;
@@ -92,20 +102,19 @@ public:
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
 
-  retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                       MpcChannel &prev) override;
-
 private:
   bool use_mpc_div_{false};
   bool avg_result_{false};
   eMatrix<double> result;
-  std::unique_ptr<MPCOperator> mpc_op_;
-  uint16_t party_id_;
+
+  // uint16_t party_id_;
 };
 
 class MPCMinOrMax : public MPCStatisticsOperator {
 public:
-  MPCMinOrMax(const MPCStatisticsType &type) { type_ = type; }
+  MPCMinOrMax(const MPCStatisticsType &type) {
+    type_ = type;
+  }
   virtual ~MPCMinOrMax() {
     mpc_op_.reset();
   }
@@ -116,8 +125,6 @@ public:
 
   retcode getResult(eMatrix<double> &result) override;
 
-  retcode setupChannel(uint16_t party_id, MpcChannel &next,
-                       MpcChannel &prev) override;
 private:
   double minValueOfAllParty(double local_min);
   double maxValueOfAllParty(double local_max);
@@ -182,11 +189,7 @@ private:
   }
 
   eMatrix<double> mpc_result_;
-  std::unique_ptr<MPCOperator> mpc_op_;
-  MPCStatisticsType type_;
-  uint16_t party_id_;
 };
-#endif  // MPC_SOCKET_CHANNEL
 }; // namespace primihub
 
 #endif

@@ -17,6 +17,7 @@ static void RunLogistic(std::string node_id, rpc::Task &task,
   LogisticRegressionExecutor exec(config, data_service);
   EXPECT_EQ(exec.loadParams(task), 0);
   EXPECT_EQ(exec.initPartyComm(), 0);
+  EXPECT_EQ(exec.InitEngine(), retcode::SUCCESS);
   EXPECT_EQ(exec.loadDataset(), 0);
   EXPECT_EQ(exec.execute(), 0);
   EXPECT_EQ(exec.saveModel(), 0);
@@ -61,6 +62,12 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   for (const auto& [key, dataset_id] : dataset_list) {
     (*datasets)[key] = dataset_id;
   }
+  auto auxiliary_server = task.mutable_auxiliary_server();
+  rpc::Node fake_proxy_node;
+  fake_proxy_node.set_ip("127.0.0.1");
+  fake_proxy_node.set_port(50050);
+  fake_proxy_node.set_use_tls(false);
+  (*auxiliary_server)[PROXY_NODE] = std::move(fake_proxy_node);
   // param
   rpc::ParamValue pv_batch_size;
   pv_batch_size.set_var_type(rpc::VarType::INT32);

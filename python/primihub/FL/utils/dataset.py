@@ -7,6 +7,37 @@ import zipfile
 from sqlalchemy import create_engine
 from torchvision.io import read_image
 from torch.utils.data import Dataset as TorchDataset
+from primihub.utils.logger_util import logger
+
+
+def read_data(data_info,
+              selected_column=None,
+              id=None,
+              transform=None,
+              target_transform=None):
+    data_type = data_info['type'].lower()
+    if data_type == 'csv':
+        return read_csv(data_info['data_path'],
+                        selected_column,
+                        id)
+    elif data_type == 'image':
+        return TorchImageDataset(data_info['image_dir'],
+                                 data_info['annotations_file'],
+                                 transform,
+                                 target_transform)
+    elif data_type == 'mysql':
+        return read_mysql(data_info['username'],
+                          data_info['password'],
+                          data_info['host'],
+                          data_info['port'],
+                          data_info['dbName'],
+                          data_info['tableName'],
+                          selected_column,
+                          id)
+    else:
+        error_msg = f'Unsupported data type: {data_type}'
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
 
 
 def read_csv(data_path, selected_column=None, id=None):
@@ -85,7 +116,7 @@ class TorchImageDataset(TorchDataset):
 
 class DataLoader:
 
-    def __init__(self, dataset, label=None, batch_size=1, shuffle=True):
+    def __init__(self, dataset, label=None, batch_size=1, shuffle=True, seed=None):
         self.dataset = dataset
         self.label = label
         self.batch_size = batch_size
@@ -93,6 +124,8 @@ class DataLoader:
         self.n_samples = self.__len__()
         self.indices = np.arange(self.n_samples)
         self.start = 0
+        if seed:
+            np.random.seed(seed)
 
     def __len__(self):
         return len(self.dataset)

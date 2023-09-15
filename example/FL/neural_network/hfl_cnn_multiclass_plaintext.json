@@ -21,20 +21,22 @@
             "batch_size": 100,
             "global_epoch": 10,
             "local_epoch": 1,
-            "print_metrics": true,
-            "metric_path": "data/result/metrics.json"
+            "print_metrics": true
         },
         "role_params": {
             "Bob": {
                 "data_set": "mnist_train_client1",
-                "model_path": "data/result/Bob_model.pkl"
+                "model_path": "data/result/Bob_model.pkl",
+                "metric_path": "data/result/Bob_metrics.json"
             },
             "Charlie": {
                 "data_set": "mnist_train_client2",
-                "model_path": "data/result/Charlie_model.pkl"
+                "model_path": "data/result/Charlie_model.pkl",
+                "metric_path": "data/result/Charlie_metrics.json"
             },
             "Alice": {
-                "data_set": "hfl_server_fake_data"
+                "data_set": "fl_fake_data",
+                "metric_path": "data/result/server_metrics.json"
             }
         }
     }

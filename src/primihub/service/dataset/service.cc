@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -250,7 +250,7 @@ primihub::retcode DatasetService::registerDriver(
 }
 
 std::shared_ptr<primihub::DataDriver>
-DatasetService::getDriver(const std::string& dataset_id) {
+DatasetService::getDriver(const std::string& dataset_id, bool is_acces_info) {
   // {
   //   std::shared_lock<std::shared_mutex> lck(driver_mtx_);
   //   auto it = driver_manager_.find(dataset_id);
@@ -258,6 +258,31 @@ DatasetService::getDriver(const std::string& dataset_id) {
   //     return it->second;
   //   }
   // }
+  if (is_acces_info) {
+    DatasetMetaInfo meta_info;
+    LOG(ERROR) << dataset_id;
+    nlohmann::json oJson = nlohmann::json::parse(dataset_id);
+    meta_info.driver_type = oJson["type"].get<std::string>();
+    LOG(ERROR) << meta_info.driver_type;
+    meta_info.access_info = dataset_id;
+    auto& schema = meta_info.schema;
+    nlohmann::json filed_list =
+        nlohmann::json::parse(oJson["schema"].get<std::string>());
+    for (const auto& filed : filed_list) {
+      for (const auto& [key, value] : filed.items()) {
+        schema.push_back(std::make_tuple(key, value));
+      }
+    }
+    auto access_info = createAccessInfo(meta_info.driver_type, meta_info);
+    if (access_info == nullptr) {
+      std::string err_msg = "create access info failed";
+      return nullptr;
+    }
+    return DataDirverFactory::getDriver(meta_info.driver_type,
+                                        DatasetLocation(),
+                                        std::move(access_info));
+  }
+
   // get Meta using meta service
   std::shared_ptr<primihub::DataDriver> driver{nullptr};
   MetaService()->GetMeta(dataset_id,

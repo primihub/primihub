@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 #ifndef SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 #define SRC_PRIMIHUB_TASK_SEMANTIC_TEE_TASK_H_
 
-#include <pybind11/embed.h>
+// #include <pybind11/embed.h>
 #include "src/primihub/task/semantic/task.h"
 
-namespace py = pybind11;
+// namespace py = pybind11;
 namespace primihub::task {
 // /**
 //  * @brief TEE Executor role task

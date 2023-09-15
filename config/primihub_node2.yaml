@@ -11,6 +11,12 @@ grpc_port: 50052
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
+proxy_server:
+  mode: "grpc"
+  ip:  "127.0.0.1"
+  port: 50052
+  use_tls: false
+
 meta_service:
   mode: "grpc"
   ip: "primihub-meta2"
@@ -18,6 +24,11 @@ meta_service:
   use_tls: false
 
 datasets:
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_2"
+    model: "csv"
+    source: "data/FL/fake.csv"
+
   # ABY3 LR test case datasets
   - description: "train_party_2"
     model: "csv"
@@ -35,6 +46,12 @@ datasets:
     source: "data/falcon/dataset/MNIST/input_0"
 
   # FL binclass
+  - description: "binclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/train/guest.csv"
+  - description: "binclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/binclass/vfl/test/guest.csv"
   - description: "binclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/binclass/hfl/train/client2.csv"
@@ -43,6 +60,12 @@ datasets:
     source: "data/FL/binclass/hfl/test/client2.csv"
 
   # FL multiclass
+  - description: "multiclass_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/train/guest.csv"
+  - description: "multiclass_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/test/guest.csv"
   - description: "multiclass_hfl_train_client2"
     model: "csv"
     source: "data/FL/multiclass/hfl/train/client2.csv"
@@ -51,6 +74,12 @@ datasets:
     source: "data/FL/multiclass/hfl/test/client2.csv"
 
   # FL regression
+  - description: "regression_vfl_train_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/train/guest.csv"
+  - description: "regression_vfl_test_guest"
+    model: "csv"
+    source: "data/FL/regression/vfl/test/guest.csv"
   - description: "regression_hfl_train_client2"
     model: "csv"
     source: "data/FL/regression/hfl/train/client2.csv"

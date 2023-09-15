@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -164,6 +164,38 @@ retcode DataSetAccessInfo::SetDatasetSchema(std::vector<FieldType>&& schema_info
   return MakeArrowSchema();
 }
 
+std::string DataSetAccessInfo::SchemaToJsonString() {
+  auto schema = this->ArrowSchema();
+  if (schema == nullptr) {
+    return std::string("");
+  }
+  nlohmann::json js_schema = nlohmann::json::array();
+  for (int col_index = 0; col_index < schema->num_fields(); ++col_index) {
+    auto field = schema->field(col_index);
+    nlohmann::json item;
+    item[field->name()] = field->type()->id();
+    js_schema.emplace_back(item);
+  }
+  return js_schema.dump();
+}
+
+
+// cursor
+std::shared_ptr<arrow::Schema>
+Cursor::MakeArrowSchema(const std::vector<FieldType>& data_schema) {
+  std::vector<std::shared_ptr<arrow::Field>> arrow_fields;
+  for (const auto& it : data_schema) {
+    auto name = std::get<0>(it);
+    int type = std::get<1>(it);
+    auto data_type = arrow_wrapper::util::MakeArrowDataType(type);
+    // std::shared_ptr<arrow::Field>
+    auto arrow_filed = arrow::field(name, std::move(data_type));
+    arrow_fields.push_back(std::move(arrow_filed));
+  }
+  auto arrow_schema = arrow::schema(std::move(arrow_fields));
+  VLOG(5) << "arrow_schema: " << arrow_schema->field_names().size();
+  return arrow_schema;
+}
 ////////////////////// DataDriver /////////////////////////////
 std::string DataDriver::getDriverType() const {
   return driver_type;

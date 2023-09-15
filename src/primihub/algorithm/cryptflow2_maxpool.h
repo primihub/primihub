@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -21,13 +21,12 @@
 
 #include "src/primihub/algorithm/base.h"
 #include "src/primihub/common/clp.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/protocol/cryptflow2/NonLinear/maxpool.h"
 #include "src/primihub/protocol/cryptflow2/globals.h"
 #include "src/primihub/util/network/socket/session.h"
 #include "src/primihub/common/clp.h"
-#include "src/primihub/common/defines.h"
 #include "src/primihub/common/type/type.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"

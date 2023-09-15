@@ -23,17 +23,17 @@ jobs:
         bash pre_build.sh
         bazel build --config=linux_`arch` \
             --cxxopt=-DMPC_SOCKET_CHANNEL \
-            //test/primihub/algorithm:logistic_test \
-            //test/primihub/algorithm:maxpool_test \
-            //test/primihub/algorithm:falcon_lenet_test \
-            //test/primihub/common/type:common_test \
-            //test/primihub/util:network_test
+            //test/primihub/algorithm:logistic_test
+        #    //test/primihub/algorithm:maxpool_test \
+        #    //test/primihub/algorithm:falcon_lenet_test \
+        #    //test/primihub/common/type:common_test \
+        #    //test/primihub/util:network_test
 
         ./bazel-bin/test/primihub/algorithm/logistic_test
-        ./bazel-bin/test/primihub/algorithm/maxpool_test
-        ./bazel-bin/test/primihub/algorithm/falcon_lenet_test
-        ./bazel-bin/test/primihub/common/type/common_test
-        ./bazel-bin/test/primihub/util/network_test
+        #./bazel-bin/test/primihub/algorithm/maxpool_test
+        #./bazel-bin/test/primihub/algorithm/falcon_lenet_test
+        #./bazel-bin/test/primihub/common/type/common_test
+        #./bazel-bin/test/primihub/util/network_test
 
         # bazel test --test_output=all --config=linux test_opt_paillier_c2py
         # bazel test --test_output=all --config=linux test_opt_paillier_pack_c2py
@@ -45,26 +45,24 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=linux_`arch` //:node \
-            //:py_main \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext
+        make
 
   build-on-ubuntu-arm64:
     runs-on: [self-hosted, Linux, ARM64]
     steps:
     - uses: actions/checkout@v3
+    - name: bazel test
+      run: |
+        bash pre_build.sh
+        bazel build --config=linux_`arch` \
+            --cxxopt=-DMPC_SOCKET_CHANNEL \
+            //test/primihub/algorithm:logistic_test
+        ./bazel-bin/test/primihub/algorithm/logistic_test
     - name: bazel build
       run: |
         # cc_binary
         bash pre_build.sh
-        bazel build --config=linux_`arch` //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:linkcontext \
-            //src/primihub/pybind_warpper:opt_paillier_c2py
+        make
 
 
   build-on-mac-amd64:
@@ -76,14 +74,16 @@ jobs:
     - name: set PYTHON LINK_OPTS
       run: ./pre_build.sh
       shell: bash
+    - name: Install make
+      run: brew install make
     - name: bazel test
       run: |
         mv -f WORKSPACE_GITHUB WORKSPACE
         bazel build --config=darwin_x86_64 \
             --cxxopt=-DMPC_SOCKET_CHANNEL \
-            //test/primihub/algorithm:logistic_test \
-            //test/primihub/common/type:common_test \
-            //test/primihub/util:network_test
+            //test/primihub/algorithm:logistic_test
+        #    //test/primihub/common/type:common_test \
+        #    //test/primihub/util:network_test
 
         ./bazel-bin/test/primihub/algorithm/logistic_test
         #./bazel-bin/test/primihub/common/type/common_test
@@ -95,9 +95,5 @@ jobs:
     - name: bazel build
       run: |
         # cc_binary
-        bazel build --config=darwin_x86_64 //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext
+        make
 

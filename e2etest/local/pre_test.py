@@ -1,5 +1,5 @@
 """"
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ def pre_start_node():
 
 def pre_node():
     '''开启三个命令行窗口，运行节点'''
-    path = config.primihub_path  
+    path = config.primihub_path
     os.chdir(path)
     if port_listen.judge_port_listen(50050) == 0 and  port_listen.judge_port_listen(50051) == 0 and port_listen.judge_port_listen(50052) == 0 :
         print("All nodes have been started")
@@ -43,7 +43,7 @@ def pre_node():
             os.system("sudo nohup  ./bazel-bin/node --node_id=node0 --service_port=50050 --config=./config/node0.yaml >> node0.log 2>&1 &")
         if port_listen.judge_port_listen(50051) != 0 :
             os.system("sudo nohup  ./bazel-bin/node --node_id=node1 --service_port=50051 --config=./config/node1.yaml >> node1.log 2>&1 &")
-        if port_listen.judge_port_listen(50052) != 0 :    
+        if port_listen.judge_port_listen(50052) != 0 :
             os.system("sudo nohup  ./bazel-bin/node --node_id=node2 --service_port=50052 --config=./config/node2.yaml >> node2.log 2>&1 &")
         time.sleep(30)
 

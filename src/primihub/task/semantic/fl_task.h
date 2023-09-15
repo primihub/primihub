@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,14 +18,12 @@
 
 #include <string>
 #include <vector>
-#include <boost/process.hpp>
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/task/semantic/task.h"
+#include "Poco/Process.h"
 
 using primihub::rpc::PushTaskRequest;
-
-namespace bp = boost::process;
 
 namespace primihub::task {
 /* *
@@ -40,10 +38,15 @@ class FLTask : public TaskBase {
 
     ~FLTask() = default;
     int execute() override;
+    void kill_task() {
+      LOG(WARNING) << "task receives kill task request and stop stauts";
+      stop_.store(true);
+      task_context_.clean();
+    };
 
  private:
-    const PushTaskRequest* task_request_{nullptr};
-
+  const PushTaskRequest* task_request_{nullptr};
+  std::unique_ptr<Poco::ProcessHandle> process_handler_{nullptr};
 };
 } // namespace primihub::task
 

@@ -1,0 +1,41 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "VFL_logistic_regression",
+            "method": "Plaintext",
+            "process": "train",
+            "task_name": "VFL_logistic_regression_multiclass_plaintext_train",
+            "learning_rate": 1e-0,
+            "alpha": 1e-4,
+            "epoch": 10,
+            "shuffle_seed": 0,
+            "batch_size": 100,
+            "print_metrics": true
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "multiclass_vfl_train_host",
+                "selected_column": null,
+                "id": "id",
+                "label": "y",
+                "model_path": "data/result/host_model.pkl",
+                "metric_path": "data/result/metrics.json"
+            },
+            "Charlie": {
+                "data_set": "multiclass_vfl_train_guest",
+                "selected_column": null,
+                "id": "id",
+                "model_path": "data/result/guest_model.pkl"
+            }
+        }
+    }
+}

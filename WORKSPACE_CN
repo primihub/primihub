@@ -3,13 +3,20 @@ workspace(name = "primihub")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
-_ALL_CONTENT = """\
-filegroup(
-  name = "all_srcs",
-  srcs = glob(["**"]),
-  visibility = ["//visibility:public"],
+git_repository(
+  name = "com_github_bazel_rules_3rdparty",
+  commit = "6053d0f3f70cda3e2e145ed008c7bd9c822e5b37",
+  remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
 )
-"""
+
+http_archive(
+  name = "platforms",
+  urls = [
+    "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
+    "https://github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
+  ],
+  sha256 = "5308fc1d8865406a49427ba24a9ab53087f17f5266a7aabbfc28823f3916e1ca",
+)
 
 http_archive(
   name = "rules_foreign_cc",
@@ -26,7 +33,7 @@ http_archive(
   url = "https://primihub.oss-cn-beijing.aliyuncs.com/tools/openssl-OpenSSL_1_1_1o.tar.gz",
   #sha256 = "f56dd7d81ce8d3e395f83285bd700a1098ed5a4cb0a81ce9522e41e6db7e0389",
   strip_prefix = "openssl-OpenSSL_1_1_1o",
-  build_file = "//bazel:openssl.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:openssl.BUILD",
 )
 
 git_repository(
@@ -41,7 +48,7 @@ boost_deps()
 
 http_archive(
   name = "eigen",
-  build_file = "//bazel:BUILD.eigen",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.eigen",
   strip_prefix = "eigen-3.4",
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/eigen-3.4.tar.bz2",
@@ -51,7 +58,7 @@ http_archive(
 
 new_git_repository(
   name = "lib_function2",
-  build_file = "//bazel:BUILD.function2",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.function2",
   remote = "https://gitee.com/mirrors_Naios/function2.git",
   commit = "b8cf935d096a87a645534e5c1015ee80960fe4de",
   shallow_since = "1616573746 +0100",
@@ -60,7 +67,7 @@ new_git_repository(
 
 http_archive(
   name = "arrow",
-  build_file = "//bazel:BUILD.arrow",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.arrow",
   patch_cmds = [
     # TODO: Remove the fowllowing once arrow issue is resolved.
     """sed -i.bak 's/type_traits/std::max<int16_t>(sizeof(int16_t), type_traits/g' cpp/src/parquet/column_reader.cc""",
@@ -75,11 +82,11 @@ http_archive(
 
 http_archive(
   name="com_github_grpc_grpc",
-  strip_prefix = "grpc-1.42.x.openssl",
+  strip_prefix = "grpc-1.42.x.openssl.0",
   urls=[
-    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/v1.42.x.openssl_0.tar.gz",
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/grpc-1.42.x.openssl.v1.tar.gz",
   ],
-  sha256 = "ebe6bbdefd349bac46ca1ee5586daddd35b811b4e9000aeeaa236674d33ad902",
+  sha256 = "5911a187c715d37c059ba8655c9a00afb9a113dbeb7adb4a958136f6f5dac76f",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -154,7 +161,7 @@ versions.check(minimum_bazel_version = "5.0.0")
 # json
 http_archive(
   name = "nlohmann_json",
-  build_file = "//bazel:BUILD.nlohmann_json",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.nlohmann_json",
   strip_prefix = "json-3.9.1",
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/json-3.9.1.tar.gz"
@@ -191,7 +198,7 @@ python_configure(name = "local_config_python")
 
 http_archive(
   name = "brotli",
-  build_file = "//bazel:brotli.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:brotli.BUILD",
   sha256 = "4c61bfb0faca87219ea587326c467b95acb25555b53d1a421ffa3c8a9296ee2c",
   strip_prefix = "brotli-1.0.7",
   urls = [
@@ -201,13 +208,13 @@ http_archive(
 
 
 http_archive(
-    name = "bzip2",
-    build_file = "//bazel:bzip2.BUILD",
-    sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-    strip_prefix = "bzip2-1.0.8",
-    urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/bzip2-1.0.8.tar.gz"
-    ],
+  name = "bzip2",
+  build_file = "@com_github_bazel_rules_3rdparty//:bzip2.BUILD",
+  sha256 = "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+  strip_prefix = "bzip2-1.0.8",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/bzip2-1.0.8.tar.gz"
+  ],
 )
 
 
@@ -222,7 +229,7 @@ http_archive(
 
 http_archive(
   name = "lz4",
-  build_file = "//bazel:lz4.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:lz4.BUILD",
   patch_cmds = [
     """sed -i.bak 's/__attribute__ ((__visibility__ ("default")))//g' lib/lz4frame.h """,
   ],
@@ -235,7 +242,7 @@ http_archive(
 
 http_archive(
   name = "rapidjson",
-  build_file = "//bazel:rapidjson.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:rapidjson.BUILD",
   sha256 = "30bd2c428216e50400d493b38ca33a25efb1dd65f79dfc614ab0c957a3ac2c28",
   strip_prefix = "rapidjson-418331e99f859f00bdc8306f69eba67e8693c55e",
   urls = [
@@ -246,7 +253,7 @@ http_archive(
 # Note: snappy is placed earlier as tensorflow's snappy does not include snappy-c
 http_archive(
   name = "snappy",
-  build_file = "//bazel:snappy.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:snappy.BUILD",
   sha256 = "16b677f07832a612b0836178db7f374e414f94657c138e6993cbfc5dcc58651f",
   strip_prefix = "snappy-1.1.8",
   urls = [
@@ -256,7 +263,7 @@ http_archive(
 
 http_archive(
   name = "thrift",
-  build_file = "//bazel:thrift.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:thrift.BUILD",
   sha256 = "5da60088e60984f4f0801deeea628d193c33cec621e78c8a43a5d8c4055f7ad9",
   strip_prefix = "thrift-0.13.0",
   urls = [
@@ -266,7 +273,7 @@ http_archive(
 
 http_archive(
   name = "xsimd",
-  build_file = "//bazel:xsimd.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:xsimd.BUILD",
   sha256 = "45337317c7f238fe0d64bb5d5418d264a427efc53400ddf8e6a964b6bcb31ce9",
   strip_prefix = "xsimd-7.5.0",
   urls = [
@@ -276,7 +283,7 @@ http_archive(
 
 http_archive(
   name = "zlib",
-  build_file = "//bazel:zlib.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:zlib.BUILD",
   sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
   strip_prefix = "zlib-1.2.11",
   urls = [
@@ -297,7 +304,7 @@ http_archive(
 
 http_archive(
   name = "xz",
-  build_file = "//bazel:xz.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:xz.BUILD",
   sha256 = "0d2b89629f13dd1a0602810529327195eff5f62a0142ccd65b903bc16a4ac78a",
   strip_prefix = "xz-5.2.5",
   urls = [
@@ -307,10 +314,10 @@ http_archive(
 
 http_archive(
   name = "io_opentelemetry_cpp",
-  sha256 = "32f12ff15ec257e3462883f84bc291c2d5dc30055604c12ec4b46a36dfa3f189",
+  sha256 = "0cddc5a582b52d9234bd261f1fd218d4cd136ed8c79e7af99034d1dc7da8c33b",
   strip_prefix = "opentelemetry-cpp-1.0.1",
   urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/opentelemetry-cpp-1.0.1.tar.gz"
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/opentelemetry-cpp-1.0.1.tar.gz"
   ],
 )
 
@@ -341,36 +348,18 @@ git_repository(
 # fmt bazle, ref: https://fossies.org/linux/fmt/support/bazel/README.md
 new_git_repository(
   name = "fmt",
-  build_file = "//bazel:fmt.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:fmt.BUILD",
   remote = "https://gitee.com/primihub/fmt.git",
   tag = "6.1.2",
-)
-
-
-new_git_repository(
-  name = "libp2p",
-  build_file = "//bazel:libp2p.BUILD",
-  remote = "https://gitee.com/primihub/cpp-libp2p.git",
-  branch="master",
 )
 
 # soralog , need by libp2p
 # TODO need change to glog
 new_git_repository(
   name = "com_openmpc_soralog",
-  build_file = "//bazel:soralog.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:soralog.BUILD",
   remote = "https://gitee.com/primihub/soralog.git",
   branch="master",
-)
-
-# sqlite, need by libp2p
-http_archive(
-  name = "com_github_soramitsu_sqlite",
-  build_file = "//bazel:sqlite.BUILD",
-  strip_prefix = "libp2p-sqlite-modern-cpp-3.2",
-  urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/libp2p-sqlite-modern-cpp-3.2.tar.gz"
-  ],
 )
 
 #yaml-cpp, need by libp2p
@@ -383,7 +372,7 @@ git_repository(
 # hat_trie , need by libp2p
 new_git_repository(
   name = "com_github_masterjedy_hat_hrie",
-  build_file = "//bazel:hat_trie.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:hat_trie.BUILD",
   remote = "https://gitee.com/primihub/hat-trie.git",
   branch="master",
 )
@@ -391,7 +380,7 @@ new_git_repository(
 # boost di, used by libp2p
 http_archive(
   name = "com_github_masterjedy_di",
-  build_file = "//bazel:di.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:di.BUILD",
   strip_prefix = "di-1.1.0",
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/di-1.1.0.tar.gz"
@@ -401,7 +390,7 @@ http_archive(
 # seal primihub fork from microsoft, used by crypTFlow2 and APSI
 new_git_repository(
   name = "com_github_primihub_seal_40",
-  build_file = "//bazel:BUILD.seal",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.seal",
   remote = "https://gitee.com/primihub/SEAL.git",
   #branch = "upgrade_zstd",
   commit = "92864d61ee3b4469d3e372661104df7a74ac9a92",
@@ -409,7 +398,7 @@ new_git_repository(
 
 http_archive(
   name = "com_github_gmp",
-  build_file = "//bazel:gmp.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:gmp.BUILD",
   #sha256 = "87b565e89a9a684fe4ebeeddb8399dce2599f9c9049854ca8c0dfbdea0e21912",
   strip_prefix = "gmp-6.2.1",
   urls = [
@@ -420,7 +409,7 @@ http_archive(
 # Google dense_hash_set
 http_archive(
   name = "google_sparsehash",
-  build_file = "//bazel:BUILD.sparsehash",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.sparsehash",
   strip_prefix = "sparsehash-master",
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/sparsehash-master.zip"
@@ -428,72 +417,62 @@ http_archive(
 )
 
 # libPSI start
-new_git_repository(
+git_repository(
   name = "osu_libpsi",
-  build_file = "//bazel:BUILD.libpsi",
-  commit = "4c5d5a3e49533c8547dcd4869e6a9842b6ce5b90",
+  #branch = "bazel_branch",
+  commit = "d56340b515989832983ac84132fef1a03184a9bc",
   remote = "https://gitee.com/primihub/libPSI.git",
 )
 
+
+git_repository(
+  name = "ladnir_cryptoTools",
+  # branch = "bazel_branch",
+  commit = "53026be7bf1f12cb572c3d8ef9c7ee1a21742360",
+  remote = "https://gitee.com/primihub/cryptoTools.git",
+)
+
+git_repository(
+  name = "com_github_ladnir_aby3",
+  # branch = "bazel_branch",
+  commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
+  remote = "https://gitee.com/primihub/aby3.git",
+)
+
 # libote
-new_git_repository(
+git_repository(
   name = "osu_libote",
-  build_file = "//bazel:libOTe.BUILD",
-  commit = "f455eb7bf83034ebca6cab42e3aea9d9b33f8102",
+  # branch = "bazel_branch",
+  commit = "d797f316d94b2931505f1862515b6e161a24cacb",
   remote = "https://gitee.com/primihub/libOTe.git",
 )
 
 new_git_repository(
-  name = "ladnir_cryptoTools",
-  build_file = "//bazel:cryptoTools.BUILD",
-  commit = "d52e05e2e803006256ddb66f48a0d51080f4b285",
-  remote = "https://gitee.com/primihub/cryptoTools.git",
-  # shallow_since = "1591047380 -0700",
-)
-
-new_git_repository(
   name = "github_ntl",
-  build_file = "//bazel:ntl.BUILD",
+  build_file = "@com_github_bazel_rules_3rdparty//:ntl.BUILD",
   commit = "6b23216ce6b24dd04446122c2200b6f031621965",
   remote = "https://gitee.com/primihub/ntl.git",
   # shallow_since = "1591047380 -0700",
 )
 
+
 new_git_repository(
   name = "toolkit_relic",
-  build_file = "//bazel:BUILD.relic",
-  remote = "https://gitee.com/orzmzp/relic.git",
-  commit = "3f616ad64c3e63039277b8c90915607b6a2c504c",
-  shallow_since = "1581106153 -0800",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.relic",
+  remote = "https://gitee.com/primihub/relic.git",
+  # tag 0.6.0
+  commit = "d7dcb22846e32172bb94111823bd3358ec9a49aa",
 )
 
 http_archive(
   name = "com_github_redis_hiredis",
-  build_file = "//bazel:BUILD.hiredis",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.hiredis",
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/hiredis-392de5d7f97353485df1237872cb682842e8d83f.tar.gz"
   ],
   sha256 = "2101650d39a8f13293f263e9da242d2c6dee0cda08d343b2939ffe3d95cf3b8b",
   strip_prefix = "hiredis-392de5d7f97353485df1237872cb682842e8d83f"
 )
-
-# libote
-# http_archive(
-#   name = "osu_libote",
-#   build_file = "//external:libOTe.BUILD",
-#   #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-#   strip_prefix = "libOTe-master",
-#   urls = ["https://github.com/osu-crypto/libOTe/archive/refs/heads/master.zip"],
-# )
-
-# cryptoTools
-# http_archive(
-#   name = "ladnir_cryptoTools",
-#   build_file = "//external:cryptoTools.BUILD",
-#   #sha256 = "6f021f24136eb177af38af3bf5d53b3592a1fe1e71d1c098318488a85b0afc3a",
-#   strip_prefix = "cryptoTools-master",
-#   urls = ["https://github.com/ladnir/cryptoTools/archive/refs/heads/master.zip"],
-# )
 
 #PSI
 git_repository(
@@ -521,19 +500,9 @@ load("@org_openmined_pir//pir:deps.bzl", "pir_deps")
 pir_deps()
 
 
-#http_archive(
-#  name = "com_github_google_leveldb",
-#  build_file = "//bazel:BUILD.leveldb",
-#  strip_prefix = "leveldb",
-#  urls = [
-#    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb_centos_arm.tar.gz",
-#    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/leveldb_centos.tar.gz"
-#  ],
-#)
-
 http_archive(
   name = "com_github_google_leveldb",
-  build_file = "//bazel:BUILD.leveldb",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.leveldb",
   sha256 = "a6fa7eebd11de709c46bf1501600ed98bf95439d6967963606cc964931ce906f",
   strip_prefix = "leveldb-1.23",
   urls = [
@@ -555,7 +524,7 @@ apsi_dependencies("mircrosoft_apsi");
 # needed by APSI
 new_git_repository(
   name = "com_microsoft_kuku",
-  build_file = "//bazel:BUILD.kuku",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.kuku",
   branch = "2.1.0",
   remote = "https://gitee.com/primihub/Kuku.git",
 )
@@ -570,7 +539,7 @@ git_repository(
 #support sqlite
 http_archive(
   name = "com_github_sqlite_wrapper",
-  build_file = "//bazel:BUILD.sqlite",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.sqlite",
   sha256 = "57f91ed44ef205fe97b8c6586002fe6031cd02771d1c5d8415d9c515ad1532d1",
   strip_prefix = "SQLiteCpp-3.2.0",
   urls = [
@@ -581,7 +550,7 @@ http_archive(
 #generate uuid
 http_archive(
   name = "com_github_stduuid",
-  build_file = "//bazel:BUILD.stduuid",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.stduuid",
   sha256 = "f554f6a9fe4d852fa217de6ab977afbf3f49e4a1dcb263afd61a94253c4c7a48",
   strip_prefix = "stduuid-1.2.2",
   urls = [
@@ -596,12 +565,14 @@ git_repository(
   remote = "https://gitee.com/primihub/cpp-base64.git",
 )
 
-# for libp2p
-new_git_repository(
-  name = "com_github_microsoft_gsl_v2_0_0",
-  build_file = "//bazel:BUILD.gsl_v_2_0_0",
-  tag = "v2.0.0",
-  remote = "https://gitee.com/mirrors_microsoft/GSL.git",
+http_archive(
+  name = "com_github_microsoft_gsl",
+  build_file = "@com_github_bazel_rules_3rdparty//:BUILD.gsl",
+  sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
+  strip_prefix = "GSL-4.0.0",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/GSL-4.0.0.tar.gz",
+  ],
 )
 
 #python include
@@ -618,4 +589,45 @@ cc_library(
   ])
 )
 """
+)
+
+# repository deps for tee
+git_repository(
+  name = "served",
+  commit = "757172e1d8aa7e273e800ce8ec91974c90a2a8b1",
+  remote = "https://gitee.com/mirrors_meltwater/served.git",
+)
+
+http_archive(
+  name = "sgxsdk",
+  build_file = "//bazel:sgx.BUILD",
+  strip_prefix= "sgxsdk",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/sgxsdk.tar.gz"
+  ]
+)
+
+http_archive(
+  name = "curl",
+  build_file = "@com_github_bazel_rules_3rdparty//:curl.BUILD",
+  strip_prefix = "curl-7.73.0",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/curl-7.73.0.tar.gz"
+  ]
+)
+
+git_repository(
+  name = "tee_engine",
+  commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
+  remote = "https://github.com/primihub/primihub_tee.git",
+)
+
+http_archive(
+  name = "poco",
+  build_file = "@com_github_bazel_rules_3rdparty//:poco.BUILD",
+  sha256 = "71ef96c35fced367d6da74da294510ad2c912563f12cd716ab02b6ed10a733ef",
+  strip_prefix = "poco-poco-1.12.4-release",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/poco-poco-1.12.4-release.tar.gz",
+  ],
 )

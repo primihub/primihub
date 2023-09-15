@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2023 by PrimiHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef SRC_PRIMIHUB_EXECUTOR_EXPRESS_H_
 #define SRC_PRIMIHUB_EXECUTOR_EXPRESS_H_
 
@@ -13,7 +29,8 @@ namespace primihub {
 
 template <Decimal Dbit> class LocalExpressExecutor;
 
-template <Decimal Dbit> class MPCExpressExecutor {
+template <Decimal Dbit>
+class MPCExpressExecutor {
 public:
   MPCExpressExecutor();
   ~MPCExpressExecutor();
@@ -46,13 +63,11 @@ public:
                          std::vector<double> &col_vec);
 
   // Method group 5: Init MPC operator.
-#ifdef MPC_SOCKET_CHANNEL
   void initMPCRuntime(uint32_t party_id, const std::string &next_ip,
                       const std::string &prev_ip, uint16_t next_port,
                       uint16_t prev_port);
-#else
-  void initMPCRuntime(uint32_t party_id, MpcChannel &prev, MpcChannel &next);
-#endif
+  void initMPCRuntime(uint32_t party_id, std::shared_ptr<aby3::CommPkg> comm_pkg);
+  void initMPCRuntime(uint32_t party_id, aby3::CommPkg* comm_pkg);
 
   // Method group 6: Execute express with MPC protocol.
   int runMPCEvaluate(void);

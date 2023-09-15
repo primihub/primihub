@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -24,14 +24,13 @@
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/model.h"
+#include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/network/link_context.h"
 
-using namespace std;
-using namespace Eigen;
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
 using arrow::Table;
-
 namespace primihub {
 eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
                               sf64Matrix<D> &train_label_0_1,
@@ -61,64 +60,9 @@ eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
 
 LogisticRegressionExecutor::LogisticRegressionExecutor(
     PartyConfig &config, std::shared_ptr<DatasetService> dataset_service)
-    : AlgorithmBase(dataset_service) {
+    : AlgorithmBase(config, dataset_service) {
   this->algorithm_name_ = "logistic_regression";
-
-  this->set_party_name(config.party_name());
-  this->set_party_id(config.party_id());
   local_id_ = config.party_id();
-#ifdef MPC_SOCKET_CHANNEL
-  auto &node_map = config.node_map;
-  std::map<uint16_t, rpc::Node> party_id_node_map;
-  for (auto iter = node_map.begin(); iter != node_map.end(); iter++) {
-    rpc::Node &node = iter->second;
-    uint16_t party_id = static_cast<uint16_t>(node.vm(0).party_id());
-    party_id_node_map[party_id] = node;
-  }
-
-  auto iter = node_map.find(config.node_id); // node_id
-  if (iter == node_map.end()) {
-    stringstream ss;
-    ss << "Can't find " << config.node_id << " in node_map.";
-    throw std::runtime_error(ss.str());
-  }
-
-  local_id_ = iter->second.vm(0).party_id();
-  LOG(INFO) << "Note party id of this node is " << local_id_ << ".";
-
-  if (local_id_ == 0) {
-    rpc::Node &node = party_id_node_map[0];
-    uint16_t port = 0;
-
-    // Two Local server addr.
-    port = node.vm(0).next().port();
-    next_addr_ = std::make_pair(node.ip(), port);
-
-    port = node.vm(0).prev().port();
-    prev_addr_ = std::make_pair(node.ip(), port);
-  } else if (local_id_ == 1) {
-    rpc::Node &node = party_id_node_map[1];
-
-    // A local server addr.
-    uint16_t port = node.vm(0).next().port();
-    next_addr_ = std::make_pair(node.ip(), port);
-
-    // A remote server addr.
-    prev_addr_ =
-        std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
-  } else {
-    rpc::Node &node = party_id_node_map[2];
-
-    // Two remote server addr.
-    next_addr_ =
-        std::make_pair(node.vm(0).next().ip(), node.vm(0).next().port());
-    prev_addr_ =
-        std::make_pair(node.vm(0).prev().ip(), node.vm(0).prev().port());
-  }
-#else
-  this->party_config_.CopyFrom(config);
-#endif
-
   // Key when save model.
   std::stringstream ss;
   ss << config.job_id << "_" << config.task_id << "_party_" << local_id_
@@ -129,6 +73,11 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
   try {
     LOG(INFO) << "party_name: " << this->party_name_;
+    auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
+    if (ret != retcode::SUCCESS) {
+      LOG(ERROR) << "extract proxy node failed";
+      return -1;
+    }
     auto party_datasets = task.party_datasets();
     auto it = party_datasets.find(this->party_name());
     if (it == party_datasets.end()) {
@@ -141,16 +90,31 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
       LOG(ERROR) << "no dataset found for dataset name Data_File";
       return -1;
     }
-    train_input_filepath_ = iter->second;
+    if (it->second.dataset_detail()) {
+      this->is_dataset_detail_ = true;
+      auto& param_map = task.params().param_map();
+      auto p_it = param_map.find("Data_File");
+      if (p_it != param_map.end()) {
+        this->train_input_filepath_ = p_it->second.value_string();
+        this->train_dataset_id_ = iter->second;
+      } else {
+        LOG(ERROR) << "no dataset id found";
+        return -1;
+      }
+    } else {
+      this->train_input_filepath_ = iter->second;
+      this->train_dataset_id_ = iter->second;
+    }
+
     auto param_map = task.params().param_map();
     // test_input_filepath_ = param_map["TestData"].value_string();
     batch_size_ = param_map["BatchSize"].value_int32();
     num_iter_ = param_map["NumIters"].value_int32();
     model_file_name_ = param_map["modelName"].value_string();
 
-    if (model_file_name_ == "")
+    if (model_file_name_ == "") {
       model_file_name_ = "./" + model_name_ + ".csv";
-
+    }
   } catch (std::exception &e) {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;
@@ -161,10 +125,23 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
 }
 
 int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
-  auto driver = this->dataset_service_->getDriver(dataset_id);
+  auto driver = this->dataset_service_->getDriver(dataset_id,
+                                                  this->is_dataset_detail_);
+  if (driver == nullptr) {
+    LOG(ERROR) << "get datset driver failed";
+    return -1;
+  }
   auto cursor = driver->read();
-  std::shared_ptr<Dataset> ds = cursor->read();
-  std::shared_ptr<Table> table = std::get<std::shared_ptr<Table>>(ds->data);
+  if (cursor == nullptr) {
+    LOG(ERROR) << "get data cursor failed";
+    return -1;
+  }
+  auto ds = cursor->read();
+  if (ds == nullptr) {
+    LOG(ERROR) << "read dataset data failed";
+    return -1;
+  }
+  auto& table = std::get<std::shared_ptr<Table>>(ds->data);
 
   // Label column.
   std::vector<std::string> col_names = table->ColumnNames();
@@ -231,8 +208,9 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
       for (int64_t j = 0; j < array_len; j++) {
         if (j < train_length) {
           train_input_(j, i) = 1;
-        } else
+        } else {
           test_input_(j - train_length, i) = 1;
+        }
         // m(j, i) = array->Value(j);
       }
     } else {
@@ -242,10 +220,11 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
             table->column(i - 1)->chunk(0));
 
         for (int64_t j = 0; j < array->length(); j++) {
-          if (j < train_length)
+          if (j < train_length) {
             train_input_(j, i) = array->Value(j);
-          else
+          } else {
             test_input_(j - train_length, i) = array->Value(j);
+          }
           // m(j, i) = array->Value(j);
         }
       } else {
@@ -266,7 +245,7 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
 }
 
 int LogisticRegressionExecutor::loadDataset() {
-  int ret = _LoadDatasetFromCSV(train_input_filepath_);
+  int ret = _LoadDatasetFromCSV(this->train_dataset_id_);
   // file reading error or file empty
   if (ret <= 0) {
     LOG(ERROR) << "Load dataset failed.";
@@ -297,161 +276,10 @@ int LogisticRegressionExecutor::loadDataset() {
   return 0;
 }
 
-#ifdef MPC_SOCKET_CHANNEL
-int LogisticRegressionExecutor::initPartyComm(void) {
-  VLOG(3) << "Next addr: " << next_addr_.first << ":" << next_addr_.second
-          << ".";
-  VLOG(3) << "Prev addr: " << prev_addr_.first << ":" << prev_addr_.second
-          << ".";
-
-  if (local_id_ == 0) {
-    std::ostringstream ss;
-    ss << "sess_" << local_id_ << "_1";
-    std::string sess_name_1 = ss.str();
-
-    ss.str("");
-    ss << "sess_" << local_id_ << "_2";
-    std::string sess_name_2 = ss.str();
-
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Server, sess_name_2);
-    LOG(INFO) << "[Prev] Init server session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
-  } else if (local_id_ == 1) {
-    std::ostringstream ss;
-    ss << "sess_" << local_id_ << "_1";
-    std::string sess_name_1 = ss.str();
-    ss.str("");
-
-    ss << "sess_" << PrevPartyId() << "_1";
-    std::string sess_name_2 = ss.str();
-
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Server, sess_name_1);
-    LOG(INFO) << "[Next] Init server session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
-  } else {
-    std::ostringstream ss;
-    ss.str("");
-    ss << "sess_" << this->NextPartyId() << "_2";
-    std::string sess_name_1 = ss.str();
-
-    ss.str("");
-    ss << "sess_" << this->PrevPartyId() << "_1";
-    std::string sess_name_2 = ss.str();
-
-    ep_next_.start(ios_, next_addr_.first, next_addr_.second,
-                   SessionMode::Client, sess_name_1);
-    LOG(INFO) << "[Next] Init client session, party " << local_id_ << ", "
-              << "ip " << next_addr_.first << ", port " << next_addr_.second
-              << ", name " << sess_name_1 << ".";
-
-    ep_prev_.start(ios_, prev_addr_.first, prev_addr_.second,
-                   SessionMode::Client, sess_name_2);
-    LOG(INFO) << "[Prev] Init client session, party " << local_id_ << ", "
-              << "ip " << prev_addr_.first << ", port " << prev_addr_.second
-              << ", name " << sess_name_2 << ".";
-  }
-
-  auto chann_next = ep_next_.addChannel();
-  auto chann_prev = ep_prev_.addChannel();
-
-  chann_next.waitForConnection();
-  chann_prev.waitForConnection();
-
-  chann_next.send(local_id_);
-  chann_prev.send(local_id_);
-
-  uint16_t prev_party = 0;
-  uint16_t next_party = 0;
-  chann_next.recv(next_party);
-  chann_prev.recv(prev_party);
-
-  if (next_party != this->NextPartyId()) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect next party id "
-               << this->NextPartyId() << ", but give " << next_party << ".";
-    return -3;
-  }
-
-  if (prev_party != this->PrevPartyId()) {
-    LOG(ERROR) << "Party " << local_id_ << ", expect prev party id "
-               << this->PrevPartyId() << ", but give " << prev_party << ".";
-    return -3;
-  }
-
-  chann_next.close();
-  chann_prev.close();
-
-  engine_.init(local_id_, ep_prev_, ep_next_, toBlock(local_id_));
-  LOG(INFO) << "Init party: " << local_id_ << " communication finish.";
-
-  return 0;
+retcode LogisticRegressionExecutor::InitEngine() {
+  engine_.init(this->party_id(), this->comm_pkg_.get(), oc::toBlock(local_id_));
+  return retcode::SUCCESS;
 }
-#else
-int LogisticRegressionExecutor::initPartyComm(void) {
-  uint16_t prev_party_id = this->PrevPartyId();
-  uint16_t next_party_id = this->NextPartyId();
-  auto link_ctx = this->GetLinkContext();
-  if (link_ctx == nullptr) {
-    LOG(ERROR) << "link context is not available";
-    return -1;
-  }
-  auto& party_id_map = party_config_.PartyId2PartyNameMap();
-  auto& party_info_map = party_config_.PartyName2PartyInfoMap();
-
-  // construct channel for communication to next party
-  std::string party_name_next = party_id_map[next_party_id];
-  auto pb_party_node_next = party_info_map[party_name_next];
-  Node party_node_next;
-  pbNode2Node(pb_party_node_next, &party_node_next);
-  auto base_channel_next = link_ctx->getChannel(party_node_next);
-
-  // construct channel for communication to prev party
-  std::string party_name_prev = party_id_map[prev_party_id];
-  auto pb_party_node_prev = party_info_map[party_name_prev];
-  Node party_node_prev;
-  pbNode2Node(pb_party_node_prev, &party_node_prev);
-  auto base_channel_prev = link_ctx->getChannel(party_node_prev);
-
-  LOG(INFO) << "local_id_local_id_: " << local_id_;
-  LOG(INFO) << "next_party: " << party_name_next << " detail: " << party_node_next.to_string();
-  LOG(INFO) << "prev_party: " << party_name_prev << " detail: " << party_node_prev.to_string();
-  MpcChannel channel_next(this->party_name(), link_ctx);
-  MpcChannel channel_prev(this->party_name(), link_ctx);
-
-  channel_next.SetupBaseChannel(party_name_next, base_channel_next);
-  channel_prev.SetupBaseChannel(party_name_prev, base_channel_prev);
-
-  engine_.init(local_id_, channel_prev, channel_next, toBlock(local_id_));
-  return 0;
-}
-#endif
-
-#ifdef MPC_SOCKET_CHANNEL
-int LogisticRegressionExecutor::finishPartyComm(void) {
-  ep_next_.stop();
-  ep_prev_.stop();
-  engine_.fini();
-  return 0;
-}
-#else
-int LogisticRegressionExecutor::finishPartyComm(void) { return 0; }
-
-#endif
 
 int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
                                                  sf64Matrix<D> &train_data,
@@ -459,7 +287,6 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
                                                  sf64Matrix<D> &test_data,
                                                  sf64Matrix<D> &test_label) {
   // Construct shares of train data and train label.
-  LOG(ERROR) << "Construct shares of train data and train label.";
   sf64Matrix<D> train_shares[3];
   for (u64 i = 0; i < 3; i++) {
     if (local_id_ == i)
@@ -467,7 +294,6 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
     else
       train_shares[i] = engine_.remoteInput<D>(i);
   }
-  LOG(ERROR) << "end Construct shares of train data and train label.";
   if (train_shares[0].cols() != train_shares[1].cols()) {
     LOG(ERROR)
         << "Count of column in train dataset mismatch between party 0 and 1, "
@@ -493,8 +319,8 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   int row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < train_shares[h].rows(); i++) {
-      for (int j = 0; j < train_shares[h].cols() - 1; j++) {
+    for (u64 i = 0; i < train_shares[h].rows(); i++) {
+      for (u64 j = 0; j < train_shares[h].cols() - 1; j++) {
         train_data[0](row_index, j) = train_shares[h][0](i, j);
         train_data[1](row_index, j) = train_shares[h][1](i, j);
       }
@@ -504,7 +330,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < train_shares[h].rows(); i++) {
+    for (u64 i = 0; i < train_shares[h].rows(); i++) {
       train_label[0](row_index, 0) = train_shares[h][0](i, num_cols);
       train_label[1](row_index, 0) = train_shares[h][1](i, num_cols);
       row_index++;
@@ -553,8 +379,8 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < test_shares[h].rows(); i++) {
-      for (int j = 0; j < test_shares[h].cols() - 1; j++) {
+    for (u64 i = 0; i < test_shares[h].rows(); i++) {
+      for (u64 j = 0; j < test_shares[h].cols() - 1; j++) {
         test_data[0](row_index, j) = test_shares[h][0](i, j);
         test_data[1](row_index, j) = test_shares[h][1](i, j);
       }
@@ -564,7 +390,7 @@ int LogisticRegressionExecutor::_ConstructShares(sf64Matrix<D> &w,
 
   row_index = 0;
   for (int h = 0; h < 3; h++) {
-    for (int i = 0; i < test_shares[h].rows(); i++) {
+    for (u64 i = 0; i < test_shares[h].rows(); i++) {
       // train_label(row_index++, 1) = train_shares[h](i, num_cols);
       test_label[0](row_index, 0) = test_shares[h][0](i, num_cols);
       test_label[1](row_index, 0) = test_shares[h][1](i, num_cols);
@@ -674,4 +500,4 @@ int LogisticRegressionExecutor::saveModel(void) {
   return 0;
 }
 
-} // namespace primihub
+}  // namespace primihub

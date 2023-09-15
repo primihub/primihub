@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -15,12 +15,15 @@
  */
 
 
-#ifndef SRC_PRIMIHUB_DATASTORE_DRIVER_H_
-#define SRC_PRIMIHUB_DATASTORE_DRIVER_H_
+#ifndef SRC_PRIMIHUB_DATA_STORE_DRIVER_H_
+#define SRC_PRIMIHUB_DATA_STORE_DRIVER_H_
 
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <glog/logging.h>
+#include <yaml-cpp/yaml.h>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -31,15 +34,14 @@
 #include <memory>
 #include <unordered_map>
 #include <shared_mutex>
+#include <tuple>
+#include <utility>
+#include <nlohmann/json.hpp>
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/common.h"
-#include <glog/logging.h>
-#include <yaml-cpp/yaml.h>
-#include <nlohmann/json.hpp>
 
 namespace primihub {
-
 
 class Dataset;
 // ====== Data Store Driver ======
@@ -64,6 +66,7 @@ struct DataSetAccessInfo {
  protected:
   std::shared_ptr<arrow::DataType> MakeArrowDataType(int type);
   retcode MakeArrowSchema();
+  std::string SchemaToJsonString();
 
  public:
   std::vector<FieldType> schema;
@@ -76,18 +79,27 @@ struct DataSetAccessInfo {
 class Cursor {
  public:
   Cursor() = default;
-  Cursor(const std::vector<int>& selected_column) {
+  explicit Cursor(const std::vector<int>& selected_column) {
     for (const auto& col : selected_column) {
       selected_column_index_.push_back(col);
     }
   }
   virtual ~Cursor() = default;
-  virtual std::shared_ptr<primihub::Dataset> readMeta() = 0;
+  virtual std::shared_ptr<Dataset> readMeta() = 0;
   virtual std::shared_ptr<Dataset> read() = 0;
   virtual std::shared_ptr<Dataset> read(int64_t offset, int64_t limit) = 0;
+  virtual std::shared_ptr<Dataset> read(const std::vector<FieldType>& data_schema) {
+    auto arrow_schema = MakeArrowSchema(data_schema);
+    return read(arrow_schema);
+  }
+
+  virtual std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) = 0;
   virtual int write(std::shared_ptr<Dataset> dataset) = 0;
   virtual void close() = 0;
   std::vector<int>& SelectedColumnIndex() {return selected_column_index_;}
+
+ protected:
+  std::shared_ptr<arrow::Schema> MakeArrowSchema(const std::vector<FieldType>& data_schema);
 
  public:
   std::vector<int> selected_column_index_;
@@ -134,4 +146,4 @@ class DataDriver {
 
 }  // namespace primihub
 
-#endif  // SRC_PRIMIHUB_DATASTORE_DRIVER_H_
+#endif  // SRC_PRIMIHUB_DATA_STORE_DRIVER_H_

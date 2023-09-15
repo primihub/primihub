@@ -1,0 +1,46 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Alice",
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "HFL_linear_regression",
+            "method": "Paillier",
+            "process": "train",
+            "task_name": "HFL_linear_regression_paillier_train",
+            "n_length": 2048,
+            "learning_rate": 1e-1,
+            "alpha": 1e-5,
+            "batch_size": 100,
+            "global_epoch": 10,
+            "local_epoch": 1,
+            "selected_column": null,
+            "id": "id",
+            "label": "y",
+            "print_metrics": true
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "regression_hfl_train_client1",
+                "model_path": "data/result/Bob_model.pkl",
+                "metric_path": "data/result/Bob_metrics.json"
+            },
+            "Charlie": {
+                "data_set": "regression_hfl_train_client2",
+                "model_path": "data/result/Charlie_model.pkl",
+                "metric_path": "data/result/Charlie_metrics.json"
+            },
+            "Alice": {
+                "data_set": "fl_fake_data",
+                "metric_path": "data/result/server_metrics.json"
+            }
+        }
+    }
+}

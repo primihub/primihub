@@ -1,4 +1,4 @@
-// Copyright [2023] <Primihub>
+// Copyright [2023] <PrimiHub>
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_META_SERVICE_FACTORY_H_
 #define SRC_PRIMIHUB_SERVICE_DATASET_META_SERVICE_FACTORY_H_
 #include <glog/logging.h>

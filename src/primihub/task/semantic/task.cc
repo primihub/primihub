@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -37,6 +37,19 @@ void TaskBase::setTaskParam(const TaskParam& task_param) {
   this->task_id_ = task_info.task_id();
   this->request_id_ = task_info.request_id();
   this->party_name_ = task_param.party_name();
+}
+
+retcode TaskBase::ExtractProxyNode(const rpc::Task& task_config,
+                                   Node* proxy_node) {
+  const auto& auxiliary_server = task_config.auxiliary_server();
+  auto it = auxiliary_server.find(PROXY_NODE);
+  if (it == auxiliary_server.end()) {
+    LOG(ERROR) << "no proxy node found";
+    return retcode::FAIL;
+  }
+  const auto& pb_proxy_node = it->second;
+  pbNode2Node(pb_proxy_node, proxy_node);
+  return retcode::SUCCESS;
 }
 
 retcode TaskBase::send(const std::string& key,

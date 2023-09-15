@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -49,12 +49,12 @@ class NodeStub {
         NodeStub(const std::vector<std::string>& bootstrap_nodes_addr);
         ~NodeStub();
         void start(std::string_view ma_str);
-        
+
         // Kademlia DHT
         void putDHTValue(libp2p::protocol::kademlia::ContentId key, std::string value);
         void putDHTValue(std::string key, std::string value);
         void getDHTValue(std::string key, libp2p::protocol::kademlia::FoundValueHandler handler);
-        void getDHTValue(libp2p::protocol::kademlia::ContentId key, 
+        void getDHTValue(libp2p::protocol::kademlia::ContentId key,
                                 libp2p::protocol::kademlia::FoundValueHandler handler);
     private:
         void onInit();

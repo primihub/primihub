@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/util/util.h"
-#include "src/primihub/common/defines.h"
+#include "src/primihub/common/common.h"
 
 
 using primihub::service::DatasetMeta;

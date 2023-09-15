@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ SQLiteCursor::SQLiteCursor(const std::string &sql,
   this->sql_ = sql;
   this->driver_ = std::move(driver);
   auto& schema = this->driver_->dataSetAccessInfo()->Schema();
-  for (int i = 0; i < schema.size(); i++) {
+  for (size_t i = 0; i < schema.size(); i++) {
     selected_column_index_.push_back(i);
   }
 }
@@ -105,7 +105,7 @@ SQLiteCursor::~SQLiteCursor() { this->close(); }
 
 void SQLiteCursor::close() {}
 
-std::shared_ptr<primihub::Dataset> SQLiteCursor::readMeta() {
+std::shared_ptr<Dataset> SQLiteCursor::readMeta() {
   std::string query_meta_sql = sql_;
   query_meta_sql.append(" limit 100");
   VLOG(5) << "meta query sql: " << sql_;
@@ -118,11 +118,15 @@ std::shared_ptr<Dataset> SQLiteCursor::read() {
   return readInternal(sql_);
 }
 
-std::shared_ptr<primihub::Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
+std::shared_ptr<Dataset> SQLiteCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
   return nullptr;
 }
 
-std::shared_ptr<primihub::Dataset> SQLiteCursor::readInternal(const std::string& query_sql) {
+std::shared_ptr<Dataset> SQLiteCursor::read(int64_t offset, int64_t limit) {
+  return nullptr;
+}
+
+std::shared_ptr<Dataset> SQLiteCursor::readInternal(const std::string& query_sql) {
   std::shared_ptr<arrow::Table> table{nullptr};
   auto& db_connector = this->driver_->getDBConnector();
   if (db_connector == nullptr) {
@@ -443,7 +447,7 @@ std::shared_ptr<arrow::Table> SQLiteCursor::read_from_abnormal(
   return table;
 }
 
-int SQLiteCursor::write(std::shared_ptr<primihub::Dataset> dataset) {return 0;}
+int SQLiteCursor::write(std::shared_ptr<Dataset> dataset) {return 0;}
 
 // ======== SQLite Driver implementation ========
 
@@ -626,7 +630,7 @@ std::string SQLiteDriver::BuildQuerySQL(const SQLiteAccessInfo& access_info,
     std::vector<std::string>* colum_names) {
   auto& table_name = access_info.table_name_;
   auto& schema = access_info.Schema();
-  size_t number_fields = schema.size();
+  int number_fields = schema.size();
   std::string sql_str = "SELECT ";
   for (const auto index : col_index) {
     if (index < number_fields) {

@@ -1,10 +1,12 @@
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import read_csv
+from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
+from primihub.FL.preprocessing import StandardScaler
 
 import pickle
+import json
 import pandas as pd
 from sklearn import metrics
 import torch
@@ -23,10 +25,16 @@ class NeuralNetworkClient(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
-        elif self.common_params['process'] == 'predict':
+        elif process == 'predict':
             self.predict()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def train(self):
         # setup communication channels
@@ -37,10 +45,11 @@ class NeuralNetworkClient(BaseModel):
                                     task_info=self.task_info)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
         selected_column = self.common_params['selected_column']
         id = self.common_params['id']
-        x = read_csv(data_path, selected_column, id)
+        x = read_data(data_info=self.role_params['data'],
+                      selected_column=selected_column,
+                      id=id)
         label = self.common_params['label']
         y = x.pop(label).values
         x = x.values
@@ -72,20 +81,15 @@ class NeuralNetworkClient(BaseModel):
                                   self.common_params['l2_norm_clip'],
                                   server_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = x.max(axis=0)
-        data_min = x.min(axis=0)
-
-        server_channel.send('data_max', data_max)
-        server_channel.send('data_min', data_min)
-
-        data_max = server_channel.recv('data_max')
-        data_min = server_channel.recv('data_min')
-
-        x = (x - data_min) / (data_max - data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=server_channel)
+        x = scaler.fit_transform(x)
 
         # create dataloaders
         if client.output_dim == 1:
@@ -132,7 +136,12 @@ class NeuralNetworkClient(BaseModel):
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         
         # send final metrics
-        client.send_metrics(train_dataloader)
+        trainMetrics = client.send_metrics(train_dataloader)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {
@@ -141,8 +150,7 @@ class NeuralNetworkClient(BaseModel):
             "selected_column": selected_column,
             "id": id,
             "label": label,
-            "data_max": data_max,
-            "data_min": data_min,
+            "preprocess": scaler.module,
             "model": client.model
         }
         model_path = self.role_params['model_path']
@@ -163,9 +171,7 @@ class NeuralNetworkClient(BaseModel):
             modelFile = pickle.load(file_path)
 
         # load dataset
-        data_path = self.role_params['data']['data_path']
-        origin_data = read_csv(data_path, selected_column=None, id=None)
-
+        origin_data = read_data(data_info=self.role_params['data'])
         x = origin_data.copy()
         selected_column = modelFile['selected_column']
         if selected_column:
@@ -179,10 +185,8 @@ class NeuralNetworkClient(BaseModel):
         x = x.values
 
         # data preprocessing
-        # minmaxscaler
-        data_max = modelFile['data_max']
-        data_min = modelFile['data_min']
-        x = (x - data_min) / (data_max - data_min)
+        scaler = modelFile['preprocess']
+        x = scaler.transform(x)
         x = torch.tensor(x, dtype=torch.float32).to(device)
 
         # test data prediction
@@ -256,6 +260,7 @@ class Plaintext_Client:
     
     def set_model(self, model):
         self.model.load_state_dict(model)
+        self.model.to(self.device)
 
     def send_output_dim(self, y):
         if self.task == 'regression':
@@ -277,7 +282,9 @@ class Plaintext_Client:
 
         all_input_shapes_same = self.server_channel.recv("input_dim_same")
         if not all_input_shapes_same:
-            logger.error("Input shapes don't match for all clients")
+            error_msg = "Input shapes don't match for all clients"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def lazy_module_init(self):
         self.set_model(self.recv_server_model())
@@ -311,16 +318,16 @@ class Plaintext_Client:
         client_metrics = self.print_metrics(dataloader)
 
         if self.task == 'classification' and self.output_dim == 1:
-            y_true = client_metrics['y_true']
-            y_score = client_metrics['y_score']
+            y_true = client_metrics.pop('y_true')
+            y_score = client_metrics.pop('y_score')
             fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score,
                                                      drop_intermediate=False)
             self.server_channel.send("fpr", fpr)
             self.server_channel.send("tpr", tpr)
             # self.server_channel.send("thresholds", thresholds)
 
-            client_metrics['train_fpr'] = fpr
-            client_metrics['train_tpr'] = tpr
+            client_metrics['train_fpr'] = fpr.tolist()
+            client_metrics['train_tpr'] = tpr.tolist()
             ks = ks_from_fpr_tpr(fpr, tpr)
             client_metrics['train_ks'] = ks
 
@@ -341,8 +348,8 @@ class Plaintext_Client:
                 pred = self.model(x)
 
                 if self.task == 'classification':
-                    y_true = torch.cat((y_true, y))
-                    y_score = torch.cat((y_score, pred))
+                    y_true = torch.cat((y_true, y.cpu()))
+                    y_score = torch.cat((y_score, pred.cpu()))
                     loss += self.loss_fn(pred, y).item() * len(x)
 
                     if self.output_dim == 1:
@@ -350,8 +357,8 @@ class Plaintext_Client:
                     else:
                         acc += (pred.argmax(1) == y).type(torch.float).sum().item()
                 elif self.task == 'regression':
-                    mae += F.l1_loss(pred, y) * len(x)
-                    mse += F.mse_loss(pred, y) * len(x)
+                    mae += F.l1_loss(pred, y).cpu() * len(x)
+                    mse += F.mse_loss(pred, y).cpu() * len(x)
 
         client_metrics = {}
 
@@ -367,6 +374,7 @@ class Plaintext_Client:
             if self.output_dim == 1:
                 y_score = torch.sigmoid(y_score)
                 auc = metrics.roc_auc_score(y_true, y_score)
+                client_metrics['train_auc'] = auc
                 client_metrics['y_true'] = y_true
                 client_metrics['y_score'] = y_score
             else:
@@ -380,12 +388,12 @@ class Plaintext_Client:
 
         elif self.task == 'regression':
             mse /= size
-            client_metrics['train_mse'] = mse
-            self.server_channel.send("mse", mse.type(torch.float64))
+            client_metrics['train_mse'] = float(mse)
+            self.server_channel.send("mse", mse)
 
             mae /= size
-            client_metrics['train_mae'] = mae
-            self.server_channel.send("mae", mae.type(torch.float64))
+            client_metrics['train_mae'] = float(mae)
+            self.server_channel.send("mae", mae)
 
             logger.info(f"mse={mse}, mae={mae}")
 
@@ -411,7 +419,7 @@ class DPSGD_Client(Plaintext_Client):
         input_shape = list(self.input_shape)
         # set batch size equals to 1 to initilize lazy module
         input_shape.insert(0, 1)
-        self.model.forward(torch.ones(input_shape))
+        self.model.forward(torch.ones(input_shape).to(self.device))
         super().lazy_module_init()
         
     def enable_DP_training(self, train_dataloader):

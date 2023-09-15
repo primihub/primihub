@@ -1,5 +1,5 @@
 """"
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  """
- 
+
 import socket
 
 def judge_port_listen(port_num):

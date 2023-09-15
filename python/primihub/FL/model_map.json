@@ -7,6 +7,20 @@
         "client": "primihub.FL.logistic_regression.hfl_client.LogisticRegressionClient",
         "server": "primihub.FL.logistic_regression.hfl_server.LogisticRegressionServer"
     },
+    "VFL_logistic_regression": {
+        "guest": "primihub.FL.logistic_regression.vfl_guest.LogisticRegressionGuest",
+        "host": "primihub.FL.logistic_regression.vfl_host.LogisticRegressionHost",
+        "coordinator": "primihub.FL.logistic_regression.vfl_coordinator.LogisticRegressionCoordinator"
+    },
+    "HFL_linear_regression": {
+        "client": "primihub.FL.linear_regression.hfl_client.LinearRegressionClient",
+        "server": "primihub.FL.linear_regression.hfl_server.LinearRegressionServer"
+    },
+    "VFL_linear_regression": {
+        "guest": "primihub.FL.linear_regression.vfl_guest.LinearRegressionGuest",
+        "host": "primihub.FL.linear_regression.vfl_host.LinearRegressionHost",
+        "coordinator": "primihub.FL.linear_regression.vfl_coordinator.LinearRegressionCoordinator"
+    },
     "HFL_neural_network": {
         "client": "primihub.FL.neural_network.hfl_client.NeuralNetworkClient",
         "server": "primihub.FL.neural_network.hfl_server.NeuralNetworkServer"
@@ -27,14 +41,6 @@
         "guest": "primihub.FL.xgboost.gbt.VGBGuestInfer",
         "host": "primihub.FL.xgboost.gbt.VGBTHostInfer"
     },
-    "HeteroLR": {
-        "guest": "primihub.FL.logistic_regression.hetero_lr.HeteroLrGuest",
-        "host": "primihub.FL.logistic_regression.hetero_lr.HeteroLrHost"
-    },
-    "HeteroLRInfer": {
-        "guest": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrGuestInfer",
-        "host": "primihub.FL.logistic_regression.hetero_lr_infer.HeteroLrHostInfer"
-    },
     "HeteroIV": {
         "guest": "primihub.FL.preprocessing.woe_iv.IVGuest",
         "host": "primihub.FL.preprocessing.woe_iv.IVHost"
@@ -43,9 +49,12 @@
         "executor": "primihub.plain_data_util.data_align.DataAlign"
     },
     "FL_Preprocess": {
-        "guest": "primihub.FL.preprocessing.transform.Transformer",
-        "host": "primihub.FL.preprocessing.transform.Transformer",
-        "client": "primihub.FL.preprocessing.transform.Transformer",
-        "server": "primihub.FL.preprocessing.transform.Transformer"
+        "guest": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "host": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "client": "primihub.FL.preprocessing.pipeline.Pipeline",
+        "server": "primihub.FL.preprocessing.pipeline.Pipeline"
+    },
+    "PythonEngine": {
+        "executor": "primihub.engine.engine.PythonEngine"
     }
 }

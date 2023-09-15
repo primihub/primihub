@@ -15,8 +15,14 @@ class CNNServer(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def train(self):
         # setup communication channels
@@ -41,7 +47,9 @@ class CNNServer(BaseModel):
                                   device,
                                   client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # model training
         logger.info("-------- start training --------")
@@ -63,7 +71,7 @@ class CNNServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.common_params['metric_path']
+        metric_path = self.role_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")
         with open(metric_path, 'w') as file_path:

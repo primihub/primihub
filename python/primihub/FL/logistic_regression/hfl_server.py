@@ -2,6 +2,8 @@ from primihub.FL.utils.net_work import MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.utils.logger_util import logger
+from primihub.FL.crypto.paillier import Paillier
+from primihub.FL.preprocessing import StandardScaler
 
 import json
 import numpy as np
@@ -9,16 +11,22 @@ from phe import paillier
 from primihub.FL.metrics.hfl_metrics import roc_vertical_avg,\
                                             ks_from_fpr_tpr,\
                                             auc_from_fpr_tpr
-from .base import PaillierFunc
 
 
 class LogisticRegressionServer(BaseModel):
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def train(self):
         # setup communication channels
@@ -38,18 +46,15 @@ class LogisticRegressionServer(BaseModel):
                                      self.common_params['n_length'],
                                      client_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # data preprocessing
-        # minmaxscaler
-        data_max = client_channel.recv_all('data_max')
-        data_min = client_channel.recv_all('data_min')
-        
-        data_max = np.array(data_max).max(axis=0)
-        data_min = np.array(data_min).min(axis=0)
-
-        client_channel.send_all('data_max', data_max)
-        client_channel.send_all('data_min', data_min)
+        scaler = StandardScaler(FL_type='H',
+                                role=self.role_params['self_role'],
+                                channel=client_channel)
+        scaler.fit()
 
         # server training
         logger.info("-------- start training --------")
@@ -74,7 +79,7 @@ class LogisticRegressionServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.common_params['metric_path']
+        metric_path = self.role_params['metric_path']
         check_directory_exist(metric_path)
         logger.info(f"metric path: {metric_path}")
         with open(metric_path, 'w') as file_path:
@@ -146,8 +151,10 @@ class Plaintext_DPSGD_Server:
         metrics_name = metrics_name.lower()
         supported_metrics = ['loss', 'acc', 'auc']
         if metrics_name not in supported_metrics:
-            logger.error(f"""Not supported metrics {metrics_name},
-                          use {supported_metrics} instead""")
+            error_msg = f"""Unsupported metrics {metrics_name},
+                          use {supported_metrics} instead"""
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         client_metrics = self.client_channel.recv_all(metrics_name)
             
@@ -208,8 +215,7 @@ class Plaintext_DPSGD_Server:
             logger.info(f"loss={loss}, acc={acc}")
 
 
-class Paillier_Server(Plaintext_DPSGD_Server,
-                      PaillierFunc):
+class Paillier_Server(Plaintext_DPSGD_Server, Paillier):
     
     def __init__(self, alpha, n_length, client_channel):
         Plaintext_DPSGD_Server.__init__(self, alpha, client_channel)

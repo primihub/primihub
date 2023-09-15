@@ -1,12 +1,12 @@
 
 package(default_visibility = ["//visibility:public",],)
 C_OPT = [
-    "-O0",
-    "-g",
-    "-Wall",
-    "-ggdb",
-    "-rdynamic",
-    "-Wno-reserved-user-defined-literal",
+  "-O0",
+  "-g",
+  "-Wall",
+  "-ggdb",
+  "-rdynamic",
+  "-Wno-reserved-user-defined-literal",
 ]
 
 LINK_OPTS = [
@@ -16,95 +16,68 @@ LINK_OPTS = [
 CURRENT_PATH="src/primihub/common"
 
 cc_library(
-    name = "common_lib",
-    copts = C_OPT + [
-        "--std=c++17",
-    ],
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-        ":common_defination",
-        ":config_lib",
-        ":common_util",
-        ":clp_lib",
-        ":eventbus_lib",
-        ":finally_tool",
-        ":data_type_defination",
-        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
-        "@com_github_glog_glog//:glog",
-    ],
+  name = "common_lib",
+  copts = C_OPT + [
+    "--std=c++17",
+  ],
+  linkopts = LINK_OPTS,
+  linkstatic = False,
+  deps = [
+    ":common_defination",
+    ":config_lib",
+    ":span",
+    ":type",
+    "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+    "@com_github_glog_glog//:glog",
+  ],
 )
 
 cc_library(
-    name = "common_defination",
-    hdrs = [
-        "common.h",
-        "value_check_util.h"
-    ],
+  name = "common_defination",
+  hdrs = [
+    "common.h",
+    "value_check_util.h"
+  ],
 )
 
 cc_library(
-    name = "clp_lib",
-    hdrs = [
-        "clp.h",
-    ],
-    srcs = [
-        "clp.cc",
-    ],
-    deps = [
-        ":common_defination",
-        ":microsoft_gsl",
-    ],
+  name = "type",
+  hdrs = ["type.h"],
+  srcs = ["type.cc"],
+  deps = [
+    "@eigen//:eigen",
+    "//src/primihub/common:common_defination",
+    "@com_github_ladnir_aby3//aby3:aby3_lib",
+  ],
 )
-
-cc_library (
-    name = "finally_tool",
-    hdrs = [
-        "finally.h",
-    ],
-)
-
 cc_library(
-    name = "common_util",
-    hdrs = [
-        "defines.h",
-    ],
-    srcs = [
-        "defines.cc",
-    ],
-    defines = ["ENABLE_FULL_GSL"],
-    linkopts = LINK_OPTS,
-    linkstatic = False,
-    deps = [
-        ":microsoft_gsl",
-        ":common_defination",
-    ],
+  name = "party_config",
+  srcs = ["party_config.cc"],
+  hdrs = ["party_config.h"],
+  deps = [
+    ":common_defination",
+    "//src/primihub/protos:common_proto",
+  ],
+)
+cc_library(
+  name = "span",
+  hdrs = ["span.h"],
+  deps = [
+    "@ladnir_cryptoTools//:libcryptoTools",
+  ]
 )
 
 cc_import(
-    name = "microsoft_gsl",
-    deps = [
-        "//%s/gsl:microsoft_gsl" % CURRENT_PATH,
-    ],
+  name = "config_lib",
+  deps = [
+    "//%s/config:config_lib" % CURRENT_PATH,
+  ],
 )
 
 cc_import(
-    name = "data_type_defination",
-    deps = [
-        "//%s/type:data_type_defination" % CURRENT_PATH,
-    ],
+  name = "eventbus_lib",
+  deps = [
+    "//%s/eventbus:eventbus_lib" % CURRENT_PATH,
+  ],
 )
 
-cc_import(
-    name = "config_lib",
-    deps = [
-        "//%s/config:config_lib" % CURRENT_PATH,
-    ],
-)
-
-cc_import(
-    name = "eventbus_lib",
-    deps = [
-        "//%s/eventbus:eventbus_lib" % CURRENT_PATH,
-    ],
-)

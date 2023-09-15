@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -36,14 +36,7 @@ retcode PSIScheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  {
-    auto party_access_info_ptr = task_ptr->mutable_party_access_info();
-    auto& local_node = getLocalNodeCfg();
-    rpc::Node scheduler_node;
-    node2PbNode(local_node, &scheduler_node);
-    auto& schduler_node = (*party_access_info_ptr)[SCHEDULER_NODE];
-    schduler_node = std::move(scheduler_node);
-  }
+  AddSchedulerNode(task_ptr);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;

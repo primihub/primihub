@@ -1,0 +1,34 @@
+enclave {
+  from "common_util.edl" import *;
+  trusted {
+      public int enclave_sign([in, count=key_path_size] const char* key_path, size_t key_path_size,
+                            [in, count=data_size] const char* data, size_t data_size,
+                            [user_check] char* signature, [out] size_t* sig_len);
+      public int enclave_import_sharekey([in, string] const char* privkey_path, [in, count=enc_key_size] const char* enc_key, size_t enc_key_size, [in, string] const char* keyid);
+      public int enclave_export_sharekey([in, string] const char* cert, [user_check] char* key, [in,out] size_t* key_len, [in, string] const char* keyid);
+      
+      public int enclave_decrypt([in, string] const char* keyid,
+                                        [in, size = in_len] const char *in_data, size_t in_len,
+                                          [in, size = iv_len] const char* iv, size_t iv_len,
+                                          [in, size = mac_len] const char *mac, size_t mac_len,
+                                          [out, size=out_len] char *out_data,
+                                          size_t out_len);
+      public int enclave_encrypt([in, string] const char* keyid,
+                                        [in, size = in_len] const char *data, size_t in_len,
+                                            [user_check] char* iv, [out, count=1]size_t* iv_len,
+                                            [user_check] char *mac, [out, count=1]size_t* mac_len,
+                                            [out, size=out_len] char *out_data,
+                                            size_t out_len);
+      public int enclave_encrypt_inside([in, string] const char* keyid,
+                                      [in, string] const char* filename,
+                                      size_t offset,  size_t in_len,
+                                                  [user_check] char* iv, [out, count=1]size_t* iv_len,
+                                                  [user_check] char *mac, [out, count=1]size_t* mac_len,
+                                                  [out, size=out_len] char *out_data,
+                                                  size_t out_len);
+      public int enclave_decrypt_inside([in, string] const char* keyid,[in, string] const char* filename,
+                                      [in, size = in_len] const char *in_data, size_t in_len,
+                                      [in, size = iv_len] const char* iv, size_t iv_len,
+                                      [in, size = mac_len] const char *mac, size_t mac_len);  
+  };
+};

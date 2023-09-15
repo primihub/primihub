@@ -1,4 +1,4 @@
-# Copyright 2022 Primihub
+# Copyright 2022 PrimiHub
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,11 +30,23 @@ grpc_port: 50051
 #  key: "data/cert/node0.key"
 #  cert: "data/cert/node0.crt"
 
+proxy_server:
+  mode: "grpc"
+  ip:  "127.0.0.1"
+  port: 50051
+  use_tls: false
+
 meta_service:
   mode: "grpc"
   ip: "127.0.0.1"
   port: 7978
   use_tls: false
+
+tee:
+  executor: False
+  sgx_enable: True
+  cert_path: "data/sgx/"
+  ra_server_addr: "127.0.0.1:8888"
 
 # load datasets
 datasets:
@@ -75,6 +87,12 @@ datasets:
     source: "data/server_e.db3"
 
   # FL binclass
+  - description: "binclass_vfl_train_host"
+    model: "csv"
+    source: "data/FL/binclass/vfl/train/host.csv"
+  - description: "binclass_vfl_test_host"
+    model: "csv"
+    source: "data/FL/binclass/vfl/test/host.csv"
   - description: "binclass_hfl_train_client1"
     model: "csv"
     source: "data/FL/binclass/hfl/train/client1.csv"
@@ -83,6 +101,12 @@ datasets:
     source: "data/FL/binclass/hfl/test/client1.csv"
 
   # FL multiclass
+  - description: "multiclass_vfl_train_host"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/train/host.csv"
+  - description: "multiclass_vfl_test_host"
+    model: "csv"
+    source: "data/FL/multiclass/vfl/test/host.csv"
   - description: "multiclass_hfl_train_client1"
     model: "csv"
     source: "data/FL/multiclass/hfl/train/client1.csv"
@@ -91,6 +115,12 @@ datasets:
     source: "data/FL/multiclass/hfl/test/client1.csv"
 
   # FL regression
+  - description: "regression_vfl_train_host"
+    model: "csv"
+    source: "data/FL/regression/vfl/train/host.csv"
+  - description: "regression_vfl_test_host"
+    model: "csv"
+    source: "data/FL/regression/vfl/test/host.csv"
   - description: "regression_hfl_train_client1"
     model: "csv"
     source: "data/FL/regression/hfl/train/client1.csv"
@@ -141,4 +171,7 @@ datasets:
   - description: "mpc_arithmetic_1"
     model: "csv"
     source: "data/mpc_arithmetic_1.csv"
-
+  # no meaningful dataset, just used to represent this party
+  - description: "FAKE_DATA_PARTY_1"
+    model: "csv"
+    source: "data/FL/fake.csv"

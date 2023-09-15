@@ -1,10 +1,11 @@
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
-from primihub.FL.utils.dataset import TorchImageDataset
+from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 
 import pickle
+import json
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
@@ -22,10 +23,16 @@ class CNNClient(BaseModel):
         super().__init__(**kwargs)
         
     def run(self):
-        if self.common_params['process'] == 'train':
+        process = self.common_params['process']
+        logger.info(f"process: {process}")
+        if process == 'train':
             self.train()
-        elif self.common_params['process'] == 'predict':
+        elif process == 'predict':
             self.predict()
+        else:
+            error_msg = f"Unsupported process: {process}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def train(self):
         # setup communication channels
@@ -36,11 +43,8 @@ class CNNClient(BaseModel):
                                     task_info=self.task_info)
 
         # load dataset
-        img_dir = self.role_params['data']['image_dir']
-        annotations_file = self.role_params['data']['annotations_file']
-        data_tensor = TorchImageDataset(img_dir=img_dir,
-                                        annotations_file=annotations_file,
-                                        transform=ConvertImageDtype(torch.float32))
+        data_tensor = read_data(data_info=self.role_params['data'],
+                                transform=ConvertImageDtype(torch.float32))
         
         # client init
         # Get cpu or gpu device for training.
@@ -67,7 +71,9 @@ class CNNClient(BaseModel):
                                   self.common_params['l2_norm_clip'],
                                   server_channel)
         else:
-            logger.error(f"Not supported method: {method}")
+            error_msg = f"Unsupported method: {method}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # create dataloaders
         num_examples = client.num_examples
@@ -108,7 +114,12 @@ class CNNClient(BaseModel):
             logger.info(f"For delta={delta}, the current epsilon is {eps}")
         
         # send final metrics
-        client.send_metrics(train_dataloader)
+        trainMetrics = client.send_metrics(train_dataloader)
+        metric_path = self.role_params['metric_path']
+        check_directory_exist(metric_path)
+        logger.info(f"metric path: {metric_path}")
+        with open(metric_path, 'w') as file_path:
+            file_path.write(json.dumps(trainMetrics))
 
         # save model for prediction
         modelFile = {
@@ -132,17 +143,16 @@ class CNNClient(BaseModel):
             modelFile = pickle.load(file_path)
 
         # load dataset
-        img_dir = self.role_params['data']['image_dir']
-        # annotations_file = self.role_params['data']['annotations_file']
-        data_tensor = TorchImageDataset(img_dir=img_dir,
-                                        transform=ConvertImageDtype(torch.float32))
+        data_tensor = read_data(data_info=self.role_params['data'],
+                                transform=ConvertImageDtype(torch.float32))
         data_loader = DataLoader(data_tensor, batch_size=len(data_tensor))
 
         # test data prediction
         model = modelFile['model'].to(device)
         model.eval()
         with torch.no_grad():
-            for x in data_loader:
+            for x, y in data_loader:
+                x = x.to(device)
                 pred = model(x)
                 pred_prob = torch.softmax(pred, dim=1)
                 pred_y = pred_prob.argmax(1)
@@ -202,7 +212,9 @@ class Plaintext_Client(MLP_Plaintext_Client):
 
         all_input_shapes_same = self.server_channel.recv("input_dim_same")
         if not all_input_shapes_same:
-            logger.error("Input shapes don't match for all clients")
+            error_msg = "Input shapes don't match for all clients"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
 
 class DPSGD_Client(Plaintext_Client, MLP_DPSGD_Client):

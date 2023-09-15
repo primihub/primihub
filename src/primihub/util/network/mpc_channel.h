@@ -1,4 +1,4 @@
-// "Copyright [2023] <Primihub>"
+// "Copyright [2023] <PrimiHub>"
 #ifndef SRC_PRIMIHUB_UTIL_NETWORK_MPC_CHANNEL_H_
 #define SRC_PRIMIHUB_UTIL_NETWORK_MPC_CHANNEL_H_
 
@@ -12,12 +12,14 @@
 #include <vector>
 #include <string>
 
-#include "src/primihub/common/defines.h"
-#include "src/primihub/common/type/type.h"
+
+#include "cryptoTools/Common/Defines.h"
+#include "src/primihub/common/type.h"
 #include "src/primihub/util/network/grpc_link_context.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
 #include "src/primihub/util/util.h"
+
 
 namespace primihub {
 std::string BinToHex(const std::string_view &strBin, bool bIsUpper = false);
@@ -103,7 +105,7 @@ class MpcChannel {
   void asyncSend(const eMatrix<T> &c);
 
   template <typename T>
-  void asyncSendCopy(span<T> &c);
+  void asyncSendCopy(oc::span<T> &c);
 
   template <typename T>
   void asyncSend(const T *c, uint64_t elem_num);
@@ -136,7 +138,7 @@ class MpcChannel {
   std::future<void> asyncRecv(T *ptr, uint64_t elem_num, std::function<void()> cb);
 
   template <typename T>
-  std::future<void> asyncRecv(span<T> &c);
+  std::future<void> asyncRecv(oc::span<T> &c);
 
   template <typename T>
   void recv(T *ptr, uint64_t size);
@@ -244,7 +246,7 @@ void MpcChannel::asyncSendCopy(const T *val, uint64_t elem_num) {
   _channelSend(val, elem_num);
 }
 
-template <typename T> void MpcChannel::asyncSendCopy(span<T> &c) {
+template <typename T> void MpcChannel::asyncSendCopy(oc::span<T> &c) {
   VLOG(5) << "Type of send value is " << typeid(c).name() << ".";
   _channelSend(c.data(), c.size());
 }
@@ -382,7 +384,7 @@ std::future<void> MpcChannel::asyncRecv(T *ptr, uint64_t elem_num,
                     done);
 }
 
-template <typename T> std::future<void> MpcChannel::asyncRecv(span<T> &c) {
+template <typename T> std::future<void> MpcChannel::asyncRecv(oc::span<T> &c) {
   std::string recv_key = RecvKey();
   if (VLOG_IS_ON(5)) {
     const std::type_info &r = typeid(T);

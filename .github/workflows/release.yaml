@@ -17,13 +17,8 @@ jobs:
         run: |
           # cc_binary
           bash pre_build.sh
-          bazel build --config=linux_`arch` --define enable_mysql_driver=true //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/protos:worker_py_pb2_grpc \
-            //src/primihub/protos:service_py_pb2_grpc \
-            //src/primihub/pybind_warpper:linkcontext
+          make mysql=y protos=y
+
           #copy generated py pb to python dir
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
@@ -32,7 +27,9 @@ jobs:
 
           tar zcf primihub-linux-amd64.tar.gz bazel-bin/cli \
              bazel-bin/node \
-             bazel-bin/py_main \
+             primihub-cli \
+             primihub-node \
+             bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
              start_server.sh \
@@ -64,13 +61,7 @@ jobs:
         run: |
           # cc_binary
           bash pre_build.sh
-          bazel build --config=linux_`arch` //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext \
-            //src/primihub/protos:worker_py_pb2_grpc \
-            //src/primihub/protos:service_py_pb2_grpc
+          make protos=y
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
@@ -79,7 +70,9 @@ jobs:
 
           tar zcf primihub-linux-arm64.tar.gz bazel-bin/cli \
              bazel-bin/node \
-             bazel-bin/py_main \
+             primihub-cli \
+             primihub-node \
+             bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
              start_server.sh \
@@ -109,6 +102,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup bazelisk
         uses: bazelbuild/setup-bazelisk@v2
+      - name: Install make
+        run: brew install make
       - name: set PYTHON LINK_OPTS
         run: ./pre_build.sh
         shell: bash
@@ -116,14 +111,7 @@ jobs:
       - name: bazel build
         run: |
           # cc_binary
-          bazel build --config=darwin_x86_64  //:node \
-            //:py_main \
-            //:cli \
-            //src/primihub/pybind_warpper:opt_paillier_c2py \
-            //src/primihub/pybind_warpper:linkcontext
-            # fix in future
-            #//src/primihub/protos:worker_py_pb2_grpc \
-            #//src/primihub/protos:service_py_pb2_grpc
+          make
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
@@ -132,7 +120,9 @@ jobs:
 
           tar zcf primihub-darwin-amd64.tar.gz bazel-bin/cli \
             bazel-bin/node \
-            bazel-bin/py_main \
+            primihub-cli \
+            primihub-node \
+            bazel-bin/task_main \
             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
             start_server.sh \
@@ -158,13 +148,7 @@ jobs:
         run: |
           # cc_binary
           bash pre_build.sh
-          bazel build --config=darwin_arm64 //:node \
-              //:py_main \
-              //:cli \
-              //src/primihub/pybind_warpper:opt_paillier_c2py \
-              //src/primihub/pybind_warpper:linkcontext \
-              //src/primihub/protos:worker_py_pb2_grpc \
-              //src/primihub/protos:service_py_pb2_grpc
+          make protos=y
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
@@ -173,7 +157,9 @@ jobs:
 
           tar zcf primihub-darwin-arm64.tar.gz bazel-bin/cli \
               bazel-bin/node \
-              bazel-bin/py_main \
+              primihub-cli \
+              primihub-node \
+              bazel-bin/task_main \
               bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
               bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
               start_server.sh \

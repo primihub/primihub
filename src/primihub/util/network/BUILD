@@ -20,17 +20,11 @@ cc_library(
     "//src/primihub/util:threadsafe_queue",
     "//src/primihub/common:config_lib",
     "//src/primihub/protos:worker_proto",
+    "//src/primihub/util:util_lib",
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
   ],
   visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "network_lib",
-    deps = [
-        "//src/primihub/util/network/socket:network_lib",
-    ]
 )
 
 cc_library(
@@ -53,6 +47,7 @@ cc_library(
     "//src/primihub/util:threadsafe_queue",
     "//src/primihub/common:common_lib",
     "//src/primihub/util:util_lib",
+    "@ladnir_cryptoTools//:libcryptoTools",
   ],
 )
 

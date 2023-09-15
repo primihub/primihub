@@ -9,6 +9,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
 
+    if: github.event.repository.fork == false
+
     steps:
 
     - name: Sync to Gitee

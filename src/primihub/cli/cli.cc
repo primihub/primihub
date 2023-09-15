@@ -1,5 +1,5 @@
 /*
- Copyright 2022 Primihub
+ Copyright 2022 PrimiHub
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -325,7 +325,10 @@ retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* t
       continue;
     }
     auto dataset_ptr = (*party_dataset_ptr)[party_name].mutable_data();
-    (*dataset_ptr)["data_set"] = role_param["data_set"].get<std::string>();
+    std::string data_key = role_param["data_set"].get<std::string>();
+    if (!data_key.empty()) {
+      (*dataset_ptr)["data_set"] = data_key;
+    }
   }
   return retcode::SUCCESS;
 }
@@ -522,6 +525,10 @@ int SDKClient::SubmitTask() {
             }
             if (task_status.size() == party_count) {
                 VLOG(0) << "all node has finished";
+                for (const auto& [party_name, msg_info] : task_status) {
+                  LOG(INFO) << "party name: " << party_name
+                            << " msg: " << msg_info;
+                }
                 is_finished = true;
                 break;
             }
@@ -529,6 +536,19 @@ int SDKClient::SubmitTask() {
         if (is_finished) {
             break;
         }
+        // for test active kill task
+        // {
+        //   std::this_thread::sleep_for(std::chrono::seconds(10));
+        //   rpc::KillTaskRequest request;
+        //   auto task_info = request.mutable_task_info();
+        //   task_info->set_task_id(task_id);
+        //   task_info->set_job_id(job_id);
+        //   task_info->set_request_id(request_id);
+        //   request.set_executor(rpc::KillTaskRequest::CLIENT);
+        //   rpc::KillTaskResponse status_reply;
+        //   auto ret = channel_->killTask(request, &status_reply);
+        // }
+
         if (fetch_count < 1000) {
             std::this_thread::sleep_for(std::chrono::milliseconds(fetch_count*100));
         } else {
