@@ -6,6 +6,7 @@
 #include <utility>
 
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 void aby3ML::init(u64 partyIdx, Session& prev,
                   Session& next, block seed) {
   auto comm_pkg_ = std::make_unique<aby3::CommPkg>();
@@ -17,6 +18,7 @@ void aby3ML::init(u64 partyIdx, Session& prev,
   mEnc.init(partyIdx, *comm_pkg_, prng.get<block>());
   mEval.init(partyIdx, *comm_pkg_, prng.get<block>());
 }
+#endif  // MPC_SOCKET_CHANNEL
 
 void aby3ML::init(u64 partyIdx,
                   std::unique_ptr<aby3::CommPkg> comm_pkg,

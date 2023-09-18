@@ -42,6 +42,7 @@
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/Session.h"
 #include "src/primihub/common/common.h"
+#include "network/channel_interface.h"
 
 namespace primihub {
 const uint8_t VAL_BITCOUNT = 64;
@@ -61,7 +62,7 @@ using namespace aby3;
 
 using BetaCircuit = osuCrypto::BetaCircuit;
 using KoggeStoneLibrary = aby3::KoggeStoneLibrary;   // TODO move to crptotool
-using Channel = osuCrypto::Channel;
+using Channel = primihub::link::Channel;
 
 
 class MPCOperator {

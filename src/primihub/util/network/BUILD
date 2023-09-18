@@ -48,6 +48,7 @@ cc_library(
     "//src/primihub/common:common_lib",
     "//src/primihub/util:util_lib",
     "@ladnir_cryptoTools//:libcryptoTools",
+    "@ph_communication//network:channel_interface",
   ],
 )
 
