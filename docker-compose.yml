@@ -63,7 +63,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "java -jar /applications/fusion-simple.jar \
+      - "java -jar /applications/meta-simple.jar \
         --server.port=8088 \
         --grpc.server.port=9099 \
         --db.path=/data/meta_service/node0 \ 
@@ -85,7 +85,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "java -jar /applications/fusion-simple.jar \
+      - "java -jar /applications/meta-simple.jar \
         --server.port=8088 \
         --grpc.server.port=9099 \
         --db.path=/data/meta_service/node1 \ 
@@ -107,7 +107,7 @@ services:
     entrypoint:
       - "/bin/bash"
       - "-c"
-      - "java -jar /applications/fusion-simple.jar \
+      - "java -jar /applications/meta-simple.jar \
         --server.port=8088 \
         --grpc.server.port=9099 \
         --db.path=/data/meta_service/node2 \
