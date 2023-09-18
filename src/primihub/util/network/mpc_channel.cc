@@ -1,97 +1,89 @@
 // "Copyright [2023] <PrimiHub>"
 
 #include "src/primihub/util/network/mpc_channel.h"
+#include <string_view>
+#include <atomic>
+#include <functional>
+#include <utility>
+#include <cstring>
 
-namespace primihub {
-void MpcChannel::SetupBaseChannel(const std::string &peer_party_name,
-                                  std::shared_ptr<network::IChannel> channel) {
-  peer_party_name_ = peer_party_name;
-  channel_ = channel;
+namespace primihub::network {
 
-  LOG(INFO) << "Init channel to " << peer_party_name_ << ".";
+ph_link::retcode MPCTaskChannel::SendImpl(const std::string& send_buf) {
+  auto send_sv = std::string_view(send_buf.data(), send_buf.size());
+  return SendImpl(send_sv);
 }
 
-int MpcChannel::_channelRecvNonBlock(ThreadSafeQueue<std::string> &queue,
-                                     char *recv_ptr, uint64_t recv_size,
-                                     const std::string &recv_key) {
-  std::string recv_str;
-  queue.wait_and_pop(recv_str);
-
-  if (recv_str.size() != recv_size) {
-    LOG(ERROR) << "Recv buffer size mismatch, expect " << recv_str.size()
-               << " bytes, gives " << recv_size  << " bytes, recv key "
-               << recv_key << ".";
-    return -1;
-  }
-
-  memcpy(recv_ptr, recv_str.c_str(), recv_str.size());
-
-  VLOG(5) << "Recv finish, recv key " << recv_key << ", recv size " << recv_size
-          << ", recv queue 0x" << std::hex << reinterpret_cast<uint64_t>(&queue)
-          << ".";
-
-  return 0;
+ph_link::retcode MPCTaskChannel::SendImpl(const char* buff, size_t size) {
+  auto send_sv = std::string_view(buff, size);
+  return SendImpl(send_sv);
 }
 
-int MpcChannel::_channelRecvNonBlock(ThreadSafeQueue<std::string> &queue,
-                                     char *recv_ptr, uint64_t recv_size,
-                                     const std::string &recv_key,
-                                     std::function<void()> done) {
-  int ret = _channelRecvNonBlock(queue, recv_ptr, recv_size, recv_key);
-  if (ret) {
-    LOG(ERROR) << "Recv with key " << recv_key
-               << " failed, no callback triggered.";
-    return -1;
+ph_link::retcode MPCTaskChannel::SendImpl(std::string_view send_buff_sv) {
+  auto ret = send_channel_->send(send_key_, send_buff_sv);
+  if (ret != retcode::SUCCESS) {
+    std::stringstream ss;
+    ss << "Send message to " << peer_node_id_ << " failed, size "
+       << send_buff_sv.size() << ", send key " << send_key_ << ".";
+    LOG(ERROR) << ss.str();
+    return ph_link::retcode::FAIL;
   }
-
-  done();
-  return 0;
-}
-
-std::string HexToBin(const std::string &strHex) {
-  if (strHex.size() % 2 != 0) {
-    return "";
-  }
-
-  std::string strBin;
-  strBin.resize(strHex.size() / 2);
-  for (size_t i = 0; i < strBin.size(); i++) {
-    uint8_t cTemp = 0;
-    for (size_t j = 0; j < 2; j++) {
-      char cCur = strHex[2 * i + j];
-      if (cCur >= '0' && cCur <= '9') {
-        cTemp = (cTemp << 4) + (cCur - '0');
-      } else if (cCur >= 'a' && cCur <= 'f') {
-        cTemp = (cTemp << 4) + (cCur - 'a' + 10);
-      } else if (cCur >= 'A' && cCur <= 'F') {
-        cTemp = (cTemp << 4) + (cCur - 'A' + 10);
-      } else {
-        return "";
-      }
+  if (VLOG_IS_ON(8)) {
+    std::string send_data;
+    for (const auto& ch : send_buff_sv) {
+      send_data.append(std::to_string(static_cast<int>(ch))).append(" ");
     }
-    strBin[i] = cTemp;
+    LOG(INFO) << "MPCTaskChannel::SendImpl "
+              << "send_key: " << send_key_ << " "
+              << "data size: " << send_buff_sv.size() << " "
+              << "send data: [" << send_data << "]";
   }
 
-  return strBin;
+  return ph_link::retcode::SUCCESS;
 }
 
-std::string BinToHex(const std::string_view &strBin, bool bIsUpper) {
-  std::string strHex;
-  strHex.resize(strBin.size() * 2);
-  for (size_t i = 0; i < strBin.size(); i++) {
-    uint8_t cTemp = strBin[i];
-    for (size_t j = 0; j < 2; j++) {
-      uint8_t cCur = (cTemp & 0x0f);
-      if (cCur < 10) {
-        cCur += '0';
-      } else {
-        cCur += ((bIsUpper ? 'A' : 'a') - 10);
-      }
-      strHex[2 * i + 1 - j] = cCur;
-      cTemp >>= 4;
+ph_link::retcode MPCTaskChannel::RecvImpl(std::string* recv_buf) {
+  *recv_buf = recv_channel_->forwardRecv(recv_key_);
+  if (VLOG_IS_ON(8)) {
+    std::string recv_data;
+    for (const auto& ch : *recv_buf) {
+      recv_data.append(std::to_string(static_cast<int>(ch))).append(" ");
     }
+    LOG(INFO) << "MPCTaskChannel::RecvImpl "
+              << "recv_key: " << recv_key_
+              << "data size: " << recv_buf->size() << " "
+              << "recv data: " << recv_data;
+  }
+  return ph_link::retcode::SUCCESS;
+}
+
+ph_link::retcode MPCTaskChannel::RecvImpl(char* recv_buf, size_t recv_size) {
+  std::string tmp_recv_buf = recv_channel_->forwardRecv(recv_key_);
+  if (tmp_recv_buf.size() != recv_size) {
+    LOG(ERROR) << "data length does not match: " << " "
+               << "expected: " << recv_size << " "
+              << "actually: " << tmp_recv_buf.size();
+    return ph_link::retcode::FAIL;
+  }
+  memcpy(recv_buf, tmp_recv_buf.data(), recv_size);
+  if (VLOG_IS_ON(8)) {
+    std::string recv_data;
+    for (const auto& ch : tmp_recv_buf) {
+      recv_data.append(std::to_string(static_cast<int>(ch))).append(" ");
+    }
+    LOG(ERROR) << "MPCTaskChannel::RecvImpl "
+              << "recv_key: " << recv_key_ << " "
+              << "data size: " << recv_size << " "
+              << "recv data: [" << recv_data << "] ";
   }
 
-  return strHex;
+  return ph_link::retcode::SUCCESS;
 }
-}  // namespace primihub
+
+void MPCTaskChannel::close() {
+}
+
+void MPCTaskChannel::cancel() {
+  cancel_.store(true);
+}
+}  // namespace primihub::network

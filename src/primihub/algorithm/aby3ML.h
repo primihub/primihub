@@ -17,8 +17,9 @@
 
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/Session.h"
+#include "network/channel_interface.h"
 
-using Channel = osuCrypto::Channel;
+using Channel = primihub::link::Channel;
 using Session = osuCrypto::Session;
 
 namespace primihub {
@@ -33,8 +34,9 @@ class aby3ML {
   bool mPrint = true;
 
   u64 partyIdx() { return mRt.mPartyIdx;}
-
+#ifdef MPC_SOCKET_CHANNEL
   void init(u64 partyIdx, Session& prev, Session& next, block seed);
+#endif  // MPC_SOCKET_CHANNEL
   void init(u64 partyIdx, std::unique_ptr<aby3::CommPkg> comm_pkg, block seed);
   void init(u64 partyIdx, aby3::CommPkg* comm_pkg, block seed);
 
