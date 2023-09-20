@@ -24,6 +24,7 @@
 #include <thread>
 #include <nlohmann/json.hpp>
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/file_util.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/common/common.h"
@@ -90,12 +91,22 @@ primihub::retcode getTaskType(const std::string& task_type_str, TaskType* task_t
 }
 namespace primihub {
 namespace client {
-int getFileContents(const std::string& fpath, std::string* contents) {
-    std::ifstream f_in_stream(fpath);
-    std::string contents_((std::istreambuf_iterator<char>(f_in_stream)),
-                        std::istreambuf_iterator<char>());
-    *contents = std::move(contents_);
-    return 0;
+using retcode = primihub::retcode;
+retcode getFileContents(const std::string& fpath, std::string* contents) {
+  bool exist_flag = primihub::FileExists(fpath);
+  if (!exist_flag) {
+    LOG(ERROR) << "task config file is not exist, path: " << fpath;
+    return retcode::FAIL;
+  }
+  std::ifstream f_in_stream(fpath);
+  std::string contents_((std::istreambuf_iterator<char>(f_in_stream)),
+                      std::istreambuf_iterator<char>());
+  if (contents_.empty()) {
+    LOG(ERROR) << "task config is empty, please check, path: " << fpath;
+    return retcode::FAIL;
+  }
+  *contents = std::move(contents_);
+  return retcode::SUCCESS;
 }
 }
 
@@ -333,10 +344,16 @@ retcode BuildFederatedRequest(const nlohmann::json& js_task_config, rpc::Task* t
   return retcode::SUCCESS;
 }
 
-retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskRequest* request) {
+retcode buildRequestWithTaskConfigFile(const std::string& file_path,
+                                       PushTaskRequest* request) {
   try {
     std::string task_config_content;
-    primihub::client::getFileContents(file_path, &task_config_content);
+    auto retcode = primihub::client::getFileContents(file_path,
+                                                     &task_config_content);
+    if (retcode != retcode::SUCCESS) {
+      LOG(ERROR) << "read task config failed";
+      return retcode::FAIL;
+    }
     auto js = nlohmann::json::parse(task_config_content);
     auto task_ptr = request->mutable_task();
     TaskType task_type;
@@ -447,6 +464,7 @@ retcode buildRequestWithTaskConfigFile(const std::string& file_path, PushTaskReq
     // google::protobuf::TextFormat::PrintToString(*request, &str);
     // LOG(INFO) << "BuildedRequest: " << str;
   } catch(std::exception& e) {
+    LOG(ERROR) << "catch exception: " << e.what();
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
@@ -461,7 +479,12 @@ int SDKClient::SubmitTask() {
     if (task_config_file.empty()) {
         buildRequestWithFlag(&pushTaskRequest);
     } else {
-        buildRequestWithTaskConfigFile(task_config_file, &pushTaskRequest);
+      auto ret = buildRequestWithTaskConfigFile(task_config_file,
+                                                &pushTaskRequest);
+      if (ret != retcode::SUCCESS) {
+        LOG(ERROR) << "buildRequestWithTaskConfigFile failed";
+        return -1;
+      }
     }
     // pushTaskRequest.set_submit_client_id("client_id_test");
     pushTaskRequest.set_intended_worker_id("1");
@@ -488,7 +511,8 @@ int SDKClient::SubmitTask() {
 
     auto ret = channel_->submitTask(pushTaskRequest, &pushTaskReply);
     if (ret != retcode::SUCCESS) {
-        return -1;
+      LOG(ERROR) << "submitTask encountes error";
+      return -1;
     }
     size_t party_count = pushTaskReply.party_count();
     if (party_count < 1) {

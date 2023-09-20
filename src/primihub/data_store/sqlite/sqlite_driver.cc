@@ -73,9 +73,14 @@ retcode SQLiteAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
 
 retcode SQLiteAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
   auto ret{retcode::SUCCESS};
+  auto& access_info = meta_info.access_info;
+  if (access_info.empty()) {
+    LOG(WARNING) << "access_info is emptry for id: " << meta_info.id;
+    return retcode::SUCCESS;
+  }
   try {
-    nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
-    ret = ParseFromJsonImpl(access_info);
+    nlohmann::json js_access_info = nlohmann::json::parse(access_info);
+    ret = ParseFromJsonImpl(js_access_info);
   } catch (std::exception& e) {
     LOG(ERROR) << "parse access info failed";
     ret = retcode::FAIL;
