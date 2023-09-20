@@ -328,12 +328,16 @@ retcode CSVAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
 }
 
 retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
+  auto& access_info = meta_info.access_info;
+  if (access_info.empty()) {
+    LOG(WARNING) << "no access info for " << meta_info.id;
+    return retcode::SUCCESS;
+  }
   try {
-    nlohmann::json js_access_info =
-        nlohmann::json::parse(meta_info.access_info);
+    nlohmann::json js_access_info = nlohmann::json::parse(access_info);
     this->file_path_ = js_access_info["data_path"].get<std::string>();
   } catch (std::exception& e) {
-    this->file_path_ = meta_info.access_info;
+    this->file_path_ = access_info;
     // check validattion of the path
     std::ifstream csv_data(file_path_, std::ios::in);
     if (!csv_data.is_open()) {

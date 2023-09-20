@@ -78,10 +78,15 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
 
 retcode MySQLAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
   auto ret{retcode::SUCCESS};
+  auto& access_info = meta_info.access_info;
+  if (access_info.empty()) {
+    LOG(WARNING) << "access_info is emptry for id: " << meta_info.id;
+    return retcode::SUCCESS;
+  }
   try {
-    LOG(INFO) << "meta_info: " << meta_info.access_info;
-    nlohmann::json access_info = nlohmann::json::parse(meta_info.access_info);
-    ret = ParseFromJsonImpl(access_info);
+    LOG(INFO) << "meta_info: " << access_info;
+    nlohmann::json js_access_info = nlohmann::json::parse(access_info);
+    ret = ParseFromJsonImpl(js_access_info);
   } catch (std::exception& e) {
     std::stringstream ss;
     ss << "parse access info failed, " << e.what();
