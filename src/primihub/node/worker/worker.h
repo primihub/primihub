@@ -65,6 +65,7 @@ class Worker {
     task_ready_future_ = task_ready_promise_.get_future();
     task_finish_future_ = task_finish_promise_.get_future();
   }
+  ~Worker() = default;
 
   retcode execute(const PushTaskRequest* pushTaskRequest);
   retcode ExecuteTaskByThread(const PushTaskRequest* pushTaskRequest);

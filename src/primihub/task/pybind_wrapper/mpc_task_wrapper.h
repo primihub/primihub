@@ -71,15 +71,23 @@ class MPCExecutor {
                                  rpc::Task* task);
   retcode SetArithmeticOperation(rpc::Algorithm::ArithmeticOpType op_type,
                                  rpc::Task* task);
-  retcode BroadcastShape(const std::vector<int64_t>& shape);
+  retcode BroadcastShape(const rpc::Task& task_config,
+                         const std::vector<int64_t>& shape);
   retcode ExecuteStatisticsTask(rpc::Algorithm::StatisticsOpType op_type,
                                 const std::vector<double>& data,
                                 const std::vector<int64_t>& col_rows,
                                 std::vector<double>* result);
+  retcode GetSyncFlagKey(const rpc::TaskContext& task_info,
+                         std::string* sync_key);
+  retcode GetShapeKey(const rpc::TaskContext& task_info,
+                      std::string* shape_key);
+  bool NeedAuxiliaryServer(const rpc::Task& task_config);
+
  private:
   std::unique_ptr<rpc::PushTaskRequest> task_req_ptr_{nullptr};
   std::unique_ptr<MPCTask> task_ptr_{nullptr};
   std::string func_name_{"mpc_statistics"};
+  std::string sync_flag_content_{"SyncFlag"};
 };
 }  // namespace primihub::task
 

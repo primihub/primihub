@@ -39,7 +39,9 @@ using primihub::rpc::Task;
 using primihub::service::DatasetService;
 namespace ph_link = primihub::link;
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 extern oc::IOService g_ios_;
+#endif  // MPC_SOCKET_CHANNEL
 struct ABY3PartyConfig {
   ABY3PartyConfig() = default;
   explicit ABY3PartyConfig(const PartyConfig& config) {

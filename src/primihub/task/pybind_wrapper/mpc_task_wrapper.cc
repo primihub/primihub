@@ -66,7 +66,7 @@ retcode MPCExecutor::StopTask() {
   auto pb_aux_node = it->second;
   Node aux_node;
   pbNode2Node(pb_aux_node, &aux_node);
-  LOG(ERROR) << "auxiliary compute server info: " << aux_node.to_string();
+  VLOG(7) << "auxiliary compute server info: " << aux_node.to_string();
   auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
   auto channel = link_ctx->getChannel(aux_node);
   rpc::Empty reply;
@@ -86,9 +86,6 @@ retcode MPCExecutor::AddAuxiliaryComputeServer(rpc::Task* task) {
     aux_compute_node.CopyFrom(server_node);
     aux_compute_node.set_party_id(party_size);
     (*party_access_info)[AUX_COMPUTE_NODE] = std::move(aux_compute_node);
-  } else {
-    LOG(WARNING) << "no AUXILIARY COMPUTE NODE found";
-    return retcode::FAIL;
   }
   return retcode::SUCCESS;
 }
@@ -128,33 +125,38 @@ retcode MPCExecutor::Sum(const std::vector<double>& input,
 }
 
 retcode MPCExecutor::InviteAuxiliaryServerToTask() {
-  std::string party_name = this->task_req_ptr_->task().party_name();
-  const auto& party_access_info = task_req_ptr_->task().party_access_info();
-  auto it = party_access_info.find(party_name);
-  if (it == party_access_info.end()) {
-    LOG(ERROR) << "invalid party: " << party_name;
-    return retcode::FAIL;
-  }
-  auto& party_node = it->second;
-  int32_t party_id = party_node.party_id();
-  if (party_id != 0) {
-    auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
-    std::string sync_info;
-    Node proxy_node;
-    const auto& auxiliary_server = task_req_ptr_->task().auxiliary_server();
-    it = auxiliary_server.find(PROXY_NODE);
-    if (it == auxiliary_server.end()) {
-      LOG(ERROR) << "no proxy node found";
+  {
+    auto& task_config = this->task_req_ptr_->task();
+    std::string party_name = task_config.party_name();
+    const auto& party_access_info = task_config.party_access_info();
+    auto it = party_access_info.find(party_name);
+    if (it == party_access_info.end()) {
+      LOG(ERROR) << "invalid party: " << party_name;
       return retcode::FAIL;
     }
-    const auto& pb_proxy_node = it->second;
-    pbNode2Node(pb_proxy_node, &proxy_node);
-    link_ctx->Recv("SyncFlag", proxy_node, &sync_info);
-    if (sync_info != std::string("SyncFlag")) {
-      LOG(ERROR) << "recv sync info failed";
-      return retcode::FAIL;
+    auto& party_node = it->second;
+    int32_t party_id = party_node.party_id();
+    if (party_id != 0) {
+      auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
+      std::string sync_info;
+      Node proxy_node;
+      const auto& auxiliary_server = task_config.auxiliary_server();
+      it = auxiliary_server.find(PROXY_NODE);
+      if (it == auxiliary_server.end()) {
+        LOG(ERROR) << "no proxy node found";
+        return retcode::FAIL;
+      }
+      const auto& pb_proxy_node = it->second;
+      pbNode2Node(pb_proxy_node, &proxy_node);
+      std::string sync_flag_key;
+      this->GetSyncFlagKey(task_config.task_info(), &sync_flag_key);
+      link_ctx->Recv(sync_flag_key, proxy_node, &sync_info);
+      if (sync_info != sync_flag_content_) {
+        LOG(ERROR) << "recv sync info failed";
+        return retcode::FAIL;
+      }
+      return retcode::SUCCESS;
     }
-    return retcode::SUCCESS;
   }
   // only party 0 send request to auxiliary node
   rpc::PushTaskRequest task_request;
@@ -163,8 +165,8 @@ retcode MPCExecutor::InviteAuxiliaryServerToTask() {
   task_config->set_party_name(AUX_COMPUTE_NODE);
   task_config->set_language(rpc::Language::PROTO);
   task_config->set_type(rpc::TaskType::ACTOR_TASK);
-
-  it = party_access_info.find(AUX_COMPUTE_NODE);
+  auto party_access_info = task_config->party_access_info();
+  auto it = party_access_info.find(AUX_COMPUTE_NODE);
   if (it == party_access_info.end()) {
     LOG(ERROR) << AUX_COMPUTE_NODE << " access info is not found";
     return retcode::FAIL;
@@ -172,7 +174,7 @@ retcode MPCExecutor::InviteAuxiliaryServerToTask() {
   auto pb_aux_node = it->second;
   Node aux_node;
   pbNode2Node(pb_aux_node, &aux_node);
-  LOG(ERROR) << "auxiliary compute server info: " << aux_node.to_string();
+  VLOG(7) << "auxiliary compute server info: " << aux_node.to_string();
   auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
   auto channel = link_ctx->getChannel(aux_node);
   rpc::PushTaskReply reply;
@@ -187,15 +189,19 @@ retcode MPCExecutor::InviteAuxiliaryServerToTask() {
     pbNode2Node(pb_node, &tmp_node);
     receiver_list.emplace_back(std::move(tmp_node));
   }
-  std::string sync_info{"SyncFlag"};
+  auto task_info = task_request.task().task_info();
+  std::string sync_flag_key;
+  this->GetSyncFlagKey(task_info, &sync_flag_key);;
   for (const auto& receiver : receiver_list) {
-    link_ctx->Send("SyncFlag", receiver, sync_info);
+    link_ctx->Send(sync_flag_key, receiver, sync_flag_content_);
   }
   return retcode::SUCCESS;
 }
-retcode MPCExecutor::BroadcastShape(const std::vector<int64_t>& shape) {
-  std::string party_name = this->task_req_ptr_->task().party_name();
-  const auto& party_access_info = task_req_ptr_->task().party_access_info();
+
+retcode MPCExecutor::BroadcastShape(const rpc::Task& task_config,
+                                    const std::vector<int64_t>& shape) {
+  std::string party_name = task_config.party_name();
+  const auto& party_access_info = task_config.party_access_info();
   auto it = party_access_info.find(party_name);
   if (it == party_access_info.end()) {
     LOG(ERROR) << "invalid party: " << party_name;
@@ -207,13 +213,6 @@ retcode MPCExecutor::BroadcastShape(const std::vector<int64_t>& shape) {
     return retcode::SUCCESS;
   }
   // only party 0 send request to auxiliary node
-  rpc::PushTaskRequest task_request;
-  task_request.CopyFrom(*this->task_req_ptr_);
-  auto task_config = task_request.mutable_task();
-  task_config->set_party_name(AUX_COMPUTE_NODE);
-  task_config->set_language(rpc::Language::PROTO);
-  task_config->set_type(rpc::TaskType::ACTOR_TASK);
-
   it = party_access_info.find(AUX_COMPUTE_NODE);
   if (it == party_access_info.end()) {
     LOG(ERROR) << AUX_COMPUTE_NODE << " access info is not found";
@@ -222,7 +221,7 @@ retcode MPCExecutor::BroadcastShape(const std::vector<int64_t>& shape) {
   auto pb_aux_node = it->second;
   Node aux_node;
   pbNode2Node(pb_aux_node, &aux_node);
-  LOG(ERROR) << "auxiliary compute server info: " << aux_node.to_string();
+  VLOG(7) << "auxiliary compute server info: " << aux_node.to_string();
   rpc::ParamValue pv;
   pv.set_var_type(rpc::INT64);
   pv.set_is_array(true);
@@ -233,7 +232,9 @@ retcode MPCExecutor::BroadcastShape(const std::vector<int64_t>& shape) {
   std::string shape_info_str;
   pv.SerializeToString(&shape_info_str);
   auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
-  link_ctx->Send("mpc_shape", aux_node, shape_info_str);
+  std::string shape_key;
+  this->GetShapeKey(task_config.task_info(), &shape_key);
+  link_ctx->Send(shape_key, aux_node, shape_info_str);
   return retcode::SUCCESS;
 }
 
@@ -305,7 +306,7 @@ retcode MPCExecutor::RecvSubTaskId(std::string* subtask_id) {
   pbNode2Node(pb_proxy_node, &proxy_node);
   link_ctx->Recv("subtask_id", proxy_node, &recv_buf);
   *subtask_id = std::move(recv_buf);
-  LOG(ERROR) << "subtask_id: " << *subtask_id;
+  VLOG(7) << "subtask_id: " << *subtask_id;
 }
 
 retcode MPCExecutor::NegotiateSubTaskId(std::string* sub_task_id) {
@@ -337,35 +338,56 @@ retcode MPCExecutor::ExecuteStatisticsTask(
     const std::vector<double>& input,
     const std::vector<int64_t>& col_rows,
     std::vector<double>* result) {
-  std::string sub_task_id;
   auto task_ptr = std::make_unique<MPCTask>(this->func_name_,
                                             &(task_req_ptr_->task()));
-  LOG(ERROR) << "MPCExecutor address: " << reinterpret_cast<int64_t>(this);
-  NegotiateSubTaskId(&sub_task_id);
-  auto task_config = this->task_req_ptr_->mutable_task();
-  auto task_info = task_config->mutable_task_info();
-  task_info->set_sub_task_id(sub_task_id);
-  SetStatisticsOperation(op_type, task_config);
-  auto ret = InviteAuxiliaryServerToTask();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "InviteAuxiliaryServerToTask failed";
-    return retcode::FAIL;
+  if (NeedAuxiliaryServer(task_req_ptr_->task())) {
+    std::string sub_task_id;
+    NegotiateSubTaskId(&sub_task_id);
+    auto task_config = this->task_req_ptr_->mutable_task();
+    auto task_info = task_config->mutable_task_info();
+    task_info->set_sub_task_id(sub_task_id);
+    SetStatisticsOperation(op_type, task_config);
+    auto ret = InviteAuxiliaryServerToTask();
+    if (ret != retcode::SUCCESS) {
+      LOG(ERROR) << "InviteAuxiliaryServerToTask failed";
+      return retcode::FAIL;
+    }
+    std::vector<int64_t> input_shape;
+    input_shape.push_back(1);
+    input_shape.push_back(input.size());
+    BroadcastShape(*task_config, input_shape);
+    task_ptr->setTaskParam(task_req_ptr_->task());
+    if (VLOG_IS_ON(0)) {
+      std::string str;
+      google::protobuf::TextFormat::PrintToString(*task_req_ptr_, &str);
+      VLOG(0) << "MPCExecutor: " << str;
+    }
   }
-  std::vector<int64_t> input_shape;
-  input_shape.push_back(1);
-  input_shape.push_back(input.size());
-  BroadcastShape(input_shape);
-  task_ptr->setTaskParam(task_req_ptr_->task());
-  if (VLOG_IS_ON(0)) {
-    std::string str;
-    google::protobuf::TextFormat::PrintToString(*task_req_ptr_, &str);
-    VLOG(0) << "MPCExecutor: " << str;
-  }
-  ret = task_ptr->ExecuteTask(input, col_rows, result);
+  auto ret = task_ptr->ExecuteTask(input, col_rows, result);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "run sum failed";
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
+}
+retcode MPCExecutor::GetSyncFlagKey(const rpc::TaskContext& task_info,
+                                    std::string* sync_key) {
+  *sync_key = task_info.sub_task_id() + "_SyncFlag";
+  return retcode::SUCCESS;
+}
+retcode MPCExecutor::GetShapeKey(const rpc::TaskContext& task_info,
+                                 std::string* shape_key) {
+  *shape_key = task_info.sub_task_id() + "_mpc_shape";
+  return retcode::SUCCESS;
+}
+
+bool MPCExecutor::NeedAuxiliaryServer(const rpc::Task& task_config) {
+  const auto& auxiliary_server = task_config.auxiliary_server();
+  auto it = auxiliary_server.find(AUX_COMPUTE_NODE);
+  if (it != auxiliary_server.end()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 }  // namespace primihub::task

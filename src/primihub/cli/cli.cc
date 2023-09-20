@@ -560,9 +560,10 @@ int SDKClient::SubmitTask() {
         if (is_finished) {
             break;
         }
-        // for test active kill task
+        // // for test active kill task
         // {
-        //   std::this_thread::sleep_for(std::chrono::seconds(10));
+        //   std::this_thread::sleep_for(std::chrono::seconds(5));
+        //   LOG(INFO) << "begin to kill task by client";
         //   rpc::KillTaskRequest request;
         //   auto task_info = request.mutable_task_info();
         //   task_info->set_task_id(task_id);
@@ -571,7 +572,9 @@ int SDKClient::SubmitTask() {
         //   request.set_executor(rpc::KillTaskRequest::CLIENT);
         //   rpc::KillTaskResponse status_reply;
         //   auto ret = channel_->killTask(request, &status_reply);
+        //   break;
         // }
+
 
         if (fetch_count < 1000) {
             std::this_thread::sleep_for(std::chrono::milliseconds(fetch_count*100));

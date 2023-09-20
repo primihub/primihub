@@ -302,17 +302,19 @@ retcode MPCTask::RecvShapeFromLauncher(std::vector<int64_t>* shape) {
   const auto& pb_proxy_node = it->second;
   pbNode2Node(pb_proxy_node, &proxy_node);
   std::string recv_buf;
-  link_ctx->Recv("mpc_shape", proxy_node, &recv_buf);
+  auto task_info = this->getTaskParam()->task_info();
+  std::string shape_key = task_info.sub_task_id() + "_mpc_shape";
+  link_ctx->Recv(shape_key, proxy_node, &recv_buf);
   rpc::ParamValue pb_shape;
   pb_shape.ParseFromString(recv_buf);
   auto& int64_arr = pb_shape.value_int64_array().value_int64_array();
   for (const auto item : int64_arr) {
     shape->push_back(item);
-    LOG(ERROR) << "item: " << item;
   }
-  LOG(ERROR) << "end of RecvShapeFromLauncher";
+  VLOG(7) << "end of RecvShapeFromLauncher";
   return retcode::SUCCESS;
 }
+
 retcode MPCTask::MakeAuxiliaryComputeData(const std::vector<int64_t>& shape,
                                           std::vector<double>* input,
                                           std::vector<int64_t>* col_rows) {

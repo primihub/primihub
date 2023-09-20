@@ -289,15 +289,14 @@ retcode GrpcChannel::executeTask(const rpc::PushTaskRequest& request,
         std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
     context.set_deadline(deadline);
     auto task_info = request.task().task_info();
-    LOG(ERROR) << "GrpcChannel::executeTask: " << task_info.sub_task_id();
     grpc::Status status = stub_->ExecuteTask(&context, request, reply);
     if (status.ok()) {
       VLOG(5) << "send ExecuteTask to node: ["
-              <<  dest_node_.to_string() << "] rpc succeeded.";
+              << dest_node_.to_string() << "] rpc succeeded.";
       break;
     } else {
       LOG(WARNING) << "send ExecuteTask to Node ["
-                <<  dest_node_.to_string() << "] rpc failed. "
+                << dest_node_.to_string() << "] rpc failed. "
                 << status.error_code() << ": " << status.error_message() << " "
                 << "retry times: " << retry_time;
       retry_time++;
