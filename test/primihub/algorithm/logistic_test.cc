@@ -9,14 +9,21 @@
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
+#include "network/channel_interface.h"
+#include "src/primihub/util/network/mem_channel.h"
+#include "src/primihub/common/party_config.h"
+#include "src/primihub/algorithm/base.h"
+#include "src/primihub/util/network/mem_channel.h"
 using namespace primihub;
-
-static void RunLogistic(std::string node_id, rpc::Task &task,
-                        std::shared_ptr<DatasetService> data_service) {
+namespace ph_link = primihub::link;
+using StorageType = primihub::network::StorageType;
+static void RunLogistic(std::string node_id, rpc::Task& task,
+                        std::shared_ptr<DatasetService> data_service,
+                        const std::vector<ph_link::Channel>& channels) {
   PartyConfig config(node_id, task);
   LogisticRegressionExecutor exec(config, data_service);
   EXPECT_EQ(exec.loadParams(task), 0);
-  EXPECT_EQ(exec.initPartyComm(), 0);
+  EXPECT_EQ(exec.initPartyComm(channels), 0);
   EXPECT_EQ(exec.InitEngine(), retcode::SUCCESS);
   EXPECT_EQ(exec.loadDataset(), 0);
   EXPECT_EQ(exec.execute(), 0);
@@ -81,6 +88,61 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
 }
+void RunTest(rpc::Task& task_config,
+             std::vector<DatasetMetaInfo>& meta_info,
+             std::shared_ptr<StorageType> storage) {
+  std::string party_name = task_config.party_name();
+  primihub::Node node;
+  auto meta_service =
+      primihub::service::MetaServiceFactory::Create(
+          primihub::service::MetaServiceMode::MODE_MEMORY, node);
+  auto service = std::make_shared<DatasetService>(std::move(meta_service));
+  // create channel
+  primihub::PartyConfig party_config("default", task_config);
+  primihub::ABY3PartyConfig aby3_party_config(party_config);;
+  const auto& task_info = task_config.task_info();
+  std::string job_id = task_info.job_id();
+  std::string task_id = task_info.task_id();
+  std::string request_id = task_info.request_id();
+  uint16_t party_id = aby3_party_config.SelfPartyId();
+  uint16_t prev_party_id = aby3_party_config.PrevPartyId();
+  uint16_t next_party_id = aby3_party_config.NextPartyId();
+  // construct channel for communication to next party
+  std::string party_name_next = aby3_party_config.NextPartyName();
+  auto party_node_next = aby3_party_config.NextPartyInfo();
+
+  // construct channel for communication to prev party
+  std::string party_name_prev = aby3_party_config.PrevPartyName();
+  auto party_node_prev = aby3_party_config.PrevPartyInfo();
+
+
+  LOG(INFO) << "local_id_local_id_: " << party_id;
+  LOG(INFO) << "next_party: " << party_name_next
+            << " detail: " << party_node_next.to_string();
+  LOG(INFO) << "prev_party: " << party_name_prev
+            << " detail: " << party_node_prev.to_string();
+  LOG(INFO) << "job_id: " << job_id << " task_id: "
+            << task_id << " request id: " << request_id;
+  auto channel_impl_prev =
+      std::make_shared<network::SimpleMemoryChannel>(
+          job_id, task_id, request_id,
+          party_name, party_name_prev, storage);
+
+  auto channel_impl_next =
+      std::make_shared<network::SimpleMemoryChannel>(
+          job_id, task_id, request_id,
+          party_name, party_name_next, storage);
+
+  ph_link::Channel chl_prev(channel_impl_prev);
+  ph_link::Channel chl_next(channel_impl_next);
+
+  std::vector<ph_link::Channel> channels;
+  channels.push_back(chl_prev);
+  channels.push_back(chl_next);
+  registerDataSet(meta_info, service);
+  LOG(INFO) << "RunLogistic(" << party_name << ", task_config, service);";
+  RunLogistic(party_name, task_config, service, channels);
+}
 
 TEST(logistic, logistic_3pc_test) {
   uint32_t base_port = 8000;
@@ -91,13 +153,6 @@ TEST(logistic, logistic_3pc_test) {
   rpc::VirtualMachine *vm = node_1.add_vm();
   vm->set_party_id(0);
 
-  rpc::EndPoint *next = vm->mutable_next();
-  rpc::EndPoint *prev = vm->mutable_prev();
-  next->set_ip("127.0.0.1");
-  next->set_port(base_port);
-  prev->set_ip("127.0.0.1");
-  prev->set_port(base_port+100);
-
   rpc::Node node_2;
   node_2.set_node_id("node_2");
   node_2.set_ip("127.0.0.1");
@@ -105,26 +160,12 @@ TEST(logistic, logistic_3pc_test) {
   vm = node_2.add_vm();
   vm->set_party_id(1);
 
-  next = vm->mutable_next();
-  prev = vm->mutable_prev();
-  next->set_ip("127.0.0.1");
-  next->set_port(base_port+200);
-  prev->set_ip("127.0.0.1");
-  prev->set_port(base_port);
-
   rpc::Node node_3;
   node_3.set_node_id("node_3");
   node_3.set_ip("127.0.0.1");
 
   vm = node_3.add_vm();
   vm->set_party_id(2);
-
-  next = vm->mutable_next();
-  prev = vm->mutable_prev();
-  next->set_ip("127.0.0.1");
-  next->set_port(base_port+100);
-  prev->set_ip("127.0.0.1");
-  prev->set_port(base_port+200);
 
   std::vector<rpc::Node> node_list;
   node_list.emplace_back(std::move(node_1));
@@ -151,60 +192,37 @@ TEST(logistic, logistic_3pc_test) {
     {"TestData", "test_party_2"}};
   BuildTaskConfig("PARTY2", node_list, party2_datasets, &task3);
 
-  std::vector<std::string> bootstrap_ids;
-  bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
-                             "QmP2C45o2vZfy1JXWFZDUEzrQCigMtd4r3nesvArV8dFKd");
-  bootstrap_ids.emplace_back("/ip4/172.28.1.13/tcp/4001/ipfs/"
-                             "QmdSyhb8eR9dDSR5jjnRoTDBwpBCSAjT7WueKJ9cQArYoA");
-
-  pid_t pid = fork();
-  if (pid != 0) {
-    // Child process as party 0.
-    primihub::Node node;
-    auto meta_service =
-        primihub::service::MetaServiceFactory::Create(
-            primihub::service::MetaServiceMode::MODE_MEMORY, node);
-    auto service = std::make_shared<DatasetService>(std::move(meta_service));
-    std::vector<DatasetMetaInfo> meta_infos {
-      {"train_party_0", "csv", "data/train_party_0.csv"},
-    };
-    registerDataSet(meta_infos, service);
-    LOG(INFO) << "RunLogistic(node_1, task1, service);";
-    RunLogistic("node_1", task1, service);
-    return;
-  }
-
-  pid = fork();
-  if (pid != 0) {
-    // Child process as party 1.
-    sleep(1);
-    primihub::Node node;
-    auto meta_service =
-        primihub::service::MetaServiceFactory::Create(
-            primihub::service::MetaServiceMode::MODE_MEMORY, node);
-    auto service = std::make_shared<DatasetService>(std::move(meta_service));
-    std::vector<DatasetMetaInfo> meta_infos {
-      {"train_party_1", "csv", "data/train_party_1.csv"},
-    };
-    registerDataSet(meta_infos, service);
-    LOG(INFO) << "RunLogistic(node_2, task2, service);";
-    RunLogistic("node_2", task2, service);
-    return;
-  }
-
-  // Parent process as party 2.
-  sleep(3);
-  primihub::Node node;
-  auto meta_service =
-        primihub::service::MetaServiceFactory::Create(
-            primihub::service::MetaServiceMode::MODE_MEMORY, node);
-  auto service = std::make_shared<DatasetService>(std::move(meta_service));
-  // register dataset
-  std::vector<DatasetMetaInfo> meta_infos {
+  // create channel
+  std::vector<DatasetMetaInfo> party0_meta_infos {
+    {"train_party_0", "csv", "data/train_party_0.csv"},
+  };
+  std::vector<DatasetMetaInfo> party1_meta_infos {
+    {"train_party_1", "csv", "data/train_party_1.csv"},
+  };
+  std::vector<DatasetMetaInfo> party2_meta_infos {
     {"train_party_2", "csv", "data/train_party_2.csv"},
   };
-  registerDataSet(meta_infos, service);
-  LOG(INFO) << "RunLogistic(node_3, task3, service);";
-  RunLogistic("node_3", task3, service);
+  auto g_storage = std::make_shared<primihub::network::StorageType>();
+  auto party_0_fut = std::async(
+    std::launch::async,
+    RunTest,
+    std::ref(task1),
+    std::ref(party0_meta_infos),
+    g_storage);
+  auto party_1_fut = std::async(
+    std::launch::async,
+    RunTest,
+    std::ref(task2),
+    std::ref(party1_meta_infos),
+    g_storage);
+  auto party_2_fut = std::async(
+    std::launch::async,
+    RunTest,
+    std::ref(task3),
+    std::ref(party2_meta_infos),
+    g_storage);
+  party_0_fut.get();
+  party_1_fut.get();
+  party_2_fut.get();
   return;
 }

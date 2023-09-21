@@ -76,7 +76,7 @@ cc_library(
     "//src/primihub/common:party_config",
     "//src/primihub/service:dataset_service",
     "//src/primihub/util/network:communication_lib",
-    "//src/primihub/util/network:message_exchange_interface",
+    "//src/primihub/util/network:mpc_channel",
   ],
 )
 

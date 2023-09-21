@@ -32,10 +32,11 @@
 #include "cryptoTools/Network/Channel.h"
 #include "cryptoTools/Network/Session.h"
 #include "aby3/sh3/Sh3Types.h"
+#include "network/channel_interface.h"
 
 using primihub::rpc::Task;
 using primihub::service::DatasetService;
-
+namespace ph_link = primihub::link;
 namespace primihub {
 extern oc::IOService g_ios_;
 struct ABY3PartyConfig {
@@ -133,6 +134,7 @@ class AlgorithmBase {
   virtual int loadParams(primihub::rpc::Task &task) = 0;
   virtual int loadDataset() = 0;
   virtual int initPartyComm();
+  virtual int initPartyComm(const std::vector<ph_link::Channel>& channels);
   virtual retcode InitEngine() {return retcode::SUCCESS;}   // to be pure virtual
   virtual int execute() = 0;
   virtual int finishPartyComm();
@@ -156,8 +158,8 @@ class AlgorithmBase {
   std::string party_name() {return party_name_;}
   void set_party_name(const std::string& party_name) {party_name_ = party_name;}
 
-  oc::Channel& mNext() {return comm_pkg_->mNext;}
-  oc::Channel& mPrev() {return comm_pkg_->mPrev;}
+  ph_link::Channel& mNext() {return comm_pkg_->mNext;}
+  ph_link::Channel& mPrev() {return comm_pkg_->mPrev;}
   aby3::CommPkg* CommPkgPtr() {return comm_pkg_.get();}
   retcode ExtractProxyNode(const rpc::Task& task_config, Node* proxy_node);
 
