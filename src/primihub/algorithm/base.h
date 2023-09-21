@@ -134,6 +134,7 @@ class AlgorithmBase {
   virtual int loadParams(primihub::rpc::Task &task) = 0;
   virtual int loadDataset() = 0;
   virtual int initPartyComm();
+  virtual int initPartyComm(const std::vector<ph_link::Channel>& channels);
   virtual retcode InitEngine() {return retcode::SUCCESS;}   // to be pure virtual
   virtual int execute() = 0;
   virtual int finishPartyComm();

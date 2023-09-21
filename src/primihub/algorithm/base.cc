@@ -209,6 +209,18 @@ int AlgorithmBase::finishPartyComm() {
 }
 
 #else  // GRPC MPC_SOCKET_CHANNEL
+int AlgorithmBase::initPartyComm(
+    const std::vector<ph_link::Channel>& channels) {
+  if (channels.size() < 2) {
+    LOG(ERROR) << "channel size at least 2";
+    return -1;
+  }
+  // 0: prev   1: next
+  comm_pkg_ = std::make_unique<aby3::CommPkg>();
+  comm_pkg_->mPrev = channels[0];
+  comm_pkg_->mNext = channels[1];
+  return 0;
+}
 
 int AlgorithmBase::initPartyComm() {
   uint16_t prev_party_id = this->party_config_.PrevPartyId();
