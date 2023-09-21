@@ -3,6 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
+from primihub.dataset.dataset import register_dataset
 from primihub.FL.preprocessing import *
 
 import pickle
@@ -186,6 +187,14 @@ class Pipeline(BaseModel):
             logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
             data.to_csv(preprocess_dataset_path, index=False)
 
+            # register preprocess dataset
+            dataset_id = self.role_params.get("preprocess_dataset_id")
+            if dataset_id:
+                node_info = self.node_info[self.role_params['self_name']]
+                use_tls = 1 if node_info.use_tls else 0
+                sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
+                register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
+
     def transform(self):
         # load preprocess module
         preprocess_module_path = self.role_params['preprocess_module_path']
@@ -228,6 +237,14 @@ class Pipeline(BaseModel):
         check_directory_exist(preprocess_dataset_path)
         logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
         data.to_csv(preprocess_dataset_path, index=False)
+
+        # register preprocess dataset
+        dataset_id = self.role_params.get("preprocess_dataset_id")
+        if dataset_id:
+            node_info = self.node_info[self.role_params['self_name']]
+            use_tls = 1 if node_info.use_tls else 0
+            sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
+            register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
 
 
 def select_module(module_name, params, FL_type, role, channel):
