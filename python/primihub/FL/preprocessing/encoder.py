@@ -451,7 +451,7 @@ def compute_missing_indices(categories):
     return missing_indices
 
 
-class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
+class TargetEncoder(PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None):
 
     def __init__(self,
                  categories="auto",
@@ -487,10 +487,89 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
         self._fit_encodings_all(X, y)
         return self
     
-    def fit_transform(self, X, y):
-        return self.fit(X, y).transform(X)
+    def fit_transform(self, X=None, y=None):
+        if self.FL_type == "V":
+            self.module.fit_transform(X, y)
+        else:
+            if self.role == "client":
+                from sklearn.model_selection import KFold, StratifiedKFold  # avoid circular import
 
-    def _fit_encodings_all(self, X, y):
+                X_ordinal, X_known_mask, y_encoded, n_categories = self._fit_encodings_all(X, y)
+
+                # The cv splitter is voluntarily restricted to *KFold to enforce non
+                # overlapping validation folds, otherwise the fit_transform output will
+                # not be well-specified.
+                if self.module.target_type_ == "continuous":
+                    cv = KFold(
+                        self.module.cv, shuffle=self.module.shuffle, random_state=self.module.random_state
+                    )
+                else:
+                    cv = StratifiedKFold(
+                        self.module.cv, shuffle=self.module.shuffle, random_state=self.module.random_state
+                    )
+
+                # If 'multiclass' multiply axis=1 by num classes else keep shape the same
+                if self.module.target_type_ == "multiclass":
+                    X_out = np.empty(
+                        (X_ordinal.shape[0], X_ordinal.shape[1] * len(self.module.classes_)),
+                        dtype=np.float64,
+                    )
+                else:
+                    X_out = np.empty_like(X_ordinal, dtype=np.float64)
+
+                for train_idx, test_idx in cv.split(X, y):
+                    X_train, y_train = X_ordinal[train_idx, :], y_encoded[train_idx]
+
+                    y_train_sum = np.sum(y_train, axis=0)
+                    self.channel.send("y_train_sum", y_train_sum)
+                    y_train_mean = self.channel.recv("y_train_mean")
+
+                    if self.module.target_type_ == "multiclass":
+                        encodings = self._fit_encoding_multiclass(
+                            X_train,
+                            y_train,
+                            n_categories,
+                            y_train_mean,
+                        )
+                    else:
+                        encodings = self._fit_encoding_binary_or_continuous(
+                            X_train,
+                            y_train,
+                            n_categories,
+                            y_train_mean,
+                        )
+                    self.module._transform_X_ordinal(
+                        X_out,
+                        X_ordinal,
+                        ~X_known_mask,
+                        test_idx,
+                        encodings,
+                        y_train_mean,
+                    )
+                return X_out
+            
+            elif self.role == "server":
+                n_splits = self.module.cv
+                client_n_samples = self._fit_encodings_all()
+
+                for fold_idx in range(n_splits):
+                    y_train_sum = sum(self.channel.recv_all("y_train_sum"))
+                    n_samples = get_n_samples_per_fold(client_n_samples, n_splits, fold_idx)
+                    y_train_mean = y_train_sum / n_samples
+                    self.channel.send_all("y_train_mean", y_train_mean)
+
+                    if self.module.target_type_ == "multiclass":
+                        self._fit_encoding_multiclass(
+                            target_mean=self.module.target_mean_,
+                            n_samples=n_samples
+                        )
+                    else:
+                        self._fit_encoding_binary_or_continuous(
+                            target_mean=self.module.target_mean_,
+                            n_samples=n_samples
+                        )
+
+    def _fit_encodings_all(self, X=None, y=None):
         self.module._infrequent_enabled = False
 
         # avoid circular import
@@ -570,6 +649,8 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
                     n_categories=n_categories,
                     target_mean=self.module.target_mean_,
                 )
+            self.module.encodings_ = encodings
+            return X_ordinal, X_known_mask, y, n_categories
 
         elif self.role == "server":
             if self.categories == "auto":
@@ -612,9 +693,9 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
                 self.module.classes_ = label_binarizer.module.classes_
 
             target_sum = self.channel.recv_all("target_sum")
-            n_samples = self.channel.recv_all("n_samples")
+            client_n_samples = self.channel.recv_all("n_samples")
             target_sum = np.sum(target_sum, axis=0)
-            n_samples = np.sum(n_samples)
+            n_samples = np.sum(client_n_samples)
             target_mean = target_sum / n_samples
             self.module.target_mean_ = target_mean
             self.channel.send_all("target_mean", target_mean)
@@ -629,8 +710,8 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
                     target_mean=self.module.target_mean_,
                     n_samples=n_samples
                 )
-
-        self.module.encodings_ = encodings
+            self.module.encodings_ = encodings
+            return client_n_samples
 
     def _fit_encoding_binary_or_continuous(
         self, X_ordinal=None, y=None, n_categories=None, target_mean=None, n_samples=None
@@ -811,3 +892,14 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
             self.channel.send_all("encodings", encodings)
 
         return encodings
+    
+
+def get_n_samples_per_fold(client_n_samples, n_splits, fold_idx):
+    n_samples = 0
+    for n in client_n_samples:
+        # The first n % n_splits folds have size n // n_splits + 1
+        # other folds have size n // n_splits
+        n_samples += n // n_splits
+        if fold_idx < n % n_splits:
+            n_samples += 1
+    return n_samples

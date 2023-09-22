@@ -168,7 +168,10 @@ class Pipeline(BaseModel):
                                    module.module,
                                    column))
             else:
-                module.fit()
+                if module_name == "TargetEncoder":
+                    module.fit_transform()
+                else:
+                    module.fit()
             
         if role != 'server':
             # save preprocess module & columns
