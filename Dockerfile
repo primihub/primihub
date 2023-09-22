@@ -41,6 +41,7 @@ RUN bash pre_build.sh \
              bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+             bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
              python \
              config \
              example \
