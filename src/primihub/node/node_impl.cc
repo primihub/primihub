@@ -621,21 +621,21 @@ void VMNodeImpl::CleanFinishedSchedulerWorkerThread() {
         } while (true);
 
         SCopedTimer timer;
-        // {
-        //   VLOG(3) << "cleanSchedulerTask size of need to clean task: "
-        //       << timeouted_shceduler.size();
-        //   std::lock_guard<std::shared_mutex> lck(this->task_executor_mtx_);
-        //   for (const auto& scheduler_worker_id : timeouted_shceduler) {
-        //     auto it = task_scheduler_map_.find(scheduler_worker_id);
-        //     if (it != task_scheduler_map_.end()) {
-        //       VLOG(5) << "scheduler worker id : " << scheduler_worker_id << " "
-        //               << "has timeouted, begin to erase";
-        //       task_scheduler_map_.erase(scheduler_worker_id);
-        //       VLOG(5) << "erase scheduler worker id : "
-        //           << scheduler_worker_id << " success";
-        //     }
-        //   }
-        // }
+        {
+          VLOG(3) << "cleanSchedulerTask size of need to clean task: "
+              << timeouted_shceduler.size();
+          std::lock_guard<std::shared_mutex> lck(this->task_executor_mtx_);
+          for (const auto& scheduler_worker_id : timeouted_shceduler) {
+            auto it = task_scheduler_map_.find(scheduler_worker_id);
+            if (it != task_scheduler_map_.end()) {
+              VLOG(5) << "scheduler worker id : " << scheduler_worker_id << " "
+                      << "has timeouted, begin to erase";
+              task_scheduler_map_.erase(scheduler_worker_id);
+              VLOG(5) << "erase scheduler worker id : "
+                  << scheduler_worker_id << " success";
+            }
+          }
+        }
         LOG(INFO) << "clean timeouted scheduler task cost(ms): "
                   << timer.timeElapse();
       }
