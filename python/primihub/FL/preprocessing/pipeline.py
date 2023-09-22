@@ -160,6 +160,8 @@ class Pipeline(BaseModel):
                             columns=col_name
                         )
                     )
+                elif module_name == "TargetEncoder":
+                    data[column] = module.fit_transform(data[column], data[label])
                 else:
                     data[column] = module.fit_transform(data[column])
                 preprocess.append((module_name,
@@ -317,6 +319,18 @@ def select_module(module_name, params, FL_type, role, channel):
             encoded_missing_value=encoded_missing_value,
             min_frequency=params.get('min_frequency'),
             max_categories=params.get('max_categories'),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "TargetEncoder":
+        module = TargetEncoder(
+            categories=params.get("categories", "auto"),
+            target_type=params.get("target_type", "auto"),
+            smooth=params.get("smooth", "auto"),
+            cv=params.get("cv", 5),
+            shuffle=params.get("shuffle", True),
+            random_state=params.get("random_state"),
             FL_type=FL_type,
             role=role,
             channel=channel

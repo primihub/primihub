@@ -2,10 +2,13 @@ import numpy as np
 import numbers
 from sklearn.preprocessing import OneHotEncoder as SKL_OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
+from sklearn.preprocessing import TargetEncoder as SKL_TargetEncoder
 from sklearn.utils import is_scalar_nan
+from sklearn.utils.multiclass import type_of_target
+from sklearn.utils.validation import check_consistent_length
 from sklearn.preprocessing._encoders import _BaseEncoder as _SKL_BaseEncoder
 from .base import PreprocessBase
-from .util import unique, RealNotInt
+from .util import unique, RealNotInt, _check_y
 
 
 class _BaseEncoder(PreprocessBase, _SKL_BaseEncoder):
@@ -446,3 +449,365 @@ def compute_missing_indices(categories):
                 missing_indices[feature_idx] = category_idx
                 break
     return missing_indices
+
+
+class TargetEncoder(PreprocessBase, _SKL_BaseEncoder):
+
+    def __init__(self,
+                 categories="auto",
+                 target_type="auto",
+                 smooth="auto",
+                 cv=5,
+                 shuffle=True,
+                 random_state=None,
+                 FL_type=None,
+                 role=None,
+                 channel=None):
+        super().__init__(FL_type, role, channel)
+        if FL_type == "H":
+            self.check_channel()
+            self.categories = categories
+        self.module = SKL_TargetEncoder(categories=categories,
+                                        target_type=target_type,
+                                        smooth=smooth,
+                                        cv=cv,
+                                        shuffle=shuffle,
+                                        random_state=random_state)
+
+    def fit(self, X=None, y=None):
+        if self.FL_type == "V":
+            return self.Vfit(X, y)
+        else:
+            return self.Hfit(X, y)
+
+    def Vfit(self, X, y):
+        return self.module.fit(X, y)
+    
+    def Hfit(self, X, y):
+        self._fit_encodings_all(X, y)
+        return self
+    
+    def fit_transform(self, X, y):
+        return self.fit(X, y).transform(X)
+
+    def _fit_encodings_all(self, X, y):
+        self.module._infrequent_enabled = False
+
+        # avoid circular import
+        from ..preprocessing import (
+            LabelBinarizer,
+            LabelEncoder,
+        )
+
+        if self.role == "client":
+            check_consistent_length(X, y)
+            self._fit(X, handle_unknown="ignore", force_all_finite="allow-nan")
+            self.module.n_features_in_ = self.n_features_in_
+            self.module.feature_names_in_ = self.feature_names_in_
+
+            categories = self.categories_
+            if self.categories == "auto":
+                self.channel.send("categories", categories)
+                categories = self.channel.recv("categories")
+            self.module.categories_ = categories
+
+            if self.module.target_type == "auto":
+                accepted_target_types = ("binary", "multiclass", "continuous")
+                inferred_type_of_target = type_of_target(y, input_name="y")
+                if inferred_type_of_target not in accepted_target_types:
+                    raise ValueError(
+                        "Unknown label type: Target type was inferred to be "
+                        f"{inferred_type_of_target!r}. Only {accepted_target_types} are "
+                        "supported."
+                    )
+                self.channel.send("inferred_type_of_target", inferred_type_of_target)
+                self.module.target_type_ = self.channel.recv("target_type")
+            else:
+                self.module.target_type_ = self.module.target_type
+
+            self.module.classes_ = None
+            if self.module.target_type_ == "binary":
+                label_encoder = LabelEncoder(FL_type=self.FL_type,
+                                             role=self.role,
+                                             channel=self.channel)
+                y = label_encoder.fit_transform(y)
+                self.module.classes_ = label_encoder.module.classes_
+            elif self.module.target_type_ == "multiclass":
+                label_binarizer = LabelBinarizer(FL_type=self.FL_type,
+                                                 role=self.role,
+                                                 channel=self.channel)
+                y = label_binarizer.fit_transform(y)
+                self.module.classes_ = label_binarizer.module.classes_
+            else:  # continuous
+                y = _check_y(y, y_numeric=True, estimator=self)
+            
+            target_sum = np.sum(y, axis=0)
+            self.channel.send("target_sum", target_sum)
+            n_samples = y.shape[0]
+            self.channel.send("n_samples", n_samples)
+            self.module.target_mean_ = self.channel.recv("target_mean")
+
+            X_ordinal, X_known_mask = self._transform(
+                X, handle_unknown="ignore", force_all_finite="allow-nan"
+            )
+            n_categories = np.fromiter(
+                (len(category_for_feature) for category_for_feature in self.module.categories_),
+                dtype=np.int64,
+                count=len(self.module.categories_),
+            )
+
+            if self.module.target_type_ == "multiclass":
+                encodings = self._fit_encoding_multiclass(
+                    X_ordinal=X_ordinal,
+                    y=y,
+                    n_categories=n_categories,
+                    target_mean=self.module.target_mean_,
+                )
+            else:
+                encodings = self._fit_encoding_binary_or_continuous(
+                    X_ordinal=X_ordinal,
+                    y=y,
+                    n_categories=n_categories,
+                    target_mean=self.module.target_mean_,
+                )
+
+        elif self.role == "server":
+            if self.categories == "auto":
+                client_categories = self.channel.recv_all("categories")
+                categories = compute_category_union(client_categories)
+                self.channel.send_all("categories", categories)
+            else:
+                categories = self.categories
+            self.module.categories_ = categories
+            self.module.n_features_in_ = len(categories)
+
+            if self.module.target_type == "auto":
+                client_type_of_target = self.channel.recv_all("inferred_type_of_target")
+                client_type_of_target = set(client_type_of_target)
+                if len(client_type_of_target) == 1:
+                    target_type = client_type_of_target.pop()
+                elif "continuous" in client_type_of_target:
+                    target_type = "continuous"
+                elif "multiclass" in client_type_of_target:
+                    target_type = "multiclass"
+                else:
+                    target_type = "binary"
+                self.module.target_type_ = target_type
+                self.channel.send_all("target_type", target_type)
+            else:
+                self.module.target_type_ = self.module.target_type
+
+            self.module.classes_ = None
+            if self.module.target_type_ == "binary":
+                label_encoder = LabelEncoder(FL_type=self.FL_type,
+                                             role=self.role,
+                                             channel=self.channel)
+                label_encoder.fit()
+                self.module.classes_ = label_encoder.module.classes_
+            elif self.module.target_type_ == "multiclass":
+                label_binarizer = LabelBinarizer(FL_type=self.FL_type,
+                                                 role=self.role,
+                                                 channel=self.channel)
+                label_binarizer.fit()
+                self.module.classes_ = label_binarizer.module.classes_
+
+            target_sum = self.channel.recv_all("target_sum")
+            n_samples = self.channel.recv_all("n_samples")
+            target_sum = np.sum(target_sum, axis=0)
+            n_samples = np.sum(n_samples)
+            target_mean = target_sum / n_samples
+            self.module.target_mean_ = target_mean
+            self.channel.send_all("target_mean", target_mean)
+
+            if self.module.target_type_ == "multiclass":
+                encodings = self._fit_encoding_multiclass(
+                    target_mean=self.module.target_mean_,
+                    n_samples=n_samples
+                )
+            else:
+                encodings = self._fit_encoding_binary_or_continuous(
+                    target_mean=self.module.target_mean_,
+                    n_samples=n_samples
+                )
+
+        self.module.encodings_ = encodings
+
+    def _fit_encoding_binary_or_continuous(
+        self, X_ordinal=None, y=None, n_categories=None, target_mean=None, n_samples=None
+    ):
+        """Learn target encodings."""
+        if self.module.smooth == "auto":
+            encodings = self._fit_encoding_auto_smooth(
+                X_ordinal,
+                y,
+                n_categories,
+                target_mean,
+                n_samples,
+            )
+        else:
+            encodings = self._fit_encoding(
+                X_ordinal,
+                y,
+                n_categories,
+                self.module.smooth,
+                target_mean,
+            )
+        return encodings
+    
+    def _fit_encoding_multiclass(self, X_ordinal=None, y=None, n_categories=None, target_mean=None, n_samples=None):
+        """Learn multiclass encodings.
+
+        Learn encodings for each class (c) then reorder encodings such that
+        the same features (f) are grouped together. `reorder_index` enables
+        converting from:
+        f0_c0, f1_c0, f0_c1, f1_c1, f0_c2, f1_c2
+        to:
+        f0_c0, f0_c1, f0_c2, f1_c0, f1_c1, f1_c2
+        """
+        n_features = self.module.n_features_in_
+        n_classes = len(self.module.classes_)
+
+        encodings = []
+        for i in range(n_classes):
+            if self.role == "client":
+                y_class = y[:, i]
+                encoding = self._fit_encoding_binary_or_continuous(
+                    X_ordinal=X_ordinal,
+                    y=y_class,
+                    n_categories=n_categories,
+                    target_mean=target_mean[i],
+                    n_samples=n_samples,
+                )
+
+            elif self.role == "server":
+                encoding = self._fit_encoding_binary_or_continuous(
+                    target_mean=target_mean[i],
+                    n_samples=n_samples,
+                )
+
+            encodings.extend(encoding)
+
+        reorder_index = (
+            idx
+            for start in range(n_features)
+            for idx in range(start, (n_classes * n_features), n_features)
+        )
+        return [encodings[idx] for idx in reorder_index]
+    
+    def _fit_encoding(self, X_int, y, n_categories, smooth, y_mean):
+        if self.role == "client":
+            n_features = X_int.shape[1]
+            feat_sums = []
+            feat_counts = []
+
+            for feat_idx in range(n_features):
+                n_cats = n_categories[feat_idx]
+                sums = np.zeros(n_cats)
+                counts = np.zeros(n_cats)
+
+                for cat_idx in range(n_cats):
+                    match_idx = X_int[:, feat_idx] == cat_idx
+                    sums[cat_idx] += sum(y[match_idx])
+                    counts[cat_idx] += sum(match_idx)
+
+                feat_sums.append(sums)
+                feat_counts.append(counts)
+            
+            self.channel.send("feat_sums", feat_sums)
+            self.channel.send("feat_counts", feat_counts)
+
+            encodings = self.channel.recv("encodings")
+            
+        elif self.role == "server":
+            smooth_sum = smooth * y_mean
+            encodings = []
+
+            client_feat_sums = self.channel.recv_all("feat_sums")
+            client_feat_counts = self.channel.recv_all("feat_counts")
+
+            n_clients = len(client_feat_sums)
+
+            for feat_idx in range(self.module.n_features_in_):
+                n_cats = len(client_feat_sums[0][feat_idx])
+                sums = np.full(n_cats, smooth_sum, dtype=np.float64)
+                counts = np.full(n_cats, smooth, dtype=np.float64)
+
+                for client_idx in range(n_clients):
+                    sums += client_feat_sums[client_idx][feat_idx]
+                    counts += client_feat_counts[client_idx][feat_idx]
+
+                encodings.append(sums / counts)
+
+            self.channel.send_all("encodings", encodings)
+
+        return encodings
+
+    def _fit_encoding_auto_smooth(self, X_int, y, n_categories, y_mean, n_samples):
+        if self.role == "client":
+            y_sum_square_diff = np.sum((y - y_mean) ** 2)
+            self.channel.send("y_sum_square_diff", y_sum_square_diff)
+
+            n_features = X_int.shape[1]
+            feat_sums = []
+            feat_counts = []
+            feat_sum_squares = []
+
+            for feat_idx in range(n_features):
+                n_cats = n_categories[feat_idx]
+                sums = np.zeros(n_cats)
+                counts = np.zeros(n_cats)
+                sum_squares = np.zeros(n_cats)
+
+                for cat_idx in range(n_cats):
+                    match_idx = X_int[:, feat_idx] == cat_idx
+                    sums[cat_idx] += sum(y[match_idx])
+                    counts[cat_idx] += sum(match_idx)
+                    sum_squares[cat_idx] += sum(y[match_idx] ** 2)
+
+                feat_sums.append(sums)
+                feat_counts.append(counts)
+                feat_sum_squares.append(sum_squares)
+
+            self.channel.send("feat_sums", feat_sums)
+            self.channel.send("feat_counts", feat_counts)
+            self.channel.send("feat_sum_squares", feat_sum_squares)
+
+            encodings = self.channel.recv("encodings")
+
+        elif self.role == "server":
+            y_sum_square_diff = sum(self.channel.recv_all("y_sum_square_diff"))
+            y_variance = y_sum_square_diff / n_samples
+
+            encodings = []
+
+            client_feat_sums = self.channel.recv_all("feat_sums")
+            client_feat_counts = self.channel.recv_all("feat_counts")
+            client_feat_sum_squares = self.channel.recv_all("feat_sum_squares")
+
+            n_clients = len(client_feat_sums)
+
+            for feat_idx in range(self.module.n_features_in_):
+                n_cats = len(client_feat_sums[0][feat_idx])
+                sums = np.zeros(n_cats)
+                counts = np.zeros(n_cats)
+                sum_squares = np.zeros(n_cats)
+
+                for client_idx in range(n_clients):
+                    sums += client_feat_sums[client_idx][feat_idx]
+                    counts += client_feat_counts[client_idx][feat_idx]
+                    sum_squares += client_feat_sum_squares[client_idx][feat_idx]
+
+                means = sums / counts
+                sum_of_squared_diffs = sum_squares - sums ** 2 / counts
+
+                if y_variance == 0.:
+                    encodings.append(np.full(sum_squares.shape, y_mean))
+                else:
+                    lambda_ = (
+                        y_variance * counts /
+                        (y_variance * counts + sum_of_squared_diffs / counts))
+                    encodings.append(lambda_ * means + (1 - lambda_) * y_mean)
+
+            self.channel.send_all("encodings", encodings)
+
+        return encodings
