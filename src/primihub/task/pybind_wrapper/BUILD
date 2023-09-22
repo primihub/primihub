@@ -28,17 +28,10 @@ cc_library(
     "@com_github_stduuid//:stduuid_lib",
   ],
 )
+
 cc_library(
   name = "util_lib",
   hdrs = ["util.h"],
   srcs = ["util.cc"],
 )
-# cc_library(
-#   name = "psi_wrapper",
-#   srcs = ["psi_wrapper.cc"],
-#   hdrs = ["psi_wrapper.h"],
-#   deps = [
-#     "//src/primihub/task/semantic:psi_task",
-#   ],
-# )
 

@@ -249,8 +249,7 @@ retcode MPCTask::ExecuteTask(const std::vector<double>& input_data,
       LOG(ERROR) << "Initialize party communicate failed.";
       return retcode::FAIL;
     }
-    retcode = algorithm_->InitEngine()
-    ;
+    retcode = algorithm_->InitEngine();
     if (retcode != retcode::SUCCESS) {
       LOG(ERROR) << "init engine failed";
       return retcode::FAIL;
@@ -261,7 +260,7 @@ retcode MPCTask::ExecuteTask(const std::vector<double>& input_data,
       return retcode::FAIL;
     }
     algorithm_->finishPartyComm();
-  } catch (std::exception &e) {
+  } catch (std::exception& e) {
     LOG(ERROR) << e.what();
     return retcode::FAIL;
   }

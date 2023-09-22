@@ -18,7 +18,7 @@ class GrpcClient:
             linkcontext.LinkMode.GRPC)
         self.link_context.setTaskInfo(task_info.task_id,
                                       task_info.job_id,
-                                      task_info.request_id
+                                      task_info.request_id,
                                       task_info.sub_task_id)
 
         local_ip = node_info[local_party].ip
