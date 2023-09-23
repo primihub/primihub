@@ -5,6 +5,10 @@ from scipy.sparse import issparse
 from itertools import compress
 from sklearn.utils import is_scalar_nan
 from sklearn.utils._encode import MissingValues, _nandict, _NaNCounter
+from sklearn.utils.validation import check_array, column_or_1d
+from sklearn.utils._array_api import get_namespace
+from sklearn.utils._isfinite import FiniteStatus, cy_isfinite
+from sklearn._config import get_config as _get_config
 from contextlib import suppress
 
 
@@ -495,3 +499,127 @@ def _list_indexing(X, key, key_dtype):
         return list(compress(X, key))
     # key is a integer array-like of key
     return [X[idx] for idx in key]
+
+
+def _check_y(y, multi_output=False, y_numeric=False, estimator=None):
+    """Isolated part of check_X_y dedicated to y validation"""
+    if multi_output:
+        y = check_array(
+            y,
+            accept_sparse="csr",
+            force_all_finite=True,
+            ensure_2d=False,
+            dtype=None,
+            input_name="y",
+            estimator=estimator,
+        )
+    else:
+        estimator_name = _check_estimator_name(estimator)
+        y = column_or_1d(y, warn=True)
+        _assert_all_finite(y, input_name="y", estimator_name=estimator_name)
+        _ensure_no_complex_data(y)
+    if y_numeric and y.dtype.kind == "O":
+        y = y.astype(np.float64)
+
+    return y
+
+
+def _check_estimator_name(estimator):
+    if estimator is not None:
+        if isinstance(estimator, str):
+            return estimator
+        else:
+            return estimator.__class__.__name__
+    return None
+
+
+def _assert_all_finite(
+    X, allow_nan=False, msg_dtype=None, estimator_name=None, input_name=""
+):
+    """Like assert_all_finite, but only for ndarray."""
+
+    xp, _ = get_namespace(X)
+
+    if _get_config()["assume_finite"]:
+        return
+
+    X = xp.asarray(X)
+
+    # for object dtype data, we only check for NaNs (GH-13254)
+    if X.dtype == np.dtype("object") and not allow_nan:
+        if _object_dtype_isnan(X).any():
+            raise ValueError("Input contains NaN")
+
+    # We need only consider float arrays, hence can early return for all else.
+    if not xp.isdtype(X.dtype, ("real floating", "complex floating")):
+        return
+
+    # First try an O(n) time, O(1) space solution for the common case that
+    # everything is finite; fall back to O(n) space `np.isinf/isnan` or custom
+    # Cython implementation to prevent false positives and provide a detailed
+    # error message.
+    with np.errstate(over="ignore"):
+        first_pass_isfinite = xp.isfinite(xp.sum(X))
+    if first_pass_isfinite:
+        return
+
+    _assert_all_finite_element_wise(
+        X,
+        xp=xp,
+        allow_nan=allow_nan,
+        msg_dtype=msg_dtype,
+        estimator_name=estimator_name,
+        input_name=input_name,
+    )
+
+
+def _assert_all_finite_element_wise(
+    X, *, xp, allow_nan, msg_dtype=None, estimator_name=None, input_name=""
+):
+    # Cython implementation doesn't support FP16 or complex numbers
+    use_cython = (
+        xp is np and X.data.contiguous and X.dtype.type in {np.float32, np.float64}
+    )
+    if use_cython:
+        out = cy_isfinite(X.reshape(-1), allow_nan=allow_nan)
+        has_nan_error = False if allow_nan else out == FiniteStatus.has_nan
+        has_inf = out == FiniteStatus.has_infinite
+    else:
+        has_inf = xp.any(xp.isinf(X))
+        has_nan_error = False if allow_nan else xp.any(xp.isnan(X))
+    if has_inf or has_nan_error:
+        if has_nan_error:
+            type_err = "NaN"
+        else:
+            msg_dtype = msg_dtype if msg_dtype is not None else X.dtype
+            type_err = f"infinity or a value too large for {msg_dtype!r}"
+        padded_input_name = input_name + " " if input_name else ""
+        msg_err = f"Input {padded_input_name}contains {type_err}."
+        if estimator_name and input_name == "X" and has_nan_error:
+            # Improve the error message on how to handle missing values in
+            # scikit-learn.
+            msg_err += (
+                f"\n{estimator_name} does not accept missing values"
+                " encoded as NaN natively. For supervised learning, you might want"
+                " to consider sklearn.ensemble.HistGradientBoostingClassifier and"
+                " Regressor which accept missing values encoded as NaNs natively."
+                " Alternatively, it is possible to preprocess the data, for"
+                " instance by using an imputer transformer in a pipeline or drop"
+                " samples with missing values. See"
+                " https://scikit-learn.org/stable/modules/impute.html"
+                " You can find a list of all estimators that handle NaN values"
+                " at the following page:"
+                " https://scikit-learn.org/stable/modules/impute.html"
+                "#estimators-that-handle-nan-values"
+            )
+        raise ValueError(msg_err)
+    
+
+def _ensure_no_complex_data(array):
+    if (
+        hasattr(array, "dtype")
+        and array.dtype is not None
+        and hasattr(array.dtype, "kind")
+        and array.dtype.kind == "c"
+    ):
+        raise ValueError("Complex data not supported\n{}\n".format(array))
