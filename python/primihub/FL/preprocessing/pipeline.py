@@ -135,9 +135,9 @@ class Pipeline(BaseModel):
                     column = list(set(chain.from_iterable(client_column)))
                     channel.send_all('column', column)
 
+            if isinstance(column, pd.Index):
+                column = column.tolist()
             if column:
-                if isinstance(column, pd.Index):
-                    column = column.tolist()
                 logger.info(f"column: {column}, # {len(column)}")
             else:
                 logger.info(f"column is empty, {module_name} is skipped")
