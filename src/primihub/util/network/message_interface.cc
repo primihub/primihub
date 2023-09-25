@@ -53,13 +53,12 @@ void TaskMessagePassInterface::_channelSend(
             << ", send size " << size << ".";
 
     if (VLOG_IS_ON(7)) {
-      std::string send_data;
-      for (const auto& ch : send_str) {
-        send_data.append(std::to_string(static_cast<int>(ch))).append(" ");
-      }
+      // std::string send_data;
+      // for (const auto& ch : send_str) {
+      //   send_data.append(std::to_string(static_cast<int>(ch))).append(" ");
+      // }
       LOG(INFO) << "send data using key: " << send_key << " "
-                << "data size: " << send_str.size() << " "
-                << "send data [" << send_data << "]";
+                << "data size: " << send_str.size() << "]";
     }
   }
 
@@ -150,13 +149,12 @@ void TaskMessagePassInterface::_channelRecv(
     VLOG(6) << "Recv " << index << "th message, total " << num << ", recv size "
             << size << ".";
     if (VLOG_IS_ON(7)) {
-      std::string recv_data;
-      for (const auto& ch : recv_str) {
-        recv_data.append(std::to_string(static_cast<int>(ch))).append(" ");
-      }
+      // std::string recv_data;
+      // for (const auto& ch : recv_str) {
+      //   recv_data.append(std::to_string(static_cast<int>(ch))).append(" ");
+      // }
       LOG(INFO) << "recv data using key: " << recv_key << " "
-                << "data size: " << recv_str.size() << " "
-                << "send data [" << recv_data << "]";
+                << "data size: " << recv_str.size() << "]";
     }
 
   }

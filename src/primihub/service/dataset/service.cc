@@ -260,10 +260,10 @@ DatasetService::getDriver(const std::string& dataset_id, bool is_acces_info) {
   // }
   if (is_acces_info) {
     DatasetMetaInfo meta_info;
-    LOG(ERROR) << dataset_id;
+    VLOG(5) << dataset_id;
     nlohmann::json oJson = nlohmann::json::parse(dataset_id);
     meta_info.driver_type = oJson["type"].get<std::string>();
-    LOG(ERROR) << meta_info.driver_type;
+    VLOG(5) << meta_info.driver_type;
     meta_info.access_info = dataset_id;
     auto& schema = meta_info.schema;
     nlohmann::json filed_list =

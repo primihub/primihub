@@ -55,6 +55,11 @@ int FLTask::execute() {
   // Execute python code.
   ph_exec_m_.attr("execute_py")();
   VLOG(1) << "<<<<<<<<< Execute Python Code End <<<<<<<<<" << std::endl;
+  py::object mpc_util = py::module::import("primihub.MPC.util");
+  py::object stop_aux_task = mpc_util.attr("stop_auxiliary_party");
+  stop_aux_task();
+  stop_aux_task.release();
+  VLOG(1) << "<<<<<<<<< Clean Task Env End <<<<<<<<<" << std::endl;
   return 0;
 }
 
