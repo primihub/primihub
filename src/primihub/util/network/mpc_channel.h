@@ -47,11 +47,19 @@ class MPCTaskChannel : public ph_link::ChannelBase {
     peer_node_id_ = peer_node_id;
     link_context_ = link_context;
     send_channel_ = channel;
+    recv_channel_ = channel;
     cancel_ = false;
 
     // send_count_.store(0);
     // recv_count_.store(0);
-
+    std::stringstream ss_send;
+    ss_send << request_id_ << "_" << sub_task_id_<< "_"
+            << local_node_id_ << "_" << peer_node_id_;
+    send_key_ = ss_send.str();
+    std::stringstream ss_recv;
+    ss_recv << request_id_ << "_" << sub_task_id_<< "_"
+            << peer_node_id_ << "_" << local_node_id_;
+    recv_key_ = ss_recv.str();
     VLOG(3) << "job_id " << job_id_ << ", task_id " << task_id_
             << ", request_id " << request_id_
             << ", local_node " << local_node_id_ << ", peer node "
@@ -64,16 +72,25 @@ class MPCTaskChannel : public ph_link::ChannelBase {
                   std::shared_ptr<network::IChannel> channel) {
     job_id_ = link_context->job_id();
     task_id_ = link_context->task_id();
+    sub_task_id_ = link_context->sub_task_id();
     request_id_ = link_context->request_id();
     local_node_id_ = local_node_id;
     peer_node_id_ = peer_node_id;
     link_context_ = link_context;
     send_channel_ = channel;
+    recv_channel_ = channel;
     cancel_ = false;
 
     // send_count_.store(0);
     // recv_count_.store(0);
-
+    std::stringstream ss_send;
+    ss_send << request_id_ << "_" << sub_task_id_<< "_"
+            << local_node_id_ << "_" << peer_node_id_;
+    send_key_ = ss_send.str();
+    std::stringstream ss_recv;
+    ss_recv << request_id_ << "_" << sub_task_id_<< "_"
+            << peer_node_id_ << "_" << local_node_id_;
+    recv_key_ = ss_recv.str();
     VLOG(3) << "job_id " << job_id_ << ", task_id " << task_id_
             << ", request_id " << request_id_
             << ", local_node " << local_node_id_ << ", peer node "
@@ -87,6 +104,7 @@ class MPCTaskChannel : public ph_link::ChannelBase {
                   std::shared_ptr<network::IChannel> recv_channel) {
     job_id_ = link_context->job_id();
     task_id_ = link_context->task_id();
+    sub_task_id_ = link_context->sub_task_id();
     request_id_ = link_context->request_id();
     local_node_id_ = local_node_id;
     peer_node_id_ = peer_node_id;
@@ -95,10 +113,12 @@ class MPCTaskChannel : public ph_link::ChannelBase {
     recv_channel_ = std::move(recv_channel);
     cancel_ = false;
     std::stringstream ss_send;
-    ss_send << request_id_ << "_" << local_node_id_ << "_" << peer_node_id_;
+    ss_send << request_id_ << "_" << sub_task_id_<< "_"
+            << local_node_id_ << "_" << peer_node_id_;
     send_key_ = ss_send.str();
     std::stringstream ss_recv;
-    ss_recv << request_id_ << "_" << peer_node_id_ << "_" << local_node_id_;
+    ss_recv << request_id_ << "_" << sub_task_id_<< "_"
+            << peer_node_id_ << "_" << local_node_id_;
     recv_key_ = ss_recv.str();
 
     VLOG(3) << "job_id " << job_id_ << ", task_id " << task_id_ << ", "
@@ -120,6 +140,7 @@ class MPCTaskChannel : public ph_link::ChannelBase {
   std::atomic<bool> cancel_{false};
   std::string job_id_;
   std::string task_id_;
+  std::string sub_task_id_;
   std::string request_id_;
   std::string local_node_id_;
   std::string peer_node_id_;

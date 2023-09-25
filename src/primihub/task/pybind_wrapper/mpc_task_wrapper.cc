@@ -42,37 +42,38 @@ MPCExecutor::MPCExecutor(const std::string& task_req_str,
 }
 
 MPCExecutor::~MPCExecutor() {
-  this->StopTask();
 }
 
-retcode MPCExecutor::StopTask() {
-  std::string party_name = this->task_req_ptr_->task().party_name();
-  const auto& party_access_info = task_req_ptr_->task().party_access_info();
-  auto it = party_access_info.find(party_name);
-  if (it == party_access_info.end()) {
-    LOG(ERROR) << "invalid party: " << party_name;
-    return retcode::FAIL;
-  }
-  auto& party_node = it->second;
-  int32_t party_id = party_node.party_id();
-  if (party_id != 0) {
-    return retcode::SUCCESS;
-  }
-  it = party_access_info.find(AUX_COMPUTE_NODE);
-  if (it == party_access_info.end()) {
-    LOG(ERROR) << AUX_COMPUTE_NODE << " access info is not found";
-    return retcode::FAIL;
-  }
-  auto pb_aux_node = it->second;
-  Node aux_node;
-  pbNode2Node(pb_aux_node, &aux_node);
-  VLOG(7) << "auxiliary compute server info: " << aux_node.to_string();
-  auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
-  auto channel = link_ctx->getChannel(aux_node);
-  rpc::Empty reply;
-  rpc::TaskContext task_info;
-  task_info.CopyFrom(task_req_ptr_->task().task_info());
-  return channel->StopTask(task_info, &reply);
+void MPCExecutor::StopTask() {
+  do {
+    std::string party_name = this->task_req_ptr_->task().party_name();
+    const auto& party_access_info = task_req_ptr_->task().party_access_info();
+    auto it = party_access_info.find(party_name);
+    if (it == party_access_info.end()) {
+      LOG(ERROR) << "invalid party: " << party_name;
+      break;
+    }
+    auto& party_node = it->second;
+    int32_t party_id = party_node.party_id();
+    if (party_id != 0) {
+      break;;
+    }
+    it = party_access_info.find(AUX_COMPUTE_NODE);
+    if (it == party_access_info.end()) {
+      LOG(ERROR) << AUX_COMPUTE_NODE << " access info is not found";
+      break;
+    }
+    auto pb_aux_node = it->second;
+    Node aux_node;
+    pbNode2Node(pb_aux_node, &aux_node);
+    VLOG(7) << "auxiliary compute server info: " << aux_node.to_string();
+    auto& link_ctx = this->task_ptr_->getTaskContext().getLinkContext();
+    auto channel = link_ctx->getChannel(aux_node);
+    rpc::Empty reply;
+    rpc::TaskContext task_info;
+    task_info.CopyFrom(task_req_ptr_->task().task_info());
+    channel->StopTask(task_info, &reply);
+  } while (0);
 }
 
 retcode MPCExecutor::AddAuxiliaryComputeServer(rpc::Task* task) {

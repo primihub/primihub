@@ -161,7 +161,7 @@ retcode GrpcChannel::buildTaskRequest(const std::string& role,
 retcode GrpcChannel::buildTaskRequest(const std::string& role,
     std::string_view data_sv, std::vector<rpc::TaskRequest>* send_pb_data) {
   size_t sended_size = 0;
-  constexpr size_t max_package_size = 1 << 21;  // limit data size 4M
+  size_t max_package_size = LIMITED_PACKAGE_SIZE;  // limit data size 4M
   size_t total_length = data_sv.size();
   char* send_buf = const_cast<char*>(data_sv.data());
   std::string job_id = this->getLinkContext()->job_id();

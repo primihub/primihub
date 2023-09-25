@@ -915,6 +915,8 @@ retcode VMNodeImpl::ExecuteDelTaskOperation(task_manage_t&& task_detail_) {
             << "swap queue cost: " << swap_cost << " "
             << "destroy queue cost: " << dctr_cost << " "
             << "total time cost(ms): " << time_cost;
+  } else {
+    LOG(WARNING) << "worker_id: " << worker_id << " has already been erased";
   }
   write_flag_.store(false);
   return retcode::SUCCESS;

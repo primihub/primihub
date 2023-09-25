@@ -39,6 +39,7 @@ class MPCExecutor {
   retcode Avg(const std::vector<double>& input,
               const std::vector<int64_t>& col_rows, std::vector<double>* result);
   retcode Sum(const std::vector<double>& input, std::vector<double>* result);
+  void StopTask();
 
  protected:
   /**
@@ -66,7 +67,6 @@ class MPCExecutor {
    * add auxiliary compute server to task config
   */
   retcode AddAuxiliaryComputeServer(rpc::Task* task);
-  retcode StopTask();
   retcode SetStatisticsOperation(rpc::Algorithm::StatisticsOpType op_type,
                                  rpc::Task* task);
   retcode SetArithmeticOperation(rpc::Algorithm::ArithmeticOpType op_type,

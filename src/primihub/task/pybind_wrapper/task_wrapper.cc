@@ -73,5 +73,7 @@ PYBIND11_MODULE(ph_secure_lib, m) {
         if (ret != primihub::retcode::SUCCESS) {
           throw pybind11::value_error("receive data encountes error");
         }
-        return result;});
+        return result;})
+    .def("stop_task",
+         &MPCExecutor::StopTask, py::call_guard<py::gil_scoped_release>());
 }
