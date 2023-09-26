@@ -24,7 +24,7 @@ from ray.util import ActorPool
 from primihub.FL.utils.base import BaseModel
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.utils.net_work import GrpcClient
-from primihub.utils.evaluation import evaluate_ks_and_roc_auc, plot_lift_and_gain, eval_acc
+from primihub.FL.metrics import classification_metrics
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_crt, opt_paillier_encrypt_crt, opt_paillier_add, opt_paillier_keygen
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
@@ -840,25 +840,20 @@ class VGBTHost(VGBTBase):
                     lookup_table_sum=self.lookup_table_sum)
 
     def train_metrics(self, y_true, y_hat):
-        ks, auc = evaluate_ks_and_roc_auc(y_real=y_true, y_proba=y_hat)
-        acc = metrics.accuracy_score(y_true, (y_hat >= 0.5).astype('int'))
-        fpr, tpr, threshold = metrics.roc_curve(y_true, y_hat)
-        recall = eval_acc(y_true, (y_hat >= 0.5).astype('int'))
-        lifts, gains = plot_lift_and_gain(y_true, y_hat)
-        trainMetrics = {
-            "acc": acc,
-            "auc": auc,
-            "ks": ks,
-            "fpr": fpr.tolist(),
-            "tpr": tpr.tolist(),
-            "lift_x": lifts['axis_x'].tolist(),
-            "lift_y": lifts['axis_y'],
-            "gain_x": gains['axis_x'].tolist(),
-            "gain_y": gains['axis_y'],
-            "recall": recall
-        }
-        print("ks, auc and acc", ks, auc, acc)
-        return trainMetrics
+        metrics = classification_metrics(
+            y_true,
+            y_hat,
+            multiclass=False,
+            prefix="train_",
+            metircs_name=["acc",
+                          "f1",
+                          "precision",
+                          "recall",
+                          "auc",
+                          "roc",
+                          "ks",],
+        )
+        return metrics
 
     def _grad(self, y_hat, Y):
 
@@ -1364,30 +1359,21 @@ class VGBTHost(VGBTBase):
 
         y_hat = self.predict_prob(X_host, lookup=lookup_table_sum)
 
-        ks, auc = evaluate_ks_and_roc_auc(y_real=Y, y_proba=y_hat)
+        metrics = classification_metrics(
+            Y,
+            y_hat,
+            multiclass=False,
+            prefix="train_",
+            metircs_name=["acc",
+                          "f1",
+                          "precision",
+                          "recall",
+                          "auc",
+                          "roc",
+                          "ks",],
+        )
 
-        train_acc = metrics.accuracy_score((y_hat >= 0.5).astype('int'), Y)
-        # acc = sum((y_hat >= 0.5).astype(int) == Y) / len(y_hat)
-
-        fpr, tpr, threshold = metrics.roc_curve(Y, y_hat)
-
-        recall = eval_acc(Y, (y_hat >= 0.5).astype('int'))
-        lifts, gains = plot_lift_and_gain(Y, y_hat)
-
-        trainMetrics = {
-            "train_acc": train_acc,
-            "train_auc": auc,
-            "train_ks": ks,
-            "train_fpr": fpr.tolist(),
-            "train_tpr": tpr.tolist(),
-            "lift_x": lifts['axis_x'].tolist(),
-            "lift_y": lifts['axis_y'],
-            "gain_x": gains['axis_x'].tolist(),
-            "gain_y": gains['axis_y'],
-            "recall": recall
-        }
-
-        train_metrics_buff = json.dumps(trainMetrics)
+        train_metrics_buff = json.dumps(metrics)
 
         check_directory_exist(self.metric_path)
         with open(self.metric_path, 'w') as filePath:

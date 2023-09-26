@@ -4,11 +4,11 @@ from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.ckks import CKKS
+from primihub.FL.metrics import regression_metrics
 
 import pickle
 import json
 import pandas as pd
-from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
 
 from .vfl_base import LinearRegression_Host_Plaintext,\
@@ -195,19 +195,30 @@ class Plaintext_Host:
         self.model.fit(x, error)
 
     def compute_metrics(self, x, y):
-        z = self.compute_z(x)
-        
-        mse = metrics.mean_squared_error(y, z)
-        mae = metrics.mean_absolute_error(y, z)
-
-        logger.info(f"mse={mse}, mae={mae}")
-        return {
-            'train_mse': mse,
-            'train_mae': mae
-        }
+        y_pred = self.compute_z(x)
+        regression_metrics(
+            y,
+            y_pred,
+            metircs_name=["mae",
+                          "mse",],
+        )
     
     def compute_final_metrics(self, x, y):
-        return self.compute_metrics(x, y)
+        y_pred = self.compute_z(x)
+        metrics = regression_metrics(
+            y,
+            y_pred,
+            prefix="train_",
+            metircs_name=["ev",
+                          "maxe",
+                          "mae",
+                          "mse",
+                          "rmse",
+                          "medae",
+                          "mape",
+                          "r2",],
+        )
+        return metrics
 
 
 class CKKS_Host(Plaintext_Host, CKKS):
@@ -286,6 +297,3 @@ class CKKS_Host(Plaintext_Host, CKKS):
         mse = ((z - y) ** 2).sum()
         self.coordinator_channel.send('mse', mse.serialize())
         logger.info('View metrics at coordinator while using CKKS')
-    
-    def compute_final_metrics(self, x, y):
-        return super().compute_metrics(x, y)

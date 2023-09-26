@@ -7,15 +7,14 @@ from primihub.FL.utils.dataset import read_data,\
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
 from primihub.FL.preprocessing import StandardScaler
+from primihub.FL.metrics import classification_metrics
 
 import pickle
 import json
 import pandas as pd
 import numpy as np
 import dp_accounting
-from sklearn import metrics
-from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
+
 from .base import LogisticRegression,\
                   LogisticRegression_DPSGD,\
                   LogisticRegression_Paillier
@@ -210,8 +209,6 @@ class Plaintext_Client:
         self.send_output_dim(y)
 
         self.num_examples = x.shape[0]
-        if not self.model.multiclass:
-            self.num_positive_examples = y.sum()
         self.send_params()
 
     def train(self):
@@ -244,80 +241,61 @@ class Plaintext_Client:
 
     def send_params(self):
         self.server_channel.send('num_examples', self.num_examples)
-        if not self.model.multiclass:
-            self.server_channel.send('num_positive_examples',
-                                     self.num_positive_examples)
 
     def send_loss(self, x, y):
         loss = self.model.loss(x, y)
         if self.model.alpha > 0:
             loss -= 0.5 * self.model.alpha * (self.model.weight ** 2).sum()
+        logger.info(f"loss: {loss}")
         self.server_channel.send("loss", loss)
         return loss
 
-    def send_acc(self, x, y):
-        y_hat = self.model.predict_prob(x)
-        if self.model.multiclass:
-            y_pred = np.argmax(y_hat, axis=1)
-        else:
-            y_pred = np.array(y_hat > 0.5, dtype='int')
-        
-        acc = metrics.accuracy_score(y, y_pred)
-        self.server_channel.send("acc", acc)
-        return y_hat, acc
-    
-    def get_auc(self, y_hat, y):
-        if self.model.multiclass:
-            # one-vs-rest
-            auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr') 
-        else:
-            auc = metrics.roc_auc_score(y, y_hat)
-        return auc
-
     def send_metrics(self, x, y):
-        loss = self.send_loss(x, y)
-        y_hat, acc = self.send_acc(x, y)
+        self.send_loss(x, y)
 
-        client_metrics = {
-            "train_loss": loss,
-            "train_acc": acc,
-        }
-
+        y_score = self.model.predict_prob(x)
         if self.model.multiclass:
-            auc = self.get_auc(y_hat, y)
-            self.server_channel.send("auc", auc)
-
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
+            metrics = classification_metrics(
+                y,
+                y_score,
+                multiclass=self.model.multiclass,
+                prefix="train_",
+                metircs_name=["acc",
+                              "f1",
+                              "precision",
+                              "recall",
+                              "auc",],
+            )
         else:
-            # fpr, tpr
-            fpr, tpr, thresholds = metrics.roc_curve(y, y_hat,
-                                                     drop_intermediate=False)
-            client_metrics["train_fpr"] = fpr.tolist()
-            client_metrics["train_tpr"] = tpr.tolist()
-            self.server_channel.send("fpr", fpr)
-            self.server_channel.send("tpr", tpr)
-            # self.server_channel.send("thresholds", thresholds)
+            metrics = classification_metrics(
+                y,
+                y_score,
+                multiclass=self.model.multiclass,
+                prefix="train_",
+                metircs_name=["acc",
+                              "f1",
+                              "precision",
+                              "recall",
+                              "auc",
+                              "roc",
+                              "ks",],
+            )
 
-            # ks
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            client_metrics["train_ks"] = ks
-
-            # auc
-            auc = auc_from_fpr_tpr(fpr, tpr)
-
-            logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
-        
-        client_metrics["train_auc"] = auc
-        return client_metrics
+        self.server_channel.send("acc", metrics["train_acc"])
+        return metrics
 
     def print_metrics(self, x, y):
-        # print loss & acc & auc
-        loss = self.send_loss(x, y)
-        y_hat, acc = self.send_acc(x, y)
-        auc = self.get_auc(y_hat, y)
-        if self.model.multiclass:
-            self.server_channel.send("auc", auc)
-        logger.info(f"loss={loss}, acc={acc}, auc={auc}")
+        self.send_loss(x, y)
+
+        y_score = self.model.predict_prob(x)
+        metrics = classification_metrics(
+            y,
+            y_score,
+            multiclass=self.model.multiclass,
+            metircs_name=["acc",],
+        )
+
+        self.server_channel.send("acc", metrics["acc"])
 
 
 class DPSGD_Client(Plaintext_Client):
