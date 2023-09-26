@@ -28,16 +28,29 @@ using primihub::AlgorithmBase;
 namespace primihub::task {
 
 class MPCTask : public TaskBase {
-  public:
-    explicit MPCTask(const std::string &node_id,
-                     const std::string &function_name,
-                     const TaskParam *task_param,
-                     std::shared_ptr<DatasetService> dataset_service);
-    ~MPCTask() {};
+ public:
+  MPCTask(const std::string &node_id,
+          const std::string &function_name,
+          const TaskParam *task_param,
+          std::shared_ptr<DatasetService> dataset_service);
+  MPCTask(const std::string& funcaton_name, const TaskParam *task_param);
+  ~MPCTask() = default;
+  int execute() override;
+  retcode ExecuteTask(const std::vector<double>& input_data,
+                      const std::vector<int64_t>& col_rows,
+                      std::vector<double>* result);
+  retcode ExecuteImpl();
 
-    int execute() override;
+ protected:
+  std::shared_ptr<Dataset> MakeDataset(const std::vector<double>& input_data,
+                                       int64_t colum_num);
+  std::shared_ptr<Dataset> MakeDataset();
+  retcode MakeAuxiliaryComputeData(const std::vector<int64_t>& shape,
+                                   std::vector<double>* input,
+                                   std::vector<int64_t>* col_rows);
+  retcode RecvShapeFromLauncher(std::vector<int64_t>* shape);
 
-  private:
+ private:
     std::shared_ptr<AlgorithmBase> algorithm_{nullptr};
 };
 

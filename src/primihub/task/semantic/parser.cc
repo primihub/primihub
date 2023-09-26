@@ -16,7 +16,7 @@
 
 #include <memory>
 #include <string>
-
+#include <nlohmann/json.hpp>
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/task/language/proto_parser.h"
@@ -24,6 +24,7 @@
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler/factory.h"
 #include "src/primihub/util/util.h"
+
 
 using primihub::service::DataURLToDetail;
 using primihub::rpc::TaskType;
@@ -71,6 +72,53 @@ bool ProtocolSemanticParser::DatasetMetaSerivceEnabled() {
   return true;
 }
 
+retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
+    LanguageParser* _parser) {
+  auto& task_request = _parser->getPushTaskRequest();
+  const auto& param_map = task_request.task().params().param_map();
+  auto it = param_map.find("auxiliary_server");
+  if (it == param_map.end()) {
+    return retcode::SUCCESS;
+  }
+  rpc::Node auxiliary_node;
+  std::string info = it->second.value_string();
+  nlohmann::json js_info = nlohmann::json::parse(info);
+  bool is_dataset = js_info["is_dataset"].get<bool>();
+  if (is_dataset) {
+    std::string dataset_id = js_info["dataset_id"].get<std::string>();
+    std::vector<std::pair<std::string, std::string>> datasets_with_tag = {
+      {dataset_id, "default"}
+    };
+    dataset_service_->MetaService()->FindPeerListFromDatasets(
+    datasets_with_tag,
+    [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
+      VLOG(2) << "Find meta list from datasets: "
+              << metas_with_param_tag.size();
+      if (metas_with_param_tag.size() != 1) {
+        return retcode::FAIL;
+      }
+      auto& meta_with_tag = metas_with_param_tag[0];
+      const auto& meta_info = meta_with_tag.first;
+      const auto& party_name = meta_with_tag.second;
+      std::string server_info = meta_info->getServerInfo();
+      Node access_info;
+      access_info.fromString(server_info);
+      node2PbNode(access_info, &auxiliary_node);
+    });
+  } else {
+    std::string ip = js_info["ip"].get<std::string>();
+    uint32_t port = js_info["port"].get<uint32_t>();
+    bool use_tls = js_info["use_tls"].get<bool>();
+    auxiliary_node.set_ip(ip);
+    auxiliary_node.set_port(port);
+    auxiliary_node.set_use_tls(use_tls);
+  }
+  auto auxiliary_server_ptr =
+      task_request.mutable_task()->mutable_auxiliary_server();
+  (*auxiliary_server_ptr)[AUX_COMPUTE_NODE] = std::move(auxiliary_node);
+  return retcode::SUCCESS;
+}
+
 retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
     LanguageParser* _parser) {
   if (DatasetMetaSerivceEnabled()) {
@@ -86,6 +134,9 @@ retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
         _parser->MergePartyAccessInfo(party_access_info);
         VLOG(2) << "end of MergePartyAccessInfo";
       });
+    // process auxiliary server if search by dataset
+    ProcessAuxiliaryServer(_parser);
+
   }
   return retcode::SUCCESS;
 }

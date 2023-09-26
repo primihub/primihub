@@ -26,6 +26,7 @@
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/common/party_config.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/common/type.h"
 
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Network/IOService.h"
@@ -38,7 +39,9 @@ using primihub::rpc::Task;
 using primihub::service::DatasetService;
 namespace ph_link = primihub::link;
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 extern oc::IOService g_ios_;
+#endif  // MPC_SOCKET_CHANNEL
 struct ABY3PartyConfig {
   ABY3PartyConfig() = default;
   explicit ABY3PartyConfig(const PartyConfig& config) {
@@ -130,13 +133,23 @@ class AlgorithmBase {
   AlgorithmBase(const PartyConfig& party_config,
                 std::shared_ptr<DatasetService> dataset_service);
   virtual ~AlgorithmBase() = default;
-
+  virtual retcode InitTaskConfig(rpc::Task& task) {
+    task_config_.CopyFrom(task);
+    return retcode::SUCCESS;
+  }
   virtual int loadParams(primihub::rpc::Task &task) = 0;
   virtual int loadDataset() = 0;
   virtual int initPartyComm();
   virtual int initPartyComm(const std::vector<ph_link::Channel>& channels);
   virtual retcode InitEngine() {return retcode::SUCCESS;}   // to be pure virtual
   virtual int execute() = 0;
+  virtual retcode execute(const eMatrix<double>& input_data_info,
+                          const std::vector<std::string>& col_names,
+                          std::vector<double>* result) {
+    LOG(WARNING) << "need rewrite this method";
+    return retcode::FAIL;
+  }
+
   virtual int finishPartyComm();
   virtual int saveModel() = 0;
 
@@ -162,6 +175,9 @@ class AlgorithmBase {
   ph_link::Channel& mPrev() {return comm_pkg_->mPrev;}
   aby3::CommPkg* CommPkgPtr() {return comm_pkg_.get();}
   retcode ExtractProxyNode(const rpc::Task& task_config, Node* proxy_node);
+  retcode ExtractProxyNode(const rpc::Task& task_config) {
+    return ExtractProxyNode(task_config, &proxy_node_);
+  }
 
  protected:
   std::shared_ptr<DatasetService> dataset_service_;
@@ -184,6 +200,7 @@ class AlgorithmBase {
   // oc::IOService ios_;
   ABY3PartyConfig party_config_;
   Node proxy_node_;
+  rpc::Task task_config_;
 };
 }  // namespace primihub
 

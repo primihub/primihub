@@ -18,12 +18,13 @@ namespace primihub {
 #define TO_UCHAR(ptr) reinterpret_cast<unsigned char*>(ptr)
 
 [[maybe_unused]] static uint16_t ABY3_TOTAL_PARTY_NUM = 3;
-[[maybe_unused]] static uint64_t LIMITED_PACKAGE_SIZE = 1 << 21;  // 4M
+[[maybe_unused]] static uint64_t LIMITED_PACKAGE_SIZE = 3 * 1024 * 1024;  // 4M
 // macro defination
 [[maybe_unused]] static const char* ROLE_CLIENT = "CLIENT";
 [[maybe_unused]] static const char* ROLE_SCHEDULER = "SCHEDULER";
 [[maybe_unused]] static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
 [[maybe_unused]] static const char* PROXY_NODE = "PROXY_NODE";
+[[maybe_unused]] static const char* AUX_COMPUTE_NODE = "AUXILIARY_COMPUTE_NODE";
 [[maybe_unused]] static const char* PARTY_CLIENT = "CLIENT";
 [[maybe_unused]] static const char* PARTY_SERVER = "SERVER";
 [[maybe_unused]] static const char* PARTY_TEE_COMPUTE = "TEE_COMPUTE";
@@ -60,6 +61,13 @@ enum class Visibility {
   PRIVATE = 1,
 };
 
+struct TaskInfo {
+  std::string job_id;
+  std::string task_id;
+  std::string request_id;
+  std::string sub_task_id;
+};
+
 class RoleValidation {
 public:
   static bool IsClient(const std::string& party_name) {
@@ -72,6 +80,9 @@ public:
 
   static bool IsTeeCompute(const std::string& party_name) {
     return party_name == PARTY_TEE_COMPUTE;
+  }
+  static bool IsAuxiliaryCompute(const std::string& party_name) {
+    return party_name == AUX_COMPUTE_NODE;
   }
 };
 

@@ -129,13 +129,14 @@ message Node {
   bool use_tls = 5;
   bytes role = 6;
   repeated VirtualMachine vm = 7;
-  int32 rank = 8;     // to identify if node has same role
+  int32 party_id = 8;     // to identify if node has same role
 }
 
 message TaskContext {
   string task_id = 1;
   string job_id = 2;
   string request_id = 3;
+  string sub_task_id = 4;
 }
 
 message StringArray {
@@ -145,6 +146,31 @@ message StringArray {
 message Dataset {
   map<string, string> data = 1;
   bool dataset_detail = 2;
+}
+
+message Algorithm {
+  enum Type {
+    Arithmetic = 0;
+    Statistics = 1;
+  }
+  enum StatisticsOpType {
+    MAX = 0;
+    MIN = 1;
+    AVG = 2;
+    SUM = 3;
+  }
+  enum ArithmeticOpType {
+    ADD = 0;
+    SUB = 1;
+    MUL = 2;
+    DIV = 3;
+    CMP = 4;
+  }
+  Type function_type = 1;
+  oneof oneof_value {
+    StatisticsOpType statistics_op_type = 2;
+    ArithmeticOpType arithmetic_op_type = 3;
+  }
 }
 
 message Task {
@@ -160,6 +186,7 @@ message Task {
   map<string, Dataset> party_datasets = 13;         // key: party, value: party related datasets
   map<string, Node> party_access_info = 14;         // key: party, value: Party Access info
   map<string, Node> auxiliary_server = 15;          // key: server name, value: server Access info
+  Algorithm algorithm = 16;
 }
 
 message Empty {

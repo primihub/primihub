@@ -40,6 +40,9 @@ class MPCStatisticsExecutor : public AlgorithmBase {
   int loadParams(primihub::rpc::Task &task) override;
   int loadDataset() override;
   int execute() override;
+  retcode execute(const eMatrix<double>& input_data_info,
+                  const std::vector<std::string>& col_names,
+                  std::vector<double>* result) override;
   retcode InitEngine() override;
   int saveModel() override;
 
@@ -65,7 +68,7 @@ class MPCStatisticsExecutor : public AlgorithmBase {
   std::string statistics_type_;
   std::map<std::string, ColumnDtype> col_type_;
 
-  MPCStatisticsType type_;
+  MPCStatisticsType type_{MPCStatisticsType::UNKNOWN};
   std::unique_ptr<MPCStatisticsOperator> executor_;
 };
 }  // namespace primihub

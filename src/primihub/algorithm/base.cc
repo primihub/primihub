@@ -21,7 +21,9 @@
 #include "src/primihub/node/server_config.h"
 
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 oc::IOService g_ios_;
+#endif  // MPC_SOCKET_CHANNEL
 AlgorithmBase::AlgorithmBase(const PartyConfig& config,
                              std::shared_ptr<DatasetService> dataset_service)
                              : dataset_service_(std::move(dataset_service)) {

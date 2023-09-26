@@ -34,8 +34,11 @@ class GrpcChannel : public IChannel {
                      rpc::PushTaskReply* reply) override;
   retcode executeTask(const rpc::PushTaskRequest& request,
                       rpc::PushTaskReply* reply) override;
+  retcode StopTask(const rpc::TaskContext& request,
+                   rpc::Empty* reply) override;
   retcode killTask(const rpc::KillTaskRequest& request,
                    rpc::KillTaskResponse* reply) override;
+
   retcode updateTaskStatus(const rpc::TaskStatus& request,
                            rpc::Empty* reply) override;
   retcode fetchTaskStatus(const rpc::TaskContext& request,

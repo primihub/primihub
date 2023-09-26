@@ -54,13 +54,13 @@ class TaskBase {
 
   void setTaskInfo(const std::string& node_id, const std::string& job_id ,
                    const std::string& task_id, const std::string& request_id,
-                   const std::string& submit_client_id) {
+                   const std::string& sub_task_id) {
     job_id_ = job_id;
     task_id_ = task_id;
     request_id_ = request_id;
     node_id_ = node_id;
-    submit_client_id_ = submit_client_id;
-    task_context_.setTaskInfo(job_id, task_id, request_id);
+    sub_task_id_ = sub_task_id;
+    task_context_.setTaskInfo(job_id, task_id, request_id, sub_task_id);
   }
 
   inline std::string job_id() {
@@ -75,8 +75,8 @@ class TaskBase {
   inline std::string request_id() {
     return request_id_;
   }
-  inline std::string submit_client_id() {
-    return submit_client_id_;
+  inline std::string sub_task_id() {
+    return sub_task_id_;
   }
   inline std::string party_name() {
     return party_name_;
@@ -120,7 +120,7 @@ class TaskBase {
    std::string job_id_;
    std::string task_id_;
    std::string node_id_;
-   std::string submit_client_id_;
+   std::string sub_task_id_;
    std::string request_id_;
    std::string party_name_;
    bool is_dataset_detail_{false};

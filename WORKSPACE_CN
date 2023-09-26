@@ -435,10 +435,9 @@ git_repository(
 git_repository(
   name = "com_github_ladnir_aby3",
   # branch = "bazel_branch_sync",
-  commit = "ffe020cb1b9672a7b9abd698223bd83eefa988e9",
+  commit = "cd2a8893c85a7e99a9ef84715370c2ca1f2d7dd0",
   remote = "https://gitee.com/primihub/aby3.git",
 )
-
 
 # libote
 git_repository(
