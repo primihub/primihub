@@ -5,11 +5,7 @@ from primihub.utils.logger_util import logger
 from primihub.FL.preprocessing import StandardScaler
 
 import json
-import numpy as np
 import torch
-from primihub.FL.metrics.hfl_metrics import roc_vertical_avg,\
-                                            ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
 from .base import create_model
 
 
@@ -105,10 +101,6 @@ class Plaintext_Server:
         self.recv_input_shapes()
         self.lazy_module_init()
 
-        self.num_examples_weights = None
-        if self.task == 'classification' and self.output_dim == 1:
-            self.num_positive_examples_weights = None
-            self.num_negtive_examples_weights = None
         self.recv_params()    
 
     def recv_output_dims(self):
@@ -156,15 +148,6 @@ class Plaintext_Server:
     def recv_params(self):
         # receive other params to compute aggregated metrics
         self.num_examples_weights = self.client_channel.recv_all('num_examples')
-        
-        if self.task == 'classification' and self.output_dim == 1:
-            self.num_positive_examples_weights = \
-                self.client_channel.recv_all('num_positive_examples')
-
-            self.num_negtive_examples_weights = \
-                (np.array(self.num_examples_weights) - \
-                np.array(self.num_positive_examples_weights)).tolist()
-
         self.num_examples_weights = torch.tensor(self.num_examples_weights,
                                                  dtype=torch.float32).to(self.device)
         self.num_examples_weights_sum = self.num_examples_weights.sum()
@@ -195,7 +178,7 @@ class Plaintext_Server:
 
     def get_scalar_metrics(self, metrics_name):
         metrics_name = metrics_name.lower()
-        supported_metrics = ['loss', 'acc', 'auc', 'mse', 'mae']
+        supported_metrics = ['loss', 'acc', 'mse', 'mae']
         if metrics_name not in supported_metrics:
             error_msg = f"""Unsupported metrics {metrics_name},
                           use {supported_metrics} instead"""
@@ -208,40 +191,8 @@ class Plaintext_Server:
                         @ self.num_examples_weights \
                         / self.num_examples_weights_sum
         return float(metrics)
-    
-    def get_fpr_tpr(self):
-        client_fpr = self.client_channel.recv_all('fpr')
-        client_tpr = self.client_channel.recv_all('tpr')
-        # client_thresholds = self.client_channel.recv_all('thresholds')
-
-        # fpr & tpr
-        # roc_vertical_avg: sample = 0.1 * n
-        samples = int(0.1 * sum(self.num_examples_weights))
-        fpr,\
-        tpr = roc_vertical_avg(samples,
-                               client_fpr,
-                               client_tpr)
-        return fpr, tpr
 
     def get_metrics(self):
-        server_metrics = self.print_metrics()
-
-        if self.task == 'classification' and self.output_dim == 1:
-            fpr, tpr = self.get_fpr_tpr()
-            server_metrics["train_fpr"] = fpr
-            server_metrics["train_tpr"] = tpr
-
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            server_metrics["train_ks"] = ks
-
-            auc = auc_from_fpr_tpr(fpr, tpr)
-            server_metrics["train_auc"] = auc
-
-            logger.info(f"ks={ks}, auc={auc}")
-            
-        return server_metrics
-    
-    def print_metrics(self):
         server_metrics = {}
 
         if self.task == 'classification':
@@ -251,13 +202,7 @@ class Plaintext_Server:
             acc = self.get_scalar_metrics('acc')
             server_metrics["train_acc"] = acc
 
-            if self.output_dim == 1:
-                logger.info(f"loss={loss}, acc={acc}")
-            else:
-                auc = self.get_scalar_metrics('auc')
-                server_metrics["train_auc"] = auc
-
-                logger.info(f"loss={loss}, acc={acc}, auc={auc}")
+            logger.info(f"loss={loss}, acc={acc}")
 
         if self.task == 'regression':
             mse = self.get_scalar_metrics('mse')
@@ -269,6 +214,9 @@ class Plaintext_Server:
             logger.info(f"mse={mse}, mae={mae}")
             
         return server_metrics
+    
+    def print_metrics(self):
+        self.get_metrics()
 
 
 class DPSGD_Server(Plaintext_Server):

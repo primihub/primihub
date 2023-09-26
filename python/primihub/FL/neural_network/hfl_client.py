@@ -4,17 +4,16 @@ from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 from primihub.FL.preprocessing import StandardScaler
+from primihub.FL.metrics import regression_metrics,\
+                                classification_metrics                           
 
 import pickle
 import json
 import pandas as pd
-from sklearn import metrics
 import torch
 import torch.utils.data as data_utils
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from opacus import PrivacyEngine
-from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr
 from .base import create_model,\
                   choose_loss_fn,\
                   choose_optimizer
@@ -248,8 +247,6 @@ class Plaintext_Client:
         self.lazy_module_init()
     
         self.num_examples = x.shape[0]
-        if self.task == 'classification' and self.output_dim == 1:
-            self.num_positive_examples = y.sum()
         self.send_params()
 
     def recv_server_model(self):
@@ -292,9 +289,6 @@ class Plaintext_Client:
     def send_params(self):
         # send other params to compute aggregated metrics
         self.server_channel.send('num_examples', self.num_examples)
-        if self.task == 'classification' and self.output_dim == 1:
-            self.server_channel.send('num_positive_examples',
-                                     self.num_positive_examples)
             
     def fit(self, dataloader):
         self.model.train()
@@ -315,89 +309,123 @@ class Plaintext_Client:
         self.set_model(self.recv_server_model())
 
     def send_metrics(self, dataloader):
-        client_metrics = self.print_metrics(dataloader)
-
-        if self.task == 'classification' and self.output_dim == 1:
-            y_true = client_metrics.pop('y_true')
-            y_score = client_metrics.pop('y_score')
-            fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score,
-                                                     drop_intermediate=False)
-            self.server_channel.send("fpr", fpr)
-            self.server_channel.send("tpr", tpr)
-            # self.server_channel.send("thresholds", thresholds)
-
-            client_metrics['train_fpr'] = fpr.tolist()
-            client_metrics['train_tpr'] = tpr.tolist()
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            client_metrics['train_ks'] = ks
-
-            logger.info(f"ks={ks}")
-
-        return client_metrics
-
-    def print_metrics(self, dataloader):
         size = len(dataloader.dataset)
         self.model.eval()
-        y_true, y_score = torch.tensor([]), torch.tensor([])
-        loss, acc = 0, 0
-        mse, mae = 0, 0
+        y_true, y_pred = torch.tensor([], dtype=torch.float64),\
+                         torch.tensor([], dtype=torch.float64)
+        loss = 0
 
         with torch.no_grad():
             for x, y in dataloader:
                 x, y = x.to(self.device), y.to(self.device)
                 pred = self.model(x)
 
+                y_true = torch.cat((y_true, y.cpu()))
+                y_pred = torch.cat((y_pred, pred.cpu()))
+
                 if self.task == 'classification':
-                    y_true = torch.cat((y_true, y.cpu()))
-                    y_score = torch.cat((y_score, pred.cpu()))
                     loss += self.loss_fn(pred, y).item() * len(x)
-
-                    if self.output_dim == 1:
-                        acc += ((pred > 0.).float() == y).type(torch.float).sum().item()
-                    else:
-                        acc += (pred.argmax(1) == y).type(torch.float).sum().item()
-                elif self.task == 'regression':
-                    mae += F.l1_loss(pred, y).cpu() * len(x)
-                    mse += F.mse_loss(pred, y).cpu() * len(x)
-
-        client_metrics = {}
 
         if self.task == 'classification':
             loss /= size
-            client_metrics['train_loss'] = loss
+            logger.info(f"loss: {loss}")
             self.server_channel.send("loss", loss)
 
-            acc /= size
-            client_metrics['train_acc'] = loss
-            self.server_channel.send("acc", acc)
-
             if self.output_dim == 1:
-                y_score = torch.sigmoid(y_score)
-                auc = metrics.roc_auc_score(y_true, y_score)
-                client_metrics['train_auc'] = auc
-                client_metrics['y_true'] = y_true
-                client_metrics['y_score'] = y_score
+                y_score = torch.sigmoid(y_pred)
+                metrics = classification_metrics(
+                    y_true,
+                    y_score,
+                    multiclass=False,
+                    metircs_name=["acc",
+                                  "f1",
+                                  "precision",
+                                  "recall",
+                                  "auc",
+                                  "roc",
+                                  "ks",],
+                )
             else:
-                y_score = torch.softmax(y_score, dim=1)
-                # one-vs-rest
-                auc = metrics.roc_auc_score(y_true, y_score, multi_class='ovr')
-                client_metrics['train_auc'] = auc
-                self.server_channel.send("auc", auc)
-            
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
+                y_score = torch.softmax(y_pred, dim=1)
+                metrics = classification_metrics(
+                    y_true,
+                    y_score,
+                    multiclass=True,
+                    metircs_name=["acc",
+                                  "f1",
+                                  "precision",
+                                  "recall",
+                                  "auc",],
+                )
+            self.server_channel.send("acc", metrics["acc"])
 
         elif self.task == 'regression':
-            mse /= size
-            client_metrics['train_mse'] = float(mse)
-            self.server_channel.send("mse", mse)
+            metrics = regression_metrics(
+                y_true,
+                y_pred,
+                metircs_name=["ev",
+                              "maxe",
+                              "mae",
+                              "mse",
+                              "rmse",
+                              "medae",
+                              "mape",
+                              "r2",],
+            )
+            self.server_channel.send("mse", metrics["mse"])
+            self.server_channel.send("mae", metrics["mae"])
 
-            mae /= size
-            client_metrics['train_mae'] = float(mae)
-            self.server_channel.send("mae", mae)
+        return metrics
 
-            logger.info(f"mse={mse}, mae={mae}")
+    def print_metrics(self, dataloader):
+        size = len(dataloader.dataset)
+        self.model.eval()
+        y_true, y_pred = torch.tensor([]), torch.tensor([])
+        loss = 0
 
-        return client_metrics
+        with torch.no_grad():
+            for x, y in dataloader:
+                x, y = x.to(self.device), y.to(self.device)
+                pred = self.model(x)
+
+                y_true = torch.cat((y_true, y.cpu()))
+                y_pred = torch.cat((y_pred, pred.cpu()))
+
+                if self.task == 'classification':
+                    loss += self.loss_fn(pred, y).item() * len(x)
+
+        if self.task == 'classification':
+            loss /= size
+            logger.info(f"loss: {loss}")
+            self.server_channel.send("loss", loss)
+
+            if self.output_dim == 1:
+                y_score = torch.sigmoid(y_pred)
+                metrics = classification_metrics(
+                    y_true,
+                    y_score,
+                    multiclass=False,
+                    metircs_name=["acc",],
+                )
+            else:
+                y_score = torch.softmax(y_pred, dim=1)
+                metrics = classification_metrics(
+                    y_true,
+                    y_score,
+                    multiclass=True,
+                    metircs_name=["acc",],
+                )
+            self.server_channel.send("acc", metrics["acc"])
+
+        elif self.task == 'regression':
+            metrics = regression_metrics(
+                y_true,
+                y_pred,
+                metircs_name=["mae",
+                              "mse",],
+            )
+            self.server_channel.send("mse", metrics["mse"])
+            self.server_channel.send("mae", metrics["mae"])
 
 
 class DPSGD_Client(Plaintext_Client):
@@ -441,4 +469,3 @@ class DPSGD_Client(Plaintext_Client):
         if delta >= 1. / self.num_examples:
             logger.error(f"delta {delta} should be set less than 1 / {self.num_train_examples}")
         return self.privacy_engine.get_epsilon(delta)
-    

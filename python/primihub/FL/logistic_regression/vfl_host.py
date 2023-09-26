@@ -4,14 +4,12 @@ from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.ckks import CKKS
+from primihub.FL.metrics import classification_metrics
 
 import pickle
 import json
 import pandas as pd
 import numpy as np
-from sklearn import metrics
-from primihub.FL.metrics.hfl_metrics import ks_from_fpr_tpr,\
-                                            auc_from_fpr_tpr
 from sklearn.preprocessing import StandardScaler
 
 from .vfl_base import LogisticRegression_Host_Plaintext,\
@@ -207,6 +205,11 @@ class Plaintext_Host:
             return self.model.compute_regular_loss(sum(guest_regular_loss))
         else:
             return 0.
+    
+    def compute_loss(self, y, z):
+        regular_loss = self.compute_regular_loss()
+        loss = self.model.loss(y, z, regular_loss)
+        logger.info(f"loss: {loss}")
         
     def train(self, x, y):
         z = self.compute_z(x)
@@ -218,45 +221,48 @@ class Plaintext_Host:
 
     def compute_metrics(self, x, y):
         z = self.compute_z(x)
+        self.compute_loss(y, z)
 
-        regular_loss = self.compute_regular_loss()
-        loss = self.model.loss(y, z, regular_loss)
-
-        y_hat = self.model.predict_prob(z)
-        if self.model.multiclass:
-            y_pred = np.argmax(y_hat, axis=1)
-        else:
-            y_pred = np.array(y_hat > 0.5, dtype='int')
-        
-        acc = metrics.accuracy_score(y, y_pred)
-
-        if self.model.multiclass:
-            # one-vs-rest
-            auc = metrics.roc_auc_score(y, y_hat, multi_class='ovr')
-
-            logger.info(f"loss={loss}, acc={acc}, auc={auc}")
-            return {
-                'train_loss': loss,
-                'train_acc': acc,
-                'train_auc': auc
-                }
-        else:
-            fpr, tpr, thresholds = metrics.roc_curve(y, y_hat)
-            ks = ks_from_fpr_tpr(fpr, tpr)
-            auc = auc_from_fpr_tpr(fpr, tpr)
-
-            logger.info(f"loss={loss}, acc={acc}, ks={ks}, auc={auc}")
-            return {
-                'train_loss': loss,
-                'train_acc': acc,
-                'train_fpr': fpr.tolist(),
-                'train_tpr': tpr.tolist(),
-                'train_ks': ks,
-                'train_auc': auc
-                }
+        y_score = self.model.predict_prob(z)
+        classification_metrics(
+            y,
+            y_score,
+            multiclass=self.model.multiclass,
+            metircs_name=["acc",],
+        )
     
     def compute_final_metrics(self, x, y):
-        return self.compute_metrics(x, y)
+        z = self.compute_z(x)
+        self.compute_loss(y, z)
+
+        y_score = self.model.predict_prob(z)
+        if self.model.multiclass:
+            metrics = classification_metrics(
+                y,
+                y_score,
+                multiclass=self.model.multiclass,
+                prefix="train_",
+                metircs_name=["acc",
+                              "f1",
+                              "precision",
+                              "recall",
+                              "auc",],
+            )
+        else:
+            metrics = classification_metrics(
+                y,
+                y_score,
+                multiclass=self.model.multiclass,
+                prefix="train_",
+                metircs_name=["acc",
+                              "f1",
+                              "precision",
+                              "recall",
+                              "auc",
+                              "roc",
+                              "ks",],
+            )
+        return metrics
 
 
 class CKKS_Host(Plaintext_Host, CKKS):
@@ -361,6 +367,3 @@ class CKKS_Host(Plaintext_Host, CKKS):
         loss = self.model.loss(y, z, regular_loss)
         self.coordinator_channel.send('loss', loss.serialize())
         logger.info('View metrics at coordinator while using CKKS')
-    
-    def compute_final_metrics(self, x, y):
-        return super().compute_metrics(x, y)
