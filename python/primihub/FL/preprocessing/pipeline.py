@@ -135,10 +135,13 @@ class Pipeline(BaseModel):
                     column = list(set(chain.from_iterable(client_column)))
                     channel.send_all('column', column)
 
-            if column is not None:
-                if isinstance(column, pd.Index):
-                    column = column.tolist()
+            if isinstance(column, pd.Index):
+                column = column.tolist()
+            if column:
                 logger.info(f"column: {column}, # {len(column)}")
+            else:
+                logger.info(f"column is empty, {module_name} is skipped")
+                continue
 
             module = select_module(module_name, params, FL_type, role, channel)
 
