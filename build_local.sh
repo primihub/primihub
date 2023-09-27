@@ -15,7 +15,7 @@ fi
 
 bash pre_build.sh
 
-make mysql=y
+make mysql=y tee=y
 
 if [ $? -ne 0 ]; then
     echo "Build failed!!!"
@@ -33,6 +33,8 @@ tar zcf bazel-bin.tar.gz bazel-bin/cli \
         bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
         bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
         bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
+        bazel-bin/external/tee_engine/sgx/engine \
+        bazel-bin/external/tee_engine/sgx/ra \
         python \
         config \
         example \
