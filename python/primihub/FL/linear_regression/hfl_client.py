@@ -218,7 +218,6 @@ class Plaintext_Client:
                           "mse",
                           "rmse",
                           "medae",
-                          "mape",
                           "r2",],
         )
 

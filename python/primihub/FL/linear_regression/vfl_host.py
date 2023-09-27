@@ -215,7 +215,6 @@ class Plaintext_Host:
                           "mse",
                           "rmse",
                           "medae",
-                          "mape",
                           "r2",],
         )
         return metrics
