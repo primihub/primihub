@@ -337,6 +337,7 @@ class Plaintext_Client:
                     y_true,
                     y_score,
                     multiclass=False,
+                    prefix="train_",
                     metircs_name=["acc",
                                   "f1",
                                   "precision",
@@ -351,6 +352,7 @@ class Plaintext_Client:
                     y_true,
                     y_score,
                     multiclass=True,
+                    prefix="train_",
                     metircs_name=["acc",
                                   "f1",
                                   "precision",
@@ -363,6 +365,7 @@ class Plaintext_Client:
             metrics = regression_metrics(
                 y_true,
                 y_pred,
+                prefix="train_",
                 metircs_name=["ev",
                               "maxe",
                               "mae",
