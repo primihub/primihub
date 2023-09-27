@@ -52,6 +52,8 @@ def classification_metrics(y_true,
             metrics[prefix_name] = roc_auc_score(y_true, y_score, multi_class="ovr")
         elif name == "roc" and not multiclass:
             fpr, tpr, thresholds = roc_curve(y_true, y_score)
+            # thresholds[0] is np.inf, but is not a valid JSON value
+            thresholds[0] = thresholds[1] + 1.
             metrics[prefix + "fpr"] = fpr.tolist()
             metrics[prefix + "tpr"] = tpr.tolist()
             metrics[prefix + "thresholds"] = thresholds.tolist()
