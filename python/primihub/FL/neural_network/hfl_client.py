@@ -337,6 +337,7 @@ class Plaintext_Client:
                     y_true,
                     y_score,
                     multiclass=False,
+                    prefix="train_",
                     metircs_name=["acc",
                                   "f1",
                                   "precision",
@@ -351,18 +352,20 @@ class Plaintext_Client:
                     y_true,
                     y_score,
                     multiclass=True,
+                    prefix="train_",
                     metircs_name=["acc",
                                   "f1",
                                   "precision",
                                   "recall",
                                   "auc",],
                 )
-            self.server_channel.send("acc", metrics["acc"])
+            self.server_channel.send("acc", metrics["train_acc"])
 
         elif self.task == 'regression':
             metrics = regression_metrics(
                 y_true,
                 y_pred,
+                prefix="train_",
                 metircs_name=["ev",
                               "maxe",
                               "mae",
@@ -372,8 +375,8 @@ class Plaintext_Client:
                               "mape",
                               "r2",],
             )
-            self.server_channel.send("mse", metrics["mse"])
-            self.server_channel.send("mae", metrics["mae"])
+            self.server_channel.send("mse", metrics["train_mse"])
+            self.server_channel.send("mae", metrics["train_mae"])
 
         return metrics
 
