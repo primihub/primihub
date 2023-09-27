@@ -359,7 +359,7 @@ class Plaintext_Client:
                                   "recall",
                                   "auc",],
                 )
-            self.server_channel.send("acc", metrics["acc"])
+            self.server_channel.send("acc", metrics["train_acc"])
 
         elif self.task == 'regression':
             metrics = regression_metrics(
@@ -375,8 +375,8 @@ class Plaintext_Client:
                               "mape",
                               "r2",],
             )
-            self.server_channel.send("mse", metrics["mse"])
-            self.server_channel.send("mae", metrics["mae"])
+            self.server_channel.send("mse", metrics["train_mse"])
+            self.server_channel.send("mae", metrics["train_mae"])
 
         return metrics
 
