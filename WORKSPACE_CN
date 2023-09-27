@@ -616,10 +616,11 @@ http_archive(
   ]
 )
 
-git_repository(
+local_repository(
   name = "tee_engine",
-  commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
-  remote = "https://github.com/primihub/primihub_tee.git",
+  path = "/data/zjn/primihub/primihub_tee",
+  #commit = "a3c617083face2e0cac7489cc713e1e03e63b11c",
+  #remote = "https://github.com/primihub/primihub_tee.git",
 )
 
 http_archive(
