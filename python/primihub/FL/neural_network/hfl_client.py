@@ -372,7 +372,6 @@ class Plaintext_Client:
                               "mse",
                               "rmse",
                               "medae",
-                              "mape",
                               "r2",],
             )
             self.server_channel.send("mse", metrics["train_mse"])
