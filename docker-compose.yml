@@ -9,6 +9,10 @@ services:
     volumes:
       # - ./config:/app/config
       - ./data:/app/data
+    # enable sgx
+    # devices:
+    #   - /dev/sgx/enclave
+    #   - /dev/sgx/provision
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -27,6 +31,9 @@ services:
     volumes:
       # - ./config:/app/config
       - ./data:/app/data
+    # devices:
+    #   - /dev/sgx/enclave
+    #   - /dev/sgx/provision
     entrypoint:
       - "/bin/bash"
       - "-c"
@@ -44,6 +51,9 @@ services:
     volumes:
       # - ./config:/app/config
       - ./data:/app/data
+    # devices:
+    #   - /dev/sgx/enclave
+    #   - /dev/sgx/provision
     entrypoint:
       - "/bin/bash"
       - "-c"

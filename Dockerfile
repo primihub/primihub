@@ -54,6 +54,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install python3 and GCC openmp (Depends with cryptFlow2 library)
 RUN apt-get update \
   && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata libmysqlclient-dev \
+  && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
