@@ -32,7 +32,7 @@ class MaxAbsScaler(PreprocessBase):
             )
 
             self.module.n_samples_seen_ = X.shape[0]
-            max_abs = max_client(np.abs(X), self.channel, ignore_nan=True)
+            max_abs = max_client(np.abs(X), self.channel)
 
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
@@ -75,7 +75,7 @@ class MinMaxScaler(PreprocessBase):
             )
 
             self.module.n_samples_seen_ = X.shape[0]
-            data_min, data_max = min_max_client(X, self.channel, ignore_nan=True)
+            data_min, data_max = min_max_client(X, self.channel)
             
         elif self.role == 'server':
             self.module.n_samples_seen_ = None

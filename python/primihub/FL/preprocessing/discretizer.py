@@ -79,7 +79,7 @@ class KBinsDiscretizer(PreprocessBase):
                 data_min, data_max = min_max_client(X, self.channel, ignore_nan=False)
 
             elif self.role == 'server':
-                data_min, data_max = min_max_server(self.channel)
+                data_min, data_max = min_max_server(self.channel, ignore_nan=False)
 
                 n_features = data_max.shape[0]
                 n_bins = self.module._validate_n_bins(n_features)

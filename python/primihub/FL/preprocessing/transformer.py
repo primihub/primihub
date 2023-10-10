@@ -268,7 +268,7 @@ class SplineTransformer(PreprocessBase):
             if self.role == 'client':
                 x_min, x_max = min_max_client(X, self.channel, ignore_nan=False)
             elif self.role == 'server':
-                x_min, x_max = min_max_server(self.channel)
+                x_min, x_max = min_max_server(self.channel, ignore_nan=False)
 
             knots = np.linspace(
                 start=x_min,
