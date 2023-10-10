@@ -6,6 +6,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state
 from .base import PreprocessBase
 from .util import safe_indexing
+from primihub.FL.sketch import min_max_client, min_max_server
 from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
 
 
@@ -75,24 +76,13 @@ class KBinsDiscretizer(PreprocessBase):
 
         if self.module.strategy == "uniform":
             if self.role == 'client':
-                data_max = np.max(X, axis=0)
-                data_min = np.min(X, axis=0)
-                self.channel.send('data_max', data_max)
-                self.channel.send('data_min', data_min)
-                data_max = self.channel.recv('data_max')
-                data_min = self.channel.recv('data_min')
+                data_min, data_max = min_max_client(X, self.channel, ignore_nan=False)
 
             elif self.role == 'server':
-                data_max = self.channel.recv_all('data_max')
-                data_min = self.channel.recv_all('data_min')
+                data_min, data_max = min_max_server(self.channel)
 
-                n_features = data_max[0].shape[0]
+                n_features = data_max.shape[0]
                 n_bins = self.module._validate_n_bins(n_features)
-
-                data_max = np.max(data_max, axis=0)
-                data_min = np.min(data_min, axis=0)
-                self.channel.send_all('data_max', data_max)
-                self.channel.send_all('data_min', data_min)
 
             bin_edges = np.zeros(n_features, dtype=object)
             for jj in range(n_features):

@@ -7,6 +7,7 @@ from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
 from sklearn.utils import check_random_state, check_array
 from .base import PreprocessBase
 from .util import safe_indexing
+from primihub.FL.sketch import min_max_client, min_max_server
 from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
 
 
@@ -265,19 +266,9 @@ class SplineTransformer(PreprocessBase):
         else:
             # knots == 'uniform':
             if self.role == 'client':
-                x_min = np.min(X, axis=0)
-                x_max = np.max(X, axis=0)
-                self.channel.send('x_min', x_min)
-                self.channel.send('x_max', x_max)
-                x_min = self.channel.recv('x_min')
-                x_max = self.channel.recv('x_max')
+                x_min, x_max = min_max_client(X, self.channel, ignore_nan=False)
             elif self.role == 'server':
-                x_min = self.channel.recv_all('x_min')
-                x_max = self.channel.recv_all('x_max')
-                x_min = np.max(x_min, axis=0)
-                x_max = np.min(x_max, axis=0)
-                self.channel.send_all('x_min', x_min)
-                self.channel.send_all('x_max', x_max)
+                x_min, x_max = min_max_server(self.channel)
 
             knots = np.linspace(
                 start=x_min,

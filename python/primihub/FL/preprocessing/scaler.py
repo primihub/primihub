@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
 from sklearn.utils import check_array
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
+from primihub.FL.sketch import max_client, max_server, min_max_client, min_max_server
 from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
 
 
@@ -31,15 +32,11 @@ class MaxAbsScaler(PreprocessBase):
             )
 
             self.module.n_samples_seen_ = X.shape[0]
-            max_abs = np.nanmax(np.abs(X), axis=0)
-            self.channel.send('max_abs', max_abs)
-            max_abs = self.channel.recv('max_abs')
+            max_abs = max_client(np.abs(X), self.channel, ignore_nan=True)
 
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
-            max_abs = self.channel.recv_all('max_abs')
-            max_abs = np.max(max_abs, axis=0)
-            self.channel.send_all('max_abs', max_abs)
+            max_abs = max_server(self.channel)
 
         self.module.max_abs_ = max_abs
         self.module.scale_ = handle_zeros_in_scale(max_abs)
@@ -78,21 +75,11 @@ class MinMaxScaler(PreprocessBase):
             )
 
             self.module.n_samples_seen_ = X.shape[0]
-            data_max = np.nanmax(X, axis=0)
-            data_min = np.nanmin(X, axis=0)
-            self.channel.send('data_max', data_max)
-            self.channel.send('data_min', data_min)
-            data_max = self.channel.recv('data_max')
-            data_min = self.channel.recv('data_min')
+            data_min, data_max = min_max_client(X, self.channel, ignore_nan=True)
             
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
-            data_max = self.channel.recv_all('data_max')
-            data_min = self.channel.recv_all('data_min')
-            data_max = np.max(data_max, axis=0)
-            data_min = np.min(data_min, axis=0)
-            self.channel.send_all('data_max', data_max)
-            self.channel.send_all('data_min', data_min)
+            data_min, data_max = min_max_server(self.channel)
 
         self.module.data_max_ = data_max
         self.module.data_min_ = data_min
