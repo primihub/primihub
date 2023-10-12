@@ -20,7 +20,9 @@ def col_norm(
     elif role == "server":
         return col_norm_server(norm, ignore_nan, channel)
     elif role in ["guest", "host"]:
-        return col_norm_client(X, norm, ignore_nan, send_server=False, recv_server=False)
+        return col_norm_client(
+            X, norm, ignore_nan, send_server=False, recv_server=False
+        )
 
 
 def row_norm(role: str, X, norm: str = "l2", ignore_nan: bool = True, channel=None):

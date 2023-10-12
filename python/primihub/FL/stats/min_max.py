@@ -123,7 +123,9 @@ def col_min_server(
     if recv_client:
         client_col_min = channel.recv_all("client_col_min")
         client_col_min = check_array(
-            client_col_min, dtype=FLOAT_DTYPES, force_all_finite="allow-nan" if ignore_nan else True
+            client_col_min,
+            dtype=FLOAT_DTYPES,
+            force_all_finite="allow-nan" if ignore_nan else True,
         )
 
         if ignore_nan:
@@ -264,7 +266,7 @@ def row_min_guest(
     channel=None,
     send_host: bool = True,
     recv_host: bool = True,
-):  
+):
     check_channel(channel, send_host, recv_host)
     X = check_array(
         X, dtype=FLOAT_DTYPES, force_all_finite="allow-nan" if ignore_nan else True
@@ -447,7 +449,7 @@ def row_min_max_host(
     if recv_guest:
         guest_row_min_max = channel.recv("guest_row_min_max")
         guest_row_min_max.append([host_row_min, host_row_max])
-        
+
         # 0: guest_host_row_min, 1: guest_host_row_max
         if ignore_nan:
             global_row_min = np.nanmin(guest_row_min_max[:, 0, :], axis=0)

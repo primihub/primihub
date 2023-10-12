@@ -133,7 +133,7 @@ def row_sum_host(
     if recv_guest:
         guest_row_sum = channel.recv_all("guest_row_sum")
         guest_row_sum.append(host_row_sum)
-        
+
         if ignore_nan:
             global_row_sum = np.nansum(guest_row_sum, axis=0)
         else:
