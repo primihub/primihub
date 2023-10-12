@@ -1,0 +1,44 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Alice",
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "FL_Stats",
+            "FL_type": "H",
+            "task_name": "HFL_col_min",
+            "selected_column": [
+                "MinTemp",
+                "MaxTemp",
+                "RISK_MM"
+            ],
+            "id": "id",
+            "stats_module": {
+                "col_min": {
+                    "ignore_nan": true
+                }
+            }
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_hfl_train_client1",
+                "stats_path": "data/result/Bob_stats.json"
+            },
+            "Charlie": {
+                "data_set": "preprocess_hfl_train_client2",
+                "stats_path": "data/result/Charlie_stats.json"
+            },
+            "Alice": {
+                "data_set": "fl_fake_data",
+                "stats_path": "data/result/Alice_stats.json"
+            }
+        }
+    }
+}
