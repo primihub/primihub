@@ -55,8 +55,7 @@ class QuantileTransformer(PreprocessBase):
                 )
 
         elif self.role == 'server':
-            n_samples = self.channel.recv_all('n_samples')
-            n_samples = sum(n_samples)
+            n_samples = sum(self.channel.recv_all('n_samples'))
 
             if self.module.n_quantiles > n_samples:
                 warnings.warn(
@@ -83,12 +82,11 @@ class QuantileTransformer(PreprocessBase):
             )
 
         if self.role == 'client':
-            do_subsample = self.channel.recv('do_subsample')
-            if do_subsample:
-                subsample_ratio = self.channel.recv('subsample_ratio')
-                subsample = ceil(subsample_ratio * n_samples)
+            subsample_ratio = self.channel.recv('subsample_ratio')
+            if subsample_ratio is not None:
+                subsample_size = ceil(subsample_ratio * n_samples)
                 rng = check_random_state(self.module.random_state)
-                subsample_idx = rng.choice(n_samples, size=subsample, replace=False)
+                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
                 X = safe_indexing(X, subsample_idx)
 
             send_local_kll_sketch(X, self.channel)
@@ -97,14 +95,10 @@ class QuantileTransformer(PreprocessBase):
         elif self.role == 'server':
             subsample = self.module.subsample
             if n_samples > subsample:
-                do_subsample = True
-            else:
-                do_subsample = False
-            self.channel.send_all('do_subsample', do_subsample)
-
-            if do_subsample:
                 subsample_ratio = subsample / n_samples
-                self.channel.send_all('subsample_ratio', subsample_ratio)
+            else:
+                subsample_ratio = None
+            self.channel.send_all('subsample_ratio', subsample_ratio)
 
             kll = merge_client_kll_sketch(self.channel)
             quantiles = kll.get_quantiles(self.module.references_)

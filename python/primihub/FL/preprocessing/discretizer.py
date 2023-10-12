@@ -39,32 +39,22 @@ class KBinsDiscretizer(PreprocessBase):
             n_samples, n_features = X.shape
             n_bins = self.module._validate_n_bins(n_features)
 
-            subsample = self.module.subsample
-            if subsample is not None:
-                self.channel.send('n_samples', n_samples)
-                do_subsample = self.channel.recv('do_subsample')
-
-                if do_subsample:
-                    subsample_ratio = self.channel.recv('subsample_ratio')
-                    subsample = ceil(subsample_ratio * n_samples)
-                    rng = check_random_state(self.module.random_state)
-                    subsample_idx = rng.choice(n_samples, size=subsample, replace=False)
-                    X = safe_indexing(X, subsample_idx)
+            self.channel.send('n_samples', n_samples)
+            subsample_ratio = self.channel.recv('subsample_ratio')
+            if subsample_ratio is not None:
+                subsample_size = ceil(subsample_ratio * n_samples)
+                rng = check_random_state(self.module.random_state)
+                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
+                X = safe_indexing(X, subsample_idx)
 
         elif self.role == 'server':
             subsample = self.module.subsample
-            if subsample is not None:
-                n_samples = self.channel.recv_all('n_samples')
-                n_samples = sum(n_samples)
-                if n_samples > subsample:
-                    do_subsample = True
-                else:
-                    do_subsample = False
-                self.channel.send_all('do_subsample', do_subsample)
-
-                if do_subsample:
-                    subsample_ratio = subsample / n_samples
-                    self.channel.send_all('subsample_ratio', subsample_ratio)
+            n_samples = sum(self.channel.recv_all('n_samples'))
+            if n_samples > subsample:
+                subsample_ratio = subsample / n_samples
+            else:
+                subsample_ratio = None
+            self.channel.send_all('subsample_ratio', subsample_ratio)
 
         if self.module.dtype in (np.float64, np.float32):
             output_dtype = self.module.dtype
