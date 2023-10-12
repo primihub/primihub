@@ -3,6 +3,7 @@ from primihub.FL.utils.base import BaseModel
 from primihub.FL.utils.file import check_directory_exist
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
+from primihub.dataset.dataset import register_dataset
 from primihub.FL.preprocessing import *
 
 import pickle
@@ -134,10 +135,13 @@ class Pipeline(BaseModel):
                     column = list(set(chain.from_iterable(client_column)))
                     channel.send_all('column', column)
 
-            if column is not None:
-                if isinstance(column, pd.Index):
-                    column = column.tolist()
+            if isinstance(column, pd.Index):
+                column = column.tolist()
+            if column:
                 logger.info(f"column: {column}, # {len(column)}")
+            else:
+                logger.info(f"column is empty, {module_name} is skipped")
+                continue
 
             module = select_module(module_name, params, FL_type, role, channel)
 
@@ -160,13 +164,18 @@ class Pipeline(BaseModel):
                             columns=col_name
                         )
                     )
+                elif module_name == "TargetEncoder":
+                    data[column] = module.fit_transform(data[column], data[label])
                 else:
                     data[column] = module.fit_transform(data[column])
                 preprocess.append((module_name,
                                    module.module,
                                    column))
             else:
-                module.fit()
+                if module_name == "TargetEncoder":
+                    module.fit_transform()
+                else:
+                    module.fit()
             
         if role != 'server':
             # save preprocess module & columns
@@ -185,6 +194,14 @@ class Pipeline(BaseModel):
             check_directory_exist(preprocess_dataset_path)
             logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
             data.to_csv(preprocess_dataset_path, index=False)
+
+            # register preprocess dataset
+            dataset_id = self.role_params.get("preprocess_dataset_id")
+            if dataset_id:
+                node_info = self.node_info[self.role_params['self_name']]
+                use_tls = 1 if node_info.use_tls else 0
+                sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
+                register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
 
     def transform(self):
         # load preprocess module
@@ -229,24 +246,32 @@ class Pipeline(BaseModel):
         logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
         data.to_csv(preprocess_dataset_path, index=False)
 
+        # register preprocess dataset
+        dataset_id = self.role_params.get("preprocess_dataset_id")
+        if dataset_id:
+            node_info = self.node_info[self.role_params['self_name']]
+            use_tls = 1 if node_info.use_tls else 0
+            sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
+            register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
+
 
 def select_module(module_name, params, FL_type, role, channel):
     if module_name == "KBinsDiscretizer":
         module = KBinsDiscretizer(
-            n_bins=params.get('n_bins', 5),
-            encode=params.get('encode', 'onehot'),
-            strategy=params.get('strategy', 'quantile'),
-            subsample=params.get('subsample', 200000),
-            random_state=params.get('random_state'),
+            n_bins=params.get("n_bins", 5),
+            encode=params.get("encode", "onehot"),
+            strategy=params.get("strategy", "quantile"),
+            subsample=params.get("subsample", 200000),
+            random_state=params.get("random_state"),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "LabelBinarizer":
         module = LabelBinarizer(
-            neg_label=params.get('neg_label', 0),
-            pos_label=params.get('pos_label', 1),
-            sparse_output=params.get('sparse_output', False),
+            neg_label=params.get("neg_label", 0),
+            pos_label=params.get("pos_label", 1),
+            sparse_output=params.get("sparse_output", False),
             FL_type=FL_type,
             role=role,
             channel=channel
@@ -259,130 +284,142 @@ def select_module(module_name, params, FL_type, role, channel):
         )
     elif module_name == "MultiLabelBinarizer":
         module = MultiLabelBinarizer(
-            classes=params.get('classes'),
-            sparse_output=params.get('sparse_output', False),
-            FL_type=FL_type,
-            role=role,
-            channel=channel
-        )
-    elif module_name == "MinMaxScaler":
-        feature_range_min = params.get('feature_range_min', 0)
-        feature_range_max = params.get('feature_range_max', 1)
-        module = MinMaxScaler(
-            feature_range=(feature_range_min, feature_range_max),
-            copy=params.get('copy', True),
-            clip=params.get('clip', False),
+            classes=params.get("classes"),
+            sparse_output=params.get("sparse_output", False),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "MaxAbsScaler":
         module = MaxAbsScaler(
-            copy=params.get('copy', True),
+            copy=params.get("copy", True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "MinMaxScaler":
+        feature_range_min = params.get("feature_range_min", 0)
+        feature_range_max = params.get("feature_range_max", 1)
+        module = MinMaxScaler(
+            feature_range=(feature_range_min, feature_range_max),
+            copy=params.get("copy", True),
+            clip=params.get("clip", False),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "Normalizer":
-        norm = params.get('norm', 'l2')
+        norm = params.get("norm", "l2")
         if isinstance(norm, str):
             norm = norm.lower()
         module = Normalizer(
             norm=norm,
-            copy=params.get('copy', True),
+            copy=params.get("copy", True),
             FL_type=FL_type,
             role=role,
             channel=channel)
     elif module_name == "OneHotEncoder":
         module = OneHotEncoder(
-            categories=params.get('categories', "auto"),
-            drop=params.get('drop'),
-            sparse_output=params.get('sparse_output', True),
-            handle_unknown=params.get('handle_unknown', "error"),
-            min_frequency=params.get('min_frequency'),
-            max_categories=params.get('max_categories'),
-            feature_name_combiner=params.get('feature_name_combiner'),
+            categories=params.get("categories", "auto"),
+            drop=params.get("drop"),
+            sparse_output=params.get("sparse_output", True),
+            handle_unknown=params.get("handle_unknown", "error"),
+            min_frequency=params.get("min_frequency"),
+            max_categories=params.get("max_categories"),
+            feature_name_combiner=params.get("feature_name_combiner"),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "OrdinalEncoder":
-        encoded_missing_value = params.get('encoded_missing_value')
+        encoded_missing_value = params.get("encoded_missing_value")
         if encoded_missing_value is None:
             encoded_missing_value = np.nan
         module = OrdinalEncoder(
-            categories=params.get('categories', "auto"),
-            handle_unknown=params.get('handle_unknown', "error"),
-            unknown_value=params.get('unknown_value'),
+            categories=params.get("categories", "auto"),
+            handle_unknown=params.get("handle_unknown", "error"),
+            unknown_value=params.get("unknown_value"),
             encoded_missing_value=encoded_missing_value,
-            min_frequency=params.get('min_frequency'),
-            max_categories=params.get('max_categories'),
-            FL_type=FL_type,
-            role=role,
-            channel=channel
-        )
-    elif module_name == "RobustScaler":
-        quantile_range_min = params.get('quantile_range_min', 25.0)
-        quantile_range_max = params.get('quantile_range_max', 75.0)
-        module = RobustScaler(
-            with_centering=params.get('with_centering', True),
-            with_scaling=params.get('with_scaling', True),
-            quantile_range=(quantile_range_min, quantile_range_max),
-            copy=params.get('copy', True),
-            unit_variance=params.get('unit_variance', False),
-            FL_type=FL_type,
-            role=role,
-            channel=channel
-        )
-    elif "SimpleImputer" in module_name:
-        missing_values = params.get('missing_values')
-        if isinstance(missing_values, str):
-            missing_values = missing_values.lower()
-            if missing_values == 'np.nan':
-                missing_values = np.nan
-            elif missing_values == 'pd.na':
-                missing_values = pd.NA
-        module = SimpleImputer(
-            missing_values=missing_values,
-            strategy=params.get('strategy', 'mean'),
-            fill_value=params.get('fill_value'),
-            copy=params.get('copy', True),
-            add_indicator=params.get('add_indicator', False),
-            keep_empty_features=params.get('keep_empty_features', False),
-            FL_type=FL_type,
-            role=role,
-            channel=channel
-        )
-    elif module_name == "StandardScaler":
-        module = StandardScaler(
-            copy=params.get('copy', True),
-            with_mean=params.get('with_mean', True),
-            with_std=params.get('with_std', True),
+            min_frequency=params.get("min_frequency"),
+            max_categories=params.get("max_categories"),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "QuantileTransformer":
         module = QuantileTransformer(
-            n_quantiles=params.get('n_quantiles', 1000),
-            output_distribution=params.get('output_distribution', "uniform"),
-            ignore_implicit_zeros=params.get('ignore_implicit_zeros', False),
-            subsample=params.get('subsample', 10000),
-            random_state=params.get('random_state'),
-            copy=params.get('copy', True),
+            n_quantiles=params.get("n_quantiles", 1000),
+            output_distribution=params.get("output_distribution", "uniform"),
+            ignore_implicit_zeros=params.get("ignore_implicit_zeros", False),
+            subsample=params.get("subsample", 10000),
+            random_state=params.get("random_state"),
+            copy=params.get("copy", True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "RobustScaler":
+        quantile_range_min = params.get("quantile_range_min", 25.0)
+        quantile_range_max = params.get("quantile_range_max", 75.0)
+        module = RobustScaler(
+            with_centering=params.get("with_centering", True),
+            with_scaling=params.get("with_scaling", True),
+            quantile_range=(quantile_range_min, quantile_range_max),
+            copy=params.get("copy", True),
+            unit_variance=params.get("unit_variance", False),
             FL_type=FL_type,
             role=role,
             channel=channel
         )
     elif module_name == "SplineTransformer":
         module = SplineTransformer(
-            n_knots=params.get('n_knots', 5),
-            degree=params.get('degree', 3),
-            knots=params.get('knots', "uniform"),
-            extrapolation=params.get('extrapolation', "constant"),
-            include_bias=params.get('include_bias', True),
-            order=params.get('order', "C"),
-            sparse_output=params.get('sparse_output', False),
+            n_knots=params.get("n_knots", 5),
+            degree=params.get("degree", 3),
+            knots=params.get("knots", "uniform"),
+            extrapolation=params.get("extrapolation", "constant"),
+            include_bias=params.get("include_bias", True),
+            order=params.get("order", "C"),
+            sparse_output=params.get("sparse_output", False),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "StandardScaler":
+        module = StandardScaler(
+            copy=params.get("copy", True),
+            with_mean=params.get("with_mean", True),
+            with_std=params.get("with_std", True),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif module_name == "TargetEncoder":
+        module = TargetEncoder(
+            categories=params.get("categories", "auto"),
+            target_type=params.get("target_type", "auto"),
+            smooth=params.get("smooth", "auto"),
+            cv=params.get("cv", 5),
+            shuffle=params.get("shuffle", True),
+            random_state=params.get("random_state"),
+            FL_type=FL_type,
+            role=role,
+            channel=channel
+        )
+    elif "SimpleImputer" in module_name:
+        missing_values = params.get("missing_values")
+        if isinstance(missing_values, str):
+            missing_values = missing_values.lower()
+            if missing_values == "np.nan":
+                missing_values = np.nan
+            elif missing_values == "pd.na":
+                missing_values = pd.NA
+        module = SimpleImputer(
+            missing_values=missing_values,
+            strategy=params.get("strategy", "mean"),
+            fill_value=params.get("fill_value"),
+            copy=params.get("copy", True),
+            add_indicator=params.get("add_indicator", False),
+            keep_empty_features=params.get("keep_empty_features", False),
             FL_type=FL_type,
             role=role,
             channel=channel

@@ -61,7 +61,9 @@ class VMNodeInterface final : public rpc::VMNode::Service {
   Status ExecuteTask(ServerContext* context,
                      const rpc::PushTaskRequest* request,
                      rpc::PushTaskReply* response) override;
-
+  Status StopTask(ServerContext* context,
+                  const rpc::TaskContext* request,
+                  rpc::Empty* response) override;
   Status KillTask(ServerContext* context,
                   const rpc::KillTaskRequest* request,
                   rpc::KillTaskResponse* response) override;

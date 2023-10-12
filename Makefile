@@ -5,6 +5,7 @@ TARGET := //:node \
           //src/primihub/cli:reg_cli \
           //src/primihub/pybind_warpper:linkcontext \
           //src/primihub/pybind_warpper:opt_paillier_c2py \
+          //src/primihub/task/pybind_wrapper:ph_secure_lib \
           //:task_main
 
 ifeq ($(mysql), y)

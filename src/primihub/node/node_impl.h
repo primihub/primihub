@@ -26,6 +26,7 @@
 #include <atomic>
 #include <tuple>
 #include <string>
+#include <queue>
 
 #include "src/primihub/common/common.h"
 #include "src/primihub/util/threadsafe_queue.h"
@@ -35,8 +36,20 @@
 #include "src/primihub/node/worker/worker.h"
 
 namespace primihub {
+enum class OperateTaskType {
+  kUnknown = 0,
+  kAdd,
+  kDel,
+  kKill,
+};
 class VMNodeImpl {
  public:
+  using task_executor_t
+      = std::tuple<std::shared_ptr<Worker>, std::future<void>>;
+  using task_executor_container_t = std::queue<task_executor_t>;
+  using task_manage_t =
+      std::tuple<std::string, task_executor_t, OperateTaskType>;
+
   explicit VMNodeImpl(const std::string& config_file,
                       std::shared_ptr<service::DatasetService> service);
   ~VMNodeImpl();
@@ -44,6 +57,7 @@ class VMNodeImpl {
                        rpc::PushTaskReply* reply);
   retcode ExecuteTask(const rpc::PushTaskRequest& task_request,
                       rpc::PushTaskReply* reply);
+  retcode StopTask(const rpc::TaskContext& request);
   retcode KillTask(const rpc::KillTaskRequest& request,
                    rpc::KillTaskResponse* response);
   retcode GetSchedulerNode(const rpc::PushTaskRequest& request,
@@ -88,6 +102,8 @@ class VMNodeImpl {
   void CleanFinishedTaskThread();
   void CleanTimeoutCachedTaskStatusThread();
   void CleanFinishedSchedulerWorkerThread();
+  void ManageTaskOperatorThread();
+  void ProcessKillTaskThread();
 
   std::shared_ptr<service::DatasetService> GetDatasetService() {
     return dataset_service_;
@@ -112,15 +128,34 @@ class VMNodeImpl {
   std::shared_ptr<Worker> CreateWorker();
   std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
 
+  void CleanDuplicateTaskIdFilter();
+  bool IsDuplicateTask(const rpc::TaskContext& task_info);
+  retcode GetAllParties(const rpc::Task& task_config,
+                        std::vector<Node>* all_party);
+
+  std::string TaskInfoToString(const rpc::TaskContext& task_info) {
+    std::string info;
+    info.append("job_id: ").append(task_info.job_id()).append(", ")
+        .append("task_id: ").append(task_info.task_id()).append(", ")
+        .append("sub_task_id: ").append(task_info.sub_task_id()).append(", ")
+        .append("request_id: ").append(task_info.request_id());
+    return info;
+  }
+  retcode ExecuteAddTaskOperation(task_manage_t&& task_detail);
+  retcode ExecuteDelTaskOperation(task_manage_t&& task_detail);
+  retcode ExecuteKillTaskOperation(task_manage_t&& task_detail);
 
  private:
-  const std::string node_id_;
+  std::string node_id_;
+  int task_id_timeout_s_{30};
+  std::unordered_map<std::string, time_t> duplicate_task_id_filter_{1000};
+  std::mutex duplicate_task_filter_mtx_;
   bool singleton_{false};
+
   // key; job_id+task_id value: tasker
-  using task_executor_t =
-      std::tuple<std::shared_ptr<Worker>, std::future<void>>;
-  std::mutex task_executor_mtx_;
-  std::map<std::string, task_executor_t> task_executor_map_;
+
+  std::shared_mutex task_executor_mtx_;
+  std::map<std::string, task_executor_container_t> task_executor_map_;
   ThreadSafeQueue<std::string> fininished_workers_;
   std::future<void> finished_worker_fut_;
   std::atomic<bool> stop_{false};
@@ -141,6 +176,13 @@ class VMNodeImpl {
   std::future<void> finished_scheduler_worker_fut_;
   int scheduler_worker_timeout_s_{SCHEDULE_WORKER_TIMEOUT_S};
   std::shared_ptr<service::DatasetService> dataset_service_{nullptr};
+  std::future<void> manage_task_worker_fut_;
+
+  ThreadSafeQueue<task_manage_t> task_manage_queue_;
+  std::atomic<bool> write_flag_{false};
+  ThreadSafeQueue<task_executor_container_t> finished_task_queue_;
+  ThreadSafeQueue<task_executor_container_t> kill_task_queue_;
+  std::future<void> kill_task_queue_fut_;
 };
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_NODE_NODE_IMPL_H_

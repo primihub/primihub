@@ -4,16 +4,17 @@
 
 namespace primihub {
 #ifndef MPC_SOCKET_CHANNEL
-retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
-                         const std::vector<std::string> &columns,
-                         const std::map<std::string, ColumnDtype> &all_type) {
-  std::shared_ptr<arrow::Table> table =
-      std::get<std::shared_ptr<arrow::Table>>(dataset->data);
+retcode MPCSumOrAvg::PlainTextDataCompute(
+    std::shared_ptr<primihub::Dataset>& dataset,
+    const std::vector<std::string>& columns,
+    const std::map<std::string, ColumnDtype>& all_type,
+    eMatrix<double>* col_sum,
+    eMatrix<double>* col_count) {
+  auto table = std::get<std::shared_ptr<arrow::Table>>(dataset->data);
 
-  LOG(INFO) << "Schema of table is:\n" << table->schema()->ToString(true);
-
-  eMatrix<double> col_sum(columns.size(), 1);
-  eMatrix<double> col_count(columns.size(), 1);
+  LOG(INFO) << "Schema of table is:" << table->schema()->ToString(true);
+  col_sum->resize(columns.size(), 1);
+  col_count->resize(columns.size(), 1);
 
   size_t col_index = 0;
   for (const auto &column : columns) {
@@ -76,8 +77,8 @@ retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
     }
 
     // Save sum and count of value in the column.
-    col_sum(col_index, 0) = sum;
-    col_count(col_index, 0) = count;
+    (*col_sum)(col_index, 0) = sum;
+    (*col_count)(col_index, 0) = count;
     col_index++;
 
     VLOG(3) << "Calculate sum and count of column " << column
@@ -86,12 +87,13 @@ retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
 
   LOG(INFO) << "Build matrix that saves sum and count of value in all columns "
                "finish, shape of matrix is "
-            << "(" << col_sum.rows() << ", " << col_sum.cols() << ").";
+            << "(" << col_sum->rows() << ", " << col_sum->cols() << ").";
+  return retcode::SUCCESS;
+}
 
-  // Secure share value sum of every column in local.
-  LOG(INFO) << "Secure share sum of all column, local party id " << party_id_
-            << ".";
-
+retcode MPCSumOrAvg::CipherTextDataCompute(const eMatrix<double>& col_sum,
+    const std::vector<std::string>& col_name,
+    const eMatrix<double>& col_count) {
   sf64Matrix<D16> sh_sums[3];
   for (uint8_t i = 0; i < 3; i++)
     sh_sums[i].resize(col_sum.rows(), col_sum.cols());
@@ -108,7 +110,7 @@ retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
             << ".";
 
   eMatrix<double> fp64_count(col_count.rows(), col_count.cols());
-  for (uint16_t j = 0; j < col_count.rows(); j++)
+  for (uint64_t j = 0; j < col_count.rows(); j++)
     fp64_count(j, 0) = col_count(j, 0);
 
   sf64Matrix<D16> sh_count[3];
@@ -175,7 +177,30 @@ retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
     for (int i = 0; i < plaintext_sum.rows(); i++)
       result(i, 0) = plaintext_sum(i, 0);
   }
+  LOG(INFO) << "Finish CipherText Data Compute ";
+  return retcode::SUCCESS;
+}
 
+retcode MPCSumOrAvg::run(std::shared_ptr<primihub::Dataset> &dataset,
+                         const std::vector<std::string> &columns,
+                         const std::map<std::string, ColumnDtype> &all_type) {
+  eMatrix<double> col_sum;
+  eMatrix<double> rows_per_column;
+  // run local plain data compute to get sum and total rows for each columns
+  auto ret = PlainTextDataCompute(dataset, columns, all_type,
+                                  &col_sum, &rows_per_column);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "PlainTextDataCompute failed";
+    return retcode::FAIL;
+  }
+  // Secure share value sum of every column in local.
+  LOG(INFO) << "Secure share sum of all column, local party id " << party_id_
+            << ".";
+  ret = CipherTextDataCompute(col_sum, columns, rows_per_column);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "CipherTextDataCompute failed";
+    return retcode::FAIL;
+  }
   LOG(INFO) << "Finish.";
   return retcode::SUCCESS;
 }
@@ -186,7 +211,9 @@ retcode MPCSumOrAvg::getResult(eMatrix<double> &col_avg) {
     LOG(WARNING) << "Wrong shape of output matrix, reshape it.";
   }
 
-  for (int i = 0; i < result.rows(); i++) col_avg(i, 0) = result(i, 0);
+  for (int i = 0; i < result.rows(); i++) {
+    col_avg(i, 0) = result(i, 0);
+  }
 
   return retcode::SUCCESS;
 }
@@ -358,35 +385,36 @@ double MPCMinOrMax::maxValueOfAllParty(double local_max) {
   max_val = mpc_op_->revealAll(sh_m);
   return max_val(0, 0);
 }
-
-retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
-                         const std::vector<std::string> &columns,
-                         const std::map<std::string, ColumnDtype> &col_dtype) {
+retcode MPCMinOrMax::PlainTextDataCompute(
+    std::shared_ptr<primihub::Dataset>& dataset,
+    const std::vector<std::string>& columns,
+    const std::map<std::string, ColumnDtype>& col_dtype,
+    eMatrix<double>* result_data,
+    eMatrix<double>* row_records) {
+//
   std::shared_ptr<arrow::Table> table =
       std::get<std::shared_ptr<arrow::Table>>(dataset->data);
   LOG(INFO) << "Schema of table is:\n" << table->schema()->ToString(true);
+  result_data->resize(columns.size(), 1);
+  row_records->resize(columns.size(), 1);
 
-  mpc_result_.resize(columns.size(), 1);
-  uint32_t col_index = 0;
-
-  for (const auto &col : columns) {
-    auto chunked_array = table->GetColumnByName(col);
+  for (size_t col_index = 0; col_index < columns.size(); col_index++) {
+    auto& col_name = columns[col_index];
+    auto chunked_array = table->GetColumnByName(col_name);
     if (chunked_array.get() == nullptr) {
-      LOG(ERROR) << "Can't get column value by column name " << col
+      LOG(ERROR) << "Can't get column value by column name " << col_name
                  << " from table.";
       LOG(ERROR) << "Schema of table is:\n" << table->schema()->ToString();
       return retcode::FAIL;
     }
-
     double col_result = 0;
     fillInitValue(col_result);
-
     // Get max or min of a column.
     for (int i = 0; i < chunked_array->num_chunks(); i++) {
-      auto iter = col_dtype.find(col);
+      auto iter = col_dtype.find(col_name);
       const ColumnDtype &col_type = iter->second;
       if (col_type == ColumnDtype::INTEGER || col_type == ColumnDtype::LONG) {
-        auto detected_type = table->schema()->GetFieldByName(col)->type();
+        auto detected_type = table->schema()->GetFieldByName(col_name)->type();
         if (detected_type->id() == arrow::Type::INT32) {
           auto array = std::static_pointer_cast<arrow::Int32Array>(
               chunked_array->chunk(i));
@@ -416,27 +444,63 @@ retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
         return retcode::FAIL;
       }
     }
-
     if (VLOG_IS_ON(3)) {
       if (type_ == MPCStatisticsType::MAX) {
-        VLOG(3) << "Max value of column " << col << " is " << col_result << ".";
+        VLOG(3) << "Max value of column " << col_name
+                << " is " << col_result << ".";
       } else {
-        VLOG(3) << "Min value of column " << col << " is " << col_result << ".";
+        VLOG(3) << "Min value of column " << col_name
+                << " is " << col_result << ".";
       }
     }
+    (*result_data)(col_index, 0) = col_result;
+  }
+  return retcode::SUCCESS;
+}
 
-    if (type_ == MPCStatisticsType::MIN) {
+retcode MPCMinOrMax::CipherTextDataCompute(const eMatrix<double>& col_data,
+    const std::vector<std::string>& col_names,
+    const eMatrix<double>& row_records) {
+  mpc_result_.resize(col_data.rows(), 1);
+  if (type_ == MPCStatisticsType::MIN) {
+    for (uint64_t col_index = 0; col_index < col_data.rows(); col_index++) {
+      auto& col_name = col_names[col_index];
+      double col_result = col_data(col_index, 0);
       col_result = minValueOfAllParty(col_result);
-      mpc_result_(col_index++, 0) = col_result;
-      VLOG(3) << "Global min value of column " << col << " is "
-              << mpc_result_(col_index - 1, 0) << ".";
-    } else {
+      mpc_result_(col_index, 0) = col_result;
+      VLOG(3) << "Global min value of column " << col_name << " is "
+              << mpc_result_(col_index, 0) << ".";
+    }
+  } else {
+    for (uint64_t col_index = 0; col_index < col_data.rows(); col_index++) {
+      auto& col_name = col_names[col_index];
+      double col_result = col_data(col_index, 0);
       col_result = maxValueOfAllParty(col_result);
-      mpc_result_(col_index++, 0) = col_result;
-      VLOG(3) << "Global max value of column " << col << " is "
-              << mpc_result_(col_index - 1, 0) << ".";
+      mpc_result_(col_index, 0) = col_result;
+      VLOG(3) << "Global max value of column " << col_name << " is "
+              << mpc_result_(col_index, 0) << ".";
     }
   }
+  return retcode::SUCCESS;
+}
+
+retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
+                         const std::vector<std::string> &columns,
+                         const std::map<std::string, ColumnDtype> &col_dtype) {
+  eMatrix<double> col_data;
+  eMatrix<double> rows_per_column;
+  auto ret = PlainTextDataCompute(dataset, columns, col_dtype,
+                                  &col_data, &rows_per_column);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "PlainTextDataCompute faield";
+    return retcode::FAIL;
+  }
+  ret = CipherTextDataCompute(col_data, columns, rows_per_column);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "CipherTextDataCompute failed";
+    return retcode::FAIL;
+  }
+  LOG(INFO) << "run MPCMinOrMax Finished";
   return retcode::SUCCESS;
 }
 

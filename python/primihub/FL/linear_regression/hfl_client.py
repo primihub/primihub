@@ -7,12 +7,12 @@ from primihub.FL.utils.dataset import read_data,\
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
 from primihub.FL.preprocessing import StandardScaler
+from primihub.FL.metrics import regression_metrics
 
 import pickle
 import json
 import pandas as pd
 import dp_accounting
-from sklearn import metrics
 from .base import LinearRegression,\
                   LinearRegression_DPSGD,\
                   LinearRegression_Paillier
@@ -207,23 +207,35 @@ class Plaintext_Client:
         self.server_channel.send('num_examples', self.num_examples)
 
     def send_metrics(self, x, y):
-        y_hat = self.model.predict(x)
-        mse = metrics.mean_squared_error(y, y_hat)
-        mae = metrics.mean_absolute_error(y, y_hat)
+        y_pred = self.model.predict(x)
+        metrics = regression_metrics(
+            y,
+            y_pred,
+            prefix="train_",
+            metircs_name=["ev",
+                          "maxe",
+                          "mae",
+                          "mse",
+                          "rmse",
+                          "medae",
+                          "r2",],
+        )
 
-        logger.info(f"mse={mse}, mae={mae}")
-
-        self.server_channel.send('mse', mse)
-        self.server_channel.send('mae', mae)
-
-        client_metrics = {
-            "train_mse": mse,
-            "train_mae": mae,
-        }
-        return client_metrics
+        self.server_channel.send("mse", metrics["train_mse"])
+        self.server_channel.send("mae", metrics["train_mae"])
+        return metrics
     
     def print_metrics(self, x, y):
-        self.send_metrics(x, y)
+        y_pred = self.model.predict(x)
+        metrics = regression_metrics(
+            y,
+            y_pred,
+            metircs_name=["mae",
+                          "mse",],
+        )
+        
+        self.server_channel.send("mse", metrics["mse"])
+        self.server_channel.send("mae", metrics["mae"])
 
 
 class DPSGD_Client(Plaintext_Client):

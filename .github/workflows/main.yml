@@ -22,7 +22,6 @@ jobs:
       run: |
         bash pre_build.sh
         bazel build --config=linux_`arch` \
-            --cxxopt=-DMPC_SOCKET_CHANNEL \
             //test/primihub/algorithm:logistic_test
         #    //test/primihub/algorithm:maxpool_test \
         #    //test/primihub/algorithm:falcon_lenet_test \
@@ -55,7 +54,6 @@ jobs:
       run: |
         bash pre_build.sh
         bazel build --config=linux_`arch` \
-            --cxxopt=-DMPC_SOCKET_CHANNEL \
             //test/primihub/algorithm:logistic_test
         ./bazel-bin/test/primihub/algorithm/logistic_test
     - name: bazel build
@@ -80,7 +78,6 @@ jobs:
       run: |
         mv -f WORKSPACE_GITHUB WORKSPACE
         bazel build --config=darwin_x86_64 \
-            --cxxopt=-DMPC_SOCKET_CHANNEL \
             //test/primihub/algorithm:logistic_test
         #    //test/primihub/common/type:common_test \
         #    //test/primihub/util:network_test

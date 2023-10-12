@@ -1,7 +1,7 @@
 #include "src/primihub/common/party_config.h"
 #include "src/primihub/common/common.h"
 namespace primihub {
-PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
+PartyConfig::PartyConfig(const std::string& node_id_, const rpc::Task &task) {
   this->node_id = task.party_name();
   // Map in protocolbuf may give different sequence when iterate it, so copy
   // content to std::map.
@@ -10,7 +10,7 @@ PartyConfig::PartyConfig(const std::string &node_id, const rpc::Task &task) {
   {
     const auto& info = task.party_access_info();
     for (const auto& [party_name, node] : info) {
-      auto tmp_party_id = static_cast<uint16_t>(node.vm(0).party_id());
+      int32_t tmp_party_id = node.party_id();
       node_id_map[tmp_party_id] = party_name;
       node_map[party_name] = node;
       if (party_name == this->node_id) {

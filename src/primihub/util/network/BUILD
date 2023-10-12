@@ -48,6 +48,20 @@ cc_library(
     "//src/primihub/common:common_lib",
     "//src/primihub/util:util_lib",
     "@ladnir_cryptoTools//:libcryptoTools",
+    "@ph_communication//network:channel_interface",
+  ],
+)
+
+cc_library(
+  name = "memory_channel",
+  hdrs = ["mem_channel.h"],
+  srcs = ["mem_channel.cc"],
+  deps = [
+    "//src/primihub/util:threadsafe_queue",
+    "//src/primihub/common:common_lib",
+    "//src/primihub/util:util_lib",
+    "@ph_communication//network:channel_interface",
+    "@com_github_glog_glog//:glog",
   ],
 )
 

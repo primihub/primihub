@@ -35,6 +35,17 @@ public:
     return _always_error("Method 'run' not implement.");
   }
 
+  virtual retcode PlainTextDataCompute(
+      std::shared_ptr<primihub::Dataset>& dataset,
+      const std::vector<std::string>& columns,
+      const std::map<std::string, ColumnDtype>& col_dtype,
+      eMatrix<double>* result_data,
+      eMatrix<double>* row_records) = 0;
+
+  virtual retcode CipherTextDataCompute(const eMatrix<double>& col_data,
+      const std::vector<std::string>& col_name,
+      const eMatrix<double>& row_records) = 0;
+
   virtual retcode setupChannel(uint16_t party_id,
                                aby3::CommPkg* comm_pkg) {
     mpc_op_ = std::make_unique<MPCOperator>(party_id, "fake_next", "fake_prev");
@@ -101,7 +112,14 @@ public:
   retcode run(std::shared_ptr<primihub::Dataset> &dataset,
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
-
+  retcode PlainTextDataCompute(std::shared_ptr<primihub::Dataset>& dataset,
+      const std::vector<std::string>& columns,
+      const std::map<std::string, ColumnDtype>& col_dtype,
+      eMatrix<double>* result_data,
+      eMatrix<double>* row_records) override;
+  retcode CipherTextDataCompute(const eMatrix<double>& col_data,
+                                const std::vector<std::string>& col_name,
+                                const eMatrix<double>& row_records) override;
 private:
   bool use_mpc_div_{false};
   bool avg_result_{false};
@@ -122,7 +140,14 @@ public:
   retcode run(std::shared_ptr<primihub::Dataset> &dataset,
               const std::vector<std::string> &columns,
               const std::map<std::string, ColumnDtype> &col_dtype) override;
-
+  retcode PlainTextDataCompute(std::shared_ptr<primihub::Dataset>& dataset,
+      const std::vector<std::string>& columns,
+      const std::map<std::string, ColumnDtype>& col_dtype,
+      eMatrix<double>* result_data,
+      eMatrix<double>* row_records) override;
+  retcode CipherTextDataCompute(const eMatrix<double>& col_data,
+                                const std::vector<std::string>& col_name,
+                                const eMatrix<double>& row_records) override;
   retcode getResult(eMatrix<double> &result) override;
 
 private:

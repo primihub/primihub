@@ -43,9 +43,12 @@ retcode LanguageParser::MergePartyAccessInfo(
   }
   // refill all
   party_access_info_ptr->clear();
+  int32_t party_id{0};
   for (auto& [party_name, node] : filtered_party) {
     auto& party_node = (*party_access_info_ptr)[party_name];
     node2PbNode(node, &party_node);
+    party_node.set_party_id(party_id);
+    party_id++;
   }
   return retcode::SUCCESS;
 }

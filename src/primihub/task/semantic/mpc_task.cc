@@ -58,22 +58,6 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     // TODO(XXX): implement rnn
   } else if (function_name == "lstm") {
     // TODO(XXX): implement lstm
-  } else if (function_name == "arithmetic") {
-    try {
-      auto param_map = task_param_.params().param_map();
-      std::string accuracy = param_map["Accuracy"].value_string();
-
-      if (accuracy == "D32") {
-        std::shared_ptr<ArithmeticExecutor<D32>> executor;
-        algorithm_ = std::make_shared<ArithmeticExecutor<D32>>(config, dataset_service);
-      } else {
-        std::shared_ptr<ArithmeticExecutor<D16>> executor;
-        algorithm_ = std::make_shared<ArithmeticExecutor<D16>>(config, dataset_service);
-      }
-    } catch (const std::runtime_error &error) {
-      LOG(ERROR) << error.what();
-      algorithm_ = nullptr;
-    }
   } else if (function_name == "AbnormalProcessTask") {
     try {
       algorithm_ =
@@ -84,16 +68,18 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     }
   } else if (function_name == "arithmetic") {
     try {
-      auto param_map = task_param_.params().param_map();
-      std::string accuracy = param_map["Accuracy"].value_string();
+      std::string accuracy;
+      const auto& param_map = task_param_.params().param_map();
+      auto it = param_map.find("Accuracy");
+      if (it != param_map.end()) {
+        accuracy = it->second.value_string();
+      }
       if (accuracy == "D32") {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::ArithmeticExecutor<D32>>(config,
-                                                      dataset_service));
+        using D32Executor = primihub::ArithmeticExecutor<D32>;
+        algorithm_ = std::make_shared<D32Executor>(config, dataset_service);
       } else {
-        algorithm_ = std::dynamic_pointer_cast<AlgorithmBase>(
-            std::make_shared<primihub::ArithmeticExecutor<D16>>(config,
-                                                      dataset_service));
+        using D16Executor = primihub::ArithmeticExecutor<D16>;
+        algorithm_ = std::make_shared<D16Executor>(config, dataset_service);
       }
     } catch (const std::runtime_error &error) {
       LOG(ERROR) << error.what();
@@ -108,16 +94,82 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
   }
 }
 
+MPCTask::MPCTask(const std::string& function_name,
+                 const TaskParam *task_param) :
+                 TaskBase(task_param, nullptr) {   // do not read dataset,
+                                                   // cause dataset service
+                                                   // set to nullptr
+  PartyConfig config("no use", *task_param);
+  if (function_name == "mpc_statistics") {
+    algorithm_ =
+        std::make_shared<primihub::MPCStatisticsExecutor>(config, nullptr);
+  } else if (function_name == "AbnormalProcessTask") {
+    try {
+      algorithm_ =
+          std::make_shared<primihub::MissingProcess>(config, nullptr);
+    } catch (const std::runtime_error &error) {
+      LOG(ERROR) << error.what();
+      algorithm_ = nullptr;
+    }
+  } else if (function_name == "arithmetic") {
+    try {
+      std::string accuracy;
+      const auto& param_map = task_param_.params().param_map();
+      auto it = param_map.find("Accuracy");
+      if (it != param_map.end()) {
+        accuracy = it->second.value_string();
+      }
+      if (accuracy == "D32") {
+        using D32Executor = primihub::ArithmeticExecutor<D32>;
+        algorithm_ = std::make_shared<D32Executor>(config, nullptr);
+      } else {
+        using D16Executor = primihub::ArithmeticExecutor<D16>;
+        algorithm_ = std::make_shared<D16Executor>(config, nullptr);
+      }
+    } catch (const std::runtime_error &error) {
+      LOG(ERROR) << error.what();
+      algorithm_ = nullptr;
+    }
+  } else {
+    LOG(ERROR) << "Unsupported algorithm: " << function_name;
+  }
+  if (algorithm_ != nullptr) {
+    algorithm_->InitLinkContext(getTaskContext().getLinkContext().get());
+  }
+}
+
 int MPCTask::execute() {
   if (algorithm_ == nullptr) {
     LOG(ERROR) << "Algorithm is not initialized";
     return -1;
   }
+  if (RoleValidation::IsAuxiliaryCompute(this->party_name())) {
+    int retcode{0};
+    std::vector<int64_t> shape;
+    RecvShapeFromLauncher(&shape);
+    std::vector<double> input;
+    std::vector<int64_t> col_rows;
+    MakeAuxiliaryComputeData(shape, &input, &col_rows);
+    std::vector<double> result;
+    auto ret = ExecuteTask(input, col_rows, &result);
+    if (ret != retcode::SUCCESS) {
+      LOG(ERROR) << "run task as auxiliarty server failed";
+      retcode = -1;
+    }
+    return retcode;
+  } else {
+    auto ret = ExecuteImpl();
+    if (ret != retcode::SUCCESS) {
+      return -1;
+    }
+    return 0;
+  }
+}
 
+retcode MPCTask::ExecuteImpl() {
   int ret = 0;
   try {
-    do
-    {
+    do {
       ret = algorithm_->loadParams(task_param_);
       if (ret) {
         LOG(ERROR) << "Load params failed.";
@@ -157,10 +209,143 @@ int MPCTask::execute() {
     } while (0);
   } catch (std::exception &e) {
     LOG(ERROR) << e.what();
-    return -2;
+    ret = -1;
   }
+  if (ret != 0) {
+    return retcode::FAIL;
+  } else {
+    return retcode::SUCCESS;
+  }
+}
 
-  return ret;
+retcode MPCTask::ExecuteTask(const std::vector<double>& input_data,
+                             const std::vector<int64_t>& rows_per_col,
+                             std::vector<double>* result) {
+  if (algorithm_ == nullptr) {
+    LOG(ERROR) << "Algorithm is not initialized";
+    return retcode::FAIL;
+  }
+  eMatrix<double> input_data_info;
+  input_data_info.resize(input_data.size(), 2);
+  for (size_t i = 0; i < input_data.size(); i++) {
+    input_data_info(i, 0) = input_data[i];
+    input_data_info(i, 1) = rows_per_col[i];
+  }
+  std::vector<std::string> col_names;
+  for (size_t i = 0; i < input_data.size(); i++) {
+    std::string col_name = "COL_" + std::to_string(i);
+    col_names.push_back(col_name);
+  }
+  int ret;
+  try {
+    auto retcode = algorithm_->InitTaskConfig(task_param_);
+    retcode = algorithm_->ExtractProxyNode(task_param_);
+    if (retcode != retcode::SUCCESS) {
+      LOG(ERROR) << "ExtractProxyNode from task config failed";
+      return retcode::FAIL;
+    }
+    ret = algorithm_->initPartyComm();
+    if (ret) {
+      LOG(ERROR) << "Initialize party communicate failed.";
+      return retcode::FAIL;
+    }
+    retcode = algorithm_->InitEngine();
+    if (retcode != retcode::SUCCESS) {
+      LOG(ERROR) << "init engine failed";
+      return retcode::FAIL;
+    }
+    retcode = algorithm_->execute(input_data_info, col_names, result);
+    if (retcode != retcode::SUCCESS) {
+      LOG(ERROR) << "Run task failed.";
+      return retcode::FAIL;
+    }
+    algorithm_->finishPartyComm();
+  } catch (std::exception& e) {
+    LOG(ERROR) << e.what();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+std::shared_ptr<Dataset> MPCTask::MakeDataset(
+    const std::vector<double>& input_data, int64_t colum_num) {
+  std::vector<std::shared_ptr<arrow::Field>> field_vec_double;
+  std::vector<std::shared_ptr<arrow::Array>> data_vec_double;
+  for (int64_t i = 0; i < colum_num; i++) {
+    std::string field_name{"COL_"};
+    field_name.append(std::to_string(i));
+    auto field_ptr = arrow::field(field_name, arrow::float64());
+    field_vec_double.push_back(std::move(field_ptr));
+  }
+  for (int i = 0; i < input_data.size(); i++) {
+    std::shared_ptr<arrow::Array> array;
+    arrow::DoubleBuilder builder;
+    builder.Append(input_data[i]);
+    builder.Finish(&array);
+    data_vec_double.push_back(std::move(array));
+  }
+  auto schema = std::make_shared<arrow::Schema>(field_vec_double);
+  auto table = arrow::Table::Make(schema, data_vec_double);
+  return std::make_shared<Dataset>(table, nullptr);
+}
+
+retcode MPCTask::RecvShapeFromLauncher(std::vector<int64_t>* shape) {
+  auto& link_ctx = this->getTaskContext().getLinkContext();
+  Node proxy_node;
+  const auto& auxiliary_server = this->getTaskParam()->auxiliary_server();
+  auto it = auxiliary_server.find(PROXY_NODE);
+  if (it == auxiliary_server.end()) {
+    LOG(ERROR) << "no proxy node found";
+    return retcode::FAIL;
+  }
+  const auto& pb_proxy_node = it->second;
+  pbNode2Node(pb_proxy_node, &proxy_node);
+  std::string recv_buf;
+  auto task_info = this->getTaskParam()->task_info();
+  std::string shape_key = task_info.sub_task_id() + "_mpc_shape";
+  link_ctx->Recv(shape_key, proxy_node, &recv_buf);
+  rpc::ParamValue pb_shape;
+  pb_shape.ParseFromString(recv_buf);
+  auto& int64_arr = pb_shape.value_int64_array().value_int64_array();
+  for (const auto item : int64_arr) {
+    shape->push_back(item);
+  }
+  VLOG(7) << "end of RecvShapeFromLauncher";
+  return retcode::SUCCESS;
+}
+
+retcode MPCTask::MakeAuxiliaryComputeData(const std::vector<int64_t>& shape,
+                                          std::vector<double>* input,
+                                          std::vector<int64_t>* col_rows) {
+  if (shape.size() != 2) {
+    LOG(ERROR) << "shape dim is not supported, 2 is expected,"
+               << " but get: " << shape.size();
+    return retcode::FAIL;
+  }
+  int64_t col_size = shape[1];
+  col_rows->reserve(col_size);
+  col_rows->assign(col_size, 0);
+
+  input->reserve(col_size);
+  auto task_config = this->getTaskParam();
+  auto algorithm = task_config->algorithm();
+  switch (algorithm.statistics_op_type()) {
+    case rpc::Algorithm::MAX:
+      input->assign(col_size, std::numeric_limits<double>::min());
+      break;
+    case rpc::Algorithm::MIN:
+      input->assign(col_size, std::numeric_limits<double>::max());
+      break;
+    case rpc::Algorithm::AVG:
+    case rpc::Algorithm::SUM:
+      input->assign(col_size, 0);
+      break;
+    default:
+      LOG(WARNING) << "unknown op type for statistics: "
+                   << algorithm.statistics_op_type();
+      return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 }  // namespace primihub::task

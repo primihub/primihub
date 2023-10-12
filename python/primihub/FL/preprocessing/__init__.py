@@ -1,5 +1,5 @@
 from .discretizer import KBinsDiscretizer
-from .encoder import OneHotEncoder, OrdinalEncoder
+from .encoder import OneHotEncoder, OrdinalEncoder, TargetEncoder
 from .imputer import SimpleImputer
 from .label import LabelEncoder, LabelBinarizer, MultiLabelBinarizer
 from .scaler import MaxAbsScaler, MinMaxScaler, Normalizer, StandardScaler, RobustScaler
@@ -15,6 +15,7 @@ __all__ = [
     "Normalizer",
     "OneHotEncoder",
     "OrdinalEncoder",
+    "TargetEncoder",
     "RobustScaler",
     "SimpleImputer",
     "StandardScaler",

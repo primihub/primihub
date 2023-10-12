@@ -1,0 +1,58 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "server": "Alice",
+            "client": [
+                "Bob",
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "FL_Preprocess",
+            "process": "fit_transform",
+            "FL_type": "H",
+            "task_name": "HFL_targetencoder_fit_transform",
+            "task": "classification",
+            "selected_column": [
+                "Location",
+                "WindGustDir",
+                "WindDir9am",
+                "WindDir3pm",
+                "RainToday",
+                "y"
+            ],
+            "id": "id",
+            "label": "y",
+            "preprocess_column": null,
+            "preprocess_module": {
+                "TargetEncoder": {
+                    "column": null,
+                    "categories": "auto",
+                    "target_type": "auto",
+                    "smooth": "auto",
+                    "cv": 5,
+                    "shuffle": true,
+                    "random_state": null
+                }
+            }
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_hfl_train_client1",
+                "preprocess_dataset_path": "data/result/Bob_train_dataset.csv",
+                "preprocess_module_path": "data/result/Bob_preprocess_module.pkl"
+            },
+            "Charlie": {
+                "data_set": "preprocess_hfl_train_client2",
+                "preprocess_dataset_path": "data/result/Charlie_train_dataset.csv",
+                "preprocess_module_path": "data/result/Charlie_preprocess_module.pkl"
+            },
+            "Alice": {
+                "data_set": "fl_fake_data"
+            }
+        }
+    }
+}

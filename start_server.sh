@@ -2,8 +2,8 @@
 set -x
 file_name=$0
 BASH_CMD=/bin/bash
-META_DOWNLOAD_URL="https://primihub.oss-cn-beijing.aliyuncs.com/tools/meta_service.tar.gz"
-META_TAR_NAME="meta_service.tar.gz"
+META_TAR_NAME="meta_service_v1.tar.gz"
+META_DOWNLOAD_URL="https://primihub.oss-cn-beijing.aliyuncs.com/tools/${META_TAR_NAME}"
 MAX_CHECK_TIMES=30
 META_DIR=meta_service
 META_SERVER_NAME=fusion-simple.jar

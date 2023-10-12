@@ -14,6 +14,7 @@ cc_test(
     ],
     deps = DEFAULT_ALGORITHM_LINK_DEPS + [
         "//src/primihub/algorithm:algorithm_lib",
+        "//src/primihub/util/network:memory_channel",
     ],
 )
 

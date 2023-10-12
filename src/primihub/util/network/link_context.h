@@ -31,19 +31,28 @@ class LinkContext {
   virtual ~LinkContext() = default;
   inline void setTaskInfo(const std::string& job_id,
                           const std::string& task_id,
-                          const std::string& request_id) {
+                          const std::string& request_id,
+                          const std::string& sub_task_id) {
     job_id_ = job_id;
     task_id_ = task_id;
     request_id_ = request_id;
+    sub_task_id_ = sub_task_id;
   }
+
   inline std::string job_id() const {
     return job_id_;
   }
+
   inline std::string task_id() const {
     return task_id_;
   }
+
   inline std::string request_id() const {
     return request_id_;
+  }
+
+  inline std::string sub_task_id() const {
+    return sub_task_id_;
   }
   /**
    * return channel for specified node
@@ -126,6 +135,7 @@ class LinkContext {
   std::string job_id_;
   std::string task_id_;
   std::string request_id_;
+  std::string sub_task_id_;
   std::unique_ptr<primihub::common::CertificateConfig> cert_config_{nullptr};
 
   std::mutex in_queue_mtx;
@@ -166,6 +176,8 @@ class IChannel {
                                    rpc::Empty* reply) = 0;
   virtual retcode fetchTaskStatus(const rpc::TaskContext& request,
                                   rpc::TaskStatusReply* reply) = 0;
+  virtual retcode StopTask(const rpc::TaskContext& request,
+                           rpc::Empty* reply) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
   LinkContext* getLinkContext() { return link_ctx_; }
 

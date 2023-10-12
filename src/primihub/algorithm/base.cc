@@ -16,12 +16,14 @@
 #include "src/primihub/algorithm/base.h"
 #include <map>
 
-#include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/network/mpc_channel.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/node/server_config.h"
 
 namespace primihub {
+#ifdef MPC_SOCKET_CHANNEL
 oc::IOService g_ios_;
+#endif  // MPC_SOCKET_CHANNEL
 AlgorithmBase::AlgorithmBase(const PartyConfig& config,
                              std::shared_ptr<DatasetService> dataset_service)
                              : dataset_service_(std::move(dataset_service)) {
@@ -209,6 +211,18 @@ int AlgorithmBase::finishPartyComm() {
 }
 
 #else  // GRPC MPC_SOCKET_CHANNEL
+int AlgorithmBase::initPartyComm(
+    const std::vector<ph_link::Channel>& channels) {
+  if (channels.size() < 2) {
+    LOG(ERROR) << "channel size at least 2";
+    return -1;
+  }
+  // 0: prev   1: next
+  comm_pkg_ = std::make_unique<aby3::CommPkg>();
+  comm_pkg_->mPrev = channels[0];
+  comm_pkg_->mNext = channels[1];
+  return 0;
+}
 
 int AlgorithmBase::initPartyComm() {
   uint16_t prev_party_id = this->party_config_.PrevPartyId();
@@ -243,21 +257,21 @@ int AlgorithmBase::initPartyComm() {
   auto recv_channel = link_ctx->getChannel(this->proxy_node_);
   // The 'osuCrypto::Channel' will consider it to be a unique_ptr and will
   // reset the unique_ptr, so the 'osuCrypto::Channel' will delete it.
-  auto msg_interface_prev =
-      std::make_unique<network::TaskMessagePassInterface>(
+  auto channel_impl_prev =
+      std::make_shared<network::MPCTaskChannel>(
           this->party_name(), party_name_prev,
           link_ctx, base_channel_prev, recv_channel);
 
-  auto msg_interface_next =
-      std::make_unique<network::TaskMessagePassInterface>(
+  auto channel_impl_next =
+      std::make_shared<network::MPCTaskChannel>(
           this->party_name(), party_name_next,
           link_ctx, base_channel_next, recv_channel);
 
-  oc::Channel chl_prev(g_ios_, msg_interface_prev.release());
-  oc::Channel chl_next(g_ios_, msg_interface_next.release());
+  ph_link::Channel chl_prev(channel_impl_prev);
+  ph_link::Channel chl_next(channel_impl_next);
   comm_pkg_ = std::make_unique<aby3::CommPkg>();
-  comm_pkg_->mPrev = std::move(chl_prev);
-  comm_pkg_->mNext = std::move(chl_next);
+  comm_pkg_->mPrev = chl_prev;
+  comm_pkg_->mNext = chl_next;
   return 0;
 }
 
@@ -265,7 +279,6 @@ int AlgorithmBase::finishPartyComm() {
   if (comm_pkg_ == nullptr) {
     return 0;
   }
-  // std::this_thread::sleep_for(std::chrono::milliseconds(500));
   VLOG(5) << "stop next channel, " << link_ctx_ref_->request_id();
   this->mNext().close();
   VLOG(5) << "stop prev channel " << link_ctx_ref_->request_id();

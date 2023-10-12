@@ -434,8 +434,8 @@ git_repository(
 
 git_repository(
   name = "com_github_ladnir_aby3",
-  # branch = "bazel_branch",
-  commit = "60a5e0f0d35d610792f3ad668fe2e684c9b4d76b",
+  # branch = "bazel_branch_sync",
+  commit = "cd2a8893c85a7e99a9ef84715370c2ca1f2d7dd0",
   remote = "https://gitee.com/primihub/aby3.git",
 )
 
@@ -630,4 +630,10 @@ http_archive(
   urls = [
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/poco-poco-1.12.4-release.tar.gz",
   ],
+)
+
+git_repository(
+  name = "ph_communication",
+  commit = "84108f9340ee177617950b08c97062590381c66b",
+  remote = "https://gitee.com/primihub/communication.git",
 )
