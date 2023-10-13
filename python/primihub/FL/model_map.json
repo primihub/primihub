@@ -54,6 +54,12 @@
         "client": "primihub.FL.preprocessing.pipeline.Pipeline",
         "server": "primihub.FL.preprocessing.pipeline.Pipeline"
     },
+    "FL_Stats": {
+        "guest": "primihub.FL.stats.pipeline.Pipeline",
+        "host": "primihub.FL.stats.pipeline.Pipeline",
+        "client": "primihub.FL.stats.pipeline.Pipeline",
+        "server": "primihub.FL.stats.pipeline.Pipeline"
+    },
     "PythonEngine": {
         "executor": "primihub.engine.engine.PythonEngine"
     }

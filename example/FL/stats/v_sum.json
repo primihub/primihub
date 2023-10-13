@@ -1,0 +1,42 @@
+{
+    "party_info": {
+        "task_manager": "127.0.0.1:50050"
+    },
+    "component_params": {
+        "roles": {
+            "host": "Bob",
+            "guest": [
+                "Charlie"
+            ]
+        },
+        "common_params": {
+            "model": "FL_Stats",
+            "FL_type": "V",
+            "task_name": "VFL_row_sum",
+            "stats_module": {
+                "row_sum": {
+                    "ignore_nan": true
+                }
+            }
+        },
+        "role_params": {
+            "Bob": {
+                "data_set": "preprocess_vfl_train_host",
+                "selected_column": [
+                    "RISK_MM"
+                ],
+                "id": "id",
+                "stats_path": "data/result/Bob_stats.json"
+            },
+            "Charlie": {
+                "data_set": "preprocess_vfl_train_guest",
+                "selected_column": [
+                    "MinTemp",
+                    "MaxTemp"
+                ],
+                "id": "id",
+                "stats_path": "data/result/Charlie_stats.json"
+            }
+        }
+    }
+}

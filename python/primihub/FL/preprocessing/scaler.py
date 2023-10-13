@@ -5,13 +5,11 @@ from sklearn.preprocessing import MinMaxScaler as SKL_MinMaxScaler
 from sklearn.preprocessing import Normalizer as SKL_Normalizer
 from sklearn.preprocessing import RobustScaler as SKL_RobustScaler
 from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
-from sklearn.utils import check_array
+from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
+from primihub.FL.stats import col_norm, row_norm, col_min_max
 from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
-
-
-FLOAT_DTYPES = (np.float64, np.float32, np.float16)
 
 
 class MaxAbsScaler(PreprocessBase):
@@ -29,17 +27,15 @@ class MaxAbsScaler(PreprocessBase):
                 dtype=FLOAT_DTYPES,
                 force_all_finite="allow-nan",
             )
-
             self.module.n_samples_seen_ = X.shape[0]
-            max_abs = np.nanmax(np.abs(X), axis=0)
-            self.channel.send('max_abs', max_abs)
-            max_abs = self.channel.recv('max_abs')
 
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
-            max_abs = self.channel.recv_all('max_abs')
-            max_abs = np.max(max_abs, axis=0)
-            self.channel.send_all('max_abs', max_abs)
+
+        max_abs = col_norm(role=self.role,
+                           X=X if self.role == "client" else None,
+                           norm="max",
+                           channel=self.channel,)
 
         self.module.max_abs_ = max_abs
         self.module.scale_ = handle_zeros_in_scale(max_abs)
@@ -76,23 +72,16 @@ class MinMaxScaler(PreprocessBase):
                 dtype=FLOAT_DTYPES,
                 force_all_finite="allow-nan",
             )
-
             self.module.n_samples_seen_ = X.shape[0]
-            data_max = np.nanmax(X, axis=0)
-            data_min = np.nanmin(X, axis=0)
-            self.channel.send('data_max', data_max)
-            self.channel.send('data_min', data_min)
-            data_max = self.channel.recv('data_max')
-            data_min = self.channel.recv('data_min')
             
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
-            data_max = self.channel.recv_all('data_max')
-            data_min = self.channel.recv_all('data_min')
-            data_max = np.max(data_max, axis=0)
-            data_min = np.min(data_min, axis=0)
-            self.channel.send_all('data_max', data_max)
-            self.channel.send_all('data_min', data_min)
+
+        data_min, data_max = col_min_max(
+            role=self.role,
+            X=X if self.role == "client" else None,
+            channel=self.channel,
+        )
 
         self.module.data_max_ = data_max
         self.module.data_min_ = data_min
@@ -133,30 +122,13 @@ class Normalizer(PreprocessBase):
                 dtype=FLOAT_DTYPES,
             )
 
-            if self.module.norm == 'l1':
-                norms = np.abs(X).sum(axis=1)
-            elif self.module.norm == 'l2':
-                norms = np.einsum("ij,ij->i", X, X)
-            elif self.module.norm == "max":
-                norms = np.max(abs(X), axis=1)
-
-            if self.role == 'guest':
-                self.channel.send('guest_norms', norms)
-                norms = self.channel.recv('norms')
-
-            elif self.role == 'host':
-                guest_norms = self.channel.recv_all('guest_norms')
-                guest_norms.append(norms)
-
-                if self.module.norm == 'l1':
-                    norms = np.sum(guest_norms, axis=0)
-                elif self.module.norm == 'l2':
-                    norms = np.sum(guest_norms, axis=0)
-                    np.sqrt(norms, norms)
-                elif self.module.norm == "max":
-                    norms = np.max(guest_norms, axis=0)
-
-                self.channel.send_all('norms', norms)
+            norms = row_norm(
+                role=self.role,
+                X=X,
+                norm=self.module.norm,
+                ignore_nan=False,
+                channel=self.channel,
+            )
 
             norms = handle_zeros_in_scale(norms, copy=False)
             X /= norms[:, np.newaxis]
