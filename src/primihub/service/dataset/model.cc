@@ -135,7 +135,8 @@ std::string DatasetMeta::toJSON() const {
     j["driver_type"] = driver_type;
     j["server_meta"] = server_meta_;
     j["access_meta"] = access_meta_;
-    ss << std::setw(4) << j;
+    // ss << std::setw(4) << j;
+    ss << j;
     return ss.str();
 }
 

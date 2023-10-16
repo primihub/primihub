@@ -53,21 +53,12 @@ public:
         peer_dataset_map_(peer_dataset_map) {}
 
   retcode dispatch(const PushTaskRequest *pushTaskRequest) override;
-  virtual void set_dataset_owner(std::map<std::string, std::string> &dataset_owner) {
-      this->dataset_owner_ = std::move(dataset_owner);
-  }
-
   void add_vm(int party_id,
               const PushTaskRequest& pushTaskRequest,
               const std::vector<rpc::Node>& party_nodes,
               rpc::Node *single_node);
 
  protected:
-  void node_push_task(const std::string& node_id,
-                    const PeerDatasetMap& peer_dataset_map,
-                    const PushTaskRequest& nodePushTaskRequest,
-                    const std::map<std::string, std::string>& dataset_owner,
-                    const Node& dest_node);
   retcode ScheduleTask(const std::string& party_name,
                       const Node dest_node,
                       const PushTaskRequest& request);

@@ -1205,12 +1205,18 @@ int MissingProcess::finishPartyComm(void) {
 int MissingProcess::saveModel(void) {
   std::vector<std::string> str_vec;
   auto &new_path = new_dataset_path_;
-  std::shared_ptr<DataDriver> driver =
+  auto driver =
       DataDirverFactory::getDriver("CSV", dataset_service_->getNodeletAddr());
-
+  if (driver == nullptr) {
+    LOG(ERROR) << "get driver failed, data path: " << new_path;
+    return -1;
+  }
   auto cursor = driver->initCursor(new_path);
-
-  VLOG(5) << "A brief view of new table:\n" << table->ToString() << ".";
+  if (cursor == nullptr) {
+    LOG(ERROR) << "init cursor failed, data path: " << new_path;
+    return -1;
+  }
+  VLOG(5) << "A brief view of new table: " << table->ToString() << ".";
 
   auto dataset = std::make_shared<primihub::Dataset>(table, driver);
   int ret = cursor->write(dataset);

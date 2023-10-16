@@ -17,7 +17,8 @@
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-#include <google/protobuf/text_format.h>
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 using primihub::rpc::EndPoint;
 using primihub::rpc::LinkType;
@@ -26,6 +27,7 @@ using primihub::rpc::TaskType;
 using primihub::rpc::VirtualMachine;
 using primihub::rpc::VarType;
 
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
     const Node dest_node, const PushTaskRequest& request) {
@@ -37,75 +39,26 @@ retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
   task_ptr->set_party_name(party_name);
   // fill scheduler info
   AddSchedulerNode(task_ptr);
+  const auto& task_info = send_request.task().task_info();
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   // send request
   std::string dest_node_address = dest_node.to_string();
-  LOG(INFO) << "dest node " << dest_node_address;
+  LOG(INFO) << TASK_INFO_STR << "dest node " << dest_node_address;
   auto channel = this->getLinkContext()->getChannel(dest_node);
   auto ret = channel->executeTask(send_request, &reply);
   if (ret == retcode::SUCCESS) {
-    VLOG(5) << "submit task to : " << dest_node_address << " reply success";
+    VLOG(5) << TASK_INFO_STR
+            << "submit task to : " << dest_node_address << " reply success";
   } else {
     std::string error_msg = "submit task to : ";
     error_msg.append(dest_node_address).append(" reply failed");
-    LOG(ERROR) << error_msg;
+    LOG(ERROR) << TASK_INFO_STR << error_msg;
     this->set_error();
     this->error_msg_[party_name] = error_msg;
     return retcode::FAIL;
   }
   parseNotifyServer(reply);
   return retcode::SUCCESS;
-}
-
-void ABY3Scheduler::node_push_task(const std::string& node_id,
-                    const PeerDatasetMap& peer_dataset_map,
-                    const PushTaskRequest& nodePushTaskRequest,
-                    const std::map<std::string, std::string>& dataset_owner,
-                    const Node& dest_node) {
-    SET_THREAD_NAME("ABY3Scheduler");
-    PushTaskReply pushTaskReply;
-    PushTaskRequest _1NodePushTaskRequest;
-    _1NodePushTaskRequest.CopyFrom(nodePushTaskRequest);
-
-    // Add params to request
-    google::protobuf::Map<std::string, ParamValue> *param_map =
-        _1NodePushTaskRequest.mutable_task()->mutable_params()->mutable_param_map();
-    auto peer_dataset_map_it = peer_dataset_map.find(node_id);
-    if (peer_dataset_map_it == peer_dataset_map.end()) {
-        LOG(ERROR) << "node_push_task: peer_dataset_map not found";
-        return;
-    }
-
-    std::vector<DatasetWithParamTag> dataset_param_list = peer_dataset_map_it->second;
-
-    for (auto &dataset_param : dataset_param_list) {
-        ParamValue pv;
-        pv.set_var_type(VarType::STRING);
-        DLOG(INFO) << "📤 push task dataset : " << dataset_param.first << ", " << dataset_param.second;
-        pv.set_value_string(dataset_param.first);
-        (*param_map)[dataset_param.second] = std::move(pv);
-    }
-
-    for (auto &pair : dataset_owner) {
-        ParamValue pv;
-        pv.set_var_type(VarType::STRING);
-        pv.set_value_string(pair.second);
-        (*param_map)[pair.first] = std::move(pv);
-        DLOG(INFO) << "Insert " << pair.first << ":" << pair.second << "into params.";
-    }
-    {
-      // fill scheduler info
-      auto task_ptr = _1NodePushTaskRequest.mutable_task();
-      AddSchedulerNode(task_ptr);
-    }
-    // send request
-    auto channel = this->getLinkContext()->getChannel(dest_node);
-    auto ret = channel->submitTask(_1NodePushTaskRequest, &pushTaskReply);
-    if (ret == retcode::SUCCESS) {
-        // parse notify server info from reply
-    } else {
-        LOG(ERROR) << "Node push task node " << dest_node.to_string() << " rpc failed.";
-    }
-    parseNotifyServer(pushTaskReply);
 }
 
 void ABY3Scheduler::add_vm(int party_id,

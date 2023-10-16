@@ -279,9 +279,9 @@ int AlgorithmBase::finishPartyComm() {
   if (comm_pkg_ == nullptr) {
     return 0;
   }
-  VLOG(5) << "stop next channel, " << link_ctx_ref_->request_id();
+  VLOG(5) << "stop next channel.";
   this->mNext().close();
-  VLOG(5) << "stop prev channel " << link_ctx_ref_->request_id();
+  VLOG(5) << "stop prev channel.";
   this->mPrev().close();
   return 0;
 }

@@ -145,7 +145,7 @@ TEST(add_operator, aby3_3pc_test) {
     div_result = mpc.MPC_Div(sf64fixedMatrix, sf64fixedMatrix_B);
 
     std::cout << "div_result result "
-              << mpc.revealAll(div_result).format(HeavyFmt) << std::endl;
+              << mpc.revealAll(div_result).format(CSVFormat) << std::endl;
     mpc.fini();
     return;
   }

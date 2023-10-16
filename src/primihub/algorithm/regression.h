@@ -196,10 +196,10 @@ void SGD_Logistic(RegressionParam &params, Engine &engine, Matrix &X, Matrix &Y,
     extractBatch(XX, YY, X, Y, batchIndices);
 
     DEBUG_PRINT(engine << "X[" << i << "] "
-                        << engine.reveal(XX).format(HeavyFmt) << std::endl);
+                        << engine.reveal(XX).format(CSVFormat) << std::endl);
     DEBUG_PRINT(engine << "Y[" << i << "] "
-                        << engine.reveal(YY).format(HeavyFmt) << std::endl);
-    DEBUG_PRINT(engine << "W[" << i << "] " << engine.reveal(w).format(HeavyFmt)
+                        << engine.reveal(YY).format(CSVFormat) << std::endl);
+    DEBUG_PRINT(engine << "W[" << i << "] " << engine.reveal(w).format(CSVFormat)
                         << std::endl);
 
     // compute the errors on the current batch.
@@ -208,14 +208,14 @@ void SGD_Logistic(RegressionParam &params, Engine &engine, Matrix &X, Matrix &Y,
     Matrix fxw = engine.logisticFunc(xw);
 
     DEBUG_PRINT(engine << "P[" << i << "] "
-                        << engine.reveal(xw).format(HeavyFmt) << std::endl);
+                        << engine.reveal(xw).format(CSVFormat) << std::endl);
     DEBUG_PRINT(engine << "F[" << i << "] "
-                        << engine.reveal(fxw).format(HeavyFmt) << std::endl);
+                        << engine.reveal(fxw).format(CSVFormat) << std::endl);
 
     Matrix error = fxw - YY;
 
     DEBUG_PRINT(engine << "E[" << i << "] "
-                        << engine.reveal(error).format(HeavyFmt) << std::endl);
+                        << engine.reveal(error).format(CSVFormat) << std::endl);
 
     XX.transposeInPlace();
 
@@ -225,7 +225,7 @@ void SGD_Logistic(RegressionParam &params, Engine &engine, Matrix &X, Matrix &Y,
     w = w - update;
 
     DEBUG_PRINT(engine << "U[" << i << "] "
-                        << engine.reveal(update).format(HeavyFmt) << std::endl);
+                        << engine.reveal(update).format(CSVFormat) << std::endl);
 
     if (X_test && i % 10 == 0) {
       auto score = test_logisticModel(engine, w, *X_test, *Y_test);
