@@ -10,9 +10,7 @@ def check_norm(norm):
         raise ValueError(f"Unsupported norm: {norm}")
 
 
-def col_norm(
-    role: str, X=None, norm: str = "l2", ignore_nan: bool = True, channel=None
-):
+def col_norm(role: str, X, norm: str = "l2", ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
@@ -62,6 +60,11 @@ def col_norm_client(
         )
 
         if recv_server:
+            if not send_server:
+                warnings.warn(
+                    "server_col_norm=None because send_server=False",
+                    RuntimeWarning,
+                )
             server_col_norm = channel.recv("server_col_norm")
         else:
             # sqrt it to get the client local l2 norm
@@ -126,6 +129,11 @@ def row_norm_guest(
         )
 
         if recv_host:
+            if not send_host:
+                warnings.warn(
+                    "global_row_norm=None because send_host=False",
+                    RuntimeWarning,
+                )
             global_row_norm = channel.recv("global_row_norm")
         else:
             # sqrt it to get the guest local l2 norm

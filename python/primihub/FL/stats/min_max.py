@@ -4,7 +4,7 @@ from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .util import check_channel, check_role
 
 
-def col_min(role: str, X=None, ignore_nan: bool = True, channel=None):
+def col_min(role: str, X, ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
@@ -31,7 +31,7 @@ def row_min(role: str, X, ignore_nan: bool = True, channel=None):
         )
 
 
-def col_max(role: str, X=None, ignore_nan: bool = True, channel=None):
+def col_max(role: str, X, ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
@@ -58,7 +58,7 @@ def row_max(role: str, X, ignore_nan: bool = True, channel=None):
         )
 
 
-def col_min_max(role: str, X=None, ignore_nan: bool = True, channel=None):
+def col_min_max(role: str, X, ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
@@ -106,6 +106,11 @@ def col_min_client(
         channel.send("client_col_min", client_col_min)
 
     if recv_server:
+        if not send_server:
+            warnings.warn(
+                "server_col_min=None because send_server=False",
+                RuntimeWarning,
+            )
         server_col_min = channel.recv("server_col_min")
         return server_col_min
     else:
@@ -166,6 +171,11 @@ def col_max_client(
         channel.send("client_col_max", client_col_max)
 
     if recv_server:
+        if not send_server:
+            warnings.warn(
+                "server_col_max=None because send_server=False",
+                RuntimeWarning,
+            )
         server_col_max = channel.recv("server_col_max")
         return server_col_max
     else:
@@ -223,6 +233,11 @@ def col_min_max_client(
         channel.send("client_col_min_max", [client_col_min, client_col_max])
 
     if recv_server:
+        if not send_server:
+            warnings.warn(
+                "server_col_min_max=None because send_server=False",
+                RuntimeWarning,
+            )
         server_col_min, server_col_max = channel.recv("server_col_min_max")
         return server_col_min, server_col_max
     else:
@@ -239,6 +254,7 @@ def col_min_max_server(
 
     if recv_client:
         client_col_min_max = channel.recv_all("client_col_min_max")
+        client_col_min_max = np.array(client_col_min_max)
 
         # 0: client_col_min, 1: client_col_max
         if ignore_nan:
@@ -281,6 +297,11 @@ def row_min_guest(
         channel.send("guest_row_min", guest_row_min)
 
     if recv_host:
+        if not send_host:
+            warnings.warn(
+                "global_row_min=None because send_host=False",
+                RuntimeWarning,
+            )
         global_row_min = channel.recv("global_row_min")
         return global_row_min
     else:
@@ -350,6 +371,11 @@ def row_max_guest(
         channel.send("guest_row_max", guest_row_max)
 
     if recv_host:
+        if not send_host:
+            warnings.warn(
+                "global_row_max=None because send_host=False",
+                RuntimeWarning,
+            )
         global_row_max = channel.recv("global_row_max")
         return global_row_max
     else:
@@ -421,6 +447,11 @@ def row_min_max_guest(
         channel.send("guest_row_min_max", [guest_row_min, guest_row_max])
 
     if recv_host:
+        if not send_host:
+            warnings.warn(
+                "global_row_min_max=None because send_host=False",
+                RuntimeWarning,
+            )
         global_row_min, global_row_max = channel.recv("global_row_min_max")
         return global_row_min, global_row_max
     else:
@@ -449,6 +480,7 @@ def row_min_max_host(
     if recv_guest:
         guest_row_min_max = channel.recv("guest_row_min_max")
         guest_row_min_max.append([host_row_min, host_row_max])
+        guest_row_min_max = np.array(guest_row_min_max)
 
         # 0: guest_host_row_min, 1: guest_host_row_max
         if ignore_nan:
