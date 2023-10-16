@@ -108,6 +108,7 @@ def check_stats_name(stats_name: str):
     valid_stats = [
         "min",
         "max",
+        "quantile",
         "norm",
         "sum",
     ]
@@ -143,6 +144,19 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
         return max_func(
             role=role,
             X=X,
+            ignore_nan=ignore_nan,
+            channel=channel,
+        )
+
+    elif stats == "quantile":
+        quantile_func = {
+            "col": col_quantile,
+        }[axis]
+
+        return quantile_func(
+            role=role,
+            X=X,
+            quantiles=params.get("quantiles"),
             ignore_nan=ignore_nan,
             channel=channel,
         )
