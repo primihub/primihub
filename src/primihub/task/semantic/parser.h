@@ -24,6 +24,8 @@
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/language/py_parser.h"
 #include "src/primihub/task/common.h"
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 namespace primihub::task {
 

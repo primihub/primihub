@@ -26,12 +26,14 @@
 #include "src/primihub/task/semantic/psi_task.h"
 #include "src/primihub/task/semantic/pir_task.h"
 #include "src/primihub/service/dataset/service.h"
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::Language;
 using primihub::rpc::TaskType;
 using primihub::service::DatasetService;
-
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 
 class TaskFactory {
@@ -42,6 +44,8 @@ class TaskFactory {
       void* ra_service = nullptr,
       void* executor = nullptr) {
     auto task_language = request.task().language();
+    const auto& task_info = request.task().task_info();
+    std::string task_inof_str = pb_util::TaskInfoToString(task_info);
     auto task_type = request.task().type();
     std::shared_ptr<TaskBase> task_ptr{nullptr};
     switch (task_language) {
@@ -62,13 +66,13 @@ class TaskFactory {
         task_ptr = TaskFactory::CreatePIRTask(node_id, request, dataset_service);
         break;
       default:
-        LOG(ERROR) << "unsupported task type: " << task_type;
+        LOG(ERROR) << task_inof_str << "unsupported task type: " << task_type;
         break;
       }
       break;
     }
     default:
-      LOG(ERROR) << "unsupported language: " << task_language;
+      LOG(ERROR) << task_inof_str << "unsupported language: " << task_language;
       break;
     }
     return task_ptr;

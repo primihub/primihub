@@ -22,6 +22,8 @@ cc_library(
     deps = [
       "//src/primihub/protos:worker_proto",
       "//src/primihub/service:dataset_service",
+       "//src/primihub/util:log_util",
+      "//src/primihub/util:pb_log_helper",
     ],
 )
 
@@ -33,6 +35,8 @@ cc_library(
         ":parser_interface",
         "//src/primihub/util:util_lib",
         "//src/primihub/common:common_defination",
+        "//src/primihub/util:log_util",
+        "//src/primihub/util:pb_log_helper",
     ],
 )
 
@@ -48,5 +52,7 @@ cc_library(
         "//src/primihub/task:task_common",
         "@pybind11",
         "@com_github_glog_glog//:glog",
+        "//src/primihub/util:log_util",
+        "//src/primihub/util:pb_log_helper",
     ],
 )
