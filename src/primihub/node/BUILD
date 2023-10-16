@@ -22,6 +22,8 @@ cc_library(
     "//src/primihub/protos:worker_proto",
     "//src/primihub/common/config:config_lib",
     "//src/primihub/util:util_lib",
+    "//src/primihub/util:log_util",
+    "//src/primihub/util:pb_log_helper",
     "//src/primihub/task/language:language_parser_factory",
     "//src/primihub/task/semantic:task_semantic_parser",
     "//src/primihub/service/dataset/meta_service:meta_service_factory",

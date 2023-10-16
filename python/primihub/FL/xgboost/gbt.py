@@ -30,6 +30,7 @@ from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
 from primihub.FL.utils.dataset import read_data
 from primihub.FL.utils.file import check_directory_exist
+from primihub.utils.logger_util import logger
 
 T = TypeVar("T", contravariant=True)
 U = TypeVar("U", covariant=True)
@@ -1113,7 +1114,7 @@ class VGBTHost(VGBTBase):
             tree_structure = {(role, record): {}}
             logging.info("current role: {}, current record: {}".format(
                 role, record))
-            print(
+            logger.info(
                 "current role: {}, current record: {}, host_best_gain: {}, guest_best_gain: {}"
                 .format(role, record, host_best_gain, guest_best_gain))
 
@@ -1467,7 +1468,7 @@ class VGBTHost(VGBTBase):
 
             current_loss = self.log_loss(self.y, 1 / (1 + np.exp(-y_hat)))
             losses.append(current_loss)
-            print("current loss", current_loss)
+            logger.info("current loss", current_loss)
             logging.info("Finish to trian tree {}.".format(iter + 1))
 
         # saving train metrics
@@ -1601,7 +1602,7 @@ class VGBTGuest(VGBTBase):
             for x in range(0, len(internal_groups), self.batch_size)
         ]
 
-        print("==============", cols, groups, len(groups))
+        logger.info("==============", cols, groups, len(groups))
 
         if self.encrypted_proto is not None:
             internal_res = list(

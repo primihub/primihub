@@ -39,7 +39,8 @@ std::string SQLiteAccessInfo::toString() {
     js["type"] = "sqlite";
     js["db_path"] = this->db_path_;
     js["tableName"] = this->table_name_;
-    ss << std::setw(4) << js;
+    // ss << std::setw(4) << js;
+    ss << js;
     return ss.str();
 }
 

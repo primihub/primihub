@@ -539,8 +539,8 @@ class MPCOperator {
 
       drelu_result = MPC_DReLu(Y_temp);
 
-      VLOG(6) << i << "th Drelu result for Y_temp"
-              << revealAll(drelu_result).format(HeavyFmt);
+      VLOG(6) << i << "th Drelu result for Y_temp: "
+              << revealAll(drelu_result).format(CSVFormat);
 
       drelu_result_temp = revealAll(
           drelu_result);  // ematrix should mutiply rank to get rank matrix.
@@ -743,9 +743,9 @@ class MPCOperator {
     }
 
     // VLOG(6) << "denominatorLess: "
-    //         << revealAll(denominatorLess).format(HeavyFmt);
+    //         << revealAll(denominatorLess).format(CSVFormat);
     // VLOG(6) << "denominatorMore: "
-    //         << revealAll(denominatorMore).format(HeavyFmt);
+    //         << revealAll(denominatorMore).format(CSVFormat);
 
     eMatrix<i64> rankLess(lessIdx.size(), B.cols());
     eMatrix<i64> rankMore(moreIdx.size(), B.cols());
@@ -805,7 +805,7 @@ class MPCOperator {
     }
 
     VLOG(6) << "sfnormalization: "
-            << revealAll(sfnormalization).format(HeavyFmt);
+            << revealAll(sfnormalization).format(CSVFormat);
 
     sf64Matrix<D> temp_twob(B.rows(), B.cols());
     sf64Matrix<D> w0(B.rows(), B.cols());
@@ -818,7 +818,7 @@ class MPCOperator {
     // truncate D，no additional truncation
     MPC_Dotproduct(denominator, sfnormalization, c, 0);
 
-    VLOG(6) << "c result: " << revealAll(c).format(HeavyFmt);
+    VLOG(6) << "c result: " << revealAll(c).format(CSVFormat);
     sf64Matrix<D> temp_twoc(B.rows(), B.cols());
     eval.asyncConstMul(constant_two, c,
                        temp_twoc);  // const needn't .get()
@@ -826,12 +826,12 @@ class MPCOperator {
     // The initial approximation of 1/c
     w0 = sftwopotnine - temp_twoc;  // here means w0 has been truncate by rank+1;
 
-    VLOG(6) << "1/c w0 result: " << revealAll(w0).format(HeavyFmt);
+    VLOG(6) << "1/c w0 result: " << revealAll(w0).format(CSVFormat);
 
     // The initial approximation of 1/b
     MPC_Dotproduct(w0, sfnormalization, w0, 0);
 
-    VLOG(6) << "1/b w0 result: " << revealAll(w0).format(HeavyFmt);
+    VLOG(6) << "1/b w0 result: " << revealAll(w0).format(CSVFormat);
 
     sf64Matrix<D> epsilon0(B.rows(), B.cols());
 
@@ -839,23 +839,23 @@ class MPCOperator {
 
     MPC_Dotproduct(denominator, w0, bw0, 0);
 
-    VLOG(6) << "bw0 result: " << revealAll(bw0).format(HeavyFmt);
+    VLOG(6) << "bw0 result: " << revealAll(bw0).format(CSVFormat);
 
     // The initial approximation of a/b
     sf64Matrix<D> aw0(B.rows(), B.cols());
     MPC_Dotproduct(numerator, w0, aw0, 0);
 
-    VLOG(6) << "aw0 result: " << revealAll(aw0).format(HeavyFmt);
+    VLOG(6) << "aw0 result: " << revealAll(aw0).format(CSVFormat);
 
     epsilon0 = sfconstant_one - bw0;
 
-    VLOG(6) << "epsilon0 result: " << revealAll(epsilon0).format(HeavyFmt);
+    VLOG(6) << "epsilon0 result: " << revealAll(epsilon0).format(CSVFormat);
 
     //............................................................................
     sf64Matrix<D> epsilon0_one(B.rows(), B.cols());
     epsilon0_one = sfconstant_one + epsilon0;
     VLOG(6) << "epsilon0_one result: "
-            << revealAll(epsilon0_one).format(HeavyFmt);
+            << revealAll(epsilon0_one).format(CSVFormat);
 
     sf64Matrix<D> epsilon_prod(B.rows(), B.cols());
     // Closer and closer to a/b
@@ -875,7 +875,8 @@ class MPCOperator {
     // get final result:
     MPC_Dotproduct(epsilon_prod, quotient_sign, ret);
 
-    VLOG(6) << "ret result: " << revealAll(ret).format(HeavyFmt);
+    VLOG(6) << "ret result: " << revealAll(ret).format(CSVFormat);
+
 
     return ret;
   }

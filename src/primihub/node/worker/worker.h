@@ -22,7 +22,6 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
 
 #include <cmath>
 #include <unordered_map>

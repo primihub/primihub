@@ -1,212 +1,55 @@
-// Copyright [2021] <primihub.com>
-#ifndef SRC_primihub_UTIL_NETWORK_SOCKET_COMMON_LOG_H_
-#define SRC_primihub_UTIL_NETWORK_SOCKET_COMMON_LOG_H_
-
-#include <iostream>
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+#ifndef SRC_PRIMIHUB_UTIL_LOG_H_
+#define SRC_PRIMIHUB_UTIL_LOG_H_
+#include "glog/logging.h"
 #include <string>
-#include <mutex>
-#include <vector>
-#include <chrono>
-#include <array>
 
 namespace primihub {
-extern std::chrono::time_point<std::chrono::system_clock> gStart;
-class Log {
- public:
-  Log() = default;
-  Log(const Log& c) {
-    std::lock_guard<std::mutex>l(const_cast<std::mutex&>(c.mLock));
-    mMessages = c.mMessages;
-  }
-
-  std::vector<std::pair<uint64_t, std::string>> mMessages;
-  std::mutex mLock;
-
-  void push(const std::string& msg) {
-    std::lock_guard<std::mutex>l(mLock);
-    auto now = std::chrono::system_clock::now();
-    auto ts = std::chrono::duration_cast<std::chrono::microseconds>(now - gStart).count();
-
-    mMessages.emplace_back(ts, msg);
-  }
+enum class LogType {
+  kScheduler,
+  kTask,
+  kDataService
 };
 
-inline std::ostream& operator<<(std::ostream& o, Log& log) {
-  std::lock_guard<std::mutex>l(log.mLock);
-  for (uint64_t i = 0; i < log.mMessages.size(); ++i) {
-    o << "[" << i << ", " << log.mMessages[i].first / 1000.0
-    << "ms ]  " << log.mMessages[i].second << std::endl;
+static std::string LogTypeToString(LogType type) {
+  switch (type) {
+    case LogType::kScheduler:
+      return "SCHEDULER";
+    case LogType::kTask:
+      return "TASK";
+    case LogType::kDataService:
+      return "DATA_SERVICE";
+    default:
+      return "";
   }
-
-  return o;
 }
 
-class LogAdapter {
- public:
-  Log* mLog = nullptr;
+#define PH_LOG(log_level, log_type) \
+    LOG(log_level)
+    // LOG(log_level) << LogTypeToString(log_type) << " "
 
-  LogAdapter() = default;
-  LogAdapter(const LogAdapter&) = default;
-  LogAdapter(Log& log) : mLog(&log) {}
+#define PH_VLOG(log_level, log_type) \
+    VLOG(log_level)
 
-  void push(const std::string& msg) {
-    if (mLog)
-      mLog->push(msg);
-  }
+    // VLOG(log_level) << LogTypeToString(log_type) << " "
 
-  void setLog(Log& log) {
-    mLog = &log;
-  }
-};
+#define PH_LOG_EVERY_N(log_level, n, log_type) \
+    LOG_EVERY_N(log_level, n) << LogTypeToString(log_type) << " "
 
-inline std::ostream& operator<<(std::ostream& o, LogAdapter& log) {
-  if (log.mLog)
-    o << *log.mLog;
-  else
-    o << "{null log}";
-  return o;
-}
+}  // namespace primihub
 
-enum class Color {
-  LightGreen = 2,
-  LightGrey = 3,
-  LightRed = 4,
-  OffWhite1 = 5,
-  OffWhite2 = 6,
-  Grey = 8,
-  Green = 10,
-  Blue = 11,
-  Red = 12,
-  Pink = 13,
-  Yellow = 14,
-  White = 15,
-  Default
-};
-
-extern const Color ColorDefault;
-
-std::ostream& operator<<(std::ostream& out, Color color);
-
-enum class IoStream {
-  lock,
-  unlock
-};
-
-extern std::mutex gIoStreamMtx;
-
-struct ostreamLock {
-  std::ostream& out;
-  std::unique_lock<std::mutex> mLock;
-
-  ostreamLock(ostreamLock&&) = default;
-
-  ostreamLock(std::ostream& o, std::mutex& lock = gIoStreamMtx) :
-      out(o),
-      mLock(lock)
-  {}
-
-  template<typename T>
-  ostreamLock& operator<<(const T& v)
-  {
-      out << v;
-      return *this;
-  }
-
-  template<typename T>
-  ostreamLock& operator<<(T& v)
-  {
-      out << v;
-      return *this;
-  }
-  ostreamLock& operator<< (std::ostream& (*v)(std::ostream&))
-  {
-      out << v;
-      return *this;
-  }
-  ostreamLock& operator<< (std::ios& (*v)(std::ios&))
-  {
-      out << v;
-      return *this;
-  }
-  ostreamLock& operator<< (std::ios_base& (*v)(std::ios_base&))
-  {
-      out << v;
-      return *this;
-  }
-};
-
-
-struct ostreamLocker
-{
-    std::ostream& out;
-
-    ostreamLocker(std::ostream& o) :
-        out(o)
-    {}
-
-    template<typename T>
-    ostreamLock operator<<(const T& v)
-    {
-        ostreamLock r(out);
-        r << v;
-
-#ifndef NO_RETURN_ELISION
-        return r;
-#else
-        return std::move(r);
-#endif
-    }
-
-    template<typename T>
-    ostreamLock operator<<(T& v)
-    {
-        ostreamLock r(out);
-        r << v;
-#ifndef NO_RETURN_ELISION
-        return r;
-#else
-        return std::move(r);
-#endif
-    }
-    ostreamLock operator<< (std::ostream& (*v)(std::ostream&))
-    {
-        ostreamLock r(out);
-        r << v;
-#ifndef NO_RETURN_ELISION
-        return r;
-#else
-        return std::move(r);
-#endif
-    }
-    ostreamLock operator<< (std::ios& (*v)(std::ios&))
-    {
-        ostreamLock r(out);
-        r << v;
-#ifndef NO_RETURN_ELISION
-        return r;
-#else
-        return std::move(r);
-#endif
-    }
-    ostreamLock operator<< (std::ios_base& (*v)(std::ios_base&))
-    {
-        ostreamLock r(out);
-        r << v;
-#ifndef NO_RETURN_ELISION
-        return r;
-#else
-        return std::move(r);
-#endif
-    }
-};
-extern ostreamLocker lout;
-
-std::ostream& operator<<(std::ostream& out, IoStream color);
-
-
-void setThreadName(const std::string name);
-void setThreadName(const char* name);
-
-}
-
-#endif  // SRC_primihub_UTIL_NETWORK_SOCKET_COMMON_LOG_H_
+#endif  // SRC_PRIMIHUB_UTIL_LOG_H_
