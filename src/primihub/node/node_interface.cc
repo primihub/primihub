@@ -20,6 +20,8 @@
 #include <utility>
 
 #include "src/primihub/util/util.h"
+#include "src/primihub/util/proto_log_helper.h"
+#include "src/primihub/util/log.h"
 
 namespace primihub {
 VMNodeInterface::VMNodeInterface(std::unique_ptr<VMNodeImpl> node_impl) :
@@ -33,9 +35,8 @@ Status VMNodeInterface::SubmitTask(ServerContext *context,
                                    const rpc::PushTaskRequest *pushTaskRequest,
                                    rpc::PushTaskReply *pushTaskReply) {
   if (VLOG_IS_ON(5)) {
-    std::string str;
-    google::protobuf::TextFormat::PrintToString(*pushTaskRequest, &str);
-    LOG(INFO) << str;
+    auto reqeust_str = proto::util::TaskRequestToString(*pushTaskRequest);
+    LOG(INFO) << reqeust_str;
   }
   ServerImpl()->DispatchTask(*pushTaskRequest, pushTaskReply);
 
@@ -48,24 +49,38 @@ Status VMNodeInterface::SubmitTask(ServerContext *context,
 Status VMNodeInterface::ExecuteTask(ServerContext* context,
                                     const rpc::PushTaskRequest* request,
                                     rpc::PushTaskReply* response) {
-  VLOG(5) << "enter VMNodeImpl::ExecuteTask";
+  const auto& task_info = request->task().task_info();
+  std::string TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
+  PH_VLOG(5, LogType::kScheduler)
+      << TASK_INFO_STR
+      << "enter VMNodeImpl::ExecuteTask";
   auto ret = ServerImpl()->ExecuteTask(*request, response);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "ExecuteTask encountes error";
+    PH_LOG(ERROR, LogType::kScheduler)
+        << TASK_INFO_STR
+        << "ExecuteTask encountes error";
   }
-  VLOG(5) << "exit VMNodeImpl::ExecuteTask";
+  PH_VLOG(5, LogType::kScheduler)
+      << TASK_INFO_STR
+      << "exit VMNodeImpl::ExecuteTask";
   return Status::OK;
 }
 Status VMNodeInterface::StopTask(ServerContext* context,
                                  const rpc::TaskContext* request,
                                  rpc::Empty* response) {
-//
-  VLOG(0) << "enter VMNodeImpl::StopTask";
+  std::string TASK_INFO_STR = proto::util::TaskInfoToString(*request);
+  PH_VLOG(5, LogType::kScheduler)
+      << TASK_INFO_STR
+      << "enter VMNodeImpl::StopTask";
   auto ret = ServerImpl()->StopTask(*request);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "execute StopTask method encountes error";
+    PH_LOG(ERROR, LogType::kScheduler)
+        << TASK_INFO_STR
+        << "execute StopTask method encountes error";
   }
-  VLOG(0) << "exit VMNodeImpl::StopTask";
+  PH_VLOG(5, LogType::kScheduler)
+      << TASK_INFO_STR
+      << "exit VMNodeImpl::StopTask";
   return Status::OK;
 }
 Status VMNodeInterface::KillTask(ServerContext* context,
@@ -73,7 +88,11 @@ Status VMNodeInterface::KillTask(ServerContext* context,
                                  rpc::KillTaskResponse* response) {
   auto ret = ServerImpl()->KillTask(*request, response);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "KillTask encountes error";
+    const auto& task_info = request->task_info();
+    std::string TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
+    PH_LOG(ERROR, LogType::kScheduler)
+        << TASK_INFO_STR
+        << "KillTask encountes error";
   }
   return Status::OK;
 }
@@ -84,7 +103,10 @@ Status VMNodeInterface::FetchTaskStatus(ServerContext* context,
                                         rpc::TaskStatusReply* response) {
   auto ret = ServerImpl()->FetchTaskStatus(*request, response);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "FetchTaskStatus encountes error";
+    std::string TASK_INFO_STR = proto::util::TaskInfoToString(*request);
+    PH_LOG(ERROR, LogType::kScheduler)
+        << TASK_INFO_STR
+        << "FetchTaskStatus encountes error";
   }
   return Status::OK;
 }
@@ -94,7 +116,11 @@ Status VMNodeInterface::UpdateTaskStatus(ServerContext* context,
                                          rpc::Empty* response) {
   auto ret = this->ServerImpl()->UpdateTaskStatus(*request);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "UpdateTaskStatus encountes error";
+    const auto& task_info = request->task_info();
+    std::string TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
+    PH_LOG(ERROR, LogType::kScheduler)
+        << TASK_INFO_STR
+        << "UpdateTaskStatus encountes error";
   }
   return Status::OK;
 }
@@ -103,7 +129,6 @@ Status VMNodeInterface::UpdateTaskStatus(ServerContext* context,
 Status VMNodeInterface::Send(ServerContext* context,
                              ServerReader<rpc::TaskRequest>* reader,
                              rpc::TaskResponse* response) {
-  VLOG(5) << "VMNodeImpl::Send: begin to receive data...";
   bool recv_meta_info{false};
   std::vector<std::string> recv_data;
   rpc::TaskContext task_info;
@@ -111,20 +136,21 @@ Status VMNodeInterface::Send(ServerContext* context,
   std::string received_data;
 
   rpc::TaskRequest request;
+  std::string TASK_INFO_STR;
   while (reader->Read(&request)) {
     if (!recv_meta_info) {
       task_info.CopyFrom(request.task_info());
+      TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
       key = request.role();
       if (key.empty()) {
-        LOG(WARNING) << "recv_key is not set";
+        PH_LOG(WARNING, LogType::kTask)
+            << TASK_INFO_STR << "recv_key is not set";
       }
       size_t data_len = request.data_len();
       received_data.reserve(data_len);
       recv_meta_info = true;
-      VLOG(5) << "job_id: " << task_info.job_id() << " "
-              << "task_id: " << task_info.task_id() << " "
-              << "request_id: " << task_info.request_id() << " "
-              << "recv key: " << key;
+      PH_VLOG(5, LogType::kTask)
+          << TASK_INFO_STR << "recv key: " << key;
     }
     received_data.append(request.data());
   }
@@ -134,7 +160,9 @@ Status VMNodeInterface::Send(ServerContext* context,
   if (ret != retcode::SUCCESS) {
     response->set_ret_code(rpc::retcode::FAIL);
   }
-  VLOG(5) << "end of VMNodeImpl::Send, data total received size:" << data_size;
+  PH_VLOG(5, LogType::kTask)
+      << TASK_INFO_STR
+      << "end of VMNodeImpl::Send, data total received size:" << data_size;
   response->set_ret_code(rpc::retcode::SUCCESS);
   return Status::OK;
 }
@@ -142,13 +170,14 @@ Status VMNodeInterface::Send(ServerContext* context,
 Status VMNodeInterface::Recv(ServerContext* context,
                              const rpc::TaskRequest* request,
                              ServerWriter<rpc::TaskResponse>* writer) {
-//
   std::string send_data;
   const auto& task_info = request->task_info();
   std::string key = request->role();
   auto ret = this->ServerImpl()->ProcessSendData(task_info, key, &send_data);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "no data is available for key: " << key;
+    std::string TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR << "no data is available for key: " << key;
     rpc::TaskResponse response;
     std::string err_msg = "no data is available for key:" + key;
     response.set_ret_code(rpc::retcode::FAIL);
@@ -172,20 +201,20 @@ Status VMNodeInterface::SendRecv(ServerContext* context,
   std::string key;
   std::string received_data;
   rpc::TaskRequest request;
+  std::string TASK_INFO_STR;
   while (stream->Read(&request)) {
     if (!recv_meta_info) {
       task_info.CopyFrom(request.task_info());
+      TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
       key = request.role();
       if (key.empty()) {
-        LOG(WARNING) << "recv_key is not set";
+        PH_LOG(WARNING, LogType::kTask)
+            << TASK_INFO_STR << "send key is empty";
       }
       size_t data_len = request.data_len();
       received_data.reserve(data_len);
       recv_meta_info = true;
-      VLOG(5) << "job_id: " << task_info.job_id() << " "
-              << "task_id: " << task_info.task_id() << " "
-              << "request_id: " << task_info.request_id() << " "
-              << "send key: " << key;
+      VLOG(5) << TASK_INFO_STR << "send key: " << key;
     }
     received_data.append(request.data());
   }
@@ -204,7 +233,8 @@ Status VMNodeInterface::SendRecv(ServerContext* context,
   std::string send_data;
   ret = this->ServerImpl()->ProcessSendData(task_info, key, &send_data);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "no data is available for key: " << key;
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR << "no data is available for key: " << key;
     rpc::TaskResponse response;
     std::string err_msg = "no data is available for key:" + key;
     response.set_ret_code(rpc::retcode::FAIL);
@@ -290,8 +320,10 @@ Status VMNodeInterface::ForwardRecv(ServerContext* context,
   auto ret = this->ServerImpl()->ProcessForwardData(task_info, key, &recv_data);
   if (ret != retcode::SUCCESS) {
     rpc::TaskRequest response;
+    std::string TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
     std::string err_msg = "no data is available for key:" + key;
-    LOG(ERROR) << err_msg;
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR << err_msg;
     writer->Write(response);
     return Status::OK;
   }
@@ -306,8 +338,10 @@ Status VMNodeInterface::ForwardRecv(ServerContext* context,
 retcode VMNodeInterface::WaitUntilWorkerReady(const std::string& worker_id,
                                               grpc::ServerContext* context,
                                               int timeout_ms) {
+  std::string TASK_INFO_STR = proto::util::TaskInfoToString(worker_id);
   if (context->IsCancelled()) {
-    LOG(ERROR) << "context is cancelled by client";
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR << "context is cancelled by client";
     return retcode::FAIL;
   }
   auto _start = std::chrono::high_resolution_clock::now();
@@ -318,18 +352,22 @@ retcode VMNodeInterface::WaitUntilWorkerReady(const std::string& worker_id,
       break;
     }
     if (context->IsCancelled()) {
-      LOG(ERROR) << "context is cancelled by client";
+      PH_LOG(ERROR, LogType::kTask)
+         << TASK_INFO_STR << "context is cancelled by client";
       return retcode::FAIL;
     }
-    VLOG(5) << "sleep and wait for worker ready, "
-            << "worker id : " << worker_id << " ........";
+    PH_VLOG(5, LogType::kTask)
+        << TASK_INFO_STR
+        << "sleep and wait for worker ready ......";
     std::this_thread::sleep_for(std::chrono::seconds(1));
     if (timeout_ms == -1) {
       continue;
     }
     auto time_elapse_ms = timer.timeElapse();
     if (time_elapse_ms > timeout_ms) {
-      LOG(ERROR) << "wait for worker ready timeout";
+      PH_LOG(ERROR, LogType::kTask)
+          << TASK_INFO_STR
+          << "wait for worker ready is timeout";
       return retcode::FAIL;
     }
   } while (true);

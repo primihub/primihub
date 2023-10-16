@@ -10,9 +10,9 @@
 
 namespace primihub {
 
-static Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ",", "\n", "[", "]");
+static Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ",", ",", "[", "]");
 
-static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", "\n");
+static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", ",");
 
 template <typename Derived>
 void writeToCSVfile(std::string name, const Eigen::MatrixBase<Derived>& matrix);

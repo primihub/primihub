@@ -31,10 +31,10 @@ class FLScheduler : public VMScheduler {
  public:
   FLScheduler() = default;
   FLScheduler(const std::string &node_id,
-                bool singleton,
-                const std::vector<NodeWithRoleTag> &peers_with_tag,
-                const PeerContextMap &peer_context_map,
-                const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
+              bool singleton,
+              const std::vector<NodeWithRoleTag> &peers_with_tag,
+              const PeerContextMap &peer_context_map,
+              const std::vector<DatasetMetaWithParamTag> &metas_with_role_tag)
             : VMScheduler(node_id, singleton),
             peers_with_tag_(peers_with_tag),
             peer_context_map_(peer_context_map),
@@ -49,11 +49,8 @@ class FLScheduler : public VMScheduler {
                     const PushTaskRequest& request);
 
  private:
-  void add_vm(rpc::Node *node, int i, int role_num,
-                 const PushTaskRequest *pushTaskRequest);
-
   void getDataMetaListByRole(const std::string &role,
-                           std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);
+      std::vector<std::shared_ptr<DatasetMeta>> *data_meta_list);
 
   std::vector<NodeWithRoleTag> peers_with_tag_;
   PeerContextMap peer_context_map_;

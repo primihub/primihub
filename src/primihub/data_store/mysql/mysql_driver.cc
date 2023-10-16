@@ -49,7 +49,8 @@ std::string MySQLAccessInfo::toString() {
         js["query_index"] = std::move(quey_col_info);
     }
     js["schema"] = SchemaToJsonString();
-    ss << std::setw(4) << js;
+    // ss << std::setw(4) << js;
+    ss << js;
     return ss.str();
 }
 retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {

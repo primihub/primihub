@@ -55,6 +55,9 @@ cc_library(
   name = "log_util",
   hdrs = ["log.h"],
   srcs = ["log.cc"],
+  deps = [
+    "@com_github_glog_glog//:glog",
+  ],
 )
 
 cc_library(
@@ -140,5 +143,15 @@ cc_library(
     "//src/primihub/common:common_defination",
     "@com_github_glog_glog//:glog",
     "@arrow",
+  ],
+)
+
+cc_library(
+  name = "pb_log_helper",
+  hdrs = ["proto_log_helper.h"],
+  srcs = ["proto_log_helper.cc"],
+  deps = [
+    "//src/primihub/protos:worker_proto",
+    "@com_github_glog_glog//:glog",
   ],
 )

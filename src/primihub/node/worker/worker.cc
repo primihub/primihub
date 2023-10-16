@@ -16,15 +16,20 @@
 
 #include "src/primihub/node/worker/worker.h"
 #include <memory>
-
+#include <string>
 #include "src/primihub/task/semantic/factory.h"
 #include "src/primihub/task/semantic/task.h"
 #include "base64.h"
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
+#include "Poco/PipeStream.h"
+#include "Poco/StreamCopier.h"
 
 using TaskFactory = primihub::task::TaskFactory;
 using Process = Poco::Process;
 using ProcessHandle = Poco::ProcessHandle;
 
+namespace pb_util = primihub::proto::util;
 namespace primihub {
 std::string TaskStatusCodeToString(rpc::TaskStatus::StatusCode code) {
   switch (code) {
@@ -45,11 +50,16 @@ std::string TaskStatusCodeToString(rpc::TaskStatus::StatusCode code) {
 
 retcode Worker::waitForTaskReady() {
   bool ready = task_ready_future_.get();
+  auto TASK_INFO_STR = pb_util::TaskInfoToString(worker_id_);
   if (!ready) {
-    LOG(ERROR) << "Initialize task failed, worker id " << worker_id_ << ".";
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR
+        << "Initialize task failed, worker id " << worker_id_ << ".";
     return retcode::FAIL;
   }
-  VLOG(7) << "task_ready_future_ task is ready for worker id: " << worker_id_;
+  PH_VLOG(7, LogType::kTask)
+      << TASK_INFO_STR
+      << "task_ready_future_ task is ready for worker id: " << worker_id_;
   return retcode::SUCCESS;
 }
 
@@ -81,7 +91,9 @@ Worker::TaskRunMode Worker::ExecuteMode(const PushTaskRequest& request) {
 
 retcode Worker::ExecuteTaskByThread(const PushTaskRequest* task_request) {
   auto type = task_request->task().type();
-  VLOG(2) << "Worker::execute task type: " << type;
+  const auto& task_info = task_request->task().task_info();
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
+  VLOG(2) << TASK_INFO_STR << "Worker::execute task type: " << type;
   auto& dataset_service = nodelet->getDataService();
 #ifdef SGX
   auto& ra_service = nodelet->GetRaService();
@@ -95,15 +107,15 @@ retcode Worker::ExecuteTaskByThread(const PushTaskRequest* task_request) {
                                  dataset_service);
 #endif
   if (task_ptr == nullptr) {
-    LOG(ERROR) << "Woker create task failed.";
+    LOG(ERROR) << TASK_INFO_STR << "Woker create task failed.";
     task_ready_promise_.set_value(false);
     return retcode::FAIL;
   }
   task_ready_promise_.set_value(true);
-  LOG(INFO) << "Worker start execute task ";
+  LOG(INFO) << TASK_INFO_STR << "Worker start execute task ";
   int ret = task_ptr->execute();
   if (ret != 0) {
-    LOG(ERROR) << "Error occurs during execute task.";
+    LOG(ERROR) << TASK_INFO_STR << "Error occurs during execute task.";
     return retcode::FAIL;
   }
   return retcode::SUCCESS;
@@ -114,6 +126,8 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
   auto& server_config = ServerConfig::getInstance();
   PushTaskRequest send_request;
   send_request.CopyFrom(*task_request);
+  const auto& task_info = send_request.task().task_info();
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   // change datasetid to datset access info
   auto& dataset_service = nodelet->getDataService();
   auto party_datasets = send_request.mutable_task()->mutable_party_datasets();
@@ -128,12 +142,16 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
     for (auto& [dataset_name, dataset_id] : *(datset_ptr)) {
       auto driver = dataset_service->getDriver(dataset_id);
       if (driver == nullptr) {
-        LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+        LOG(WARNING)
+            << TASK_INFO_STR
+            << "no dataset access info is found for id: " << dataset_id;
         continue;
       }
       auto& access_info = driver->dataSetAccessInfo();
       if (access_info == nullptr) {
-        LOG(WARNING) << "no dataset access info is found for id: " << dataset_id;
+        LOG(WARNING)
+            << TASK_INFO_STR
+            << "no dataset access info is found for id: " << dataset_id;
         continue;
       }
       rpc::ParamValue pv;
@@ -144,44 +162,61 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
     }
     datasets.set_dataset_detail(true);
   }
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(send_request, &str);
-  LOG(INFO) << "Task Process::execute: " << str;
-
+  std::string request_str = pb_util::TaskRequestToString(send_request);
+  LOG(INFO) << TASK_INFO_STR << "Task Process::execute: " << request_str;
 
   std::string task_config_str;
   bool status = send_request.SerializeToString(&task_config_str);
   if (!status) {
-    LOG(ERROR) << "serialize task config failed";
+    LOG(ERROR) << TASK_INFO_STR << "serialize task config failed";
     return retcode::FAIL;
   }
   std::string request_base64_str = base64_encode(task_config_str);
 
   // std::future<std::string> data;
   std::string current_process_dir = getCurrentProcessDir();
-  VLOG(5) << "current_process_dir: " << current_process_dir;
+  VLOG(5) << TASK_INFO_STR << "current_process_dir: " << current_process_dir;
   std::string execute_app = current_process_dir + "/task_main";
   std::string execute_cmd;
   std::vector<std::string> args;
   args.push_back("--node_id=" + this->node_id);
   args.push_back("--config_file=" + server_config.getConfigFile());
   args.push_back("--request=" + request_base64_str);
-  args.push_back("--request_id=" +
-                 task_request->task().task_info().request_id());
-  // execute_cmd.append(execute_app).append(" ")
-  //     .append("--node_id=").append(node_id_).append(" ")
-  //     .append("--config_file=")
-  //     .append(server_config.getConfigFile()).append(" ")
-  //     .append("--request=").append(request_base64_str);
+  args.push_back("--request_id=" + task_info.request_id());
   // using POCO process
-  auto handle_ = Process::launch(execute_app, args);
+  Poco::Pipe outPipe;
+  auto handle_ = Process::launch(execute_app, args, 0, &outPipe, &outPipe);
+  Poco::PipeInputStream istr(outPipe);
+
   task_ready_promise_.set_value(true);
-  LOG(INFO) << "Worker start execute task ";
+  LOG(INFO) << TASK_INFO_STR << "Worker start execute task ";
   process_handler_ = std::make_unique<ProcessHandle>(handle_);
+  std::string log_content;
+  while (std::getline(istr, log_content)) {
+    if (log_content.empty()) {
+      continue;
+    }
+    const char* log_data = log_content.data();
+    size_t log_length = log_content.size();
+    auto log_sv = std::string_view(log_data, log_length);
+    char first_ch = log_sv[0];
+    if ((first_ch == 'I' || first_ch == 'W' || first_ch == 'E')) {  // glog format
+      std::size_t pos = log_sv.find_first_of(' ');
+      pos = log_sv.find_first_of(' ', pos+1);
+      pos = log_sv.find_first_of(' ', pos+1);
+      size_t name_pos = log_sv.find(']', pos+1);
+      auto file_name = std::string_view(log_data + pos +1, name_pos-pos);
+      auto output_log =
+          std::string_view(log_data + name_pos + 1, log_length-name_pos);
+      LOG(INFO) << file_name << " " << TASK_INFO_STR << output_log;
+    } else {
+      LOG(INFO) << TASK_INFO_STR << log_content;
+    }
+  }
   try {
     int ret = handle_.wait();
     if (ret != 0) {
-      LOG(ERROR) << "ERROR: " << ret;
+      LOG(ERROR) << TASK_INFO_STR << "ERROR: " << ret;
       return retcode::FAIL;
     }
   } catch (std::exception& e) {
@@ -214,13 +249,18 @@ retcode Worker::fetchTaskStatus(rpc::TaskStatus* task_status) {
 retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
   const auto& status_code = task_status.status();
   const auto& party = task_status.party();
-  const auto& request_id = task_status.task_info().request_id();
+  const auto& task_info = task_status.task_info();
+  auto TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   if (status_code == rpc::TaskStatus::SUCCESS ||
       status_code == rpc::TaskStatus::FAIL) {
     std::unique_lock<std::shared_mutex> lck(final_status_mtx_);
     final_status_[party] = status_code;
 
     if (status_code == rpc::TaskStatus::FAIL) {
+      LOG(ERROR) << "Scheduler, " << TASK_INFO_STR
+                 << "party name: " << party << " "
+                 << "execute task encountes error, detail: "
+                 << task_status.message();
       if (!scheduler_finished.load(std::memory_order::memory_order_relaxed)) {
         task_finish_promise_.set_value(retcode::FAIL);
         scheduler_finished.store(true);
@@ -232,10 +272,11 @@ retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
         scheduler_finished.store(true);
       }
     }
-    VLOG(0) << "collected finished party count: " << final_status_.size();
+    VLOG(0) << TASK_INFO_STR
+            << "collected finished party count: " << final_status_.size();
   }
   std::string task_status_str = TaskStatusCodeToString(status_code);
-  VLOG(0) << "Request id: " << request_id << " "
+  VLOG(0) << TASK_INFO_STR
           << "update party: " << party << " "
           << "status to: " << task_status_str;
   task_status_.push(task_status);

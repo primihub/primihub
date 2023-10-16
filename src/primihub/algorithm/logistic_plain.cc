@@ -48,7 +48,7 @@ void plain_Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y,
 
   Y = X * mModel + noise;
 
-  Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ", ", ";\n", "[", "]");
+  Eigen::IOFormat HeavyFmt(Eigen::FullPrecision, 0, ", ", ";", "[", "]");
   for (int i = 0; i < Y.size(); ++i) {
     if (print) {
       std::cout << X.row(i).format(HeavyFmt);

@@ -1,5 +1,6 @@
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
-#include <google/protobuf/text_format.h>
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 namespace primihub::task {
 VMScheduler::VMScheduler() {
@@ -16,9 +17,11 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
   task_request.CopyFrom(*task_request_ptr);
   if (VLOG_IS_ON(5)) {
     std::string str;
-    google::protobuf::TextFormat::PrintToString(task_request, &str);
+    str = proto::util::TaskRequestToString(*task_request_ptr);
     VLOG(5) << "VMScheduler::dispatch: " << str;
   }
+  const auto& task_info = task_request_ptr->task().task_info();
+  auto TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
   const auto& participate_node = task_request.task().party_access_info();
   std::vector<std::thread> thrds;
   std::vector<std::future<retcode>> result_fut;
@@ -28,7 +31,8 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
   for (const auto& [party_name, pb_node] : participate_node) {
     Node dest_node;
     pbNode2Node(pb_node, &dest_node);
-    VLOG(2) << "Dispatch Task to party: " << dest_node.to_string() << " "
+    VLOG(2) << TASK_INFO_STR
+        << "Dispatch Task to party: " << dest_node.to_string() << " "
         << "party_name: " << party_name;
     result_fut.emplace_back(
       std::async(
@@ -43,18 +47,21 @@ retcode VMScheduler::dispatch(const PushTaskRequest* task_request_ptr) {
     auto ret = fut.get();
   }
   if (has_error()) {
-    LOG(ERROR) << "dispatch task has error";
+    LOG(ERROR) << TASK_INFO_STR << "dispatch task has error";
     return retcode::FAIL;
   } else {
-    VLOG(2) << "dispatch task success";
+    VLOG(2) << TASK_INFO_STR << "dispatch task success";
     return retcode::SUCCESS;
   }
 }
 
 void VMScheduler::parseNotifyServer(const PushTaskReply& reply) {
+  const auto& task_info = reply.task_info();
+  auto TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
   for (const auto& node : reply.task_server()) {
     Node task_server_info(node.ip(), node.port(), node.use_tls(), node.role());
-    VLOG(5) << "task_server_info: " << task_server_info.to_string();
+    VLOG(5) << TASK_INFO_STR
+        << "task_server_info: " << task_server_info.to_string();
     this->addTaskServer(std::move(task_server_info));
   }
 }
@@ -100,7 +107,9 @@ void VMScheduler::InitLinkContext() {
 
 retcode VMScheduler::ScheduleTask(const std::string& party_name,
     const Node dest_node, const PushTaskRequest& request) {
-  VLOG(5) << "begin schedule task to party: " << party_name;
+  const auto& task_info = request.task().task_info();
+  auto TASK_INFO_STR = proto::util::TaskInfoToString(task_info);
+  VLOG(5) << TASK_INFO_STR  << "begin schedule task to party: " << party_name;
   SET_THREAD_NAME("VMScheduler");
   PushTaskReply reply;
   PushTaskRequest send_request;
@@ -111,14 +120,16 @@ retcode VMScheduler::ScheduleTask(const std::string& party_name,
   AddSchedulerNode(task_ptr);
   // send request
   std::string dest_node_address = dest_node.to_string();
-  LOG(INFO) << "dest node " << dest_node_address;
+  LOG(INFO) << TASK_INFO_STR << "dest node " << dest_node_address;
   auto channel = this->getLinkContext()->getChannel(dest_node);
   auto ret = channel->executeTask(send_request, &reply);
   if (ret == retcode::SUCCESS) {
-    VLOG(5) << "send executeTask to : " << dest_node_address << " reply success";
+    VLOG(5) << TASK_INFO_STR
+        << "send executeTask to : " << dest_node_address << " reply success";
   } else {
     set_error();
-    LOG(ERROR) << "send executeTask to : " << dest_node_address << " reply failed";
+    LOG(ERROR) << TASK_INFO_STR
+        << "send executeTask to : " << dest_node_address << " reply failed";
     return retcode::FAIL;
   }
   parseNotifyServer(reply);

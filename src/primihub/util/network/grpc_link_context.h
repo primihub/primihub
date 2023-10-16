@@ -53,6 +53,9 @@ class GrpcChannel : public IChannel {
   std::shared_ptr<grpc::Channel> buildChannel(std::string& server_addr,
                                               bool use_tls);
 
+ protected:
+  retcode BuildTaskInfo(rpc::TaskContext* task_info);
+
  private:
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
   std::shared_ptr<grpc::Channel> grpc_channel_{nullptr};
