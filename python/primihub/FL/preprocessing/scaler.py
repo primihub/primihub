@@ -9,7 +9,7 @@ from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
 from primihub.FL.stats import col_norm, row_norm, col_min_max
-from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
+from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class MaxAbsScaler(PreprocessBase):
@@ -161,10 +161,13 @@ class RobustScaler(PreprocessBase):
         if not 0 <= q_min <= q_max <= 100:
             raise ValueError("Invalid quantile range: %s" % str(self.module.quantile_range))
         
-        if not self.module.with_centering:
+        with_centering = self.module.with_centering
+        with_scaling = self.module.with_scaling
+
+        if not with_centering:
             center = None
 
-        if not self.module.with_scaling:
+        if not with_scaling:
             scale = None
         
         if self.role == 'client':
@@ -174,35 +177,43 @@ class RobustScaler(PreprocessBase):
                 force_all_finite="allow-nan",
             )
 
-            if self.module.with_centering:
+            if with_centering or with_scaling:
                 send_local_kll_sketch(X, self.channel)
-                center = self.channel.recv('center')
 
-            if self.module.with_scaling:
-                if not self.module.with_centering:
-                    send_local_kll_sketch(X, self.channel)
-                scale = self.channel.recv('scale')
+                if with_centering and not with_scaling:
+                    center = self.channel.recv('center')
+
+                if with_scaling and not with_centering:
+                    scale = self.channel.recv('scale')
+
+                if with_centering and with_scaling:
+                    center, scale = self.channel.recv('center_scale')
         
         elif self.role == 'server':
-            if self.module.with_centering:
-                kll = merge_client_kll_sketch(self.channel)
-                center = kll.get_quantiles(0.5).reshape(-1)
-                self.channel.send_all('center', center)
-
-            if self.module.with_scaling:
-                if not self.module.with_centering:
-                    kll = merge_client_kll_sketch(self.channel)
-
-                quantiles = kll.get_quantiles([q_min / 100.0, q_max / 100.0])
-                quantiles = np.transpose(quantiles)
-
-                scale = quantiles[1] - quantiles[0]
-                scale = handle_zeros_in_scale(scale, copy=False)
-                if self.module.unit_variance:
-                    adjust = stats.norm.ppf(q_max / 100.0) - stats.norm.ppf(q_min / 100.0)
-                    scale = scale / adjust
+            if self.module.with_centering or self.module.with_scaling:
+                kll = merge_local_kll_sketch(self.channel)
                 
-                self.channel.send_all('scale', scale)
+                if with_centering:
+                    center = kll.get_quantiles(0.5).reshape(-1)
+
+                if with_scaling:
+                    quantiles = kll.get_quantiles([q_min / 100.0, q_max / 100.0])
+                    quantiles = np.transpose(quantiles)
+
+                    scale = quantiles[1] - quantiles[0]
+                    scale = handle_zeros_in_scale(scale, copy=False)
+                    if self.module.unit_variance:
+                        adjust = stats.norm.ppf(q_max / 100.0) - stats.norm.ppf(q_min / 100.0)
+                        scale = scale / adjust
+                
+                if with_centering and not with_scaling:
+                    self.channel.send_all('center', center)
+
+                if with_scaling and not with_centering:
+                    self.channel.send_all('scale', scale)
+
+                if with_centering and with_scaling:
+                    self.channel.send_all('center_scale', (center, scale))
             
         self.module.center_ = center
         self.module.scale_ = scale

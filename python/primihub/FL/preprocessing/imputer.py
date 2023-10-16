@@ -4,7 +4,7 @@ from sklearn.impute import SimpleImputer as SKL_SimpleImputer
 from sklearn.impute._base import _BaseImputer
 from .base import PreprocessBase
 from .util import get_dense_mask, unique
-from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
+from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class SimpleImputer(PreprocessBase, _BaseImputer):
@@ -124,7 +124,7 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                 median = self.channel.recv('median')
 
             elif self.role == 'server':
-                kll = merge_client_kll_sketch(self.channel)
+                kll = merge_local_kll_sketch(self.channel)
                 mask = kll.is_empty()
 
                 if not any(mask):

@@ -7,7 +7,7 @@ from sklearn.utils import check_random_state
 from .base import PreprocessBase
 from .util import safe_indexing
 from primihub.FL.stats import col_min_max
-from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
+from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class KBinsDiscretizer(PreprocessBase):
@@ -105,7 +105,7 @@ class KBinsDiscretizer(PreprocessBase):
                         n_bins[jj] = new_n_bins
 
             elif self.role == 'server':
-                kll = merge_client_kll_sketch(self.channel)
+                kll = merge_local_kll_sketch(self.channel)
 
                 n_features = kll.get_d()
                 n_bins = self.module._validate_n_bins(n_features)
