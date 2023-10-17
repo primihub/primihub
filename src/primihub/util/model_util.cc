@@ -66,8 +66,8 @@ void Logistic_sample(eMatrix<double>& X, eMatrix<double>& Y,
 
   for (int i = 0; i < Y.size(); ++i) {
       if (print) {
-          std::cout << X.row(i).format(HeavyFmt);
-          std::cout << " -> " << (Y(i) > 0) << Y.row(i).format(HeavyFmt) << std::endl;
+          std::cout << X.row(i).format(CSVFormat);
+          std::cout << " -> " << (Y(i) > 0) << Y.row(i).format(CSVFormat) << std::endl;
       }
       Y(i) = Y(i) > 0;
   }

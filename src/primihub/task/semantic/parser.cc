@@ -24,11 +24,12 @@
 #include "src/primihub/task/semantic/parser.h"
 #include "src/primihub/task/semantic/scheduler/factory.h"
 #include "src/primihub/util/util.h"
-
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 using primihub::service::DataURLToDetail;
 using primihub::rpc::TaskType;
-
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 
 /**
@@ -44,6 +45,8 @@ retcode ProtocolSemanticParser::parseTaskSyntaxTree(
     LOG(ERROR) << "no language handler found";
     return retcode::FAIL;
   }
+
+
   retcode ret_code{retcode::SUCCESS};
   auto task_language = lan_parser->getPushTaskRequest().task().language();
   switch (task_language) {
@@ -54,7 +57,10 @@ retcode ProtocolSemanticParser::parseTaskSyntaxTree(
     ret_code = schedulePythonTask(lan_parser);
     break;
   default:
-    LOG(WARNING) << "unsupported language type: " << task_language;
+    auto& request = lan_parser->getPushTaskRequest();
+    const auto& task_info = request.task().task_info();
+    LOG(WARNING) << pb_util::TaskInfoToString(task_info)
+                 << "unsupported language type: " << task_language;
     ret_code = retcode::FAIL;
     break;
   }
@@ -80,8 +86,10 @@ retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
   if (it == param_map.end()) {
     return retcode::SUCCESS;
   }
+  const auto& task_info = task_request.task().task_info();
   rpc::Node auxiliary_node;
   std::string info = it->second.value_string();
+  auto task_info_str = pb_util::TaskInfoToString(task_info);
   nlohmann::json js_info = nlohmann::json::parse(info);
   bool is_dataset = js_info["is_dataset"].get<bool>();
   if (is_dataset) {
@@ -92,7 +100,8 @@ retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
     dataset_service_->MetaService()->FindPeerListFromDatasets(
     datasets_with_tag,
     [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-      VLOG(2) << "Find meta list from datasets: "
+      VLOG(2) << task_info_str
+              << "Find meta list from datasets: "
               << metas_with_param_tag.size();
       if (metas_with_param_tag.size() != 1) {
         return retcode::FAIL;
@@ -122,17 +131,21 @@ retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
 retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
     LanguageParser* _parser) {
   if (DatasetMetaSerivceEnabled()) {
+    auto& task_request = _parser->getPushTaskRequest();
+    const auto& task_info = task_request.task().task_info();
+    auto task_info_str = pb_util::TaskInfoToString(task_info);
     auto datasets_with_tag = _parser->getDatasets();
-    VLOG(2) << "Finding meta list from datasets...";
+    VLOG(2) << task_info_str << "Finding meta list from datasets...";
     // get party access info from dataset meta service using dataset id
     dataset_service_->MetaService()->FindPeerListFromDatasets(
       datasets_with_tag,
       [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
-        VLOG(2) << "Find meta list from datasets: " << metas_with_param_tag.size();
+        VLOG(2) << task_info_str
+                << "Find meta list from datasets: " << metas_with_param_tag.size();
         std::map<std::string, Node> party_access_info;
         metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
         _parser->MergePartyAccessInfo(party_access_info);
-        VLOG(2) << "end of MergePartyAccessInfo";
+        VLOG(2) << task_info_str << "end of MergePartyAccessInfo";
       });
     // process auxiliary server if search by dataset
     ProcessAuxiliaryServer(_parser);
@@ -148,13 +161,15 @@ retcode ProtocolSemanticParser::scheduleProtoTask(
   // schedule task
   auto& task_request = _proto_parser->getPushTaskRequest();
   auto& task_config = task_request.task();
+  const auto& task_info = task_request.task().task_info();
+  auto task_info_str = pb_util::TaskInfoToString(task_info);
   if (task_config.party_access_info().empty()) {
-    LOG(ERROR) << "no party access config found for dispatch";
+    LOG(ERROR) << task_info_str << "no party access config found for dispatch";
     return retcode::FAIL;
   }
   auto scheduler_ptr = SchedulerFactory::CreateScheduler(task_config);
   if (scheduler_ptr == nullptr) {
-    LOG(ERROR) << "no scheduler created to dispatch task";
+    LOG(ERROR) << task_info_str << "no scheduler created to dispatch task";
     return retcode::FAIL;
   }
   auto ret = scheduler_ptr->dispatch(&task_request);
@@ -169,13 +184,15 @@ retcode ProtocolSemanticParser::schedulePythonTask(
   // schedule task
   auto& task_request = _python_parser->getPushTaskRequest();
   auto& task_config = task_request.task();
+  const auto& task_info = task_config.task_info();
+  auto task_info_str = pb_util::TaskInfoToString(task_info);
   if (task_config.party_access_info().empty()) {
-    LOG(ERROR) << "no party access config found for dispatch";
+    LOG(ERROR) << task_info_str << "no party access config found for dispatch";
     return retcode::FAIL;
   }
   auto scheduler_ptr = SchedulerFactory::CreateScheduler(task_config);
   if (scheduler_ptr == nullptr) {
-    LOG(ERROR) << "no scheduler created to dispatch task";
+    LOG(ERROR) << task_info_str << "no scheduler created to dispatch task";
     return retcode::FAIL;
   }
   auto ret = scheduler_ptr->dispatch(&task_request);

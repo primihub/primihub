@@ -132,15 +132,6 @@ class VMNodeImpl {
   bool IsDuplicateTask(const rpc::TaskContext& task_info);
   retcode GetAllParties(const rpc::Task& task_config,
                         std::vector<Node>* all_party);
-
-  std::string TaskInfoToString(const rpc::TaskContext& task_info) {
-    std::string info;
-    info.append("job_id: ").append(task_info.job_id()).append(", ")
-        .append("task_id: ").append(task_info.task_id()).append(", ")
-        .append("sub_task_id: ").append(task_info.sub_task_id()).append(", ")
-        .append("request_id: ").append(task_info.request_id());
-    return info;
-  }
   retcode ExecuteAddTaskOperation(task_manage_t&& task_detail);
   retcode ExecuteDelTaskOperation(task_manage_t&& task_detail);
   retcode ExecuteKillTaskOperation(task_manage_t&& task_detail);

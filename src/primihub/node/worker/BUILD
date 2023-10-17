@@ -8,6 +8,8 @@ cc_library(
     "//src/primihub/protos:worker_proto",
     "//src/primihub/common:common_defination",
     "//src/primihub/task:task_factory",
+    "//src/primihub/util:log_util",
+    "//src/primihub/util:pb_log_helper",
     "@poco//:poco",
     "@com_github_base64_cpp//:base64_lib",
   ],

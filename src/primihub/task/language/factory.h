@@ -23,12 +23,15 @@
 #include "src/primihub/task/language/parser.h"
 #include "src/primihub/task/language/proto_parser.h"
 #include "src/primihub/task/language/py_parser.h"
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
 using primihub::rpc::Language;
 using primihub::rpc::PushTaskRequest;
 using primihub::rpc::TaskType;
 using primihub::service::DatasetService;
 
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 using primihub::rpc::Language;
 class LanguageParserFactory {
@@ -45,7 +48,9 @@ class LanguageParserFactory {
       parser_ptr = std::make_shared<PyParser>(task_request);
       break;
     default:
-      LOG(WARNING) << "Unsupported language: " << language;
+      const auto& task_info = task_request.task().task_info();
+      std::string task_inof_str = pb_util::TaskInfoToString(task_info);
+      LOG(WARNING) << task_inof_str << "Unsupported language: " << language;
       break;
     }
     return parser_ptr;

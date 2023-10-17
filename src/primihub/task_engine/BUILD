@@ -30,6 +30,8 @@ cc_library(
     "//src/primihub/task/semantic:task_factory",
     "//src/primihub/service/dataset/meta_service:meta_service_factory",
     "//src/primihub/service:dataset_service",
+    "//src/primihub/util:log_util",
+    "//src/primihub/util:pb_log_helper",
     "@com_github_base64_cpp//:base64_lib",
   ],
 )
