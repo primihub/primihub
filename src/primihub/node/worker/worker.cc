@@ -202,14 +202,13 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
     char first_ch = log_sv[0];
     if ((first_ch == 'I' ||
          first_ch == 'W' || first_ch == 'E')) {    // glog format
-      std::size_t pos = log_sv.find_first_of(' ');
-      pos = log_sv.find_first_of(' ', pos+1);
-      pos = log_sv.find_first_of(' ', pos+1);
-      size_t name_pos = log_sv.find(']', pos+1);
-      auto file_name = std::string_view(log_data + pos +1, name_pos-pos);
+      size_t name_pos = log_sv.find(']');
+      auto prefix_content =
+          std::string_view(log_data, name_pos+1);
       auto output_log =
           std::string_view(log_data + name_pos + 1, log_length-name_pos);
-      LOG(INFO) << file_name << " " << TASK_INFO_STR << output_log;
+      std::cout << prefix_content << " "
+                << TASK_INFO_STR << output_log << std::endl;
     } else {
       LOG(INFO) << TASK_INFO_STR << log_content;
     }
