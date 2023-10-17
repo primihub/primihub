@@ -1,68 +1,74 @@
-from datasketches import (kll_ints_sketch,
-                          kll_floats_sketch,
-                          kll_doubles_sketch,
-                          kll_items_sketch,
-                          vector_of_kll_floats_sketches,
-                          vector_of_kll_ints_sketches,)
-from primihub.utils.logger_util import logger
+from datasketches import (
+    kll_ints_sketch,
+    kll_floats_sketch,
+    kll_doubles_sketch,
+    kll_items_sketch,
+    vector_of_kll_floats_sketches,
+    vector_of_kll_ints_sketches,
+)
 
 
-def send_local_kll_sketch(X, channel, vector=True, type='float', k=200):
-    sketch = select_kll_sketch(vector, type)
+def send_local_kll_sketch(
+    X, channel, vector: bool = True, data_type: str = "float", k: int = 200
+):
+    sketch = select_kll_sketch(vector, data_type)
     if vector:
         kll = sketch(k=k, d=X.shape[1])
     else:
         kll = sketch(k=k)
     kll.update(X)
-    channel.send('kll_sketch', kll.serialize())
+    channel.send("local_kll_sketch", kll.serialize())
 
 
-def merge_client_kll_sketch(channel, vector=True, type='float', k=200):
-    client_sketch = channel.recv_all('kll_sketch')
-    sketch = select_kll_sketch(vector, type)
+def merge_local_kll_sketch(
+    channel, vector: bool = True, data_type: str = "float", k: int = 200
+):
+    local_kll_sketch = channel.recv_all("local_kll_sketch")
+    sketch = select_kll_sketch(vector, data_type)
 
     if vector:
-        d = len(client_sketch[0])
-        sk = sketch(k=k, d=d)
+        d = len(local_kll_sketch[0])
+        global_kll = sketch(k=k, d=d)
     else:
-        sk = sketch(k=k)
+        global_kll = sketch(k=k)
 
-    for i in range(len(client_sketch)):
+    for i in range(len(local_kll_sketch)):
         if vector:
-            csk = sketch(k=k, d=d)
-            for s in range(d):
-                csk.deserialize(client_sketch[i][s], s)
+            kll = sketch(k=k, d=d)
+            for fea_idx in range(d):
+                kll.deserialize(local_kll_sketch[i][fea_idx], fea_idx)
         else:
-            csk = sketch(k=k)
-            csk.deserialize(client_sketch[i])
-        
-        sk.merge(csk)
+            kll = sketch(k=k)
+            kll.deserialize(local_kll_sketch[i])
 
-    return sk
+        global_kll.merge(kll)
+
+    return global_kll
 
 
-def select_kll_sketch(vector=True, type='float'):
-    if vector:
-        if type == 'float':
-            sketch = vector_of_kll_floats_sketches
-        elif type == 'int':
-            sketch = vector_of_kll_ints_sketches
-        else:
-            error_msg = f'Unsupported kll sketch: vector {vector}, type {type}'
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-    else:
-        if type == 'float':
-            sketch = kll_floats_sketch
-        elif type == 'int':
-            sketch = kll_ints_sketch
-        elif type == 'double':
-            sketch = kll_doubles_sketch
-        elif type == 'item':
-            sketch = kll_items_sketch
-        else:
-            error_msg = f'Unsupported kll sketch: vector {vector}, type {type}'
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-    return sketch
+def select_kll_sketch(vector: bool = True, data_type: str = "float"):
+    valid_type = {
+        True: ["float", "int"],
+        False: ["float", "int", "double", "item"],
+    }
+
+    data_type = data_type.lower()
+    if data_type not in valid_type[vector]:
+        raise ValueError(
+            f"Unsupported kll data_type: {data_type}",
+            f" for vector={vector}, use {valid_type[vector]} instead",
+        )
+
+    valid_kll = {
+        True: {
+            "float": vector_of_kll_floats_sketches,
+            "int": vector_of_kll_ints_sketches,
+        },
+        False: {
+            "float": kll_floats_sketch,
+            "int": kll_ints_sketch,
+            "double": kll_doubles_sketch,
+            "item": kll_items_sketch,
+        },
+    }
+    return valid_kll[vector][data_type]

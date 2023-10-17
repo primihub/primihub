@@ -4,7 +4,7 @@ from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .util import check_channel, check_role
 
 
-def col_sum(role: str, X=None, ignore_nan: bool = True, channel=None):
+def col_sum(role: str, X, ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
@@ -52,6 +52,11 @@ def col_sum_client(
         channel.send("client_col_sum", client_col_sum)
 
     if recv_server:
+        if not send_server:
+            warnings.warn(
+                "server_col_sum=None because send_server=False",
+                RuntimeWarning,
+            )
         server_col_sum = channel.recv("server_col_sum")
         return server_col_sum
     else:
@@ -107,6 +112,11 @@ def row_sum_guest(
         channel.send("guest_row_sum", guest_row_sum)
 
     if recv_host:
+        if not send_host:
+            warnings.warn(
+                "global_row_sum=None because send_host=False",
+                RuntimeWarning,
+            )
         global_row_sum = channel.recv("global_row_sum")
         return global_row_sum
     else:
@@ -144,7 +154,7 @@ def row_sum_host(
     if send_guest:
         if not recv_guest:
             warnings.warn(
-                "global_row_sum=None because recv=False",
+                "global_row_sum=None because recv_guest=False",
                 RuntimeWarning,
             )
         channel.send_all("global_row_sum", global_row_sum)

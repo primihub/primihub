@@ -7,8 +7,8 @@ from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
 from sklearn.utils import check_random_state, check_array
 from .base import PreprocessBase
 from .util import safe_indexing
-from primihub.FL.stats import col_min_max
-from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
+from primihub.FL.stats import col_min_max, col_quantile
+from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class QuantileTransformer(PreprocessBase):
@@ -100,7 +100,7 @@ class QuantileTransformer(PreprocessBase):
                 subsample_ratio = None
             self.channel.send_all('subsample_ratio', subsample_ratio)
 
-            kll = merge_client_kll_sketch(self.channel)
+            kll = merge_local_kll_sketch(self.channel)
             quantiles = kll.get_quantiles(self.module.references_)
             quantiles = np.transpose(quantiles)
             quantiles = np.maximum.accumulate(quantiles)
@@ -246,16 +246,15 @@ class SplineTransformer(PreprocessBase):
 
     def _get_base_knot_positions(self, X=None):
         if self.module.knots == "quantile":
-            if self.role == 'client':
-                send_local_kll_sketch(X, self.channel)
-                knots = self.channel.recv('knots')
-            elif self.role == 'server':
-                quantiles = np.linspace(
-                    start=0, stop=1, num=self.module.n_knots, dtype=np.float64
-                )
-                kll = merge_client_kll_sketch(self.channel)
-                knots = kll.get_quantiles(quantiles)
-                self.channel.send_all('knots', knots)
+            quantiles = np.linspace(
+                start=0, stop=1, num=self.module.n_knots, dtype=np.float64
+            )
+            knots = col_quantile(
+                role=self.role,
+                X=X if self.role == "client" else None,
+                quantiles=quantiles,
+                channel=self.channel
+            )
 
         else:
             # knots == 'uniform':
