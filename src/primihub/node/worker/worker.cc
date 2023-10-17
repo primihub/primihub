@@ -200,7 +200,8 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
     size_t log_length = log_content.size();
     auto log_sv = std::string_view(log_data, log_length);
     char first_ch = log_sv[0];
-    if ((first_ch == 'I' || first_ch == 'W' || first_ch == 'E')) {  // glog format
+    if ((first_ch == 'I' ||
+         first_ch == 'W' || first_ch == 'E')) {    // glog format
       std::size_t pos = log_sv.find_first_of(' ');
       pos = log_sv.find_first_of(' ', pos+1);
       pos = log_sv.find_first_of(' ', pos+1);
