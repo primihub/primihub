@@ -420,7 +420,7 @@ http_archive(
 git_repository(
   name = "osu_libpsi",
   #branch = "bazel_branch",
-  commit = "d56340b515989832983ac84132fef1a03184a9bc",
+  commit = "dcbab133a09579efebc1662a11eeab01b055eb86",
   remote = "https://gitee.com/primihub/libPSI.git",
 )
 
