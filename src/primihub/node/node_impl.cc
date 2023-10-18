@@ -707,7 +707,7 @@ retcode VMNodeImpl::ProcessReceivedData(const rpc::TaskContext& task_info,
   auto ret = WaitUntilWorkerReady(worker_id, wait_worker_ready_timeout_ms_);
   if (ret != retcode::SUCCESS) {
     PH_LOG(ERROR, LogType::kTask)
-        << TASK_INFO_STR << "wati worker ready timeout";
+        << TASK_INFO_STR << "wait worker ready timeout";
     return retcode::FAIL;
   }
   auto worker_ptr = this->GetWorker(task_info);
