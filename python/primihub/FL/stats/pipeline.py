@@ -111,6 +111,8 @@ def check_stats_name(stats_name: str):
         "quantile",
         "norm",
         "sum",
+        "mean",
+        "var",
     ]
     if stats not in valid_stats:
         raise ValueError(f"Unsupported stats: {stats}, use {valid_stats} instead")
@@ -183,6 +185,30 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
         }[axis]
 
         return sum_func(
+            role=role,
+            X=X,
+            ignore_nan=ignore_nan,
+            channel=channel,
+        )
+
+    elif stats == "mean":
+        mean_func = {
+            "col": col_mean,
+        }[axis]
+
+        return mean_func(
+            role=role,
+            X=X,
+            ignore_nan=ignore_nan,
+            channel=channel,
+        )
+
+    elif stats == "var":
+        var_func = {
+            "col": col_var,
+        }[axis]
+
+        return var_func(
             role=role,
             X=X,
             ignore_nan=ignore_nan,

@@ -1,3 +1,4 @@
+from .mean_var import col_mean, col_var
 from .min_max import (
     col_min,
     col_max,
@@ -11,6 +12,8 @@ from .quantile import col_quantile
 from .sum import col_sum, row_sum
 
 __all__ = [
+    "col_mean",
+    "col_var",
     "col_min",
     "col_max",
     "col_min_max",
