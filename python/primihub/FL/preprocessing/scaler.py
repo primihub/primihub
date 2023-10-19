@@ -238,11 +238,14 @@ class StandardScaler(PreprocessBase):
                                          with_std=with_std)
 
     def Hfit(self, X):
-        if not self.module.with_mean:
+        with_mean = self.module.with_mean
+        with_std = self.module.with_std
+
+        if not with_mean:
             mean = None
 
-        if not self.module.with_std:
-            var = None
+        var = None
+        if not with_std:
             scale = None
 
         if self.role == 'client':
@@ -252,40 +255,35 @@ class StandardScaler(PreprocessBase):
                 force_all_finite="allow-nan",
             )
             
-            self.module.n_samples_seen_ = np.repeat(X.shape[0], X.shape[1]) \
-                                            - np.isnan(X).sum(axis=0)
+            self.module.n_samples_seen_ = np.repeat(X.shape[0], X.shape[1])
+            n_nan = np.isnan(X).sum(axis=0)
+            self.module.n_samples_seen_ -= n_nan
             # for backward-compatibility, reduce n_samples_seen_ to an integer
             # if the number of samples is the same for each feature (i.e. no
             # missing values)
             if np.ptp(self.module.n_samples_seen_) == 0:
                 self.module.n_samples_seen_ = self.module.n_samples_seen_[0]
 
-            if self.module.with_mean or self.module.with_std:
+            if with_mean or with_std:
                 self.channel.send('n_samples', self.module.n_samples_seen_)
                 
-                X_nan_mask = np.isnan(X)
-                if np.any(X_nan_mask):
-                    sum_op = np.nansum
-                else:
-                    sum_op = np.sum
-                X_sum = sum_op(X, axis=0)
-                self.channel.send('X_sum', X_sum)
-
-                if self.module.with_mean:
+                X_sum = np.nansum(X, axis=0)
+                if with_mean and not with_std:
+                    self.channel.send('X_sum', X_sum)
                     mean = self.channel.recv('mean')
-                else:
-                    mean = X_sum / self.module.n_samples_seen_
-                    
-                if self.module.with_std:
-                    un_var = unnormalized_variance(X, mean, self.module.n_samples_seen_, sum_op)
-                    self.channel.send('un_var', un_var)
-                    var = self.channel.recv('var')
-                    constant_mask = self.channel.recv('constant_mask')
+
+                else: # with_std or (with_mean and with_std)
+                    X_sum_square = np.nansum(np.square(X), axis=0)
+                    self.channel.send('X_sum_sum_square', [X_sum, X_sum_square])
+                    if not with_mean:
+                        scale = self.channel.recv('scale')
+                    else:
+                        mean, scale = self.channel.recv('mean_scale')
 
         elif self.role == 'server':
             self.module.n_samples_seen_ = None
 
-            if self.module.with_mean or self.module.with_std:
+            if with_mean or with_std:
                 n_samples = self.channel.recv_all('n_samples')
                 # n_samples could be np.int or np.ndarray
                 n_sum = 0
@@ -295,21 +293,17 @@ class StandardScaler(PreprocessBase):
                     n_sum = n_sum[0]
                 self.module.n_samples_seen_ = n_sum
 
-                X_sum = self.channel.recv_all('X_sum')
-                mean = np.array(X_sum).sum(axis=0) / n_sum
-
-                if self.module.with_mean:
+                if with_mean and not with_std:
+                    X_sum = self.channel.recv_all('X_sum')
+                    mean = np.nansum(X_sum, axis=0) / n_sum
                     self.channel.send_all('mean', mean)
-                
-                if self.module.with_std:
-                    un_var = self.channel.recv_all('un_var')
 
-                    if self.module.with_mean:
-                        var = np.array(un_var).sum(axis=0) / n_sum
-                    else:
-                        var = variance(X_sum, un_var, n_samples)
-                    self.channel.send_all('var', var)
-
+                else: # with_std or (with_mean and with_std)
+                    X_sum_sum_square = self.channel.recv_all('X_sum_sum_square')
+                    X_sum_sum_square = np.nansum(X_sum_sum_square, axis=0)
+                    mean = X_sum_sum_square[0] / n_sum
+                    var = X_sum_sum_square[1] / n_sum - (X_sum_sum_square[0] / n_sum) ** 2
+                    
                     # Extract the list of near constant features on the raw variances,
                     # before taking the square root.
                     constant_mask = is_constant_feature(
@@ -317,52 +311,20 @@ class StandardScaler(PreprocessBase):
                         mean,
                         n_sum
                     )
-                    self.channel.send_all('constant_mask', constant_mask)
 
-        if self.module.with_std:
-            scale = handle_zeros_in_scale(
-                np.sqrt(var),
-                copy=False,
-                constant_mask=constant_mask
-            )
+                    scale = handle_zeros_in_scale(
+                        np.sqrt(var),
+                        copy=False,
+                        constant_mask=constant_mask
+                    )
+                    
+                    if not with_mean:
+                        self.channel.send_all('scale', scale)
+                    else:
+                        self.channel.send_all('mean_scale', (mean, scale))
 
         self.module.mean_ = mean
         self.module.var_ = var
         self.module.scale_ = scale
         
         return self
-
-
-def unnormalized_variance(X, mean, n_samples, sum_op):
-    # sum of squares of the deviations from the mean with correction
-    temp = X - mean
-    correction = sum_op(temp, axis=0)
-    temp **= 2
-    un_var = sum_op(temp, axis=0)
-    un_var -= correction**2 / n_samples
-    return un_var
-
-
-def variance(X_sum, un_var, n_samples):
-    Sm = un_var[0]
-    Tm = X_sum[0]
-    m = n_samples[0]
-
-    for i in range(1, len(n_samples)):
-        Sn = un_var[i]
-        Tn = X_sum[i]
-        n = n_samples[i]
-
-        Sm = sum_squares(Sm, Sn, Tm, Tn, m, n)
-        Tm += Tn
-        m += n
-
-    return Sm / m
-
-
-def sum_squares(Sm, Sn, Tm, Tn, m, n):
-    # Tony F. Chan, Gene H. Golub, and Randall J. Leveque.
-    # Algorithms for computing the sample variance: analysis
-    # and recommendations. The American Statistician, 1983.
-    # https://doi.org/10.2307/2683386
-    return Sm + Sn + m / (n * (m + n)) * (n/m * Tm - Tn)**2

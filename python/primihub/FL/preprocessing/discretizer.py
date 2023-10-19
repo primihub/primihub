@@ -68,6 +68,7 @@ class KBinsDiscretizer(PreprocessBase):
             data_min, data_max = col_min_max(
                 role=self.role,
                 X=X if self.role == "client" else None,
+                ignore_nan=False,
                 channel=self.channel
             )
 
