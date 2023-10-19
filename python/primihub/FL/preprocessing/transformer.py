@@ -7,7 +7,8 @@ from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
 from sklearn.utils import check_random_state, check_array
 from .base import PreprocessBase
 from .util import safe_indexing
-from primihub.FL.sketch import send_local_kll_sketch, merge_client_kll_sketch
+from primihub.FL.stats import col_min_max, col_quantile
+from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class QuantileTransformer(PreprocessBase):
@@ -54,8 +55,7 @@ class QuantileTransformer(PreprocessBase):
                 )
 
         elif self.role == 'server':
-            n_samples = self.channel.recv_all('n_samples')
-            n_samples = sum(n_samples)
+            n_samples = sum(self.channel.recv_all('n_samples'))
 
             if self.module.n_quantiles > n_samples:
                 warnings.warn(
@@ -82,12 +82,11 @@ class QuantileTransformer(PreprocessBase):
             )
 
         if self.role == 'client':
-            do_subsample = self.channel.recv('do_subsample')
-            if do_subsample:
-                subsample_ratio = self.channel.recv('subsample_ratio')
-                subsample = ceil(subsample_ratio * n_samples)
+            subsample_ratio = self.channel.recv('subsample_ratio')
+            if subsample_ratio is not None:
+                subsample_size = ceil(subsample_ratio * n_samples)
                 rng = check_random_state(self.module.random_state)
-                subsample_idx = rng.choice(n_samples, size=subsample, replace=False)
+                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
                 X = safe_indexing(X, subsample_idx)
 
             send_local_kll_sketch(X, self.channel)
@@ -96,16 +95,12 @@ class QuantileTransformer(PreprocessBase):
         elif self.role == 'server':
             subsample = self.module.subsample
             if n_samples > subsample:
-                do_subsample = True
-            else:
-                do_subsample = False
-            self.channel.send_all('do_subsample', do_subsample)
-
-            if do_subsample:
                 subsample_ratio = subsample / n_samples
-                self.channel.send_all('subsample_ratio', subsample_ratio)
+            else:
+                subsample_ratio = None
+            self.channel.send_all('subsample_ratio', subsample_ratio)
 
-            kll = merge_client_kll_sketch(self.channel)
+            kll = merge_local_kll_sketch(self.channel)
             quantiles = kll.get_quantiles(self.module.references_)
             quantiles = np.transpose(quantiles)
             quantiles = np.maximum.accumulate(quantiles)
@@ -251,33 +246,23 @@ class SplineTransformer(PreprocessBase):
 
     def _get_base_knot_positions(self, X=None):
         if self.module.knots == "quantile":
-            if self.role == 'client':
-                send_local_kll_sketch(X, self.channel)
-                knots = self.channel.recv('knots')
-            elif self.role == 'server':
-                quantiles = np.linspace(
-                    start=0, stop=1, num=self.module.n_knots, dtype=np.float64
-                )
-                kll = merge_client_kll_sketch(self.channel)
-                knots = kll.get_quantiles(quantiles)
-                self.channel.send_all('knots', knots)
+            quantiles = np.linspace(
+                start=0, stop=1, num=self.module.n_knots, dtype=np.float64
+            )
+            knots = col_quantile(
+                role=self.role,
+                X=X if self.role == "client" else None,
+                quantiles=quantiles,
+                channel=self.channel
+            )
 
         else:
             # knots == 'uniform':
-            if self.role == 'client':
-                x_min = np.min(X, axis=0)
-                x_max = np.max(X, axis=0)
-                self.channel.send('x_min', x_min)
-                self.channel.send('x_max', x_max)
-                x_min = self.channel.recv('x_min')
-                x_max = self.channel.recv('x_max')
-            elif self.role == 'server':
-                x_min = self.channel.recv_all('x_min')
-                x_max = self.channel.recv_all('x_max')
-                x_min = np.max(x_min, axis=0)
-                x_max = np.min(x_max, axis=0)
-                self.channel.send_all('x_min', x_min)
-                self.channel.send_all('x_max', x_max)
+            x_min, x_max = col_min_max(
+                role=self.role,
+                X=X if self.role == "client" else None,
+                channel=self.channel
+            )
 
             knots = np.linspace(
                 start=x_min,

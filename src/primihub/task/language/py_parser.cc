@@ -16,7 +16,10 @@
 #include "src/primihub/task/language/py_parser.h"
 #include <glog/logging.h>
 #include <iostream>
+#include "src/primihub/util/log.h"
+#include "src/primihub/util/proto_log_helper.h"
 
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 /**
  * @brief Parse datasets from python code.
@@ -26,12 +29,15 @@ retcode PyParser::parseDatasets() {
   auto& push_task = getPushTaskRequest();
   const auto& task_config = push_task.task();
   const auto& party_datasets = task_config.party_datasets();
-  VLOG(0) << "party_datasets: " << party_datasets.size();
+  const auto& task_info = task_config.task_info();
+  std::string task_inof_str = pb_util::TaskInfoToString(task_info);
+  VLOG(0) << task_inof_str << "party_datasets: " << party_datasets.size();
   std::set<std::string> dup_filter;
   for (const auto& [party_name,  dataset_map] : party_datasets) {
     for (const auto& [dataset_index, dataset_id] : dataset_map.data()) {
       if (dataset_id.empty()) {
-        LOG(WARNING) << "dataset id for party: " << party_name << " is empty";
+        LOG(WARNING) << task_inof_str
+                     << "dataset id for party: " << party_name << " is empty";
         continue;
       }
       std::string uniq_id = party_name + dataset_id;
@@ -40,7 +46,8 @@ retcode PyParser::parseDatasets() {
       } else {
         dup_filter.insert(uniq_id);
       }
-      VLOG(0) << "party_name: " << party_name << " dataset_id: " << dataset_id;
+      VLOG(0) << task_inof_str
+              << "party_name: " << party_name << " dataset_id: " << dataset_id;
       auto dataset_with_tag = std::make_pair(dataset_id, party_name);
       this->input_datasets_with_tag_.push_back(std::move(dataset_with_tag));
     }

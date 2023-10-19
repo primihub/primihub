@@ -21,6 +21,8 @@ cc_library(
     "//src/primihub/common:config_lib",
     "//src/primihub/protos:worker_proto",
     "//src/primihub/util:util_lib",
+    "//src/primihub/util:log_util",
+    "//src/primihub/util:pb_log_helper",
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
   ],
