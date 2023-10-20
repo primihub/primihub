@@ -447,7 +447,7 @@ class DPSGD_Client(Plaintext_Client):
     def lazy_module_init(self):
         # opacus lib needs to init lazy module first
         input_shape = list(self.input_shape)
-        # set batch size equals to 1 to initilize lazy module
+        # set batch size equals to 1 to initialize lazy module
         input_shape.insert(0, 1)
         self.model.forward(torch.ones(input_shape).to(self.device))
         super().lazy_module_init()

@@ -121,7 +121,7 @@ class CKKSCoordinator(CKKS):
     def send_model(self, host_weight, host_bias, guest_weight):
         self.host_channel.send('host_weight', host_weight)
         self.host_channel.send('host_bias', host_bias)
-        # send n sub-lists to n parties seperately
+        # send n sub-lists to n parties separately
         self.guest_channel.send_seperately('guest_weight', guest_weight)
 
     def decrypt_model(self, host_weight, host_bias, guest_weight):
