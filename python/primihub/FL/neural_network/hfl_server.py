@@ -138,7 +138,7 @@ class Plaintext_Server:
 
     def lazy_module_init(self):
         input_shape = list(self.input_shape)
-        # set batch size equals to 1 to initilize lazy module
+        # set batch size equals to 1 to initialize lazy module
         input_shape.insert(0, 1)
         self.model.forward(torch.ones(input_shape).to(self.device))
         self.model.load_state_dict(self.model.state_dict())

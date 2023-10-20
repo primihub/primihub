@@ -31,7 +31,7 @@ def register_dataset(ip, port, use_tls, driver, path, name):
             with open(cert_path, 'rb') as f:
                 cert = f.read()
         except Exception as e:
-            err_msg = "Register dataset read ca failed. {}".foramt(str(e))
+            err_msg = "Register dataset read ca failed. {}".format(str(e))
             logger.error(err_msg)
             raise RuntimeError(err_msg)
 
@@ -48,7 +48,7 @@ def register_dataset(ip, port, use_tls, driver, path, name):
 
     response = stub.NewDataset(request)
     if response.ret_code != 0:
-        logger.error("Register dataset {} failed.".foramt(name));
+        logger.error("Register dataset {} failed.".format(name));
         raise RuntimeError("Register dataset {} failed.".format(name))
     else:
         logger.info("Register dataset {} finish, dataset url is {}.".format(

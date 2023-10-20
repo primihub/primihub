@@ -38,7 +38,7 @@ def register_dataset(service_addr, driver, path, name):
     # ip:port:use_tls:role
     server_info = service_addr.split(":")
     if len(server_info) < 3:
-        err_msg = "Register dataset read ca failed. {}".foramt(str(e))
+        err_msg = "Register dataset read ca failed. {}".format(str(e))
         logger.error(err_msg)
         raise RuntimeError(err_msg)
     host_port = f"{server_info[0]}:{server_info[1]}"
@@ -55,7 +55,7 @@ def register_dataset(service_addr, driver, path, name):
             with open(cert_path, 'rb') as f:
                 cert = f.read()
         except Exception as e:
-            err_msg = "Register dataset read ca failed. {}".foramt(str(e))
+            err_msg = "Register dataset read ca failed. {}".format(str(e))
             logger.error(err_msg)
             raise RuntimeError(err_msg)
 
@@ -78,7 +78,7 @@ def register_dataset(service_addr, driver, path, name):
     request = service_pb2.NewDatasetRequest(**reg_req_data)
     response = stub.NewDataset(request)
     if response.ret_code != 0:
-        logger.error("Register dataset {} failed.".foramt(name));
+        logger.error("Register dataset {} failed.".format(name));
         raise RuntimeError("Register dataset {} failed.".format(name))
     else:
         logger.info("Register dataset {} finish, dataset url is {}.".format(
@@ -221,12 +221,12 @@ def driver(name: str) -> DataDriver:
 # @reg_dataset
 def get(dataset: str):
     Context.datasets.append(dataset)
-    print("mock registe dataset:", dataset)
+    print("mock register dataset:", dataset)
 
 
 @reg_dataset
 def define(dataset: str):
-    print("mock registe dataset:", dataset)
+    print("mock register dataset:", dataset)
 
 
 def read(dataset_key: str = None,
@@ -260,7 +260,7 @@ def read(dataset_key: str = None,
 
 
 class DatasetRef:
-    """Dataset refrence.
+    """Dataset reference.
     """
 
     def __init__(self) -> None:

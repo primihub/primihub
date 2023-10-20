@@ -18,14 +18,14 @@ class Client:
         self.task_id = uuid.uuid1().hex
 
     def prepare_for_worker(self):
-        # consturct 'params'
+        # construct 'params'
         params = common_pb2.Params()
         params.param_map["component_params"].var_type = self.var_type
         params.param_map["component_params"].is_array = self.is_array
         params.param_map["component_params"].value_string = \
             json.dumps(self.component_params).encode()
 
-        # consturct 'party_datasets'
+        # construct 'party_datasets'
         party_datasets = {}
         for party_name, role_param in self.role_params.items():
             Dataset = common_pb2.Dataset()

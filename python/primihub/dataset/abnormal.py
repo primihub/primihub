@@ -108,7 +108,7 @@ def replace_illegal_string(col_val, col_name, col_type):
 # Now the abnormal value means that a column dtype of which is int or float but
 # has string that can't convert to int or float value. There are four cases when
 # handle abnormal value from database, and missing value in some position in some
-# column is permited, no matter which case.
+# column is permitted, no matter which case.
 #
 # case 1: a column contain number has type int or long or double, no string will
 #         insert into these column, just fill empty position to NA;
@@ -171,7 +171,7 @@ def handle_abnormal_value_for_mysql(path_or_info, col_info):
             cursor.execute(sql_str)
             col_val = cursor.fetchall()
         except Exception as e:
-            logger.erorr(e)
+            logger.error(e)
             conn.rollback()
             conn.close()
             raise e

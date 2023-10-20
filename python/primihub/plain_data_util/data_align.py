@@ -43,7 +43,7 @@ class DataAlign:
     def parse_dataset_param(self):
         self_host_info = self.node_info.get(self.party_name, None)
         if self_host_info is None:
-          raise Exception("Party acces info for self is not found {}".format(self.party_name))
+          raise Exception("Party access info for self is not found {}".format(self.party_name))
         use_tls = 1 if self_host_info.use_tls else 0
         service_addr = "{}:{}:{}".format(self_host_info.ip.decode(),
                                         self_host_info.port,
