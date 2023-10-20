@@ -62,12 +62,12 @@ void RunServer(primihub::VMNodeInterface* node_service,
     std::string ip = host_config.ip();
     uint32_t port = host_config.port();
     if (host_config.use_tls()) {
-        LOG(INFO) << "server runing using tls";
+        LOG(INFO) << "server running using tls";
         // Listen to all interfaces
         ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTls(
             "0.0.0.0", port, &location));
     } else {
-        LOG(INFO) << "server runing in no tls mode";
+        LOG(INFO) << "server running in no tls mode";
         ARROW_CHECK_OK(arrow::flight::Location::ForGrpcTcp(
             "0.0.0.0", port, &location));
     }

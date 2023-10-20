@@ -18,12 +18,12 @@
       "value": [0]
     },
     "psiType": {
-      "description": "availabe value: [INTERSECTION = 0; DIFFERENCE = 1;]",
+      "description": "available value: [INTERSECTION = 0; DIFFERENCE = 1;]",
       "type": "INT32",
       "value": 0
     },
     "psiTag": {
-      "description": "availabe value: [ECDH = 0; KKRT = 1; TEE = 2]",
+      "description": "available value: [ECDH = 0; KKRT = 1; TEE = 2]",
       "type": "INT32",
       "value": 2
     },
