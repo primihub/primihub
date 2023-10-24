@@ -19,7 +19,7 @@
         },
         "role_params": {
             "Bob": {
-                "data_set": "test_hetero_xgb_host",
+                "data_set": "binclass_vfl_test_host",
                 "id": "id",
                 "selected_column": null,
                 "label": "y",
@@ -27,7 +27,7 @@
                 "model_path": "data/result/host_model.pkl"
             },
             "Charlie": {
-                "data_set": "test_hetero_xgb_guest",
+                "data_set": "binclass_vfl_test_guest",
                 "id": "id",
                 "model_path": "data/result/guest_model.pkl",
                 "selected_column": null,

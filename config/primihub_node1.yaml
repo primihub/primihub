@@ -117,14 +117,6 @@ datasets:
     image_dir: "data/FL/mnist/test/client1.zip"
     annotations_file: "data/FL/mnist/test/client1_annotations.csv"
 
-  - description: "train_hetero_xgb_host"
-    model: "csv"
-    source: "data/FL/hetero_xgb/train/train_breast_cancer_host.csv"
-
-  - description: "test_hetero_xgb_host"
-    model: "csv"
-    source: "data/FL/hetero_xgb/test/test_breast_cancer_host.csv"
-
   - description: "iv_filter_host"
     model: "csv"
     source: "data/FL/hetero_iv/iv_host.csv"
