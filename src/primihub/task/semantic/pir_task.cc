@@ -4,7 +4,8 @@
 #include <nlohmann/json.hpp>
 #include "src/primihub/kernel/pir/operator/base_pir.h"
 #include "src/primihub/kernel/pir/operator/factory.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
+#include "src/primihub/util/file_util.h"
 
 namespace primihub::task {
 PirTask::PirTask(const TaskParam* task_param,
@@ -120,7 +121,7 @@ retcode PirTask::LoadParams(const rpc::Task& task) {
     VLOG(7) << "dataset_id: " << dataset_id_;
     auto it = param_map.find("outputFullFilename");
     if (it != param_map.end()) {
-      result_file_path_ = it->second.value_string();
+      result_file_path_ = CompletePath(it->second.value_string());
       VLOG(5) << "result_file_path_: " << result_file_path_;
     } else  {
       LOG(ERROR) << "no keyword outputFullFilename match";

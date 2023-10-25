@@ -31,7 +31,7 @@
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/network/link_factory.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 using primihub::rpc::PushTaskReply;
 using primihub::rpc::PushTaskRequest;

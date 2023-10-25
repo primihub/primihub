@@ -23,6 +23,9 @@ meta_service:
   port: 9099
   use_tls: false
 
+# default storage path
+# storage_path: "data"
+
 datasets:
   # no meaningful dataset, just used to represent this party
   - description: "FAKE_DATA_PARTY_0"

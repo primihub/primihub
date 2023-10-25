@@ -15,7 +15,7 @@ cc_library(
     "//src/primihub/service/dataset/meta_service:meta_service_grpc_impl",
     "//src/primihub/data_store:data_store_lib",
     "//src/primihub/util:redis_helper",
-    "//src/primihub/node:server_config",
+    "//src/primihub/common/config:server_config",
     "//src/primihub/util:arrow_wrapper_util",
     "@arrow",
     "@nlohmann_json",

@@ -23,7 +23,7 @@
 #include <future>
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/common/common.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #ifdef SGX
 #include "sgx/ra/service.h"
 #include "sgx/engine/sgx_engine.h"

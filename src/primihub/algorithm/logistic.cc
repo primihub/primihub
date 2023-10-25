@@ -26,6 +26,7 @@
 #include "src/primihub/service/dataset/model.h"
 #include "src/primihub/util/network/message_interface.h"
 #include "src/primihub/util/network/link_context.h"
+#include "src/primihub/util/file_util.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -115,6 +116,7 @@ int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
     if (model_file_name_ == "") {
       model_file_name_ = "./" + model_name_ + ".csv";
     }
+    model_file_name_ = CompletePath(model_file_name_);
   } catch (std::exception &e) {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;

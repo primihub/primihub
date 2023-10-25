@@ -115,6 +115,10 @@ struct ServerInfo {
   Node host_info;
 };
 
+struct StorageInfo {
+  std::string path;  // default is relative path ./data
+};
+
 struct Tee {
   bool executor{false};
   bool sgx_enable{false};
@@ -130,6 +134,7 @@ struct NodeConfig {
   std::string notify_server;
   Tee tee_conf;
   ServerInfo proxy_server_cfg;
+  StorageInfo storage_info;
 };
 
 }  // namespace primihub::common
@@ -284,6 +289,7 @@ template <> struct convert<NodeConfig> {
     node["grpc_port"] = nc.server_config.port();
     node["use_tls"] = nc.server_config.use_tls();
     node["tee"] = nc.tee_conf;
+    node["storage_path"] = nc.storage_info.path;
     return node;
   }
 
@@ -291,6 +297,11 @@ template <> struct convert<NodeConfig> {
     nc.server_config.id_ = node["node"].as<std::string>();
     nc.server_config.ip_ = node["location"].as<std::string>();
     nc.server_config.port_ = node["grpc_port"].as<uint32_t>();
+
+    if (node["storage_path"]) {
+      nc.storage_info.path = node["storage_path"].as<std::string>();
+    }
+
     if (node["use_tls"]) {
       nc.server_config.use_tls_ = node["use_tls"].as<bool>();
     }
