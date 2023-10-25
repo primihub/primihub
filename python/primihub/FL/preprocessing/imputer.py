@@ -16,12 +16,14 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                  copy=True,
                  add_indicator=False,
                  keep_empty_features=False,
+                 k=200,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H' and strategy != 'constant':
             self.check_channel()
+        self.k = k
         self.module = SKL_SimpleImputer(missing_values=missing_values,
                                         strategy=strategy,
                                         fill_value=fill_value,
@@ -120,11 +122,11 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
         # Median
         elif strategy == "median":
             if self.role == 'client':
-                send_local_kll_sketch(masked_X, self.channel)
+                send_local_kll_sketch(masked_X, self.channel, k=self.k)
                 median = self.channel.recv('median')
 
             elif self.role == 'server':
-                kll = merge_local_kll_sketch(self.channel)
+                kll = merge_local_kll_sketch(self.channel, k=self.k)
                 mask = kll.is_empty()
 
                 if not any(mask):

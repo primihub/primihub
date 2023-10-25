@@ -32,7 +32,8 @@
                     "extrapolation":"constant",
                     "include_bias":true,
                     "order":"C",
-                    "sparse_output":false
+                    "sparse_output":false,
+                    "k": 200
                 }
             }
         },

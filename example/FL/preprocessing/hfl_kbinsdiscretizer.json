@@ -31,7 +31,8 @@
                     "encode": "ordinal",
                     "strategy": "quantile",
                     "subsample": 200000,
-                    "random_state": null
+                    "random_state": null,
+                    "k": 200
                 }
             }
         },

@@ -23,7 +23,8 @@
             "stats_module": {
                 "col_quantile": {
                     "quantiles": [0.25, 0.5, 0.75],
-                    "ignore_nan": true
+                    "ignore_nan": true,
+                    "k": 200
                 }
             }
         },

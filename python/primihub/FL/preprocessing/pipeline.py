@@ -263,6 +263,7 @@ def select_module(module_name, params, FL_type, role, channel):
             strategy=params.get("strategy", "quantile"),
             subsample=params.get("subsample", 200000),
             random_state=params.get("random_state"),
+            k=params.get("k", 200),
             FL_type=FL_type,
             role=role,
             channel=channel
@@ -354,6 +355,7 @@ def select_module(module_name, params, FL_type, role, channel):
             subsample=params.get("subsample", 10000),
             random_state=params.get("random_state"),
             copy=params.get("copy", True),
+            k=params.get("k", 200),
             FL_type=FL_type,
             role=role,
             channel=channel
@@ -367,6 +369,7 @@ def select_module(module_name, params, FL_type, role, channel):
             quantile_range=(quantile_range_min, quantile_range_max),
             copy=params.get("copy", True),
             unit_variance=params.get("unit_variance", False),
+            k=params.get("k", 200),
             FL_type=FL_type,
             role=role,
             channel=channel
@@ -380,6 +383,7 @@ def select_module(module_name, params, FL_type, role, channel):
             include_bias=params.get("include_bias", True),
             order=params.get("order", "C"),
             sparse_output=params.get("sparse_output", False),
+            k=params.get("k", 200),
             FL_type=FL_type,
             role=role,
             channel=channel
@@ -420,6 +424,7 @@ def select_module(module_name, params, FL_type, role, channel):
             copy=params.get("copy", True),
             add_indicator=params.get("add_indicator", False),
             keep_empty_features=params.get("keep_empty_features", False),
+            k=params.get("k", 200),
             FL_type=FL_type,
             role=role,
             channel=channel

@@ -32,7 +32,8 @@
                     "ignore_implicit_zeros": false,
                     "subsample": 10000,
                     "random_state": null,
-                    "copy": true
+                    "copy": true,
+                    "k": 200
                 }
             }
         },
