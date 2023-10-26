@@ -46,6 +46,9 @@ tee:
   cert_path: "data/sgx/"
   ra_server_addr: "127.0.0.1:8888"
 
+# default storage path
+# storage_path: "data"
+
 # load datasets
 datasets:
   # ABY3 LR test case datasets

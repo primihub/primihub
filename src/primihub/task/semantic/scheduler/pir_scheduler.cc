@@ -18,7 +18,7 @@
 
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/proto_log_helper.h"
 

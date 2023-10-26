@@ -18,7 +18,7 @@
 
 #include "src/primihub/util/network/mpc_channel.h"
 #include "src/primihub/util/network/link_context.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 namespace primihub {
 #ifdef MPC_SOCKET_CHANNEL

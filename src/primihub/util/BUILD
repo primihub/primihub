@@ -47,6 +47,7 @@ cc_library(
   hdrs = ["file_util.h"],
   srcs = ["file_util.cc"],
   deps = [
+    "//src/primihub/common/config:server_config",
     "@com_github_glog_glog//:glog",
   ],
 )

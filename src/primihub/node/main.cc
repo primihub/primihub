@@ -28,7 +28,7 @@
 
 #include "src/primihub/node/ds.h"
 #include "src/primihub/common/common.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
 #ifdef SGX

@@ -26,7 +26,7 @@ cc_library(
     "//src/primihub/protos:worker_proto",
     "//src/primihub/util/network:communication_lib",
     "//src/primihub/util:util_lib",
-    "//src/primihub/node:server_config",
+    "//src/primihub/common/config:server_config",
     "//src/primihub/task/semantic:task_factory",
     "//src/primihub/service/dataset/meta_service:meta_service_factory",
     "//src/primihub/service:dataset_service",

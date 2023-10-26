@@ -17,7 +17,7 @@ cc_library(
     "scheduler.cc"
   ],
   deps = [
-    "//src/primihub/node:server_config",
+    "//src/primihub/common/config:server_config",
     "//src/primihub/protos:worker_proto",
     "//src/primihub/util/network:communication_lib",
     "//src/primihub/common:common_defination",

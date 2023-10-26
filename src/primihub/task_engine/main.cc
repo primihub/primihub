@@ -21,7 +21,7 @@
 #include "pybind11/stl.h"
 #include "pybind11/embed.h"
 #include "src/primihub/task_engine/task_executor.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 DEFINE_string(node_id, "node0", "unique node_id");
 DEFINE_int32(task_engine_type, 0, "task engine type, 0: python, 1: other");
@@ -56,10 +56,14 @@ int main(int argc, char **argv) {
   VLOG(0) << "";
   VLOG(0) << "start task process main: " << request_id;
   auto& server_cfg = primihub::ServerConfig::getInstance();
-  server_cfg.initServerConfig(config_file);
+  auto ret = server_cfg.initServerConfig(config_file);
+  if (ret != primihub::retcode::SUCCESS) {
+    LOG(ERROR) << "init Server config failed";
+    return -1;
+  }
   auto& service_cfg = server_cfg.getServiceConfig();
   auto task_engine = std::make_unique<primihub::task_engine::TaskEngine>();
-  auto ret = task_engine->Init(service_cfg.id(), config_file, task_request_str);
+  ret = task_engine->Init(service_cfg.id(), config_file, task_request_str);
   if (ret != primihub::retcode::SUCCESS) {
     LOG(ERROR) << "init py executor failed";
     return -1;

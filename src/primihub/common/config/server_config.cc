@@ -13,20 +13,26 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #include <unistd.h>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 
 namespace primihub {
 retcode ServerConfig::initServerConfig(const std::string& config_file) {
-    if (is_init_flag.load(std::memory_order::memory_order_relaxed)) {
-        return retcode::SUCCESS;
-    }
-    config_file_ = config_file;
-    YAML::Node root_config = YAML::LoadFile(config_file);
-    server_confg_ = root_config.as<primihub::common::NodeConfig>();
-    is_init_flag.store(true);
+  if (is_init_flag.load(std::memory_order::memory_order_relaxed)) {
     return retcode::SUCCESS;
+  }
+  config_file_ = config_file;
+  try {
+    YAML::Node root_config = YAML::LoadFile(config_file);
+    config_ = root_config.as<primihub::common::NodeConfig>();
+    is_init_flag.store(true);
+  } catch (std::exception& e) {
+    LOG(ERROR) << "load config file: " << config_file << " failed. "
+               << e.what();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 }  // namespace primihub

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_PRIMIHUB_NODE_SERVER_CONFIG_H_
-#define SRC_PRIMIHUB_NODE_SERVER_CONFIG_H_
+#ifndef SRC_PRIMIHUB_COMMON_CONFIG_SERVER_CONFIG_H_
+#define SRC_PRIMIHUB_COMMON_CONFIG_SERVER_CONFIG_H_
 #include <glog/logging.h>
 #include <string>
 #include <atomic>
@@ -33,11 +33,12 @@ class ServerConfig {
     return ins;
   }
   retcode initServerConfig(const std::string& config_file);
-  Node& getServiceConfig() { return server_confg_.server_config;}
-  CertificateConfig& getCertificateConfig() {return server_confg_.cert_config;}
-  NodeConfig& getNodeConfig() {return server_confg_;}
+  Node& getServiceConfig() { return config_.server_config;}
+  CertificateConfig& getCertificateConfig() {return config_.cert_config;}
+  NodeConfig& getNodeConfig() {return config_;}
   std::string getConfigFile() {return config_file_;}
-  Node& ProxyServerCfg() {return server_confg_.proxy_server_cfg.host_info;}
+  Node& ProxyServerCfg() {return config_.proxy_server_cfg.host_info;}
+  std::string& StoragePath() {return config_.storage_info.path;}
 
  protected:
   ServerConfig(const ServerConfig&) = default;
@@ -47,9 +48,9 @@ class ServerConfig {
 
  private:
   std::atomic<bool> is_init_flag{false};
-  NodeConfig server_confg_;
+  NodeConfig config_;
   std::string config_file_;
 };
 }  // namespace primihub
 
-#endif  // SRC_PRIMIHUB_NODE_SERVER_CONFIG_H_
+#endif  // SRC_PRIMIHUB_COMMON_CONFIG_SERVER_CONFIG_H_

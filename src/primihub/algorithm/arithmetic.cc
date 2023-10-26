@@ -9,6 +9,7 @@
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/file_util.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -140,6 +141,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     // LOG(INFO) << parties;
 
     res_name_ = param_map["ResFileName"].value_string();
+    res_name_ = CompletePath(res_name_);
   } catch (std::exception &e) {
     LOG(ERROR) << "Failed to load params: " << e.what();
     return -1;

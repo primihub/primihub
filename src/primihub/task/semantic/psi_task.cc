@@ -26,7 +26,7 @@
 #include "src/primihub/util/endian_util.h"
 #include "src/primihub/common/value_check_util.h"
 #include "src/primihub/kernel/psi/operator/factory.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 using arrow::Table;
 using arrow::StringArray;
@@ -140,6 +140,9 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
       data_index_.push_back(client_index.value_int32());
     }
   }
+  if (IsTeeCompute()) {
+    return retcode::SUCCESS;
+  }
   // parse result path
   std::string result_path_keyword;
   if (IsClient()) {
@@ -151,9 +154,12 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
   }
   auto path_it = param_map.find(result_path_keyword);
   if (path_it != param_map.end()) {
-    result_file_path_ = path_it->second.value_string();
+    result_file_path_ = CompletePath(path_it->second.value_string());
+    LOG(INFO) << "result_file_path: " << result_file_path_;
   } else {
-    LOG(WARNING) << "no result path found for " << party_name;
+    if (IsClient() || (IsServer() && broadcast_result_ )) {
+      LOG(WARNING) << "no path found for " << party_name << " to save result";
+    }
   }
   return retcode::SUCCESS;
 }

@@ -15,6 +15,7 @@
 #include "src/primihub/common/common.h"
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/file_util.h"
 
 using namespace rapidjson;
 // using primihub::columnDtypeToString;
@@ -239,6 +240,7 @@ retcode MPCStatisticsExecutor::_parseColumnDtype(const std::string &json_str) {
   }
 
   output_path_ = new_path.GetString();
+  output_path_ = CompletePath(output_path_);
 
   return retcode::SUCCESS;
 }

@@ -36,7 +36,7 @@ cc_library(
     srcs = ["task_context.cc"],
     deps = [
         "//src/primihub/util/network:communication_lib",
-        "//src/primihub/node:server_config",
+        "//src/primihub/common/config:server_config",
         "//src/primihub/util:threadsafe_queue",
     ],
 )

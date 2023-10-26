@@ -36,17 +36,6 @@ cc_library(
 )
 
 cc_library(
-  name = "server_config",
-  hdrs = ["server_config.h"],
-  srcs = ["server_config.cc"],
-  deps = [
-    "//src/primihub/common:common_defination",
-    "//src/primihub/common/config:config_lib",
-  ],
-)
-
-
-cc_library(
   name = "data_register_service",
   hdrs = ["ds.h"],
   srcs = ["ds.cc"],

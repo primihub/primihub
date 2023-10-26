@@ -23,6 +23,9 @@ meta_service:
   port: 9099
   use_tls: false
 
+# default storage path
+# storage_path: "data"
+
 datasets:
   # no meaningful dataset, just used to represent this party
   - description: "FAKE_DATA_PARTY_2"
@@ -111,7 +114,7 @@ datasets:
   - description: "iv_filter_guest"
     model: "csv"
     source: "data/FL/hetero_iv/iv_guest.csv"
-  
+
   # FL preprocess
   - description: "preprocess_vfl_train_guest"
     model: "csv"

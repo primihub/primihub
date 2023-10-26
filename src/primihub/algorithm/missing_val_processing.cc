@@ -28,6 +28,7 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/util/network/message_interface.h"
+#include "src/primihub/util/file_util.h"
 
 using arrow::Array;
 using arrow::DoubleArray;
@@ -391,6 +392,7 @@ int MissingProcess::loadParams(primihub::rpc::Task &task) {
     new_dataset_path_ = "./" + new_dataset_id_ + ".csv";
     LOG(WARNING) << "using default path: " << new_dataset_path_;
   }
+  new_dataset_path_ = CompletePath(new_dataset_path_);
 
   LOG(INFO) << "New id of new dataset is " << new_dataset_id_ << ". "
             << "new dataset path: " << new_dataset_path_;

@@ -31,7 +31,7 @@
 #include "src/primihub/protos/service.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/data_store/factory.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 namespace primihub {
 class DataServiceImpl final: public rpc::DataSetService::Service {

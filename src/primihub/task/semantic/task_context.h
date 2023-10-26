@@ -25,7 +25,7 @@
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/util/threadsafe_queue.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 
 namespace primihub::task {
 // temp data storage

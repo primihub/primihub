@@ -27,7 +27,7 @@
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/service/dataset/util.hpp"
 #include "src/primihub/util/redis_helper.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #include "src/primihub/service/dataset/meta_service/grpc_impl.h"
 
 using DataSetAccessInfoPtr = std::unique_ptr<primihub::DataSetAccessInfo>;

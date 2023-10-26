@@ -16,7 +16,7 @@
 #include "src/primihub/task_engine/task_executor.h"
 #include "base64.h"                         // NOLINT
 #include "src/primihub/util/util.h"
-#include "src/primihub/node/server_config.h"
+#include "src/primihub/common/config/server_config.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
 #include "src/primihub/task/semantic/factory.h"
 
@@ -145,7 +145,7 @@ retcode TaskEngine::Execute() {
     int exception_len = strlen(e.what());
     size_t err_len = exception_len > 1024 ? 1024 : exception_len;
     std::string err_msg(e.what(), exception_len);
-    LOG(ERROR) << "Failed to execute python: " << err_msg;
+    LOG(ERROR) << "Failed to execute task: " << err_msg;
     UpdateStatus(rpc::TaskStatus::FAIL, err_msg);
     return retcode::FAIL;
   }
