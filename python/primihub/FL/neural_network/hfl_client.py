@@ -1,14 +1,15 @@
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file,\
+                                   save_pickle_file,\
+                                   load_pickle_file,\
+                                   save_csv_file
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 from primihub.FL.preprocessing import StandardScaler
 from primihub.FL.metrics import regression_metrics,\
                                 classification_metrics                           
 
-import pickle
-import json
 import pandas as pd
 import torch
 import torch.utils.data as data_utils
@@ -136,11 +137,7 @@ class NeuralNetworkClient(BaseModel):
         
         # send final metrics
         trainMetrics = client.send_metrics(train_dataloader)
-        metric_path = self.role_params['metric_path']
-        check_directory_exist(metric_path)
-        logger.info(f"metric path: {metric_path}")
-        with open(metric_path, 'w') as file_path:
-            file_path.write(json.dumps(trainMetrics))
+        save_json_file(trainMetrics, self.role_params['metric_path'])
 
         # save model for prediction
         modelFile = {
@@ -152,11 +149,7 @@ class NeuralNetworkClient(BaseModel):
             "preprocess": scaler.module,
             "model": client.model
         }
-        model_path = self.role_params['model_path']
-        check_directory_exist(model_path)
-        logger.info(f"model path: {model_path}")
-        with open(model_path, 'wb') as file_path:
-            pickle.dump(modelFile, file_path)
+        save_pickle_file(modelFile, self.role_params['model_path'])
         
     def predict(self):
         # Get cpu or gpu device for training.
@@ -164,10 +157,7 @@ class NeuralNetworkClient(BaseModel):
         logger.info(f"Using {device} device")
 
         # load model for prediction
-        model_path = self.role_params['model_path']
-        logger.info(f"model path: {model_path}")
-        with open(model_path, 'rb') as file_path:
-            modelFile = pickle.load(file_path)
+        modelFile = load_pickle_file(self.role_params['model_path'])
 
         # load dataset
         origin_data = read_data(data_info=self.role_params['data'])
@@ -216,10 +206,7 @@ class NeuralNetworkClient(BaseModel):
             })
         
         data_result = pd.concat([origin_data, result], axis=1)
-        predict_path = self.role_params['predict_path']
-        check_directory_exist(predict_path)
-        logger.info(f"predict path: {predict_path}")
-        data_result.to_csv(predict_path, index=False)
+        save_csv_file(data_result, self.role_params['predict_path'])
 
 
 class Plaintext_Client:
