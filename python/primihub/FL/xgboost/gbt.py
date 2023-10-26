@@ -2,7 +2,6 @@
 import time
 import pyarrow
 import random
-import pickle
 import pandas
 import functools
 import logging
@@ -16,7 +15,6 @@ from typing import (
 )
 
 # open source packages
-import json
 from sklearn import metrics
 import logging
 import ray
@@ -1885,18 +1883,14 @@ class VGBTHostInfer(BaseModel):
 
     def load_model(self):
         # interpret the xgb model
-        with open(self.model_path, "rb") as current_model:
-            model_dict = pickle.load(current_model)
+        model_dict = load_pickle_file(self.model_path)
 
         self.tree_struct = model_dict['tree_struct']
         self.learing_rate = model_dict['lr']
         self.base_score = model_dict['base_score']
 
         # interpret the lookup table
-        with open(self.lookup_table_path, "rb") as hostTable:
-            lookup_table_sum = pickle.load(hostTable)
-
-        self.lookup_table_sum = lookup_table_sum
+        self.lookup_table_sum = load_pickle_file(self.lookup_table_path)
 
     def preprocess(self):
         if self.id in self.data.columns:
@@ -2038,18 +2032,14 @@ class VGBGuestInfer(BaseModel):
 
     def load_model(self):
         # interpret the xgb model
-        with open(self.model_path, "rb") as current_model:
-            model_dict = pickle.load(current_model)
+        model_dict = load_pickle_file(self.model_path)
 
         self.tree_struct = model_dict['tree_struct']
         # self.learing_rate = model_dict['lr']
         # self.base_score = model_dict['base_score']
 
         # interpret the lookup table
-        with open(self.lookup_table_path, "rb") as hostTable:
-            lookup_table_sum = pickle.load(hostTable)
-
-        self.lookup_table_sum = lookup_table_sum
+        self.lookup_table_sum = load_pickle_file(self.lookup_table_path)
 
     def preprocess(self):
         if self.id in self.data.columns:
