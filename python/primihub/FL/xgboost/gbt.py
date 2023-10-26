@@ -2,7 +2,6 @@
 import time
 import pyarrow
 import random
-import pickle
 import pandas
 import functools
 import logging
@@ -16,7 +15,6 @@ from typing import (
 )
 
 # open source packages
-import json
 from sklearn import metrics
 import logging
 import ray
@@ -29,7 +27,10 @@ from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_cr
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
 from primihub.FL.utils.dataset import read_data
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file,\
+                                   save_pickle_file,\
+                                   load_pickle_file,\
+                                   save_csv_file
 from primihub.utils.logger_util import logger
 
 T = TypeVar("T", contravariant=True)
@@ -1373,25 +1374,17 @@ class VGBTHost(VGBTBase):
                           "roc",
                           "ks",],
         )
+        save_json_file(metrics, self.metric_path)
 
-        train_metrics_buff = json.dumps(metrics)
-
-        check_directory_exist(self.metric_path)
-        with open(self.metric_path, 'w') as filePath:
-            filePath.write(train_metrics_buff)
-
-        check_directory_exist(self.lookup_table_path)
-        with open(self.lookup_table_path, 'wb') as hostTable:
-            pickle.dump(self.lookup_table_sum, hostTable)
-
-        check_directory_exist(self.model_path)
-        with open(self.model_path, 'wb') as hostModel:
-            pickle.dump(
-                {
-                    'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate,
-                    "base_score": self.base_score
-                }, hostModel)
+        save_pickle_file(self.lookup_table_sum,
+                         self.lookup_table_path)
+        
+        modelFile = {
+            'tree_struct': self.tree_structure,
+            'lr': self.learning_rate,
+            "base_score": self.base_score
+        }
+        save_pickle_file(modelFile, self.model_path)
 
     def fit(self):
         y_hat = np.array([self.base_score] * len(self.y))
@@ -1474,24 +1467,17 @@ class VGBTHost(VGBTBase):
         # saving train metrics
         y_hat = self.predict_prob(self.data, lookup=self.lookup_table_sum)
         train_metrics = self.train_metrics(y_true=self.y, y_hat=y_hat)
-        train_metrics_buff = json.dumps(train_metrics)
+        save_json_file(train_metrics, self.metric_path)
 
-        check_directory_exist(self.metric_path)
-        with open(self.metric_path, 'w') as filePath:
-            filePath.write(train_metrics_buff)
+        save_pickle_file(self.lookup_table_sum,
+                         self.lookup_table_path)
 
-        check_directory_exist(self.lookup_table_path)
-        with open(self.lookup_table_path, 'wb') as hostTable:
-            pickle.dump(self.lookup_table_sum, hostTable)
-
-        check_directory_exist(self.model_path)
-        with open(self.model_path, 'wb') as hostModel:
-            pickle.dump(
-                {
-                    'tree_struct': self.tree_structure,
-                    'lr': self.learning_rate,
-                    "base_score": self.base_score
-                }, hostModel)
+        modelFile = {
+            'tree_struct': self.tree_structure,
+            'lr': self.learning_rate,
+            "base_score": self.base_score
+        }
+        save_pickle_file(modelFile, self.model_path)
 
 
 class VGBTGuest(VGBTBase):
@@ -1808,16 +1794,14 @@ class VGBTGuest(VGBTBase):
             self.lookup_table_sum[t + 1] = self.lookup_table
 
         # save guest part model
-        check_directory_exist(self.model_path)
-        with open(self.model_path, 'wb') as guestModel:
-            pickle.dump({
-                'tree_struct': self.tree_structure,
-            }, guestModel)
+        modelFile = {
+            'tree_struct': self.tree_structure,
+        }
+        save_pickle_file(modelFile, self.model_path)
 
         # save guest part table
-        check_directory_exist(self.lookup_table_path)
-        with open(self.lookup_table_path, 'wb') as guestTable:
-            pickle.dump(self.lookup_table_sum, guestTable)
+        save_pickle_file(self.lookup_table_sum,
+                         self.lookup_table_path)
 
         self.predict(self.data, self.lookup_table_sum)
 
@@ -1899,18 +1883,14 @@ class VGBTHostInfer(BaseModel):
 
     def load_model(self):
         # interpret the xgb model
-        with open(self.model_path, "rb") as current_model:
-            model_dict = pickle.load(current_model)
+        model_dict = load_pickle_file(self.model_path)
 
         self.tree_struct = model_dict['tree_struct']
         self.learing_rate = model_dict['lr']
         self.base_score = model_dict['base_score']
 
         # interpret the lookup table
-        with open(self.lookup_table_path, "rb") as hostTable:
-            lookup_table_sum = pickle.load(hostTable)
-
-        self.lookup_table_sum = lookup_table_sum
+        self.lookup_table_sum = load_pickle_file(self.lookup_table_path)
 
     def preprocess(self):
         if self.id in self.data.columns:
@@ -1993,8 +1973,7 @@ class VGBTHostInfer(BaseModel):
             "pred_y": (pred_prob >= 0.5).astype('int')
         })
         data_result = pd.concat([origin_data, pred_df], axis=1)
-        check_directory_exist(self.model_pred)
-        data_result.to_csv(self.model_pred, index=False)
+        save_csv_file(data_result, self.model_pred)
 
         # if self.label is not None:
         #     acc = metrics.accuracy_score((pred_prob >= 0.5).astype('int'),
@@ -2053,18 +2032,14 @@ class VGBGuestInfer(BaseModel):
 
     def load_model(self):
         # interpret the xgb model
-        with open(self.model_path, "rb") as current_model:
-            model_dict = pickle.load(current_model)
+        model_dict = load_pickle_file(self.model_path)
 
         self.tree_struct = model_dict['tree_struct']
         # self.learing_rate = model_dict['lr']
         # self.base_score = model_dict['base_score']
 
         # interpret the lookup table
-        with open(self.lookup_table_path, "rb") as hostTable:
-            lookup_table_sum = pickle.load(hostTable)
-
-        self.lookup_table_sum = lookup_table_sum
+        self.lookup_table_sum = load_pickle_file(self.lookup_table_path)
 
     def preprocess(self):
         if self.id in self.data.columns:

@@ -1,10 +1,9 @@
 from primihub.FL.utils.net_work import GrpcClient, MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 from primihub.FL.stats import *
-import json
 import numpy as np
 
 
@@ -84,11 +83,7 @@ class Pipeline(BaseModel):
             stats_result[stats_name] = result
 
         # save stats result
-        stats_path = self.role_params["stats_path"]
-        check_directory_exist(stats_path)
-        logger.info(f"stats path: {stats_path}")
-        with open(stats_path, "w") as file:
-            file.write(json.dumps(stats_result))
+        save_json_file(stats_result, self.role_params["stats_path"])
 
 
 def check_stats_name(stats_name: str):

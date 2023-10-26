@@ -1,9 +1,8 @@
 from primihub.FL.utils.net_work import MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file
 from primihub.utils.logger_util import logger
 
-import json
 import torch
 from .base import create_model
 from .hfl_server import Plaintext_Server as MLP_Plaintext_Server
@@ -71,11 +70,7 @@ class CNNServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.role_params['metric_path']
-        check_directory_exist(metric_path)
-        logger.info(f"metric path: {metric_path}")
-        with open(metric_path, 'w') as file_path:
-            file_path.write(json.dumps(trainMetrics))
+        save_json_file(trainMetrics, self.role_params['metric_path'])
 
 
 class Plaintext_Server(MLP_Plaintext_Server):

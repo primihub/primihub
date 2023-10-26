@@ -1,11 +1,10 @@
 from primihub.FL.utils.net_work import MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.paillier import Paillier
 from primihub.FL.preprocessing import StandardScaler
 
-import json
 import numpy as np
 from phe import paillier
 
@@ -76,11 +75,7 @@ class LogisticRegressionServer(BaseModel):
 
         # receive final metrics
         trainMetrics = server.get_metrics()
-        metric_path = self.role_params['metric_path']
-        check_directory_exist(metric_path)
-        logger.info(f"metric path: {metric_path}")
-        with open(metric_path, 'w') as file_path:
-            file_path.write(json.dumps(trainMetrics))
+        save_json_file(trainMetrics, self.role_params['metric_path'])
 
 
 class Plaintext_DPSGD_Server:

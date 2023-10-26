@@ -1,12 +1,13 @@
 from primihub.FL.utils.net_work import GrpcClient, MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_pickle_file,\
+                                   load_pickle_file,\
+                                   save_csv_file
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 from primihub.dataset.dataset import register_dataset
 from primihub.FL.preprocessing import *
 
-import pickle
 import numpy as np
 import pandas as pd
 from itertools import chain
@@ -179,21 +180,17 @@ class Pipeline(BaseModel):
             
         if role != 'server':
             # save preprocess module & columns
-            preprocess_module_path = self.role_params['preprocess_module_path']
-            check_directory_exist(preprocess_module_path)
-            logger.info(f"preprocess module path: {preprocess_module_path}")
-            with open(preprocess_module_path, 'wb') as file_path:
-                pickle.dump({
-                    "selected_column": selected_column,
-                    "id": id,
-                    'preprocess': preprocess
-                    }, file_path)
+            preprocess_module = {
+                "selected_column": selected_column,
+                "id": id,
+                'preprocess': preprocess,
+            }
+            save_pickle_file(preprocess_module,
+                             self.role_params['preprocess_module_path'])
 
             # save preprocess dataset
             preprocess_dataset_path = self.role_params['preprocess_dataset_path']
-            check_directory_exist(preprocess_dataset_path)
-            logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
-            data.to_csv(preprocess_dataset_path, index=False)
+            save_csv_file(data, preprocess_dataset_path)
 
             # register preprocess dataset
             dataset_id = self.role_params.get("preprocess_dataset_id")
@@ -205,10 +202,7 @@ class Pipeline(BaseModel):
 
     def transform(self):
         # load preprocess module
-        preprocess_module_path = self.role_params['preprocess_module_path']
-        logger.info(f"preprocess module path: {preprocess_module_path}")
-        with open(preprocess_module_path, 'rb') as file_path:
-            preprocess = pickle.load(file_path)
+        preprocess = load_pickle_file(self.role_params['preprocess_module_path'])
 
         # load dataset
         selected_column = preprocess['selected_column']
@@ -242,9 +236,7 @@ class Pipeline(BaseModel):
 
         # save preprocess dataset
         preprocess_dataset_path = self.role_params['preprocess_dataset_path']
-        check_directory_exist(preprocess_dataset_path)
-        logger.info(f"preprocess dataset path: {preprocess_dataset_path}")
-        data.to_csv(preprocess_dataset_path, index=False)
+        save_csv_file(data, preprocess_dataset_path)
 
         # register preprocess dataset
         dataset_id = self.role_params.get("preprocess_dataset_id")

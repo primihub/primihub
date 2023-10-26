@@ -1,13 +1,14 @@
 from primihub.FL.utils.net_work import GrpcClient, MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import check_directory_exist
+from primihub.FL.utils.file import save_json_file,\
+                                   save_pickle_file,\
+                                   load_pickle_file,\
+                                   save_csv_file
 from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.ckks import CKKS
 from primihub.FL.metrics import classification_metrics
 
-import pickle
-import json
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -106,11 +107,7 @@ class LogisticRegressionHost(BaseModel):
 
         # compute final metrics
         trainMetrics = host.compute_final_metrics(x, y)
-        metric_path = self.role_params['metric_path']
-        check_directory_exist(metric_path)
-        logger.info(f"metric path: {metric_path}")
-        with open(metric_path, 'w') as file_path:
-            file_path.write(json.dumps(trainMetrics))
+        save_json_file(trainMetrics, self.role_params['metric_path'])
 
         # save model for prediction
         modelFile = {
@@ -120,11 +117,7 @@ class LogisticRegressionHost(BaseModel):
             "transformer": scaler,
             "model": host.model
         }
-        model_path = self.role_params['model_path']
-        check_directory_exist(model_path)
-        logger.info(f"model path: {model_path}")
-        with open(model_path, 'wb') as file_path:
-            pickle.dump(modelFile, file_path)
+        save_pickle_file(modelFile, self.role_params['model_path'])
 
     def predict(self):
         # setup communication channels
@@ -135,10 +128,7 @@ class LogisticRegressionHost(BaseModel):
                                          task_info=self.task_info)
         
         # load model for prediction
-        model_path = self.role_params['model_path']
-        logger.info(f"model path: {model_path}")
-        with open(model_path, 'rb') as file_path:
-            modelFile = pickle.load(file_path)
+        modelFile = load_pickle_file(self.role_params['model_path'])
 
         # load dataset
         origin_data = read_data(data_info=self.role_params['data'])
@@ -177,10 +167,7 @@ class LogisticRegressionHost(BaseModel):
         })
         
         data_result = pd.concat([origin_data, result], axis=1)
-        predict_path = self.role_params['predict_path']
-        check_directory_exist(predict_path)
-        logger.info(f"predict path: {predict_path}")
-        data_result.to_csv(predict_path, index=False)
+        save_csv_file(data_result, self.role_params['predict_path'])
 
 
 class Plaintext_Host:
