@@ -8,7 +8,6 @@ from sklearn.utils import check_random_state, check_array
 from .base import PreprocessBase
 from .util import safe_indexing
 from primihub.FL.stats import col_min_max, col_quantile
-from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
 
 
 class QuantileTransformer(PreprocessBase):
@@ -20,12 +19,14 @@ class QuantileTransformer(PreprocessBase):
                  subsample=10_000,
                  random_state=None,
                  copy=True,
+                 k=200,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.k = k
         self.module = SKL_QuantileTransformer(n_quantiles=n_quantiles,
                                               output_distribution=output_distribution,
                                               ignore_implicit_zeros=ignore_implicit_zeros,
@@ -89,9 +90,6 @@ class QuantileTransformer(PreprocessBase):
                 subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
                 X = safe_indexing(X, subsample_idx)
 
-            send_local_kll_sketch(X, self.channel)
-            quantiles = self.channel.recv('quantiles')
-
         elif self.role == 'server':
             subsample = self.module.subsample
             if n_samples > subsample:
@@ -100,13 +98,14 @@ class QuantileTransformer(PreprocessBase):
                 subsample_ratio = None
             self.channel.send_all('subsample_ratio', subsample_ratio)
 
-            kll = merge_local_kll_sketch(self.channel)
-            quantiles = kll.get_quantiles(self.module.references_)
-            quantiles = np.transpose(quantiles)
-            quantiles = np.maximum.accumulate(quantiles)
-            self.channel.send_all('quantiles', quantiles)
-        
-        self.module.quantiles_ = quantiles
+        quantiles = col_quantile(
+            role=self.role,
+            X=X if self.role == "client" else None,
+            quantiles=self.module.references_,
+            k=self.k,
+            channel=self.channel
+        )
+        self.module.quantiles_ = np.transpose(quantiles)
 
 
 class SplineTransformer(PreprocessBase):
@@ -119,12 +118,14 @@ class SplineTransformer(PreprocessBase):
                  include_bias=True,
                  order="C",
                  sparse_output=False,
+                 k=200,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.k = k
         self.module = SKL_SplineTransformer(n_knots=n_knots,
                                             degree=degree,
                                             knots=knots,
@@ -253,6 +254,7 @@ class SplineTransformer(PreprocessBase):
                 role=self.role,
                 X=X if self.role == "client" else None,
                 quantiles=quantiles,
+                k=self.k,
                 channel=self.channel
             )
 

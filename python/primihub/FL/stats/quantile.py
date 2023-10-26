@@ -10,28 +10,29 @@ def check_quantiles(quantiles):
         raise ValueError("Quantiles must be in the range [0, 1]")
 
 
-def col_median(role: str, X, ignore_nan: bool = True, channel=None):
+def col_median(role: str, X, k: int=200, ignore_nan: bool = True, channel=None):
     return col_quantile(
-        role=role, X=X, quantiles=0.5, ignore_nan=ignore_nan, channel=channel
+        role=role, X=X, quantiles=0.5, k=k, ignore_nan=ignore_nan, channel=channel
     )
 
 
-def col_quantile(role: str, X, quantiles, ignore_nan: bool = True, channel=None):
+def col_quantile(role: str, X, quantiles, k: int=200, ignore_nan: bool = True, channel=None):
     check_role(role)
 
     if role == "client":
-        return col_quantile_client(X, quantiles, ignore_nan, channel)
+        return col_quantile_client(X, quantiles, k, ignore_nan, channel)
     elif role == "server":
-        return col_quantile_server(quantiles, ignore_nan, channel)
+        return col_quantile_server(quantiles, k, ignore_nan, channel)
     elif role in ["guest", "host"]:
         return col_quantile_client(
-            X, quantiles, ignore_nan, send_server=False, recv_server=False
+            X, quantiles, k, ignore_nan, send_server=False, recv_server=False
         )
 
 
 def col_quantile_client(
     X,
     quantiles,
+    k: int = 200,
     ignore_nan: bool = True,
     channel=None,
     send_server: bool = True,
@@ -45,7 +46,7 @@ def col_quantile_client(
     )
 
     if send_server:
-        send_local_kll_sketch(X, channel)
+        send_local_kll_sketch(X, channel, k=k)
 
     if recv_server:
         if not send_server:
@@ -65,6 +66,7 @@ def col_quantile_client(
 
 def col_quantile_server(
     quantiles,
+    k: int = 200,
     ignore_nan: bool = True,
     channel=None,
     send_client: bool = True,
@@ -75,7 +77,7 @@ def col_quantile_server(
     check_channel(channel, send_client, recv_client)
 
     if recv_client:
-        kll = merge_local_kll_sketch(channel)
+        kll = merge_local_kll_sketch(channel, k=k)
         server_col_quantile = kll.get_quantiles(quantiles)
         if quantiles.ndim == 0:
             server_col_quantile = server_col_quantile.reshape(-1)

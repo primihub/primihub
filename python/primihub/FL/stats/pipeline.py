@@ -159,6 +159,7 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
             role=role,
             X=X,
             quantiles=params.get("quantiles"),
+            k=params.get("k", 200),
             ignore_nan=ignore_nan,
             channel=channel,
         )

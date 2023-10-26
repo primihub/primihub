@@ -19,12 +19,14 @@ class KBinsDiscretizer(PreprocessBase):
                  dtype=None,
                  subsample=200_000,
                  random_state=None,
+                 k=200,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.k = k
         self.module = SKL_KBinsDiscretizer(n_bins=n_bins,
                                            encode=encode,
                                            strategy=strategy,
@@ -93,7 +95,7 @@ class KBinsDiscretizer(PreprocessBase):
 
         elif self.module.strategy == "quantile":
             if self.role == 'client':
-                send_local_kll_sketch(X, self.channel)
+                send_local_kll_sketch(X, self.channel, k=self.k)
                 bin_edges = self.channel.recv('bin_edges')
 
                 for jj in range(n_features):
@@ -106,7 +108,7 @@ class KBinsDiscretizer(PreprocessBase):
                         n_bins[jj] = new_n_bins
 
             elif self.role == 'server':
-                kll = merge_local_kll_sketch(self.channel)
+                kll = merge_local_kll_sketch(self.channel, k=self.k)
 
                 n_features = kll.get_d()
                 n_bins = self.module._validate_n_bins(n_features)
