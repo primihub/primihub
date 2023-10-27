@@ -10,6 +10,7 @@
 #include "src/primihub/common/common.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/protos/worker.pb.h"
+#include "src/primihub/protos/service.pb.h"
 #include "src/primihub/util/threadsafe_queue.h"
 
 namespace primihub::network {
@@ -178,6 +179,8 @@ class IChannel {
                                   rpc::TaskStatusReply* reply) = 0;
   virtual retcode StopTask(const rpc::TaskContext& request,
                            rpc::Empty* reply) = 0;
+  virtual retcode DownloadData(const rpc::DownloadRequest& request,
+                               std::vector<std::string>* data) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
   LinkContext* getLinkContext() { return link_ctx_; }
 

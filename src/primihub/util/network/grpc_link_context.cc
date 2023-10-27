@@ -18,7 +18,9 @@ GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) :
   std::string address_ = node.ip_ + ":" + std::to_string(node.port_);
   auto channel = buildChannel(address_, node.use_tls_);
   stub_ = rpc::VMNode::NewStub(channel);
+  dataset_stub_ = rpc::DataSetService::NewStub(channel);
 }
+
 retcode GrpcChannel::BuildTaskInfo(rpc::TaskContext* task_info) {
   auto link_ctx = this->getLinkContext();
   if (link_ctx == nullptr) {
@@ -548,4 +550,41 @@ std::shared_ptr<IChannel> GrpcLinkContext::getChannel(
   return channel;
 }
 
+// dataset related operation
+retcode GrpcChannel::DownloadData(const rpc::DownloadRequest& request,
+                                  std::vector<std::string>* data) {
+  grpc::ClientContext context;
+  auto deadline = std::chrono::system_clock::now() +
+      std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+  context.set_deadline(deadline);
+  auto client_reader = this->dataset_stub_->DownloadData(&context, request);
+
+  const auto& request_id = request.request_id();
+  rpc::DownloadRespone response;
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(request_id);
+  bool has_error{false};
+  std::string err_msg;
+  while (client_reader->Read(&response)) {
+    if (response.code() != rpc::Status::SUCCESS) {
+      has_error = true;
+      err_msg = response.info();
+      break;
+    }
+    auto block_data = response.mutable_data();
+    data->push_back(std::move(*block_data));
+  }
+
+  grpc::Status status = client_reader->Finish();
+  if (!status.ok()) {
+    LOG(ERROR) << TASK_INFO_STR
+               << "recv data encountes error, detail: "
+               << status.error_code() << ": " << status.error_message();
+    return retcode::FAIL;
+  }
+  if (has_error) {
+    LOG(ERROR) << "download data encountes error: " << err_msg;
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
 }  // namespace primihub::network

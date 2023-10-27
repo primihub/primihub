@@ -25,9 +25,10 @@
 #include <vector>
 #include <map>
 #include <utility>
+#include "src/primihub/common/common.h"
 
 namespace primihub {
-
+retcode ReadFileContents(const std::string& fpath, std::string* contents);
 std::vector<std::string> GetFiles(const std::string& path);
 int ValidateDir(const std::string &file_path);
 bool FileExists(const std::string& file_path);

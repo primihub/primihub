@@ -7,6 +7,55 @@ package primihub.rpc;
 service DataSetService {
   rpc NewDataset(NewDatasetRequest) returns (NewDatasetResponse);
   rpc GetDataset(GetDatasetRequest) returns (GetDatasetResponse);
+  rpc QueryResult(QueryResultRequest) returns (QueryResultResponse);
+  rpc DownloadData(DownloadRequest) returns (stream DownloadRespone);
+  rpc UploadData(stream UploadFileRequest) returns (UploadFileResponse);
+}
+
+message Status {
+  enum Code {
+    SUCCESS = 0;
+    FAIL = 1;
+  }
+}
+
+message QueryResultRequest {
+  string request_id = 1;
+  string file_path = 2;             // optional
+}
+
+message QueryResultResponse {
+  repeated string file_list = 1;
+  Status.Code code = 2;
+  string info = 3;
+}
+
+message DownloadRequest {
+  string request_id = 1;
+  repeated string file_list = 2;     // optional
+}
+
+message DownloadRespone {
+  string file_name = 1;
+  bool is_end = 2;
+  Status.Code code = 3;
+  string info = 4;
+  bytes data = 5;
+}
+
+message UploadFileRequest {
+  enum FileType {
+    CSV = 0;
+    TXT = 1;
+  }
+  string file_name = 1;
+  FileType type = 2;
+  bytes data = 3;
+}
+
+message UploadFileResponse {
+  Status.Code code = 1;
+  string info = 2;
 }
 
 message NewDatasetRequest {
