@@ -23,7 +23,7 @@
             "stats_module": {
                 "col_quantile": {
                     "quantiles": [0.25, 0.5, 0.75],
-                    "sketch": "req",
+                    "sketch_name": "REQ",
                     "k": 12,
                     "is_hra": true,
                     "ignore_nan": true

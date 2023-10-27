@@ -23,7 +23,7 @@
             "stats_module": {
                 "col_quantile": {
                     "quantiles": [0.25, 0.5, 0.75],
-                    "sketch": "kll",
+                    "sketch_name": "KLL",
                     "k": 200,
                     "ignore_nan": true
                 }

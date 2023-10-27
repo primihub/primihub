@@ -32,6 +32,7 @@
                     "strategy": "quantile",
                     "subsample": 200000,
                     "random_state": null,
+                    "sketch_name": "KLL",
                     "k": 200
                 }
             }

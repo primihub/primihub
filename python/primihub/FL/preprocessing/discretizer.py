@@ -7,7 +7,11 @@ from sklearn.utils import check_random_state
 from .base import PreprocessBase
 from .util import safe_indexing
 from primihub.FL.stats import col_min_max
-from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
+from primihub.FL.sketch import (
+    send_local_quantile_sketch,
+    merge_local_quantile_sketch,
+    check_quantile_sketch,
+)
 
 
 class KBinsDiscretizer(PreprocessBase):
@@ -19,14 +23,18 @@ class KBinsDiscretizer(PreprocessBase):
                  dtype=None,
                  subsample=200_000,
                  random_state=None,
+                 sketch_name="KLL",
                  k=200,
+                 is_hra=True,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.sketch_name = check_quantile_sketch(sketch_name)
         self.k = k
+        self.is_hra = is_hra
         self.module = SKL_KBinsDiscretizer(n_bins=n_bins,
                                            encode=encode,
                                            strategy=strategy,
@@ -95,7 +103,13 @@ class KBinsDiscretizer(PreprocessBase):
 
         elif self.module.strategy == "quantile":
             if self.role == 'client':
-                send_local_kll_sketch(X, self.channel, k=self.k)
+                send_local_quantile_sketch(
+                    X,
+                    self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
                 bin_edges = self.channel.recv('bin_edges')
 
                 for jj in range(n_features):
@@ -108,12 +122,23 @@ class KBinsDiscretizer(PreprocessBase):
                         n_bins[jj] = new_n_bins
 
             elif self.role == 'server':
-                kll = merge_local_kll_sketch(self.channel, k=self.k)
+                sketch = merge_local_quantile_sketch(
+                    channel=self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
 
-                n_features = kll.get_d()
+                if self.sketch_name == "KLL":
+                    n_features = sketch.get_d()
+                    min_equal_max = sketch.get_min_values() == sketch.get_max_values()
+                elif self.sketch_name == "REQ":
+                    n_features = len(sketch)
+                    min_equal_max = [col_sketch.get_min_value() == col_sketch.get_max_value()
+                                     for col_sketch in sketch]
+
                 n_bins = self.module._validate_n_bins(n_features)
-                min_equal_max = kll.get_min_values() == kll.get_max_values()
-
+                
                 bin_edges = np.zeros(n_features, dtype=object)
                 for jj in range(n_features):
                     if min_equal_max[jj]:
@@ -125,7 +150,10 @@ class KBinsDiscretizer(PreprocessBase):
                         continue
                     
                     quantiles = np.linspace(0, 1, n_bins[jj] + 1)
-                    bin_edges[jj] = kll.get_quantiles(quantiles, isk=jj).reshape(-1)
+                    if self.sketch_name == "KLL":
+                        bin_edges[jj] = sketch.get_quantiles(quantiles, isk=jj).reshape(-1)
+                    elif self.sketch_name == "REQ":
+                        bin_edges[jj] = np.array(sketch[jj].get_quantiles(quantiles))
 
                     # Remove bins whose width are too small (i.e., <= 1e-8)
                     mask = np.ediff1d(bin_edges[jj], to_begin=np.inf) > 1e-8

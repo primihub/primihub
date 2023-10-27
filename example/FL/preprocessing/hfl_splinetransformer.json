@@ -33,6 +33,7 @@
                     "include_bias":true,
                     "order":"C",
                     "sparse_output":false,
+                    "sketch_name": "KLL",
                     "k": 200
                 }
             }

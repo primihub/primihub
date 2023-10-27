@@ -19,14 +19,18 @@ class QuantileTransformer(PreprocessBase):
                  subsample=10_000,
                  random_state=None,
                  copy=True,
+                 sketch_name="KLL",
                  k=200,
+                 is_hra=True,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.sketch_name = sketch_name
         self.k = k
+        self.is_hra = is_hra
         self.module = SKL_QuantileTransformer(n_quantiles=n_quantiles,
                                               output_distribution=output_distribution,
                                               ignore_implicit_zeros=ignore_implicit_zeros,
@@ -102,10 +106,12 @@ class QuantileTransformer(PreprocessBase):
             role=self.role,
             X=X if self.role == "client" else None,
             quantiles=self.module.references_,
+            sketch_name=self.sketch_name,
             k=self.k,
+            is_hra=self.is_hra,
             channel=self.channel
         )
-        self.module.quantiles_ = np.transpose(quantiles)
+        self.module.quantiles_ = quantiles
 
 
 class SplineTransformer(PreprocessBase):
@@ -118,14 +124,18 @@ class SplineTransformer(PreprocessBase):
                  include_bias=True,
                  order="C",
                  sparse_output=False,
+                 sketch_name="KLL",
                  k=200,
+                 is_hra=True,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.sketch_name = sketch_name
         self.k = k
+        self.is_hra = is_hra
         self.module = SKL_SplineTransformer(n_knots=n_knots,
                                             degree=degree,
                                             knots=knots,
@@ -254,9 +264,12 @@ class SplineTransformer(PreprocessBase):
                 role=self.role,
                 X=X if self.role == "client" else None,
                 quantiles=quantiles,
+                sketch_name=self.sketch_name,
                 k=self.k,
+                is_hra=self.is_hra,
                 channel=self.channel
             )
+            knots = np.transpose(knots)
 
         else:
             # knots == 'uniform':
