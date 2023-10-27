@@ -38,8 +38,7 @@ def merge_local_kll_sketch(
             for fea_idx in range(d):
                 kll.deserialize(local_kll_sketch[i][fea_idx], fea_idx)
         else:
-            kll = sketch(k=k)
-            kll.deserialize(local_kll_sketch[i])
+            kll = sketch.deserialize(local_kll_sketch[i])
 
         global_kll.merge(kll)
 

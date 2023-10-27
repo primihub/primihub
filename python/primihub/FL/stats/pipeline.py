@@ -159,7 +159,9 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
             role=role,
             X=X,
             quantiles=params.get("quantiles"),
+            sketch=params.get("sketch", "kll"),
             k=params.get("k", 200),
+            is_hra=params.get("is_hra", True),
             ignore_nan=ignore_nan,
             channel=channel,
         )
