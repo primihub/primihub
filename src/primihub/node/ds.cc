@@ -65,14 +65,14 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
 grpc::Status DataServiceImpl::QueryResult(grpc::ServerContext* context,
     const rpc::QueryResultRequest* request,
     rpc::QueryResultResponse* response) {
-//
+  response->set_code(rpc::Status::FAIL);
+  response->set_info("Unimplement");
   return grpc::Status::OK;
 }
 
 grpc::Status DataServiceImpl::DownloadData(grpc::ServerContext* context,
     const rpc::DownloadRequest* request,
     grpc::ServerWriter<rpc::DownloadRespone>* writer) {
-//
   const auto& file_list = request->file_list();
   const auto& request_id = request->request_id();
   if (file_list.empty()) {
@@ -136,7 +136,8 @@ grpc::Status DataServiceImpl::DownloadData(grpc::ServerContext* context,
 grpc::Status DataServiceImpl::UploadData(grpc::ServerContext* context,
     grpc::ServerReader<rpc::UploadFileRequest>* reader,
     rpc::UploadFileResponse* response) {
-//
+  response->set_code(rpc::Status::FAIL);
+  response->set_info("Unimplement");
   return grpc::Status::OK;
 }
 

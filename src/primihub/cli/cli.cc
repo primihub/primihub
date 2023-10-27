@@ -280,17 +280,20 @@ retcode BuildRequestWithTaskConfig(const nlohmann::json& js,
     }
 
     // param
-    auto map = task_ptr->mutable_params()->mutable_param_map();
-    for (auto& [key, value_info]: js["params"].items()) {
-      auto value_type = value_info["type"].get<std::string>();
-      ParamValue pv;
-      if (value_info["value"].is_array()) {
-        fillParamByArray(value_type, value_info["value"], &pv);
-      } else {
-        fillParamByScalar(value_type, value_info["value"], &pv);
+    if (js.contains("params")) {
+      auto map = task_ptr->mutable_params()->mutable_param_map();
+      for (auto& [key, value_info]: js["params"].items()) {
+        auto value_type = value_info["type"].get<std::string>();
+        ParamValue pv;
+        if (value_info["value"].is_array()) {
+          fillParamByArray(value_type, value_info["value"], &pv);
+        } else {
+          fillParamByScalar(value_type, value_info["value"], &pv);
+        }
+        (*map)[key] = std::move(pv);
       }
-      (*map)[key] = std::move(pv);
     }
+
     // code
     if (js.contains("task_code")) {
       std::string code_file_path =
