@@ -44,6 +44,9 @@ cc_library(
     "//src/primihub/data_store:data_store_lib",
     "//src/primihub/service:dataset_service",
     "//src/primihub/util:thread_local_data",
+    "//src/primihub/common/config:server_config",
+    "//src/primihub/util:pb_log_helper",
+    "//src/primihub/util:file_util",
   ],
 )
 

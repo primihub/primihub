@@ -20,6 +20,7 @@ cc_library(
     "//src/primihub/util:threadsafe_queue",
     "//src/primihub/common:config_lib",
     "//src/primihub/protos:worker_proto",
+    "//src/primihub/protos:service_proto",
     "//src/primihub/util:util_lib",
     "//src/primihub/util:log_util",
     "//src/primihub/util:pb_log_helper",

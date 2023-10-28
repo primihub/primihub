@@ -18,9 +18,26 @@
 #include <unistd.h>
 #include <glog/logging.h>
 #include <cstdio>
+#include <fstream>
 #include "src/primihub/common/config/server_config.h"
 
 namespace primihub {
+retcode ReadFileContents(const std::string& fpath, std::string* contents) {
+  bool exist_flag = primihub::FileExists(fpath);
+  if (!exist_flag) {
+    LOG(ERROR) << "task config file is not exist, path: " << fpath;
+    return retcode::FAIL;
+  }
+  std::ifstream f_in_stream(fpath);
+  std::string contents_((std::istreambuf_iterator<char>(f_in_stream)),
+                      std::istreambuf_iterator<char>());
+  if (contents_.empty()) {
+    LOG(ERROR) << "task config is empty, please check, path: " << fpath;
+    return retcode::FAIL;
+  }
+  *contents = std::move(contents_);
+  return retcode::SUCCESS;
+}
 
 std::vector<std::string> GetFiles(const std::string& path) {
   if (path.empty()) {

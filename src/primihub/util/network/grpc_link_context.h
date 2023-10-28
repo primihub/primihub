@@ -14,6 +14,7 @@
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
+#include "src/primihub/protos/service.grpc.pb.h"
 
 namespace primihub::network {
 namespace rpc = primihub::rpc;
@@ -52,12 +53,16 @@ class GrpcChannel : public IChannel {
                            std::vector<rpc::TaskRequest>* send_pb_data);
   std::shared_ptr<grpc::Channel> buildChannel(std::string& server_addr,
                                               bool use_tls);
+  // data set related operation
+  retcode DownloadData(const rpc::DownloadRequest& request,
+                       std::vector<std::string>* data) override;
 
  protected:
   retcode BuildTaskInfo(rpc::TaskContext* task_info);
 
  private:
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
+  std::unique_ptr<rpc::DataSetService::Stub> dataset_stub_{nullptr};
   std::shared_ptr<grpc::Channel> grpc_channel_{nullptr};
   primihub::Node dest_node_;
   int retry_max_times_{3};
