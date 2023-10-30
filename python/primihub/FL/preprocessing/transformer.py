@@ -4,9 +4,8 @@ import warnings
 from scipy.interpolate import BSpline
 from sklearn.preprocessing import QuantileTransformer as SKL_QuantileTransformer
 from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
-from sklearn.utils import check_random_state, check_array
+from sklearn.utils import check_random_state, check_array, _safe_indexing
 from .base import PreprocessBase
-from .util import safe_indexing
 from primihub.FL.stats import col_min_max, col_quantile
 
 
@@ -92,7 +91,7 @@ class QuantileTransformer(PreprocessBase):
                 subsample_size = ceil(subsample_ratio * n_samples)
                 rng = check_random_state(self.module.random_state)
                 subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
-                X = safe_indexing(X, subsample_idx)
+                X = _safe_indexing(X, subsample_idx)
 
         elif self.role == 'server':
             subsample = self.module.subsample

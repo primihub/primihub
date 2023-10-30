@@ -5,9 +5,9 @@ from sklearn.preprocessing import MinMaxScaler as SKL_MinMaxScaler
 from sklearn.preprocessing import Normalizer as SKL_Normalizer
 from sklearn.preprocessing import RobustScaler as SKL_RobustScaler
 from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
+from sklearn.preprocessing._data import _handle_zeros_in_scale, _is_constant_feature
 from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .base import PreprocessBase
-from .util import handle_zeros_in_scale, is_constant_feature
 from primihub.FL.stats import col_norm, row_norm, col_min_max
 from primihub.FL.sketch import (
     send_local_quantile_sketch,
@@ -42,7 +42,7 @@ class MaxAbsScaler(PreprocessBase):
                            channel=self.channel,)
 
         self.module.max_abs_ = max_abs
-        self.module.scale_ = handle_zeros_in_scale(max_abs)
+        self.module.scale_ = _handle_zeros_in_scale(max_abs)
         return self
 
 
@@ -91,7 +91,7 @@ class MinMaxScaler(PreprocessBase):
         self.module.data_min_ = data_min
         self.module.data_range_ = data_max - data_min
         self.module.scale_ = (feature_range[1] - feature_range[0]) \
-                            / handle_zeros_in_scale(self.module.data_range_)
+                            / _handle_zeros_in_scale(self.module.data_range_)
         self.module.min_ = feature_range[0] - data_min * self.module.scale_
         return self
 
@@ -134,7 +134,7 @@ class Normalizer(PreprocessBase):
                 channel=self.channel,
             )
 
-            norms = handle_zeros_in_scale(norms, copy=False)
+            norms = _handle_zeros_in_scale(norms, copy=False)
             X /= norms[:, np.newaxis]
 
             return X
@@ -229,7 +229,7 @@ class RobustScaler(PreprocessBase):
                     )
 
                     scale = quantiles[1] - quantiles[0]
-                    scale = handle_zeros_in_scale(scale, copy=False)
+                    scale = _handle_zeros_in_scale(scale, copy=False)
                     if self.module.unit_variance:
                         adjust = stats.norm.ppf(q_max / 100.0) - stats.norm.ppf(q_min / 100.0)
                         scale = scale / adjust
@@ -334,13 +334,13 @@ class StandardScaler(PreprocessBase):
                     
                     # Extract the list of near constant features on the raw variances,
                     # before taking the square root.
-                    constant_mask = is_constant_feature(
+                    constant_mask = _is_constant_feature(
                         var,
                         mean,
                         n_sum
                     )
 
-                    scale = handle_zeros_in_scale(
+                    scale = _handle_zeros_in_scale(
                         np.sqrt(var),
                         copy=False,
                         constant_mask=constant_mask
