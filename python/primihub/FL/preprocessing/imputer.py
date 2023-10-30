@@ -4,7 +4,12 @@ from sklearn.impute import SimpleImputer as SKL_SimpleImputer
 from sklearn.impute._base import _BaseImputer
 from .base import PreprocessBase
 from .util import get_dense_mask, unique
-from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
+from primihub.FL.sketch import (
+    send_local_quantile_sketch,
+    merge_local_quantile_sketch,
+    get_quantiles,
+    check_quantile_sketch,
+)
 
 
 class SimpleImputer(PreprocessBase, _BaseImputer):
@@ -16,14 +21,18 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                  copy=True,
                  add_indicator=False,
                  keep_empty_features=False,
+                 sketch_name="KLL",
                  k=200,
+                 is_hra=True,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H' and strategy != 'constant':
             self.check_channel()
+        self.sketch_name = check_quantile_sketch(sketch_name)
         self.k = k
+        self.is_hra = is_hra
         self.module = SKL_SimpleImputer(missing_values=missing_values,
                                         strategy=strategy,
                                         fill_value=fill_value,
@@ -122,19 +131,42 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
         # Median
         elif strategy == "median":
             if self.role == 'client':
-                send_local_kll_sketch(masked_X, self.channel, k=self.k)
+                send_local_quantile_sketch(
+                    masked_X,
+                    self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
                 median = self.channel.recv('median')
 
             elif self.role == 'server':
-                kll = merge_local_kll_sketch(self.channel, k=self.k)
-                mask = kll.is_empty()
+                sketch = merge_local_quantile_sketch(
+                    channel=self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
+
+                if self.sketch_name == "KLL":
+                    mask = sketch.is_empty()
+                elif self.sketch_name == "REQ":
+                    mask = [col_sketch.is_empty() for col_sketch in sketch]
 
                 if not any(mask):
-                    median = kll.get_quantiles(0.5).reshape(-1)
+                    median = get_quantiles(
+                        quantiles=0.5,
+                        sketch=sketch,
+                        sketch_name=self.sketch_name,
+                    )
                 else:
                     median = np.zeros_like(mask, dtype=float)
                     idx = [i for i, x in enumerate(mask) if not x]
-                    median[idx] = kll.get_quantiles(0.5, isk=idx).reshape(-1)
+                    if self.sketch_name == "KLL":
+                        median[idx] = sketch.get_quantiles(0.5, isk=idx).reshape(-1)
+                    elif self.sketch_name == "REQ":
+                        for i in idx:
+                            median[i] = sketch[i].get_quantile(0.5)
                     median[mask] = 0 if self.module.keep_empty_features else np.nan
 
                 self.channel.send_all('median', median)

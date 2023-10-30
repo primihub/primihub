@@ -9,7 +9,11 @@ from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .base import PreprocessBase
 from .util import handle_zeros_in_scale, is_constant_feature
 from primihub.FL.stats import col_norm, row_norm, col_min_max
-from primihub.FL.sketch import send_local_kll_sketch, merge_local_kll_sketch
+from primihub.FL.sketch import (
+    send_local_quantile_sketch,
+    merge_local_quantile_sketch,
+    get_quantiles,
+)
 
 
 class MaxAbsScaler(PreprocessBase):
@@ -144,14 +148,18 @@ class RobustScaler(PreprocessBase):
                  quantile_range=(25.0, 75.0),
                  copy=True,
                  unit_variance=False,
+                 sketch_name="KLL",
                  k=200,
+                 is_hra=True,
                  FL_type=None,
                  role=None,
                  channel=None):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
+        self.sketch_name = sketch_name
         self.k = k
+        self.is_hra = is_hra
         self.module = SKL_RobustScaler(with_centering=with_centering,
                                        with_scaling=with_scaling,
                                        quantile_range=quantile_range,
@@ -180,7 +188,13 @@ class RobustScaler(PreprocessBase):
             )
 
             if with_centering or with_scaling:
-                send_local_kll_sketch(X, self.channel, k=self.k)
+                send_local_quantile_sketch(
+                    X,
+                    self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
 
                 if with_centering and not with_scaling:
                     center = self.channel.recv('center')
@@ -193,14 +207,26 @@ class RobustScaler(PreprocessBase):
         
         elif self.role == 'server':
             if self.module.with_centering or self.module.with_scaling:
-                kll = merge_local_kll_sketch(self.channel, k=self.k)
+                sketch = merge_local_quantile_sketch(
+                    channel=self.channel,
+                    sketch_name=self.sketch_name,
+                    k=self.k,
+                    is_hra=self.is_hra,
+                )
                 
                 if with_centering:
-                    center = kll.get_quantiles(0.5).reshape(-1)
+                    center = get_quantiles(
+                        quantiles=0.5,
+                        sketch=sketch,
+                        sketch_name=self.sketch_name,
+                    )
 
                 if with_scaling:
-                    quantiles = kll.get_quantiles([q_min / 100.0, q_max / 100.0])
-                    quantiles = np.transpose(quantiles)
+                    quantiles = get_quantiles(
+                        quantiles=[q_min / 100.0, q_max / 100.0],
+                        sketch=sketch,
+                        sketch_name=self.sketch_name,
+                    )
 
                     scale = quantiles[1] - quantiles[0]
                     scale = handle_zeros_in_scale(scale, copy=False)

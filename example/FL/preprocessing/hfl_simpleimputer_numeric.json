@@ -47,6 +47,7 @@
                     "copy": true,
                     "add_indicator": false,
                     "keep_empty_features": false,
+                    "sketch_name": "KLL",
                     "k": 200
                 }
             }
