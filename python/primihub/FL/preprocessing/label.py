@@ -3,10 +3,10 @@ from itertools import chain
 from sklearn.preprocessing import LabelEncoder as SKL_LabelEncoder
 from sklearn.preprocessing import LabelBinarizer as SKL_LabelBinarizer
 from sklearn.preprocessing import MultiLabelBinarizer as SKL_MultiLabelBinarizer
-from sklearn.utils.validation import column_or_1d
+from sklearn.utils.validation import column_or_1d, _num_samples
 from sklearn.utils.multiclass import type_of_target, unique_labels
+from sklearn.utils._encode import _unique
 from .base import PreprocessBase
-from .util import unique, num_samples
 
 
 class _LabelBase(PreprocessBase):
@@ -44,14 +44,14 @@ class LabelEncoder(_LabelBase):
     def Hfit(self, y):
         if self.role == 'client':
             y = column_or_1d(y, warn=True)
-            classes = unique(y)
+            classes = _unique(y)
             self.channel.send('classes', classes)
             classes = self.channel.recv('classes')
 
         elif self.role == 'server':
             classes = self.channel.recv_all('classes')
             classes = np.concatenate(classes)
-            classes = unique(classes)
+            classes = _unique(classes)
             self.channel.send_all('classes', classes)
         
         self.module.classes_ = classes
@@ -92,7 +92,7 @@ class LabelBinarizer(_LabelBase):
                 raise ValueError(
                     "Multioutput target data is not supported with label binarization"
                 )
-            if num_samples(y) == 0:
+            if _num_samples(y) == 0:
                 raise ValueError("y has 0 samples: %r" % y)
 
             classes = unique_labels(y)

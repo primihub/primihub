@@ -2,8 +2,9 @@ import numbers
 import numpy as np
 from sklearn.impute import SimpleImputer as SKL_SimpleImputer
 from sklearn.impute._base import _BaseImputer
+from sklearn.utils._encode import _unique
+from sklearn.utils._mask import _get_mask
 from .base import PreprocessBase
-from .util import get_dense_mask, unique
 from primihub.FL.sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
@@ -87,7 +88,7 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
     def _dense_fit(self, X, strategy, missing_values, fill_value):
         """Fit the transformer on dense data."""
         if self.role == 'client':
-            missing_mask = get_dense_mask(X, missing_values)
+            missing_mask = _get_mask(X, missing_values)
             masked_X = np.ma.masked_array(X, mask=missing_mask)
 
             super()._fit_indicator(missing_mask)
@@ -188,7 +189,7 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                     if len(row) == 0 and self.module.keep_empty_features:
                         frequency_counts.append(([missing_values], len(row_mask)))
                     else:
-                        frequency_counts.append(unique(row, return_counts=True))
+                        frequency_counts.append(_unique(row, return_counts=True))
 
                 self.channel.send('frequency_counts', frequency_counts)
                 most_frequent = self.channel.recv('most_frequent')

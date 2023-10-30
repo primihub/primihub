@@ -5,10 +5,11 @@ from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
 from sklearn.preprocessing import TargetEncoder as SKL_TargetEncoder
 from sklearn.utils import is_scalar_nan
 from sklearn.utils.multiclass import type_of_target
-from sklearn.utils.validation import check_consistent_length
+from sklearn.utils.validation import check_consistent_length, _check_y
+from sklearn.utils._encode import _unique
+from sklearn.utils._param_validation import RealNotInt
 from sklearn.preprocessing._encoders import _BaseEncoder as _SKL_BaseEncoder
 from .base import PreprocessBase
-from .util import unique, RealNotInt, _check_y
 
 
 class _BaseEncoder(PreprocessBase, _SKL_BaseEncoder):
@@ -315,7 +316,7 @@ def compute_category_union(client_categories):
         for client_cat in client_categories:
             categories_for_idx.append(client_cat[feature_idx])
         categories_for_idx = np.concatenate(categories_for_idx)
-        categories_for_idx = unique(categories_for_idx)
+        categories_for_idx = _unique(categories_for_idx)
         categories.append(categories_for_idx)
     return categories
 

@@ -3,9 +3,8 @@ import numpy as np
 from math import ceil
 from sklearn.preprocessing import KBinsDiscretizer as SKL_KBinsDiscretizer
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.utils import check_random_state
+from sklearn.utils import check_random_state, _safe_indexing
 from .base import PreprocessBase
-from .util import safe_indexing
 from primihub.FL.stats import col_min_max
 from primihub.FL.sketch import (
     send_local_quantile_sketch,
@@ -55,7 +54,7 @@ class KBinsDiscretizer(PreprocessBase):
                 subsample_size = ceil(subsample_ratio * n_samples)
                 rng = check_random_state(self.module.random_state)
                 subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
-                X = safe_indexing(X, subsample_idx)
+                X = _safe_indexing(X, subsample_idx)
 
         elif self.role == 'server':
             subsample = self.module.subsample
