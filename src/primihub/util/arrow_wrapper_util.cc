@@ -117,7 +117,7 @@ std::shared_ptr<arrow::Array> MakeArrowArray(int field_type,
     array = StringArrowArrayBuilder(arr);
     break;
   default:
-    LOG(ERROR) << "unkonw data type: " << field_type
+    LOG(ERROR) << "unknown data type: " << field_type
         << " consider as string type";
     array = StringArrowArrayBuilder(arr);
     break;

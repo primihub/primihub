@@ -26,7 +26,7 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
   }
 
   if (RoleValidation::IsServer(this->party_name())) {
-    // paramater for offline generate db info
+    // parameter for offline generate db info
     const auto& param_map = task.params().param_map();
     auto iter = param_map.find("DbInfo");
     if (iter != param_map.end()) {
@@ -39,7 +39,7 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
       ValidateDir(options->db_path);
       options->generate_db = true;
     } else {
-      // paramater for online task
+      // parameter for online task
       if (this->dataset_id_.empty()) {
         LOG(ERROR) << "dataset id is empty for party: " << party_name();
         return retcode::FAIL;
@@ -253,7 +253,7 @@ retcode PirTask::ServerLoadDataset() {
   int col_count = table->num_columns();
   size_t row_count = table->num_rows();
   if (col_count < 2) {
-    LOG(ERROR) << "data for server must have lable";
+    LOG(ERROR) << "data for server must have label";
     return retcode::FAIL;
   }
   std::vector<int> key_col = {0};
@@ -264,7 +264,7 @@ retcode PirTask::ServerLoadDataset() {
     value_col.push_back(i);
   }
   if (value_col.empty()) {
-    LOG(ERROR) << "no selected colum for lable";
+    LOG(ERROR) << "no selected column for label";
     return retcode::FAIL;
   }
   auto value_array = GetSelectedContent(table, value_col);
@@ -433,7 +433,7 @@ std::vector<std::string> PirTask::GetSelectedContent(
     }
   }
 
-  // process left colums
+  // process left columns
   for (size_t i = 1; i < selected_col.size(); ++i) {
     size_t index{0};
     int col_index = selected_col[i];

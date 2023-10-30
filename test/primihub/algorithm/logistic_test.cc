@@ -63,7 +63,7 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   task_info->set_task_id("mpc_lr");
   task_info->set_job_id("lr_job");
   task_info->set_request_id("lr_task");
-  // datsets
+  // datasets
   auto party_datasets = task.mutable_party_datasets();
   auto datasets = (*party_datasets)[role].mutable_data();
   for (const auto& [key, dataset_id] : dataset_list) {

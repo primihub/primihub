@@ -543,7 +543,7 @@ class MPCOperator {
               << revealAll(drelu_result).format(CSVFormat);
 
       drelu_result_temp = revealAll(
-          drelu_result);  // ematrix should mutiply rank to get rank matrix.
+          drelu_result);  // ematrix should multiply rank to get rank matrix.
       // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
       for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
@@ -616,7 +616,7 @@ class MPCOperator {
       drelu_result = MPC_DReLu(Y_temp);
 
       drelu_result_temp = revealAll(
-          drelu_result);  // ematrix should mutiply rank to get rank matrix.
+          drelu_result);  // ematrix should multiply rank to get rank matrix.
       // rank_matrix += rank * drelu_result_temp;//check if this is working!!!
       for (i64 i = 0; i < Alpha_matrix.size(); ++i) {
         Alpha_matrix(i) += round_bound * static_cast<u64>(drelu_result_temp(i));
@@ -1007,7 +1007,7 @@ class MPCOperator {
         m.mData = m.mData.array() * -1;
     }
 
-    LOG(INFO) << "Finish evalute MSB circuit.";
+    LOG(INFO) << "Finish evaluate MSB circuit.";
   }
 
   void MPC_Compare(i64Matrix &m, sbMatrix &sh_res);

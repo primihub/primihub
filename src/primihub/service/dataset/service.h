@@ -91,7 +91,7 @@ class DatasetService  {
 
  private:
   /**
-   * paramater initialization
+   * parameter initialization
   */
   retcode Init();
 

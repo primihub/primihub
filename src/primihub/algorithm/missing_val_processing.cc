@@ -67,7 +67,7 @@ int MissingProcess::_strToInt64(const std::string &str, int64_t &i64_val) {
     }
   } catch (std::invalid_argument const &ex) {
     LOG(ERROR) << "Can't convert string " << str
-               << " to int64 value, invalid numberic string.";
+               << " to int64 value, invalid numeric string.";
     return -1;
   } catch (std::out_of_range const &ex) {
     LOG(ERROR) << "Can't convert string " << str
@@ -88,7 +88,7 @@ int MissingProcess::_strToDouble(const std::string &str, double &d_val) {
     }
   } catch (std::invalid_argument &ex) {
     LOG(WARNING) << "Can't convert string " << str
-                 << " to double value, invalid numberic string.";
+                 << " to double value, invalid numeric string.";
     return -1;
   } catch (std::out_of_range &ex) {
     LOG(WARNING) << "Can't convert string " << str
@@ -449,7 +449,7 @@ int MissingProcess::execute() {
 
     if (cols_0 != cols_1 || cols_0 != cols_2 || cols_1 != cols_2) {
       LOG(ERROR)
-          << "The taget data columns of the three parties are inconsistent!";
+          << "The target data columns of the three parties are inconsistent!";
       return -1;
     }
 

@@ -83,7 +83,7 @@ grpc::Status DataServiceImpl::DownloadData(grpc::ServerContext* context,
     LOG(ERROR) << pb_util::TaskInfoToString(request_id) << err_msg;
     writer->Write(resp);
   }
-  // using pipline mode to read and send data, make sure data sequence: fifo
+  // using pipeline mode to read and send data, make sure data sequence: fifo
   ThreadSafeQueue<DataBlock> resp_queue;
   std::atomic<bool> error{false};
   std::string error_msg;

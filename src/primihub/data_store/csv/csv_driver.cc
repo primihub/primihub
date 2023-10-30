@@ -82,11 +82,11 @@ retcode WriteHeader(const std::vector<std::string>& col_name,
                     const std::string& file_path) {
   auto ret = ValidateDir(file_path);
   if (ret != 0) {
-    LOG(ERROR) << "something wrong with operatating file path: " << file_path;
+    LOG(ERROR) << "something wrong with operating file path: " << file_path;
     return retcode::FAIL;
   }
   if (col_name.empty()) {
-    LOG(WARNING) << "no feild name need to write";
+    LOG(WARNING) << "no field name need to write";
     return retcode::SUCCESS;
   }
   std::string header_str;
@@ -119,7 +119,7 @@ retcode WriteContent(std::shared_ptr<arrow::Table> table,
 //
   auto ret = ValidateDir(file_path);
   if (ret != 0) {
-    LOG(ERROR) << "something wrong with operatating file path: " << file_path;
+    LOG(ERROR) << "something wrong with operating file path: " << file_path;
     return retcode::FAIL;
   }
   auto result = arrow::io::FileOutputStream::Open(file_path, append_flag);
@@ -677,14 +677,14 @@ std::unique_ptr<Cursor> CSVDriver::read() {
       return nullptr;
     }
 
-    std::vector<FieldType> fileds;
-    auto arrow_fileds = arrow_data->schema()->fields();
-    for (const auto& field : arrow_fileds) {
+    std::vector<FieldType> fields;
+    auto arrow_fields = arrow_data->schema()->fields();
+    for (const auto& field : arrow_fields) {
       const auto& name = field->name();
       int type = field->type()->id();
-      fileds.emplace_back(std::make_tuple(name, type));
+      fields.emplace_back(std::make_tuple(name, type));
     }
-    csv_access_info->SetDatasetSchema(std::move(fileds));
+    csv_access_info->SetDatasetSchema(std::move(fields));
   }
   return this->initCursor(csv_access_info->file_path_);
 }

@@ -81,7 +81,7 @@ retcode MySQLAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info)
   auto ret{retcode::SUCCESS};
   auto& access_info = meta_info.access_info;
   if (access_info.empty()) {
-    LOG(WARNING) << "access_info is emptry for id: " << meta_info.id;
+    LOG(WARNING) << "access_info is empty for id: " << meta_info.id;
     return retcode::SUCCESS;
   }
   try {
@@ -242,7 +242,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
   size_t selected_fields = this->SelectedColumnIndex().size();
   if (num_fields != selected_fields) {
     std::stringstream ss;
-    ss << "query colum size does not match, query size: " << num_fields
+    ss << "query column size does not match, query size: " << num_fields
         << " expected: " << selected_fields;
     std::string err_msg = ss.str();
     SetThreadLocalErrorMsg(err_msg);
@@ -457,8 +457,8 @@ std::string MySQLDriver::buildQuerySQL(MySQLAccessInfo* access_info) {
   auto& query_cols = access_info->query_colums_;
   std::string sql_str = "SELECT ";
   auto& schema = access_info->schema;
-  for (const auto& colum : schema) {
-    auto& col_name = std::get<0>(colum);
+  for (const auto& column : schema) {
+    auto& col_name = std::get<0>(column);
     sql_str.append("`").append(col_name).append("`,");
   }
   // remove the last ','
@@ -498,7 +498,7 @@ retcode MySQLDriver::getTableSchema(const std::string& db_name,
 
     uint32_t num_fields = mysql_num_fields(result.get());
     VLOG(5) << "numbers of result: " << num_fields;
-    if (num_fields != 2) { // we just query 2 fileds
+    if (num_fields != 2) { // we just query 2 fields
         LOG(ERROR) << "2 num_fields is expected, but get " << num_fields;
         return retcode::FAIL;
     }
@@ -617,7 +617,7 @@ std::unique_ptr<Cursor> MySQLDriver::MakeCursor(std::vector<int> col_index) {
   return std::make_unique<MySQLCursor>(query_sql, shared_from_this());
 }
 
-// write data to specifiy table
+// write data to specify table
 int MySQLDriver::write(std::shared_ptr<arrow::Table> table,
                       const std::string &table_name) {
   return 0;

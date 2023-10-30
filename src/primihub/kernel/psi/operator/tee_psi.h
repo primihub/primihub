@@ -84,7 +84,7 @@ class TeePsiOperator : public BasePsiOperator {
   std::vector<std::string>& DataFiles() {return files_;}
   std::vector<std::string>& ExtraInfo() {return extra_info_;}
   /**
-   * clean the share data file generated on protocal execute
+   * clean the share data file generated on protocol execute
   */
   retcode CleanTempFile();
 

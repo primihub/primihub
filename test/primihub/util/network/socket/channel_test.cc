@@ -962,7 +962,7 @@ TEST(BtNetwork_clientClose_Test, client_close) {
 
   for (u64 i = 0; i < trials; ++i) {
     {
-      timer.setTimePoint("io serivce");
+      timer.setTimePoint("io service");
 
       Session server(ios, "127.0.0.1", 1212, SessionMode::Server, tls);
       Session client(ios, "127.0.0.1", 1212, SessionMode::Client, tls);
@@ -995,7 +995,7 @@ TEST(BtNetwork_clientClose_Test, client_close) {
       server.stop();
       timer.setTimePoint("server stop");
     }
-    timer.setTimePoint("desctruct");
+    timer.setTimePoint("destruct");
   }
 
   if (count != trials)
@@ -1422,7 +1422,7 @@ TEST(BtNetwork_BasicSocket_test, basic_socket) {
       SessionMode::Server).addChannel();
     BasicAdapter adapter;
 
-    // create a seperate thread to run your protocol...
+    // create a separate thread to run your protocol...
     std::thread protocol = std::thread([&]() {
       Channel chl(ios, adapter.getSocket());
       std::vector<u8> data(1024);
@@ -1455,7 +1455,7 @@ TEST(BtNetwork_BasicSocket_test, basic_socket) {
     }
   });
 
-  // create a seperate thread to run your protocol...
+  // create a separate thread to run your protocol...
   std::thread party1 = std::thread([&]() {
     Channel yourSocket = Session(ios, "localhost:1212",
       SessionMode::Client).addChannel();

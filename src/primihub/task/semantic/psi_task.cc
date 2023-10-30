@@ -68,7 +68,7 @@ retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
 
   const auto& param_map = task.params().param_map();
   // TODO(XXX) rename to PsiResultType {intersection or DIFFERENCE}
-  auto it = param_map.find("psiType");   // psi reuslt
+  auto it = param_map.find("psiType");   // psi result
   if (it != param_map.end()) {
     options->psi_result_type =
         static_cast<psi::PsiResultType>(it->second.value_int32());

@@ -13,7 +13,7 @@
  * 
  * functions:
  *    fbpowmod_init_extend -> init a fixed-base instance
- *    fbpowmod_extend      -> implemention of powmod with fixed-base
+ *    fbpowmod_extend      -> implementation of powmod with fixed-base
  *    fbpowmod_end_extend  -> free memory after malloc
  */
 

@@ -75,7 +75,7 @@ class DataDirverFactory {
                 return std::make_shared<ImageDriver>(nodeletAddr, std::move(access_info));
             }
         } else {
-            std::string err_msg = "[DataDirverFactory]Invalid dirver name [" + dirverName + "]";
+            std::string err_msg = "[DataDriverFactory]Invalid driver name [" + dirverName + "]";
             throw std::invalid_argument(err_msg);
         }
         return nullptr;

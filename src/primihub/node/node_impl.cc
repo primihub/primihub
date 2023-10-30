@@ -153,7 +153,7 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
       std::vector<Node> parties, const rpc::Task task_config,
       ThreadSafeQueue<std::string>* finished_scheduler_workers) -> void {
     SET_THREAD_NAME("DispatchTask");
-    // get the finall task status, if failed, kill current task
+    // get the final task status, if failed, kill current task
     auto ret = worker->waitUntilTaskFinish();
     auto& task_info = task_config.task_info();
     std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
@@ -308,7 +308,7 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
   if (IsDuplicateTask(task_info)) {
     PH_LOG(ERROR, LogType::kScheduler)
         << TASK_INFO_STR
-        << "task has alread received, ignore ....";
+        << "task has already received, ignore ....";
     return retcode::FAIL;
   }
   std::string worker_id = GetWorkerId(task_info);
@@ -589,7 +589,7 @@ void VMNodeImpl::CleanFinishedTaskThread() {
         task_executor_container_t().swap(tmp_task);
         auto time_cost = timer.timeElapse();
         PH_VLOG(5, LogType::kScheduler)
-            << "ManageTaskThread operator: desctory time cost: " << time_cost;
+            << "ManageTaskThread operator: destroy time cost: " << time_cost;
       }
     });
 }

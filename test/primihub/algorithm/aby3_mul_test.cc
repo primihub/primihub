@@ -16,7 +16,7 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
 
   // A CommPkg is a pair of Channels (network sockets) to the other parties.
   // See cryptoTools\frontend_cryptoTools\Tutorials\Network.cpp
-  // for detials.
+  // for details.
   CommPkg comm = CommPkg();
   Session ep_next_;
   Session ep_prev_;
@@ -64,7 +64,7 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
   // Establishes some shared randomness needed for the later protocols
   eval.init(partyIdx, comm, sysRandomSeed());
 
-  // Copies the Channels and will use them for later protcols.
+  // Copies the Channels and will use them for later protocols.
   auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
   runtime.init(partyIdx, commPtr);
   return 1;

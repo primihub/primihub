@@ -9,10 +9,10 @@
 
 namespace primihub::arrow_wrapper::util {
 /**
- * convet sql type to arrow type, arrow type is defined by the fllowing link:
+ * convert sql type to arrow type, arrow type is defined by the fllowing link:
  * https://arrow.apache.org/docs/4.0/cpp/api/datatype.html?highlight=datatype#_CPPv4N5arrow4Type4typeE  //NOLINT
  *
- * input paramater:
+ * input parameter:
  *  sql_type: sql type string
  *  arrow_type: sql type mapped arrow type
 */

@@ -292,7 +292,7 @@ f64Matrix<D8> reveal(sf64Matrix<D8>& A, CommPkg& comm) {
   if (A1.i64Cast() != A[1]) {
     lout << "A1  " << A1.i64Cast() << "\nA1' " << A[1]
       << std::endl;
-    throw std::runtime_error("inconistent shares. " LOCATION);
+    throw std::runtime_error("inconsistent shares. " LOCATION);
   }
 
   for (u64 i = 0; i < ret.size(); ++i) {

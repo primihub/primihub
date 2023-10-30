@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
     std::string node_id = host_config.id();
     auto& cert_config = server_config.getCertificateConfig();
     std::string node_ip = "0.0.0.0";
-    // service for dataset meta controle
+    // service for dataset meta control
     auto& node_cfg = server_config.getNodeConfig();
     auto& meta_service_cfg = node_cfg.meta_service_config;
     auto meta_service =

@@ -394,7 +394,7 @@ void MPCOperator::MPC_Compare(i64Matrix &m, sbMatrix &sh_res) {
       m = m.array() * -1;
   }
 
-  LOG(INFO) << "Finish evalute MSB circuit.";
+  LOG(INFO) << "Finish evaluate MSB circuit.";
 }
 
 void MPCOperator::MPC_Compare(sbMatrix &sh_res) {

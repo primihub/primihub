@@ -333,7 +333,7 @@ retcode TeePsiOperator::CleanTempFile() {
   for (const auto& file_name : files_) {
     if (primihub::FileExists(file_name)) {
       primihub::RemoveFile(file_name);
-      VLOG(5) << "remove file: " << file_name << " sccess";
+      VLOG(5) << "remove file: " << file_name << " success";
     }
   }
 }

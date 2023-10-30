@@ -39,7 +39,7 @@ int FLTask::execute() {
   std::string pb_task_request_;
   bool succ_flag = task_request_->SerializeToString(&pb_task_request_);
   if (!succ_flag) {
-    LOG(ERROR) << "ill formated task request";
+    LOG(ERROR) << "ill formatted task request";
     return -1;
   }
   py::gil_scoped_acquire acquire;

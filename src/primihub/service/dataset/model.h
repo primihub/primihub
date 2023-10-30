@@ -221,8 +221,8 @@ class DatasetMeta {
   /**
    * some meta data like data access info must treat as private,
    * such as: database access info or csv file stored path
-   * such infomation must be keep inside instead of releasing to meta server,
-   * so before release, first erase this infomation
+   * such information must be keep inside instead of releasing to meta server,
+   * so before release, first erase this information
   */
   void removePrivateMeta();
   void clearAccessMeta();

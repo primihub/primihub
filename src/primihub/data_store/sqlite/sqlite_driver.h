@@ -48,10 +48,10 @@ public:
   SQLiteCursor(const std::string& sql, std::shared_ptr<SQLiteDriver> driver);
   /**
    * build read cursor by selected column
-   * paramter:
+   * parameter:
    * sql: query sql
    * col_index: select col index, must be match with sql
-   * driver: datset driver
+   * driver: dataset driver
   */
   SQLiteCursor(const std::string& sql,
               const std::vector<int>& col_index,
@@ -75,7 +75,7 @@ public:
     INT64,
     FLOAT,
     DOUBLE,
-    UNKONW,
+    UNKNOWN,
   };
   struct TypeContainer {
     explicit TypeContainer(sql_type_t col_type) : col_type_(col_type) {}
@@ -94,7 +94,7 @@ public:
       if(std::string::npos != type_name.find("VARCHAR"))
         return sql_type_t::STRING;
     }
-    return sql_type_t::UNKONW;
+    return sql_type_t::UNKNOWN;
   }
 
  private:
@@ -122,7 +122,7 @@ public:
   std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
   std::string getDataURL() const override;
   std::unique_ptr<SQLite::Database>& getDBConnector() { return db_connector; }
-  // write data to specifiy db table
+  // write data to specify db table
   int write(std::shared_ptr<arrow::Table> table, const std::string& table_name);
  protected:
   void setDriverType();

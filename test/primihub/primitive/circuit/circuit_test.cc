@@ -134,7 +134,7 @@ TEST(CircuitTest, garble_Test) {
         activeWireLabels[cir->mInputs[0].mWires[i]] = garblersInput[i];
     }
 
-    // pick some random inputs for the evalutor, in this case at random.
+    // pick some random inputs for the evaluator, in this case at random.
     BitVector evalsPlainInput(bitCount);
     evalsPlainInput.randomize(prng);
 

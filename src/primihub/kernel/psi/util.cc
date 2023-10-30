@@ -97,7 +97,7 @@ retcode PsiCommonUtil::LoadDatasetFromTable(
 
   col_data->resize(num_rows);
   if (num_cols == 0) {
-    LOG(ERROR) << "no colum selected";
+    LOG(ERROR) << "no column selected";
     return retcode::FAIL;
   }
 
@@ -132,7 +132,7 @@ retcode PsiCommonUtil::LoadDatasetFromTable(
     bool is_string = this->isString(type_id);
     size_t index = 0;
     if (is_numeric) {
-      VLOG(5) << "covert numeric to string";
+      VLOG(5) << "convert numeric to string";
       if (this->isNumeric64Type(type_id)) {
         for (int i = 0; i < chunk_size; i++) {
           auto array = std::static_pointer_cast<
@@ -208,7 +208,7 @@ retcode PsiCommonUtil::LoadDatasetInternal(
     return retcode::FAIL;
   }
   auto& schema = driver->dataSetAccessInfo()->Schema();
-  // construct new schema and check data type for each selected colums,
+  // construct new schema and check data type for each selected columns,
   // float type is not allowed
   std::decay_t<decltype(schema)> new_schema{};
   for (const auto index : col_index) {
@@ -281,7 +281,7 @@ retcode PsiCommonUtil::SaveDataToCSVFile(
       std::vector<std::string> vec;
       str_split(data[i], &vec, DATA_RECORD_SEP);
       if (vec.size() != col_names.size()) {
-        LOG(ERROR) << "data colum does not match, expected: "
+        LOG(ERROR) << "data column does not match, expected: "
                    << col_names.size()
                    << " but get: " << vec.size();
         return retcode::FAIL;

@@ -26,7 +26,7 @@ retcode BasePsiOperator::Execute(const std::vector<std::string>& input,
                                  std::vector<std::string>* result) {
   auto ret = this->OnExecute(input, result);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Execut PSI failed";
+    LOG(ERROR) << "Execute PSI failed";
     return retcode::FAIL;
   }
   // broadcast result from party who get result during the protocol

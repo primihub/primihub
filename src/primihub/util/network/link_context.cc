@@ -144,7 +144,7 @@ retcode LinkContext::Recv(const std::string& key,
     return retcode::FAIL;
   }
   if (tmp_recv_buf.size() != recv_size) {
-    LOG(ERROR) << "recv data length doest not match, expected: " << recv_size
+    LOG(ERROR) << "recv data length doesn't match, expected: " << recv_size
                << " but get: " << tmp_recv_buf.size();
     return retcode::FAIL;
   }

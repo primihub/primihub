@@ -76,7 +76,7 @@ retcode SQLiteAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info
   auto ret{retcode::SUCCESS};
   auto& access_info = meta_info.access_info;
   if (access_info.empty()) {
-    LOG(WARNING) << "access_info is emptry for id: " << meta_info.id;
+    LOG(WARNING) << "access_info is empty for id: " << meta_info.id;
     return retcode::SUCCESS;
   }
   try {
@@ -592,7 +592,7 @@ std::unique_ptr<Cursor> SQLiteDriver::initCursor(const std::string &conn_str) {
   auto sql_str = buildQuerySQL(table_name, query_condition);
   return std::make_unique<SQLiteCursor>(sql_str, shared_from_this());
 }
-// write data to specifiy table
+// write data to specify table
 int SQLiteDriver::write(std::shared_ptr<arrow::Table> table,
                         const std::string &table_name) {
   return 0;

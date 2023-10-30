@@ -640,7 +640,7 @@ template class ArithmeticExecutor<D16>;
 
 //   LOG(INFO) << "Finish.";
 
-//   // Phase 3: simulate the communicate in the creatin of a value's arithmetic
+//   // Phase 3: simulate the communicate in the creation of a value's arithmetic
 //   // share.
 //   LOG(INFO) << "Send and recv si64.";
 //   {

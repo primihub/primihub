@@ -69,7 +69,7 @@ void BuildTaskConfig(const std::string& role,
   task_info->set_task_id("mpc_statistics_avg");
   task_info->set_job_id("statistics_avg_job");
   task_info->set_request_id("statistics_avg_task");
-  // datsets
+  // datasets
   auto party_datasets = task.mutable_party_datasets();
   auto datasets = (*party_datasets)[role].mutable_data();
   for (const auto& [key, dataset_id] : dataset_list) {

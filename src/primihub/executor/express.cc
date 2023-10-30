@@ -540,7 +540,7 @@ void MPCExpressExecutor<Dbit>::parseExpress(const std::string &expr) {
       if (!suffix_stk_.empty())
         suffix_stk_.pop();
     } else {
-      // str[i] is a charactor of column name or a constant.
+      // str[i] is a character of column name or a constant.
       temp += expr[i];
     }
   }

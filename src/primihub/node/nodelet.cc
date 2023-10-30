@@ -33,7 +33,7 @@ Nodelet::Nodelet(const std::string &config_file_path,
   std::string RA_SERVER = sgx_config.ra_server_addr;
   std::string CN = service_cfg.id();
   std::string cert_path = sgx_config.cert_path;
-  LOG(INFO) << "sgx config enalbe:" << sgx_enable
+  LOG(INFO) << "sgx config enable:" << sgx_enable
       << " ra_server:"<< RA_SERVER
       << " CN: " << CN << " cert_path:" << cert_path;
     // init services
@@ -61,7 +61,7 @@ Nodelet::Nodelet(const std::string &config_file_path,
     this->ra_service_->set_channel(tee_executor_->get_channel());
     this->ra_service_->set_ra_handler(ra_handler_.get());
   } else {
-    LOG(INFO) << "sgx enble is :" << sgx_enable;
+    LOG(INFO) << "sgx enable is :" << sgx_enable;
   }
 #endif
 }

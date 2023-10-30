@@ -82,7 +82,7 @@ void test_unwrap_arrow_pyobject(std::shared_ptr<arrow::Table> &table) {
 }
 
 // Register apache arrow table object as primihub dataset and publish on DHT.
-// NOTE defualt using csv driver
+// NOTE default using csv driver
 void reg_arrow_table_as_ph_dataset(std::shared_ptr<DatasetService> &dataset_service,
                                    std::string &dataset_name,
                                    std::shared_ptr<arrow::Table> &table) {

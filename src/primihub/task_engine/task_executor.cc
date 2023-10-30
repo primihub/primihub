@@ -75,7 +75,7 @@ retcode TaskEngine::InitDatasetSerivce() {
     LOG(ERROR) << "init server config failed";
     return retcode::FAIL;
   }
-  // service for dataset meta controle
+  // service for dataset meta control
   auto& node_cfg = server_config.getNodeConfig();
   auto& meta_service_cfg = node_cfg.meta_service_config;
   using MetaServiceFactory = primihub::service::MetaServiceFactory;
@@ -108,7 +108,7 @@ retcode TaskEngine::UpdateStatus(rpc::TaskStatus::StatusCode code_status,
   task_status.set_message(msg_info);
   task_status.set_status(code_status);
   if (!schedule_node_available_) {
-    LOG(WARNING) << "chedule node is not available";
+    LOG(WARNING) << "schedule node is not available";
     return retcode::FAIL;
   }
   auto channel = link_ctx_->getChannel(schedule_node_);
