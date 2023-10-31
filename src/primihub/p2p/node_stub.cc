@@ -131,7 +131,7 @@ groups:
         kademlia_config_.randomWalk.interval = std::chrono::seconds(300);
         kademlia_config_.requestConcurency = 20;
 
-        // get boostrap nodes
+        // get bootstrap nodes
         bootstrap_nodes_ = [&]
         {
             std::unordered_map<libp2p::peer::PeerId,

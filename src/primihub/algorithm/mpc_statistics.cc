@@ -444,7 +444,7 @@ int MPCStatisticsExecutor::loadDataset() {
   auto driver = dataset_service_->getDriver(dataset_id_,
                                             this->is_dataset_detail_);
   if (driver == nullptr) {
-    LOG(ERROR) << "get datset driver failed";
+    LOG(ERROR) << "get dataset driver failed";
     return -1;
   }
   auto cursor = std::move(driver->read());

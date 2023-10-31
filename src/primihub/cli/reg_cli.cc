@@ -108,7 +108,7 @@ void Usage() {
   usage_info.append("--server:  [opttion default: 127.0.0.1:50050]\n");
   usage_info.append("--config_file: path of dataset meta config\n");
   usage_info.append("config file is json format, example is as follows ")
-            .append("for differnet source dataset:\n");
+            .append("for different source dataset:\n");
   usage_info.append(R"""(
 [
   {

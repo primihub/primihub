@@ -51,7 +51,7 @@ class BasePsiOperator {
    * broadcast from the party who get the result to the others who participate
    * in the protocol
    * result: input or output
-   *  for party who finally get the result after protocol, reuslt is input
+   *  for party who finally get the result after protocol, result is input
    *  for party who get result after broadcast step, result is output
   */
   virtual retcode BroadcastPsiResult(std::vector<std::string>* result);
@@ -68,7 +68,7 @@ class BasePsiOperator {
   */
   bool IgnoreParty(const std::string& party_name);
   /**
-   * party who doest not care about the result
+   * party who doesn't care about the result
   */
   bool IgnoreResult(const std::string& party_name);
   retcode BroadcastResult(const std::vector<std::string>& result);

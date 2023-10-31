@@ -120,7 +120,7 @@ class MySQLDriver : public DataDriver, public std::enable_shared_from_this<MySQL
     std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) override;
     std::unique_ptr<Cursor> initCursor(const std::string& conn_str) override;
     std::string getDataURL() const override;
-    // write data to specifiy db table
+    // write data to specify db table
     int write(std::shared_ptr<arrow::Table> table, const std::string& table_name);
     std::map<std::string, std::string>& tableSchema() {
         return table_schema_;

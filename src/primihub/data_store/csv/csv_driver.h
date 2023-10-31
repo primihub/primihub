@@ -81,7 +81,7 @@ class CSVCursor : public Cursor {
    * customize convert option
    * if Specific columns selected, just get data from the specific columns
    * if column data type provided when the dataset register,
-   * using registed data type
+   * using registered data type
   */
   retcode BuildConvertOptions(ConvertOptions* convert_option);
   /**
@@ -132,7 +132,7 @@ class CSVDriver : public DataDriver,
   int write(std::shared_ptr<arrow::Table> table,
             const std::string& file_path);
   /**
-   * write csv title using customer define colum name
+   * write csv title using customer define column name
    * and ignore the title defined by table schema
   */
   retcode Write(const std::vector<std::string>& fields_name,

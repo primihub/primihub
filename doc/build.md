@@ -7,7 +7,7 @@
 if use microsoft-apsi PIR support, use
 
 ```
-build:linux --define microsoft-apsi=ture
+build:linux --define microsoft-apsi=true
 ```
 
 or use openminded PIR library default.

@@ -36,7 +36,7 @@ class Factory {
       const Options& options, void* executor) {
 #ifdef SGX
     if (executor == nullptr) {
-      LOG(ERROR) << "TeeEngine is invlid";
+      LOG(ERROR) << "TeeEngine is invalid";
       return nullptr;
     }
     auto tee_engine = reinterpret_cast<sgx::TeeEngine*>(executor);

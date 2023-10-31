@@ -31,7 +31,7 @@ namespace primihub::task {
 // temp data storage
 /**
  * TaskContext
- * contains temperary storage, communication link info
+ * contains temporary storage, communication link info
 */
 class TaskContext {
  public:

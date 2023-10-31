@@ -128,7 +128,7 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
   send_request.CopyFrom(*task_request);
   const auto& task_info = send_request.task().task_info();
   std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
-  // change datasetid to datset access info
+  // change datasetid to dataset access info
   auto& dataset_service = nodelet->getDataService();
   auto party_datasets = send_request.mutable_task()->mutable_party_datasets();
   auto param_map_ptr =

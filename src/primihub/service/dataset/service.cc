@@ -163,7 +163,7 @@ retcode DatasetService::deleteDataset(const DatasetId& id) {
 }
 
 /**
- * @brief Consture datasets from yaml datasets configurtion.
+ * @brief Consture datasets from yaml datasets configuration.
  * @param config_file_path [input]: Datasets configuration file path
  *
  */
@@ -174,7 +174,7 @@ void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
   auto& nodelet_cfg = server_cfg.getServiceConfig();
   std::string nodelet_addr = nodelet_cfg.to_string();
   if (!config["datasets"]) {
-    LOG(WARNING) << "no datsets found in config file, ignore....";
+    LOG(WARNING) << "no datasets found in config file, ignore....";
     return;
   }
   for (const auto& dataset : config["datasets"]) {

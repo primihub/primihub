@@ -492,7 +492,7 @@ retcode MPCMinOrMax::run(std::shared_ptr<primihub::Dataset> &dataset,
   auto ret = PlainTextDataCompute(dataset, columns, col_dtype,
                                   &col_data, &rows_per_column);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "PlainTextDataCompute faield";
+    LOG(ERROR) << "PlainTextDataCompute failed";
     return retcode::FAIL;
   }
   ret = CipherTextDataCompute(col_data, columns, rows_per_column);

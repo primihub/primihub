@@ -22,7 +22,7 @@
 #include "aby3/sh3/Sh3FixedPoint.h"
 namespace primihub {
 template<typename T>
-// all type defination from crytoTools or aby3
+// all type definition from crytoTools or aby3
 // export to primihub type as follows
 using eMatrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 

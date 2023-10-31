@@ -19,7 +19,7 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
           Sh3Runtime &runtime) {
   // A CommPkg is a pair of Channels (network sockets) to the other parties.
   // See cryptoTools\frontend_cryptoTools\Tutorials\Network.cpp
-  // for detials.
+  // for details.
   CommPkg comm = CommPkg();
   Session ep_next_;
   Session ep_prev_;
@@ -90,7 +90,7 @@ int setup(u64 partyIdx, IOService &ios, Sh3Encryptor &enc, Sh3Evaluator &eval,
   // Establishes some shared randomness needed for the later protocols
   eval.init(partyIdx, comm, sysRandomSeed());
 
-  // Copies the Channels and will use them for later protcols.
+  // Copies the Channels and will use them for later protocols.
   // std::shared_ptr<CommPkgBase> commPtr(&comm);
   auto commPtr = std::make_shared<CommPkg>(comm.mPrev(), comm.mNext());
   runtime.init(partyIdx, commPtr);
@@ -113,8 +113,8 @@ TEST(add_operator, aby3_3pc_test) {
     // sfmatrix
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
-    double divisior[4] = {6.5, -15.0, 23.2, -33.0};
-    vector<double> test_number(divisior, divisior + 4);
+    double divisor[4] = {6.5, -15.0, 23.2, -33.0};
+    vector<double> test_number(divisor, divisor + 4);
     f64Matrix<D20> f64fixedMatrix_B(rows, cols);
     for (u64 i = 0; i < rows; ++i) {
       for (u64 j = 0; j < cols; ++j) {
@@ -156,8 +156,8 @@ TEST(add_operator, aby3_3pc_test) {
     mpc.setup("127.0.0.1", "127.0.0.1", (u32)1515, (u32)1313);
     u64 rows = 4, cols = 1;
     f64Matrix<D20> f64fixedMatrix(rows, cols);
-    double divisior[4] = {-6.5, -15.0, 23.2, 33.0};
-    vector<double> test_number(divisior, divisior + 4);
+    double divisor[4] = {-6.5, -15.0, 23.2, 33.0};
+    vector<double> test_number(divisor, divisor + 4);
     f64Matrix<D20> f64fixedMatrix_B(rows, cols);
     for (u64 i = 0; i < rows; ++i) {
       for (u64 j = 0; j < cols; ++j) {
@@ -197,8 +197,8 @@ TEST(add_operator, aby3_3pc_test) {
   mpc.setup("127.0.0.1", "127.0.0.1", (u32)1414, (u32)1515);
   u64 rows = 4, cols = 1;
   f64Matrix<D20> f64fixedMatrix(rows, cols);
-  double divisior[4] = {-6.5, -15.0, 23.2, 33.0};
-  vector<double> test_number(divisior, divisior + 4);
+  double divisor[4] = {-6.5, -15.0, 23.2, 33.0};
+  vector<double> test_number(divisor, divisor + 4);
   f64Matrix<D20> f64fixedMatrix_B(rows, cols);
   for (u64 i = 0; i < rows; ++i) {
     for (u64 j = 0; j < cols; ++j) {

@@ -80,7 +80,7 @@ message NewDatasetResponse {
 
 message GetDatasetRequest {
   repeated string id = 1;    // dataset id for request meta info,
-                             // empty to accquire all dataset
+                             // empty to acquire all dataset
 }
 
 message GetDatasetResponse {

@@ -130,7 +130,7 @@ int LogisticRegressionExecutor::_LoadDatasetFromCSV(std::string &dataset_id) {
   auto driver = this->dataset_service_->getDriver(dataset_id,
                                                   this->is_dataset_detail_);
   if (driver == nullptr) {
-    LOG(ERROR) << "get datset driver failed";
+    LOG(ERROR) << "get dataset driver failed";
     return -1;
   }
   auto cursor = driver->read();

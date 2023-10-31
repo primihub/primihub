@@ -173,7 +173,7 @@ retcode EcdhPsiOperator::SendPSIRequestAndWaitResponse(
     auto ret = this->GetLinkContext()->Send(this->key_,
                                             this->peer_node_, psi_req_str);
     if (ret != retcode::SUCCESS) {
-      LOG(ERROR) << "send psi reuqest to ["
+      LOG(ERROR) << "send psi request to ["
                  << this->peer_node_.to_string() << "] failed";
       return retcode::FAIL;
     }
@@ -247,7 +247,7 @@ retcode EcdhPsiOperator::ExecuteAsServer(
   bool reveal_intersection_flag{false};
   auto ret = RecvInitParam(&num_client_elements, &reveal_intersection_flag);
   CHECK_RETCODE(ret);
-  // prepare for local compuation
+  // prepare for local computation
   VLOG(5) << "sever begin to SetupMessage";
   std::unique_ptr<openminded_psi::PsiServer> server =
       std::move(openminded_psi::PsiServer::CreateWithNewKey(
@@ -259,7 +259,7 @@ retcode EcdhPsiOperator::ExecuteAsServer(
                                            num_client_elements,
                                            input)).value();
   VLOG(5) << "sever end of SetupMessage";
-  // recv request from clinet
+  // recv request from client
   VLOG(5) << "server begin to init reauest according to recv data from client";
   psi_proto::Request psi_request;
   ret = InitRequest(&psi_request);
@@ -319,7 +319,7 @@ retcode EcdhPsiOperator::PreparePSIResponse(psi_proto::Response&& psi_response,
                 << this->peer_node_.to_string() << "] failed";
     return retcode::FAIL;
   }
-  VLOG(5) << "successfully send psi response to cleint";
+  VLOG(5) << "successfully send psi response to client";
   return retcode::SUCCESS;
 }
 

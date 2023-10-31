@@ -115,7 +115,7 @@ retcode KeywordPirOperator::ExecuteAsServer(const PirDataType& input) {
   auto params = SetPsiParams();
   CHECK_NULLPOINTER(params, retcode::FAIL);
   if (this->options_.generate_db) {
-    // generae db offline which can load when task execute
+    // generate db offline which can load when task execute
     auto db_data = CreateDb(input);
     CHECK_NULLPOINTER(db_data, retcode::FAIL);
     auto ret = CreateDbDataCache(*db_data, std::move(params),
@@ -241,7 +241,7 @@ auto KeywordPirOperator::CreateSenderDb(const DBData &db_data,
 std::unique_ptr<DBData> KeywordPirOperator::CreateDb(const PirDataType& input) {
   auto result = LabeledData();
   result.reserve(input.size());
-  std::string seperator{DATA_RECORD_SEP};
+  std::string separator{DATA_RECORD_SEP};
   for (const auto& [item_str, label_vec] : input) {
     apsi::Item item = item_str;
     // label
@@ -250,7 +250,7 @@ std::unique_ptr<DBData> KeywordPirOperator::CreateDb(const PirDataType& input) {
     for (size_t i = 0; i < label_vec.size() - 1; i++) {
       auto& label_str = label_vec[i];
       std::copy(label_str.begin(), label_str.end(), std::back_inserter(label));
-      std::copy(seperator.begin(), seperator.end(), std::back_inserter(label));
+      std::copy(separator.begin(), separator.end(), std::back_inserter(label));
     }
     auto& last_label = label_vec[label_vec.size() - 1];
     std::copy(last_label.begin(), last_label.end(), std::back_inserter(label));
@@ -373,7 +373,7 @@ retcode KeywordPirOperator::ProcessPSIParams() {
   CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
   auto ret = link_ctx->Recv(this->key_, ProxyNode(), &request_type_str);
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "recv reqeust from : " << PeerNode().to_string() << "failed";
+    LOG(ERROR) << "recv request from : " << PeerNode().to_string() << "failed";
     return retcode::FAIL;
   }
   ret = link_ctx->Send(this->key_, PeerNode(), psi_params_str_);
@@ -421,7 +421,7 @@ retcode KeywordPirOperator::ProcessQuery(std::shared_ptr<SenderDB> sender_db) {
     LOG(ERROR) << "received response failed";
     return retcode::FAIL;
   }
-  VLOG(5) << "received data lenght: " << response_str.size();
+  VLOG(5) << "received data length: " << response_str.size();
   if (response_str.empty()) {
     LOG(ERROR) << "received data can not be empty";
     return retcode::FAIL;

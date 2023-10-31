@@ -242,12 +242,12 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 //
 // The MPCExpressExecutor class aim to evaluate express like A+B*C-D, and A, B,
 // C, D is column name of database in different company or organization, these
-// company and organization is called party in MPC. Now the calss only support
+// company and organization is called party in MPC. Now the class only support
 // three party MPC.
 //
 // Before introduct the usage of the class, assume something to help understand
 // them. First, assume that there are three company which act as three party in
-// MPC. Second, column A belond to the first party (called party 0), column B
+// MPC. Second, column A belong to the first party (called party 0), column B
 // belong to second party (called party 1), column C, D belong to third party
 // (called party 2). Third, all value of column A is float value, all value of
 // column B is float value, all value of column C is float value.
@@ -270,7 +270,7 @@ py::object PyLocalExpressExecutor::runLocalEvaluate(void) {
 //      # import them into class instance:
 //      mpc_exec.import_column_config(col_owner, col_dtype)
 //
-//      # Notice all party shoule provide the same col_owner and col_dtype to
+//      # Notice all party should provide the same col_owner and col_dtype to
 //      # this two interface.
 //
 // 2.Import express.

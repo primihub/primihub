@@ -74,7 +74,7 @@ void SGD_Linear(RegressionParam &params, Engine &engine, Matrix &X, Matrix &Y,
   if (X.rows() != Y.rows() || Y.cols() != 1)
     throw std::runtime_error(LOCATION);
 
-  // A random nummber generator used to select mini-batches
+  // A random number generator used to select mini-batches
   PRNG prng(oc::toBlock(234543234));
 
   // used to keep track of sampling mini-batches without replacement
@@ -169,7 +169,7 @@ void SGD_Logistic(RegressionParam &params, Engine &engine, Matrix &X, Matrix &Y,
   if (X.rows() != Y.rows() || Y.cols() != 1)
     throw std::runtime_error(LOCATION);
 
-  // A random nummber generator used to select mini-batches
+  // A random number generator used to select mini-batches
   PRNG prng(oc::toBlock(234543234));
 
   // std::cout << "E" << ", before indices" << std::endl;

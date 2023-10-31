@@ -85,7 +85,7 @@ retcode TaskBase::recv(const std::string& key, char* recv_buff, size_t length) {
     }
     if (tmp_data.length() != length) {
         LOG(ERROR) << "recv data length does not match, expected: " << length
-                << " actually recv data lenght: " << tmp_data.length();
+                << " actually recv data length: " << tmp_data.length();
         return retcode::FAIL;
     }
     memcpy(recv_buff, tmp_data.c_str(), length);
@@ -114,7 +114,7 @@ retcode TaskBase::sendRecv(const std::string& key, const Node& dest_node,
 
 retcode TaskBase::pushDataToSendQueue(const std::string& key, std::string&& send_data) {
     if (send_data.empty()) {
-        LOG(ERROR) << "data can not be emptry";
+        LOG(ERROR) << "data can not be empty";
         return retcode::FAIL;
     }
     auto& link_ctx = this->getTaskContext().getLinkContext();

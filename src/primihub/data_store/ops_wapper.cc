@@ -7,7 +7,7 @@
 
 PYBIND11_MODULE(pybind11_example, m) {
     
-    m.doc() = "primhub ops warpper"; // Optional module docstring
+    m.doc() = "primhub ops wrapper"; // Optional module docstring
     m.def("test_unwrap_arrow_pyobject", &unwrap_arrow_pyobject, pybind11::call_guard<pybind11::gil_scoped_release>());
     
     

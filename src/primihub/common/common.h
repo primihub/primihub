@@ -8,7 +8,7 @@
 #include <sstream>
 #include <vector>
 namespace primihub {
-// MACRO or CONSTANT defination
+// MACRO or CONSTANT definition
 #ifdef __linux__
 #define SET_THREAD_NAME(name)  prctl(PR_SET_NAME, name)
 #else
@@ -19,7 +19,7 @@ namespace primihub {
 
 [[maybe_unused]] static uint16_t ABY3_TOTAL_PARTY_NUM = 3;
 [[maybe_unused]] static uint64_t LIMITED_PACKAGE_SIZE = 3 * 1024 * 1024;  // 4M
-// macro defination
+// macro definition
 [[maybe_unused]] static const char* ROLE_CLIENT = "CLIENT";
 [[maybe_unused]] static const char* ROLE_SCHEDULER = "SCHEDULER";
 [[maybe_unused]] static const char* SCHEDULER_NODE = "SCHEDULER_NODE";
@@ -36,7 +36,7 @@ namespace primihub {
 [[maybe_unused]] static int SCHEDULE_WORKER_TIMEOUT_S = 20;
 [[maybe_unused]] static int CONTROL_CMD_TIMEOUT_S = 5;
 [[maybe_unused]] static int GRPC_RETRY_MAX_TIMES = 3;
-// common type defination
+// common type definition
 using u64 = uint64_t;
 using i64 = int64_t;
 using u32 = uint32_t;
