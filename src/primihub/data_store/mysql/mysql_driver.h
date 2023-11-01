@@ -50,13 +50,15 @@ auto conn_threadsafe_dctor = [](MYSQL* conn) {
 
 struct MySQLAccessInfo : public DataSetAccessInfo {
   MySQLAccessInfo() = default;
-  MySQLAccessInfo(const std::string& ip, uint32_t port, const std::string& user_name,
+  MySQLAccessInfo(const std::string& ip, uint32_t port,
+      const std::string& user_name,
       const std::string& password, const std::string& database,
       const std::string& db_name, const std::string& table_name,
-      const std::vector<std::string>& query_colums)
+      const std::vector<std::string>& query_colums,
+      const std::string& db_url)
       : ip_(ip), port_(port), password_(password),
       database_(database), user_name_(user_name),
-      db_name_(db_name), table_name_(table_name) {
+      db_name_(db_name), table_name_(table_name), db_url_(db_url) {
     if (!query_colums.empty()) {
       for (const auto& col : query_colums) {
         query_colums_.push_back(col);
@@ -76,6 +78,7 @@ struct MySQLAccessInfo : public DataSetAccessInfo {
   std::string database_;
   std::string db_name_;
   std::string table_name_;
+  std::string db_url_;
   std::vector<std::string> query_colums_;
 };
 

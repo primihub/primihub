@@ -48,6 +48,7 @@ std::string MySQLAccessInfo::toString() {
         }
         js["query_index"] = std::move(quey_col_info);
     }
+    js["dbUrl"] = this->db_url_;
     js["schema"] = SchemaToJsonString();
     // ss << std::setw(4) << js;
     ss << js;
@@ -65,6 +66,9 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
     }
     this->db_name_ = js["dbName"].get<std::string>();
     this->table_name_ = js["tableName"].get<std::string>();
+    if (js.contains("dbUrl")) {
+      this->db_url_ = js["dbUrl"].get<std::string>();
+    }
     this->query_colums_.clear();
   } catch (std::exception& e) {
     std::stringstream ss;
@@ -110,6 +114,9 @@ retcode MySQLAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
     }
     this->db_name_ = meta_info["dbName"].as<std::string>();
     this->table_name_ = meta_info["tableName"].as<std::string>();
+    if (meta_info["dbUrl"]) {
+      this->db_url_ = meta_info["dbUrl"].as<std::string>();
+    }
     this->query_colums_.clear();
     if (meta_info["query_index"]) {
       std::string query_index = meta_info["query_index"].as<std::string>();

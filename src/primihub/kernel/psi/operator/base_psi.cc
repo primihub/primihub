@@ -91,7 +91,7 @@ retcode BasePsiOperator::ReceiveResult(std::vector<std::string>* result) {
   auto ret = this->GetLinkContext()->Recv(this->key_,
                                           this->ProxyServerNode(),
                                           &recv_data_str);
-  if (ret != retcode::SUCCESS) {
+  if (ret != retcode::SUCCESS && !recv_data_str.empty()) {
     LOG(ERROR) << "ReceiveResult failed for party name: "
                << options_.self_party;
     return retcode::FAIL;
