@@ -41,10 +41,6 @@
         "guest": "primihub.FL.xgboost.gbt.VGBGuestInfer",
         "host": "primihub.FL.xgboost.gbt.VGBTHostInfer"
     },
-    "HeteroIV": {
-        "guest": "primihub.FL.preprocessing.woe_iv.IVGuest",
-        "host": "primihub.FL.preprocessing.woe_iv.IVHost"
-    },
     "DataAlign": {
         "executor": "primihub.plain_data_util.data_align.DataAlign"
     },

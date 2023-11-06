@@ -141,10 +141,6 @@ datasets:
     image_dir: "data/FL/mnist/test/client1.zip"
     annotations_file: "data/FL/mnist/test/client1_annotations.csv"
 
-  - description: "iv_filter_host"
-    model: "csv"
-    source: "data/FL/hetero_iv/iv_host.csv"
-
   # FL preprocess
   - description: "preprocess_vfl_train_host"
     model: "csv"
