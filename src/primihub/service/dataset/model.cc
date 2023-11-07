@@ -56,11 +56,15 @@ std::vector<FieldType> TableSchema::extractFields(const nlohmann::json& oJson) {
 std::string TableSchema::toJSON() {
   std::stringstream ss;
   nlohmann::json js = nlohmann::json::array();
-  for (int iCol = 0; iCol < schema->num_fields(); ++iCol) {
-    std::shared_ptr<arrow::Field> field = schema->field(iCol);
-    nlohmann::json item;
-    item[field->name()] = field->type()->id();
-    js.emplace_back(item);
+  if (schema == nullptr) {
+    // do nothing
+  } else {
+    for (int iCol = 0; iCol < schema->num_fields(); ++iCol) {
+      std::shared_ptr<arrow::Field> field = schema->field(iCol);
+      nlohmann::json item;
+      item[field->name()] = field->type()->id();
+      js.emplace_back(item);
+    }
   }
   ss << js;
   return ss.str();
@@ -107,7 +111,7 @@ DatasetMeta::DatasetMeta(const std::shared_ptr<primihub::Dataset> & dataset,
   SchemaConstructorParamType arrowSchemaParam = std::get<0>(dataset->data)->schema();
   this->data_type = DatasetType::TABLE;   // FIXME only support table now
   this->schema = NewDatasetSchema(data_type, arrowSchemaParam);
-  this->total_records = std::get<0>(dataset->data)->num_rows();
+  // this->total_records = std::get<0>(dataset->data)->num_rows();
   // Maybe description is duplicated with other dataset?
   this->id = DatasetId(description);
   this->description = description;
@@ -131,7 +135,11 @@ std::string DatasetMeta::toJSON() const {
     j["data_type"] = static_cast<int>(data_type);
     j["description"] = description;
     j["visibility"] = static_cast<int>(visibility);
-    j["schema"] = schema->toJSON();
+    if (schema == nullptr) {
+      j["schema"] = "[]";  // empty
+    } else {
+      j["schema"] = schema->toJSON();
+    }
     j["driver_type"] = driver_type;
     j["server_meta"] = server_meta_;
     j["access_meta"] = access_meta_;

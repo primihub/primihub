@@ -69,6 +69,14 @@ StringArrowArrayBuilder(const std::vector<std::string>& arr);
 std::shared_ptr<arrow::Array>
 BinaryArrowArrayBuilder(const std::vector<std::string>& arr);
 
-
+std::shared_ptr<arrow::ArrayBuilder> CreateBuilder(int type);
+retcode AddIntValue(int64_t value, int expected_type,
+                    std::shared_ptr<arrow::ArrayBuilder> builder);
+retcode AddBoolValue(bool value, int expected_type,
+                     std::shared_ptr<arrow::ArrayBuilder> builder);
+retcode AddDoubleValue(double value, int expected_type,
+                       std::shared_ptr<arrow::ArrayBuilder> builder);
+retcode AddStringValue(const std::string& value, int expected_type,
+                       std::shared_ptr<arrow::ArrayBuilder> builder);
 }  // namespace primihub::arrow_wrapper::util
 #endif  // SRC_PRIMIHUB_UTIL_ARROW_WRAPPER_UTIL_H_

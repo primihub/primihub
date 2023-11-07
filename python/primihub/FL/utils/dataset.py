@@ -4,12 +4,15 @@ import pandas as pd
 import os
 import imghdr
 import zipfile
+import yaml
+import json
 from sqlalchemy import create_engine
 from torchvision.io import read_image
 from torch.utils.data import Dataset as TorchDataset
 from primihub.utils.logger_util import logger
-
-
+from primihub.context import Context
+from primihub.client.seatunnel_client import SeatunnelClient
+from primihub.client.ph_grpc.dataset_stream import DataStreamGrpcClient
 def read_data(data_info,
               selected_column=None,
               droped_column=None,
@@ -34,6 +37,8 @@ def read_data(data_info,
                           data_info['tableName'],
                           selected_column,
                           droped_column)
+    elif data_type == 'seatunnel':
+        return read_from_seatunnel(data_info, selected_column, id)
     else:
         error_msg = f'Unsupported data type: {data_type}'
         logger.error(error_msg)
@@ -65,6 +70,63 @@ def read_mysql(user,
             df.pop(droped_column)
         return df
 
+def read_from_seatunnel(data_info,
+                        selected_column,
+                        need_drop_col_name):
+    print("read_from_seatunnel data info", data_info)
+    print("request id: ", Context.request_id())
+    print("server_config_file", Context.server_config_file())
+    server_conf_file = Context.server_config_file()
+    with open(server_conf_file, encoding='utf-8') as fd:
+        server_config = yaml.safe_load(fd)
+    jvm_config_file = server_config["seatunnel"]["config_file"]
+    task_template_file = server_config["seatunnel"]["task_template_file"]
+    with open(jvm_config_file, encoding='utf-8') as fd:
+        jvm_config = fd.read()
+    with open(task_template_file, encoding='utf-8') as fd:
+        seatunnel_task_config = json.load(fd)
+    client = SeatunnelClient(str.encode(jvm_config))
+    dataset_id = data_info["dataset_id"]
+    request_id = Context.request_id()
+    # config task
+    proxy_node = server_config["proxy_server"]
+    j_sink = seatunnel_task_config["sink"]
+    if data_info["source_type"] in ["dm"]:
+        query_sql = f"""SELECT * FROM
+                        "{data_info['dbName']}"."{data_info['tableName']}" """
+    else:
+        query_sql = f"SELECT * FROM {data_info['tableName']}"
+
+    for item in j_sink:
+        item["dataSetId"] = dataset_id
+        item["traceId"] = request_id
+        item["host"] = proxy_node["ip"]
+        item["port"] = proxy_node["port"]
+    j_source = seatunnel_task_config["source"]
+    for item in j_source:
+        item["password"] = data_info["password"]
+        item["user"] = data_info["username"]
+        item["url"] = data_info["dbUrl"]
+        item["driver"] = data_info["dbDriver"]
+        item["query"] = query_sql
+
+    task_config = json.dumps(seatunnel_task_config)
+    print("seatunnel task config ", task_config)
+    client.SubmitTask(task_config)
+    proxy_info = "{}:{}".format(proxy_node["ip"], proxy_node["port"])
+    logger.info(f"proxy_info: {proxy_info}")
+    fetch_data_client = DataStreamGrpcClient(proxy_info)
+    recv_data = fetch_data_client.featch_data(dataset_id, request_id)
+    colums = []
+    if selected_column:
+        colums = selected_column
+    else:
+        for key in recv_data.keys():
+            colums.append(key)
+    df = pd.DataFrame(recv_data, columns=colums)
+    if need_drop_col_name in df.columns:
+        df.pop(need_drop_col_name)
+    return df
 
 class TorchImageDataset(TorchDataset):
 
@@ -94,7 +156,7 @@ class TorchImageDataset(TorchDataset):
             ]
             self.img_labels = pd.DataFrame(file_name,
                                            columns=['file_name'])
-            
+
     def __len__(self):
         return len(self.img_labels)
 
@@ -104,7 +166,7 @@ class TorchImageDataset(TorchDataset):
         image = read_image(img_path)
         if self.transform:
             image = self.transform(image)
-        
+
         if 'y' in self.img_labels.columns:
             label = self.img_labels.loc[idx, 'y']
             if self.target_transform:

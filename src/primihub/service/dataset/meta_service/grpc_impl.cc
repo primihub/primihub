@@ -273,13 +273,17 @@ retcode GrpcDatasetMetaService::MetaToPbMetaInfo(const DatasetMeta& meta,
   }
 
   auto schema = meta.getSchema();
-  auto table_schema = dynamic_cast<TableSchema*>(schema.get());
-  auto& arrow_scheam = table_schema->ArrowSchema();
-  for (const auto& field : arrow_scheam->fields()) {
-    auto item = pb_meta_info->add_data_type();
-    item->set_name(field->name());
-    int type = field->type()->id();
-    item->set_type(static_cast<rpc::DataTypeInfo::PlainDataType>(type));
+  if (schema != nullptr) {
+    auto table_schema = dynamic_cast<TableSchema*>(schema.get());
+    auto& arrow_scheam = table_schema->ArrowSchema();
+    if (arrow_scheam != nullptr) {
+      for (const auto& field : arrow_scheam->fields()) {
+        auto item = pb_meta_info->add_data_type();
+        item->set_name(field->name());
+        int type = field->type()->id();
+        item->set_type(static_cast<rpc::DataTypeInfo::PlainDataType>(type));
+      }
+    }
   }
   return retcode::SUCCESS;
 }

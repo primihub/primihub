@@ -106,10 +106,16 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
       break;
     }
     dataset_id_ = it->second;
+    dataset_id_name_ = it->second;
 
   } while (0);
   if (it->second.dataset_detail()) {
     is_dataset_detail_ = true;
+    // update dataset name
+    auto it = param_map.find(party_name);
+    if (it != param_map.end()) {
+      dataset_id_name_ = it->second.value_string();
+    }
   }
   // broadcast result flag
   auto iter = param_map.find("sync_result_to_server");
@@ -175,11 +181,14 @@ retcode PsiTask::LoadDataset(void) {
     return retcode::FAIL;
   }
   auto ret = LoadDatasetInternal(driver, data_index_,
-                                 &elements_, &data_colums_name_);
+                                &elements_, &data_colums_name_,
+                                this->dataset_id_name_,
+                                this->request_id());
   if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Load dataset for psi server failed.";
+    LOG(ERROR) << "Load dataset for psi failed.";
     return retcode::FAIL;
   }
+
   // filter duplicated data
   std::vector<std::string> filtered_data;
   filtered_data.reserve(elements_.size());

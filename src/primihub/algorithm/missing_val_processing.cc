@@ -314,6 +314,7 @@ MissingProcess::MissingProcess(PartyConfig &config,
 }
 
 int MissingProcess::loadParams(primihub::rpc::Task &task) {
+  AlgorithmBase::loadParams(task);
   LOG(INFO) << "party_name: " << this->party_name_;
   auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
   if (ret != retcode::SUCCESS) {

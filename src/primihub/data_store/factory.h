@@ -28,11 +28,13 @@
 #ifdef ENABLE_MYSQL_DRIVER
 #include "src/primihub/data_store/mysql/mysql_driver.h"
 #endif
+#include "src/primihub/data_store/seatunnel/seatunnel_driver.h"
 #define CSV_DRIVER_NAME "CSV"
 #define SQLITE_DRIVER_NAME "SQLITE"
 #define HDFS_DRIVER_NAME "HDFS"
 #define MYSQL_DRIVER_NAME "MYSQL"
 #define IMAGE_DRIVER_NAME "IMAGE"
+#define SEATUNNEL_DRIVER_NAME "SEATUNNEL"
 namespace primihub {
 class DataDirverFactory {
  public:
@@ -74,6 +76,12 @@ class DataDirverFactory {
             } else {
                 return std::make_shared<ImageDriver>(nodeletAddr, std::move(access_info));
             }
+        } else if (boost::to_upper_copy(dirverName) == SEATUNNEL_DRIVER_NAME) {
+            if (access_info == nullptr) {
+                return std::make_shared<SeatunnelDriver>(nodeletAddr);
+            } else {
+                return std::make_shared<SeatunnelDriver>(nodeletAddr, std::move(access_info));
+            }
         } else {
             std::string err_msg = "[DataDriverFactory]Invalid driver name [" + dirverName + "]";
             throw std::invalid_argument(err_msg);
@@ -96,6 +104,8 @@ class DataDirverFactory {
 #endif
         } else if (drive_type_ == IMAGE_DRIVER_NAME) {
           access_info_ptr = std::make_unique<ImageAccessInfo>();
+        } else if (drive_type_ == SEATUNNEL_DRIVER_NAME) {
+          access_info_ptr = std::make_unique<SeatunnelAccessInfo>();
         } else {
             LOG(ERROR) << "unsupported driver type: " << drive_type_;
             return access_info_ptr;

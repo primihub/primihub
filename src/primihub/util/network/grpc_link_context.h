@@ -10,11 +10,12 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
-
+#include "arrow/api.h"
 #include "src/primihub/util/network/link_context.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/protos/service.grpc.pb.h"
+#include "src/primihub/protos/metadatastream.grpc.pb.h"
 
 namespace primihub::network {
 namespace rpc = primihub::rpc;
@@ -56,14 +57,22 @@ class GrpcChannel : public IChannel {
   // data set related operation
   retcode DownloadData(const rpc::DownloadRequest& request,
                        std::vector<std::string>* data) override;
+  std::shared_ptr<arrow::Table>
+  FetchData(const std::string& request_id,
+            const std::string& dataset_id,
+            std::shared_ptr<arrow::Schema> schema) override;
 
  protected:
   retcode BuildTaskInfo(rpc::TaskContext* task_info);
+  retcode AddDataToBuilder(const seatunnel::rpc::Project& value,
+                           int expected_type,
+                           std::shared_ptr<arrow::ArrayBuilder> builder);
 
  private:
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
   std::unique_ptr<rpc::DataSetService::Stub> dataset_stub_{nullptr};
   std::shared_ptr<grpc::Channel> grpc_channel_{nullptr};
+  std::unique_ptr<seatunnel::rpc::MetaStreamService::Stub> seatunnel_stub_{nullptr};
   primihub::Node dest_node_;
   int retry_max_times_{3};
 };

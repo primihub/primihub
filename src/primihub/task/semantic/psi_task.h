@@ -64,6 +64,7 @@ class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
   int psi_type_{rpc::PsiTag::KKRT};
   std::string dataset_path_;
   std::string dataset_id_;
+  std::string dataset_id_name_;
   std::string result_file_path_;
   std::vector<std::string> elements_;
   std::vector<std::string> result_;

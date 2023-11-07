@@ -9,8 +9,10 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/proto_log_helper.h"
+#include "src/primihub/util/arrow_wrapper_util.h"
 
 namespace pb_util = primihub::proto::util;
+namespace arrow_util = primihub::arrow_wrapper::util;
 namespace primihub::network {
 GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) :
     IChannel(link_ctx) {
@@ -19,6 +21,7 @@ GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) :
   auto channel = buildChannel(address_, node.use_tls_);
   stub_ = rpc::VMNode::NewStub(channel);
   dataset_stub_ = rpc::DataSetService::NewStub(channel);
+  seatunnel_stub_ = seatunnel::rpc::MetaStreamService::NewStub(channel);
 }
 
 retcode GrpcChannel::BuildTaskInfo(rpc::TaskContext* task_info) {
@@ -587,4 +590,107 @@ retcode GrpcChannel::DownloadData(const rpc::DownloadRequest& request,
   }
   return retcode::SUCCESS;
 }
+
+std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
+    const std::string& request_id,
+    const std::string& dataset_id,
+    std::shared_ptr<arrow::Schema> schema) {
+  grpc::ClientContext context;
+  auto deadline = std::chrono::system_clock::now() +
+      std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+  seatunnel::rpc::MetaDataSetDataStream request;
+  request.set_data_set_id(dataset_id);
+  request.set_trace_id(request_id);
+  seatunnel::rpc::MetaDataSetDataStream response;
+  context.set_deadline(deadline);
+  VLOG(5) << "client begin to fetch data";
+  auto client_reader = this->seatunnel_stub_->FetchData(&context, request);
+  std::map<std::string, std::shared_ptr<arrow::ArrayBuilder>> builder_map;
+  size_t loop = 0;
+  while (client_reader->Read(&response)) {
+    VLOG(5) << "client_reader->Read done for seq: " << loop << " "
+            << "content: " << primihub::proto::util::TypeToString(response);
+    const auto& data_info = response.data();
+    for (const auto& [file_name, value] : data_info) {
+      auto type = value.var_type();
+      auto field_ptr = schema->GetFieldByName(file_name);
+      auto field_type = field_ptr->type()->id();
+      if (builder_map.find(file_name) == builder_map.end()) {
+        builder_map[file_name] = arrow_util::CreateBuilder(field_type);
+        LOG(ERROR) << "create builder for: " << file_name;
+      }
+      LOG(INFO) << "AddDataToBuilder: " << field_type
+                << "file_name: " << file_name;
+      AddDataToBuilder(value, field_type, builder_map[file_name]);
+    }
+    loop++;
+  }
+  VLOG(5) << "builder_map: " << builder_map.size();
+  // build data
+  std::vector<std::shared_ptr<arrow::Array>> array_data;
+  for (const auto& name : schema->field_names()) {
+    VLOG(5) << "name: " << name;
+    std::shared_ptr<arrow::Array> arr;
+    auto it = builder_map.find(name);
+    if (it == builder_map.end()) {
+      LOG(ERROR) << "no data for field name: " << name;
+      return nullptr;
+    }
+    auto& builder = it->second;
+    builder->Finish(&arr);
+    array_data.push_back(std::move(arr));
+  }
+  return arrow::Table::Make(schema, array_data);
+}
+
+retcode GrpcChannel::AddDataToBuilder(const seatunnel::rpc::Project& value,
+    int expected_type, std::shared_ptr<arrow::ArrayBuilder> builder) {
+  retcode ret{retcode::SUCCESS};
+  auto type = value.var_type();
+  switch (type) {
+  case seatunnel::rpc::INT32: {
+    ret = arrow_util::AddIntValue(value.value_int32(),
+                                  expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::INT64: {
+    ret = arrow_util::AddIntValue(value.value_int64(),
+                                  expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::STRING: {
+    ret = arrow_util::AddStringValue(value.value_string(),
+                                     expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::BYTE: {
+    ret = arrow_util::AddStringValue(value.value_bytes(),
+                                     expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::FLOAT: {
+    ret = arrow_util::AddDoubleValue(value.value_float(),
+                                     expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::DOUBLE: {
+    ret = arrow_util::AddDoubleValue(value.value_double(),
+                                     expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::BOOL: {
+    ret = arrow_util::AddBoolValue(value.value_bool(), expected_type, builder);
+    break;
+  }
+  default: {
+    LOG(WARNING) << "unknown type: " << static_cast<int>(type)
+                 << " using string instead";
+    ret = arrow_util::AddStringValue(value.value_string(),
+                                     expected_type, builder);
+    break;
+  }
+  }
+  return retcode::SUCCESS;
+}
+
 }  // namespace primihub::network

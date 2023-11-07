@@ -1,5 +1,7 @@
 # Call this Dockerfile via the build_local.sh script
 FROM primihub/primihub-base
+RUN apt-get update \
+    && apt-get -y install openjdk-8-jre-headless
 
 WORKDIR /app
 

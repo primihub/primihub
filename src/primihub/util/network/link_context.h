@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <shared_mutex>
 #include <memory>
-
+#include "arrow/api.h"
 #include "src/primihub/common/common.h"
 #include "src/primihub/common/config/config.h"
 #include "src/primihub/protos/worker.pb.h"
@@ -181,6 +181,10 @@ class IChannel {
                            rpc::Empty* reply) = 0;
   virtual retcode DownloadData(const rpc::DownloadRequest& request,
                                std::vector<std::string>* data) = 0;
+  virtual std::shared_ptr<arrow::Table>
+  FetchData(const std::string& request_id,
+            const std::string& dataset_id,
+            std::shared_ptr<arrow::Schema> schema) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
   LinkContext* getLinkContext() { return link_ctx_; }
 

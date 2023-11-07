@@ -36,6 +36,7 @@ using DatasetMeta = primihub::service::DatasetMeta;
 using DataBlock = primihub::DataServiceImpl::DataBlock;
 namespace pb_util = primihub::proto::util;
 namespace primihub {
+
 grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
                                           const rpc::NewDatasetRequest *request,
                                           rpc::NewDatasetResponse *response) {
@@ -282,7 +283,16 @@ retcode DataServiceImpl::ConvertToDatasetMetaInfo(
     const rpc::MetaInfo& meta_info_pb,
     DatasetMetaInfo* meta_info_ptr) {
   auto& meta_info = *meta_info_ptr;
-  meta_info.driver_type = meta_info_pb.driver();
+  const auto& driver = meta_info_pb.driver();
+  std::string low_cast_driver = strToLower(driver);
+  std::set<std::string> seatunnel_source = {
+    "oracle", "sqlserver", "hive", "dm", "达梦", "hive2",
+  };
+  if (seatunnel_source.find(low_cast_driver) != seatunnel_source.end()) {
+    meta_info.driver_type = "seatunnel";
+  } else {
+    meta_info.driver_type = driver;
+  }
   meta_info.access_info = meta_info_pb.access_info();
   meta_info.id = meta_info_pb.id();
   meta_info.visibility = static_cast<Visibility>(meta_info_pb.visibility());

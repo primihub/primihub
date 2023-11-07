@@ -65,6 +65,7 @@ class PirTask : public TaskBase {
   std::string db_cache_dir_{"data/cache"};
   std::unique_ptr<BasePirOperator> operator_{nullptr};
   std::vector<std::string> server_dataset_schema_;
+  std::string dataset_id_name_;
 
   // std::string dataset_path_;
   // std::string dataset_id_;

@@ -25,6 +25,8 @@ namespace primihub {
 using primihub::common::CertificateConfig;
 using primihub::common::RedisConfig;
 using primihub::common::NodeConfig;
+using primihub::common::Seatunnel;
+
 class ServerConfig {
  public:
   ServerConfig() = default;
@@ -39,6 +41,11 @@ class ServerConfig {
   std::string getConfigFile() {return config_file_;}
   Node& ProxyServerCfg() {return config_.proxy_server_cfg.host_info;}
   std::string& StoragePath() {return config_.storage_info.path;}
+  Seatunnel& SeatunnelConfig() {return config_.seatunnel_info;}
+  std::string& SeatunnelConfigFile() {return SeatunnelConfig().config_file;}
+  std::string& SeatunnelTaskTemplateFile() {
+    return SeatunnelConfig().task_template_file;
+  }
 
  protected:
   ServerConfig(const ServerConfig&) = default;

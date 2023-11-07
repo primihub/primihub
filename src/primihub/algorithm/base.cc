@@ -87,6 +87,11 @@ AlgorithmBase::AlgorithmBase(const PartyConfig& config,
 #endif
 }
 
+int AlgorithmBase::loadParams(primihub::rpc::Task &task) {
+  const auto& task_info = task.task_info();
+  this->SetTraceId(task_info.request_id());
+}
+
 retcode AlgorithmBase::ExtractProxyNode(const rpc::Task& task_config,
                                         Node* proxy_node) {
   const auto& auxiliary_server = task_config.auxiliary_server();

@@ -137,7 +137,7 @@ class AlgorithmBase {
     task_config_.CopyFrom(task);
     return retcode::SUCCESS;
   }
-  virtual int loadParams(primihub::rpc::Task &task) = 0;
+  virtual int loadParams(primihub::rpc::Task &task);
   virtual int loadDataset() = 0;
   virtual int initPartyComm();
   virtual int initPartyComm(const std::vector<ph_link::Channel>& channels);
@@ -178,6 +178,8 @@ class AlgorithmBase {
   retcode ExtractProxyNode(const rpc::Task& task_config) {
     return ExtractProxyNode(task_config, &proxy_node_);
   }
+  std::string& TraceId() {return trace_id_;}
+  void SetTraceId(const std::string& trace_id) {trace_id_ = trace_id;}
 
  protected:
   std::shared_ptr<DatasetService> dataset_service_;
@@ -185,6 +187,7 @@ class AlgorithmBase {
   network::LinkContext* link_ctx_ref_{nullptr};
   std::string party_name_;
   uint16_t party_id_;
+  std::string trace_id_;
 
 #ifdef MPC_SOCKET_CHANNEL
   std::pair<std::string, uint16_t> next_addr_;  // ip:port

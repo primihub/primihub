@@ -162,15 +162,25 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
           << TASK_INFO_STR
           << "task execute encountes error, "
           << "begin to kill task to release resource";
+      std::set<std::string> duplicate_filter;
       std::vector<Node> all_party;
       GetAllParties(task_config, &all_party);
+      for (const auto& party : parties) {
+        all_party.push_back(party);
+      }
       rpc::KillTaskRequest kill_request;
       auto task_info_ = kill_request.mutable_task_info();
       task_info_->CopyFrom(task_info);
       kill_request.set_executor(rpc::KillTaskRequest::SCHEDULER);
-      for (const auto& patry : all_party) {
+      for (const auto& party : all_party) {
+        auto info_str = party.to_string();
+        if (duplicate_filter.find(info_str) != duplicate_filter.end()) {
+          continue;
+        }
+        duplicate_filter.insert(party.to_string());
+        LOG(ERROR) << "party info: " << info_str << " " << all_party.size();
         rpc::KillTaskResponse reply;
-        auto channel = link_ctx_->getChannel(patry);
+        auto channel = link_ctx_->getChannel(party);
         channel->killTask(kill_request, &reply);
       }
     }
