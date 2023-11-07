@@ -27,7 +27,7 @@ def send_local_fi_sketch(
     check_inputdim(items, vector)
     if weights is not None and len(items) != len(weights):
         raise RuntimeError("Length of items and weights should be equal")
-    
+
     if data_type == "auto":
         if vector:
             data_type = []
@@ -110,7 +110,9 @@ def merge_local_fi_sketch(
 
     if vector:
         d = len(local_fi_sketch[0])
-        global_fi = [select_fi_sketch(data_type[fea_idx])(lg_max_k=k) for fea_idx in range(d)]
+        global_fi = [
+            select_fi_sketch(data_type[fea_idx])(lg_max_k=k) for fea_idx in range(d)
+        ]
     else:
         sketch = select_fi_sketch(data_type)
         global_fi = sketch(lg_max_k=k)
@@ -119,7 +121,9 @@ def merge_local_fi_sketch(
         if vector:
             for fea_idx in range(d):
                 sketch = select_fi_sketch(data_type[fea_idx])
-                fi = fi_deserialize(sketch, local_fi_sketch[i][fea_idx], data_type[fea_idx])
+                fi = fi_deserialize(
+                    sketch, local_fi_sketch[i][fea_idx], data_type[fea_idx]
+                )
                 global_fi[fea_idx].merge(fi)
         else:
             fi = fi_deserialize(sketch, local_fi_sketch[i], data_type)

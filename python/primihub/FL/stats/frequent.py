@@ -51,7 +51,9 @@ def col_frequent_client(
 ):
     check_frequent_params(max_item, min_freq)
     check_channel(channel, send_server, recv_server)
-    X, _, n_features = _BaseEncoder()._check_X(X, force_all_finite="allow-nan" if ignore_nan else True)
+    X, _, n_features = _BaseEncoder()._check_X(
+        X, force_all_finite="allow-nan" if ignore_nan else True
+    )
 
     if send_server:
         all_items, all_counts = [], []
