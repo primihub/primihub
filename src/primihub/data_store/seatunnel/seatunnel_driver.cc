@@ -78,7 +78,12 @@ retcode SeatunnelAccessInfo::ParseFromJsonImpl(
     if (js.contains("dbDriver")) {
       this->db_driver_ = js["dbDriver"].get<std::string>();
     }
-    this->source_type = js["source_type"].get<std::string>();
+    if (js.contains("source_type")) {
+      this->source_type = js["source_type"].get<std::string>();
+    } else if (js.contains("type")) {
+      this->source_type = js["type"].get<std::string>();
+    }
+
   } catch (std::exception& e) {
     std::stringstream ss;
     ss << "parse access info encountes error, " << e.what();
@@ -124,6 +129,7 @@ retcode SeatunnelAccessInfo::ParseFromMetaInfoImpl(
   try {
     LOG(INFO) << "meta_info: " << access_info;
     nlohmann::json js_access_info = nlohmann::json::parse(access_info);
+    LOG(INFO) << "meta_infoxxxxxxxx: " << access_info;
     ret = ParseFromJsonImpl(js_access_info);
   } catch (std::exception& e) {
     std::stringstream ss;
@@ -225,7 +231,7 @@ std::shared_ptr<Dataset> SeatunnelCursor::read(
       return nullptr;
     }
     std::string query_sql;
-    auto ret = BuildQuerySql(data_schema, *access_info, -1, &query_sql);
+    auto ret = BuildQuerySql(data_schema, *access_info, 100, &query_sql);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "BuildQuerySql failed";
       return nullptr;
@@ -330,7 +336,14 @@ retcode SeatunnelCursor::BuildQuerySql(
     ret = MysqlBuildQuerySql(field_names, access_info, query_limit, query_sql);
   } else if (source_type == "dm") {
     ret = DmBuildQuerySql(field_names, access_info, query_limit, query_sql);
-  }else {
+  } else if (source_type == "sqlserver") {
+    ret = SqlServerBuildQuerySql(field_names, access_info,
+                                 query_limit, query_sql);
+  } else if (source_type == "oracle") {
+    ret = OracleBuildQuerySql(field_names, access_info, query_limit, query_sql);
+  } else if (source_type == "hive") {
+    ret = HiveBuildQuerySql(field_names, access_info, query_limit, query_sql);
+  } else {
     LOG(ERROR) << "unsupported source type: " << source_type;
     ret = retcode::FAIL;
   }
@@ -364,7 +377,7 @@ retcode SeatunnelCursor::DmBuildQuerySql(
     std::string* query_sql) {
   std::string sql = "SELECT ";
   if (query_limit > 0) {
-    sql.append(" TOP ").append(std::to_string(query_limit)).append(" ");
+    sql.append("TOP ").append(std::to_string(query_limit)).append(" ");
   }
   for (const auto& name : field_names) {
     sql.append(name).append(",");
@@ -377,6 +390,65 @@ retcode SeatunnelCursor::DmBuildQuerySql(
   return retcode::SUCCESS;
 }
 
+retcode SeatunnelCursor::SqlServerBuildQuerySql(
+      const std::vector<std::string>& field_names,
+      const SeatunnelAccessInfo& access_info,
+      int64_t query_limit,
+      std::string* query_sql) {
+  std::string sql = "SELECT ";
+  if (query_limit > 0) {
+    sql.append("TOP ").append(std::to_string(query_limit)).append(" ");
+  }
+  for (const auto& name : field_names) {
+    sql.append(name).append(",");
+  }
+  sql[sql.length()-1] = ' ';
+  sql.append("FROM ")
+     .append(access_info.table_name); // tablename
+  *query_sql = std::move(sql);
+  VLOG(5) << "SqlServerBuildQuerySql: " << *query_sql;
+  return retcode::SUCCESS;
+}
+
+retcode SeatunnelCursor::OracleBuildQuerySql(
+    const std::vector<std::string>& field_names,
+    const SeatunnelAccessInfo& access_info,
+    int64_t query_limit,
+    std::string* query_sql) {
+//
+  std::string sql = "SELECT ";
+  for (const auto& name : field_names) {
+    sql.append(name).append(",");
+  }
+  sql[sql.length()-1] = ' ';
+  sql.append("FROM ")
+     .append(access_info.table_name);    // tablename
+  if (query_limit > 0) {
+    sql.append(" WHERE rownum <= ").append(std::to_string(query_limit));
+  }
+  *query_sql = std::move(sql);
+  VLOG(5) << "OracleBuildQuerySql: " << *query_sql;
+  return retcode::SUCCESS;
+}
+
+retcode SeatunnelCursor::HiveBuildQuerySql(
+    const std::vector<std::string>& field_names,
+    const SeatunnelAccessInfo& access_info,
+    int64_t query_limit,
+    std::string* query_sql) {
+  std::string sql = "SELECT ";
+  for (const auto& name : field_names) {
+    sql.append(name).append(",");
+  }
+  sql[sql.length()-1] = ' ';
+  sql.append("FROM ")
+     .append(access_info.table_name);    // tablename
+  if (query_limit > 0) {
+    sql.append(" LIMIT ").append(std::to_string(query_limit));
+  }
+  *query_sql = std::move(sql);
+  return retcode::SUCCESS;
+}
 // ======== Seatunnel Driver implementation ========
 
 SeatunnelDriver::SeatunnelDriver(const std::string &nodelet_addr)

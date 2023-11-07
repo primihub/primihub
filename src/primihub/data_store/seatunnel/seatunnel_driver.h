@@ -80,6 +80,19 @@ class SeatunnelCursor : public Cursor {
                           const SeatunnelAccessInfo& access_info,
                           int64_t query_limit,
                           std::string* query_sql);
+  retcode SqlServerBuildQuerySql(
+      const std::vector<std::string>& query_field_name,
+      const SeatunnelAccessInfo& access_info,
+      int64_t query_limit,
+      std::string* query_sql);
+  retcode OracleBuildQuerySql(const std::vector<std::string>& query_field_name,
+                              const SeatunnelAccessInfo& access_info,
+                              int64_t query_limit,
+                              std::string* query_sql);
+  retcode HiveBuildQuerySql(const std::vector<std::string>& query_field_name,
+                            const SeatunnelAccessInfo& access_info,
+                            int64_t query_limit,
+                            std::string* query_sql);
   std::shared_ptr<arrow::Schema> MakeArrowSchema();
 
  private:
