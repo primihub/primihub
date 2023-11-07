@@ -8,6 +8,13 @@ load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_pro
 # )
 
 grpc_proto_library(
+  name = "dataset_proto",
+  srcs = [
+    "metadatastream.proto",
+  ],
+)
+
+grpc_proto_library(
     name = "worker_proto",
     srcs = [
         "worker.proto",

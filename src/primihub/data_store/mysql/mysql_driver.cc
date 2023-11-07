@@ -316,7 +316,8 @@ std::shared_ptr<Dataset> MySQLCursor::read() {
   return ReadImpl(schema);
 }
 
-std::shared_ptr<Dataset> MySQLCursor::read(const std::shared_ptr<arrow::Schema>& data_schema) {
+std::shared_ptr<Dataset> MySQLCursor::read(
+    const std::shared_ptr<arrow::Schema>& data_schema) {
   return ReadImpl(data_schema);
 }
 
@@ -324,7 +325,8 @@ std::shared_ptr<Dataset> MySQLCursor::read(int64_t offset, int64_t limit) {
   return nullptr;
 }
 
-std::shared_ptr<Dataset> MySQLCursor::ReadImpl(const std::shared_ptr<arrow::Schema>& schema) {
+std::shared_ptr<Dataset> MySQLCursor::ReadImpl(
+    const std::shared_ptr<arrow::Schema>& schema) {
   std::vector<std::shared_ptr<arrow::Array>> array_data;
   VLOG(5) << "sql_sql_sql_: " << this->sql_;
   auto ret = fetchData(this->sql_, schema, &array_data);

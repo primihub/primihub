@@ -72,6 +72,7 @@ LogisticRegressionExecutor::LogisticRegressionExecutor(
 }
 
 int LogisticRegressionExecutor::loadParams(primihub::rpc::Task &task) {
+  AlgorithmBase::loadParams(task);
   try {
     LOG(INFO) << "party_name: " << this->party_name_;
     auto ret = this->ExtractProxyNode(task, &this->proxy_node_);

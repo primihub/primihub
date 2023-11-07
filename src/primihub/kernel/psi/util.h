@@ -47,7 +47,9 @@ class PsiCommonUtil {
   retcode LoadDatasetInternal(std::shared_ptr<DataDriver>& driver,
                               const std::vector<int>& data_col,
                               std::vector<std::string>* col_data,
-                              std::vector<std::string>* col_names);
+                              std::vector<std::string>* col_names,
+                              const std::string& data_set_id,
+                              const std::string& trace_id);
   retcode LoadDatasetInternal(const std::string& driver_name,
                               const std::string& conn_str,
                               const std::vector<int>& data_cols,

@@ -31,6 +31,7 @@
 #include "src/primihub/common/config/server_config.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/service/dataset/meta_service/factory.h"
+#include "src/primihub/service/datastream/datastream_service.h"
 #ifdef SGX
 #include "sgx/ra/service.h"
 #endif
@@ -49,10 +50,12 @@ ABSL_FLAG(int, service_port, 50050, "node service port");  // deprecated,
 void RunServer(primihub::VMNodeInterface* node_service,
                primihub::DataServiceImpl* dataset_service,
                sgx::RaTlsService* ratls_service,
+               primihub::service::RecvDatasetSerivce* stream_service,
                int service_port) {
 #else
 void RunServer(primihub::VMNodeInterface* node_service,
                primihub::DataServiceImpl* dataset_service,
+               primihub::service::RecvDatasetSerivce* stream_service,
                int service_port) {
 #endif
     // Initialize server
@@ -79,6 +82,7 @@ void RunServer(primihub::VMNodeInterface* node_service,
       auto builder = reinterpret_cast<grpc::ServerBuilder *>(raw_builder);
       builder->RegisterService(node_service);
       builder->RegisterService(dataset_service);
+      builder->RegisterService(stream_service);
 #ifdef SGX
       if (ratls_service) {
         builder->RegisterService(ratls_service);
@@ -153,6 +157,11 @@ int main(int argc, char **argv) {
     // service for dataset register
     auto data_service = std::make_unique<primihub::DataServiceImpl>(
         dataset_manager.get());
+
+    // service for recv data from seatunnel
+    auto seatunnel_data_service =
+        std::make_unique<primihub::service::RecvDatasetSerivce>(
+            node_service_impl.get());
 #ifdef SGX
     auto ra_service = node_service_impl->GetNodelet()->GetRaService().get();
     if (ra_service == nullptr) {
@@ -161,11 +170,13 @@ int main(int argc, char **argv) {
     }
     auto node_service = std::make_unique<primihub::VMNodeInterface>(
         std::move(node_service_impl));
-    RunServer(node_service.get(), data_service.get(), ra_service, service_port);
+    RunServer(node_service.get(), data_service.get(), ra_service,
+        seatunnel_data_service.get(), service_port);
 #else
     auto node_service = std::make_unique<primihub::VMNodeInterface>(
         std::move(node_service_impl));
-    RunServer(node_service.get(), data_service.get(), service_port);
+    RunServer(node_service.get(), data_service.get(),
+        seatunnel_data_service.get(), service_port);
 #endif
     return EXIT_SUCCESS;
 }

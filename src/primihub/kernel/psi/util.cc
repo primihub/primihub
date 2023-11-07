@@ -201,12 +201,16 @@ retcode PsiCommonUtil::LoadDatasetInternal(
     std::shared_ptr<DataDriver>& driver,
     const std::vector<int>& col_index,
     std::vector<std::string>* col_data,
-    std::vector<std::string>* col_names) {
+    std::vector<std::string>* col_names,
+    const std::string& data_set_id,
+    const std::string& trace_id) {
   auto cursor = driver->GetCursor(col_index);
   if (cursor == nullptr) {
     LOG(ERROR) << "get cursor for dataset failed";
     return retcode::FAIL;
   }
+  cursor->SetDatasetId(data_set_id);
+  cursor->SetTraceId(trace_id);
   auto& schema = driver->dataSetAccessInfo()->Schema();
   // construct new schema and check data type for each selected columns,
   // float type is not allowed
@@ -244,8 +248,8 @@ retcode PsiCommonUtil::LoadDatasetInternal(
     const std::vector<int>& data_cols,
     std::vector<std::string>& col_array) {
   std::string nodeaddr("test address");
-  std::shared_ptr<DataDriver> driver =
-      DataDirverFactory::getDriver(driver_name, nodeaddr);
+  // std::shared_ptr<DataDriver>
+  auto driver = DataDirverFactory::getDriver(driver_name, nodeaddr);
   auto cursor = driver->read(conn_str);
   auto ds = cursor->read();
   if (ds == nullptr) {

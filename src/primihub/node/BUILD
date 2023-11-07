@@ -4,13 +4,21 @@ config_setting(
   values = {"define" : "enable_sgx=true"},
 )
 cc_library(
+  name = "node_executor_impl",
+  srcs = ["main.cc"],
+  deps = [
+    ":node_impl",
+    "//src/primihub/service/datastream:stream_data",
+  ],
+)
+
+cc_library(
   name = "node_impl",
   hdrs = [
     "node_interface.h",
     "node_impl.h"
   ],
   srcs = [
-    "main.cc",
     "node_interface.cc",
     "node_impl.cc",
   ],

@@ -30,6 +30,7 @@ ArithmeticExecutor<Dbit>::ArithmeticExecutor(
 
 template <Decimal Dbit>
 int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
+  AlgorithmBase::loadParams(task);
   auto ret = this->ExtractProxyNode(task, &this->proxy_node_);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "extract proxy node failed";

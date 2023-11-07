@@ -126,6 +126,11 @@ struct Tee {
   std::string cert_path;
 };
 
+struct Seatunnel {
+  std::string config_file;
+  std::string task_template_file;
+};
+
 struct NodeConfig {
   Node server_config;
   ServerInfo meta_service_config;
@@ -135,6 +140,7 @@ struct NodeConfig {
   Tee tee_conf;
   ServerInfo proxy_server_cfg;
   StorageInfo storage_info;
+  Seatunnel seatunnel_info;
 };
 
 }  // namespace primihub::common
@@ -150,6 +156,7 @@ using ServerInfo = primihub::common::ServerInfo;
 using CertificateConfig = primihub::common::CertificateConfig;
 using RedisConfig = primihub::common::RedisConfig;
 using Tee = primihub::common::Tee;
+using Seatunnel = primihub::common::Seatunnel;
 
 template <> struct convert<RedisConfig> {
   static Node encode(const RedisConfig &redis_cfg) {
@@ -314,6 +321,9 @@ template <> struct convert<NodeConfig> {
     if (node["proxy_server"]) {
       nc.proxy_server_cfg = node["proxy_server"].as<ServerInfo>();
     }
+    if (node["seatunnel"]) {
+      nc.seatunnel_info = node["seatunnel"].as<Seatunnel>();
+    }
     // // datasets may be too much, so do not parse from here
     // auto datasets = node["datasets"].as<YAML::Node>();
     // for (size_t i = 0; i < datasets.size(); i++) {
@@ -342,6 +352,22 @@ template <> struct convert<Tee> {
     tee.executor = node["executor"].as<bool>();
     tee.sgx_enable = node["sgx_enable"].as<bool>();
     tee.cert_path = node["cert_path"].as<std::string>();
+    return true;
+  }
+};
+
+template <> struct convert<Seatunnel> {
+  static Node encode(const Seatunnel& sealtunnel) {
+    Node node;
+    node["config_file"] = sealtunnel.config_file;
+    node["task_template_file"] = sealtunnel.task_template_file;
+    return node;
+  }
+
+  static bool decode(const Node& node, Seatunnel& sealtunnel) {      // NOLINT
+    sealtunnel.config_file = node["config_file"].as<std::string>();
+    sealtunnel.task_template_file =
+        node["task_template_file"].as<std::string>();
     return true;
   }
 };

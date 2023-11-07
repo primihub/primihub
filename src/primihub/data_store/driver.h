@@ -93,55 +93,66 @@ class Cursor {
     return read(arrow_schema);
   }
 
-  virtual std::shared_ptr<Dataset> read(const std::shared_ptr<arrow::Schema>& data_schema) = 0;
+  virtual std::shared_ptr<Dataset>
+      read(const std::shared_ptr<arrow::Schema>& data_schema) = 0;
   virtual int write(std::shared_ptr<Dataset> dataset) = 0;
   virtual void close() = 0;
   std::vector<int>& SelectedColumnIndex() {return selected_column_index_;}
+  void SetDatasetId(const std::string& dataset_id) {dataset_id_ = dataset_id;};
+  std::string DatasetId() {return dataset_id_;}
+  std::string TraceId() {return trace_id_;}
+  void SetTraceId(const std::string& trace_id) {trace_id_ = trace_id;};
 
  protected:
-  std::shared_ptr<arrow::Schema> MakeArrowSchema(const std::vector<FieldType>& data_schema);
+  std::shared_ptr<arrow::Schema>
+      MakeArrowSchema(const std::vector<FieldType>& data_schema);
 
  public:
   std::vector<int> selected_column_index_;
+  std::string dataset_id_;
+  std::string trace_id_;
 };
 
 class DataDriver {
  public:
-    explicit DataDriver(const std::string& nodelet_addr) {
-        nodelet_address = nodelet_addr;
-    }
-    DataDriver(const std::string& nodelet_addr, std::unique_ptr<DataSetAccessInfo> access_info) {
-        nodelet_address = nodelet_addr;
-        access_info_ = std::move(access_info);
-    }
-    virtual ~DataDriver() = default;
-    virtual std::string getDataURL() const = 0;
-    [[deprecated("use read instead")]]
-    virtual std::unique_ptr<Cursor> read(const std::string &dataURL) = 0;
-    /**
-     * data access info read from internal access_info_
-    */
-    virtual std::unique_ptr<Cursor> read() = 0;
-    virtual std::unique_ptr<Cursor> GetCursor() = 0;
-    virtual std::unique_ptr<Cursor> GetCursor(const std::vector<int>& col_index) = 0;
-    [[deprecated("use GetCursor instead")]]
-    virtual std::unique_ptr<Cursor> initCursor(const std::string &dataURL) = 0;
-    // std::unique_ptr<Cursor> getCursor();
-    std::string getDriverType() const;
-    std::string getNodeletAddress() const;
+  explicit DataDriver(const std::string& nodelet_addr) {
+    nodelet_address = nodelet_addr;
+  }
+  DataDriver(const std::string& nodelet_addr,
+             std::unique_ptr<DataSetAccessInfo> access_info) {
+    nodelet_address = nodelet_addr;
+    access_info_ = std::move(access_info);
+  }
+  virtual ~DataDriver() = default;
+  virtual std::string getDataURL() const = 0;
+  [[deprecated("use read instead")]]
+  virtual std::unique_ptr<Cursor> read(const std::string &dataURL) = 0;
+  /**
+   * data access info read from internal access_info_
+  */
+  virtual std::unique_ptr<Cursor> read() = 0;
+  virtual std::unique_ptr<Cursor> GetCursor() = 0;
+  virtual std::unique_ptr<Cursor> GetCursor(
+      const std::vector<int>& col_index) = 0;
 
-    std::unique_ptr<DataSetAccessInfo>& dataSetAccessInfo() {
-        return access_info_;
-    }
+  [[deprecated("use GetCursor instead")]]
+  virtual std::unique_ptr<Cursor> initCursor(const std::string &dataURL) = 0;
+  // std::unique_ptr<Cursor> getCursor();
+  std::string getDriverType() const;
+  std::string getNodeletAddress() const;
+
+  std::unique_ptr<DataSetAccessInfo>& dataSetAccessInfo() {
+    return access_info_;
+  }
 
  protected:
-    void setCursor(std::unique_ptr<Cursor> cursor) {
-        this->cursor = std::move(cursor);
-    }
-    std::unique_ptr<Cursor> cursor{nullptr};
-    std::string driver_type;
-    std::string nodelet_address;
-    std::unique_ptr<DataSetAccessInfo> access_info_{nullptr};
+  void setCursor(std::unique_ptr<Cursor> cursor) {
+      this->cursor = std::move(cursor);
+  }
+  std::unique_ptr<Cursor> cursor{nullptr};
+  std::string nodelet_address;
+  std::string driver_type;
+  std::unique_ptr<DataSetAccessInfo> access_info_{nullptr};
 };
 
 }  // namespace primihub

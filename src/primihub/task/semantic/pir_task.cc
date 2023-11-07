@@ -104,12 +104,19 @@ retcode PirTask::LoadParams(const rpc::Task& task) {
       LOG(WARNING) << "no datasets is set for party: " << party_name();
     } else {
       dataset_id_ = it->second;
+      dataset_id_name_ = dataset_id_;
       VLOG(5) << "data set id: " << dataset_id_;
     }
     if (dataset_it->second.dataset_detail()) {
       is_dataset_detail_ = true;
+      // update dataset name
+      auto it = param_map.find(this->party_name());
+      if (it != param_map.end()) {
+        dataset_id_name_ = it->second.value_string();
+      }
     }
   }
+
 
   auto ret = BuildOptions(task, &this->options_);
   if (ret != retcode::SUCCESS) {
@@ -297,6 +304,8 @@ std::shared_ptr<Dataset> PirTask::LoadDataSetInternal(
     LOG(ERROR) << "init cursor failed for dataset id: " << dataset_id;
     return nullptr;
   }
+  cursor->SetDatasetId(this->dataset_id_name_);
+  cursor->SetTraceId(this->request_id());
   // maybe pass schema to get expected data type
   // copy dataset schema, and change all filed to string
   auto schema = driver->dataSetAccessInfo()->Schema();

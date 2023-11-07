@@ -19,6 +19,7 @@ GrpcChannel::GrpcChannel(const primihub::Node& node, LinkContext* link_ctx) :
   auto channel = buildChannel(address_, node.use_tls_);
   stub_ = rpc::VMNode::NewStub(channel);
   dataset_stub_ = rpc::DataSetService::NewStub(channel);
+  seatunnel_stub_ = seatunnel::rpc::MetaStreamService::NewStub(channel);
 }
 
 retcode GrpcChannel::BuildTaskInfo(rpc::TaskContext* task_info) {
@@ -584,6 +585,121 @@ retcode GrpcChannel::DownloadData(const rpc::DownloadRequest& request,
   if (has_error) {
     LOG(ERROR) << "download data encountes error: " << err_msg;
     return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
+}
+
+std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
+    const std::string& request_id,
+    const std::string& dataset_id,
+    std::shared_ptr<arrow::Schema> schema) {
+  grpc::ClientContext context;
+  auto deadline = std::chrono::system_clock::now() +
+      std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+  seatunnel::rpc::MetaDataSetDataStream request;
+  request.set_data_set_id(dataset_id);
+  request.set_trace_id(request_id);
+  seatunnel::rpc::MetaDataSetDataStream response;
+  context.set_deadline(deadline);
+  auto client_reader = this->seatunnel_stub_->FetchData(&context, request);
+  std::map<std::string, std::shared_ptr<arrow::ArrayBuilder>> builder_map;
+  while (client_reader->Read(&response)) {
+    const auto& data_info = response.data();
+    for (const auto& [file_name, value] : data_info) {
+      auto type = value.var_type();
+      if (builder_map.find(file_name) == builder_map.end()) {
+        builder_map[file_name] = CreateBuilder(type);
+      }
+      AddDataToBuilder(value, builder_map[file_name]);
+    }
+  }
+  LOG(ERROR) << "builder_map: " << builder_map.size();
+  // build data
+  std::vector<std::shared_ptr<arrow::Array>> array_data;
+  for (const auto& name : schema->field_names()) {
+    LOG(ERROR) << "name: " << name;
+    std::shared_ptr<arrow::Array> arr;
+    auto it = builder_map.find(name);
+    if (it == builder_map.end()) {
+      LOG(ERROR) << "no data for field name: " << name;
+      return nullptr;
+    }
+    auto& builder = it->second;
+    builder->Finish(&arr);
+    array_data.push_back(std::move(arr));
+  }
+  return arrow::Table::Make(schema, array_data);
+}
+
+std::shared_ptr<arrow::ArrayBuilder> GrpcChannel::CreateBuilder(
+    seatunnel::rpc::VarType type) {
+  std::shared_ptr<arrow::ArrayBuilder> builder;
+  switch (type) {
+  case seatunnel::rpc::INT32:
+    builder = std::make_shared<arrow::Int32Builder>();
+    break;
+  case seatunnel::rpc::INT64:
+    builder = std::make_shared<arrow::Int64Builder>();
+    break;
+  case seatunnel::rpc::STRING:
+  case seatunnel::rpc::BYTE:
+    builder = std::make_shared<arrow::StringBuilder>();
+    break;
+  case seatunnel::rpc::FLOAT:
+    builder = std::make_shared<arrow::FloatBuilder>();
+    break;
+  case seatunnel::rpc::DOUBLE:
+    builder = std::make_shared<arrow::DoubleBuilder>();
+    break;
+  default:
+    LOG(WARNING) << "unknown type: " << static_cast<int>(type)
+                 << " using string instead";
+    builder = std::make_shared<arrow::StringBuilder>();
+    break;
+  }
+  return builder;
+}
+retcode GrpcChannel::AddDataToBuilder(const seatunnel::rpc::Project& value,
+    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  auto type = value.var_type();
+  switch (type) {
+  case seatunnel::rpc::INT32: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int32Builder>(builder);
+    ptr->Append(value.value_int32());
+    break;
+  }
+  case seatunnel::rpc::INT64: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int64Builder>(builder);
+    ptr->Append(value.value_int64());
+    break;
+  }
+  case seatunnel::rpc::STRING: {
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(value.value_string());
+    break;
+  }
+  case seatunnel::rpc::BYTE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(value.value_bytes());
+    break;
+  }
+  case seatunnel::rpc::FLOAT: {
+    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
+    ptr->Append(value.value_float());
+    break;
+  }
+  case seatunnel::rpc::DOUBLE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
+    ptr->Append(value.value_double());
+    break;
+  }
+  default: {
+    LOG(WARNING) << "unknown type: " << static_cast<int>(type)
+                 << " using string instead";
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(value.value_string());
+    break;
+  }
   }
   return retcode::SUCCESS;
 }
