@@ -5,6 +5,6 @@ def check_channel(channel, send: bool, recv: bool):
 
 def check_role(role: str):
     role = role.lower()
-    valid_role = ["client", "server", "guest", "host"]
+    valid_role = {"client", "server", "guest", "host"}
     if role not in valid_role:
         raise ValueError(f"Unsupported role: {role}, use {valid_role} instead")

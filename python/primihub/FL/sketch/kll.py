@@ -1,16 +1,16 @@
 from datasketches import (
     kll_ints_sketch,
     kll_floats_sketch,
-    kll_doubles_sketch,
-    kll_items_sketch,
-    vector_of_kll_floats_sketches,
     vector_of_kll_ints_sketches,
+    vector_of_kll_floats_sketches,
 )
+from .util import check_inputdim
 
 
 def send_local_kll_sketch(
     X, channel, vector: bool = True, data_type: str = "float", k: int = 200
 ):
+    check_inputdim(X, vector)
     sketch = select_kll_sketch(vector, data_type)
     if vector:
         kll = sketch(k=k, d=X.shape[1])
@@ -46,16 +46,13 @@ def merge_local_kll_sketch(
 
 
 def select_kll_sketch(vector: bool = True, data_type: str = "float"):
-    valid_type = {
-        True: ["float", "int"],
-        False: ["float", "int", "double", "item"],
-    }
+    valid_type = ["float", "int"]
 
     data_type = data_type.lower()
-    if data_type not in valid_type[vector]:
+    if data_type not in valid_type:
         raise ValueError(
             f"Unsupported kll data_type: {data_type}",
-            f" for vector={vector}, use {valid_type[vector]} instead",
+            f" for vector={vector}, use {valid_type} instead",
         )
 
     valid_kll = {
@@ -66,8 +63,6 @@ def select_kll_sketch(vector: bool = True, data_type: str = "float"):
         False: {
             "float": kll_floats_sketch,
             "int": kll_ints_sketch,
-            "double": kll_doubles_sketch,
-            "item": kll_items_sketch,
         },
     }
     return valid_kll[vector][data_type]

@@ -8,6 +8,7 @@ from .min_max import (
     row_min_max,
 )
 from .norm import col_norm, row_norm
+from .frequent import col_frequent
 from .quantile import col_quantile
 from .sum import col_sum, row_sum
 
@@ -22,6 +23,7 @@ __all__ = [
     "row_min_max",
     "col_norm",
     "row_norm",
+    "col_frequent",
     "col_quantile",
     "col_sum",
     "row_sum",

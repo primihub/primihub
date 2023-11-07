@@ -3,12 +3,12 @@ import numbers
 from sklearn.preprocessing import OneHotEncoder as SKL_OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder as SKL_OrdinalEncoder
 from sklearn.preprocessing import TargetEncoder as SKL_TargetEncoder
+from sklearn.preprocessing._encoders import _BaseEncoder as _SKL_BaseEncoder
 from sklearn.utils import is_scalar_nan
 from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_consistent_length, _check_y
 from sklearn.utils._encode import _unique
 from sklearn.utils._param_validation import RealNotInt
-from sklearn.preprocessing._encoders import _BaseEncoder as _SKL_BaseEncoder
 from .base import PreprocessBase
 
 

@@ -103,6 +103,7 @@ def check_stats_name(stats_name: str):
     valid_stats = [
         "min",
         "max",
+        "frequent",
         "quantile",
         "norm",
         "sum",
@@ -141,6 +142,22 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
         return max_func(
             role=role,
             X=X,
+            ignore_nan=ignore_nan,
+            channel=channel,
+        )
+
+    elif stats == "frequent":
+        frequent_func = {
+            "col": col_frequent,
+        }[axis]
+
+        return frequent_func(
+            role=role,
+            X=X,
+            error_type=params.get("error_type", "NFN"),
+            max_item=params.get("max_item"),
+            min_freq=params.get("min_freq"),
+            k=params.get("k", 20),
             ignore_nan=ignore_nan,
             channel=channel,
         )
