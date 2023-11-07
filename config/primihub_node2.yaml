@@ -111,10 +111,6 @@ datasets:
   #  table_name: "psi_client_data"
   #  source: "data/client_e.db3"
 
-  - description: "iv_filter_guest"
-    model: "csv"
-    source: "data/FL/hetero_iv/iv_guest.csv"
-
   # FL preprocess
   - description: "preprocess_vfl_train_guest"
     model: "csv"
