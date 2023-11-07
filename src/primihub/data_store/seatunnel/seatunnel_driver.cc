@@ -325,22 +325,55 @@ retcode SeatunnelCursor::BuildQuerySql(
   }
   const auto& source_type = access_info.source_type;
   std::string low_cast_source_type = strToLower(source_type);
+  auto ret{retcode::SUCCESS};
   if (source_type == "mysql") {
-    std::string sql = "SELECT ";
-    for (const auto& name : field_names) {
-      sql.append("`").append(name).append("`,");
-    }
-    sql[sql.length()-1] = ' ';
-    sql.append("FROM ")
-       .append("`").append(access_info.db_name).append("`.")    // db name
-       .append("`").append(access_info.table_name).append("`");    // tablename
-    if (query_limit > 0) {
-      sql.append(" LIMIT ").append(std::to_string(query_limit));
-    }
-    *query_sql = std::move(sql);
-  } else {
+    ret = MysqlBuildQuerySql(field_names, access_info, query_limit, query_sql);
+  } else if (source_type == "dm") {
+    ret = DmBuildQuerySql(field_names, access_info, query_limit, query_sql);
+  }else {
     LOG(ERROR) << "unsupported source type: " << source_type;
+    ret = retcode::FAIL;
   }
+  return ret;
+}
+
+retcode SeatunnelCursor::MysqlBuildQuerySql(
+    const std::vector<std::string>& field_names,
+    const SeatunnelAccessInfo& access_info,
+    int64_t query_limit,
+    std::string* query_sql) {
+  std::string sql = "SELECT ";
+  for (const auto& name : field_names) {
+    sql.append("`").append(name).append("`,");
+  }
+  sql[sql.length()-1] = ' ';
+  sql.append("FROM ")
+      .append("`").append(access_info.db_name).append("`.")    // db name
+      .append("`").append(access_info.table_name).append("`");    // tablename
+  if (query_limit > 0) {
+    sql.append(" LIMIT ").append(std::to_string(query_limit));
+  }
+  *query_sql = std::move(sql);
+  return retcode::SUCCESS;
+}
+
+retcode SeatunnelCursor::DmBuildQuerySql(
+    const std::vector<std::string>& field_names,
+    const SeatunnelAccessInfo& access_info,
+    int64_t query_limit,
+    std::string* query_sql) {
+  std::string sql = "SELECT ";
+  if (query_limit > 0) {
+    sql.append(" TOP ").append(std::to_string(query_limit)).append(" ");
+  }
+  for (const auto& name : field_names) {
+    sql.append(name).append(",");
+  }
+  sql[sql.length()-1] = ' ';
+  sql.append("FROM ")
+      .append("\"").append(access_info.db_name).append("\".")    // db name
+      .append("\"").append(access_info.table_name).append("\""); // tablename
+  *query_sql = std::move(sql);
   return retcode::SUCCESS;
 }
 

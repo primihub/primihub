@@ -72,6 +72,14 @@ class SeatunnelCursor : public Cursor {
                         const SeatunnelAccessInfo& access_info,
                         int64_t query_limit,
                         std::string* query_sql);
+  retcode MysqlBuildQuerySql(const std::vector<std::string>& query_field_name,
+                             const SeatunnelAccessInfo& access_info,
+                             int64_t query_limit,
+                             std::string* query_sql);
+  retcode DmBuildQuerySql(const std::vector<std::string>& query_field_name,
+                          const SeatunnelAccessInfo& access_info,
+                          int64_t query_limit,
+                          std::string* query_sql);
   std::shared_ptr<arrow::Schema> MakeArrowSchema();
 
  private:

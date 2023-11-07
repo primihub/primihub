@@ -59,6 +59,7 @@ grpc::Status RecvDatasetSerivce::DataSetDataStream(
     request.SerializeToString(&recv_data);
     recv_queue_ptr->push(recv_data);
   }
+  LOG(INFO) << "end of recv data from seatunnel for: " << request_id;
   return grpc::Status::OK;
 }
 
