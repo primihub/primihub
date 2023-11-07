@@ -601,6 +601,7 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
   request.set_trace_id(request_id);
   seatunnel::rpc::MetaDataSetDataStream response;
   context.set_deadline(deadline);
+  VLOG(5) << "client begin to fetch data";
   auto client_reader = this->seatunnel_stub_->FetchData(&context, request);
   std::map<std::string, std::shared_ptr<arrow::ArrayBuilder>> builder_map;
   while (client_reader->Read(&response)) {
@@ -613,11 +614,11 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
       AddDataToBuilder(value, builder_map[file_name]);
     }
   }
-  LOG(ERROR) << "builder_map: " << builder_map.size();
+  VLOG(5) << "builder_map: " << builder_map.size();
   // build data
   std::vector<std::shared_ptr<arrow::Array>> array_data;
   for (const auto& name : schema->field_names()) {
-    LOG(ERROR) << "name: " << name;
+    VLOG(5) << "name: " << name;
     std::shared_ptr<arrow::Array> arr;
     auto it = builder_map.find(name);
     if (it == builder_map.end()) {

@@ -87,6 +87,7 @@ grpc::Status RecvDatasetSerivce::FetchData(grpc::ServerContext* context,
     LOG(ERROR) << err_msg;
     return grpc::Status::OK;
   }
+  size_t count = 0;
   auto& recv_queue = link_ctx->GetRecvQueue(data_set_id);
   do {
     std::string recv_data;
@@ -97,7 +98,10 @@ grpc::Status RecvDatasetSerivce::FetchData(grpc::ServerContext* context,
       break;
     }
     writer->Write(result);
+    count++;
   } while (true);
+  VLOG(5) << "FetchData " << request_id << " "
+          << "send package number: " << count;
   return grpc::Status::OK;
 }
 
