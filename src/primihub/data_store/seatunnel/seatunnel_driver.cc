@@ -170,28 +170,28 @@ std::shared_ptr<Dataset> SeatunnelCursor::readMeta() {
 
 std::shared_ptr<Dataset> SeatunnelCursor::read(
     const std::shared_ptr<arrow::Schema>& data_schema) {
-  auto fut = std::async(
-    std::launch::async,
-    [&]() -> std::shared_ptr<arrow::Table> {
-      auto link_mode = primihub::network::LinkMode::GRPC;
-      auto link_ctx = primihub::network::LinkFactory::createLinkContext(link_mode);
-      auto& ins = ServerConfig::getInstance();
-      auto& proxy_node = ins.ProxyServerCfg();
-      auto channel = link_ctx->getChannel(proxy_node);
-      if (channel == nullptr) {
-        LOG(ERROR) << "link_ctx->getChannel(peer_node); failed";
-        return nullptr;
-      }
-      VLOG(5) << "begin to FetchData";
-      std::string request_id = this->TraceId();
-      std::string dataset_id = this->DatasetId();
-      auto table = channel->FetchData(request_id, dataset_id, data_schema);
-      if (table == nullptr) {
-        LOG(ERROR) << this->TraceId() << " FetchData failed";
-        return nullptr;
-      }
-      return table;
-    });
+  // auto fut = std::async(
+  //   std::launch::async,
+  //   [&]() -> std::shared_ptr<arrow::Table> {
+  //     auto link_mode = primihub::network::LinkMode::GRPC;
+  //     auto link_ctx = primihub::network::LinkFactory::createLinkContext(link_mode);
+  //     auto& ins = ServerConfig::getInstance();
+  //     auto& proxy_node = ins.ProxyServerCfg();
+  //     auto channel = link_ctx->getChannel(proxy_node);
+  //     if (channel == nullptr) {
+  //       LOG(ERROR) << "link_ctx->getChannel(peer_node); failed";
+  //       return nullptr;
+  //     }
+  //     VLOG(5) << "begin to FetchData";
+  //     std::string request_id = this->TraceId();
+  //     std::string dataset_id = this->DatasetId();
+  //     auto table = channel->FetchData(request_id, dataset_id, data_schema);
+  //     if (table == nullptr) {
+  //       LOG(ERROR) << this->TraceId() << " FetchData failed";
+  //       return nullptr;
+  //     }
+  //     return table;
+  //   });
 
   std::string new_task_content;
   std::string seatunnel_config;
@@ -269,13 +269,36 @@ std::shared_ptr<Dataset> SeatunnelCursor::read(
       return nullptr;
     }
   }
-  auto arrow_table = fut.get();
-  if (arrow_table == nullptr) {
+
+  std::shared_ptr<arrow::Table> table{nullptr};
+  {
+    auto link_mode = primihub::network::LinkMode::GRPC;
+    auto link_ctx = primihub::network::LinkFactory::createLinkContext(link_mode);
+    auto& ins = ServerConfig::getInstance();
+    auto& proxy_node = ins.ProxyServerCfg();
+    auto channel = link_ctx->getChannel(proxy_node);
+    if (channel == nullptr) {
+      LOG(ERROR) << "link_ctx->getChannel(peer_node); failed";
+      return nullptr;
+    }
+    VLOG(5) << "begin to FetchData";
+    std::string request_id = this->TraceId();
+    std::string dataset_id = this->DatasetId();
+    VLOG(0) << "Receive data from seatunel success, "
+            << "fetch data from proxy node: " << proxy_node.to_string();
+    table = channel->FetchData(request_id, dataset_id, data_schema);
+    if (table == nullptr) {
+      LOG(ERROR) << this->TraceId() << " FetchData failed";
+      return nullptr;
+    }
+  }
+  // table = fut.get();
+  if (table == nullptr) {
     LOG(ERROR) << "get data failed";
     return nullptr;
   }
   LOG(INFO) << this->TraceId() << "FetchData finished:";
-  auto dataset = std::make_shared<Dataset>(arrow_table, this->driver_);
+  auto dataset = std::make_shared<Dataset>(table, this->driver_);
   return dataset;
 }
 
