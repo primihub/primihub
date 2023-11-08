@@ -608,10 +608,15 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
     const auto& data_info = response.data();
     for (const auto& [file_name, value] : data_info) {
       auto type = value.var_type();
+      auto field_ptr = schema->GetFieldByName(file_name);
+      auto field_type = field_ptr->type()->id();
       if (builder_map.find(file_name) == builder_map.end()) {
-        builder_map[file_name] = CreateBuilder(type);
+        builder_map[file_name] = CreateBuilder(field_type);
+        LOG(ERROR) << "create builder for: " << file_name;
       }
-      AddDataToBuilder(value, builder_map[file_name]);
+      LOG(INFO) << "AddDataToBuilder: " << field_type
+                << "file_name: " << file_name;
+      AddDataToBuilder(value, field_type, builder_map[file_name]);
     }
   }
   VLOG(5) << "builder_map: " << builder_map.size();
@@ -627,29 +632,32 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
     }
     auto& builder = it->second;
     builder->Finish(&arr);
+    LOG(ERROR) << "ToString: " << arr->ToString();
     array_data.push_back(std::move(arr));
   }
   return arrow::Table::Make(schema, array_data);
 }
 
 std::shared_ptr<arrow::ArrayBuilder> GrpcChannel::CreateBuilder(
-    seatunnel::rpc::VarType type) {
+    int type) {
   std::shared_ptr<arrow::ArrayBuilder> builder;
   switch (type) {
-  case seatunnel::rpc::INT32:
+  case arrow::Type::type::INT32:
     builder = std::make_shared<arrow::Int32Builder>();
     break;
-  case seatunnel::rpc::INT64:
+  case arrow::Type::type::INT64:
     builder = std::make_shared<arrow::Int64Builder>();
     break;
-  case seatunnel::rpc::STRING:
-  case seatunnel::rpc::BYTE:
+  case arrow::Type::type::STRING:
     builder = std::make_shared<arrow::StringBuilder>();
     break;
-  case seatunnel::rpc::FLOAT:
+  case arrow::Type::type::FLOAT:
     builder = std::make_shared<arrow::FloatBuilder>();
     break;
-  case seatunnel::rpc::DOUBLE:
+  case arrow::Type::type::BOOL:
+    builder = std::make_shared<arrow::BooleanBuilder>();
+    break;
+  case arrow::Type::type::DOUBLE:
     builder = std::make_shared<arrow::DoubleBuilder>();
     break;
   default:
@@ -660,45 +668,151 @@ std::shared_ptr<arrow::ArrayBuilder> GrpcChannel::CreateBuilder(
   }
   return builder;
 }
+
 retcode GrpcChannel::AddDataToBuilder(const seatunnel::rpc::Project& value,
-    std::shared_ptr<arrow::ArrayBuilder> builder) {
+    int expected_type, std::shared_ptr<arrow::ArrayBuilder> builder) {
+  retcode ret{retcode::SUCCESS};
   auto type = value.var_type();
   switch (type) {
   case seatunnel::rpc::INT32: {
-    auto ptr = std::dynamic_pointer_cast<arrow::Int32Builder>(builder);
-    ptr->Append(value.value_int32());
+    ret = AddIntValue(value.value_int32(), expected_type, builder);
     break;
   }
   case seatunnel::rpc::INT64: {
-    auto ptr = std::dynamic_pointer_cast<arrow::Int64Builder>(builder);
-    ptr->Append(value.value_int64());
+    ret = AddIntValue(value.value_int64(), expected_type, builder);
     break;
   }
   case seatunnel::rpc::STRING: {
-    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
-    ptr->Append(value.value_string());
+    ret = AddStringValue(value.value_string(), expected_type, builder);
     break;
   }
   case seatunnel::rpc::BYTE: {
-    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
-    ptr->Append(value.value_bytes());
+    ret = AddStringValue(value.value_bytes(), expected_type, builder);
     break;
   }
   case seatunnel::rpc::FLOAT: {
-    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
-    ptr->Append(value.value_float());
+    ret = AddDoubleValue(value.value_float(), expected_type, builder);
     break;
   }
   case seatunnel::rpc::DOUBLE: {
-    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
-    ptr->Append(value.value_double());
+    ret = AddDoubleValue(value.value_double(), expected_type, builder);
+    break;
+  }
+  case seatunnel::rpc::BOOL: {
+    ret = AddBoolValue(value.value_bool(), expected_type, builder);
     break;
   }
   default: {
     LOG(WARNING) << "unknown type: " << static_cast<int>(type)
                  << " using string instead";
+    ret = AddStringValue(value.value_string(), expected_type, builder);
+    break;
+  }
+  }
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::AddIntValue(
+    int64_t value, int expected_type,
+    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::INT32: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int32Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::BOOL: {
+    auto ptr = std::dynamic_pointer_cast<arrow::BooleanBuilder>(builder);
+    ptr->Append(value == 0);
+    break;
+  }
+  case arrow::Type::type::UINT32: {
+    auto ptr = std::dynamic_pointer_cast<arrow::UInt32Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::INT64: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int64Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::UINT64: {
+    auto ptr = std::dynamic_pointer_cast<arrow::UInt64Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::STRING: {
     auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
-    ptr->Append(value.value_string());
+    ptr->Append(std::to_string(value));
+    break;
+  }
+  case arrow::Type::type::FLOAT: {
+    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::DOUBLE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default:
+    LOG(ERROR) << "unable to convert from int to " << expected_type;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::AddBoolValue(
+    bool value, int expected_type,
+    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  if (expected_type == arrow::Type::type::BOOL) {
+    auto ptr = std::dynamic_pointer_cast<arrow::BooleanBuilder>(builder);
+    ptr->Append(value);
+  } else {
+    int64_t int_value = static_cast<int>(value);
+    return AddIntValue(int_value, expected_type, builder);
+  }
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::AddDoubleValue(
+    double value, int expected_type,
+    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::FLOAT: {
+    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::DOUBLE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default:
+    std::string str_value = std::to_string(value);
+    return AddStringValue(str_value, expected_type, builder);
+  }
+  return retcode::SUCCESS;
+}
+
+retcode GrpcChannel::AddStringValue(
+    const std::string& value, int expected_type,
+    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::STRING: {
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default: {
+    try {
+      double d_value = std::stod(value);
+      return AddDoubleValue(d_value, expected_type, builder);
+    } catch (std::exception& e) {
+      LOG(ERROR) << "convert [" << value << "]to double failed. " << e.what();
+      return retcode::FAIL;
+    }
     break;
   }
   }
