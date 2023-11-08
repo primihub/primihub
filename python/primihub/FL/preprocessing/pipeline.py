@@ -1,8 +1,6 @@
 from primihub.FL.utils.net_work import GrpcClient, MultiGrpcClients
 from primihub.FL.utils.base import BaseModel
-from primihub.FL.utils.file import save_pickle_file,\
-                                   load_pickle_file,\
-                                   save_csv_file
+from primihub.FL.utils.file import save_pickle_file, load_pickle_file, save_csv_file
 from primihub.FL.utils.dataset import read_data
 from primihub.utils.logger_util import logger
 from primihub.dataset.dataset import register_dataset
@@ -14,16 +12,15 @@ from itertools import chain
 
 
 class Pipeline(BaseModel):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
+
     def run(self):
-        process = self.common_params['process']
+        process = self.common_params["process"]
         logger.info(f"process: {process}")
-        if process == 'fit_transform':
+        if process == "fit_transform":
             self.fit_transform()
-        elif process == 'transform':
+        elif process == "transform":
             self.transform()
         else:
             error_msg = f"Unsupported process: {process}"
@@ -31,110 +28,117 @@ class Pipeline(BaseModel):
             raise RuntimeError(error_msg)
 
     def fit_transform(self):
-        FL_type = self.common_params['FL_type']
+        FL_type = self.common_params["FL_type"]
         logger.info(f"FL type: {FL_type}")
 
-        role = self.role_params['self_role']
+        role = self.role_params["self_role"]
         logger.info(f"role: {role}")
 
-        task = self.common_params['task']
+        task = self.common_params["task"]
         logger.info(f"task: {task}")
-        
+
         # setup communication channels
-        remote_party = self.roles[self.role_params['others_role']]
-        if role == 'server' or role == 'host':
+        remote_party = self.roles[self.role_params["others_role"]]
+        if role == "server" or role == "host":
             grpcclient = MultiGrpcClients
         else:
             grpcclient = GrpcClient
-        channel = grpcclient(self.role_params['self_name'],
-                             remote_party,
-                             self.node_info,
-                             self.task_info)
+        channel = grpcclient(
+            self.role_params["self_name"], remote_party, self.node_info, self.task_info
+        )
 
         # load dataset
-        if FL_type == 'H':
-            selected_column = self.common_params['selected_column']
-            id = self.common_params['id']
+        if FL_type == "H":
+            selected_column = self.common_params["selected_column"]
+            id = self.common_params["id"]
         else:
-            selected_column = self.role_params['selected_column']
-            id = self.role_params['id']
-        if role != 'server':
-            data = read_data(data_info=self.role_params['data'],
-                             selected_column=selected_column,
-                             droped_column=id)
+            selected_column = self.role_params["selected_column"]
+            id = self.role_params["id"]
+        if role != "server":
+            data = read_data(
+                data_info=self.role_params["data"],
+                selected_column=selected_column,
+                droped_column=id,
+            )
 
         # select preprocess column
-        if FL_type == 'H':
-            preprocess_column = self.common_params['preprocess_column']
+        if FL_type == "H":
+            preprocess_column = self.common_params["preprocess_column"]
         else:
-            preprocess_column = self.role_params['preprocess_column']
+            preprocess_column = self.role_params["preprocess_column"]
         if preprocess_column is None and selected_column is not None:
             preprocess_column = selected_column
         if isinstance(preprocess_column, list):
             preprocess_column = pd.Index(preprocess_column)
-        if preprocess_column is None and role != 'server':
+        if preprocess_column is None and role != "server":
             preprocess_column = data.columns
         if preprocess_column is not None:
-            logger.info(f"preprocess column: {preprocess_column.tolist()}, # {len(preprocess_column)}")
-        
+            logger.info(
+                f"preprocess column: {preprocess_column.tolist()}, # {len(preprocess_column)}"
+            )
+
         # label stuff
-        if FL_type == 'H':
-            label = self.common_params['label']
-        elif role != 'guest':
-            label = self.role_params['label']
+        if FL_type == "H":
+            label = self.common_params["label"]
+        elif role != "guest":
+            label = self.role_params["label"]
         else:
             label = None
         if preprocess_column is not None and label in preprocess_column:
             preprocess_column = preprocess_column.drop(label)
-        
+
         # preprocessing
-        if FL_type == 'H':
-            module_params = self.common_params.get('preprocess_module')
+        if FL_type == "H":
+            module_params = self.common_params.get("preprocess_module")
         else:
-            module_params = self.role_params.get('preprocess_module')
+            module_params = self.role_params.get("preprocess_module")
             if module_params is None:
-                module_params = self.common_params.get('preprocess_module')
+                module_params = self.common_params.get("preprocess_module")
 
         preprocess = []
-        num_type = ['float', 'int']
+        num_type = ["float", "int"]
         for module_name, params in module_params.items():
             logger.info(f"module name: {module_name}")
 
-            if 'Label' in module_name:
-                if task != 'classification':
+            if "Label" in module_name:
+                if task != "classification":
                     error_msg = f"{task} task doesn't need to preprocess label"
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
-                elif role == 'guest':
+                elif role == "guest":
                     error_msg = "guest party doesn't have label"
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
 
-            column = params.get('column')
+            column = params.get("column")
             if column is None:
                 column = preprocess_column
 
-                if role != 'server':
-                    if 'SimpleImputer' in module_name:
+                if role != "server":
+                    if "SimpleImputer" in module_name:
                         nan_column = column[data[column].isna().any()]
-                        if 'string' in module_name:
-                            column = data[nan_column].select_dtypes(exclude=num_type).columns
-                        elif 'numeric' in module_name:
-                            column = data[nan_column].select_dtypes(include=num_type).columns
+                        if "string" in module_name:
+                            column = (
+                                data[nan_column].select_dtypes(exclude=num_type).columns
+                            )
+                        elif "numeric" in module_name:
+                            column = (
+                                data[nan_column].select_dtypes(include=num_type).columns
+                            )
                         else:
                             column = nan_column
-                    elif module_name in ['OrdinalEncoder', 'OneHotEncoder']:
+                    elif module_name in ["OrdinalEncoder", "OneHotEncoder"]:
                         column = data[column].select_dtypes(exclude=num_type).columns
-                    elif 'Scaler' in module_name:
+                    elif "Scaler" in module_name:
                         column = data[column].select_dtypes(include=num_type).columns
 
-                if role == 'client':
-                    channel.send('column', column)
-                    column = channel.recv('column')
-                if role == 'server':
-                    client_column = channel.recv_all('column')
+                if role == "client":
+                    channel.send("column", column)
+                    column = channel.recv("column")
+                if role == "server":
+                    client_column = channel.recv_all("column")
                     column = list(set(chain.from_iterable(client_column)))
-                    channel.send_all('column', column)
+                    channel.send_all("column", column)
 
             if isinstance(column, pd.Index):
                 column = column.tolist()
@@ -146,104 +150,103 @@ class Pipeline(BaseModel):
 
             module = select_module(module_name, params, FL_type, role, channel)
 
-            if role != 'server':
-                if ('LabelBinarizer' in module_name
-                    or 'Transformer' in module_name
-                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
+            if role != "server":
+                if (
+                    "LabelBinarizer" in module_name
+                    or "Transformer" in module_name
+                    or module_name in ["OneHotEncoder", "KBinsDiscretizer"]
+                ):
                     temp = module.fit_transform(data[column])
-                    if 'LabelBinarizer' in module_name:
-                        col_name = [column+str(i) for i in range(temp.shape[1])]
+                    if "LabelBinarizer" in module_name:
+                        col_name = [column + str(i) for i in range(temp.shape[1])]
                     else:
                         col_name = module.module.get_feature_names_out()
-                        if module_name == 'KBinsDiscretizer':
-                            col_name = 'Bin_' + col_name
-                        elif module_name == 'QuantileTransformer':
-                            col_name = 'Quantile_' + col_name
-                    data = data.join(
-                        pd.DataFrame(
-                            temp,
-                            columns=col_name
-                        )
-                    )
+                        if module_name == "KBinsDiscretizer":
+                            col_name = "Bin_" + col_name
+                        elif module_name == "QuantileTransformer":
+                            col_name = "Quantile_" + col_name
+                    data = data.join(pd.DataFrame(temp, columns=col_name))
                 elif module_name == "TargetEncoder":
                     data[column] = module.fit_transform(data[column], data[label])
                 else:
                     data[column] = module.fit_transform(data[column])
-                preprocess.append((module_name,
-                                   module.module,
-                                   column))
+                preprocess.append((module_name, module.module, column))
             else:
                 if module_name == "TargetEncoder":
                     module.fit_transform()
                 else:
                     module.fit()
-            
-        if role != 'server':
+
+        if role != "server":
             # save preprocess module & columns
             preprocess_module = {
                 "selected_column": selected_column,
                 "id": id,
-                'preprocess': preprocess,
+                "preprocess": preprocess,
             }
-            save_pickle_file(preprocess_module,
-                             self.role_params['preprocess_module_path'])
+            save_pickle_file(
+                preprocess_module, self.role_params["preprocess_module_path"]
+            )
 
             # save preprocess dataset
-            preprocess_dataset_path = self.role_params['preprocess_dataset_path']
+            preprocess_dataset_path = self.role_params["preprocess_dataset_path"]
             save_csv_file(data, preprocess_dataset_path)
 
             # register preprocess dataset
             dataset_id = self.role_params.get("preprocess_dataset_id")
             if dataset_id:
-                node_info = self.node_info[self.role_params['self_name']]
+                node_info = self.node_info[self.role_params["self_name"]]
                 use_tls = 1 if node_info.use_tls else 0
-                sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
-                register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
+                sever_address = "{}:{}:{}".format(
+                    node_info.ip.decode(), node_info.port, use_tls
+                )
+                register_dataset(
+                    sever_address, "csv", preprocess_dataset_path, dataset_id
+                )
 
     def transform(self):
         # load preprocess module
-        preprocess = load_pickle_file(self.role_params['preprocess_module_path'])
+        preprocess = load_pickle_file(self.role_params["preprocess_module_path"])
 
         # load dataset
-        selected_column = preprocess['selected_column']
-        id = preprocess['id']
-        data = read_data(data_info=self.role_params['data'],
-                         selected_column=selected_column,
-                         droped_column=id)
+        selected_column = preprocess["selected_column"]
+        id = preprocess["id"]
+        data = read_data(
+            data_info=self.role_params["data"], selected_column=selected_column, droped_column=id
+        )
 
         # preprocess dataset
-        preprocess = preprocess['preprocess']
+        preprocess = preprocess["preprocess"]
         for module_name, module, column in preprocess:
             logger.info(f"module name: {module_name}")
             logger.info(f"preprocess columns: {column}, # {len(column)}")
-            if ('LabelBinarizer' in module_name
-                    or module_name in ['OneHotEncoder', 'KBinsDiscretizer']):
+            if "LabelBinarizer" in module_name or module_name in [
+                "OneHotEncoder",
+                "KBinsDiscretizer",
+            ]:
                 temp = module.fit_transform(data[column])
-                if 'LabelBinarizer' in module_name:
-                    col_name = [column+str(i) for i in range(temp.shape[1])]
+                if "LabelBinarizer" in module_name:
+                    col_name = [column + str(i) for i in range(temp.shape[1])]
                 else:
                     col_name = module.get_feature_names_out()
-                    if module_name == 'KBinsDiscretizer':
-                            col_name = 'Bin_' + col_name
-                data = data.join(
-                    pd.DataFrame(
-                        temp,
-                        columns=col_name
-                    )
-                )
+                    if module_name == "KBinsDiscretizer":
+                        col_name = "Bin_" + col_name
+                data = data.join(pd.DataFrame(temp, columns=col_name))
             else:
                 data[column] = module.transform(data[column])
 
         # save preprocess dataset
-        preprocess_dataset_path = self.role_params['preprocess_dataset_path']
+        preprocess_dataset_path = self.role_params["preprocess_dataset_path"]
         save_csv_file(data, preprocess_dataset_path)
 
         # register preprocess dataset
         dataset_id = self.role_params.get("preprocess_dataset_id")
         if dataset_id:
-            node_info = self.node_info[self.role_params['self_name']]
+            node_info = self.node_info[self.role_params["self_name"]]
             use_tls = 1 if node_info.use_tls else 0
-            sever_address = "{}:{}:{}".format(node_info.ip.decode(), node_info.port, use_tls)
+            sever_address = "{}:{}:{}".format(
+                node_info.ip.decode(), node_info.port, use_tls
+            )
             register_dataset(sever_address, "csv", preprocess_dataset_path, dataset_id)
 
 
@@ -260,7 +263,7 @@ def select_module(module_name, params, FL_type, role, channel):
             is_hra=params.get("is_hra", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "LabelBinarizer":
         module = LabelBinarizer(
@@ -269,28 +272,21 @@ def select_module(module_name, params, FL_type, role, channel):
             sparse_output=params.get("sparse_output", False),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "LabelEncoder":
-        module = LabelEncoder(
-            FL_type=FL_type,
-            role=role,
-            channel=channel
-        )
+        module = LabelEncoder(FL_type=FL_type, role=role, channel=channel)
     elif module_name == "MultiLabelBinarizer":
         module = MultiLabelBinarizer(
             classes=params.get("classes"),
             sparse_output=params.get("sparse_output", False),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "MaxAbsScaler":
         module = MaxAbsScaler(
-            copy=params.get("copy", True),
-            FL_type=FL_type,
-            role=role,
-            channel=channel
+            copy=params.get("copy", True), FL_type=FL_type, role=role, channel=channel
         )
     elif module_name == "MinMaxScaler":
         feature_range_min = params.get("feature_range_min", 0)
@@ -301,7 +297,7 @@ def select_module(module_name, params, FL_type, role, channel):
             clip=params.get("clip", False),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "Normalizer":
         norm = params.get("norm", "l2")
@@ -312,7 +308,8 @@ def select_module(module_name, params, FL_type, role, channel):
             copy=params.get("copy", True),
             FL_type=FL_type,
             role=role,
-            channel=channel)
+            channel=channel,
+        )
     elif module_name == "OneHotEncoder":
         module = OneHotEncoder(
             categories=params.get("categories", "auto"),
@@ -324,7 +321,7 @@ def select_module(module_name, params, FL_type, role, channel):
             feature_name_combiner=params.get("feature_name_combiner"),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "OrdinalEncoder":
         encoded_missing_value = params.get("encoded_missing_value")
@@ -339,7 +336,7 @@ def select_module(module_name, params, FL_type, role, channel):
             max_categories=params.get("max_categories"),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "QuantileTransformer":
         module = QuantileTransformer(
@@ -354,7 +351,7 @@ def select_module(module_name, params, FL_type, role, channel):
             is_hra=params.get("is_hra", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "RobustScaler":
         quantile_range_min = params.get("quantile_range_min", 25.0)
@@ -370,7 +367,7 @@ def select_module(module_name, params, FL_type, role, channel):
             is_hra=params.get("is_hra", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "SplineTransformer":
         module = SplineTransformer(
@@ -386,7 +383,7 @@ def select_module(module_name, params, FL_type, role, channel):
             is_hra=params.get("is_hra", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "StandardScaler":
         module = StandardScaler(
@@ -395,7 +392,7 @@ def select_module(module_name, params, FL_type, role, channel):
             with_std=params.get("with_std", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif module_name == "TargetEncoder":
         module = TargetEncoder(
@@ -407,7 +404,7 @@ def select_module(module_name, params, FL_type, role, channel):
             random_state=params.get("random_state"),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     elif "SimpleImputer" in module_name:
         missing_values = params.get("missing_values")
@@ -429,11 +426,11 @@ def select_module(module_name, params, FL_type, role, channel):
             is_hra=params.get("is_hra", True),
             FL_type=FL_type,
             role=role,
-            channel=channel
+            channel=channel,
         )
     else:
         error_msg = f"Unsupported module: {module_name}"
         logger.error(error_msg)
         raise RuntimeError(error_msg)
-    
+
     return module

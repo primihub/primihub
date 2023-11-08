@@ -18,7 +18,6 @@ __all__ = [
     "merge_local_quantile_sketch",
     "get_quantiles",
     "get_global_quantiles",
-    "check_quantile_sketch_name",
 ]
 
 
