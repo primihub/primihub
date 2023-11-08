@@ -4,52 +4,63 @@ import warnings
 from scipy.interpolate import BSpline
 from sklearn.preprocessing import QuantileTransformer as SKL_QuantileTransformer
 from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
-from sklearn.utils import check_random_state, check_array, _safe_indexing
-from .base import PreprocessBase
+from sklearn.utils import check_array, resample
+from .base import _PreprocessBase
+from .util import validate_quantile_sketch_params
 from ..stats import col_min_max, col_quantile
 
+__all__ = ["QuantileTransformer", "SplineTransformer"]
 
-class QuantileTransformer(PreprocessBase):
 
-    def __init__(self,
-                 n_quantiles=1000,
-                 output_distribution="uniform",
-                 ignore_implicit_zeros=False,
-                 subsample=10_000,
-                 random_state=None,
-                 copy=True,
-                 sketch_name="KLL",
-                 k=200,
-                 is_hra=True,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
+class QuantileTransformer(_PreprocessBase):
+    def __init__(
+        self,
+        n_quantiles=1000,
+        output_distribution="uniform",
+        ignore_implicit_zeros=False,
+        subsample=10_000,
+        random_state=None,
+        copy=True,
+        sketch_name="KLL",
+        k=200,
+        is_hra=True,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
         super().__init__(FL_type, role, channel)
-        if self.FL_type == 'H':
+        if self.FL_type == "H":
             self.check_channel()
         self.sketch_name = sketch_name
         self.k = k
         self.is_hra = is_hra
-        self.module = SKL_QuantileTransformer(n_quantiles=n_quantiles,
-                                              output_distribution=output_distribution,
-                                              ignore_implicit_zeros=ignore_implicit_zeros,
-                                              subsample=subsample,
-                                              random_state=random_state,
-                                              copy=copy)
-        
+        self.module = SKL_QuantileTransformer(
+            n_quantiles=n_quantiles,
+            output_distribution=output_distribution,
+            ignore_implicit_zeros=ignore_implicit_zeros,
+            subsample=subsample,
+            random_state=random_state,
+            copy=copy,
+        )
+
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         if self.module.n_quantiles > self.module.subsample:
             raise ValueError(
                 "The number of quantiles cannot be greater than"
                 " the number of samples used. Got {} quantiles"
-                " and {} samples.".format(self.module.n_quantiles, self.module.subsample)
+                " and {} samples.".format(
+                    self.module.n_quantiles, self.module.subsample
+                )
             )
-        
-        if self.role == 'client':
+
+        if self.role == "client":
             X = self.module._check_inputs(X, in_fit=True, copy=False)
             n_samples = X.shape[0]
-            self.channel.send('n_samples', n_samples)
-            n_quantiles = self.channel.recv('n_quantiles')
+            self.channel.send("n_samples", n_samples)
+            n_quantiles = self.channel.recv("n_quantiles")
 
             if n_quantiles < self.module.n_quantiles:
                 warnings.warn(
@@ -58,8 +69,8 @@ class QuantileTransformer(PreprocessBase):
                     "n_samples." % (self.module.n_quantiles, n_quantiles)
                 )
 
-        elif self.role == 'server':
-            n_samples = sum(self.channel.recv_all('n_samples'))
+        elif self.role == "server":
+            n_samples = sum(self.channel.recv_all("n_samples"))
 
             if self.module.n_quantiles > n_samples:
                 warnings.warn(
@@ -68,16 +79,17 @@ class QuantileTransformer(PreprocessBase):
                     "n_samples." % (self.module.n_quantiles, n_samples)
                 )
             n_quantiles = max(1, min(self.module.n_quantiles, n_samples))
-            self.channel.send_all('n_quantiles', n_quantiles)
+            self.channel.send_all("n_quantiles", n_quantiles)
 
         self.module.n_quantiles_ = n_quantiles
 
         # Create the quantiles of reference
-        self.module.references_ = np.linspace(0, 1, self.module.n_quantiles_, endpoint=True)
+        self.module.references_ = np.linspace(
+            0, 1, self.module.n_quantiles_, endpoint=True
+        )
         self._dense_fit(X, n_samples)
-            
         return self
-    
+
     def _dense_fit(self, X, n_samples):
         if self.module.ignore_implicit_zeros:
             warnings.warn(
@@ -85,21 +97,23 @@ class QuantileTransformer(PreprocessBase):
                 " sparse matrix. This parameter has no effect."
             )
 
-        if self.role == 'client':
-            subsample_ratio = self.channel.recv('subsample_ratio')
+        if self.role == "client":
+            subsample_ratio = self.channel.recv("subsample_ratio")
             if subsample_ratio is not None:
-                subsample_size = ceil(subsample_ratio * n_samples)
-                rng = check_random_state(self.module.random_state)
-                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
-                X = _safe_indexing(X, subsample_idx)
+                X = resample(
+                    X,
+                    replace=False,
+                    n_samples=ceil(subsample_ratio * n_samples),
+                    random_state=self.module.random_state,
+                )
 
-        elif self.role == 'server':
+        elif self.role == "server":
             subsample = self.module.subsample
             if n_samples > subsample:
                 subsample_ratio = subsample / n_samples
             else:
                 subsample_ratio = None
-            self.channel.send_all('subsample_ratio', subsample_ratio)
+            self.channel.send_all("subsample_ratio", subsample_ratio)
 
         quantiles = col_quantile(
             role=self.role,
@@ -108,42 +122,48 @@ class QuantileTransformer(PreprocessBase):
             sketch_name=self.sketch_name,
             k=self.k,
             is_hra=self.is_hra,
-            channel=self.channel
+            channel=self.channel,
         )
         self.module.quantiles_ = quantiles
 
 
-class SplineTransformer(PreprocessBase):
-
-    def __init__(self,
-                 n_knots=5,
-                 degree=3,
-                 knots="uniform",
-                 extrapolation="constant",
-                 include_bias=True,
-                 order="C",
-                 sparse_output=False,
-                 sketch_name="KLL",
-                 k=200,
-                 is_hra=True,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
+class SplineTransformer(_PreprocessBase):
+    def __init__(
+        self,
+        n_knots=5,
+        degree=3,
+        knots="uniform",
+        extrapolation="constant",
+        include_bias=True,
+        order="C",
+        sparse_output=False,
+        sketch_name="KLL",
+        k=200,
+        is_hra=True,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
         super().__init__(FL_type, role, channel)
-        if self.FL_type == 'H':
+        if self.FL_type == "H":
             self.check_channel()
         self.sketch_name = sketch_name
         self.k = k
         self.is_hra = is_hra
-        self.module = SKL_SplineTransformer(n_knots=n_knots,
-                                            degree=degree,
-                                            knots=knots,
-                                            extrapolation=extrapolation,
-                                            include_bias=include_bias,
-                                            order=order,
-                                            sparse_output=sparse_output)
-        
+        self.module = SKL_SplineTransformer(
+            n_knots=n_knots,
+            degree=degree,
+            knots=knots,
+            extrapolation=extrapolation,
+            include_bias=include_bias,
+            order=order,
+            sparse_output=sparse_output,
+        )
+
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         if not isinstance(self.module.knots, str):
             base_knots = check_array(self.module.knots, dtype=np.float64)
             if base_knots.shape[0] < 2:
@@ -151,14 +171,14 @@ class SplineTransformer(PreprocessBase):
             elif not np.all(np.diff(base_knots, axis=0) > 0):
                 raise ValueError("knots must be sorted without duplicates.")
 
-        if self.role == 'client':
+        if self.role == "client":
             X = self.module._validate_data(
                 X,
                 reset=True,
                 ensure_min_samples=2,
                 ensure_2d=True,
             )
-        
+
             _, n_features = X.shape
 
             if isinstance(self.module.knots, str):
@@ -167,7 +187,7 @@ class SplineTransformer(PreprocessBase):
                 if base_knots.shape[1] != n_features:
                     raise ValueError("knots.shape[1] == n_features is violated.")
 
-        elif self.role == 'server':
+        elif self.role == "server":
             if isinstance(self.module.knots, str):
                 base_knots = self._get_base_knot_positions()
 
@@ -244,14 +264,14 @@ class SplineTransformer(PreprocessBase):
         extrapolate = self.module.extrapolation in ["periodic", "continue"]
 
         bsplines = [
-            BSpline.construct_fast(
-                knots[:, i], coef, degree, extrapolate=extrapolate
-            )
+            BSpline.construct_fast(knots[:, i], coef, degree, extrapolate=extrapolate)
             for i in range(n_features)
         ]
         self.module.bsplines_ = bsplines
 
-        self.module.n_features_out_ = n_out - n_features * (1 - self.module.include_bias)
+        self.module.n_features_out_ = n_out - n_features * (
+            1 - self.module.include_bias
+        )
         return self
 
     def _get_base_knot_positions(self, X=None):
@@ -266,7 +286,7 @@ class SplineTransformer(PreprocessBase):
                 sketch_name=self.sketch_name,
                 k=self.k,
                 is_hra=self.is_hra,
-                channel=self.channel
+                channel=self.channel,
             )
             knots = np.transpose(knots)
 
@@ -276,7 +296,7 @@ class SplineTransformer(PreprocessBase):
                 role=self.role,
                 X=X if self.role == "client" else None,
                 ignore_nan=False,
-                channel=self.channel
+                channel=self.channel,
             )
 
             knots = np.linspace(
@@ -286,5 +306,4 @@ class SplineTransformer(PreprocessBase):
                 endpoint=True,
                 dtype=np.float64,
             )
-
         return knots
