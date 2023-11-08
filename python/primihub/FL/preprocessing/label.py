@@ -3,13 +3,15 @@ from itertools import chain
 from sklearn.preprocessing import LabelEncoder as SKL_LabelEncoder
 from sklearn.preprocessing import LabelBinarizer as SKL_LabelBinarizer
 from sklearn.preprocessing import MultiLabelBinarizer as SKL_MultiLabelBinarizer
-from sklearn.utils.validation import column_or_1d, _num_samples
 from sklearn.utils.multiclass import type_of_target, unique_labels
+from sklearn.utils.validation import column_or_1d, _num_samples
 from sklearn.utils._encode import _unique
-from .base import PreprocessBase
+from .base import _PreprocessBase
+
+__all__ = ["LabelEncoder", "LabelBinarizer", "MultiLabelBinarizer"]
 
 
-class _LabelBase(PreprocessBase):
+class _LabelBase(_PreprocessBase):
 
     def __init__(self, FL_type=None, role=None, channel=None):
         super().__init__(FL_type, role, channel)
@@ -71,6 +73,7 @@ class LabelBinarizer(_LabelBase):
                                          sparse_output=sparse_output)
         
     def Hfit(self, y):
+        self.module._validate_params()
         if self.module.neg_label >= self.module.pos_label:
             raise ValueError(
                 f"neg_label={self.module.neg_label} must be strictly less than "
@@ -122,6 +125,7 @@ class MultiLabelBinarizer(_LabelBase):
                                               sparse_output=sparse_output)
 
     def Hfit(self, y):
+        self.module._validate_params()
         self.module._cached_dict = None
 
         if self.module.classes is None:

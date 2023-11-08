@@ -4,16 +4,16 @@ from sklearn.impute import SimpleImputer as SKL_SimpleImputer
 from sklearn.impute._base import _BaseImputer
 from sklearn.utils._encode import _unique
 from sklearn.utils._mask import _get_mask
-from .base import PreprocessBase
+from .base import _PreprocessBase
+from .util import validate_quantile_sketch_params
 from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
     get_quantiles,
-    check_quantile_sketch_name,
 )
 
 
-class SimpleImputer(PreprocessBase, _BaseImputer):
+class SimpleImputer(_PreprocessBase, _BaseImputer):
 
     def __init__(self,
                  missing_values=np.nan,
@@ -31,7 +31,7 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H' and strategy != 'constant':
             self.check_channel()
-        self.sketch_name = check_quantile_sketch_name(sketch_name)
+        self.sketch_name = sketch_name
         self.k = k
         self.is_hra = is_hra
         self.module = SKL_SimpleImputer(missing_values=missing_values,
@@ -47,6 +47,9 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
             self.add_indicator = add_indicator
 
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         if self.role == 'client':
             X = self.module._validate_input(X, in_fit=True)
 
@@ -82,7 +85,6 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                 self.module.missing_values,
                 fill_value
             )
-        
         return self
     
     def _dense_fit(self, X, strategy, missing_values, fill_value):
@@ -126,7 +128,6 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                 mean = np.ma.getdata(mean_masked)
                 mean[np.ma.getmask(mean_masked)] = 0 if self.module.keep_empty_features else np.nan
                 self.channel.send_all('mean', mean)
-
             return mean
 
         # Median
@@ -171,7 +172,6 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                     median[mask] = 0 if self.module.keep_empty_features else np.nan
 
                 self.channel.send_all('median', median)
-
             return median
 
         # Most frequent
@@ -219,7 +219,6 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
                 most_frequent = np.array(most_frequent)
 
                 self.channel.send_all('most_frequent', most_frequent)
-
             return most_frequent
 
         # Constant

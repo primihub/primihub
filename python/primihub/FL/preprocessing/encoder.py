@@ -9,10 +9,12 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_consistent_length, _check_y
 from sklearn.utils._encode import _unique
 from sklearn.utils._param_validation import RealNotInt
-from .base import PreprocessBase
+from .base import _PreprocessBase
+
+__all__ = ["OneHotEncoder", "OrdinalEncoder", "TargetEncoder"]
 
 
-class _BaseEncoder(PreprocessBase, _SKL_BaseEncoder):
+class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
 
     def __init__(self,
                  categories="auto",
@@ -180,10 +182,10 @@ class OneHotEncoder(_BaseEncoder):
                                         feature_name_combiner=feature_name_combiner)
 
     def Hfit(self, X):
+        self.module._validate_params()
         self._Hfit(X, ignore_missing_for_infrequent=False)
         self.module._set_drop_idx()
         self.module._n_features_outs = self.module._compute_n_features_outs()
-
         return self
 
 
@@ -215,6 +217,7 @@ class OrdinalEncoder(_BaseEncoder):
                                          max_categories=max_categories)
 
     def Hfit(self, X):
+        self.module._validate_params()
         if self.module.handle_unknown == "use_encoded_value":
             if is_scalar_nan(self.module.unknown_value):
                 if np.dtype(self.module.dtype).kind != "f":
@@ -297,7 +300,6 @@ class OrdinalEncoder(_BaseEncoder):
                         "is already used to encode a known category in features: "
                         f"{invalid_features}"
                     )
-
         return self
     
 
@@ -452,7 +454,7 @@ def compute_missing_indices(categories):
     return missing_indices
 
 
-class TargetEncoder(PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None):
+class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None):
 
     def __init__(self,
                  categories="auto",
@@ -485,6 +487,7 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None
         return self.module.fit(X, y)
     
     def Hfit(self, X, y):
+        self.module._validate_params()
         self._fit_encodings_all(X, y)
         return self
     
@@ -492,6 +495,7 @@ class TargetEncoder(PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None
         if self.FL_type == "V":
             self.module.fit_transform(X, y)
         else:
+            self.module._validate_params()
             if self.role == "client":
                 from sklearn.model_selection import KFold, StratifiedKFold  # avoid circular import
 

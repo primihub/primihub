@@ -4,12 +4,15 @@ import warnings
 from scipy.interpolate import BSpline
 from sklearn.preprocessing import QuantileTransformer as SKL_QuantileTransformer
 from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
-from sklearn.utils import check_random_state, check_array, _safe_indexing
-from .base import PreprocessBase
+from sklearn.utils import check_array, resample
+from .base import _PreprocessBase
+from .util import validate_quantile_sketch_params
 from ..stats import col_min_max, col_quantile
 
+__all__ = ["QuantileTransformer", "SplineTransformer"]
 
-class QuantileTransformer(PreprocessBase):
+
+class QuantileTransformer(_PreprocessBase):
 
     def __init__(self,
                  n_quantiles=1000,
@@ -38,6 +41,9 @@ class QuantileTransformer(PreprocessBase):
                                               copy=copy)
         
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         if self.module.n_quantiles > self.module.subsample:
             raise ValueError(
                 "The number of quantiles cannot be greater than"
@@ -74,8 +80,7 @@ class QuantileTransformer(PreprocessBase):
 
         # Create the quantiles of reference
         self.module.references_ = np.linspace(0, 1, self.module.n_quantiles_, endpoint=True)
-        self._dense_fit(X, n_samples)
-            
+        self._dense_fit(X, n_samples)     
         return self
     
     def _dense_fit(self, X, n_samples):
@@ -88,10 +93,12 @@ class QuantileTransformer(PreprocessBase):
         if self.role == 'client':
             subsample_ratio = self.channel.recv('subsample_ratio')
             if subsample_ratio is not None:
-                subsample_size = ceil(subsample_ratio * n_samples)
-                rng = check_random_state(self.module.random_state)
-                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
-                X = _safe_indexing(X, subsample_idx)
+                X = resample(
+                    X,
+                    replace=False,
+                    n_samples=ceil(subsample_ratio * n_samples),
+                    random_state=self.module.random_state
+                )
 
         elif self.role == 'server':
             subsample = self.module.subsample
@@ -113,7 +120,7 @@ class QuantileTransformer(PreprocessBase):
         self.module.quantiles_ = quantiles
 
 
-class SplineTransformer(PreprocessBase):
+class SplineTransformer(_PreprocessBase):
 
     def __init__(self,
                  n_knots=5,
@@ -144,6 +151,9 @@ class SplineTransformer(PreprocessBase):
                                             sparse_output=sparse_output)
         
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+        
         if not isinstance(self.module.knots, str):
             base_knots = check_array(self.module.knots, dtype=np.float64)
             if base_knots.shape[0] < 2:
@@ -286,5 +296,4 @@ class SplineTransformer(PreprocessBase):
                 endpoint=True,
                 dtype=np.float64,
             )
-
         return knots

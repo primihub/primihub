@@ -3,17 +3,17 @@ import numpy as np
 from math import ceil
 from sklearn.preprocessing import KBinsDiscretizer as SKL_KBinsDiscretizer
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.utils import check_random_state, _safe_indexing
-from .base import PreprocessBase
+from sklearn.utils import resample
+from .base import _PreprocessBase
+from .util import validate_quantile_sketch_params
 from ..stats import col_min_max
 from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
-    check_quantile_sketch_name,
 )
 
 
-class KBinsDiscretizer(PreprocessBase):
+class KBinsDiscretizer(_PreprocessBase):
 
     def __init__(self,
                  n_bins=5,
@@ -31,7 +31,7 @@ class KBinsDiscretizer(PreprocessBase):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
-        self.sketch_name = check_quantile_sketch_name(sketch_name)
+        self.sketch_name = sketch_name
         self.k = k
         self.is_hra = is_hra
         self.module = SKL_KBinsDiscretizer(n_bins=n_bins,
@@ -42,6 +42,9 @@ class KBinsDiscretizer(PreprocessBase):
                                            random_state=random_state)
 
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         if self.role == 'client':
             X = self.module._validate_data(X, dtype="numeric")
 
@@ -51,10 +54,12 @@ class KBinsDiscretizer(PreprocessBase):
             self.channel.send('n_samples', n_samples)
             subsample_ratio = self.channel.recv('subsample_ratio')
             if subsample_ratio is not None:
-                subsample_size = ceil(subsample_ratio * n_samples)
-                rng = check_random_state(self.module.random_state)
-                subsample_idx = rng.choice(n_samples, size=subsample_size, replace=False)
-                X = _safe_indexing(X, subsample_idx)
+                X = resample(
+                    X,
+                    replace=False,
+                    n_samples=ceil(subsample_ratio * n_samples),
+                    random_state=self.module.random_state
+                )
 
         elif self.role == 'server':
             subsample = self.module.subsample
@@ -182,5 +187,4 @@ class KBinsDiscretizer(PreprocessBase):
             # Fit the OneHotEncoder with toy datasets
             # so that it's ready for use after the KBinsDiscretizer is fitted
             self.module._encoder.fit(np.zeros((1, len(self.module.n_bins_))))
-
         return self

@@ -7,7 +7,8 @@ from sklearn.preprocessing import RobustScaler as SKL_RobustScaler
 from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
 from sklearn.preprocessing._data import _handle_zeros_in_scale, _is_constant_feature
 from sklearn.utils.validation import check_array, FLOAT_DTYPES
-from .base import PreprocessBase
+from .base import _PreprocessBase
+from .util import validate_quantile_sketch_params
 from ..stats import col_norm, row_norm, col_min_max
 from ..sketch import (
     send_local_quantile_sketch,
@@ -15,8 +16,16 @@ from ..sketch import (
     get_quantiles,
 )
 
+__all__ = [
+    "MaxAbsScaler",
+    "MinMaxScaler",
+    "Normalizer",
+    "RobustScaler",
+    "StandardScaler",
+]
 
-class MaxAbsScaler(PreprocessBase):
+
+class MaxAbsScaler(_PreprocessBase):
 
     def __init__(self, copy=True, FL_type=None, role=None, channel=None):
         super().__init__(FL_type, role, channel)
@@ -25,6 +34,7 @@ class MaxAbsScaler(PreprocessBase):
         self.module = SKL_MaxAbsScaler(copy=copy)
 
     def Hfit(self, X):
+        self.module._validate_params()
         if self.role == 'client':
             X = self.module._validate_data(
                 X,
@@ -46,7 +56,7 @@ class MaxAbsScaler(PreprocessBase):
         return self
 
 
-class MinMaxScaler(PreprocessBase):
+class MinMaxScaler(_PreprocessBase):
 
     def __init__(self,
                  feature_range=(0, 1),
@@ -63,6 +73,7 @@ class MinMaxScaler(PreprocessBase):
                                        clip=clip)
 
     def Hfit(self, X):
+        self.module._validate_params()
         feature_range = self.module.feature_range
         if feature_range[0] >= feature_range[1]:
             raise ValueError(
@@ -96,7 +107,7 @@ class MinMaxScaler(PreprocessBase):
         return self
 
 
-class Normalizer(PreprocessBase):
+class Normalizer(_PreprocessBase):
 
     def __init__(self,
                  norm='l2',
@@ -136,11 +147,10 @@ class Normalizer(PreprocessBase):
 
             norms = _handle_zeros_in_scale(norms, copy=False)
             X /= norms[:, np.newaxis]
-
             return X
 
 
-class RobustScaler(PreprocessBase):
+class RobustScaler(_PreprocessBase):
 
     def __init__(self,
                  with_centering=True,
@@ -167,6 +177,9 @@ class RobustScaler(PreprocessBase):
                                        unit_variance=unit_variance)
 
     def Hfit(self, X):
+        self.module._validate_params()
+        validate_quantile_sketch_params(self)
+
         q_min, q_max = self.module.quantile_range
         if not 0 <= q_min <= q_max <= 100:
             raise ValueError("Invalid quantile range: %s" % str(self.module.quantile_range))
@@ -245,11 +258,10 @@ class RobustScaler(PreprocessBase):
             
         self.module.center_ = center
         self.module.scale_ = scale
-
         return self
 
 
-class StandardScaler(PreprocessBase):
+class StandardScaler(_PreprocessBase):
 
     def __init__(self,
                  copy=True,
@@ -266,6 +278,7 @@ class StandardScaler(PreprocessBase):
                                          with_std=with_std)
 
     def Hfit(self, X):
+        self.module._validate_params()
         with_mean = self.module.with_mean
         with_std = self.module.with_std
 
@@ -353,6 +366,5 @@ class StandardScaler(PreprocessBase):
 
         self.module.mean_ = mean
         self.module.var_ = var
-        self.module.scale_ = scale
-        
+        self.module.scale_ = scale     
         return self
