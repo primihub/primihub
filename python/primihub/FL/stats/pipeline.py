@@ -41,7 +41,7 @@ class Pipeline(BaseModel):
             data = read_data(
                 data_info=self.role_params["data"],
                 selected_column=selected_column,
-                id=id,
+                droped_column=id,
             )
 
         # set stats column

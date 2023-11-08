@@ -61,7 +61,7 @@ class Pipeline(BaseModel):
         if role != 'server':
             data = read_data(data_info=self.role_params['data'],
                              selected_column=selected_column,
-                             id=id)
+                             droped_column=id)
 
         # select preprocess column
         if FL_type == 'H':
@@ -209,7 +209,7 @@ class Pipeline(BaseModel):
         id = preprocess['id']
         data = read_data(data_info=self.role_params['data'],
                          selected_column=selected_column,
-                         id=id)
+                         droped_column=id)
 
         # preprocess dataset
         preprocess = preprocess['preprocess']

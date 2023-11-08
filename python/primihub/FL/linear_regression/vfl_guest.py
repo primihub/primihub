@@ -48,7 +48,7 @@ class LinearRegressionGuest(BaseModel):
         id = self.role_params['id']
         x = read_data(data_info=self.role_params['data'],
                       selected_column=selected_column,
-                      id=id)
+                      droped_column=id)
         x = x.values
 
         # guest init
