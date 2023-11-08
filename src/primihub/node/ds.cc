@@ -286,7 +286,7 @@ retcode DataServiceImpl::ConvertToDatasetMetaInfo(
   const auto& driver = meta_info_pb.driver();
   std::string low_cast_driver = strToLower(driver);
   std::set<std::string> seatunnel_source = {
-    "oracle", "sqlserver", "hive", "dm", "达梦"
+    "oracle", "sqlserver", "hive", "dm", "达梦", "hive2",
   };
   if (seatunnel_source.find(low_cast_driver) != seatunnel_source.end()) {
     meta_info.driver_type = "seatunnel";

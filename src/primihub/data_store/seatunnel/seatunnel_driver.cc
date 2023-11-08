@@ -364,7 +364,7 @@ retcode SeatunnelCursor::BuildQuerySql(
                                  query_limit, query_sql);
   } else if (source_type == "oracle") {
     ret = OracleBuildQuerySql(field_names, access_info, query_limit, query_sql);
-  } else if (source_type == "hive") {
+  } else if (source_type == "hive" || source_type == "hive2") {
     ret = HiveBuildQuerySql(field_names, access_info, query_limit, query_sql);
   } else {
     LOG(ERROR) << "unsupported source type: " << source_type;
