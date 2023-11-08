@@ -6,7 +6,7 @@ from sklearn.preprocessing import QuantileTransformer as SKL_QuantileTransformer
 from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
 from sklearn.utils import check_random_state, check_array, _safe_indexing
 from .base import PreprocessBase
-from primihub.FL.stats import col_min_max, col_quantile
+from ..stats import col_min_max, col_quantile
 
 
 class QuantileTransformer(PreprocessBase):

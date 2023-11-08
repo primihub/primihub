@@ -8,8 +8,8 @@ from sklearn.preprocessing import StandardScaler as SKL_StandardScaler
 from sklearn.preprocessing._data import _handle_zeros_in_scale, _is_constant_feature
 from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .base import PreprocessBase
-from primihub.FL.stats import col_norm, row_norm, col_min_max
-from primihub.FL.sketch import (
+from ..stats import col_norm, row_norm, col_min_max
+from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
     get_quantiles,

@@ -5,11 +5,11 @@ from sklearn.preprocessing import KBinsDiscretizer as SKL_KBinsDiscretizer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state, _safe_indexing
 from .base import PreprocessBase
-from primihub.FL.stats import col_min_max
-from primihub.FL.sketch import (
+from ..stats import col_min_max
+from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
-    check_quantile_sketch,
+    check_quantile_sketch_name,
 )
 
 
@@ -31,7 +31,7 @@ class KBinsDiscretizer(PreprocessBase):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H':
             self.check_channel()
-        self.sketch_name = check_quantile_sketch(sketch_name)
+        self.sketch_name = check_quantile_sketch_name(sketch_name)
         self.k = k
         self.is_hra = is_hra
         self.module = SKL_KBinsDiscretizer(n_bins=n_bins,

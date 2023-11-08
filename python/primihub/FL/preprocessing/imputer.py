@@ -5,11 +5,11 @@ from sklearn.impute._base import _BaseImputer
 from sklearn.utils._encode import _unique
 from sklearn.utils._mask import _get_mask
 from .base import PreprocessBase
-from primihub.FL.sketch import (
+from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
     get_quantiles,
-    check_quantile_sketch,
+    check_quantile_sketch_name,
 )
 
 
@@ -31,7 +31,7 @@ class SimpleImputer(PreprocessBase, _BaseImputer):
         super().__init__(FL_type, role, channel)
         if self.FL_type == 'H' and strategy != 'constant':
             self.check_channel()
-        self.sketch_name = check_quantile_sketch(sketch_name)
+        self.sketch_name = check_quantile_sketch_name(sketch_name)
         self.k = k
         self.is_hra = is_hra
         self.module = SKL_SimpleImputer(missing_values=missing_values,

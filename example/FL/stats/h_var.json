@@ -13,7 +13,7 @@
         "common_params": {
             "model": "FL_Stats",
             "FL_type": "H",
-            "task_name": "HFL_col_min",
+            "task_name": "HFL_col_var",
             "selected_column": [
                 "MinTemp",
                 "MaxTemp",

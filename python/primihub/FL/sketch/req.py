@@ -2,8 +2,8 @@ import numpy as np
 from datasketches import (
     req_ints_sketch,
     req_floats_sketch,
-    req_items_sketch,
 )
+from .util import check_inputdim
 
 
 def send_local_req_sketch(
@@ -14,6 +14,7 @@ def send_local_req_sketch(
     k: int = 12,
     is_hra: bool = True,
 ):
+    check_inputdim(X, vector)
     sketch = select_req_sketch(data_type)
     if vector:
         req = []
@@ -57,7 +58,7 @@ def merge_local_req_sketch(
 
 
 def select_req_sketch(data_type: str = "float"):
-    valid_type = ["float", "int", "item"]
+    valid_type = ["float", "int"]
 
     data_type = data_type.lower()
     if data_type not in valid_type:
@@ -69,7 +70,6 @@ def select_req_sketch(data_type: str = "float"):
     valid_req = {
         "float": req_floats_sketch,
         "int": req_ints_sketch,
-        "item": req_items_sketch,
     }
     return valid_req[data_type]
 

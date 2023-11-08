@@ -13,15 +13,15 @@
         "common_params": {
             "model": "FL_Stats",
             "FL_type": "H",
-            "task_name": "HFL_col_mean",
-            "selected_column": [
-                "MinTemp",
-                "MaxTemp",
-                "RISK_MM"
-            ],
+            "task_name": "HFL_col_frequent",
+            "selected_column": null,
             "id": "id",
             "stats_module": {
-                "col_mean": {
+                "col_frequent": {
+                    "error_type": "NFN",
+                    "max_item": 3,
+                    "min_freq": 1,
+                    "k": 20,
                     "ignore_nan": true
                 }
             }

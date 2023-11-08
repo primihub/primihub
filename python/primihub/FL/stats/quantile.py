@@ -2,7 +2,7 @@ import warnings
 import numpy as np
 from sklearn.utils.validation import check_array, FLOAT_DTYPES
 from .util import check_channel, check_role
-from primihub.FL.sketch import send_local_quantile_sketch, get_global_quantiles
+from ..sketch import send_local_quantile_sketch, get_global_quantiles, check_quantiles
 
 
 def col_median(
@@ -70,6 +70,7 @@ def col_quantile_client(
     send_server: bool = True,
     recv_server: bool = True,
 ):
+    quantiles = check_quantiles(quantiles)
     check_channel(channel, send_server, recv_server)
     X = check_array(
         X, dtype=FLOAT_DTYPES, force_all_finite="allow-nan" if ignore_nan else True
