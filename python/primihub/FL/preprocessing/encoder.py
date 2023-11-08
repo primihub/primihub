@@ -15,27 +15,29 @@ __all__ = ["OneHotEncoder", "OrdinalEncoder", "TargetEncoder"]
 
 
 class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
-
-    def __init__(self,
-                 categories="auto",
-                 min_frequency=None,
-                 max_categories=None,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
+    def __init__(
+        self,
+        categories="auto",
+        min_frequency=None,
+        max_categories=None,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
         super().__init__(FL_type, role, channel)
-        if FL_type == 'H':
+        if FL_type == "H":
             self.check_channel()
             self.categories = categories
             self.min_frequency = min_frequency
             self.max_categories = max_categories
 
     def _Hfit(self, X, ignore_missing_for_infrequent=False):
-        infrequent_enabled = \
-            check_infrequent_enabled(self.min_frequency, self.max_categories)
+        infrequent_enabled = check_infrequent_enabled(
+            self.min_frequency, self.max_categories
+        )
         self.module._infrequent_enabled = infrequent_enabled
 
-        if self.role == 'client':
+        if self.role == "client":
             if infrequent_enabled:
                 return_counts = True
                 min_frequency = self.min_frequency
@@ -56,9 +58,9 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
 
             categories = self.categories_
             local_categories = categories
-            if self.categories == 'auto':
-                self.channel.send('categories', categories)
-                categories = self.channel.recv('categories')
+            if self.categories == "auto":
+                self.channel.send("categories", categories)
+                categories = self.channel.recv("categories")
                 self.categories_ = categories
             self.module.categories_ = categories
 
@@ -69,33 +71,37 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
 
             if infrequent_enabled:
                 if min_frequency is not None and isinstance(min_frequency, RealNotInt):
-                    self.channel.send('n_samples', fit_results['n_samples'])
-                
+                    self.channel.send("n_samples", fit_results["n_samples"])
+
                 if max_categories is None:
                     if isinstance(min_frequency, RealNotInt):
-                        min_frequency = self.channel.recv('min_frequency')
-                    min_freq_indices_counts = \
-                        get_min_freq_indices_counts(min_frequency,
-                                                    local_categories,
-                                                    fit_results['category_counts'],
-                                                    ignore_missing_for_infrequent=True)
-                    self.channel.send('min_freq_indices_counts', min_freq_indices_counts)
+                        min_frequency = self.channel.recv("min_frequency")
+                    min_freq_indices_counts = get_min_freq_indices_counts(
+                        min_frequency,
+                        local_categories,
+                        fit_results["category_counts"],
+                        ignore_missing_for_infrequent=True,
+                    )
+                    self.channel.send(
+                        "min_freq_indices_counts", min_freq_indices_counts
+                    )
                 else:
-                    self.channel.send('category_counts', fit_results['category_counts'])
-                
-                infrequent_indices = self.channel.recv('infrequent_indices')
+                    self.channel.send("category_counts", fit_results["category_counts"])
+
+                infrequent_indices = self.channel.recv("infrequent_indices")
                 self._infrequent_indices = infrequent_indices
                 self.module._infrequent_indices = infrequent_indices
-                self.module._default_to_infrequent_mappings = \
-                    compute_default_to_infrequent_mappings(categories, 
-                                                           infrequent_indices, 
-                                                           missing_indices)
-        
-        elif self.role == 'server':
-            if self.categories == 'auto':
-                client_categories = self.channel.recv_all('categories')
+                self.module._default_to_infrequent_mappings = (
+                    compute_default_to_infrequent_mappings(
+                        categories, infrequent_indices, missing_indices
+                    )
+                )
+
+        elif self.role == "server":
+            if self.categories == "auto":
+                client_categories = self.channel.recv_all("categories")
                 categories = compute_category_union(client_categories)
-                self.channel.send_all('categories', categories)
+                self.channel.send_all("categories", categories)
             else:
                 categories = self.categories
             self.categories_ = categories
@@ -106,36 +112,43 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
             if ignore_missing_for_infrequent:
                 missing_indices = compute_missing_indices(categories)
                 self.module._missing_indices = missing_indices
-            
+
             if infrequent_enabled:
-                if self.min_frequency is not None and isinstance(self.min_frequency, RealNotInt):
-                    n_samples = self.channel.recv_all('n_samples')
+                if self.min_frequency is not None and isinstance(
+                    self.min_frequency, RealNotInt
+                ):
+                    n_samples = self.channel.recv_all("n_samples")
                     n_samples = sum(n_samples)
                 else:
                     n_samples = None
-                
+
                 if self.max_categories is None:
                     if isinstance(self.min_frequency, RealNotInt):
-                        self.channel.send_all('min_frequency', self.min_frequency * n_samples)
-                    min_freq_indices_counts = self.channel.recv_all('min_freq_indices_counts')
-                    infrequent_indices = \
-                        infreq_indices_for_min_freq(self.min_frequency,
-                                                    categories,
-                                                    client_categories,
-                                                    min_freq_indices_counts)
+                        self.channel.send_all(
+                            "min_frequency", self.min_frequency * n_samples
+                        )
+                    min_freq_indices_counts = self.channel.recv_all(
+                        "min_freq_indices_counts"
+                    )
+                    infrequent_indices = infreq_indices_for_min_freq(
+                        self.min_frequency,
+                        categories,
+                        client_categories,
+                        min_freq_indices_counts,
+                    )
                     self._infrequent_indices = infrequent_indices
-                    self.module._default_to_infrequent_mappings = \
-                        compute_default_to_infrequent_mappings(categories, 
-                                                               infrequent_indices, 
-                                                               missing_indices)
+                    self.module._default_to_infrequent_mappings = (
+                        compute_default_to_infrequent_mappings(
+                            categories, infrequent_indices, missing_indices
+                        )
+                    )
                 else:
-                    client_category_counts = self.channel.recv_all('category_counts')
+                    client_category_counts = self.channel.recv_all("category_counts")
 
-                    if self.categories == 'auto':
-                        category_counts = \
-                            compute_count_histogram(categories,
-                                                    client_categories,
-                                                    client_category_counts)
+                    if self.categories == "auto":
+                        category_counts = compute_count_histogram(
+                            categories, client_categories, client_category_counts
+                        )
                     else:
                         category_counts = np.sum(client_category_counts, axis=0)
 
@@ -145,41 +158,48 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
                         missing_indices,
                     )
                     infrequent_indices = self._infrequent_indices
-                    self.module._default_to_infrequent_mappings = self._default_to_infrequent_mappings
-                
-                self.channel.send_all('infrequent_indices', infrequent_indices)
+                    self.module._default_to_infrequent_mappings = (
+                        self._default_to_infrequent_mappings
+                    )
+
+                self.channel.send_all("infrequent_indices", infrequent_indices)
                 self.module._infrequent_indices = infrequent_indices
         return missing_indices
 
 
 class OneHotEncoder(_BaseEncoder):
-
-    def __init__(self,
-                 categories="auto",
-                 drop=None,
-                 sparse_output=True,
-                 dtype=np.float64,
-                 handle_unknown="error",
-                 min_frequency=None,
-                 max_categories=None,
-                 feature_name_combiner="concat",
-                 FL_type=None,
-                 role=None,
-                 channel=None):
-        super().__init__(categories=categories,
-                         min_frequency=min_frequency,
-                         max_categories=max_categories,
-                         FL_type=FL_type,
-                         role=role,
-                         channel=channel)
-        self.module = SKL_OneHotEncoder(categories=categories,
-                                        drop=drop,
-                                        sparse_output=sparse_output,
-                                        dtype=dtype,
-                                        handle_unknown=handle_unknown,
-                                        min_frequency=min_frequency,
-                                        max_categories=max_categories,
-                                        feature_name_combiner=feature_name_combiner)
+    def __init__(
+        self,
+        categories="auto",
+        drop=None,
+        sparse_output=True,
+        dtype=np.float64,
+        handle_unknown="error",
+        min_frequency=None,
+        max_categories=None,
+        feature_name_combiner="concat",
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
+        super().__init__(
+            categories=categories,
+            min_frequency=min_frequency,
+            max_categories=max_categories,
+            FL_type=FL_type,
+            role=role,
+            channel=channel,
+        )
+        self.module = SKL_OneHotEncoder(
+            categories=categories,
+            drop=drop,
+            sparse_output=sparse_output,
+            dtype=dtype,
+            handle_unknown=handle_unknown,
+            min_frequency=min_frequency,
+            max_categories=max_categories,
+            feature_name_combiner=feature_name_combiner,
+        )
 
     def Hfit(self, X):
         self.module._validate_params()
@@ -190,31 +210,36 @@ class OneHotEncoder(_BaseEncoder):
 
 
 class OrdinalEncoder(_BaseEncoder):
-
-    def __init__(self,
-                 categories="auto",
-                 dtype=np.float64,
-                 handle_unknown="error",
-                 unknown_value=None,
-                 encoded_missing_value=np.nan,
-                 min_frequency=None,
-                 max_categories=None,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
-        super().__init__(categories=categories,
-                         min_frequency=min_frequency,
-                         max_categories=max_categories,
-                         FL_type=FL_type,
-                         role=role,
-                         channel=channel)
-        self.module = SKL_OrdinalEncoder(categories=categories,
-                                         dtype=dtype,
-                                         handle_unknown=handle_unknown,
-                                         unknown_value=unknown_value,
-                                         encoded_missing_value=encoded_missing_value,
-                                         min_frequency=min_frequency,
-                                         max_categories=max_categories)
+    def __init__(
+        self,
+        categories="auto",
+        dtype=np.float64,
+        handle_unknown="error",
+        unknown_value=None,
+        encoded_missing_value=np.nan,
+        min_frequency=None,
+        max_categories=None,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
+        super().__init__(
+            categories=categories,
+            min_frequency=min_frequency,
+            max_categories=max_categories,
+            FL_type=FL_type,
+            role=role,
+            channel=channel,
+        )
+        self.module = SKL_OrdinalEncoder(
+            categories=categories,
+            dtype=dtype,
+            handle_unknown=handle_unknown,
+            unknown_value=unknown_value,
+            encoded_missing_value=encoded_missing_value,
+            min_frequency=min_frequency,
+            max_categories=max_categories,
+        )
 
     def Hfit(self, X):
         self.module._validate_params()
@@ -239,9 +264,9 @@ class OrdinalEncoder(_BaseEncoder):
                 "handle_unknown is 'use_encoded_value', "
                 f"got {self.module.unknown_value}."
             )
-        
+
         missing_indices = self._Hfit(X, ignore_missing_for_infrequent=True)
-            
+
         cardinalities = [len(cats) for cats in self.module.categories_]
         if self.module._infrequent_enabled:
             # Cardinality decreases because the infrequent categories are grouped
@@ -257,7 +282,7 @@ class OrdinalEncoder(_BaseEncoder):
                 if is_scalar_nan(cat):
                     cardinalities[cat_idx] -= 1
                     continue
-        
+
         if self.module.handle_unknown == "use_encoded_value":
             for cardinality in cardinalities:
                 if 0 <= self.module.unknown_value < cardinality:
@@ -301,11 +326,12 @@ class OrdinalEncoder(_BaseEncoder):
                         f"{invalid_features}"
                     )
         return self
-    
+
 
 def check_infrequent_enabled(min_frequency, max_categories):
-    if (max_categories is not None and max_categories >= 1
-        ) or min_frequency is not None:
+    if (
+        max_categories is not None and max_categories >= 1
+    ) or min_frequency is not None:
         return True
     else:
         return False
@@ -323,11 +349,9 @@ def compute_category_union(client_categories):
     return categories
 
 
-def get_min_freq_indices_counts(min_frequency,
-                                categories,
-                                category_counts,
-                                ignore_missing_for_infrequent=False):
-    
+def get_min_freq_indices_counts(
+    min_frequency, categories, category_counts, ignore_missing_for_infrequent=False
+):
     missing_indices = {}
     if ignore_missing_for_infrequent:
         missing_indices = compute_missing_indices(categories)
@@ -338,39 +362,42 @@ def get_min_freq_indices_counts(min_frequency,
         indices = np.flatnonzero(min_freq_mask)
         if missing_indices and col_idx in missing_indices:
             indices = np.delete(indices, indices == missing_indices[col_idx])
-        min_freq_indices_counts.append((indices, counts[indices]) \
-                                        if indices.size > 0 else (None, None))
+        min_freq_indices_counts.append(
+            (indices, counts[indices]) if indices.size > 0 else (None, None)
+        )
     return min_freq_indices_counts
 
 
-def infreq_indices_for_min_freq(min_frequency,
-                                categories,
-                                client_categories,
-                                min_freq_indices_counts):
+def infreq_indices_for_min_freq(
+    min_frequency, categories, client_categories, min_freq_indices_counts
+):
     infrequent_indices = []
     for feature_idx in range(len(categories)):
         count_dict = {}
         for client_idx in range(len(client_categories)):
             indices, counts = min_freq_indices_counts[client_idx][feature_idx]
             if indices is not None:
-                for i, cat in enumerate(client_categories[client_idx][feature_idx][indices]):
+                for i, cat in enumerate(
+                    client_categories[client_idx][feature_idx][indices]
+                ):
                     if cat in count_dict:
                         count_dict[cat] += counts[i]
                     else:
                         count_dict[cat] = counts[i]
 
-        min_freq_indices = [np.where(categories[feature_idx]== k)[0][0] \
-                            for k, v in count_dict.items() if v < min_frequency]
+        min_freq_indices = [
+            np.where(categories[feature_idx] == k)[0][0]
+            for k, v in count_dict.items()
+            if v < min_frequency
+        ]
         if min_freq_indices:
             infrequent_indices.append(np.array(min_freq_indices))
         else:
             infrequent_indices.append(None)
     return infrequent_indices
-                
 
-def compute_count_histogram(categories,
-                            client_categories,
-                            client_category_counts):
+
+def compute_count_histogram(categories, client_categories, client_category_counts):
     category_counts = []
     for feature_idx in range(len(categories)):
         categories_for_idx = categories[feature_idx]
@@ -379,14 +406,13 @@ def compute_count_histogram(categories,
 
         for client_idx, client_cat in enumerate(client_categories):
             idx_map = category_to_idx_map(
-                client_cat[feature_idx],
-                categories_for_idx,
-                category_map
+                client_cat[feature_idx], categories_for_idx, category_map
             )
 
-            category_counts_for_idx[idx_map] += \
-                client_category_counts[client_idx][feature_idx]
-            
+            category_counts_for_idx[idx_map] += client_category_counts[client_idx][
+                feature_idx
+            ]
+
         category_counts.append(category_counts_for_idx)
     return category_counts
 
@@ -409,9 +435,9 @@ def category_to_idx_map(client_category, server_category, category_map):
     return idx_map
 
 
-def compute_default_to_infrequent_mappings(categories, 
-                                           infrequent_indices, 
-                                           missing_indices={}):
+def compute_default_to_infrequent_mappings(
+    categories, infrequent_indices, missing_indices={}
+):
     # compute mapping from default mapping to infrequent mapping
     default_to_infrequent_mappings = []
 
@@ -455,27 +481,30 @@ def compute_missing_indices(categories):
 
 
 class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None):
-
-    def __init__(self,
-                 categories="auto",
-                 target_type="auto",
-                 smooth="auto",
-                 cv=5,
-                 shuffle=True,
-                 random_state=None,
-                 FL_type=None,
-                 role=None,
-                 channel=None):
+    def __init__(
+        self,
+        categories="auto",
+        target_type="auto",
+        smooth="auto",
+        cv=5,
+        shuffle=True,
+        random_state=None,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
         super().__init__(FL_type, role, channel)
         if FL_type == "H":
             self.check_channel()
             self.categories = categories
-        self.module = SKL_TargetEncoder(categories=categories,
-                                        target_type=target_type,
-                                        smooth=smooth,
-                                        cv=cv,
-                                        shuffle=shuffle,
-                                        random_state=random_state)
+        self.module = SKL_TargetEncoder(
+            categories=categories,
+            target_type=target_type,
+            smooth=smooth,
+            cv=cv,
+            shuffle=shuffle,
+            random_state=random_state,
+        )
 
     def fit(self, X=None, y=None):
         if self.FL_type == "V":
@@ -485,38 +514,53 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
     def Vfit(self, X, y):
         return self.module.fit(X, y)
-    
+
     def Hfit(self, X, y):
         self.module._validate_params()
         self._fit_encodings_all(X, y)
         return self
-    
+
     def fit_transform(self, X=None, y=None):
         if self.FL_type == "V":
             self.module.fit_transform(X, y)
         else:
             self.module._validate_params()
             if self.role == "client":
-                from sklearn.model_selection import KFold, StratifiedKFold  # avoid circular import
+                from sklearn.model_selection import (
+                    KFold,
+                    StratifiedKFold,
+                )  # avoid circular import
 
-                X_ordinal, X_known_mask, y_encoded, n_categories = self._fit_encodings_all(X, y)
+                (
+                    X_ordinal,
+                    X_known_mask,
+                    y_encoded,
+                    n_categories,
+                ) = self._fit_encodings_all(X, y)
 
                 # The cv splitter is voluntarily restricted to *KFold to enforce non
                 # overlapping validation folds, otherwise the fit_transform output will
                 # not be well-specified.
                 if self.module.target_type_ == "continuous":
                     cv = KFold(
-                        self.module.cv, shuffle=self.module.shuffle, random_state=self.module.random_state
+                        self.module.cv,
+                        shuffle=self.module.shuffle,
+                        random_state=self.module.random_state,
                     )
                 else:
                     cv = StratifiedKFold(
-                        self.module.cv, shuffle=self.module.shuffle, random_state=self.module.random_state
+                        self.module.cv,
+                        shuffle=self.module.shuffle,
+                        random_state=self.module.random_state,
                     )
 
                 # If 'multiclass' multiply axis=1 by num classes else keep shape the same
                 if self.module.target_type_ == "multiclass":
                     X_out = np.empty(
-                        (X_ordinal.shape[0], X_ordinal.shape[1] * len(self.module.classes_)),
+                        (
+                            X_ordinal.shape[0],
+                            X_ordinal.shape[1] * len(self.module.classes_),
+                        ),
                         dtype=np.float64,
                     )
                 else:
@@ -552,26 +596,26 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
                         y_train_mean,
                     )
                 return X_out
-            
+
             elif self.role == "server":
                 n_splits = self.module.cv
                 client_n_samples = self._fit_encodings_all()
 
                 for fold_idx in range(n_splits):
                     y_train_sum = sum(self.channel.recv_all("y_train_sum"))
-                    n_samples = get_n_samples_per_fold(client_n_samples, n_splits, fold_idx)
+                    n_samples = get_n_samples_per_fold(
+                        client_n_samples, n_splits, fold_idx
+                    )
                     y_train_mean = y_train_sum / n_samples
                     self.channel.send_all("y_train_mean", y_train_mean)
 
                     if self.module.target_type_ == "multiclass":
                         self._fit_encoding_multiclass(
-                            target_mean=self.module.target_mean_,
-                            n_samples=n_samples
+                            target_mean=self.module.target_mean_, n_samples=n_samples
                         )
                     else:
                         self._fit_encoding_binary_or_continuous(
-                            target_mean=self.module.target_mean_,
-                            n_samples=n_samples
+                            target_mean=self.module.target_mean_, n_samples=n_samples
                         )
 
     def _fit_encodings_all(self, X=None, y=None):
@@ -611,20 +655,20 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
             self.module.classes_ = None
             if self.module.target_type_ == "binary":
-                label_encoder = LabelEncoder(FL_type=self.FL_type,
-                                             role=self.role,
-                                             channel=self.channel)
+                label_encoder = LabelEncoder(
+                    FL_type=self.FL_type, role=self.role, channel=self.channel
+                )
                 y = label_encoder.fit_transform(y)
                 self.module.classes_ = label_encoder.module.classes_
             elif self.module.target_type_ == "multiclass":
-                label_binarizer = LabelBinarizer(FL_type=self.FL_type,
-                                                 role=self.role,
-                                                 channel=self.channel)
+                label_binarizer = LabelBinarizer(
+                    FL_type=self.FL_type, role=self.role, channel=self.channel
+                )
                 y = label_binarizer.fit_transform(y)
                 self.module.classes_ = label_binarizer.module.classes_
             else:  # continuous
                 y = _check_y(y, y_numeric=True, estimator=self)
-            
+
             target_sum = np.sum(y, axis=0)
             self.channel.send("target_sum", target_sum)
             n_samples = y.shape[0]
@@ -635,7 +679,10 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
                 X, handle_unknown="ignore", force_all_finite="allow-nan"
             )
             n_categories = np.fromiter(
-                (len(category_for_feature) for category_for_feature in self.module.categories_),
+                (
+                    len(category_for_feature)
+                    for category_for_feature in self.module.categories_
+                ),
                 dtype=np.int64,
                 count=len(self.module.categories_),
             )
@@ -685,15 +732,15 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
             self.module.classes_ = None
             if self.module.target_type_ == "binary":
-                label_encoder = LabelEncoder(FL_type=self.FL_type,
-                                             role=self.role,
-                                             channel=self.channel)
+                label_encoder = LabelEncoder(
+                    FL_type=self.FL_type, role=self.role, channel=self.channel
+                )
                 label_encoder.fit()
                 self.module.classes_ = label_encoder.module.classes_
             elif self.module.target_type_ == "multiclass":
-                label_binarizer = LabelBinarizer(FL_type=self.FL_type,
-                                                 role=self.role,
-                                                 channel=self.channel)
+                label_binarizer = LabelBinarizer(
+                    FL_type=self.FL_type, role=self.role, channel=self.channel
+                )
                 label_binarizer.fit()
                 self.module.classes_ = label_binarizer.module.classes_
 
@@ -707,19 +754,22 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
             if self.module.target_type_ == "multiclass":
                 encodings = self._fit_encoding_multiclass(
-                    target_mean=self.module.target_mean_,
-                    n_samples=n_samples
+                    target_mean=self.module.target_mean_, n_samples=n_samples
                 )
             else:
                 encodings = self._fit_encoding_binary_or_continuous(
-                    target_mean=self.module.target_mean_,
-                    n_samples=n_samples
+                    target_mean=self.module.target_mean_, n_samples=n_samples
                 )
             self.module.encodings_ = encodings
             return client_n_samples
 
     def _fit_encoding_binary_or_continuous(
-        self, X_ordinal=None, y=None, n_categories=None, target_mean=None, n_samples=None
+        self,
+        X_ordinal=None,
+        y=None,
+        n_categories=None,
+        target_mean=None,
+        n_samples=None,
     ):
         """Learn target encodings."""
         if self.module.smooth == "auto":
@@ -739,8 +789,15 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
                 target_mean,
             )
         return encodings
-    
-    def _fit_encoding_multiclass(self, X_ordinal=None, y=None, n_categories=None, target_mean=None, n_samples=None):
+
+    def _fit_encoding_multiclass(
+        self,
+        X_ordinal=None,
+        y=None,
+        n_categories=None,
+        target_mean=None,
+        n_samples=None,
+    ):
         """Learn multiclass encodings.
 
         Learn encodings for each class (c) then reorder encodings such that
@@ -779,7 +836,7 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
             for idx in range(start, (n_classes * n_features), n_features)
         )
         return [encodings[idx] for idx in reorder_index]
-    
+
     def _fit_encoding(self, X_int, y, n_categories, smooth, y_mean):
         if self.role == "client":
             n_features = X_int.shape[1]
@@ -798,12 +855,12 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
                 feat_sums.append(sums)
                 feat_counts.append(counts)
-            
+
             self.channel.send("feat_sums", feat_sums)
             self.channel.send("feat_counts", feat_counts)
 
             encodings = self.channel.recv("encodings")
-            
+
         elif self.role == "server":
             smooth_sum = smooth * y_mean
             encodings = []
@@ -884,20 +941,22 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
                     sum_squares += client_feat_sum_squares[client_idx][feat_idx]
 
                 means = sums / counts
-                sum_of_squared_diffs = sum_squares - sums ** 2 / counts
+                sum_of_squared_diffs = sum_squares - sums**2 / counts
 
-                if y_variance == 0.:
+                if y_variance == 0.0:
                     encodings.append(np.full(sum_squares.shape, y_mean))
                 else:
                     lambda_ = (
-                        y_variance * counts /
-                        (y_variance * counts + sum_of_squared_diffs / counts))
+                        y_variance
+                        * counts
+                        / (y_variance * counts + sum_of_squared_diffs / counts)
+                    )
                     encodings.append(lambda_ * means + (1 - lambda_) * y_mean)
 
             self.channel.send_all("encodings", encodings)
 
         return encodings
-    
+
 
 def get_n_samples_per_fold(client_n_samples, n_splits, fold_idx):
     n_samples = 0
