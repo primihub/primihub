@@ -604,7 +604,10 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
   VLOG(5) << "client begin to fetch data";
   auto client_reader = this->seatunnel_stub_->FetchData(&context, request);
   std::map<std::string, std::shared_ptr<arrow::ArrayBuilder>> builder_map;
+  size_t loop = 0;
   while (client_reader->Read(&response)) {
+    VLOG(5) << "client_reader->Read done for seq: " << loop << " "
+            << "content: " << primihub::proto::util::TypeToString(response);
     const auto& data_info = response.data();
     for (const auto& [file_name, value] : data_info) {
       auto type = value.var_type();
@@ -618,6 +621,7 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
                 << "file_name: " << file_name;
       AddDataToBuilder(value, field_type, builder_map[file_name]);
     }
+    loop++;
   }
   VLOG(5) << "builder_map: " << builder_map.size();
   // build data
