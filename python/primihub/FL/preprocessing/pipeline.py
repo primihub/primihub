@@ -58,7 +58,7 @@ class Pipeline(BaseModel):
             data = read_data(
                 data_info=self.role_params["data"],
                 selected_column=selected_column,
-                id=id,
+                droped_column=id,
             )
 
         # select preprocess column
@@ -212,7 +212,9 @@ class Pipeline(BaseModel):
         selected_column = preprocess["selected_column"]
         id = preprocess["id"]
         data = read_data(
-            data_info=self.role_params["data"], selected_column=selected_column, id=id
+            data_info=self.role_params["data"],
+            selected_column=selected_column,
+            droped_column=id,
         )
 
         # preprocess dataset
