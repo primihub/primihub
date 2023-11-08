@@ -390,6 +390,7 @@ retcode SeatunnelCursor::MysqlBuildQuerySql(
     sql.append(" LIMIT ").append(std::to_string(query_limit));
   }
   *query_sql = std::move(sql);
+  LOG(INFO) << "MysqlBuildQuerySql: " << *query_sql;
   return retcode::SUCCESS;
 }
 
@@ -410,6 +411,7 @@ retcode SeatunnelCursor::DmBuildQuerySql(
       .append("\"").append(access_info.db_name).append("\".")    // db name
       .append("\"").append(access_info.table_name).append("\""); // tablename
   *query_sql = std::move(sql);
+  LOG(INFO) << "DmBuildQuerySql: " << *query_sql;
   return retcode::SUCCESS;
 }
 
@@ -429,7 +431,7 @@ retcode SeatunnelCursor::SqlServerBuildQuerySql(
   sql.append("FROM ")
      .append(access_info.table_name); // tablename
   *query_sql = std::move(sql);
-  VLOG(5) << "SqlServerBuildQuerySql: " << *query_sql;
+  LOG(INFO) << "SqlServerBuildQuerySql: " << *query_sql;
   return retcode::SUCCESS;
 }
 
@@ -450,7 +452,7 @@ retcode SeatunnelCursor::OracleBuildQuerySql(
     sql.append(" WHERE rownum <= ").append(std::to_string(query_limit));
   }
   *query_sql = std::move(sql);
-  VLOG(5) << "OracleBuildQuerySql: " << *query_sql;
+  LOG(INFO) << "OracleBuildQuerySql: " << *query_sql;
   return retcode::SUCCESS;
 }
 
@@ -470,6 +472,7 @@ retcode SeatunnelCursor::HiveBuildQuerySql(
     sql.append(" LIMIT ").append(std::to_string(query_limit));
   }
   *query_sql = std::move(sql);
+  LOG(INFO) << "HiveBuildQuerySql: " << *query_sql;
   return retcode::SUCCESS;
 }
 // ======== Seatunnel Driver implementation ========

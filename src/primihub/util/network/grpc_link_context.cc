@@ -636,7 +636,6 @@ std::shared_ptr<arrow::Table> GrpcChannel::FetchData(
     }
     auto& builder = it->second;
     builder->Finish(&arr);
-    LOG(ERROR) << "ToString: " << arr->ToString();
     array_data.push_back(std::move(arr));
   }
   return arrow::Table::Make(schema, array_data);
