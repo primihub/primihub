@@ -10,6 +10,9 @@ from ..sketch import (
     send_local_quantile_sketch,
     merge_local_quantile_sketch,
     get_quantiles,
+    send_local_fi_sketch,
+    merge_local_fi_sketch,
+    get_frequent_items,
 )
 
 
@@ -81,15 +84,13 @@ class SimpleImputer(_PreprocessBase, _BaseImputer):
         elif self.role == "server":
             fill_value = self.module.fill_value
 
-        self.module.statistics_ = self._dense_fit(
-            X, self.module.strategy, self.module.missing_values, fill_value
-        )
+        self.module.statistics_ = self._dense_fit(X, self.module.strategy, fill_value)
         return self
 
-    def _dense_fit(self, X, strategy, missing_values, fill_value):
+    def _dense_fit(self, X, strategy, fill_value):
         """Fit the transformer on dense data."""
         if self.role == "client":
-            missing_mask = _get_mask(X, missing_values)
+            missing_mask = _get_mask(X, self.missing_values)
             masked_X = np.ma.masked_array(X, mask=missing_mask)
 
             super()._fit_indicator(missing_mask)
@@ -178,47 +179,48 @@ class SimpleImputer(_PreprocessBase, _BaseImputer):
         # Most frequent
         elif strategy == "most_frequent":
             if self.role == "client":
-                frequency_counts = []
-                # To be able access the elements by columns
-                X = X.transpose()
-                mask = missing_mask.transpose()
-
-                for row, row_mask in zip(X[:], mask[:]):
-                    row_mask = np.logical_not(row_mask).astype(bool)
-                    row = row[row_mask]
-
-                    if len(row) == 0 and self.module.keep_empty_features:
-                        frequency_counts.append(([missing_values], len(row_mask)))
+                items, counts = [], []
+                for col, col_mask in zip(X.T, missing_mask.T):
+                    col = col[~col_mask]
+                    if len(col) == 0:
+                        items.append([])
+                        counts.append([])
                     else:
-                        frequency_counts.append(_unique(row, return_counts=True))
+                        col_items, col_counts = _unique(col, return_counts=True)
+                        items.append(col_items)
+                        counts.append(col_counts)
 
-                self.channel.send("frequency_counts", frequency_counts)
+                send_local_fi_sketch(items, counts, channel=self.channel, k=self.k)
                 most_frequent = self.channel.recv("most_frequent")
 
             elif self.role == "server":
-                frequency_counts = self.channel.recv_all("frequency_counts")
-                n_features = len(frequency_counts[0])
-                most_frequent = []
+                sketch = merge_local_fi_sketch(
+                    channel=self.channel,
+                    k=self.k,
+                )
 
-                for feature_idx in range(n_features):
-                    feature_counts = {}
-                    for client_fc in frequency_counts:
-                        feature, counts = client_fc[feature_idx]
-                        for i, key in enumerate(feature):
-                            if key in feature_counts:
-                                feature_counts[key] += counts[i]
-                            else:
-                                feature_counts[key] = counts[i]
-
-                    most_frequent_for_idx = max(feature_counts, key=feature_counts.get)
-                    if most_frequent_for_idx == missing_values:
-                        if self.module.keep_empty_features:
-                            most_frequent_for_idx = 0
+                mask = [col_sketch.is_empty() for col_sketch in sketch]
+                if not any(mask):
+                    most_frequent = get_frequent_items(
+                        sketch=sketch,
+                        error_type="NFP",
+                        max_item=1,
+                    )
+                    most_frequent = np.array(most_frequent, dtype=object)
+                else:
+                    most_frequent = np.empty(len(sketch), dtype=object)
+                    for i, empty in enumerate(mask):
+                        if empty:
+                            most_frequent[i] = (
+                                0 if self.module.keep_empty_features else np.nan
+                            )
                         else:
-                            most_frequent_for_idx = np.nan
-                    most_frequent.append(most_frequent_for_idx)
-                most_frequent = np.array(most_frequent)
-
+                            most_frequent[i] = get_frequent_items(
+                                sketch[i],
+                                error_type="NFP",
+                                max_item=1,
+                                vector=False,
+                            )
                 self.channel.send_all("most_frequent", most_frequent)
             return most_frequent
 

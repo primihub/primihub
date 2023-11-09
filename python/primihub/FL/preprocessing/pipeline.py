@@ -116,17 +116,14 @@ class Pipeline(BaseModel):
 
                 if role != "server":
                     if "SimpleImputer" in module_name:
-                        nan_column = column[data[column].isna().any()]
                         if "string" in module_name:
                             column = (
-                                data[nan_column].select_dtypes(exclude=num_type).columns
+                                data[column].select_dtypes(exclude=num_type).columns
                             )
                         elif "numeric" in module_name:
                             column = (
-                                data[nan_column].select_dtypes(include=num_type).columns
+                                data[column].select_dtypes(include=num_type).columns
                             )
-                        else:
-                            column = nan_column
                     elif module_name in ["OrdinalEncoder", "OneHotEncoder"]:
                         column = data[column].select_dtypes(exclude=num_type).columns
                     elif "Scaler" in module_name:
