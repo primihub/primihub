@@ -56,19 +56,19 @@ def col_frequent_client(
     )
 
     if send_server:
-        all_items, all_counts = [], []
+        items, counts = [], []
         for Xi in X:
-            items, counts = _unique(Xi, return_counts=True)
+            col_items, col_counts = _unique(Xi, return_counts=True)
 
             if ignore_nan:
                 # nan is the last element
-                if is_scalar_nan(items[-1]):
-                    items, counts = items[:-1], counts[:-1]
+                if is_scalar_nan(col_items[-1]):
+                    col_items, col_counts = col_items[:-1], col_counts[:-1]
 
-            all_items.append(items)
-            all_counts.append(counts)
+            items.append(col_items)
+            counts.append(col_counts)
 
-        send_local_fi_sketch(items=all_items, weights=all_counts, channel=channel, k=k)
+        send_local_fi_sketch(items, counts, channel=channel, k=k)
 
     if recv_server:
         if not send_server:

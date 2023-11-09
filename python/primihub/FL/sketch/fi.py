@@ -19,43 +19,32 @@ def check_frequent_params(max_item: int, min_freq: int):
 
 def send_local_fi_sketch(
     items,
-    weights=None,
+    counts,
     channel=None,
     vector: bool = True,
     data_type: str = "mix",
     k: int = 20,
 ):
     check_inputdim(items, vector)
-    if weights is not None and len(items) != len(weights):
-        raise RuntimeError("Length of items and weights must be equal")
+    if len(items) != len(counts):
+        raise RuntimeError("Length of items and counts must be equal")
 
     sketch = select_fi_sketch(data_type)
     if vector:
         fi = []
-        if weights is None:
-            for col in items:
-                col_fi = sketch(lg_max_k=k)
-                for x in col:
-                    col_fi.update(x)
-                fi.append(fi_serialize(col_fi, data_type))
-        else:
-            for col_item, col_weight in zip(items, weights):
-                if len(col_item) != len(col_weight):
-                    raise RuntimeError("Length of items and weights must be equal")
-                col_fi = select_fi_sketch(data_type)(lg_max_k=k)
-                for x, w in zip(col_item, col_weight):
-                    col_fi.update(x, w)
-                fi.append(fi_serialize(col_fi, data_type))
+        for col_item, col_weight in zip(items, counts):
+            if len(col_item) != len(col_weight):
+                raise RuntimeError("Length of items and counts must be equal")
+            col_fi = select_fi_sketch(data_type)(lg_max_k=k)
+            for x, w in zip(col_item, col_weight):
+                col_fi.update(x, w)
+            fi.append(fi_serialize(col_fi, data_type))
         channel.send("local_fi_sketch", fi)
 
     else:
         fi = sketch(lg_max_k=k)
-        if weights is None:
-            for x in items:
-                fi.update(x)
-        else:
-            for x, w in zip(items, weights):
-                fi.update(x, w)
+        for x, w in zip(items, counts):
+            fi.update(x, w)
         channel.send("local_fi_sketch", fi_serialize(fi, data_type))
 
 
