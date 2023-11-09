@@ -2,6 +2,7 @@
 #include "src/primihub/util/arrow_wrapper_util.h"
 #include <glog/logging.h>
 #include <algorithm>
+#include <sstream>
 
 namespace primihub::arrow_wrapper::util {
 static std::unordered_map<std::string, int> sql_tyep_2_arrow_type_map {
@@ -330,9 +331,14 @@ retcode AddDoubleValue(double value,
     ptr->Append(value);
     break;
   }
-  default:
-    std::string str_value = std::to_string(value);
+  default: {
+    std::ostringstream out;
+    out << value;
+    std::string str_value = out.str();
     return AddStringValue(str_value, expected_type, builder);
+  }
+
+
   }
   return retcode::SUCCESS;
 }
