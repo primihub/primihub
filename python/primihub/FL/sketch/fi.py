@@ -6,7 +6,8 @@ from datasketches import (
     PyFloatsSerDe,
     PyIntsSerDe,
 )
-from .util import check_inputdim, check_sketch, check_data_types
+from .serde import PyMixedItemsSerDe
+from .util import check_inputdim, check_sketch
 
 
 def check_frequent_params(max_item: int, min_freq: int):
@@ -21,44 +22,33 @@ def send_local_fi_sketch(
     weights=None,
     channel=None,
     vector: bool = True,
-    data_type: str = "auto",
+    data_type: str = "mix",
     k: int = 20,
 ):
     check_inputdim(items, vector)
     if weights is not None and len(items) != len(weights):
-        raise RuntimeError("Length of items and weights should be equal")
+        raise RuntimeError("Length of items and weights must be equal")
 
-    if data_type == "auto":
-        if vector:
-            data_type = []
-            for col in items:
-                data_type.append(check_data_types(col))
-        else:
-            data_type = check_data_types(items)
-
-        # globally check data types are the same
-        channel.send("data_type", data_type)
-
+    sketch = select_fi_sketch(data_type)
     if vector:
         fi = []
         if weights is None:
-            for fea_idx, col in enumerate(items):
-                col_fi = select_fi_sketch(data_type[fea_idx])(lg_max_k=k)
+            for col in items:
+                col_fi = sketch(lg_max_k=k)
                 for x in col:
                     col_fi.update(x)
-                fi.append(fi_serialize(col_fi, data_type[fea_idx]))
+                fi.append(fi_serialize(col_fi, data_type))
         else:
-            for fea_idx, (col_item, col_weight) in enumerate(zip(items, weights)):
+            for col_item, col_weight in zip(items, weights):
                 if len(col_item) != len(col_weight):
-                    raise RuntimeError("Length of items and weights should be equal")
-                col_fi = select_fi_sketch(data_type[fea_idx])(lg_max_k=k)
+                    raise RuntimeError("Length of items and weights must be equal")
+                col_fi = select_fi_sketch(data_type)(lg_max_k=k)
                 for x, w in zip(col_item, col_weight):
                     col_fi.update(x, w)
-                fi.append(fi_serialize(col_fi, data_type[fea_idx]))
+                fi.append(fi_serialize(col_fi, data_type))
         channel.send("local_fi_sketch", fi)
 
     else:
-        sketch = select_fi_sketch(data_type)
         fi = sketch(lg_max_k=k)
         if weights is None:
             for x in items:
@@ -75,7 +65,7 @@ def get_global_frequent_items(
     max_item: int = None,
     min_freq: int = None,
     vector: bool = True,
-    data_type: str = "auto",
+    data_type: str = "mix",
     k: int = 20,
 ):
     sketch = merge_local_fi_sketch(
@@ -96,34 +86,22 @@ def get_global_frequent_items(
 def merge_local_fi_sketch(
     channel,
     vector: bool = True,
-    data_type: str = "auto",
+    data_type: str = "mix",
     k: int = 20,
 ):
-    if data_type == "auto":
-        data_type = np.array(channel.recv_all("data_type"))
-        # make sure data types are the same for all clients
-        if not (data_type == data_type[0]).all():
-            raise RuntimeError(f"Data types are different, see {data_type}")
-        data_type = data_type[0]
-
     local_fi_sketch = channel.recv_all("local_fi_sketch")
+    sketch = select_fi_sketch(data_type)
 
     if vector:
         d = len(local_fi_sketch[0])
-        global_fi = [
-            select_fi_sketch(data_type[fea_idx])(lg_max_k=k) for fea_idx in range(d)
-        ]
+        global_fi = [sketch(lg_max_k=k) for _ in range(d)]
     else:
-        sketch = select_fi_sketch(data_type)
         global_fi = sketch(lg_max_k=k)
 
     for i in range(len(local_fi_sketch)):
         if vector:
             for fea_idx in range(d):
-                sketch = select_fi_sketch(data_type[fea_idx])
-                fi = fi_deserialize(
-                    sketch, local_fi_sketch[i][fea_idx], data_type[fea_idx]
-                )
+                fi = fi_deserialize(sketch, local_fi_sketch[i][fea_idx], data_type)
                 global_fi[fea_idx].merge(fi)
         else:
             fi = fi_deserialize(sketch, local_fi_sketch[i], data_type)
@@ -133,7 +111,7 @@ def merge_local_fi_sketch(
 
 
 def select_fi_sketch(data_type: str):
-    valid_type = ["str", "float", "int"]
+    valid_type = ["str", "float", "int", "mix"]
 
     data_type = data_type.lower()
     if data_type not in valid_type:
@@ -158,6 +136,8 @@ def fi_serialize(sketch, data_type: str):
         return sketch.serialize(PyFloatsSerDe())
     elif data_type == "int":
         return sketch.serialize(PyIntsSerDe())
+    elif data_type == "mix":
+        return sketch.serialize(PyMixedItemsSerDe())
 
 
 def fi_deserialize(sketch, fi_bytes, data_type: str):
@@ -167,6 +147,8 @@ def fi_deserialize(sketch, fi_bytes, data_type: str):
         return sketch.deserialize(fi_bytes, PyFloatsSerDe())
     elif data_type == "int":
         return sketch.deserialize(fi_bytes, PyIntsSerDe())
+    elif data_type == "mix":
+        return sketch.deserialize(fi_bytes, PyMixedItemsSerDe())
 
 
 def get_frequent_items(
@@ -179,7 +161,7 @@ def get_frequent_items(
     valid_error_type = ["NFP", "NFN"]
     if error_type not in valid_error_type:
         raise ValueError(
-            f"Unsupported error type: {error_type}," f" use {valid_error_type} instead"
+            f"Unsupported error type: {error_type}, use {valid_error_type} instead"
         )
 
     error_type = {

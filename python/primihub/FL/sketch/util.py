@@ -39,24 +39,3 @@ def check_sketch(sketch, sketch_name: str, vector: bool):
         class_name = sketch.__class__.__name__
         if class_name[:6] == "vector":
             raise RuntimeError(f"{class_name} is for vector input")
-
-
-def check_data_types(data):
-    valid_data_types = {"int", "float", "str"}
-    data_types = set(type(v).__qualname__ for v in data)
-
-    if len(data_types) != 1:
-        raise RuntimeError(f"Mixed type of data is unsupported: {data_types}")
-
-    data_types = list(data_types)[0]
-    if "int" in data_types:
-        data_types = "int"
-    elif "float" in data_types:
-        data_types = "float"
-    elif "str" in data_types:
-        data_types = "str"
-    else:
-        raise RuntimeError(
-            f"{data_types} type is unsupported, use {valid_data_types} instead"
-        )
-    return data_types
