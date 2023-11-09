@@ -23,6 +23,10 @@ meta_service:
   port: 9099
   use_tls: false
 
+seatunnel:
+  config_file: plugins/seatunnel_conf.json
+  task_template_file: plugins/seatunnel_task_template.json
+
 # default storage path
 # storage_path: "data"
 

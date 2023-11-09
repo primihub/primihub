@@ -1,0 +1,9 @@
+{
+  "env": {
+    "hazelcast.client.config": "./plugins/hazelcast-client.yaml",
+    "SEATUNNEL_HOME": "/seatunnel/apache-seatunnel-2.3.3"
+  },
+  "JAR_PATH": [
+    "./plugins/seatunnel-client-1.0-SNAPSHOT-jar-with-dependencies.jar"
+  ]
+}

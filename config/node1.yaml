@@ -48,6 +48,10 @@ tee:
   cert_path: "data/sgx/"
   ra_server_addr: "127.0.0.1:8888"
 
+seatunnel:
+  config_file: plugins/seatunnel_conf.json
+  task_template_file: plugins/seatunnel_task_template.json
+
 # default storage path
 # storage_path: "data"
 

@@ -1,0 +1,29 @@
+{
+  "env" : {
+    "job.mode" : "STREAMING",
+    "job.name" : "SeaTunnel_Job"
+  },
+  "source" : [
+    {
+      "password" : "",
+      "driver" : "",
+      "parallelism" : 1,
+      "query" : "",
+      "connection_check_timeout_sec" : 10,
+      "batch_size": 1,
+      "fetch_size" : "1",
+      "plugin_name" : "Jdbc",
+      "user" : "",
+      "url" : ""
+    }
+  ],
+  "sink" : [
+    {
+      "plugin_name" : "Grpc",
+      "host" : "",
+      "port" : 0,
+      "dataSetId": "dataSetId",
+      "traceId": "traceId"
+    }
+  ]
+}
