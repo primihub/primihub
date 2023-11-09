@@ -17,6 +17,7 @@
 #include "src/primihub/node/worker/worker.h"
 #include <memory>
 #include <string>
+#include <nlohmann/json.hpp>
 #include "src/primihub/task/semantic/factory.h"
 #include "src/primihub/task/semantic/task.h"
 #include "base64.h"
@@ -24,6 +25,7 @@
 #include "src/primihub/util/proto_log_helper.h"
 #include "Poco/PipeStream.h"
 #include "Poco/StreamCopier.h"
+
 
 using TaskFactory = primihub::task::TaskFactory;
 using Process = Poco::Process;
@@ -158,10 +160,17 @@ retcode Worker::ExecuteTaskByProcess(const PushTaskRequest* task_request) {
       pv.set_is_array(false);
       pv.set_value_string(dataset_id);
       (*param_map_ptr)[dataset_name] = std::move(pv);
-      dataset_id = access_info->toString();
+      nlohmann::json js = nlohmann::json::parse(access_info->toString());
+      js["dataset_id"] = dataset_id;
+      dataset_id = js.dump();
     }
     datasets.set_dataset_detail(true);
   }
+  // server config file path
+  rpc::ParamValue pv;
+  pv.set_is_array(false);
+  pv.set_value_string(server_config.getConfigFile());
+  (*param_map_ptr)["SERVER_CONF_FILE"] = std::move(pv);
   std::string request_str = pb_util::TaskRequestToString(send_request);
   LOG(INFO) << TASK_INFO_STR << "Task Process::execute: " << request_str;
 

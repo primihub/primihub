@@ -24,8 +24,8 @@ class SeatunnelClient():
       j_pkg = jpype.JPackage("org.apache.seatunnel")
       self.instance = j_pkg.SeaTunnelEngineProxy.getInstance()
 
-   def SubmitTask(self, json_file_path):
-      task_info = jpype.JString(json_file_path)
+   def SubmitTask(self, task_content):
+      task_info = jpype.JString(task_content)
       engine_id = random.randint(1, 1000000)
       jobInstanceId = jpype.JLong(random.randint(1, 1000000))
       jobEngineId = jpype.JLong(engine_id)
@@ -50,48 +50,48 @@ class SeatunnelClient():
       return 0
 
 if __name__ == '__main__':
-    global_config = {
-      "env": {
-        "hazelcast.client.config": "/home/cuibo/workspace/myproject/seatunnel/client/singleton/config/hazelcast-client.yaml",
-        "SEATUNNEL_HOME": "/home/cuibo/workspace/myproject/seatunnel/seatunnel",
-      },
+    # caution test example,
+    # it must modify the following config before run it successfully
+    # global_config = {
+    #   "env": {
+    #     "hazelcast.client.config": "./hazelcast-client.yaml",
+    #     "SEATUNNEL_HOME": "path for seatunnel",
+    #   },
 
-      "JAR_PATH": [
-        "./plugins/seatunnel-client-1.0-SNAPSHOT-jar-with-dependencies.jar",
-        "/home/cuibo/workspace/myproject/seatunnel/seatunnel/connectors/seatunnel/connector-jdbc-2.3.3-SNAPSHOT.jar",
-        "/home/cuibo/workspace/myproject/seatunnel/seatunnel/connectors/seatunnel/connector-grpc-2.3.3-SNAPSHOT.jar",
-      ],
-    }
-    task_content = {
-      "env" : {
-        "job.mode" : "STREAMING",
-        "job.name" : "SeaTunnel_Job"
-      },
-      "source" : [
-        {
-          "password" : "123456",
-          "driver" : "com.mysql.cj.jdbc.Driver",
-          "parallelism" : 1,
-          "query" : "SELECT * FROM `jeecg-boot`.`sys_log` LIMIT 0,50",
-          "connection_check_timeout_sec" : 30,
-          "batch_size":1,
-          "fetch_size" : "1",
-          "plugin_name" : "Jdbc",
-          "user" : "root",
-          "url" : "jdbc:mysql://172.21.1.78:3306/jeecg-boot?characterEncoding=UTF-8&useUnicode=true&useSSL=false&tinyInt1isBit=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
-        }
-      ],
-      "sink" : [
-        {
-          "plugin_name" : "Grpc",
-          "host" : "172.21.1.63",
-          "port" : 50051,
-          "dataSetId":"dataSetId",
-          "traceId":"traceId"
-        }
-      ]
-    }
-    client = SeatunnelClient(global_config)
-    #task_confg = "/home/cuibo/workspace/myproject/seatunnel/client/singleton/config/job_cfg.json"
-    task_config = json.dumps(task_content)
-    client.SubmitTask(task_config)
+    #   "JAR_PATH": [
+    #     "./plugins/seatunnel-client-1.0-SNAPSHOT-jar-with-dependencies.jar",
+    #   ],
+    # }
+    # task_content = {
+    #   "env" : {
+    #     "job.mode" : "STREAMING",
+    #     "job.name" : "SeaTunnel_Job"
+    #   },
+    #   "source" : [
+    #     {
+    #       "password" : "123456",
+    #       "driver" : "com.mysql.cj.jdbc.Driver",
+    #       "parallelism" : 1,
+    #       "query" : "SELECT * FROM `jeecg-boot`.`sys_log` LIMIT 0,50",
+    #       "connection_check_timeout_sec" : 30,
+    #       "batch_size":1,
+    #       "fetch_size" : "1",
+    #       "plugin_name" : "Jdbc",
+    #       "user" : "root",
+    #       "url" : "url for mysql"
+    #     }
+    #   ],
+    #   "sink" : [
+    #     {
+    #       "plugin_name" : "Grpc",
+    #       "host" : "172.21.1.63",
+    #       "port" : 50051,
+    #       "dataSetId":"dataSetId",
+    #       "traceId":"traceId"
+    #     }
+    #   ]
+    # }
+    # client = SeatunnelClient(global_config)
+    # task_config = json.dumps(task_content)
+    # client.SubmitTask(task_config)
+    pass

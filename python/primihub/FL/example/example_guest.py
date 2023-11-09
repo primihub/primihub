@@ -1,18 +1,20 @@
 from primihub.FL.utils.base import BaseModel
-
-
+from primihub.utils.logger_util import logger
+from primihub.FL.utils.dataset import read_data
 class ExampleGuest(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def run(self):
-        print("roles:", self.roles)
-        print("common_params: ", self.common_params)
-        print("role_params: ", self.role_params)
-        print("node_info: ", self.node_info)
-        print("task_info: ", self.task_info)
-
+        logger.info("roles:", self.roles)
+        logger.info("common_params: ", self.common_params)
+        print("role_params: ", self.role_params["data"])
+        logger.info("node_info: ", self.node_info)
+        logger.info("task_info: ", self.task_info)
+        dataset_info = self.role_params["data"]
+        df = read_data(dataset_info)
+        print(df.to_string())
     def train(self):
         pass
 

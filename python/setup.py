@@ -108,6 +108,7 @@ def compile_proto():
                         src/primihub/protos/common.proto  \
                         src/primihub/protos/service.proto \
                         src/primihub/protos/worker.proto \
+                        src/primihub/protos/metadatastream.proto \
                         src/primihub/protos/pir.proto \
                         src/primihub/protos/psi.proto""".format(python_out=python_out_dir,
                                                                 grpc_python_out=grpc_python_out,

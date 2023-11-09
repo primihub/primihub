@@ -25,12 +25,15 @@ class ContextAll:
         self.dataset_info = {}
         self.party_access_info = {}
         self.task_config = ""
+        self.server_config_ = ""
 
     def init_context(self):
         self.task_req = worker_pb2.PushTaskRequest()
         self.task_req.ParseFromString(self.message)
         self.task_config = self.task_req.task
         self.task_info = self.task_config.task_info
+        para_map = self.task_config.params.param_map
+        self.server_config_ = para_map["SERVER_CONF_FILE"].value_string
 
     def request_id(self):
         return self.task_info.request_id
@@ -40,6 +43,9 @@ class ContextAll:
 
     def task_code(self):
         return self.task_config.code
+
+    def server_config_file(self):
+        return self.server_config_
 
 def set_message(message):
     Context.message = message

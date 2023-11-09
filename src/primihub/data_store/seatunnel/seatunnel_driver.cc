@@ -231,7 +231,7 @@ std::shared_ptr<Dataset> SeatunnelCursor::read(
       return nullptr;
     }
     std::string query_sql;
-    auto ret = BuildQuerySql(data_schema, *access_info, 100, &query_sql);
+    auto ret = BuildQuerySql(data_schema, *access_info, -1, &query_sql);
     if (ret != retcode::SUCCESS) {
       LOG(ERROR) << "BuildQuerySql failed";
       return nullptr;
@@ -258,16 +258,11 @@ std::shared_ptr<Dataset> SeatunnelCursor::read(
             .attr("SeatunnelClient");
     py::object client = SeatunnelClient(py::bytes(seatunnel_config));
     py::object submit_task = client.attr("SubmitTask");
-    py::object obj_retcode = submit_task(py::bytes(new_task_content));
-    int retcode = obj_retcode.cast<int>();
+    submit_task(py::bytes(new_task_content));
     submit_task.release();
     client.release();
     SeatunnelClient.release();
     VLOG(1) << "<<<<<<<<< end of Trigger get dataset  <<<<<<<<<";
-    if (retcode != 0) {
-      LOG(ERROR) << "submitted task encountes error";
-      return nullptr;
-    }
   }
 
   std::shared_ptr<arrow::Table> table{nullptr};
@@ -297,7 +292,7 @@ std::shared_ptr<Dataset> SeatunnelCursor::read(
     LOG(ERROR) << "get data failed";
     return nullptr;
   }
-  LOG(INFO) << this->TraceId() << "FetchData finished:";
+  LOG(INFO) << this->TraceId() << " FetchData finished:";
   auto dataset = std::make_shared<Dataset>(table, this->driver_);
   return dataset;
 }
