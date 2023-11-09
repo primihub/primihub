@@ -223,4 +223,141 @@ std::shared_ptr<arrow::Array> BinaryArrowArrayBuilder(
   return array;
 }
 
+std::shared_ptr<arrow::ArrayBuilder> CreateBuilder(int type) {
+  std::shared_ptr<arrow::ArrayBuilder> builder;
+  switch (type) {
+  case arrow::Type::type::INT32:
+    builder = std::make_shared<arrow::Int32Builder>();
+    break;
+  case arrow::Type::type::INT64:
+    builder = std::make_shared<arrow::Int64Builder>();
+    break;
+  case arrow::Type::type::STRING:
+    builder = std::make_shared<arrow::StringBuilder>();
+    break;
+  case arrow::Type::type::FLOAT:
+    builder = std::make_shared<arrow::FloatBuilder>();
+    break;
+  case arrow::Type::type::BOOL:
+    builder = std::make_shared<arrow::BooleanBuilder>();
+    break;
+  case arrow::Type::type::DOUBLE:
+    builder = std::make_shared<arrow::DoubleBuilder>();
+    break;
+  default:
+    LOG(WARNING) << "unknown type: " << static_cast<int>(type)
+                 << " using string instead";
+    builder = std::make_shared<arrow::StringBuilder>();
+    break;
+  }
+  return builder;
+}
+
+retcode AddIntValue(int64_t value,
+                    int expected_type,
+                    std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::INT32: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int32Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::BOOL: {
+    auto ptr = std::dynamic_pointer_cast<arrow::BooleanBuilder>(builder);
+    ptr->Append(value == 0);
+    break;
+  }
+  case arrow::Type::type::UINT32: {
+    auto ptr = std::dynamic_pointer_cast<arrow::UInt32Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::INT64: {
+    auto ptr = std::dynamic_pointer_cast<arrow::Int64Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::UINT64: {
+    auto ptr = std::dynamic_pointer_cast<arrow::UInt64Builder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::STRING: {
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(std::to_string(value));
+    break;
+  }
+  case arrow::Type::type::FLOAT: {
+    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::DOUBLE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default:
+    LOG(ERROR) << "unable to convert from int to " << expected_type;
+  }
+  return retcode::SUCCESS;
+}
+
+retcode AddBoolValue(bool value,
+                     int expected_type,
+                     std::shared_ptr<arrow::ArrayBuilder> builder) {
+  if (expected_type == arrow::Type::type::BOOL) {
+    auto ptr = std::dynamic_pointer_cast<arrow::BooleanBuilder>(builder);
+    ptr->Append(value);
+  } else {
+    int64_t int_value = static_cast<int>(value);
+    return AddIntValue(int_value, expected_type, builder);
+  }
+  return retcode::SUCCESS;
+}
+
+retcode AddDoubleValue(double value,
+                       int expected_type,
+                       std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::FLOAT: {
+    auto ptr = std::dynamic_pointer_cast<arrow::FloatBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  case arrow::Type::type::DOUBLE: {
+    auto ptr = std::dynamic_pointer_cast<arrow::DoubleBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default:
+    std::string str_value = std::to_string(value);
+    return AddStringValue(str_value, expected_type, builder);
+  }
+  return retcode::SUCCESS;
+}
+
+retcode AddStringValue(const std::string& value,
+                       int expected_type,
+                       std::shared_ptr<arrow::ArrayBuilder> builder) {
+  switch (expected_type) {
+  case arrow::Type::type::STRING: {
+    auto ptr = std::dynamic_pointer_cast<arrow::StringBuilder>(builder);
+    ptr->Append(value);
+    break;
+  }
+  default: {
+    try {
+      double d_value = std::stod(value);
+      return AddDoubleValue(d_value, expected_type, builder);
+    } catch (std::exception& e) {
+      LOG(ERROR) << "convert [" << value << "]to double failed. " << e.what();
+      return retcode::FAIL;
+    }
+    break;
+  }
+  }
+  return retcode::SUCCESS;
+}
+
 }  // namespace primihub::arrow_wrapper::util

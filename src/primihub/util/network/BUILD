@@ -25,6 +25,7 @@ cc_library(
     "//src/primihub/util:log_util",
     "//src/primihub/util:pb_log_helper",
     "//src/primihub/protos:dataset_proto",
+    "//src/primihub/util:arrow_wrapper_util",
     "@com_github_glog_glog//:glog",
     "@com_github_grpc_grpc//:grpc++",
     "@arrow",

@@ -64,18 +64,9 @@ class GrpcChannel : public IChannel {
 
  protected:
   retcode BuildTaskInfo(rpc::TaskContext* task_info);
-  std::shared_ptr<arrow::ArrayBuilder> CreateBuilder(int type);
   retcode AddDataToBuilder(const seatunnel::rpc::Project& value,
                            int expected_type,
                            std::shared_ptr<arrow::ArrayBuilder> builder);
-  retcode AddIntValue(int64_t value, int expected_type,
-                      std::shared_ptr<arrow::ArrayBuilder> builder);
-  retcode AddBoolValue(bool value, int expected_type,
-                       std::shared_ptr<arrow::ArrayBuilder> builder);
-  retcode AddDoubleValue(double value, int expected_type,
-                         std::shared_ptr<arrow::ArrayBuilder> builder);
-  retcode AddStringValue(const std::string& value, int expected_type,
-                         std::shared_ptr<arrow::ArrayBuilder> builder);
 
  private:
   std::unique_ptr<rpc::VMNode::Stub> stub_{nullptr};
