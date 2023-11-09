@@ -337,8 +337,6 @@ retcode AddDoubleValue(double value,
     std::string str_value = out.str();
     return AddStringValue(str_value, expected_type, builder);
   }
-
-
   }
   return retcode::SUCCESS;
 }
