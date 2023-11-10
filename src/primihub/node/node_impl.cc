@@ -162,13 +162,31 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
           << TASK_INFO_STR
           << "task execute encountes error, "
           << "begin to kill task to release resource";
+      std::vector<Node> recv_cmd_party;;
       std::vector<Node> all_party;
       GetAllParties(task_config, &all_party);
+      std::set<std::string> duplicate_filter;
+      for (const auto& party : all_party) {
+        std::string node_info = party.to_string();
+        if (duplicate_filter.find(node_info) != duplicate_filter.end()) {
+          continue;
+        }
+        duplicate_filter.emplace(std::move(node_info));
+        recv_cmd_party.push_back(party);
+      }
+      for (const auto& party : parties) {
+        std::string node_info = party.to_string();
+        if (duplicate_filter.find(node_info) != duplicate_filter.end()) {
+          continue;
+        }
+        duplicate_filter.emplace(std::move(node_info));
+        recv_cmd_party.push_back(party);
+      }
       rpc::KillTaskRequest kill_request;
       auto task_info_ = kill_request.mutable_task_info();
       task_info_->CopyFrom(task_info);
       kill_request.set_executor(rpc::KillTaskRequest::SCHEDULER);
-      for (const auto& patry : all_party) {
+      for (const auto& patry : recv_cmd_party) {
         rpc::KillTaskResponse reply;
         auto channel = link_ctx_->getChannel(patry);
         channel->killTask(kill_request, &reply);
@@ -196,51 +214,60 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
       << " into task_scheduler_map success";
   // absl::MutexLock lock(&parser_mutex_);
   // Construct language parser
-  auto lan_parser_ = task::LanguageParserFactory::Create(task_request);
-  if (lan_parser_ == nullptr) {
-    std::string error_msg = "create LanguageParser failed";
+  try {
+    auto lan_parser_ = task::LanguageParserFactory::Create(task_request);
+    if (lan_parser_ == nullptr) {
+      std::string error_msg = "create LanguageParser failed";
+      PH_LOG(ERROR, LogType::kScheduler) << TASK_INFO_STR << error_msg;
+      reply->set_ret_code(1);
+      reply->set_msg_info(error_msg);
+      return retcode::FAIL;
+    }
+    lan_parser_->parseTask();
+    lan_parser_->parseDatasets();
+    // Construct protocol semantic parser
+    auto _psp = task::ProtocolSemanticParser(
+        this->node_id_, this->singleton_, GetNodelet()->getDataService());
+    // Parse and dispatch task.
+    auto ret = _psp.parseTaskSyntaxTree(lan_parser_);
+    if (ret != retcode::SUCCESS) {
+      std::string error_msg = "dispatch task to party failed";
+      PH_LOG(ERROR, LogType::kScheduler) << TASK_INFO_STR << error_msg;
+      reply->set_ret_code(1);
+      reply->set_msg_info(error_msg);
+      return retcode::FAIL;
+    }
+    std::vector<Node> task_server = _psp.taskServer();
+    worker_ptr->setPartyCount(task_server.size());
+    // save work for future use
+    {
+      auto task_config = lan_parser_->getPushTaskRequest().task();
+      auto fut = std::async(std::launch::async,
+                            scheduler_func,
+                            worker_ptr,
+                            task_server,
+                            task_config,
+                            &this->fininished_scheduler_workers_);
+      std::shared_lock<std::shared_mutex> lck(task_scheduler_mtx_);
+      auto& worker_info = task_scheduler_map_[worker_id];
+      auto& fut_info = std::get<1>(worker_info);
+      fut_info = std::move(fut);
+      PH_VLOG(7, LogType::kScheduler)
+          << TASK_INFO_STR << "update worker id: " << worker_id;
+    }
+    auto& server_cfg = ServerConfig::getInstance();
+    auto& service_node_info = server_cfg.getServiceConfig();
+    auto pb_task_server = reply->add_task_server();
+    node2PbNode(service_node_info, pb_task_server);
+    reply->set_party_count(task_server.size());
+  } catch (std::exception& e) {
+    std::string error_msg = "dispatch task to party failed, detail: ";
+    auto len = strlen(e.what());
+    error_msg.append(e.what(), len);
     PH_LOG(ERROR, LogType::kScheduler) << TASK_INFO_STR << error_msg;
-    reply->set_ret_code(1);
+    reply->set_ret_code(2);
     reply->set_msg_info(error_msg);
-    return retcode::FAIL;
   }
-  lan_parser_->parseTask();
-  lan_parser_->parseDatasets();
-  // Construct protocol semantic parser
-  auto _psp = task::ProtocolSemanticParser(
-      this->node_id_, this->singleton_, GetNodelet()->getDataService());
-  // Parse and dispatch task.
-  auto ret = _psp.parseTaskSyntaxTree(lan_parser_);
-  if (ret != retcode::SUCCESS) {
-    std::string error_msg = "dispatch task to party failed";
-    PH_LOG(ERROR, LogType::kScheduler) << TASK_INFO_STR << error_msg;
-    reply->set_ret_code(1);
-    reply->set_msg_info(error_msg);
-    return retcode::FAIL;
-  }
-  std::vector<Node> task_server = _psp.taskServer();
-  worker_ptr->setPartyCount(task_server.size());
-  // save work for future use
-  {
-    auto task_config = lan_parser_->getPushTaskRequest().task();
-    auto fut = std::async(std::launch::async,
-                          scheduler_func,
-                          worker_ptr,
-                          task_server,
-                          task_config,
-                          &this->fininished_scheduler_workers_);
-    std::shared_lock<std::shared_mutex> lck(task_scheduler_mtx_);
-    auto& worker_info = task_scheduler_map_[worker_id];
-    auto& fut_info = std::get<1>(worker_info);
-    fut_info = std::move(fut);
-    PH_VLOG(7, LogType::kScheduler)
-        << TASK_INFO_STR << "update worker id: " << worker_id;
-  }
-  auto& server_cfg = ServerConfig::getInstance();
-  auto& service_node_info = server_cfg.getServiceConfig();
-  auto pb_task_server = reply->add_task_server();
-  node2PbNode(service_node_info, pb_task_server);
-  reply->set_party_count(task_server.size());
   return retcode::SUCCESS;
 }
 
@@ -268,14 +295,21 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
     rpc::TaskStatus::StatusCode status = rpc::TaskStatus::RUNNING;
     std::string status_info = "task is running";
     this->NotifyTaskStatus(request, status, status_info);
-    auto result_info = worker->execute(&request);
-    if (result_info == retcode::SUCCESS) {
-      status = rpc::TaskStatus::SUCCESS;
-      status_info = "task finished";
-    } else {
+    try {
+      auto result_info = worker->execute(&request);
+      if (result_info == retcode::SUCCESS) {
+        status = rpc::TaskStatus::SUCCESS;
+        status_info = "task finished";
+      } else {
+        status = rpc::TaskStatus::FAIL;
+        status_info = "task execute encountes error";
+      }
+    } catch (std::exception& e) {
       status = rpc::TaskStatus::FAIL;
-      status_info = "task execute encountes error";
+      size_t len = std::min<size_t>(strlen(e.what()), 1024);
+      status_info = std::string(e.what(), len);
     }
+
     this->NotifyTaskStatus(request, status, status_info);
     if (request.manual_launch()) {
       PH_VLOG(0, LogType::kScheduler)

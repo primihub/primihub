@@ -1,4 +1,19 @@
-//
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 #include "src/primihub/task/semantic/pir_task.h"
 #include <glog/logging.h>
 #include <nlohmann/json.hpp>
@@ -6,6 +21,7 @@
 #include "src/primihub/kernel/pir/operator/factory.h"
 #include "src/primihub/common/config/server_config.h"
 #include "src/primihub/util/file_util.h"
+#include "src/primihub/common/value_check_util.h"
 
 namespace primihub::task {
 PirTask::PirTask(const TaskParam* task_param,
@@ -369,45 +385,42 @@ retcode PirTask::ExecuteOperator() {
 
 int PirTask::execute() {
   SCopedTimer timer;
-  auto ret = LoadParams(task_param_);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Pir load task params failed.";
-    return -1;
+  std::string error_msg;
+  bool has_error{true};
+  do {
+    auto ret = LoadParams(task_param_);
+    BREAK_LOOP_BY_RETCODE(ret, "Pir load task params failed.")
+    auto load_params_ts = timer.timeElapse();
+    VLOG(5) << "LoadParams time cost(ms): " << load_params_ts;
+
+    ret = LoadDataset();
+    BREAK_LOOP_BY_RETCODE(ret, "Pir load dataset failed.")
+    auto load_dataset_ts = timer.timeElapse();
+    auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
+    VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
+
+    ret = InitOperator();
+    BREAK_LOOP_BY_RETCODE(ret, "Pir init operator failed.")
+    auto init_op_ts = timer.timeElapse();
+    auto init_op_time_cost = init_op_ts - load_dataset_ts;
+    VLOG(5) << "InitOperator time cost(ms): " << init_op_time_cost;
+
+    ret = ExecuteOperator();
+    BREAK_LOOP_BY_RETCODE(ret, "Pir execute operator failed.")
+    auto exec_op_ts = timer.timeElapse();
+    auto exec_op_time_cost = exec_op_ts - init_op_ts;
+    VLOG(5) << "ExecuteOperator time cost(ms): " << exec_op_time_cost;
+
+    ret = SaveResult();
+    BREAK_LOOP_BY_RETCODE(ret, "Pir save result failed.")
+    auto save_res_ts = timer.timeElapse();
+    auto save_res_time_cost = save_res_ts - exec_op_ts;
+    VLOG(5) << "SaveResult time cost(ms): " << save_res_time_cost;
+    has_error = false;
+  } while (0);
+  if (has_error) {
+    throw std::runtime_error(error_msg);
   }
-  auto load_params_ts = timer.timeElapse();
-  VLOG(5) << "LoadParams time cost(ms): " << load_params_ts;
-  ret = LoadDataset();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Pir load dataset failed.";
-    return -1;
-  }
-  auto load_dataset_ts = timer.timeElapse();
-  auto load_dataset_time_cost = load_dataset_ts - load_params_ts;
-  VLOG(5) << "LoadDataset time cost(ms): " << load_dataset_time_cost;
-  ret = InitOperator();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Pir init operator failed.";
-    return -1;
-  }
-  auto init_op_ts = timer.timeElapse();
-  auto init_op_time_cost = init_op_ts - load_dataset_ts;
-  VLOG(5) << "InitOperator time cost(ms): " << init_op_time_cost;
-  ret = ExecuteOperator();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Pir execute operator failed.";
-    return -1;
-  }
-  auto exec_op_ts = timer.timeElapse();
-  auto exec_op_time_cost = exec_op_ts - init_op_ts;
-  VLOG(5) << "ExecuteOperator time cost(ms): " << exec_op_time_cost;
-  ret = SaveResult();
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "Pir save result failed.";
-    return -1;
-  }
-  auto save_res_ts = timer.timeElapse();
-  auto save_res_time_cost = save_res_ts - exec_op_ts;
-  VLOG(5) << "SaveResult time cost(ms): " << save_res_time_cost;
   return 0;
 }
 std::vector<std::string> PirTask::GetSelectedContent(

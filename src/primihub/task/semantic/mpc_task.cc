@@ -19,7 +19,7 @@
 #include "src/primihub/algorithm/logistic.h"
 #include "src/primihub/algorithm/missing_val_processing.h"
 #include "src/primihub/algorithm/mpc_statistics.h"
-
+#include "src/primihub/common/value_check_util.h"
 
 // #if defined(__linux__) && defined(__x86_64__)
 // #include "src/primihub/algorithm/cryptflow2_maxpool.h"
@@ -33,17 +33,13 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
     : TaskBase(task_param, dataset_service) {
   PartyConfig config(node_id, task_param_);
   if (function_name == "logistic_regression") {
-    try {
-      algorithm_ = std::make_shared<primihub::LogisticRegressionExecutor>(config, dataset_service);
-    } catch (std::exception &e) {
-      LOG(ERROR) << e.what();
-      algorithm_ = nullptr;
-    }
+    using LRExecutor = primihub::LogisticRegressionExecutor;
+    algorithm_ = std::make_shared<LRExecutor>(config, dataset_service);
   } else if (function_name == "linear_regression") {
     // TODO(XXX): implement linear regression
   } else if (function_name == "mpc_statistics") {
-    algorithm_ =
-        std::make_shared<primihub::MPCStatisticsExecutor>(config, dataset_service);
+    using StatisticsExecutor = primihub::MPCStatisticsExecutor;
+    algorithm_ = std::make_shared<StatisticsExecutor>(config, dataset_service);
   } else if (function_name == "xgboost") {
     // TODO(XXX): implement xgboost
   } else if (function_name == "lightgbm") {
@@ -59,31 +55,21 @@ MPCTask::MPCTask(const std::string &node_id, const std::string &function_name,
   } else if (function_name == "lstm") {
     // TODO(XXX): implement lstm
   } else if (function_name == "AbnormalProcessTask") {
-    try {
-      algorithm_ =
-          std::make_shared<primihub::MissingProcess>(config, dataset_service);
-    } catch (const std::runtime_error &error) {
-      LOG(ERROR) << error.what();
-      algorithm_ = nullptr;
-    }
+    using MissingProcess = primihub::MissingProcess;
+    algorithm_ = std::make_shared<MissingProcess>(config, dataset_service);
   } else if (function_name == "arithmetic") {
-    try {
-      std::string accuracy;
-      const auto& param_map = task_param_.params().param_map();
-      auto it = param_map.find("Accuracy");
-      if (it != param_map.end()) {
-        accuracy = it->second.value_string();
-      }
-      if (accuracy == "D32") {
-        using D32Executor = primihub::ArithmeticExecutor<D32>;
-        algorithm_ = std::make_shared<D32Executor>(config, dataset_service);
-      } else {
-        using D16Executor = primihub::ArithmeticExecutor<D16>;
-        algorithm_ = std::make_shared<D16Executor>(config, dataset_service);
-      }
-    } catch (const std::runtime_error &error) {
-      LOG(ERROR) << error.what();
-      algorithm_ = nullptr;
+    std::string accuracy;
+    const auto& param_map = task_param_.params().param_map();
+    auto it = param_map.find("Accuracy");
+    if (it != param_map.end()) {
+      accuracy = it->second.value_string();
+    }
+    if (accuracy == "D32") {
+      using D32Executor = primihub::ArithmeticExecutor<D32>;
+      algorithm_ = std::make_shared<D32Executor>(config, dataset_service);
+    } else {
+      using D16Executor = primihub::ArithmeticExecutor<D16>;
+      algorithm_ = std::make_shared<D16Executor>(config, dataset_service);
     }
   } else {
     LOG(ERROR) << "Unsupported algorithm: " << function_name;
@@ -167,50 +153,30 @@ int MPCTask::execute() {
 }
 
 retcode MPCTask::ExecuteImpl() {
-  int ret = 0;
-  try {
-    do {
-      ret = algorithm_->loadParams(task_param_);
-      if (ret) {
-        LOG(ERROR) << "Load params failed.";
-        break;
-      }
+  int ret = -1;
+  std::string error_msg;
+  do {
+    ret = algorithm_->loadParams(task_param_);
+    BREAK_LOOP_BY_RETVAL(ret, "Load params failed.")
 
-      ret = algorithm_->loadDataset();
-      if (ret) {
-        LOG(ERROR) << "Load dataset from file failed.";
-        break;
-      }
+    ret = algorithm_->loadDataset();
+    BREAK_LOOP_BY_RETVAL(ret, "Load dataset from file failed.")
 
-      ret = algorithm_->initPartyComm();
-      if (ret) {
-        LOG(ERROR) << "Initialize party communicate failed.";
-        break;
-      }
-      auto retcode = algorithm_->InitEngine();
-      if (retcode != retcode::SUCCESS) {
-        LOG(ERROR) << "init engine failed";
-        ret = -1;
-        break;
-      }
+    ret = algorithm_->initPartyComm();
+    BREAK_LOOP_BY_RETVAL(ret, "Initialize party communicate failed.")
 
-      ret = algorithm_->execute();
-      if (ret) {
-        LOG(ERROR) << "Run task failed.";
-        break;
-      }
+    auto retcode = algorithm_->InitEngine();
+    BREAK_LOOP_BY_RETVAL(ret, "init engine failed")
 
-      algorithm_->finishPartyComm();
-      ret = algorithm_->saveModel();
-      if (ret != 0) {
-        LOG(ERROR) << "saveModel failed.";
-        break;
-      }
-    } while (0);
-  } catch (std::exception &e) {
-    LOG(ERROR) << e.what();
-    ret = -1;
-  }
+    ret = algorithm_->execute();
+    BREAK_LOOP_BY_RETVAL(ret, "Run task failed.")
+
+    algorithm_->finishPartyComm();
+    ret = algorithm_->saveModel();
+    BREAK_LOOP_BY_RETVAL(ret, "saveModel failed.")
+    ret = 0;
+  } while (0);
+
   if (ret != 0) {
     return retcode::FAIL;
   } else {

@@ -48,5 +48,19 @@ namespace primihub {
         }                                                   \
     } while (0);
 
+#define BREAK_LOOP_BY_RETCODE(ret_code, msg)                    \
+  if (ret != retcode::SUCCESS) {                                \
+    error_msg = msg;                                            \
+    LOG(ERROR) << error_msg;                                    \
+    break;                                                      \
+  }
+
+#define BREAK_LOOP_BY_RETVAL(retval, msg)                 \
+  if (ret != 0) {                                         \
+    error_msg = msg;                                      \
+    LOG(ERROR) << error_msg;                              \
+    break;                                                \
+  }
+
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_COMMON_VALUE_CHECK_UTIL_H_

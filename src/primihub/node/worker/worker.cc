@@ -31,22 +31,6 @@ using ProcessHandle = Poco::ProcessHandle;
 
 namespace pb_util = primihub::proto::util;
 namespace primihub {
-std::string TaskStatusCodeToString(rpc::TaskStatus::StatusCode code) {
-  switch (code) {
-  case rpc::TaskStatus::RUNNING:
-    return "RUNNING";
-  case rpc::TaskStatus::SUCCESS:
-    return "SUCCESS";
-  case rpc::TaskStatus::FAIL:
-    return "FAIL";
-  case rpc::TaskStatus::NONEXIST:
-    return "NONEXIST";
-  case rpc::TaskStatus::FINISHED:
-    return "FINISHED";
-  default:
-    return "UNKNOWN";
-  }
-}
 
 retcode Worker::waitForTaskReady() {
   bool ready = task_ready_future_.get();
@@ -241,6 +225,10 @@ void Worker::kill_task() {
 retcode Worker::fetchTaskStatus(rpc::TaskStatus* task_status) {
   bool has_new_status = task_status_.try_pop(*task_status);
   if (has_new_status) {
+    const auto& task_info = task_status->task_info();
+    auto TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
+    VLOG(2) << TASK_INFO_STR << " "
+            << "New Status: " << pb_util::TaskStatusToString(*task_status);
     return retcode::SUCCESS;
   }
   return retcode::FAIL;
@@ -249,6 +237,7 @@ retcode Worker::fetchTaskStatus(rpc::TaskStatus* task_status) {
 retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
   const auto& status_code = task_status.status();
   const auto& party = task_status.party();
+  const auto& status_msg = task_status.message();
   const auto& task_info = task_status.task_info();
   auto TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   if (status_code == rpc::TaskStatus::SUCCESS ||
@@ -258,9 +247,7 @@ retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
 
     if (status_code == rpc::TaskStatus::FAIL) {
       LOG(ERROR) << "Scheduler, " << TASK_INFO_STR
-                 << "party name: " << party << " "
-                 << "execute task encountes error, detail: "
-                 << task_status.message();
+                 << pb_util::TaskStatusToString(task_status);
       if (!scheduler_finished.load(std::memory_order::memory_order_relaxed)) {
         task_finish_promise_.set_value(retcode::FAIL);
         scheduler_finished.store(true);
@@ -275,10 +262,8 @@ retcode Worker::updateTaskStatus(const rpc::TaskStatus& task_status) {
     VLOG(0) << TASK_INFO_STR
             << "collected finished party count: " << final_status_.size();
   }
-  std::string task_status_str = TaskStatusCodeToString(status_code);
   VLOG(0) << TASK_INFO_STR
-          << "update party: " << party << " "
-          << "status to: " << task_status_str;
+          << "Update " << pb_util::TaskStatusToString(task_status);
   task_status_.push(task_status);
   return retcode::SUCCESS;
 }
