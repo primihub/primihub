@@ -68,7 +68,7 @@ def col_frequent_client(
             all_items.append(items)
             all_counts.append(counts)
 
-        send_local_fi_sketch(items=all_items, weights=all_counts, channel=channel, k=k)
+        send_local_fi_sketch(all_items, all_counts, channel=channel, k=k)
 
     if recv_server:
         if not send_server:
