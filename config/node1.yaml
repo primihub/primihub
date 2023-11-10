@@ -61,14 +61,6 @@ datasets:
     model: "csv"
     source: "data/test_party_1.csv"
 
-  # MNIST test case datasets
-  - description: "test_party_1_self"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_1"
-  - description: "test_party_1_next"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2"
-
   # PIR test case dataset
   - description: "pir_server_data"
     model: "csv"

@@ -117,13 +117,23 @@ retcode TaskEngine::UpdateStatus(rpc::TaskStatus::StatusCode code_status,
 }
 
 retcode TaskEngine::CreateTask() {
-  using TaskFactory = primihub::task::TaskFactory;
-  task_ = TaskFactory::Create(this->node_id_, *task_request_,
-                              this->dataset_service_);
-  if (task_ == nullptr) {
-    LOG(ERROR) << "create Task Failed";
+  try {
+    using TaskFactory = primihub::task::TaskFactory;
+    task_ = TaskFactory::Create(this->node_id_, *task_request_,
+                                this->dataset_service_);
+    if (task_ == nullptr) {
+      LOG(ERROR) << "create Task Failed";
+      return retcode::FAIL;
+    }
+  } catch (std::exception& e) {
+    int exception_len = strlen(e.what());
+    size_t err_len = exception_len > 1024 ? 1024 : exception_len;
+    std::string err_msg(e.what(), exception_len);
+    LOG(ERROR) << "Failed to CreateTask: " << err_msg;
+    UpdateStatus(rpc::TaskStatus::FAIL, err_msg);
     return retcode::FAIL;
   }
+
   return retcode::SUCCESS;
 }
 

@@ -399,9 +399,15 @@ retcode SDKClient::CheckTaskStauts(const rpc::PushTaskReply& task_reply_info) {
       VLOG(5) << "task_status party: " << party << " "
           << "status: " << static_cast<int>(status_code) << " "
           << "message: " << message;
+      if (status_code !=primihub::rpc::TaskStatus::RUNNING) {
+        VLOG(0) << pb_util::TaskStatusToString(status_info);
+      }
       if (status_info.status() == primihub::rpc::TaskStatus::SUCCESS ||
-        status_info.status() == primihub::rpc::TaskStatus::FAIL) {
+          status_info.status() == primihub::rpc::TaskStatus::FAIL) {
+        if (party == AUX_COMPUTE_NODE) {
+        } else {
           task_status[party] = message;
+        }
       }
       if (task_status.size() == party_count) {
         LOG(INFO) << "all node has finished";
@@ -457,7 +463,8 @@ retcode SDKClient::SubmitTask(const rpc::PushTaskRequest& task_reqeust,
   }
   size_t party_count = pushTaskReply.party_count();
   if (party_count < 1) {
-    LOG(ERROR) << "party count from reply is: " << party_count;
+    LOG(ERROR) << "party count from reply is: " << party_count << "\n "
+               << "message info: " << pushTaskReply.msg_info();
     return retcode::FAIL;
   }
   reply->CopyFrom(pushTaskReply);
@@ -598,6 +605,10 @@ int main(int argc, char** argv) {
 
   auto _start = std::chrono::high_resolution_clock::now();
   ret = client.SubmitTask(task_request, &reply);
+  if (ret != primihub::retcode::SUCCESS) {
+    LOG(ERROR) << "SubmitTask failed";
+    return -1;
+  }
   ret = client.CheckTaskStauts(reply);
   auto _end = std::chrono::high_resolution_clock::now();
   auto time_cost =

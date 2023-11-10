@@ -113,8 +113,10 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
       party_nodes.emplace_back(node);
     }
     if (dup_names.size() != 3) {
-      LOG(ERROR) << "ABY3 need 3 party, but get " << dup_names.size();
-      return retcode::FAIL;
+      std::string error_msg = "ABY3 protocol need 3 party, but get ";
+      error_msg.append(std::to_string(dup_names.size()));
+      LOG(ERROR) << error_msg;
+      throw std::runtime_error(error_msg);
     }
     for (const auto& name_ : party_names) {
       auto& node = (*party_access_info)[name_];
@@ -128,9 +130,9 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     google::protobuf::TextFormat::PrintToString(send_request, &str);
     VLOG(5) << "ABY3Scheduler::dispatch: " << str;
   }
+  size_t party_count = send_request.task().party_access_info().size();
+  LOG(INFO) << "Dispatch SubmitTask to " << party_count << " node";
 
-  LOG(INFO) << "Dispatch SubmitTask to "
-      << send_request.task().party_access_info().size() << " node";
   // schedule
   std::vector<std::thread> thrds;
   std::vector<std::future<retcode>> result_fut;

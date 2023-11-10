@@ -40,14 +40,6 @@ datasets:
     model: "csv"
     source: "data/test_party_2.csv"
 
-  # MNIST test case datasets
-  - description: "test_party_2_self"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_2"
-  - description: "test_party_2_next"
-    model: "csv"
-    source: "data/falcon/dataset/MNIST/input_0"
-
   # FL binclass
   - description: "binclass_vfl_train_guest"
     model: "csv"

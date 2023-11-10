@@ -29,7 +29,7 @@ std::string TaskInfoToString(const rpc::TaskContext& task_info,
 std::string TaskInfoToString(const std::string& task_info);
 std::string TaskConfigToString(const rpc::Task& task_config);
 std::string TaskRequestToString(const rpc::PushTaskRequest& task_req);
-
+std::string TaskStatusToString(const rpc::TaskStatus& status);
 template <typename T>
 std::string TypeToString(const T& pb_item) {
   std::string info;

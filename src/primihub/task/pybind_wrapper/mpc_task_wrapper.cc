@@ -60,7 +60,7 @@ void MPCExecutor::StopTask() {
     }
     it = party_access_info.find(AUX_COMPUTE_NODE);
     if (it == party_access_info.end()) {
-      LOG(ERROR) << AUX_COMPUTE_NODE << " access info is not found";
+      // LOG(WARNING) << AUX_COMPUTE_NODE << " access info is not found";
       break;
     }
     auto pb_aux_node = it->second;

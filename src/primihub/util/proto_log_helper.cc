@@ -52,4 +52,14 @@ std::string TaskRequestToString(const rpc::PushTaskRequest& task_req) {
   return info;
 }
 
+std::string TaskStatusToString(const rpc::TaskStatus& status) {
+  const auto& code_name = rpc::TaskStatus::StatusCode_Name(status.status());
+  std::string info;
+  info.append("party: ")
+      .append("\"").append(status.party()).append("\" ")
+      .append("status: ").append(code_name).append(" ")
+      .append("message: ")
+      .append("\"").append(status.message()).append("\"");
+  return info;
+}
 }  // namespace primihub::proto::util
