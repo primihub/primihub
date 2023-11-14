@@ -2,7 +2,6 @@
 #ifndef SRC_PRIMIHUB_SERVICE_DATASET_META_SERVICE_FACTORY_H_
 #define SRC_PRIMIHUB_SERVICE_DATASET_META_SERVICE_FACTORY_H_
 #include <glog/logging.h>
-
 #include <string>
 #include <algorithm>
 #include "src/primihub/common/common.h"
@@ -10,6 +9,7 @@
 #include "src/primihub/service/dataset/meta_service/grpc_impl.h"
 #include "src/primihub/service/dataset/meta_service/memory_impl.h"
 #include "src/primihub/service/dataset/meta_service/localkv_impl.h"
+#include "src/primihub/util/util.h"
 
 namespace primihub::service {
 struct MetaServiceMode {
@@ -24,10 +24,8 @@ class MetaServiceFactory {
   static std::unique_ptr<DatasetMetaService>
   Create(const std::string& mode, Args&&... args) {
     std::unique_ptr<DatasetMetaService> meta_service{nullptr};
-    std::string upper_mode = mode;
     // to upper
-    std::transform(upper_mode.begin(), upper_mode.end(),
-                    upper_mode.begin(), ::toupper);
+    std::string upper_mode = primihub::strToUpper(mode);
     if (upper_mode == MetaServiceMode::MODE_GRPC) {
       meta_service = CreateGRPCMetaService(std::forward<Args>(args)...);
     } else if (upper_mode == MetaServiceMode::MODE_MEMORY) {

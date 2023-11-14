@@ -135,6 +135,7 @@ struct NodeConfig {
   Tee tee_conf;
   ServerInfo proxy_server_cfg;
   StorageInfo storage_info;
+  bool disable_report{false};
 };
 
 }  // namespace primihub::common
@@ -297,7 +298,9 @@ template <> struct convert<NodeConfig> {
     nc.server_config.id_ = node["node"].as<std::string>();
     nc.server_config.ip_ = node["location"].as<std::string>();
     nc.server_config.port_ = node["grpc_port"].as<uint32_t>();
-
+    if (node["disable_report"]) {
+      nc.disable_report = node["disable_report"].as<bool>();
+    }
     if (node["storage_path"]) {
       nc.storage_info.path = node["storage_path"].as<std::string>();
     }

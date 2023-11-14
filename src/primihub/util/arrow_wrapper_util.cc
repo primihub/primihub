@@ -2,6 +2,7 @@
 #include "src/primihub/util/arrow_wrapper_util.h"
 #include <glog/logging.h>
 #include <algorithm>
+#include "src/primihub/util/util.h"
 
 namespace primihub::arrow_wrapper::util {
 static std::unordered_map<std::string, int> sql_tyep_2_arrow_type_map {
@@ -78,9 +79,8 @@ std::shared_ptr<arrow::DataType> MakeArrowDataType(int type) {
 }
 
 retcode SqlType2ArrowType(const std::string& sql_type, int* arrow_type) {
-  std::string lower_str = sql_type;
   // to lower
-  std::transform(lower_str.begin(), lower_str.end(), lower_str.begin(), ::tolower);
+  std::string lower_str = primihub::strToLower(sql_type);
   auto it = sql_tyep_2_arrow_type_map.find(lower_str);
   if (it != sql_tyep_2_arrow_type_map.end()) {
     *arrow_type = it->second;

@@ -142,6 +142,7 @@ cc_library(
   srcs = ["arrow_wrapper_util.cc"],
   deps = [
     "//src/primihub/common:common_defination",
+    ":util_lib",
     "@com_github_glog_glog//:glog",
     "@arrow",
   ],
