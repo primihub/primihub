@@ -147,7 +147,6 @@ auto VMNodeImpl::GetDeviceInfo() ->
       }
     }
   }
-  LOG(ERROR) << "device_id: " << device_id;
   return std::make_tuple(device_id, node_info.id());
 }
 
