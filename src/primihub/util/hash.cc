@@ -1,10 +1,20 @@
 // "Copyright [2023] <PrimiHub>"
 #include "src/primihub/util/hash.h"
-#include <memory>
 #include <openssl/ossl_typ.h>
 #include <openssl/sha.h>
 #include <glog/logging.h>
+#include <memory>
 namespace primihub {
+Hash::Hash(const std::string& alg) {
+  if (alg == "sha256") {
+    alg_ = NID_sha256;
+    md_ = EVP_sha256();
+  } else if (alg == "md5") {
+    alg_ = NID_md5;
+    md_ = EVP_md5();
+  }
+}
+
 std::string Hash::HashToString(const std::string& msg) {
   unsigned int dgstlen = EVP_MD_meth_get_result_size(md_);
   if (0 == dgstlen) {

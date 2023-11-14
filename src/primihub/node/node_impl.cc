@@ -15,8 +15,10 @@
  */
 
 #include "src/primihub/node/node_impl.h"
+#include <curl/curl.h>
 #include <vector>
-
+#include <fstream>
+#include <algorithm>
 #include "src/primihub/common/common.h"
 #include "src/primihub/data_store/factory.h"
 #include "src/primihub/service/dataset/service.h"
@@ -27,6 +29,9 @@
 #include "src/primihub/util/network/link_factory.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/proto_log_helper.h"
+#include "uuid.h"                             // NOLINT
+#include "src/primihub/util/hash.h"
+
 namespace pb_util = primihub::proto::util;
 namespace primihub {
 VMNodeImpl::VMNodeImpl(const std::string& config_file,
@@ -44,6 +49,7 @@ VMNodeImpl::~VMNodeImpl() {
   clean_cached_task_status_fut_.get();
   finished_scheduler_worker_fut_.get();
   manage_task_worker_fut_.get();
+  report_alive_info_fut_.get();
   this->nodelet_.reset();
 }
 
@@ -60,6 +66,7 @@ retcode VMNodeImpl::Init() {
   CleanFinishedSchedulerWorkerThread();
   ManageTaskOperatorThread();
   ProcessKillTaskThread();
+  ReportAliveInfoThread();
   return retcode::SUCCESS;
 }
 void VMNodeImpl::ProcessKillTaskThread() {
@@ -93,6 +100,125 @@ void VMNodeImpl::ProcessKillTaskThread() {
       }
     });
 }
+
+std::string VMNodeImpl::GenerateUUID() {
+  std::random_device rd;
+  auto seed_data = std::array<int, std::mt19937::state_size> {};
+  std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+  std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+  std::mt19937 generator(seq);
+  uuids::uuid_random_generator gen{generator};
+  const uuids::uuid id = gen();
+  std::string device_uuid = uuids::to_string(id);
+  return device_uuid;
+}
+
+auto VMNodeImpl::GetDeviceInfo() ->
+    std::tuple<std::string, std::string> {
+  auto& server_cfg = ServerConfig::getInstance();
+  auto& node_info = server_cfg.getServiceConfig();
+  std::string node_info_str = node_info.to_string();
+  auto hash_func = Hash("md5");
+  std::string file_name = hash_func.HashToString(node_info_str);
+  const auto buffer = reinterpret_cast<uint8_t*>(file_name.data());
+  size_t buffer_size = file_name.size();
+  file_name = ".device_";
+  file_name.append(buf_to_hex_string(buffer, buffer_size));
+  std::string file_path = CompletePath("./config", file_name);
+  std::string device_id;
+  if (!FileExists(file_path)) {
+    device_id = GenerateUUID();
+    std::ofstream fout(file_path, std::ios::out);
+    if (fout.is_open()) {
+      fout << device_id << "\n";
+      fout.close();
+    }
+  } else {
+    std::ifstream fin(file_path, std::ios::in);
+    if (fin.is_open()) {
+      std::getline(fin, device_id);
+    }
+    if (device_id.empty()) {
+      device_id = GenerateUUID();
+      std::ofstream fout(file_path, std::ios::out);
+      if (fout.is_open()) {
+        fout << device_id << "\n";
+        fout.close();
+      }
+    }
+  }
+  LOG(ERROR) << "device_id: " << device_id;
+  return std::make_tuple(device_id, node_info.id());
+}
+
+static size_t WriteCallback(char* d, size_t n, size_t l, void* p) {
+  (void*)d;   // NOLINT
+  (void*)p;   // NOLINT
+  return n * l;
+}
+
+void VMNodeImpl::ReportAliveInfoThread() {
+  report_alive_info_fut_ = std::async(
+    std::launch::async,
+    [&]() -> void {
+      auto& ins = ServerConfig::getInstance();
+      auto& cfg = ins.getNodeConfig();
+      if (cfg.disable_report) {
+        return;
+      }
+      curl_global_init(CURL_GLOBAL_ALL);
+      CURL* curl = curl_easy_init();
+      if (curl == nullptr) {
+        return;
+      }
+      const auto& [device_id, node_id] = GetDeviceInfo();
+      int report_period_min = 30;  // report status every 30 minutes
+      std::string url = "https://node1.primihub.com/collect/operate/addNode";
+      struct curl_slist* header = nullptr;
+      header = curl_slist_append(
+          header, "Content-Type: application/x-www-form-urlencoded");
+      if (header == nullptr) {
+        return;
+      }
+
+      auto& node_info = ins.getServiceConfig();
+      std::string content;
+      content
+        .append("key=").append("5oC06czJLeF3kXdfg7D1q2z0G4wwYJ3l").append("&")
+        .append("globalId=").append(device_id).append("&")
+        .append("globalName=").append(node_id);
+      VLOG(9) << "ReportAliveInfoThread: content: " << content;
+      while (true) {
+        if (stop_.load(std::memory_order::memory_order_relaxed)) {
+          PH_LOG(WARNING, LogType::kScheduler) << "ReportAliveInfoThread exit";
+          break;
+        }
+        bool success_flag{true};
+        if (curl) {
+          CURLcode res;
+          curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+          curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
+          curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+          curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, false);
+          curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+          curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+          curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 5000L);  //  5s
+          curl_easy_setopt(curl, CURLOPT_POSTFIELDS, content.c_str());
+          curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+          res = curl_easy_perform(curl);
+          if (res != CURLE_OK) {
+            VLOG(9) << "ReportAliveInfoThread curl_easy_perform() failed, "
+                    << curl_easy_strerror(res);
+          }
+          curl_easy_reset(curl);
+        }
+        std::this_thread::sleep_for(std::chrono::minutes(report_period_min));
+      }
+      curl_slist_free_all(header);
+      curl_easy_cleanup(curl);
+    });
+}
+
 void VMNodeImpl::ManageTaskOperatorThread() {
   manage_task_worker_fut_ = std::async(
     std::launch::async,
