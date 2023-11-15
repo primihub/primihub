@@ -62,5 +62,11 @@ namespace primihub {
     break;                                                \
   }
 
+#define RaiseException(err_msg)                          \
+  do {                                                   \
+    LOG(ERROR) << err_msg;                               \
+    throw std::runtime_error(err_msg);                   \
+  } while (0);
+
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_COMMON_VALUE_CHECK_UTIL_H_

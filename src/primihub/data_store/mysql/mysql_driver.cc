@@ -27,6 +27,7 @@
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/thread_local_data.h"
+#include "src/primihub/common/value_check_util.h"
 
 namespace primihub {
 // MySQLAccessInfo
@@ -54,6 +55,7 @@ std::string MySQLAccessInfo::toString() {
   ss << js;
   return ss.str();
 }
+
 retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
   const auto& js = access_info;
   try {
@@ -73,10 +75,7 @@ retcode MySQLAccessInfo::ParseFromJsonImpl(const nlohmann::json& access_info) {
   } catch (std::exception& e) {
     std::stringstream ss;
     ss << "parse access info encountes error, " << e.what();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   return retcode::SUCCESS;
 }
@@ -96,10 +95,7 @@ retcode MySQLAccessInfo::ParseFromMetaInfoImpl(
   } catch (std::exception& e) {
     std::stringstream ss;
     ss << "parse access info failed, " << e.what();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    ret = retcode::FAIL;
+    RaiseException(ss.str());
   }
   return ret;
 }
@@ -119,8 +115,10 @@ retcode MySQLAccessInfo::ParseFromYamlConfigImpl(const YAML::Node& meta_info) {
       this->db_url = meta_info["dbUrl"].as<std::string>();
     }
   } catch (std::exception& e) {
-    LOG(ERROR) << e.what();
-    return retcode::FAIL;
+    size_t len = strlen(e.what());
+    len = len > 1024 ? 1024 : len;
+    auto err_msg = std::string(e.what(), len);
+    RaiseException(err_msg);
   }
   return retcode::SUCCESS;
 }
@@ -168,10 +166,7 @@ std::shared_ptr<arrow::Schema> MySQLCursor::makeArrowSchema() {
       std::stringstream ss;
       ss << "index out of range, current index: " << index << " "
           << "total column: " << num_fields;
-      std::string err_msg = ss.str();
-      SetThreadLocalErrorMsg(err_msg);
-      LOG(ERROR) << err_msg;
-      return nullptr;
+      RaiseException(ss.str());
     }
   }
   return std::make_shared<arrow::Schema>(result_schema_filed);
@@ -200,11 +195,8 @@ auto MySQLCursor::getDBConnector(
   if (mysql_ptr == nullptr) {
     std::stringstream ss;
     ss << "connect failed:" << mysql_error(db_connector_.get());
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
     db_connector_.reset();
-    return db_connector_;
+    RaiseException(ss.str());
   }
   LOG(INFO) << "connect to mysql db success";
   return db_connector_;
@@ -218,23 +210,15 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
   std::vector<std::vector<std::string>> result_data;
   // fetch data from db
   auto db_conn_ptr = this->getDBConnector(this->driver_->dataSetAccessInfo());
-  if (db_conn_ptr == nullptr) {
-    LOG(ERROR) << "connect to db failed";
-    return retcode::FAIL;
-  }
   auto db_connector = db_conn_ptr.get();
   if (query_sql.empty()) {
-    LOG(ERROR) << "query sql is invalid: ";
-    return retcode::FAIL;
+    RaiseException("empty query sql is invalid");
   }
   if (0 != mysql_real_query(db_connector,
                             query_sql.data(), query_sql.length())) {
     std::stringstream ss;
     ss << "query execute failed: " << mysql_error(db_connector);
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   // fetch data
   using ResultPtr = std::unique_ptr<MYSQL_RES, decltype(sql_result_deleter)>;
@@ -243,10 +227,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
   if (result == nullptr) {
     std::stringstream ss;
     ss << "fetch result failed: " << mysql_error(db_connector);
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   uint32_t num_fields = mysql_num_fields(result.get());
   VLOG(5) << "numbers of fields: " << num_fields;
@@ -255,10 +236,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
     std::stringstream ss;
     ss << "query column size does not match, query size: " << num_fields
         << " expected: " << selected_fields;
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   result_data.resize(num_fields);
   MYSQL_ROW row;
@@ -291,10 +269,7 @@ retcode MySQLCursor::fetchData(const std::string& query_sql,
       std::stringstream ss;
       ss << "index out of range, current index: " << i << " "
           << "total colnum fields: " << schema_fields;
-      std::string err_msg = ss.str();
-      SetThreadLocalErrorMsg(err_msg);
-      LOG(ERROR) << err_msg;
-      return retcode::FAIL;
+      RaiseException(ss.str());
     }
   }
   auto end_ = timer.timeElapse();
@@ -406,11 +381,8 @@ retcode MySQLDriver::connect(MySQLAccessInfo* access_info) {
       db_name.c_str(), db_port, /*unix_socket*/nullptr, /*client_flag*/0);
   if (mysql_handler == nullptr) {
     std::stringstream ss;
-    ss << "connect failed:" << getMySqlError();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    ss << "connect failed, " << getMySqlError();
+    RaiseException(ss.str());
   }
   LOG(INFO) << "connect to mysql db success";
   connected.store(true);
@@ -434,10 +406,7 @@ retcode MySQLDriver::executeQuery(const std::string& sql_query) {
                             sql_query.data(), sql_query.length())) {
     std::stringstream ss;
     ss << "query execute failed: " << getMySqlError();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   return retcode::SUCCESS;
 }
@@ -459,11 +428,8 @@ std::string MySQLDriver::BuildQuerySQL(const MySQLAccessInfo& access_info,
     } else {
       std::stringstream ss;
       ss << "index is out of range, "
-        << "current: " << index << " total column: " << schema.size();
-      std::string err_msg = ss.str();
-      SetThreadLocalErrorMsg(err_msg);
-      LOG(ERROR) << err_msg;
-      return std::string("");
+         << "current: " << index << " total column: " << schema.size();
+      RaiseException(ss.str());
     }
   }
 
@@ -514,15 +480,17 @@ retcode MySQLDriver::getTableSchema(const std::string& db_name,
   result.reset(mysql_use_result(this->db_connector_.get()));
 
   if (result == nullptr) {
-    LOG(ERROR) << "fetch result failed: " << getMySqlError();
-    return retcode::FAIL;
+    std::stringstream ss;
+    ss << "fetch result failed: " << getMySqlError();
+    RaiseException(ss.str());
   }
 
   uint32_t num_fields = mysql_num_fields(result.get());
   VLOG(5) << "numbers of result: " << num_fields;
   if (num_fields != 2) { // we just query 2 fields
-    LOG(ERROR) << "2 num_fields is expected, but get " << num_fields;
-    return retcode::FAIL;
+    std::stringstream ss;
+    ss << "2 num_fields is expected, but get " << num_fields;
+    RaiseException(ss.str());
   }
   MYSQL_ROW row;
   table_cols_.clear();
@@ -559,8 +527,7 @@ std::unique_ptr<Cursor> MySQLDriver::read(const std::string &conn_str) {
 std::unique_ptr<Cursor> MySQLDriver::GetCursor() {
   auto access_info_ptr = dynamic_cast<MySQLAccessInfo*>(this->access_info_.get());
   if (access_info_ptr == nullptr) {
-    LOG(ERROR) << "access info for mysql is not available";
-    return nullptr;
+    RaiseException("access info for mysql is not available");
   }
   VLOG(5) << "access_info_ptr schema column size: "
           << access_info_ptr->schema.size();
@@ -568,8 +535,7 @@ std::unique_ptr<Cursor> MySQLDriver::GetCursor() {
     // first connect to db
     auto ret = this->connect(access_info_ptr);
     if (ret != retcode::SUCCESS) {
-      LOG(ERROR) << "connect to mysql failed";
-      return nullptr;
+      RaiseException("connect to mysql failed");
     }
     std::string sql_change_db{"USE "};
     sql_change_db.append(access_info_ptr->db_name);
@@ -590,8 +556,7 @@ std::unique_ptr<Cursor> MySQLDriver::GetCursor(
   auto access_info_ptr =
       dynamic_cast<MySQLAccessInfo*>(this->access_info_.get());
   if (access_info_ptr == nullptr) {
-    LOG(ERROR) << "access info for mysql is not available";
-    return nullptr;
+    RaiseException("access info for mysql is not available");
   }
   if (access_info_ptr->Schema().empty()) {
     auto ret = this->connect(access_info_ptr);
@@ -612,8 +577,7 @@ std::unique_ptr<Cursor> MySQLDriver::GetCursor(
   std::string query_sql = BuildQuerySQL(*access_info_ptr,
                                         col_index, &colum_names);
   if (query_sql.empty()) {
-    LOG(ERROR) << "query_sql is empty";
-    return nullptr;
+    RaiseException("query_sql is empty");
   }
   return std::make_unique<MySQLCursor>(query_sql, col_index, shared_from_this());
 }
@@ -627,8 +591,7 @@ std::unique_ptr<Cursor> MySQLDriver::MakeCursor(std::vector<int> col_index) {
   // first connect to db
   auto access_info = dynamic_cast<MySQLAccessInfo*>(this->access_info_.get());
   if (access_info == nullptr) {
-    LOG(ERROR) << "access info for mysql is not available";
-    return nullptr;
+    RaiseException("access info for mysql is not available");
   }
   auto ret = this->connect(access_info);
   if (ret != retcode::SUCCESS) {
