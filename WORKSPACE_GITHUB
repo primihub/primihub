@@ -57,7 +57,7 @@ http_archive(
     "https://gitlab.com/libeigen/eigen/-/archive/3.4/eigen-3.4.tar.bz2",
     "https://primihub.oss-cn-beijing.aliyuncs.com/tools/eigen-3.4.tar.bz2",
   ],
-  sha256 = "a6f7aaa7b19c289dfeb33281e1954f19bf2ba1c6cae2c182354d820f535abef8",
+  #sha256 = "a6f7aaa7b19c289dfeb33281e1954f19bf2ba1c6cae2c182354d820f535abef8",
 )
 
 new_git_repository(

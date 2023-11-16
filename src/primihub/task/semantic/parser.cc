@@ -45,8 +45,6 @@ retcode ProtocolSemanticParser::parseTaskSyntaxTree(
     LOG(ERROR) << "no language handler found";
     return retcode::FAIL;
   }
-
-
   retcode ret_code{retcode::SUCCESS};
   auto task_language = lan_parser->getPushTaskRequest().task().language();
   switch (task_language) {
@@ -149,7 +147,6 @@ retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
       });
     // process auxiliary server if search by dataset
     ProcessAuxiliaryServer(_parser);
-
   }
   return retcode::SUCCESS;
 }

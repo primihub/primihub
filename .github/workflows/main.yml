@@ -74,9 +74,12 @@ jobs:
       shell: bash
     - name: Install make
       run: brew install make
+    - name: Install setuptools
+      run: python3 -m pip install setuptools
+    - name: Change workspace file to github config
+      run: ln -s -f WORKSPACE_GITHUB WORKSPACE
     - name: bazel test
       run: |
-        mv -f WORKSPACE_GITHUB WORKSPACE
         bazel build --config=darwin_x86_64 \
             //test/primihub/algorithm:logistic_test
         #    //test/primihub/common/type:common_test \

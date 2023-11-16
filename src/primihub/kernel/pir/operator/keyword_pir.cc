@@ -746,7 +746,7 @@ std::unique_ptr<apsi::PSIParams> KeywordPirOperator::SetPsiParams() {
     // throw_if_file_invalid(cmd.params_file());
     std::fstream input_file(pir_server_config_path, std::ios_base::in);
     if (!input_file.is_open()) {
-      LOG(ERROR) << "open " << pir_server_config_path << " encountes error";
+      LOG(ERROR) << "open " << pir_server_config_path << " failed";
       return nullptr;
     }
     std::string line;

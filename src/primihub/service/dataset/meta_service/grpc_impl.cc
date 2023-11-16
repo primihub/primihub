@@ -6,6 +6,7 @@
 #include <utility>
 #include <tuple>
 #include <string>
+#include "src/primihub/common/value_check_util.h"
 
 namespace primihub::service {
 GrpcDatasetMetaService::GrpcDatasetMetaService(const Node& server_cfg) {
@@ -133,7 +134,6 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
     return retcode::FAIL;
   }
   std::vector<DatasetMetaWithParamTag> meta_list;
-
   rpc::GetDatasetRequest request;
   std::map<std::string, std::string> id2tag;
   for (const auto& pair : datasets_with_tag) {
@@ -200,10 +200,11 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
   } while (true);
 
   if (datasets_with_tag.size() != meta_list.size()) {
-    LOG(ERROR) << "Failed to get all dataset's meta, no handler triggered."
-        << "datasets_with_tag size: " << datasets_with_tag.size() << " "
-        << "";
-    return retcode::FAIL;
+    std::stringstream ss;
+    ss << "Failed to get all dataset's meta, no handler triggered. "
+       << "expected dataset size: " << datasets_with_tag.size() << ", "
+       << "but get: " << meta_list.size();
+    RaiseException(ss.str());
   } else {
     handler(meta_list);
   }
