@@ -21,3 +21,18 @@ def validate_quantile_sketch_params(caller):
         },
         caller_name=caller.__class__.__name__,
     )
+
+
+def validatea_freq_sketch_params(caller):
+    parameter_constraints = {
+        "error_type": [StrOptions({"NFP", "NFN"})],
+        "k": [Interval(Integral, 1, None, closed="left")],
+    }
+    validate_parameter_constraints(
+        parameter_constraints,
+        params={
+            "sketch_name": caller.error_type,
+            "k": caller.k,
+        },
+        caller_name=caller.__class__.__name__,
+    )

@@ -1,4 +1,3 @@
-import numpy as np
 from datasketches import (
     frequent_strings_sketch,
     frequent_items_sketch,
@@ -165,14 +164,18 @@ def get_frequent_items(
     check_sketch(sketch, "FI", vector)
 
     if vector:
-        freq_items = []
+        freq_items, counts = [], []
         for col_sketch in sketch:
-            freq_items.append(
-                _get_frequent_items(col_sketch, error_type, max_item, threshold)
+            col_freq_items, col_counts = _get_frequent_items(
+                col_sketch, error_type, max_item, threshold
             )
+            freq_items.append(col_freq_items)
+            counts.append(col_counts)
     else:
-        freq_items = _get_frequent_items(sketch, error_type, max_item, threshold)
-    return freq_items
+        freq_items, counts = _get_frequent_items(
+            sketch, error_type, max_item, threshold
+        )
+    return freq_items, counts
 
 
 def _get_frequent_items(
@@ -183,11 +186,11 @@ def _get_frequent_items(
 ):
     result = sketch.get_frequent_items(error_type, threshold)
     if not result:
-        return result
+        return [], []  # No item frequent greater than threshold
 
     freq_items = [item[0] for item in result]
+    counts = [item[1] for item in result]
     if max_item is not None and max_item < len(freq_items):
         freq_items = freq_items[:max_item]
-        if max_item == 1:
-            freq_items = freq_items[0]
-    return freq_items
+        counts = counts[:max_item]
+    return freq_items, counts
