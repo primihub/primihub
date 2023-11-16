@@ -201,12 +201,12 @@ class SimpleImputer(_PreprocessBase, _BaseImputer):
 
                 mask = [col_sketch.is_empty() for col_sketch in sketch]
                 if not any(mask):
-                    most_frequent = get_frequent_items(
+                    most_frequent, _ = get_frequent_items(
                         sketch=sketch,
                         error_type="NFP",
                         max_item=1,
                     )
-                    most_frequent = np.array(most_frequent, dtype=object)
+                    most_frequent = np.array(most_frequent, dtype=object).reshape(-1)
                 else:
                     most_frequent = np.empty(len(sketch), dtype=object)
                     for i, empty in enumerate(mask):
@@ -215,12 +215,13 @@ class SimpleImputer(_PreprocessBase, _BaseImputer):
                                 0 if self.module.keep_empty_features else np.nan
                             )
                         else:
-                            most_frequent[i] = get_frequent_items(
+                            item, _ = get_frequent_items(
                                 sketch[i],
                                 error_type="NFP",
                                 max_item=1,
                                 vector=False,
                             )
+                            most_frequent[i] = item[0]
                 self.channel.send_all("most_frequent", most_frequent)
             return most_frequent
 

@@ -60,10 +60,9 @@ def col_frequent_client(
         for Xi in X:
             items, counts = _unique(Xi, return_counts=True)
 
-            if ignore_nan:
+            if ignore_nan and is_scalar_nan(items[-1]):
                 # nan is the last element
-                if is_scalar_nan(items[-1]):
-                    items, counts = items[:-1], counts[:-1]
+                items, counts = items[:-1], counts[:-1]
 
             all_items.append(items)
             all_counts.append(counts)
@@ -76,10 +75,10 @@ def col_frequent_client(
                 "server_col_freq_item=None because send_server=False",
                 RuntimeWarning,
             )
-        server_col_freq = channel.recv("server_col_freq")
-        return server_col_freq
+        server_col_freq, server_col_count = channel.recv("server_col_freq_count")
+        return server_col_freq, server_col_count
     else:
-        client_col_freq = []
+        client_col_freq, client_col_count = []
         for i in range(n_features):
             items, counts = all_items[i], all_counts[i]
 
@@ -91,12 +90,11 @@ def col_frequent_client(
                 items, counts = items[counts_mask], counts[counts_mask]
 
             if max_item is not None and max_item < items.size:
-                items = items[:max_item]
-                if max_item == 1:
-                    items = items[0]
+                items, counts = items[:max_item], counts[:max_item]
 
             client_col_freq.append(items)
-        return client_col_freq
+            client_col_count.append(counts)
+        return client_col_freq, client_col_count
 
 
 def col_frequent_server(
@@ -113,7 +111,7 @@ def col_frequent_server(
     check_channel(channel, send_client, recv_client)
 
     if recv_client:
-        server_col_freq = get_global_frequent_items(
+        server_col_freq, server_col_count = get_global_frequent_items(
             channel=channel,
             error_type=error_type,
             max_item=max_item,
@@ -121,7 +119,7 @@ def col_frequent_server(
             k=k,
         )
     else:
-        server_col_freq = None
+        server_col_freq, server_col_count = None, None
 
     if send_client:
         if not recv_client:
@@ -129,5 +127,5 @@ def col_frequent_server(
                 "server_col_freq=None because recv_client=False",
                 RuntimeWarning,
             )
-        channel.send_all("server_col_freq", server_col_freq)
-    return server_col_freq
+        channel.send_all("server_col_freq_count", (server_col_freq, server_col_count))
+    return server_col_freq, server_col_count
