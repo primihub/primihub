@@ -33,6 +33,7 @@
 #include "src/primihub/util/util.h"
 #include "src/primihub/util/file_util.h"
 #include "src/primihub/util/thread_local_data.h"
+#include "src/primihub/common/value_check_util.h"
 
 namespace primihub {
 namespace csv {
@@ -56,10 +57,7 @@ retcode SkipUTF8BOM(const std::string& origin_data, std::string* new_data) {
       } else {
         std::stringstream ss;
         ss << "UTF8 string too short (truncated byte order mark?)";
-        std::string err_msg = ss.str();
-        SetThreadLocalErrorMsg(err_msg);
-        LOG(ERROR) << err_msg;
-        return retcode::FAIL;
+        RaiseException(ss.str());
       }
     }
     if (*(data+i) != kBOM[i]) {
@@ -126,10 +124,7 @@ retcode WriteContent(std::shared_ptr<arrow::Table> table,
   if (!result.ok()) {
     std::stringstream ss;
     ss << "Open file " << file_path << " failed. " << result.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
 
   auto stream = result.ValueOrDie();
@@ -143,10 +138,7 @@ retcode WriteContent(std::shared_ptr<arrow::Table> table,
   if (!status.ok()) {
     std::stringstream ss;
     ss << "Write content to csv file failed. " << status;
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return retcode::FAIL;
+    RaiseException(ss.str());
   }
   return retcode::SUCCESS;
 }
@@ -188,10 +180,7 @@ std::shared_ptr<arrow::Table> Read(
   if (!maybe_reader.ok()) {
     std::stringstream ss;
     ss << "read data failed, " << "detail: " << maybe_reader.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return nullptr;
+    RaiseException(ss.str());
   }
   std::shared_ptr<arrow::csv::TableReader> reader = *maybe_reader;
   // Read table from CSV file
@@ -201,10 +190,7 @@ std::shared_ptr<arrow::Table> Read(
     // (for example a CSV syntax error or failed type conversion)
     std::stringstream ss;
     ss << "read data failed, " << "detail: " << maybe_table.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return nullptr;
+    RaiseException(ss.str());
   }
   auto time_cost = timer.timeElapse();
   VLOG(5) << "read csv data time cost(ms): " << time_cost;
@@ -233,10 +219,7 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
     std::stringstream ss;
     ss << "Failed to open file: " << file_path << " "
         << "detail: " << result_ifstream.status();
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return nullptr;
+    RaiseException(ss.str());
   }
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
   return Read(input, read_opt, parse_opt, convert_opt);
@@ -248,10 +231,7 @@ std::string ReadRawData(const std::string& file_path, int64_t line_number) {
   if (!csv_data.is_open()) {
     std::stringstream ss;
     ss << "open csv file: " << file_path << " failed";
-    std::string err_msg = ss.str();
-    SetThreadLocalErrorMsg(err_msg);
-    LOG(ERROR) << err_msg;
-    return std::string();
+    RaiseException(ss.str());
   }
   std::string content_buf;
   std::string tmp_buf;
@@ -313,10 +293,7 @@ retcode CSVAccessInfo::ParseFromJsonImpl(const nlohmann::json& meta_info) {
       std::stringstream ss;
       ss << "get dataset path failed, " << e.what() << " "
           << "detail: " << meta_info;
-      std::string err_msg = ss.str();
-      SetThreadLocalErrorMsg(err_msg);
-      LOG(ERROR) << err_msg;
-      return retcode::FAIL;
+      RaiseException(ss.str());
     }
   }
   return retcode::SUCCESS;
@@ -343,10 +320,7 @@ retcode CSVAccessInfo::ParseFromMetaInfoImpl(const DatasetMetaInfo& meta_info) {
     if (!csv_data.is_open()) {
       std::stringstream ss;
       ss << "file_path: " << file_path_ << " is not exist";
-      std::string err_msg = ss.str();
-      SetThreadLocalErrorMsg(err_msg);
-      LOG(ERROR) << err_msg;
-      return retcode::FAIL;
+      RaiseException(ss.str());
     }
     return retcode::SUCCESS;
   }
@@ -387,15 +361,11 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
       } else {
         std::stringstream ss;
         ss << "index [" << index << "] is invalid";
-        std::string err_msg = ss.str();
-        SetThreadLocalErrorMsg(err_msg);
-        LOG(ERROR) << err_msg;
-        return retcode::FAIL;
+        RaiseException(ss.str());
       }
     }
   } else {
-    LOG(ERROR) << "dataset schema is empty";
-    return retcode::FAIL;
+    RaiseException("dataset schema is empty");
   }
   return retcode::SUCCESS;
 }
@@ -403,8 +373,7 @@ retcode CSVCursor::ColumnIndexToColumnName(const std::string& file_path,
 retcode CSVCursor::BuildConvertOptions(
     arrow::csv::ConvertOptions* convert_options_ptr) {
   if (this->driver_->dataSetAccessInfo()->schema.empty()) {
-    LOG(ERROR) << "no schema is set for dataset";
-    return retcode::FAIL;
+    RaiseException("no schema is set for dataset");
   }
   auto& include_columns = convert_options_ptr->include_columns;
   auto& column_types = convert_options_ptr->column_types;
@@ -423,11 +392,8 @@ retcode CSVCursor::BuildConvertOptions(
       } else {
         std::stringstream ss;
         ss << "index is out of range, index: " << index
-            << " total columns: " << number_fields;
-        std::string err_msg = ss.str();
-        SetThreadLocalErrorMsg(err_msg);
-        LOG(ERROR) << err_msg;
-        return retcode::FAIL;
+           << " total columns: " << number_fields;
+        RaiseException(ss.str());
       }
     }
   } else {
@@ -652,8 +618,7 @@ retcode CSVDriver::GetColumnNames(const char delimiter,
 std::unique_ptr<Cursor> CSVDriver::read() {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
-    LOG(ERROR) << "file access info is unavailable";
-    return nullptr;
+    RaiseException("file access info is unavailable");
   }
   VLOG(5) << "access_info_ptr schema column size: "
           << csv_access_info->schema.size();
@@ -701,8 +666,7 @@ std::unique_ptr<Cursor> CSVDriver::GetCursor(
     const std::vector<int>& col_index) {
   auto csv_access_info = dynamic_cast<CSVAccessInfo*>(this->access_info_.get());
   if (csv_access_info == nullptr) {
-    LOG(ERROR) << "file access info is unavailable";
-    return nullptr;
+    RaiseException("file access info is unavailable");
   }
   filePath_ = csv_access_info->file_path_;
   return std::make_unique<CSVCursor>(filePath_, col_index, shared_from_this());

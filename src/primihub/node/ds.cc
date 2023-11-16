@@ -56,6 +56,7 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
   default: {
     std::string err_msg = "unsupported operation type: ";
     err_msg.append(std::to_string(op_type));
+    LOG(ERROR) << err_msg;
     SetResponseErrorMsg(std::move(err_msg), response);
   }
   }
@@ -77,11 +78,12 @@ grpc::Status DataServiceImpl::DownloadData(grpc::ServerContext* context,
   const auto& request_id = request->request_id();
   if (file_list.empty()) {
     std::string err_msg = "download list is empty, no data file for download";
+    LOG(ERROR) << pb_util::TaskInfoToString(request_id) << err_msg;
     rpc::DownloadRespone resp;
     resp.set_info(err_msg);
     resp.set_code(rpc::Status::FAIL);
-    LOG(ERROR) << pb_util::TaskInfoToString(request_id) << err_msg;
     writer->Write(resp);
+    return grpc::Status::OK;
   }
   // using pipeline mode to read and send data, make sure data sequence: fifo
   ThreadSafeQueue<DataBlock> resp_queue;
@@ -224,7 +226,8 @@ retcode DataServiceImpl::RegisterDatasetProcess(
   std::shared_ptr<DataDriver> driver{nullptr};
   std::string access_meta;
   try {
-    auto access_info = this->GetDatasetService()->createAccessInfo(driver_type, meta_info);
+    auto access_info =
+        this->GetDatasetService()->createAccessInfo(driver_type, meta_info);
     if (access_info == nullptr) {
       std::string err_msg = "create access info failed";
       throw std::invalid_argument(err_msg);
@@ -235,32 +238,48 @@ retcode DataServiceImpl::RegisterDatasetProcess(
                                           std::move(access_info));
     this->GetDatasetService()->registerDriver(meta_info.id, driver);
   } catch (std::exception& e) {
-    auto& err_info = ThreadLocalErrorMsg();
+    size_t len = strlen(e.what());
+    len = len > 1024 ? 1024 : len;
+    auto err_msg = std::string(e.what(), len);
     LOG(ERROR) << "Failed to load dataset from: "
             << meta_info.access_info << " "
             << "driver_type: " << driver_type << " "
             << "fid: " << meta_info.id << " "
-            << "exception: " << err_info;
-    SetResponseErrorMsg(err_info, reply);
-    ResetThreadLocalErrorMsg();
+            << "exception: " << err_msg;
+    SetResponseErrorMsg(err_msg, reply);
     return retcode::FAIL;
   }
 
-  DatasetMeta mate;
-  auto dataset = GetDatasetService()->newDataset(
-      driver, meta_info.id, access_meta, &mate);
-  if (dataset == nullptr) {
-    auto& err_msg = ThreadLocalErrorMsg();
+
+  try {
+    DatasetMeta mate;
+    auto dataset = GetDatasetService()->newDataset(
+        driver, meta_info.id, access_meta, &mate);
+    if (dataset == nullptr) {
+      LOG(ERROR) << "register dataset " << meta_info.id << " failed";
+      auto& err_msg = ThreadLocalErrorMsg();
+      SetResponseErrorMsg(err_msg, reply);
+      ResetThreadLocalErrorMsg();
+      this->GetDatasetService()->unRegisterDriver(meta_info.id);
+      return retcode::FAIL;
+    } else {
+      reply->set_ret_code(rpc::NewDatasetResponse::SUCCESS);
+      reply->set_dataset_url(mate.getDataURL());
+      LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
+    }
+  } catch (std::exception& e) {
+    size_t len = strlen(e.what());
+    len = len > 1024 ? 1024 : len;
+    auto err_msg = std::string(e.what(), len);
+    LOG(ERROR) << "Failed to register dataset from: "
+            << meta_info.access_info << " "
+            << "driver_type: " << driver_type << " "
+            << "fid: " << meta_info.id << " "
+            << "exception: " << err_msg;
     SetResponseErrorMsg(err_msg, reply);
-    ResetThreadLocalErrorMsg();
-    LOG(ERROR) << "register dataset " << meta_info.id << " failed";
-    this->GetDatasetService()->unRegisterDriver(meta_info.id);
     return retcode::FAIL;
-  } else {
-    reply->set_ret_code(rpc::NewDatasetResponse::SUCCESS);
-    reply->set_dataset_url(mate.getDataURL());
-    LOG(INFO) << "end of register dataset, dataurl: " << mate.getDataURL();
   }
+
 
   return retcode::SUCCESS;
 }
