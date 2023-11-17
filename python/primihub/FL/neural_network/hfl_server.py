@@ -119,7 +119,7 @@ class Plaintext_Server:
             if input_shape != cinput_shape:
                 all_input_shapes_same = False
                 error_msg = f"""Not all input shapes are the same,
-                                client {self.client_channel.keys()[idx]}'s
+                                client {list(self.client_channel.Clients.keys())[idx]}'s
                                 input shape is {cinput_shape},
                                 but others' are {input_shape}"""
                 logger.error(error_msg)
