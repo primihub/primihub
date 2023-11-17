@@ -101,8 +101,11 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
       // LOG(INFO) << col << ":" << dtype;
     }
     // LOG(INFO) << col_and_dtype;
-
+ 
     expr_ = param_map["Expr"].value_string();
+    int comma_index = expr_.find(",");
+    cmp_col1 = expr_.substr(4, comma_index - 4);
+    cmp_col2 = expr_.substr(comma_index + 1, expr_.length() - comma_index - 2);
     is_cmp = false;
     if (expr_.substr(0, 3) == "CMP")
       is_cmp = true;

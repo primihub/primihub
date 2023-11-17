@@ -51,6 +51,8 @@ private:
 
   // For MPC express task.
   std::string expr_;
+  std::string cmp_col1;
+  std::string cmp_col2;
   std::map<std::string, u32> col_and_owner_;
   std::map<std::string, bool> col_and_dtype_;
   std::vector<double> final_val_double_;
