@@ -1,5 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
+config_setting(
+  name = "macos",
+  constraint_values = [
+    "@platforms//os:macos",
+  ],
+  visibility = ["//visibility:public"],
+)
+
 filegroup(
   name = "curl_base_src",
   srcs = glob(["lib/**/*.c"]),
@@ -38,9 +46,17 @@ cc_library(
   ],
   defines = ["CURL_STATICLIB"],
   includes = ["include"],
-  linkopts = [
-    "-lrt",
-  ],
+  linkopts = select({
+    ":macos": [
+      "-Wl,-framework",
+      "-Wl,CoreFoundation",
+      "-Wl,-framework",
+      "-Wl,Security",
+    ],
+    "//conditions:default": [
+      "-lrt",
+    ],
+  }),
   visibility = ["//visibility:public"],
   deps = [
     "@zlib//:zlib",
