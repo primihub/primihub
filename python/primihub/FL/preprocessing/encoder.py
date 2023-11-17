@@ -12,6 +12,7 @@ from sklearn.utils._param_validation import RealNotInt
 from .base import _PreprocessBase
 from .util import validatea_freq_sketch_params
 from ..sketch import send_local_fi_sketch, merge_local_fi_sketch, get_frequent_items
+from ..stats.union import items_union
 
 __all__ = ["OneHotEncoder", "OrdinalEncoder", "TargetEncoder"]
 
@@ -71,7 +72,7 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
         elif self.role == "server":
             if self.categories == "auto":
                 client_categories = self.channel.recv_all("categories")
-                categories = compute_category_union(client_categories)
+                categories = items_union(client_categories)
                 self.channel.send_all("categories", categories)
             else:
                 categories = []
@@ -409,18 +410,6 @@ class OrdinalEncoder(_BaseEncoder):
         return self
 
 
-def compute_category_union(client_categories):
-    categories = []
-    for feature_idx in range(len(client_categories[0])):
-        categories_for_idx = []
-        for client_cat in client_categories:
-            categories_for_idx.append(client_cat[feature_idx])
-        categories_for_idx = np.concatenate(categories_for_idx)
-        categories_for_idx = _unique(categories_for_idx)
-        categories.append(categories_for_idx)
-    return categories
-
-
 class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=None):
     def __init__(
         self,
@@ -658,7 +647,7 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
         elif self.role == "server":
             if self.categories == "auto":
                 client_categories = self.channel.recv_all("categories")
-                categories = compute_category_union(client_categories)
+                categories = items_union(client_categories)
                 self.channel.send_all("categories", categories)
             else:
                 categories = self.categories

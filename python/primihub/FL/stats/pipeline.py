@@ -104,6 +104,7 @@ def check_stats_name(stats_name: str):
         "min",
         "max",
         "frequent",
+        "union",
         "quantile",
         "norm",
         "sum",
@@ -158,6 +159,18 @@ def compute_stats(X, stats_name: str, params: dict, role: str, channel):
             max_item=params.get("max_item"),
             min_freq=params.get("min_freq"),
             k=params.get("k", 20),
+            ignore_nan=ignore_nan,
+            channel=channel,
+        )
+
+    elif stats == "union":
+        union_func = {
+            "col": col_union,
+        }[axis]
+
+        return union_func(
+            role=role,
+            X=X,
             ignore_nan=ignore_nan,
             channel=channel,
         )
