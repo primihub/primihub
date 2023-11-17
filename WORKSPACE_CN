@@ -5,7 +5,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 
 git_repository(
   name = "com_github_bazel_rules_3rdparty",
-  commit = "6053d0f3f70cda3e2e145ed008c7bd9c822e5b37",
+  commit = "537bac41153d21467d31f0a22eb67f02d5104e23",
   remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
 )
 
