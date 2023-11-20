@@ -21,7 +21,20 @@ class LogisticRegression:
             self.multiclass = True
 
     def sigmoid(self, x):
-        return 1.0 / (1.0 + np.exp(-x))
+        # https://stackoverflow.com/a/64717799
+        def _positive_sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+
+        def _negative_sigmoid(x):
+            exp = np.exp(x)
+            return exp / (exp + 1)
+
+        positive = x >= 0
+        negative = ~positive
+        result = np.empty_like(x, dtype=np.float)
+        result[positive] = _positive_sigmoid(x[positive])
+        result[negative] = _negative_sigmoid(x[negative])
+        return result
     
     def softmax(self, x):
         exp = np.exp(x - np.max(x, axis=1, keepdims=True))
