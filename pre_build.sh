@@ -40,8 +40,13 @@ rm -f python_headers
 ln -s ${PYTHON_INC_CONFIG} python_headers
 popd
 
+#get python install prefix
+PREFIX_PATH=`${PYTHON_CONFIG_CMD} --prefix`
+
 #get python link option
-CONFIG=`${PYTHON_CONFIG_CMD} --ldflags` && NEWLINE="[\"${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+CONFIG=`${PYTHON_CONFIG_CMD} --ldflags` && {
+  NEWLINE="[\"-L${PREFIX_PATH}/lib ${CONFIG}\"] + [\"-lpython$U_V1.$U_V2\"]"
+}
 
 # Compatible with MacOS
 sed -e "s|PLACEHOLDER-PYTHON3.X-CONFIG|${NEWLINE}|g" BUILD.bazel > BUILD.bazel.tmp && mv BUILD.bazel.tmp BUILD.bazel
