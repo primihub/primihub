@@ -104,14 +104,99 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
   return retcode::SUCCESS;
 }
 
-retcode PirTask::LoadParams(const rpc::Task& task) {
-  const auto& param_map = task.params().param_map();
-  auto iter = param_map.find("pirType");
-  if (iter != param_map.end()) {
-    pir_type_ = iter->second.value_int32();
+retcode PirTask::ParseQueryConfig(const rpc::Task& task_config) {
+  GetServerDataSetSchema(task_config);
+  const auto& param_map = task_config.params().param_map();
+  // parse key colum and label colums
+  auto it = param_map.find("QueryConfig");
+  if (it == param_map.end()) {
+    LOG(WARNING) << "no QueryConfig found, "
+                 << "Server side using column 0 as default keyword";
+    // compatible with no queryconfig set
+    std::set<int> key_filter;
+    if (this->server_key_columns_.empty()) {
+      this->server_key_columns_.push_back(0);
+    }
+    for (const auto ind : server_key_columns_) {
+      key_filter.insert(ind);
+    }
+    if (this->server_label_columns_.empty()) {
+      size_t col_count = server_dataset_schema_.size();
+      for (size_t i = 0; i < col_count; i++) {
+        if (key_filter.find(i) != key_filter.end()) {
+          continue;
+        }
+        this->server_label_columns_.push_back(i);
+      }
+    }
+    LOG(ERROR) << "server_key_columns_: " << server_key_columns_.size() << " "
+               << "server_label_columns_: " << server_label_columns_.size();
+    return retcode::SUCCESS;
   }
 
-  const auto& party_datasets = task.party_datasets();
+  auto& conf_str = it->second.value_string();
+  nlohmann::json query_conf = nlohmann::json::parse(conf_str);
+  // get server query config
+  if (query_conf.contains(PARTY_SERVER)) {
+    auto& query_info = query_conf[PARTY_SERVER];
+    // get key
+    if (query_info.contains("key_columns")) {
+      auto& keys = query_info["key_columns"];
+      std::set<int> dup;
+      for (auto& key_index : keys) {
+        if (dup.find(key_index) != dup.end()) {
+          continue;
+        }
+        dup.insert(key_index.get<int>());
+        this->server_key_columns_.push_back(key_index);
+      }
+    }
+    // get label
+    if (query_info.contains("label_columns")) {
+      auto& labels = query_info["label_columns"];
+      std::set<int> dup;
+      for (auto& label_index : labels) {
+        if (dup.find(label_index) != dup.end()) {
+          continue;
+        }
+        dup.insert(label_index.get<int>());
+        this->server_label_columns_.push_back(label_index);
+      }
+    }
+    // if label is not explicitly specify，using columns excluse key colums
+    if (this->server_label_columns_.empty()) {
+      size_t total_colums = server_dataset_schema_.size();
+      std::set<int> dup;
+      for (const auto ind : server_key_columns_) {
+        dup.insert(ind);
+      }
+      for (size_t i = 0; i < total_colums; i++) {
+        if (dup.find(i) != dup.end()) {
+          continue;
+        }
+        this->server_label_columns_.push_back(i);
+      }
+    }
+    if (this->server_label_columns_.empty()) {
+      RaiseException("No label columns secififed for Server side");
+    }
+  }
+  // get client query config
+  if (query_conf.contains(PARTY_CLIENT)) {
+    auto& query_info = query_conf[PARTY_CLIENT];
+    // get key
+    if (query_info.contains("key_columns")) {
+      auto& keys = query_info["key_columns"];
+      for (auto& key_index : keys) {
+        this->client_key_columns_.push_back(key_index);
+      }
+    }
+  }
+  return retcode::SUCCESS;
+}
+
+retcode PirTask::ParseDataset(const rpc::Task& task_config) {
+  const auto& party_datasets = task_config.party_datasets();
   auto dataset_it = party_datasets.find(party_name());
   if (dataset_it != party_datasets.end()) {
     const auto& datasets_map = dataset_it->second.data();
@@ -126,13 +211,19 @@ retcode PirTask::LoadParams(const rpc::Task& task) {
       is_dataset_detail_ = true;
     }
   }
+}
 
-  auto ret = BuildOptions(task, &this->options_);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "build operator options for party: "
-               << party_name() << " failed";
-    return retcode::FAIL;
+retcode PirTask::ParsePirType(const rpc::Task& task_config) {
+  const auto& param_map = task_config.params().param_map();
+  auto iter = param_map.find("pirType");
+  if (iter != param_map.end()) {
+    pir_type_ = iter->second.value_int32();
   }
+  return retcode::SUCCESS;
+}
+
+retcode PirTask::ParseResultPathConfig(const rpc::Task& task_config) {
+  const auto& param_map = task_config.params().param_map();
   if (RoleValidation::IsClient(this->party_name())) {
     VLOG(7) << "dataset_id: " << dataset_id_;
     auto it = param_map.find("outputFullFilename");
@@ -143,8 +234,21 @@ retcode PirTask::LoadParams(const rpc::Task& task) {
       LOG(ERROR) << "no keyword outputFullFilename match";
       return retcode::FAIL;
     }
-    GetServerDataSetSchema(task);
   }
+  return retcode::SUCCESS;
+}
+
+retcode PirTask::LoadParams(const rpc::Task& task) {
+  ParsePirType(task);
+  ParseQueryConfig(task);
+  ParseDataset(task);
+  auto ret = BuildOptions(task, &this->options_);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "build operator options for party: "
+               << party_name() << " failed";
+    return retcode::FAIL;
+  }
+  ParseResultPathConfig(task);
   return retcode::SUCCESS;
 }
 
@@ -195,7 +299,6 @@ retcode PirTask::GetServerDataSetSchema(const rpc::Task& task) {
       server_dataset_schema_.push_back(std::get<0>(field));
     }
   }
-
   return retcode::SUCCESS;
 }
 
@@ -210,8 +313,8 @@ retcode PirTask::LoadDataset() {
         << " does not load dataset";
     return retcode::SUCCESS;
   }
-
 }
+
 retcode PirTask::ClientLoadDataset() {
   const auto& param_map = getTaskParam()->params().param_map();
   auto client_data_it = param_map.find("clientData");
@@ -246,9 +349,10 @@ retcode PirTask::ClientLoadDataset() {
     return retcode::FAIL;
   }
   auto& table = std::get<std::shared_ptr<arrow::Table>>(data_ptr->data);
-  std::vector<int> key_col = {0};
+  auto& key_col = client_key_columns_;
   auto key_array = GetSelectedContent(table, key_col);
   for (auto& item : key_array) {
+    LOG(ERROR) << "item: " << item;
     elements_[item];
   }
   return retcode::SUCCESS;
@@ -261,27 +365,24 @@ retcode PirTask::ServerLoadDataset() {
   }
   auto data_ptr = LoadDataSetInternal(this->dataset_id_);
   if (data_ptr == nullptr) {
-    LOG(ERROR) << "read data for dataset id: "
-               << this->dataset_id_ << " failed";
-    return retcode::FAIL;
+    std::stringstream ss;
+    ss << "read data for dataset id: " << this->dataset_id_ << " failed";
+    RaiseException(ss.str());
   }
   auto& table = std::get<std::shared_ptr<arrow::Table>>(data_ptr->data);
   int col_count = table->num_columns();
   size_t row_count = table->num_rows();
   if (col_count < 2) {
-    LOG(ERROR) << "data for server must have label";
-    return retcode::FAIL;
+    RaiseException("data for server must have label");
   }
-  std::vector<int> key_col = {0};
+  auto& key_col = this->server_key_columns_;
+  if (key_col.empty()) {
+    RaiseException("no column selected for keyword");
+  }
   auto key_array = GetSelectedContent(table, key_col);
-  // get label
-  std::vector<int> value_col;
-  for (int i = 1; i < col_count; i++) {
-    value_col.push_back(i);
-  }
+  auto& value_col = this->server_label_columns_;
   if (value_col.empty()) {
-    LOG(ERROR) << "no selected column for label";
-    return retcode::FAIL;
+    RaiseException("no column selected for label");
   }
   auto value_array = GetSelectedContent(table, value_col);
   elements_.reserve(key_array.size());
@@ -302,8 +403,8 @@ retcode PirTask::ServerLoadDataset() {
 
 std::shared_ptr<Dataset> PirTask::LoadDataSetInternal(
     const std::string& dataset_id) {
-  auto driver = this->getDatasetService()->getDriver(dataset_id,
-                                                     is_dataset_detail_);
+  auto driver =
+      this->getDatasetService()->getDriver(dataset_id, is_dataset_detail_);
   if (driver == nullptr) {
     LOG(ERROR) << "get driver for dataset: " << dataset_id << " failed";
     return nullptr;
@@ -360,7 +461,15 @@ retcode PirTask::SaveResult() {
   auto table = arrow::Table::Make(schema, arrow_array);
   auto driver = DataDirverFactory::getDriver("CSV", "test address");
   auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
-  auto rtcode = csv_driver->Write(server_dataset_schema_, table, result_file_path_);
+  // get correct seq for result data query from server
+  std::vector<std::string> result_schema;
+  for (const int ind : this->server_key_columns_) {
+    result_schema.push_back(server_dataset_schema_[ind]);
+  }
+  for (const auto ind : this->server_label_columns_) {
+    result_schema.push_back(server_dataset_schema_[ind]);
+  }
+  auto rtcode = csv_driver->Write(result_schema, table, result_file_path_);
   if (rtcode != retcode::SUCCESS) {
     LOG(ERROR) << "save PIR data to file " << result_file_path_ << " failed.";
     return retcode::FAIL;
@@ -433,27 +542,39 @@ std::vector<std::string> PirTask::GetSelectedContent(
     LOG(ERROR) << "no col selected for data";
     return std::vector<std::string>();
   }
-
+  int total_columns = data_tbl->num_columns();
   std::vector<std::string> content_array;
-  auto lable_ptr = data_tbl->column(selected_col[0]);
-  auto chunk_size = lable_ptr->num_chunks();
+  int col_index = selected_col[0];
+  if (col_index >= total_columns) {
+    std::stringstream ss;
+    ss << "index out of range: " << col_index << " "
+        << "total columns: " << total_columns;
+    RaiseException(ss.str());
+  }
+  auto label_ptr = data_tbl->column(col_index);
+  auto chunk_size = label_ptr->num_chunks();
   size_t total_row_count = col_count * chunk_size;
   content_array.reserve(total_row_count);
   for (int i = 0; i < chunk_size; ++i) {
-    auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(i));
+    auto array = std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(i));
     for (int64_t j = 0; j < array->length(); j++) {
       content_array.push_back(array->GetString(j));
     }
   }
-
   // process left columns
   for (size_t i = 1; i < selected_col.size(); ++i) {
     size_t index{0};
     int col_index = selected_col[i];
-    auto lable_ptr = data_tbl->column(col_index);
-    int chunk_size = lable_ptr->num_chunks();
+    if (col_index >= total_columns) {
+      std::stringstream ss;
+      ss << "index out of range: " << col_index << " "
+          << "total columns: " << total_columns;
+      RaiseException(ss.str());
+    }
+    auto label_ptr = data_tbl->column(col_index);
+    int chunk_size = label_ptr->num_chunks();
     for (int j = 0; j < chunk_size; ++j) {
-      auto array = std::static_pointer_cast<arrow::StringArray>(lable_ptr->chunk(j));
+      auto array = std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(j));
       for (int64_t k = 0; k < array->length(); ++k) {
         content_array[index++].append(",").append(array->GetString(k));
       }
@@ -461,6 +582,7 @@ std::vector<std::string> PirTask::GetSelectedContent(
   }
   return content_array;
 }
+
 bool PirTask::NeedSaveResult() {
   if (RoleValidation::IsClient(this->party_name())) {
     return true;

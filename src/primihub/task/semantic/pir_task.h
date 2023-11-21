@@ -52,7 +52,10 @@ class PirTask : public TaskBase {
   retcode BuildOptions(const rpc::Task& task,
                        primihub::pir::Options* option);
   bool NeedSaveResult();
-
+  retcode ParseQueryConfig(const rpc::Task& task_config);
+  retcode ParseDataset(const rpc::Task& task_config);
+  retcode ParsePirType(const rpc::Task& task_config);
+  retcode ParseResultPathConfig(const rpc::Task& task_config);
 
  private:
   int pir_type_{rpc::PirType::KEY_PIR};
@@ -65,6 +68,9 @@ class PirTask : public TaskBase {
   std::string db_cache_dir_{"data/cache"};
   std::unique_ptr<BasePirOperator> operator_{nullptr};
   std::vector<std::string> server_dataset_schema_;
+  std::vector<int> server_key_columns_;
+  std::vector<int> server_label_columns_;
+  std::vector<int> client_key_columns_;
 
   // std::string dataset_path_;
   // std::string dataset_id_;
