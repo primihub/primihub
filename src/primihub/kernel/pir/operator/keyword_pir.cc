@@ -761,13 +761,8 @@ std::unique_ptr<apsi::PSIParams> KeywordPirOperator::SetPsiParams() {
     return nullptr;
   }
 
-  std::unique_ptr<PSIParams> params{nullptr};
-  try {
-    params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
-  } catch (const std::exception &ex) {
-    LOG(ERROR) << "APSI threw an exception creating PSIParams: " << ex.what();
-    return nullptr;
-  }
+  // std::unique_ptr<PSIParams> params{nullptr};
+  auto params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
   SCopedTimer timer;
   std::ostringstream param_ss;
   size_t param_size = params->save(param_ss);

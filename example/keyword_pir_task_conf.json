@@ -11,9 +11,9 @@
       "description": "query data",
       "type": "STRING",
       "value": [
-        "SXUiwPmLNohCROXPMZIqbnLrfhCtREPzCiDYZaDghlkfGBCTqyPdqnjoaWzyNzBT",
-        "IGvEVefbEuKPEIEoRxBUhGaiJlbaQqoGtXhzLFdrKMdBpqAkJJOqNvomqPBvBKmL",
-        "nLmrRIMTaYRaeMRoGHcTGumAJsgsGjNKvJkEYgEEspLHDUIaxUtqEdowjDWOjsJn"
+        "lLAnqwEihmGXxVPZZESncfgaaI,ZIhoPpMEmHPSFUoqUgUHBnMUddmTVwHfxEsqGg",
+        "RdtLFTxlxrqGlohnSMfYculjIO,gWagTnxGXpIYdGeFwxieQCEinNYapTNhicCcsA",
+        "GDdfeQLBJTkRvSENhVLyuajxWo,inZTaXVvvpuXtsLVaezncWRYmoERXTXhZrzdSy"
       ]
     },
     "pirType": {
@@ -25,6 +25,18 @@
       "description": "path for client save query result",
       "type": "STRING",
       "value": "data/result/pir_result.csv"
+    },
+    "QueryConfig": {
+      "type": "OBJECT",
+      "value": {
+        "SERVER": {
+          "key_columns": [0,1],
+          "label_columns": [2,3]
+        },
+        "CLIENT": {
+          "key_columns": []
+        }
+      }
     }
   },
   "party_datasets": {
