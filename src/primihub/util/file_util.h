@@ -33,6 +33,7 @@ std::vector<std::string> GetFiles(const std::string& path);
 int ValidateDir(const std::string &file_path);
 bool FileExists(const std::string& file_path);
 bool RemoveFile(const std::string& file_path);
+int64_t FileSize(const std::string& file_path);
 /**
  * complete path using provided path
  * if file_path is relative path, concat default_storage_path to file path

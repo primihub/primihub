@@ -67,13 +67,15 @@ class LogisticRegressionExecutor : public AlgorithmBase {
   int saveModel(void);
   retcode InitEngine() override;
 
+ protected:
+  retcode ParseExcludeColumns(primihub::rpc::Task &task_config);
+
  private:
   int _ConstructShares(sf64Matrix<D> &w, sf64Matrix<D> &train_data,
                        sf64Matrix<D> &train_label, sf64Matrix<D> &test_data,
                        sf64Matrix<D> &test_label);
 
-  int _LoadDatasetFromCSV(std::string &filename);
-
+  int _LoadDataset(const std::string& filename);
   uint16_t NextPartyId() {return (local_id_ + 1) % 3;}
   uint16_t PrevPartyId() {return (local_id_ + 2) % 3;}
 
@@ -90,6 +92,7 @@ class LogisticRegressionExecutor : public AlgorithmBase {
   std::string test_input_filepath_;
   std::string train_dataset_id_;
   bool is_dataset_detail_{false};
+  std::vector<std::string> columns_exclude_;
   int batch_size_;
   int num_iter_;
 };
