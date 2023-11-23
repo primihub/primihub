@@ -15,6 +15,10 @@
       "type": "INT32",
       "value": 100
     },
+    "ColumnsExclude": {
+      "type": "STRING",
+      "value": ["ID"]
+    },
     "modelName": {
       "type": "STRING",
       "value": "data/result/mpc_lr_model.csv"

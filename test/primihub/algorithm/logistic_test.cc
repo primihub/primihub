@@ -87,6 +87,15 @@ void BuildTaskConfig(const std::string& role, const std::vector<rpc::Node>& node
   auto param_map = task.mutable_params()->mutable_param_map();
   (*param_map)["NumIters"] = pv_num_iter;
   (*param_map)["BatchSize"] = pv_batch_size;
+  rpc::ParamValue pv_columns_exclude;
+  std::vector<std::string> columns_exclude{"ID"};
+  pv_columns_exclude.set_var_type(rpc::VarType::STRING);
+  pv_columns_exclude.set_is_array(true);
+  auto array_ptr = pv_columns_exclude.mutable_value_string_array();
+  for (const auto& item : columns_exclude) {
+    array_ptr->add_value_string_array(item);
+  }
+  (*param_map)["ColumnsExclude"] = std::move(pv_columns_exclude);
 }
 void RunTest(rpc::Task& task_config,
              std::vector<DatasetMetaInfo>& meta_info,

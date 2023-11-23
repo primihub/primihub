@@ -88,12 +88,23 @@ bool FileExists(const std::string& file_path) {
     return false;
   }
 }
+
 bool RemoveFile(const std::string& file_path) {
   if (::remove(file_path.c_str()) == 0) {
     return true;
   } else {
     LOG(ERROR) << "remove file: " << file_path << " failed";
     return false;
+  }
+}
+
+int64_t FileSize(const std::string& file_path) {
+  if (!FileExists(file_path)) {
+    return 0;
+  } else {
+    struct stat file_stat;
+    ::stat(file_path.c_str(), &file_stat);
+    return file_stat.st_size;
   }
 }
 

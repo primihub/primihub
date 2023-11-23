@@ -42,6 +42,19 @@ grpc::Status DataServiceImpl::NewDataset(grpc::ServerContext *context,
   DatasetMetaInfo meta_info;
   // convert pb to DatasetMetaInfo
   ConvertToDatasetMetaInfo(request->meta_info(), &meta_info);
+  std::set<std::string> dup;
+  for (const auto& info : meta_info.schema) {
+    auto& field_name = std::get<0>(info);
+    if (dup.find(field_name) != dup.end()) {
+      std::string err_msg = "Duplicate Field name: ";
+      err_msg.append(field_name).append(" in dataset Schema");
+      LOG(ERROR) << err_msg;
+      SetResponseErrorMsg(std::move(err_msg), response);
+      return grpc::Status::OK;
+    }
+    dup.insert(field_name);
+  }
+
   auto op_type = request->op_type();
   switch (op_type) {
   case rpc::NewDatasetRequest::REGISTER:

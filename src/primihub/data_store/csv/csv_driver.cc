@@ -221,8 +221,11 @@ std::shared_ptr<arrow::Table> ReadCSVFile(const std::string& file_path,
         << "detail: " << result_ifstream.status();
     RaiseException(ss.str());
   }
+  int64_t file_size = FileSize(file_path);
+  ReadOptions read_opt_ = read_opt;
+  read_opt_.block_size = file_size;
   std::shared_ptr<arrow::io::InputStream> input = result_ifstream.ValueOrDie();
-  return Read(input, read_opt, parse_opt, convert_opt);
+  return Read(input, read_opt_, parse_opt, convert_opt);
 }
 
 std::string ReadRawData(const std::string& file_path, int64_t line_number) {
