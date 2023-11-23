@@ -48,6 +48,7 @@ private:
   // For MPC compare task.
   bool is_cmp{false};
   std::vector<bool> cmp_res_;
+  bool i64_cmp{true};
 
   // For MPC express task.
   std::string expr_;
