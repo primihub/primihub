@@ -54,24 +54,26 @@ class KBinsDiscretizer(_PreprocessBase):
             n_samples, n_features = X.shape
             n_bins = self.module._validate_n_bins(n_features)
 
-            self.channel.send("n_samples", n_samples)
-            subsample_ratio = self.channel.recv("subsample_ratio")
-            if subsample_ratio is not None:
-                X = resample(
-                    X,
-                    replace=False,
-                    n_samples=ceil(subsample_ratio * n_samples),
-                    random_state=self.module.random_state,
-                )
+            if self.module.subsample is not None:
+                self.channel.send("n_samples", n_samples)
+                subsample_ratio = self.channel.recv("subsample_ratio")
+                if subsample_ratio is not None:
+                    X = resample(
+                        X,
+                        replace=False,
+                        n_samples=ceil(subsample_ratio * n_samples),
+                        random_state=self.module.random_state,
+                    )
 
         elif self.role == "server":
             subsample = self.module.subsample
-            n_samples = sum(self.channel.recv_all("n_samples"))
-            if n_samples > subsample:
-                subsample_ratio = subsample / n_samples
-            else:
-                subsample_ratio = None
-            self.channel.send_all("subsample_ratio", subsample_ratio)
+            if subsample is not None:
+                n_samples = sum(self.channel.recv_all("n_samples"))
+                if n_samples > subsample:
+                    subsample_ratio = subsample / n_samples
+                else:
+                    subsample_ratio = None
+                self.channel.send_all("subsample_ratio", subsample_ratio)
 
         if self.module.dtype in (np.float64, np.float32):
             output_dtype = self.module.dtype
