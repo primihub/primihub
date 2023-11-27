@@ -16,10 +16,12 @@
 #include "src/primihub/task/pybind_wrapper/mpc_task_wrapper.h"
 #include <glog/logging.h>
 #include <random>
+#include <utility>
 #include "src/primihub/common/common.h"
-#include <google/protobuf/text_format.h>
-#include "uuid.h"
+#include "src/primihub/util/proto_log_helper.h"
+#include "uuid.h"                                                      // NOLINT
 
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 MPCExecutor::MPCExecutor(const std::string& task_req_str,
                          const std::string& protocol) {
@@ -278,7 +280,6 @@ retcode MPCExecutor::BroadcastSubtaskId(const std::string& sub_task_id) {
   for (const auto& receiver : receiver_list) {
     link_ctx->Send("subtask_id", receiver, sub_task_id);
   }
-
 }
 
 retcode MPCExecutor::RecvSubTaskId(std::string* subtask_id) {
@@ -359,9 +360,8 @@ retcode MPCExecutor::ExecuteStatisticsTask(
     BroadcastShape(*task_config, input_shape);
     task_ptr->setTaskParam(task_req_ptr_->task());
     if (VLOG_IS_ON(0)) {
-      std::string str;
-      google::protobuf::TextFormat::PrintToString(*task_req_ptr_, &str);
-      VLOG(0) << "MPCExecutor: " << str;
+      std::string str = pb_util::TaskRequestToString(*task_req_ptr_);
+      VLOG(0) << "MPCExecutor request: " << str;
     }
   }
   auto ret = task_ptr->ExecuteTask(input, col_rows, result);

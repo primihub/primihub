@@ -15,17 +15,19 @@
  */
 
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
+#include <set>
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/proto_log_helper.h"
+#include "src/primihub/common/value_check_util.h"
 
-using primihub::rpc::EndPoint;
-using primihub::rpc::LinkType;
-using primihub::rpc::ParamValue;
-using primihub::rpc::TaskType;
-using primihub::rpc::VirtualMachine;
-using primihub::rpc::VarType;
+using EndPoint = primihub::rpc::EndPoint;
+using LinkType = primihub::rpc::LinkType;
+using ParamValue = primihub::rpc::ParamValue;
+using TaskType = primihub::rpc::TaskType;
+using VirtualMachine = primihub::rpc::VirtualMachine;
+using VarType = primihub::rpc::VarType;
 
 namespace pb_util = primihub::proto::util;
 namespace primihub::task {
@@ -74,22 +76,27 @@ void ABY3Scheduler::add_vm(int party_id,
     auto prev = (party_id + 2) % 3;
 
     auto& task_info = task_request.task().task_info();
-    std::string name_prefix = task_info.job_id() + "_" + task_info.task_id() + "_";
+    std::string name_prefix = task_info.job_id();
+    name_prefix.append("_").append(task_info.task_id()).append("_");
 
-    int session_basePort = 12120;  // TODO move to configfile
+    int session_basePort = 12120;
     ed_next->set_ip(party_nodes[next].ip());
     // ed_next->set_port(peer_list[std::min(i, next)].data_port());
     ed_next->set_port(std::min(party_id, next) + session_basePort);
-    ed_next->set_name(name_prefix +
-                      absl::StrCat(std::min(party_id, next), std::max(party_id, next)));
-    ed_next->set_link_type(party_id < next ? LinkType::SERVER : LinkType::CLIENT);
+    ed_next->set_name(
+      name_prefix +
+        absl::StrCat(std::min(party_id, next), std::max(party_id, next)));
+    ed_next->set_link_type(
+      party_id < next ? LinkType::SERVER : LinkType::CLIENT);
 
     ed_prev->set_ip(party_nodes[prev].ip());
     // ed_prev->set_port(peer_list[std::min(i, prev)].data_port());
     ed_prev->set_port(std::min(party_id, prev) + session_basePort);
-    ed_prev->set_name(name_prefix +
-                      absl::StrCat(std::min(party_id, prev), std::max(party_id, prev)));
-    ed_prev->set_link_type(party_id < prev ? LinkType::SERVER : LinkType::CLIENT);
+    ed_prev->set_name(
+      name_prefix +
+        absl::StrCat(std::min(party_id, prev), std::max(party_id, prev)));
+    ed_prev->set_link_type(
+      party_id < prev ? LinkType::SERVER : LinkType::CLIENT);
 }
 
 
@@ -101,8 +108,8 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
   PushTaskRequest send_request;
   send_request.CopyFrom(*actorPushTaskRequest);
   if (actorPushTaskRequest->task().type() == TaskType::ACTOR_TASK) {
-    // auto mutable_node_map = nodePushTaskRequest.mutable_task()->mutable_node_map();
-    auto party_access_info = send_request.mutable_task()->mutable_party_access_info();
+    auto party_access_info =
+        send_request.mutable_task()->mutable_party_access_info();
     const auto& party_info = send_request.task().party_access_info();
     std::vector<std::string> party_names;
     std::vector<rpc::Node> party_nodes;
@@ -115,8 +122,7 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     if (dup_names.size() != 3) {
       std::string error_msg = "ABY3 protocol need 3 party, but get ";
       error_msg.append(std::to_string(dup_names.size()));
-      LOG(ERROR) << error_msg;
-      throw std::runtime_error(error_msg);
+      RaiseException(error_msg);
     }
     for (const auto& name_ : party_names) {
       auto& node = (*party_access_info)[name_];
@@ -127,7 +133,7 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
 
   if (VLOG_IS_ON(5)) {
     std::string str;
-    google::protobuf::TextFormat::PrintToString(send_request, &str);
+    str = pb_util::TaskRequestToString(send_request);
     VLOG(5) << "ABY3Scheduler::dispatch: " << str;
   }
   size_t party_count = send_request.task().party_access_info().size();
@@ -163,4 +169,4 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
   return retcode::SUCCESS;
 }
 
-} // namespace primihub::task
+}  // namespace primihub::task

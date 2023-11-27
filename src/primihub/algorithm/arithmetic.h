@@ -1,5 +1,20 @@
-#include "src/primihub/algorithm/base.h"
-
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+#ifndef SRC_PRIMIHUB_ALGORITHM_ARITHMETIC_H_
+#define SRC_PRIMIHUB_ALGORITHM_ARITHMETIC_H_
 #include <stdlib.h>
 #include <time.h>
 #include <algorithm>
@@ -8,7 +23,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
+#include <map>
 
+#include "src/primihub/algorithm/base.h"
 #include "src/primihub/data_store/driver.h"
 #include "src/primihub/executor/express.h"
 // #include "src/primihub/service/dataset/service.h"
@@ -18,7 +36,7 @@ namespace primihub {
 
 template <Decimal Dbit>
 class ArithmeticExecutor : public AlgorithmBase {
-public:
+ public:
   explicit ArithmeticExecutor(PartyConfig &config,
                               std::shared_ptr<DatasetService> dataset_service);
   int loadParams(primihub::rpc::Task &task) override;
@@ -27,7 +45,7 @@ public:
   int saveModel(void);
   retcode InitEngine() override;
 
-private:
+ private:
   int _LoadDatasetFromCSV(std::string &filename);
 
   std::string res_name_;
@@ -67,9 +85,9 @@ private:
 // class MPCSendRecvExecutor : public AlgorithmBase {
 // public:
 //   explicit MPCSendRecvExecutor(PartyConfig &config,
-//                                std::shared_ptr<DatasetService> dataset_service);
+//                                std::shared_ptr<DatasetService> dataset_service);  // NOLINT
 //   using TaskGetChannelFunc =
-//       std::function<std::shared_ptr<network::IChannel>(primihub::Node &node)>;
+//       std::function<std::shared_ptr<network::IChannel>(primihub::Node &node)>;    // NOLINT
 //   using TaskGetRecvQueueFunc =
 //       std::function<ThreadSafeQueue<std::string> &(const std::string &key)>;
 
@@ -102,4 +120,5 @@ private:
 // };
 // #endif
 
-} // namespace primihub
+}  // namespace primihub
+#endif  // SRC_PRIMIHUB_ALGORITHM_ARITHMETIC_H_
