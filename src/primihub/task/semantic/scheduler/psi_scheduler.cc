@@ -16,14 +16,15 @@
 #include "src/primihub/task/semantic/scheduler/psi_scheduler.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
-#include <google/protobuf/text_format.h>
+#include "src/primihub/util/proto_log_helper.h"
 
-using primihub::rpc::ParamValue;
-using primihub::rpc::TaskType;
-using primihub::rpc::VirtualMachine;
-using primihub::rpc::VarType;
-using primihub::rpc::PsiTag;
+using ParamValue = primihub::rpc::ParamValue;
+using TaskType = primihub::rpc::TaskType;
+using VirtualMachine = primihub::rpc::VirtualMachine;
+using VarType = primihub::rpc::VarType;
+using PsiTag = primihub::rpc::PsiTag;
 
+namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 retcode PSIScheduler::ScheduleTask(const std::string& party_name,
                                   const Node dest_node,
@@ -66,8 +67,7 @@ retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   PushTaskRequest push_request;
   push_request.CopyFrom(*pushTaskRequest);
   push_request.mutable_task()->set_type(TaskType::NODE_PSI_TASK);
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(push_request, &str);
+  std::string str = pb_util::TaskRequestToString(push_request);
   LOG(INFO) << "PSIScheduler::dispatch: " << str;
   LOG(INFO) << "Dispatch SubmitTask to PSI client node";
   const auto& participate_node = push_request.task().party_access_info();
@@ -79,8 +79,8 @@ retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   for (const auto& [party_name, node] : participate_node) {
     Node dest_node;
     pbNode2Node(node, &dest_node);
-    LOG(INFO) << "Dispatch SubmitTask to PSI client node to: " << dest_node.to_string() << " "
-        << "party_name: " << party_name;
+    LOG(INFO) << "Dispatch SubmitTask to PSI client node to: "
+        << dest_node.to_string() << " party_name: " << party_name;
     thrds.emplace_back(
       std::thread(
         &PSIScheduler::ScheduleTask,
@@ -98,4 +98,4 @@ retcode PSIScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   return retcode::SUCCESS;
 }
 
-}
+}  // namespace primihub::task

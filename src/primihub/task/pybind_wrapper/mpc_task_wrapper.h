@@ -37,7 +37,8 @@ class MPCExecutor {
   retcode Max(const std::vector<double>& input, std::vector<double>* result);
   retcode Min(const std::vector<double>& input, std::vector<double>* result);
   retcode Avg(const std::vector<double>& input,
-              const std::vector<int64_t>& col_rows, std::vector<double>* result);
+              const std::vector<int64_t>& col_rows,
+              std::vector<double>* result);
   retcode Sum(const std::vector<double>& input, std::vector<double>* result);
   void StopTask();
 

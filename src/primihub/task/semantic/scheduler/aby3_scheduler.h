@@ -14,9 +14,8 @@
  limitations under the License.
  */
 
-#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_ABY3_SCHEDULER_H_
-#define SRC_PRIMIHUB_TASK_SEMANTIC_ABY3_SCHEDULER_H_
-
+#ifndef SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_ABY3_SCHEDULER_H_
+#define SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_ABY3_SCHEDULER_H_
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -27,23 +26,22 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <map>
 
 #include "src/primihub/protos/worker.pb.h"
 #include "src/primihub/service/dataset/service.h"
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/common/common.h"
 
-using primihub::rpc::PushTaskReply;
-using primihub::rpc::PushTaskRequest;
-using primihub::rpc::VMNode;
-using primihub::service::DatasetWithParamTag;
-using primihub::task::PeerDatasetMap;
+using PushTaskReply = primihub::rpc::PushTaskReply;
+using PushTaskRequest = primihub::rpc::PushTaskRequest;
+using VMNode = primihub::rpc::VMNode;
+using DatasetWithParamTag = primihub::service::DatasetWithParamTag;
+using PeerDatasetMap = primihub::task::PeerDatasetMap;
 
 namespace primihub::task {
-
-
 class ABY3Scheduler : public VMScheduler {
-public:
+ public:
   ABY3Scheduler() = default;
   ABY3Scheduler(const std::string &node_id,
                 const std::vector<rpc::Node> &peer_list,
@@ -63,12 +61,12 @@ public:
                       const Node dest_node,
                       const PushTaskRequest& request);
 
-private:
+ private:
   const std::vector<rpc::Node> peer_list_;
   const PeerDatasetMap peer_dataset_map_;
   std::map<std::string, std::string> dataset_owner_;
 };
 
-} // namespace primihub::task
+}  // namespace primihub::task
 
-#endif // SRC_PRIMIHUB_TASK_SEMANTIC_ABY3_SCHEDULER_H_
+#endif  // SRC_PRIMIHUB_TASK_SEMANTIC_SCHEDULER_ABY3_SCHEDULER_H_
