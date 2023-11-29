@@ -16,6 +16,14 @@
       "description": "create sender db offline",
       "type": "STRING",
       "value": "data/cache/keyword_pir_server_data"
+    },
+    "QueryConfig": {
+      "type": "OBJECT",
+      "value": {
+        "SERVER": {
+          "key_columns": [0,1]
+        }
+      }
     }
   },
   "party_datasets": {

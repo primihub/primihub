@@ -113,19 +113,12 @@ retcode PirTask::ParseQueryConfig(const rpc::Task& task_config) {
     LOG(WARNING) << "no QueryConfig found, "
                  << "Server side using column 0 as default keyword";
     // compatible with no queryconfig set
-    std::set<int> key_filter;
     if (this->server_key_columns_.empty()) {
       this->server_key_columns_.push_back(0);
-    }
-    for (const auto ind : server_key_columns_) {
-      key_filter.insert(ind);
     }
     if (this->server_label_columns_.empty()) {
       size_t col_count = server_dataset_schema_.size();
       for (size_t i = 0; i < col_count; i++) {
-        if (key_filter.find(i) != key_filter.end()) {
-          continue;
-        }
         this->server_label_columns_.push_back(i);
       }
     }
@@ -151,29 +144,10 @@ retcode PirTask::ParseQueryConfig(const rpc::Task& task_config) {
         this->server_key_columns_.push_back(key_index);
       }
     }
-    // get label
-    if (query_info.contains("label_columns")) {
-      auto& labels = query_info["label_columns"];
-      std::set<int> dup;
-      for (auto& label_index : labels) {
-        if (dup.find(label_index) != dup.end()) {
-          continue;
-        }
-        dup.insert(label_index.get<int>());
-        this->server_label_columns_.push_back(label_index);
-      }
-    }
-    // if label is not explicitly specify，using columns excluse key colums
+    // get label, label is all fields
     if (this->server_label_columns_.empty()) {
       size_t total_colums = server_dataset_schema_.size();
-      std::set<int> dup;
-      for (const auto ind : server_key_columns_) {
-        dup.insert(ind);
-      }
       for (size_t i = 0; i < total_colums; i++) {
-        if (dup.find(i) != dup.end()) {
-          continue;
-        }
         this->server_label_columns_.push_back(i);
       }
     }
@@ -352,7 +326,7 @@ retcode PirTask::ClientLoadDataset() {
   auto& key_col = client_key_columns_;
   auto key_array = GetSelectedContent(table, key_col);
   for (auto& item : key_array) {
-    LOG(ERROR) << "item: " << item;
+    VLOG(7) << "item: " << item;
     elements_[item];
   }
   return retcode::SUCCESS;
@@ -436,22 +410,17 @@ retcode PirTask::SaveResult() {
   VLOG(0) << "save query result to : " << result_file_path_;
 
   std::vector<std::shared_ptr<arrow::Field>> schema_vector;
-  std::vector<std::string> tmp_colums{"key", "value"};
+  std::vector<std::string> tmp_colums{"value"};
   for (const auto& col_name : tmp_colums) {
     schema_vector.push_back(arrow::field(col_name, arrow::int64()));
   }
   std::vector<std::shared_ptr<arrow::Array>> arrow_array;
-  arrow::StringBuilder key_builder;
   arrow::StringBuilder value_builder;
   for (auto& [key, item_vec] : this->result_) {
     for (const auto& item : item_vec) {
-      key_builder.Append(key);
       value_builder.Append(item);
     }
   }
-  std::shared_ptr<arrow::Array> key_array;
-  key_builder.Finish(&key_array);
-  arrow_array.push_back(std::move(key_array));
   std::shared_ptr<arrow::Array> value_array;
   value_builder.Finish(&value_array);
   arrow_array.push_back(std::move(value_array));
@@ -462,10 +431,7 @@ retcode PirTask::SaveResult() {
   auto driver = DataDirverFactory::getDriver("CSV", "test address");
   auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
   // get correct seq for result data query from server
-  std::vector<std::string> result_schema;
-  for (const int ind : this->server_key_columns_) {
-    result_schema.push_back(server_dataset_schema_[ind]);
-  }
+  std::vector<std::string> result_schema ;
   for (const auto ind : this->server_label_columns_) {
     result_schema.push_back(server_dataset_schema_[ind]);
   }
