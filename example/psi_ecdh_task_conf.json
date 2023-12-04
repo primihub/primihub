@@ -41,6 +41,11 @@
       "description": "path for server save intersection result",
       "type": "STRING",
       "value": "data/result/server/psi_result.csv"
+    },
+    "UniqueValues": {
+      "description": "remove duplicate data from origin data. 1: true, 0: false, if 0 is set, the duplication is guaranteed by user, or maybe task run fail",
+      "type": "INT32",
+      "value": 0
     }
   },
   "party_datasets": {

@@ -91,6 +91,20 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
   if (tag_it != param_map.end()) {
     psi_type_ = tag_it->second.value_int32();
   }
+  // check validataion of psi type value
+  if (!rpc::PsiTag_IsValid(psi_type_)) {
+    std::stringstream ss;
+    ss << "PsiTag is unknown, value: " << psi_type_;
+    RaiseException(ss.str());
+  }
+  // get flag for remove duplicate data from origin dataset
+  {
+    auto it = param_map.find("UniqueValues");
+    if (it != param_map.end()) {
+      unique_values_ = it->second.value_int32() > 0;
+      LOG(ERROR) << "unique_values_: " << unique_values_;
+    }
+  }
   // Parse dataset
   const auto& party_datasets = task.party_datasets();
   auto it = party_datasets.find(party_name);
@@ -181,22 +195,27 @@ retcode PsiTask::LoadDataset(void) {
     return retcode::FAIL;
   }
   // filter duplicated data
-  std::vector<std::string> filtered_data;
-  filtered_data.reserve(elements_.size());
-  std::unordered_set<std::string> dup(elements_.size());
-  int64_t duplicate_num = 0;
-  for (auto& item : elements_) {
-    if (dup.find(item) != dup.end()) {
-      duplicate_num++;
-      continue;
+  if (unique_values_) {
+    SCopedTimer timer;
+    std::vector<std::string> filtered_data;
+    filtered_data.reserve(elements_.size());
+    std::unordered_set<std::string> dup(elements_.size());
+    int64_t duplicate_num = 0;
+    for (auto& item : elements_) {
+      if (dup.find(item) != dup.end()) {
+        duplicate_num++;
+        continue;
+      }
+      dup.insert(item);
+      filtered_data.push_back(item);
     }
-    dup.insert(item);
-    filtered_data.push_back(item);
+    if (duplicate_num != 0) {
+      LOG(WARNING) << "item has duplicated time, count: " << duplicate_num;
+    }
+    elements_ = std::move(filtered_data);
+    auto time_cost = timer.timeElapse();
+    VLOG(3) << "filter data time cost: " << time_cost;
   }
-  if (duplicate_num != 0) {
-    LOG(WARNING) << "item has duplicated time, count: " << duplicate_num;
-  }
-  elements_ = std::move(filtered_data);
   return retcode::SUCCESS;
 }
 

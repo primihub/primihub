@@ -70,6 +70,7 @@ class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
   bool broadcast_result_{false};
   std::unique_ptr<BasePsiOperator> psi_operator_{nullptr};
   primihub::psi::Options options_;
+  bool unique_values_{true};
   // for TEE
   void* ra_server_{nullptr};
   void* tee_executor_{nullptr};
