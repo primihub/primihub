@@ -66,12 +66,16 @@ retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
         auto it = param_map.find(party_name());
         if (it != param_map.end()) {
           options->db_path.append(it->second.value_string());
+
         } else {
           LOG(ERROR) << "dateset id is not set";
           return retcode::FAIL;
         }
       } else {
-         options->db_path.append(this->dataset_id_);
+        options->db_path.append(this->dataset_id_);
+      }
+      for (const auto key_index : this->server_key_columns_) {
+        options->db_path.append("_").append(std::to_string(key_index));
       }
 
       if (DbCacheAvailable(options->db_path)) {

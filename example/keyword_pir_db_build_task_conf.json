@@ -13,9 +13,9 @@
       "value": 1
     },
     "DbInfo": {
-      "description": "create sender db offline",
+      "description": "create sender db offline, format of file_name: concat datasetid with key columns, seperated by _",
       "type": "STRING",
-      "value": "data/cache/keyword_pir_server_data"
+      "value": "data/cache/keyword_pir_server_data_0_1"
     },
     "QueryConfig": {
       "type": "OBJECT",
