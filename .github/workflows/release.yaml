@@ -22,6 +22,7 @@ jobs:
           #copy generated py pb to python dir
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
+          cp -f bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
               python/primihub/client/ph_grpc/src/primihub/protos
 
@@ -32,6 +33,7 @@ jobs:
              bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+             bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
              start_server.sh \
              stop_server.sh  \
              client_run.sh  \
@@ -65,6 +67,7 @@ jobs:
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
+          cp -f bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
               python/primihub/client/ph_grpc/src/primihub/protos
 
@@ -75,6 +78,7 @@ jobs:
              bazel-bin/task_main \
              bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
              bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+             bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
              start_server.sh \
              stop_server.sh  \
              client_run.sh  \
@@ -117,6 +121,7 @@ jobs:
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
+          cp -f bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so python
           #cp -f bazel-bin/src/primihub/protos/*.py \
           #    python/primihub/client/ph_grpc/src/primihub/protos
 
@@ -127,6 +132,7 @@ jobs:
             bazel-bin/task_main \
             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+            bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
             start_server.sh \
             stop_server.sh  \
             client_run.sh  \
@@ -154,6 +160,7 @@ jobs:
 
           cp -f bazel-bin/src/primihub/pybind_warpper/linkcontext.so python
           cp -f bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so python
+          cp -f bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so python
           cp -f bazel-bin/src/primihub/protos/*.py \
               python/primihub/client/ph_grpc/src/primihub/protos
 

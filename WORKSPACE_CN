@@ -3,6 +3,15 @@ workspace(name = "primihub")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
+http_archive(
+  name = "rules_python",
+  strip_prefix = "rules_python-4b84ad270387a7c439ebdccfd530e2339601ef27",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_python-4b84ad270387a7c439ebdccfd530e2339601ef27.tar.gz",
+  ],
+  sha256 = "e5470e92a18aa51830db99a4d9c492cc613761d5bdb7131c04bd92b9834380f6",
+)
+
 git_repository(
   name = "com_github_bazel_rules_3rdparty",
   commit = "537bac41153d21467d31f0a22eb67f02d5104e23",
