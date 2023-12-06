@@ -27,7 +27,7 @@ git rev-parse HEAD >> commit.txt
 
 tar zcfh bazel-bin.tar.gz bazel-bin/cli \
         bazel-bin/node \
-        _solib* \
+        bazel-bin/_solib* \
         bazel-bin/task_main \
         bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
         bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
