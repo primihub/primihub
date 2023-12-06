@@ -15,7 +15,8 @@ COPY src/primihub/protos/ src/primihub/protos/
 
 RUN tar zxf /opt/primihub-linux-$(dpkg --print-architecture).tar.gz \
   && mkdir log
-
+RUN ln -s -f bazel-bin/cli primihub-cli
+RUN ln -s -f bazel-bin/node primihub-node
 WORKDIR /app/python
 
 RUN python3 -m pip install --upgrade pip \
