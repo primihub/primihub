@@ -27,9 +27,24 @@
 namespace primihub::task {
 class PsiExecutor {
  public:
-  explicit PsiExecutor(const std::string& task_req, const std::string& protocol);
-  std::vector<std::string> RunPsi(const std::vector<std::string>& input);
-
+  explicit PsiExecutor(const std::string& task_req);
+  std::vector<std::string> RunPsi(const std::vector<std::string>& input,
+                                  const std::vector<std::string>& parties,
+                                  const std::string& receiver,
+                                  bool broadcast_result,
+                                  const std::string& protocol);
+ protected:
+  enum class Role : uint8_t {
+    kClient,
+    kServer,
+  };
+  retcode NegotiateSubTaskId(std::string* sub_task_id, Role role);
+  auto BuildPsiTaskRequest(const std::vector<std::string>& parties,
+                           const std::string& receiver,
+                           bool broadcast_result,
+                           const std::string& protocol,
+                           const primihub::rpc::PushTaskRequest& request) ->
+      std::unique_ptr<primihub::rpc::PushTaskRequest>;
  private:
   std::unique_ptr<PsiTask> task_ptr_{nullptr};
   std::unique_ptr<primihub::rpc::PushTaskRequest> task_req_ptr_{nullptr};

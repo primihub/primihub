@@ -15,5 +15,9 @@
 */
 #ifndef SRC_PRIMIHUB_TASK_PYBIND_WRAPPER_UTIL_H_
 #define SRC_PRIMIHUB_TASK_PYBIND_WRAPPER_UTIL_H_
-
+#include <string>
+#include "src/primihub/common/common.h"
+namespace primihub::task::wrapper {
+retcode GenerateSubtaskId(std::string* sub_task_id);
+}
 #endif  // SRC_PRIMIHUB_TASK_PYBIND_WRAPPER_UTIL_H_

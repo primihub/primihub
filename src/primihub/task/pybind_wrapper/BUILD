@@ -9,6 +9,7 @@ pybind_extension(
   ],
   deps = [
     ":mpc_task_wrapper",
+    ":psi_task_wrapper",
     "//:python3_lib",
     "//src/primihub/util:util_lib",
   ],
@@ -25,6 +26,16 @@ cc_library(
   hdrs = ["mpc_task_wrapper.h"],
   deps = [
     "//src/primihub/task/semantic:mpc_task",
+    "@com_github_stduuid//:stduuid_lib",
+  ],
+)
+
+cc_library(
+  name = "psi_task_wrapper",
+  srcs = ["psi_wrapper.cc"],
+  hdrs = ["psi_wrapper.h"],
+  deps = [
+    "//src/primihub/task/semantic:psi_task",
     "@com_github_stduuid//:stduuid_lib",
   ],
 )

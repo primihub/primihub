@@ -14,7 +14,7 @@ http_archive(
 
 git_repository(
   name = "com_github_bazel_rules_3rdparty",
-  commit = "537bac41153d21467d31f0a22eb67f02d5104e23",
+  commit = "6f6059bdf8a8b7bc5660016493592a6d83858a28",
   remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
 )
 

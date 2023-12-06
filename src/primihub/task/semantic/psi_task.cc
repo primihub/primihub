@@ -36,6 +36,10 @@ using primihub::rpc::VarType;
 
 
 namespace primihub::task {
+PsiTask::PsiTask(const TaskParam *task_param) :
+                 TaskBase(task_param, nullptr) {
+}
+
 PsiTask::PsiTask(const TaskParam* task_param,
                  std::shared_ptr<DatasetService> dataset_service)
                  : TaskBase(task_param, dataset_service) {
@@ -105,6 +109,14 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
       LOG(ERROR) << "unique_values_: " << unique_values_;
     }
   }
+
+  // broadcast result flag
+  auto iter = param_map.find("sync_result_to_server");
+  if (iter != param_map.end()) {
+    broadcast_result_ = iter->second.value_int32() > 0;
+    VLOG(5) << "broadcast result flag: " << broadcast_result_;
+  }
+
   // Parse dataset
   const auto& party_datasets = task.party_datasets();
   auto it = party_datasets.find(party_name);
@@ -124,12 +136,6 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
   } while (0);
   if (it->second.dataset_detail()) {
     is_dataset_detail_ = true;
-  }
-  // broadcast result flag
-  auto iter = param_map.find("sync_result_to_server");
-  if (iter != param_map.end()) {
-    broadcast_result_ = iter->second.value_int32() > 0;
-    VLOG(5) << "broadcast result flag: " << broadcast_result_;
   }
 
   // parse selected index
@@ -285,6 +291,21 @@ int PsiTask::execute() {
     throw std::runtime_error(error_msg);
   }
   return 0;
+}
+
+retcode PsiTask::ExecuteTask(const std::vector<std::string>& input,
+                             std::vector<std::string>* result) {
+  do {
+    std::string error_msg;
+    auto ret = LoadParams(task_param_);
+    BREAK_LOOP_BY_RETCODE(ret, "Psi load task params failed.")
+    ret = InitOperator();
+    BREAK_LOOP_BY_RETCODE(ret, "Psi init operator failed.")
+    psi_operator_->Execute(input, broadcast_result_, result);
+    BREAK_LOOP_BY_RETCODE(ret, "Psi execute operator failed.")
+    LOG(INFO) << "ExecuteTask result size: " << result->size();
+  } while (0);
+  return retcode::SUCCESS;
 }
 
 bool PsiTask::NeedSaveResult() {

@@ -30,6 +30,7 @@ cc_library(
         ":psi_task",
     ],
 )
+
 cc_library(
     name = "task_context",
     hdrs = ["task_context.h"],
@@ -40,6 +41,7 @@ cc_library(
         "//src/primihub/util:threadsafe_queue",
     ],
 )
+
 cc_library(
     name = "task_interface",
     hdrs = ["task.h"],
