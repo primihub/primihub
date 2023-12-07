@@ -25,7 +25,7 @@ class KkrtPsiOperator : public BasePsiOperator {
   auto BuildChannelInterface() -> std::unique_ptr<TaskMessagePassInterface>;
   retcode KkrtRecv(oc::Channel& chl,
                    const std::vector<std::string>& input,
-                   std::unordered_set<uint64_t>* result_index);
+                   std::vector<uint64_t>* result_index);
   retcode KkrtSend(oc::Channel& chl, const std::vector<std::string>& input);
   retcode HashDataParallel(const std::vector<std::string>& input,
                            std::vector<oc::block>* result);
