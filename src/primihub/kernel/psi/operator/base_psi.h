@@ -75,7 +75,9 @@ class BasePsiOperator {
   retcode ReceiveResult(std::vector<std::string>* result);
 
   void set_stop() {stop_.store(true);}
-
+  retcode GetResult(const std::vector<std::string>& input,
+                    const std::vector<uint64_t>& intersection_index,
+                    std::vector<std::string>* result);
  protected:
   bool has_stopped() {
     return stop_.load(std::memory_order::memory_order_relaxed);

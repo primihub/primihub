@@ -36,21 +36,9 @@ retcode KkrtPsiOperator::OnExecute(const std::vector<std::string>& input,
   oc::Channel chl(ios, msg_interface.release());
   auto ret{retcode::SUCCESS};
   if (RoleValidation::IsClient(PartyName())) {
-    std::unordered_set<uint64_t> result_index;
+    std::vector<uint64_t> result_index;
     ret = KkrtRecv(chl, input, &result_index);
-    result->reserve(result_index.size());
-    if (options_.psi_result_type == PsiResultType::DIFFERENCE) {
-      uint64_t num_elements = input.size();
-      for (uint64_t i = 0; i < num_elements; i++) {
-        if (result_index.find(i) == result_index.end()) {
-          result->push_back(input[i]);
-        }
-      }
-    } else {
-      for (const auto pos : result_index) {
-        result->push_back(input[pos]);
-      }
-    }
+    this->GetResult(input, result_index, result);
   } else {
     ret = KkrtSend(chl, input);
   }
@@ -91,7 +79,7 @@ auto KkrtPsiOperator::BuildChannelInterface() ->
 
 retcode KkrtPsiOperator::KkrtRecv(oc::Channel& chl,
                                   const std::vector<std::string>& input,
-                                  std::unordered_set<uint64_t>* result_index) {
+                                  std::vector<uint64_t>* result_index) {
   u8 dummy[1];
   // oc::PRNG prng(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
   oc::PRNG prng(oc::block(time(nullptr), time(nullptr)));
@@ -142,10 +130,7 @@ retcode KkrtPsiOperator::KkrtRecv(oc::Channel& chl,
   // GetIntsection index
   auto pos_start = timer.timeElapse();
   auto& intersection = recvPSIs.mIntersection;
-  result_index->reserve(intersection.size());
-  for (auto pos : intersection) {
-    result_index->insert(pos);
-  }
+  *result_index = std::move(intersection);
   auto pos_end = timer.timeElapse();
   auto pos_time_cost = pos_end - pos_start;
   VLOG(5) << "GetIntsection index cost(ms): " << pos_time_cost;
