@@ -5,7 +5,8 @@ WORKDIR /app
 
 ADD bazel-bin.tar.gz ./
 COPY src/primihub/protos/ src/primihub/protos/
-
+RUN ln -s -f bazel-bin/cli primihub-cli
+RUN ln -s -f bazel-bin/node primihub-node
 RUN mkdir log \
   && cd python \
   && python3 setup.py develop
