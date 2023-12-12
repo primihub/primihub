@@ -20,7 +20,7 @@ cc_library(
         "@com_github_glog_glog//:glog",
         "//src/primihub/protos:worker_proto",
         "//src/primihub/protos:service_proto",
-        "//src/primihub/common:common_lib",
+        "//src/primihub/common:common_defination",
         "//src/primihub/util:util_lib",
         "@openssl",
         "@com_github_stduuid//:stduuid_lib",

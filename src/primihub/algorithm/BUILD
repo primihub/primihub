@@ -74,6 +74,7 @@ cc_library(
   srcs = ["base.cc"],
   deps = [
     "//src/primihub/common:party_config",
+    "//src/primihub/common:type",
     "//src/primihub/service:dataset_service",
     "//src/primihub/util/network:communication_lib",
     "//src/primihub/util/network:mpc_channel",

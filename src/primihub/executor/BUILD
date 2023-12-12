@@ -11,6 +11,7 @@ cc_library(
     "statistics.cc",
   ],
   deps = [
+    "//src/primihub/common:type",
     "//src/primihub/operator:aby3_operator",
     "//src/primihub/service:dataset_service",
     "@com_github_glog_glog//:glog"
