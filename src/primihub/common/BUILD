@@ -26,7 +26,7 @@ cc_library(
     ":common_defination",
     ":config_lib",
     ":span",
-    ":type",
+    #":type",
     "@com_github_jbeder_yaml_cpp//:yaml-cpp",
     "@com_github_glog_glog//:glog",
   ],

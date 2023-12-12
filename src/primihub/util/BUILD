@@ -97,7 +97,7 @@ cc_library(
     ":time_util",
     ":threadsafe_queue",
     "//src/primihub/protos:worker_proto",
-    "//src/primihub/common:common_lib",
+    "//src/primihub/common:common_defination",
     "@com_github_glog_glog//:glog",
   ],
 )

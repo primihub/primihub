@@ -144,10 +144,7 @@ retcode TaskEngine::Execute() {
   }
   try {
     auto ret = task_->execute();
-    if (ret == 0) {
-      LOG(INFO) << "run task success";
-      return retcode::SUCCESS;
-    } else {
+    if (ret != 0) {
       LOG(ERROR) << "run task failed";
       return retcode::FAIL;
     }
@@ -159,7 +156,10 @@ retcode TaskEngine::Execute() {
     UpdateStatus(rpc::TaskStatus::FAIL, err_msg);
     return retcode::FAIL;
   }
-
+  std::string msg = "SUCCESS";
+  LOG(INFO) << "run task success";
+  UpdateStatus(rpc::TaskStatus::SUCCESS, msg);
+  return retcode::SUCCESS;
 }
 
 } // namespace primihub::task_engine
