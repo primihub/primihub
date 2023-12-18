@@ -1,6 +1,7 @@
 #!/bin/bash
 set -x
 set -e
+
 PYTHON_BIN=python3
 if ! command -v python3 >/dev/null 2>&1; then
   if ! command -v python >/dev/null 2>&1; then
@@ -63,5 +64,12 @@ fi
 #detect platform and machine hardware
 KERNEL_NAME=$(uname -s)
 KERNEL_NAME=$(echo $KERNEL_NAME | tr '[:upper:]' '[:lower:]')
+if [ "${KERNEL_NAME}" == "linux" ]; then
+if ! command -v chrpath > /dev/null 2>&1; then
+  echo "chrpath command is not availe"
+  echo "please install apt-get install chrpath for ubuntu, or yum install chrpath for centos"
+  exit -1
+fi
+fi
 MACHINE_HARDWARE=$(uname -m)
 sed -e "s|PLATFORM_HARDWARE|${KERNEL_NAME}_${MACHINE_HARDWARE}|g" Makefile > Makefile.tmp && mv Makefile.tmp Makefile
