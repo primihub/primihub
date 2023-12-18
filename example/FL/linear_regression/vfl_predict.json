@@ -12,7 +12,8 @@
         "common_params": {
             "model": "VFL_linear_regression",
             "process": "predict",
-            "task_name": "VFL_linear_regression_predict"
+            "task_name": "VFL_linear_regression_predict",
+            "psi": "KKRT"
         },
         "role_params": {
             "Bob": {

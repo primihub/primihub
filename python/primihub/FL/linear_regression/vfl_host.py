@@ -7,6 +7,7 @@ from primihub.FL.utils.file import save_json_file,\
 from primihub.FL.utils.dataset import read_data, DataLoader
 from primihub.utils.logger_util import logger
 from primihub.FL.crypto.ckks import CKKS
+from primihub.FL.psi import sample_alignment
 from primihub.FL.metrics import regression_metrics
 
 import pandas as pd
@@ -49,10 +50,16 @@ class LinearRegressionHost(BaseModel):
         
         # load dataset
         selected_column = self.role_params['selected_column']
-        id = self.role_params['id']
         x = read_data(data_info=self.role_params['data'],
-                      selected_column=selected_column,
-                      droped_column=id)
+                      selected_column=selected_column)
+
+        # psi
+        id = self.role_params.get("id")
+        psi_protocol = self.common_params.get("psi")
+        if isinstance(psi_protocol, str):
+            x = sample_alignment(x, id, self.roles, psi_protocol)
+
+        x = x.drop(id, axis=1)
         label = self.role_params['label']
         y = x.pop(label).values
         x = x.values
@@ -137,6 +144,9 @@ class LinearRegressionHost(BaseModel):
         if selected_column:
             x = x[selected_column]
         id = modelFile['id']
+        psi_protocol = self.common_params.get("psi")
+        if isinstance(psi_protocol, str):
+            x = sample_alignment(x, id, self.roles, psi_protocol)
         if id in x.columns:
             x.pop(id)
         label = modelFile['label']

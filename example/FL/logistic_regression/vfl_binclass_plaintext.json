@@ -14,6 +14,7 @@
             "method": "Plaintext",
             "process": "train",
             "task_name": "VFL_logistic_regression_binclass_plaintext_train",
+            "psi": "KKRT",
             "learning_rate": 1e-0,
             "alpha": 1e-4,
             "epoch": 10,

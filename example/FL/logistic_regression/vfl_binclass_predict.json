@@ -12,7 +12,8 @@
         "common_params": {
             "model": "VFL_logistic_regression",
             "process": "predict",
-            "task_name": "VFL_logistic_regression_binclass_predict"
+            "task_name": "VFL_logistic_regression_binclass_predict",
+            "psi": "KKRT"
         },
         "role_params": {
             "Bob": {

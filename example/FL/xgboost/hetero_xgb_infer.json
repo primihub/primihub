@@ -14,6 +14,7 @@
         "common_params": {
             "model": "HeteroXGBInfer",
             "task_name": "predict",
+            "psi": "KKRT",
             "metric_path": "data/result/metrics.json",
             "model_pred": "data/result/pred.csv"
         },
