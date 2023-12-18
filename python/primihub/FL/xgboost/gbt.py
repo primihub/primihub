@@ -23,6 +23,7 @@ from primihub.FL.utils.base import BaseModel
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from primihub.FL.utils.net_work import GrpcClient
 from primihub.FL.metrics import classification_metrics
+from primihub.FL.psi import sample_alignment
 from primihub.primitive.opt_paillier_c2py_warpper import opt_paillier_decrypt_crt, opt_paillier_encrypt_crt, opt_paillier_add, opt_paillier_keygen
 from primihub.utils.logger_util import FLConsoleHandler, FORMAT
 from ray.data.block import KeyFn
@@ -625,8 +626,13 @@ class VGBTBase(BaseModel):
         self.data_set = self.role_params['data_set']
 
         # read from data path
-        self.data = read_data(data_info=self.role_params['data'])
-
+        data = read_data(data_info=self.role_params['data'])
+        # psi
+        id = self.role_params.get("id")
+        psi_protocol = self.common_params.get("psi")
+        if isinstance(psi_protocol, str):
+            data = sample_alignment(data, id, self.roles, psi_protocol)
+        self.data = data
 
         self.tree_structure = {}
         self.lookup_table_sum = {}
@@ -1484,7 +1490,7 @@ class VGBTGuest(VGBTBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        remote_party = self.roles[self.role_params['others_role']][0]
+        remote_party = self.roles[self.role_params['others_role']]
         self.channel = GrpcClient(local_party=self.role_params['self_name'],
                                     remote_party=remote_party,
                                     node_info=self.node_info,
@@ -1878,7 +1884,13 @@ class VGBTHostInfer(BaseModel):
         self.model_path = self.role_params['model_path']
         self.lookup_table_path = self.role_params['lookup_table']
         # read from data path
-        self.data = read_data(data_info=self.role_params['data'])
+        data = read_data(data_info=self.role_params['data'])
+        # psi
+        id = self.role_params.get("id")
+        psi_protocol = self.common_params.get("psi")
+        if isinstance(psi_protocol, str):
+            data = sample_alignment(data, id, self.roles, psi_protocol)
+        self.data = data
 
 
     def load_model(self):
@@ -2009,7 +2021,7 @@ class VGBGuestInfer(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_inputs()
-        remote_party = self.roles[self.role_params['others_role']][0]
+        remote_party = self.roles[self.role_params['others_role']]
         self.channel = GrpcClient(local_party=self.role_params['self_name'],
                                     remote_party=remote_party,
                                     node_info=self.node_info,
@@ -2028,7 +2040,13 @@ class VGBGuestInfer(BaseModel):
         self.model_path = self.role_params['model_path']
         self.lookup_table_path = self.role_params['lookup_table']
         # read from data path
-        self.data = read_data(data_info=self.role_params['data'])
+        data = read_data(data_info=self.role_params['data'])
+        # psi
+        id = self.role_params.get("id")
+        psi_protocol = self.common_params.get("psi")
+        if isinstance(psi_protocol, str):
+            data = sample_alignment(data, id, self.roles, psi_protocol)
+        self.data = data
 
     def load_model(self):
         # interpret the xgb model

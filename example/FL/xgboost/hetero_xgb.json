@@ -4,16 +4,15 @@
     },
     "component_params": {
         "roles": {
+            "host": "Bob",
             "guest": [
                 "Charlie"
-            ],
-            "host": [
-                "Bob"
             ]
         },
         "common_params": {
             "model": "HeteroXGB",
             "task_name": "train",
+            "psi": "KKRT",
             "num_tree": 5,
             "max_depth": 5,
             "reg_lambda": 1,

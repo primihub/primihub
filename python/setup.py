@@ -9,6 +9,7 @@ import tempfile
 from distutils.sysconfig import get_python_lib
 from os import path
 import site
+import platform
 import primihub
 from setuptools import setup, find_packages
 from setuptools.command.develop import develop
@@ -26,6 +27,11 @@ python setup.py install
 
 print(sys.executable)
 
+def find_file(filename, search_path):
+    for root, dirs, files in os.walk(search_path): # start from top dir search path
+        if filename in files:
+            return os.path.join(root, filename) # return complete path
+    return None   # not found, return None
 
 def is_pkg(line):
     return line and not line.startswith(('--', 'git', '#'))
@@ -46,12 +52,13 @@ def solib2sitepackage(solib_path=None):
     else:
         paths = get_python_lib()
     module_map = {}
-    py_so_root_path = "../bazel-bin/src/primihub/pybind_warpper"
+    bazel_bin_path = "../bazel-bin"
+    py_so_root_path = f"{bazel_bin_path}/src/primihub/pybind_warpper"
     module_list = ["opt_paillier_c2py.so", "linkcontext.so"]
     for module_name in module_list:
       module_map[module_name] = f"{py_so_root_path}/{module_name}"
     module_list = ["ph_secure_lib.so"]
-    so_root_path = "../bazel-bin/src/primihub/task/pybind_wrapper"
+    so_root_path = f"{bazel_bin_path}/src/primihub/task/pybind_wrapper"
     for module_name in module_list:
       module_map[module_name] = f"{so_root_path}/{module_name}"
     for module_name, module_path in module_map.items():
@@ -71,7 +78,17 @@ def solib2sitepackage(solib_path=None):
         else:
             print("Can't not find file ./{}.".format(module_name))
             print("Ignore {} due to file not found.".format(module_name))
-
+    system_name = platform.uname().system
+    if system_name == 'Linux':
+      deps_libs = ["librelic.so"]
+      for dep_lib in deps_libs:
+          lib_path = find_file(dep_lib, bazel_bin_path)
+          shutil.copyfile(lib_path, "{}/{}".format(paths, dep_lib))
+      # chrpath -r [new_rpath] [lib_name]
+      # chrpath -r paths ph_secure_lib.so
+      sys_cmd = f"chrpath -r {paths} {paths}/ph_secure_lib.so"
+      print(sys_cmd)
+      os.system(sys_cmd)
 
 def clean_proto():
     os.chdir("../")
