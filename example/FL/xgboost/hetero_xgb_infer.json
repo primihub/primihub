@@ -4,11 +4,9 @@
     },
     "component_params": {
         "roles": {
+            "host": "Bob",
             "guest": [
                 "Charlie"
-            ],
-            "host": [
-                "Bob"
             ]
         },
         "common_params": {
