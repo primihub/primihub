@@ -1108,8 +1108,13 @@ retcode VMNodeImpl::ExecuteDelTaskOperation(task_manage_t&& task_detail_) {
   auto lock_time = timer.timeElapse();
   auto& worker_id = std::get<0>(task_detail);
   auto& task_executor_info = std::get<1>(task_detail);
-  auto& worker_ptr = std::get<0>(task_executor_info);
-  auto TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  auto worker_ptr = std::get<0>(task_executor_info);
+  std::string TASK_INFO_STR;
+  if (worker_ptr) {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  } else {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  }
   PH_VLOG(7, LogType::kScheduler)
       << TASK_INFO_STR
       << "VMNodeImpl::ManageTaskThread recv task operator DEL";
@@ -1152,8 +1157,14 @@ retcode VMNodeImpl::ExecuteKillTaskOperation(task_manage_t&& task_detail_) {
   auto lock_time = timer.timeElapse();
   auto& worker_id = std::get<0>(task_detail);
   auto& task_executor_info = std::get<1>(task_detail);
-  auto& worker_ptr = std::get<0>(task_executor_info);
-  auto TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  auto worker_ptr = std::get<0>(task_executor_info);
+  std::string TASK_INFO_STR;
+  if (worker_ptr) {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  } else {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  }
+
   PH_VLOG(7, LogType::kScheduler)
       << TASK_INFO_STR
       << "VMNodeImpl::ManageTaskThread recv task operator KILL";
