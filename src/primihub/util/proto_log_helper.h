@@ -27,6 +27,7 @@ namespace primihub::proto::util {
 std::string TaskInfoToString(const rpc::TaskContext& task_info,
                               bool json_format = false);
 std::string TaskInfoToString(const std::string& task_info);
+std::string TaskInfoToString(const std::string& request_id, const std::string& task_id);
 std::string TaskConfigToString(const rpc::Task& task_config);
 std::string TaskRequestToString(const rpc::PushTaskRequest& task_req);
 std::string TaskStatusToString(const rpc::TaskStatus& status);

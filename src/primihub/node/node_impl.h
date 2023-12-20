@@ -129,6 +129,7 @@ class VMNodeImpl {
   retcode Init();
   std::shared_ptr<Worker> CreateWorker();
   std::shared_ptr<Worker> CreateWorker(const std::string& worker_id);
+  std::shared_ptr<Worker> CreateWorker(const rpc::TaskContext& task_info);
 
   void CleanDuplicateTaskIdFilter();
   bool IsDuplicateTask(const rpc::TaskContext& task_info);
