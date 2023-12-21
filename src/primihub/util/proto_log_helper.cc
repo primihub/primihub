@@ -21,10 +21,17 @@ std::string TaskInfoToString(const std::string& request_id) {
   info.append(request_id).append(" ");
   return info;
 }
-
+std::string TaskInfoToString(const std::string& request_id,
+                             const std::string& task_id) {
+//
+std::string info;
+info.append("TaskId: ").append(task_id).append(", ")
+    .append("RequestId: ").append(request_id).append(" ");
+return info;
+}
 std::string TaskInfoToString(const rpc::TaskContext& task_info,
                              bool json_format) {
-  return TaskInfoToString(task_info.request_id());
+  return TaskInfoToString(task_info.request_id(), task_info.task_id());
   // std::string info;
   // if (json_format) {
   //   google::protobuf::util::MessageToJsonString(task_info, &info);

@@ -61,6 +61,15 @@ class Worker {
   Worker(const std::string& node_id_, const std::string& worker_id,
       std::shared_ptr<Nodelet> nodelet_)
       : node_id(node_id_), worker_id_(worker_id), nodelet(nodelet_) {
+    task_info_.set_request_id(worker_id);
+    task_ready_future_ = task_ready_promise_.get_future();
+    task_finish_future_ = task_finish_promise_.get_future();
+  }
+
+  Worker(const std::string& node_id_, const rpc::TaskContext& task_info,
+      std::shared_ptr<Nodelet> nodelet_)
+      : node_id(node_id_), task_info_(task_info), nodelet(nodelet_) {
+    worker_id_ = task_info.request_id();
     task_ready_future_ = task_ready_promise_.get_future();
     task_finish_future_ = task_finish_promise_.get_future();
   }
@@ -84,6 +93,7 @@ class Worker {
   retcode waitUntilTaskFinish();
   void setPartyCount(size_t party_count) {party_count_ = party_count;}
   std::string workerId() const {return worker_id_;}
+  rpc::TaskContext& TaskInfo() {return task_info_;}
 
  protected:
   TaskRunMode ExecuteMode(const PushTaskRequest& request);
@@ -97,6 +107,7 @@ class Worker {
   const std::string& node_id;
   std::shared_ptr<Nodelet> nodelet;
   std::string worker_id_;
+  rpc::TaskContext task_info_;
   std::promise<bool> task_ready_promise_;
   std::future<bool> task_ready_future_;
 

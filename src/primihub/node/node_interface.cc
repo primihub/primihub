@@ -63,6 +63,7 @@ Status VMNodeInterface::ExecuteTask(ServerContext* context,
   PH_VLOG(5, LogType::kScheduler)
       << TASK_INFO_STR
       << "exit VMNodeImpl::ExecuteTask";
+  response->mutable_task_info()->CopyFrom(request->task().task_info());
   return Status::OK;
 }
 Status VMNodeInterface::StopTask(ServerContext* context,

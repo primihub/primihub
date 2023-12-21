@@ -253,19 +253,24 @@ void VMNodeImpl::ManageTaskOperatorThread() {
 }
 
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker() {
-  std::string worker_id = "";
-  return CreateWorker(worker_id);
+  rpc::TaskContext task_info;
+  return CreateWorker(task_info);
 }
 
 std::shared_ptr<Worker> VMNodeImpl::CreateWorker(const std::string& worker_id) {
-  std::string TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  rpc::TaskContext task_info;
+  task_info.set_request_id(worker_id);
+  return CreateWorker(task_info);
+}
+
+std::shared_ptr<Worker> VMNodeImpl::CreateWorker(
+    const rpc::TaskContext& task_info) {
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   PH_LOG(INFO, LogType::kScheduler)
       << TASK_INFO_STR
       << "Start create worker " << this->node_id_;
-  // absl::MutexLock lock(&worker_map_mutex_);
   auto worker =
-      std::make_shared<Worker>(this->node_id_, worker_id, GetNodelet());
-  // workers_.emplace("simple_test_worker", worker);
+      std::make_shared<Worker>(this->node_id_, task_info, GetNodelet());
   PH_LOG(INFO, LogType::kScheduler)
       << TASK_INFO_STR
       << "Fininsh create worker " << this->node_id_;
@@ -327,7 +332,7 @@ retcode VMNodeImpl::DispatchTask(const rpc::PushTaskRequest& task_request,
       << "start to schedule task, task_type: "
       << static_cast<int>(task_config.type());
   std::string worker_id = this->GetWorkerId(task_info);
-  std::shared_ptr<Worker> worker_ptr = CreateWorker(worker_id);
+  std::shared_ptr<Worker> worker_ptr = CreateWorker(task_info);
   {
     std::unique_lock<std::shared_mutex> lck(task_scheduler_mtx_);
     task_scheduler_map_.insert(
@@ -471,7 +476,7 @@ retcode VMNodeImpl::ExecuteTask(const rpc::PushTaskRequest& task_request,
     return retcode::FAIL;
   }
   std::string worker_id = GetWorkerId(task_info);
-  std::shared_ptr<Worker> worker = CreateWorker(worker_id);
+  std::shared_ptr<Worker> worker = CreateWorker(task_info);
   auto fut = std::async(std::launch::async,
                         executor_func,
                         worker,
@@ -1102,7 +1107,14 @@ retcode VMNodeImpl::ExecuteDelTaskOperation(task_manage_t&& task_detail_) {
   std::lock_guard<std::shared_mutex> lck(task_executor_mtx_);
   auto lock_time = timer.timeElapse();
   auto& worker_id = std::get<0>(task_detail);
-  auto TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  auto& task_executor_info = std::get<1>(task_detail);
+  auto worker_ptr = std::get<0>(task_executor_info);
+  std::string TASK_INFO_STR;
+  if (worker_ptr) {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  } else {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  }
   PH_VLOG(7, LogType::kScheduler)
       << TASK_INFO_STR
       << "VMNodeImpl::ManageTaskThread recv task operator DEL";
@@ -1144,7 +1156,15 @@ retcode VMNodeImpl::ExecuteKillTaskOperation(task_manage_t&& task_detail_) {
   std::lock_guard<std::shared_mutex> lck(task_executor_mtx_);
   auto lock_time = timer.timeElapse();
   auto& worker_id = std::get<0>(task_detail);
-  auto TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  auto& task_executor_info = std::get<1>(task_detail);
+  auto worker_ptr = std::get<0>(task_executor_info);
+  std::string TASK_INFO_STR;
+  if (worker_ptr) {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_ptr->TaskInfo());
+  } else {
+    TASK_INFO_STR = pb_util::TaskInfoToString(worker_id);
+  }
+
   PH_VLOG(7, LogType::kScheduler)
       << TASK_INFO_STR
       << "VMNodeImpl::ManageTaskThread recv task operator KILL";
