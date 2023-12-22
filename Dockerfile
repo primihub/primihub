@@ -19,7 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN  apt update \
-  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev cmake libmysqlclient-dev chrpath \
+  && apt install -y python3 python3-dev gcc-8 g++-8 python-dev libgmp-dev python3-pip tzdata cmake libmysqlclient-dev chrpath \
   && apt install -y automake ca-certificates git libtool m4 patch pkg-config unzip make wget curl zip ninja-build npm \
   && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8 \
   && rm -rf /var/lib/apt/lists/*
@@ -34,27 +34,21 @@ ADD . /src
 RUN bash pre_build.sh \
   && mv -f WORKSPACE_GITHUB WORKSPACE \
   && make mysql=y \
-  && tar zcf bazel-bin.tar.gz bazel-bin/cli \
-             bazel-bin/node \
-             primihub-cli \
-             primihub-node \
-             bazel-bin/task_main \
-             bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
-             bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
-             bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
-             python \
-             config \
-             example \
-             data
+  && tar zcfh bazel-bin.tar.gz bazel-bin/cli \
+        bazel-bin/node \
+        bazel-bin/_solib* \
+        bazel-bin/task_main \
+        bazel-bin/src/primihub/pybind_warpper/opt_paillier_c2py.so \
+        bazel-bin/src/primihub/pybind_warpper/linkcontext.so \
+        bazel-bin/src/primihub/task/pybind_wrapper/ph_secure_lib.so \
+        python \
+        config \
+        example \
+        data
 
 FROM ubuntu:20.04 as runner
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Install python3 and GCC openmp (Depends with cryptFlow2 library)
-RUN apt-get update \
-  && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata libmysqlclient-dev \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /src/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
 COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
@@ -65,12 +59,16 @@ WORKDIR /app
 RUN tar zxf /opt/bazel-bin.tar.gz \
   && mkdir log
 
+RUN ln -s -f bazel-bin/cli primihub-cli
+RUN ln -s -f bazel-bin/node primihub-node
+
 WORKDIR /app/python
 
 RUN python3 -m pip install --upgrade pip \
   && python3 -m pip install -r requirements.txt \
   && python3 setup.py install \
   && rm -rf /root/.cache/pip/
+
 
 WORKDIR /app
 
