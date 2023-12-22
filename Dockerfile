@@ -56,7 +56,7 @@ RUN apt-get update \
   && apt-get install -y python3 python3-dev libgmp-dev python3-pip libzmq5 tzdata libmysqlclient-dev \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /opt/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
+COPY --from=builder /src/bazel-bin.tar.gz /opt/bazel-bin.tar.gz
 COPY --from=builder /src/src/primihub/protos/ /app/src/primihub/protos/
 
 WORKDIR /app
