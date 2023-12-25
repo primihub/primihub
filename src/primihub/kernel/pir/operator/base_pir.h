@@ -27,6 +27,7 @@ struct Options {
   std::map<std::string, Node> party_info;
   std::string self_party;
   std::string code;
+  Role role;
   // online
   bool use_cache{false};
   // offline task
@@ -52,6 +53,7 @@ class BasePirOperator {
     return stop_.load(std::memory_order::memory_order_relaxed);
   }
   std::string PartyName() {return options_.self_party;}
+  Role role() {return options_.role;}
   LinkContext* GetLinkContext() {return options_.link_ctx_ref;}
   Node& PeerNode() {return options_.peer_node;}
   Node& ProxyNode() {return options_.proxy_node;}
