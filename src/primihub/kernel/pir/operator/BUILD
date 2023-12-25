@@ -24,17 +24,8 @@ cc_library(
 
 cc_library(
   name = "keyword_pir_operator",
-  hdrs = ["keyword_pir.h"],
-  srcs = ["keyword_pir.cc"],
-  copts = [
-    "-w",
-    "-D_ASPI",
-  ],
   deps = [
-    ":base_pir_operator",
-    "//src/primihub/util:endian_util",
-    "//src/primihub/util:util_lib",
-    "//src/primihub/protos:worker_proto",
-    "@mircrosoft_apsi//:APSI",
+    "//src/primihub/kernel/pir/operator/keyword_pir_impl:keyword_pir_server_impl",
+    "//src/primihub/kernel/pir/operator/keyword_pir_impl:keyword_pir_client_impl",
   ]
 )

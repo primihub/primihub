@@ -16,7 +16,13 @@
 
 #include "src/primihub/task/semantic/pir_task.h"
 #include <glog/logging.h>
+
+#include <set>
+#include <utility>
+#include <memory>
+#include <vector>
 #include <nlohmann/json.hpp>
+
 #include "src/primihub/kernel/pir/operator/base_pir.h"
 #include "src/primihub/kernel/pir/operator/factory.h"
 #include "src/primihub/common/config/server_config.h"
@@ -30,6 +36,7 @@ PirTask::PirTask(const TaskParam* task_param,
 
 retcode PirTask::BuildOptions(const rpc::Task& task, pir::Options* options) {
   // build Options for operator
+  this->ParsePirRole(task, &(options->role));
   options->self_party = this->party_name();
   options->link_ctx_ref = getTaskContext().getLinkContext().get();
   options->code = task.code();
@@ -189,6 +196,18 @@ retcode PirTask::ParseDataset(const rpc::Task& task_config) {
       is_dataset_detail_ = true;
     }
   }
+}
+
+retcode PirTask::ParsePirRole(const rpc::Task& task_config, Role* role) {
+  if (this->party_name() == PARTY_CLIENT) {
+    *role = Role::CLIENT;
+  } else if (this->party_name() == PARTY_SERVER) {
+    *role = Role::SERVER;
+  } else {
+    LOG(ERROR) << "no suitable role assign for party: " << this->party_name();
+    return retcode::FAIL;
+  }
+  return retcode::SUCCESS;
 }
 
 retcode PirTask::ParsePirType(const rpc::Task& task_config) {
@@ -435,7 +454,7 @@ retcode PirTask::SaveResult() {
   auto driver = DataDirverFactory::getDriver("CSV", "test address");
   auto csv_driver = std::dynamic_pointer_cast<CSVDriver>(driver);
   // get correct seq for result data query from server
-  std::vector<std::string> result_schema ;
+  std::vector<std::string> result_schema;
   for (const auto ind : this->server_label_columns_) {
     result_schema.push_back(server_dataset_schema_[ind]);
   }
@@ -526,7 +545,8 @@ std::vector<std::string> PirTask::GetSelectedContent(
   size_t total_row_count = col_count * chunk_size;
   content_array.reserve(total_row_count);
   for (int i = 0; i < chunk_size; ++i) {
-    auto array = std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(i));
+    auto array =
+        std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(i));
     for (int64_t j = 0; j < array->length(); j++) {
       content_array.push_back(array->GetString(j));
     }
@@ -544,7 +564,8 @@ std::vector<std::string> PirTask::GetSelectedContent(
     auto label_ptr = data_tbl->column(col_index);
     int chunk_size = label_ptr->num_chunks();
     for (int j = 0; j < chunk_size; ++j) {
-      auto array = std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(j));
+      auto array =
+          std::static_pointer_cast<arrow::StringArray>(label_ptr->chunk(j));
       for (int64_t k = 0; k < array->length(); ++k) {
         content_array[index++].append(",").append(array->GetString(k));
       }
