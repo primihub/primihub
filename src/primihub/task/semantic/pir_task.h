@@ -56,6 +56,7 @@ class PirTask : public TaskBase {
   retcode ParseDataset(const rpc::Task& task_config);
   retcode ParsePirType(const rpc::Task& task_config);
   retcode ParseResultPathConfig(const rpc::Task& task_config);
+  retcode ParsePirRole(const rpc::Task& task_config, Role* role);
 
  private:
   int pir_type_{rpc::PirType::KEY_PIR};

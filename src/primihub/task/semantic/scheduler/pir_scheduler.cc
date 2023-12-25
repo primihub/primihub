@@ -21,6 +21,7 @@
 #include "src/primihub/common/config/server_config.h"
 #include "src/primihub/util/log.h"
 #include "src/primihub/util/proto_log_helper.h"
+#include "src/primihub/common/value_check_util.h"
 
 using primihub::rpc::ParamValue;
 using primihub::rpc::TaskType;
@@ -81,7 +82,8 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   if (it != params.end()) {
     auto& pv_client_data = it->second;
     if (pv_client_data.is_array()) {
-      auto party_access_info = push_request.mutable_task()->mutable_party_access_info();
+      auto party_access_info =
+          push_request.mutable_task()->mutable_party_access_info();
       auto& party_info = (*party_access_info)[PARTY_CLIENT];
       auto& local_node = getLocalNodeCfg();
       node2PbNode(local_node, &party_info);
@@ -92,13 +94,23 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
   if (param_it != params.end()) {
     pirType = param_it->second.value_int32();
   }
-
-  LOG(INFO) << TASK_INFO_STR
-      << "begin to Dispatch SubmitTask to PIR task party node ...";
   const auto& participate_node = push_request.task().party_access_info();
+  // check the party number for this task
+  std::set<std::string> dup_filter;
   for (const auto& [party_name, node] : participate_node) {
+    Node node_info;
+    pbNode2Node(node, &node_info);
+    dup_filter.insert(node_info.to_string());
     this->error_msg_.insert({party_name, ""});
   }
+  if (dup_filter.size() < 2) {
+    std::string error_msg = "PIR task need 2 party "
+                          "to participate for this task.";
+    error_msg.append("but get ").append(std::to_string(dup_filter.size()));
+    RaiseException(error_msg);
+  }
+  LOG(INFO) << TASK_INFO_STR
+      << "begin to Dispatch SubmitTask to PIR task party node ...";
   std::vector<std::thread> thrds;
   for (const auto& [party_name, node] : participate_node) {
     Node dest_node;

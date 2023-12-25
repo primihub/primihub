@@ -1,6 +1,22 @@
-// "Copyright [2023] <PrimiHub>"
-#ifndef SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_H_
-#define SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_H_
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+#ifndef SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_IMPL_KEYWORD_PIR_SERVER_H_
+#define SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_IMPL_KEYWORD_PIR_SERVER_H_
+
 #include <variant>
 #include <vector>
 #include <memory>
@@ -9,6 +25,7 @@
 
 #include "src/primihub/kernel/pir/operator/base_pir.h"
 #include "src/primihub/kernel/pir/common.h"
+#include "src/primihub/kernel/pir/operator/keyword_pir_impl/keyword_pir_common.h"
 
 // APSI
 #include "apsi/thread_pool_mgr.h"
@@ -19,7 +36,6 @@
 #include "apsi/sender.h"
 #include "apsi/bin_bundle.h"
 #include "apsi/item.h"
-#include "apsi/receiver.h"
 
 // SEAL
 #include "seal/context.h"
@@ -40,47 +56,12 @@ using UnlabeledData = std::vector<apsi::Item>;
 using LabeledData = std::vector<std::pair<apsi::Item, apsi::Label>>;
 using DBData = std::variant<UnlabeledData, LabeledData>;
 
-class KeywordPirOperator : public BasePirOperator {
+class KeywordPirOperatorServer : public BasePirOperator {
  public:
-  enum class RequestType : uint8_t {
-    PsiParam = 0,
-    Oprf,
-    Query,
-  };
-  explicit KeywordPirOperator(const Options& options) :
+  explicit KeywordPirOperatorServer(const Options& options) :
       BasePirOperator(options) {}
 
   retcode OnExecute(const PirDataType& input, PirDataType* result) override;
-
- protected:
-  retcode ExecuteAsClient(const PirDataType& input, PirDataType* result);
-  retcode ExecuteAsServer(const PirDataType& input);
-
-
- protected:
-  // ------------------------Receiver----------------------------
-  /**
-  * Performs a parameter request from sender
-  */
-  retcode RequestPSIParams();
-  /**
-  * Performs an OPRF request on a vector of items and returns a
-    vector of OPRF hashed items of the same size as the input vector.
-  */
-  retcode RequestOprf(const std::vector<Item>& items,
-        std::vector<apsi::HashedItem>*, std::vector<apsi::LabelKey>*);
-  /**
-  * Performs a labeled PSI query. The query is a vector of items,
-  * and the result is a same-size vector of MatchRecord objects.
-  * If an item is in the intersection,
-  * the corresponding MatchRecord indicates it in the `found` field,
-  * and the `label` field may contain the corresponding
-  * label if a sender's data included it.
-  */
-  retcode RequestQuery();
-  retcode ExtractResult(const std::vector<std::string>& orig_vec,
-      const std::vector<apsi::receiver::MatchRecord>& query_result,
-      PirDataType* result);
 
  protected:
   // ------------------------Sender----------------------------
@@ -129,14 +110,13 @@ class KeywordPirOperator : public BasePirOperator {
                       bool compress) -> std::shared_ptr<SenderDB>;
   bool DbCacheAvailable(const std::string& db_path);
 
-  std::shared_ptr<apsi::sender::SenderDB>
-  LoadDbFromCache(const std::string& db_path);
+  auto LoadDbFromCache(const std::string& db_path) ->
+      std::shared_ptr<apsi::sender::SenderDB>;
 
  private:
   std::string psi_params_str_;
   std::unique_ptr<apsi::oprf::OPRFKey> oprf_key_{nullptr};
-  std::unique_ptr<apsi::receiver::Receiver> receiver_{nullptr};
   std::unique_ptr<apsi::PSIParams> psi_params_{nullptr};
 };
 }  // namespace primihub::pir
-#endif  // SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_H_
+#endif  // SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_KEYWORD_PIR_IMPL_KEYWORD_PIR_SERVER_H_

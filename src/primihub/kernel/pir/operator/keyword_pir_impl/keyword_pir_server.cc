@@ -1,5 +1,20 @@
-// "Copyright [2023] <PrimiHub>"
-#include "src/primihub/kernel/pir/operator/keyword_pir.h"
+/*
+* Copyright (c) 2023 by PrimiHub
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+#include "src/primihub/kernel/pir/operator/keyword_pir_impl/keyword_pir_server.h"
 #include <fstream>
 #include <algorithm>
 #include <unordered_map>
@@ -10,100 +25,17 @@
 #include "src/primihub/common/common.h"
 
 namespace primihub::pir {
-using Receiver = apsi::receiver::Receiver;
 using Sender = apsi::sender::Sender;
 using OPRFKey = apsi::oprf::OPRFKey;
 using SenderDB = apsi::sender::SenderDB;
-using MatchRecord = apsi::receiver::MatchRecord;
 using CryptoContext = apsi::CryptoContext;
 using SenderOperationQuery = apsi::network::SenderOperationQuery;
 using CiphertextPowers = apsi::sender::CiphertextPowers;
 using PowersDag = apsi::PowersDag;
 using PSIParams = apsi::PSIParams;
 
-
-retcode KeywordPirOperator::OnExecute(const PirDataType& input,
-                                      PirDataType* result) {
-  retcode ret{ retcode::SUCCESS};
-  if (RoleValidation::IsClient(this->PartyName())) {
-    ret = ExecuteAsClient(input, result);
-  } else if (RoleValidation::IsServer(this->PartyName())) {
-    ret = ExecuteAsServer(input);
-  } else {
-    LOG(ERROR) << "invalid party: " << PartyName();
-    ret = retcode::FAIL;
-  }
-  return ret;
-}
-
-retcode KeywordPirOperator::ExecuteAsClient(const PirDataType& input,
+retcode KeywordPirOperatorServer::OnExecute(const PirDataType& input,
                                             PirDataType* result) {
-  VLOG(5) << "begin to request psi params";
-  auto ret = RequestPSIParams();
-  CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-  std::vector<std::string> orig_item;
-  std::vector<apsi::Item> items_vec;
-  orig_item.reserve(input.size());
-  items_vec.reserve(input.size());
-  for (const auto& [key, val_vec] : input) {
-    apsi::Item item = key;
-    items_vec.emplace_back(std::move(item));
-    orig_item.emplace_back(key);
-  }
-  std::vector<HashedItem> oprf_items;
-  std::vector<LabelKey> label_keys;
-  VLOG(5) << "begin to Receiver::RequestOPRF";
-  ret = RequestOprf(items_vec, &oprf_items, &label_keys);
-  CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-
-  CHECK_TASK_STOPPED(retcode::FAIL);
-  VLOG(5) << "Receiver::RequestOPRF end, begin to receiver.request_query";
-  // request query
-  this->receiver_ = std::make_unique<Receiver>(*psi_params_);
-  std::vector<MatchRecord> query_result;
-  auto query = this->receiver_->create_query(oprf_items);
-  // chl.send(move(query.first));
-  auto request_query_data = std::move(query.first);
-  std::ostringstream string_ss;
-  request_query_data->save(string_ss);
-  std::string query_data_str = string_ss.str();
-  auto itt = move(query.second);
-  VLOG(5) << "query_data_str size: " << query_data_str.size();
-
-  ret = this->GetLinkContext()->Send(this->key_, PeerNode(), query_data_str);
-  CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-
-  // receive package count
-  uint32_t package_count = 0;
-  ret = this->GetLinkContext()->Recv("package_count",
-                                     this->ProxyNode(),
-                                     reinterpret_cast<char*>(&package_count),
-                                     sizeof(package_count));
-  CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-
-  VLOG(5) << "received package count: " << package_count;
-  std::vector<apsi::ResultPart> result_packages;
-  for (size_t i = 0; i < package_count; i++) {
-    std::string recv_data;
-    ret = this->GetLinkContext()->Recv(this->key_,
-                                       this->ProxyNode(), &recv_data);
-    CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-    VLOG(5) << "client received data length: " << recv_data.size();
-    std::istringstream stream_in(recv_data);
-    auto result_part = std::make_unique<apsi::network::ResultPackage>();
-    auto seal_context = this->receiver_->get_seal_context();
-    result_part->load(stream_in, seal_context);
-    result_packages.push_back(std::move(result_part));
-  }
-  query_result = this->receiver_->process_result(label_keys, itt,
-                                                 result_packages);
-  VLOG(5) << "query_resultquery_resultquery_resultquery_result: "
-          << query_result.size();
-  ExtractResult(orig_item, query_result, result);
-  return retcode::SUCCESS;
-}
-
-retcode KeywordPirOperator::ExecuteAsServer(const PirDataType& input) {
   VLOG(0) << "enter KeywordPirOperator  OPRFKey ctr";
   this->oprf_key_ = std::make_unique<apsi::oprf::OPRFKey>();
   VLOG(0) << "exit enter KeywordPirOperator OPRFKey ctr";
@@ -159,7 +91,7 @@ retcode KeywordPirOperator::ExecuteAsServer(const PirDataType& input) {
   return retcode::SUCCESS;
 }
 
-retcode KeywordPirOperator::CreateDbDataCache(const DBData& db_data,
+retcode KeywordPirOperatorServer::CreateDbDataCache(const DBData& db_data,
     std::unique_ptr<apsi::PSIParams> psi_params,
     apsi::oprf::OPRFKey& oprf_key,
     size_t nonce_byte_count,
@@ -177,12 +109,12 @@ retcode KeywordPirOperator::CreateDbDataCache(const DBData& db_data,
   return retcode::SUCCESS;
 }
 
-auto KeywordPirOperator::CreateSenderDb(const DBData &db_data,
-                                        std::unique_ptr<PSIParams> psi_params,
-                                        OPRFKey &oprf_key,
-                                        size_t nonce_byte_count,
-                                        bool compress) ->
-                                        std::shared_ptr<SenderDB> {
+auto KeywordPirOperatorServer::CreateSenderDb(const DBData &db_data,
+    std::unique_ptr<PSIParams> psi_params,
+    OPRFKey &oprf_key,
+    size_t nonce_byte_count,
+    bool compress) ->
+    std::shared_ptr<SenderDB> {
   CHECK_TASK_STOPPED(nullptr);
   SCopedTimer timer;
   if (psi_params == nullptr) {
@@ -238,7 +170,8 @@ auto KeywordPirOperator::CreateSenderDb(const DBData &db_data,
   return sender_db;
 }
 
-std::unique_ptr<DBData> KeywordPirOperator::CreateDb(const PirDataType& input) {
+std::unique_ptr<DBData> KeywordPirOperatorServer::CreateDb(
+    const PirDataType& input) {
   auto result = LabeledData();
   result.reserve(input.size());
   std::string separator{DATA_RECORD_SEP};
@@ -259,114 +192,8 @@ std::unique_ptr<DBData> KeywordPirOperator::CreateDb(const PirDataType& input) {
   return std::make_unique<DBData>(std::move(result));
 }
 
-// ------------------------Receiver----------------------------
-retcode KeywordPirOperator::RequestPSIParams() {
-  CHECK_TASK_STOPPED(retcode::FAIL);
-  RequestType type = RequestType::PsiParam;
-  std::string request{reinterpret_cast<char*>(&type), sizeof(type)};
-  VLOG(5) << "send_data length: " << request.length();
-  std::string response_str;
-  auto link_ctx = this->GetLinkContext();
-  CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
-  auto ret = link_ctx->Send(this->key_, PeerNode(), request);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "send requestPSIParams to peer: [" << PeerNode().to_string()
-        << "] failed";
-    return ret;
-  }
-  ret = link_ctx->Recv(this->key_, ProxyNode(), &response_str);
-  if (VLOG_IS_ON(7)) {
-    std::string tmp_str;
-    for (const auto& chr : response_str) {
-      tmp_str.append(std::to_string(static_cast<int>(chr))).append(" ");
-    }
-    VLOG(7) << "recv_data size: " << response_str.size() << " "
-            << "data content: " << tmp_str;
-  }
-
-  // create psi params
-  // static std::pair<PSIParams, std::size_t> Load(std::istream &in);
-  std::istringstream stream_in(response_str);
-  auto [parse_data, ret_size] = PSIParams::Load(stream_in);
-  psi_params_ = std::make_unique<PSIParams>(parse_data);
-  VLOG(5) << "parsed psi param, size: " << ret_size << " "
-          << "content: " << psi_params_->to_string();
-  return retcode::SUCCESS;
-}
-
-retcode KeywordPirOperator::RequestOprf(const std::vector<Item>& items,
-    std::vector<apsi::HashedItem>* res_items_ptr,
-    std::vector<apsi::LabelKey>* res_label_keys_ptr) {
-  CHECK_TASK_STOPPED(retcode::FAIL);
-
-  RequestType type = RequestType::Oprf;
-  std::string oprf_response;
-  auto oprf_receiver = this->receiver_->CreateOPRFReceiver(items);
-  auto& res_items = *res_items_ptr;
-  auto& res_label_keys = *res_label_keys_ptr;
-  res_items.resize(oprf_receiver.item_count());
-  res_label_keys.resize(oprf_receiver.item_count());
-  auto oprf_request = oprf_receiver.query_data();
-  VLOG(5) << "oprf_request data length: " << oprf_request.size();
-  std::string_view oprf_request_sv{
-      reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_request.data())),
-      oprf_request.size()};
-  auto link_ctx = this->GetLinkContext();
-  CHECK_NULLPOINTER_WITH_ERROR_MSG(link_ctx, "LinkContext is empty");
-  auto ret = link_ctx->Send(this->key_, PeerNode(), oprf_request_sv);
-  if (ret != retcode::SUCCESS) {
-    LOG(ERROR) << "requestOprf to peer: [" << PeerNode().to_string()
-        << "] failed";
-    return ret;
-  }
-  ret = link_ctx->Recv(this->key_, this->ProxyNode(), &oprf_response);
-  if (ret != retcode::SUCCESS || oprf_response.empty()) {
-    LOG(ERROR) << "receive oprf_response from peer: ["
-               << PeerNode().to_string() << "] failed";
-    return retcode::FAIL;
-  }
-  VLOG(5) << "received oprf response length: " << oprf_response.size() << " ";
-  oprf_receiver.process_responses(oprf_response, res_items, res_label_keys);
-  return retcode::SUCCESS;
-}
-
-retcode KeywordPirOperator::RequestQuery() {
-  RequestType type = RequestType::Query;
-  std::string send_data{reinterpret_cast<char*>(&type), sizeof(type)};
-  VLOG(5) << "send_data length: " << send_data.length();
-  return retcode::SUCCESS;
-}
-
-retcode KeywordPirOperator::ExtractResult(
-    const std::vector<std::string>& orig_items,
-    const std::vector<MatchRecord>& intersection,
-    PirDataType* result) {
-  CHECK_TASK_STOPPED(retcode::FAIL);
-  for (size_t i = 0; i < orig_items.size(); i++) {
-    if (!intersection[i].found) {
-      VLOG(0) << "no match result found for query: [" << orig_items[i] << "]";
-      continue;
-    }
-    auto& key = orig_items[i];
-    if (intersection[i].label.has_data()) {
-      std::string label_info = intersection[i].label.to_string();
-      std::vector<std::string> labels;
-      std::string sep = DATA_RECORD_SEP;
-      str_split(label_info, &labels, sep);
-      auto pair_info = result->emplace(key, std::vector<std::string>());
-      auto& it = std::get<0>(pair_info);
-      for (const auto& lable_ : labels) {
-        it->second.push_back(lable_);
-      }
-    } else {
-      LOG(WARNING) << "no value found for query key: " << key;
-    }
-  }
-  return retcode::SUCCESS;
-}
-
 // ------------------------Sender----------------------------
-retcode KeywordPirOperator::ProcessPSIParams() {
+retcode KeywordPirOperatorServer::ProcessPSIParams() {
   CHECK_TASK_STOPPED(retcode::FAIL);
   std::string request_type_str;
   auto link_ctx = this->GetLinkContext();
@@ -384,7 +211,7 @@ retcode KeywordPirOperator::ProcessPSIParams() {
   return retcode::SUCCESS;
 }
 
-retcode KeywordPirOperator::ProcessOprf() {
+retcode KeywordPirOperatorServer::ProcessOprf() {
   CHECK_TASK_STOPPED(retcode::FAIL);
   VLOG(5) << "begin to process oprf";
   std::string oprf_request_str;
@@ -408,7 +235,8 @@ retcode KeywordPirOperator::ProcessOprf() {
   return link_ctx->Send(this->key_, PeerNode(), oprf_response_str);
 }
 
-retcode KeywordPirOperator::ProcessQuery(std::shared_ptr<SenderDB> sender_db) {
+retcode KeywordPirOperatorServer::ProcessQuery(
+    std::shared_ptr<SenderDB> sender_db) {
   CHECK_TASK_STOPPED(retcode::FAIL);
   CryptoContext crypto_context(sender_db->get_crypto_context());
   auto seal_context = sender_db->get_seal_context();
@@ -588,7 +416,7 @@ retcode KeywordPirOperator::ProcessQuery(std::shared_ptr<SenderDB> sender_db) {
   return retcode::SUCCESS;
 }
 
-retcode KeywordPirOperator::ComputePowers(
+retcode KeywordPirOperatorServer::ComputePowers(
     const shared_ptr<SenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
     std::vector<CiphertextPowers> &all_powers,
@@ -686,7 +514,7 @@ retcode KeywordPirOperator::ComputePowers(
   }
 }
 
-auto KeywordPirOperator::ProcessBinBundleCache(
+auto KeywordPirOperatorServer::ProcessBinBundleCache(
     const shared_ptr<apsi::sender::SenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
     reference_wrapper<const apsi::sender::BinBundleCache> cache,
@@ -737,7 +565,7 @@ auto KeywordPirOperator::ProcessBinBundleCache(
   return rp;
 }
 
-std::unique_ptr<apsi::PSIParams> KeywordPirOperator::SetPsiParams() {
+std::unique_ptr<apsi::PSIParams> KeywordPirOperatorServer::SetPsiParams() {
   CHECK_TASK_STOPPED(nullptr);
   std::string params_json;
   std::string pir_server_config_path{"config/pir_server_config.json"};
@@ -773,12 +601,12 @@ std::unique_ptr<apsi::PSIParams> KeywordPirOperator::SetPsiParams() {
   return params;
 }
 
-bool KeywordPirOperator::DbCacheAvailable(const std::string& db_path) {
+bool KeywordPirOperatorServer::DbCacheAvailable(const std::string& db_path) {
   return FileExists(db_path);
 }
 
 std::shared_ptr<apsi::sender::SenderDB>
-KeywordPirOperator::LoadDbFromCache(const std::string& db_file_cache) {
+KeywordPirOperatorServer::LoadDbFromCache(const std::string& db_file_cache) {
   SCopedTimer timer;
   std::fstream fin(db_file_cache, std::ios::in);
   auto db_info = SenderDB::Load(fin);

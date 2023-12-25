@@ -68,8 +68,21 @@ struct TaskInfo {
   std::string sub_task_id;
 };
 
+enum class Role {
+  CLIENT = 1,
+  SERVER = 2,
+};
+
 class RoleValidation {
 public:
+  static bool IsClient(Role role) {
+    return role == Role::CLIENT;
+  }
+
+  static bool IsServer(Role role) {
+    return role == Role::SERVER;
+  }
+
   static bool IsClient(const std::string& party_name) {
     return party_name == PARTY_CLIENT;
   }

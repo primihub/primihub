@@ -4,7 +4,8 @@
 #include <glog/logging.h>
 #include <memory>
 #include "src/primihub/kernel/pir/common.h"
-#include "src/primihub/kernel/pir/operator/keyword_pir.h"
+#include "src/primihub/kernel/pir/operator/keyword_pir_impl/keyword_pir_client.h"
+#include "src/primihub/kernel/pir/operator/keyword_pir_impl/keyword_pir_server.h"
 namespace primihub::pir {
 class Factory {
  public:
@@ -15,9 +16,16 @@ class Factory {
     case PirType::ID_PIR:
       LOG(ERROR) << "Unimplement";
       break;
-    case PirType::KEY_PIR:
-      operator_ptr = std::make_unique<KeywordPirOperator>(options);
+    case PirType::KEY_PIR: {
+      if (RoleValidation::IsClient(options.role)) {
+        operator_ptr = std::make_unique<KeywordPirOperatorClient>(options);
+      } else if (RoleValidation::IsServer(options.role)) {
+        operator_ptr = std::make_unique<KeywordPirOperatorServer>(options);
+      } else {
+        LOG(ERROR) << "unknown role: " << static_cast<int>(options.role);
+      }
       break;
+    }
     default:
       LOG(ERROR) << "unknown pir operator: " << static_cast<int>(pir_type);
       break;
