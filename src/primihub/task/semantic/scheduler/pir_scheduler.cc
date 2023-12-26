@@ -95,20 +95,27 @@ retcode PIRScheduler::dispatch(const PushTaskRequest *pushTaskRequest) {
     pirType = param_it->second.value_int32();
   }
   const auto& participate_node = push_request.task().party_access_info();
-  // check the party number for this task
-  std::set<std::string> dup_filter;
-  for (const auto& [party_name, node] : participate_node) {
-    Node node_info;
-    pbNode2Node(node, &node_info);
-    dup_filter.insert(node_info.to_string());
-    this->error_msg_.insert({party_name, ""});
-  }
-  if (dup_filter.size() < 2) {
-    std::string error_msg = "PIR task need 2 party "
-                          "to participate for this task.";
-    error_msg.append("but get ").append(std::to_string(dup_filter.size()));
-    RaiseException(error_msg);
-  }
+  do {
+    auto it = params.find("DbInfo");
+    if (it != params.end()) {  // task for offline generate query db
+      break;
+    }
+    // check the party number for this task
+    std::set<std::string> dup_filter;
+    for (const auto& [party_name, node] : participate_node) {
+      Node node_info;
+      pbNode2Node(node, &node_info);
+      dup_filter.insert(node_info.to_string());
+      this->error_msg_.insert({party_name, ""});
+    }
+    if (dup_filter.size() < 2) {
+      std::string error_msg = "PIR task need 2 party "
+                            "to participate for this task.";
+      error_msg.append("but get ").append(std::to_string(dup_filter.size()));
+      RaiseException(error_msg);
+    }
+  } while (0);
+
   LOG(INFO) << TASK_INFO_STR
       << "begin to Dispatch SubmitTask to PIR task party node ...";
   std::vector<std::thread> thrds;
