@@ -258,7 +258,7 @@ std::string ReadRawData(const std::string& file_path, int64_t line_number) {
 std::string CSVAccessInfo::toString() {
   std::stringstream ss;
   nlohmann::json js;
-  js["type"] = "csv";
+  js["type"] = kDriveType[DriverType::CSV];
   js["data_path"] = this->file_path_;
   js["schema"] = SchemaToJsonString();
   ss << js;
@@ -548,7 +548,7 @@ CSVDriver::CSVDriver(const std::string &nodelet_addr,
 }
 
 void CSVDriver::setDriverType() {
-  driver_type = "CSV";
+  driver_type = kDriveType[DriverType::CSV];
 }
 
 retcode CSVDriver::GetColumnNames(const char delimiter,

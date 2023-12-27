@@ -288,14 +288,15 @@ DatasetService::getDriver(const std::string& dataset_id, bool is_acces_info) {
         schema.push_back(std::make_tuple(key, value));
       }
     }
-    auto access_info = createAccessInfo(meta_info.driver_type, meta_info);
-    if (access_info == nullptr) {
-      std::string err_msg = "create access info failed";
+    try {
+      auto access_info = createAccessInfo(meta_info.driver_type, meta_info);
+      return DataDirverFactory::getDriver(meta_info.driver_type,
+                                          DatasetLocation(),
+                                          std::move(access_info));
+    } catch (std::exception& e) {
+      LOG(ERROR) << e.what();
       return nullptr;
     }
-    return DataDirverFactory::getDriver(meta_info.driver_type,
-                                        DatasetLocation(),
-                                        std::move(access_info));
   }
 
   // get Meta using meta service
@@ -316,14 +317,15 @@ DatasetService::getDriver(const std::string& dataset_id, bool is_acces_info) {
       }
       VLOG(5) << "driver_type: " << meta_info.driver_type << " "
           << "access_info: " << meta_info.access_info;
-      auto access_info = createAccessInfo(meta_info.driver_type, meta_info);
-      if (access_info == nullptr) {
-        std::string err_msg = "create access info failed";
+      try {
+        auto access_info = createAccessInfo(meta_info.driver_type, meta_info);
+        driver = DataDirverFactory::getDriver(meta_info.driver_type,
+                                            DatasetLocation(),
+                                            std::move(access_info));
+      } catch (std::exception& e) {
+        LOG(ERROR) << e.what();
         return retcode::FAIL;
       }
-      driver = DataDirverFactory::getDriver(meta_info.driver_type,
-                                          DatasetLocation(),
-                                          std::move(access_info));
       return retcode::SUCCESS;
     } else {
       LOG(ERROR) << "get dataset meta failed";

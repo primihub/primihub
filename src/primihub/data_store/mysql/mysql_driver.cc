@@ -34,7 +34,7 @@ namespace primihub {
 std::string MySQLAccessInfo::toString() {
   std::stringstream ss;
   nlohmann::json js;
-  js["type"] = "mysql";
+  js["type"] = kDriveType[DriverType::MYSQL];
   js["host"] = this->ip;
   js["port"] = this->port;
   js["username"] = this->user_name;
@@ -347,7 +347,7 @@ MySQLDriver::~MySQLDriver() {
 }
 
 void MySQLDriver::setDriverType() {
-  driver_type = "MySQL";
+  driver_type = kDriveType[DriverType::MYSQL];;
 }
 
 retcode MySQLDriver::releaseMySqlLib() {

@@ -268,7 +268,7 @@ retcode PirTask::GetServerDataSetSchema(const rpc::Task& task) {
     auto& dataset_access = iter->second;
     nlohmann::json acc_info = nlohmann::json::parse(dataset_access);
     auto schema_str = acc_info["schema"].get<std::string>();
-    LOG(ERROR) << schema_str;
+    VLOG(0) << "Server Dataset Schema: " << schema_str;
     nlohmann::json filed_list = nlohmann::json::parse(schema_str);
     for (const auto& filed : filed_list) {
       for (const auto& [name, _] : filed.items()) {
@@ -292,7 +292,7 @@ retcode PirTask::GetServerDataSetSchema(const rpc::Task& task) {
     }
     auto& schema = access_info->Schema();
     for (const auto& field : schema) {
-      LOG(ERROR) << "field: " << std::get<0>(field);
+      VLOG(5) << "field: " << std::get<0>(field);
       server_dataset_schema_.push_back(std::get<0>(field));
     }
   }
