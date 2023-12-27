@@ -9,6 +9,7 @@
 #ifdef SGX
 #include "src/primihub/kernel/psi/operator/tee_psi.h"
 #endif  // SGX
+#include "src/primihub/common/value_check_util.h"
 
 namespace primihub::psi {
 class Factory {
@@ -42,8 +43,9 @@ class Factory {
     auto tee_engine = reinterpret_cast<sgx::TeeEngine*>(executor);
     return std::make_unique<TeePsiOperator>(options, tee_engine);
 #else
-    LOG(ERROR) << "sgx is not enabled";
-    return nullptr;
+    std::string err_msg{"sgx is not enabled"};
+    LOG(ERROR) << err_msg;
+    RaiseException(err_msg);
 #endif
     }
 

@@ -37,7 +37,7 @@ namespace primihub {
 std::string SQLiteAccessInfo::toString() {
     std::stringstream ss;
     nlohmann::json js;
-    js["type"] = "sqlite";
+    js["type"] = kDriveType[DriverType::SQLITE];
     js["db_path"] = this->db_path_;
     js["tableName"] = this->table_name_;
     // ss << std::setw(4) << js;
@@ -461,7 +461,7 @@ SQLiteDriver::SQLiteDriver(const std::string &nodelet_addr,
 }
 
 void SQLiteDriver::setDriverType() {
-  driver_type = "SQLITE";
+  driver_type = kDriveType[DriverType::SQLITE];
 }
 
 std::unique_ptr<Cursor> SQLiteDriver::read() {

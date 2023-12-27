@@ -40,6 +40,7 @@
 
 #include "src/primihub/data_store/dataset.h"
 #include "src/primihub/common/common.h"
+#include "src/primihub/data_store/driver_constant.h"
 
 namespace primihub {
 

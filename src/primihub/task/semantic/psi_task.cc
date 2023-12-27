@@ -106,7 +106,7 @@ retcode PsiTask::LoadParams(const rpc::Task& task) {
     auto it = param_map.find("UniqueValues");
     if (it != param_map.end()) {
       unique_values_ = it->second.value_int32() > 0;
-      LOG(ERROR) << "unique_values_: " << unique_values_;
+      VLOG(0) << "unique_values_: " << unique_values_;
     }
   }
 

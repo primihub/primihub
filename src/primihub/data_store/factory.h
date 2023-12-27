@@ -28,124 +28,112 @@
 #ifdef ENABLE_MYSQL_DRIVER
 #include "src/primihub/data_store/mysql/mysql_driver.h"
 #endif
-#define CSV_DRIVER_NAME "CSV"
-#define SQLITE_DRIVER_NAME "SQLITE"
-#define HDFS_DRIVER_NAME "HDFS"
-#define MYSQL_DRIVER_NAME "MYSQL"
-#define IMAGE_DRIVER_NAME "IMAGE"
+#include "src/primihub/common/value_check_util.h"
+
 namespace primihub {
 class DataDirverFactory {
  public:
-    using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
-    static std::shared_ptr<DataDriver>
-    getDriver(const std::string &dirverName,
-            const std::string& nodeletAddr,
-            DataSetAccessInfoPtr access_info = nullptr) {
-        if (boost::to_upper_copy(dirverName) == CSV_DRIVER_NAME) {
-            if (access_info == nullptr) {
-                return std::make_shared<CSVDriver>(nodeletAddr);
-            } else {
-                return std::make_shared<CSVDriver>(nodeletAddr, std::move(access_info));
-            }
-        } else if (dirverName == HDFS_DRIVER_NAME) {
-            // return new HDFSDriver(dirverName);
-            // TODO not implemented yet
-        } else if (boost::to_upper_copy(dirverName) == SQLITE_DRIVER_NAME) {
-            if (access_info == nullptr) {
-                return std::make_shared<SQLiteDriver>(nodeletAddr);
-            } else {
-                return std::make_shared<SQLiteDriver>(nodeletAddr, std::move(access_info));
-            }
-        } else if (boost::to_upper_copy(dirverName) == MYSQL_DRIVER_NAME) {
+  using DataSetAccessInfoPtr = std::unique_ptr<DataSetAccessInfo>;
+  using DataDriverPtr = std::shared_ptr<DataDriver>;
+  static DataDriverPtr getDriver(const std::string &dirverName,
+      const std::string& nodeletAddr,
+      DataSetAccessInfoPtr access_info = nullptr) {
+    DataDriverPtr driver_ptr{nullptr};
+    std::string driver_name = strToUpper(dirverName);
+    if (driver_name == kDriveType[DriverType::CSV]) {
+      driver_ptr = std::make_shared<CSVDriver>(nodeletAddr,
+                                               std::move(access_info));
+    } else if (driver_name == kDriveType[DriverType::SQLITE]) {
+      driver_ptr = std::make_shared<SQLiteDriver>(nodeletAddr,
+                                                  std::move(access_info));
+    } else if (driver_name == kDriveType[DriverType::MYSQL]) {
 #ifdef ENABLE_MYSQL_DRIVER
-            if (access_info == nullptr) {
-                return std::make_shared<MySQLDriver>(nodeletAddr);
-            } else {
-                return std::make_shared<MySQLDriver>(nodeletAddr, std::move(access_info));
-            }
+      driver_ptr = std::make_shared<MySQLDriver>(nodeletAddr,
+                                                 std::move(access_info));
 #else
-            std::string err_msg = "MySQL is not enabled";
-            LOG(ERROR) << err_msg;
-            throw std::invalid_argument(err_msg);
+      std::string err_msg = "MySQL is not enabled";
+      RaiseException(err_msg);
 #endif
-        } else if (boost::to_upper_copy(dirverName) == IMAGE_DRIVER_NAME) {
-            if (access_info == nullptr) {
-                return std::make_shared<ImageDriver>(nodeletAddr);
-            } else {
-                return std::make_shared<ImageDriver>(nodeletAddr, std::move(access_info));
-            }
-        } else {
-            std::string err_msg = "[DataDriverFactory]Invalid driver name [" + dirverName + "]";
-            throw std::invalid_argument(err_msg);
-        }
-        return nullptr;
+    } else if (driver_name == kDriveType[DriverType::IMAGE]) {
+      driver_ptr = std::make_shared<ImageDriver>(nodeletAddr,
+                                                 std::move(access_info));
+    } else {
+      std::string err_msg =
+          "[DataDriverFactory] Invalid driver name [" + dirverName + "]";
+      RaiseException(err_msg);
     }
-    // internal
-    static DataSetAccessInfoPtr createAccessInfoInternal(const std::string& driver_type) {
-        std::string drive_type_ = strToUpper(driver_type);
-        DataSetAccessInfoPtr access_info_ptr{nullptr};
-        if (drive_type_ == CSV_DRIVER_NAME) {
-            access_info_ptr = std::make_unique<CSVAccessInfo>();
-        } else if (drive_type_ == SQLITE_DRIVER_NAME) {
-            access_info_ptr = std::make_unique<SQLiteAccessInfo>();
-        } else if (drive_type_ == MYSQL_DRIVER_NAME) {
+    return driver_ptr;
+  }
+
+  // internal
+  static DataSetAccessInfoPtr createAccessInfoInternal(
+      const std::string& driver_type) {
+    std::string drive_type_ = strToUpper(driver_type);
+    DataSetAccessInfoPtr access_info_ptr{nullptr};
+    if (drive_type_ == kDriveType[DriverType::CSV]) {
+      access_info_ptr = std::make_unique<CSVAccessInfo>();
+    } else if (drive_type_ == kDriveType[DriverType::SQLITE]) {
+      access_info_ptr = std::make_unique<SQLiteAccessInfo>();
+    } else if (drive_type_ == kDriveType[DriverType::MYSQL]) {
 #ifdef ENABLE_MYSQL_DRIVER
-            access_info_ptr = std::make_unique<MySQLAccessInfo>();
+      access_info_ptr = std::make_unique<MySQLAccessInfo>();
 #else
-            LOG(ERROR) << "MySQL is not enabled";
+      std::string err_msg = "MySQL is not enabled";
+      RaiseException(err_msg);
 #endif
-        } else if (drive_type_ == IMAGE_DRIVER_NAME) {
-          access_info_ptr = std::make_unique<ImageAccessInfo>();
-        } else {
-            LOG(ERROR) << "unsupported driver type: " << drive_type_;
-            return access_info_ptr;
-        }
-        return access_info_ptr;
+    } else if (drive_type_ == kDriveType[DriverType::IMAGE]) {
+      access_info_ptr = std::make_unique<ImageAccessInfo>();
+    } else {
+      std::string err_msg = "unsupported driver type: " + drive_type_;
+      RaiseException(err_msg);
     }
+    return access_info_ptr;
+  }
 
-    static DataSetAccessInfoPtr createAccessInfo(
-            const std::string& driver_type, const std::string& meta_info) {
-        auto access_info_ptr = createAccessInfoInternal(driver_type);
-        if (access_info_ptr == nullptr) {
-            return nullptr;
-        }
-        auto ret = access_info_ptr->fromJsonString(meta_info);
-        if (ret == retcode::FAIL) {
-            LOG(ERROR) << "create dataset access info failed";
-            return nullptr;
-        }
-        return access_info_ptr;
+  static DataSetAccessInfoPtr createAccessInfo(
+      const std::string& driver_type,
+      const std::string& meta_info) {
+    auto access_info_ptr = createAccessInfoInternal(driver_type);
+    if (access_info_ptr == nullptr) {
+      return nullptr;
     }
+    auto ret = access_info_ptr->fromJsonString(meta_info);
+    if (ret == retcode::FAIL) {
+      std::string err_msg = "create dataset access info failed";
+      RaiseException(err_msg);
+    }
+    return access_info_ptr;
+  }
 
-    static DataSetAccessInfoPtr createAccessInfo(
-            const std::string& driver_type, const YAML::Node& meta_info) {
-        auto access_info_ptr = createAccessInfoInternal(driver_type);
-        if (access_info_ptr == nullptr) {
-            return nullptr;
-        }
-        // init
-        auto ret = access_info_ptr->fromYamlConfig(meta_info);
-        if (ret == retcode::FAIL) {
-            LOG(ERROR) << "create dataset access info failed";
-            return nullptr;
-        }
-        return access_info_ptr;
+  static DataSetAccessInfoPtr createAccessInfo(
+      const std::string& driver_type, const YAML::Node& meta_info) {
+    auto access_info_ptr = createAccessInfoInternal(driver_type);
+    if (access_info_ptr == nullptr) {
+      return nullptr;
     }
+    // init
+    auto ret = access_info_ptr->fromYamlConfig(meta_info);
+    if (ret == retcode::FAIL) {
+      std::string err_msg = "create dataset access info failed";
+      RaiseException(err_msg);
+    }
+    return access_info_ptr;
+  }
 
-    static DataSetAccessInfoPtr createAccessInfo(
-        const std::string& driver_type, const DatasetMetaInfo& meta_info) {
-      auto access_info_ptr = createAccessInfoInternal(driver_type);
-      if (access_info_ptr == nullptr) {
-        return nullptr;
-      }
-      // init
-      auto ret = access_info_ptr->FromMetaInfo(meta_info);
-      if (ret == retcode::FAIL) {
-        LOG(ERROR) << "create dataset access info failed";
-        return nullptr;
-      }
-      return access_info_ptr;
+  static DataSetAccessInfoPtr createAccessInfo(
+      const std::string& driver_type, const DatasetMetaInfo& meta_info) {
+    auto access_info_ptr = createAccessInfoInternal(driver_type);
+    if (access_info_ptr == nullptr) {
+      return nullptr;
     }
+    // init
+    auto ret = access_info_ptr->FromMetaInfo(meta_info);
+    if (ret == retcode::FAIL) {
+      std::string err_msg = "create dataset access info failed";
+      RaiseException(err_msg);
+    }
+    return access_info_ptr;
+  }
 };
 
 } // namespace primihub

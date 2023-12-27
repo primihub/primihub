@@ -37,7 +37,7 @@ std::string ImageAccessInfo::toString() {
   nlohmann::json js;
   js["image_dir"] = this->image_dir_;
   js["annotations_file"] = this->annotations_file_;
-  js["type"] = "image";
+  js["type"] = kDriveType[DriverType::IMAGE];
   ss << js;
   return ss.str();
 }
@@ -150,7 +150,7 @@ ImageDriver::ImageDriver(const std::string &nodelet_addr,
 }
 
 void ImageDriver::setDriverType() {
-  driver_type = "Image";
+  driver_type = kDriveType[DriverType::IMAGE];
 }
 
 std::unique_ptr<Cursor> ImageDriver::read() {

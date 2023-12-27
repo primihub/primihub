@@ -35,6 +35,7 @@ cc_library(
         "driver.cc",
     ],
     deps = [
+        ":driver_constant",
         "//src/primihub/common:common_defination",
         "//src/primihub/util:arrow_wrapper_util",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
@@ -50,4 +51,9 @@ cc_library(
     deps = [
         "//src/primihub/common:data_type_defination",
     ],
+)
+
+cc_library(
+  name = "driver_constant",
+  hdrs = ["driver_constant.h"],
 )
