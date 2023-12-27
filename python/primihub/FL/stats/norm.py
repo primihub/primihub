@@ -69,7 +69,7 @@ def col_norm_client(
         else:
             # sqrt it to get the client local l2 norm
             np.sqrt(server_col_norm, server_col_norm)
-    elif norm == "max":
+    else: # norm == "max"
         server_col_norm = col_max_client(
             np.abs(X), ignore_nan, channel, send_server, recv_server
         )
@@ -103,7 +103,7 @@ def col_norm_server(
                 channel.send_all("server_col_norm", None)
             else:
                 channel.send_all("server_col_norm", server_col_norm)
-    elif norm == "max":
+    else: # norm == "max"
         server_col_norm = col_max_server(ignore_nan, channel, send_client, recv_client)
     return server_col_norm
 
@@ -138,7 +138,7 @@ def row_norm_guest(
         else:
             # sqrt it to get the guest local l2 norm
             np.sqrt(global_row_norm, global_row_norm)
-    elif norm == "max":
+    else: # norm == "max"
         global_row_norm = row_max_guest(
             np.abs(X), ignore_nan, channel, send_host, recv_host
         )
@@ -175,7 +175,7 @@ def row_norm_host(
                 channel.send_all("global_row_norm", None)
             else:
                 channel.send_all("global_row_norm", global_row_norm)
-    elif norm == "max":
+    else: # norm == "max"
         global_row_norm = row_max_host(
             np.abs(X), ignore_nan, channel, send_guest, recv_guest
         )

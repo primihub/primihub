@@ -1,3 +1,4 @@
+from typing import Optional
 from datasketches import (
     frequent_strings_sketch,
     frequent_items_sketch,
@@ -9,17 +10,17 @@ from .serde import PyMixedItemsSerDe
 from .util import check_inputdim, check_sketch
 
 
-def check_frequent_params(max_item: int, min_freq: int):
+def check_frequent_params(max_item: Optional[int], min_freq: int):
     if max_item is not None and max_item < 1:
         raise ValueError("max_item must be no less than 1")
-    if min_freq is not None and min_freq < 1:
+    if min_freq < 1:
         raise ValueError("min_freq must be no less than 1")
 
 
 def send_local_fi_sketch(
     items,
     counts,
-    channel=None,
+    channel,
     vector: bool = True,
     data_type: str = "mix",
     k: int = 20,
@@ -50,8 +51,8 @@ def send_local_fi_sketch(
 def get_global_frequent_items(
     channel,
     error_type: str = "NFN",
-    max_item: int = None,
-    min_freq: int = None,
+    max_item: Optional[int] = None,
+    min_freq: int = 1,
     vector: bool = True,
     data_type: str = "mix",
     k: int = 20,
@@ -142,8 +143,8 @@ def fi_deserialize(sketch, fi_bytes, data_type: str):
 def get_frequent_items(
     sketch,
     error_type: str = "NFN",
-    max_item: int = None,
-    min_freq: int = None,
+    max_item: Optional[int] = None,
+    min_freq: int = 1,
     vector: bool = True,
 ):
     valid_error_type = ["NFP", "NFN"]
@@ -181,7 +182,7 @@ def get_frequent_items(
 def _get_frequent_items(
     sketch,
     error_type,
-    max_item: int = None,
+    max_item: Optional[int] = None,
     threshold: int = 0,
 ):
     result = sketch.get_frequent_items(error_type, threshold)
