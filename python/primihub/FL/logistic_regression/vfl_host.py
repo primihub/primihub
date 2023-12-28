@@ -13,6 +13,7 @@ from primihub.FL.metrics import classification_metrics
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import check_array
 
 from .vfl_base import LogisticRegression_Host_Plaintext,\
                       LogisticRegression_Host_CKKS
@@ -63,7 +64,7 @@ class LogisticRegressionHost(BaseModel):
         x = x.drop(id, axis=1)
         label = self.role_params['label']
         y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # host init
         batch_size = min(x.shape[0], self.common_params['batch_size'])
@@ -153,7 +154,7 @@ class LogisticRegressionHost(BaseModel):
         label = modelFile['label']
         if label in x.columns:
             y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # data preprocessing
         transformer = modelFile['transformer']

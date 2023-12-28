@@ -14,6 +14,8 @@ from primihub.FL.metrics import regression_metrics
 
 import pandas as pd
 import dp_accounting
+from sklearn.utils.validation import check_array
+
 from .base import LinearRegression,\
                   LinearRegression_DPSGD,\
                   LinearRegression_Paillier
@@ -52,7 +54,7 @@ class LinearRegressionClient(BaseModel):
                       droped_column=id)
         label = self.common_params['label']
         y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # client init
         method = self.common_params['method']
@@ -157,7 +159,7 @@ class LinearRegressionClient(BaseModel):
         label = modelFile['label']
         if label in x.columns:
             y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # data preprocessing
         scaler = modelFile['preprocess']
