@@ -196,6 +196,7 @@ retcode PirTask::ParseDataset(const rpc::Task& task_config) {
       is_dataset_detail_ = true;
     }
   }
+  return retcode::SUCCESS;
 }
 
 retcode PirTask::ParsePirRole(const rpc::Task& task_config, Role* role) {

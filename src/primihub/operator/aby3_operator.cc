@@ -38,6 +38,7 @@ int MPCOperator::setup(std::shared_ptr<aby3::CommPkg> comm_pkg) {
 int MPCOperator::setup(aby3::CommPkg* comm_pkg) {
   comm_pkg_ref_ = comm_pkg;
   InitEngine();
+  return 0;
 }
 
 retcode MPCOperator::InitEngine() {

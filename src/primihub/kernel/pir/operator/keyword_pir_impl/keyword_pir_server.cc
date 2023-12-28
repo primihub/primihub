@@ -512,6 +512,7 @@ retcode KeywordPirOperatorServer::ComputePowers(
   for (auto &f : futures) {
     f.get();
   }
+  return retcode::SUCCESS;
 }
 
 auto KeywordPirOperatorServer::ProcessBinBundleCache(

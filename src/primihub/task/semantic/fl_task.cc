@@ -42,7 +42,7 @@ int FLTask::execute() {
     LOG(ERROR) << "ill formatted task request";
     return -1;
   }
-  py::gil_scoped_acquire acquire;
+  py::scoped_interpreter python;
   VLOG(1) << "<<<<<<<<< Import PrmimiHub Python Executor <<<<<<<<<";
   py::object ph_exec_m_ =
       py::module::import("primihub.executor").attr("Executor");
