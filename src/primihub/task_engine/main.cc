@@ -18,8 +18,6 @@
 #include <Python.h>
 #include <iostream>
 #include <string>
-#include "pybind11/stl.h"
-#include "pybind11/embed.h"
 #include "src/primihub/task_engine/task_executor.h"
 #include "src/primihub/common/config/server_config.h"
 
@@ -30,10 +28,7 @@ DEFINE_string(request, "", "task request, serialized by rpc::Task");
 DEFINE_string(request_id, "", "task request, serialized by rpc::Task");
 DEFINE_string(log_path, "", "log path");
 
-namespace py = pybind11;
 int main(int argc, char **argv) {
-  py::scoped_interpreter python;
-  py::gil_scoped_release release;
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::string node_id = FLAGS_node_id;
   std::string config_file = FLAGS_config_file;

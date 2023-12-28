@@ -466,6 +466,7 @@ retcode PsiCommonUtil::ExtractDataFromTrunkArray(
       fut.get();
     }
   }
+  return retcode::SUCCESS;
 }
 
 retcode PsiCommonUtil::ExtractDataFromArray(
@@ -554,5 +555,6 @@ retcode PsiCommonUtil::ExtractDataFromArray(
       fut.get();
     }
   }
+  return retcode::SUCCESS;
 }
 }  // namespace primihub::psi
