@@ -34,17 +34,17 @@ def col_union_client(
         X, force_all_finite="allow-nan" if ignore_nan else True
     )
 
+    client_col_items = []
+    for Xi in X:
+        items = _unique(Xi)
+
+        if ignore_nan and is_scalar_nan(items[-1]):
+            # nan is the last element
+            items = items[:-1]
+
+        client_col_items.append(items)
+
     if send_server:
-        client_col_items = []
-        for Xi in X:
-            items = _unique(Xi)
-
-            if ignore_nan and is_scalar_nan(items[-1]):
-                # nan is the last element
-                items = items[:-1]
-
-            client_col_items.append(items)
-
         channel.send("client_col_items", client_col_items)
 
     if recv_server:

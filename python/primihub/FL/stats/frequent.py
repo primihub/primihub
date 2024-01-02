@@ -1,5 +1,6 @@
 import warnings
 import numpy as np
+from typing import Optional
 from sklearn.utils import is_scalar_nan
 from sklearn.utils._encode import _unique
 from sklearn.preprocessing._encoders import _BaseEncoder
@@ -12,8 +13,8 @@ def col_frequent(
     role: str,
     X,
     error_type: str = "NFN",
-    max_item: int = None,
-    min_freq: int = None,
+    max_item: Optional[int] = None,
+    min_freq: int = 1,
     k: int = 20,
     ignore_nan: bool = True,
     channel=None,
@@ -29,7 +30,6 @@ def col_frequent(
     elif role in ["guest", "host"]:
         return col_frequent_client(
             X,
-            error_type,
             max_item,
             min_freq,
             k,
@@ -41,8 +41,8 @@ def col_frequent(
 
 def col_frequent_client(
     X,
-    max_item: int = None,
-    min_freq: int = None,
+    max_item: Optional[int] = None,
+    min_freq: int = 1,
     k: int = 20,
     ignore_nan: bool = True,
     channel=None,
@@ -55,18 +55,18 @@ def col_frequent_client(
         X, force_all_finite="allow-nan" if ignore_nan else True
     )
 
+    all_items, all_counts = [], []
+    for Xi in X:
+        items, counts = _unique(Xi, return_counts=True)
+
+        if ignore_nan and is_scalar_nan(items[-1]):
+            # nan is the last element
+            items, counts = items[:-1], counts[:-1]
+
+        all_items.append(items)
+        all_counts.append(counts)
+
     if send_server:
-        all_items, all_counts = [], []
-        for Xi in X:
-            items, counts = _unique(Xi, return_counts=True)
-
-            if ignore_nan and is_scalar_nan(items[-1]):
-                # nan is the last element
-                items, counts = items[:-1], counts[:-1]
-
-            all_items.append(items)
-            all_counts.append(counts)
-
         send_local_fi_sketch(all_items, all_counts, channel=channel, k=k)
 
     if recv_server:
@@ -99,8 +99,8 @@ def col_frequent_client(
 
 def col_frequent_server(
     error_type: str = "NFN",
-    max_item: int = None,
-    min_freq: int = None,
+    max_item: Optional[int] = None,
+    min_freq: int = 1,
     k: int = 20,
     ignore_nan: bool = True,
     channel=None,
