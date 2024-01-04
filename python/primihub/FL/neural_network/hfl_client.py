@@ -11,6 +11,7 @@ from primihub.FL.metrics import regression_metrics,\
                                 classification_metrics                           
 
 import pandas as pd
+from sklearn.utils.validation import check_array
 import torch
 import torch.utils.data as data_utils
 from torch.utils.data import DataLoader
@@ -52,7 +53,7 @@ class NeuralNetworkClient(BaseModel):
                       droped_column=id)
         label = self.common_params['label']
         y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
         
         # client init
         # Get cpu or gpu device for training.
@@ -171,7 +172,7 @@ class NeuralNetworkClient(BaseModel):
         label = modelFile['label']
         if label in x.columns:
             y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # data preprocessing
         scaler = modelFile['preprocess']

@@ -12,6 +12,7 @@ from primihub.FL.metrics import regression_metrics
 
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import check_array
 
 from .vfl_base import LinearRegression_Host_Plaintext,\
                       LinearRegression_Host_CKKS
@@ -62,7 +63,7 @@ class LinearRegressionHost(BaseModel):
         x = x.drop(id, axis=1)
         label = self.role_params['label']
         y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # host init
         batch_size = min(x.shape[0], self.common_params['batch_size'])
@@ -152,7 +153,7 @@ class LinearRegressionHost(BaseModel):
         label = modelFile['label']
         if label in x.columns:
             y = x.pop(label).values
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # data preprocessing
         transformer = modelFile['transformer']

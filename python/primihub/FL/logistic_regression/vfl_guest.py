@@ -7,6 +7,7 @@ from primihub.FL.crypto.ckks import CKKS
 from primihub.FL.psi import sample_alignment
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import check_array
 
 from .vfl_base import LogisticRegression_Guest_Plaintext,\
                       LogisticRegression_Guest_CKKS
@@ -55,7 +56,7 @@ class LogisticRegressionGuest(BaseModel):
             x = sample_alignment(x, id, self.roles, psi_protocol)
 
         x = x.drop(id, axis=1)
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # guest init
         batch_size = min(x.shape[0], self.common_params['batch_size'])
@@ -138,7 +139,7 @@ class LogisticRegressionGuest(BaseModel):
             x = sample_alignment(x, id, self.roles, psi_protocol)
         if id in x.columns:
             x.pop(id)
-        x = x.values
+        x = check_array(x, dtype='numeric')
 
         # data preprocessing
         transformer = modelFile['transformer']
