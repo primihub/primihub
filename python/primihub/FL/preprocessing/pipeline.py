@@ -162,6 +162,8 @@ class Pipeline(BaseModel):
                             col_name = "Bin_" + col_name
                         elif module_name == "QuantileTransformer":
                             col_name = "Quantile_" + col_name
+                        elif module_name == "PowerTransformer":
+                            col_name = "Power_" + col_name
                     data = data.join(pd.DataFrame(temp, columns=col_name))
                 elif module_name == "TargetEncoder":
                     data[column] = module.fit_transform(data[column], data[label])
@@ -333,6 +335,15 @@ def select_module(module_name, params, FL_type, role, channel):
             encoded_missing_value=encoded_missing_value,
             min_frequency=params.get("min_frequency"),
             max_categories=params.get("max_categories"),
+            FL_type=FL_type,
+            role=role,
+            channel=channel,
+        )
+    elif module_name == "PowerTransformer":
+        module = PowerTransformer(
+            method=params.get("method", "yeo-johnson"),
+            standardize=params.get("standardize", True),
+            copy=params.get("copy", True),
             FL_type=FL_type,
             role=role,
             channel=channel,

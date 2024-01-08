@@ -452,7 +452,7 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
 
     def fit_transform(self, X=None, y=None):
         if self.FL_type == "V":
-            self.module.fit_transform(X, y)
+            return self.module.fit_transform(X, y)
         else:
             self.module._validate_params()
             if self.role == "client":
