@@ -1,15 +1,145 @@
 import numpy as np
 from math import ceil
 import warnings
+from scipy import special
 from scipy.interpolate import BSpline
+from ._power import PowerTransformer as SKL_PowerTransformer
 from sklearn.preprocessing import QuantileTransformer as SKL_QuantileTransformer
 from sklearn.preprocessing import SplineTransformer as SKL_SplineTransformer
 from sklearn.utils import check_array, resample
 from .base import _PreprocessBase
+from ._power import (
+    _yeojohnson_transform,
+    boxcox_normmax_client,
+    boxcox_normmax_server,
+    yeojohnson_normmax_client,
+    yeojohnson_normmax_server,
+)
 from .util import validate_quantile_sketch_params
 from ..stats import col_min_max, col_quantile
 
-__all__ = ["QuantileTransformer", "SplineTransformer"]
+__all__ = ["PowerTransformer", "QuantileTransformer", "SplineTransformer"]
+
+
+class PowerTransformer(_PreprocessBase):
+    def __init__(
+        self,
+        method="yeo-johnson",
+        standardize=True,
+        copy=True,
+        FL_type=None,
+        role=None,
+        channel=None,
+    ):
+        super().__init__(FL_type, role, channel)
+        if self.FL_type == "H":
+            self.check_channel()
+        self.module = SKL_PowerTransformer(
+            method=method,
+            standardize=standardize,
+            copy=copy,
+        )
+
+    def Hfit(self, X):
+        self._Hfit(X, force_transform=False)
+        return self
+
+    def _Hfit(self, X, force_transform=False):
+        self.module._validate_params()
+
+        if self.role == "client":
+            X = self.module._check_input(X, in_fit=True, check_positive=True)
+
+            if not self.module.copy and not force_transform:  # if call from fit()
+                X = X.copy()  # force copy so that fit does not change X inplace
+
+            optim_function = {
+                "box-cox": boxcox_normmax_client,
+                "yeo-johnson": yeojohnson_normmax_client,
+            }[self.module.method]
+
+            transform_function = {
+                "box-cox": special.boxcox,
+                "yeo-johnson": _yeojohnson_transform,
+            }[self.module.method]
+
+            col_num = X.shape[1]
+            self.channel.send("col_num", col_num)
+
+            self.module.lambdas_ = np.empty(col_num)
+            for i, col in enumerate(X.T):
+                mask = np.isnan(col)
+                if np.all(mask):
+                    raise ValueError("Column must not be all nan.")
+
+                self.module.lambdas_[i] = optim_function(col[~mask], self.channel)
+
+                if self.module.standardize or force_transform:
+                    X[:, i] = transform_function(X[:, i], self.module.lambdas_[i])
+
+            if self.module.standardize:
+                n_samples = np.repeat(X.shape[0], X.shape[1])
+                n_nan = np.isnan(X).sum(axis=0)
+                n_samples -= n_nan
+                if np.ptp(n_samples) == 0:
+                    n_samples = n_samples[0]
+                self.channel.send("n_samples", n_samples)
+
+                X_sum = np.nansum(X, axis=0)
+                self.channel.send("X_sum", X_sum)
+                self.module._mean = self.channel.recv("mean")
+
+                X_sum_square = np.sum(np.square(X / self.module._mean - 1), axis=0)
+                self.channel.send("X_sum_square", X_sum_square)
+                self.module._scale = self.channel.recv("scale")
+
+                if force_transform:
+                    X = (X - self.module._mean) / self.module._scale
+
+            return X
+
+        elif self.role == "server":
+            optim_function = {
+                "box-cox": boxcox_normmax_server,
+                "yeo-johnson": yeojohnson_normmax_server,
+            }[self.module.method]
+
+            col_num = self.channel.recv_all("col_num")
+            if np.ptp(col_num) != 0:
+                raise RuntimeError(f"Not all col_num are equal: {col_num}")
+            col_num = col_num[0]
+
+            self.module.lambdas_ = np.empty(col_num)
+            for i in range(col_num):
+                self.module.lambdas_[i] = optim_function(self.channel)
+
+            if self.module.standardize:
+                n_samples = self.channel.recv_all("n_samples")
+                # n_samples could be np.int or np.ndarray
+                n_sum = 0
+                for n in n_samples:
+                    n_sum += n
+                if isinstance(n_sum, np.ndarray) and np.ptp(n_sum) == 0:
+                    n_sum = n_sum[0]
+
+                X_sum = self.channel.recv_all("X_sum")
+                self.module._mean = np.sum(X_sum, axis=0) / n_sum
+                self.channel.send_all("mean", self.module._mean)
+
+                X_sum_square = self.channel.recv_all("X_sum_square")
+                X_sum_square = np.sum(X_sum_square, axis=0)
+
+                self.module._scale = abs(self.module._mean) * np.sqrt(
+                    X_sum_square / n_sum
+                )
+                self.module._scale[self.module._scale == 0] = 1.0
+                self.channel.send_all("scale", self.module._scale)
+
+    def fit_transform(self, X):
+        if self.FL_type == "V":
+            return self.module.fit_transform(X)
+        else:
+            return self._Hfit(X, force_transform=True)
 
 
 class QuantileTransformer(_PreprocessBase):

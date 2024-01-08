@@ -3,7 +3,7 @@ from .encoder import OneHotEncoder, OrdinalEncoder, TargetEncoder
 from .imputer import SimpleImputer
 from .label import LabelEncoder, LabelBinarizer, MultiLabelBinarizer
 from .scaler import MaxAbsScaler, MinMaxScaler, Normalizer, StandardScaler, RobustScaler
-from .transformer import QuantileTransformer, SplineTransformer
+from .transformer import PowerTransformer, QuantileTransformer, SplineTransformer
 
 __all__ = [
     "KBinsDiscretizer",
@@ -19,6 +19,7 @@ __all__ = [
     "RobustScaler",
     "SimpleImputer",
     "StandardScaler",
+    "PowerTransformer",
     "QuantileTransformer",
     "SplineTransformer",
 ]
