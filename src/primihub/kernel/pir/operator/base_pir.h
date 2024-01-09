@@ -57,11 +57,15 @@ class BasePirOperator {
   LinkContext* GetLinkContext() {return options_.link_ctx_ref;}
   Node& PeerNode() {return options_.peer_node;}
   Node& ProxyNode() {return options_.proxy_node;}
+  std::string PackageCountKey(const std::string& request_id) {
+    return "pack_count";
+  }
 
  protected:
   std::atomic<bool> stop_{false};
   Options options_;
   std::string key_{"pir_key"};
+  std::string response_key_{"response_pir_key"};
 };
 }  // namespace primihub::pir
 #endif  // SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_BASE_PIR_H_

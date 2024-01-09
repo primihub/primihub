@@ -62,24 +62,24 @@ retcode KeywordPirOperatorClient::OnExecute(const PirDataType& input,
   std::string query_data_str = string_ss.str();
   auto itt = move(query.second);
   VLOG(5) << "query_data_str size: " << query_data_str.size();
-
-  ret = this->GetLinkContext()->Send(this->key_, PeerNode(), query_data_str);
+  auto link_ctx = this->GetLinkContext();
+  ret = link_ctx->Send(this->key_, PeerNode(), query_data_str);
   CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
 
   // receive package count
   uint32_t package_count = 0;
-  ret = this->GetLinkContext()->Recv("package_count",
-                                     this->ProxyNode(),
-                                     reinterpret_cast<char*>(&package_count),
-                                     sizeof(package_count));
+  std::string pkg_count_key = this->PackageCountKey(link_ctx->request_id());
+  ret = link_ctx->Recv(pkg_count_key,
+                      this->PeerNode(),
+                      reinterpret_cast<char*>(&package_count),
+                      sizeof(package_count));
   CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
 
   VLOG(5) << "received package count: " << package_count;
   std::vector<apsi::ResultPart> result_packages;
   for (size_t i = 0; i < package_count; i++) {
     std::string recv_data;
-    ret = this->GetLinkContext()->Recv(this->key_,
-                                       this->ProxyNode(), &recv_data);
+    ret = link_ctx->Recv(this->response_key_, this->PeerNode(), &recv_data);
     CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
     VLOG(5) << "client received data length: " << recv_data.size();
     std::istringstream stream_in(recv_data);
@@ -111,7 +111,7 @@ retcode KeywordPirOperatorClient::RequestPSIParams() {
         << "] failed";
     return ret;
   }
-  ret = link_ctx->Recv(this->key_, ProxyNode(), &response_str);
+  ret = link_ctx->Recv(this->response_key_, PeerNode(), &response_str);
   if (VLOG_IS_ON(7)) {
     std::string tmp_str;
     for (const auto& chr : response_str) {
@@ -156,7 +156,7 @@ retcode KeywordPirOperatorClient::RequestOprf(const std::vector<Item>& items,
         << "] failed";
     return ret;
   }
-  ret = link_ctx->Recv(this->key_, this->ProxyNode(), &oprf_response);
+  ret = link_ctx->Recv(this->response_key_, this->PeerNode(), &oprf_response);
   if (ret != retcode::SUCCESS || oprf_response.empty()) {
     LOG(ERROR) << "receive oprf_response from peer: ["
                << PeerNode().to_string() << "] failed";
