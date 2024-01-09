@@ -203,7 +203,7 @@ retcode KeywordPirOperatorServer::ProcessPSIParams() {
     LOG(ERROR) << "recv request from : " << PeerNode().to_string() << "failed";
     return retcode::FAIL;
   }
-  ret = link_ctx->Send(this->key_, PeerNode(), psi_params_str_);
+  ret = link_ctx->Send(this->response_key_, ProxyNode(), psi_params_str_);
   if (ret != retcode::SUCCESS) {
     LOG(ERROR) << "send PSIParams to " << PeerNode().to_string() << "failed";
     return retcode::FAIL;
@@ -232,7 +232,7 @@ retcode KeywordPirOperatorServer::ProcessOprf() {
       oprf_response.size()};
   // VLOG(5) << "send data size: " << oprf_response_str.size() << " "
   //         << "data content: " << oprf_response_str;
-  return link_ctx->Send(this->key_, PeerNode(), oprf_response_str);
+  return link_ctx->Send(this->response_key_, ProxyNode(), oprf_response_str);
 }
 
 retcode KeywordPirOperatorServer::ProcessQuery(
@@ -311,7 +311,8 @@ retcode KeywordPirOperatorServer::ProcessQuery(
   std::string_view send_data{reinterpret_cast<char*>(&package_count),
                              sizeof(package_count)};
   auto link_ctx = this->GetLinkContext();
-  ret = link_ctx->Send("package_count", PeerNode(), send_data);
+  std::string pkg_count_key = this->PackageCountKey(link_ctx->request_id());
+  ret = link_ctx->Send(pkg_count_key, ProxyNode(), send_data);
   CHECK_RETCODE(ret);
   VLOG(5) << "package_countpackage_countpackage_count: " << package_count;
   // For each bundle index i, we need a vector of powers of the query Qᵢ.
@@ -397,7 +398,7 @@ retcode KeywordPirOperatorServer::ProcessQuery(
         for (size_t i = 0; i < package_count; i++) {
           std::string send_data;
           result_package_queue.wait_and_pop(send_data);
-          auto ret = link_ctx->Send(this->key_, PeerNode(), send_data);
+          auto ret = link_ctx->Send(this->response_key_, ProxyNode(), send_data);
           if (ret != retcode::SUCCESS) {
             LOG(ERROR) << "send result to client, index: " << i
                 << " data length: " << send_data.size() << " failed";
