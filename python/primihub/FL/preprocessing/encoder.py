@@ -61,7 +61,8 @@ class _BaseEncoder(_PreprocessBase, _SKL_BaseEncoder):
                 return_and_ignore_missing_for_infrequent=True,
             )
             self.module.n_features_in_ = self.n_features_in_
-            self.module.feature_names_in_ = self.feature_names_in_
+            if hasattr(self, "feature_names_in_"):
+                self.module.feature_names_in_ = self.feature_names_in_
 
             categories = self.categories_
             local_categories = self.categories_
@@ -571,13 +572,15 @@ class TargetEncoder(_PreprocessBase, _SKL_BaseEncoder, auto_wrap_output_keys=Non
             check_consistent_length(X, y)
             self._fit(X, handle_unknown="ignore", force_all_finite="allow-nan")
             self.module.n_features_in_ = self.n_features_in_
-            self.module.feature_names_in_ = self.feature_names_in_
+            if hasattr(self, "feature_names_in_"):
+                self.module.feature_names_in_ = self.feature_names_in_
 
             categories = self.categories_
             if self.categories == "auto":
                 self.channel.send("categories", categories)
                 categories = self.channel.recv("categories")
             self.module.categories_ = categories
+            self.categories_ = categories
 
             if self.module.target_type == "auto":
                 accepted_target_types = ("binary", "multiclass", "continuous")
