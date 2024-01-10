@@ -114,14 +114,22 @@ retcode ABY3Scheduler::dispatch(const PushTaskRequest *actorPushTaskRequest) {
     std::vector<std::string> party_names;
     std::vector<rpc::Node> party_nodes;
     std::set<std::string> dup_names;
+    std::set<std::string> dup_filter;
     for (const auto& [party_name, node] : party_info) {
       dup_names.insert(party_name);
       party_names.emplace_back(party_name);
       party_nodes.emplace_back(node);
+      Node node_info;
+      pbNode2Node(node, &node_info);
+      dup_filter.insert(node_info.to_string());
+    }
+    if (dup_filter.size() != 3) {
+      std::string error_msg = "ABY3 protocol need 3 party, but get ";
+      error_msg.append(std::to_string(dup_filter.size()));
+      RaiseException(error_msg);
     }
     if (dup_names.size() != 3) {
-      std::string error_msg = "ABY3 protocol need 3 party, but get ";
-      error_msg.append(std::to_string(dup_names.size()));
+      std::string error_msg = "ABY3 protocol: different party set same name";
       RaiseException(error_msg);
     }
     for (const auto& name_ : party_names) {
