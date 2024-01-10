@@ -587,4 +587,50 @@ retcode GrpcChannel::DownloadData(const rpc::DownloadRequest& request,
   }
   return retcode::SUCCESS;
 }
+
+retcode GrpcChannel::CheckSendCompleteStatus(
+    const std::string& key, uint64_t expected_complete_num) {
+  int retry_time{0};
+  rpc::CompleteStatusRequest request;
+  auto task_info_ptr = request.mutable_task_info();
+  BuildTaskInfo(task_info_ptr);
+  request.set_key(key);
+  request.set_complete_count(expected_complete_num);
+  const auto& task_info = request.task_info();
+  std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
+  do {
+    grpc::ClientContext context;
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    context.set_deadline(deadline);
+    rpc::Empty reply;
+    grpc::Status status = stub_->CompleteStatus(&context, request, &reply);
+    if (status.ok()) {
+      PH_VLOG(5, LogType::kTask)
+          << TASK_INFO_STR
+          << "send CompleteStatus to node: ["
+          << dest_node_.to_string() << "] rpc succeeded.";
+      break;
+    } else {
+      PH_LOG(WARNING, LogType::kTask)
+          << TASK_INFO_STR
+          << "send CompleteStatus to Node ["
+          << dest_node_.to_string() << "] rpc failed. "
+          << status.error_code() << ": " << status.error_message() << " "
+          << "retry times: " << retry_time;
+      retry_time++;
+      if (retry_time < this->retry_max_times_) {
+        continue;
+      } else {
+        PH_LOG(ERROR, LogType::kTask)
+            << TASK_INFO_STR
+            << "send CompleteStatus to Node ["
+            << dest_node_.to_string() << "] rpc failed. "
+            << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+      }
+    }
+  } while (true);
+  return retcode::SUCCESS;
+}
 }  // namespace primihub::network

@@ -92,6 +92,12 @@ message TaskStatusReply {
   repeated TaskStatus task_status = 1;
 }
 
+message CompleteStatusRequest {
+  TaskContext task_info = 1;
+  string key = 2;
+  uint64 complete_count = 3;
+};
+
 service VMNode {
   // task operation
   rpc SubmitTask(PushTaskRequest) returns (PushTaskReply);
@@ -108,5 +114,6 @@ service VMNode {
   rpc SendRecv(stream TaskRequest) returns (stream TaskResponse);
   rpc ForwardSend(stream ForwardTaskRequest) returns (TaskResponse); // forward data as proxy
   rpc ForwardRecv(TaskRequest) returns (stream TaskRequest);  // forward data as proxy
+  rpc CompleteStatus(CompleteStatusRequest) returns (Empty);  // make sure data has been sended success
 }
 

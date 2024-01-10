@@ -412,7 +412,8 @@ retcode KeywordPirOperatorServer::ProcessQuery(
   for (auto& f : futures) {
     f.get();
   }
-
+  link_ctx->CheckSendCompleteStatus(this->response_key_,
+                                    ProxyNode(), package_count);
   VLOG(5) << "Finished processing query request";
   return retcode::SUCCESS;
 }

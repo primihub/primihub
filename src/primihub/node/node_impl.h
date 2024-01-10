@@ -121,6 +121,10 @@ class VMNodeImpl {
   retcode ProcessForwardData(const rpc::TaskContext& task_info,
                              const std::string& key,
                              std::string* data_buffer);
+  retcode ProcessCompleteStatus(const rpc::TaskContext& task_info,
+                             const std::string& key,
+                             uint64_t expected_complete_num);
+
   retcode WaitUntilWorkerReady(const std::string& worker_id,
                                int timeout_ms = -1);
   std::shared_ptr<Nodelet> GetNodelet() { return this->nodelet_;}

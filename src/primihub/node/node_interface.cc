@@ -336,6 +336,19 @@ Status VMNodeInterface::ForwardRecv(ServerContext* context,
   return grpc::Status::OK;
 }
 
+Status VMNodeInterface::CompleteStatus(ServerContext* context,
+                                       const rpc::CompleteStatusRequest* request,
+                                       rpc::Empty* response) {
+  // waiting for peer node fetch data complete
+  VLOG(7) << "VMNodeInterface::ForwardRecv: " << context->peer();
+  const auto& task_info = request->task_info();
+  std::string key = request->key();
+  uint64_t expected_complete_num = request->complete_count();
+  auto ret = this->ServerImpl()->ProcessCompleteStatus(
+      task_info, key, expected_complete_num);
+  return grpc::Status::OK;
+}
+
 retcode VMNodeInterface::WaitUntilWorkerReady(const std::string& worker_id,
                                               grpc::ServerContext* context,
                                               int timeout_ms) {
