@@ -202,4 +202,16 @@ retcode LinkContext::SendRecv(const std::string& key,
   return retcode::SUCCESS;
 }
 
+retcode LinkContext::CheckSendCompleteStatus(const std::string& key,
+                                             const Node& dest_node,
+                                             uint64_t expected_complete_num) {
+  auto channel = getChannel(dest_node);
+  auto ret = channel->CheckSendCompleteStatus(key, expected_complete_num);
+  if (ret != retcode::SUCCESS) {
+    LOG(ERROR) << "send data to peer: [" << dest_node.to_string()
+        << "] failed";
+    return ret;
+  }
+  return retcode::SUCCESS;
+}
 }  // namespace primihub::network

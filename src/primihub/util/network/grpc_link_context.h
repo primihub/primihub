@@ -56,6 +56,8 @@ class GrpcChannel : public IChannel {
   // data set related operation
   retcode DownloadData(const rpc::DownloadRequest& request,
                        std::vector<std::string>* data) override;
+  retcode CheckSendCompleteStatus(
+      const std::string& key, uint64_t expected_complete_num) override;
 
  protected:
   retcode BuildTaskInfo(rpc::TaskContext* task_info);

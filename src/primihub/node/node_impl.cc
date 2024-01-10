@@ -979,6 +979,60 @@ retcode VMNodeImpl::ProcessForwardData(const rpc::TaskContext& task_info,
   }
   auto& recv_queue = link_ctx->GetRecvQueue(key);
   recv_queue.wait_and_pop(*data_buffer);
+  auto& complete_queue = link_ctx->GetCompleteQueue(key);
+  complete_queue.push(retcode::SUCCESS);
+  return retcode::SUCCESS;
+}
+
+retcode VMNodeImpl::ProcessCompleteStatus(const rpc::TaskContext& task_info,
+                                          const std::string& key,
+                                          uint64_t expected_complete_num) {
+//
+  std::string worker_id = this->GetWorkerId(task_info);
+  auto TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
+  auto finished_task = this->IsFinishedTask(worker_id);
+  if (std::get<0>(finished_task)) {
+    std::string err_msg;
+    err_msg.append(TASK_INFO_STR)
+            .append("Task Worker has been finished");
+    PH_LOG(ERROR, LogType::kTask) << err_msg;
+    return retcode::FAIL;
+  }
+  auto ret = WaitUntilWorkerReady(
+      worker_id, this->wait_worker_ready_timeout_ms_);
+  if (ret != retcode::SUCCESS) {
+    PH_LOG(ERROR, LogType::kTask)
+        << TASK_INFO_STR << ", wati worker ready is timeout";
+    return retcode::FAIL;
+  }
+  auto worker_ptr = this->GetWorker(task_info);
+  if (worker_ptr == nullptr) {
+    std::string err_msg;
+    err_msg.append(TASK_INFO_STR)
+           .append("Task worker is not found");
+    PH_LOG(ERROR, LogType::kTask) << err_msg;
+    return retcode::FAIL;
+  }
+  auto& link_ctx = worker_ptr->getTask()->getTaskContext().getLinkContext();
+  if (link_ctx == nullptr) {
+    std::string err_msg;
+    err_msg.append(TASK_INFO_STR).append("LinkContext is empty");
+    PH_LOG(ERROR, LogType::kTask) << err_msg;
+    return retcode::FAIL;
+  }
+  auto& complete_queue = link_ctx->GetCompleteQueue(key);
+  uint64_t complete_count{0};
+  do {
+    if (complete_count == expected_complete_num) {
+      LOG(INFO) << "all package send complete, "
+          << "exptected: " << expected_complete_num << " "
+          << "actual: " << complete_count;
+      break;
+    }
+    retcode ret_code;
+    complete_queue.wait_and_pop(ret_code);
+    complete_count++;
+  } while (true);
   return retcode::SUCCESS;
 }
 

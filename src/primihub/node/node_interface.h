@@ -100,6 +100,12 @@ class VMNodeInterface final : public rpc::VMNode::Service {
   Status ForwardRecv(ServerContext* context,
                      const rpc::TaskRequest* request,
                      ServerWriter<rpc::TaskRequest>* writer) override;
+  /**
+   * wait until complete queue has filled expected number of complete status
+  */
+  Status CompleteStatus(ServerContext* context,
+                        const rpc::CompleteStatusRequest* request,
+                        rpc::Empty* response);
 
   retcode WaitUntilWorkerReady(const std::string& worker_id,
                                ServerContext* context,
