@@ -490,8 +490,9 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
   int chunk_num = table->column(num_col - 1)->chunks().size();
   int64_t array_len = 0;
   for (int k = 0; k < chunk_num; k++) {
-    auto array = std::static_pointer_cast<DoubleArray>(
-        table->column(num_col - 1)->chunk(k));
+    // auto array = std::static_pointer_cast<DoubleArray>(
+    //     table->column(num_col - 1)->chunk(k));
+    auto array = table->column(num_col - 1)->chunk(k);
     array_len += array->length();
   }
 
@@ -500,11 +501,15 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
   // Force the same value count in every column.
 
   for (int i = 0; i < num_col; i++) {
+    auto& col_name = col_names[i];
+    if (col_and_dtype_.find(col_name) == col_and_dtype_.end()) {
+      continue;
+    }
     int chunk_num = table->column(i)->chunks().size();
-    if (col_and_dtype_[col_names[i]] == 0) {
-      auto data_type =
-        table->schema()->GetFieldByName(col_names[i])->type()->id();
-      if (data_type != arrow::Type::INT64) {
+    auto col_data_type =
+        table->schema()->GetFieldByName(col_name)->type()->id();
+    if (col_and_dtype_[col_name] == 0) {
+      if (col_data_type != arrow::Type::INT64) {
         RaiseException("Local data type is inconsistent with the demand data "
                        "type!Demand data type is int,but local data type is "
                        "double!Please input consistent data type!");
@@ -523,13 +528,13 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
       if (tmp_len != array_len) {
         std::stringstream ss;
         ss << "Party: " << this->party_name() << ", "
-           << "Column " << col_names[i] << " has " << tmp_len
+           << "Column " << col_name << " has " << tmp_len
            << " value, but other column has " << array_len << " value.";
         RaiseException(ss.str());
         errors = true;
         break;
       }
-      col_and_val_int.insert(std::make_pair(col_names[i], tmp_data));
+      col_and_val_int.insert(std::make_pair(col_name, tmp_data));
       // std::pair<std::string, std::vector<int64_t>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_int.begin(); itr != col_and_val_int.end();
       //      itr++) {
@@ -541,7 +546,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
     } else {
       std::vector<double> tmp_data;
       int64_t tmp_len = 0;
-      if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
+      if (col_data_type == arrow::Type::INT64) {
         for (int k = 0; k < chunk_num; k++) {
           auto array =
               std::static_pointer_cast<Int64Array>(table->column(i)->chunk(k));
@@ -554,7 +559,7 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
         if (tmp_len != array_len) {
           std::stringstream ss;
           ss << "Party: " << this->party_name() << ", "
-             << "Column " << col_names[i] << " has " << tmp_len
+             << "Column " << col_name << " has " << tmp_len
              << " value, but other column has " << array_len << " value.";
           RaiseException(ss.str());
           errors = true;
@@ -573,14 +578,14 @@ int ArithmeticExecutor<Dbit>::_LoadDatasetFromCSV(std::string &dataset_id) {
         if (tmp_len != array_len) {
           std::stringstream ss;
           ss << "Party: " << this->party_name() << ", "
-             << "Column " << col_names[i] << " has " << tmp_len
+             << "Column " << col_name << " has " << tmp_len
              << " value, but other column has " << array_len << " value.";
           RaiseException(ss.str());
           errors = true;
           break;
         }
       }
-      col_and_val_double.insert(std::make_pair(col_names[i], tmp_data));
+      col_and_val_double.insert(std::make_pair(col_name, tmp_data));
       // pair<string, std::vector<double>>(col_names[i], tmp_data));
       // for (auto itr = col_and_val_double.begin();
       //      itr != col_and_val_double.end(); itr++) {
