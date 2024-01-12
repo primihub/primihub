@@ -54,9 +54,10 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::importColumnOwner(
     const std::string &col_name, const u32 &party_id) {
   auto iter = col_owner_.find(col_name);
   if (iter != col_owner_.end()) {
-    LOG(ERROR) << "Column " << col_name
-               << "'s owner attr is imported, value is " << iter->second << ".";
-    return -1;
+    std::stringstream ss;
+    ss << "Column " << col_name
+        << "'s owner attr is imported, value is " << iter->second << ".";
+    RaiseException(ss.str());
   }
 
   col_owner_.insert(std::make_pair(col_name, party_id));
@@ -68,8 +69,9 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnDtype(
     const std::string &col_name, ColDtype &dtype) {
   auto iter = col_dtype_.find(col_name);
   if (iter == col_dtype_.end()) {
-    LOG(ERROR) << "Can't find dtype attr for column " << col_name << ".";
-    return -1;
+    std::stringstream ss;
+    ss << "Can't find dtype attr for column " << col_name << ".";
+    RaiseException(ss.str());
   }
 
   dtype = iter->second;
@@ -79,15 +81,19 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnDtype(
 template <Decimal Dbit>
 int MPCExpressExecutor<Dbit>::ColumnConfig::resolveLocalColumn(void) {
   if (col_dtype_.size() != col_owner_.size()) {
-    LOG(ERROR) << "Count of owner attr and dtype attr must be the same.";
-    return -1;
+    std::stringstream ss;
+    ss << "Count of owner attr and dtype attr must be the same."
+      << "col_dtype size: " << col_dtype_.size() << " "
+      << "col_owner size: " << col_owner_.size();
+    RaiseException(ss.str());
   }
 
   for (auto iter = col_owner_.begin(); iter != col_owner_.end(); iter++) {
     if (col_dtype_.find(iter->first) == col_dtype_.end()) {
-      LOG(ERROR) << "Import column " << iter->first
-                 << "'s owner attr, but don't import it's dtype attr.";
-      return -2;
+      std::stringstream ss;
+      ss << "Import column " << iter->first
+         << "'s owner attr, but don't import it's dtype attr.";
+      RaiseException(ss.str());
     }
   }
 
@@ -124,9 +130,9 @@ int MPCExpressExecutor<Dbit>::ColumnConfig::getColumnLocality(
     const std::string &col_name, bool &is_local) {
   auto iter = local_col_.find(col_name);
   if (iter == local_col_.end()) {
-    LOG(ERROR) << "Can't find column locality by column name " << col_name
-               << ".";
-    return -1;
+    std::stringstream ss;
+    ss << "Can't find column locality by column name " << col_name << ".";
+    RaiseException(ss.str());
   }
 
   is_local = iter->second;
@@ -166,9 +172,9 @@ int MPCExpressExecutor<Dbit>::FeedDict::checkLocalColumn(
   bool is_local = false;
   int ret = col_config_->getColumnLocality(col_name, is_local);
   if (ret) {
-    LOG(ERROR) << "Get column locality by column name " << col_name
-               << " failed.";
-    return -1;
+    std::stringstream ss;
+    ss << "Get column locality by column name " << col_name << " failed.";
+    RaiseException(ss.str());
   }
 
   if (is_local == false)
@@ -572,21 +578,15 @@ void MPCExpressExecutor<Dbit>::initColumnConfig(const u32 &party_id) {
 template <Decimal Dbit>
 int MPCExpressExecutor<Dbit>::importColumnDtype(const std::string &col_name,
                                                 bool is_fp64) {
-  if (is_fp64)
+  if (is_fp64) {
+    LOG(INFO) << "Column " << col_name << "'s dtype is FP64.";
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::FP64);
-  else
+  } else {
+    LOG(INFO) << "Column " << col_name << "'s dtype is I64.";
     return col_config_->importColumnDtype(col_name,
                                           ColumnConfig::ColDtype::INT64);
-
-  if (is_fp64)
-    LOG(INFO) << "Column " << col_name << "'s dtype is "
-              << " FP64.";
-  else
-    LOG(INFO) << "Column " << col_name << "'s dtype is "
-              << " I64.";
-
-  return 0;
+  }
 }
 
 template <Decimal Dbit>
