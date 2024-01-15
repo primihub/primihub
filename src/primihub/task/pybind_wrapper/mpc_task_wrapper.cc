@@ -280,6 +280,7 @@ retcode MPCExecutor::BroadcastSubtaskId(const std::string& sub_task_id) {
   for (const auto& receiver : receiver_list) {
     link_ctx->Send("subtask_id", receiver, sub_task_id);
   }
+  return retcode::SUCCESS;
 }
 
 retcode MPCExecutor::RecvSubTaskId(std::string* subtask_id) {
@@ -309,6 +310,7 @@ retcode MPCExecutor::RecvSubTaskId(std::string* subtask_id) {
   link_ctx->Recv("subtask_id", proxy_node, &recv_buf);
   *subtask_id = std::move(recv_buf);
   VLOG(7) << "subtask_id: " << *subtask_id;
+  return retcode::SUCCESS;
 }
 
 retcode MPCExecutor::NegotiateSubTaskId(std::string* sub_task_id) {
@@ -335,6 +337,7 @@ retcode MPCExecutor::SetArithmeticOperation(
   algorithm->set_arithmetic_op_type(op_type);
   return retcode::SUCCESS;
 }
+
 retcode MPCExecutor::ExecuteStatisticsTask(
     rpc::Algorithm::StatisticsOpType op_type,
     const std::vector<double>& input,
@@ -371,11 +374,13 @@ retcode MPCExecutor::ExecuteStatisticsTask(
   }
   return retcode::SUCCESS;
 }
+
 retcode MPCExecutor::GetSyncFlagKey(const rpc::TaskContext& task_info,
                                     std::string* sync_key) {
   *sync_key = task_info.sub_task_id() + "_SyncFlag";
   return retcode::SUCCESS;
 }
+
 retcode MPCExecutor::GetShapeKey(const rpc::TaskContext& task_info,
                                  std::string* shape_key) {
   *shape_key = task_info.sub_task_id() + "_mpc_shape";
