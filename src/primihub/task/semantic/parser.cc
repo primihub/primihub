@@ -102,7 +102,7 @@ retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
               << "Find meta list from datasets: "
               << metas_with_param_tag.size();
       if (metas_with_param_tag.size() != 1) {
-        return retcode::FAIL;
+        return;
       }
       auto& meta_with_tag = metas_with_param_tag[0];
       const auto& meta_info = meta_with_tag.first;
@@ -137,9 +137,10 @@ retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
     // get party access info from dataset meta service using dataset id
     dataset_service_->MetaService()->FindPeerListFromDatasets(
       datasets_with_tag,
-      [&, this](std::vector<DatasetMetaWithParamTag> &metas_with_param_tag) {
+      [&, this](std::vector<DatasetMetaWithParamTag>& metas_with_param_tag) {
         VLOG(2) << task_info_str
-                << "Find meta list from datasets: " << metas_with_param_tag.size();
+                << "Find meta list from datasets: "
+                << metas_with_param_tag.size();
         std::map<std::string, Node> party_access_info;
         metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
         _parser->MergePartyAccessInfo(party_access_info);
