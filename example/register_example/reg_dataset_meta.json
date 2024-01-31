@@ -1,15 +1,20 @@
 [
   {
-    "id": "psi_client_data",
+    "id": "csv_data_test_test",
     "type": "csv",
-    "access_info": "data/client_e.csv"
-  },
-  {
-    "id": "psi_client_data_db",
-    "type": "sqlite",
-    "access_info": {
-      "tableName": "psi_client_data",
-      "db_path": "data/client_e.db3"
-    }
+    "access_info": "data/client_e.csv",
+    "schema": {
+      "id": "STRING",
+      "mean radius": "DOUBLE",
+      "mean texture": "DOUBLE"
+    },
+    "schema_data_type_description": [
+      "INT32",
+      "INT64",
+      "STRING",
+      "DOUBLE",
+      "FLOAT",
+      "BOOL"
+    ]
   }
 ]
