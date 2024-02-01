@@ -54,7 +54,7 @@ retcode ParseDatasetMetaInfo(const std::string& config_file,
       // dataset schema
       if (meta_info.contains("schema")) {
         for (const auto& [field_name, type_name] : meta_info["schema"].items()) {
-          LOG(ERROR) << "key: " << field_name << " value: " << type_name;
+          VLOG(3) << "key: " << field_name << " value: " << type_name;
           rpc::DataTypeInfo::PlainDataType type;
           auto ret = ProtoTypeMgr::GetPlainDataType(type_name, &type);
           if (ret != retcode::SUCCESS) {
@@ -68,7 +68,7 @@ retcode ParseDatasetMetaInfo(const std::string& config_file,
       } else {
         LOG(ERROR) << "No dataset schema is configured";
       }
-      LOG(ERROR) << pb_util::TypeToString(request);
+      VLOG(3) << pb_util::TypeToString(request);
       requests->push_back(std::move(request));
     }
   } catch (std::exception& e) {
