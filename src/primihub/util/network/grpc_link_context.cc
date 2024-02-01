@@ -633,4 +633,44 @@ retcode GrpcChannel::CheckSendCompleteStatus(
   } while (true);
   return retcode::SUCCESS;
 }
+
+retcode GrpcChannel::NewDataset(const rpc::NewDatasetRequest& request,
+                                rpc::NewDatasetResponse* reply) {
+  int retry_time{0};
+  // const auto& task_info = request.task().task_info();
+  std::string TASK_INFO_STR = "";
+  do {
+    grpc::ClientContext context;
+    auto deadline = std::chrono::system_clock::now() +
+        std::chrono::seconds(CONTROL_CMD_TIMEOUT_S);
+    context.set_deadline(deadline);
+    grpc::Status status = dataset_stub_->NewDataset(&context, request, reply);
+    if (status.ok()) {
+      PH_VLOG(5, LogType::kTask)
+          << TASK_INFO_STR
+          << "send NewDataset to node: ["
+          << dest_node_.to_string() << "] rpc succeeded.";
+      break;
+    } else {
+      PH_LOG(WARNING, LogType::kTask)
+          << TASK_INFO_STR
+          << "send NewDataset to Node ["
+          << dest_node_.to_string() << "] rpc failed. "
+          << status.error_code() << ": " << status.error_message() << " "
+          << "retry times: " << retry_time;
+      retry_time++;
+      if (retry_time < this->retry_max_times_) {
+        continue;
+      } else {
+        PH_LOG(ERROR, LogType::kTask)
+            << TASK_INFO_STR
+            << "send NewDataset to Node ["
+            << dest_node_.to_string() << "] rpc failed. "
+            << status.error_code() << ": " << status.error_message();
+        return retcode::FAIL;
+      }
+    }
+  } while (true);
+  return retcode::SUCCESS;
+}
 }  // namespace primihub::network

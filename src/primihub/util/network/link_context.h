@@ -184,6 +184,8 @@ class IChannel {
                            rpc::Empty* reply) = 0;
   virtual retcode DownloadData(const rpc::DownloadRequest& request,
                                std::vector<std::string>* data) = 0;
+  virtual retcode NewDataset(const rpc::NewDatasetRequest& request,
+                             rpc::NewDatasetResponse* reply) = 0;
   virtual std::string forwardRecv(const std::string& key) = 0;
   virtual retcode CheckSendCompleteStatus(
       const std::string& key, uint64_t expected_complete_num) = 0;

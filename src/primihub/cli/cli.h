@@ -34,11 +34,6 @@
 #include <vector>
 #include <map>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "absl/memory/memory.h"
-#include "absl/strings/str_cat.h"
-
 #include "src/primihub/protos/worker.grpc.pb.h"
 #include "src/primihub/protos/common.pb.h"
 #include "src/primihub/common/config/config.h"
@@ -57,31 +52,6 @@ using primihub::rpc::Params;
 using primihub::rpc::VarType;
 
 namespace primihub {
-struct DownloadFileInfo {
-  std::string remote_file_path;
-  std::string save_as;
-};
-using DownloadFileListType = std::vector<DownloadFileInfo>;
-using TaskFlow = rpc::PushTaskRequest;
-class SDKClient;
-retcode BuildRequestWithTaskConfig(const nlohmann::json& js,
-                                   PushTaskRequest* request);
-retcode BuildFederatedRequest(const nlohmann::json& js_task_config,
-                              rpc::Task* task_ptr);
-void fillParamByScalar(const std::string& value_type,
-        const nlohmann::json& obj, rpc::ParamValue* pv);
-void fillParamByArray(const std::string& value_type,
-        const nlohmann::json& obj, rpc::ParamValue* pv);
-retcode ParseTaskConfigFile(const std::string& file_path,
-                            TaskFlow* task_flow,
-                            DownloadFileListType* download_file_cfg);
-retcode ParseDownFileConfig(const nlohmann::json& js_cfg,
-                            DownloadFileListType* download_file_cfg);
-retcode GenerateTaskInfo(rpc::TaskContext* task_info);
-retcode DownloadData(primihub::SDKClient& client,
-                     const rpc::TaskContext& task_info,
-                     const DownloadFileListType& download_files_cfg);
-
 class SDKClient {
  public:
   explicit SDKClient(std::shared_ptr<primihub::network::IChannel> channel,
@@ -97,7 +67,8 @@ class SDKClient {
   retcode SaveData(const std::string& file_name,
                    const std::vector<std::string>& recv_data);
   retcode CheckTaskStauts(const rpc::PushTaskReply& task_reply_info);
-
+  retcode RegisterDataset(const rpc::NewDatasetRequest& req,
+                          rpc::NewDatasetResponse* reply);
  private:
   std::shared_ptr<primihub::network::IChannel> channel_{nullptr};
   primihub::network::LinkContext* link_ctx_ref_{nullptr};
