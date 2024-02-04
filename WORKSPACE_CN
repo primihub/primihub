@@ -3,6 +3,24 @@ workspace(name = "primihub")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
+git_repository(
+  name = "com_github_bazel_rules_3rdparty",
+  commit = "67ac7942969ee2224732a9b50b17180390c4fc97",
+  remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
+)
+# pybind11 , bazel ref:https://github.com/pybind/pybind11_bazel
+# _PYBIND11_COMMIT = "72cbbf1fbc830e487e3012862b7b720001b70672"
+http_archive(
+  name = "pybind11_bazel",
+  strip_prefix = "pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672",
+  urls = [
+    "https://primihub.oss-cn-beijing.aliyuncs.com/pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672.zip",
+  ],
+)
+
+load("//bazel:repository_deps.bzl", "primihub_deps_cn")
+primihub_deps_cn()
+
 http_archive(
   name = "rules_python",
   strip_prefix = "rules_python-4b84ad270387a7c439ebdccfd530e2339601ef27",
@@ -12,11 +30,11 @@ http_archive(
   sha256 = "e5470e92a18aa51830db99a4d9c492cc613761d5bdb7131c04bd92b9834380f6",
 )
 
-git_repository(
-  name = "com_github_bazel_rules_3rdparty",
-  commit = "67ac7942969ee2224732a9b50b17180390c4fc97",
-  remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
-)
+# git_repository(
+#   name = "com_github_bazel_rules_3rdparty",
+#   commit = "67ac7942969ee2224732a9b50b17180390c4fc97",
+#   remote = "https://gitee.com/primihub/bazel-rules-thirdparty.git",
+# )
 
 http_archive(
   name = "platforms",
@@ -180,15 +198,7 @@ http_archive(
 
 
 
-# pybind11 , bazel ref:https://github.com/pybind/pybind11_bazel
-# _PYBIND11_COMMIT = "72cbbf1fbc830e487e3012862b7b720001b70672"
-http_archive(
-  name = "pybind11_bazel",
-  strip_prefix = "pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672",
-  urls = [
-    "https://primihub.oss-cn-beijing.aliyuncs.com/pybind11_bazel-72cbbf1fbc830e487e3012862b7b720001b70672.zip",
-  ],
-)
+
 
 # We still require the pybind library.
 http_archive(
