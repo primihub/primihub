@@ -3,16 +3,47 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def primihub_deps_cn():
+  if "bazel_common" not in native.existing_rules():
+    http_archive(
+      name = "bazel_common",
+      url = "https://primihub.oss-cn-beijing.aliyuncs.com/tools/bazel-common-master.zip",
+      strip_prefix = "bazel-common-master",
+      sha256 = "7034b3fb6b3051d70f33853fff48b0e931b57e35c6a32bba0280c6f2b6d6ee0c",
+    )
+
+  # pybind11 , bazel ref:https://github.com/pybind/pybind11_bazel
+  #
+  if "pybind11_bazel" not in native.existing_rules():
+    _PYBIND11_COMMIT = "72cbbf1fbc830e487e3012862b7b720001b70672"
+    http_archive(
+      name = "pybind11_bazel",
+      strip_prefix = "pybind11_bazel-%s" % _PYBIND11_COMMIT,
+      urls = [
+        "https://primihub.oss-cn-beijing.aliyuncs.com/pybind11_bazel-%s.zip" % _PYBIND11_COMMIT,
+      ],
+    )
+
+  if "com_google_googletest" not in native.existing_rules():
+    http_archive(
+      name = "com_google_googletest",
+      urls = [
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/googletest-release-1.10.0.zip"
+      ],
+      sha256 = "94c634d499558a76fa649edb13721dce6e98fb1e7018dfaeba3cd7a083945e91",
+      strip_prefix = "googletest-release-1.10.0",
+    )
+
   # Abseil C++ libraries
   if "com_google_absl" not in native.existing_rules():
+    _ABSL_COMMIT = "278e0a071885a22dcd2fd1b5576cc44757299343"
     http_archive(
       name = "com_google_absl",
       sha256 = "1764491a199eb9325b177126547f03d244f86b4ff28f16f206c7b3e7e4f777ec",
-      strip_prefix = "abseil-cpp-278e0a071885a22dcd2fd1b5576cc44757299343",
+      strip_prefix = "abseil-cpp-%s" % _ABSL_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/google_absl_278e0a071885a22dcd2fd1b5576cc44757299343.tar.gz",
-        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/abseil/abseil-cpp/archive/278e0a071885a22dcd2fd1b5576cc44757299343.tar.gz",
-        "https://github.com/abseil/abseil-cpp/archive/278e0a071885a22dcd2fd1b5576cc44757299343.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/google_absl_%s.tar.gz" % _ABSL_COMMIT,
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/abseil/abseil-cpp/archive/%s.tar.gz" % _ABSL_COMMIT,
+        "https://github.com/abseil/abseil-cpp/archive/%s.tar.gz" % _ABSL_COMMIT,
       ],
     )
 
@@ -37,14 +68,15 @@ def primihub_deps_cn():
     )
 
   if "io_bazel_rules_rust" not in native.existing_rules():
+    _RULES_RUST_COMMIT = "8cfa049d478ad33e407d572e260e912bdb31796a"
     http_archive(
       name = "io_bazel_rules_rust",
       sha256 = "75b29ba47ff4ef81f48574d1109bb6612788212524afe99e21467c71c980baa5",
-      strip_prefix = "rules_rust-8cfa049d478ad33e407d572e260e912bdb31796a",
+      strip_prefix = "rules_rust-%s" % _RULES_RUST_COMMIT,
       urls = [
         # Master branch as of 25/07/2020
-        # "https://github.com/bazelbuild/rules_rust/archive/8cfa049d478ad33e407d572e260e912bdb31796a.tar.gz",
-        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_rust-8cfa049d478ad33e407d572e260e912bdb31796a.tar.gz",
+        # "https://github.com/bazelbuild/rules_rust/archive/%s.tar.gz" % _RULES_RUST_COMMIT,
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_rust-%s.tar.gz" % _RULES_RUST_COMMIT,
       ],
     )
   if "io_opentelemetry_cpp" not in native.existing_rules():
@@ -66,7 +98,7 @@ def primihub_deps_cn():
         "https://github.com/bazelbuild/apple_support/releases/download/0.11.0/apple_support.0.11.0.tar.gz",
       ],
     )
-  if "build_bazel_apple_support" not in native.existing_rules():
+  if "openssl" not in native.existing_rules():
     http_archive(
       name = "openssl",
       urls = [
@@ -107,6 +139,18 @@ def primihub_deps_cn():
         "https://primihub.oss-cn-beijing.aliyuncs.com/snappy-1.1.8.tar.gz"
       ],
     )
+
+  if "xz" not in native.existing_rules():
+    http_archive(
+      name = "xz",
+      build_file = "@com_github_bazel_rules_3rdparty//:xz.BUILD",
+      sha256 = "0d2b89629f13dd1a0602810529327195eff5f62a0142ccd65b903bc16a4ac78a",
+      strip_prefix = "xz-5.2.5",
+      urls = [
+        "https://primihub.oss-cn-beijing.aliyuncs.com/xz-5.2.5.tar.gz"
+      ],
+    )
+
   if "com_github_google_flatbuffers" not in native.existing_rules():
     http_archive(
       name = "com_github_google_flatbuffers",
@@ -114,36 +158,40 @@ def primihub_deps_cn():
       strip_prefix = "flatbuffers-2.0.0",
       sha256 = "9ddb9031798f4f8754d00fca2f1a68ecf9d0f83dfac7239af1311e4fd9a565c4",
     )
+
   if "com_github_redis_hiredis" not in native.existing_rules():
+    _HIREDIS_COMMIT = "392de5d7f97353485df1237872cb682842e8d83f"
     http_archive(
       name = "com_github_redis_hiredis",
       build_file = "@com_github_bazel_rules_3rdparty//:BUILD.hiredis",
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/hiredis-392de5d7f97353485df1237872cb682842e8d83f.tar.gz"
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/hiredis-%s.tar.gz" % _HIREDIS_COMMIT
       ],
       sha256 = "2101650d39a8f13293f263e9da242d2c6dee0cda08d343b2939ffe3d95cf3b8b",
-      strip_prefix = "hiredis-392de5d7f97353485df1237872cb682842e8d83f"
+      strip_prefix = "hiredis-%s" % _HIREDIS_COMMIT,
     )
   if "rules_proto" not in native.existing_rules():
+    _RULES_PROTO_COMMIT = "f7a30f6f80006b591fa7c437fe5a951eb10bcbcf"
     http_archive(
       name = "rules_proto",
       sha256 = "a4382f78723af788f0bc19fd4c8411f44ffe0a72723670a34692ffad56ada3ac",
-      strip_prefix = "rules_proto-f7a30f6f80006b591fa7c437fe5a951eb10bcbcf",
+      strip_prefix = "rules_proto-%s" % _RULES_PROTO_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_proto_f7a30f6f80006b591fa7c437fe5a951eb10bcbcf.zip",
-        "https://github.com/bazelbuild/rules_proto/archive/f7a30f6f80006b591fa7c437fe5a951eb10bcbcf.zip"
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_proto_%s.zip" % _RULES_PROTO_COMMIT,
+        "https://github.com/bazelbuild/rules_proto/archive/%s.zip" % _RULES_PROTO_COMMIT
       ],
     )
   if "bazel_skylib" not in native.existing_rules():
+    _SKYLIB_COMMIT = "6e30a77347071ab22ce346b6d20cf8912919f644"
     http_archive(
       name = "bazel_skylib",
       # `main` as of 2021-10-27
       # Release request: https://github.com/bazelbuild/bazel-skylib/issues/336
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/bazel-skylib-6e30a77347071ab22ce346b6d20cf8912919f644.zip",
-        "https://github.com/bazelbuild/bazel-skylib/archive/6e30a77347071ab22ce346b6d20cf8912919f644.zip",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/bazel-skylib-%s.zip" % _SKYLIB_COMMIT,
+        "https://github.com/bazelbuild/bazel-skylib/archive/%s.zip" % _SKYLIB_COMMIT,
       ],
-      strip_prefix = "bazel-skylib-6e30a77347071ab22ce346b6d20cf8912919f644",
+      strip_prefix = "bazel-skylib-%s" % _SKYLIB_COMMIT,
       sha256 = "247361e64b2a85b40cb45b9c071e42433467c6c87546270cbe2672eb9f317b5a",
     )
 
@@ -183,13 +231,14 @@ def primihub_deps_cn():
       sha256 = "a6f7aaa7b19c289dfeb33281e1954f19bf2ba1c6cae2c182354d820f535abef8",
     )
   if "rapidjson" not in native.existing_rules():
+    _RAPIDJSON_COMMIT = "418331e99f859f00bdc8306f69eba67e8693c55e"
     http_archive(
       name = "rapidjson",
       build_file = "@com_github_bazel_rules_3rdparty//:rapidjson.BUILD",
       sha256 = "30bd2c428216e50400d493b38ca33a25efb1dd65f79dfc614ab0c957a3ac2c28",
-      strip_prefix = "rapidjson-418331e99f859f00bdc8306f69eba67e8693c55e",
+      strip_prefix = "rapidjson-%s" % _RAPIDJSON_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/rapidjson-418331e99f859f00bdc8306f69eba67e8693c55e.tar.gz"
+        "https://primihub.oss-cn-beijing.aliyuncs.com/rapidjson-%s.tar.gz" % _RAPIDJSON_COMMIT,
       ],
     )
   if "com_github_google_leveldb" not in native.existing_rules():
@@ -203,15 +252,16 @@ def primihub_deps_cn():
       ],
     )
   if "com_googlesource_code_re2" not in native.existing_rules():
+    _RE2_COMMIT = "8e08f47b11b413302749c0d8b17a1c94777495d5"
     http_archive(
       name = "com_googlesource_code_re2",
       sha256 = "319a58a58d8af295db97dfeecc4e250179c5966beaa2d842a82f0a013b6a239b",
       # Release 2021-09-01
-      strip_prefix = "re2-8e08f47b11b413302749c0d8b17a1c94777495d5",
+      strip_prefix = "re2-%s" % _RE2_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/re2-8e08f47b11b413302749c0d8b17a1c94777495d5.tar.gz",
-        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/google/re2/archive/8e08f47b11b413302749c0d8b17a1c94777495d5.tar.gz",
-        "https://github.com/google/re2/archive/8e08f47b11b413302749c0d8b17a1c94777495d5.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/re2-%s.tar.gz" % _RE2_COMMIT,
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/google/re2/archive/%s.tar.gz" % _RE2_COMMIT,
+        "https://github.com/google/re2/archive/%s.tar.gz" % _RE2_COMMIT,
       ],
     )
 
@@ -248,15 +298,16 @@ def primihub_deps_cn():
     )
 
   if "rules_cc" not in native.existing_rules():
+    _RULES_CC_COMMIT = "624b5d59dfb45672d4239422fa1e3de1822ee110"
     http_archive(
       name = "rules_cc",
       sha256 = "35f2fb4ea0b3e61ad64a369de284e4fbbdcdba71836a5555abb5e194cf119509",
-      strip_prefix = "rules_cc-624b5d59dfb45672d4239422fa1e3de1822ee110",
+      strip_prefix = "rules_cc-%s" % _RULES_CC_COMMIT,
       urls = [
         #2019-08-15
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_cc-624b5d59dfb45672d4239422fa1e3de1822ee110.tar.gz",
-        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/bazelbuild/rules_cc/archive/624b5d59dfb45672d4239422fa1e3de1822ee110.tar.gz",
-        "https://github.com/bazelbuild/rules_cc/archive/624b5d59dfb45672d4239422fa1e3de1822ee110.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_cc-%s.tar.gz" % _RULES_CC_COMMIT,
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/bazelbuild/rules_cc/archive/%s.tar.gz" % _RULES_CC_COMMIT,
+        "https://github.com/bazelbuild/rules_cc/archive/%s.tar.gz" % _RULES_CC_COMMIT,
       ],
     )
   if "curl" not in native.existing_rules():
@@ -300,7 +351,8 @@ def primihub_deps_cn():
       sha256 = "d771584bbff98698e7cb3cb31c132ee206a972569f4dc8b65acbdd934d156b33",
       strip_prefix = "rules_proto_grpc-2.0.0",
     )
-  if "rules_proto_grpc" not in native.existing_rules():
+
+  if "rules_foreign_cc" not in native.existing_rules():
     http_archive(
       name = "rules_foreign_cc",
       sha256 = "484fc0e14856b9f7434072bc2662488b3fe84d7798a5b7c92a1feb1a0fa8d088",
@@ -319,7 +371,8 @@ def primihub_deps_cn():
         "https://github.com/bazelbuild/bazel-gazelle/archive/v0.19.1.tar.gz",
       ],
     )
-  if "bazel_gazelle" not in native.existing_rules():
+
+  if "google_sparsehash" not in native.existing_rules():
     http_archive(
       name = "google_sparsehash",
       build_file = "@com_github_bazel_rules_3rdparty//:BUILD.sparsehash",
@@ -328,6 +381,7 @@ def primihub_deps_cn():
         "https://primihub.oss-cn-beijing.aliyuncs.com/tools/sparsehash-master.zip"
       ],
     )
+
   if "io_bazel_rules_go" not in native.existing_rules():
     http_archive(
       name = "io_bazel_rules_go",
@@ -349,6 +403,7 @@ def primihub_deps_cn():
         "https://primihub.oss-cn-beijing.aliyuncs.com/brotli-1.0.7.tar.gz"
       ],
     )
+
   if "private_join_and_compute" not in native.existing_rules():
     #TODO revert to the upstream repository when the https://github.com/google/private-join-and-compute/pull/21 is merged
     http_archive(
@@ -407,11 +462,12 @@ def primihub_deps_cn():
       ]
     )
   if "rules_python" not in native.existing_rules():
+    _RULES_PYTHON_COMMIT = "4b84ad270387a7c439ebdccfd530e2339601ef27"
     http_archive(
       name = "rules_python",
-      strip_prefix = "rules_python-4b84ad270387a7c439ebdccfd530e2339601ef27",
+      strip_prefix = "rules_python-%s" % _RULES_PYTHON_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_python-4b84ad270387a7c439ebdccfd530e2339601ef27.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/tools/rules_python-%s.tar.gz" % _RULES_PYTHON_COMMIT,
       ],
       sha256 = "e5470e92a18aa51830db99a4d9c492cc613761d5bdb7131c04bd92b9834380f6",
     )
@@ -440,26 +496,28 @@ def primihub_deps_cn():
     )
 
   if "com_google_googleapis" not in native.existing_rules():
+    _GOOGLEAPIS_COMMIT = "2f9af297c84c55c8b871ba4495e01ade42476c92"
     http_archive(
       name = "com_google_googleapis",
       sha256 = "5bb6b0253ccf64b53d6c7249625a7e3f6c3bc6402abd52d3778bfa48258703a0",
-      strip_prefix = "googleapis-2f9af297c84c55c8b871ba4495e01ade42476c92",
+      strip_prefix = "googleapis-%s" % _GOOGLEAPIS_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/googleapis-2f9af297c84c55c8b871ba4495e01ade42476c92.tar.gz",
-        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/googleapis/googleapis/archive/2f9af297c84c55c8b871ba4495e01ade42476c92.tar.gz",
-        "https://github.com/googleapis/googleapis/archive/2f9af297c84c55c8b871ba4495e01ade42476c92.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/googleapis-%s.tar.gz" % _GOOGLEAPIS_COMMIT,
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/googleapis/googleapis/archive/%s.tar.gz" % _GOOGLEAPIS_COMMIT,
+        "https://github.com/googleapis/googleapis/archive/%s.tar.gz" % _GOOGLEAPIS_COMMIT,
       ],
     )
   if "com_github_cares_cares" not in native.existing_rules():
+    _C_ARES_COMMIT = "e982924acee7f7313b4baa4ee5ec000c5e373c30"
     http_archive(
       name = "com_github_cares_cares",
       build_file = "@com_github_grpc_grpc//third_party:cares/cares.BUILD",
       sha256 = "e8c2751ddc70fed9dc6f999acd92e232d5846f009ee1674f8aee81f19b2b915a",
-      strip_prefix = "c-ares-e982924acee7f7313b4baa4ee5ec000c5e373c30",
+      strip_prefix = "c-ares-%s" % _C_ARES_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/c-ares-e982924acee7f7313b4baa4ee5ec000c5e373c30.tar.gz",
-        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/c-ares/c-ares/archive/e982924acee7f7313b4baa4ee5ec000c5e373c30.tar.gz",
-        "https://github.com/c-ares/c-ares/archive/e982924acee7f7313b4baa4ee5ec000c5e373c30.tar.gz",
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/c-ares-%s.tar.gz" % _C_ARES_COMMIT,
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/c-ares/c-ares/archive/%s.tar.gz" % _C_ARES_COMMIT,
+        "https://github.com/c-ares/c-ares/archive/%s.tar.gz" % _C_ARES_COMMIT,
       ],
     )
 
@@ -522,13 +580,14 @@ def primihub_deps_cn():
     )
 
   if "rules_java" not in native.existing_rules():
+    _RULES_JAVA_COMMIT = "981f06c3d2bd10225e85209904090eb7b5fb26bd"
     http_archive(
       name = "rules_java",
       sha256 = "f5a3e477e579231fca27bf202bb0e8fbe4fc6339d63b38ccb87c2760b533d1c3",
-      strip_prefix = "rules_java-981f06c3d2bd10225e85209904090eb7b5fb26bd",
+      strip_prefix = "rules_java-%s" % _RULES_JAVA_COMMIT,
       urls = [
-        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_java-981f06c3d2bd10225e85209904090eb7b5fb26bd.tar.gz",
-        "https://github.com/bazelbuild/rules_java/archive/981f06c3d2bd10225e85209904090eb7b5fb26bd.tar.gz"
+        "https://primihub.oss-cn-beijing.aliyuncs.com/repository_deps/rules_java-%s.tar.gz" % _RULES_JAVA_COMMIT,
+        "https://github.com/bazelbuild/rules_java/archive/%s.tar.gz" % _RULES_JAVA_COMMIT,
       ],
     )
 
