@@ -32,6 +32,7 @@
 using arrow::Array;
 using arrow::DoubleArray;
 using arrow::Int64Array;
+using arrow::Int32Array;
 using arrow::Table;
 namespace primihub {
 eMatrix<double> logistic_main(sf64Matrix<D> &train_data_0_1,
@@ -189,12 +190,18 @@ int LogisticRegressionExecutor::_LoadDataset(const std::string &dataset_id) {
   int64_t array_len{0};
   int chunk_size = table->column(num_col - 1)->num_chunks();
 
+  std::vector<int64_t> train_data_each_chunk(chunk_size);
   auto& chunks = table->column(num_col - 1)->chunks();
-  for (const auto& array : chunks) {
-    array_len += array->length();
+  double training_set_percentage = 0.8;
+  for (int i = 0; i < chunk_size; i++) {
+    auto& array = chunks[i];
+    int64_t len = array->length();
+    train_data_each_chunk[i] = floor(len * training_set_percentage);
+    array_len += len;
   }
-  VLOG(3) << "Label column '" << col_names[num_col - 1] << "' has " << array_len
-          << " values.";
+
+  VLOG(3) << "Label column '" << col_names[num_col - 1]
+          << "' has " << array_len << " values.";
 
   // Force the same value count in every column.
   for (int i = 0; i < num_col - 1; i++) {
@@ -215,37 +222,13 @@ int LogisticRegressionExecutor::_LoadDataset(const std::string &dataset_id) {
 
   if (errors)
     return -1;
-  int64_t train_length = floor(array_len * 0.8);
+  int64_t train_length = std::accumulate(train_data_each_chunk.begin(),
+                                         train_data_each_chunk.end(),
+                                         0);
   int64_t test_length = array_len - train_length;
-  // LOG(INFO)<<"array_len: "<<array_len;
-  // LOG(INFO)<<"train_length: "<<train_length;
-  // LOG(INFO)<<"test_length: "<<test_length;
-  // train_input_.resize(train_length, num_col);
-  // test_input_.resize(test_length, num_col);
-  // // m.resize(array_len, num_col);
-  // for (int i = 0; i < num_col; i++) {
-  //   if (table->schema()->GetFieldByName(col_names[i])->type()->id() == 9) {
-  //     auto array =
-  //         std::static_pointer_cast<Int64Array>(table->column(i)->chunk(0));
-  //     for (int64_t j = 0; j < array->length(); j++) {
-  //       if (j < train_length)
-  //         train_input_(j, i) = array->Value(j);
-  //       else
-  //         test_input_(j - train_length, i) = array->Value(j);
-  //       // m(j, i) = array->Value(j);
-  //     }
-  //   } else {
-  //     auto array =
-  //         std::static_pointer_cast<DoubleArray>(table->column(i)->chunk(0));
-  //     for (int64_t j = 0; j < array->length(); j++) {
-  //       if (j < train_length)
-  //         train_input_(j, i) = array->Value(j);
-  //       else
-  //         test_input_(j - train_length, i) = array->Value(j);
-  //       // m(j, i) = array->Value(j);
-  //     }
-  //   }
-  // }
+  LOG(INFO) << "array_len: "<<array_len;
+  LOG(INFO) << "train_length: "<<train_length;
+  LOG(INFO) << "test_length: "<<test_length;
   train_input_.resize(train_length, num_col + 1);
   test_input_.resize(test_length, num_col + 1);
   // m.resize(array_len, num_col);
@@ -263,38 +246,56 @@ int LogisticRegressionExecutor::_LoadDataset(const std::string &dataset_id) {
       auto type_ptr = table->schema()->GetFieldByName(col_names[i - 1])->type();
       auto data_type = type_ptr->id();
       std::string type_name = type_ptr->name();
-      if (data_type == arrow::Type::type::INT64) {
-        auto array = std::static_pointer_cast<Int64Array>(
-            table->column(i - 1)->chunk(0));
-
-        for (int64_t j = 0; j < array->length(); j++) {
-          if (j < train_length) {
-            train_input_(j, i) = array->Value(j);
-          } else {
-            test_input_(j - train_length, i) = array->Value(j);
+      auto chunk_array = table->column(i - 1);
+      int chunk_size = chunk_array->num_chunks();
+      int64_t train_data_start = 0;
+      int64_t test_data_start = 0;
+      for (int chk_i = 0; chk_i < chunk_size; chk_i++) {
+        auto array = chunk_array->chunk(chk_i);
+        auto train_length = train_data_each_chunk[chk_i];
+        auto test_length = array->length() - train_length;
+        if (data_type == arrow::Type::type::INT64) {
+          auto ret = FillTrainAndTestData<Int64Array>(array,
+                                                      train_data_start,
+                                                      test_data_start,
+                                                      i,
+                                                      train_length);
+          if (ret != retcode::SUCCESS) {
+            std::stringstream ss;
+            ss << "Column " << col_names[i-1] << ", "
+              << "Convert Data From " << type_name << " To Int64 failed";
+            RaiseException(ss.str());
           }
-          // m(j, i) = array->Value(j);
+        } else if (data_type == arrow::Type::type::INT32) {
+          auto ret = FillTrainAndTestData<Int32Array>(array,
+                                                      train_data_start,
+                                                      test_data_start,
+                                                      i,
+                                                      train_length);
+          if (ret != retcode::SUCCESS) {
+            std::stringstream ss;
+            ss << "Column " << col_names[i-1] << ", "
+              << "Convert Data From " << type_name << " To Int32 failed";
+            RaiseException(ss.str());
+          }
+        } else {
+          auto ret = FillTrainAndTestData<DoubleArray>(array,
+                                                       train_data_start,
+                                                       test_data_start,
+                                                       i,
+                                                       train_length);
+          if (ret != retcode::SUCCESS) {
+            std::stringstream ss;
+            ss << "Column " << col_names[i-1] << ", "
+              << "Convert Data From " << type_name << " To Double failed";
+            RaiseException(ss.str());
+          }
         }
-      } else {
-        auto chunk_array = table->column(i - 1)->chunk(0);
-        auto array = std::dynamic_pointer_cast<DoubleArray>(chunk_array);
-        if (array == nullptr) {
-          std::stringstream ss;
-          ss << "Column " << col_names[i-1]
-             << ", Convert Data From " << type_name << " To Double failed";
-          RaiseException(ss.str());
-        }
-        for (int64_t j = 0; j < array->length(); j++) {
-          if (j < train_length)
-            train_input_(j, i) = array->Value(j);
-          else
-            test_input_(j - train_length, i) = array->Value(j);
-          // m(j, i) = array->Value(j);
-        }
+        train_data_start += train_length;
+        test_data_start += test_length;
       }
     }
   }
-
   return array_len;
 }
 
