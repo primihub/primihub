@@ -58,7 +58,6 @@ class Pipeline(BaseModel):
             data = read_data(
                 data_info=self.role_params["data"],
                 selected_column=selected_column,
-                droped_column=id,
             )
 
         # select preprocess column
@@ -73,6 +72,8 @@ class Pipeline(BaseModel):
         if preprocess_column is None and role != "server":
             preprocess_column = data.columns
         if preprocess_column is not None:
+            if id in preprocess_column:
+                preprocess_column = preprocess_column.drop(id)
             logger.info(
                 f"preprocess column: {preprocess_column.tolist()}, # {len(preprocess_column)}"
             )
@@ -180,7 +181,6 @@ class Pipeline(BaseModel):
             # save preprocess module & columns
             preprocess_module = {
                 "selected_column": selected_column,
-                "id": id,
                 "preprocess": preprocess,
             }
             save_pickle_file(
@@ -209,11 +209,9 @@ class Pipeline(BaseModel):
 
         # load dataset
         selected_column = preprocess["selected_column"]
-        id = preprocess["id"]
         data = read_data(
             data_info=self.role_params["data"],
             selected_column=selected_column,
-            droped_column=id,
         )
 
         # preprocess dataset
