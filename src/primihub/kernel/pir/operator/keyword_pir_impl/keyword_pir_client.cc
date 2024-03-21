@@ -93,6 +93,12 @@ retcode KeywordPirOperatorClient::OnExecute(const PirDataType& input,
   VLOG(5) << "query_resultquery_resultquery_resultquery_result: "
           << query_result.size();
   ExtractResult(orig_item, query_result, result);
+  {
+    std::string task_end{"SUCCESS"};
+    auto link_ctx = this->GetLinkContext();
+    ret = link_ctx->Send(this->key_task_end_, PeerNode(), task_end);
+    CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
+  }
   return retcode::SUCCESS;
 }
 

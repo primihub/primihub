@@ -66,6 +66,7 @@ class BasePirOperator {
   Options options_;
   std::string key_{"pir_key"};
   std::string response_key_{"response_pir_key"};
+  std::string key_task_end_{"pir_task_end"};
 };
 }  // namespace primihub::pir
 #endif  // SRC_PRIMIHUB_KERNEL_PIR_OPERATOR_BASE_PIR_H_

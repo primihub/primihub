@@ -86,7 +86,13 @@ retcode KeywordPirOperatorServer::OnExecute(const PirDataType& input,
 
   ret = ProcessQuery(sender_db);
   CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
-
+  {
+    std::string task_end;
+    auto link_ctx = this->GetLinkContext();
+    ret = link_ctx->Recv(this->key_task_end_, ProxyNode(), &task_end);
+    CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
+    LOG(INFO) << "task status: " << task_end;
+  }
   VLOG(5) << "end of execute task";
   return retcode::SUCCESS;
 }
