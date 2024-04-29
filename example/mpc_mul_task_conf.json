@@ -43,6 +43,5 @@
         "PARTY2": {
           "Data_File": "mpc_arithmetic_2"
         }
-    },
-    "input_datasets": []
+    }
 }

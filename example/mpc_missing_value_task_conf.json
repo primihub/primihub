@@ -42,17 +42,13 @@
   },
   "party_datasets": {
     "PARTY0": {
-      "Data_File": "train_party_0",
-      "TestData" : "test_party_0"
+      "Data_File": "train_party_0"
     },
     "PARTY1": {
-      "Data_File": "train_party_1",
-      "TestData" : "test_party_1"
+      "Data_File": "train_party_1"
     },
     "PARTY2": {
-      "Data_File": "train_party_2",
-      "TestData" : "test_party_2"
+      "Data_File": "train_party_2"
     }
-  },
-  "input_datasets": []
+  }
 }
