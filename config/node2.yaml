@@ -24,6 +24,12 @@ use_tls: false
 
 grpc_port: 50052
 
+# public_ip_proxy:
+#   mode: "grpc"
+#   ip:  "127.0.0.1"
+#   port: 30008
+#   use_tls: false
+
 proxy_server:
   mode: "grpc"
   ip:  "127.0.0.1"

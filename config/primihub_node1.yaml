@@ -5,6 +5,11 @@ location: "primihub-node1"
 use_tls: false
 
 grpc_port: 50051
+# public_ip_proxy:
+#   mode: "grpc"
+#   ip:  "127.0.0.1"
+#   port: 30004
+#   use_tls: false
 
 #certificate:
 #  root_ca: "data/cert/ca.crt"

@@ -176,7 +176,7 @@ void DatasetService::loadDefaultDatasets(const std::string& config_file_path) {
   LOG(INFO) << "📃 Load default datasets from config: " << config_file_path;
   YAML::Node config = YAML::LoadFile(config_file_path);
   auto& server_cfg = ServerConfig::getInstance();
-  auto& nodelet_cfg = server_cfg.getServiceConfig();
+  auto& nodelet_cfg = server_cfg.PublicServiceConfig();
   std::string nodelet_addr = nodelet_cfg.to_string();
   if (!config["datasets"]) {
     LOG(WARNING) << "no datasets found in config file, ignore....";

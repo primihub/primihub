@@ -96,7 +96,7 @@ retcode VMScheduler::AddSchedulerNode(rpc::Task* task) {
 
 Node& VMScheduler::getLocalNodeCfg() const {
   auto& server_config = primihub::ServerConfig::getInstance();
-  return server_config.getServiceConfig();
+  return server_config.PublicServiceConfig();
 }
 
 void VMScheduler::InitLinkContext() {

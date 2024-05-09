@@ -35,4 +35,11 @@ retcode ServerConfig::initServerConfig(const std::string& config_file) {
   }
   return retcode::SUCCESS;
 }
+Node& ServerConfig::PublicServiceConfig() {
+  if (PublicIpProxyEnabled()) {
+    return PublicIpProxyConfig();
+  } else {
+    return getServiceConfig();
+  }
+}
 }  // namespace primihub

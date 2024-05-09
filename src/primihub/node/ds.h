@@ -40,7 +40,7 @@ class DataServiceImpl final: public rpc::DataSetService::Service {
   explicit DataServiceImpl(service::DatasetService* service) :
       dataset_service_ref_(service) {
     auto& ins = ServerConfig::getInstance();
-    auto& server_info = ins.getServiceConfig();
+    auto& server_info = ins.PublicServiceConfig();
     location_info_ = server_info.to_string();
   }
   struct DataBlock {

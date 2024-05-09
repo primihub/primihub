@@ -34,11 +34,14 @@ class ServerConfig {
   }
   retcode initServerConfig(const std::string& config_file);
   Node& getServiceConfig() { return config_.server_config;}
+  bool PublicIpProxyEnabled() {return config_.public_ip_proxy_enable;}
+  Node& PublicIpProxyConfig() {return config_.public_ip_proxy_config.host_info;}
   CertificateConfig& getCertificateConfig() {return config_.cert_config;}
   NodeConfig& getNodeConfig() {return config_;}
   std::string getConfigFile() {return config_file_;}
   Node& ProxyServerCfg() {return config_.proxy_server_cfg.host_info;}
   std::string& StoragePath() {return config_.storage_info.path;}
+  Node& PublicServiceConfig();
 
  protected:
   ServerConfig(const ServerConfig&) = default;

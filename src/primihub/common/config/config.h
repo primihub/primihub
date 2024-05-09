@@ -128,6 +128,8 @@ struct Tee {
 
 struct NodeConfig {
   Node server_config;
+  ServerInfo public_ip_proxy_config;
+  bool public_ip_proxy_enable{false};
   ServerInfo meta_service_config;
   CertificateConfig cert_config;
   std::vector<Dataset> datasets;
@@ -298,6 +300,10 @@ template <> struct convert<NodeConfig> {
     nc.server_config.id_ = node["node"].as<std::string>();
     nc.server_config.ip_ = node["location"].as<std::string>();
     nc.server_config.port_ = node["grpc_port"].as<uint32_t>();
+    if (node["public_ip_proxy"]) {
+      nc.public_ip_proxy_config = node["public_ip_proxy"].as<ServerInfo>();
+      nc.public_ip_proxy_enable = true;
+    }
     if (node["disable_report"]) {
       nc.disable_report = node["disable_report"].as<bool>();
     }
