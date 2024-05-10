@@ -137,20 +137,25 @@ retcode BuildFederatedRequest(const nlohmann::json& js_task_config,
       all_parties.emplace(party_name);
     }
   }
-  // parse party info
-  if (js_task_config.contains("party_info")) {
-    auto access_info_ptr = task_ptr->mutable_party_access_info();
-    for (auto& [party_name, host] : js_task_config["party_info"].items()) {
-      if (all_parties.find(party_name) == all_parties.end()) {
-        LOG(WARNING) << party_name
-                     << " is not one of party in this task, ignore....";
-        continue;
+  const auto& party_access_info = task_ptr->party_access_info();
+  if (party_access_info.size() > 0 &&
+      party_access_info.size() == all_parties.size()) {
+  } else {
+    // parse party info
+    if (js_task_config.contains("party_info")) {
+      auto access_info_ptr = task_ptr->mutable_party_access_info();
+      for (auto& [party_name, host] : js_task_config["party_info"].items()) {
+        if (all_parties.find(party_name) == all_parties.end()) {
+          LOG(WARNING) << party_name
+                      << " is not one of party in this task, ignore....";
+          continue;
+        }
+        auto& access_info = (*access_info_ptr)[party_name];
+        access_info.set_ip(host["ip"].get<std::string>());
+        access_info.set_port(host["port"].get<uint32_t>());
+        access_info.set_use_tls(host["use_tls"].get<bool>());
+        all_parties.emplace(party_name);
       }
-      auto& access_info = (*access_info_ptr)[party_name];
-      access_info.set_ip(host["ip"].get<std::string>());
-      access_info.set_port(host["port"].get<uint32_t>());
-      access_info.set_use_tls(host["use_tls"].get<bool>());
-      all_parties.emplace(party_name);
     }
   }
 
@@ -268,8 +273,11 @@ retcode BuildRequestWithTaskConfig(const nlohmann::json& js,
     }
     // party access info
     auto party_access_info = task_ptr->mutable_party_access_info();
-    if (js.contains("party_access_info")) {
-      for (auto& [key, value]: js["party_access_info"].items()) {
+    if (js.contains("party_info")) {
+      for (auto& [key, value]: js["party_info"].items()) {
+        if (value.is_string()) {
+          continue;
+        }
         auto& party_node = (*party_access_info)[key];
         std::string ip = value["ip"].get<std::string>();
         int32_t port = value["port"].get<int32_t>();

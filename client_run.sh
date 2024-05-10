@@ -4,10 +4,9 @@ if [ ! -d example ]; then
   echo "no example found"
   exit -1
 fi
-case_path="example/FL/logistic_regression"
-case_path="example/FL/xgboost"
+#case_path="example/FL/logistic_regression"
+#case_path="example/FL/xgboost"
 case_path="example"
-case_list=$(ls example)
 case_list=$(ls ${case_path})
 for case_info in ${case_list[@]}; do
   [ -d "example/${case_info}" ] && continue

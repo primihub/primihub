@@ -128,27 +128,34 @@ retcode ProtocolSemanticParser::ProcessAuxiliaryServer(
 
 retcode ProtocolSemanticParser::ParseDatasetToPartyAccessInfo(
     LanguageParser* _parser) {
-  if (DatasetMetaSerivceEnabled()) {
-    auto& task_request = _parser->getPushTaskRequest();
-    const auto& task_info = task_request.task().task_info();
-    auto task_info_str = pb_util::TaskInfoToString(task_info);
-    auto datasets_with_tag = _parser->getDatasets();
-    VLOG(2) << task_info_str << "Finding meta list from datasets...";
-    // get party access info from dataset meta service using dataset id
-    dataset_service_->MetaService()->FindPeerListFromDatasets(
-      datasets_with_tag,
-      [&, this](std::vector<DatasetMetaWithParamTag>& metas_with_param_tag) {
-        VLOG(2) << task_info_str
-                << "Find meta list from datasets: "
-                << metas_with_param_tag.size();
-        std::map<std::string, Node> party_access_info;
-        metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
-        _parser->MergePartyAccessInfo(party_access_info);
-        VLOG(2) << task_info_str << "end of MergePartyAccessInfo";
-      });
-    // process auxiliary server if search by dataset
-    ProcessAuxiliaryServer(_parser);
+  auto& task_request = _parser->getPushTaskRequest();
+  const auto& party_access_info = task_request.task().party_access_info();
+  if (party_access_info.size() > 0) {
+  } else {
+    if (DatasetMetaSerivceEnabled()) {
+      auto& task_request = _parser->getPushTaskRequest();
+      const auto& task_info = task_request.task().task_info();
+      auto task_info_str = pb_util::TaskInfoToString(task_info);
+      auto datasets_with_tag = _parser->getDatasets();
+      VLOG(2) << task_info_str << "Finding meta list from datasets...";
+      // get party access info from dataset meta service using dataset id
+      dataset_service_->MetaService()->FindPeerListFromDatasets(
+        datasets_with_tag,
+        [&, this](std::vector<DatasetMetaWithParamTag>& metas_with_param_tag) {
+          VLOG(2) << task_info_str
+                  << "Find meta list from datasets: "
+                  << metas_with_param_tag.size();
+          std::map<std::string, Node> party_access_info;
+          metasToPartyAccessInfo(metas_with_param_tag, &party_access_info);
+          _parser->MergePartyAccessInfo(party_access_info);
+          VLOG(2) << task_info_str << "end of MergePartyAccessInfo";
+        });
+      // process auxiliary server if search by dataset
+      ProcessAuxiliaryServer(_parser);
+    }
   }
+  LOG(INFO) << "number of parties: " << party_access_info.size();
+
   return retcode::SUCCESS;
 }
 

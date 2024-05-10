@@ -75,7 +75,7 @@ jobs:
     - name: Install make
       run: brew install make
     - name: Install setuptools
-      run: python3 -m pip install setuptools
+      run: python3 -m pip install setuptools --break-system-packages
     - name: Change workspace file to github config
       run: ln -s -f WORKSPACE_GITHUB WORKSPACE
     - name: bazel test
