@@ -441,7 +441,8 @@ retcode PirTask::SaveResult() {
   std::vector<std::shared_ptr<arrow::Array>> arrow_array;
   arrow::StringBuilder value_builder;
   for (auto& [key, item_vec] : this->result_) {
-    for (const auto& item : item_vec) {
+    for (auto& item : item_vec) {
+      item.erase(std::find(item.begin(), item.end(), '\0'), item.end());
       value_builder.Append(item);
     }
   }
