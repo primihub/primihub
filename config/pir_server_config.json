@@ -1,6 +1,6 @@
 {
     "table_params": {
-        "hash_func_count": 2,
+        "hash_func_count": 5,
         "table_size": 409,
         "max_items_per_bin": 20
     },

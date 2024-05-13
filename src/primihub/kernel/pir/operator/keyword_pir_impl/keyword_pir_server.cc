@@ -43,6 +43,7 @@ retcode KeywordPirOperatorServer::OnExecute(const PirDataType& input,
   size_t use_core_num = cpu_core_num / 2;
   LOG(INFO) << "ThreadPoolMgr thread count: " << use_core_num;
   ThreadPoolMgr::SetThreadCount(use_core_num);
+  int64_t client_data_size{0};
 
   auto params = SetPsiParams();
   CHECK_NULLPOINTER(params, retcode::FAIL);
@@ -83,9 +84,22 @@ retcode KeywordPirOperatorServer::OnExecute(const PirDataType& input,
   }
   ret = ProcessOprf();
   CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
+  auto table_size = static_cast<size_t>(this->table_size_ * PirConstant::table_size_factor);
+  auto block_size = this->query_data_size_ / table_size;
+  auto rem_size = this->query_data_size_ % table_size;
+  if (rem_size != 0) {
+    block_size++;
+  }
+  LOG(INFO) << "size of loop: " << block_size << " "
+      << "query_data_size: " << query_data_size_ << " "
+      << "table size: " << table_size;
+  for (size_t i = 0 ; i < block_size; i++) {
+    LOG(INFO) << "current loop: " << i << " total: " << block_size;
+    ret = ProcessQuery(sender_db);
+    CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
+    LOG(INFO) << "end of process loop: " << i;
+  }
 
-  ret = ProcessQuery(sender_db);
-  CHECK_RETCODE_WITH_RETVALUE(ret, retcode::FAIL);
   {
     std::string task_end;
     auto link_ctx = this->GetLinkContext();
@@ -232,10 +246,11 @@ retcode KeywordPirOperatorServer::ProcessOprf() {
   // // OPRFKey key_oprf;
   auto oprf_response =
       OPRFSender::ProcessQueries(oprf_request_str, *(this->oprf_key_));
-
+  this->query_data_size_ = oprf_request_str.size() / apsi::oprf::oprf_query_size;
   std::string oprf_response_str{
       reinterpret_cast<char*>(const_cast<unsigned char*>(oprf_response.data())),
       oprf_response.size()};
+  VLOG(5) << "qeury size from client: " << query_data_size_;
   // VLOG(5) << "send data size: " << oprf_response_str.size() << " "
   //         << "data content: " << oprf_response_str;
   return link_ctx->Send(this->response_key_, ProxyNode(), oprf_response_str);
@@ -418,8 +433,8 @@ retcode KeywordPirOperatorServer::ProcessQuery(
   for (auto& f : futures) {
     f.get();
   }
-  link_ctx->CheckSendCompleteStatus(this->response_key_,
-                                    ProxyNode(), package_count);
+  // link_ctx->CheckSendCompleteStatus(this->response_key_,
+  //                                   ProxyNode(), package_count);
   VLOG(5) << "Finished processing query request";
   return retcode::SUCCESS;
 }
@@ -599,15 +614,16 @@ std::unique_ptr<apsi::PSIParams> KeywordPirOperatorServer::SetPsiParams() {
   }
 
   // std::unique_ptr<PSIParams> params{nullptr};
-  auto params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
+  auto psi_params = std::make_unique<PSIParams>(PSIParams::Load(params_json));
   SCopedTimer timer;
   std::ostringstream param_ss;
-  size_t param_size = params->save(param_ss);
+  size_t param_size = psi_params->save(param_ss);
   psi_params_str_ = param_ss.str();
   auto time_cost = timer.timeElapse();
+  this->table_size_ = psi_params->table_params().table_size;
   VLOG(5) << "param_size: " << param_size << " time cost(ms): " << time_cost;
   VLOG(5) << "param_content: " << psi_params_str_.size();
-  return params;
+  return psi_params;
 }
 
 bool KeywordPirOperatorServer::DbCacheAvailable(const std::string& db_path) {

@@ -114,6 +114,8 @@ class KeywordPirOperatorServer : public BasePirOperator {
       std::shared_ptr<apsi::sender::SenderDB>;
 
  private:
+  int64_t query_data_size_;
+  int64_t table_size_;
   std::string psi_params_str_;
   std::unique_ptr<apsi::oprf::OPRFKey> oprf_key_{nullptr};
   std::unique_ptr<apsi::PSIParams> psi_params_{nullptr};
