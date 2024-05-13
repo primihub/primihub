@@ -67,11 +67,14 @@ retcode KeywordPirOperatorClient::OnExecute(const PirDataType& input,
   if (rem_size != 0) {
     block_item_info.push_back(rem_size);
   }
-  std::string block_item_info_str;
-  for (const auto& item : block_item_info) {
-    block_item_info_str.append(std::to_string(item)).append(" ");
+  if (VLOG_IS_ON(5)) {
+    std::string block_item_info_str;
+    for (const auto& item : block_item_info) {
+      block_item_info_str.append(std::to_string(item)).append(" ");
+    }
+    LOG(INFO) << "block_item_info: " << block_item_info_str;
   }
-  LOG(INFO) << "block_item_info: " << block_item_info_str;
+
   int64_t start_index{0};
   for (size_t i = 0; i < block_item_info.size(); i++) {
     int64_t size_per_query = block_item_info[i];
@@ -135,9 +138,6 @@ retcode KeywordPirOperatorClient::OnExecute(const PirDataType& input,
             << query_result.size();
     ExtractResult(orig_item, query_result, result);
   }
-
-
-
   {
     std::string task_end{"SUCCESS"};
     auto link_ctx = this->GetLinkContext();

@@ -266,7 +266,7 @@ http_archive(
 git_repository(
   name = "mircrosoft_apsi",
   #branch = "bazel_version",
-  commit = "44243c1a85435c04ca858279757ca5524dd3c9aa",
+  commit = "0b192b2df72a136900b8c06fdd0caff8b1d4ce8d",
   remote = "https://gitee.com/primihub/APSI.git",
 )
 
