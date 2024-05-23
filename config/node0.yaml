@@ -22,10 +22,10 @@ location: "127.0.0.1"
 use_tls: false
 grpc_port: 50050
 
-#certificate:
-#  root_ca: "data/cert/ca.crt"
-#  key: "data/cert/node0.key"
-#  cert: "data/cert/node0.crt"
+# certificate:
+#   root_ca: "data/cert/ca.crt"
+#   key: "data/cert/test.key"
+#   cert: "data/cert/test.crt"
 
 # public_ip_proxy:
 #   mode: "grpc"

@@ -61,6 +61,9 @@ retcode VMNodeImpl::Init() {
   nodelet_ = std::make_shared<Nodelet>(config_file_path_, dataset_service_);
   auto link_mode{network::LinkMode::GRPC};
   link_ctx_ = network::LinkFactory::createLinkContext(link_mode);
+  if (node_cfg.use_tls()) {
+    link_ctx_->initCertificate(server_config.getCertificateConfig());
+  }
   CleanFinishedTaskThread();
   CleanTimeoutCachedTaskStatusThread();
   CleanFinishedSchedulerWorkerThread();

@@ -29,10 +29,10 @@ grpc_port: 50051
 #   port: 30004
 #   use_tls: false
 
-#certificate:
-#  root_ca: "data/cert/ca.crt"
-#  key: "data/cert/node0.key"
-#  cert: "data/cert/node0.crt"
+# certificate:
+#   root_ca: "data/cert/ca.crt"
+#   key: "data/cert/test.key"
+#   cert: "data/cert/test.crt"
 
 proxy_server:
   mode: "grpc"

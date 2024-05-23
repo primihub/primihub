@@ -65,6 +65,11 @@ retcode TaskEngine::InitCommunication() {
   using LinkFactory = primihub::network::LinkFactory;
   link_mode_ = LinkMode::GRPC;
   link_ctx_ = LinkFactory::createLinkContext(link_mode_);
+  auto& server_config = primihub::ServerConfig::getInstance();
+  auto& host_cfg = server_config.getServiceConfig();
+  if (host_cfg.use_tls()) {
+    link_ctx_->initCertificate(server_config.getCertificateConfig());
+  }
   return retcode::SUCCESS;
 }
 

@@ -31,8 +31,8 @@ ABSL_FLAG(bool, use_tls, false, "true/false");
 ABSL_FLAG(std::vector<std::string>, cert_config,
           std::vector<std::string>({
               "data/cert/ca.crt",
-              "data/cert/client.key",
-              "data/cert/client.crt"}),
+              "data/cert/test.key",
+              "data/cert/test.crt"}),
           "cert config");
 
 namespace primihub {
