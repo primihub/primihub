@@ -50,6 +50,8 @@ class Pipeline(BaseModel):
         # load dataset
         if FL_type == "H":
             selected_column = self.common_params["selected_column"]
+            if selected_column is None:
+                selected_column = self.role_params.get('selected_column')
             id = self.common_params["id"]
         else:
             selected_column = self.role_params["selected_column"]
@@ -91,6 +93,8 @@ class Pipeline(BaseModel):
         # preprocessing
         if FL_type == "H":
             module_params = self.common_params.get("preprocess_module")
+            if module_params is None:
+                module_params = self.role_params.get("preprocess_module")
         else:
             module_params = self.role_params.get("preprocess_module")
             if module_params is None:
@@ -130,21 +134,10 @@ class Pipeline(BaseModel):
                     elif "Scaler" in module_name:
                         column = data[column].select_dtypes(include=num_type).columns
 
-                if role == "client":
-                    channel.send("column", column)
-                    column = channel.recv("column")
-                if role == "server":
-                    client_column = channel.recv_all("column")
-                    column = list(set(chain.from_iterable(client_column)))
-                    channel.send_all("column", column)
-
             if isinstance(column, pd.Index):
                 column = column.tolist()
             if column:
                 logger.info(f"column: {column}, # {len(column)}")
-            else:
-                logger.info(f"column is empty, {module_name} is skipped")
-                continue
 
             module = select_module(module_name, params, FL_type, role, channel)
 
