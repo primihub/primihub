@@ -1,7 +1,7 @@
 import pickle
 import linkcontext
 from primihub.utils.logger_util import logger
-
+from primihub.context import Context
 
 def Node(ip, port, use_tls, nodename="default"):
     return linkcontext.Node(ip, port, use_tls, nodename)
@@ -23,12 +23,23 @@ class GrpcClient:
 
         local_ip = node_info[local_party].ip
         local_port = node_info[local_party].port
-        recv_session = Node(local_ip, int(local_port), False, local_party)
+        use_tls = node_info[local_party].use_tls
+        logger.info(f"use_tls: {use_tls}")
+        if use_tls:
+            cert_conf = Context.cert_config
+            root_ca_path = cert_conf.get("root_ca_path", "")
+            key_path = cert_conf.get("key_path", "")
+            cert_path = cert_conf.get("cert_path", "")
+            logger.info(f"use_tls: {use_tls} root_ca_path: {root_ca_path}"
+                        f" key_path: {key_path} cert_path: {cert_path}")
+            self.link_context.initCertificate(root_ca_path, key_path, cert_path)
+        recv_session = Node(local_ip, int(local_port), use_tls, local_party)
         self.recv_channel = self.link_context.getChannel(recv_session)
 
         remote_ip = node_info[remote_party].ip
         remote_port = node_info[remote_party].port
-        send_session = Node(remote_ip, int(remote_port), False, remote_party)
+        use_tls = node_info[remote_party].use_tls
+        send_session = Node(remote_ip, int(remote_port), use_tls, remote_party)
         self.send_channel = self.link_context.getChannel(send_session)
 
     def send(self, key, val):

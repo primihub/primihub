@@ -47,7 +47,7 @@ class PsiTask : public TaskBase, public primihub::psi::PsiCommonUtil {
   int execute() override;
   retcode ExecuteTask(const std::vector<std::string>& input,
                       std::vector<std::string>* result);
-
+  primihub::psi::Options& PsiOptions() {return options_;}
  protected:
   retcode LoadParams(const rpc::Task& task);
   retcode LoadDataset();

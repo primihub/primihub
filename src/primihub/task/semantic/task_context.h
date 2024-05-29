@@ -39,9 +39,13 @@ class TaskContext {
     auto link_mode = primihub::network::LinkMode::GRPC;
     link_ctx_ = primihub::network::LinkFactory::createLinkContext(link_mode);
     auto& server_config = primihub::ServerConfig::getInstance();
+    if (!server_config.IsInitFlag()) {
+      LOG(WARNING) << "instance is not init";
+    }
+
     auto& host_cfg = server_config.getServiceConfig();
     if (host_cfg.use_tls()) {
-      LOG(ERROR) << "link_ctx_->initCertificate";
+      LOG(INFO) << "link_ctx_->initCertificate";
       link_ctx_->initCertificate(server_config.getCertificateConfig());
     }
   }

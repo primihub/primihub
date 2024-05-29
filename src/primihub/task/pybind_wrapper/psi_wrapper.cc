@@ -23,7 +23,11 @@
 
 namespace primihub::task {
 namespace rpc = primihub::rpc;
-PsiExecutor::PsiExecutor(const std::string& task_req_str) {
+PsiExecutor::PsiExecutor(const std::string& task_req_str,
+                         const std::string& root_ca_path,
+                         const std::string& key_path,
+                         const std::string& cert_path) :
+    root_ca_path_(root_ca_path), key_path_(key_path), cert_path_(cert_path) {
   task_req_ptr_ = std::make_unique<rpc::PushTaskRequest>();
   bool succ_flag = task_req_ptr_->ParseFromString(task_req_str);
   if (!succ_flag) {
@@ -32,6 +36,11 @@ PsiExecutor::PsiExecutor(const std::string& task_req_str) {
   auto& task_config = task_req_ptr_->task();
 
   task_ptr_ = std::make_unique<PsiTask>(&task_config);
+  if (!root_ca_path.empty() && !key_path.empty() && !cert_path.empty()) {
+    LOG(INFO) << "link_ctx->initCertificate";
+    auto link_ctx = task_ptr_->getTaskContext().getLinkContext().get();
+    link_ctx->initCertificate(root_ca_path, key_path, cert_path);
+  }
 }
 
 auto PsiExecutor::RunPsi(const std::vector<std::string>& input,
@@ -50,6 +59,13 @@ auto PsiExecutor::RunPsi(const std::vector<std::string>& input,
                                     broadcast_result, protocol, *task_req_ptr_);
   auto task_config_ptr = req_ptr->mutable_task();
   auto task_ptr = std::make_unique<PsiTask>(task_config_ptr);
+  if (!root_ca_path_.empty() && !key_path_.empty() && !cert_path_.empty()) {
+    LOG(INFO) << "link_ctx->initCertificate XXXXXXXX";
+    auto link_ctx = task_ptr_->getTaskContext().getLinkContext().get();
+    link_ctx->initCertificate(root_ca_path_, key_path_, cert_path_);
+    auto& options = task_ptr->PsiOptions();
+    options.link_ctx_ref = link_ctx;
+  }
   auto ret = task_ptr->ExecuteTask(input, &result);
   if (ret != retcode::SUCCESS) {
     RaiseException("run psi task failed");

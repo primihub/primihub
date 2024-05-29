@@ -42,6 +42,7 @@ class ServerConfig {
   Node& ProxyServerCfg() {return config_.proxy_server_cfg.host_info;}
   std::string& StoragePath() {return config_.storage_info.path;}
   Node& PublicServiceConfig();
+  bool IsInitFlag() {return is_init_flag.load(std::memory_order::memory_order_relaxed);}
 
  protected:
   ServerConfig(const ServerConfig&) = default;

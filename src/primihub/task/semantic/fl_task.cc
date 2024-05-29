@@ -42,6 +42,7 @@ int FLTask::execute() {
     LOG(ERROR) << "ill formatted task request";
     return -1;
   }
+
   py::scoped_interpreter python;
   VLOG(1) << "<<<<<<<<< Import PrmimiHub Python Executor <<<<<<<<<";
   py::object ph_exec_m_ =
@@ -51,6 +52,21 @@ int FLTask::execute() {
   set_message = ph_context_m_.attr("set_message");
   set_message(py::bytes(pb_task_request_));
   set_message.release();
+  auto& server_config = primihub::ServerConfig::getInstance();
+  auto& host_cfg = server_config.getServiceConfig();
+  if (host_cfg.use_tls()) {
+    auto& cert_config = server_config.getCertificateConfig();
+    auto root_ca_path = cert_config.rootCAPath();
+    auto key_path = cert_config.keyPath();
+    auto cert_path = cert_config.certPath();
+    VLOG(1) << "Set cert config info, root_ca_path: " << root_ca_path << " "
+        << "key_path: " << key_path << " "
+        << "cert_path: " << cert_path;
+    py::object set_cert_config;
+    set_cert_config = ph_context_m_.attr("set_cert_config");
+    set_cert_config(root_ca_path, key_path, cert_path);
+    set_cert_config.release();
+  }
   VLOG(1) << "<<<<<<<<< Start executing Python code <<<<<<<<<" << std::endl;
   // Execute python code.
   ph_exec_m_.attr("execute_py")();

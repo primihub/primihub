@@ -25,6 +25,7 @@ class ContextAll:
         self.dataset_info = {}
         self.party_access_info = {}
         self.task_config = ""
+        self.cert_config = {}
 
     def init_context(self):
         self.task_req = worker_pb2.PushTaskRequest()
@@ -44,6 +45,13 @@ class ContextAll:
 def set_message(message):
     Context.message = message
     Context.init_context()
+
+def set_cert_config(root_ca_path, key_path, cert_path):
+    Context.cert_config = {
+      "root_ca_path": root_ca_path,
+      "key_path": key_path,
+      "cert_path": cert_path
+    }
 
 def reg_dataset(func):
 

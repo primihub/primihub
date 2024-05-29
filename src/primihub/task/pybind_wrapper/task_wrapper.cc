@@ -26,7 +26,8 @@ using PSIExecutor = primihub::task::PsiExecutor;
 
 PYBIND11_MODULE(ph_secure_lib, m) {
   py::class_<MPCExecutor>(m, "MPCExecutor")
-    .def(py::init<const std::string&, const std::string&>())
+    .def(py::init<const std::string&, const std::string&,
+                  const std::string&, const std::string&, const std::string&>())
     .def(py::init<const std::string&>())
     .def("max", [](MPCExecutor& self, const std::vector<double>& input) {
         std::vector<double> result;
@@ -78,7 +79,8 @@ PYBIND11_MODULE(ph_secure_lib, m) {
          &MPCExecutor::StopTask, py::call_guard<py::gil_scoped_release>());
 
   py::class_<PSIExecutor>(m, "PSIExecutor")
-    .def(py::init<const std::string&>())
+    .def(py::init<const std::string&,
+                  const std::string&, const std::string&, const std::string&>())
     .def("run_as_string", [](PSIExecutor& self,
                    const std::vector<std::string>& input,
                    const std::vector<std::string>& parties,

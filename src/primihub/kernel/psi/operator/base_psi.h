@@ -25,7 +25,7 @@
 namespace primihub::psi {
 using LinkContext = network::LinkContext;
 struct Options {
-  LinkContext* link_ctx_ref;
+  LinkContext* link_ctx_ref{nullptr};
   std::map<std::string, Node> party_info;
   std::string self_party;
   PsiResultType psi_result_type{PsiResultType::INTERSECTION};

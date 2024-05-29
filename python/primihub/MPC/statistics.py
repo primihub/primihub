@@ -3,7 +3,13 @@ from primihub.context import Context
 
 class MPCJointStatistics:
     def __init__(self, protocol="ABY3"):
-        self.mpc_executor = ph_slib.MPCExecutor(Context.message, protocol)
+        cert_config = Context.cert_config
+        root_ca_path = cert_config.get("root_ca_path", "")
+        key_path = cert_config.get("key_path", "")
+        cert_path = cert_config.get("cert_path", "")
+        self.mpc_executor = ph_slib.MPCExecutor(
+                                Context.message, protocol,
+                                root_ca_path, key_path, cert_path)
 
     def max(self, input):
         """

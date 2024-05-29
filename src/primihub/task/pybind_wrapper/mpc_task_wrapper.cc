@@ -24,7 +24,11 @@
 namespace pb_util = primihub::proto::util;
 namespace primihub::task {
 MPCExecutor::MPCExecutor(const std::string& task_req_str,
-                         const std::string& protocol) {
+                         const std::string& protocol,
+                         const std::string& root_ca_path,
+                         const std::string& key_path,
+                         const std::string& cert_path) :
+    root_ca_path_(root_ca_path), key_path_(key_path), cert_path_(cert_path) {
   task_req_ptr_ = std::make_unique<primihub::rpc::PushTaskRequest>();
   bool succ_flag = task_req_ptr_->ParseFromString(task_req_str);
   if (!succ_flag) {
@@ -41,6 +45,11 @@ MPCExecutor::MPCExecutor(const std::string& task_req_str,
   this->task_req_ptr_->set_manual_launch(true);
   task_ptr_ = std::make_unique<MPCTask>(this->func_name_,
                                         &(task_req_ptr_->task()));
+  if (!root_ca_path.empty() && !key_path.empty() && !cert_path.empty()) {
+    LOG(INFO) << "link_ctx->initCertificate";
+    auto link_ctx = task_ptr_->getTaskContext().getLinkContext().get();
+    link_ctx->initCertificate(root_ca_path, key_path, cert_path);
+  }
 }
 
 MPCExecutor::~MPCExecutor() {
@@ -345,6 +354,11 @@ retcode MPCExecutor::ExecuteStatisticsTask(
     std::vector<double>* result) {
   auto task_ptr = std::make_unique<MPCTask>(this->func_name_,
                                             &(task_req_ptr_->task()));
+  if (!root_ca_path_.empty() && !key_path_.empty() && !cert_path_.empty()) {
+    LOG(INFO) << "link_ctx->initCertificate";
+    auto link_ctx = task_ptr->getTaskContext().getLinkContext().get();
+    link_ctx->initCertificate(root_ca_path_, key_path_, cert_path_);
+  }
   if (NeedAuxiliaryServer(task_req_ptr_->task())) {
     std::string sub_task_id;
     NegotiateSubTaskId(&sub_task_id);

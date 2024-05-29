@@ -54,7 +54,9 @@ PsiTask::PsiTask(const TaskParam *task_param,
 retcode PsiTask::BuildOptions(const rpc::Task& task, psi::Options* options) {
   // build Options for operator
   options->self_party = this->party_name();
-  options->link_ctx_ref = getTaskContext().getLinkContext().get();
+  if (!options->link_ctx_ref) {
+    options->link_ctx_ref = getTaskContext().getLinkContext().get();
+  }
   options->psi_result_type = psi::PsiResultType::INTERSECTION;
   options->code = task.code();
   auto& party_info = options->party_info;

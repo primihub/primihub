@@ -29,7 +29,12 @@ class DataType(Enum):
 
 class TwoPartyPsi:
     def __init__(self):
-        self.psi_executor = ph_slib.PSIExecutor(Context.message)
+        cert_config = Context.cert_config
+        root_ca_path = cert_config.get("root_ca_path", "")
+        key_path = cert_config.get("key_path", "")
+        cert_path = cert_config.get("cert_path", "")
+        self.psi_executor = ph_slib.PSIExecutor(Context.message,
+                                root_ca_path, key_path, cert_path)
 
     def run(self,
             input: np.ndarray,
