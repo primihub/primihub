@@ -1,0 +1,47 @@
+{
+    "task_type": "ACTOR_TASK",
+    "task_name": "mpc_cmp",
+    "task_lang": "proto",
+    "task_code": {
+        "code_file_path": "",
+        "code": "arithmetic"
+    },
+    "params": {
+        "ResFileName": {
+            "type": "STRING",
+            "value": "data/result/mpc_cmp_result.csv"
+        },
+        "Expr": {
+            "type": "STRING",
+            "value": "CMP(A, B)"
+        },
+        "RevealToParties": {
+            "type": "STRING",
+            "value": "PARTY2"
+        },
+        "Col_And_Owner": {
+            "type": "STRING",
+            "value": "A-PARTY0;B-PARTY1"
+        },
+        "Col_And_Dtype": {
+            "descrtion": "0: int64_t, 1: double",
+            "type": "STRING",
+            "value": "A-0;B-0"
+        },
+        "Accuracy": {
+            "type": "STRING",
+            "value": "D16"
+        }
+    },
+    "party_datasets": {
+        "PARTY0": {
+          "Data_File": "mpc_arithmetic_0"
+        },
+        "PARTY1": {
+          "Data_File": "mpc_arithmetic_1"
+        },
+        "PARTY2": {
+          "Data_File": "FAKE_DATA_PARTY_2"
+        }
+    }
+}

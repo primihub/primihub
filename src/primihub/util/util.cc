@@ -226,4 +226,28 @@ std::string buf_to_hex_string(const uint8_t* pdata, size_t size) {
   return ss.str();
 }
 
+void TrimLeft(std::string& str) {
+  if (str.empty()) {
+    return;
+  }
+  str.erase(str.begin(),
+    std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+      return !std::isspace(ch);}));
+}
+
+void TrimRight(std::string& str) {
+  if (str.empty()) {
+    return;
+  }
+  str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+      return !std::isspace(ch);}).base(), str.end());
+}
+
+void TrimAll(std::string& str) {
+  if (str.empty()) {
+    return;
+  }
+  str.erase(remove_if(str.begin(), str.end(), [](unsigned char ch) {
+      return std::isspace(ch);}), str.end());
+}
 }  // namespace primihub

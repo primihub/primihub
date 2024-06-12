@@ -36,6 +36,9 @@ retcode pbNode2Node(const primihub::rpc::Node& pb_node, Node* node);
 retcode node2PbNode(const Node& node, rpc::Node* pb_node);
 retcode parseToNode(const std::string& node_info, Node* node);
 retcode parseTopbNode(const std::string& node_info, rpc::Node* node);
+void TrimLeft(std::string& str);
+void TrimRight(std::string& str);
+void TrimAll(std::string& str);
 
 class SCopedTimer {
  public:

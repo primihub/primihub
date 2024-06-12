@@ -94,6 +94,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
 
     // col_and_owner
     std::string col_and_owner = param_map["Col_And_Owner"].value_string();
+    TrimAll(col_and_owner);
     std::vector<std::string> tmp1, tmp2, tmp3;
     str_split(col_and_owner, &tmp1, ';');
     for (auto itr = tmp1.begin(); itr != tmp1.end(); itr++) {
@@ -113,6 +114,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     // LOG(INFO) << col_and_owner;
 
     std::string col_and_dtype = param_map["Col_And_Dtype"].value_string();
+    TrimAll(col_and_dtype);
     str_split(col_and_dtype, &tmp2, ';');
     for (auto itr = tmp2.begin(); itr != tmp2.end(); itr++) {
       int pos = itr->find('-');
@@ -124,6 +126,7 @@ int ArithmeticExecutor<Dbit>::loadParams(primihub::rpc::Task &task) {
     // LOG(INFO) << col_and_dtype;
 
     expr_ = param_map["Expr"].value_string();
+    TrimAll(expr_);
     int comma_index = expr_.find(",");
     cmp_col1 = expr_.substr(4, comma_index - 4);
     cmp_col2 = expr_.substr(comma_index + 1, expr_.length() - comma_index - 2);
