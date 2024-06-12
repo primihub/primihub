@@ -64,7 +64,9 @@ class VMScheduler {
   }
 
  protected:
-  retcode AddSchedulerNode(rpc::Task* task);
+  retcode AddSchedulerNode(rpc::Task* task, const Node& dest_node);
+  bool IsInternalNode(const Node& dest_node);
+  bool UseInternalNodeAsScheduler(const Node& dest_node);
   void initCertificate();
   Node& getLocalNodeCfg() const;
   void InitLinkContext();

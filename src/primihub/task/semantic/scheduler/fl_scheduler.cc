@@ -51,7 +51,7 @@ retcode FLScheduler::ScheduleTask(const std::string& party_name,
   const auto& task_info = send_request.task().task_info();
   std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   // fill scheduler info
-  AddSchedulerNode(task_ptr);
+  AddSchedulerNode(task_ptr, dest_node);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << TASK_INFO_STR << "dest node " << dest_node_address;

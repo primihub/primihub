@@ -52,7 +52,7 @@ void MPCScheduler::push_task(const std::string &node_id,
     (*param_map)[dataset_param.second] = std::move(pv);
   }
   auto task_config = push_request.mutable_task();
-  AddSchedulerNode(task_config);
+  AddSchedulerNode(task_config, dest_node);
   std::string dest_node_address = dest_node.to_string();
   auto channel = this->getLinkContext()->getChannel(dest_node);
   auto ret = channel->submitTask(push_request, &pushTaskReply);

@@ -34,7 +34,10 @@ class ServerConfig {
   }
   retcode initServerConfig(const std::string& config_file);
   Node& getServiceConfig() { return config_.server_config;}
-  bool PublicIpProxyEnabled() {return config_.public_ip_proxy_enable;}
+  bool PublicIpProxyEnabled() {
+    return config_.public_ip_proxy_enable &&
+        config_.internal_use_public_ip;
+  }
   Node& PublicIpProxyConfig() {return config_.public_ip_proxy_config.host_info;}
   CertificateConfig& getCertificateConfig() {return config_.cert_config;}
   NodeConfig& getNodeConfig() {return config_;}

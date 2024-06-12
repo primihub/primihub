@@ -137,7 +137,7 @@ void TEEScheduler::push_task_to_node(const std::string &node_id,
     {
       // fill scheduler info
       auto task_ptr = _1NodePushTaskRequest.mutable_task();
-      AddSchedulerNode(task_ptr);
+      AddSchedulerNode(task_ptr, dest_node);
     }
     // send request
     auto channel = this->getLinkContext()->getChannel(dest_node);

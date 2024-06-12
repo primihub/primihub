@@ -83,12 +83,37 @@ void VMScheduler::initCertificate() {
     link_ctx_->initCertificate(server_config.getCertificateConfig());
   }
 }
+bool VMScheduler::UseInternalNodeAsScheduler(const Node& dest_node) {
+  auto& server_config = primihub::ServerConfig::getInstance();
+  auto& cfg = server_config.getNodeConfig();
+  // TODO strategy to check the node is internal
+  if (IsInternalNode(dest_node) && !cfg.internal_use_public_ip) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-retcode VMScheduler::AddSchedulerNode(rpc::Task* task) {
+bool VMScheduler::IsInternalNode(const Node& dest_node) {
+  auto& server_config = primihub::ServerConfig::getInstance();
+  auto& self_node = server_config.getServiceConfig();
+  if (self_node == dest_node) {
+    return true;
+  }
+  return false;
+}
+
+retcode VMScheduler::AddSchedulerNode(rpc::Task* task, const Node& dest_node) {
   auto auxiliary_server_ptr = task->mutable_auxiliary_server();
-  auto& local_node = getLocalNodeCfg();
   rpc::Node node;
-  node2PbNode(local_node, &node);
+  auto& server_config = primihub::ServerConfig::getInstance();
+  if (UseInternalNodeAsScheduler(dest_node)) {
+    auto& local_node = server_config.getServiceConfig();
+    node2PbNode(local_node, &node);
+  } else {
+    auto& local_node = server_config.PublicIpProxyConfig();
+    node2PbNode(local_node, &node);
+  }
   auto& scheduler_node = (*auxiliary_server_ptr)[SCHEDULER_NODE];
   scheduler_node = std::move(node);
   return retcode::SUCCESS;
@@ -117,7 +142,7 @@ retcode VMScheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  AddSchedulerNode(task_ptr);
+  AddSchedulerNode(task_ptr, dest_node);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << TASK_INFO_STR << "dest node " << dest_node_address;

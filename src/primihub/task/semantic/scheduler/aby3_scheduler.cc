@@ -40,7 +40,7 @@ retcode ABY3Scheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  AddSchedulerNode(task_ptr);
+  AddSchedulerNode(task_ptr, dest_node);
   const auto& task_info = send_request.task().task_info();
   std::string TASK_INFO_STR = pb_util::TaskInfoToString(task_info);
   // send request

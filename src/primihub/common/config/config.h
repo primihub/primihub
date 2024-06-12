@@ -130,6 +130,7 @@ struct NodeConfig {
   Node server_config;
   ServerInfo public_ip_proxy_config;
   bool public_ip_proxy_enable{false};
+  bool internal_use_public_ip{false};
   ServerInfo meta_service_config;
   CertificateConfig cert_config;
   std::vector<Dataset> datasets;
@@ -303,6 +304,9 @@ template <> struct convert<NodeConfig> {
     if (node["public_ip_proxy"]) {
       nc.public_ip_proxy_config = node["public_ip_proxy"].as<ServerInfo>();
       nc.public_ip_proxy_enable = true;
+    }
+    if (node["internal_use_public_ip"]) {
+      nc.internal_use_public_ip = node["internal_use_public_ip"].as<bool>();
     }
     if (node["disable_report"]) {
       nc.disable_report = node["disable_report"].as<bool>();

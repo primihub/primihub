@@ -37,7 +37,7 @@ retcode PSIScheduler::ScheduleTask(const std::string& party_name,
   auto task_ptr = send_request.mutable_task();
   task_ptr->set_party_name(party_name);
   // fill scheduler info
-  AddSchedulerNode(task_ptr);
+  AddSchedulerNode(task_ptr, dest_node);
   // send request
   std::string dest_node_address = dest_node.to_string();
   LOG(INFO) << "dest node " << dest_node_address;

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 version: 1.0
 
 node: "node1"
@@ -23,6 +22,7 @@ location: "127.0.0.1"
 use_tls: false
 grpc_port: 50051
 
+# internal_use_public_ip: true
 # public_ip_proxy:
 #   mode: "grpc"
 #   ip:  "127.0.0.1"
