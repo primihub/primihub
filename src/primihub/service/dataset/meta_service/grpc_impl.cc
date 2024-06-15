@@ -203,7 +203,10 @@ retcode GrpcDatasetMetaService::FindPeerListFromDatasets(
     std::stringstream ss;
     ss << "Failed to get all dataset's meta, no handler triggered. "
        << "expected dataset size: " << datasets_with_tag.size() << ", "
-       << "but get: " << meta_list.size();
+       << "but get: " << meta_list.size() << " ";
+    for (auto& meta : meta_list) {
+      ss << "item: " << std::get<1>(meta) << " ";
+    }
     RaiseException(ss.str());
   } else {
     handler(meta_list);

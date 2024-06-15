@@ -28,6 +28,7 @@
 #ifdef ENABLE_MYSQL_DRIVER
 #include "src/primihub/data_store/mysql/mysql_driver.h"
 #endif
+#include "src/primihub/data_store/parquet/parquet_driver.h"
 #include "src/primihub/common/value_check_util.h"
 
 namespace primihub {
@@ -57,6 +58,9 @@ class DataDirverFactory {
     } else if (driver_name == kDriveType[DriverType::IMAGE]) {
       driver_ptr = std::make_shared<ImageDriver>(nodeletAddr,
                                                  std::move(access_info));
+    } else if (driver_name == kDriveType[DriverType::PARQUET]) {
+      driver_ptr = std::make_shared<ParquetDriver>(nodeletAddr,
+                                                   std::move(access_info));
     } else {
       std::string err_msg =
           "[DataDriverFactory] Invalid driver name [" + dirverName + "]";
@@ -83,6 +87,8 @@ class DataDirverFactory {
 #endif
     } else if (drive_type_ == kDriveType[DriverType::IMAGE]) {
       access_info_ptr = std::make_unique<ImageAccessInfo>();
+    } else if (drive_type_ == kDriveType[DriverType::PARQUET]) {
+      access_info_ptr = std::make_unique<ParquetAccessInfo>();
     } else {
       std::string err_msg = "unsupported driver type: " + drive_type_;
       RaiseException(err_msg);

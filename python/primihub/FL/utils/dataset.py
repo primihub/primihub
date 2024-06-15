@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from torchvision.io import read_image
 from torch.utils.data import Dataset as TorchDataset
 from primihub.utils.logger_util import logger
-
+import pyarrow.parquet as pq
+import pyarrow as pa
 
 def read_data(data_info,
               selected_column=None,
@@ -34,6 +35,10 @@ def read_data(data_info,
                           data_info['tableName'],
                           selected_column,
                           droped_column)
+    elif data_type == 'parquet':
+        return read_parquet(data_info['data_path'],
+                            selected_column,
+                            droped_column)
     else:
         error_msg = f'Unsupported data type: {data_type}'
         logger.error(error_msg)
@@ -48,6 +53,14 @@ def read_csv(data_path, selected_column=None, droped_column=None):
         data.pop(droped_column)
     return data
 
+def read_parquet(data_path, selected_column=None, droped_column=None):
+    parquet_file = pq.ParquetFile(data_path)
+    data = parquet_file.read().to_pandas()
+    if selected_column:
+        data = data[selected_column]
+    if droped_column in data.columns:
+        data.pop(droped_column)
+    return data
 
 def read_mysql(user,
                password,
@@ -94,7 +107,7 @@ class TorchImageDataset(TorchDataset):
             ]
             self.img_labels = pd.DataFrame(file_name,
                                            columns=['file_name'])
-            
+
     def __len__(self):
         return len(self.img_labels)
 
@@ -104,7 +117,7 @@ class TorchImageDataset(TorchDataset):
         image = read_image(img_path)
         if self.transform:
             image = self.transform(image)
-        
+
         if 'y' in self.img_labels.columns:
             label = self.img_labels.loc[idx, 'y']
             if self.target_transform:

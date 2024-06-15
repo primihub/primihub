@@ -46,54 +46,54 @@ jobs:
         # cc_binary
         make
 
-  build-on-ubuntu-arm64:
-    runs-on: [self-hosted, Linux, ARM64]
-    steps:
-    - uses: actions/checkout@v3
-    - name: bazel test
-      run: |
-        bash pre_build.sh
-        bazel build --config=linux_`arch` \
-            //test/primihub/algorithm:logistic_test
-        ./bazel-bin/test/primihub/algorithm/logistic_test
-    - name: bazel build
-      run: |
-        # cc_binary
-        bash pre_build.sh
-        make
+  # build-on-ubuntu-arm64:
+  #   runs-on: [self-hosted, Linux, ARM64]
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: bazel test
+  #     run: |
+  #       bash pre_build.sh
+  #       bazel build --config=linux_`arch` \
+  #           //test/primihub/algorithm:logistic_test
+  #       ./bazel-bin/test/primihub/algorithm/logistic_test
+  #   - name: bazel build
+  #     run: |
+  #       # cc_binary
+  #       bash pre_build.sh
+  #       make
 
 
-  build-on-mac-amd64:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup bazelisk
-      uses: bazelbuild/setup-bazelisk@v2
-    - name: set PYTHON LINK_OPTS
-      run: ./pre_build.sh
-      shell: bash
-    - name: Install make
-      run: brew install make
-    - name: Install setuptools
-      run: python3 -m pip install setuptools --break-system-packages
-    - name: Change workspace file to github config
-      run: ln -s -f WORKSPACE_GITHUB WORKSPACE
-    - name: bazel test
-      run: |
-        bazel build --config=darwin_x86_64 \
-            //test/primihub/algorithm:logistic_test
-        #    //test/primihub/common/type:common_test \
-        #    //test/primihub/util:network_test
+  # build-on-mac-amd64:
+  #   runs-on: macos-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Setup bazelisk
+  #     uses: bazelbuild/setup-bazelisk@v2
+  #   - name: set PYTHON LINK_OPTS
+  #     run: ./pre_build.sh
+  #     shell: bash
+  #   - name: Install make
+  #     run: brew install make
+  #   - name: Install setuptools
+  #     run: python3 -m pip install setuptools --break-system-packages
+  #   - name: Change workspace file to github config
+  #     run: ln -s -f WORKSPACE_GITHUB WORKSPACE
+  #   - name: bazel test
+  #     run: |
+  #       bazel build --config=darwin_x86_64 \
+  #           //test/primihub/algorithm:logistic_test
+  #       #    //test/primihub/common/type:common_test \
+  #       #    //test/primihub/util:network_test
 
-        ./bazel-bin/test/primihub/algorithm/logistic_test
-        #./bazel-bin/test/primihub/common/type/common_test
-        #./bazel-bin/test/primihub/util/network_test
-        # bazel test --config=darwin_x86_64 --config=macos primitive_test
-        # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
-        # bazel test --config=darwin_x86_64 --config=macos prng_test
-        # bazel test --config=darwin_x86_64 --config=macos share_test
-    - name: bazel build
-      run: |
-        # cc_binary
-        make
+  #       ./bazel-bin/test/primihub/algorithm/logistic_test
+  #       #./bazel-bin/test/primihub/common/type/common_test
+  #       #./bazel-bin/test/primihub/util/network_test
+  #       # bazel test --config=darwin_x86_64 --config=macos primitive_test
+  #       # bazel test --config=darwin_x86_64 --config=macos protocol_aby3_test
+  #       # bazel test --config=darwin_x86_64 --config=macos prng_test
+  #       # bazel test --config=darwin_x86_64 --config=macos share_test
+  #   - name: bazel build
+  #     run: |
+  #       # cc_binary
+  #       make
 

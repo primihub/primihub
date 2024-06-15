@@ -25,6 +25,7 @@ enum class DriverType {
   HDFS,
   MYSQL,
   IMAGE,
+  PARQUET,
 };
 
 static std::map<DriverType, std::string> kDriveType = {
@@ -33,6 +34,7 @@ static std::map<DriverType, std::string> kDriveType = {
   {DriverType::HDFS, "HDFS"},
   {DriverType::MYSQL, "MYSQL"},
   {DriverType::IMAGE, "IMAGE"},
+  {DriverType::PARQUET, "PARQUET"},
 };
 }  // namespace primihub
 #endif  // SRC_PRIMIHUB_DATA_STORE_DRIVER_CONSTANT_H_
