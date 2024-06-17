@@ -22,7 +22,9 @@
 
 #include "src/primihub/task/semantic/task.h"
 #include "src/primihub/task/semantic/mpc_task.h"
+#ifdef PY_TASK_ENABLED
 #include "src/primihub/task/semantic/fl_task.h"
+#endif  // PY_TASK_ENABLED
 #include "src/primihub/task/semantic/psi_task.h"
 #include "src/primihub/task/semantic/pir_task.h"
 #include "src/primihub/service/dataset/service.h"
@@ -49,9 +51,11 @@ class TaskFactory {
     auto task_type = request.task().type();
     std::shared_ptr<TaskBase> task_ptr{nullptr};
     switch (task_language) {
+#ifdef PY_TASK_ENABLED
     case Language::PYTHON:
       task_ptr = TaskFactory::CreateFLTask(node_id, request, dataset_service);
       break;
+#endif
     case Language::PROTO: {
       switch (task_type) {
       case rpc::TaskType::ACTOR_TASK:
@@ -77,7 +81,7 @@ class TaskFactory {
     }
     return task_ptr;
   }
-
+#ifdef PY_TASK_ENABLED
   static std::shared_ptr<TaskBase> CreateFLTask(const std::string& node_id,
       const PushTaskRequest& request,
       std::shared_ptr<DatasetService> dataset_service) {
@@ -85,7 +89,7 @@ class TaskFactory {
     return std::make_shared<FLTask>(node_id, &task_param,
                                     request, dataset_service);
   }
-
+#endif  // PY_TASK_ENABLED
   static std::shared_ptr<TaskBase> CreateMPCTask(const std::string& node_id,
       const PushTaskRequest& request,
       std::shared_ptr<DatasetService> dataset_service) {

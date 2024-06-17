@@ -15,7 +15,6 @@
  */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <Python.h>
 #include <iostream>
 #include <string>
 #include "src/primihub/task_engine/task_executor.h"

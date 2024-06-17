@@ -4,7 +4,9 @@
 #include <memory>
 #include "src/primihub/task/semantic/scheduler/scheduler.h"
 #include "src/primihub/task/semantic/scheduler/aby3_scheduler.h"
+#ifdef PY_TASK_ENABLED
 #include "src/primihub/task/semantic/scheduler/fl_scheduler.h"
+#endif  // PY_TASK_ENABLED
 #include "src/primihub/task/semantic/scheduler/mpc_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/tee_scheduler.h"
 #include "src/primihub/task/semantic/scheduler/pir_scheduler.h"
@@ -17,9 +19,11 @@ class SchedulerFactory {
     std::unique_ptr<VMScheduler> scheduler{nullptr};
     auto language = task_config.language();
     switch (language) {
+#ifdef PY_TASK_ENABLED
     case rpc::Language::PYTHON:
       scheduler = SchedulerFactory::CreatePythonScheduler(task_config);
       break;
+#endif  // PY_TASK_ENABLED
     case rpc::Language::PROTO:
       scheduler = SchedulerFactory::CreateProtoScheduler(task_config);
       break;
@@ -29,11 +33,11 @@ class SchedulerFactory {
     }
     return scheduler;
   }
-
+#ifdef PY_TASK_ENABLED
   static std::unique_ptr<VMScheduler> CreatePythonScheduler(const rpc::Task& task_config) {
     return std::make_unique<FLScheduler>();
   }
-
+#endif // PY_TASK_ENABLED
   static std::unique_ptr<VMScheduler> CreateProtoScheduler(const rpc::Task& task_config) {
     std::unique_ptr<VMScheduler> scheduler{nullptr};
     auto task_type = task_config.type();

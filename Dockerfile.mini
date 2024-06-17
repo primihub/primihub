@@ -1,0 +1,9 @@
+# Call this Dockerfile via the build_local.sh script
+FROM ubuntu:20.04
+RUN apt-get update && apt-get install -y libmysqlclient-dev
+
+WORKDIR /app
+
+ADD bazel-bin.tar.gz ./
+RUN ln -s -f bazel-bin/cli primihub-cli
+RUN ln -s -f bazel-bin/node primihub-node

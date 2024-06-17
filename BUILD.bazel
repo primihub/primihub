@@ -45,6 +45,7 @@ config_setting(
     name = "x86_64",
     values = {"define": "cpu_arch=x86_64"},
 )
+
 config_setting(
     name = "darwin_x86_64",
     values = {"define": "cpu_arch=darwin_x86_64"},
@@ -55,11 +56,18 @@ config_setting(
     values = {"define": "enable_mysql_driver=true"},
 )
 
+config_setting(
+  name = "py_task_enabled",
+  values = {"define" : "enable_py_task=true"},
+)
+
 LINK_PYTHON_OPTS = PLACEHOLDER-PYTHON3.X-CONFIG
 
 cc_library(
   name = "python3_lib",
-  copts = ["-Iexternal/python3"],
+  copts = [
+    "-Iexternal/python3"
+  ],
   linkopts = LINK_PYTHON_OPTS,
   deps = [
     "@python3//:headers",
@@ -67,32 +75,29 @@ cc_library(
 )
 
 cc_binary(
-  name = "py_main",
-  deps = [
-    ":python3_lib",
-    "//src/primihub/executor:py_executor",
-  ]
-)
-cc_binary(
   name = "task_main",
   deps = [
-    ":python3_lib",
     "//src/primihub/task_engine:task_engine_impl",
-  ]
+  ] + select({
+    "py_task_enabled": [":python3_lib",],
+    "//conditions:default": []
+  }),
 )
 
 cc_binary(
   name = "node",
   deps = [
-    ":python3_lib",
     "//src/primihub/node:node_impl",
-  ],
+  ] + select({
+    "py_task_enabled": [":python3_lib",],
+    "//conditions:default": []
+  }),
 )
 
 cc_binary(
-    name = "cli",
-    deps = [
-        "//src/primihub/cli:cli_impl",
-    ],
+  name = "cli",
+  deps = [
+    "//src/primihub/cli:cli_impl",
+  ] ,
 )
 

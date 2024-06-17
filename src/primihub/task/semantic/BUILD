@@ -18,17 +18,27 @@ config_setting(
    name = "microsoft-apsi",
    values = {"define": "microsoft-apsi=true"},
 )
+config_setting(
+  name = "py_task_enabled",
+  values = {"define" : "enable_py_task=true"},
+)
 
 #factory for create task
 cc_library(
     name = "task_factory",
     hdrs = ["factory.h"],
+    defines = select({
+      "py_task_enabled": ["PY_TASK_ENABLED"],
+      "//conditions:default": []
+    }),
     deps = [
-        ":fl_task",
         ":mpc_task",
         ":pir_task",
         ":psi_task",
-    ],
+    ] + select({
+      "py_task_enabled": [":fl_task"],
+      "//conditions:default": []
+    }),
 )
 
 cc_library(
