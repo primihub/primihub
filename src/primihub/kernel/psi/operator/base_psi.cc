@@ -41,6 +41,26 @@ retcode BasePsiOperator::Execute(const std::vector<std::string>& input,
     auto time_cost = timer.timeElapse();
     VLOG(5) << "BroadcastPsiResult time cost(ms): " << time_cost;
   }
+  // calculate DIFFERENCE
+  if (options_.psi_result_type == PsiResultType::DIFFERENCE) {
+    if (input.size() == result->size()) {
+      result->clear();
+      *result = std::vector<std::string>();
+      return retcode::SUCCESS;
+    }
+    if (result->empty()) {
+      result->assign(input.begin(), input.end());
+      return retcode::SUCCESS;
+    }
+    std::set<std::string> duplicate(result->begin(), result->end());
+    result->clear();
+    for (const auto& item : input ) {
+      if (duplicate.find(item) != duplicate.end()) {
+        continue;
+      }
+      result->push_back(item);
+    }
+  }
   return ret;
 }
 
@@ -178,62 +198,46 @@ retcode BasePsiOperator::GetNodeByName(const std::string& party_name,
 retcode BasePsiOperator::GetResult(const std::vector<std::string>& input,
     const std::vector<uint64_t>& intersection_index,
     std::vector<std::string>* result) {
-//
-  if (options_.psi_result_type == PsiResultType::DIFFERENCE) {
-    size_t diff_size = input.size() - intersection_index.size();
-    result->reserve(diff_size);
-    uint64_t num_elements = input.size();
-    std::unordered_set<uint64_t> result_index_set(intersection_index.size());
-    for (auto index : intersection_index) {
-      result_index_set.insert(index);
-    }
-    for (uint64_t i = 0; i < num_elements; i++) {
-      if (result_index_set.find(i) == result_index_set.end()) {
-        result->push_back(input[i]);
-      }
-    }
-  } else {
-    SCopedTimer timer;
-    size_t result_size = intersection_index.size();
-    result->resize(result_size);
-    size_t block_size = 10000000;
-    size_t block_num = result_size / block_size;
-    size_t rem_num = result_size % block_size;
-    std::vector<std::future<void>> futs;
-    for (size_t i = 0; i < block_num; i++) {
-      futs.push_back(
-        std::async(
-          std::launch::async,
-          [&, i]() -> void {
-            size_t index = i*block_size;
-            auto& result_ref = *result;
-            for (size_t j = 0; j < block_size; j++) {
-              uint64_t pos = intersection_index[index];
-              result_ref[index] = input[pos];
-              index++;
-            }
-          }));
-    }
-    if (rem_num) {
-      futs.push_back(
-        std::async(
-          std::launch::async,
-          [&]() -> void {
-            size_t index = block_num*block_size;
-            auto& result_ref = *result;
-            for (size_t j = 0; j < rem_num; j++) {
-              uint64_t pos = intersection_index[index];
-              result_ref[index] = input[pos];
-              index++;
-            }
-          }));
-    }
-    for (auto&& fut : futs) {
-      fut.get();
-    }
-    auto time_cost = timer.timeElapse();
-    VLOG(3) << "Get Intersection Result time cost: " << time_cost;
+  SCopedTimer timer;
+  size_t result_size = intersection_index.size();
+  result->resize(result_size);
+  size_t block_size = 10000000;
+  size_t block_num = result_size / block_size;
+  size_t rem_num = result_size % block_size;
+  std::vector<std::future<void>> futs;
+  for (size_t i = 0; i < block_num; i++) {
+    futs.push_back(
+      std::async(
+        std::launch::async,
+        [&, i]() -> void {
+          size_t index = i*block_size;
+          auto& result_ref = *result;
+          for (size_t j = 0; j < block_size; j++) {
+            uint64_t pos = intersection_index[index];
+            result_ref[index] = input[pos];
+            index++;
+          }
+        }));
   }
+  if (rem_num) {
+    futs.push_back(
+      std::async(
+        std::launch::async,
+        [&]() -> void {
+          size_t index = block_num*block_size;
+          auto& result_ref = *result;
+          for (size_t j = 0; j < rem_num; j++) {
+            uint64_t pos = intersection_index[index];
+            result_ref[index] = input[pos];
+            index++;
+          }
+        }));
+  }
+  for (auto&& fut : futs) {
+    fut.get();
+  }
+  auto time_cost = timer.timeElapse();
+  VLOG(3) << "Get Intersection Result time cost: " << time_cost;
   return retcode::SUCCESS;
 }
 }  // namespace primihub::psi

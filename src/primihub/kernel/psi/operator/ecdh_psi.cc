@@ -109,23 +109,8 @@ retcode EcdhPsiOperator::GetIntersection(
   auto get_intersection_time_cost = get_intersection_ts - build_resp_time_cost;
   VLOG(5) << "get_intersection_time_cost: " << get_intersection_time_cost;
   size_t num_intersection = intersection.size();
-
-  if (options_.psi_result_type == PsiResultType::DIFFERENCE) {
-    std::unordered_map<int64_t, int> inter_map(num_intersection);
-    size_t num_elements = origin_data.size();
-    result->reserve(num_elements);
-    for (size_t i = 0; i < num_intersection; i++) {
-      inter_map[intersection[i]] = 1;
-    }
-    for (size_t i = 0; i < num_elements; i++) {
-      if (inter_map.find(i) == inter_map.end()) {
-        result->push_back(origin_data[i]);
-      }
-    }
-  } else {
-    for (size_t i = 0; i < num_intersection; i++) {
-      result->push_back(origin_data[intersection[i]]);
-    }
+  for (size_t i = 0; i < num_intersection; i++) {
+    result->push_back(origin_data[intersection[i]]);
   }
   return retcode::SUCCESS;
 }
